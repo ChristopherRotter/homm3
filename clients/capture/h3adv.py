@@ -53,7 +53,12 @@ Since E08 T90 (batches E10a, E10b): the hire dialog as a screen (`click = ["max"
 `amount = <n>`), a step's `hint = [x, y]` and `popup = [x, y]`, a computer player's turn waited out
 by `end_turn`, and the observations dwelling:x,y, teams, objects:x0,y0:x1,y1, access:x0,y0:x1,y1,
 camp:x,y, hire[:opening|after][:<part>], hint, popup, hint:raw, opening:defender and ai_turns (the
-README's "Dwellings, the hire dialog and a computer player's turn").
+README's "Dwellings, the hire dialog and a computer player's turn"). Since E08 T100a (batch E11a):
+a step's `replay` (Replay Opponent Turn on the frozen clock) and `at_opening`, `only_if = { at =
+[x, y] }`, `again_if = { marks = "any" }`, a `key` step's `answer` and `battle`, and the
+observations replay, replay:views, replay:watched, replay:options, view:before, view:after,
+view:size, explored:x0,y0..x1,y1, at_opening:<observation>, battles, exchange, army:rows and
+hero:in_boat (the README's "Teleporters and Replay Opponent Turn").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -852,7 +857,7 @@ def side_of(choice, shown):
 
 
 def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=None,
-           choice=None):
+           choice=None, opening=None):
     """Waits until the hero, its points and the players' resources stay the same for QUIET
     seconds on the adventure map (the walk and any visit over), on the way answering each question
     as `answer` says, playing each battle as `battle` says and clicking any other dialog's OK;
@@ -890,6 +895,12 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
             events["screens"].append(kind)
             if kind == "hire":
                 events.setdefault("hires", []).append({"opening": mem.recruit_dialog()})
+            if kind == "exchange":
+                # E08 T100a (batch E11a's E11-6): whom the meeting shows, read as it opens (the
+                # swap manager's +0x40, +0x44: left the visitor, right the visited).
+                shows = screen_heroes(mem, kind, index)
+                events.setdefault("exchanges", []).append(
+                    {side: mem.hero(shows[side])["name"] for side in ("left", "right")})
             if actions and not events["actions"]:
                 events["actions"] = run_actions(game, mem, index, actions)
             if kind == "hire":
@@ -925,6 +936,10 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
         if in_battle(game, pix):
             # E08 T68b (batch E8b's E8-13, E8-14): the hero's tile as the battle opens.
             at = mem.hero(index)["tile"]
+            # E08 T100a (batch E11a's E11-7): the step's `at_opening` observations, read from
+            # the game's memory as the first battle opens (tiles explored before it is fought).
+            if opening and "at_opening" not in events:
+                events["at_opening"] = {w: value({"after": {}}, w, mem) for w in opening}
             events["battles"].append({**fight(game, mem, battle), "hero_tile": at})
             # E09 T3b: the screen known up to the battle's end (a long battle left `known` stale
             # for the screen checks above).
@@ -1092,7 +1107,7 @@ def ready(game, mem, name, target, days=0, near=False):
 
 
 def walk(game, mem, name, target, answer=None, battle=None, level_up="left", actions=None,
-         choice=None, once=False, again_if=None):
+         choice=None, once=False, again_if=None, opening=None):
     """Selects the hero, clicks the target tile once (the path shows: its marks are read) and
     again (the hero goes, or not, or visits what stands there), waits until it rests, answering
     questions and playing battles on the way (settle); returns the observation. With `once`
@@ -1116,11 +1131,15 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     # The game walks on a click on the hero's current destination: a path to this tile set
     # before makes the first click walk.
     first_walked = observe(mem, index) != before
-    again = not once and (again_if is None or len(path) == again_if["marks"])
+    # E08 T100a (batch E11a's E11-1, E11-13): `again_if = { marks = "any" }` clicks again when
+    # the first click showed a path at all.
+    wanted = None if again_if is None else again_if["marks"]
+    again = not once and (wanted is None or (len(path) > 0 if wanted == "any"
+                                             else len(path) == wanted))
     if not first_walked and again:
         game.click(*hover(game, mem, x, y, z), 0.3)
         game.move(*PARK)
-    after, events = settle(game, mem, index, answer, battle, level_up, actions, choice)
+    after, events = settle(game, mem, index, answer, battle, level_up, actions, choice, opening)
     colours = sorted(set(path.values()))
     return {
         "hero": name, "index": index, "from": before["tile"], "target": list(target),
@@ -1133,10 +1152,12 @@ def walk(game, mem, name, target, answer=None, battle=None, level_up="left", act
     }
 
 
-def press(game, mem, name, key):
+def press(game, mem, name, key, answer=None, battle=None, level_up="left"):
     """Selects the hero, centres the view on it and presses `key` once (E08 T68a, batch E8a's
     E8-7: the arrow key that steps the selected hero), waiting until it rests (settle); returns
-    the observation: `key` says whether the hero stepped, the view scrolled or nothing moved."""
+    the observation: `key` says whether the hero stepped, the view scrolled or nothing moved.
+    Since E08 T100a (batch E11a's E11-19: Space on a monolith, a visit again) the step's `answer`,
+    `battle` and `level_up` play what the key brings, as a walk's do."""
     hero = select(game, mem, name)
     index = hero["index"]
     centre(game, mem, *hero["tile"])
@@ -1144,12 +1165,142 @@ def press(game, mem, name, key):
     time.sleep(0.3)
     before, view = observe(mem, index), mem.view()
     game.key(key, 0.5)
-    after, events = settle(game, mem, index)
+    after, events = settle(game, mem, index, answer, battle, level_up)
     moved = after["tile"] != before["tile"]
     return {"hero": name, "index": index, "from": before["tile"], "tile": after["tile"],
             "key": "stepped" if moved else "scrolled" if mem.view() != view else "nothing",
             "moved": moved, "points_before": before["points"], "points": after["points"],
             **events}
+
+
+# -- Replay Opponent Turn (E08 T100a: batch E11a's E11-18) ----------------------------------------
+# adventure_command 0x409A70's control 9 (its switch 0x409AB4) runs adventure_options_run
+# 0x41AB00: the modal dialog of 0x4051D0 (AdvOpts.pcx) with View World 1 (AdvView.def), the Puzzle
+# Map 2 (AdvPuz.def), the scenario's information 3 (AdvInfo.def), Dig 4 (AdvDig.def), Replay
+# Opponent Turn 5 (AdvTurn.def, enabled by 0x49DA70) and OK 30722 (iOk6432.def); its result 5
+# calls turn_records_replay 0x49D7A0, which holds the byte 0x696A04 at 1 while it plays the
+# turn's records back (read in the code, E08 T100a). The panel's button is the map dialog's
+# item 9 (observed under Wine).
+OPTIONS_BUTTON, REPLAY_ITEM, OPTIONS_OK = 9, 5, 30722
+REPLAYING = 0x696A04
+REPLAY_LIMIT = 300  # seconds a replay may take before the batch stops
+
+
+def view_holds(corner, box):
+    """Whether the view at `corner` (x, y, level) holds a tile of `box` ([x0, y0, x1, y1], the
+    surface; MAP_AREA's whole tiles)."""
+    x, y, z = corner
+    x0, y0, x1, y1 = box
+    across, down = MAP_AREA[2:]
+    return z == 0 and x <= x1 and x0 < x + across and y <= y1 and y0 < y + down
+
+
+def replay(game, mem, name, plan):
+    """Replay Opponent Turn (E08 T100a, batch E11a's E11-18): with the step's hero selected, the
+    panel's Adventure Options button (the map's item 9), then the dialog's Replay Opponent Turn
+    (item 5), on the frozen clock: stepped 20 ms at a time (`Game.clock`), the replay's flag
+    (0x696A04) and the view's top-left tile and level are read after each step, each new view
+    kept in order with its time (ms from the click) and the screen, once it rests, dumped there
+    (at most `dumps`, default 60: `<out>/replay-<ms>.xwd`; a dump taken without the frozen clock
+    showed the view before, the first run's; `dumps = "every"` after every step, at most 150);
+    `watch = [x0, y0, x1, y1]` names the surface tiles
+    whose views are listed apart. A replay that does not start in 5 s of the game's time (the
+    item disabled: nothing plays) leaves the dialog by its OK. Returns the observation."""
+    plan = plan if isinstance(plan, dict) else {}
+    hero = select(game, mem, name)
+    game.move(*PARK)
+    quiet_screen(game)
+    if screen_kind(mem) != "map":
+        raise RuntimeError(f"Replay Opponent Turn from the {screen_kind(mem)} screen")
+    obs = {"hero": name, "index": hero["index"], "replay_views": [], "replay_dumps": [],
+           "view_before": [*mem.view(), mem.view_level()], "watch": plan.get("watch")}
+    shown = mem.dialog()["at"]
+    game.click(*item_centre(mem, OPTIONS_BUTTON), 0.3)
+    game.move(*PARK)
+    wait_for(lambda: (mem.dialog() or {}).get("at") != shown, "the Adventure Options dialog", 5)
+    quiet_screen(game)
+    options = mem.dialog()
+    items = {i["id"]: i for i in mem.dialog_items()}
+    if REPLAY_ITEM not in items:
+        raise RuntimeError(f"the dialog (vtable {options['vtable']:#x}) has no item {REPLAY_ITEM}")
+    obs["options"] = {"vtable": f"{options['vtable']:#x}", "replay_state": items[REPLAY_ITEM]["state"],
+                      "items": sorted(items)}
+    point = item_centre(mem, REPLAY_ITEM)
+    game.clock("freeze")
+    game.click(*point, 0)
+    game.move(*PARK)
+    ms, step = 0, 20
+    while not mem.read(REPLAYING, 1)[0] and ms < 5000:
+        game.clock(f"step {step}")
+        ms += step
+    if not mem.read(REPLAYING, 1)[0]:
+        game.clock("run")
+        obs["replay"] = "not started"
+        if (mem.dialog() or {}).get("at") == options["at"]:
+            obs["replay"] = "not started: the dialog stayed open (the item disabled?)"
+            game.click(*item_centre(mem, OPTIONS_OK), 0.3)
+            game.move(*PARK)
+        quiet_screen(game)
+        obs["view_after"] = [*mem.view(), mem.view_level()]
+        return obs
+    began, last = ms, None
+    every = plan.get("dumps") == "every"
+    limit = 150 if every else plan.get("dumps", 60)
+    try:
+        while mem.read(REPLAYING, 1)[0]:
+            if ms - began > REPLAY_LIMIT * 1000:
+                raise TimeoutError(f"the replay does not end in {REPLAY_LIMIT} s of its time")
+            corner = [*mem.view(), mem.view_level()]
+            new = corner != last
+            if new:
+                last = corner
+                obs["replay_views"].append({"corner": corner, "ms": ms})
+            if (new or every) and len(obs["replay_dumps"]) < limit:
+                game.settled()
+                path = game.out / f"replay-{ms:05d}.xwd"
+                game.dump(path)
+                obs["replay_dumps"].append({"dump": path.name, "corner": corner, "ms": ms})
+                if new:
+                    obs["replay_views"][-1]["dump"] = path.name
+            game.clock(f"step {step}")
+            ms += step
+    finally:
+        game.clock("run")
+    obs["replay"] = f"played ({ms - began} ms of the game's time, from {began} ms after the click)"
+    quiet_screen(game, 1.0)
+    obs["view_after"] = [*mem.view(), mem.view_level()]
+    return obs
+
+
+def replay_value(obs, what):
+    """The observations of a `replay` step (E08 T100a): `replay` (played and how long, or not
+    started), `replay:views` (each new view's top-left tile and level in order, `x,y,level`, `→`
+    between), `replay:watched` (the views holding a tile of the step's `watch`, with their
+    dumps; `none`), `replay:options` (the dialog's vtable, the item's state, its item ids),
+    `view:before`, `view:after` (the view's corner before the dialog and after the replay) and
+    `view:size` (MAP_AREA's whole tiles across and down)."""
+    if what == "view:size":
+        return f"{MAP_AREA[2]} x {MAP_AREA[3]} (the map area's whole tiles)"
+    if "replay" not in obs:
+        return "no replay"
+    if what == "replay":
+        return obs["replay"]
+    if what == "replay:views":
+        return " → ".join(",".join(map(str, v["corner"])) for v in obs["replay_views"]) or "none"
+    if what == "replay:watched":
+        box = obs.get("watch")
+        if not box:
+            raise ValueError("`replay:watched` needs the step's `replay = { watch = [...] }`")
+        held = [v for v in obs["replay_views"] if view_holds(v["corner"], box)]
+        return ", ".join(",".join(map(str, v["corner"])) + (f" ({v['dump']})" if "dump" in v
+                                                              else "") for v in held) or "none"
+    if what == "replay:options":
+        o = obs["options"]
+        return (f"vtable {o['vtable']}, item {REPLAY_ITEM} state {o['replay_state']:#x}, items "
+                + " ".join(map(str, o["items"])))
+    if what in ("view:before", "view:after"):
+        return ",".join(map(str, obs[what.replace(":", "_")]))
+    raise ValueError(f"unknown replay observation `{what}`")
 
 
 # -- the hero screen (E08 T37a: batch E5's E5-3b and E5-10b) --------------------------------------
@@ -1757,6 +1908,9 @@ def hero_value(mem, hero, field):
         return str(hero[field])
     if field == "status":
         return f"{hero['status']:#x}"
+    # E08 T100a (batch E11a): whether the hero is in a boat (status bit 18, h3mem.IN_BOAT).
+    if field == "in_boat":
+        return "yes" if hero["status"] & h3mem.IN_BOAT else "no"
     raise ValueError(f"unknown hero detail `{field}`")
 
 
@@ -2390,6 +2544,14 @@ def value(obs, what, mem):
     battles = obs.get("battles", [])
     if what == "battle":
         return yes[bool(battles)]
+    # E08 T100a (batch E11a's E11-19: which guard a step and a jump met, in order): every battle
+    # of the step, the hero's tile as it opened, the defender's stacks and the winner.
+    if what == "battles":
+        return "; ".join(
+            f"{k}. at {','.join(map(str, b['hero_tile']))}: defender "
+            f"{stacks_text(mem, b['start'], 1)}, winner "
+            f"{'none' if b.get('winner') is None or b['winner'] < 0 else SIDES[b['winner']]}"
+            for k, b in enumerate(battles, 1)) or "none"
     # E08 T32b1: the last battle's field (its special field, `none`; or its terrain) and whether
     # a creature's stack that was there at its start was gone at its end (a destroyed machine).
     if what in ("battlefield", "battlefield:terrain"):
@@ -2478,6 +2640,13 @@ def value(obs, what, mem):
         if len(found) != 1:
             raise ValueError(f"{len(found)} heroes named {m.group(1)!r}")
         return hero_value(mem, found[0], m.group(2))
+    # E08 T100a (batch E11a's E11-6, E11-7, E11-18): the tiles of a box, `explored:x0,y0..x1,y1`
+    # (and `,level`, `:colour` as below), row by row: `43,29 no, 44,29 no, …`.
+    if m := re.match(r"explored:(\d+),(\d+)\.\.(\d+),(\d+)(,\d)?(:[a-z]+)?$", what):
+        x0, y0, x1, y1 = map(int, m.groups()[:4])
+        rest = (m.group(5) or "") + (m.group(6) or "")
+        return ", ".join(f"{x},{y} " + value(obs, f"explored:{x},{y}{rest}", mem)
+                         for y in range(y0, y1 + 1) for x in range(x0, x1 + 1))
     # E08 T37a (batch E5's E5-9, E5-10, E5-11): whether a player has explored a tile, its bit in
     # the tile's vision word; the player the step's hero's owner unless named.
     if m := re.match(r"explored:(\d+),(\d+)(?:,(\d))?(?::([a-z]+))?$", what):
@@ -2511,6 +2680,20 @@ def value(obs, what, mem):
                 f"ship flag {field['ship']}, blocked hexes {blocked}")
     if what in ("again", "key"):
         return obs.get(what, "none")
+    # E08 T100a (batch E11a): the meetings a step opened (the heroes the exchange showed), the
+    # step's hero's army slot by slot before and after it as table rows (slot, creature, count
+    # before, count after; the slots that held something), a replay's observations.
+    if what == "exchange":
+        return "; ".join(f"{e['left']} (left, the visitor) and {e['right']} (right)"
+                         for e in obs.get("exchanges", [])) or "none"
+    if what == "army:rows":
+        old, new = obs["before"]["hero"]["slots"], after["hero"]["slots"]
+        return [[str(k), mem.creature_name(o[0] if o[0] >= 0 else n[0], 2), str(o[1]), str(n[1])]
+                for k, (o, n) in enumerate(zip(old, new)) if o[0] >= 0 or n[0] >= 0]
+    if what.startswith("replay") or what.startswith("view:"):
+        return replay_value(obs, what)
+    if what.startswith("at_opening:"):
+        return obs.get("at_opening", {}).get(what.split(":", 1)[1], "no battle (or not read)")
     if what == "battle:tile":
         # E08 T68b: the step's hero's tile as the last battle opened (batch E8b's E8-13, E8-14).
         return ",".join(map(str, battles[-1]["hero_tile"])) if battles else "no battle"
@@ -2948,18 +3131,28 @@ def batch(recipe_path, map_path=None, out=None):
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
                 pre = pre_read(step, before, mem)
-                if sum(k in step for k in ("walk", "equip", "screen", "key")) > 1 or (
-                        ("hint" in step or "popup" in step)
-                        and any(k in step for k in ("walk", "equip", "screen", "key"))):
+                acts = ("walk", "equip", "screen", "key", "replay")
+                if sum(k in step for k in acts) > 1 or (
+                        ("hint" in step or "popup" in step) and any(k in step for k in acts)):
                     raise ValueError("a step walks, equips, opens a screen, presses a key "
-                                     "(E08 T37a, T47a, T68a) or reads a hint or popup (E08 T90)")
+                                     "(E08 T37a, T47a, T68a), reads a hint or popup (E08 T90) "
+                                     "or replays the opponents' turn (E08 T100a)")
                 # E08 T68a (batch E8a's E8-3): `only_if = "aboard"` plays the step only while its
                 # hero is in a boat (status bit 18); else its fields read `not played`.
-                skip = None
-                if step.get("only_if") not in (None, "aboard"):
-                    raise ValueError(f"`only_if = {step['only_if']!r}`: only \"aboard\"")
-                if step.get("only_if") == "aboard" and not before["hero"]["status"] & h3mem.IN_BOAT:
+                # E08 T100a (batch E11a): `only_if = { at = [x, y] or [x, y, level] }` plays it
+                # only while its hero stands there (a row's branch after a jump).
+                skip, only = None, step.get("only_if")
+                if only not in (None, "aboard") and not (isinstance(only, dict)
+                                                         and set(only) == {"at"}):
+                    raise ValueError(f"`only_if = {only!r}`: \"aboard\" or {{ at = [x, y] }}")
+                if only == "aboard" and not before["hero"]["status"] & h3mem.IN_BOAT:
                     skip = f"not played: {step['hero']} is not in a boat"
+                if isinstance(only, dict):
+                    at = [*only["at"], 0][:3]
+                    if list(before["hero"]["tile"]) != at:
+                        skip = (f"not played: {step['hero']} stands on "
+                                f"{','.join(map(str, before['hero']['tile']))}, not "
+                                f"{','.join(map(str, at))}")
                 if "actions" in step and "walk" not in step and "screen" not in step:
                     raise ValueError("`actions` play in a screen a walk or `screen` opens")
                 if skip:
@@ -2968,7 +3161,7 @@ def batch(recipe_path, map_path=None, out=None):
                     obs = walk(game, mem, step["hero"], step["walk"], step.get("answer"),
                                step.get("battle"), step.get("level_up", "left"),
                                step.get("actions"), step.get("choice"), step.get("once", False),
-                               step.get("again_if"))
+                               step.get("again_if"), step.get("at_opening"))
                     if prepared:
                         # E08 T57: the route set by `ready` makes the first click walk.
                         obs["first_click_walked"] &= not prepared.pop("clicked")
@@ -2983,7 +3176,10 @@ def batch(recipe_path, map_path=None, out=None):
                     if "popup" in step:
                         obs["popup"] = popup_at(game, mem, *step["popup"])
                 elif "key" in step:
-                    obs = press(game, mem, step["hero"], step["key"])
+                    obs = press(game, mem, step["hero"], step["key"], step.get("answer"),
+                                step.get("battle"), step.get("level_up", "left"))
+                elif "replay" in step:
+                    obs = replay(game, mem, step["hero"], step["replay"])
                 elif "equip" in step:
                     obs = equip(game, mem, step["hero"], step["equip"])
                 elif "screen" in step:
@@ -3014,6 +3210,11 @@ def batch(recipe_path, map_path=None, out=None):
             log.flush()
             print(json.dumps(obs), flush=True)
             for field, got in obs["record"].items():
+                if obs.get("skipped") and not field.startswith(("row:", "+")) \
+                        and (step["encounter"], field) in values:
+                    # E08 T100a (batch E11a's E11-8: two branches of a row, one played): a skipped
+                    # step leaves a field another step filled.
+                    continue
                 if field.startswith("row:"):
                     # E08 T68b: rows added to the table whose first column is named so.
                     values.setdefault((step["encounter"], "rows:" + field[4:]), []).extend(got)

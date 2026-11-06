@@ -1,5 +1,9 @@
 # E08 batch E11a — results
 
+> Played by the capture harness on 2026-11-06 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-11a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
+> E08 T100a: three runs of the map; the second and third (this one) agree in all 97 filled records; the first differs only in E11-8, whose two branches it played both (the recipe's order since fixed).
+
 Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `0b5df5f3`.** The map's description in the scenario list starts with "Stamp 0b5df5f3.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -26,14 +30,14 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E11-1 before: points; day's maximum; explored (12, 11), (16, 13), (16, 14), (17, 10), (18, 10): 
-- E11-1: the path to B (12, 10) (its tiles, or none); if one showed, the walk: its steps, messages, battles: 
-- E11-1: the path to A (its tiles): 
-- E11-2: after the step onto A: messages; battles; E11-1's tile, points and day's maximum; moved on after the jump?: 
-- E11-2: explored after: (12, 11), (16, 13), (16, 14), (17, 10), (18, 10): 
-- E11-3: the battle on arrival, if any (the defender, the result): 
-- E11-3's control: the step to (13, 10): the battle or none; E11-1's tile after: 
-- anything odd: 
+- E11-1 before: points; day's maximum; explored (12, 11), (16, 13), (16, 14), (17, 10), (18, 10): points: 2000; day's maximum: 2000; explored: 12,11 yes; 16,13 no, 16,14 no; 17,10 no, 18,10 no
+- E11-1: the path to B (12, 10) (its tiles, or none); if one showed, the walk: its steps, messages, battles: the path: none; clicked again: no; messages: none; battles: none; tile: 8,10,0; points: 2000; day's maximum: 2000; explored: 12,11 yes; 16,13 no, 16,14 no; 17,10 no, 18,10 no
+- E11-1: the path to A (its tiles): 9,10
+- E11-2: after the step onto A: messages; battles; E11-1's tile, points and day's maximum; moved on after the jump?: messages: none; battles: none; tile: 12,10,0; points: 1900; day's maximum: 2000; on A (9, 10) after it: no
+- E11-2: explored after: (12, 11), (16, 13), (16, 14), (17, 10), (18, 10): 12,11 yes; 16,13 yes, 16,14 no; 17,10 yes, 18,10 no
+- E11-3: the battle on arrival, if any (the defender, the result): none
+- E11-3's control: the step to (13, 10): the battle or none; E11-1's tile after: battles: 1. at 13,10,0: defender 1 Peasant, winner attacker; tile after: 13,10,0; points: 1800; P (13, 11) after: none
+- anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; the difficulty: easy; 1 dialog(s) after the walk to [13, 10]; the control's messages: GENRLTXT:7
 
 ## E11-4 — A one-way exit visited (E11-5); then its entrance, whose only exit holds Red's hero (E11-4) (ADV-TEL-003, ADV-TEL-004)
 
@@ -46,10 +50,10 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E11-5: the message after the step onto X4 (its text): 
-- E11-5 after: tile; points: 
-- E11-4: messages or battles after the step onto E4: 
-- E11-4 after: tile; points. E11-5's tile: 
+- E11-5: the message after the step onto X4 (its text): ADVEVENT:70
+- E11-5 after: tile; points: tile: 40,10,0; points: 1900
+- E11-4: messages or battles after the step onto E4: messages: none; battles: none; screens: none; sound: not read (a run without sound)
+- E11-4 after: tile; points. E11-5's tile: tile: 32,10,0; points: 1900; E11-5's tile: 40,10,0
 - anything odd: 
 
 ## E11-6 — A Subterranean Gate whose exit holds Red's other hero: the meeting, the mover staying (ADV-TEL-005, ADV-TEL-007, GAM-MET-001)
@@ -63,13 +67,13 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E11-6b: messages or dialogs after the step onto G6: 
-- E11-6b after: tile (level); points; day's maximum: 
-- E11-6 before its step: explored underground (50, 9) to (52, 11), (53, 10): 
-- E11-6: the dialog after its step onto G6 (its kind; the heroes it shows): 
-- after: E11-6's tile (level) and points; E11-6b's tile (level): 
-- after: explored underground (50, 9) to (52, 11), (53, 10): 
-- anything odd: 
+- E11-6b: messages or dialogs after the step onto G6: messages: none; screens: none; battles: none
+- E11-6b after: tile (level); points; day's maximum: tile: 51,10,1; points: 1859; day's maximum: 2000
+- E11-6 before its step: explored underground (50, 9) to (52, 11), (53, 10): 50,9 yes, 51,9 yes, 52,9 yes, 50,10 yes, 51,10 yes, 52,10 yes, 50,11 yes, 51,11 yes, 52,11 yes; 53,10 yes
+- E11-6: the dialog after its step onto G6 (its kind; the heroes it shows): screens: exchange; shows: E11-6 (left, the visitor) and E11-6b (right); messages: none; battles: none
+- after: E11-6's tile (level) and points; E11-6b's tile (level): E11-6's tile: 51,10,0; points: 1859; E11-6b's tile: 51,10,1
+- after: explored underground (50, 9) to (52, 11), (53, 10): 50,9 yes, 51,9 yes, 52,9 yes, 50,10 yes, 51,10 yes, 52,10 yes, 50,11 yes, 51,11 yes, 52,11 yes; 53,10 yes
+- anything odd: E11-6's army after the meeting: 0: 1 Angel; E11-6b's army after the meeting: 0: 1 Angel
 
 ## E11-9 — The gates' pairing at a truncated tie (E11-9); then the gate left without a pair (E11-8) (D-56, ADV-TEL-002, ADV-TEL-005)
 
@@ -81,11 +85,11 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E11-9: messages after the step onto G9: 
-- E11-9 after: tile (level); points; day's maximum; which gate (Uf or Un): 
-- E11-8: the gate stepped onto; the path's tiles; the message after the step (its text): 
-- E11-8 after: tile (level); points: 
-- anything odd: 
+- E11-9: messages after the step onto G9: messages: none; screens: none; battles: none
+- E11-9 after: tile (level); points; day's maximum; which gate (Uf or Un): tile: 17,27,1; points: 1900; day's maximum: 2000; gate: Uf is 17,27,1, Un 16,30,1
+- E11-8: the gate stepped onto; the path's tiles; the message after the step (its text): the gate: Un (16, 30) underground; the path: 17,28,1 17,29,1 16,30,1 18,30,1 17,31,1; messages: ADVEVENT:153
+- E11-8 after: tile (level); points: tile: 16,30,1; points: 1277
+- anything odd: 1 dialog(s) after the walk to [16, 30, 1]
 
 ## E11-19 — Guards at both ends of a two-way pair: the step onto A19, the arrival at B19, the revisit by Space (ADV-MON-005, ADV-MON-006, ADV-TEL-007, ADV-TEL-008)
 
@@ -98,12 +102,12 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E11-19 before: points: 
-- the step onto A19: battles in order (which Peasant; the result); messages: 
-- after it: E11-19's tile; points: 
-- Space on B19: battles (which Peasant); messages: 
-- after Space: E11-19's tile; points: 
-- the control: the step to (10, 51): the battle or none; E11-19's tile after: 
+- E11-19 before: points: 2000
+- the step onto A19: battles in order (which Peasant; the result); messages: battles: 1. at 10,50,0: defender 1 Peasant, winner attacker; messages: none; M (9, 51) after: none; N (31, 50) after: 1 Peasant
+- after it: E11-19's tile; points: tile: 30,50,0; points: 1900
+- Space on B19: battles (which Peasant); messages: battles: none; messages: none; what the key did: stepped; M (9, 51) after: none; N (31, 50) after: 1 Peasant
+- after Space: E11-19's tile; points: tile: 10,50,0; points: 1900
+- the control: the step to (10, 51): the battle or none; E11-19's tile after: battles: none; tile after: 10,51,0; points: 1800; M (9, 51) after: none; N (31, 50) after: 1 Peasant
 - anything odd: 
 
 ## E11-7 — A Subterranean Gate whose exit holds Blue's hero: the reveal, the battle, the move (ADV-TEL-005, GAM-BAT-001, GAM-BAT-004, ADV-FOG-002)
@@ -117,15 +121,15 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- day 1: explored underground (43, 29) to (45, 31), (46, 30), (49, 30), (50, 30): 
-- E11-7b: messages after its step onto G7; its tile (level) after: 
-- day 2 before the step: the same explored bits: 
-- E11-7: messages or dialogs after its step onto G7: 
-- the battle's opening: terrain, battlefield; attacker; defender (stacks): 
-- at the opening: the same explored bits: 
-- the result; the messages after the battle: 
-- after: E11-7's tile (level); points; the same explored bits: 
-- anything odd: 
+- day 1: explored underground (43, 29) to (45, 31), (46, 30), (49, 30), (50, 30): 43,29 no, 44,29 no, 45,29 no, 43,30 no, 44,30 no, 45,30 no, 43,31 no, 44,31 no, 45,31 no; 46,30 no; 49,30 no, 50,30 no
+- E11-7b: messages after its step onto G7; its tile (level) after: messages: none; battles: none; tile: 44,30,1
+- day 2 before the step: the same explored bits: 43,29 no, 44,29 no, 45,29 no, 43,30 no, 44,30 no, 45,30 no, 43,31 no, 44,31 no, 45,31 no; 46,30 no; 49,30 no, 50,30 no
+- E11-7: messages or dialogs after its step onto G7: screens: none; questions: none
+- the battle's opening: terrain, battlefield; attacker; defender (stacks): terrain subterranean, special field none, ship flag 0, blocked hexes 122, 123, 124, 128, 129, 130, 144, 145, 146, 147; special field: none; sides: attacker red (human 1, here 1); defender blue (human 1, here 1); stacks: attacker 5 Archangels | defender 1 Pikeman; E11-7's tile at the opening: 44,30,0
+- at the opening: the same explored bits: 43,29 yes, 44,29 yes, 45,29 yes, 43,30 yes, 44,30 yes, 45,30 yes, 43,31 yes, 44,31 yes, 45,31 yes; 46,30 no; 49,30 no, 50,30 no
+- the result; the messages after the battle: winner: attacker; stacks at the end: attacker 5 Archangels | defender none; messages: none; level-ups: none
+- after: E11-7's tile (level); points; the same explored bits: tile: 44,30,1; points: 1859; explored: 43,29 yes, 44,29 yes, 45,29 yes, 43,30 yes, 44,30 yes, 45,30 yes, 43,31 yes, 44,31 yes, 45,31 yes; 46,30 yes; 49,30 yes, 50,30 no
+- anything odd: E11-7's experience after the battle: 510; E11-7b on the map after it: no
 
 ## E11-18 — Blue's hero enters a one-way monolith Red sees, its exit in Red's shroud; Red's Replay Opponent Turn (A-41, ADV-FOG-004, ADV-TEL-007)
 
@@ -137,14 +141,14 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61); the boardings' (51, 61), (51, 62), (51, 66): 
-- E11-18: messages after its step onto M18; its tile after: 
-- day 2, before the replay: the same eight explored bits: 
-- the view's size in tiles (columns, rows): 
-- the replay: the view's corners (tile, level) in order; what each part shows: 
-- the replay: a view holding tiles of the boardings (50, 61) to (52, 66), or none; the heroes and boats drawn there (a screenshot): 
-- after the replay: the same eight explored bits; E11-7's underground bits: 
-- anything odd: 
+- day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61); the boardings' (51, 61), (51, 62), (51, 66): 65,60 no, 66,60 no, 67,60 no; 66,59 no; 66,61 no; the boardings': 51,61 no, 51,62 no; 51,66 no
+- E11-18: messages after its step onto M18; its tile after: messages: none; battles: none; tile: 66,60,0; points: 1460
+- day 2, before the replay: the same eight explored bits: 65,60 no, 66,60 no, 67,60 no; 66,59 no; 66,61 no; the boardings': 51,61 no, 51,62 no; 51,66 no
+- the view's size in tiles (columns, rows): 18 x 17 (the map area's whole tiles)
+- the replay: the view's corners (tile, level) in order; what each part shows: the replay: played (1020 ms of the game's time, from 0 ms after the click); the view before: 36,23,0; the views in order: 35,22,0 → 35,22,1 → 38,25,0 → 39,25,0 → 57,52,0; the view after: 36,23,0
+- the replay: a view holding tiles of the boardings (50, 61) to (52, 66), or none; the heroes and boats drawn there (a screenshot): none
+- after the replay: the same eight explored bits; E11-7's underground bits: 65,60 no, 66,60 no, 67,60 no; 66,59 no; 66,61 no; the boardings': 51,61 no, 51,62 no; 51,66 no; E11-7's underground: 43,29 no, 44,29 no, 45,29 no, 43,30 no, 44,30 no, 45,30 no, 43,31 no, 44,31 no, 45,31 no; 46,30 no; 49,30 no, 50,30 no
+- anything odd: worn at the start (the starting bonus): Admiral's Hat (head); the date: month 1, week 1, day 2; the Adventure Options dialog: vtable 0x63a610, item 5 state 0x6, items 1 2 3 4 5 200 201 30722; the screen during the replay (read by the agent from the run's 51 dumps, one every 20 ms of the game's time; not committed, ADR-0009): 0 to 160 ms the view about Red's E11-7 with E11-7b stepping onto G7; from 180 ms (the view's corner already U7's, 35,22,1) the same surface picture fading to black, no underground drawn; 500 to 660 ms the surface again about M18, E11-7b gone, E11-18 stepping onto M18; from 680 ms (the corner X18's, 57,52,0) that picture fading out again, nothing of X18's surroundings or of a hero there drawn; at the end the view back at 36,23,0 without E11-18
 
 ## E11-10 — A Whirlpool takes from the weakest stack: by fight value or by AI value (D-54, D-55, ADV-TEL-006, ADV-TEL-007, ADV-SEA-002)
 
@@ -156,22 +160,22 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- day 1, after the boarding: tile; points; day's maximum; in a boat: 
-- day 2, before the step: points; day's maximum: 
+- day 1, after the boarding: tile; points; day's maximum; in a boat: tile: 50,62,0; points: 0; day's maximum: 1500; in a boat: yes
+- day 2, before the step: points; day's maximum: points: 1500; day's maximum: 1500
 
 | slot | creature | count before | count after |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+| 0 | Pegasi | 3 | 1 |
+| 1 | Dendroid Guards | 3 | 3 |
+| 2 | Angels | 2 | 2 |
 |   |   |   |   |
 |   |   |   |   |
 |   |   |   |   |
 |   |   |   |   |
 
-- the step onto W1: messages (their text): 
-- after: tile (W2 or W3; column, row); points; day's maximum; in a boat: 
-- anything odd: 
+- the step onto W1: messages (their text): ADVEVENT:168
+- after: tile (W2 or W3; column, row); points; day's maximum; in a boat: tile: 66,69,0; points: 1400; day's maximum: 1500; in a boat: yes
+- anything odd: 1 dialog(s) after the walk to [50, 63]; the army slot by slot after the step: 0: 1 Pegasus, 1: 3 Dendroid Guards, 2: 2 Angels
 
 ## E11-11 — A Whirlpool's tie between two equally weak stacks: the first slot or the last (D-54, D-55, ADV-TEL-006)
 
@@ -183,22 +187,22 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- day 1, after the boarding: tile; points; day's maximum; in a boat: 
-- day 2, before the step: points; day's maximum: 
+- day 1, after the boarding: tile; points; day's maximum; in a boat: tile: 51,62,0; points: 0; day's maximum: 1560; in a boat: yes
+- day 2, before the step: points; day's maximum: points: 1500; day's maximum: 1500
 
 | slot | creature | count before | count after |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+| 0 | Angels | 2 | 2 |
+| 1 | Pikemen | 5 | 2 |
+| 2 | Pikemen | 5 | 5 |
 |   |   |   |   |
 |   |   |   |   |
 |   |   |   |   |
 |   |   |   |   |
 
-- the step onto W1: messages (their text): 
-- after: tile (W2 or W3; column, row); points; day's maximum; in a boat: 
-- anything odd: 
+- the step onto W1: messages (their text): ADVEVENT:168
+- after: tile (W2 or W3; column, row); points; day's maximum; in a boat: tile: 66,68,0; points: 1400; day's maximum: 1500; in a boat: yes
+- anything odd: 1 dialog(s) after the walk to [51, 63]; the army slot by slot after the step: 0: 2 Angels, 1: 2 Pikemen, 2: 5 Pikemen
 
 ## E11-12 — Lone stacks in a Whirlpool: one Pikeman; 1 775 Azure Dragons; 1 776, past the original's bound (D-55, A-38, ADV-TEL-006)
 
@@ -214,17 +218,17 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 | hero | day 1 after the boarding: tile; points; day's maximum; in a boat |
 |---|---|
-| E11-12 |   |
-| E11-12b |   |
-| E11-12c |   |
+| E11-12 | tile: 52,62,0; points: 0; day's maximum: 1560; in a boat: yes |
+| E11-12b | tile: 50,65,0; points: 0; day's maximum: 2000; in a boat: yes |
+| E11-12c | tile: 51,65,0; points: 0; day's maximum: 2000; in a boat: yes |
 
 | hero | day 2 before: points; maximum; army | messages after the step onto W1 | army after | tile after (W2 or W3) | points after; in a boat |
 |---|---|---|---|---|---|
-| E11-12 |   |   |   |   |   |
-| E11-12b |   |   |   |   |   |
-| E11-12c |   |   |   |   |   |
+| E11-12 | points: 1500; maximum: 1500; army: 0: 1 Pikeman | ADVEVENT:168 | 0: 1 Pikeman | 60,69,0 | 1400; yes |
+| E11-12b | points: 1500; maximum: 1500; army: 0: 1775 Azure Dragons | ADVEVENT:168 | 0: 887 Azure Dragons | 67,68,0 | 1400; yes |
+| E11-12c | points: 1500; maximum: 1500; army: 0: 1776 Azure Dragons | ADVEVENT:168 | 0: 1776 Azure Dragons | 61,69,0 | 1400; yes |
 
-- anything odd: 
+- anything odd: 1 dialog(s) after the walk to [52, 63]; 1 dialog(s) after the walk to [50, 64]; 1 dialog(s) after the walk to [51, 64]
 
 ## E11-13 — The Sea Captain's Hat and the Admiral's Hat in a Whirlpool (ADV-TEL-006, ADV-SEA-002, HER-ADV-009)
 
@@ -237,11 +241,11 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E11-13, day 1 after the boarding: tile; points; day's maximum; in a boat: 
-- E11-13, day 2 before: points; day's maximum; army: 
-- E11-13: messages after the step onto W1; army after; tile after (W2 or W3); points after; in a boat: 
-- E11-18's hero, day 2 before: tile; points; day's maximum; army: 
-- E11-18's hero after the boarding: points; day's maximum; in a boat: 
-- E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path: 
-- E11-18's hero: messages after the step onto W1; army after; tile after (W2 or W3); points after; day's maximum; in a boat: 
-- anything odd: 
+- E11-13, day 1 after the boarding: tile; points; day's maximum; in a boat: tile: 52,65,0; points: 0; day's maximum: 1560; in a boat: yes
+- E11-13, day 2 before: points; day's maximum; army: points: 2000; day's maximum: 2000; army: 0: 10 Pikemen
+- E11-13: messages after the step onto W1; army after; tile after (W2 or W3); points after; in a boat: messages: none; army: 0: 10 Pikemen; tile: 67,69,0; points: 1900; in a boat: yes
+- E11-18's hero, day 2 before: tile; points; day's maximum; army: tile: 66,60,0; points: 1560; day's maximum: 1560; army: 0: 10 Pikemen
+- E11-18's hero after the boarding: points; day's maximum; in a boat: points: 2615; day's maximum: 3000; in a boat: yes; tile: 66,62,0
+- E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path: from the boat: 62,62 63,62 64,62 65,62 52,63 61,63 53,64 54,64 55,64 56,64 57,64 58,64 59,64 60,64; clicked again: yes; not played: E11-18 stands on 60,68,0, not 66,62,0; not played: E11-18 stands on 60,68,0, not 61,63,0
+- E11-18's hero: messages after the step onto W1; army after; tile after (W2 or W3); points after; day's maximum; in a boat: messages: none; army: 0: 10 Pikemen; tile: 60,68,0; points: 1092; day's maximum: 3000; in a boat: yes
+- anything odd: worn at the start (the starting bonus): Sea Captain's Hat (head); worn on day 2: Sea Captain's Hat (head); E11-18's hero worn on day 2: Admiral's Hat (head); E11-18's hero's step to (66, 61): tile; points: 66,61,0; 1460

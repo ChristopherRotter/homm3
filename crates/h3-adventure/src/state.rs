@@ -12,8 +12,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactTypeId, ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, Formation,
-    RADIUS_WAITS_FOR_A_STEP, ResourceId, Ruleset, TerrainId,
+    ArtifactTypeId, ContentKey, CreatureFlag, CreatureTypeId, FRINGE_SHOWS_OBJECTS, FactionId,
+    Formation, RADIUS_WAITS_FOR_A_STEP, ResourceId, Ruleset, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_heroes::{HeroDetails, TerrainShares};
@@ -321,12 +321,14 @@ impl StaticMap {
     /// (level, type, amount, their number), then draws the objects' random contents from `draws`
     /// under the scenario's `bans`. Since E08 T94a each random dwelling first draws the dwelling it
     /// becomes as it is placed, in object order ([`dwellings::resolve`], ADV-DWL-005; increment
-    /// 10's design note §5).
+    /// 10's design note §5); since E09 T11 one tied to a town takes its town's faction of
+    /// `town_factions` (by `TownId`: [`SetupError::Holds`] for a town past them or a faction
+    /// without a table, [`SetupError::TownFactions`] for a number other than the towns').
     fn new(
         core: &Ruleset,
         part: &AdventureRuleset,
         setup: &MapSetup,
-        bans: &Bans,
+        (bans, town_factions): (&Bans, &[FactionId]),
         draws: &mut Rng,
     ) -> Result<Self, SetupError> {
         let params = part.params();
@@ -456,6 +458,16 @@ impl StaticMap {
             if !holds::check_holds(core, part, ty.map(|ty| &ty.kind), &object.holds) {
                 return Err(SetupError::Holds(index));
             }
+            // rule: ADV-DWL-005
+            // E09 T11: a random dwelling tied to a town takes a faction with a table; whether its
+            // town is one of the map's, the count of the factions below says.
+            if let Holds::LinkedDwelling { town, .. } = object.holds
+                && town_factions
+                    .get(town.index())
+                    .is_none_or(|&faction| part.random_dwelling(faction).is_none())
+            {
+                return Err(SetupError::Holds(index));
+            }
             // E08 T72: nothing names a ground of the sea or a hole either. Since E08 T94a after
             // the holds, which a random dwelling's names come from ([`dwellings::names`]).
             let ground = ty.is_some_and(|ty| {
@@ -474,9 +486,13 @@ impl StaticMap {
             }
             let event = ty.is_some_and(|ty| matches!(ty.kind, ObjectKind::Event));
             // rule: ADV-DWL-005
-            // Before every other draw of the static map; E09's random towns, when built, draw
-            // their placeholders before this walk (ADR-0017 point 4).
-            map.place(&dwellings::resolve(part, object, draws), guards, event);
+            // Before every other draw of the static map; E09's random towns draw their factions
+            // before this walk (ADR-0017 point 4).
+            map.place(
+                &dwellings::resolve(part, object, town_factions, draws),
+                guards,
+                event,
+            );
         }
         map.resolve(core, part, &setup.objects, draws);
         draws::resolve_rewards(core, part, bans, &mut map.objects, draws);
@@ -485,6 +501,9 @@ impl StaticMap {
         map.list_economy(core, part);
         if u16::try_from(map.towns.len().saturating_sub(1)).is_err() {
             return Err(SetupError::Towns(map.towns.len()));
+        }
+        if town_factions.len() != map.towns.len() {
+            return Err(SetupError::TownFactions(town_factions.len()));
         }
         map.mark_near_monsters();
         map.mark_grounds(part);
@@ -1265,8 +1284,10 @@ impl AdventureState {
     /// E08 T94a none a random dwelling could cover, [`SetupError::RandomDwellingTile`]) and
     /// army. The objects' random contents are drawn from `draws`, the game's setup stream
     /// (ADR-0017 point 4); every draw is valid, so whether a setup is valid does not depend on
-    /// them. Since E09 T8a1 the towns' garrisons, one per town, each written on its town's object
-    /// by slot, an empty one written empty ([`Self::town_garrison`]). The heroes are kept by id,
+    /// them; since E09 T11 a random dwelling tied to a town takes its town's faction, one given per
+    /// town ([`AdventureSetup::town_factions`]). Since E09 T8a1 the towns' garrisons, one per town,
+    /// each written on its town's object by slot, an empty one written empty
+    /// ([`Self::town_garrison`]). The heroes are kept by id,
     /// their stacks by slot, without movement points, then the
     /// boats (since E08 T72; [`SetupError::Boat`]), each empty; nothing is explored, and every
     /// object is on the map. The game gives the heroes their levels at load,
@@ -1281,7 +1302,8 @@ impl AdventureState {
         setup: &AdventureSetup,
         draws: &mut Rng,
     ) -> Result<Self, SetupError> {
-        let map = StaticMap::new(core, part, &setup.map, &setup.bans, draws)?;
+        let inputs = (&setup.bans, setup.town_factions.as_slice());
+        let map = StaticMap::new(core, part, &setup.map, inputs, draws)?;
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
         }

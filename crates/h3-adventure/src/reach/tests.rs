@@ -443,6 +443,7 @@ proptest! {
                 },
                 owner: [Some(RED), Some(PlayerId::new(1)), None][kind % 3],
             });
+            setup.town_factions.push(h3_content::FactionId::from_raw(0));
             setup.garrisons.push(if kind >= 3 {
                 vec![ArmyStack { slot: 0, creature: PEASANT, count: 1 }]
             } else {

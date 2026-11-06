@@ -150,7 +150,9 @@
 //! the maps holds a dwelling, a random dwelling or a camp) re-recorded all thirty-nine from their
 //! commands: only the hashes and the versions moved. E08 T97b1 (map import v19: a dwelling entered
 //! from water imported, a tied random dwelling's checks; none of the maps holds either)
-//! re-recorded all forty-seven from their commands: only `import_version` moved.
+//! re-recorded all forty-seven from their commands: only `import_version` moved. E09 T11 (map
+//! import v20: a random dwelling tied to a town typed; none of the maps holds one) moved the
+//! fifty-five replays' `import_version` alone, which this test confirms.
 //!
 //! **Scripted** (E08 T52, increment 6: the random agent manages nothing), on the generated
 //! `fixtures/maps/e08-army-12.h3m` (red's Valeska, hero 0, with a full army and twelve artifacts

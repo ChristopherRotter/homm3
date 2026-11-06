@@ -13,7 +13,7 @@
 
 use alloc::vec::Vec;
 
-use h3_adventure::{MapSetup, ObjectKind, ObjectSetup, Pos};
+use h3_adventure::{Holds, MapSetup, ObjectKind, ObjectSetup, Pos};
 use h3_content::{FactionId, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::TownFaction;
@@ -170,10 +170,19 @@ impl GameSetup {
 /// town generates one (E09 T7b2b: the town's entrance, [`entrance`]).
 pub(crate) type Starts = (Vec<Option<PlayerId>>, Vec<Option<Pos>>);
 
+/// The towns the map's random dwellings are tied to (E09 T11, ADV-DWL-005), in object order.
+fn linked_towns(map: &MapSetup) -> impl Iterator<Item = TownId> + '_ {
+    map.objects.iter().filter_map(|object| match object.holds {
+        Holds::LinkedDwelling { town, .. } => Some(town),
+        _ => None,
+    })
+}
+
 /// The setup's checks of the towns and the players' starts (E09 T7a2, design note §13), one pass
 /// per invariant (ADR-0015 point 4): since E09 T8a1 one town record per town of the static map,
 /// then a town's faction (a fixed one's town record; since E09 T7b2a a random town needs a faction
-/// with one), a random town's alignment, each player's faction choice, main town (since E09 T8a1
+/// with one), since E09 T11 the faction a random dwelling tied to a town may take, a random
+/// town's alignment, each player's faction choice, main town (since E09 T8a1
 /// a town it owns at the start, §8; since E09 T7b2b one visited from a tile of the map when it
 /// generates a hero, TWN-SET-009), pick and a pick of no earlier player, then a random hero's
 /// owner. The towns' owners at the start by `TownId` and the main towns' heroes' tiles by player
@@ -182,7 +191,8 @@ pub(crate) type Starts = (Vec<Option<PlayerId>>, Vec<Option<Pos>>);
 /// # Errors
 ///
 /// The first [`GameSetupError`] found, in that order: [`GameSetupError::TownCount`],
-/// [`GameSetupError::TownFaction`], [`GameSetupError::TownAlignment`],
+/// [`GameSetupError::TownFaction`], [`GameSetupError::LinkedTown`],
+/// [`GameSetupError::TownAlignment`],
 /// [`GameSetupError::Choice`], [`GameSetupError::MainTown`], [`GameSetupError::Pick`],
 /// [`GameSetupError::PickTaken`], [`GameSetupError::RandomHeroOwner`].
 pub(crate) fn check_starts(
@@ -215,6 +225,22 @@ pub(crate) fn check_starts(
         TownFaction::Random { .. } => no_records,
     }) {
         return Err(GameSetupError::TownFaction(town));
+    }
+    // rule: ADV-DWL-005
+    if let Some(town) = linked_towns(&setup.map).find(|&town| {
+        setup
+            .towns
+            .get(town.index())
+            .is_some_and(|town| match town.faction {
+                TownFaction::Fixed(faction) => rules.adventure().random_dwelling(faction).is_none(),
+                TownFaction::Random { .. } => rules
+                    .towns()
+                    .towns()
+                    .iter()
+                    .any(|record| rules.adventure().random_dwelling(record.faction).is_none()),
+            })
+    }) {
+        return Err(GameSetupError::LinkedTown(town));
     }
     // rule: TWN-SET-002
     if let Some((_, town)) = towns().find(|(town, _)| {
