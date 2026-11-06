@@ -476,12 +476,15 @@ fn depth(view: &TileView) -> u8 {
 /// own (T19a2a). Its planes change only by its own command (`own`), and its explored tiles grow at
 /// a new day's start too (E08 T40: in `strict-fixed`, `ADV-QUIRK-18` off, each hero reveals around
 /// it to its owner then, so another player's last end of turn of the day can widen a radius grown
-/// since the hero's last step). (E09 T9b2a) A town's capture is told to its new owner and to a
-/// viewer that saw its object, whose owner it changes; a Capitol's change only after the town's
-/// capture; a town's view stays, its anchor, faction, name and fort as they were, its owner and
-/// Capitol as it is told, its garrison by slot (the owner's) as the merge's slots it is told say
-/// but after a battle of its own or the town's capture, and a town shows only where its explored
-/// tiles grew (the garrison by its level and the top level's facts: [`check_town_views`]).
+/// since the hero's last step), and at a capture told to it as the town's new owner, whose reveal
+/// a siege's last command brings, another player's or the system's (E09 T9b2a: as at a new day,
+/// they only grow, and heroes and boats may show in them). (E09 T9b2a) A town's capture is told
+/// to its new owner and to a viewer that saw its object, whose owner it changes; a Capitol's
+/// change only after the town's capture; a town's view stays, its anchor, faction, name and fort
+/// as they were, its owner and Capitol as it is told, its garrison by slot (the owner's) as the
+/// merge's slots it is told say but after a battle of its own or the town's capture, and a town
+/// shows only where its explored tiles grew (the garrison by its level and the top level's facts:
+/// [`check_town_views`]).
 /// An open decision as [`check_told`] follows it: an offer by its hero and object, a level-up,
 /// a meeting's two heroes, or an army dialog's hero and group (E08 T51b).
 #[derive(Debug, PartialEq)]
@@ -741,7 +744,8 @@ fn check_told(
                 flagged.push((object_type, anchor));
             }
             // E09 T8a2: a town's capture, told to the players that see the town and to its new
-            // owner (TWN-CAP-001; the town epic's design note §11, §12): the object's owner changes.
+            // owner (TWN-CAP-001; the town epic's design note §11, §12): its object's owner
+            // changes.
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::TownCaptured {
@@ -1137,8 +1141,11 @@ fn check_told(
     }
     // A hero shows without a step only where the viewer's sight grew: by its own command, or by
     // a new day's reveal (E08 T40, below; T58b: a hero standing in the radius a Scouting grown
-    // since its owner's last step widened at the day's start).
-    let revealing = own || after.day != before.day;
+    // since its owner's last step widened at the day's start), or (E09 T9b2a) by a capture's
+    // reveal to its new owner, which a siege's last command, another player's or the system's,
+    // may bring (TWN-CAP-001, TWN-CAP-003).
+    let captor = captured.iter().any(|&(_, owner)| owner == viewer);
+    let revealing = own || after.day != before.day || captor;
     for hero in &after.adventure.heroes {
         if !heroes.iter().any(|&(id, _)| id == hero.id) {
             prop_assert!(
@@ -1212,10 +1219,11 @@ fn check_told(
             was
         );
         let told = garrisons.iter().find(|(t, _)| *t == was.town);
-        if let (Some(army), Some((_, told))) = (&now.garrison.army, told) {
-            if !ended && owner.is_none() {
-                prop_assert_eq!(army, told, "{:?}'s garrison changed untold", was);
-            }
+        if let (Some(army), Some((_, told))) = (&now.garrison.army, told)
+            && !ended
+            && owner.is_none()
+        {
+            prop_assert_eq!(army, told, "{:?}'s garrison changed untold", was);
         }
     }
     let grew = ones(&after.adventure.explored) > ones(&before.adventure.explored);
@@ -1320,11 +1328,12 @@ fn check_told(
             _ => {}
         }
     }
-    if !own && after.day == before.day {
+    if !own && after.day == before.day && !captor {
         prop_assert_eq!(&before.adventure.explored, &after.adventure.explored);
         prop_assert_eq!(&before.adventure.fringe, &after.adventure.fringe);
     } else if !own {
-        // A new day's reveal (E08 T40): the explored tiles only grow, the fringe follows them.
+        // A new day's reveal (E08 T40), or (E09 T9b2a) a capture's in another's command: the
+        // explored tiles only grow, the fringe follows them.
         let kept = |(was, is): (&u64, &u64)| was & !is == 0;
         prop_assert!(
             before
@@ -1704,7 +1713,8 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
 
 /// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told,
 /// the decisions opened (0), refused (1), declined (2) or accepted (3), (E08 T19a) every
-/// battle event, start and end, and the heroes removed, and (E08 T31) whom the game waits for.
+/// battle event, start and end, and the heroes removed, (E08 T31) whom the game waits for, and
+/// (E09 T9b2a) the guards' hints it changed.
 type Outcome = (
     bool,
     Vec<(HeroId, i32, i32, i32)>,
@@ -1712,6 +1722,7 @@ type Outcome = (
     Vec<u8>,
     Vec<GameEvent>,
     Option<PlayerId>,
+    Vec<AdventureEventKind>,
 );
 
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
@@ -1720,6 +1731,11 @@ type Outcome = (
 /// opened, refused or closed; and whom the game then waits for (E08 T31: a level-up open holds
 /// the game, which every player learns, never the level-up, ADR-0017 point 6). Where the heroes
 /// stand is left out: the test may put them on other tiles in the other game from the start.
+/// (E09 T9b2a) And the guards' hints it changed (`GuardsChanged`'s kind, not who sees it): guards
+/// a hero leaves at its mine come from its army, which the test may change where the viewer never
+/// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
+/// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
+/// guards of another creature in the other game at a mine the viewer saw).
 fn outcome(
     (player, accepted): (PlayerId, bool),
     before: &[(HeroId, TilePos)],
@@ -1776,6 +1792,16 @@ fn outcome(
         })
         .copied()
         .collect();
+    let guards = events
+        .iter()
+        .filter_map(|e| match e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: kind @ AdventureEventKind::GuardsChanged { .. },
+                ..
+            }) => Some(*kind),
+            _ => None,
+        })
+        .collect();
     (
         accepted,
         moved,
@@ -1783,6 +1809,7 @@ fn outcome(
         decisions,
         battles,
         after.waiting_for(),
+        guards,
     )
 }
 
