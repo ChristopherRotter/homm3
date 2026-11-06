@@ -16,12 +16,13 @@ use super::{
     timeline,
 };
 use crate::anim::{
-    Command, Logged, MANA_DRAIN, MagicLook, POISON, POISON_TENTH, REGENERATION, Sound, Speed,
-    Stage, Timeline, drain_of,
+    BAD_MORALE, Command, Logged, MANA_DRAIN, MagicLook, POISON, POISON_TENTH, REGENERATION, Sound,
+    Speed, Stage, Timeline, drain_of, passes,
 };
 use crate::sound::Lengths;
 
-/// The strikes' animations with regeneration's (4 frames) and the mana drain's (6).
+/// The strikes' animations with regeneration's (4 frames), the mana drain's (6) and bad
+/// morale's (3).
 fn starts_magic() -> BTreeMap<u8, MagicLook> {
     let mut all = strike_magic();
     let entry = |def: &str, frames, place, translucent| MagicLook {
@@ -33,6 +34,7 @@ fn starts_magic() -> BTreeMap<u8, MagicLook> {
     };
     all.insert(REGENERATION, entry("sp12_.def", 4, 1, true));
     all.insert(MANA_DRAIN, entry("sp08_.def", 6, 0, false));
+    all.insert(BAD_MORALE, entry("cbadmor.def", 3, 1, false));
     all
 }
 
@@ -258,4 +260,185 @@ fn poison_takes_its_tenth_before_the_round_s_line() {
     ];
     let quiet = play_starts(&two(), &[(Some(0), none)], None);
     assert!(shown(&quiet, POISON_TENTH).is_empty());
+}
+
+/// The Pikemen (0, active), the Goblins (1) and more Goblins (2).
+fn three() -> Observation {
+    snapshot(vec![
+        at(0, Side::Attacker, PIKEMAN, 86, false),
+        at(1, Side::Defender, GOBLIN, 100, false),
+        at(2, Side::Defender, GOBLIN, 134, false),
+    ])
+}
+
+#[test]
+fn a_round_s_first_pick_outlines_nothing_through_its_effects() {
+    // The round's start cleared the outline (0x4761EE): the Goblins' regeneration and drain at
+    // its first pick show none; the round's end clears it even with no turn after it (a battle
+    // that ends there).
+    let events = vec![
+        moved(0, 86, 87),
+        Event::RoundStarted { round: 2 },
+        Event::TurnStarted { stack: 1 },
+        Event::Regenerated {
+            stack: 1,
+            hit_points: 3,
+        },
+        Event::ManaDrained {
+            stack: 1,
+            side: Side::Attacker,
+            mana: 2,
+        },
+    ];
+    let t = play_starts(&two(), &[(Some(0), events)], None);
+    let healed = shown(&t, REGENERATION);
+    let drained = shown(&t, MANA_DRAIN);
+    assert_eq!(t.outlined(healed[0].0), None);
+    assert_eq!(t.outlined(drained[3].0), None);
+    assert_eq!(t.turns.last().copied(), Some((drained[6].0, 1)));
+    let ended = vec![
+        moved(0, 86, 87),
+        Event::RoundStarted { round: 2 },
+        Event::Poisoned {
+            stack: 1,
+            hit_points: 4,
+        },
+    ];
+    let e = play_starts(&two(), &[(Some(0), ended)], None);
+    let tenth = shown(&e, POISON_TENTH);
+    let last = tenth.last().map(|f| f.0).unwrap_or_default();
+    assert_eq!(e.outlined(tenth[0].0), Some(0));
+    assert_eq!(e.outlined(last + 1_000), None);
+}
+
+#[test]
+fn a_poison_tenth_that_opens_the_command_keeps_the_last_outline() {
+    // The Pikemen defend (nothing drawn): the tenth is the command's first frame, which clears
+    // the outline, yet the round start's redraws show the Pikemen's until its end.
+    let events = vec![
+        Event::Defended { stack: 0 },
+        Event::RoundStarted { round: 2 },
+        Event::Poisoned {
+            stack: 1,
+            hit_points: 4,
+        },
+        Event::TurnStarted { stack: 1 },
+    ];
+    let t = play_starts(&two(), &[(Some(0), events)], None);
+    let tenth = shown(&t, POISON_TENTH);
+    assert_eq!(t.outlined(tenth[0].0), Some(0));
+    assert_eq!(t.outlined(tenth[1].0), Some(0));
+}
+
+#[test]
+fn several_tenths_play_one_after_another() {
+    // Two poisoned stacks, in the events' order, each its sound, line and wait before the next.
+    let events = vec![
+        moved(0, 86, 87),
+        Event::RoundStarted { round: 2 },
+        Event::Poisoned {
+            stack: 2,
+            hit_points: 4,
+        },
+        Event::Poisoned {
+            stack: 1,
+            hit_points: 4,
+        },
+        Event::TurnStarted { stack: 0 },
+    ];
+    let long = named(Sound::SpellFile(POISON), 4_000);
+    let t = play_starts(&three(), &[(Some(0), events)], Some(&long));
+    let lines: Vec<(u32, u8)> = t
+        .log
+        .iter()
+        .filter_map(|(at, l)| match *l {
+            Logged::Poisoned { stack, .. } => Some((*at, stack)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(lines.len(), 2);
+    assert_eq!((lines[0].1, lines[1].1), (2, 1));
+    assert_eq!(lines[1].0, lines[0].0 + 4_000);
+    let round = t.log.iter().find(|(_, l)| *l == Logged::Round);
+    assert_eq!(round.map(|(at, _)| *at), Some(lines[1].0 + 4_000));
+    let over: Vec<u8> = t
+        .magics
+        .iter()
+        .filter(|k| k.animation == POISON_TENTH && k.frame == Some(0))
+        .flat_map(|k| k.over.iter().map(|o| o.0))
+        .collect();
+    assert_eq!(over, [2, 1]);
+}
+
+#[test]
+fn a_frozen_stack_regenerates_before_its_freeze() {
+    // Regeneration at the pick, then bad morale's check freezes the Goblins: 79, then 30; no
+    // drain and no turn of theirs.
+    let events = vec![
+        moved(0, 86, 87),
+        Event::TurnStarted { stack: 1 },
+        Event::Regenerated {
+            stack: 1,
+            hit_points: 3,
+        },
+        Event::BadMorale { stack: 1 },
+    ];
+    let t = play_starts(&two(), &[(Some(0), events)], None);
+    let healed = shown(&t, REGENERATION);
+    let frozen = shown(&t, BAD_MORALE);
+    assert!(!frozen.is_empty());
+    assert!(healed[4].0 <= frozen[0].0);
+    assert!(shown(&t, MANA_DRAIN).is_empty());
+    assert!(t.turns.iter().all(|&(_, s)| s != 1));
+    assert_eq!(t.outlined(frozen[0].0), Some(0));
+}
+
+#[test]
+fn a_passed_stack_leaves_the_outline_to_the_last() {
+    // The Goblins (1) are passed over (blind): the second Goblins' regeneration shows the
+    // Pikemen outlined, as the original's pick never made the first active.
+    let events = vec![
+        moved(0, 86, 87),
+        Event::TurnStarted { stack: 1 },
+        Event::TurnPassed { stack: 1 },
+        Event::TurnStarted { stack: 2 },
+        Event::Regenerated {
+            stack: 2,
+            hit_points: 3,
+        },
+    ];
+    let t = play_starts(&three(), &[(Some(0), events)], None);
+    let healed = shown(&t, REGENERATION);
+    assert_eq!(t.outlined(healed[2].0), Some(0));
+    assert!(passes(&[Event::TurnPassed { stack: 1 }], 1));
+    assert!(!passes(&[Event::TurnPassed { stack: 1 }], 2));
+    assert!(!passes(&[Event::BadMorale { stack: 1 }], 1));
+}
+
+#[test]
+fn a_stack_the_timeline_does_not_know_draws_nothing() {
+    // Stack 9 is not on the battlefield: no line, no animation, no cue.
+    let events = vec![
+        moved(0, 86, 87),
+        Event::TurnStarted { stack: 9 },
+        Event::Regenerated {
+            stack: 9,
+            hit_points: 3,
+        },
+        Event::ManaDrained {
+            stack: 9,
+            side: Side::Attacker,
+            mana: 2,
+        },
+        Event::RoundStarted { round: 2 },
+        Event::Poisoned {
+            stack: 9,
+            hit_points: 4,
+        },
+    ];
+    let t = play_starts(&two(), &[(Some(0), events)], None);
+    for number in [REGENERATION, MANA_DRAIN, POISON_TENTH] {
+        assert!(shown(&t, number).is_empty());
+    }
+    assert!(cues(&t).iter().all(|c| c.1 != 9));
 }

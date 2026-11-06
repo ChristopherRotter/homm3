@@ -2,7 +2,7 @@
 //! a stack's regeneration as its pick starts its turn (`stack_turn_start` 0x446E30), a Wraith's
 //! mana drain as it is activated (`stack_activation` 0x465330) and Poison's tenth at a round's
 //! start (`stack_round_start` 0x447120). Each plays its sound, writes its line, draws its magic
-//! animation over the stack and waits for the sound (design §8.3's list of the waits not built).
+//! animation over the stack and waits for the sound (design §8.3).
 
 use h3_protocol::wire::{Event, Side};
 
@@ -48,7 +48,7 @@ impl Player<'_> {
     /// category 2), the log's line (GENRLTXT 371 or 372 by its number), animation
     /// [`REGENERATION`] over it without its hit, a frame a redraw at trunc(100 F), then the sound
     /// waited for. The pick runs before the turn starts, so the stack that acted last stays
-    /// outlined ([`Player::acting`], as a freeze's).
+    /// outlined ([`Player::acting`], as a freeze's; none at a round's first pick).
     pub(super) fn regenerated(&mut self, stack: u8) {
         let Some(live) = self.live(stack) else {
             return;
@@ -70,7 +70,8 @@ impl Player<'_> {
     /// 0x465626 to 0x4657CA; E17 M6 T5d1, design §12.22): `ManaDrai.wav` (category 2), the log's
     /// line naming the hero (GENRLTXT 374 or 375 by the stack's number), animation [`MANA_DRAIN`]
     /// over the Wraiths without their hit, then the sound waited for; the stack that acted last
-    /// still outlined (the activation clears the outline after it, 0x465804).
+    /// still outlined (none at a round's first pick; the activation clears the outline after it,
+    /// 0x465804).
     pub(super) fn mana_drained(&mut self, stack: u8, side: Side) {
         let Some(live) = self.live(stack) else {
             return;
@@ -94,7 +95,8 @@ impl Player<'_> {
     /// file, category 2), the log's line (Poison's on a stack, GENRLTXT 562 or 563,
     /// `battle_log_cast` 0x4472DE), `strike_animation` with [`POISON_TENTH`] over the stack and
     /// its hit (player 2), then the sound waited for. The round's start clears the outline only at
-    /// its end (0x4761EE): `outlined`, the stack that acted last, stays outlined.
+    /// its end (0x4761EE, after its line): `outlined`, the stack that acted last, stays outlined
+    /// through the tenths.
     pub(super) fn poison_tenth(&mut self, stack: u8, outlined: Option<u8>) {
         let Some(live) = self.live(stack) else {
             return;

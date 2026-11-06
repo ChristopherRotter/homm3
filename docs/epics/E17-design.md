@@ -3326,11 +3326,13 @@ each waits for, in its order:
 | a wall shot 0x4464C2, 0x4464D3 | the shot's, then the landing's | after the end's redraw |
 | the drawbridge 0x4672A5, 0x46742C | its sound | after the three states |
 | a Tower's mine 0x59FC94 | the blast's | after 57 over the stack |
+| regeneration 0x447097 (M6 T5d1, §12.22) | `Regener`'s | after 79 over the stack |
+| the Wraiths' mana drain 0x4657CA (M6 T5d1) | `ManaDrai`'s | after 77 over the Wraiths |
+| Poison's tenth at a round's start 0x44730E (M6 T5d1) | `Poison`'s | after 67 over the stack |
 
-Not built, as their effects are not drawn yet: the Wraiths' mana drain at a turn's start 0x4657CA
-(77, `ManaDrai`), regeneration 0x447097 (79), Poison's damage at a round's start 0x44730E (67),
-Death Blow 0x443B46 (73), Ice Bolt's explosion 0x5A0AFB (`IceRayEx`), the Familiars' channel
-0x5A2740 and 0x5A2750 (`MagChDrn`, `MagChFil`).
+Not built, as their effects are not drawn yet (T5d2): Death Blow 0x443B46 (73), Ice Bolt's
+explosion 0x5A0AFB (`IceRayEx`), the Familiars' channel 0x5A2740 and 0x5A2750 (`MagChDrn`,
+`MagChFil`).
 
 **Built.** A cue returns itself; a site waits from now until the cue's start plus its sample's
 length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
@@ -3685,9 +3687,10 @@ panel's set-text 0x46BF50, the mouse posted again 0x4ECC00) and where each line 
   | a hero's spell on one stack (M3 T7b-1, T7b-2a) | a timed spell's after its effect, before its animation (0x5A109F); Cure's and Dispel's after their animation (0x5A1816, 0x5A1605) | row 196 (`battle.log.cast-on`) |
   | Disrupting Ray (M3 T7b-2a) | after its animation and effect (0x5A1B43); no cast line | row 92, the defense it took (`battle.log.disrupted`) |
 
-  Not built: the lines the engine's other events write in the original (regeneration, row 372 at
-  0x44707B; mana drain, 374 and 375 at 0x4657AD; the spells, Death Stare, Life Drain, Fire
-  Shield, the moat, fire walls, land mines, turrets: T7's). The striker is named by its number
+  Not built: the lines the engine's other events write in the original (the spells, Death Stare,
+  Life Drain, Fire Shield, the moat, fire walls, land mines, turrets: T7's; regeneration, rows
+  371 and 372 at 0x44707B, and the mana drain, 374 and 375 at 0x4657AD, built since M6 T5d1,
+  §12.22). The striker is named by its number
   before the strike (a retaliator's after the strike's kills), a defend's gain by the stack's
   defense then (the snapshot's, lowered by Disrupting Ray since M3 T7b-2a; other changes to it,
   Stone Skin's, a Behemoth's, not followed: *provisional*).
@@ -7302,7 +7305,17 @@ or for the drain game +0x1F69D, the network's case, `battle_tactics_global`, as 
   *Provisional*: the drain is drawn before the effects of the side's opening spells the viewer
   applies after it (the original casts those first; no recorded case); the hues a round's start
   ends show at the turn's start as before (the original counts each stack down before its own
-  poison's redraws); several poisoned stacks go by stack id (the engine's order).
+  poison's redraws); several poisoned stacks go by stack id (the engine's order); an effect a
+  stack's own turn ends (Frenzy) is applied after its drain's frames (the original counts it down
+  in `stack_turn_start`, before the activation); the battle's first activation's drain is not
+  drawn, as the session drops the start's events (CLT-Q20; once they come, they take this arm).
+- **Reviewed** (a fresh reviewer): no blocking finding. Fixed: a stack the pick passes over
+  (`TurnPassed`) no longer becomes `Player::acting` (`passes`; the original never makes it
+  active), and the round start's end clears the outline (0x4761EE, after its line); stale notes
+  of §8.3 and the log's list; tests added (a round's first pick outlines nothing, a tenth that
+  opens the command, two tenths in a row, a frozen stack's regeneration, a passed stack, a stack
+  the timeline lacks). Listed as provisional above: the own turn's ended effects after the
+  drain, the first activation's drain.
 - **Recorded** (`starts`, `starts-sound` over `seq-starts.toml`, hot seat; the sequences'
   comments): the Wraiths' drain in both rounds, Poison's tenth at round 2's start and the Trolls'
   regeneration at their round-2 pick, every frame of the three exact (the stack that acted last
