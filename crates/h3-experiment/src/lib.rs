@@ -1650,11 +1650,14 @@ fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<Vec<Plain>, String
         .collect())
 }
 
+/// A tile on a level: (level, (column, row)).
+type LevelTile = (u8, (u8, u8));
+
 /// Batch E11's checks of the teleporters (E08 T99a; survey `docs/rules/surveys/E08-teleporters.md`
 /// §3.2, §12): each [`ObjectSpec::pair`] and [`ObjectSpec::vcmi_pair`] against the gates' pairs by
 /// the two rules, each empty boat on a Whirlpool's tile (written after it, one a tile) and its
 /// [`ObjectSpec::vcmi_tile`]. The boats on Whirlpools' tiles as (level, the boat's `at`).
-fn teleporters(plains: &[(&ObjectSpec, Vec<Plain>)]) -> Result<Vec<(u8, (u8, u8))>, String> {
+fn teleporters(plains: &[(&ObjectSpec, Vec<Plain>)]) -> Result<Vec<LevelTile>, String> {
     let name = |o: &ObjectSpec| format!("object `{}` at {:?}", o.picture, o.at);
     for (o, placed) in plains {
         let class = placed[0].template.class;

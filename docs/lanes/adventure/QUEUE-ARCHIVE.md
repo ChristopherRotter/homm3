@@ -4,6 +4,25 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-06, E08 T99a: the entry as it stood before T99 was cut in two at the code's seam, decision 275; T99a's record in `E08-log.md`, T99b queued.)* **E08 T99 — batch E11's maps: the writer's five classes, the spec's fields, the two specs**
+(decisions 269, 274; as T89 for batch E10)
+
+- **Scope:** `h3_map::writer` writes classes 43 to 45 (by subclass, the channel), 103 and 111 on
+  either level, without a body, as the import reads them (a round trip; its class table checked),
+  for the batch and for T106's fixtures; the spec's fields in `h3-experiment` (`cross-lane`, the
+  user's consent as T89's): the five classes by picture and subclass (`[[map.object]]`), a hero in
+  a boat on or beside a Whirlpool's tile and an empty boat on one (batch E8's boats), the worn
+  Hats (batch E8's artifacts), the checks of E11-9's walk order and truncated distances and of
+  E11-16's and E11-17's tiles; the specs `experiments/specs/E08-batch-11a.toml` (E11-1 to E11-13,
+  E11-18, E11-19; days 1 and 2) and `-11b.toml` (E11-14 to E11-17; one day) with their templates
+  and predictions (survey §12's rows, design §16's added row and predictions); each walk priced
+  (`TRAPS.md`).
+- **Inputs:** `E08-design.md` §16 (and §1, §4 for the classes); the survey
+  `docs/rules/surveys/E08-teleporters.md` §12 (the rows, what the spec lacks), §1 to §5; T89a's and
+  T89b's records in `E08-log.md` (batch E10's writer and specs); `docs/experiments/README.md`.
+- **Depends on:** T98b2 and its checkpoint ADV-Q46 (done). **Status:** ready; its cut confirmed
+  with the user at its start. Needs the original data staged for the spec's templates (as T89).
+
 *(Moved 2026-11-06, E08 T98b2: its entry as it stood before it was done whole, decision 271; the record in `E08-log.md`, T99 queued.)* **E08 T98b2 — the game side of the design note, ADR-0017's draft, the cut and the checkpoint**
 (decisions 261, 270; as T88b2)
 
