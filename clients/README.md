@@ -148,7 +148,7 @@ search the parent directories).
   every frame back and compares it with the frame drawn headless (exit 1 on a difference; in a
   sandbox under Xvfb); `--leave retreat|surrender` makes an unattended run's human side leave at
   its first turn it may, through the question, the battle checked against the bot's up to it;
-  `--auto <n>` switches Auto Combat on at the human's n-th turn and stops it two commands later (an unattended run presses a fixed bot's choices, the battle checked against the same battle fought again at once, the computer's choices asked again in order). Building it builds SDL 3 from its sources: CMake, a C compiler and, on
+  `--auto <n>` switches Auto Combat on at the human's n-th turn and stops it two commands later, `--auto-question cancel|retreat|surrender` answers its question when the computer would leave for the human (E17 M6 T5b2a, *provisional*: cancel by default) (an unattended run presses a fixed bot's choices, the battle checked against the same battle fought again at once, the computer's choices asked again in order). Building it builds SDL 3 from its sources: CMake, a C compiler and, on
   Linux, the X11 headers (`.github/workflows/clients.yml` lists them; ALSA's and Pulse's for the
   sound). A Windows build cross-compiles (`rustup target add x86_64-pc-windows-gnu`, `mingw-w64`,
   `cargo build --release -p h3-view --target x86_64-pc-windows-gnu`); copied anywhere inside a

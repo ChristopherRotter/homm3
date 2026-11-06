@@ -85,6 +85,19 @@ pub fn book_place(k: u8) -> [i32; 2] {
 /// The spell book's places.
 const BOOK_PLACES: u8 = 12;
 
+/// [`answering`] without Auto Combat's questions (the tests').
+#[cfg(test)]
+pub fn inputs(
+    actions: &[String],
+    pre: u32,
+    layout: &BattleLayout,
+    (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
+    (told, shades, creatures): (bool, h3_view::shades::Options, bool),
+) -> Result<Vec<Input>, String> {
+    let at = (timeline, spells, handle);
+    answering(actions, pre, layout, at, (told, shades, creatures), &[]).map(|(inputs, _)| inputs)
+}
+
 /// The mouse's inputs for the harness's `actions` (`h3drive.py`'s `act`), the first acting `pre`
 /// ms after the opening, the mouse parked before the battle: `hex:<n>` and `click:<x>,<y>` move
 /// the mouse there, click (the command's action starts) and park it again; `move:<x>,<y>` moves
@@ -112,13 +125,27 @@ const BOOK_PLACES: u8 = 12;
 /// `hex:` or `click:` after `key:a` is the human's turn's own, not a stop (such a sequence presses
 /// only on the human's turns). *Not modelled:* the book over the battlefield, the mouse moved
 /// over the phase's message.
-pub fn inputs(
+///
+/// E17 M6 T5b2a: with Auto Combat's questions open over the spans `asked` (design
+/// §12.19, *provisional*: each from the action's millisecond to the answer that gave the
+/// command, both included): there a `key:Return`, a `key:Escape` or a `click:` answers the box
+/// open (the question's, then the offer's after an OK), no stop of Auto Combat, no command (the
+/// click moves the mouse to the button and parks it after, the box taking both). With the
+/// inputs, the answers' times in order.
+pub fn answering(
     actions: &[String],
     pre: u32,
     layout: &BattleLayout,
     (timeline, spells, handle): (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>),
     (told, shades, creatures): (bool, h3_view::shades::Options, bool),
-) -> Result<Vec<Input>, String> {
+    asked: &[(u32, u32)],
+) -> Result<(Vec<Input>, Vec<u32>), String> {
+    let open = |now: u32| {
+        asked
+            .iter()
+            .any(|&(from, until)| (from..=until).contains(&now))
+    };
+    let mut answers = Vec::new();
     let mut told = told;
     let mut spells = spells.iter().copied();
     let (mut cast_pending, mut auto) = (false, false);
@@ -149,6 +176,18 @@ pub fn inputs(
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
         let after_cast = core::mem::take(&mut cast_pending);
         match kind {
+            // Auto Combat's question or offer answered (E17 M6 T5b2a): its OK or its Cancel.
+            "key" if matches!(arg, "Return" | "Escape") && open(now) => answers.push(now),
+            "click" if open(now) => {
+                answers.push(now);
+                out.extend([
+                    Input::Move {
+                        at: now,
+                        to: point(arg)?,
+                    },
+                    Input::Move { at: now, to: PARK },
+                ]);
+            }
             "hex" | "click" => {
                 let to = if kind == "hex" {
                     let hex = arg.parse::<u8>().map_err(|e| format!("`{action}`: {e}"))?;
@@ -315,7 +354,7 @@ pub fn inputs(
             _ => return Err(format!("`{action}`: an unknown action")),
         }
     }
-    Ok(out)
+    Ok((out, answers))
 }
 
 /// The option a harness key toggles (E17 M6 T4c: `F6` the grid, `F7` the cursor shadow, `F8` the
@@ -1413,6 +1452,47 @@ mod tests {
         assert!(with.iter().all(|a| matches!(a, Acting::Human(Some(_)))));
         let boxes = h3_view::options::Settings::CAPTURE.auto;
         assert!(!ballista.plays_itself(boxes) && with[0].plays_itself(boxes));
+    }
+
+    #[test]
+    fn auto_combat_s_question_takes_its_answers_and_stops_nothing() {
+        // E17 M6 T5b2a: inside a question's span Return, Escape and a click answer its boxes (the
+        // click's moves the box's), Auto Combat staying on; outside it a key stops it.
+        let layout = layout();
+        let timeline = Timeline::default();
+        let actions: Vec<String> = [
+            "key:a",
+            "at:100",
+            "key:Return",
+            "at:200",
+            "click:300,320",
+            "at:300",
+            "key:Escape",
+            "at:900",
+            "key:d",
+        ]
+        .map(String::from)
+        .into();
+        let options = (false, h3_view::shades::Options::default(), true);
+        let none = |_| None;
+        let at: (&Timeline, &[u16], &dyn Fn(u16) -> Option<u16>) = (&timeline, &[], &none);
+        let (got, answers) =
+            answering(&actions, 0, &layout, at, options, &[(50, 200), (300, 300)]).unwrap();
+        assert_eq!(answers, [100, 200, 300]);
+        assert_eq!(
+            got[2..],
+            [
+                Input::Auto { at: 0, turn: 0 },
+                Input::Move {
+                    at: 200,
+                    to: [300, 320]
+                },
+                Input::Move { at: 200, to: PARK },
+                Input::Stop { at: 900, turn: 0 },
+            ]
+        );
+        let bad = ["click:x"].map(String::from);
+        assert!(answering(&bad, 0, &layout, at, options, &[(0, 0)]).is_err());
     }
 
     #[test]

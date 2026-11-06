@@ -82,6 +82,7 @@ use crate::audio::{Library, Player};
 use crate::battle::{
     Battle, BookDid, CursorLook, Ground, MessageDid, Opened, Press, Source, StatsDid,
 };
+use crate::boxes::Asked;
 use crate::live::Computer;
 
 /// How far past the last change the window looks for the next one before it waits for input
@@ -141,6 +142,10 @@ pub struct Options {
     /// Unattended, the human side switches Auto Combat on at its turn of this number (from 1;
     /// E17 M5 T4c1) and stops it by a press two commands later.
     auto: Option<usize>,
+    /// Unattended, the human's answers to Auto Combat's question and offer (E17 M6 T5b2a,
+    /// `--auto-question cancel|retreat|surrender`, *provisional*: Cancel by default): the
+    /// question's OK, then the offer's.
+    question: (bool, bool),
     /// The user's file of keys (E24 M3 T1b).
     keys: Option<PathBuf>,
     /// The user's settings file (E17 M6 T4a; none: `settings.toml` here).
@@ -166,7 +171,8 @@ impl Options {
     /// [--seed <n>] [--speed <0-2>] [--packs <dir>]
     /// [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>] [--vsync]
     /// [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]
-    /// [--leave retreat|surrender] [--auto <turn>] [--sight fair|all-seeing]`.
+    /// [--leave retreat|surrender] [--auto <turn>] [--auto-question cancel|retreat|surrender]
+    /// [--sight fair|all-seeing]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
@@ -174,7 +180,7 @@ impl Options {
         let (mut scale, mut vsync, mut drawn_cursor, mut fullscreen) = (None, false, false, false);
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let (mut leave, mut keys, mut auto) = (None, None, None);
-        let (mut settings, mut speed_set) = (None, false);
+        let (mut settings, mut speed_set, mut question) = (None, false, (false, false));
         // The computer's sight (E17 M6 T5b1, *provisional*): the fair actor's by default.
         let mut sight = None;
         // A seat on a server (E17 M5 T6b1): `connect`'s options.
@@ -227,6 +233,18 @@ impl Options {
                 "--auto" => {
                     let turn = usize::try_from(number(value()?)?).unwrap_or(usize::MAX);
                     auto = Some(turn.max(1));
+                }
+                "--auto-question" => {
+                    question = match value()?.as_str() {
+                        "cancel" => (false, false),
+                        "retreat" => (true, false),
+                        "surrender" => (true, true),
+                        v => {
+                            return Err(format!(
+                                "window: no answer `{v}` (cancel, retreat, surrender)"
+                            ));
+                        }
+                    };
                 }
                 "--sight" => {
                     sight = Some(match value()?.as_str() {
@@ -286,6 +304,7 @@ impl Options {
             run,
             leave,
             auto,
+            question,
             keys,
             settings,
             speed_set,
@@ -698,6 +717,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         points: crate::pointer::press_points(battle.layout()),
         leave: options.leave,
         auto: options.auto,
+        question: options.question,
         ..Presser::default()
     });
     let started = win.ticks_ns();
@@ -778,6 +798,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     points: core::mem::take(&mut p.points),
                     leave: options.leave,
                     auto: options.auto,
+                    question: options.question,
                     ..Presser::default()
                 };
             }
@@ -1960,6 +1981,8 @@ fn message_did(
     *changed |= did != MessageDid::Nothing;
     match did {
         MessageDid::Give(command) => give(battle, inputs, at, command),
+        // Auto Combat's question or offer answered (E17 M6 T5b2a): the computer's next.
+        MessageDid::Answer(ok) => battle.answer(at, ok),
         // A turret's info closed (E17 M6 T2b2): the battle takes the mouse again (0x476E34).
         MessageDid::Looked => {
             inputs.push(Input::Looked { at });
@@ -2015,6 +2038,8 @@ struct Presser {
     waited: usize,
     met: Option<usize>,
     switched: Option<(usize, Option<usize>)>,
+    /// The answers to Auto Combat's question and offer (E17 M6 T5b2a: `--auto-question`).
+    question: (bool, bool),
 }
 
 impl Presser {
@@ -2124,10 +2149,19 @@ impl Presser {
         if wall < asked.saturating_add(u64::from(PRESS_AFTER_MS)) {
             return Ok(false);
         }
-        let ok = battle
-            .message_button(h3_view::message::YES)
-            .or_else(|| battle.message_button(h3_view::message::OK))
-            .ok_or("the message box has no OK")?;
+        // Auto Combat's question and offer by `--auto-question` (E17 M6 T5b2a), Cancel or OK.
+        let answer = match battle.message_asked() {
+            Some(Asked::Question) => Some(self.question.0),
+            Some(Asked::Offer) => Some(self.question.1),
+            _ => None,
+        };
+        let ok = match answer {
+            Some(false) => battle.message_button(h3_view::message::NO),
+            _ => None,
+        }
+        .or_else(|| battle.message_button(h3_view::message::YES))
+        .or_else(|| battle.message_button(h3_view::message::OK))
+        .ok_or("the message box has no OK")?;
         let _ = battle.message_press(ok);
         let did = battle.message_release();
         self.asked = battle.message_open().then_some(wall);
@@ -2141,6 +2175,7 @@ impl Presser {
                 self.left = Some(command);
                 give(battle, inputs, now, command)
             }
+            MessageDid::Answer(ok) => battle.answer(now, ok),
             // The presser never presses a turret (E17 M6 T2b2): its box closed, the battle takes
             // the mouse again all the same.
             MessageDid::Looked => {

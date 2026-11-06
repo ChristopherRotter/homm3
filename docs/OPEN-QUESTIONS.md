@@ -97,6 +97,14 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Context.** Without a digital sound driver the dialog refuses a volume bar's click with GENRLTXT 151 in an OK box, but only while that volume is 0 (0x46FA1F): above 0 every bar works without a sound, at 0 none does; the harness runs the original so (its volumes 0, no sound in Wine: `options-no-sound`). The client tests its own audio device the same way (none with `--mute` or without a device). Besides, the effects bars also write "Last Sound Volume" and the music bars never write "Last Music Volume" (0x698768): no effect in a battle. **Options:** (a) copy; (b) fix in the client's profile: without a device every bar is refused, whatever the volume (the original's for the comparisons only); (c) the client never refuses (its settings kept for a device later). **Recommendation:** (b): the guard's evident intent; the last volumes copied (the map client's system options decide their use). **Built:** as the original's.
 
+#### CLT-Q63 — Auto Combat's retreat question at an automatic Ballista's turn (E17 M6 T5b2a)
+
+**Context.** The original asks a human the retreat question (GENRLTXT 414, `docs/epics/E17-design.md` §12.19) from `ai_battle_action` 0x477EE0, which the battle loop runs for every stack that acts on its own (0x4744CF). Such a stack is not only Auto Combat's: `stack_automatic` 0x474BF0 counts the Ballista as automatic when its hero lacks Artillery (or it has no hero) and an arrow tower when the hero lacks it, with Auto Combat off (0x474C59; a fresh reviewer's reading of T5b2a, 2026-11-06, against the map's entries). So a human whose hopeless hero is worth keeping, with a Ballista and no Artillery, is asked at the Ballista's turn without having touched Auto Combat; its Cancel lets the Ballista shoot and asks no more this battle, its OK leaves the battle. The engine plays the automatic Ballista itself (BAT-WAR-002), so the client is never asked there, and a computer side's retreat at that turn is missed too (the battle lane's inbox, 2026-11-06). The arrow towers' path through 0x477EE0 is not read.
+
+**Options.** (a) Copy: ask it there as the original does; it needs the engine to hand the client the automatic war machine's turn (a battle-lane change, a cross-lane PR like #745). (b) Fix in the client's profile: ask it only under Auto Combat (the question names the odds, not the Ballista; a player without Auto Combat chose to fight), the original's way only for the comparisons.
+
+**Recommendation.** (a) copy, built when the battle lane hands over the automatic war machines' turns (it also fixes the computer side's missed retreat); until then *not built* (design §12.19).
+
 ### Map client lane (`MCL-Q<n>`)
 
 (no open questions)

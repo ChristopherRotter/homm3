@@ -10,12 +10,15 @@
 //! E17 M6 T5b1 (design §12.18): the window's computer is the engine's original one
 //! (`h3_battle_ai`, its whole choice for its side), which under Auto Combat also plays a human's
 //! side by its parts: the hero's cast as the battle asks it ([`Live::set_cast`]), the action of a
-//! stack that plays itself; each side draws from a stream of its own, the seat's. An adapter.
+//! stack that plays itself; each side draws from a stream of its own, the seat's. E17 M6 T5b2a
+//! (design §12.19): the parts as the original asks them of a human's side ([`Decision::human`]),
+//! the retreat test before each such action and, on its yes, the human asked once a battle
+//! ([`Question`], [`Live::answer`]). An adapter.
 
 use h3_battle::{
     BattleSetup, BattleSide, BattleState, EventKind, LegalCommands, Viewer, Visibility,
 };
-use h3_battle_ai::{Decision, Sight};
+use h3_battle_ai::{Decision, Leaving, Sight};
 use h3_content_battle::BattleRuleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::session::Bot as _;
@@ -54,8 +57,29 @@ pub enum Ask {
     /// The computer asked for a human's hero's cast (Auto Combat with Combat Auto Spells): a
     /// command, or none.
     Cast,
-    /// Auto Combat's action for a human's stack that plays itself.
+    /// Auto Combat's action for a human's stack that plays itself (E17 M6 T5b2a: the retreat test
+    /// before it, which may ask the human a [`Question`] instead).
     Action,
+    /// The human's answer to Auto Combat's question or offer (E17 M6 T5b2a, [`Live::answer`]):
+    /// its OK (true) or its Cancel.
+    Answered(bool),
+}
+
+/// What Auto Combat asks the human whose stack plays itself when the computer's retreat test says
+/// yes (E17 M6 T5b2a, design §12.19; `ai_battle_action` 0x477F56 to 0x47828E), a box of OK and
+/// Cancel over the battle standing still.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Question {
+    /// Whether to retreat (GENRLTXT's record 414 with the side's hero's name), once a battle
+    /// (+0x1402F): OK the computer's leaving ([`Decision::leaving`]: the Retreat, or the offer),
+    /// Cancel the stack's action and no question again this battle.
+    Retreat,
+    /// Whether to save the army for `price` (GENRLTXT's record 130 with the hero's name and the
+    /// price, the price's gold as its picture; BAT-AI-026): OK the Surrender, Cancel the Retreat.
+    Offer {
+        /// The battle's surrender price (the side's private part, its own to see).
+        price: u32,
+    },
 }
 
 /// The computer's cast for a human's hero at the turn under way (E17 M6 T5b1).
@@ -95,6 +119,14 @@ pub struct Live<'r> {
     cast: Cast,
     /// What asked for each command, in order (E17 M6 T5b1).
     asks: Vec<Ask>,
+    /// Auto Combat's question may be asked (E17 M6 T5b2a: the original's +0x1402F, set as the
+    /// battle starts, cleared by the question's Cancel).
+    may_ask: bool,
+    /// Auto Combat's question or offer waiting for the human's answer (E17 M6 T5b2a), with the
+    /// side's stream as it was before the decision it came from: the decision made again from it
+    /// sees the same world (`Decision::new` draws the fair world's seed from a copy), the parts
+    /// going on drawing from the side's stream.
+    question: Option<(Question, Rng)>,
     sent: u32,
     /// The computer's commands since a human's (E17 M5 T8a, R3-4): [`FOUGHT_LIMIT`] stops the
     /// computer's endless fights, not a long battle a human plays.
@@ -136,6 +168,8 @@ impl<'r> Live<'r> {
             auto: false,
             cast: Cast::No,
             asks: Vec::new(),
+            may_ask: true,
+            question: None,
             sent: 0,
             bot_run: 0,
         })
@@ -267,12 +301,16 @@ impl<'r> Live<'r> {
     /// Plays the next command if the computer's, sent from its seat: for a side no human plays
     /// here, its whole choice; for a human's (E17 M6 T5b1, design §12.18), first the hero's cast
     /// when the battle asks it at the turn ([`Live::set_cast`]: the hero's cast, else nothing),
-    /// then under Auto Combat the stack's action ([`Live::set_auto`]). None when the battle is
-    /// over or waits for a human ([`Live::waiting`]; also once a cast asked gave none and the
-    /// turn is the human's). One too many of the computer's in a row ([`FOUGHT_LIMIT`] since a
-    /// human's) is an error that changes nothing; for the others, [`Live::play`]'s.
+    /// then under Auto Combat the stack's action ([`Live::set_auto`]; E17 M6 T5b2a: the retreat
+    /// test first, whose yes may ask the human instead, [`Live::question`]). None when the battle
+    /// is over or waits for a human ([`Live::waiting`]; also once a cast asked gave none and the
+    /// turn is the human's, and while a question waits for its answer). One too many of the
+    /// computer's in a row ([`FOUGHT_LIMIT`] since a human's) is an error that changes nothing;
+    /// for the others, [`Live::play`]'s.
     pub fn next(&mut self) -> Result<Option<Played>, String> {
-        let Some(side) = self.state.side_to_act().filter(|_| !self.waiting()) else {
+        let Some(side) =
+            (self.state.side_to_act()).filter(|_| !self.waiting() && self.question.is_none())
+        else {
             return Ok(None);
         };
         if self.bot_run >= FOUGHT_LIMIT {
@@ -285,11 +323,17 @@ impl<'r> Live<'r> {
             self.asks.push(Ask::Cast);
             match self.hero_cast(side) {
                 Some(cast) => (cast, Ask::Cast),
-                None if self.auto => (self.action(side), Ask::Action),
+                None if self.auto => match self.action(side) {
+                    Some(action) => (action, Ask::Action),
+                    None => return Ok(self.asked()),
+                },
                 None => return Ok(None),
             }
         } else {
-            (self.action(side), Ask::Action)
+            match self.action(side) {
+                Some(action) => (action, Ask::Action),
+                None => return Ok(self.asked()),
+            }
         };
         let command = map::command(choice);
         let played = self
@@ -319,28 +363,101 @@ impl<'r> Live<'r> {
     }
 
     /// The computer's cast for `side`'s hero, a human's, at the turn under way (E17 M6 T5b1,
-    /// `ai_hero_cast_turn` 0x422DA0: [`Decision::hero_cast`], from the side's stream); none: no
-    /// cast (the hero cast this round, cannot or decides not to). The fixture's bot casts nothing.
+    /// `ai_hero_cast_turn` 0x422DA0: [`Decision::hero_cast`], from the side's stream, asked as of
+    /// a human's side, E17 M6 T5b2a); none: no cast (the hero cast this round, cannot or decides
+    /// not to). The fixture's bot casts nothing.
     fn hero_cast(&mut self, side: BattleSide) -> Option<h3_battle::Command> {
         let Computer::Original(sight) = self.computer else {
             return None;
         };
         let seat = &mut self.seats[side.index()];
-        Decision::new(&self.state, self.ruleset, side, sight, seat)?.hero_cast(seat)
+        Decision::new(&self.state, self.ruleset, side, sight, seat)?
+            .human()
+            .hero_cast(seat)
     }
 
-    /// Auto Combat's action for `side`'s stack, a human's that plays itself (E17 M6 T5b1:
-    /// [`Decision::action`], from the side's stream; Defend for a world the battle refuses, as the
-    /// fair actor's). The retreat test before it is not asked: on its yes the original asks the
-    /// human whether to retreat or surrender, once a battle (0x477F56), T5b2's.
-    fn action(&mut self, side: BattleSide) -> h3_battle::Command {
+    /// Auto Combat's action for `side`'s stack, a human's that plays itself (E17 M6 T5b1, T5b2a;
+    /// `ai_battle_action` 0x477EE0): the retreat test ([`Decision::retreat_test`] as of a human's
+    /// side, its draws at every such action), then on its yes, while the question may be asked,
+    /// none: the question waits for the human ([`Live::question`]); else the stack's action
+    /// ([`Decision::action`]), both from the side's stream; Defend for a world the battle refuses,
+    /// as the fair actor's. The fixture's bot asks nothing.
+    fn action(&mut self, side: BattleSide) -> Option<h3_battle::Command> {
         let Computer::Original(sight) = self.computer else {
-            return self.greedy(side);
+            return Some(self.greedy(side));
         };
-        // stub: CLT-STUB-2 (the retreat question, T5b2: `Decision::retreat_test` not asked)
+        let before = self.seats[side.index()].clone();
         let seat = &mut self.seats[side.index()];
-        Decision::new(&self.state, self.ruleset, side, sight, seat)
-            .map_or(h3_battle::Command::Defend, |decision| decision.action(seat))
+        let Some(decision) = Decision::new(&self.state, self.ruleset, side, sight, seat) else {
+            return Some(h3_battle::Command::Defend);
+        };
+        let decision = decision.human();
+        if decision.retreat_test(seat) && self.may_ask {
+            self.question = Some((Question::Retreat, before));
+            return None;
+        }
+        Some(decision.action(seat))
+    }
+
+    /// The question asked for the action (E17 M6 T5b2a): logged as its action's ask, its answer
+    /// to come ([`Live::answer`]); no command.
+    fn asked(&mut self) -> Option<Played> {
+        self.asks.push(Ask::Action);
+        None
+    }
+
+    /// Auto Combat's question or offer waiting for the human's answer (E17 M6 T5b2a, design
+    /// §12.19): the battle stands still behind it, taking no command ([`Live::next`] and
+    /// [`Live::play`] give none) until [`Live::answer`].
+    pub fn question(&self) -> Option<Question> {
+        self.question.as_ref().map(|&(question, _)| question)
+    }
+
+    /// The human's answer to the question or offer waiting (E17 M6 T5b2a, design §12.19;
+    /// 0x477F56 to 0x47828E), `ok` its OK, sent from the side's seat as the computer's: the
+    /// question's Cancel clears the flag (no question again this battle) and plays the stack's
+    /// action ([`Decision::action`], on the world of the decision the test was asked in), its OK
+    /// the computer's leaving ([`Decision::leaving`]): the Retreat at once, or the offer, which
+    /// waits in turn (none played); the offer's OK the Surrender, its Cancel the Retreat. None
+    /// when no question waits; an error as [`Live::next`]'s.
+    pub fn answer(&mut self, ok: bool) -> Result<Option<Played>, String> {
+        let (Some((question, before)), Some(side)) =
+            (self.question.clone(), self.state.side_to_act())
+        else {
+            return Ok(None);
+        };
+        let Computer::Original(sight) = self.computer else {
+            return Ok(None);
+        };
+        self.question = None;
+        self.asks.push(Ask::Answered(ok));
+        let choice = match (question, ok) {
+            (Question::Retreat, false) => {
+                self.may_ask = false;
+                let seat = &mut self.seats[side.index()];
+                Decision::new(&self.state, self.ruleset, side, sight, &before)
+                    .map_or(h3_battle::Command::Defend, |d| d.human().action(seat))
+            }
+            (Question::Retreat, true) => {
+                let leaving = Decision::new(&self.state, self.ruleset, side, sight, &before)
+                    .map_or(Leaving::Retreat, |d| d.human().leaving());
+                match leaving {
+                    Leaving::Retreat => h3_battle::Command::Retreat,
+                    Leaving::Offer { price } => {
+                        self.question = Some((Question::Offer { price }, before));
+                        return Ok(None);
+                    }
+                }
+            }
+            (Question::Offer { .. }, true) => h3_battle::Command::Surrender,
+            (Question::Offer { .. }, false) => h3_battle::Command::Retreat,
+        };
+        let command = map::command(choice);
+        let played = self
+            .send(side, command)?
+            .map_err(|code| format!("the computer's command {command:?}: rejected, {code:?}"))?;
+        self.bot_run = 0;
+        Ok(Some(played))
     }
 
     /// The fixture's bot's choice for `side`, the side to act.
@@ -367,6 +484,10 @@ impl<'r> Live<'r> {
     /// window quits on it); or the battle is over.
     pub fn play(&mut self, command: Command) -> Result<Option<Played>, String> {
         let side = self.state.side_to_act().ok_or("the battle is over")?;
+        // Auto Combat's question waits for its answer, not a command (E17 M6 T5b2a).
+        if self.question.is_some() {
+            return Ok(None);
+        }
         let Ok(played) = self.send(side, command)? else {
             return Ok(None);
         };
@@ -447,6 +568,10 @@ impl<'r> Live<'r> {
                     self.cast = Cast::Asked;
                 }
             }
+            Ask::Answered(ok) => {
+                self.answer(ok)?;
+                return Ok(());
+            }
         }
         self.next()?;
         Ok(())
@@ -457,8 +582,9 @@ impl<'r> Live<'r> {
 /// sides `humans` names a human's and `computer` the others' (E17 M6 T5b1; E17 M5 T2b's: what a
 /// battle pressed by the presser's choices must equal): each human's command the presser's
 /// choice ([`Live::choice`]), each of the computer's asked again of it in the same order (its
-/// whole choice, a cast asked for a human's hero, Auto Combat's action), each side from its
-/// stream afresh. A battle the bot fights on both sides: `asks` all [`Ask::Computer`].
+/// whole choice, a cast asked for a human's hero, Auto Combat's action and its retreat test,
+/// E17 M6 T5b2a: a question's answers as given), each side from its stream afresh. A battle the
+/// bot fights on both sides: `asks` all [`Ask::Computer`].
 pub fn refight(
     ruleset: &BattleRuleset,
     setup: BattleSetup,
@@ -730,6 +856,125 @@ mod tests {
         assert!(live.waiting());
         let again = refight(&ruleset, setup, 1, players, live.asks()).unwrap();
         assert_eq!(live.record().unwrap(), again);
+    }
+
+    /// `auto_cast`'s battle with the defender's stacks a hundred times as many and Orrin worth
+    /// keeping (5000 experience, a Tavern town, 100 000 gold): the human's side under Auto Combat
+    /// is overwhelmed, the computer's retreat test says yes (E17 M6 T5b2a).
+    fn overwhelmed() -> (BattleRuleset, BattleSetup) {
+        let (ruleset, mut setup) = auto_cast();
+        for stack in &mut setup.defender.stacks {
+            stack.count *= 100;
+        }
+        setup.retreat[0] = h3_contracts::RetreatFacts {
+            experience: 5000,
+            tavern: true,
+            ..h3_contracts::RetreatFacts::default()
+        };
+        setup.funds[0] = 100_000;
+        (ruleset, setup)
+    }
+
+    #[test]
+    fn auto_combat_asks_the_human_once_a_battle_when_the_computer_would_leave() {
+        // E17 M6 T5b2a (design §12.19): the retreat test (as of a human's side) before the
+        // action of the human's stack that plays itself; its yes asks the human, no command
+        // played. Cancel: the stack's action on the same decision's world, from the stream the
+        // test left; no question again this battle, the test still asked (and drawing) at each
+        // such action. Fought again by the asks, the same battle.
+        let (ruleset, setup) = overwhelmed();
+        let players = ([true, false], Computer::Original(Sight::Fair));
+        let mut live = Live::new(&ruleset, setup.clone(), 1, players).unwrap();
+        let side = BattleSide::Attacker;
+        live.set_auto(true);
+        let before = live.seats[0].clone();
+        assert_eq!(live.next().unwrap(), None);
+        assert_eq!(live.question(), Some(Question::Retreat));
+        assert_eq!(live.asks(), [Ask::Action]);
+        // The battle stands still: no command, the human's either.
+        assert_eq!(live.next().unwrap(), None);
+        let pressed = live.choice().unwrap();
+        assert_eq!(live.play(pressed).unwrap(), None);
+        // The decision made again from the stream before it: the test, then the action.
+        let mut seat = before.clone();
+        let decision = Decision::new(&live.state, &ruleset, side, Sight::Fair, &seat)
+            .unwrap()
+            .human();
+        assert!(decision.retreat_test(&mut seat));
+        assert_eq!(live.seats[0], seat);
+        let action = decision.action(&mut seat);
+        assert!(matches!(decision.leaving(), Leaving::Offer { .. }));
+        let played = live.answer(false).unwrap().unwrap();
+        assert!(played.turned && live.seats[0] == seat && !live.may_ask);
+        assert_eq!(live.asks(), [Ask::Action, Ask::Answered(false)]);
+        assert!(!matches!(action, h3_battle::Command::Retreat));
+        // No question waits: an answer gives nothing.
+        assert_eq!(live.answer(true).unwrap(), None);
+        // The human's next stack: the test asked again, no question.
+        live.set_auto(false);
+        while live.state.side_to_act() == Some(BattleSide::Defender) {
+            live.next().unwrap().unwrap();
+        }
+        live.set_auto(true);
+        let mut seat = live.seats[0].clone();
+        let decision = Decision::new(&live.state, &ruleset, side, Sight::Fair, &seat)
+            .unwrap()
+            .human();
+        let yes = decision.retreat_test(&mut seat);
+        let _ = decision.action(&mut seat);
+        live.next().unwrap().unwrap();
+        assert!(yes && live.seats[0] == seat && live.question().is_none());
+        let again = refight(&ruleset, setup, 1, players, live.asks()).unwrap();
+        assert_eq!(live.record().unwrap(), again);
+    }
+
+    #[test]
+    fn the_question_s_ok_leaves_by_the_offer_or_by_the_retreat() {
+        // E17 M6 T5b2a: OK gives the computer's leaving: the offer (both heroes, the gold
+        // enough), whose OK surrenders and whose Cancel retreats; without the enemy's hero the
+        // Retreat at once. Each fought again by the asks.
+        let (ruleset, setup) = overwhelmed();
+        let players = ([true, false], Computer::Original(Sight::Fair));
+        for (offer_ok, ends) in [(true, Command::Surrender {}), (false, Command::Retreat {})] {
+            let mut live = Live::new(&ruleset, setup.clone(), 1, players).unwrap();
+            live.set_auto(true);
+            assert_eq!(live.next().unwrap(), None);
+            assert_eq!(live.answer(true).unwrap(), None);
+            let Some(Question::Offer { price }) = live.question() else {
+                panic!("the offer: {:?}", live.question());
+            };
+            assert!(price > 0 && live.next().unwrap().is_none());
+            let played = live.answer(offer_ok).unwrap().unwrap();
+            assert!(live.over() && !played.messages.is_empty());
+            let asks = [Ask::Action, Ask::Answered(true), Ask::Answered(offer_ok)];
+            assert_eq!(live.asks(), asks);
+            let again = refight(&ruleset, setup.clone(), 1, players, &asks).unwrap();
+            assert_eq!(live.record().unwrap(), again);
+            use h3_protocol::wire::Outcome;
+            let left = played.events.iter().find_map(|(e, _)| match e {
+                Event::BattleEnded { result } => Some(*result),
+                _ => None,
+            });
+            let side = Side::Attacker;
+            let wanted = match ends {
+                Command::Surrender {} => Outcome::Surrender { side },
+                _ => Outcome::Retreat { side },
+            };
+            assert_eq!(left, Some(wanted));
+        }
+        let (ruleset, mut setup) = overwhelmed();
+        setup.heroes[1] = None;
+        let mut live = Live::new(&ruleset, setup, 1, players).unwrap();
+        live.set_auto(true);
+        assert_eq!(live.next().unwrap(), None);
+        live.answer(true).unwrap().unwrap();
+        assert!(live.over() && live.question().is_none());
+        // The fixture's bot asks nothing.
+        let (ruleset, setup) = overwhelmed();
+        let greedy = ([true, false], Computer::Greedy);
+        let mut live = Live::new(&ruleset, setup, 1, greedy).unwrap();
+        live.set_auto(true);
+        assert!(live.next().unwrap().is_some() && live.question().is_none());
     }
 
     #[test]

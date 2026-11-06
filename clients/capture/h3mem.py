@@ -1059,6 +1059,13 @@ class Mem:
         record = self.game() + HEROES + HERO_SIZE * index
         self.write_bytes(record + SPELL_POINTS, struct.pack("<h", mana))
 
+    def write_experience(self, index, experience):
+        """A hero's experience (E17 M6 T5b2a: a sequence's retreat facts; u32 +0x51), its level
+        and skills left: the original levels a hero up for the experience its map gives it as
+        the game starts, so a sequence's map gives none and the harness writes it here."""
+        record = self.game() + HEROES + HERO_SIZE * index
+        self.write_bytes(record + EXPERIENCE, struct.pack("<I", experience))
+
     def write_skills(self, index, skills):
         """A hero's primary skills (E24 M3 T5b1: a situation's hero's `skills`; i8[4] +0x476)."""
         record = self.game() + HEROES + HERO_SIZE * index

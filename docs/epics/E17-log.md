@@ -5454,3 +5454,39 @@ engine's whole choice.
   cast asked only on a turn Auto Combat plays: `Auto::asks_cast` and `asks_cast_at` take `Bugs`).
   `check.sh`; the PRs: #739 (the engine's parts, cross-lane) and #740 (`clients.yml`, shared),
   both merged first; the branch rebased on them.
+
+### M6 T5b2a — Auto Combat's retreat question (2026-11-05/06)
+
+On `client/e17-m6-t5b2a`, stacked on the battle lane's `battle/clt-auto-combat-leaving` (PR #745,
+cross-lane with the user's consent). T5b2 cut in two by the user (2026-11-05): T5b2a the retreat
+question, T5b2b CLT-Q61's stop.
+
+- **Read** (design §12.19): `ai_battle_action` 0x477EE0 whole, the retreat test's human gate
+  (0x41E590), the picture slot's resources (0x4F4F5A), GENRLTXT 130 and 414. The question at
+  every self-playing human action whose test says yes while +0x1402F is set, its Cancel clearing
+  it; after OK the computer's choice (Retreat, or the offer to save the army: OK surrender at the
+  price, Cancel retreat). The original's test skips the Easy and Normal gate for a human side:
+  T5b1's casts for the human's hero were asked with the policy's gate.
+- **Engine** (#745): `Decision::human` (the parts as for a human's side, the hero's cast
+  included; the policy unchanged), `Decision::leaving`, `Leaving`; BAT-AI-026 new, BAT-AI-024
+  amended; the battle scoped verify with original data passed, CI green.
+- **Built** (a builder agent; design §12.19, "The client's"): `Live::question`, `Live::answer`,
+  `Question`, the once-a-battle flag, the stream kept from before the decision; `Ask::Answered`
+  for the re-fight; `boxes::Asked::{Question, Offer}`, `Answered::Auto`; the keys
+  `battle.auto.retreat.ask` and `battle.auto.surrender.ask`; the gold picture
+  (`resour82.def`); the sequences' `question = true`; `h3-view situation`'s experience and Tavern
+  town; `--auto-question` for the presser (Cancel by default, *provisional*). `CLT-STUB-2`
+  removed.
+- **Recorded** (a capture agent; design §12.19, "Recorded"): `auto-retreat-cancel`,
+  `-surrender`, `-flee` in `sequences.toml`: timelines as recorded; 50 frames exact, and 46 and
+  46 with only the result window's clip differing (CLT-Q30's rounding). Corrected: the outline
+  kept behind the box, the idle steps until its opening and none at the answer, the loop's one
+  tick at the answer. The map's experience levels the hero up in the original: the harness
+  writes it into memory (`scenario_experience`) and waits for idle (`wait_idle`). `drawn`: three
+  new, the rest the same (`auto-cast`, `auto-cast-human` unchanged).
+- **Reviewed** (a fresh reviewer): no defect in the engine's leaving, the draws, the world, the
+  flag or the boxes; a question coming while another box was open waited unshown (the battle
+  stuck): fixed (`Battle::poll`; a box that cannot be shown answered Cancel). **Asked:** CLT-Q63
+  (the original asks at an automatic Ballista's turn too; copy recommended, not built: the
+  engine plays it; the battle lane's inbox). `check.sh`; the PRs: #745 (the engine's part,
+  cross-lane) first, then this one.

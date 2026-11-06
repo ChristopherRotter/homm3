@@ -1714,6 +1714,9 @@ struct Clock {
     /// no tick kept it on its grid meanwhile, so the turn's start shows late and the grid starts
     /// again there (`gate-sound`: the Hobgoblins' first step 100 ms after the wait's end).
     waited: Option<u32>,
+    /// The battle stood still behind a box until now (E17 M6 T5b2a, [`Clock::hold`]): the
+    /// commands' starts leave the deadline where the hold's tick put it until a frame shows.
+    held: bool,
 }
 
 impl Clock {
@@ -1725,6 +1728,9 @@ impl Clock {
             self.deadline = end;
         }
         self.now = self.now.max(at);
+        if self.held {
+            return;
+        }
         if self.deadline <= self.now {
             let behind = self.now - self.deadline;
             self.deadline += (behind / self.grid + 1) * self.grid;
@@ -1735,11 +1741,26 @@ impl Clock {
     /// max(`time`, the lateness); returns when it shows.
     fn show(&mut self, time: u32) -> u32 {
         self.waited = None;
+        self.held = false;
         let shown = self.now.max(self.deadline);
         let late = shown - self.deadline;
         self.deadline += time.max(late);
         self.now = shown;
         shown
+    }
+
+    /// The battle held until `until` (E17 M6 T5b2a, a modal box over the computer's turn): the
+    /// clock moves there and the loop ticks once (0x474040): no tick kept the deadline on its
+    /// grid behind the box, so a deadline passed moves on by max(the grid's step, its lateness),
+    /// to now when it fell a step behind; the commands' [`Clock::start`]s leave it there until a
+    /// frame shows (`auto-retreat-cancel`: the Champions' Wait, then the Marksmen's shot, its
+    /// first frame shown at the answer's 1 000 ms, its second drawn then).
+    fn hold(&mut self, until: u32) {
+        self.now = self.now.max(until);
+        if self.deadline <= self.now {
+            self.deadline += self.grid.max(self.now - self.deadline);
+        }
+        self.held = true;
     }
 
     /// A wait outside the deadline.
@@ -1861,7 +1882,24 @@ pub fn timeline(
     stage: Stage<'_>,
     speed: Speed,
 ) -> Result<Timeline, AnimError> {
-    played(snapshot, commands, looks, stage, speed, None)
+    played(snapshot, (commands, &[]), looks, stage, speed, None)
+}
+
+/// As [`timeline`], the battle standing still before the commands `holds` names, each by its
+/// index with when it stood from (its box's opening) and until (E17 M6 T5b2a: Auto Combat's
+/// question, a modal box over the computer's turn, answered then; [`Growing::hold`]); a held
+/// command has no time of its own.
+///
+/// # Errors
+/// As [`timeline`].
+pub fn held(
+    snapshot: &Observation,
+    (commands, holds): (&[Command<'_>], &[(usize, u32, u32)]),
+    looks: &BTreeMap<u16, Look>,
+    stage: Stage<'_>,
+    speed: Speed,
+) -> Result<Timeline, AnimError> {
+    played(snapshot, (commands, holds), looks, stage, speed, None)
 }
 
 /// As [`timeline`], the stacks fidgeting while the battle idles, from the viewer's own generator
@@ -1877,14 +1915,15 @@ pub fn fidgeting(
     speed: Speed,
     seed: u32,
 ) -> Result<Timeline, AnimError> {
-    played(snapshot, commands, looks, stage, speed, Some(seed))
+    played(snapshot, (commands, &[]), looks, stage, speed, Some(seed))
 }
 
-/// [`timeline`] or [`fidgeting`]: the commands grown one by one, the next one's being the
-/// computer's when it has no time ([`Growing::push`]).
+/// [`timeline`], [`held`] or [`fidgeting`]: the commands grown one by one, the next one's being
+/// the computer's when it has no time ([`Growing::push`]), the battle held before those `holds`
+/// names ([`Growing::hold`]).
 fn played(
     snapshot: &Observation,
-    commands: &[Command<'_>],
+    (commands, holds): (&[Command<'_>], &[(usize, u32, u32)]),
     looks: &BTreeMap<u16, Look>,
     stage: Stage<'_>,
     speed: Speed,
@@ -1893,6 +1932,9 @@ fn played(
     let mut growing = Growing::new(snapshot, looks, stage, speed, seed)?;
     for (i, command) in commands.iter().enumerate() {
         let computer = commands.get(i + 1).is_some_and(|c| c.at.is_none());
+        for &(_, from, until) in holds.iter().filter(|&&(k, ..)| k == i) {
+            growing.hold((from, until));
+        }
         growing.push(command, computer);
     }
     Ok(growing.finish())
@@ -1919,6 +1961,9 @@ pub struct Growing<'a> {
     waiting: Option<u8>,
     /// The timeline's last drawbridge span is open (its end at the next redraw).
     open_bridge: bool,
+    /// The next command held behind a box (E17 M6 T5b2a, [`Growing::hold`]): from its opening
+    /// until its answer.
+    held: Option<(u32, u32)>,
 }
 
 impl<'a> Growing<'a> {
@@ -2037,6 +2082,7 @@ impl<'a> Growing<'a> {
                 deadline: 0,
                 grid,
                 waited: None,
+                held: false,
             },
             stacks,
             keys: Vec::new(),
@@ -2168,6 +2214,7 @@ impl<'a> Growing<'a> {
             commands: 0,
             waiting: snapshot.active,
             open_bridge: false,
+            held: None,
         };
         growing.hand_over();
         Ok(growing)
@@ -2205,6 +2252,7 @@ impl<'a> Growing<'a> {
             commands: self.commands,
             waiting: self.waiting,
             open_bridge: self.open_bridge,
+            held: self.held,
         };
         let idle = tail.player.idle;
         let first = idle.next.max(idle.from);
@@ -2222,6 +2270,19 @@ impl<'a> Growing<'a> {
         }
     }
 
+    /// The next command held behind a box from `from` until `until` (E17 M6 T5b2a, design
+    /// §12.19: a modal box over a turn the computer plays, Auto Combat's question, answered
+    /// then; recorded): the battle idles until the box opens (the opening's step, a human's
+    /// turn waiting up to the switch), then stands still, its outline and the outline's pulse
+    /// as they were, no idle step until the answer; the command, the computer's, starts then
+    /// with the loop's step due then, and the loop's one tick there puts the frames' deadline at
+    /// most at now, no tick having kept it on its grid ([`Clock::hold`]: `auto-retreat-cancel`'s
+    /// shot's first frame shown at the answer's 1 000 ms, not at the grid's next point). A hold
+    /// not past the command's start holds nothing. Nothing before `from` changes.
+    pub fn hold(&mut self, (from, until): (u32, u32)) {
+        self.held = Some((from, until));
+    }
+
     /// Plays `command` after those before it (a command without a time as soon as the previous
     /// one's last frame showed; *provisional*, [`timeline`]); `computer`: the next command is the
     /// computer's (a turn this one starts is then not outlined: the computer's stack is outlined
@@ -2232,6 +2293,7 @@ impl<'a> Growing<'a> {
             timeline,
             commands,
             waiting,
+            held,
             ..
         } = self;
         let Timeline {
@@ -2248,14 +2310,34 @@ impl<'a> Growing<'a> {
         // since the last one ended, but once when it acts, which outlines its stack until its
         // first frame shows (*provisional*, §7.9).
         let ran = player.steps.len();
+        let computer_tick = !first && command.at.is_none();
+        let held = held
+            .take()
+            .filter(|&(from, until)| until > player.clock.now.max(from));
+        // Held behind a box (E17 M6 T5b2a, `Growing::hold`): the battle as the box found it,
+        // the loop's tick as it opened (the opening's step, a human's turn waiting up to the
+        // switch; a later command's computer tick, its stack outlined: *provisional*).
+        if let Some((from, _)) = held {
+            player.clock.start(from);
+        }
         let now = player.clock.now;
-        if !first && command.at.is_none() {
+        if computer_tick {
             if player.idle.once(now, &mut player.steps) {
                 outlines.push((now, *waiting));
             }
         } else {
-            let Player { idle, steps, .. } = player;
+            let Player { idle, steps, .. } = &mut *player;
             idle.run(now, |t| steps.push(t));
+        }
+        // Then no step until the answer, nor at it: the action goes on inside the computer's
+        // call (recorded: the Surrender's and the Retreat's ends one step on from the opening;
+        // the Wait's next turn ticks as it starts, the computer's `Idle::once`; *provisional*
+        // for a human's turn, the loop ticking again a millisecond on).
+        if let Some((_, until)) = held {
+            let Player { clock, idle, .. } = &mut *player;
+            clock.hold(until);
+            idle.next = idle.next.max(clock.now);
+            idle.from = idle.from.max(clock.now.saturating_add(1));
         }
         // The last command's layer changes show with the battle's next redraw: the first idle
         // step since, if one ran, before any fidget (*provisional*, as at the end; E17 M2 T5c).
@@ -2317,7 +2399,13 @@ impl<'a> Growing<'a> {
         } else if cast {
             outlines.push((player.clock.now, *waiting));
         }
-        player.idle.from = player.clock.now;
+        // The loop ticks from the action's end (after an answer at once, from the next turn's
+        // start: E17 M6 T5b2a, above).
+        player.idle.from = if held.is_some() {
+            player.idle.from.max(player.clock.now)
+        } else {
+            player.clock.now
+        };
         // The battle decided: `battle_end` follows the action's last frame (design §8.2).
         let now = player.clock.now;
         *ended = ended.or_else(|| player.outcome.map(|o| (now, o)));

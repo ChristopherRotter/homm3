@@ -623,6 +623,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             book: book.as_ref(),
             result: None,
             videos: Some(&crate::videos::Videos::open(&options.install)),
+            asked: &[],
         };
         let drawn = crate::sequences::draw_frames(
             dir,

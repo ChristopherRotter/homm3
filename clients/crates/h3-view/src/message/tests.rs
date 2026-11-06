@@ -31,6 +31,7 @@ fn assets() -> MessageLayout {
         caption_font: "smalfont.fnt".to_string(),
         font_palette: "game.pal".to_string(),
         spell_pictures: "spellScr.def".to_string(),
+        resources: "resour82.def".to_string(),
         cursor: "crdeflt.def".to_string(),
     }
 }
@@ -493,6 +494,7 @@ fn the_layout_section_reads_from_toml() {
         caption_font = "smalfont.fnt"
         font_palette = "game.pal"
         spell_pictures = "spellScr.def"
+        resources = "resour82.def"
         cursor = "crdeflt.def"
         "#,
     )
