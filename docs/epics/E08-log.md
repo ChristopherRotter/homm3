@@ -13280,3 +13280,56 @@ scores them; `cross-lane`, battle-owned), and batch E10's row corrected from "wr
 evaluation (T91 had not changed it).
 
 **Versions:** none moved (a spec, its template and the docs).
+
+### Increment 11, round 3: T100a, batch E11a's harness reads and runs (2026-11-06, `adventure/e08-t100a`)
+
+Baseline: `master` e5a5840 (#771; T99b2b's #769 merged before it). The original data staged at
+the start (the computer's shell did not start; the user's computer was to leave soon); the
+setup's full baseline stopped mid-build (no failing step; CI on `master` stands for it).
+**The cut** (decision 278): T100 in two by spec, T100a batch E11a, T100b batch E11b.
+
+**The harness** (`clients/capture/h3adv.py`, common; README "Teleporters and Replay Opponent
+Turn"): a step's `replay` (the panel's Adventure Options button is the map dialog's item 9,
+`adventure_command` 0x409A70's control 9 to `adventure_options_run` 0x41AB00; its dialog's vtable
+0x63A610 observed, items 1 to 5, 200, 201 and OK 30722 as 0x4051D0 builds them; Replay Opponent
+Turn is item 5, its state 0x26 on day 1 (no records), 0x6 on day 2; `turn_records_replay`
+0x49D7A0 holds the byte 0x696A04 at 1 while it plays), played on the frozen clock stepped 20 ms
+(a real-time dump showed the view before: the first run's); `at_opening` (reads as a step's
+first battle opens); `only_if = { at = [x, y] }`; `again_if = { marks = "any" }`; a `key` step's
+`answer`, `battle`, `level_up`; a skipped step keeps a field another filled; the observations
+`replay`, `replay:views`, `replay:watched`, `replay:options`, `view:before`, `view:after`,
+`view:size`, `explored:x0,y0..x1,y1`, `at_opening:`, `battles`, `exchange`, `army:rows`,
+`hero:in_boat`. The harness check passed (23 steps). The client and map-client lanes' inboxes
+told.
+
+**The recipe** `clients/capture/batches/E08-batch-11a.toml` (42 steps, the spec's order, gold as
+the starting bonus) and **three runs**: the first played E11-8's two branches both (from Uf onto
+Un, then back onto Uf, which jumped to G9: Uf's pair; the branches reordered, a trap); the second
+and third agree in all 97 filled records (the Whirlpools' draws too); the template filled from the
+third (`experiments/results/E08-batch-11a.md`), with the agent's reading of the replay's 51 dumps
+in E11-18's last line.
+
+**Raw observations** (unscored; T101 scores them, survey §15): E11-1 no path to B; the step onto A
+100, on B with 1 900 and the maximum 2 000, (16, 13) and (17, 10) explored, (16, 14) and (18, 10)
+not; no battle on arrival, the control fought P. E11-5 ADVEVENT 70, on X4; E11-4 nothing, on E4
+with 1 900. E11-6b on U6 with 1 859; E11-6's step opened the exchange (E11-6 left, E11-6b right),
+closed unchanged, E11-6 on G6 with 1 859; the ten underground bits explored before and after.
+E11-9 on Uf with 1 900; E11-8: the walk to Un 623 (by 17,28, 17,29, 18,30, 17,31), ADVEVENT 153,
+on Un with 1 277. **E11-19: the step onto A19 fought M** (the battle opened with the hero on A19),
+then the jump to B19 with 1 900, N untouched; Space on B19 no battle, back on A19 with 1 900; the
+control no battle (M gone). E11-7: Red's bits unexplored on day 1 and after the replay; at the
+battle's opening the 3 × 3 about U7 explored, (46, 30) not; the battle subterranean, Red's hero
+on G7's entrance at its opening; won (510 experience, no level-up); then on U7 with 1 859, (49, 30)
+explored, (50, 30) not. E11-18: no message, on X18; **the replay** about one second of the game's
+time, the view's corner at 35,22,0, 35,22,1 (U7), 38,25,0, 39,25,0, 57,52,0 (X18), then back to
+36,23,0; the dumps show each jump as the old view fading out, the exit's surroundings never drawn;
+no view held the boardings' tiles; no bit explored. E11-10: Pegasi 3 → 1, ADVEVENT 168, on W3's
+(66, 69) with 1 400; E11-11 slot 1's Pikemen 5 → 2; E11-12 one Pikeman kept with ADVEVENT 168;
+E11-12b 1 775 → 887; **E11-12c 1 776 kept, ADVEVENT 168**; E11-13 (Sea Captain's Hat) nothing lost,
+no message, 2 000 → 1 900; E11-18's hero 1 560 on land, boarded with 2 615 and the maximum 3 000, a
+path at once from the boat (14 tiles), on W2's (60, 68) with 1 092, no message, nothing lost. Day 1
+boardings: 0 points, the land's maximum kept (1 500, 1 560, 2 000). Not read: the sounds (a run
+without sound); GENRLTXT 7 with a picture captioned Red after E11-3's control battle, the game's
+first (not identified further).
+
+**Versions:** none moved (the harness, a recipe, a filled template, docs).
