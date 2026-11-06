@@ -1371,6 +1371,16 @@ pub(crate) mod tests {
         let still = played(&["key:r", "key:Return", "key:Return", "click:20,20"]);
         assert!(still.message.is_some() && still.darkened && still.dialog());
         assert!(still.window.is_some());
+        // A second click closes the second box: the first click advanced the chain (the
+        // reviewer).
+        let still = played(&[
+            "key:r",
+            "key:Return",
+            "key:Return",
+            "click:20,20",
+            "click:20,20",
+        ]);
+        assert!(still.message.is_none() && still.darkened && still.window.is_none());
         let still = played(&[
             "key:r",
             "click:20,20",

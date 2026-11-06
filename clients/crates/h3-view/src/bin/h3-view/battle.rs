@@ -629,8 +629,12 @@ pub struct Battle<'g> {
     /// window takes it to play ([`Battle::take_pickup`]).
     pickup: Option<u8>,
     /// The result window under Eagle Eye's boxes (E17 M6 T5c, recorded: `eagle-eye`), its OK up:
-    /// when it opened, and its clip's time frozen at the first box's first draw.
+    /// when it opened, and its clip's time frozen at its close ([`Battle::window_closed_at`]) or
+    /// else at the first box's first draw.
     window_behind: Option<(MessageBox, u32, Option<u32>)>,
+    /// The boxes opened so far (E17 M6 T5c, the reviewer): two boxes alike in a row (Eagle Eye's
+    /// eight and seven pictures, one size) are two openings, each emptying the input queue.
+    opened: u32,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
     /// The battle's end as the record shows it (`Battle::end_seen`), replayed once (E17 M5 T8b2,
@@ -956,6 +960,7 @@ impl<'g> Battle<'g> {
             eagle_eye: Vec::new(),
             pickup: None,
             window_behind: None,
+            opened: 0,
             behind: h3_view::result::Behind::default(),
             end_seen: std::cell::OnceCell::new(),
             survivors: std::cell::OnceCell::new(),
@@ -2427,6 +2432,7 @@ impl<'g> Battle<'g> {
         })?;
         let observation = &self.turned.last()?.observation;
         let window = self.hero_window(observation, side)?;
+        self.opened = self.opened.wrapping_add(1);
         self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
         Some(side)
     }
@@ -2942,6 +2948,7 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
+        self.opened = self.opened.wrapping_add(1);
         self.message = Some((h3_view::message::Open::new(message), at, asked));
         true
     }
@@ -3034,6 +3041,7 @@ impl<'g> Battle<'g> {
                 self.window_behind = Some((window, opened, None));
             }
             let (next, pickup) = self.eagle_eye.remove(0);
+            self.opened = self.opened.wrapping_add(1);
             self.message = Some((h3_view::message::Open::new(next), at, Asked::EagleEye));
             self.pickup = Some(pickup);
             return MessageDid::Changed;
@@ -3102,6 +3110,7 @@ impl<'g> Battle<'g> {
         // Eagle Eye's message after it (E17 M6 T5c), the pictures' size once their DEF is read.
         let def = self.ground.layout.message.spell_pictures.clone();
         let told = crate::results::eagle_eye(&sources, opening, &outcome, (&def, [0, 0]));
+        self.opened = self.opened.wrapping_add(1);
         self.message = Some((h3_view::message::Open::new(window), ended, Asked::Result));
         self.behind = h3_view::result::Behind::default();
         self.eagle_eye = self.eagle_eye_boxes(told, player);
@@ -3194,6 +3203,20 @@ impl<'g> Battle<'g> {
 
     /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
     /// unattended run's press).
+    /// The result window under Eagle Eye's boxes stands from `at`, its close's millisecond (E17
+    /// M6 T5c, recorded: `eagle-eye-one`; the reviewer), unless a time was set already; the
+    /// stills and sequences without the window's clock take the first box's first draw.
+    pub fn window_closed_at(&mut self, at: u32) {
+        if let Some((_, opened, since @ None)) = self.window_behind.as_mut() {
+            *since = Some(at.saturating_sub(*opened));
+        }
+    }
+
+    /// How many boxes have opened so far (E17 M6 T5c): the window empties its input queue at each.
+    pub const fn boxes_opened(&self) -> u32 {
+        self.opened
+    }
+
     pub fn message_button(&self, id: u16) -> Option<[i32; 2]> {
         let (open, _, _) = self.message.as_ref()?;
         let dialog = &open.message.dialog;
@@ -3539,8 +3562,9 @@ impl<'g> Battle<'g> {
                     .map(Draw::Dialog),
             );
         }
-        // The window under Eagle Eye's boxes (E17 M6 T5c), its clip held at the first box's first
-        // draw (as the sequences': its close's millisecond, `eagle-eye-one`).
+        // The window under Eagle Eye's boxes (E17 M6 T5c), its clip held at its close's
+        // millisecond (`window_closed_at`, as the sequences', `eagle-eye-one`), else at the first
+        // box's first draw.
         let eagle_eye = matches!(self.message, Some((_, _, Asked::EagleEye)));
         let behind = match self.window_behind.as_mut() {
             Some((window, opened, since)) if eagle_eye => {

@@ -5340,7 +5340,7 @@ impl Player<'_> {
         self.iterate(
             None,
             (0, 0, 0, 2),
-            (&reactions, false),
+            (&reactions, false, true),
             [STANDING, STRUCK],
             riding.as_ref(),
         );
@@ -5751,7 +5751,7 @@ impl Player<'_> {
         self.iterate(
             Some((attacker, &live)),
             (group, 0, frames, frames),
-            (&reactions, true),
+            (&reactions, true, false),
             [layer, STRUCK],
             None,
         );
@@ -5779,7 +5779,7 @@ impl Player<'_> {
     /// taken (E17 M2 T5c, the reviewer).
     fn react_alone(&mut self, hit: &[(u8, u32)], layers: [u8; 2]) {
         let reactions = self.reactions(hit);
-        self.iterate(None, (0, 0, 0, 2), (&reactions, false), layers, None);
+        self.iterate(None, (0, 0, 0, 2), (&reactions, false, false), layers, None);
     }
 
     /// A shot of `shooter` at the stacks `hit` (`shot_animation` 0x43F2C0, §7.4); returns when
@@ -5811,7 +5811,7 @@ impl Player<'_> {
             self.iterate(
                 Some((shooter, &live)),
                 (group, n, 0, 2),
-                (&reactions, false),
+                (&reactions, false, false),
                 [STANDING, STRUCK],
                 None,
             );
@@ -5838,7 +5838,7 @@ impl Player<'_> {
         self.iterate(
             Some((shooter, &live)),
             (group, climax, n - climax, 2),
-            (&reactions, false),
+            (&reactions, false, false),
             [STANDING, STRUCK],
             None,
         );
@@ -5960,7 +5960,8 @@ impl Player<'_> {
 
     /// The strike's iterations (`strike_animation` 0x468990): the striker (its id and how the
     /// timeline follows it; none: one it does not know) plays `frames` of `group` from frame
-    /// `from` and counts `counted` for the loop's length, each reaction ends with the loop; the
+    /// `from` and counts `counted` for the loop's length, each reaction ends with the loop (with
+    /// `together`, no striker in the original's loop: each starts with it); the
     /// striker and the struck stacks drawn in `layers`. Then everyone stands in standing's
     /// layer, a dead stack on its death's last frame among the corpses, shown with the next
     /// frame (*provisional*: the executable moves it to the corpses' list when its death ends).
@@ -5968,7 +5969,7 @@ impl Player<'_> {
         &mut self,
         striker: Option<(u8, &Live)>,
         (group, from, frames, counted): (u8, u32, u32, u32),
-        (reactions, melee): (&[Reaction], bool),
+        (reactions, melee, together): (&[Reaction], bool, bool),
         [striking, struck]: [u8; 2],
         riding: Option<&Riding>,
     ) {
@@ -6028,11 +6029,13 @@ impl Player<'_> {
                 ));
             }
             // It reacts once the iterations left are no more than its frames; without a striker
-            // every reaction starts at once, its first two frames at the first iteration (E17 M6
-            // T5c, `eagle-eye`: Chain Lightning's death of 7 frames beside a defend of 13, both
-            // from the loop's start; a lone reaction the same either way).
+            // in the original's loop (`together`: a spell's) every reaction starts at once, its
+            // first two frames at the first iteration (E17 M6 T5c, `eagle-eye`: Chain Lightning's
+            // death of 7 frames beside a defend of 13, both from the loop's start; a lone
+            // reaction the same either way). A striker the timeline does not know
+            // (`react_alone`) is one in the original's loop: its reactions end together.
             let lead = |r: &Reaction| {
-                if striker.is_none() {
+                if together {
                     (counted + r.frames).saturating_sub(1).max(counted + 1)
                 } else {
                     reacting

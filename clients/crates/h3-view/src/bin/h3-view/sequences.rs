@@ -210,21 +210,23 @@ fn held(videos: &crate::videos::Videos, tune: h3_view::sound::Tune) -> bool {
 
 /// The times the result window and then each box of Eagle Eye's message after it closed (E17 M6
 /// T5c): the `answers` from the battle's `end` on, but those that answered one of Auto Combat's
-/// questions open over `spans` (a leaving given at the end's millisecond).
-fn closes(answers: &[u32], spans: &[(u32, u32)], end: Option<u32>) -> Vec<u32> {
+/// questions open over `spans` (a leaving given at the end's millisecond); a `key:Escape` closes
+/// the window (its OK's key) but no box of Eagle Eye's (style 1's OK takes Enter alone,
+/// `message_box_build` 0x4F6990; the reviewer).
+fn closes(answers: &[(u32, bool)], spans: &[(u32, u32)], end: Option<u32>) -> Vec<u32> {
     let Some(end) = end else {
         return Vec::new();
     };
-    answers
-        .iter()
-        .copied()
-        .filter(|&t| {
-            t >= end
-                && !spans
-                    .iter()
-                    .any(|&(from, until)| (from..=until).contains(&t))
-        })
-        .collect()
+    let mut out: Vec<u32> = Vec::new();
+    for &(t, escape) in answers {
+        let asked = spans
+            .iter()
+            .any(|&(from, until)| (from..=until).contains(&t));
+        if t >= end && !asked && !(escape && !out.is_empty()) {
+            out.push(t);
+        }
+    }
+    out
 }
 
 /// The boxes Auto Combat's questions showed (E17 M6 T5b2a): over each span of `spans`, the
@@ -609,8 +611,9 @@ fn sequences(options: &Options) -> Result<usize, String> {
         // Which turns play themselves under Auto Combat by them (E17 M6 T5b2b).
         let plays = pointer::plays_itself(&record, &timeline, (&tables, boxes));
         // From the battle's end on a box is open too: the result window, then Eagle Eye's message
-        // (E17 M6 T5c), each closed by a `key:Return`, a `key:Escape` or a `click:` (trusted to
-        // be on its OK, *provisional*), which then gives nothing to the battle.
+        // (E17 M6 T5c), the window closed by a `key:Return`, a `key:Escape` or a `click:`, a box
+        // by a `key:Return` or a `click:` (a click trusted to be on its OK, *provisional*; [`closes`]),
+        // which then gives nothing to the battle.
         let open: Vec<(u32, u32)> = (spans.iter().copied())
             .chain(timeline.ended.map(|(end, _)| (end, u32::MAX)))
             .collect();
@@ -628,6 +631,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
         let closes = closes(&answers, &spans, timeline.ended.map(|(end, _)| end));
+        let answers: Vec<u32> = answers.iter().map(|&(t, _)| t).collect();
         let asked =
             asked_boxes(&spans, &holds, &answers).map_err(|e| format!("{}: {e}", sequence.id))?;
         // The spells the actions aim, each turn's aims of them (E17 M5 T3b).
@@ -1587,12 +1591,22 @@ mod tests {
         );
         assert!(asked_boxes(&spans, &holds, &[100]).is_err());
         // E17 M6 T5c: the answers from the battle's end on close the result window and then
-        // Eagle Eye's boxes, but a question's answer given at the end's millisecond.
+        // Eagle Eye's boxes, but a question's answer given at the end's millisecond; Escape
+        // closes the window, not a box after it (the reviewer).
+        let plain = |ts: &[u32]| ts.iter().map(|&t| (t, false)).collect::<Vec<_>>();
         assert_eq!(
-            closes(&[100, 900, 1200, 1500], &spans, Some(900)),
+            closes(&plain(&[100, 900, 1200, 1500]), &spans, Some(900)),
             [1200, 1500]
         );
-        assert!(closes(&[100, 1200], &spans, None).is_empty());
+        assert_eq!(
+            closes(
+                &[(1200, true), (1300, true), (1500, false)],
+                &spans,
+                Some(900)
+            ),
+            [1200, 1500]
+        );
+        assert!(closes(&plain(&[100, 1200]), &spans, None).is_empty());
     }
 
     fn holds_of(file: &File) -> Result<Vec<(usize, u32)>, String> {

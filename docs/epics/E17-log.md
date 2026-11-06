@@ -5581,3 +5581,11 @@ message the reading found as T5e.
   lane's inbox).
 - **Asked:** CLT-Q65 (the unlearned picks named; fix once a whole game tells the viewer what was
   learned), CLT-Q66 (the window under the boxes; copy recommended, built so).
+- **Reviewed** (a fresh reviewer; §12.21, "Reviewed"): two medium findings fixed (a striker the
+  timeline does not know got a spell's reactions, `iterate`'s `together`; a sequence's Escape
+  closed Eagle Eye's boxes, which take Enter alone), three low fixed (the window's clip under the
+  boxes at the close's millisecond, `Battle::window_closed_at`; two boxes alike in a row empty
+  the input queue, `Battle::boxes_opened`; a test that did not prove a click advancing the
+  boxes). The capture agent's `eagle_eye_parts` factored for clippy.
+- **Gates:** `check.sh` (100 % coverage), `h3drive.py drawn`, `h3-view sequences` (85 as
+  recorded), `check-docs`, `check-lane`, the scoped verify with original data.

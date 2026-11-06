@@ -1899,16 +1899,18 @@ fn stats_did(battle: &mut Battle<'_>, inputs: &mut Vec<Input>, at: u32, did: Sta
     did != StatsDid::Nothing
 }
 
-fn box_shown(battle: &Battle<'_>) -> Option<[Option<[i32; 2]>; 3]> {
+fn box_shown(battle: &Battle<'_>) -> Option<([Option<[i32; 2]>; 3], u32)> {
     use h3_view::message::{NO, OK, YES};
     // The combat options dialog's opening flushes the input queue too (E17 M6 T4a).
     let options = battle
         .options_open()
         .then_some([None, None, Some([-1, -1])]);
+    // Each opening a box of its own, though alike (E17 M6 T5c, the reviewer: Eagle Eye's).
     battle
         .message_open()
         .then(|| [OK, YES, NO].map(|id| battle.message_button(id)))
         .or(options)
+        .map(|buttons| (buttons, battle.boxes_opened()))
 }
 
 /// What the combat options dialog `did` (E17 M6 T4a, design §12.12): its press samples played
@@ -2062,6 +2064,11 @@ fn message_did(
     changed: &mut bool,
 ) -> Result<bool, String> {
     *changed |= did != MessageDid::Nothing;
+    // The result window closed into Eagle Eye's boxes (E17 M6 T5c, the reviewer): its clip
+    // stands at the close's millisecond, not at the first box's draw.
+    if did == MessageDid::Changed {
+        battle.window_closed_at(at);
+    }
     match did {
         MessageDid::Give(command) => give(battle, inputs, at, command),
         // Auto Combat's question or offer answered (E17 M6 T5b2a): the computer's next.

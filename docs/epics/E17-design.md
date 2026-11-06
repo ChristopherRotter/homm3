@@ -7217,8 +7217,8 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   `Still::darkened`) and the sequences' (`Interface::closes` and `eagle_eye`, `sequences::closes`:
   a `key:Return`, `key:Escape` or `click:` from the battle's end on). *Provisional:* N from the C
   library's `rand()` sequence at the viewer's seed (the battle's generator is the engine's, not
-  shared); a sequence's close by any of those actions (a click trusted to be on the OK, Escape
-  counted on Eagle Eye's box too, which has no Cancel); after the last box the darkened screen
+  shared); a sequence's box closed by a `key:Return` or a click (trusted to be on the OK; a
+  `key:Escape` closes the window alone, style 1's OK taking Enter, the reviewer: `sequences::closes`); after the last box the darkened screen
   alone (the original's adventure map is the map client's); a pick the tables lack left out. A
   server's seat shows none: `results::served` leaves the heroes' outcomes empty, the wire telling
   the picks only in a seat's own snapshot (`OwnHero::learned`) and no event a pick (the
@@ -7239,8 +7239,18 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   screen: its OK up, its clip still at its close's millisecond, `-one`: a decode in that
   millisecond shown first; the cursor as before), CLT-Q66: `results::released`, the stills'
   `Still::window`, the sequences' `darkened` with the window, `Battle::window_behind`; (2)
-  without a striker every reaction starts at the loop's first iteration (`strike_animation`,
+  without a striker in the loop (a spell's; one the timeline does not know keeps the striker's
+  rule, `react_alone`, the reviewer: `iterate`'s `together`) every reaction starts at the loop's
+  first iteration (`strike_animation`,
   Chain Lightning's death of 7 frames beside a defend of 13: both from it, the death held; the
   viewer had ended each with the longest), `anim`'s `iterate`; (3) a magic's last frame held
   past its animation is one timeline line (the harness lists changes). Not recorded: two or more
   boxes (nine picks), the pickup sound (no `sound` run).
+- **Reviewed** (M6 T5c, a fresh reviewer; fixed): a striker the timeline does not know had its
+  reactions start together as a spell's (`iterate`'s `together`, the spells' callers alone); a
+  sequence's `key:Escape` closed Eagle Eye's boxes (`pointer::Answers` with the key,
+  `sequences::closes`: the window's alone); the window's clip under the boxes stood at the first
+  box's draw, not the close's millisecond (`Battle::window_closed_at`, the window's
+  `message_did`); two boxes alike in a row did not empty the input queue at the second
+  (`Battle::boxes_opened` in `box_shown`); a stills test that did not show the click advancing
+  the boxes.
