@@ -147,6 +147,24 @@ pub enum Logged {
         /// Its number before the strike's kills.
         target_count: u32,
     },
+    /// A stack regenerates as its pick starts its turn (`stack_turn_start` 0x44707B; E17 M6
+    /// T5d1): after its sound, before its animation.
+    Regenerated {
+        /// The stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+    },
+    /// A Wraith drains a hero's mana as it is activated (`stack_activation` 0x4657AD; E17 M6
+    /// T5d1): after its sound, before its animation.
+    ManaDrained {
+        /// The draining stack.
+        stack: u8,
+        /// Its number.
+        count: u32,
+        /// The side whose hero it drains (0 the attacker's).
+        side: u8,
+    },
     /// Death Stare (`striker_effects` 0x440FD3; E17 M3 T7b-2b-3): before its animation.
     DeathStare {
         /// The Gorgons.
@@ -512,6 +530,25 @@ pub fn word(
                 "battle.log.poisoned",
                 n.stack(count),
                 Args::new(),
+            ))
+        }
+        Logged::Regenerated { stack, count } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(by_count(
+                catalogue,
+                "battle.log.regenerated",
+                n.stack(count),
+                Args::new(),
+            ))
+        }
+        Logged::ManaDrained { stack, count, side } => {
+            let (n, count) = named(*stack, *count)?;
+            let hero = catalogue.text(&key(Name::Hero(*side))?, &Args::new());
+            Some(by_count(
+                catalogue,
+                "battle.log.mana-drained",
+                n.stack(count),
+                Args::new().text("hero", &hero),
             ))
         }
         Logged::Petrified { stack, count } => {

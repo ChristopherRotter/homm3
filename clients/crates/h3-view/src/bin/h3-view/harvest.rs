@@ -156,6 +156,8 @@ const ROLL_SOUNDS: [u32; 4] = [0x66_FF6C, 0x66_FF7C, 0x66_FF88, 0x66_0A20];
 /// The sounds of the striker's effects (E17 M3 T7b-2b-3): Life Drain's (`striker_effects`
 /// 0x440E68, `DrainLif.wav`) and the Thunderbird's bolt's (0x4412FA, `LightBlt.wav`).
 const STRIKE_SOUNDS: [u32; 2] = [0x66_0A40, 0x66_0A30];
+/// A Wraith's mana drain's sound (E17 M6 T5d1; `stack_activation` 0x465626, `ManaDrai.wav`).
+const MANA_DRAIN_SOUND: u32 = 0x66_FF94;
 /// A wall shot's explosions and sounds (E17 M4 T2b; `wall_shot_animate` 0x4462D5, 0x44618B):
 /// `SGEXPL.DEF`, `CSGRCK.DEF`, `WallHit.82m`, `WallMiss.82m`.
 const WALL_SHOT: [u32; 4] = [0x66_0A60, 0x66_0A6C, 0x66_0A78, 0x66_0A84];
@@ -318,6 +320,7 @@ struct Harvest {
     /// Good morale's, bad morale's, Fear's and good luck's sounds.
     roll_sounds: [String; 4],
     strike_sounds: [String; 2],
+    mana_drain_sound: String,
     /// A wall shot's explosions (a hit's, a miss's) and sounds (E17 M4 T2b).
     wall_shot: [String; 4],
     /// The drawbridge's and a mine's blast's sounds (E17 M4 T2c-1).
@@ -570,6 +573,7 @@ fn read_harvest(
     ];
     let [drain, thunderbolt] = STRIKE_SOUNDS;
     let strike_sounds = [stem(&string(drain)?), stem(&string(thunderbolt)?)];
+    let mana_drain_sound = stem(&string(MANA_DRAIN_SOUND)?);
     let [hit_def, miss_def, hit_sound, miss_sound] = WALL_SHOT;
     let wall_shot = [
         string(hit_def)?,
@@ -704,6 +708,7 @@ fn read_harvest(
         resist_sound,
         roll_sounds,
         strike_sounds,
+        mana_drain_sound,
         wall_shot,
         siege_sounds,
         pickup_sounds,
@@ -965,6 +970,7 @@ fn write_table(
             plain(drain)?,
             plain(thunderbolt)?
         );
+        let _ = writeln!(t, "mana_drain_sound = \"{}\"", plain(&h.mana_drain_sound)?);
         let [hit_def, miss_def, hit_sound, miss_sound] = &h.wall_shot;
         let _ = writeln!(
             t,

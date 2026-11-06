@@ -1007,6 +1007,9 @@ pub enum Sound {
     /// The Thunderbird's bolt, cued on the stack struck (`thunderbolt_sound`, `play_sound_file`
     /// from 0x4412FF).
     Thunderbolt,
+    /// A Wraith's mana drain, cued on the draining stack (`mana_drain_sound`, category 2:
+    /// `play_sound_file` from `stack_activation` 0x46562B; E17 M6 T5d1).
+    ManaDrain,
     /// The sound a spell's handler plays with each object it places (its handle: the asset
     /// tables' spell `object_sound`, `play_sample` 0x5A040A, Land Mine's 0x5A061A; E17 M3
     /// T7c-2), cued on no stack (stack 0).
@@ -2664,6 +2667,22 @@ pub fn freezes(after: &[Event], stack: u8) -> bool {
         })
 }
 
+/// Whether `stack`'s pick passes it over (a blind, petrified or paralysed stack: `TurnPassed`,
+/// `next_stack_to_act` 0x465222), from the events `after` its `TurnStarted`: its turn's start
+/// effects pass first, as for [`freezes`].
+#[must_use]
+pub fn passes(after: &[Event], stack: u8) -> bool {
+    after
+        .iter()
+        .find(|e| {
+            !matches!(
+                e,
+                Event::Regenerated { .. } | Event::EffectApplied { .. } | Event::EffectEnded { .. }
+            )
+        })
+        .is_some_and(|e| matches!(*e, Event::TurnPassed { stack: s } if s == stack))
+}
+
 /// Whether `event` is what a hit ends before the strike's next hit (the engine's `strike` and
 /// `effects::damaged`): an effect the damage ends, a clone gone with its original.
 fn damage_ended(event: &Event) -> bool {
@@ -2833,7 +2852,9 @@ struct Player<'a> {
     /// The stack the battle outlines between actions (manager +0x132C8; E17 M3 T7b-2b-2b): the
     /// last turn's, which a move's, strike's or shot's handler clears while it plays and sets
     /// again at its end (0x445996, 0x4459ED; a Defend leaves it); none from a round's start
-    /// (0x4761EE). Shown by the redraws of good morale and of a freeze before the next turn.
+    /// (0x4761EE), and a stack the pick passes over or freezes never sets it. Shown by the redraws
+    /// of good morale, of a freeze, of a regeneration and a mana drain before the next turn, and
+    /// of Poison's tenths before a round's start clears it (E17 M6 T5d1).
     acting: Option<u8>,
     /// The spells the melee strike playing leaves pending, cast at its animation's end
     /// ([`PENDING`]; E17 M3 T7b-2b-3).
@@ -3531,7 +3552,7 @@ impl Player<'_> {
                     ..
                 } => self.moat(stack, (damage.0, kills)),
                 Event::RoundStarted { .. } => {
-                    self.acting = None;
+                    let acted = self.acting.take();
                     self.happenings.push(Happening::Round);
                     // The objects whose last round passed go first, each with its vanish
                     // animation, then the round's line (`round_start` 0x476152 to 0x4761E9; E17
@@ -3543,6 +3564,13 @@ impl Player<'_> {
                             matches!(e, Event::TurnStarted { .. } | Event::RoundStarted { .. })
                         })
                         .unwrap_or(start.len());
+                    // Before them every stack's round start, which takes Poison's next tenth
+                    // (`round_start` 0x47610D; E17 M6 T5d1).
+                    for e in &start[..ends] {
+                        if let Event::Poisoned { stack, .. } = *e {
+                            self.poison_tenth(stack, acted);
+                        }
+                    }
                     // The clones whose rounds ran out first, in one dissolve (0x47614D; E17 M5
                     // T5a), after any gone with an original no death of the action played.
                     self.remove_gone(&[]);
@@ -3556,6 +3584,9 @@ impl Player<'_> {
                     if !self.tactics {
                         self.log.push((self.clock.now, Logged::Round));
                     }
+                    // Its end clears the outline (0x4761EE; E17 M6 T5d1, the reviewer): the stack
+                    // that acted last, outlined through the tenths, no longer.
+                    self.outlined.push((self.clock.now, None));
                 }
                 // An object gone outside a round's start (a spell's removal; E17 M3 T7c-2,
                 // *provisional*: not recorded).
@@ -3596,16 +3627,33 @@ impl Player<'_> {
                     // changed show (E17 M3 T7b-2a, `resist` at 2 900: Slow's end).
                     self.show_tints(self.clock.now);
                     self.defends(stack, false);
+                    // Its pick first runs its turn's start, which regenerates it, then its
+                    // checks, then its activation, which drains a hero's mana: both before the
+                    // turn starts (`next_stack_to_act` 0x46521D, 0x465312; E17 M6 T5d1).
+                    if let Some(&Event::Regenerated { stack: s, .. }) = events.get(i)
+                        && s == stack
+                    {
+                        i += 1;
+                        self.regenerated(stack);
+                    }
                     // A stack its pick freezes (bad morale, Fear) never becomes the active one:
                     // the pick goes on to the next (`next_stack_to_act` 0x465283; E17 M3
                     // T7b-2b-2b).
                     let frozen = freezes(&events[i..], stack);
+                    if let Some(side) = drain_of(&events[i..], stack) {
+                        self.mana_drained(stack, side);
+                    }
                     if !frozen {
                         self.turns.push((self.clock.now, stack));
                         let controller = self.controller(stack);
                         self.controllers.push(controller);
                         self.log.push((self.clock.now, Logged::Turn(stack)));
-                        self.acting = Some(stack);
+                        // One the pick passes over (blind, petrified, paralysed: 0x465222)
+                        // never becomes the active one either: the last stays outlined (E17 M6
+                        // T5d1, the reviewer).
+                        if !passes(&events[i..], stack) {
+                            self.acting = Some(stack);
+                        }
                     }
                     // A war machine's turn the command plays out (another turn follows in it):
                     // the battle loop ticks once as it acts, as for the computer's, which
@@ -6306,6 +6354,7 @@ mod entered;
 mod playhead;
 mod raise;
 mod siege;
+mod starts;
 
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
 pub use created::{
@@ -6319,6 +6368,7 @@ pub use siege::{
     Blast, BlastKey, BridgeKey, Burst, DRAWBRIDGE_RECT, Landing, QuakeKey, SHAKE, SHAKES,
     SiegeStage, TARGET_POINTS, TurretKey, TurretPose, WallKey, shake_offsets, turret_record,
 };
+pub use starts::{MANA_DRAIN, POISON_TENTH, REGENERATION, drain_of};
 
 #[cfg(test)]
 pub(crate) mod tests;

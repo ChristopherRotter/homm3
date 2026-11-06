@@ -22,9 +22,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   design §12.18); T5b2 cut in two by the user (2026-11-05): T5b2a done (#745, #751, design
   §12.19); T5b2b done (#757, design §12.20); **T5c done** (kept whole by the user, design
   §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
-  asked; #762: check it first; the user added **T5e**, the captured artifacts' message).
-  **Next: T5d** (the effects, their waits, Bloodlust's glow; QUEUE), T5e, T6, T7; then M7 ranked
-  play and the server browser.
+  asked; #762 merged; the user added **T5e**, the captured artifacts' message). T5d cut in two
+  by the user (2026-11-06): **T5d1 done** (design §12.22: the Wraiths' mana drain,
+  regeneration, Poison's tenth; `starts` and `starts-sound` exact in the three; #771: check
+  it first). **Next: T5d2** (Death Blow, Ice Bolt's explosion, the Familiars'
+  channel, the Ogre Magi's Bloodlust glow; QUEUE), T5e, T6, T7; then M7 ranked play and the
+  server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -62,6 +65,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-06, E17 M6 T5d1 (done; `client/e17-m6-t5d1`, #771).**
+  The user cut T5d in two. The original data staged by the file tool (the PC's shell did not
+  start). Read, built (`anim/starts.rs`), recorded by a capture agent (`starts`,
+  `starts-sound`: the three effects exact; `motion::magic` now loads their animations), reviewed
+  (a passed stack's outline, the round start's clear fixed). Record: `E17-log.md`.
 - **2026-11-06, E17 M6 T5c (done; #762).**
   Kept whole by the user, who queued the captured artifacts' message as T5e. The original data
   staged by the file tool (the PC's shell did not start; the PC went offline later, nothing
@@ -77,14 +85,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   computer's opening frame, the answer's tick, the outline behind a later box, a late switch, the
   button), a fresh reviewer (two defects and a parser risk fixed). CLT-Q64 asked. Gates:
   `check.sh`, `h3-view sequences` 83 as recorded, `check-docs`, the scoped verify.
-- **2026-11-05/06, E17 M6 T5b2a (done; its PR and #745: check them first).**
-  The original data staged (57 files, by the file tool: the device shell did not start); the
-  first baseline lost a test binary mid-run, its re-run passed. The user cut T5b2 in two (T5b2a
-  the question, T5b2b CLT-Q61's stop) and consented to the engine part as a cross-lane PR (#745:
-  `Decision::human`, the original's retreat test for a human's side without its Easy and Normal
-  gate, in the hero's cast too; `Decision::leaving`; BAT-AI-026; battle scoped verify passed,
-  CI green). A reading (§12.19), a builder, a capture agent (three sequences, timelines as
-  recorded, frames exact but the result window's clip, CLT-Q30's; Orrin's map experience levels
-  him up in the original: the harness writes it into memory instead), a fresh reviewer (a
-  stuck question fixed; CLT-Q63 asked: the question at an automatic Ballista's turn).
-  `check.sh`. The sandbox's server stopped once and the VM restarted four times: nothing lost.

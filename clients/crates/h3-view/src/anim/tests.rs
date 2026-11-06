@@ -2921,6 +2921,7 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::Poisoned { .. }
             | Logged::Petrified { .. }
             | Logged::AcidBreath { .. } => "striker",
+            Logged::Regenerated { .. } | Logged::ManaDrained { .. } => "start",
             Logged::Turret { .. } | Logged::Moat { .. } => "siege",
         })
         .collect();
@@ -5735,5 +5736,6 @@ pub(crate) mod playhead;
 mod raised;
 mod reviewed;
 mod siege;
+mod starts;
 mod waits;
 mod walk;

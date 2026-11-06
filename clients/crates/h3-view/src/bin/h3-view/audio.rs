@@ -533,13 +533,15 @@ impl Player {
                 | Sound::Fear
                 | Sound::Drain
                 | Sound::Thunderbolt
+                | Sound::ManaDrain
                 | Sound::SpellFile(_)
                 | Sound::Drawbridge
                 | Sound::Mine
                 | Sound::TurretShot
         ) {
             // Category 2, the start sound's (`play_sound_file` 0x59A470; E17 M3 T3b, T7b-1,
-            // T7b-2b-2b, T7b-2b-3, M4 T2c-1; a turret's shot, M4 T3a, R2-1).
+            // T7b-2b-2b, T7b-2b-3, M4 T2c-1; a turret's shot, M4 T3a, R2-1; the mana drain, M6
+            // T5d1).
             self.out.clear(self.start_stream);
             self.out
                 .set_format(self.start_stream, clip.rate, clip.channels);

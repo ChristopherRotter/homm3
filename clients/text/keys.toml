@@ -233,6 +233,28 @@ original = [
     { form = "other", at = "GENRLTXT:676", printf = ["hero", "count", "creature"] },
 ]
 
+# A stack's regeneration as its pick starts its turn (`stack_turn_start` 0x446F50 to 0x44707B, E17
+# M6 T5d1): the stack's name and pronoun by its number (the singular row for exactly 1).
+[[key]]
+id = "battle.log.regenerated"
+args = { creature = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:371", printf = ["creature"] },
+    { form = "other", at = "GENRLTXT:372", printf = ["creature"] },
+]
+
+# A Wraith's mana drain as it is activated (`stack_activation` 0x465645 to 0x4657AD, E17 M6 T5d1):
+# the stack's name and verb by its number, then the drained hero's name (+0x23).
+[[key]]
+id = "battle.log.mana-drained"
+args = { creature = "text", hero = "text" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:374", printf = ["creature", "hero"] },
+    { form = "other", at = "GENRLTXT:375", printf = ["creature", "hero"] },
+]
+
 # Poison taking hold after a strike (`battle_log_cast` 0x5A8EFC, a creature's cast of Poison; E17 M3
 # T7b-2b-3): the stack's name, verb and pronoun by its number.
 [[key]]

@@ -45,6 +45,10 @@ const PACK: &str = r#"{
         "petrified_other": "{{creature}} are stone.",
         "raised_one": "{{count}} {{creature}} rises.",
         "raised_other": "{{count}} {{creature}} rise.",
+        "regenerated_one": "{{creature}} heals itself.",
+        "regenerated_other": "{{creature}} heal themselves.",
+        "mana-drained_one": "{{creature}} drains {{hero}}.",
+        "mana-drained_other": "{{creature}} drain {{hero}}.",
         "summoned_one": "{{hero}} calls {{count}} {{creature}}.",
         "summoned_other": "{{hero}} calls {{count}} {{creature}}.",
         "acid-breath": "Acid: {{creature}} -{{defense}}.",
@@ -698,6 +702,25 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
         lowered: 3,
     };
     assert_eq!(worded(&acid).as_deref(), Some("Acid: Ants -3."));
+    // A turn's start (E17 M6 T5d1): regeneration by the stack's number, the mana drain naming the
+    // drained side's hero; nothing for a hero the record does not name.
+    let regenerated = |count| Logged::Regenerated { stack: 2, count };
+    assert_eq!(
+        worded(&regenerated(1)).as_deref(),
+        Some("Bee heals itself.")
+    );
+    assert_eq!(
+        worded(&regenerated(4)).as_deref(),
+        Some("Bees heal themselves.")
+    );
+    let drained = |count, side| Logged::ManaDrained {
+        stack: 1,
+        count,
+        side,
+    };
+    assert_eq!(worded(&drained(1, 0)).as_deref(), Some("Ant drains Mage."));
+    assert_eq!(worded(&drained(5, 0)).as_deref(), Some("Ants drain Mage."));
+    assert_eq!(worded(&drained(5, 1)), None);
     // A stack the record does not name writes nothing.
     for unnamed in [
         Logged::Drain {
@@ -732,6 +755,12 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
         Logged::Thunderbolt { stack: 9, count: 1 },
         Logged::Poisoned { stack: 9, count: 1 },
         Logged::Petrified { stack: 9, count: 1 },
+        Logged::Regenerated { stack: 9, count: 1 },
+        Logged::ManaDrained {
+            stack: 9,
+            count: 1,
+            side: 0,
+        },
         Logged::AcidBreath {
             stack: 9,
             count: 1,

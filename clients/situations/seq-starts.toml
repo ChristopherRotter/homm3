@@ -1,0 +1,55 @@
+# E17 M6 T5d1: the effects of a turn's and a round's start (design §12.22), in hot seat. Round 1:
+# the Wyvern Monarchs wait; the Wraiths' activation drains Orrin's mana (`ManaDrai.wav`, the line,
+# 77 over them), they defend; the Trolls walk toward the Monarchs; in the wait phase the Monarchs
+# strike them and Poison's roll falls (`roll:poison`). Round 2's start: Poison's tenth on the
+# Trolls (`Poison.wav`, its line, 67 with their hit), then the round's line; the Monarchs defend,
+# the Wraiths drain again and defend, the Trolls' pick regenerates them (`Regener.wav`, the line,
+# 79 over them). On grass at the capture set's tile, with its obstacles. Both heroes hold the 10
+# spell points their knowledge 1 gives the original's (the engine's hero starts with none: no
+# drain without them).
+
+[scenario]
+id = "sequence-starts"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base", "ab", "sod"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:wyvern_monarch"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:wraith"
+count = 10
+
+[[defender]]
+slot = 1
+creature = "ab:troll"
+count = 10
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10

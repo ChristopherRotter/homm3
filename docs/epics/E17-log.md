@@ -5589,3 +5589,38 @@ message the reading found as T5e.
   boxes). The capture agent's `eagle_eye_parts` factored for clippy.
 - **Gates:** `check.sh` (100 % coverage), `h3drive.py drawn`, `h3-view sequences` (85 as
   recorded), `check-docs`, `check-lane`, the scoped verify with original data.
+
+### M6 T5d1 — the effects of a turn's and a round's start (2026-11-06)
+
+On `client/e17-m6-t5d1`. The user cut T5d in two (2026-11-06): T5d1 these three effects, T5d2
+the strikes' and casts' (Death Blow, Ice Bolt's explosion, the Familiars' channel, the Ogre
+Magi's Bloodlust glow). The original data staged by the file tool (the PC's shell did not start).
+
+- **Read** (design §12.22): `stack_turn_start` 0x446E30 whole, `stack_activation`'s Wraith
+  branch (0x465548 on), `stack_round_start`'s tail, `next_stack_to_act`'s pick, `round_start`'s
+  calls and end. The pick runs the turn's start (regeneration), the checks, then the activation
+  (the drain), which ends by clearing the outline (0x465804); the round's start takes every
+  stack's Poison tenth before the clones, objects and its line, and clears the outline only at
+  its end (0x4761EE).
+- **Built** (`anim/starts.rs`): `regenerated` (`Regener.wav`, GENRLTXT 371/372, 79 without the
+  hit), `mana_drained` (the new `Sound::ManaDrain`, harvested `mana_drain_sound` from 0x66FF94,
+  GENRLTXT 374/375 with the drained hero's name, 77), `poison_tenth` (Poison's sound as a file,
+  its strike line, `strike_animation(67, 1)` with the hit), each waiting for its sound; the
+  `TurnStarted` arm draws them before the turn's markers (`drain_of`), the `RoundStarted` arm
+  each `Poisoned` before the clones. Keys `battle.log.regenerated`, `battle.log.mana-drained`.
+  *Provisional:* the drain before the opening spells' effects the viewer applies after it; the
+  round start's ended hues shown at the turn's start; several poisoned stacks by stack id.
+- **Recorded** (a capture agent; §12.22, "Recorded"): `starts` and `starts-sound` over the new
+  hot-seat `seq-starts.toml` (Orrin's Wyvern Monarchs against Crag Hack's Wraiths and Trolls;
+  both heroes given their 10 spell points, which the engine's hero lacks): both rounds' drains,
+  round 2's tenth and the Trolls' regeneration, every frame of the three exact; with sound each
+  drain waits for `ManaDrai.wav` past its animation. `motion::magic` had loaded none of the three
+  animations for a record (`start_effect` added). The other differences are the flight's
+  redraw artifacts and the landing's boxes, as earlier sequences'.
+- **Reviewed** (a fresh reviewer; §12.22, "Reviewed"): no blocking finding; a passed stack no
+  longer takes the outline (`passes`), the round start's end clears it (0x4761EE); §8.3's and the
+  log's stale notes; seven tests added. Provisional: the own turn's ended effects after the drain,
+  the battle's first activation's drain (CLT-Q20).
+- **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (87 as recorded), `h3drive.py
+  drawn` (257 the same), `h3-view gate`, `check-docs`, `check-lane`, `check-exe-map`, the scoped
+  verify with original data.
