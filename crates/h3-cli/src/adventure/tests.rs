@@ -33,6 +33,8 @@ const ECONOMY: &str = "fixtures/maps/e08-economy-36.h3m";
 const ECONOMY_XL: &str = "fixtures/maps/e08-economy-144.h3m";
 /// The dwellings XL map (E08 T96b2): increment 10's dwellings, random dwellings and camps.
 const DWELLINGS_XL: &str = "fixtures/maps/e08-dwellings-144.h3m";
+/// The town map (E09 T9a): eight towns of every kind the import reads.
+const TOWNS: &str = "fixtures/maps/e09-towns-36.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -1103,6 +1105,39 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     let sought = fork(true);
     assert_eq!((sought.operations, sought.dwellings), (3, 1), "{sought:?}");
     assert!(sought.steps < random.steps, "{sought:?}");
+    // E09 T9c: `siege` counts one step a game, the one that opens a siege: on the town map the
+    // heroes seek the other owners' towns and besiege one on day 1, a garrison alone or the
+    // Tower's visitor with the garrison merged (`siege-towns-36`); the duel has no towns, so its
+    // games end at the day limit without one.
+    let siege = |map: &str, games| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: map.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload: bench::Workload::Siege,
+                games,
+                days: 2,
+                seed: 1,
+                forks: 0,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                dwelling: false,
+                queries: 0,
+            },
+        )
+        .unwrap()
+    };
+    let towns = siege(TOWNS, 8);
+    assert_eq!((towns.operations, towns.visitors), (8, 3), "{towns:?}");
+    assert!(towns.steps >= 8, "{towns:?}");
+    let none = siege(DUEL, 1);
+    assert_eq!((none.operations, none.visitors), (0, 0), "{none:?}");
+    assert!(none.steps >= 4, "{none:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
@@ -1113,6 +1148,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         ("fork", "1"),
         ("manage", "1"),
         ("day-start", "1"),
+        ("siege", "1"),
     ] {
         cli::main(&args(&[
             "bench",
