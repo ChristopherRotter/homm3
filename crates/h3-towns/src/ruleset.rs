@@ -513,20 +513,19 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v3 (E09 T8c2; v2, T5b2a's, without Visions; v1, T5a1's first, without the
-    /// automatic set): version; the parameters (0 for none, else 1, the gold resource's handle,
-    /// the four hall amounts, the Grail's, the reveal radius, the level-2 dwelling chance, the
-    /// four garrison rows' chance and bounds, the demoted Capitol's key, Visions' factor and least
-    /// radius, its creatures as their number and handles); the records in faction order as their number and each
-    /// one's faction handle, moat (0 absent, 1 harmless, 2 damaging), natural obstacles, the silo
-    /// (length, each resource handle and amount), the creatures (length, each base handle and the
-    /// upgrade as an option), the buildings (length, each key, name, slot as an option, the
+    /// Encoding v3 (E09 T8c2; v2, T5b2a's, without Visions; v1, T5a1's first, without the automatic
+    /// set): version; the parameters (0 for none, else 1, the gold resource's handle, the four hall
+    /// amounts, the Grail's, the reveal radius, the level-2 dwelling chance, the four garrison
+    /// rows' chance and bounds, the demoted Capitol's key, Visions' factor and least radius, its
+    /// creatures as their number and handles); the records in faction order as their number and
+    /// each one's faction handle, moat (0 absent, 1 harmless, 2 damaging), natural obstacles, the
+    /// silo (length, each resource handle and amount), the creatures (length, each base handle and
+    /// the upgrade as an option), the buildings (length, each key, name, slot as an option, the
     /// superseded set's bits, the forbidden-with building as an option, the automatic set's bits
-    /// (`auto_with`), then the roles: hall and fort as options, tavern,
-    /// silo, grail, the dwelling as an option of its level and upgrade flag, morale, luck, the
-    /// escape tunnel, the defender's attack, defense, power and mana, the reveal as 0 none, 1 and
-    /// the radius, 2 all) and the demoted Capitol's building. The core's hash is not part of it:
-    /// replays record both.
+    /// (`auto_with`), then the roles: hall and fort as options, tavern, silo, grail, the dwelling
+    /// as an option of its level and upgrade flag, morale, luck, the escape tunnel, the defender's
+    /// attack, defense, power and mana, the reveal as 0 none, 1 and the radius, 2 all) and the
+    /// demoted Capitol's building. The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_RULESET_HASH_VERSION);
         hash_option(h, self.params.as_ref(), |h, p| {

@@ -1045,7 +1045,10 @@ beside the pointer:
    set by the cast 0x41C490), raised to 3 by a **Rogue** (creature 143) in its army;
    `hero_visions_reach` 0x4E5E10, on the town's level with the squared distance below the
    radius's square, the radius Visions' factor for the level (spell 2's record +0x34) times the
-   hero's power (1 to 99), at least 3. Else **the number of the viewer's towns with a Tavern**
+   hero's power (1 to 99), at least 3; measured from the town's **entrance** (its record's +0x5,
+   which `town_popup` packs at 0x416801), strictly below (E09 T8c2's reading; the other three
+   callers are the hero, garrison and monster popups, 0x416590, 0x416F80, 0x417150). Else
+   **the number of the viewer's towns with a Tavern**
    (`player_tavern_count` 0x4CCE30: the Tavern, 5, built, or for Castle the Brotherhood of the
    Sword, 22, that replaces it), **at most 2**. A neutral town is nobody's team.
 2. **At every level** (`town_quick_view_create` 0x530120): the background `townqvbk.pcx`

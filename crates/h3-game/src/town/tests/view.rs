@@ -7,7 +7,7 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{Pos, TileSetup};
+use h3_adventure::{Pos, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
@@ -394,6 +394,14 @@ fn a_heros_visions_creature_shows_another_teams_town_at_the_top_level_within_its
     assert!(sees((2, 1), 1, &[GOG]));
     // Without the creature no Visions, whatever the Power.
     assert!(!sees((0, 0), 9, &[IMP]));
+    // A neutral town too: nobody's team.
+    let mut neutral = seer(&rules, (2, 1), 1, &[GOG]);
+    neutral.map.objects[1].owner = None;
+    neutral.towns[1] = super::town(TownFaction::Fixed(faction(&rules, "t:town")));
+    neutral.towns[1].garrison = garrisoned(&rules).towns[1].garrison.clone();
+    let town = &towns_seen(&rules, &neutral, RED)[1];
+    assert_eq!((town.owner, town.garrison.level), (None, OWNER_LEVEL));
+    assert!(town.garrison.army.is_none() && town.owner_facts.is_some());
     // The least radius: 1 × Power 2 is below 4, which reaches 3 away but not 4.
     let rules = visions_rules(1, 4);
     let level = |at| {
@@ -403,6 +411,25 @@ fn a_heros_visions_creature_shows_another_teams_town_at_the_top_level_within_its
     };
     assert_eq!(level((1, 0)), OWNER_LEVEL);
     assert_eq!(level((0, 0)), 0);
+}
+
+// covers: TWN-VEW-003
+#[test]
+fn visions_measure_from_the_towns_entrance() {
+    let rules = visions_rules(3, 3);
+    // Blue's town as the original's: its anchor on (6, 0), blocked over three columns, its
+    // entrance two left of the anchor, on (4, 0).
+    let level = |at| {
+        let mut setup = seer(&rules, at, 1, &[GOG]);
+        let town = &mut setup.map.objects[1];
+        town.anchor = Pos::new(6, 0, 0);
+        town.blocked = TileMask::from_bits(0b111);
+        town.visitable = TileMask::from_bits(0b100);
+        towns_seen(&rules, &setup, RED)[1].garrison.level
+    };
+    // √5 from the entrance and √17 from the anchor; √2 from the anchor and √10 from the entrance.
+    assert_eq!(level((2, 1)), OWNER_LEVEL);
+    assert_eq!(level((7, 1)), 0);
 }
 
 // covers: TWN-VEW-003

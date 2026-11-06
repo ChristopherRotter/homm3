@@ -16,7 +16,8 @@ use h3_towns::{TownRuleset, Towns};
 use crate::{GameRuleset, GameState};
 
 /// The garrison's level of a viewer of the town's owner's team or whose hero sees it by Visions
-/// (TWN-VEW-003): the popup's top level, every fact of the town's but its garrison by slot.
+/// (TWN-VEW-003): the popup's top level, the stacks' counts and [`TownView::owner_facts`]; the
+/// garrison by slot ([`GarrisonView::army`]) is the owner's team's only.
 pub const OWNER_LEVEL: u8 = 3;
 
 /// The most a viewer's taverns give it (TWN-VEW-002): the original counts the viewer's towns with

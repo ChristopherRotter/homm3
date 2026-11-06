@@ -112,6 +112,20 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-06 (the town lane, E09 T8c1 and T8c2, `town/e09-t8c1` (#750, merged) and
+  `town/e09-t8c2`; **for the map's towns, when E24 draws them**): the observation carries them.
+  `h3_adventure::ObjectView::town: Option<TownId>` links a seen object to its town;
+  `h3_game::GameObservation::towns: Vec<TownView>` (in `TownId` order: the towns a tile of which
+  the viewer has explored; one only on the fringe keeps its object's `town` but has no view)
+  holds the hint's and the right-click popup's facts: `owner`, `faction`, `name` (none: the
+  client's default, `h3_towns::TownStatic::name`), `fort`, `capitol`, `garrison: GarrisonView
+  { level, stacks, army }` (the popup's level 0 to 3; the stacks packed in slot order, the word
+  from level 2, the count at 3, as `quick_view_army` 0x530990 places them; `army` by slot to the
+  owner's team only) and `owner_facts: Option<TownOwnerView { hall, income }>` at level 3 (the
+  owner's team, or a hero of the viewer's with a Rogue whose Visions reach the town's entrance,
+  T8c2). What each viewer sees: `docs/06-security.md`, "Towns"; the popup: survey
+  `E09-towns.md` §12.3; design note `E09-design.md` §12, §17.
+
 - 2026-11-04 (the client lane, E17 M6 T4b2a, branch `client/e17-m6-t4b`; the common crate
   `h3-ui`, a behaviour change, `cross-lane`): the user decided (2026-11-04) that the windows' own
   pause, a frame on, restart and vsync move to Ctrl+F5, Ctrl+F6, Ctrl+F7 and Ctrl+F8 in both

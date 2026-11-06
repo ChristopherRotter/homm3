@@ -10,30 +10,29 @@ Increment 1's build (decision 22; `E09-design.md` §21): rounds 2 to 10, batch T
 (the user, 2026-11-04): T8a cut in two and the order changed: T8a1, T7b2 (cut in two: T7b2a, T7b2b),
 T8a2, then T8b (cut in two: T8b1, T8b2, itself cut in two: T8b2a, T8b2b; rounds 2 to 6, T7a, T7b,
 T8a1, T8a2, T8b1, T8b2a, T8b2b are done, `E09-log.md`). Round 9: T8c cut in two at its start (the
-user, 2026-11-05: at the Rogue; T8c1 done); each later round's entries are written when it comes
-(the epic's list; round 9's below), each task's cut confirmed at its start. Every entry's
+user, 2026-11-05: at the Rogue; T8c1, T8c2 done); each later round's entries are written when it
+comes (the epic's list; round 9's below), each task's cut confirmed at its start. Every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T8c2 — the Rogue's Visions, the security doc, the inbox notes** (`cross-lane` for the
-packs' and the harvest's files; round 9, design §12, §17)
+**E09 T9 — the fixtures, replays, properties, benchmarks, the env** (`cross-lane`: the adventure
+lane's fixtures, replays, plans and benches, `h3-sim`'s env test; round 9, design §18)
 
-- **Scope:** lift `TWN-STUB-9` (TWN-VEW-003): a viewer one of whose heroes on the map has a
-  Rogue (the original's creature 143, `ab:rogue`: a town part parameter naming it, or a creature
-  flag; the agent's call at the start) in its army, with the town on its level and the squared
-  distance from the hero below the square of the radius (Visions' expert factor, a town part
-  parameter until Visions is placed, ×the hero's power, at least 3; survey §12.3,
-  `hero_visions_reach` 0x4E5E10: which tile of the town it measures from is read first), sees the
-  town at `OWNER_LEVEL` (the counts and `owner_facts`, never `GarrisonView::army`, the owner's
-  team's); the town part's hash bumps (v3) with the parameters in the three packs'
-  `towns.toml`, the synthetic packs and the harvest's gap-fill. `docs/06-security.md`'s section
-  "Towns (E09 increment 1)" (design §12's words with T8c1's "As built", and that a seen town's
-  `TownId` tells how many towns come before it in object order, seen or not, as ADR-0028 point 3
-  allows: a `shared/` pull request, merged first or beside). Inbox notes to the map client (E24: `GameObservation::towns`,
-  `ObjectView::town`) and the AI lane (the observation's new field, the day's town income).
-- **Depends on:** T8c1 (its pull request). **Status:** next; its cut confirmed at its start.
-
-**E09 T9 — the fixtures, replays, properties, benchmarks, the env** (`cross-lane`; round 9,
-design §18): after T8c; its entry is written when T8c is done.
+- **Scope:** the fixture map `e09-towns-36.h3m` written by `h3_map::writer`
+  (`crates/h3-map/src/tests/towns_map.rs`): owned towns of several factions with standard and
+  custom sets (a Capitol, the Grail building, a silo), a neutral town drawn and one empty, a random
+  town of each kind (aligned, owned, neutral), a main town that generates a hero, a random hero, a
+  hero right of an entrance, a garrison with random stacks, a Rogue whose Visions reach a town.
+  Golden replays `fixtures/replays/adventure/towns-*`: random play on it; scripted an undefended
+  capture, a siege won against a garrison, a siege lost against a visitor with the merge, a
+  Capitol limited, the day's income over a week. The plans (`crates/h3-map/src/tests/play.rs`)
+  play towns: one owner per town, the garrison empty after a capture, the store forks and hashes
+  as the state, no hero on another team's entrance. Benchmarks (`benches/adventure/`):
+  `fork-xl-144`, `day-start-towns-36` (new), the reach on the town map, a siege's setup. The env
+  (`h3-sim`, the AI lane's, consent as decision 7): a test playing the town map to its end of days,
+  the bot reports regenerated. With the original data: the 160 maps import and build (exit
+  criterion 1).
+- **Depends on:** T8c2 (its pull requests). **Status:** next; its cut confirmed at its start (a
+  likely seam: T9a the map, the replays and the properties; T9b the benchmarks and the env).
 
 ## Inbox
 

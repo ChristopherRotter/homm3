@@ -394,6 +394,13 @@ The words for `docs/06-security.md` (a section "Towns (E09 increment 1)"):
 - **Events:** `TownCaptured` and `TownChanged` where the town is seen; the reveal to the new owner
   alone; a siege as any battle (its sides' owners), others learn its effects where they see the
   town.
+- **As built (T8c2; decision 31):** the top level (`OWNER_LEVEL`, the counts and `owner_facts`,
+  never `GarrisonView::army`) also for a viewer one of whose own heroes on the map has a creature
+  of `TownParams::visions_creatures` in its army (any pack's `[town_visions]`; the AB pack's
+  Rogue) and stands on the level of the town's **entrance** with `dx² + dy² < r²`, `r` the
+  part's `visions_factor` (3) × `h3_heroes::power`, at least `visions_min_radius` (3); the
+  heroes' radii taken once an observation, only when a town of another team needs them. The
+  words for `docs/06-security.md` went there in a `shared/` pull request.
 
 ## Part C — the game, the env, batch TWN-1 and the cut
 
@@ -596,7 +603,7 @@ when T8c lands).
   `TownOwnerView { hall, income }` (the income `daily_income`'s, the silo's resources within it).
   The level: `OWNER_LEVEL` (3) by `h3_adventure::allied` (made public), else the viewer's own
   towns with `has_tavern`, at most `TAVERN_LEVELS` (2), counted once an observation. The
-  Rogue's Visions is `TWN-STUB-9` (T8c2). `project` was already the §12 one (T8a2, T8b1).
+  Rogue's Visions was `TWN-STUB-9`, lifted by T8c2 (§12). `project` was already the §12 one (T8a2, T8b1).
 
 ### 18. The env, replays, fixtures, properties, benchmarks (T9)
 
@@ -630,6 +637,7 @@ when T8c lands).
 | map import v17 (E08 T93b took v16) | towns, players' starts, the random hero, the main town, the moved heroes, the pool's inputs | T7a |
 | game state hash v23 (after T85b's v22), v24 | the pool (T7b1); the store of towns (T7b2a) | T7b1, T7b2a |
 | adventure ruleset part v17 (T93a took v16), adventure state hash v21 (E08 T94b took v20), map import v18 | the kind `Town`; towns ownable, the town list, `Holds::Town`; the towns typed with their owners | T8a1 |
+| town ruleset part v3 | Visions' factor, least radius and creatures in the parameters | T8c2 |
 | env encodings | none (no new command; no flat adventure observation, E08 decision 187) | — |
 
 **Rule ids** (`docs/rules/catalog/town.toml`, created by T6): TWN-SET-001 the players' factions,
@@ -662,7 +670,7 @@ at the start (registered by T7b2b; increment 4, TD-10); `TWN-STUB-7` a defended 
 until the siege's start (registered by T8a2; narrowed by T8b2a to a visitor of another team;
 lifted by T8b2b); `TWN-STUB-8` a walled Stronghold's natural
 obstacles (registered by T8b1; a siege-aware draw in `h3-battle`); `TWN-STUB-9` a Rogue's
-Visions not giving another team's viewer the top level (registered by T8c1; T8c2).
+Visions not giving another team's viewer the top level (registered by T8c1; lifted by T8c2).
 
 ### 20. Batch TWN-1 (T3)
 
