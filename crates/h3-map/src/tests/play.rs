@@ -785,7 +785,7 @@ pub(super) struct TownPlan {
 /// buildings"): the standard set without a Fort and with one, and custom sets of the Town Hall,
 /// the City Hall and the Capitol (TWN-CAP-002: one Capitol per player after a capture) with a
 /// Fort and without one.
-const TOWN_BUILDINGS: [Buildings; 4] = [
+pub(super) const TOWN_BUILDINGS: [Buildings; 4] = [
     Buildings::Standard { fort: false },
     Buildings::Standard { fort: true },
     Buildings::Custom {
@@ -799,7 +799,7 @@ const TOWN_BUILDINGS: [Buildings; 4] = [
 ];
 /// The level-1 creatures of the eight base factions (Pikemen, Centaurs, Gremlins, Imps,
 /// Skeletons, Troglodytes, Goblins and Gnolls): a plan's weak garrisons (E09 T9b1).
-const LEVEL_1: [u16; 8] = [0, 14, 28, 42, 56, 70, 84, 98];
+pub(super) const LEVEL_1: [u16; 8] = [0, 14, 28, 42, 56, 70, 84, 98];
 
 /// Elixir of Life's three parts (E08 T52; HER-ART-006: a SoD combination of artifacts every map
 /// version holds), as code and position in a map's worn slots: Ring of Vitality (94) and Ring of
@@ -1742,7 +1742,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
 
 /// The tiles a town blocks (its entrance among them), as `(column, row)` left of and above its
 /// anchor ([`super::towns::town_template`]'s), and its entrance.
-const TOWN_BLOCKED: Mask = &[
+pub(super) const TOWN_BLOCKED: Mask = &[
     (0, 0),
     (1, 0),
     (2, 0),
@@ -1752,7 +1752,7 @@ const TOWN_BLOCKED: Mask = &[
     (2, 1),
     (3, 1),
 ];
-const TOWN_ENTRANCE: (u8, u8) = (2, 0);
+pub(super) const TOWN_ENTRANCE: (u8, u8) = (2, 0);
 
 /// The plan's towns laid out after its other objects but the boats (E09 T9b1; [`TownPlan`]), each
 /// with a template of its own after the others: its anchor on the map, its entrance on the map's
@@ -1767,7 +1767,7 @@ fn towns_laid_out(
     owners: &[u8],
     covered: &mut Vec<Spot>,
 ) {
-    let (v, side) = (plan.version, plan.side);
+    let side = plan.side;
     let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
     let colour = |n: u8| colours[usize::from(n) % colours.len()];
     for town in &plan.towns {
@@ -1792,44 +1792,61 @@ fn towns_laid_out(
         if ax >= side || m.terrain.tiles[index].terrain >= 8 || tiles.iter().any(taken) {
             continue;
         }
-        let factions = if v == Version::RoE { 8 } else { 9 };
-        let (class, subclass) = town
-            .faction
-            .map_or((77, 0), |f| (98, u32::from(f % factions)));
-        let alignment = town
-            .alignment
-            .filter(|_| class == 77 && v == Version::Sod)
-            .map_or(u8::MAX, colour);
-        let garrison = town.garrison.as_ref().map(|slots| {
-            slots
-                .iter()
-                .map(|slot| slot.map(|(creature, count)| Stack { creature, count }))
-                .collect()
-        });
-        let identifier = u32::try_from(m.objects.len()).unwrap();
-        let body = TownBody {
-            identifier: (v != Version::RoE).then_some(identifier),
-            owner: if town.visited {
-                owners[hero]
-            } else {
-                town.owner.map_or(u8::MAX, colour)
-            },
-            garrison,
-            formation: u8::from(town.tight),
-            buildings: TOWN_BUILDINGS[town.buildings].clone(),
-            required_spells: (v != Version::RoE).then(|| Bits(vec![0; 9])),
-            banned_spells: Bits(vec![0; 9]),
-            alignment,
-            ..TownBody::default()
+        let owner = if town.visited {
+            owners[hero]
+        } else {
+            town.owner.map_or(u8::MAX, colour)
         };
-        let template = u32::try_from(m.templates.len()).unwrap();
-        m.templates
-            .push(super::towns::town_template(class, subclass));
-        let mut o = object(ax, ay, template, Body::Town(Box::new(body)));
-        o.pos.z = hz;
-        m.objects.push(o);
+        add_town(m, (ax, ay, hz), town, owner, town.alignment.map(colour));
         covered.extend(tiles);
     }
+}
+
+/// A plan's town object pushed onto `m`, anchored at `anchor` (E09 T9b1's [`towns_laid_out`];
+/// E09 T9b2b: the hygiene property's added towns, `view.rs`): of `town`'s faction (class 98, the
+/// code modulo the map version's factions) or a random town (77) whose alignment is `alignment`
+/// (a colour) on a SoD map, else none (its owner's); owned by `owner` (a colour, `u8::MAX`
+/// neutral); with `town`'s garrison, formation and buildings ([`TOWN_BUILDINGS`]); its template
+/// appended after `m`'s ([`super::towns::town_template`]).
+pub(super) fn add_town(
+    m: &mut RawMap,
+    (ax, ay, az): Spot,
+    town: &TownPlan,
+    owner: u8,
+    alignment: Option<u8>,
+) {
+    let v = m.header.version;
+    let factions = if v == Version::RoE { 8 } else { 9 };
+    let (class, subclass) = town
+        .faction
+        .map_or((77, 0), |f| (98, u32::from(f % factions)));
+    let alignment = alignment
+        .filter(|_| class == 77 && v == Version::Sod)
+        .unwrap_or(u8::MAX);
+    let garrison = town.garrison.as_ref().map(|slots| {
+        slots
+            .iter()
+            .map(|slot| slot.map(|(creature, count)| Stack { creature, count }))
+            .collect()
+    });
+    let identifier = u32::try_from(m.objects.len()).unwrap();
+    let body = TownBody {
+        identifier: (v != Version::RoE).then_some(identifier),
+        owner,
+        garrison,
+        formation: u8::from(town.tight),
+        buildings: TOWN_BUILDINGS[town.buildings].clone(),
+        required_spells: (v != Version::RoE).then(|| Bits(vec![0; 9])),
+        banned_spells: Bits(vec![0; 9]),
+        alignment,
+        ..TownBody::default()
+    };
+    let template = u32::try_from(m.templates.len()).unwrap();
+    m.templates
+        .push(super::towns::town_template(class, subclass));
+    let mut o = object(ax, ay, template, Body::Town(Box::new(body)));
+    o.pos.z = az;
+    m.objects.push(o);
 }
 
 /// The plan's boats laid out after its other objects (E08 T75b), each where the setup takes it
