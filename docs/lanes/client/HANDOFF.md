@@ -20,11 +20,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   exact, 5 sequences; #729 merged). T4 done. **T5** cut in four by the user (2026-11-05):
   T5a done (#736, design §12.17); T5b cut in two by the user (2026-11-05): T5b1 done (#743,
   design §12.18); T5b2 cut in two by the user (2026-11-05): T5b2a done (#745, #751, design
-  §12.19); **T5b2b done** (kept whole by the user, design §12.20: CLT-Q61's stop at the cast's
-  end, a question at a later turn, a human's turn right after an answer, three sequences
-  recorded; CLT-Q64 asked; #757: check it first). **Next: T5c**
-  (Eagle Eye's message, item 79), T5d (QUEUE), T6, T7; then M7 ranked play and the server
-  browser.
+  §12.19); T5b2b done (#757, design §12.20); **T5c done** (kept whole by the user, design
+  §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
+  asked; PR_T5C: check it first; the user added **T5e**, the captured artifacts' message).
+  **Next: T5d** (the effects, their waits, Bloodlust's glow; QUEUE), T5e, T6, T7; then M7 ranked
+  play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -34,12 +34,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q5 (its
   situations M6 T6), CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
-  recommended, built as the original's), CLT-Q63 (T5b2a: copy recommended, not built), CLT-Q64 (T5b2b: fix recommended, CLT-Q45 (1)'s rule built). `CLT-STUB-1` (T5a, G1: a server's seat lacks the other
+  recommended, built as the original's), CLT-Q63 (T5b2a: copy recommended, not built), CLT-Q64 (T5b2b: fix recommended, CLT-Q45 (1)'s rule built), CLT-Q65 (T5c: the unlearned
+  picks; fix once a whole game tells what was learned), CLT-Q66 (T5c: the window under the
+  boxes; copy recommended, built so). `CLT-STUB-1` (T5a, G1: a server's seat lacks the other
   hero's Orb and Cloak; the user requires parity with local play, asked of the battle and server
-  lanes) is commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
+  lanes) and `CLT-STUB-3` (T5c: a seat gets no Eagle Eye picks at the end; asked of the server
+  lane) are commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
   change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
   (#739 and #745 were). Next ids:
-  CLT-Q65, CLT-STUB-3.
+  CLT-Q67, CLT-STUB-4.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -59,6 +62,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-06, E17 M6 T5c (done; PR_T5C).**
+  Kept whole by the user, who queued the captured artifacts' message as T5e. The original data
+  staged by the file tool (the PC's shell did not start; the PC went offline later, nothing
+  missing). A reading (§12.21), a builder (the box with pictures, Eagle Eye's boxes, the pickup
+  sounds), a capture agent (`eagle-eye`, `eagle-eye-one`: 164 and 37 frames exact after three
+  corrections; CLT-Q66 asked), stopped by the user's interruption after its last digests: the
+  session committed its work and ran its gates. A fresh reviewer. CLT-STUB-3 and the server
+  lane's inbox: a seat's picks.
 - **2026-11-06, E17 M6 T5b2b (done; #757).**
   Kept whole by the user. The original data staged by the file tool (the PC's shell did not
   start). A builder (CLT-Q61's stop, the three sequences prepared over the new
@@ -77,14 +88,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   him up in the original: the harness writes it into memory instead), a fresh reviewer (a
   stuck question fixed; CLT-Q63 asked: the question at an automatic Ballista's turn).
   `check.sh`. The sandbox's server stopped once and the VM restarted four times: nothing lost.
-
-- **2026-11-05, E17 M6 T5b1 (done; #743 merged).**
-  The original data staged (57 files, by the file tool: the device shell did not start); the VM
-  restarted during the baseline (CI's green `master` stood for it). The user cut T5b in two,
-  chose the engine's parts by a cross-lane PR (#739, `h3_battle_ai::Decision`, `Sight`; its
-  battle scoped verify passed) and the fair actor with an all-seeing toggle for the computer and
-  Auto Combat; `clients.yml`'s path went alone (#740); both merged, the branch rebased. A
-  builder, a capture agent (two sequences: the original casts as the engine; 41 and 131 frames,
-  the latter's 84 the walk's known 2-pixel artifacts), a fresh reviewer (three small findings
-  fixed); CLT-Q61 (copy, T5b2's) and Q62 (fixed in the client's profile, built) answered.
-  `check.sh`; a walk divergence to the battle lane's inbox.

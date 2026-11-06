@@ -3539,12 +3539,12 @@ impl<'g> Battle<'g> {
                     .map(Draw::Dialog),
             );
         }
-        // The window under Eagle Eye's boxes (E17 M6 T5c), its clip held at the millisecond
-        // before the first box's first draw (*provisional*, as the sequences': the box hides it).
+        // The window under Eagle Eye's boxes (E17 M6 T5c), its clip held at the first box's first
+        // draw (as the sequences': its close's millisecond, `eagle-eye-one`).
         let eagle_eye = matches!(self.message, Some((_, _, Asked::EagleEye)));
         let behind = match self.window_behind.as_mut() {
             Some((window, opened, since)) if eagle_eye => {
-                let since = *since.get_or_insert(t.saturating_sub(*opened).saturating_sub(1));
+                let since = *since.get_or_insert(t.saturating_sub(*opened));
                 Some((window.clone(), since))
             }
             _ => None,

@@ -407,6 +407,8 @@ pub fn served(
         war_machines: [Vec::new(), Vec::new()],
         stacks: records(opening, end),
         surrender_cost: None,
+        // stub: CLT-STUB-3 (a seat's own hero's Eagle Eye picks: no event or end message carries
+        // them, so a seat shows no Eagle Eye message; the server lane's inbox, 2026-11-06).
         heroes: [None, None],
         rounds: end.round,
     }

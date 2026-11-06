@@ -3,14 +3,14 @@
 # Stoic Watchman, the Emblem of Cognizance: 60 % + 5 % + 10 % + 15 %, the original's `f32` sum
 # 0x3F666668, 90 % to roll against), an empty Spell Book and no Wisdom (`h3-view situation`
 # writes the skill and the artifacts behind `eagle_eye`); Crag Hack (Blue) casts one of his five
-# spells a round: Slow at the Pikemen (place 1), Bless on the Swordsmen (place 0;
-# not on undead, BAT-MAG-067), Disrupting
-# Ray at the Pikemen (place 2), a Force Field at hex 63 (place 3, row 3, column 12, away from the
-# obstacles) and Chain Lightning at the Pikemen (place 4; his book by level, then school: Bless,
-# water, before Slow, earth), then the Swordsmen retreat: Orrin wins, his window shows, then
-# the box of the spells his Eagle Eye picked (Wisdom 0: Force Field, level 3, and Chain
-# Lightning, level 4, named but not learned, CLT-Q65). Each other stack defends. Hot seat; on
-# grass at the capture set's tile (grass.toml's obstacles).
+# spells a round: Slow at the Pikemen (place 1), Bless on the Wolf Riders (place 0; Bless never
+# on undead, BAT-MAG-067), Disrupting Ray at the Pikemen (place 2), a Force Field at hex 63
+# (place 3, row 3, column 12, away from the obstacles) and Chain Lightning at the Pikemen (place
+# 4; his book by level, then school: Bless, water, before Slow, earth), whose second strike
+# kills his own Wolf Riders: Orrin wins, his window shows, then the box of the spells his Eagle
+# Eye picked (Wisdom 0: Force Field, level 3, and Chain Lightning, level 4, named but not
+# learned, CLT-Q65). Each other stack defends. Hot seat; on grass at the capture set's tile
+# (grass.toml's obstacles).
 
 [scenario]
 id = "sequence-eagle-eye"

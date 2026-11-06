@@ -1180,15 +1180,16 @@ pub(crate) fn draw_frames(
         // screen still darkened, a still's box as its actions left it, a sequence's by the
         // actions' closes; the default cursor's frame 0 at the mouse (`message_box_build`'s).
         // Under a box the window stays as it last showed (recorded, `eagle-eye`: nothing redraws
-        // the screen before the box), its OK up, its clip's frame of the millisecond before its
-        // close (a still's at once: its first; *provisional*, the box hides the clip).
+        // the screen before the box), its OK up, its clip's frame of its close's millisecond
+        // (`eagle-eye-one`: a decode in that millisecond came first; a still's at once: its
+        // first).
         let darkened = match interface.book.filter(|b| b.darkened) {
             Some(b) => Some(
                 (b.message.as_ref()).map(|m| (m, Some(b.mouse), b.window.as_ref().map(|w| (w, 0)))),
             ),
             None => ended.filter(|_| closed > 0).map(|(window, (end, _))| {
                 let first = interface.closes.first().copied().unwrap_or(end);
-                let since = first.saturating_sub(end).saturating_sub(1);
+                let since = first.saturating_sub(end);
                 (interface.eagle_eye.get(closed - 1)).map(|m| (m, point(), Some((window, since))))
             }),
         };

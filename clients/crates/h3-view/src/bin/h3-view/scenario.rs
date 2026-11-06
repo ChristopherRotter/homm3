@@ -563,6 +563,11 @@ fn tactics_skill(ruleset: &BattleRuleset, level: u8) -> Result<Option<(u8, u8)>,
     Ok(Some((skill_number(ruleset, "tactics")?, level)))
 }
 
+/// The skill behind a hero's Eagle Eye on the original's map (its number and level), and the
+/// artifacts worn for its chance (each a worn position and the artifact's number)
+/// ([`eagle_eye_parts`]).
+pub type EagleEyeParts = (Option<(u8, u8)>, Vec<(usize, u16)>);
+
 /// The map's worn positions of the misc artifacts (`ArtSlots.txt`'s order: misc 1 to 4; the fifth,
 /// SoD's 18, left out).
 const MISC_POSITIONS: [usize; 4] = [9, 10, 11, 12];
@@ -580,7 +585,7 @@ pub fn eagle_eye_parts(
     ruleset: &BattleRuleset,
     eagle: Option<&EagleEye>,
     known: &[SpellId],
-) -> Result<(Option<(u8, u8)>, Vec<(usize, u16)>), String> {
+) -> Result<EagleEyeParts, String> {
     let Some(eagle) = eagle else {
         return Ok((None, Vec::new()));
     };
@@ -1190,7 +1195,8 @@ mod tests {
         assert_eq!(eagle_eye_parts(&ruleset, None, &[]), Ok((None, Vec::new())));
         // The level from the highest spell's, the rest of the chance from the fewest artifacts:
         // the Emblem alone for 15 %, not the Bird and the Watchman.
-        let cases: [(u32, &str, u8, &[(usize, u16)]); 4] = [
+        type Case<'a> = (u32, &'a str, u8, &'a [(usize, u16)]);
+        let cases: [Case<'_>; 4] = [
             (6000, "base:chain_lightning", 3, &[]),
             (5500, "base:slow", 1, &[(9, 65)]),
             (6500, "base:force_field", 2, &[(9, 65)]),

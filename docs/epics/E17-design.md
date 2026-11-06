@@ -1528,7 +1528,8 @@ resistance roll, if any (category 3, 0x5A0331); Curse's is named `Curse`, withou
   W facing left; y as place 1; no two-hex shift.
 - **`strike_animation`**: frame i at iteration i while i < n, then its last frame stays until
   the loop ends and every +0x20 is cleared (0x46905A); L = max(n, A + R − 1) (§7.4) with no
-  striker (A = 0) for a spell, so the reactions end with the loop.
+  striker (A = 0) for a spell, so the reactions end with the loop (recorded at E17 M6 T5c: each
+  reaction starts at the first iteration, a shorter one held, §12.21).
 - **`mass_spell_animation`** (targets, `id`, reactions): loads the DEF itself (+0x132E8,
   +0x132EC; nothing while hidden) and sets every target's +0x20; with reactions each target not
   already in group 3 takes death 5 (no count left) or hit 3 at frame 0 and its death or wince
@@ -7222,3 +7223,24 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   server's seat shows none: `results::served` leaves the heroes' outcomes empty, the wire telling
   the picks only in a seat's own snapshot (`OwnHero::learned`) and no event a pick (the
   protocol's gap, not changed here).
+- **Recorded (M6 T5c, a capture agent):** `eagle-eye` and `eagle-eye-one` (`sequences.toml`,
+  `seq-eagle-eye.toml`, hot seat): Orrin with Expert Eagle Eye, the Bird of Perception, the Stoic
+  Watchman and the Emblem of Cognizance (90 %), an empty book, no Wisdom (`h3-view situation`
+  now writes the skill and the artifacts behind a scenario's `eagle_eye`:
+  `scenario::eagle_eye_parts`, *provisional*: the lowest level whose `max_level` reaches the
+  spells', the fewest artifacts making up the rest of the chance); Crag Hack casts Slow, Bless,
+  Disrupting Ray, a Force Field and Chain Lightning, one a round (`eagle-eye`), or Chain
+  Lightning alone (`-one`), whose second strike kills his own Wolf Riders: Orrin wins. The
+  original picked all five (`-one`: the one), sorted by number ("… learn Force Field, Chain
+  Lightning, Bless, Disrupting Ray and Slow."): 3 + 2 pictures, `-one` one in a narrower
+  box; the levels 3 and 4 named unlearned (CLT-Q65, confirmed). The engine's `seed` 2
+  picks the same five (`-one`: the default). Frames: 164 and 37, **all exact** after three
+  corrections: (1) the window stays under every box as it last showed (nothing redraws the
+  screen: its OK up, its clip still at its close's millisecond, `-one`: a decode in that
+  millisecond shown first; the cursor as before), CLT-Q66: `results::released`, the stills'
+  `Still::window`, the sequences' `darkened` with the window, `Battle::window_behind`; (2)
+  without a striker every reaction starts at the loop's first iteration (`strike_animation`,
+  Chain Lightning's death of 7 frames beside a defend of 13: both from it, the death held; the
+  viewer had ended each with the longest), `anim`'s `iterate`; (3) a magic's last frame held
+  past its animation is one timeline line (the harness lists changes). Not recorded: two or more
+  boxes (nine picks), the pickup sound (no `sound` run).
