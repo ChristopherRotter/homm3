@@ -5624,3 +5624,33 @@ Magi's Bloodlust glow). The original data staged by the file tool (the PC's shel
 - **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (87 as recorded), `h3drive.py
   drawn` (257 the same), `h3-view gate`, `check-docs`, `check-lane`, `check-exe-map`, the scoped
   verify with original data.
+
+### M6 T5d2a — Death Blow and an Ogre Mage's Bloodlust (2026-11-06)
+
+On `client/e17-m6-t5d2a`. The user cut T5d2 in two (2026-11-06): T5d2a the creatures' effects
+(Death Blow, the Ogre Magi's Bloodlust glow, M5's items 42 and 45), T5d2b the hero's cast's (Ice
+Bolt's explosion, the Familiars' channel). The original data staged by the file tool (the PC's
+shell did not start); the sandbox restarted once during the setup's baseline (CI's green
+`Clients` run on `master` stood in for it).
+
+- **Read** (design §12.23): `damage_stage1_with_luck` whole (the Dread Knight's 20 % roll, its
+  line GENRLTXT 366/367, `Deathblo.wav`, 73 over the stack struck, the wait; the Ballista's double
+  damage line beside it, not built), `physical_damage`'s arguments, `melee_strike`'s order (good
+  luck, the damage, then the striker's group), the Ogre Mage's case of `creature_cast_action`,
+  `cast_spell`'s Bloodlust case (the glow for any caster), its start and its creature's tail,
+  `battle_log_cast`'s creature default (GENRLTXT 566 to 568).
+- **Built** (`anim/creature.rs`): `death_blow` (the new `Sound::DeathBlow`, harvested
+  `death_blow_sound` from 0x660A50; `Logged::DeathBlow`, `battle.log.death-blow`), called in the
+  melee arm after good luck, a retaliation's too; `creature_bloodlust` (the caster's frames, the
+  cast's start, the spell's cue, `Logged::CreatureCast` with `battle.log.creature-cast` and
+  `-cast-on`, the glow, the caster standing, its shot sound's wait), taken by `creature_cast` for
+  Bloodlust at a followed stack; `motion::magic` loads 73. The harness's roll `death_blow`
+  (0x4439B9; `xdd.c`, `h3drive.py`): a redirected call draws as the original's, so no other
+  capture changes (as `stone_gaze`'s at M5 T5b1).
+- **Recorded** (a capture agent; §12.23, "Recorded"): `blows` and `blows-sound` over the new
+  hot-seat `seq-blows.toml` (an Ogre Mage and two Dread Knights against a Black Dragon, immune
+  to their Curse; seed 10): the strike back's and the strike's Death Blows and the Bloodlust,
+  both timelines as recorded on the first run, no correction to the viewer; every frame exact but
+  the Dragon's landing's redraw artifacts and the count box's strip at its first strike frame
+  (§7.11 (3)); the log masked after the engine's 87 damage against the original's 81. Animation
+  73 has 20 frames; with sound each Death Blow waits for `Deathblo.wav` (2 750 ms) past them.

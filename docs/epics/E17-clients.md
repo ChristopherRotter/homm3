@@ -486,3 +486,12 @@ The next milestone's list starts here.
     kept from its last item at a second aim (`wall-edges`), the hover's hint kept through the book
     (`wall-hover`), the 539 box's frames (the viewer's sequences draw no box). Not built: the
     hero's press opening the book, Teleport's and Sacrifice's aims.
+45. Death Blow and an Ogre Mage's Bloodlust (T5d2a, *provisional* where marked; design §12.23;
+    M5's items 42 and 45 in part): built, `blows` and `blows-sound` as recorded, no correction to
+    the viewer (the frames' differences the redraw artifacts listed). *Provisional:* the Ogre
+    Mage's frames aim at the target's own hex (the original's the hex clicked). Not built: the
+    other creatures' casts at a stack (the Master Genie's, the elementals' protections, a Faerie
+    Dragon's spells at a stack) still take effect at once, without the caster's frames or a line;
+    the Ballista's double damage line (read, 0x4438DD); a human's Ogre Magi cast by a left click on
+    the friendly stack (the casters' cursors, §9.10, as the Faerie Dragon's: the window's mouse
+    shows a look there).
