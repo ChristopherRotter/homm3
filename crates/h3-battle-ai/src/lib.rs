@@ -101,6 +101,7 @@ use h3_content_battle::BattleRuleset;
 use h3_kernel::Rng;
 
 pub use decision::{Decision, Sight};
+pub use retreat::Leaving;
 
 /// The policy's behaviour version (ADR-0027 point 12): bumped with every change of a choice, so
 /// that a training record names its opponent (the AI lane's engine identity includes it).
@@ -174,7 +175,7 @@ pub fn unchecked(
     if let Some(phase) = state.tactics() {
         return tactics::turn(state, ruleset, (id, side, phase), rng);
     }
-    if let Some(cast) = hero::cast(state, ruleset, (id, side), rng) {
+    if let Some(cast) = hero::cast(state, ruleset, (id, side), false, rng) {
         return cast;
     }
     stack(state, ruleset, (id, side), rng, true)

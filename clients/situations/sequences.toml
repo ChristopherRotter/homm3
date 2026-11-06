@@ -1916,3 +1916,69 @@ command = [
     { seat = "Attacker", at = 0, command = { Defend = {} } },
     { seat = "Attacker", command = { Cast = { spell = 41, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
 ]
+
+# E17 M6 T5b2a (design §12.19, "Recorded"): Auto Combat's retreat question
+# (`seq-auto-retreat.toml`: the `auto-cast` battle, the defender's stacks a hundred times as
+# many, Orrin's 5000 experience written by the harness, a Tavern town; prepared in
+# `to-record.toml`, recorded by a capture agent). A at the Champions' turn (Combat Auto
+# Creatures set): the computer's retreat test says yes as their action starts and the question
+# (GENRLTXT 414) opens in the same millisecond, 320 x 192 at (240, 204), the cursor the arrow at
+# the parked point; behind it the battle stands as it was (the Champions outlined, the
+# outline's pulse and the flags held, no idle step), the panel dimmed but Auto Combat,
+# selected. `wait_idle`: the test's predictions over 4500 creatures outlast an action's settle.
+# The commands with `question = true` are the computer's after the answers, at the last one.
+# `auto-retreat-cancel`: Escape at 1000: the original's computer has the Champions wait, the
+# Marksmen's turn starts at once and their double shot at the Goblins shows its first frame at
+# 1000 (the loop's one tick after the box put the frames' deadline at now), no question again.
+# 50 frames exact.
+[[sequence]]
+id = "auto-retreat-cancel"
+scenario = "seq-auto-retreat.toml"
+actions = ["key:a", "at:1000", "key:Escape"]
+ms = 3000
+wait_idle = true
+heroes = true
+timeline = "timelines/auto-retreat-cancel.txt"
+frames = "timelines/auto-retreat-cancel-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Wait = {} }, at = 1000, question = true },
+    { seat = "Attacker", command = { Shoot = { target = 3, at = 151 } } },
+]
+
+# `auto-retreat-surrender`: Enter at 1000 (the question's OK): the offer (GENRLTXT 130, 3750
+# gold: half the army's worth) at once, 320 x 320 at (240, 140), the gold's picture
+# (`resour82.def` frame 6, its caption 3750); its OK clicked at 2000: the surrender, the result
+# window at once, the battle behind it still one idle step on from the opening (the Champions
+# outlined as behind the boxes). 46 frames: the boxes' exact, 18 of the result window's differ
+# in 2 or 3 pixels inside its clip (`Surrender`, CLT-Q30's rounding).
+[[sequence]]
+id = "auto-retreat-surrender"
+scenario = "seq-auto-retreat.toml"
+actions = ["key:a", "at:1000", "key:Return", "at:2000", "click:359,414"]
+ms = 3000
+wait_idle = true
+heroes = true
+timeline = "timelines/auto-retreat-surrender.txt"
+frames = "timelines/auto-retreat-surrender-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Surrender = {} }, at = 2000, question = true },
+]
+
+# `auto-retreat-flee`: Enter at 1000, the offer's Cancel (Escape) at 2000: the retreat, the
+# result window at once as the surrender's. 46 frames: the boxes' exact, 32 of the result
+# window's differ in up to 49 pixels inside its clip (`rtstart`, `rtloop`: CLT-Q30's rounding).
+[[sequence]]
+id = "auto-retreat-flee"
+scenario = "seq-auto-retreat.toml"
+actions = ["key:a", "at:1000", "key:Return", "at:2000", "key:Escape"]
+ms = 3000
+wait_idle = true
+heroes = true
+timeline = "timelines/auto-retreat-flee.txt"
+frames = "timelines/auto-retreat-flee-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", command = { Retreat = {} }, at = 2000, question = true },
+]

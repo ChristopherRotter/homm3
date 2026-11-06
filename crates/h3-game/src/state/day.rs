@@ -14,8 +14,8 @@ use h3_contracts::PlayerId;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::GameState;
-use crate::GameRuleset;
 use crate::command::{AdventureSink, GameEvent, Sink};
+use crate::{GameRuleset, town};
 
 /// A month's kind (GAM-CAL-003, E08 T85b; survey `E08-economy.md` §7.4): drawn on each month's
 /// first day after the first (day 29, 57, …); the first month is a normal one. Public, as the
@@ -137,11 +137,12 @@ impl GameState {
     /// every player in id order (none is defeated before E10): the adventure's income of its mines
     /// and, on a week's first day, its armies' weekly resources
     /// (`h3_adventure::AdventureState::income`), plus `h3_heroes::daily_income` of each of its
-    /// heroes on the map (artifacts, Estates, specialists), gained saturating
+    /// heroes on the map (artifacts, Estates, specialists), plus since E09 T8c1 the day's income
+    /// of each town it owns (TWN-INC-001, -002: [`crate::town::add_income`]), gained saturating
     /// ([`GameState::gain`]: one [`GameEvent::ResourceGained`] per resource with a non-zero
-    /// amount, in the core's order, to the player alone). A mine flagged today pays from the next
-    /// day's start.
-    // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005
+    /// amount, in the core's order, to the player alone). A mine flagged or a town captured today
+    /// pays from the next day's start.
+    // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005, TWN-INC-001, TWN-INC-002
     fn pay_income<S: Sink>(&mut self, rules: &GameRuleset, week_start: bool, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         for player in (0..=u8::MAX).take(self.players.len()).map(PlayerId::new) {
@@ -153,6 +154,13 @@ impl GameState {
                     *entry = entry.saturating_add(amount);
                 }
             }
+            town::add_income(
+                &self.adventure,
+                &self.towns,
+                rules.towns(),
+                player,
+                &mut income,
+            );
             let gains: Vec<(ResourceId, u32)> = (0..=u16::MAX)
                 .map(ResourceId::from_raw)
                 .zip(income)

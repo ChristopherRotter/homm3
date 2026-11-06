@@ -4,7 +4,8 @@
 //! show), since E08 T85b the timed events that fired at its turn start today, and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
 //! army dialog, since T63a a choice or a University, since T95b a hire dialog), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
-//! battle's, as its side sees it), and the projection of the game's events. The seed, the streams and the state hash never show
+//! battle's, as its side sees it; since E09 T8c1 the towns it sees, TWN-VEW-001 to -003), and the
+//! projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
 
 use alloc::sync::Arc;
@@ -18,6 +19,7 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
+use crate::town::view::{TownView, town_views};
 use crate::{GameRuleset, GameState, MonthKind};
 
 /// Who an observation or an event's projection is for (ADR-0017 point 2). The spectator, who
@@ -63,6 +65,11 @@ pub struct GameObservation {
     pub heroes: Vec<HeroInfo>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
+    /// The towns the viewer sees, in `TownId` order (TWN-VEW-001 to -003, E09 T8c1): each town a
+    /// tile of which it has explored, its object among [`Self::adventure`]'s
+    /// ([`h3_adventure::ObjectView::town`]), with its public facts, its garrison by the viewer's
+    /// level and, for its owner's team, the popup's top level's facts.
+    pub towns: Vec<TownView>,
     /// The battle of the viewer's first open decision, as the viewer's side sees it
     /// (`h3_battle::observe`, ADR-0013 point 9; GAM-BAT-001, E08 T19a); other players' battles
     /// never show.
@@ -200,6 +207,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
     let adventure = state
         .adventure()
         .observe(rules.core(), rules.adventure(), player);
+    let towns = town_views(state.adventure(), state.towns(), rules, &adventure);
     GameObservation {
         viewer: player,
         day: state.day(),
@@ -264,6 +272,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             })
             .collect(),
         adventure,
+        towns,
         battle: state.battle(player).and_then(|open| {
             open.side_of(player)
                 .map(|side| h3_battle::observe(open.state(), rules.battle(), side))

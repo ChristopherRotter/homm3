@@ -22,6 +22,14 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
 - 2026-11-06 (the adventure lane, E08 T98a2, branch `adventure/e08-t98a2`; informational): **`random_between` 0x50B230 draws nothing when its bounds are equal** (read whole: it returns the bound before `crt_rand`, 0x50B236). The Catapult's automatic aim among one weakest wall (`catapult_tie_draw` 0x473DA0) therefore takes no draw in the original, where `h3_battle::siege`'s `aim_with` draws `rng.range_inclusive(1, 1)` (a `below(1)` that consumes one value): the outcome is the same, only the stream's position differs (matters only where a sequence's draws are matched). **For the epic E11's catalogue (RoE and AB):** the adventure map's space key revisits the entered object under a hero at no points in SoD's executable with no version test; the wiki says it does not work in RoE (survey `docs/rules/surveys/E08-teleporters.md` §11).
+- 2026-11-06 (the client lane, E17 M6 T5b2a): **the original's retreat test at an automatic
+  war machine's turn.** The battle loop runs `ai_battle_action` 0x477EE0 for every stack that
+  acts on its own (0x4744CF), the Ballista included when its hero lacks Artillery or it has no
+  hero (`stack_automatic` 0x474BF0, 0x474C59; the map's "The automatic Ballista takes this path"
+  at 0x4221F0). So the retreat test (BAT-AI-024) is asked at that turn first: a computer side
+  retreats there, a human's side is asked (CLT-Q63). The engine plays the automatic Ballista
+  itself (BAT-WAR-002) and asks no test there. Arrow towers not read. A cross-lane PR from the
+  client lane could follow once CLT-Q63 is answered.
 - 2026-11-05 (the client lane, E17 M6 T5b1; informational unless you take it): **a walk of the
   original's computer the engine's chooses differently.** In `clients/situations/seq-auto-cast.toml`
   (`seq-cast.toml`'s battle: the attacker's Champions first, speed 9, Orrin with Bless only;

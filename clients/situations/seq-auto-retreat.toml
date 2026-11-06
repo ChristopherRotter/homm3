@@ -1,0 +1,71 @@
+# E17 M6 T5b2a (design §12.19): Auto Combat's question, the battle of `seq-auto-cast.toml` with
+# the defender's stacks a hundred times as many (3000 Wolf Riders, 1500 Goblins) and Orrin worth
+# keeping (5000 experience, a Tavern town, Red's 20 000 gold at Normal): as the Champions play
+# themselves the computer's retreat test says yes (the human's side skips its Easy and Normal
+# gate), so the original asks the human whether to retreat (GENRLTXT 414); its OK, both heroes
+# there and the gold enough, offers to save the army for its price (record 130, the gold's
+# picture). The sequences prepared in `to-record.toml`. *Provisional:* whether the original
+# levels Orrin up for his experience as the game starts (then his primary skills here are not
+# the original's) is the recording's to tell (`hero:primary`).
+
+[scenario]
+id = "sequence-auto-retreat"
+# Red human, Blue a computer, as the original's map (`h3-view situation`): Auto Combat's button is
+# disabled when both players are human (0x46BB40).
+human = ["attacker"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+# The harness's game: Normal, Red's 20 000 gold.
+difficulty = 1
+attacker_funds = 20000
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:champion"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:marksman"
+count = 10
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 3000
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 1500
+
+# The heroes (E17 M3 T3a) with 1 in every primary skill but Orrin's knowledge, 2; Orrin's book
+# Bless alone (Combat Auto Spells clear: never cast). Crag Hack has no book.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 2
+mana = 20
+max_mana = 20
+spell_book = ["base:bless"]
+
+# What Orrin would lose by a retreat (the retreat test's facts): 5000 experience, a Tavern town
+# (`h3-view situation` writes both into the original's map).
+[scenario.attacker_retreat]
+experience = 5000
+tavern = true
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

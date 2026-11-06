@@ -217,7 +217,34 @@ put back the same way (`registry_values`), the viewer reading them from `sequenc
 (`setup.sh`'s Creatures 1 and Spells unset without them); sequences prepared for a recording wait
 in a `situations/to-record.toml` (`sequences situations/to-record.toml --only <id>`), each moved
 into `sequences.toml` with its commands once recorded, the file removed once empty (T5b1's
-`auto-cast` and `auto-cast-human` were recorded so). A situation's
+`auto-cast` and `auto-cast-human` were recorded so). Since E17 M6 T5b2a (design §12.19) Auto Combat's
+question: when the computer's retreat test says yes for the human's stack that plays itself,
+the original asks whether to retreat (GENRLTXT 414), its OK offering, with both heroes there and
+the gold enough, to save the army for its price (record 130, the gold's picture); in a
+sequence a `key:Return`, `key:Escape` or `click:` on a button between the action's millisecond
+and the answer that gave the command answers the box open (the question's, then the offer's),
+no stop, and the command after it is marked `question = true` with its `at` the last answer
+(`{ seat = "Attacker", command = { Retreat = {} }, at = 2000, question = true }`; recorded: the
+battle held behind the boxes, its outline and the outline's pulse as they were, no idle step, the
+command the computer's from then, the loop's one tick at the answer putting the frames' deadline
+at most at now; a first command's box opens at `pre`, the switch's). What the
+test reads comes from the scenario: `attacker_funds` (20 000, the harness's Normal; the original's
+gold is that plus the Gold starting bonus, 500 to 1 000, which no threshold here reaches),
+`difficulty = 1` (the harness's), `[scenario.attacker_retreat]` (`experience`, `tavern`) and
+the enemy's hero (`defender_hero`; the map needs one, so the Retreat without it is not
+recorded); `h3-view situation` writes, for `tavern`, a town of the side's player with a Tavern
+(Red's Castle, Blue's Stronghold; an `artifacts` worth or `wanted` it refuses: *not built*) and
+no experience: the original levels a hero up for its map's experience as the game starts (5000:
+Orrin at level 5, his primary skills 2, 3, 2, 2, Offense and First Aid learned), so `sequence`
+writes the facts' `experience` into the hero's record on the adventure map before the battle
+(`scenario_experience`, `h3mem.write_experience`), its level and skills the scenario's. The
+retreat test's predictions over the scenario's thousands of creatures can outlast an action's
+settle: an entry's `wait_idle = true` waits after each action at the frozen clock until the game
+has read it 500 times (without it the question's box was drawn after the state of its
+millisecond was read in one of four runs). Recorded (`sequences.toml`'s `auto-retreat-cancel`,
+`auto-retreat-surrender`, `auto-retreat-flee` over `seq-auto-retreat.toml`): the offer's OK at
+(359, 414) (its box 320 × 320 at (240, 140), the buttons 64 × 30 at (327, 399) and (409, 399)). A
+situation's
 actions draw the cursor shadow at every move the battle takes, `key:F6` to `key:F8`'s and the
 options dialog's compositions (the stills take no spell's aim: an aim's shade is a sequence's,
 `aim:<k>:<n>` then `move:`). The setup

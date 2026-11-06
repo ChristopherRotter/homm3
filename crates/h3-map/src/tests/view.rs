@@ -1280,6 +1280,7 @@ fn check_hire_sources(
                 guards: None,
                 visited: false,
                 boat_tile: None,
+                town: None,
             })
         })
         .collect();

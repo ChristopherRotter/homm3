@@ -100,6 +100,9 @@ pub use setup::{
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
+pub use town::view::{
+    GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownOwnerView, TownView,
+};
 pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";

@@ -136,13 +136,68 @@ impl Sequence {
 
 /// A command of a seat; `at`, when a player gave it (M3 T1a): its time after the opening (the
 /// first command's defaults to the sequence's `pre`); a command without one is the computer's,
-/// which acts as soon as its turn comes.
+/// which acts as soon as its turn comes. E17 M6 T5b2a (design §12.19, *provisional*): with
+/// `question`, the computer's command for a human's stack under Auto Combat that came after its
+/// question (and the offer), the battle standing still behind the boxes from the action's
+/// millisecond; its `at` the answer that gave it.
 #[derive(Debug, Deserialize)]
 struct Step {
     seat: Seat,
     command: Command,
     #[serde(default)]
     at: Option<u32>,
+    #[serde(default)]
+    question: bool,
+}
+
+/// The commands that came after Auto Combat's question (E17 M6 T5b2a): each by its index with
+/// its answer's time, which a step marked `question` must give.
+fn holds(steps: &[Step]) -> Result<Vec<(usize, u32)>, String> {
+    (steps.iter().enumerate())
+        .filter(|(_, s)| s.question)
+        .map(|(i, s)| {
+            s.at.map(|at| (i, at))
+                .ok_or_else(|| format!("command {}: a question's command needs its `at`", i + 1))
+        })
+        .collect()
+}
+
+/// Where Auto Combat's questions were open (E17 M6 T5b2a, *provisional*): each held command's
+/// from the action's millisecond (the command before's end in `timeline`, `pre` for the first)
+/// to its answer.
+fn asked_spans(holds: &[(usize, u32)], timeline: &Timeline, pre: u32) -> Vec<(u32, u32)> {
+    holds
+        .iter()
+        .map(|&(i, until)| {
+            let from = i
+                .checked_sub(1)
+                .and_then(|k| timeline.actions.get(k))
+                .map_or(pre, |a| a.end);
+            (from, until)
+        })
+        .collect()
+}
+
+/// The boxes Auto Combat's questions showed (E17 M6 T5b2a): over each span of `spans`, the
+/// question until the first of `answers` in it, then, after a second one, the offer until it;
+/// each `[from, until)` with the index of its held command and whether it is the offer.
+fn asked_boxes(
+    spans: &[(u32, u32)],
+    holds: &[(usize, u32)],
+    answers: &[u32],
+) -> Result<Vec<(u32, u32, usize, bool)>, String> {
+    let mut out = Vec::new();
+    for (&(from, until), &(i, _)) in spans.iter().zip(holds) {
+        let mut given = answers.iter().filter(|&&t| (from..=until).contains(&t));
+        let first = *given
+            .next()
+            .ok_or_else(|| format!("command {}: its question has no answer", i + 1))?;
+        out.push((from, first, i, false));
+        if let Some(&second) = given.next() {
+            out.push((first, second, i, true));
+        }
+    }
+    Ok(out)
 }
 
 /// The frames the harness kept of a sequence in the original (`h3drive.py frames`), or of a
@@ -255,6 +310,10 @@ pub(crate) struct Interface<'a> {
     pub result: Option<&'a (h3_view::message::MessageBox, h3_view::sound::Tune)>,
     /// The video archives the result window's clip comes from (E17 M5 T4b2b; none: no clip).
     pub videos: Option<&'a crate::videos::Videos>,
+    /// Auto Combat's questions and offers a sequence's battle showed (E17 M6 T5b2a,
+    /// *provisional*): each drawn over the battle from its first time to before its second, the
+    /// box's cursor at the mouse.
+    pub asked: &'a [(u32, u32, h3_view::message::MessageBox)],
 }
 
 /// One kept frame: its time, the stacks the original shows fidgeting then (the viewer draws
@@ -429,7 +488,10 @@ fn sequences(options: &Options) -> Result<usize, String> {
             lengths: lengths.as_ref(),
             ..motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()))
         };
-        // The harness acts `pre` ms after the opening, and then at each command's `at`.
+        // The harness acts `pre` ms after the opening, and then at each command's `at`; a
+        // command after Auto Combat's question at its answer, the battle held until then (E17
+        // M6 T5b2a).
+        let holds = holds(&sequence.command).map_err(|e| format!("{}: {e}", sequence.id))?;
         let commands: Vec<anim::Command<'_>> = record
             .messages
             .iter()
@@ -439,20 +501,25 @@ fn sequences(options: &Options) -> Result<usize, String> {
             })
             .enumerate()
             .map(|(i, events)| anim::Command {
-                at: sequence
-                    .command
-                    .get(i)
-                    .and_then(|s| s.at)
-                    .or((i == 0).then_some(sequence.pre)),
+                at: match sequence.command.get(i) {
+                    Some(step) if step.question => None,
+                    step => step.and_then(|s| s.at).or((i == 0).then_some(sequence.pre)),
+                },
                 events,
             })
             .collect();
         let snapshot = record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
-        let mut timeline = anim::timeline(snapshot, &commands, &looks, stage, options.speed)
+        // Each held from its box's opening: the first command's at `pre` (the switch's), a
+        // later one's at the end of the command before (0: at least there).
+        let held: Vec<(usize, u32, u32)> = (holds.iter())
+            .map(|&(i, until)| (i, if i == 0 { sequence.pre } else { 0 }, until))
+            .collect();
+        let mut timeline = anim::held(snapshot, (&commands, &held), &looks, stage, options.speed)
             .map_err(|e| format!("{}: {e}", sequence.id))?
             .with_heroes(motion::heroes(&record, &tables, &archives, None)?);
+        let spans = asked_spans(&holds, &timeline, sequence.pre);
         // The mouse as the harness moved it (E17 M3 T6c-2): its cursor, the stack it marks and
         // enters, the status line's hints, each turn's battle from the engine.
         let scenario_path = dir.join(&sequence.scenario);
@@ -476,7 +543,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
             |original: u16| motion::spell_numbered_in(keys, &tables, original).map(|(h, _)| h);
         // The Auto Combat boxes it was recorded at (E17 M6 T5b1).
         let boxes = sequence.auto.boxes(&sequence.id)?;
-        let inputs = pointer::inputs(
+        let (inputs, answers) = pointer::answering(
             &sequence.actions,
             sequence.pre,
             &layout,
@@ -486,8 +553,11 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 sequence.shades.options(&sequence.id)?,
                 boxes[h3_view::auto::CREATURES],
             ),
+            &spans,
         )
         .map_err(|e| format!("{}: {e}", sequence.id))?;
+        let asked =
+            asked_boxes(&spans, &holds, &answers).map_err(|e| format!("{}: {e}", sequence.id))?;
         // The spells the actions aim, each turn's aims of them (E17 M5 T3b).
         let mut aimed: Vec<u16> = inputs
             .iter()
@@ -587,6 +657,38 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 pointer::auto(&inputs, &timeline, &itself),
                 Bugs::Original,
             );
+            // Auto Combat's questions and offers (E17 M6 T5b2a): the side's own view before the
+            // held command (its hero's name, the price), laid out in the original's fonts.
+            let writer = log::Writer::new(&tables, &layout, (&archives, &exe), Bugs::Original)?;
+            let gold = layout.message.resources.clone();
+            let gold_size = lookup(&archives, &gold)
+                .ok()
+                .and_then(|b| h3_assets::def::parse_def(&b).ok())
+                .map_or([0, 0], |d| {
+                    [d.width, d.height].map(|v| i32::try_from(v).unwrap_or(i32::MAX))
+                });
+            let mut questions = Vec::new();
+            for &(from, until, i, offer) in &asked {
+                let own = scenario::own_view(&scenario_path, &options.packs, sequence.seed, {
+                    played.get(..i).unwrap_or_default()
+                })
+                .map_err(|e| format!("{}: {e}", sequence.id))?
+                .ok_or_else(|| format!("{}: no question once the battle is over", sequence.id))?;
+                let question = match own.own_hero.as_ref().and_then(|h| h.surrender_price) {
+                    Some(price) if offer => crate::live::Question::Offer { price },
+                    _ => crate::live::Question::Retreat,
+                };
+                let keys = &record.header.manifest.keys.hero_types;
+                let (text, picture, _) =
+                    crate::boxes::question(question, &own, keys, &catalogue, (&gold, gold_size));
+                let player = crate::render::viewing_player(snapshot);
+                let style = h3_view::message::Style::OkCancel;
+                if let Some(message) =
+                    writer.message(&layout, &text, style, picture.as_ref(), player)
+                {
+                    questions.push((from, until, message));
+                }
+            }
             let interface = Interface {
                 panels: &panels,
                 legal: &Legal::default(),
@@ -595,6 +697,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
                 book: None,
                 result: result.as_ref(),
                 videos: Some(&videos),
+                asked: &questions,
             };
             let drawn = draw_frames(
                 &here,
@@ -998,6 +1101,27 @@ pub(crate) fn draw_frames(
             if let Some(point) = mouse {
                 list.push(mouse::cursor(layout, h3_view::result::CURSOR_FRAME, point));
             }
+        } else if let Some((_, _, question)) =
+            (interface.asked.iter()).find(|(from, until, _)| (*from..*until).contains(&frame.t))
+        {
+            // Auto Combat's question or offer (E17 M6 T5b2a): the box's cursor at the mouse.
+            list.extend(
+                question
+                    .dialog
+                    .draws(&question.shown, &layout.player_palette)
+                    .into_iter()
+                    .map(scene::Draw::Dialog),
+            );
+            let point = interface
+                .shown
+                .and_then(|shown| frame.cursor.or_else(|| shown.point(frame.t)));
+            list.extend(point.map(|[x, y]| scene::Draw::Cursor {
+                def: layout.message.cursor.clone(),
+                frame: 0,
+                x,
+                y,
+                hot: layout.book.hot.first().copied().unwrap_or_default(),
+            }));
         } else if let Some((message, mouse)) = message {
             list.extend(
                 message
@@ -1263,6 +1387,62 @@ mod tests {
             assert!(s.auto.boxes(&s.id).is_ok(), "{}", s.id);
             assert!(dir.join(&s.scenario).exists(), "{}", s.id);
         }
+    }
+
+    #[test]
+    fn a_command_after_auto_combat_s_question_holds_the_battle_until_its_answer() {
+        // E17 M6 T5b2a: a step marked `question` needs its `at`; its box opens at the end of
+        // the command before (`pre` for the first) and closes at the first answer in its span,
+        // the offer after it until a second one.
+        let file: File = toml::from_str(
+            r#"[[sequence]]
+            id = "x"
+            scenario = "x.toml"
+            timeline = "x.txt"
+            ms = 1
+            command = [
+                { seat = "Attacker", command = { Defend = {} } },
+                { seat = "Defender", command = { Defend = {} } },
+                { seat = "Attacker", command = { Retreat = {} }, at = 900, question = true },
+            ]"#,
+        )
+        .unwrap();
+        let steps = &file.sequence[0].command;
+        let holds = holds(steps).unwrap();
+        assert_eq!(holds, [(2, 900)]);
+        let missing: File = toml::from_str(
+            r#"[[sequence]]
+            id = "x"
+            scenario = "x.toml"
+            timeline = "x.txt"
+            ms = 1
+            command = [{ seat = "Attacker", command = { Defend = {} }, question = true }]"#,
+        )
+        .unwrap();
+        assert!(holds_of(&missing).is_err());
+        let mut timeline = Timeline::default();
+        let action = |start, end| h3_view::hero::Action {
+            start,
+            end,
+            ..h3_view::hero::Action::default()
+        };
+        timeline.actions = vec![action(0, 300), action(300, 450)];
+        let spans = asked_spans(&holds, &timeline, 7);
+        assert_eq!(spans, [(450, 900)]);
+        assert_eq!(asked_spans(&[(0, 50)], &timeline, 7), [(7, 50)]);
+        assert_eq!(
+            asked_boxes(&spans, &holds, &[100, 600, 900]).unwrap(),
+            [(450, 600, 2, false), (600, 900, 2, true)]
+        );
+        assert_eq!(
+            asked_boxes(&spans, &holds, &[900]).unwrap(),
+            [(450, 900, 2, false)]
+        );
+        assert!(asked_boxes(&spans, &holds, &[100]).is_err());
+    }
+
+    fn holds_of(file: &File) -> Result<Vec<(usize, u32)>, String> {
+        holds(&file.sequence[0].command)
     }
 
     #[test]

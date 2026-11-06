@@ -6892,9 +6892,133 @@ the next stack after a cast only when it killed the active stack (0x47905B).
   viewer's outline, read every millisecond around both casts, changes where the original's
   screen does and nowhere else. `auto-cast` ends at 9 000 ms, in the shot (the questions end at
   its start).
-- **Not built:** the retreat question (T5b2, CLT-STUB-2: the test not asked, so a human's side
-  under Auto Combat never leaves); the stop read between the cast and the action (CLT-Q61, copy:
+- **Not built:** the retreat question (built in T5b2a, §12.19); the stop read between the cast and the action (CLT-Q61, copy:
   the original reads a key pressed during the computer's cast for a stack that plays itself at
   the pass after the cast, so that stack's action is the human's; the client's stop waits for the
   next turn's start, its `Auto::of` taking stops at turn starts only; T5b2's, with a recording); a hidden battle's and a remote turn's
   asks (no such battle here).
+
+### 12.19 The retreat question (M6 T5b2a)
+
+T5b2 cut in two by the user (2026-11-05): T5b2a the retreat question, T5b2b CLT-Q61's stop. Read:
+`ai_battle_action` 0x477EE0 whole (0x477EE0 to 0x4782C4), the retreat test's head again
+(0x41E570 to 0x41E5CA: the human side's gate), `message_box_picture` 0x4F4EB0's resources' case
+(0x4F4F5A to 0x4F508E) and its common tail (0x4F5B94 to 0x4F5CF8), GENRLTXT's records 130 and 414.
+
+- **When** (0x477EE0, the action of a stack that plays itself, §7.22): the side's player human
+  (+0x54A4 + side, 0x4CE940); in the tactics phase the stack's turn (0x4221F0); else the retreat
+  test 0x41E570, asked (and drawing) at every such action, also after the question's Cancel. For a
+  human's side the test skips its Easy and Normal gate and the Normal draw (0x41E590: +0x54A4 +
+  side set), the rest as the computer's (BAT-AI-024). On no, the stack's turn.
+- **The question** (0x477F56), a human's side on the test's yes while +0x1402F is set (set as the
+  battle starts; once cleared, the stack's turn): GENRLTXT's record 414 (`%s feels that the odds
+  are overwhelming.` and, after a blank line, whether to retreat) with the side's hero's name
+  (hero +0x23), `message_box` style 2 (OK 0x7805, Enter; Cancel 0x7806, Escape; §7.19), no
+  picture, at (-1, -1). Cancel clears +0x1402F: the stack's turn now, and no question again this
+  battle (the test still asked at each action). OK leaves it set and goes on.
+- **After OK** (0x477FEE to 0x47828E; BAT-AI-026, the engine's `Decision::leaving`): the action 4
+  (Retreat) without a hero on either side; the expected price (0x477A00's sum inline: half the
+  gold of the side's first 20 records but the summoned and the temporary creatures, times
+  `hero_surrender_factor` 0x4E4580) into `surrender_price` 0x695030; Retreat for the town's
+  defender (+0x53C8 set, side 1), when the player's gold (game +0x20B84 by player) is below the
+  price + 2500, or when the army's worth (the creatures times their gold over the first 20 records,
+  no flag test) is at most that; a computer side always retreats (0x47815A). Else **the offer**:
+  GENRLTXT's record 130 (whether to save `%s`'s army for `%d` gold) with the hero's name and the
+  price, style 2 with one picture, type 6 (gold) and subtype the price. OK: the action 5
+  (Surrender) with the price (+0x40). Cancel: the action 4 (Retreat). No other box: the Retreat
+  button's question (GENRLTXT 29) and the Surrender button's (33, 30) are not shown.
+- **The gold picture** (0x4F4EB0, types 0 to 6, the resources): `resour82.def`, frame the type
+  (6); the caption by the subtype: above 0 `%d` of it (0x660A1C), 0 none, from -100 000 to -1
+  GENRLTXT 4 with its negation, below -100 000 `%d` of it + 100 000; then the common tail (§7.19:
+  the slot the DEF's size + 2, the caption measured in `smalfont.fnt`, 50 to 110 wide).
+- **The engine** (the battle lane's paths, a cross-lane PR with the user's consent, 2026-11-05):
+  `h3_battle_ai::Decision::human` (the parts as the original asks them of a human's side: the
+  retreat test without the gate, in the hero's cast too; the policy, `choose`, unchanged,
+  ADR-0027 point 8), `Decision::leaving` and `Leaving` (`Retreat`, `Offer { price }`; BAT-AI-026).
+  The offer names the battle's price (BAT-FLE-002, what the engine's Surrender pays), the
+  thresholds take the expected one (0x477A00), as the original's code does; the two agree but
+  where BAT-Q28 row 7 says.
+- **Oddities:** none found by the reading.
+- **The client's (M6 T5b2a, *provisional* where marked):**
+  - `live.rs`: `Decision::human` for the cast and the action; the retreat test before each
+    action of a human's stack that plays itself (`Live::action`); on its yes while
+    `Live::may_ask` (+0x1402F) `Live::question` (`Question::Retreat`, the stream from before
+    the decision kept: the same world for the answer), `Live::answer(ok)`: Cancel clears the
+    flag and plays `Decision::action`, OK `Decision::leaving` (Retreat, or `Question::Offer`:
+    OK Surrender, Cancel Retreat). `Ask::Answered` makes `refight` reproduce it.
+  - `boxes.rs`: `Asked::Question`, `Asked::Offer`, `answered`'s `Answered::Auto(Then)` for both
+    buttons; `question` (keys `battle.auto.retreat.ask`, `battle.auto.surrender.ask`; the
+    layout's `[message] resources`, frame `GOLD`, `gold_caption`).
+  - `battle.rs`: the box at the action's millisecond (`play_next`, `computer_at`), the stack
+    outlined behind it as it was (recorded; the builder's `Growing::unoutline` removed);
+    `Battle::answer` after `Growing::hold((Battle::asked_at, answer))` (recorded: below).
+    Unattended `--auto-question cancel|retreat|surrender` (cancel by default, *provisional*).
+  - The comparisons: a step `question = true` with the answer's `at` (`anim::held`); its span
+    takes `key:Return`, `key:Escape`, `click:` as answers (`pointer::answering`,
+    `sequences::asked_boxes`), the boxes drawn in the frames (`Interface::asked`).
+    `h3-view situation` writes the facts' experience and a Tavern town (`tavern_towns`);
+    prepared: `to-record.toml`'s `auto-retreat-*` over `seq-auto-retreat.toml`.
+- **Recorded** (M6 T5b2a, a capture agent; `sequences.toml`'s `auto-retreat-cancel`,
+  `auto-retreat-surrender`, `auto-retreat-flee`, A at the Champions' turn, Creatures set, then
+  Escape, or Enter and the offer's OK or Escape; `seq-auto-retreat.toml`; silent). The
+  recordings are the source of what follows; the guesses they replace are marked.
+  1. *The scenario in the original:* the map's experience levels the hero up as the game starts:
+     with 5000 Orrin began at level 5, his primary skills 2, 3, 2, 2 (the scenario's 1, 1, 1, 2),
+     Offense at Basic and First Aid at Expert learned (one run read). So `h3-view situation`
+     writes none and the harness writes the facts' experience into the hero's record on the
+     adventure map before the battle (`h3drive.scenario_experience`): Orrin at level 1 with the
+     scenario's skills and 5000 experience, which is all the test reads (BAT-AI-024). Red's gold
+     is the Normal 20 000 plus the Gold starting bonus (20 600 to 20 900 in the runs), above
+     every threshold here. The test's predictions over the 4 500 creatures outlast an action's
+     settle (the box drawn after the state of its millisecond was read, in one of four runs):
+     the entries' `wait_idle` waits for the game to be idle after each action.
+  2. *The question* opens in the switch's millisecond (0): GENRLTXT 414 with Orrin's name, 320 x
+     192 at (240, 204), its text item 270 x 80 at (260, 235), OK and Cancel 64 x 30 at (327, 335)
+     and (409, 335); the cursor the arrow (type 0, frame 0) at the parked point from then. Behind
+     it the battle stands as the switch left it: the Champions still the active stack and
+     outlined, the outline's colour and the flags those of the opening's idle step, no idle step
+     (the counter 1, 0x6989B8 and the deadline 0x698998 left at 100), the panel dimmed but Auto
+     Combat, selected. *Corrected:* the builder's no outline behind the box (T5b1's empty active
+     stack is read once the action runs, after the question); and the viewer had dropped the
+     opening's idle step (its pulse 0 at 0, the flags a step back).
+  3. *Cancel* (Escape at 1 000) clears +0x1402F. In that millisecond the original's computer has
+     the Champions wait (the log `The Champions pause, and wait for a better time to act.`), the
+     active stack empties, the Marksmen's turn starts and their double shot at the Goblins shows
+     its first frame at 1 000 (memory the second frame at 1 000, the third at 1 071), one idle
+     step at 1 000; the Marksmen's action asks no question. So at the answer the loop ticks once
+     (0x474040: the deadline passed moves on by max(the step, its lateness), here to now) and
+     the shot follows without another tick. *Corrected:* the builder's first frame at the grid's
+     next point (1 100).
+  4. *OK* (Enter at 1 000): the offer in the same millisecond, `surrender_price` 0x695030 3 750
+     (half of 5 x 1 200 + 10 x 150): GENRLTXT 130 `Do you wish to save Orrin's army for a cost of
+     3750 gold?`, 320 x 320 at (240, 140), its text 270 x 40 at (260, 189), the gold picture
+     (`resour82.def` frame 6) in its slot 84 x 95 at (358, 269) captioned `3750`, OK and Cancel at
+     (327, 399) and (409, 399). The offer's OK (a click at (359, 414), 2 000): the surrender, Red's
+     gold less 3 750, +0x132B2 side 0, the winner the defender; its Cancel (Escape): the retreat,
+     +0x132B0 side 0, the gold kept. Either way the result window at 2 000 at once, no idle step
+     at the answer (the counter still 1): the battle behind it one step on from the opening, the
+     Champions outlined.
+  The comparison (after the fixes): the three timelines as recorded (33, 7 and 7 changes);
+  `auto-retreat-cancel` 50 frames exact; `auto-retreat-surrender` 46 frames, the boxes' exact
+  (the question's frame and colours, the offer's picture and caption, the cursor), 18 of the
+  result window's differing in 2 or 3 pixels inside its clip (`Surrender`); `auto-retreat-flee`
+  46 frames, 32 of the result window's differing in up to 49 pixels inside its clip (`rtstart`,
+  `rtloop`): CLT-Q30's rounding, both listed there. The client now (`anim::Growing::hold` with
+  the box's opening and its answer, `Clock::hold`; the window's from `Battle::asked_at`): the
+  steps due as the box opens, none after it until the answer nor at it, the loop's one tick at
+  the answer; the outline kept. *Provisional still:* a question at a later turn (the computer's
+  tick as it acts, before its box, outlines its stack; none recorded) and a human's turn after
+  an answer (the loop ticking again a millisecond after it).
+  **Oddities:** none in the battle; the level-up for the map's experience is the game's own
+  (the harness writes around it).
+- **Reviewed** (a fresh reviewer, 2026-11-06): no defect in the engine's leaving against
+  0x477FEE, the draws, the world kept, the once-a-battle flag, the boxes; fixed: a question
+  coming while another box is open (a held popup) waited unshown, the battle stuck: `Battle::poll`
+  opens it once none is, and a box that cannot be shown (no text tables, not laid out) is
+  answered Cancel, the offer's gold left out when its DEF is not loaded. Left as the Surrender
+  box's: the name the hero type's (the original's the hero's own, +0x23; the same for a hero not
+  renamed). Found: CLT-Q63 (the question at an automatic Ballista's turn).
+- **Not built:** the question at an automatic war machine's turn (CLT-Q63: the engine plays it
+  itself); a server's seat (no Auto Combat there); the facts' artifacts' worth and
+  `wanted` in the original's map; the original's map without the enemy's hero (a monster's
+  split); CLT-Q61's stop (T5b2b).

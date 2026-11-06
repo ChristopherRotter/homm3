@@ -1,6 +1,7 @@
 //! The battle's message boxes (E17 M5 T4a; `docs/epics/E17-design.md` §7.19): what each asks
 //! or tells and what its OK does, shared by the window's battle (`crate::battle`) and the capture
-//! set's stills (`crate::spellbook::still`), which lay them out with `crate::log::Writer`.
+//! set's stills (`crate::spellbook::still`), which lay them out with `crate::log::Writer`. E17
+//! M6 T5b2a (design §12.19): Auto Combat's question and offer to the human ([`question`]).
 
 use h3_content_battle::BattleRuleset;
 use h3_protocol::wire::{Command, Manifest, Observation, OwnHero, Sex, Side};
@@ -9,6 +10,12 @@ use h3_ui::text::{Args, Catalogue};
 use h3_view::book;
 use h3_view::message::{Picture, YES};
 use h3_view::tables::Tables;
+
+use crate::live::Question;
+
+/// The resources' pictures' frame of gold (`message_box_picture` 0x4F4EB0: a picture of type 6,
+/// `resour82.def`'s frame the type).
+pub const GOLD: u32 = 6;
 
 /// What a message box asks.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -44,6 +51,12 @@ pub enum Asked {
     /// held while the button is (`popup_run_held` 0x602A40): its ends close it, the input
     /// meanwhile dropped, the cursor hidden.
     Held,
+    /// Auto Combat's question to the human whose stack plays itself (E17 M6 T5b2a, design §12.19;
+    /// 0x477F56, GENRLTXT 414): its OK the computer's leaving, its Cancel the stack's action.
+    Question,
+    /// Auto Combat's offer after the question's OK (E17 M6 T5b2a; 0x478160, GENRLTXT 130 with
+    /// the gold's picture): its OK the Surrender, its Cancel the Retreat.
+    Offer,
 }
 
 /// How the side to act may leave the battle by the panel's buttons: whether it may retreat (the
@@ -122,6 +135,30 @@ pub enum Answered {
     Give(Command),
     /// Another box at once, telling this (the surrender refused, GENRLTXT 30: 0x475119).
     Tell(String),
+    /// Auto Combat's question or offer answered (E17 M6 T5b2a): what the computer does next for
+    /// the human's side (`crate::live::Live::answer`).
+    Auto(Then),
+}
+
+/// What the computer does for a human's side after Auto Combat's question or offer (E17 M6 T5b2a,
+/// design §12.19; 0x477F56 to 0x47828E).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Then {
+    /// The question's Cancel: the stack's action, and no question again this battle.
+    Fight,
+    /// The question's OK: the computer's leaving (the Retreat, or the offer).
+    Leave,
+    /// The offer's OK: the Surrender at the price.
+    Surrender,
+    /// The offer's Cancel: the Retreat.
+    Retreat,
+}
+
+impl Then {
+    /// Whether it is the box's OK (`crate::live::Live::answer`'s answer).
+    pub const fn ok(self) -> bool {
+        matches!(self, Self::Leave | Self::Surrender)
+    }
 }
 
 /// What closing a box that asked `asked` by its button `id` leads to (0x474FD0, 0x4750E4).
@@ -135,7 +172,67 @@ pub fn answered(asked: Asked, id: u16, catalogue: &Catalogue) -> Answered {
                 Answered::Tell(catalogue.text("battle.surrender.poor", &Args::new()))
             }
         }
+        // Both buttons of Auto Combat's boxes answer (E17 M6 T5b2a): Cancel too.
+        Asked::Question if id == YES => Answered::Auto(Then::Leave),
+        Asked::Question => Answered::Auto(Then::Fight),
+        Asked::Offer if id == YES => Answered::Auto(Then::Surrender),
+        Asked::Offer => Answered::Auto(Then::Retreat),
         _ => Answered::Closed,
+    }
+}
+
+/// Auto Combat's `question` to the human whose side `own` is (its own view; E17 M6 T5b2a,
+/// design §12.19), its hero's name from the manifest's `hero_types` through `catalogue`: whether
+/// to retreat (GENRLTXT 414 with the name, no picture), or to save the army for the price
+/// (GENRLTXT 130 with the name and the price, the gold's picture of `resources` (its DEF, of
+/// `size`) captioned with the price); its text, picture and what it asks. Both are style 2 (OK
+/// and Cancel), at (−1, −1).
+pub fn question(
+    question: Question,
+    own: &Observation,
+    hero_types: &[String],
+    catalogue: &Catalogue,
+    (resources, size): (&str, [i32; 2]),
+) -> (String, Option<Picture>, Asked) {
+    let index = usize::from(own.viewer == Side::Defender);
+    let name = own.sides[index]
+        .hero
+        .as_ref()
+        .and_then(|h| hero_types.get(usize::from(h.hero_type)))
+        .map(|k| catalogue.text(&format!("hero.{k}"), &Args::new()))
+        .unwrap_or_default();
+    let args = Args::new().text("hero", &name);
+    match question {
+        Question::Retreat => (
+            catalogue.text("battle.auto.retreat.ask", &args),
+            None,
+            Asked::Question,
+        ),
+        Question::Offer { price } => {
+            let args = args.number("price", i64::from(price));
+            let picture = Picture {
+                def: resources.to_owned(),
+                frame: GOLD,
+                size,
+                caption: gold_caption(price),
+            };
+            (
+                catalogue.text("battle.auto.surrender.ask", &args),
+                Some(picture),
+                Asked::Offer,
+            )
+        }
+    }
+}
+
+/// The caption of a resource's picture of `amount` (`message_box_picture` 0x4F4EB0, types 0 to
+/// 6): above 0 the amount (`%d`, 0x660A1C), 0 none. A price is never below 0 (the executable's
+/// −100 000 to −1, GENRLTXT 4's per day, and below −100 000, the amount + 100 000, not needed).
+pub fn gold_caption(amount: u32) -> String {
+    if amount == 0 {
+        String::new()
+    } else {
+        amount.to_string()
     }
 }
 
@@ -467,6 +564,120 @@ mod tests {
         }
         assert!(affects_someone_only(39) && affects_someone_only(63) && !affects_someone_only(40));
         assert!(!affects_someone_only(20) && !affects_someone_only(59));
+    }
+
+    #[test]
+    fn auto_combat_s_boxes_answer_by_both_buttons() {
+        // E17 M6 T5b2a (design §12.19): the question's OK leaves, its Cancel fights on; the
+        // offer's OK surrenders, its Cancel retreats.
+        let c = Catalogue::default();
+        let no = h3_view::message::NO;
+        let auto = |asked, id| answered(asked, id, &c);
+        assert_eq!(auto(Asked::Question, YES), Answered::Auto(Then::Leave));
+        assert_eq!(auto(Asked::Question, no), Answered::Auto(Then::Fight));
+        assert_eq!(auto(Asked::Offer, YES), Answered::Auto(Then::Surrender));
+        assert_eq!(auto(Asked::Offer, no), Answered::Auto(Then::Retreat));
+        assert!(Then::Leave.ok() && Then::Surrender.ok());
+        assert!(!Then::Fight.ok() && !Then::Retreat.ok());
+        assert_eq!(gold_caption(0), "");
+        assert_eq!(gold_caption(25_750), "25750");
+    }
+
+    #[test]
+    fn auto_combat_asks_with_the_side_s_own_hero_and_offers_the_gold() {
+        // E17 M6 T5b2a: the question names the acting side's own hero (no picture); the offer
+        // names it and the price, the gold's picture (`resour82.def` frame 6) captioned with the
+        // price, laid out as one picture above the buttons (OK and Cancel).
+        use h3_protocol::wire::Hero;
+        let pack = r#"{ "battle": { "auto": { "retreat": { "ask": "{{hero}}: odds" },
+            "surrender": { "ask": "{{hero}}: {{price}}" } } },
+            "hero": { "orrin": "Orrin", "crag_hack": "Crag Hack" } }"#;
+        let c = Catalogue {
+            packs: vec![h3_ui::text::pack::Pack::from_json("en", pack).unwrap()],
+        };
+        let (_, mut own, _) = crate::spellbook::tests::opening();
+        let types = ["orrin", "crag_hack"].map(String::from);
+        let hero = own.sides[0].hero.unwrap();
+        own.sides[0].hero = Some(Hero {
+            hero_type: 0,
+            ..hero
+        });
+        own.sides[1].hero = Some(Hero {
+            hero_type: 1,
+            ..hero
+        });
+        let gold = ("resour82.def", [82, 93]);
+        let asked = question(Question::Retreat, &own, &types, &c, gold);
+        assert_eq!(asked, ("Orrin: odds".to_owned(), None, Asked::Question));
+        let (text, picture, asked) =
+            question(Question::Offer { price: 2575 }, &own, &types, &c, gold);
+        assert_eq!((text.as_str(), asked), ("Orrin: 2575", Asked::Offer));
+        let picture = picture.unwrap();
+        assert_eq!(
+            picture,
+            Picture {
+                def: "resour82.def".into(),
+                frame: GOLD,
+                size: [82, 93],
+                caption: "2575".into(),
+            }
+        );
+        own.viewer = Side::Defender;
+        let asked = question(Question::Retreat, &own, &types, &c, gold);
+        assert_eq!(asked.0, "Crag Hack: odds");
+        own.sides[1].hero = None;
+        assert_eq!(
+            question(Question::Retreat, &own, &types, &c, gold).0,
+            ": odds"
+        );
+        // The box: style 2 with the gold in its slot (the DEF's size + 2), centred, its caption
+        // under it; OK and Cancel below.
+        use h3_assets::fnt::{Font, Glyph};
+        let font = |advance: i32, height: u8| Font {
+            height,
+            y_offset: 0,
+            glyphs: vec![
+                Glyph {
+                    left: 0,
+                    width: advance,
+                    right: 0,
+                    pixels: Vec::new(),
+                };
+                256
+            ],
+        };
+        let (medium, small) = (font(8, 16), font(5, 10));
+        let path = crate::assets::clients_dir().join("layouts/battle.toml");
+        let layout =
+            h3_view::layout::parse_battle(&std::fs::read_to_string(path).unwrap()).unwrap();
+        let m = h3_view::message::layout(
+            &layout.message,
+            (&medium, &small),
+            "x",
+            h3_view::message::Style::OkCancel,
+            Some(&picture),
+            (0, Bugs::Original),
+        );
+        let def = m
+            .dialog
+            .items
+            .iter()
+            .find_map(|i| match i {
+                h3_ui::ui::Item::Def(d) if d.id == h3_view::message::PICTURE => Some(d),
+                _ => None,
+            })
+            .unwrap();
+        let name = def.def.as_deref();
+        assert_eq!(
+            (name, def.frame, def.size),
+            (Some("resour82.def"), 6, [84, 95])
+        );
+        let width = m.dialog.shadow.unwrap()[0];
+        assert_eq!(def.at[0], (width - 84) / 2);
+        assert_eq!(m.shown.texts[&h3_view::message::PICTURE], "2575");
+        for id in [YES, h3_view::message::NO] {
+            assert!(m.dialog.item(id).is_some());
+        }
     }
 
     #[test]

@@ -65,6 +65,9 @@ pub struct MessageLayout {
     /// The spells' pictures (`spellScr.def`, a picture slot of type 9; its frame the spell's
     /// number).
     pub spell_pictures: String,
+    /// The resources' pictures (`resour82.def`, a picture slot of types 0 to 6, 0x4F4F5A; its
+    /// frame the type, 6 the gold: E17 M6 T5b2a, Auto Combat's offer).
+    pub resources: String,
     /// The cursor while the box is open (`crdeflt.def`'s frame 0: `mouse_set_cursor(0, 0)` at
     /// 0x4F74AC).
     pub cursor: String,

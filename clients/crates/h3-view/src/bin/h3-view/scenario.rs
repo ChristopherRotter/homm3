@@ -144,6 +144,10 @@ pub struct Sides {
     pub machines: [Vec<(usize, u16)>; 2],
     /// The town the battle is fought at (E17 M4 T1b).
     pub siege: Option<SiegeTown>,
+    /// What each side's hero would lose by a retreat (E17 M6 T5b2a, the scenario's
+    /// `[scenario.attacker_retreat]`: the retreat test's facts): its experience and a Tavern
+    /// town for the original's map.
+    pub retreat: [h3_contracts::RetreatFacts; 2],
 }
 
 /// A siege's town for the original's map (E17 M4 T1b, M6 T3c3).
@@ -448,6 +452,7 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
             .siege
             .map(|s| siege_town(&s, &setup.heroes, &towns))
             .transpose()?,
+        retreat: setup.retreat,
     })
 }
 
@@ -736,6 +741,35 @@ pub fn turned(
         .map_err(|e| format!("command {} ({command:?}): {e:?}", out.len()))?;
     }
     Ok(out)
+}
+
+/// The side to act's own observation in the battle `scenario` sets up with `seed` after
+/// `commands`, each for the side to act (E17 M6 T5b2a: the hero's name and the price of Auto
+/// Combat's question and offer in a sequence's frames); none once the battle is over. A rejected
+/// command is an error.
+pub fn own_view(
+    scenario: &Path,
+    packs: &Path,
+    seed: u64,
+    commands: &[Command],
+) -> Result<Option<Observation>, String> {
+    let (ruleset, mut state) = opening(scenario, packs, seed)?;
+    for (n, &command) in commands.iter().enumerate() {
+        let Some(side) = state.side_to_act() else {
+            break;
+        };
+        h3_battle::apply(
+            &mut state,
+            &ruleset,
+            side,
+            map::command_to_engine(command),
+            &mut NoopSink,
+        )
+        .map_err(|e| format!("command {} ({command:?}): {e:?}", n + 1))?;
+    }
+    Ok(state
+        .side_to_act()
+        .map(|side| map::observe(&state, &ruleset, Viewer::Side(side))))
 }
 
 /// How the battle `scenario` sets up with `seed` ends after `commands`, each for the side to act
