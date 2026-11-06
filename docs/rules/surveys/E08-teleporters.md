@@ -281,7 +281,7 @@ before the battle (§4.2).
 | A Whirlpool's exit | one draw over the other Whirlpools' tiles | a Whirlpool, then one of its blocked tiles (D-57) | random; six squares to exit |
 | Whose troops a Whirlpool takes | a human's hero (A-40) | every hero | — |
 | Protection | the Sea Captain's Hat, alone or in the Admiral's Hat | `WHIRLPOOL_PROTECTION`, a lone creature | either Hat |
-| The weakest stack | fight value × count, the first on a tie | AI value × count, the last on a tie (D-54) | total fight value |
+| The weakest stack | fight value × count, the first on a tie | AI value × count from the first slot, a reverse scan taking a strictly weaker one: the first slot when it ties, else the last of a tie (D-54) | total fight value |
 | The loss | keeps `⌊n / 2⌋`; a lone creature kept | takes `max(1, ⌊n / 2⌋)` (D-55) | 50 % rounded up lost |
 | The space key | visits any entered object under the hero, no points (§11) | — | AB and SoD, any repeatable object; not in RoE |
 | A path through a teleporter | none for a human (§9.1) | two-way and gates; Whirlpools if protected (D-58) | — |
@@ -297,7 +297,11 @@ before the battle (§4.2).
   (drawn; a command never names the exit, ADR-0004).
 - **D-54 (the weakest stack).** The original: least fight value × count, the first slot on a tie;
   VCMI: AI value × count (`CStackInstance::getPower`), the last slot on a tie (a reverse scan with
-  a strict test). The wiki: total fight value. Recommended: **the original**.
+  a strict test). The wiki: total fight value. Recommended: **the original**. *(T99b2a's
+  correction, `CGWhirlpool::onHeroVisit` read again: the target starts at the first slot and the
+  reverse scan takes a slot only when strictly weaker, so a tie that holds the first slot keeps it,
+  as the original; the last of a tie only when the first slot is not in it. E11-11's setup moved
+  its strong stack to slot 0.)*
 - **D-55 (what a Whirlpool takes).** The original keeps `⌊n / 2⌋` (a stack of 3 keeps 1; a stack of
   1 among others is lost; a lone creature kept, the message shown); VCMI takes `max(1, ⌊n / 2⌋)` (a
   stack of 3 keeps 2) and gives a lone creature no message. The wiki: "loses 50% rounded up (i.e. is
@@ -498,7 +502,7 @@ creature's message; and the disputes the batch can tell apart.
 | E11-8 | §4.3 | a gate with no pair (one level's gates outnumber the other's) | the message, the tile | ADVEVENT 153; stays |
 | E11-9 | §3.2, D-56 | a surface gate G, two underground gates at equal truncated distances from G and different squared ones, the farther (squared) first in the walk | which G leads to | the first in the walk (truncated); VCMI the nearer by squares |
 | E11-10 | §4.4, D-54, D-55 | Red's hero in a boat with 3 Pegasi (slot 0), 3 Dendroid Guards (slot 1) and a strong stack enters a Whirlpool | army after; the message | Pegasi 3 → 1 (fight value × count 1 221 < 2 070); VCMI halves the Dendroids by AI value (1 551 < 1 554) and keeps 2; ADVEVENT 168 |
-| E11-11 | §4.4, D-54's tie | 5 Pikemen in slots 0 and 2, a strong stack in 1 | army after | slot 0 keeps 2 (the first); VCMI slot 2 |
+| E11-11 | §4.4, D-54's tie | a strong stack in slot 0, 5 Pikemen in slots 1 and 2 (T99b2a; with the tie in slots 0 and 2 VCMI takes slot 0 too) | army after | slot 1 keeps 2 (the first); VCMI slot 2 keeps 3 |
 | E11-12 | §4.4, A-38 | a lone Pikeman; a lone stack of 1 775, then 1 776 Azure Dragons | army; the message | 1 kept with the message; 1 775 → 887; 1 776 all kept (56 315 × 1 776 past 99 999 999) |
 | E11-13 | §4.4 | the Sea Captain's Hat worn; the Admiral's Hat worn | army; messages | nothing lost, no message |
 | E11-14 | §11's space key | Red's hero on B with 0 points (spent on the way to A) presses Space; then on a dwelling it owns | tile, points; the question | back on A at 0 points; the hire question again |

@@ -2,17 +2,17 @@
 
 Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `444b7900`.** The map's description in the scenario list starts with "Stamp 444b7900.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `0b5df5f3`.** The map's description in the scenario list starts with "Stamp 0b5df5f3.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
 1. Copy `E08-batch-11a.h3m` into `D:\Heroes3\HoMM 3 Complete\Maps`.
 2. Use the HD launcher with plain HD (HD+ off).
-3. Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2).
-4. Most records are the game's memory: a hero's tile (column, row, level), its movement points (hero +0x4D), the day's maximum (+0x49) and army, a tile's explored bit for Red, the hero's path after a first click (its tiles, or none), the messages and dialogs shown (by their text's table and line), the meeting dialog, a battle's opening (terrain, sides, stacks), the adventure map's view during Replay Opponent Turn. The capture harness reads them (`clients/capture/batches/E08-batch-11a.toml`, E08 T100). Played by hand, read the screens instead (the level button under the minimap shows the underground; a tile is explored when it is not black) and leave the memory-only lines empty.
-5. Tiles are (column, row) from 0 at the top left; underground tiles say so. A walk: click the target once (the path's marks show), then again (the hero goes). A step onto a monolith or a gate: click its tile from the neighbouring tile named (twice). **Space:** with the hero selected, press the space bar once.
+3. Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of each later turn (save 2 Blue's day 1, save 3 Red's day 2, save 4 Blue's day 2).
+4. Most records are the game's memory: a hero's tile (column, row, level), its movement points (hero +0x4D), the day's maximum (+0x49) and army (slot, creature, count), whether it is in a boat (its status +0x105, bit 18, 0x40000), a tile's explored bit for Red, the hero's path after a first click (its tiles, or none), the messages and dialogs shown (by their text's table and line), the meeting dialog, a battle's opening (terrain, sides, stacks), the adventure map's view during Replay Opponent Turn. The capture harness reads them (`clients/capture/batches/E08-batch-11a.toml`, E08 T100). Played by hand, read the screens instead (the level button under the minimap shows the underground; a tile is explored when it is not black) and leave the memory-only lines empty.
+5. Tiles are (column, row) from 0 at the top left; underground tiles say so. A walk: click the target once (the path's marks show), then again (the hero goes). A step onto a monolith or a gate: click its tile from the neighbouring tile named (twice). A boat: click it from the shore beside it (twice): the hero boards it and its walk ends there. A Whirlpool: from a boat beside it, click the Whirlpool's tile named (twice). **Space:** with the hero selected, press the space bar once.
 6. Each battle against a monster by auto combat. E11-7's battle is between two human players, so auto combat is refused: play it, Red's stacks attacking, Blue's stack only waiting or defending (never a retreat or a surrender). A level-up's dialog after a battle (none is expected): take the left skill.
-7. Order: day 1, Red's turn: E11-1 (rows E11-1 to E11-3), E11-4 (rows E11-5, then E11-4), E11-6, E11-9 (rows E11-9, then E11-8), E11-19; E11-7's and E11-18's first reads; end the turn. Blue's turn: E11-7's Blue step, then E11-18's; end the turn. Day 2, Red's turn: E11-18's replay and reads first, then E11-7's step and battle; end the turn. Blue's turn: end the turn. Then the map is done.
+7. Order: day 1, Red's turn: E11-1 (rows E11-1 to E11-3), E11-4 (rows E11-5, then E11-4), E11-6, E11-9 (rows E11-9, then E11-8), E11-19; E11-7's and E11-18's first reads; end the turn. Blue's turn: E11-7's Blue step, then E11-18's; then the boardings of E11-10, E11-11, E11-12, E11-12b, E11-12c and E11-13, in that order; end the turn. Day 2, Red's turn: E11-18's replay and reads first, then E11-7's step and battle; end the turn. Blue's turn: E11-10, E11-11, E11-12 (E11-12, E11-12b, E11-12c), E11-13 (E11-13, then E11-18's hero); end the turn. Then the map is done.
 8. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
 
 ## E11-1 — A path past a two-way monolith (E11-1), the step onto it (E11-2), a monster beside its exit (E11-3) (D-58, ADV-OBJ-003, ADV-TEL-004, ADV-TEL-007, ADV-MOV-008, ADV-MON-005)
@@ -129,17 +129,119 @@ Map file: `E08-batch-11a.h3m`. Fill in the blanks below and keep this file; an a
 
 ## E11-18 — Blue's hero enters a one-way monolith Red sees, its exit in Red's shroud; Red's Replay Opponent Turn (A-41, ADV-FOG-004, ADV-TEL-007)
 
-- Blue hero **E11-18** (Clancy, specialty creature Unicorn): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 1 Pikeman
+- Blue hero **E11-18** (Clancy, specialty creature Unicorn): attack 1, defense 1, power 1, knowledge 1; no skills; Admiral's Hat (head); no spells; army 10 Pikeman
 
-1. Day 1, Red's turn: one-way channel 1 (red) has one entrance M18 (48, 33), which Red's E11-7 at (45, 31) sees, and one exit X18 (66, 60), far in Red's shroud. Blue's E11-18 stands at (47, 33), west of M18, with one Pikeman. Read Red's explored bits of (66, 60), (65, 60), (67, 60), (66, 59), (66, 61).
-2. Day 1, Blue's turn, after E11-7b's step: E11-18: click M18 (48, 33) twice: E11-18 steps onto it. Note any message, then E11-18's tile.
-3. Day 2, Red's turn, first: read the five explored bits again. Open the Adventure Options and choose **Replay Opponent Turn**. While it plays, note where the view goes (its top-left tile and level each time it moves) and what it shows (each Blue hero's moves). When it ends, read the five explored bits again, and Red's explored bits of the underground (43, 29) to (45, 31) (E11-7's). If the item is greyed out or plays nothing, note that and still read the bits.
+1. Day 1, Red's turn: one-way channel 1 (red) has one entrance M18 (48, 33), which Red's E11-7 at (45, 31) sees, and one exit X18 (66, 60), far in Red's shroud. Blue's E11-18 stands at (47, 33), west of M18, with ten Pikemen and the Admiral's Hat (it plays E11-13's second part on day 2). Read Red's explored bits of (66, 60), (65, 60), (67, 60), (66, 59), (66, 61), and of the boardings' tiles (51, 61), (51, 62), (51, 66).
+2. Day 1, Blue's turn, after E11-7b's step: E11-18: click M18 (48, 33) twice: E11-18 steps onto it. Note any message, then E11-18's tile. (Blue's six boardings at the strait follow, E11-10 to E11-13.)
+3. Day 2, Red's turn, first: read the five explored bits and the boardings' three again. Note the adventure view's size in tiles (columns, rows) once. Open the Adventure Options and choose **Replay Opponent Turn**. While it plays, note where the view goes (its top-left tile and level each time it moves) and what it shows (each Blue hero's moves; whether a view holds any tile of the six boardings, (50, 61) to (52, 66), and draws the heroes and boats there: a screenshot or a human's eye). When it ends, read the five explored bits again, the boardings' three, and Red's explored bits of the underground (43, 29) to (45, 31) (E11-7's). If the item is greyed out or plays nothing, note that and still read the bits.
 
 **Record**
 
-- day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61): 
+- day 1, Red: explored (66, 60), (65, 60), (67, 60), (66, 59), (66, 61); the boardings' (51, 61), (51, 62), (51, 66): 
 - E11-18: messages after its step onto M18; its tile after: 
-- day 2, before the replay: the same explored bits: 
+- day 2, before the replay: the same eight explored bits: 
+- the view's size in tiles (columns, rows): 
 - the replay: the view's corners (tile, level) in order; what each part shows: 
-- after the replay: the same explored bits; E11-7's underground bits: 
+- the replay: a view holding tiles of the boardings (50, 61) to (52, 66), or none; the heroes and boats drawn there (a screenshot): 
+- after the replay: the same eight explored bits; E11-7's underground bits: 
+- anything odd: 
+
+## E11-10 — A Whirlpool takes from the weakest stack: by fight value or by AI value (D-54, D-55, ADV-TEL-006, ADV-TEL-007, ADV-SEA-002)
+
+- Blue hero **E11-10** (Sorsha, specialty creature Swordsman): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 3 Pegasus, 3 Dendroid Guard, 2 Angel
+
+1. The strait (water from (46, 62) to (71, 65)) and the sea south-east of it lie in Red's shroud. The Whirlpool W1 covers (50, 63) to (52, 64); W2 (59, 68) to (61, 69) and W3 (65, 68) to (67, 69) lie in the sea. Blue's E11-10 stands on the shore at (50, 61) with 3 Pegasi (slot 0), 3 Dendroid Guards (slot 1) and 2 Angels (slot 2); an empty boat lies at (50, 62), south of it.
+2. Day 1, Blue's turn, after E11-18's step: click the boat (50, 62) twice: E11-10 boards it. Note its tile, points, day's maximum and whether it is in a boat.
+3. Day 2, Blue's turn, first: read E11-10's points, day's maximum and army (slot, creature, count). Click W1's (50, 63) twice: E11-10 sails onto it. Note every message (its text; close it), then E11-10's army, its tile (which Whirlpool; column, row), points and day's maximum, and whether it is still in a boat.
+
+**Record**
+
+- day 1, after the boarding: tile; points; day's maximum; in a boat: 
+- day 2, before the step: points; day's maximum: 
+
+| slot | creature | count before | count after |
+|---|---|---|---|
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+
+- the step onto W1: messages (their text): 
+- after: tile (W2 or W3; column, row); points; day's maximum; in a boat: 
+- anything odd: 
+
+## E11-11 — A Whirlpool's tie between two equally weak stacks: the first slot or the last (D-54, D-55, ADV-TEL-006)
+
+- Blue hero **E11-11** (Mephala, specialty skill Armorer): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 2 Angel, 5 Pikeman, 5 Pikeman
+
+1. Blue's E11-11 stands on the shore at (51, 61) with 2 Angels (slot 0), 5 Pikemen (slot 1) and 5 Pikemen (slot 2); an empty boat lies at (51, 62), south of it.
+2. Day 1, Blue's turn, after E11-10's boarding: click the boat (51, 62) twice: E11-11 boards it. Note its tile, points, day's maximum and whether it is in a boat.
+3. Day 2, Blue's turn, after E11-10's step: read E11-11's points, day's maximum and army. Click W1's (51, 63) twice: E11-11 sails onto it. Note every message (close it), then E11-11's army, its tile (which Whirlpool; column, row), points and day's maximum.
+
+**Record**
+
+- day 1, after the boarding: tile; points; day's maximum; in a boat: 
+- day 2, before the step: points; day's maximum: 
+
+| slot | creature | count before | count after |
+|---|---|---|---|
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+|   |   |   |   |
+
+- the step onto W1: messages (their text): 
+- after: tile (W2 or W3; column, row); points; day's maximum; in a boat: 
+- anything odd: 
+
+## E11-12 — Lone stacks in a Whirlpool: one Pikeman; 1 775 Azure Dragons; 1 776, past the original's bound (D-55, A-38, ADV-TEL-006)
+
+- Blue hero **E11-12** (Ufretin, specialty creature Dwarf): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 1 Pikeman
+- Blue hero **E11-12b** (Thorgrim, specialty skill Resistance): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 1775 Azure Dragon
+- Blue hero **E11-12c** (Ivor, specialty creature Wood Elf): attack 1, defense 1, power 1, knowledge 1; no skills; no artifacts; no spells; army 1776 Azure Dragon
+
+1. Three Blue heroes, each with one stack: E11-12 on the shore at (52, 61) with one Pikeman, its boat at (52, 62) south of it; E11-12b at (50, 66) with 1 775 Azure Dragons, its boat at (50, 65) north of it; E11-12c at (51, 66) with 1 776 Azure Dragons, its boat at (51, 65) north of it.
+2. Day 1, Blue's turn, after E11-11's boarding: E11-12, then E11-12b, then E11-12c: click the hero's boat twice; it boards. Note each one's tile, points, day's maximum and whether it is in a boat.
+3. Day 2, Blue's turn, after E11-11's step: E11-12: read its points, day's maximum and army; click W1's (52, 63) twice: it sails onto it. Note every message (close it), then its army, tile (which Whirlpool; column, row) and points. Then E11-12b the same way onto W1's (50, 64), then E11-12c onto W1's (51, 64).
+
+**Record**
+
+| hero | day 1 after the boarding: tile; points; day's maximum; in a boat |
+|---|---|
+| E11-12 |   |
+| E11-12b |   |
+| E11-12c |   |
+
+| hero | day 2 before: points; maximum; army | messages after the step onto W1 | army after | tile after (W2 or W3) | points after; in a boat |
+|---|---|---|---|---|---|
+| E11-12 |   |   |   |   |   |
+| E11-12b |   |   |   |   |   |
+| E11-12c |   |   |   |   |   |
+
+- anything odd: 
+
+## E11-13 — The Sea Captain's Hat and the Admiral's Hat in a Whirlpool (ADV-TEL-006, ADV-SEA-002, HER-ADV-009)
+
+- Blue hero **E11-13** (Uland, specialty spell Cure): attack 1, defense 1, power 1, knowledge 1; no skills; Sea Captain's Hat (head); no spells; army 10 Pikeman
+
+1. Blue's E11-13 stands on the shore at (52, 66) with ten Pikemen and the Sea Captain's Hat, its boat at (52, 65) north of it. E11-18's hero (Blue's, on X18 (66, 60) since its jump on day 1) has ten Pikemen and the Admiral's Hat; its boat lies at (66, 62).
+2. Day 1, Blue's turn, after E11-12c's boarding: click the boat (52, 65) twice: E11-13 boards it. Note its tile, points, day's maximum and whether it is in a boat.
+3. Day 2, Blue's turn, after E11-12c's step: E11-13: read its points, day's maximum and army; click W1's (52, 64) twice: it sails onto it. Note every message, then its army, tile (which Whirlpool; column, row) and points.
+4. Then E11-18's hero: read its tile, points and day's maximum. Click (66, 61) twice (it walks one step south), then the boat (66, 62) twice: it boards. Note its points, day's maximum and whether it is in a boat. Click W1's (52, 63) once: note the path's tiles, or that none shows. If one shows, click again: it sails there. If none shows, click (61, 63) twice (it sails west; note its points there), then W1's (52, 63) twice (note the path's tiles). Note every message, then its army, tile (which Whirlpool; column, row), points, day's maximum and whether it is in a boat.
+
+**Record**
+
+- E11-13, day 1 after the boarding: tile; points; day's maximum; in a boat: 
+- E11-13, day 2 before: points; day's maximum; army: 
+- E11-13: messages after the step onto W1; army after; tile after (W2 or W3); points after; in a boat: 
+- E11-18's hero, day 2 before: tile; points; day's maximum; army: 
+- E11-18's hero after the boarding: points; day's maximum; in a boat: 
+- E11-18's hero: the path to W1's (52, 63) from the boat (its tiles, or none); if none, after the first leg (tile; points) and the second leg's path: 
+- E11-18's hero: messages after the step onto W1; army after; tile after (W2 or W3); points after; day's maximum; in a boat: 
 - anything odd: 
