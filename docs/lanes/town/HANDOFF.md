@@ -31,6 +31,14 @@ In `TRAPS.md`.
 
 ## Recent sessions
 
+### 2026-11-06 — T9a: the writer's town objects, the town map, its replays (in progress)
+
+Baseline 2f7b9c8 (#752, #753 merged; CI green there; the setup's `verify-once` found CI's
+fingerprint). At the start (the user, asked): T9 cut in three (decision 32). **Done** on
+`town/e09-t9a` (pushed, no PR yet): the writer's `AnyTown`, `RandomHero`, `random_stack`
+(`src/writer/town.rs`), the map `e09-towns-36.h3m` and `tests/towns_map.rs`. **Next:** the random
+replays (a seed search), the five scripted ones, the replay test's list, the docs, the verify, the PR.
+
 ### 2026-11-06 — T8c2: the Rogue's Visions, the security doc, the inbox notes
 
 Baseline a425d00 (#750 merged; CI green there; the setup's baseline lost to a VM restart; the
@@ -48,12 +56,3 @@ data staged; the user's computer's shell unavailable). At the start (the user, a
 in two at the Rogue. No version moved; no replay touched; `day-start-xl-144` +0.02 % against
 `master` built here. An independent review found no bug; its test gaps (the fringe guard, a
 capture from another player) and docs fixed.
-
-### 2026-11-05 — T8b2b: the siege against a town's visitor and the merge
-
-Baseline 7f8c8c5 (#741, #742 merged; the sandbox restarted during the setup's full run, CI's green
-run on `master` stood for it; the original data staged as before). At the start (the user,
-asked): T8b2b kept whole; the merge's events by a new `ArmyRef::Garrison` and `StackChanged`.
-No version moved; no replay touched; the walking loop untouched, the bench inside its gate
-against `master` (the passage +0.7 %, `reach-lifted-xl-144` +0.24 %). An independent review
-found one bug (the garrison's slots told to the visitor's owner), fixed.
