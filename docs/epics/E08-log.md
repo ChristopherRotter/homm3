@@ -13216,3 +13216,67 @@ jumps on twelve tiles, the values, the bound, the maxima (A-28), the disassembly
 E11-18's land row unaffected.
 
 **Versions:** none moved (a spec and its template).
+
+### Increment 11, round 2: T99b2b, batch E11b (2026-11-06, `adventure/e08-t99b2b`, `cross-lane`)
+
+Baseline: `master` at 305725f (#766, T99b2a, merged, with the AI lane's #765 and the town lane's
+E09 T9c; the sandbox's baseline verified its code by CI's fingerprint, the light gates). The
+executables, the DLLs, the four LODs, the sound and video archives, `maps.tar`, `extracted.tar`
+and the 40 MP3s staged at the start (the computer's shell did not start). **The cut:** whole (the
+second half of decision 277's). No code; the spec, its template and the docs.
+
+**The agent's call** (the queue's, told at the start): E11-16's sides swapped. Red moves first and
+its day 1 holds E11-17's 60 presses, so Blue's E11-16 (the Admiral's Hat: free boarding, no loss)
+presses on Blue's day 1 until it lands on a Red hero's tile, E11-17's wherever its presses left it
+(at most 60 presses); Red's day 2 and Blue's day 2 are the next turns, a step off by each. Not
+chosen: Red pressing on day 2 (a Blue hero first jumped onto a Whirlpool on Blue's day 1).
+
+**Read in the code** (`setup_map_objects` 0x4C0CC0: the switch and case 111): the walk dispatches
+on the tile's class (+0x1E); class 8 falls to the default 0x4C216F, so a Whirlpool tile whose class
+is a map-placed boat's never joins the list (never drawn, also after a hero boards the boat
+there); the six tiles' word is copied from cell (2, 1), the top-left tile (0x4C1FAD). From the
+address map (the review): `create_boat` shows a boat as class 8 through `hero_show` and a tile's
+refresh puts it back on top, so the boat is the tile's class whatever the order. Hence E11-17b's
+tile cannot be E11-16's target (E11-17's is), and neither boat lies on a top-left tile. Recorded
+in survey §3.1, `docs/exe/map.toml`'s `setup_whirlpools` and the README's increment 11 objects.
+
+**The spec** `E08-batch-11b` (36 × 36 grass; a sea (14, 14) to (35, 35) with a grass island (19,
+22) to (21, 24); stamp in the template): **E11-14** Red's Barracks (5, 4) and the green pair A (19,
+4), B (12, 9): the hire question, Space (the question again, 1 400 points kept), three legs along
+row 4 onto A with the last 100 (five Dendroid Guards: 1 500 a day), the jump to B, two presses at 0
+(B → A → B, no draw). **E11-15** the orange channel of four, the step onto M1 and 60 presses (each
+monolith 9 to 21 of the 61 jumps at 99 %, simulated). **E11-17** W1 (22, 15) to (24, 16), W2 (16,
+23) to (18, 24), W3 (28, 19) to (30, 20); E11-17b boards the boat on W2's anchor from the island
+(`vcmi_tile`); an empty boat on W3's (29, 20); E11-17 (the Admiral's Hat) boards beside W1, sails
+onto it and presses 60 times: the list's 16 tiles, 10 or 11 candidates a draw, W2 14 to 25 of 61
+(VCMI none). **E11-16** as above: the landing within 8 jumps at the median, none in 61 about
+0.3 %; the tile's states after the landing and each hero's step off predicted from `hero_show`
+and `hero_hide` (the tile names E11-16, then a Whirlpool once E11-17 steps off, then E11-17's
+ghost once E11-16 does). The records read the Whirlpools' list and words, the tiles' classes,
+words and heroes, and every jump.
+
+**The walks** (a throwaway test in `h3-map`'s tests on a copy without the two boats on Whirlpools'
+tiles, not committed; monoliths and Whirlpools blockers until T103, so each step onto one by hand):
+100 onto the Barracks, then 500, 500 and 300 + 100 onto A: 0 on A; the engine lets a hero leave
+the Barracks' entrance eastward; E11-15's 1 900; E11-17's free boarding 2 850 (2 750 on W1);
+E11-16's 2 807 (2 707 straight onto W1, 2 666 diagonally). Every list tile has a plain water tile
+beside it (the steps off); every click lies within the clicker's radius.
+
+**The review** (a fresh agent against survey §3.1, §4, §5, §6, §8, §11, §12, design §7 and §16, the
+README's boats, dwellings and teleporters, batch 10a's E10-4 and batch 11a; six findings, all
+taken): (1) the shared tile's states after A-37 follow from `hero_show` and `hero_hide` (read
+whole at E09 T1a2): predicted, with the tile's class, word and hero read at each selection and
+step off; (2) E11-17b's fallback: from land a step goes onto water only to a boat, a hero or class
+85, so a Whirlpool's class on (18, 24) means no path (not a jump), and VCMI's contrast is then
+lost; why the boat is on top in any order; E11-16 stops on any Red hero's tile; (3) the boats'
+tiles' words (their boats' indices) predicted; (4) a branch for no landing in 60 presses; (5) by
+hand, E11-17's tile from its last table row; (6) the header says a new day comes between the
+landing and E11-17's turn. Found right: the footprints and entrances, the switch's default for
+class 8 and the top-left cell, the list's order and words, the candidate counts, every price, the
+fog, the plain water beside every list tile, the turn order and saves, the simulations (re-run).
+
+**The experiments README:** batch E11's status row (both maps, two runs; T100 runs them, T101
+scores them; `cross-lane`, battle-owned), and batch E10's row corrected from "written" to its
+evaluation (T91 had not changed it).
+
+**Versions:** none moved (a spec, its template and the docs).
