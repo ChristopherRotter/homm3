@@ -237,6 +237,11 @@ pub enum GameSetupError {
     /// town takes a faction with one: its aligned colour's, its owner's or, neutral, one drawn
     /// among them).
     TownFaction(TownId),
+    /// A random dwelling is tied to this town (E09 T11, ADV-DWL-005), which may take a faction
+    /// without a random dwelling table in the adventure part: a fixed town its own, a random town
+    /// any with a town record (whichever the build resolves or draws), so whether the setup is
+    /// valid does not depend on a draw. The first such town in object order of the dwellings.
+    LinkedTown(TownId),
     /// The random town is aligned to a colour no player has (TWN-SET-002, E09 T7a2): refused,
     /// though the original falls through to the town's owner (no shipped map has one).
     TownAlignment(TownId),
@@ -298,6 +303,11 @@ impl fmt::Display for GameSetupError {
             Self::TownFaction(town) => {
                 write!(f, "town {}'s faction has no town record", town.raw())
             }
+            Self::LinkedTown(town) => write!(
+                f,
+                "town {}'s random dwellings may take a faction without a table",
+                town.raw()
+            ),
             Self::TownAlignment(town) => {
                 write!(f, "town {} is aligned to no player's colour", town.raw())
             }
@@ -374,7 +384,8 @@ impl GameSetup {
     /// [`town::draw_towns`], E09 T7b2a), then each main town's hero's type in player order
     /// (TWN-SET-009: [`town::main_town_heroes`], E09 T7b2b; their ids after the setup's heroes),
     /// then each town's garrison and buildings in `TownId` order (TWN-SET-004, TWN-SET-003:
-    /// [`town::build_towns`]; the garrisons into the adventure's setup), then each starting army in
+    /// [`town::build_towns`]; the garrisons and, since E09 T11, the towns' factions into the
+    /// adventure's setup, for its random dwellings tied to a town), then each starting army in
     /// hero id order, then each default experience in hero id order (GAM-HER-001), the main towns'
     /// heroes last in both; a hero with a custom experience at experience 0, which
     /// [`GameState::new`] gives it with its levels (GAM-SET-002).
@@ -500,6 +511,14 @@ impl GameSetup {
             // E09 T8a1: one garrison per town, by `TownId` (the setup's towns are the static
             // map's, `TownCount`); since E09 T7b2a each town's as built (TWN-SET-004).
             garrisons,
+            // E09 T11: each town's faction from step 2, which a random dwelling tied to a town
+            // takes (ADV-DWL-005). After the checks every town has one ([`town::draw_towns`]);
+            // were one missing, none is given and the adventure refuses the count.
+            town_factions: factions
+                .iter()
+                .copied()
+                .collect::<Option<Vec<_>>>()
+                .unwrap_or_default(),
         };
         Ok((setup, details, drawn.pool, towns, generated))
     }

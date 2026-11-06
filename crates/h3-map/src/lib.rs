@@ -71,8 +71,10 @@ pub use parse::parse;
 /// each with its owner (a colour nobody plays refused) and its garrison's formation. v19 (E08
 /// T97b1): a dwelling or a random dwelling entered from water supported (the other ownable kinds
 /// stay unsupported there); a random dwelling tied to a town of the map has its levels and owner
-/// checked before it stays a blocker.
-pub const MAP_IMPORT_VERSION: u32 = 19;
+/// checked before it stays a blocker. v20 (E09 T11): a random dwelling tied to a town of the map
+/// typed, holding its town (the last with its identifier) and its levels, which takes the town's
+/// faction when the game is built.
+pub const MAP_IMPORT_VERSION: u32 = 20;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

@@ -1,14 +1,16 @@
 //! Tests of the random dwellings when the game is built (E08 T94a; increment 10's design note §5):
 //! the draw and its order, the resolved object, the moved anchor at the right edge, the later
 //! draws, a resolved dwelling as a placed one (owner, reveal, view, state and hash), the static
-//! map's dwelling and camp lists, the name check and the refusal of a hero's and a boat's tile.
+//! map's dwelling and camp lists, the name check and the refusal of a hero's and a boat's tile;
+//! since E09 T11 a random dwelling tied to a town.
 
 use core::num::NonZeroU16;
 use std::collections::BTreeSet;
 use std::format;
 use std::string::ToString;
 
-use h3_content::{ContentPack, CreatureDef, CreatureInfoDef, FactionId};
+use h3_content::{ContentPack, CreatureDef, CreatureInfoDef, FactionId, Formation};
+use h3_contracts::TownId;
 use h3_kernel::hash::hash_of;
 
 use super::*;
@@ -37,7 +39,7 @@ fn cells(offsets: &[(u8, u8)]) -> Vec<(u8, u8)> {
 /// left, blocking two left and, beyond the original's, the cell above its anchor: shift 1); the
 /// fortress's `t:e1` to `t:e7` entered one left of the anchor. The random dwelling `t:random`, a
 /// Refugee Camp `t:camp` and a Windmill `t:windmill`; the
-/// castle's, the fortress's and the wild's random dwelling tables.
+/// castle's, the fortress's and the wild's random dwelling tables; since E09 T11 a town `t:town`.
 pub(super) fn rules() -> Rules {
     movement_rules_with(
         true,
@@ -108,6 +110,7 @@ pub(super) fn rules() -> Rules {
                         amount: [3, 6],
                     },
                 ),
+                ty("t:town", ObjectKindDef::Town),
             ]);
             let table = |faction: &str, prefix: &str| RandomDwellingDef {
                 faction: key(faction),
@@ -184,6 +187,37 @@ fn random(rules: &Rules, (x, y): (u16, u16), factions: &[&str], levels: (u8, u8)
             mask(&[(0, 0), (1, 0)]),
         )
     }
+}
+
+/// A random dwelling on `(x, y)` tied to the town `town` (E09 T11) of these levels, as the import
+/// makes one: [`random`]'s template.
+fn linked(rules: &Rules, (x, y): (u16, u16), town: u16, levels: (u8, u8)) -> ObjectSetup {
+    ObjectSetup {
+        holds: Holds::LinkedDwelling {
+            town: TownId::new(town),
+            levels,
+        },
+        ..random(rules, (x, y), &[], levels)
+    }
+}
+
+/// A neutral town on `(x, y)`, blocking its anchor and entered there.
+fn town(rules: &Rules, (x, y): (u16, u16)) -> ObjectSetup {
+    ObjectSetup {
+        holds: Holds::Town {
+            formation: Formation::Loose,
+        },
+        ..placed(rules, "t:town", (x, y), mask(&[(0, 0)]), mask(&[(0, 0)]))
+    }
+}
+
+/// [`setup`] with these objects and its towns of these factions, by `TownId`, each without a
+/// garrison.
+fn with_towns(rules: &Rules, objects: Vec<ObjectSetup>, factions: &[&str]) -> AdventureSetup {
+    let mut setup = setup(objects);
+    setup.town_factions = factions.iter().map(|k| faction(rules, k)).collect();
+    setup.garrisons = vec![Vec::new(); factions.len()];
+    setup
 }
 
 /// A dwelling of type `k` placed as a random dwelling on `(x, y)` that became it would lie: its
@@ -318,6 +352,110 @@ fn the_holds_encoding_still_tells_random_dwellings_apart() {
     ] {
         assert_ne!(hash_of(&other), reference, "{other:?}");
     }
+    // E09 T11: nor does any hold a random dwelling's town (tag 10, the town, the levels).
+    let linked = |town, levels| Holds::LinkedDwelling {
+        town: TownId::new(town),
+        levels,
+    };
+    let reference = hash_of(&linked(0, (1, 7)));
+    for other in [linked(1, (1, 7)), linked(0, (2, 7)), linked(0, (1, 6))] {
+        assert_ne!(hash_of(&other), reference, "{other:?}");
+    }
+    assert_ne!(hash_of(&holds(&["t:castle"], (1, 7))), reference);
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_tied_to_a_town_takes_the_town_s_faction() {
+    // E09 T11 (the original's `random_dwellings_resolve` 0x502B60): its faction is its town's, the
+    // setup's by `TownId`, drawing none; then its level uniform in its range, as one with a set,
+    // in object order: here the second town's (the fortress) for the first, which precedes both
+    // towns, and the first town's (the castle) for the last, each level the stream's next draw.
+    let rules = rules();
+    let table = |k| *rules.1.random_dwelling(faction(&rules, k)).unwrap();
+    let (castle, fortress) = (table("t:castle"), table("t:fortress"));
+    let objects = vec![
+        linked(&rules, (5, 3), 1, (1, 7)),
+        town(&rules, (1, 1)),
+        town(&rules, (13, 1)),
+        linked(&rules, (10, 5), 0, (1, 7)),
+    ];
+    let setup = with_towns(&rules, objects, &["t:castle", "t:fortress"]);
+    let mut levels = BTreeSet::new();
+    for seed in 0..32 {
+        let state = build(&rules, &setup, seed).unwrap();
+        let mut draws = seeded(seed);
+        let first = usize::try_from(draws.range_inclusive(1, 7)).unwrap();
+        let last = usize::try_from(draws.range_inclusive(1, 7)).unwrap();
+        let objects = state.map().objects();
+        assert_eq!(objects[0].object_type, Some(fortress[first - 1]), "{seed}");
+        assert_eq!(objects[3].object_type, Some(castle[last - 1]), "{seed}");
+        assert_eq!(
+            (&objects[0].holds, &objects[3].holds),
+            (&Holds::Nothing, &Holds::Nothing)
+        );
+        levels.insert(first);
+    }
+    assert_eq!(levels.len(), 7);
+    // The same object takes another faction's table with another town faction; its footprint and
+    // anchor are the drawn type's (the Angel Portal's shift).
+    for (town_faction, expected, anchor) in [
+        ("t:fortress", "t:e7", (5, 3)),
+        ("t:castle", "t:d7", (6, 3)),
+        ("t:wild", "t:d7", (6, 3)),
+    ] {
+        let objects = vec![linked(&rules, (5, 3), 0, (7, 7)), town(&rules, (1, 1))];
+        let state = build(&rules, &with_towns(&rules, objects, &[town_faction]), 0).unwrap();
+        let resolved = &state.map().objects()[0];
+        let placed = as_resolved(&rules, expected, (5, 3));
+        assert_eq!(
+            (resolved.object_type, resolved.blocked, resolved.visitable),
+            (placed.object_type, placed.blocked, placed.visitable),
+            "{town_faction}"
+        );
+        assert_eq!(resolved.anchor, Pos::new(anchor.0, anchor.1, 0));
+    }
+}
+
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_tied_to_a_town_is_checked_against_every_table() {
+    // E09 T11: whether the setup is valid does not depend on its town's faction, which a random
+    // town draws: a hero's tile and the names are checked against every table's outcomes. The
+    // fortress's dwellings cover only the bottom cells, the castle's Angel Portal also the cell
+    // above the moved anchor and takes the name `t:d7` on it.
+    let rules = rules();
+    let objects = |hero_tile: Option<(u16, u16)>| {
+        let mut setup = with_towns(
+            &rules,
+            vec![linked(&rules, (5, 3), 0, (1, 7)), town(&rules, (1, 1))],
+            &["t:fortress"],
+        );
+        if let Some((x, y)) = hero_tile {
+            setup
+                .heroes
+                .push(hero_at(3, 0, Pos::new(x, y, 0), &[PEASANT]));
+        }
+        setup
+    };
+    let refused = Err(SetupError::RandomDwellingTile {
+        hero: HeroId::new(3),
+        object: 0,
+    });
+    for seed in 0..8 {
+        assert_eq!(build(&rules, &objects(Some((6, 2))), seed), refused);
+        assert_eq!(build(&rules, &objects(Some((4, 3))), seed), refused);
+        build(&rules, &objects(Some((5, 2))), seed).unwrap();
+    }
+    let mut named = objects(None);
+    named.map.objects.insert(
+        0,
+        placed(&rules, "t:d7", (6, 3), mask(&[(1, 0)]), mask(&[(1, 0)])),
+    );
+    assert_eq!(
+        build(&rules, &named, 0).err(),
+        Some(SetupError::SharedAnchor(1))
+    );
 }
 
 // covers: ADV-DWL-005

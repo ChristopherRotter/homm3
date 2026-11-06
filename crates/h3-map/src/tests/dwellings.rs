@@ -6,7 +6,7 @@
 //! T93b, what the import makes of them (increment 10's design note §4) and what it refuses.
 
 use h3_adventure::{Holds, Scenery};
-use h3_contracts::PlayerId;
+use h3_contracts::{PlayerId, TownId};
 
 use super::economy::{hero, read_back};
 use super::import::{self as raw_import, ROE, SOD, object};
@@ -412,11 +412,14 @@ fn the_dwellings_map_imports_typed() {
 
 // covers: ADV-DWL-005
 #[test]
-fn a_random_dwelling_tied_to_a_town_stays_a_blocker() {
-    // ADV-STUB-13 until E09's random towns: an identifier a town or a random town of the map has
-    // keeps the object untyped, unowned and empty; an RoE town has no identifier, and an object of
-    // a town's class without a town's body names none. Since E08 T97b1 (T97a's finding) its levels
-    // and its owner are checked first, as any random dwelling's (A-36, ADV-OWN-002).
+fn a_random_dwelling_tied_to_a_town_holds_the_last_town_with_its_identifier() {
+    // E09 T11 (map import v20; ADV-STUB-13 before): an identifier a town or a random town of the
+    // map has types the object as a random dwelling holding that town's `TownId` (its place among
+    // the towns, 77 and 98, in object order) and its levels, owned as any random dwelling; the last
+    // town with the identifier, as the original searches from the end (`random_dwellings_resolve`
+    // 0x502B60). An RoE town has no identifier, and an object of a town's class without a town's
+    // body names none: both take their places. Its levels and owner are checked as any random
+    // dwelling's (E08 T97b1; A-36, ADV-OWN-002).
     let mut map = with_body(&raw(), 7, 0, Some((5, None)), Some((2, 4)));
     let town = |identifier| {
         Body::Town(Box::new(TownBody {
@@ -425,20 +428,46 @@ fn a_random_dwelling_tied_to_a_town_stays_a_blocker() {
         }))
     };
     let first = u32::try_from(map.templates.len()).unwrap();
-    map.templates
-        .extend([98, 77, 77].map(|class| raw_import::template(class, &[(0, 0)], &[(0, 0)])));
+    map.templates.extend(
+        [98, 77, 77, 77, 98].map(|class| raw_import::template(class, &[(0, 0)], &[(0, 0)])),
+    );
     map.objects.extend([
         object(30, 20, first, town(Some(5))),
         object(30, 24, first + 1, town(None)),
         object(30, 28, first + 2, Body::None),
+        object(33, 20, first + 3, town(Some(5))),
+        object(33, 24, first + 4, town(Some(6))),
     ]);
-    let setup = import(&map, &SOD).unwrap();
-    let dwelling = &setup.map.objects[5];
+    let tied_to = |map: &RawMap, identifier| {
+        let mut map = map.clone();
+        map.objects[7].body = with_body(&raw(), 7, 0, Some((identifier, None)), Some((2, 4)))
+            .objects[7]
+            .body
+            .clone();
+        let setup = import(&map, &SOD).unwrap();
+        setup.map.objects[5].clone()
+    };
+    let dwelling = tied_to(&map, 5);
+    let random = SOD.adventure().object_type_by_key("base:random_dwelling");
     assert_eq!(
         (dwelling.object_type, dwelling.owner, &dwelling.holds),
-        (None, None, &Holds::Nothing)
+        (
+            random,
+            Some(PlayerId::new(0)),
+            &Holds::LinkedDwelling {
+                town: TownId::new(3),
+                levels: (3, 5)
+            }
+        )
     );
     assert_eq!(dwelling.scenery, Scenery::Ownable);
+    assert_eq!(
+        tied_to(&map, 6).holds,
+        Holds::LinkedDwelling {
+            town: TownId::new(4),
+            levels: (3, 5)
+        }
+    );
     // Its levels past the seventh or the lowest above the highest, then an owner nobody plays
     // (colour 5): refused, as an untied one's.
     let tied = |map: &RawMap, owner, levels| {
@@ -458,10 +487,18 @@ fn a_random_dwelling_tied_to_a_town_stays_a_blocker() {
         tied(&map, 5, Some((2, 4))).unwrap_err(),
         ImportError::ObjectOwner(7)
     );
-    assert!(tied(&map, 0xFF, None).is_ok());
+    // Class 217's level is its subclass (2: level 3).
+    let setup = tied(&retyped(&map, 7, 217, 2), 0xFF, None).unwrap();
+    assert_eq!(
+        setup.map.objects[5].holds,
+        Holds::LinkedDwelling {
+            town: TownId::new(3),
+            levels: (3, 3)
+        }
+    );
     // The other identifiers name no town.
     let mut other = map.clone();
-    other.objects[7].body = with_body(&raw(), 7, 0xFF, Some((6, None)), Some((0, 0))).objects[7]
+    other.objects[7].body = with_body(&raw(), 7, 0xFF, Some((7, None)), Some((0, 0))).objects[7]
         .body
         .clone();
     assert_eq!(

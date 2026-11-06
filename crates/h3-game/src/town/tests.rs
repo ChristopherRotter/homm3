@@ -487,6 +487,51 @@ fn a_fixed_towns_faction_has_a_town_record() {
     assert_eq!(error, GameSetupError::TownFaction(TownId::new(0)));
 }
 
+// covers: ADV-DWL-005
+#[test]
+fn a_random_dwelling_tied_to_a_town_needs_a_table_for_each_faction_the_town_may_take() {
+    // E09 T11: these rules' town records have no random dwelling table, so a random dwelling tied
+    // to either town is refused before the adventure is built, the fixed town's for its faction,
+    // the random town's for any record's (whichever it would draw or take); the first in the
+    // dwellings' object order, after the towns' factions and before a town's alignment.
+    let rules = towns_rules();
+    let linked = |town| ObjectSetup {
+        object_type: None,
+        holds: Holds::LinkedDwelling {
+            town: TownId::new(town),
+            levels: (1, 7),
+        },
+        ..town_object(&rules, (5, 0), None)
+    };
+    for town in [0, 1] {
+        let text = format!("town {town}'s random dwellings may take a faction without a table");
+        let error = refused(&rules, &text, |s| s.map.objects.push(linked(town)));
+        assert_eq!(error, GameSetupError::LinkedTown(TownId::new(town)));
+    }
+    let error = refused(
+        &rules,
+        "town 1's random dwellings may take a faction without a table",
+        |s| {
+            s.map.objects.insert(0, linked(1));
+            s.map.objects.push(linked(0));
+            s.towns[1].faction = TownFaction::Random { alignment: Some(2) };
+        },
+    );
+    assert_eq!(error, GameSetupError::LinkedTown(TownId::new(1)));
+    let error = refused(&rules, "town 0's faction has no town record", |s| {
+        s.map.objects.push(linked(1));
+        s.towns[0].faction = TownFaction::Fixed(FactionId::from_raw(40));
+    });
+    assert_eq!(error, GameSetupError::TownFaction(TownId::new(0)));
+    // A town past the setup's is the adventure's to refuse (`SetupError::Holds`).
+    let mut setup = towns_setup(&rules);
+    setup.map.objects.push(linked(2));
+    assert!(matches!(
+        setup.validate(&rules),
+        Err(GameSetupError::Adventure(_))
+    ));
+}
+
 // covers: TWN-SET-002
 #[test]
 fn a_random_town_is_aligned_to_a_players_colour_or_none() {
