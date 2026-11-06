@@ -515,7 +515,12 @@ options' Replay item and the view's corner during it, the meeting dialog closed 
 the spec lacks** (`h3-experiment`, battle-owned: `cross-lane`; the writer `h3_map::writer` is this
 lane's): the five classes by picture and subclass on either level (`[[map.object]]`), a hero in a
 boat at the start beside or on a Whirlpool, worn Hats; E11-9's and E11-16's geometry is the spec's
-task to check (the gates' walk order, a hero standing on a Whirlpool tile).
+task to check (the gates' walk order, a hero standing on a Whirlpool tile). *(E08 T99a built them:
+`docs/experiments/README.md`, "Increment 11's objects"; a boat on a Whirlpool's tile boarded from
+the shore. VCMI 1.7.5's `CGSubterraneanGate::postInit` sorts every gate by its entrance, level,
+row and column, the original's walk, and pairs only toward a deeper level, the same for two
+levels; its visitable tile of a Whirlpool is the anchor, `ObjectTemplate::calculateVisitableOffset`
+taking the visitable tile nearest it.)*
 
 ## 13. The proposed rule ids (T98a2)
 

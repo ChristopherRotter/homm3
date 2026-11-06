@@ -2,7 +2,8 @@
 //! bytes, each typed error and limit, the gzip layer, and the experiment writer's maps; the
 //! import in `import.rs`; random play on imported maps through `h3-game` in `play.rs` (E08 T8b2a),
 //! what a viewer may learn there in `view.rs` (E08 T8b2b); the writer's reward objects and RoE
-//! maps read back and imported in `rewards.rs` (E08 T56); its sea objects in `sea.rs` (E08 T67).
+//! maps read back and imported in `rewards.rs` (E08 T56); its sea objects in `sea.rs` (E08 T67);
+//! its teleporters in `teleporters.rs` (E08 T99a).
 
 mod dwellings;
 mod dwellings_map;
@@ -21,6 +22,7 @@ mod sea;
 mod sea_map;
 mod sea_xl_map;
 mod strategy;
+mod teleporters;
 mod towns;
 mod towns_map;
 mod view;

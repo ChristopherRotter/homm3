@@ -24,12 +24,13 @@ use std::fmt::Write as _;
 use h3_map::model::{Rewards, Stack};
 use h3_map::writer::{
     ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS,
-    EVENT_OBJECT, Event, Format, Ground, Guards, Hero, HeroArtifacts, MINE_OBJECT, Map, MapObject,
-    Message, Monster, ObjectTemplate, OwnedBody, OwnedObject, PANDORA_OBJECT, PLAYERS, Patch, Pile,
-    Plain, Player, RANDOM_ARTIFACT_OBJECTS, RANDOM_DWELLING_BY_FACTION_OBJECT,
-    RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT, RewardBody, RewardObject, Road,
-    RoadKind, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, Teams, Terrain, TimedEvent, Town,
-    TownBuildings, Treasure, Underground, WITCH_HUT_OBJECT,
+    BOAT_OBJECT, EVENT_OBJECT, Event, Format, Ground, Guards, Hero, HeroArtifacts, MINE_OBJECT,
+    Map, MapObject, Message, Monster, ObjectTemplate, OwnedBody, OwnedObject, PANDORA_OBJECT,
+    PLAYERS, Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS,
+    RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT,
+    RewardBody, RewardObject, Road, RoadKind, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
+    SUBTERRANEAN_GATE_OBJECT, Teams, Terrain, TimedEvent, Town, TownBuildings, Treasure,
+    Underground, WHIRLPOOL_OBJECT, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -663,24 +664,66 @@ pub struct GroundSpec {
 
 /// An object without a body (E08 T32a, T36a; since E08 T56 increment 7's: the Corpse, the
 /// Pyramid, the Learning Stone, the Treasure Chest, the University, the Wagon, the Warrior's
-/// Tomb; since E08 T89a the Refugee Camp `AVGrefg0`): one of its pictures, placed with its bottom-right tile on `at`, on the surface. No
-/// hero, monster, pile or town may stand on a tile it blocks or is visited from: a hero comes to
-/// it in play.
+/// Tomb; since E08 T89a the Refugee Camp `AVGrefg0`; since E08 T99a increment 11's teleporters):
+/// one of its pictures, placed with its bottom-right tile on `at`, on its `level`. No hero,
+/// monster, pile or town may stand on a tile it blocks or is visited from: a hero comes to it in
+/// play. One exception (E08 T99a, batch E11): an empty boat may lie on a Whirlpool's tile, written
+/// after the Whirlpool (the game takes a tile's last object, as for two grounds), one boat a tile.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ObjectSpec {
     /// The picture's name in `Objects.txt` (`AVXmaps0` or `AVXmaps0.def`, any case), which names
-    /// the class ([`h3_map::writer::PLAIN_OBJECTS`]: the Cartographers, water `AVXmapw0`, land
-    /// `AVXmaps0`, subterranean `AVXmapu0`; the trees, `AVLtr3d0` one tile among them; the Border
-    /// Gates `AVXbgt00` light blue … `AVXbgt70` black).
+    /// the class and subclass ([`h3_map::writer::PLAIN_OBJECTS`]: the Cartographers, water
+    /// `AVXmapw0`, land `AVXmaps0`, subterranean `AVXmapu0`; the trees, `AVLtr3d0` one tile among
+    /// them; the Border Gates `AVXbgt00` light blue … `AVXbgt70` black; the boats `AVXboat0` to
+    /// `AVXboat2`; since E08 T99a the monoliths by channel, one-way entrances `AVXmn1b0` (0),
+    /// `AVXmn1r0`, `AVXmn1y0`, `AVXmn4i0` … `AVXmn8i0` (7), exits `AVXmx1b0`, `AVXmx1r0`,
+    /// `AVXmx1y0`, `AVXmn4o0` … `AVXmn8o0`, two-way `AVXmn2g0`, `AVXmn2o0`, `AVXmn2p0`, `AVXmn4b0` …
+    /// `AVXmn8b0`, channels 3 to 7 SoD's; the Subterranean Gate `AvTCave`, the Whirlpool
+    /// `AVXwhrl0`).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
-    /// west of it, the middle one its entrance).
+    /// west of it, the middle one its entrance; a monolith of channels 0 to 3 it, of 4 to 7 it and
+    /// the tile west of it, its entrance; a gate three tiles ending on it and the middle one above
+    /// them, its entrance the tile west of `at`; a Whirlpool the 3 × 2 tiles ending on it, all six
+    /// entered).
     pub at: [u8; 2],
     /// More copies (E08 T56).
     #[serde(default)]
     pub grid: Grid,
+    /// The level: 0 the surface (the default), 1 the underground (E08 T99a; needs
+    /// [`MapSpec::underground`]).
+    #[serde(default)]
+    pub level: u8,
+    /// A Subterranean Gate's pair by the original's rule (E08 T99a, batch E11's E11-8 and E11-9;
+    /// survey `E08-teleporters.md` §3.2), checked when the map is built: the `at` of the gate on
+    /// the other level it is paired with, or `"none"`. The original walks the gates' entrances by
+    /// level, row and column and gives each unpaired one the unpaired later one on another level
+    /// with the least truncated distance `⌊√(dx² + dy²)⌋` between the entrances, the first in the
+    /// walk on a tie. One copy only.
+    #[serde(default)]
+    pub pair: Option<PairSpec>,
+    /// The same pair by VCMI's rule (D-56): the least squared distance, the first in the same
+    /// order on a tie, checked when given.
+    #[serde(default)]
+    pub vcmi_pair: Option<PairSpec>,
+    /// For an empty boat on a Whirlpool's tile (E08 T99a, batch E11's E11-16 and E11-17): `true`
+    /// checks that the tile is the one VCMI takes for the Whirlpool's visitable tile (the
+    /// visitable tile nearest the anchor: its row first, then its column; D-57), `false` that it
+    /// is another. One copy only.
+    #[serde(default)]
+    pub vcmi_tile: Option<bool>,
+}
+
+/// A Subterranean Gate's expected pair ([`ObjectSpec::pair`]): the other gate's `at`, or `"none"`.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(untagged)]
+pub enum PairSpec {
+    /// The paired gate's position, `[column, row]` on the other level.
+    Gate([u8; 2]),
+    /// `"none"`: the gate has no pair.
+    Word(String),
 }
 
 /// Resource piles of one resource on one row, one per tile from `from` to `to`.
@@ -1047,9 +1090,25 @@ pub fn build_only(
         .iter()
         .map(|g| Ok((0, ground(g, tables, size)?)))
         .collect::<Result<Vec<_>, String>>()?;
+    let mut plains = Vec::new();
     for o in &spec.map.object {
-        objects.extend(plain(o, tables, size)?.into_iter().map(|p| (0, p)));
+        if o.level >= levels {
+            return Err(format!(
+                "object `{}` at {:?} on level {}: no such level (`[map.underground]` adds level 1)",
+                o.picture, o.at, o.level
+            ));
+        }
+        let placed = plain(o, tables, size)?;
+        objects.extend(
+            placed
+                .iter()
+                .map(|p| (o.level, MapObject::Plain(p.clone()))),
+        );
+        plains.push((o, placed));
     }
+    // Batch E11's teleporters (E08 T99a): the boats on Whirlpools' tiles, kept out of the test
+    // of two objects on a tile below; the gates' pairs and the boats' tiles checked.
+    let boats_on_whirlpools = teleporters(&plains)?;
     // The objects that hand a visiting hero something (E08 T56), on the surface.
     objects.extend(
         reward_objects(&spec.map, tables)?
@@ -1325,6 +1384,12 @@ pub fn build_only(
             MapObject::Monster(m) => vec![(*level, m.tile)],
             MapObject::Pile(p) => vec![(*level, p.tile)],
             MapObject::Town(t) => vec![(*level, t.tile)],
+            MapObject::Plain(p)
+                if p.template.class == BOAT_OBJECT
+                    && boats_on_whirlpools.contains(&(*level, p.tile)) =>
+            {
+                vec![]
+            }
             MapObject::Plain(p) => covered(&p.template, p.tile)
                 .into_iter()
                 .map(|tile| (*level, tile))
@@ -1560,8 +1625,8 @@ fn ground(g: &GroundSpec, tables: &Tables, size: u8) -> Result<MapObject, String
     }))
 }
 
-/// A visitable object without a body by its picture's name (E08 T32a).
-fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, String> {
+/// A visitable object without a body by its picture's name (E08 T32a), with its copies.
+fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<Vec<Plain>, String> {
     let name = o.picture.to_ascii_lowercase();
     let name = name.strip_suffix(".def").unwrap_or(&name);
     let template = tables
@@ -1578,13 +1643,185 @@ fn plain(o: &ObjectSpec, tables: &Tables, size: u8) -> Result<Vec<MapObject>, St
         grid_tiles(o.at, o.grid, size).map_err(|e| format!("object `{}`: {e}", o.picture))?;
     Ok(tiles
         .into_iter()
-        .map(|tile| {
-            MapObject::Plain(Plain {
-                tile,
-                template: template.clone(),
-            })
+        .map(|tile| Plain {
+            tile,
+            template: template.clone(),
         })
         .collect())
+}
+
+/// Batch E11's checks of the teleporters (E08 T99a; survey `docs/rules/surveys/E08-teleporters.md`
+/// §3.2, §12): each [`ObjectSpec::pair`] and [`ObjectSpec::vcmi_pair`] against the gates' pairs by
+/// the two rules, each empty boat on a Whirlpool's tile (written after it, one a tile) and its
+/// [`ObjectSpec::vcmi_tile`]. The boats on Whirlpools' tiles as (level, the boat's `at`).
+fn teleporters(plains: &[(&ObjectSpec, Vec<Plain>)]) -> Result<Vec<(u8, (u8, u8))>, String> {
+    let name = |o: &ObjectSpec| format!("object `{}` at {:?}", o.picture, o.at);
+    for (o, placed) in plains {
+        let class = placed[0].template.class;
+        let pairs = o.pair.is_some() || o.vcmi_pair.is_some();
+        if pairs && class != SUBTERRANEAN_GATE_OBJECT {
+            return Err(format!("{}: `pair` is a Subterranean Gate's", name(o)));
+        }
+        if o.vcmi_tile.is_some() && class != BOAT_OBJECT {
+            return Err(format!("{}: `vcmi_tile` is a boat's", name(o)));
+        }
+        if (pairs || o.vcmi_tile.is_some()) && placed.len() > 1 {
+            return Err(format!("{}: `pair` and `vcmi_tile` take one copy", name(o)));
+        }
+    }
+    // The Whirlpools' tiles, each with the Whirlpool's index in `plains` and VCMI's tile.
+    let mut whirlpools = Vec::new();
+    for (index, (o, placed)) in plains.iter().enumerate() {
+        for p in placed
+            .iter()
+            .filter(|p| p.template.class == WHIRLPOOL_OBJECT)
+        {
+            let vcmi = visitable(&p.template, p.tile).first().copied();
+            for tile in covered(&p.template, p.tile) {
+                whirlpools.push(((o.level, tile), index, vcmi));
+            }
+        }
+    }
+    let mut on_whirlpools = Vec::new();
+    let mut boat_tiles = Vec::new();
+    for (index, (o, placed)) in plains.iter().enumerate() {
+        for p in placed.iter().filter(|p| p.template.class == BOAT_OBJECT) {
+            let tile = covered(&p.template, p.tile).first().copied();
+            let found = whirlpools
+                .iter()
+                .find(|(at, ..)| Some(*at) == tile.map(|t| (o.level, t)));
+            let Some(&((_, tile), whirlpool, vcmi)) = found else {
+                if o.vcmi_tile.is_some() {
+                    return Err(format!("{}: on no Whirlpool's tile", name(o)));
+                }
+                continue;
+            };
+            if whirlpool > index {
+                return Err(format!(
+                    "{}: the boat on a Whirlpool's tile comes after the Whirlpool",
+                    name(o)
+                ));
+            }
+            if boat_tiles.contains(&(o.level, tile)) {
+                return Err(format!("two boats on the Whirlpool's tile {tile:?}"));
+            }
+            if let Some(want) = o.vcmi_tile
+                && want != (vcmi == Some(tile))
+            {
+                return Err(format!(
+                    "{}: its tile {tile:?} is {}VCMI's tile of the Whirlpool ({vcmi:?})",
+                    name(o),
+                    if want { "not " } else { "" }
+                ));
+            }
+            boat_tiles.push((o.level, tile));
+            on_whirlpools.push((o.level, p.tile));
+        }
+    }
+    // The gates in the original's walk (level, row, column of the entrance), which is VCMI's
+    // order too (`visitablePos`'s comparison: level, row, column).
+    let mut gates: Vec<((u8, u8, u8), usize)> = Vec::new();
+    for (index, (o, placed)) in plains.iter().enumerate() {
+        for p in placed
+            .iter()
+            .filter(|p| p.template.class == SUBTERRANEAN_GATE_OBJECT)
+        {
+            let &[(x, y)] = &visitable(&p.template, p.tile)[..] else {
+                return Err(format!("{}: a gate without one entrance", name(o)));
+            };
+            gates.push(((o.level, y, x), index));
+        }
+    }
+    gates.sort_unstable();
+    let entrances: Vec<(u8, u8, u8)> = gates.iter().map(|(at, _)| *at).collect();
+    let original = gate_pairs(&entrances, |a, b| a != b, |d| d.isqrt());
+    let vcmi = gate_pairs(&entrances, |a, b| a < b, |d| d);
+    for (i, &(_, index)) in gates.iter().enumerate() {
+        let o = plains[index].0;
+        let at_of = |pair: Option<usize>| pair.map(|j| plains[gates[j].1].0.at);
+        for (want, got, rule) in [
+            (&o.pair, at_of(original[i]), "the original's"),
+            (&o.vcmi_pair, at_of(vcmi[i]), "VCMI's"),
+        ] {
+            let want = match want {
+                None => continue,
+                Some(PairSpec::Gate(at)) => Some(*at),
+                Some(PairSpec::Word(w)) if w == "none" => None,
+                Some(PairSpec::Word(w)) => {
+                    return Err(format!(
+                        "{}: pair `{w}` (a gate's `at` or \"none\")",
+                        name(o)
+                    ));
+                }
+            };
+            if want != got {
+                let distances: Vec<String> = gates
+                    .iter()
+                    .filter(|((level, ..), _)| *level != o.level)
+                    .map(|&((_, y, x), j)| {
+                        let (_, oy, ox) = entrances[i];
+                        let d = u32::from(x.abs_diff(ox)).pow(2) + u32::from(y.abs_diff(oy)).pow(2);
+                        format!("{:?} {} ({d})", plains[j].0.at, d.isqrt())
+                    })
+                    .collect();
+                return Err(format!(
+                    "{}: by {rule} rule its pair is {got:?}, not {want:?} (the other level's gates, \
+                     truncated and squared distances: {})",
+                    name(o),
+                    distances.join(", ")
+                ));
+            }
+        }
+    }
+    Ok(on_whirlpools)
+}
+
+/// The gates' pairs (survey `E08-teleporters.md` §3.2): in the walk's order each unpaired gate
+/// `i` takes the unpaired later gate `j` that `takes(i, j)` allows (on another level: the
+/// original's; on a deeper one: VCMI's, the same for two levels) with the least `measure` of the
+/// squared distance between their entrances, the first on a tie; `None` for a gate left over.
+fn gate_pairs(
+    gates: &[(u8, u8, u8)],
+    takes: impl Fn(u8, u8) -> bool,
+    measure: impl Fn(u32) -> u32,
+) -> Vec<Option<usize>> {
+    let mut pair = vec![None; gates.len()];
+    for i in 0..gates.len() {
+        if pair[i].is_some() {
+            continue;
+        }
+        let (level, y, x) = gates[i];
+        let best = (i + 1..gates.len())
+            .filter(|&j| pair[j].is_none() && takes(level, gates[j].0))
+            .map(|j| {
+                let (_, yj, xj) = gates[j];
+                let squared = u32::from(x.abs_diff(xj)).pow(2) + u32::from(y.abs_diff(yj)).pow(2);
+                (measure(squared), j)
+            })
+            .min();
+        if let Some((_, j)) = best {
+            pair[i] = Some(j);
+            pair[j] = Some(i);
+        }
+    }
+    pair
+}
+
+/// The tiles a template is visited from with its anchor on `anchor`, nearest the anchor first:
+/// its row first, then its columns leftward, then the rows above (VCMI's `getVisitableOffset`
+/// takes the first), the ones off the map left out.
+fn visitable(template: &ObjectTemplate, anchor: (u8, u8)) -> Vec<(u8, u8)> {
+    let mut tiles = Vec::new();
+    for up in 0..6u8 {
+        for left in 0..8u8 {
+            if template.visitable[usize::from(5 - up)] & (1 << (7 - left)) != 0
+                && let (Some(x), Some(y)) = (anchor.0.checked_sub(left), anchor.1.checked_sub(up))
+            {
+                tiles.push((x, y));
+            }
+        }
+    }
+    tiles
 }
 
 /// The tiles a template covers with its anchor on `anchor`: those it blocks or is visited from
@@ -2614,6 +2851,18 @@ mod tests {
                 // A Refugee Camp (E08 T89a).
                 "AVGrefg0.def 001111111111111111111111111111111111111111111111 \
                  100000000000000000000000000000000000000000000000 111111111 011111111 78 0 0 0",
+                // The teleporters (E08 T99a): a one-way entrance and exit of channel 0, a two-way
+                // monolith of channel 7, the gate, the Whirlpool.
+                "AVXmn1b0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 011111111 011111111 43 0 0 0",
+                "AVXmx1b0.def 011111111111111111111111111111111111111111111111 \
+                 100000000000000000000000000000000000000000000000 011111111 011111111 44 0 0 0",
+                "AVXmn8b0.def 001111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 011111111 011111111 45 7 0 0",
+                "AvTCave.def 000111111011111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 011111111 011111111 103 0 0 0",
+                "AVXwhrl0.def 000111110001111111111111111111111111111111111111 \
+                 111000001110000000000000000000000000000000000000 100000000 100000000 111 0 0 1",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -4024,6 +4273,264 @@ mod tests {
         assert!(h3_map::writer::write_in(&map, Format::RoE).is_err());
         let sod = text.replacen(" RoE ", "sod", 1);
         assert_eq!(map_format(&parse(&sod).expect("spec")), Ok(Format::Sod));
+    }
+
+    /// Batch E11's objects (E08 T99a): two levels, water on both; a one-way entrance on the
+    /// surface and its exit below; a two-way monolith of channel 7 on both; a gate G above at
+    /// (10, 10), its entrance (9, 10), and two below, Uf at (14, 9) (its entrance (13, 9), 17
+    /// squared, truncated 4) first in the walk and Un at (6, 10) (its entrance (5, 10), 16
+    /// squared, truncated 4); a Whirlpool at (30, 20) (28 to 30 × 19 and 20) with a boat on its
+    /// anchor, VCMI's tile, and one on (28, 19).
+    const TELEPORTERS: &str = r#"
+        [map]
+        name = "Teleporters"
+        description = "d"
+        terrain = "grass"
+
+        [[map.patch]]
+        terrain = "water"
+        from = [20, 0]
+        to = [35, 35]
+
+        [map.underground]
+        terrain = "subterranean"
+
+        [[map.underground.patch]]
+        terrain = "water"
+        from = [20, 0]
+        to = [35, 35]
+
+        [[map.object]]
+        picture = "AVXmn1b0"
+        at = [4, 4]
+
+        [[map.object]]
+        picture = "AVXmx1b0"
+        at = [4, 4]
+        level = 1
+
+        [[map.object]]
+        picture = "AVXmn8b0"
+        at = [8, 4]
+        grid = { columns = 1, rows = 2, step = [1, 4] }
+
+        [[map.object]]
+        picture = "AVXmn8b0"
+        at = [8, 4]
+        level = 1
+
+        [[map.object]]
+        picture = "AvTCave"
+        at = [10, 10]
+        pair = [14, 9]
+        vcmi_pair = [6, 10]
+
+        [[map.object]]
+        picture = "AvTCave"
+        at = [14, 9]
+        level = 1
+        pair = [10, 10]
+        vcmi_pair = "none"
+
+        [[map.object]]
+        picture = "AvTCave"
+        at = [6, 10]
+        level = 1
+        pair = "none"
+        vcmi_pair = [10, 10]
+
+        [[map.object]]
+        picture = "AVXwhrl0"
+        at = [30, 20]
+
+        [[map.object]]
+        picture = "AVXboat1"
+        at = [31, 20]
+        vcmi_tile = true
+
+        [[map.object]]
+        picture = "AVXboat1"
+        at = [29, 19]
+        vcmi_tile = false
+
+        [[encounter]]
+        id = "T1"
+        title = "Teleporters"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [16, 20]
+        primary = [1, 1, 1, 1]
+        skills = [["Armorer", 2]]
+        army = [["Pikeman", 10]]
+    "#;
+
+    #[test]
+    fn builds_the_teleporters() {
+        let spec = parse(TELEPORTERS).expect("spec");
+        let (map, _) = build(&spec, &tables(), "t.h3m").expect("build");
+        let plains = |objects: &[MapObject]| -> Vec<(u32, u32, (u8, u8))> {
+            objects
+                .iter()
+                .filter_map(|o| match o {
+                    MapObject::Plain(p) => Some((p.template.class, p.template.subclass, p.tile)),
+                    _ => None,
+                })
+                .collect()
+        };
+        assert_eq!(
+            plains(&map.objects),
+            [
+                (43, 0, (4, 4)),
+                (45, 7, (8, 4)),
+                (45, 7, (8, 8)),
+                (103, 0, (10, 10)),
+                (111, 0, (30, 20)),
+                (8, 1, (31, 20)),
+                (8, 1, (29, 19)),
+            ]
+        );
+        let below = map.underground.as_ref().expect("two levels");
+        assert_eq!(
+            plains(&below.objects),
+            [
+                (44, 0, (4, 4)),
+                (45, 7, (8, 4)),
+                (103, 0, (14, 9)),
+                (103, 0, (6, 10)),
+            ]
+        );
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        assert_eq!(raw.objects.len(), map.objects.len() + below.objects.len());
+    }
+
+    #[test]
+    fn gate_pairs_and_whirlpool_tiles_follow_the_rules() {
+        // The original's walk pairs G with Uf, the first at the truncated minimum; VCMI with Un,
+        // the least squared distance.
+        let gates = [(0, 10, 9), (1, 9, 13), (1, 10, 5)];
+        assert_eq!(
+            gate_pairs(&gates, |a, b| a != b, |d| d.isqrt()),
+            [Some(1), Some(0), None]
+        );
+        assert_eq!(
+            gate_pairs(&gates, |a, b| a < b, |d| d),
+            [Some(2), None, Some(0)]
+        );
+        // Two gates on one level and none below: no pair.
+        assert_eq!(
+            gate_pairs(&[(0, 1, 1), (0, 1, 5)], |a, b| a != b, |d| d),
+            [None, None]
+        );
+        // A Whirlpool's tiles nearest its anchor first: its row leftward, then the row above.
+        let whirlpool = &tables().plains[12];
+        assert_eq!(whirlpool.class, WHIRLPOOL_OBJECT);
+        assert_eq!(
+            visitable(whirlpool, (30, 20)),
+            [(30, 20), (29, 20), (28, 20), (30, 19), (29, 19), (28, 19)]
+        );
+        // Off the map's top and left edge, the tiles there left out.
+        assert_eq!(visitable(whirlpool, (0, 0)), [(0, 0)]);
+    }
+
+    #[test]
+    fn rejects_mistakes_in_the_teleporters() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(TELEPORTERS.contains(from), "{from}");
+            let spec = parse(&TELEPORTERS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "t.h3m").expect_err(to)
+        };
+        // The pairs as the rules give them.
+        let g = "pair = [14, 9]\n        vcmi_pair = [6, 10]";
+        assert_eq!(
+            fails(g, "pair = [6, 10]"),
+            "object `AvTCave` at [10, 10]: by the original's rule its pair is Some([14, 9]), not \
+             Some([6, 10]) (the other level's gates, truncated and squared distances: [14, 9] 4 \
+             (17), [6, 10] 4 (16))"
+        );
+        assert!(
+            fails(g, "pair = [14, 9]\n        vcmi_pair = [14, 9]")
+                .contains("by VCMI's rule its pair is Some([6, 10]), not Some([14, 9])")
+        );
+        assert!(
+            fails("1\n        pair = \"none\"", "1\n        pair = [10, 10]").contains(
+                "at [6, 10]: by the original's rule its pair is None, not Some([10, 10])"
+            )
+        );
+        assert!(
+            fails("1\n        pair = \"none\"", "1\n        pair = \"no\"")
+                .contains("pair `no` (a gate's `at` or \"none\")")
+        );
+        // The fields on the objects they fit, one copy each.
+        let entrance = "picture = \"AVXmn1b0\"\n        at = [4, 4]";
+        assert_eq!(
+            fails(entrance, &format!("{entrance}\n        pair = \"none\"")),
+            "object `AVXmn1b0` at [4, 4]: `pair` is a Subterranean Gate's"
+        );
+        assert_eq!(
+            fails(entrance, &format!("{entrance}\n        vcmi_tile = true")),
+            "object `AVXmn1b0` at [4, 4]: `vcmi_tile` is a boat's"
+        );
+        assert_eq!(
+            fails(
+                g,
+                &format!("{g}\n        grid = {{ columns = 2, step = [1, 1] }}")
+            ),
+            "object `AvTCave` at [10, 10]: `pair` and `vcmi_tile` take one copy"
+        );
+        // The boats: VCMI's tile or not, after their Whirlpool, one a tile, on a Whirlpool when
+        // `vcmi_tile` says so.
+        assert_eq!(
+            fails("vcmi_tile = true", "vcmi_tile = false"),
+            "object `AVXboat1` at [31, 20]: its tile (30, 20) is VCMI's tile of the Whirlpool \
+             (Some((30, 20)))"
+        );
+        assert_eq!(
+            fails("vcmi_tile = false", "vcmi_tile = true"),
+            "object `AVXboat1` at [29, 19]: its tile (28, 19) is not VCMI's tile of the Whirlpool \
+             (Some((30, 20)))"
+        );
+        assert_eq!(
+            fails("at = [29, 19]", "at = [31, 20]"),
+            "two boats on the Whirlpool's tile (30, 20)"
+        );
+        assert_eq!(
+            fails("at = [29, 19]", "at = [33, 19]"),
+            "object `AVXboat1` at [33, 19]: on no Whirlpool's tile"
+        );
+        let whirlpool = "[[map.object]]\n        picture = \"AVXwhrl0\"\n        at = [30, 20]\n";
+        let late = TELEPORTERS.replacen(whirlpool, "", 1) + whirlpool;
+        assert_eq!(
+            build(&parse(&late).expect("spec"), &t, "t.h3m").unwrap_err(),
+            "object `AVXboat1` at [31, 20]: the boat on a Whirlpool's tile comes after the \
+             Whirlpool"
+        );
+        // A boat on a Whirlpool's tile without `vcmi_tile` is fine; a boat elsewhere on another
+        // object's tile is not.
+        let plain = TELEPORTERS.replacen("        vcmi_tile = true\n", "", 1);
+        assert!(build(&parse(&plain).expect("spec"), &t, "t.h3m").is_ok());
+        assert_eq!(
+            fails("at = [29, 19]\n        vcmi_tile = false", "at = [5, 4]"),
+            "two objects on the tile (4, 4)"
+        );
+        // The levels.
+        assert_eq!(
+            fails(
+                "level = 1\n        pair = \"none\"",
+                "level = 2\n        pair = \"none\""
+            ),
+            "object `AvTCave` at [6, 10] on level 2: no such level (`[map.underground]` adds level \
+             1)"
+        );
+        // A gate whose template has no single entrance.
+        let mut odd = tables();
+        odd.plains[11].visitable = [0; 6];
+        assert_eq!(
+            build(&parse(TELEPORTERS).expect("spec"), &odd, "t.h3m").unwrap_err(),
+            "object `AvTCave` at [10, 10]: a gate without one entrance"
+        );
     }
 
     /// Batch E8's objects (E08 T67): water, a boat, Flotsam in a grid, Favorable Winds, two
