@@ -96,6 +96,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      setup's (its random stacks resolved when the game is built, ADR-0017 point 4) until a rule
      writes it. No other town state is the adventure's: its record (faction, buildings) is
      `h3-towns`', which the game composes with it.
+     **E09's increment 2** (E09 decision 46) gives a town object's static part its **boat
+     spot**, fixed when the game is built with the Shipyards' boat tiles (ADV-SHY-001's step,
+     after every object is placed) and never moved: from the town's entrance, the first of the
+     kind `Town`'s offsets (the adventure part: the original's (−1, +2), then (+1, +2), column and
+     row; `town_boat_spot` 0x5C0C90, survey `E09-construction.md` §2.5) on the entrance's level
+     that is a tile of the map on water that no object blocks or is visited from (a boat's tile
+     allowed, the state's boats being no objects); none: the town has no water. It is held for
+     every town, whatever its faction; the game reads it at the build (ADR-0017 point 4: a
+     Shipyard forbidden without it) and for the town events' Shipyard; increment 4's town boat
+     is built on it. No other town state becomes the adventure's.
    - **Increment 10's dwellings and Refugee Camps** (E08 decision 231):
      - **Owners:** the dwellings are ownable objects (point 4), their owners in the owners' block
        by ownable index with the mines', the owners at load the setup's.
@@ -506,6 +516,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        by a later step, which finds the town its own; a defender's win or a battle with no
        winner changes no owner, the survivors staying in the armies that fought (the visitor's,
        or the garrison as a mine's guards).
+     - **E09's increment 2 adds no visit rule**: a build is the town command (ADR-0017 point 1),
+       never a step, and needs no hero in the town (the original builds from the town list).
    - **Increment 10's kinds** (the import maps classes 17, 20, 78 and 216 to 218; every one
      entered, none visitable from above):
      - **Dwellings** (`dwelling`: one to four creatures in the original's order, its own
@@ -534,8 +546,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        original's unupgraded creature's dwelling, the Golem Factory for the Tower's level 3). The
        import refuses an empty set (A-34), a town identifier no town of the map has (A-35), a
        level past 6 or a lowest level above the highest, classes 18 and 19 and a dwelling subclass
-       past its table (A-36): input bounds, no flag. A random dwelling tied to a town is a blocker
-       until E09's random towns resolve it (ADV-STUB-13). A hero on a random dwelling's visitable
+       past its table (A-36): input bounds, no flag. **A random dwelling tied to a town** (216 or
+       217 whose identifier a town of the map has; the last such town in object order, as the
+       original searches its list from the end) is typed with that town's `TownId`, takes the
+       town's faction (drawn first, ADR-0017 point 4) and draws only its level (E09 T11, E09
+       decision 39; `random_dwellings_resolve` 0x502B60). A hero on a random dwelling's visitable
        tile is refused by the setup (the draw would block it).
      - **The Refugee Camp** (`refugee_camp`: its levels; ADV-RFG-001): not ownable, no guards; its
        creature drawn among the random monsters of levels 1 to 7 (ADV-MON-003's set) and its count
@@ -697,6 +712,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    derived fact (the Escape Tunnel, ADR-0023 point 2) stays the owner's. A capture is seen where
    its tiles are; its reveal is told to the new owner alone. `docs/06-security.md` lists it (E09
    T8c; the design note gives the words).
+   **From E09 increment 2** (E09 decision 47, the original's views): a town's **buildings** (its
+   ever-built and forbidden sets, so its standing ones) are its **owner's**, as the town screen
+   opens from the town list at any time; a player one of whose heroes enters an **ally's** town
+   learns them at that visit, as the original's town screen opens for an allied town (survey
+   `E09-towns.md` §7.2), told by the entering step to that player alone (with E10's teams: until
+   then no town is an ally's). **Whether a town was built in today** is public where the town is
+   seen (the popup's portrait, survey §12.3); its fort and Capitol stay public as the picture
+   shows them, changing with a build. The boat spot is told to no one in increment 2 (whether
+   the town may build a Shipyard is in its owner's buildings). The game composes these views
+   (ADR-0017 point 2); `docs/06-security.md` lists them (E09 T15).
    From increment 10 every viewer that sees a **dwelling** sees its type (so its name and
    creatures; a random dwelling's drawn type, footprint and moved anchor, as the original draws
    it) and its owner; **never its counts or guards** (the original's hint and popup show neither,
@@ -767,6 +792,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   the map import bump (the adventure lane's, `cross-lane`); the replays with a town re-recorded.
   The adventure never reads a town's buildings: the game passes it the reveal radius and adds the
   public facts to the observation.
+- E09's increment 2: the adventure ruleset part bumps (the kind `Town`'s offsets); the static
+  map's hash holds the town's boat spot as it holds a Shipyard's (its encoding unchanged; the
+  states of maps with towns move, so the replays are re-recorded with the game's bumps). A
+  shipped town whose faction has a Shipyard and no water loses a custom set's built Shipyard at
+  the build (the census of the build task counts them, E09 design §32).
 - Increment 10: the map's dwellings, random dwellings and camps become typed objects, so the
   shipped maps' static maps change (map import v16) and so do the golden replays on maps that hold
   them; the adventure part gains three kinds, `[params.dwellings]` and the random dwellings' table
@@ -832,6 +862,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   a flag (ADV-OWN-001's step: a town's capture empties the garrison, reveals by the town's radius
   and leaves the attacker outside after a siege, none of which a flag does); the ally's defence
   built now (no teams until E10; TWN-Q2, E09 decision 16).
+- E09's increment 2: the boat spot's offsets in the town part and the spot computed by the game
+  from the static map's tiles (the map's terrain and objects are the adventure's facts, as a
+  Shipyard's tile is); a spot only for the factions with a Shipyard (the adventure would read the
+  town part); an ally's visitor seeing the buildings in its observation while it stands on the
+  entrance (more than the original's town screen shows: it closes, and an ally cannot open it
+  from the town list).
 - Increment 10 (ADV-Q41 to ADV-Q43): an owned dwelling's guards on its owner's side (VCMI; the
   agent's first proposal of a flag, E08 decision 234: rejected by the user, decision 238, as the
   owner never puts them there, where an owned mine's guards are its owner's because Leave Guards
@@ -953,3 +989,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   teleporter's type public, a jump seen as a step's two ends. Drafted in E08 T98b1 (survey
   `E08-teleporters.md`; the revisit by T98b2); batch E11's outcome (T101, §15: every row as read
   but E11-19, the guard first) folded in.
+- 2026-11-07 (E09 T15 `shared/`; the user at `TWN-Q9` and `TWN-Q10`, E09 decisions 39, 46–48):
+  points 1, 4 and 6 amended for E09 increment 2, construction with the town events: a town
+  object's boat spot, fixed when the game is built (`TWN-STUB-2`'s Shipyard half); a random
+  dwelling tied to a town typed with its town's `TownId` and faction (E09 T11, `ADV-STUB-13`
+  lifted); no visit rule for a build; a town's buildings its owner's and an ally visitor's, its
+  day's mark public where it is seen. Drafted in E09 T13 (design note `E09-design.md` §28, §31);
+  batch TWN-2 (T14c, survey `E09-construction.md` §13) changed nothing here.

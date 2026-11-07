@@ -38,7 +38,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts
-  `docs/lanes/town/adr-drafts/*-increment-2.md`, accepted at `TWN-Q10`): in your paths, by task:
+  `docs/lanes/town/adr-drafts/*-increment-2.md`, accepted at `TWN-Q10`, in ADR-0016 and -0017 since
+  E09 T15): in your paths, by task:
   T17 the game state hash (the store of towns' v2 folded in); T18a the kind `Town`'s
   `boat_offsets` in the adventure part (ruleset part bump) and each town's boat spot in
   `fix_boat_tiles` (as the town object's `Resolved::BoatTile`, the encoding unchanged); T18b
