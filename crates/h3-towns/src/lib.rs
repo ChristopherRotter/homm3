@@ -82,5 +82,6 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 1;
 /// the town lane). v1 (E09 T5a1; the constant since T4b): the first encoding, the parameters and
 /// the factions' town records ([`TownRuleset`]'s `hash_into`). v2 (E09 T5b2a): each building's
 /// automatic set (`auto_with`, the hordes' upgrade). v3 (E09 T8c2): Visions' factor, least
-/// radius and creatures in the parameters (TWN-VEW-003).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 3;
+/// radius and creatures in the parameters (TWN-VEW-003). v4 (E09 T16a): each building's
+/// requirements (the closure) and cost, and the role `shipyard` (E09 design §24).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 4;

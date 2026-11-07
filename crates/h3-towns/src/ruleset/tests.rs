@@ -137,7 +137,17 @@ fn building(k: &str, roles: BuildingRoles) -> BuildingDef {
         supersedes: vec![],
         forbidden_with: None,
         auto_with: vec![],
+        requires: vec![],
+        cost: vec![],
         roles,
+    }
+}
+
+/// `def` requiring the buildings `keys` (direct).
+fn needs(def: BuildingDef, keys: &[&str]) -> BuildingDef {
+    BuildingDef {
+        requires: keys.iter().map(|&k| k.into()).collect(),
+        ..def
     }
 }
 
@@ -170,8 +180,11 @@ fn dwelling(level: u8, upgraded: bool) -> BuildingRoles {
 }
 
 /// A valid record of `faction` with these creatures: the four halls and three forts, each
-/// superseding the one below, the Tavern, the silo, the Grail, the two dwellings, the Lookout
-/// Tower, a horde and its upgrade forbidden with it and built with it and the level-2 dwelling.
+/// superseding and requiring the one below (the Town Hall requiring the Tavern, the Capitol the
+/// Castle too), the Tavern, the silo, the Grail, the two dwellings (the second requiring the
+/// first), the Lookout Tower, a horde requiring the level-2 dwelling and its upgrade requiring
+/// it, forbidden with it and built with it and the level-2 dwelling, and the Shipyard requiring
+/// the Tavern; the Town Hall, the City Hall and the Shipyard cost resources (E09 T16a).
 fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDef {
     let buildings = vec![
         BuildingDef {
@@ -180,13 +193,26 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
         },
         BuildingDef {
             slot: Some(1),
-            ..superseding("town_hall", "village_hall", hall(2))
+            cost: vec![(key("t:gold"), 2500)],
+            ..needs(
+                superseding("town_hall", "village_hall", hall(2)),
+                &["tavern"],
+            )
         },
-        superseding("city_hall", "town_hall", hall(3)),
-        superseding("capitol", "city_hall", hall(4)),
+        BuildingDef {
+            cost: vec![(key("t:gold"), 5000), (key("t:wood"), 5)],
+            ..needs(
+                superseding("city_hall", "town_hall", hall(3)),
+                &["town_hall"],
+            )
+        },
+        needs(
+            superseding("capitol", "city_hall", hall(4)),
+            &["city_hall", "castle"],
+        ),
         building("fort", fort(1)),
-        superseding("citadel", "fort", fort(2)),
-        superseding("castle", "citadel", fort(3)),
+        needs(superseding("citadel", "fort", fort(2)), &["fort"]),
+        needs(superseding("castle", "citadel", fort(3)), &["citadel"]),
         building(
             "tavern",
             BuildingRoles {
@@ -219,7 +245,7 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
             },
         ),
         building("dwelling_1", dwelling(1, false)),
-        building("dwelling_2", dwelling(2, false)),
+        needs(building("dwelling_2", dwelling(2, false)), &["dwelling_1"]),
         building(
             "lookout",
             BuildingRoles {
@@ -227,11 +253,24 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
                 ..BuildingRoles::default()
             },
         ),
-        building("horde", BuildingRoles::default()),
+        needs(building("horde", BuildingRoles::default()), &["dwelling_2"]),
         BuildingDef {
             forbidden_with: Some("horde".into()),
             auto_with: vec!["horde".into(), "dwelling_2".into()],
-            ..building("horde_up", BuildingRoles::default())
+            ..needs(building("horde_up", BuildingRoles::default()), &["horde"])
+        },
+        BuildingDef {
+            cost: vec![(key("t:wood"), 20), (key("t:gold"), 2000)],
+            ..needs(
+                building(
+                    "shipyard",
+                    BuildingRoles {
+                        shipyard: true,
+                        ..BuildingRoles::default()
+                    },
+                ),
+                &["tavern"],
+            )
         },
     ];
     TownDef {
@@ -395,6 +434,50 @@ fn the_buildings_close_what_they_supersede() {
 }
 
 #[test]
+fn the_buildings_close_what_they_require_and_list_their_costs() {
+    let (core, part) = compiled();
+    for record in part.towns() {
+        let id = |k: &str| record.building_by_key(k).unwrap();
+        let of = |k: &str| record.building(id(k)).unwrap();
+        let set = |keys: &[&str]| {
+            keys.iter()
+                .fold(BuildingSet::EMPTY, |set, &k| set.with(id(k)))
+        };
+        // The closure: the Capitol needs the halls below it, the Tavern through the Town Hall,
+        // and the forts through the Castle; never itself.
+        assert_eq!(
+            of("capitol").requires,
+            set(&[
+                "city_hall",
+                "town_hall",
+                "tavern",
+                "castle",
+                "citadel",
+                "fort"
+            ])
+        );
+        assert_eq!(
+            of("horde_up").requires,
+            set(&["horde", "dwelling_2", "dwelling_1"])
+        );
+        assert_eq!(of("shipyard").requires, set(&["tavern"]));
+        assert_eq!(of("village_hall").requires, BuildingSet::EMPTY);
+        assert!(of("shipyard").roles.shipyard);
+        assert!(!of("tavern").roles.shipyard);
+        // The costs in the core's resource order (wood before gold), whatever the order given.
+        let resource = |k: &str| {
+            let index = core.resources().iter().position(|r| r.key.as_str() == k);
+            index.and_then(ResourceId::from_index).unwrap()
+        };
+        let (wood, gold) = (resource("t:wood"), resource("t:gold"));
+        assert_eq!(of("town_hall").cost, [(gold, 2500)]);
+        assert_eq!(of("city_hall").cost, [(wood, 5), (gold, 5000)]);
+        assert_eq!(of("shipyard").cost, [(wood, 20), (gold, 2000)]);
+        assert!(of("village_hall").cost.is_empty());
+    }
+}
+
+#[test]
 fn packs_without_towns_compile_to_the_empty_part() {
     let core = core();
     let empty: Vec<_> = ["t", "u", "v", "w"]
@@ -438,9 +521,9 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The third encoding (v3): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0x1649ee874289951b);
-    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x796ed797b92b1fd2);
+    // The fourth encoding (v4): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0xcb0d02cf9d6eb150);
+    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x985b2cc3d2245173);
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
     let other = TownRuleset::compile(&core, &changed).unwrap();
@@ -454,6 +537,19 @@ fn the_hash_is_pinned_and_follows_the_content() {
         |p| p[0].params.as_mut().unwrap().visions_factor = 2,
         |p| p[0].params.as_mut().unwrap().visions_min_radius = 3,
         |p| drop(p[1].visions.pop()),
+    ];
+    for change in changes {
+        let mut changed = packs();
+        change(&mut changed);
+        let other = TownRuleset::compile(&core, &changed).unwrap();
+        assert_ne!(other.content_hash(), part.content_hash());
+    }
+    // The fourth (v4): a building's requirements, its cost and the role `shipyard`.
+    let changes: [fn(&mut Vec<TownPack>); 4] = [
+        |p| drop(keep_building(p, "capitol").requires.pop()),
+        |p| keep_building(p, "town_hall").cost[0].1 = 2000,
+        |p| drop(keep_building(p, "city_hall").cost.pop()),
+        |p| keep_building(p, "shipyard").roles.shipyard = false,
     ];
     for change in changes {
         let mut changed = packs();
@@ -750,6 +846,19 @@ fn the_roles_across_a_record_are_checked() {
             .push(building("dwelling_1b", dwelling(1, false)))),
         town_error("t:keep", "has a dwelling twice")
     );
+    assert_eq!(
+        reason(|t| {
+            let mut second = t
+                .buildings
+                .iter()
+                .find(|b| b.roles.shipyard)
+                .unwrap()
+                .clone();
+            second.key = "shipyard_2".into();
+            t.buildings.push(second);
+        }),
+        town_error("t:keep", "has more than one Shipyard")
+    );
     let dwellings = town_error("t:keep", "needs the level-1 and level-2 dwellings");
     assert_eq!(reason(|t| t.buildings[11].roles.dwelling = None), dwellings);
     assert_eq!(reason(|t| t.buildings[10].roles.dwelling = None), dwellings);
@@ -858,6 +967,46 @@ fn supersedes_forbidden_with_and_auto_with_are_checked() {
             keep_building(p, "horde").forbidden_with = Some("horde_up".into());
         }),
         building_error("horde", cycle)
+    );
+}
+
+#[test]
+fn requires_and_cost_are_checked() {
+    use TownCompileError as E;
+    let reason =
+        |k: &'static str, change: fn(&mut BuildingDef)| refused(|p| change(keep_building(p, k)));
+    assert_eq!(
+        reason("fort", |b| b.requires.push("moat".into())),
+        building_error("fort", "it requires a building the faction lacks")
+    );
+    assert_eq!(
+        reason("fort", |b| b.requires.push("fort".into())),
+        building_error("fort", "it requires itself")
+    );
+    // The fort through the Castle and the Citadel; the first of the cycle is named.
+    assert_eq!(
+        reason("fort", |b| b.requires.push("castle".into())),
+        building_error("fort", "it requires itself through others (a cycle)")
+    );
+    assert_eq!(
+        reason("tavern", |b| b.cost.push((key("t:nope"), 1))),
+        E::UnknownResource("t:nope".into())
+    );
+    assert_eq!(
+        reason("tavern", |b| b.cost.push((key("u:gem"), 1))),
+        E::ReferenceOutsideDependencies {
+            key: "u:gem".into(),
+            pack: "t".into(),
+        }
+    );
+    let cost = "a cost names each resource once, at least 1";
+    assert_eq!(
+        reason("town_hall", |b| b.cost[0].1 = 0),
+        building_error("town_hall", cost)
+    );
+    assert_eq!(
+        reason("city_hall", |b| b.cost.push((key("t:wood"), 1))),
+        building_error("city_hall", cost)
     );
 }
 

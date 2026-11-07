@@ -47,6 +47,8 @@ fn tavern_rules() -> GameRuleset {
         supersedes: vec![],
         forbidden_with: None,
         auto_with: vec![],
+        requires: vec![],
+        cost: vec![],
         roles: BuildingRoles {
             tavern: true,
             ..BuildingRoles::default()

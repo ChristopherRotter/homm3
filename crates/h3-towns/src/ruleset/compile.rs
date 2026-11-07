@@ -1,5 +1,6 @@
-//! The town part's compiler (E09 increment 1's design note §2): the load order, each pack's
-//! parameters, records and overrides in it, then the checks across packs.
+//! The town part's compiler (E09 increment 1's design note §2; increment 2's requirements, costs
+//! and role `shipyard`, design §24): the load order, each pack's parameters, records and
+//! overrides in it, then the checks across packs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
@@ -77,19 +78,22 @@ impl Scope<'_> {
         self.check(key).map(|()| id)
     }
 
-    /// A silo's resources in the core's order: each once, at least 1.
-    fn silo(&self, def: &[(ContentKey, u32)], faction: &str) -> Result<Vec<(ResourceId, u32)>> {
-        let mut silo = BTreeMap::new();
+    /// Amounts of resources in the core's order, or `None` when one is named twice or is 0.
+    fn amounts(&self, def: &[(ContentKey, u32)]) -> Result<Option<Vec<(ResourceId, u32)>>> {
+        let mut amounts = BTreeMap::new();
         for (key, amount) in def {
             let resource = self.resource(key)?;
-            if *amount == 0 || silo.insert(resource, *amount).is_some() {
-                return Err(invalid_town(
-                    faction,
-                    "the silo gives each resource once, at least 1",
-                ));
+            if *amount == 0 || amounts.insert(resource, *amount).is_some() {
+                return Ok(None);
             }
         }
-        Ok(silo.into_iter().collect())
+        Ok(Some(amounts.into_iter().collect()))
+    }
+
+    /// A silo's resources in the core's order: each once, at least 1.
+    fn silo(&self, def: &[(ContentKey, u32)], faction: &str) -> Result<Vec<(ResourceId, u32)>> {
+        self.amounts(def)?
+            .ok_or_else(|| invalid_town(faction, "the silo gives each resource once, at least 1"))
     }
 }
 
@@ -303,7 +307,7 @@ fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<
         })
         .collect::<Result<Vec<_>>>()?;
     let silo = scope.silo(&def.silo, name)?;
-    let buildings = compile_buildings(name, &def.buildings, &creatures)?;
+    let buildings = compile_buildings(scope, name, &def.buildings, &creatures)?;
     check_roles(name, &buildings)?;
     Ok(Entry {
         pack: String::from(scope.pack),
@@ -365,6 +369,7 @@ fn check_building(
 }
 
 fn compile_buildings(
+    scope: &Scope<'_>,
     faction: &str,
     defs: &[BuildingDef],
     creatures: &[CreatureLevel],
@@ -394,6 +399,8 @@ fn compile_buildings(
     let mut direct = Vec::with_capacity(defs.len());
     let mut forbidden = Vec::with_capacity(defs.len());
     let mut auto = Vec::with_capacity(defs.len());
+    let mut required = Vec::with_capacity(defs.len());
+    let mut costs = Vec::with_capacity(defs.len());
     for (def, &id) in defs.iter().zip(&ids) {
         let mut set = BuildingSet::EMPTY;
         for key in &def.supersedes {
@@ -416,6 +423,21 @@ fn compile_buildings(
             return Err(invalid_building(faction, def, "it is built with itself"));
         }
         auto.push(with);
+        let mut needs = BuildingSet::EMPTY;
+        for key in &def.requires {
+            needs = needs.with(resolve(
+                def,
+                key,
+                "it requires a building the faction lacks",
+            )?);
+        }
+        if needs.contains(id) {
+            return Err(invalid_building(faction, def, "it requires itself"));
+        }
+        required.push(needs);
+        costs.push(scope.amounts(&def.cost)?.ok_or_else(|| {
+            invalid_building(faction, def, "a cost names each resource once, at least 1")
+        })?);
         forbidden.push(
             def.forbidden_with
                 .as_deref()
@@ -430,19 +452,29 @@ fn compile_buildings(
         );
     }
     let closed = close(&ids, &direct);
+    let requires = close(&ids, &required);
     let mut buildings = Vec::with_capacity(defs.len());
-    for ((((def, &id), &supersedes), &forbidden_with), &auto_with) in defs
+    for ((((((def, &id), &supersedes), &forbidden_with), &auto_with), &requires), cost) in defs
         .iter()
         .zip(&ids)
         .zip(&closed)
         .zip(&forbidden)
         .zip(&auto)
+        .zip(&requires)
+        .zip(costs)
     {
         if supersedes.contains(id) {
             return Err(invalid_building(
                 faction,
                 def,
                 "it supersedes itself (a cycle)",
+            ));
+        }
+        if requires.contains(id) {
+            return Err(invalid_building(
+                faction,
+                def,
+                "it requires itself through others (a cycle)",
             ));
         }
         if forbidden_cycle(&forbidden, id) {
@@ -459,14 +491,16 @@ fn compile_buildings(
             supersedes,
             forbidden_with,
             auto_with,
+            requires,
+            cost,
             roles: def.roles,
         });
     }
     Ok(buildings)
 }
 
-/// Each building's superseded set closed: what it supersedes directly and, transitively, what
-/// those supersede.
+/// Each building's set closed (what it supersedes, or requires): its direct set and,
+/// transitively, the direct sets of those in it.
 fn close(ids: &[BuildingId], direct: &[BuildingSet]) -> Vec<BuildingSet> {
     direct
         .iter()
@@ -502,8 +536,8 @@ fn forbidden_cycle(forbidden: &[Option<BuildingId>], start: BuildingId) -> bool 
 }
 
 /// The record's roles across its buildings: one building of each hall and fort level, one Grail,
-/// one silo; at most `MAX_TOWN_BONUSES` with a morale or luck change; each dwelling once, the
-/// level-1 and level-2 ones present.
+/// one silo, at most one Shipyard; at most `MAX_TOWN_BONUSES` with a morale or luck change; each
+/// dwelling once, the level-1 and level-2 ones present.
 fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     let count =
         |role: &dyn Fn(&BuildingRoles) -> bool| buildings.iter().filter(|b| role(&b.roles)).count();
@@ -524,6 +558,9 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
             faction,
             "needs one Grail building and one Resource Silo",
         ));
+    }
+    if count(&|r| r.shipyard) > 1 {
+        return Err(invalid_town(faction, "has more than one Shipyard"));
     }
     // A siege's bonuses name each such building (`h3_contracts::TownBonuses`, E09 T6b).
     if count(&|r| r.morale != 0 || r.luck != 0) > MAX_TOWN_BONUSES {
