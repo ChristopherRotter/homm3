@@ -4,6 +4,41 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-07 (E17 M6 T5 done: T5e deferred by the user at its start to when the battle
+  client runs inside an adventure game, the epic's "Later"; the entry verbatim):
+
+### E17 M6 T5 — M5's gaps
+
+- **Scope:** what M5's review list (`E17-log.md`, "M5 review list") names as not built, each as
+  far as a reading allows: the book's refusal messages (items 5 and 9: `hero_book_button`'s
+  refusals and the aim's entry's other messages), the Auto Combat bot's casts and its retreat
+  question by T4's options (item 24), Force Field's and Fire Wall's aim (item 84), Eagle Eye's
+  message and the experience given after the window (item 79), the Ogre Magi's Bloodlust glow
+  (item 42), the effects not drawn yet and their sounds' waits (item 45: the Wraiths' mana
+  drain, regeneration, Poison's damage, Death Blow, Ice Bolt's explosion, the Familiars'
+  channel).
+- **Acceptance:** each built and recorded, or its reason in M6's review list; `check.sh`.
+- **Depends on:** T4 (the Auto Combat options). **Status:** cut in four by the user
+  (2026-11-05): **T5a** done (the book's refusals, the aim's other messages, the walls' aim;
+  design §12.17); **T5b** cut in two by the user (2026-11-05): **T5b1** done (the window's
+  computer the engine's original one, `--sight`; its casts for the human's hero; design §12.18;
+  CLT-Q61, Q62 answered); **T5b2** cut in two by the user (2026-11-05): **T5b2a** done (the
+  retreat question and the offer; design §12.19; the engine's part #745); **T5b2b** done (kept
+  whole by the user: CLT-Q61's stop at the cast's end, a question at a later turn, a human's turn
+  right after an answer; design §12.20; CLT-Q64 asked); **T5c** done (kept whole by the user:
+  Eagle Eye's message and the box with pictures, the experience after the window nothing to
+  show; design §12.21; CLT-Q65, Q66 asked); **T5d** the effects not drawn yet, their sounds'
+  waits and the Ogre Magi's Bloodlust glow (items 42, 45), cut in two by the user (2026-11-06):
+  T5d1 done (design §12.22); **T5d2** the strikes' and casts' effects, cut in two by the user
+  (2026-11-06): T5d2a done (Death Blow and the Ogre Magi's Bloodlust glow, item 42; design
+  §12.23); T5d2b done (the hero's cast's: Ice Bolt's explosion and the Familiars' channel;
+  design §12.24);
+  **T5e** (added by the user at T5c, 2026-11-06) the captured artifacts' message after Eagle
+  Eye's (`captured_artifacts_message` 0x4772B0, design §12.21: GENRLTXT 31, eight artifact
+  pictures a box, the pickup sound; its reading finished then): the heroes' worn artifacts and
+  the backpack the client's heroes do not carry yet (the scenario's and the wire's), the
+  capture's order HER-ART-004 (`h3_heroes::next_capture`), recorded.
+
 - 2026-11-05 (E17 M6 T4c done, T4 done; the entry verbatim; the record in `E17-log.md`, "M6 T4c"):
 
 ### E17 M6 T4 — the combat options dialog

@@ -1,7 +1,8 @@
 //! A draw list composed into one frame (E17 M1 T7): each [`Draw`] with the drawer the executable
 //! uses for it (`docs/epics/E17-design.md` §3.3, §4), from a checkpoint's [`Batch`], into a screen
 //! in the original's 16-bit format. The one place that decides how a named thing is drawn: a
-//! graphics option (the user, 2026-10-13) changes this, not the scene.
+//! graphics option (the user, 2026-10-13) changes this, not the scene; a dialog's items by the
+//! common drawers both viewers share (`h3_ui::paint`, since E17 M6 T6a).
 
 use alloc::format;
 use alloc::string::String;
@@ -9,11 +10,11 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_assets::def::Frame;
-use h3_assets::palette::{Palette, Rgb};
+use h3_assets::palette::Rgb;
 use h3_render::Bugs;
 use h3_render::blit::{
-    Drawer, Placement, darken, darken_under, draw_frame, draw_frame_rows, draw_image,
-    draw_image_clipped, draw_image_keyed, draw_image_keyed_clipped, draw_image_keyed_in_clipped,
+    Drawer, Placement, darken_under, draw_frame, draw_frame_rows, draw_image, draw_image_keyed,
+    draw_image_keyed_clipped,
 };
 use h3_render::palette::{ScreenPalette, with_player_colours};
 use h3_render::recolour;
@@ -22,8 +23,6 @@ use h3_render::text::{TextBox, TextStyle, draw_text};
 use h3_render::tint::{Tint, adjust_hue_saturation};
 
 use h3_ui::sprite::Sprite;
-use h3_ui::text::encode_1252;
-use h3_ui::ui;
 
 use crate::batch::Batch;
 use crate::clip;
@@ -220,7 +219,7 @@ pub fn compose(
                 let players = batch
                     .palette(palette)
                     .ok_or_else(|| ComposeError::Missing(palette.clone()))?;
-                let colours = player_colours(players, *player);
+                let colours = h3_ui::paint::player_colours(players, *player);
                 let palette =
                     ScreenPalette::new(&with_player_colours(&sprite.def.palette, &colours), FORMAT);
                 let at = Placement {
@@ -299,76 +298,11 @@ pub fn compose(
                 };
                 draw_text(&mut screen, text.as_bytes(), area, style);
             }
-            Draw::Dialog(ui::Draw::Picture {
-                picture,
-                x,
-                y,
-                player,
-                size,
-            }) => {
-                // `H3DlgPcx` (0x450450 → 0x44FDB0): index 0 transparent, the picture's entries
-                // 224-255 in the player's colours (0x450520) when it has one (§9.7), at most the
-                // item's size of it from its corner (E17 M5 T4a).
-                let image = picture_of(batch, picture)?;
-                let clip = size.map_or([i32::MIN, i32::MIN, i32::MAX, i32::MAX], |[w, h]| {
-                    [*x, *y, x.saturating_add(w), y.saturating_add(h)]
-                });
-                match (player, image) {
-                    (Some(colours), h3_assets::pcx::Pcx::Indexed(indexed)) => {
-                        let players = batch
-                            .palette(&colours.palette)
-                            .ok_or_else(|| ComposeError::Missing(colours.palette.clone()))?;
-                        let of = player_colours(players, colours.player);
-                        let palette = with_player_colours(&indexed.palette, &of);
-                        draw_image_keyed_in_clipped(&mut screen, image, &palette, (*x, *y), clip);
-                    }
-                    _ => draw_image_keyed_clipped(&mut screen, image, *x, *y, clip),
-                }
-            }
-            Draw::Dialog(ui::Draw::Button {
-                def,
-                frame,
-                x,
-                y,
-                mirrored,
-                player,
-            }) => {
-                // 0x456940: group 0's frame, frame 0 when the group has no such frame; the plain
-                // drawer with runs skipped (0x47BF00 → 0x47C570; §9.7); a DEF item's entries
-                // 224-255 in a player's colours when it has one (0x4EAA4A; E17 M5 T4a), mirrored
-                // as its +0x3C says (E17 M5 T4b1).
-                let count = batch
-                    .sprite(def)
-                    .and_then(|s| s.def.groups.iter().find(|g| g.id == 0))
-                    .map_or(0, |g| g.frames.len());
-                let frame = if usize::try_from(*frame).unwrap_or(usize::MAX) < count {
-                    *frame
-                } else {
-                    0
-                };
-                let (sprite, frame) = frame_of(batch, def, 0, frame)?;
-                let palette = match player {
-                    Some(colours) => {
-                        let players = batch
-                            .palette(&colours.palette)
-                            .ok_or_else(|| ComposeError::Missing(colours.palette.clone()))?;
-                        let of = player_colours(players, colours.player);
-                        with_player_colours(&sprite.def.palette, &of)
-                    }
-                    None => sprite.def.palette.clone(),
-                };
-                let at = Placement {
-                    x: *x,
-                    y: *y,
-                    mirrored: *mirrored,
-                };
-                draw_frame(
-                    &mut screen,
-                    frame,
-                    &ScreenPalette::new(&palette, FORMAT),
-                    at,
-                    PLAIN,
-                );
+            // The dialog's items (E17 M6 T6a): the common drawers' (`h3_ui::paint`, ported from
+            // this compositor at E24 M3 T2a; design §9.7).
+            Draw::Dialog(dialog) => {
+                h3_ui::paint::draw(&mut screen, dialog, batch, bugs)
+                    .map_err(ComposeError::Missing)?;
             }
             Draw::Cursor {
                 def,
@@ -423,73 +357,6 @@ pub fn compose(
                 });
                 let pixels = shown.frames.get(frame).map_or(&[][..], Vec::as_slice);
                 copy_pixels(&mut screen, pixels, shown.width, (*x, *y));
-            }
-            Draw::Dialog(ui::Draw::Darken { rect }) => darken(&mut screen, *rect),
-            Draw::Dialog(creature @ (ui::Draw::Creature { .. } | ui::Draw::Shared { .. })) => {
-                // The stats dialog's creature (E17 M6 T2a1, `dialog_def_draw` 0x4EAB40 with the
-                // flags 0x12) and its morale and luck (CLT-Q36): the common drawers'.
-                h3_ui::paint::draw(&mut screen, creature, batch, bugs)
-                    .map_err(ComposeError::Missing)?;
-            }
-            Draw::Dialog(ui::Draw::Text { item, x, y, text }) => {
-                // 0x5BC7F0: the item's picture, opaque (0x44FDB0), at most the item's size of it
-                // (E17 M5 T3a: `spelroll.pcx` is a column wider), then its text (0x5BC5F0 →
-                // 0x4B5490) in the item's box, the colour and alignment it was made with.
-                let clip = [*x, *y, x + item.size[0], y + item.size[1]];
-                draw_image_clipped(&mut screen, picture_of(batch, &item.picture)?, *x, *y, clip);
-                let font = batch
-                    .font(&item.font)
-                    .ok_or_else(|| ComposeError::Missing(item.font.clone()))?;
-                let palette = batch
-                    .palette(&item.font_palette)
-                    .ok_or_else(|| ComposeError::Missing(item.font_palette.clone()))?;
-                let area = TextBox {
-                    x: *x,
-                    y: *y,
-                    width: item.size[0],
-                    height: item.size[1],
-                };
-                let colours = ScreenPalette::new(palette, FORMAT);
-                let style = TextStyle {
-                    font,
-                    colours: &colours,
-                    colour: item.colour,
-                    alignment: item.align,
-                    bugs,
-                };
-                draw_text(&mut screen, &encode_1252(text).0, area, style);
-            }
-            Draw::Dialog(ui::Draw::Label {
-                item,
-                x,
-                y,
-                text,
-                disabled,
-            }) => {
-                // 0x5BC5F0 (E17 M5 T3a): the text in the item's box, its colour 2 more with the
-                // state's bit 8 (0x5BC641); the background colour, 0 in every one built, fills
-                // nothing.
-                let font = batch
-                    .font(&item.font)
-                    .ok_or_else(|| ComposeError::Missing(item.font.clone()))?;
-                let palette = batch
-                    .palette(&item.font_palette)
-                    .ok_or_else(|| ComposeError::Missing(item.font_palette.clone()))?;
-                let area = TextBox {
-                    x: *x,
-                    y: *y,
-                    width: item.size[0],
-                    height: item.size[1],
-                };
-                let colours = ScreenPalette::new(palette, FORMAT);
-                let style = TextStyle {
-                    font,
-                    colours: &colours,
-                    colour: item.colour + if *disabled { 2 } else { 0 },
-                    alignment: item.align,
-                    bugs,
-                };
-                draw_text(&mut screen, &encode_1252(text).0, area, style);
             }
             Draw::Wall {
                 picture,
@@ -734,17 +601,6 @@ fn tiled(
         }
     }
     Ok(())
-}
-
-/// A player's 32 colours of the players' palette (from entry 32 x the player's colour).
-fn player_colours(players: &Palette, player: u8) -> Vec<Rgb> {
-    players
-        .0
-        .iter()
-        .skip(32 * usize::from(player))
-        .take(32)
-        .copied()
-        .collect()
 }
 
 /// Rows of `width` 5-6-5 pixels copied onto the screen with their corner at `at`, clipped to it.

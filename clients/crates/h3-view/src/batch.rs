@@ -16,7 +16,6 @@ use h3_assets::palette::{Palette, decode_pal};
 use h3_assets::pcx::{Pcx, decode_pcx};
 
 use h3_ui::sprite::Sprite;
-use h3_ui::ui;
 
 use crate::clip::Video;
 use crate::layout::BattleLayout;
@@ -123,7 +122,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::AbsoluteObstacle { picture, .. }
         | Draw::Shade { picture, .. }
         | Draw::Grid { picture, .. }
-        | Draw::Wall { picture, .. } => vec![picture],
+        | Draw::Wall { picture, .. } => vec![picture.as_str()],
         Draw::Obstacle { def, .. }
         | Draw::Projectile { def, .. }
         | Draw::Explosion { def, .. }
@@ -131,42 +130,28 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
         | Draw::Shooter { def, .. }
         | Draw::Hero { def, .. }
         | Draw::Magic { def, .. }
-        | Draw::Tiled { def, .. } => vec![def],
-        Draw::Flag { def, palette, .. } => vec![def, palette],
-        Draw::CountBox { .. } => vec![&boxes.picture, &boxes.font, &boxes.font_palette],
-        Draw::Dialog(ui::Draw::Picture {
-            picture, player, ..
-        }) => {
-            let mut names = vec![picture];
-            names.extend(player.as_ref().map(|p| &p.palette));
-            names
-        }
-        Draw::Dialog(ui::Draw::Button { def, player, .. }) => {
-            let mut names = vec![def];
-            names.extend(player.as_ref().map(|p| &p.palette));
-            names
-        }
-        Draw::Cursor { def, .. } => vec![def],
-        Draw::Dialog(ui::Draw::Text { item, .. }) => {
-            vec![&item.picture, &item.font, &item.font_palette]
-        }
-        Draw::Dialog(ui::Draw::Label { item, .. }) => vec![&item.font, &item.font_palette],
-        Draw::Dialog(ui::Draw::Creature { def, .. }) => vec![def],
-        Draw::Dialog(ui::Draw::Shared { def, frames, .. }) => vec![def, frames],
+        | Draw::Tiled { def, .. }
+        | Draw::Cursor { def, .. } => vec![def.as_str()],
+        Draw::Flag { def, palette, .. } => vec![def.as_str(), palette.as_str()],
+        Draw::CountBox { .. } => vec![
+            boxes.picture.as_str(),
+            boxes.font.as_str(),
+            boxes.font_palette.as_str(),
+        ],
+        // The dialog items' names by their common drawers (E17 M6 T6a: `h3_ui::paint`).
+        Draw::Dialog(dialog) => h3_ui::paint::names(dialog),
         Draw::Video { start, looped, .. } => {
-            let mut names = vec![start];
-            names.extend(looped.as_ref());
+            let mut names = vec![start.as_str()];
+            names.extend(looped.as_deref());
             names
         }
-        Draw::Ray(_)
-        | Draw::Within { .. }
-        | Draw::Shaken { .. }
-        | Draw::Dissolve { .. }
-        | Draw::Dialog(ui::Draw::Darken { .. }) => Vec::new(),
+        Draw::Ray(_) | Draw::Within { .. } | Draw::Shaken { .. } | Draw::Dissolve { .. } => {
+            Vec::new()
+        }
     });
     let mut all: BTreeSet<String> = named
-        .chain(core::iter::once(&layout.outline_palette))
-        .map(|n| n.to_ascii_uppercase())
+        .chain(core::iter::once(layout.outline_palette.as_str()))
+        .map(str::to_ascii_uppercase)
         .collect();
     // A list drawn within a rectangle names its own (E17 M4 T2b), a shaken one too (T2c-2), a
     // dissolve's new picture and what it measures (E17 M5 T5a).
@@ -186,7 +171,7 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
 }
 
 /// The common dialog drawers' view of the batch (`h3_ui::paint`; E17 M6 T2a1: the stats dialog's
-/// creature, drawn by the common drawer).
+/// creature, drawn by the common drawer; since T6a every dialog item).
 impl h3_ui::paint::Assets for Batch {
     fn sprite(&self, name: &str) -> Option<&Sprite> {
         Self::sprite(self, name)
@@ -209,6 +194,7 @@ mod tests {
     use alloc::vec;
     use h3_assets::build;
     use h3_assets::def::{Encoding, Frame};
+    use h3_ui::ui;
 
     /// A one-pixel frame of index `i`.
     pub(crate) fn pixel(i: u8) -> Frame {

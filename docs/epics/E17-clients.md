@@ -228,10 +228,18 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   and casts', cut in two by the user (2026-11-06): T5d2a done (Death Blow, the Ogre Magi's
   Bloodlust glow; design §12.23), T5d2b done (Ice Bolt's explosion, the Familiars' channel;
   design §12.24; `channel`, `channel-sound`); **T5e**
-  (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21).
+  (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21),
+  deferred by the user at its start (2026-11-07) to when the battle client runs inside an
+  adventure game ("Later" below): its list is the adventure's outcome (HER-ART-004, `h3-game`'s
+  `heroes_after_battle`), so no artifacts go into the battle's scenario. T5 done.
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
-  `h3_ui::paint`, the purity test's holes (R2-15), R4-2 and R4-9.
+  `h3_ui::paint`, the purity test's holes (R2-15), R4-2 and R4-9. Cut in three by the user
+  (2026-11-07): **T6a** (done 2026-11-07) the purity test's three holes closed, the dialog items
+  drawn by `h3_ui::paint` alone (`h3-view`'s copy gone; `drawn` all the same) and `drawn`'s
+  digest of what a sequence's masks depend on (R4-2, recorded from `master`'s viewer first);
+  **T6b** the recordings (CLT-Q5's deck and boats, the Demons' dissolve, R4-9); **T6c** `h3-bink`
+  as `BINKW32.DLL` (CLT-Q30).
 - **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined.
 - **Exit:** a played battle shows every dialog and popup of the original's battle screen, each
   passing against the original or with each difference a listed fix or a classified quirk; the
@@ -263,7 +271,12 @@ at M5 T8c; the server lane's notes in `NOTES.md`, "The live client": the origina
 screens, so their look is new design for the review). Later: HD layouts, graphics options
 beyond `faithful`, the client's options (volumes; a two-hex stack's step one hex back by the
 mouse as a gameplay option, off by default: CLT-Q25), video. The adventure map and the full game
-viewer: E24, the map-client lane.
+viewer: E24, the map-client lane. When the battle client runs inside an adventure game: **M6
+T5e**, the captured artifacts' message after Eagle Eye's (deferred by the user, 2026-11-07;
+`captured_artifacts_message` 0x4772B0, design §12.21: GENRLTXT 31, eight artifact pictures a
+box through `h3_view::message::pictures`, a pickup sound each), its list the adventure's capture
+(HER-ART-004) told to the winner's owner; its reading of 0x4772B0 and of the artifact picture
+(type 8) to finish then, a server's seat with it.
 
 ## Research items from the asset notes
 

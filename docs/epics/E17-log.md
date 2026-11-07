@@ -5691,3 +5691,42 @@ before the PC went away (its shell did not start); the setup's baseline passed.
 - **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (91 as recorded), `h3drive.py
   drawn` (261: the two new sequences new, the rest the same; recorded), `h3-view gate`,
   `exe.py check` and `cited`, the scoped verify with original data.
+
+### M6 T6a: the purity test's holes, the dialog items through `h3_ui::paint`, R4-2 (2026-11-07)
+
+On `client/e17-m6-t6a`. At the session's start the user deferred T5e (the captured artifacts'
+message) to when the battle client runs inside an adventure game: the capture is the
+adventure's outcome (HER-ART-004, `h3-game`'s `heroes_after_battle`), so the battle scenario
+(`h3_pack_battle`'s `HeroEntry`) gets no artifacts (the epic's "Later"); T5 done. T6 cut in
+three by the user: T6a (no capture in the original), T6b (the recordings), T6c (`h3-bink`). The
+original data staged by the file tool (the PC's shell did not start); the VM restarted during
+the setup's baseline (CI's green run on `master`, 222118f, stood in).
+
+- **The purity test's holes** (R2-15, from `h3-map-view`'s copy, E24 M1 T6b): `sources` leaves
+  out `src/bin/` only (a module folder named `bin` deeper down is the library's), `attributes`
+  joins an attribute's lines and `GROUPS` (`clippy::restriction`) counts as a denied lint, the
+  required header a line of its own; tests for each, `sources` over a temporary tree. The
+  reviewer's two more (fixed): an attribute closed at the first line ending in `]` (one in a
+  comment hid the lints after it: `code_of` cuts the comment outside string literals and the
+  brackets are counted) and a commented-out `#![deny(` read as the deny block (now from
+  `attributes`). The four pure crates pass as they are; the map-client lane's copy has both
+  holes (its inbox, to take or leave).
+- **The dialog items through `h3_ui::paint`** (the map-client lane's inbox of 2026-10-28):
+  `compose`'s `Draw::Dialog` is one arm, `h3_ui::paint::draw` (its picture, button, text,
+  label and darken arms were the copy the common crate was ported from; its creature and shared
+  arms already went there at T2a1); `batch::names` takes a dialog item's names from
+  `h3_ui::paint::names`, the flag's colours from `h3_ui::paint::player_colours`. The two
+  differed only where the common one saturates (a text's clip, a label's colour: E24's F1-1),
+  which no layout reaches. `h3_ui::paint`'s module note updated (a comment only: nothing for the
+  map-client lane, whose M3 is closed).
+- **R4-2, `drawn`'s digest** (`h3drive.py`: `ours_drawn`, `mask_inputs`, `png_digest`'s
+  `extra`): a sequence frame's digest adds what its other masks depend on, from what the viewer
+  drew (`ours.txt`, `ours-log.json`): its log item's text and, with `boxes` (all 91 since M3
+  T5a), each count box's place, count and stack, else the poses and the boxes' places (the
+  reviewer: digest what the branch reads, not the poses for every one); so a change there (what
+  the frame check masks or compares) shows as `CHANGED` though the pixels outside the fixed
+  masks are the same. `run_frames` reads them through the same `ours_drawn`. A
+  situation's digest is as before (no masks since M3 T6c-1). By the runbook's rule for a change
+  to `drawn` alone: `master`'s viewer drew all 261 the same with the old digest, then `drawn
+  --record` with it wrote the new digests (every sequence's changed, every situation's the
+  same), before the viewer's change.
