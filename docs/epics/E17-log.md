@@ -5772,3 +5772,6 @@ tool (the PC's shell did not start); the setup's baseline (`check.sh`) passed.
   (fixed: two clicks); the map's last row (a boat at y 34 would start its hero on the border:
   refused, tests at both edges); a sequence on a water battlefield would time out unexplained
   (refused); the bookkeeping (HANDOFF, epic, queue).
+- **Gates:** `check.sh` (100 % coverage; its first run stopped at `cargo fmt`, fixed), the
+  scoped verify with original data (`check-docs`, `check-lane`, `check-exe-map` among it),
+  `h3-view gate`, `h3drive.py drawn --record` (above), the whole capture set.
