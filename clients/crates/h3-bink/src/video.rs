@@ -1216,9 +1216,9 @@ mod tests {
     #[test]
     fn the_samples_decode_as_the_dll_decodes_them() {
         for (seed, dll, fixed) in [
-            (1, 0x0ded_f76e_9553_c246_u64, 0xd72f_eb4d_f297_7af0_u64),
-            (2, 0x06bf_035a_c01f_6294, 0x327a_3f4d_0b16_c206),
-            (3, 0x4e3d_9476_fd5a_e872, 0x1a37_c79f_56ff_65e8),
+            (1, 0x364d_b0e2_1181_c746_u64, 0xc457_f78a_4a92_ae30_u64),
+            (2, 0x8b41_2ed7_9b56_8b91, 0xa74a_0acc_86f5_57e7),
+            (3, 0xa75c_a94e_54d9_84b3, 0x094c_1c65_bc81_05f9),
         ] {
             let bytes = build::sample(seed);
             let frames = check::frames_read(&bytes, Reading::Original).unwrap();
@@ -1231,13 +1231,14 @@ mod tests {
 
     /// The samples at the game's clips' size, 256 × 120 (E17 M5 T8b1, R2a-4): the chroma's
     /// block grid holds four rows below the picture, which motion vectors read and write, as the
-    /// DLL does (its planes' hashes, E17 M6 T6c1).
+    /// DLL does (its planes' hashes, E17 M6 T6c1: these three clips through `bink-dll.py` by
+    /// hand, as `h3-view video` writes the 256 × 48 samples only).
     #[test]
     fn the_samples_at_the_games_size_decode_as_the_dll_decodes_them() {
         for (seed, hash) in [
-            (1, 0x7d9e_01ff_e109_cb39_u64),
-            (2, 0xfb9a_df33_3f31_416c),
-            (3, 0xfba7_de40_7f9b_a8fe),
+            (1, 0x8ea7_e25f_b74f_523e_u64),
+            (2, 0x8efd_ed6c_c025_bbbc),
+            (3, 0x460d_e921_6215_2047),
         ] {
             let frames =
                 check::frames_read(&build::sample_sized(seed, 256, 120), Reading::Original)

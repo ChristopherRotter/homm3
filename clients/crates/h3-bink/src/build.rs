@@ -649,7 +649,7 @@ fn random_block(rng: &mut Random, kind: u32, vectors: [(i32, i32); 2]) -> Block 
         for _ in 0..rng.below(12) {
             let p = first + rng.below(64 - first as u32) as usize;
             let scale = rng.below(bits);
-            let magnitude = 1 + rng.below(1 << scale) as i16;
+            let magnitude = (1 + rng.below(1 << scale)).min(32_767) as i16;
             out[p & 63] = if rng.below(2) == 0 {
                 magnitude
             } else {
@@ -682,7 +682,7 @@ fn random_block(rng: &mut Random, kind: u32, vectors: [(i32, i32); 2]) -> Block 
         2 => Block::Intra {
             dc: rng.below(2048) as u16,
             q: rng.below(16) as u8,
-            coefficients: coefficients(rng, 1, 11),
+            coefficients: coefficients(rng, 1, 16),
         },
         3 => Block::Residue {
             x: vector(rng, 0),
@@ -694,7 +694,7 @@ fn random_block(rng: &mut Random, kind: u32, vectors: [(i32, i32); 2]) -> Block 
             y: vector(rng, 1),
             dc: rng.range(-1024, 1023) as i16,
             q: rng.below(16) as u8,
-            coefficients: coefficients(rng, 1, 11),
+            coefficients: coefficients(rng, 1, 16),
         },
         5 => Block::Fill(colour(rng)),
         6 => Block::Pattern {
@@ -732,11 +732,11 @@ pub const SAMPLE_HEIGHT: u32 = 48;
 /// See [`SAMPLE_WIDTH`].
 pub const SAMPLE_FRAMES: usize = 8;
 
-/// A 256 × 48 clip of 8 frames (as wide as the game's clips, whose rows FFmpeg does not pad: a
-/// reference crossing a row's end reads the same pixels in both), every block of a random type
-/// of the nine with random values (the first frame's skipped blocks raw instead), each seed its
-/// own clip: what `h3-view video --sample` writes for FFmpeg to decode, and what the decoder's
-/// unit test hashes.
+/// A 256 × 48 clip of 8 frames (as wide as the game's clips), every block of a random type of
+/// the nine with random values (the first frame's skipped blocks raw instead; DCT coefficients
+/// of every magnitude up to 15 bits, E17 M6 T6c1), each seed its own clip: what `h3-view video
+/// --sample` writes for the DLL to decode (`bink-check.sh`; FFmpeg until E17 M6 T6c1), and what
+/// the decoder's unit test hashes.
 #[must_use]
 pub fn sample(seed: u64) -> Vec<u8> {
     sample_sized(seed, SAMPLE_WIDTH, SAMPLE_HEIGHT)
@@ -751,7 +751,7 @@ pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
     let mut rng = Random::new(seed);
     let header = Header::new(width, height);
     let (width, height) = (width as usize, height as usize);
-    let mut frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
+    let frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
         .map(|f| {
             let planes: [Vec<Block>; 3] = core::array::from_fn(|i| {
                 let size = if i == 0 { 8 } else { 16 };
@@ -765,11 +765,12 @@ pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
                     })
                     .collect()
             });
-            frame(width, height, [&planes[0], &planes[1], &planes[2]])
+            let mut packet = frame(width, height, [&planes[0], &planes[1], &planes[2]]);
+            if f + 1 == SAMPLE_FRAMES {
+                packet.resize(packet.len() + TAIL, 0);
+            }
+            packet
         })
         .collect();
-    if let Some(last) = frames.last_mut() {
-        last.resize(last.len() + TAIL, 0);
-    }
     file(&header, &frames)
 }

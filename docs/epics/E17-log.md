@@ -5854,8 +5854,18 @@ T6c2 the captures. The original data staged by the file tool (the PC's shell did
   `Batch::with_bugs` (the sequences' batch the original's), `h3-view video --original`.
   `binkprobe tables` and its control word; `bink-dll.py`; `bink-check.sh` the DLL's;
   `bink-reference.py` (FFmpeg's, PyAV) removed.
-- **Checked:** `bink-check.sh`: the ten clips (759 frames) and samples 1 to 8 exact against the
-  DLL; samples 1 to 3 at 256 × 120 and three clips of large DCT coefficients exact (scratch);
+- **Checked:** `bink-check.sh`: the ten clips (759 frames) and samples 1 to 8 (coefficients to
+  15 bits) exact against the DLL; samples 1 to 3 at 256 × 120, three clips of large DCT
+  coefficients and `dsp`'s test blocks (an overflowing word among them) exact by hand;
   `tests/x87.rs` against the hardware's binary64. Cost: the ten clips 300 to 355 ms (+18 %),
   `Defendall` 73 to 126 ms; no fallback needed (the user's note: an imperfect playback would do
   if it were too costly).
+- **Reviewed** (a fresh reviewer, the diff and the DLL's code: it traced the transforms from
+  the disassembly itself): no arithmetic or transcription defect; fixed: `x87`'s lower bound
+  (2^-76, not 2^-160), `ratio` exact for every positive pair (it was for n/d ≥ 2^-11 only;
+  `x87` is public), the crate doc's FFmpeg claim (now what it takes from FFmpeg, checked at
+  T4b2a), the check's large coefficients (the samples' to 15 bits, the overflow block measured).
+  Noted: no check tells the 53-bit precision from 64 (the reading's).
+- **Gates:** `check.sh`, the scoped verify with original data (its first run failed
+  `check-exe-map`: 0x61E646 cited, `crt_math_error_return` entered), `scripts/exe.py check`,
+  `h3-view gate`, `bink-check.sh`. `drawn` not run (T6c2).

@@ -251,6 +251,22 @@ mod tests {
     }
 
     #[test]
+    fn words_out_of_range_store_the_indefinites_low_byte() {
+        // DC 2047 and 32 767 at natural position 1, quantizer index 15: five of the first row's
+        // sums leave −32 768 to 32 767, so `fistp` stores 0x8000 and the pixel is 0. The DLL's
+        // pixels (a clip of the block through `binkprobe frames`, E17 M6 T6c1).
+        let mut pixels = [0u8; 64];
+        dll_put(
+            &mut pixels,
+            0,
+            8,
+            &block(&[(0, 2047), (1, 32_767)]),
+            &DLL_INTRA[15],
+        );
+        assert_eq!(pixels[..8], [0, 0, 0, 35, 218, 74, 0, 0]);
+    }
+
+    #[test]
     fn residues_add_modulo_256() {
         let mut pixels = [0xFFu8; 64];
         let mut residue = [0i16; 64];

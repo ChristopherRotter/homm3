@@ -19,15 +19,18 @@
 //! clips of every block type (`clients/scripts/bink-check.sh`: the DLL's own planes under Wine;
 //! [`build::sample`], [`build::sample_sized`]), read as the DLL reads ([`Reading::Original`]).
 //! [`Reading::Fixed`], the default, differs from it only where the DLL misreads the format: a
-//! residue whose first bit plane is 128 (CLT-Q68: no game clip has one). Elsewhere it decodes
-//! as FFmpeg does every file FFmpeg's demuxer accepts with a video of revision `b` without an
-//! alpha plane and a frame of at most [`MAX_WIDTH`] × [`MAX_HEIGHT`] (FFmpeg takes larger ones,
-//! refused here with [`Error::Size`]; E17 M5 T8b1, R2a-1), including FFmpeg's handling of
-//! malformed data, which the DLL does not share (bits past a packet's end read as 0; a motion
-//! vector out of the plane leaves the block as it was, where the DLL reads memory outside its
-//! plane; a bundle's values once used up are read again as they were left; an empty video
-//! packet gives no frame and changes nothing, as `avcodec_send_packet` refuses it). Two
-//! differences from FFmpeg lie in its buffers, not its decoding: (1) FFmpeg pads a plane's rows
+//! residue whose first bit plane is 128 (CLT-Q68: no game clip has one).
+//!
+//! **What it takes from FFmpeg** (checked against FFmpeg's decoder at E17 M5 T4b2a, when the
+//! DCT was FFmpeg's too; that check, `bink-reference.py`, is gone): every file FFmpeg's demuxer
+//! accepts with a video of revision `b` without an alpha plane and a frame of at most
+//! [`MAX_WIDTH`] × [`MAX_HEIGHT`] (FFmpeg takes larger ones, refused here with [`Error::Size`];
+//! E17 M5 T8b1, R2a-1), and FFmpeg's handling of malformed data, which the DLL does not share
+//! (bits past a packet's end read as 0; a motion vector out of the plane leaves the block as it
+//! was, where the DLL reads memory outside its plane; a bundle's values once used up are read
+//! again as they were left; an empty video packet gives no frame and changes nothing, as
+//! `avcodec_send_packet` refuses it); the unit tests hold these cases. Two differences from
+//! FFmpeg lay in its buffers, not its decoding: (1) FFmpeg pads a plane's rows
 //! to its SIMD alignment (64 bytes in the build checked: a 64-pixel-wide clip's luma rows take
 //! 128), so where its rows are longer than the block grid's, a motion vector crossing a row's
 //! end reads other pixels than here; the game's clips are 256 pixels wide, whose rows it does

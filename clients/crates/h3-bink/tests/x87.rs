@@ -54,9 +54,11 @@ proptest! {
     }
 
     #[test]
-    fn integers_ratios_and_binary32_load_exactly(k in any::<i16>(), n in 1i64..1_000, d in 1i64..64, bits in any::<u32>()) {
+    fn integers_ratios_and_binary32_load_exactly(k in any::<i16>(), n in 1i64..1 << 53, d in 1i64..1 << 53, bits in any::<u32>()) {
         prop_assert_eq!(f(X::int(i32::from(k))), f64::from(k));
+        // Both exact in binary64, so its division is the quotient rounded once.
         prop_assert_eq!(f(X::ratio(n, d)), n as f64 / d as f64);
+        prop_assert_eq!(f(X::ratio(n >> 40, d)), (n >> 40) as f64 / d as f64);
         let e = (bits >> 23) & 0xFF;
         prop_assume!(e != 0 && e != 255);
         prop_assert_eq!(f(X::from_bits32(bits)), f64::from(f32::from_bits(bits)));

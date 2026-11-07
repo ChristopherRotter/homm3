@@ -12,12 +12,14 @@
 //! more than 60 binary places below the other, rounds to the larger, as it lies under a quarter
 //! of the larger's last place), a product of two 53-bit significands is exact in 106 bits.
 //!
-//! Exponents never leave the binary32 range on any input the bundles allow: a coefficient is a
-//! 16-bit integer, a dequantizer under 2^4 and over 2^-7, a pass multiplies by at most 2.62 and
-//! adds eight terms, so a nonzero value lies between about 2^-160 (a difference of two multiples
-//! of the inputs' smallest place) and 2^40. So there is no overflow, underflow or denormal to
-//! model; zero's sign is not kept (it never reaches a pixel: `fistp` of either zero is 0, and a
-//! zero only ever adds or multiplies). *Provisional*.
+//! Exponents never leave binary32's normal range on any input the bundles allow: a coefficient
+//! is a 16-bit integer, a dequantizer under 2^4 with its last place at 2^-30 or above, the
+//! constants' at 2^-23 or above; each value is a sum of products of at most two such factors on
+//! a coefficient, and rounding keeps a value a multiple of its operands' smallest place, so a
+//! nonzero value is at least 2^-76 (a difference of two such multiples) and under 2^40 (a pass
+//! multiplies by at most 2.62 and adds eight terms). So there is no overflow, underflow or
+//! denormal to model; zero's sign is not kept (it never reaches a pixel: `fistp` of either zero
+//! is 0, and a zero only ever adds or multiplies). *Provisional*.
 //!
 //! Public only for the integration test `tests/x87.rs`, which checks it against the hardware's
 //! IEEE arithmetic (the crate's own sources hold no floating point; `h3-view`'s purity test).
@@ -102,11 +104,18 @@ impl X {
         round(m, exponent - 1075, P53)
     }
 
-    /// `n / d` (positive integers) rounded to 53 bits: the tables' `fdiv`.
+    /// `n / d` rounded to 53 bits: the tables' `fdiv`. Zero unless both are positive.
     pub const fn ratio(n: i64, d: i64) -> Self {
-        let wide = (n as i128) << 64;
+        if n <= 0 || d <= 0 {
+            return Self::ZERO;
+        }
+        // n shifted so that the quotient has at least 56 bits (and n at most 120): its last
+        // bit and the remainder's sticky one lie below the rounding.
+        let (nb, db) = (64 - n.leading_zeros(), 64 - d.leading_zeros());
+        let k = (56 + db).saturating_sub(nb);
+        let wide = (n as i128) << k;
         let sticky = (wide % d as i128 != 0) as i128;
-        round((wide / d as i128) << 1 | sticky, -65, P53)
+        round((wide / d as i128) << 1 | sticky, -(k as i32) - 1, P53)
     }
 
     /// `self × 2^k`, exact.
@@ -252,6 +261,9 @@ mod tests {
         assert_eq!(X::int(16_777_219).single(), X::int(16_777_220));
         assert_eq!(X::ratio(6, 3), X::int(2));
         assert_eq!(X::ratio(1, 3).mul(X::int(3)), X::int(1));
+        assert_eq!(X::ratio(1 << 62, 1), X::int(1 << 31).mul(X::int(1 << 31)));
+        assert_eq!(X::ratio(0, 3), X::ZERO);
+        assert_eq!(X::ratio(3, 0), X::ZERO);
     }
 
     #[test]
@@ -287,6 +299,7 @@ mod tests {
         assert_eq!(X::int(1).scaled(130).to_bits32(), None);
         let two = 0x4000_0000_0000_0000;
         assert_eq!(X::from_bits64(two), X::int(2));
+        assert_eq!(X::int(2).to_bits64(), Some(two));
         assert_eq!(X::from_bits64(two | 1 << 63), X::int(-2));
         assert_eq!(X::int(-2).to_bits64(), Some(two | 1 << 63));
         assert_eq!(X::ZERO.to_bits64(), Some(0));

@@ -3090,7 +3090,9 @@ as binary32) and gave the dataflow below.
   CRT math helpers restore 0x27F, 0x61E646; the DLL loads none). `binkprobe.exe` (mingw-w64)
   ran at 0x37F, its startup's `fninit` (measured under Wine); it now sets 0x27F (`BINKPROBE_CW`
   to compare). Every clip, sample and stress clip below gives the same planes at both (a
-  difference needs a double rounding's near-tie): T4b2b's probe runs stand.
+  difference needs a double rounding's near-tie): T4b2b's probe runs stand, and no check tells
+  53 bits from 64, so the choice rests on the reading (the DLL's own `fldcw`, its CRT's
+  `_control87` 0x10012E91 and math handlers, are not reached from its entry point).
 - **Dequantization** happens in the columns' pass: each coefficient (a 16-bit word, natural
   order) times its binary32 dequantizer on the stack (exact). The tables (0x1001B2F8 intra,
   0x1001C2F8 inter, 16 × 64 each): R24(R53(R53(seed · num / (16 · den)) · s) / 8), `s` the AAN
@@ -3130,10 +3132,12 @@ as binary32) and gave the dataflow below.
   same file ran after): `bink-dll.py` tries twice.
 - **Checked** (`clients/scripts/bink-check.sh`, the DLL's planes in YUY2 under Wine, read as the
   DLL): the ten clips (759 frames) exact, five of which differed by a level before (§7.21);
-  samples 1 to 8 (256 × 48) exact, 1 to 3 at 256 × 120 too (their hashes in `h3-bink`'s tests,
-  the hidden chroma rows as the DLL's); three scratch clips of DCT blocks only, coefficients up
-  to 15 bits on every quantizer index, exact; `dsp`'s test blocks the DLL's (a clip of them).
-  `h3_bink::x87` against the hardware's binary64 (`tests/x87.rs`, 20 000 cases a property).
+  samples 1 to 8 (256 × 48; their DCT coefficients of every magnitude to 15 bits since the
+  reviewer's note, R-T6c1-7) exact. By hand through `bink-dll.py` (scratch clips): samples 1 to
+  3 at 256 × 120 (their hashes in `h3-bink`'s tests, the hidden chroma rows as the DLL's), three
+  clips of DCT blocks only on every quantizer index, `dsp`'s test blocks (a word overflowing to
+  the indefinite's low byte among them). `h3_bink::x87` against the hardware's binary64
+  (`tests/x87.rs`, 20 000 cases a property).
 - **Cost** (release, this sandbox's CPU, best of 20): the ten clips decode in 355 ms instead of
   300 (+18 %): `Defendall`, the DCT-heaviest, 73 to 126 ms (1.3 ms a frame), the others within
   noise. The window decodes its pair once, at the battle's end (§7.21).
