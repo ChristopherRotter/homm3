@@ -2174,3 +2174,39 @@ needed, docs only. No code, no version.
   §28 (the ADRs, not the drafts); the adventure lane's inbox note of T13 (the pointer). The drafts
   deleted. Each draft sentence checked against its target by a throwaway script (every one found
   but the headings and the reworded decision references). T16a queued.
+
+### T16a — the town part's requirements, costs and the role `shipyard` (2026-11-07)
+
+One session, the user present at the start; branch `town/e09-t16a`, `cross-lane` (the adventure
+replays' header line and one test literal in `h3-game`'s `src/tests/mod.rs`, the adventure
+lane's; as T8c2's). Starting point: `master` at 02b01bd (#788, T15's, merged; CI green; the
+setup's baseline found CI's fingerprint, the light gates only). Kept whole at its start (the
+agent's call under the user's standing instruction: a cut only for a big task; none was needed).
+The user's computer was connected: the original data staged with the file tool at the start
+(not needed by this task).
+
+- **`h3-towns`** (design §24 as built): `BuildingDef::requires` (direct keys) and `cost` (core
+  resource keys and amounts), `BuildingRoles::shipyard`; the compiled `Building::requires` (the
+  closure by the same `close` as the superseded sets, never itself) and `Building::cost` (the
+  core's resource order, through the silo's check shared as `Scope::amounts`). Refusals, in the
+  existing variants: `InvalidBuilding` "it requires a building the faction lacks", "it requires
+  itself", "it requires itself through others (a cycle)", "a cost names each resource once, at
+  least 1"; a cost's `UnknownResource` and `ReferenceOutsideDependencies`; `InvalidTown` "has
+  more than one Shipyard". `TOWN_RULESET_HASH_VERSION` 4: after `auto_with` the required set's
+  bits and the cost, `shipyard` after `grail` among the roles; pinned (0xcb0d02cf9d6eb150, the
+  empty part 0x985b2cc3d2245173). The tests' record has requirements on the halls, forts,
+  dwellings and hordes, costs on three buildings (one given out of the core's order) and a
+  Shipyard; every refusal tested.
+- **`h3-pack-towns`:** the format's `requires`, `cost` (a table, as the silo) and `shipyard`
+  (the format doc and the roles' table); the synthetic pack's requirements and costs on every
+  building but the Village Hall and the Grail, and a Shipyard; tests of the closures, the costs'
+  order, a cost's key of another pack, the strict parser's new fields, and the shipped packs
+  without requirements, costs or Shipyard (until T16b).
+- **`cross-lane`:** the 55 adventure replays re-hashed from their own commands (skill
+  `homm3-rerecord-replays`): only `town_ruleset_hash` moved (0x3003da8dd5ff664f to
+  0x929e9a26ed0bdf34); the bot reports record no town part hash. The four `BuildingDef` literals
+  of `h3-game`'s tests gained the two fields (one in the adventure lane's `src/tests/mod.rs`).
+  The adventure lane's inbox told.
+- **Agent's calls (change freely):** `shipyard` after `grail` in the struct and the hash; the
+  refusals' wording and the self-requirement told apart from a cycle; no `// covers:` line (the
+  rule ids TWN-BLD-006 and -007 come with the rules, T17, and the content's sources, T16b).
