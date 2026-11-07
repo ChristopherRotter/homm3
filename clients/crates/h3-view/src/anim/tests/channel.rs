@@ -205,8 +205,12 @@ fn the_familiars_channel_after_a_hero_s_cast() {
     };
     let at = t.log.iter().find(|(_, l)| *l == line).map(|(at, _)| *at);
     let at = at.unwrap_or_else(|| panic!("{:?}", t.log));
-    // After the hero stands (0x5A216B).
+    // After the hero stands (0x5A216B), the Pikemen whose turn it is outlined through both
+    // animations (the recorded `channel`).
     assert!(t.hero_keys.iter().all(|k| k.drawn <= at));
+    assert_eq!(t.outlined(at - 1), None);
+    assert_eq!(t.outlined(at), Some(0));
+    assert_eq!(t.outlined(at + 500), Some(0));
     let heard: Vec<_> = cues(&t)
         .into_iter()
         .filter(|c| matches!(c.2, Sound::ChannelDrain | Sound::ChannelFill))

@@ -20,7 +20,9 @@ const CORNERS: (u8, u8) = (0, 16);
 
 impl Player<'_> {
     /// The hero of `side` gained `mana` from its side's channellers after the other hero's cast
-    /// (`cast_spell` 0x5A222E to 0x5A2750; E17 M6 T5d2b, design §12.24): the log's line, GENRLTXT
+    /// (`cast_spell` 0x5A222E to 0x5A2750; E17 M6 T5d2b, design §12.24): the stack whose turn it
+    /// is outlined from the hero's standing redraw on (`outline_turn_stack` 0x5A216B ran before
+    /// it: the recorded `channel`, outlined through both animations), the log's line, GENRLTXT
     /// 112 with the Familiars' singular name when the side controls exactly one of them, else 113
     /// with their plural, and the mana (*provisional*: the creatures of every channelling stack
     /// of the side counted, named by the first's, as Fear's line, [`Player::frozen`]; the
@@ -29,6 +31,7 @@ impl Player<'_> {
     /// and a last redraw erasing it; `MagChFil.wav` and [`CHANNEL_FILL`] at the other corner the
     /// same; then each sound waited for in turn.
     pub(super) fn channeled(&mut self, side: Side, mana: u16) {
+        self.outlined.push((self.clock.now, self.acting));
         let mut channellers = self
             .stacks
             .iter()

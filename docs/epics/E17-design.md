@@ -7429,7 +7429,9 @@ hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
 - **Built.** `Sound::IceBolt` (the asset tables' `ice_bolt_sound`, harvested from 0x688480),
   cued on the stack struck in the projectile arm of a hero's cast for Ice Bolt before
   `strike_animation`, waited for after the damage's line (`ICE_BOLT`). `anim/channel.rs`:
-  `Event::ManaChanneled` drawn as it comes after the cast (`Player::channeled`): the line
+  `Event::ManaChanneled` drawn as it comes after the cast (`Player::channeled`): the stack whose
+  turn it is outlined from the hero's standing redraw on (0x5A216B; the viewer had outlined it
+  only at the command's end, 26 frames of each recorded channel apart), the line
   `Logged::Channeled` (the key `battle.log.channeled`, GENRLTXT 112/113 with the mana), the new
   `Sound::ChannelDrain` and `ChannelFill` (`channel_sounds`, harvested from 0x688430 and
   0x688420), `CHANNEL_DRAIN` and `CHANNEL_FILL` at the corners by `at_hex`, each sound
@@ -7441,4 +7443,15 @@ hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
   on one stream, so at a fast speed the fill cuts the drain (the category's other three handles
   not built, §8.2); a creature's Ice Bolt (a Faerie Dragon's) still takes effect at once, without
   its frames, projectile or explosion (M6 review list item 45).
+- **Recorded** in the original, in hot seat (`seq-channel.toml`: Orrin with one Familiar and
+  five Royal Griffins, Crag Hack with four Familiars and five Cerberi, both with Ice Bolt and
+  10 spell points; nothing rolled, no seed): `channel` and `channel-sound`, 145 frames each,
+  all exact, the timelines as recorded, after the outline's correction above. Orrin's Ice
+  Bolt: 46 and `IceRayEx.wav` at 1 292, the line at 2 692, standing at 2 992; the channel's
+  line (113) at 2 992, 76 at hex 0 from 3 092, 75 at hex 16 from 4 392, erased at 5 592; Crag
+  Hack's: 46 at 6 851, standing at 8 551, the line 112, 76 at hex 16, 75 at hex 0, done at
+  11 151. At speed 0 no wait holds: `IceRayEx.wav` ends about 40 ms before 46 does, each
+  channel sound inside its animation, the fill after the drain's end (none cut). The waits'
+  timing past an animation is therefore tested by the unit tests only (the harness records at
+  speed 0).
 
