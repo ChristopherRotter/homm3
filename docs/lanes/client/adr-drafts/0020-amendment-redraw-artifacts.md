@@ -33,8 +33,11 @@ melee's walk-by, 30 of `behind`'s 194 frames).
    (`h3_view::anim::Stage::bugs`, M3 T7d): a creature caster's casting group, the stale frame
    the original's partial redraws leave of a caster its spell missed, and the mouse's highlight
    kept through a creature's casting frames (M3 T7c-1) are such bugs (CLT-Q8, the user:
-   "dev-only for the captures, fixed otherwise"), not artifacts of point 1. Every oddity of the
-   original is first an open question (the user, 2026-10-22).
+   "dev-only for the captures, fixed otherwise"), not artifacts of point 1. So is a Pit Lord's
+   Demons' dissolve starting from the back buffer the caster's partial redraws left (E17 M6
+   T6b2, CLT-Q67): the one place the comparisons reproduce a partial redraw's result, and only
+   what that picture holds, not the redraws themselves (`h3_view::scene::Saved`). Every oddity
+   of the original is first an open question (the user, 2026-10-22).
 
 ## Consequences
 

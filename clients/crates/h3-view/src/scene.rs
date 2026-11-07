@@ -190,7 +190,9 @@ impl Moment {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Saved {
     /// What the clipped redraws measured into their dirty rectangle: the caster in each pose they
-    /// drew, with its count box (`battle_refresh_creatures` 0x495BF0).
+    /// drew, with its count box (`battle_refresh_creatures` 0x495BF0). The heroes, their flags and
+    /// the battlefield's animated objects it measures when flagged are left out (*provisional*:
+    /// none is flagged in `demons`, whose Demons' rectangle the clip does not reach).
     pub clip: Vec<Draw>,
     /// The battle as the screen shows it at the dissolve's start: its background is drawn whole,
     /// its other items only when they meet the clip's rectangle.

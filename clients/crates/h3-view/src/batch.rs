@@ -169,10 +169,11 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
                 all.extend(names(list, layout));
                 all.extend(names(measured, layout));
                 // The back buffer's battle and what its clip measures (E17 M6 T6b2).
-                if let Some(saved) = saved {
-                    all.extend(names(&saved.clip, layout));
-                    all.extend(names(&saved.list, layout));
-                }
+                all.extend(saved.iter().flat_map(|saved| {
+                    let mut named = names(&saved.clip, layout);
+                    named.extend(names(&saved.list, layout));
+                    named
+                }));
             }
             _ => {}
         }

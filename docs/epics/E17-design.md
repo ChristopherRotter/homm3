@@ -2978,8 +2978,8 @@ BAT-MAG-052, `installation.md` §7.19).
   rectangle pop away at its first step, the obstacles fading back in. `remove_corpse` 0x5A7320
   only edits the hexes' corpse lists, and nothing draws between it and the save. (T5a cited
   0x4944FD for the copy: that path, the whole background and the clip cleared, so everything
-  drawn, runs only while 0x69D7C4 or 0x69D7D4 is set, by six functions from 0x5521C0 to
-  0x556780, not read; the probe below shows the clipped path in a local battle.) **Recorded**
+  drawn, runs only while 0x69D7C4 or 0x69D7D4 is set, by six functions not read; the probe
+  below shows the clipped path in a local battle.) **Recorded**
   (T6b2: a probe reading the back buffer, the window manager's +0x40 picture, from the game's
   memory each millisecond of `demons`): at 1 687 ms, the Pit Lords' turn, it held the corpse in
   its last pose and the rock; at 1 689, the first casting frame drawn and not yet shown, the

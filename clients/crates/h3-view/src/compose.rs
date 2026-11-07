@@ -483,9 +483,9 @@ fn measure(
 /// content box as `battle_item_rect` 0x495F50 places it (mirrored in the DEF's width; a
 /// creature's canvas at its anchor less the layout's offset, `battle_draw_sprite` 0x4951B0, a
 /// hero's or a flag's at its corner, `battle_draw_hero_def` 0x4952B0), a count box's its
-/// picture's (`battle_draw_pcx` 0x4958E0), a magic animation's its DEF's whole canvas at its
-/// corner (`battle_draw_magic_frame` 0x4953B0), an obstacle's too (`draw_battle_obstacle`
-/// 0x495525, E17 M6 T6b2).
+/// picture's (`battle_draw_pcx` 0x4958E0, its clip's test 0x49599F), a magic animation's its
+/// DEF's whole canvas at its corner (`battle_draw_magic_frame` 0x4953B0), an obstacle's too
+/// (`draw_battle_obstacle` 0x495525, E17 M6 T6b2).
 fn item_box(
     item: &Draw,
     batch: &Batch,
