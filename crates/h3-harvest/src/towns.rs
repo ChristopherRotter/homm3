@@ -12,8 +12,12 @@
 //! upgraded dwelling are (decision 29); the roles (the dwellings' by their ids, the others from
 //! the gap-fill); the seven levels with their upgrades; the Resource Silo's resources. Keys come
 //! from the names; an upgraded horde, named as its horde, gets the prefix `upg_` (the upgraded
-//! dwellings' "Upg." names give theirs). Not harvested: the requirements and costs (increment 2),
-//! the hordes' growth (increment 3).
+//! dwellings' "Upg." names give theirs). Since E09 T16b (design §25; survey
+//! `docs/rules/surveys/E09-construction.md` §5, §6): each building's `requires`, its direct
+//! requirements in the faction's list order; its `cost` from `Building.txt` as
+//! `building_costs_load` 0x5C14C0 reads it ([`cost_row`]; the zero columns dropped, the Village
+//! Hall's 1 gold kept); the role `shipyard` on the building [`SHIPYARD`]. Not harvested: the
+//! hordes' growth (increment 3).
 //!
 //! The files are compiled with `h3-pack-towns` on the harvested core files in every allowed
 //! combination before they are returned.
@@ -27,7 +31,7 @@ use h3_formats::text::TextTable;
 use crate::gapfill::{GapFill, TownSiege, Towns};
 use crate::{Inputs, RESOURCE_COUNT, creature_rows, key_of, quote};
 
-/// The buildings' name tables of `H3bitmap.lod` (survey §16.7).
+/// The buildings' text tables of `H3bitmap.lod`: the names (survey §16.7) and the costs.
 #[derive(Debug, Clone)]
 pub struct Tables {
     /// `BldgNeut.txt`: the ids 0 to 14 by row, the Blacksmith (16) in row 17.
@@ -36,12 +40,29 @@ pub struct Tables {
     pub special: TextTable,
     /// `Dwelling.txt`: [`DWELLING_ROWS`] rows a faction, the dwellings 30 to 43.
     pub dwellings: TextTable,
+    /// `Building.txt`: the costs, seven columns in `RESTYPES.TXT`'s order, its rows as
+    /// [`cost_row`] picks them (E09 T16b).
+    pub costs: TextTable,
 }
 
 /// The Village Hall: in no faction's list, every town's from the start (§16.1, §5.3).
 pub const VILLAGE_HALL: u8 = 10;
 /// The ids no record holds, and no list may: the ship, the hall companions (decision 27).
 pub const LEFT_OUT: [u8; 4] = [20, 27, 28, 29];
+/// The Shipyard: the building with the role `shipyard` (design §25, decision 46).
+pub const SHIPYARD: u8 = 6;
+/// The first of a faction's special buildings, 17 to 25 in `Building.txt`'s faction rows.
+const FIRST_SPECIAL: u8 = 17;
+/// `Building.txt`'s first row (from 0) of the first faction's special buildings 17 to 25.
+const SPECIAL_COSTS: usize = 4;
+/// `Building.txt`'s rows from one faction's special buildings to the next's: nine, then two.
+const SPECIAL_COSTS_STRIDE: usize = 11;
+/// `Building.txt`'s first row of the neutral buildings 0 to 16, the same for every faction.
+const NEUTRAL_COSTS: usize = 104;
+/// `Building.txt`'s first row of the first faction's dwellings 30 to 43.
+const DWELLING_COSTS: usize = 125;
+/// `Building.txt`'s rows from one faction's dwellings to the next's: fourteen, then two.
+const DWELLING_COSTS_STRIDE: usize = 16;
 /// The Blacksmith, named by `BldgNeut.txt`'s row [`BLACKSMITH_ROW`].
 const BLACKSMITH: u8 = 16;
 /// `BldgNeut.txt`'s row (from 0) of the Blacksmith.
@@ -61,12 +82,13 @@ const LEVELS: u8 = 7;
 /// `Dwelling.txt`'s rows a faction.
 pub const DWELLING_ROWS: usize = 2 * LEVELS as usize;
 /// The role fields, in the order a building's record writes them (`h3-pack-towns`' table).
-const ROLES: [&str; 11] = [
+const ROLES: [&str; 12] = [
     "hall",
     "fort",
     "tavern",
     "silo",
     "grail",
+    "shipyard",
     "dwelling",
     "morale",
     "luck",
@@ -219,7 +241,7 @@ pub fn harvest_towns(
             None => (0..factions.len()).collect(),
         };
         for (name, value) in &role.roles {
-            if !ROLES.contains(&name.as_str()) || name == "dwelling" {
+            if !ROLES.contains(&name.as_str()) || name == "dwelling" || name == "shipyard" {
                 return Err(format!(
                     "gapfill: towns: building {}: `{name}` is not a role it may give",
                     role.building
@@ -272,11 +294,7 @@ pub fn harvest_towns(
         .map(|&(id, _)| (id, texts.remove(id).unwrap_or_default()))
         .collect();
     check(packs, &files)?;
-    report.push(
-        "towns: requirements and costs not harvested (E09 increment 2), nor the hordes' growth \
-         (increment 3)"
-            .into(),
-    );
+    report.push("towns: the hordes' growth not harvested (E09 increment 3)".into());
     Ok(files)
 }
 
@@ -288,7 +306,8 @@ fn header(line: &str) -> String {
          # Do not edit by hand: change the harvester or the gap-fill file and re-run it\n\
          # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).\n\
          # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md\n\
-         # 7.61, docs/rules/surveys/E09-towns.md 16; format: crates/h3-pack-towns.\n"
+         # 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:\n\
+         # crates/h3-pack-towns.\n"
     )
 }
 
@@ -399,6 +418,59 @@ struct Building {
     supersedes: Vec<u8>,
     forbidden_with: Option<u8>,
     auto_with: Vec<u8>,
+    requires: Vec<u8>,
+    cost: Vec<(String, u32)>,
+}
+
+/// The row of `Building.txt` that holds building `id`'s cost in faction `f`'s town, as
+/// `building_costs_load` 0x5C14C0 fills its three tables and `building_cost` 0x5C1080 picks from
+/// them (survey `E09-construction.md` §5): the neutral rows below 17, the faction's rows 17 to 25,
+/// its dwellings' rows 30 to 43; none for 26 to 29 (past the faction's nine rows; no path asks
+/// their cost).
+fn cost_row(f: usize, id: u8) -> Option<usize> {
+    let n = usize::from(id);
+    match id {
+        0..FIRST_SPECIAL => Some(NEUTRAL_COSTS + n),
+        FIRST_SPECIAL..26 => {
+            Some(SPECIAL_COSTS + SPECIAL_COSTS_STRIDE * f + n - usize::from(FIRST_SPECIAL))
+        }
+        DWELLING..44 => {
+            Some(DWELLING_COSTS + DWELLING_COSTS_STRIDE * f + n - usize::from(DWELLING))
+        }
+        _ => None,
+    }
+}
+
+/// Building `id`'s cost in faction `f`'s town: each of `resources` (`RESTYPES.TXT`'s order, the
+/// file's columns) its row gives, the zero columns dropped; empty without a row.
+fn cost(
+    table: &TextTable,
+    resources: &[String],
+    f: usize,
+    id: u8,
+) -> Result<Vec<(String, u32)>, String> {
+    let Some(row) = cost_row(f, id) else {
+        return Ok(Vec::new());
+    };
+    let mut cost = Vec::new();
+    for (r, resource) in resources.iter().enumerate() {
+        let text = table
+            .records
+            .get(row)
+            .and_then(|record| record.get(r))
+            .map_or("", |c| c.trim());
+        let n: u32 = text.parse().map_err(|_| {
+            format!(
+                "Building.txt row {}, column {}: `{text}` is not a number",
+                row + 1,
+                r + 1
+            )
+        })?;
+        if n > 0 {
+            cost.push((resource.clone(), n));
+        }
+    }
+    Ok(cost)
 }
 
 /// A faction's `[[town]]` record.
@@ -428,6 +500,25 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
         }
         if !keys.insert(b.key.clone()) {
             return Err(err(format!("the key `{}` twice", b.key)));
+        }
+    }
+    // The requirements (direct, in the list's order) and the costs (E09 T16b); a building with a
+    // cost row has a cost.
+    for e in &t.buildings {
+        if let Some(&r) = e.listed.iter().find(|r| !buildings.contains_key(r)) {
+            return Err(err(format!(
+                "building {} requires building {r}, not its",
+                e.building
+            )));
+        }
+        if let Some(b) = buildings.get_mut(&e.building) {
+            b.requires.clone_from(&e.listed);
+        }
+    }
+    for (&id, b) in &mut buildings {
+        b.cost = cost(&ctx.tables.costs, &ctx.resources, f, id)?;
+        if b.cost.is_empty() && cost_row(f, id).is_some() {
+            return Err(err(format!("building {id}'s cost row is blank")));
         }
     }
     // The map's slots; a slot naming a building the faction lacks (a Castle's fifth guild
@@ -564,9 +655,24 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
             let list: Vec<String> = b.auto_with.iter().map(key).collect();
             let _ = writeln!(out, "  auto_with = [{}]", list.join(", "));
         }
+        if !b.requires.is_empty() {
+            let list: Vec<String> = b.requires.iter().map(key).collect();
+            let _ = writeln!(out, "  requires = [{}]", list.join(", "));
+        }
+        if !b.cost.is_empty() {
+            let cost = b
+                .cost
+                .iter()
+                .map(|(r, n)| Ok(format!("{} = {n}", toml_key(&reference("base", r, pack)?))))
+                .collect::<Result<Vec<_>, String>>()?;
+            let _ = writeln!(out, "  cost = {{ {} }}", cost.join(", "));
+        }
         let mut roles = ctx.roles.get(&(f, id)).cloned().unwrap_or_default();
         if !roles.is_empty() {
             given.insert(id);
+        }
+        if id == SHIPYARD {
+            roles.insert("shipyard".into(), toml::Value::Boolean(true));
         }
         if (DWELLING..DWELLING + 2 * LEVELS).contains(&id) {
             let upgraded = id >= UPGRADED_DWELLING;

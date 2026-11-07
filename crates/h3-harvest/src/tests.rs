@@ -113,6 +113,7 @@ pub(crate) fn inputs() -> Inputs {
             neutral: single(&[]),
             special: single(&[]),
             dwellings: single(&[]),
+            costs: single(&[]),
         },
         hero_tables: hero_tables(),
         artifact_tables: artifact_tables(),
