@@ -113,6 +113,20 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        dwelling type, that type's own footprint as its masks, its anchor moved as the original
        moves it (the moved anchor may lie one column past the map's right edge, holding only a
        free cell); from then on it is a dwelling like a placed one.
+   - **Increment 11's channels** (E08 decision 260):
+     - **The channels are static**, built with the game into the static map from its typed
+       objects, without a draw: for each one-way channel its exits' visitable tiles, for each
+       two-way channel its members', one list of every Whirlpool's tiles with each tile's
+       Whirlpool, and the gates' pairs; each list in the original's walk order (level, row,
+       column: the tile index). They are shared by forks behind the static map's `Arc`, read by a
+       jump's visit alone and never by the reach, and follow from the objects the static map's
+       hash covers. No new per-game block: a jump writes the hero's tile, a Whirlpool its army, a
+       reveal its owner's explored tiles. The Whirlpools' list holds a tile a map-placed boat
+       stands on, which the original's leaves out for good (A-43 not reproduced, E08 decision
+       280: an empty boat's tile is skipped at the draw while it stands there, point 4).
+     - **The surfaces** are checked when the game is built: a monolith's or a gate's visitable
+       tile on water, or a Whirlpool's on land, is refused (A-42: a jump between surfaces would
+       put a hero in a boat on land or a walker on water; none on the shipped maps).
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -190,6 +204,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    the hero's army where the room rule puts a join (a stack of the type within the stack's most,
    else the first free slot; ADV-ARM-007); with no room they do not join (the free ones stay
    counted; no merge of the hero's stacks: D-52 as the original, confirmed by batch E10's E10-3).
+   From increment 11 **a jump moves a hero without a step** (point 4): its tile becomes the exit,
+   its points and the day's maximum are kept, and a hero in a boat jumps with its boat (an aboard
+   boat's record keeps the tile it was boarded on). A Whirlpool's loss lowers or empties one stack
+   of the army and never empties the army.
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -211,7 +229,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    - **Random contents are resolved when the game is built**, from the setup stream in object
      order (ADR-0017 point 4), into the static map: a type gives the draw (a random
      resource's resource, a pile's amount, a campfire's content). A rule that draws at a visit
-     draws from the visitor's stream (ADR-0017 point 4); increment 2 has none.
+     draws from the visitor's stream (ADR-0017 point 4); increment 2 has none. Increment 11's
+     jump is the first visit that draws (below).
    - A tile holding another player's hero is visited from a neighbouring tile, and the visit is
      a battle at once; an own hero is met (increment 6, below); a hero's own tile is always
      leavable.
@@ -532,6 +551,66 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      the free creatures and D-52, the dialog's bound and the ally's read-only dialog, the random
      dwellings' types and moved anchors, the camp. The import's refusals and the defeat were not
      in it.
+   - **Increment 11's kinds** (the import maps classes 43, 44 and 45 by subclass, 103 and 111;
+     every one entered, none ownable, only the Whirlpool visitable from above):
+     - **Monoliths** (`monolith`: a channel number and a way; ADV-TEL-001, -004): an `entrance`
+       (43) jumps to one of its channel's `exit` monoliths (44), a `two_way` monolith (45) to
+       another of its channel's; an `exit` leads nowhere, told to its visitor's owner. A one-way
+       channel and a two-way channel of one number are distinct.
+     - **The Subterranean Gate** (`subterranean_gate`; ADV-TEL-002, -005): paired when the game
+       is built, in the walk's order each unpaired gate with the unpaired later gate of another
+       level at the least truncated distance (an integer square root of the squared column and row
+       distances), the first on a tie (D-56); one without a pair leads nowhere. Its jump draws
+       nothing; a hero of the mover's team on the pair is met and the mover stays, an enemy hero
+       fought.
+     - **The Whirlpool** (`whirlpool`: a divisor, the original's 2; ADV-TEL-006): first the loss,
+       unless the hero is protected (`h3-heroes`' `whirlpool_protection`, from the core artifact
+       effect kind `whirlpool_protection`: the Sea Captain's Hat's, the Admiral's Hat's through
+       its part): the occupied slot with the least creature fight value × count (a 64-bit product
+       without the original's bound, A-38), the first on a tie, keeps its count divided by the
+       divisor, rounded down, a lone stack at least one (D-54, D-55); every hero alike (A-40 not
+       reproduced). Then the jump over the other Whirlpools' tiles (D-57), a hero in a boat with
+       its boat.
+     - **The exit** (ADV-TEL-003): a monolith's or a Whirlpool's candidates are its channel's
+       tiles, in walk order, on which a hero of another team stands, or no hero and no empty boat
+       stands and which the visit does not exclude (a two-way monolith its own tile, a Whirlpool
+       its own six). None: no jump (the hero stays; a Whirlpool's loss is taken); one: no draw;
+       else one uniform draw from the visitor's stream (the random contents' bullet above;
+       ADR-0017 point 4). No command names an exit (D-53).
+     - **The battle at an exit:** an enemy hero on the exit (a monolith's, a gate's, or a
+       Whirlpool's drawn tile: A-37 fixed so, E08 decision 265) is fought first, as a visit's
+       battle with another player's hero, the mover attacking from the entrance; the tiles within
+       1 of the exit are revealed to the mover's owner before it (point 5). The jump to that exit
+       is the visit's rest after a won battle (ADR-0017 points 6 and 11); a lost battle ends it.
+     - **The arrival** (ADV-TEL-007): no guard test and no visit at the exit, the hero's scouting
+       radius revealed (point 5); the move ends. The step onto the entrance is a path's last: no
+       path goes through a teleporter (D-58), and the reach meets an entrance as any entered
+       object's tile, a destination, never its exits.
+     - **A guard is met first** (E08 decision 279, for every entered kind, not only the
+       teleporters; ADV-MON-006): a step onto a guarded tile that holds an entered object's
+       visitable tile meets the guard first (its answer, its battle and the winner's levels); the
+       tile's own visit, a jump among them, comes after it as a visit's rest, only for a hero
+       still on the tile (ADR-0017 point 6), as an event's on a guarded tile already does.
+     - **The import** refuses a monolith subclass past 7 (A-39: the original writes past its
+       eight lists): an input bound, no flag.
+     - **The revisit** (ADV-TEL-008; E08 decision 268, the original's space key): a hero standing
+       on the visitable tile of an entered object whose kind has a built visit may visit it again
+       (ADR-0017's `Revisit`): the kind's own visit with what it opens, as the step onto the tile
+       gives it, but without a step (no points spent or required, the points and the day's
+       maximum kept, no step's reveal or event) and without the guard's test (the original tests
+       a guard only at a step's end: batch E11's E11-19, a revisit beside a guard). Every entered
+       kind alike: a two-way monolith or a gate leads back and a Whirlpool takes its loss again, a
+       one-way exit tells "leads nowhere" again, a weekly object tells it was visited; a
+       neighbour-visited object, a boat or a tile without an object has no revisit.
+     Batch E11 (E08 T99 to T101; survey `E08-teleporters.md` §15) confirmed every row of it as
+     the original's but one: D-53 to D-58 as the original (no path through a teleporter, the
+     gates' truncated distance, the weakest stack by fight value × count, the loss rounded down,
+     the Whirlpools' draw over every listed tile, uniform), A-37, A-38 and A-41 as read, the
+     arrival without a battle, the Hats' protection and the revisit at no points. E11-19 went
+     against the design's call (a jump dropping the entrance's guard): the guard was fought
+     first and the jump given after the win, which decision 279 adopted for every entered kind
+     (above). A one-way exit's arrival beside a guard is batch E11c's (before the jump is built).
+     The import's refusals and the surfaces' check were not in it.
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -550,7 +629,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    E10; the start of the game reveals the same around every town owned at load, with the other
    owned objects. From increment 10 a **dwelling's flag** reveals as a mine's (within 3 of its
    entrance, to its new owner's team), and the start of the game reveals the same around every
-   dwelling owned at load. The **fringe** is the hidden tiles touching an explored tile (the
+   dwelling owned at load. From increment 11 a **jump** reveals the tiles within the hero's
+   scouting radius of the exit to its owner, as a step's reveal; an exit a hero occupies first
+   reveals the tiles within 1 of it to the mover's owner (the original's, before the battle or the
+   meeting: batch E11's E11-7). The **fringe** is the hidden tiles touching an explored tile (the
    reveal's shape: ADV-Q5). A viewer sees on explored tiles the public part of their content; on the
    fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
    `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
@@ -625,6 +707,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    its tiles are, its reveal told to the new owner; the guards' battle is seen as any battle; the
    week's refill and the camps' draws are told to no one. `docs/06-security.md` lists it (E08
    T92).
+   From increment 11 every viewer that sees a **teleporter** sees its type (a monolith's channel:
+   the picture's colour), never a channel's exits or a gate's pair. A **jump** is seen as a step's
+   two ends by the players that see the hero on either (a new event with the step's fields and
+   projection): a viewer that sees one end only is told that one, so no viewer learns a hidden
+   exit (A-41 not reproduced: the original's view moves to the exit, batch E11's E11-18). A jump's
+   reveals are told by the explored tiles alone. A Whirlpool's loss and "leads nowhere" are told
+   to the visitor's owner alone; a battle at an exit is seen as any battle, a meeting at a gate as
+   any meeting; a revisit is told only by what its visit tells (no step). `docs/06-security.md`
+   lists it (E08 T102).
 
 ## Consequences
 
@@ -684,6 +775,13 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   by writing one field; a fork costs nothing more for a map whose dwellings are untouched this
   week, one reference count otherwise. The hire dialog's purchase rule is the map's, reused by
   E09's town recruitment (its increment 3) for the hero's or the garrison's army.
+- Increment 11: the five classes become typed objects (adventure ruleset part v18; the map import
+  bumps once more, v21, after E09's v20; the adventure state hash unmoved), so on 146 of the 160
+  shipped maps the reach gains the entrances as destinations and the golden replays on maps that
+  hold them change; the jump's draw gives `AdventureState::apply` the visitor's stream; the
+  Whirlpool's protection is a core artifact effect kind (pack format v51, core ruleset hash v52).
+  Decision 279's order (the guard first) changes every entered kind's visit on a guarded tile, not
+  only the teleporters'.
 
 ## Alternatives considered
 
@@ -745,6 +843,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   E10-3); the original's derivation of a random dwelling's dwelling (the last class-17 subclass
   listing the creature) instead of the part's table (the same outcomes as data, checked against
   the derivation by a test).
+- Increment 11 (ADV-Q45 to ADV-Q47): VCMI's paths through two-way monoliths and gates with the
+  exit named by the command (D-53, D-58), its weakest stack by AI value and the last slot on a tie
+  (D-54), its loss of `max(1, ⌊n / 2⌋)` (D-55), its squared distance for the gates (D-56) and its
+  Whirlpool draw in two steps (D-57); A-37's tile not a candidate, or VCMI's stay without a
+  battle; A-38's lone stack past the bound kept as a `fix-optional` flag; the protecting
+  artifacts as the Whirlpool kind's parameter; an exit on the other surface no candidate instead
+  of A-42's refusal; a jump dropping the entrance's guard (the design's call before batch E11's
+  E11-19) or the guard first for the teleporters only (decision 279); A-43's list reproduced, or
+  a placed boat on a Whirlpool refused when the game is built (decision 280).
 
 ## Revision history
 
@@ -837,3 +944,12 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   a dwelling's type and owner public, its counts and guards and a camp's creature hidden. Drafted
   in E08 T88b1 (survey `E08-dwellings.md`); batch E10's outcome (T91, §16: every row as read, D-52
   confirmed) folded in.
+- 2026-11-07 (E08 T102 `shared/`; the user at ADV-Q45 to ADV-Q47, E08 decisions 260, 264–268,
+  272, 279, 280): points 1, 3, 4, 5 and 6 amended for E08 increment 11, the teleporters: the
+  static channels and the gates' pairs, the surfaces' check, A-43 not reproduced; a jump moves a
+  hero without a step; the kinds monolith, Subterranean Gate and Whirlpool with the drawn exit,
+  the battle at an exit, the arrival and the Whirlpool's loss, the guard met first for every
+  entered kind, the import's bound, the revisit of an entered object; a jump's reveals; a
+  teleporter's type public, a jump seen as a step's two ends. Drafted in E08 T98b1 (survey
+  `E08-teleporters.md`; the revisit by T98b2); batch E11's outcome (T101, §15: every row as read
+  but E11-19, the guard first) folded in.
