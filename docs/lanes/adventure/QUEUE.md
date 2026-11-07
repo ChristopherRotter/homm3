@@ -23,11 +23,11 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-07 (the town lane, E09 T16a, `town/e09-t16a`, `cross-lane`; **informational**): the 55
-  adventure replays' `town_ruleset_hash` line moved (town part v4: the buildings' requirements,
-  costs and the role `shipyard`; the shipped packs still have none), nothing else; the
-  `BuildingDef` literal in `h3-game`'s `src/tests/mod.rs` gained `requires` and `cost`. T16b's
-  harvest moves the line again. Nothing to act on.
+- 2026-11-07 (the town lane, E09 T16a and T16b, `town/e09-t16a`, `town/e09-t16b`, `cross-lane`;
+  **informational**): the 55 adventure replays' `town_ruleset_hash` line moved twice (T16a: town
+  part v4, the buildings' requirements, costs and the role `shipyard`; T16b: the shipped packs'
+  harvested ones), nothing else; the `BuildingDef` literal in `h3-game`'s `src/tests/mod.rs`
+  gained `requires` and `cost` (T16a). Nothing to act on.
 
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts

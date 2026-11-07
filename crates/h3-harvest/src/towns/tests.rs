@@ -80,13 +80,26 @@ fn entry(building: u8, listed: &[u8]) -> BuildingEntry {
 
 /// A faction's tables: guild levels 1 and 2, the Tavern, the forts, the halls, the silo, the
 /// Blacksmith, the horde 18 of level 2 and (Alpha and Gamma) its upgrade 19, the special 21, the
-/// Grail, the fourteen dwellings.
+/// Grail, the fourteen dwellings, (Alpha) the Shipyard; a few requirements (E09 T16b).
 fn faction(f: usize) -> FactionTowns {
     let mut ids: Vec<u8> = vec![0, 1, 5, 7, 8, 9, 11, 12, 13, 15, 16, 18, 21, 26];
     if f != 1 {
         ids.push(19);
     }
+    if f == 0 {
+        ids.push(6);
+    }
     ids.extend(30..44);
+    let requires = |id: u8| -> &'static [u8] {
+        match id {
+            1 => &[0],
+            6 => &[5],
+            12 => &[11, 16],
+            19 => &[38],
+            31 => &[30],
+            _ => &[],
+        }
+    };
     let mut map: Vec<Option<u8>> = vec![None; 41];
     for (slot, id) in [
         (0, 11),
@@ -114,7 +127,7 @@ fn faction(f: usize) -> FactionTowns {
     let mut creatures: Vec<u16> = (0..7).map(base).collect();
     creatures.extend((0..7).map(|l| base(l) + 1));
     FactionTowns {
-        buildings: ids.into_iter().map(|id| entry(id, &[])).collect(),
+        buildings: ids.into_iter().map(|id| entry(id, requires(id))).collect(),
         supersedes: if f == 1 {
             vec![entry(18, &[31])]
         } else {
@@ -195,7 +208,44 @@ fn town_tables() -> Tables {
         neutral: names(neutral),
         special: names(special),
         dwellings: names(dwellings),
+        costs: costs(),
     }
+}
+
+/// `Building.txt` in the original's layout (survey `E09-construction.md` §5), the columns wood,
+/// mercury, ore, sulfur, crystal, gems, gold, a name: a neutral building `n` costs `n` wood and
+/// 1 000 + `n` gold (the Village Hall 1 gold); a faction `f`'s special `17 + k` costs `f + 1` ore
+/// and 2 000 + 100 `f` + `k` gold (the ship 20 blank); its dwelling `30 + k` 3 000 + 100 `f` + `k`
+/// gold; every other row blank.
+fn costs() -> TextTable {
+    let row = |wood: usize, ore: usize, gold: usize| -> Vec<String> {
+        [wood, 0, ore, 0, 0, 0, gold]
+            .iter()
+            .map(ToString::to_string)
+            .chain(std::iter::once("name".to_owned()))
+            .collect()
+    };
+    let mut records = vec![vec![String::new()]; 125 + 16 * 3];
+    for n in 0..17 {
+        records[104 + n] = if n == 10 {
+            row(0, 0, 1)
+        } else {
+            row(n, 0, 1000 + n)
+        };
+    }
+    for f in 0..3 {
+        for k in 0..9 {
+            records[4 + 11 * f + k] = if k == 3 {
+                row(0, 0, 0)
+            } else {
+                row(0, f + 1, 2000 + 100 * f + k)
+            };
+        }
+        for k in 0..14 {
+            records[125 + 16 * f + k] = row(0, 0, 3000 + 100 * f + k);
+        }
+    }
+    TextTable { records }
 }
 
 fn town_inputs() -> Inputs {
@@ -246,7 +296,11 @@ fn run(i: &Inputs, gap: &str) -> Result<BTreeMap<&'static str, String>, String> 
     let gap = GapFill::parse(gap)?;
     let mut h = harvest(i, &gap)?;
     let files = harvest_towns(i, &gap, &h.packs, &mut h.report)?;
-    assert!(h.report.iter().any(|l| l.contains("towns: requirements")));
+    assert!(
+        h.report
+            .iter()
+            .any(|l| l.contains("towns: the hordes' growth"))
+    );
     Ok(files.into_iter().collect())
 }
 
@@ -284,26 +338,60 @@ fn harvests_the_town_files_that_compile() {
     ));
     assert!(ab.contains("[\"unit_128\", \"unit_129\"]"));
     // The Village Hall, the slots (none for a building the faction lacks), the names and keys.
-    assert!(base.contains("key = \"village_hall\"\n  name = \"Village Hall\"\n  hall = 1\n"));
+    // The costs (E09 T16b): the Village Hall's 1 gold kept, the zero columns dropped.
     assert!(base.contains(
-        "key = \"guild_2\"\n  name = \"Guild 2\"\n  slot = 12\n  supersedes = [\"guild_1\"]\n"
+        "key = \"village_hall\"\n  name = \"Village Hall\"\n  cost = { gold = 1 }\n  hall = 1\n"
+    ));
+    // The requirements as listed (direct), after the supersedes.
+    assert!(base.contains(
+        "key = \"guild_2\"\n  name = \"Guild 2\"\n  slot = 12\n  supersedes = [\"guild_1\"]\n  \
+         requires = [\"guild_1\"]\n  cost = { wood = 1, gold = 1001 }\n"
+    ));
+    assert!(base.contains(
+        "key = \"city_hall\"\n  name = \"City Hall\"\n  slot = 1\n  supersedes = [\"town_hall\"]\n  \
+         requires = [\"town_hall\", \"blacksmith\"]\n  cost = { wood = 12, gold = 1012 }\n  hall = 3\n"
     ));
     assert!(!base.contains("guild_3"));
-    assert!(base.contains("key = \"upg_alpha_den_2\"\n  name = \"Upg. Alpha Den 2\"\n  slot = 30\n  supersedes = [\"alpha_den_2\"]\n  dwelling = [2, true]\n"));
+    assert!(base.contains("key = \"upg_alpha_den_2\"\n  name = \"Upg. Alpha Den 2\"\n  slot = 30\n  supersedes = [\"alpha_den_2\"]\n  cost = { gold = 3008 }\n  dwelling = [2, true]\n"));
+    // Each faction's rows: Beta's special and Gamma's dwelling, Gamma's in ab with base's
+    // resources by their prefix.
+    assert!(base.contains(
+        "key = \"beta_special_21\"\n  name = \"Beta Special 21\"\n  slot = 18\n  cost = { ore = 2, gold = 2104 }\n"
+    ));
+    assert!(ab.contains(
+        "key = \"gamma_den_1\"\n  name = \"Gamma Den 1\"\n  slot = 22\n  cost = { \"base:gold\" = 3200 }\n"
+    ));
+    assert!(ab.contains(
+        "key = \"town_hall\"\n  name = \"Town Hall\"\n  slot = 0\n  supersedes = [\"village_hall\"]\n  \
+         cost = { \"base:wood\" = 11, \"base:gold\" = 1011 }\n  hall = 2\n"
+    ));
+    // The Grail has no cost row; the Shipyard, Alpha's alone, has the role `shipyard`.
+    assert!(base.contains(
+        "key = \"alpha_grail\"\n  name = \"Alpha Grail\"\n  slot = 17\n  grail = true\n"
+    ));
+    assert!(base.contains(
+        "key = \"shipyard\"\n  name = \"Shipyard\"\n  requires = [\"tavern\"]\n  \
+         cost = { wood = 6, gold = 1006 }\n  shipyard = true\n"
+    ));
+    assert_eq!(base.matches("shipyard = true").count(), 1);
+    assert!(!ab.contains("shipyard"));
     // The horde supersedes its level's dwelling; its upgrade is forbidden with it and built with
     // it and the level's upgraded dwelling.
     assert!(base.contains("key = \"alpha_horde\"\n  name = \"Alpha Horde\"\n  slot = 21\n  supersedes = [\"alpha_den_2\"]\n"));
     assert!(base.contains(
         "key = \"upg_alpha_horde\"\n  name = \"Alpha Horde\"\n  supersedes = [\"alpha_horde\", \"upg_alpha_den_2\"]\n  \
-         forbidden_with = \"alpha_horde\"\n  auto_with = [\"alpha_horde\", \"upg_alpha_den_2\"]\n"
+         forbidden_with = \"alpha_horde\"\n  auto_with = [\"alpha_horde\", \"upg_alpha_den_2\"]\n  \
+         requires = [\"upg_alpha_den_2\"]\n  cost = { ore = 1, gold = 2002 }\n"
     ));
     assert!(!base.contains("upg_beta_horde"));
     // The roles, merged and in the format's order.
     assert!(base.contains(
-        "key = \"tavern\"\n  name = \"Tavern\"\n  slot = 6\n  tavern = true\n  morale = 1\n"
+        "key = \"tavern\"\n  name = \"Tavern\"\n  slot = 6\n  cost = { wood = 5, gold = 1005 }\n  \
+         tavern = true\n  morale = 1\n"
     ));
     assert!(base.contains(
-        "key = \"alpha_special_21\"\n  name = \"Alpha Special 21\"\n  slot = 18\n  luck = 2\n"
+        "key = \"alpha_special_21\"\n  name = \"Alpha Special 21\"\n  slot = 18\n  \
+         cost = { ore = 1, gold = 2004 }\n  luck = 2\n"
     ));
     assert!(
         base.contains("grail = true\n  defender = { attack = 20, mana = 5 }\n  reveal = \"all\"\n")
@@ -392,11 +480,30 @@ fn inconsistent_tables_are_errors() {
     assert!(e.contains("not four levels"), "{e}");
     let e = error(|i| i.town_tables.garrison[0].least = 70_000);
     assert!(e.contains("does not fit the format"), "{e}");
+    // The requirements and costs (E09 T16b).
+    let e = error(|i| i.town_tables.factions[0].buildings[0].listed.push(2));
+    assert!(
+        e.contains("Alpha: building 0 requires building 2, not its"),
+        "{e}"
+    );
+    let e = error(|i| i.town_names.costs.records[104 + 11] = vec!["0".into(); 7]);
+    assert!(e.contains("Alpha: building 11's cost row is blank"), "{e}");
+    let e = error(|i| i.town_names.costs.records[104][2] = " x ".into());
+    assert!(
+        e.contains("Building.txt row 105, column 3: `x` is not a number"),
+        "{e}"
+    );
+    let e = error(|i| {
+        i.town_names.costs.records.truncate(125 + 16 * 2 + 13);
+    });
+    assert!(e.contains("row 171, column 1: `` is not a number"), "{e}");
     // The town compiler's checks: no level-1 dwelling.
     let e = error(|i| {
-        i.town_tables.factions[0]
-            .buildings
-            .retain(|b| !matches!(b.building, 30 | 37));
+        let buildings = &mut i.town_tables.factions[0].buildings;
+        buildings.retain(|b| !matches!(b.building, 30 | 37));
+        for b in buildings {
+            b.listed.retain(|&r| r != 30);
+        }
     });
     assert!(
         e.contains("generated town files do not compile (base"),
@@ -419,6 +526,8 @@ fn gapfill_town_errors() {
     assert!(e.contains("unknown town `Omega`"), "{e}");
     let e = bad("roles = { luck = 2 }", "roles = { dwelling = [1, false] }");
     assert!(e.contains("`dwelling` is not a role it may give"), "{e}");
+    let e = bad("roles = { luck = 2 }", "roles = { shipyard = true }");
+    assert!(e.contains("`shipyard` is not a role it may give"), "{e}");
     let e = bad("roles = { luck = 2 }", "roles = { speed = 2 }");
     assert!(e.contains("`speed` is not a role it may give"), "{e}");
     let e = bad(

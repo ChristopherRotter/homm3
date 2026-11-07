@@ -790,29 +790,33 @@ Built by T16a (`E09-log.md`).
 - **Overrides:** none (RoE's costs are E11's; SoD's are AB's file); `TownPatch` gains nothing.
 - **The synthetic pack:** requirements and costs on every building but the Village Hall and the
   Grail (the halls' chain to the Capitol through the Tavern and the Castle, the forts', the
-  dwellings', the hordes'), a Shipyard requiring the Tavern. The shipped packs have none until
-  T16b's harvest (`h3-pack-towns`' test of the original packs says so).
+  dwellings', the hordes'), a Shipyard requiring the Tavern. The shipped packs' come from T16b's
+  harvest (§25).
 
 ### 25. The content and its harvest (`h3-harvest`, the battle lane's crate, `cross-lane`; original data)
 
-As increment 1's content (decision 23's route, design §3): `h3-harvest`'s town files grow; the
-gap-fill only where the executable lacks the fact.
+Built by T16b (`E09-log.md`), as increment 1's content (decision 23's route, design §3):
+`h3-harvest`'s `src/towns.rs`; no gap-fill (the executable has every fact).
 
-- **Costs** from `Building.txt` (§5: seven numeric columns, the player record's resource order
-  wood, mercury, ore, sulfur, crystal, gems, gold), its three tables as `building_costs_load`
-  0x5C14C0 reads them (the faction's buildings 17 to 25, the neutral 0 to 16, the dwellings 30 to
-  43; §5's rows). Each harvested building's `cost` by its original id; zero columns dropped; the
-  Village Hall's row (1 gold) kept though never bought (it stands from the start).
-- **Requirements** from the executable's faction lists 0x63EC80 (already read by
-  `h3_formats::exe::towns`, `installation.md` §7.61; the dump of survey §6): each listed
-  building's direct requirements as keys. TD-9 (decision 41): the Conflux's upgraded Altar of Fire
-  keeps the list's two (the Altar of Fire and the upgraded Altar of Air); batch TWN-2's row 1, if
-  it shows otherwise, becomes a gap-fill override of that list.
-- **The role `shipyard`:** the building of original id 6, set by the harvester (no gap-fill).
-- **Checked** by the harvester's tests against the survey: §5's neutral costs and one faction row
-  each (the hordes' 1 000 gold, Rampart's 2 000 second horde), §6's lists for two buildings of
-  every faction; the compiled closures in `h3-towns`' tests on the base and AB packs (every
-  building's closure inside its record, the Capitol's holding the Town Hall).
+- **Costs** from `Building.txt` (§5; `towns::Tables::costs`), its three tables as
+  `building_costs_load` 0x5C14C0 reads them (`cost_row`): the faction's buildings 17 to 25 from row
+  4, eleven rows a faction; the neutral 0 to 16 from row 104; the dwellings 30 to 43 from row 125,
+  sixteen rows a faction; the ids 26 to 29 none (the Grail building is free). The seven columns in
+  `RESTYPES.TXT`'s order, the zero columns dropped, the Village Hall's 1 gold kept; the AB file's
+  costs name base's resources with their prefix (`"base:gold"`). Refused: a cell that is not a
+  number, a listed building's blank row.
+- **Requirements** from the executable's faction lists 0x63EC80 (`h3_formats::exe::towns`): each
+  listed building's direct requirements as keys, in the list's order; refused: one outside the
+  record. TD-9 (decision 41, batch TWN-2 as the reading): the Conflux's upgraded Altar of Fire
+  keeps the list's two.
+- **The role `shipyard`:** the building 6 (Castle, Necropolis, Fortress, Conflux); the gap-fill may
+  not give it.
+- **Checked** by the harvester's tests on its fixture (the rows by the original's layout, each
+  faction's own rows, the prefix, the Grail, the Shipyard, the refusals) and by `h3-pack-towns`'
+  test of the original packs (every closure inside its record and never itself, the Capitol's
+  holding the Town Hall; the Capitol's and the upgraded level-7 dwelling's closures of every
+  faction by §6; §5's neutral costs, the hordes' rows, the Conflux's dwellings; the four
+  Shipyards); every generated `requires` also matched §6's dump by a throwaway script.
 
 ### 26. The record and the store: the day's mark (`h3-towns`; town state hash v2)
 

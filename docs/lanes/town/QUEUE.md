@@ -8,24 +8,25 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a (done), T16b (next), T17, T18a to T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17 (next), T18a to T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T16b — the harvest of the requirements, the costs and the role `shipyard`** (design §25,
-§35's round 4; decisions 41, 49; queued 2026-11-07 by T16a; `cross-lane`: `h3-harvest` is the
-battle lane's crate; original data): `h3-harvest`'s town files grow (`src/towns.rs`): each
-harvested building's `cost` from `Building.txt` (survey `E09-construction.md` §5: its three tables
-as `building_costs_load` 0x5C14C0 reads them, zero columns dropped, the Village Hall's 1 gold
-kept), its `requires` from the executable's faction lists 0x63EC80 (`h3_formats::exe::towns`,
-survey §6; TD-9 the list's two, decision 41), the role `shipyard` on the building of original id
-6; the AB file's costs name the base pack's resources with their prefix (as its silo,
-`"base:mercury"`); `packs/base` and `packs/ab` re-harvested. Checked by the harvester's tests
-against survey §5 and §6 (the neutral costs and one faction row each, two buildings' lists of
-every faction) and in `h3-pack-towns`' test of the original packs (a domain crate takes no
-adapter: every closure inside its record, the Capitol's holding the Town Hall; T16a's assertion
-that the shipped packs have none replaced). The adventure replays' `town_ruleset_hash` line moves
-again (re-hash only, skill `homm3-rerecord-replays`). Cut at its start.
+**E09 T17 — `h3-towns`: the day's mark, the store's writes, the rules and `TownCommand`** (design
+§26, §27, §34, §35's round 5; decisions 43, 45, 49; queued 2026-11-07 by T16b; `cross-lane`: the
+game state hash, the adventure lane's): `Town::built_today` and the town state hash v2 (after
+each town's forbidden set, its mark; pinned); `Towns::build`, `start_day` and `captured`, each
+copying only the town it changes (ADR-0028 point 4); the rules `buildable` (the hall's offer, a
+horde offered as its upgrade; TWN-BLD-002 to -004), `possible`, `check_build` (§27's order of the
+refusals), `built_with` (to a fixed point; TWN-BLD-005) and `event_buildings` (TWN-EVT-003);
+`TownCommand::Build` and `TownCommandError` (`#[non_exhaustive]`); `docs/rules/catalog/town.toml`'s
+TWN-BLD-001 to -007 (-006 and -007 sourced from T16b's harvest and survey `E09-construction.md`
+§5, §6) and TWN-EVT-003; `TWN-QUIRK-7` (T-9) where design §34 places it. Checked by `h3-towns`'
+tests on its synthetic part (every refusal, the hall's offer, the automatic builds, the event's
+buildings with and without water, increment 1's reads after a build: a Town Hall's income, a
+Citadel's moat, a Tavern's view level; a fork's write copies one town). The game state hash bumps
+with the store's v2 (v26 unless E08 T105b's lands first, design §34); the adventure replays
+re-hashed (skill `homm3-rerecord-replays`). Cut at its start.
 **Status:** next.
 
 ## Inbox

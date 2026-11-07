@@ -514,13 +514,281 @@ fn the_original_packs_compile_with_every_faction() {
     );
     let conflux = sod.town(faction("ab:conflux")).unwrap();
     assert!(building(conflux, "aurora_borealias").roles.grail);
-    // E09 T16a: the shipped packs have no requirements, costs or Shipyard until T16b's harvest.
+    the_original_requirements_costs_and_shipyards(&sod, &core);
+}
+
+/// E09 T16b's harvest in the shipped packs (design §25): every closure inside its record, never
+/// itself, the Capitol's holding the Town Hall; the closures of the Capitol and the upgraded
+/// level-7 dwelling of every faction as survey `E09-construction.md` §6's lists give them (TD-9:
+/// the Conflux's upgraded Altar of Fire keeps the list's upgraded Altar of Air, decision 41); §5's
+/// costs (the neutral rows, a faction's special rows, a dwelling's rows); the Shipyards.
+fn the_original_requirements_costs_and_shipyards(sod: &TownRuleset, core: &Ruleset) {
+    let keys = |record: &TownRecord, set: BuildingSet| -> Vec<String> {
+        let mut keys: Vec<String> = set
+            .iter()
+            .map(|b| record.building(b).unwrap().key.clone())
+            .collect();
+        keys.sort_unstable();
+        keys
+    };
     for record in sod.towns() {
+        for (i, b) in record.buildings.iter().enumerate() {
+            let id = BuildingId::from_index(i).unwrap();
+            assert!(!b.requires.contains(id), "{}", b.key);
+            assert!(
+                b.requires
+                    .iter()
+                    .all(|r| r.index() < record.buildings.len()),
+                "{}",
+                b.key
+            );
+        }
+        let capitol = building(record, "capitol");
         assert!(
-            record
-                .buildings
-                .iter()
-                .all(|b| b.requires.is_empty() && b.cost.is_empty() && !b.roles.shipyard)
+            capitol
+                .requires
+                .contains(record.building_by_key("town_hall").unwrap())
+        );
+        assert_eq!(
+            keys(record, capitol.requires),
+            [
+                "blacksmith",
+                "castle",
+                "citadel",
+                "city_hall",
+                "fort",
+                "mage_guild_level_1",
+                "marketplace",
+                "tavern",
+                "town_hall"
+            ]
+        );
+    }
+    let faction = |key: &str| sod.town(core.faction_by_key(key).unwrap()).unwrap();
+    let level_7: [(&str, &str, &[&str]); 9] = [
+        (
+            "base:castle",
+            "upg_portal_of_glory",
+            &[
+                "barracks",
+                "blacksmith",
+                "fort",
+                "guardhouse",
+                "mage_guild_level_1",
+                "monastery",
+                "portal_of_glory",
+            ],
+        ),
+        (
+            "base:rampart",
+            "upg_dragon_cliffs",
+            &[
+                "centaur_stables",
+                "dendroid_arches",
+                "dragon_cliffs",
+                "enchanted_spring",
+                "fort",
+                "homestead",
+                "mage_guild_level_1",
+                "mage_guild_level_2",
+                "mage_guild_level_3",
+                "unicorn_glade",
+            ],
+        ),
+        (
+            "base:tower",
+            "upg_cloud_temple",
+            &[
+                "altar_of_wishes",
+                "cloud_temple",
+                "fort",
+                "golden_pavilion",
+                "golem_factory",
+                "mage_guild_level_1",
+                "mage_tower",
+                "parapet",
+                "workshop",
+            ],
+        ),
+        (
+            "base:inferno",
+            "upg_forsaken_palace",
+            &[
+                "demon_gate",
+                "fire_lake",
+                "forsaken_palace",
+                "fort",
+                "hall_of_sins",
+                "hell_hole",
+                "imp_crucible",
+                "mage_guild_level_1",
+            ],
+        ),
+        (
+            "base:necropolis",
+            "upg_dragon_vault",
+            &[
+                "cursed_temple",
+                "dragon_vault",
+                "estate",
+                "fort",
+                "graveyard",
+                "hall_of_darkness",
+                "mage_guild_level_1",
+                "mausoleum",
+            ],
+        ),
+        (
+            "base:dungeon",
+            "upg_dragon_cave",
+            &[
+                "chapel_of_stilled_voices",
+                "dragon_cave",
+                "fort",
+                "harpy_loft",
+                "labyrinth",
+                "mage_guild_level_1",
+                "mage_guild_level_2",
+                "mage_guild_level_3",
+                "manticore_lair",
+                "pillar_of_eyes",
+                "warren",
+            ],
+        ),
+        (
+            "base:stronghold",
+            "upg_behemoth_lair",
+            &[
+                "behemoth_lair",
+                "cliff_nest",
+                "fort",
+                "goblin_barracks",
+                "wolf_pen",
+            ],
+        ),
+        (
+            "base:fortress",
+            "upg_hydra_pond",
+            &[
+                "basilisk_pit",
+                "fort",
+                "gnoll_hut",
+                "hydra_pond",
+                "lizard_den",
+                "serpent_fly_hive",
+                "wyvern_nest",
+            ],
+        ),
+        (
+            "ab:conflux",
+            "upg_pyre",
+            &[
+                "altar_of_air",
+                "altar_of_earth",
+                "altar_of_fire",
+                "altar_of_thought",
+                "altar_of_water",
+                "fort",
+                "mage_guild_level_1",
+                "magic_lantern",
+                "pyre",
+            ],
+        ),
+    ];
+    for (f, key, closure) in level_7 {
+        let record = faction(f);
+        assert_eq!(keys(record, building(record, key).requires), closure, "{f}");
+    }
+    let conflux = faction("ab:conflux");
+    let fire = building(conflux, "upg_altar_of_fire");
+    for required in ["altar_of_fire", "upg_altar_of_air"] {
+        assert!(
+            fire.requires
+                .contains(conflux.building_by_key(required).unwrap())
+        );
+    }
+    // The costs in the core's order, each resource by its key.
+    let cost = |record: &TownRecord, key: &str| -> Vec<(String, u32)> {
+        building(record, key)
+            .cost
+            .iter()
+            .map(|&(r, n)| (core.resources()[r.index()].key.as_str().to_owned(), n))
+            .collect()
+    };
+    let amounts = |a: [u32; 7]| -> Vec<(String, u32)> {
+        [
+            "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold",
+        ]
+        .iter()
+        .zip(a)
+        .filter(|&(_, n)| n > 0)
+        .map(|(r, n)| (format!("base:{r}"), n))
+        .collect()
+    };
+    let castle = faction("base:castle");
+    for (key, a) in [
+        ("mage_guild_level_1", [5, 0, 5, 0, 0, 0, 2000]),
+        ("mage_guild_level_2", [5, 4, 5, 4, 4, 4, 1000]),
+        ("mage_guild_level_3", [5, 6, 5, 6, 6, 6, 1000]),
+        ("mage_guild_level_4", [5, 8, 5, 8, 8, 8, 1000]),
+        ("tavern", [5, 0, 0, 0, 0, 0, 500]),
+        ("shipyard", [20, 0, 0, 0, 0, 0, 2000]),
+        ("fort", [20, 0, 20, 0, 0, 0, 5000]),
+        ("citadel", [0, 0, 5, 0, 0, 0, 2500]),
+        ("castle", [10, 0, 10, 0, 0, 0, 5000]),
+        ("village_hall", [0, 0, 0, 0, 0, 0, 1]),
+        ("town_hall", [0, 0, 0, 0, 0, 0, 2500]),
+        ("city_hall", [0, 0, 0, 0, 0, 0, 5000]),
+        ("capitol", [0, 0, 0, 0, 0, 0, 10_000]),
+        ("marketplace", [5, 0, 0, 0, 0, 0, 500]),
+        ("resource_silo", [0, 0, 5, 0, 0, 0, 5000]),
+        ("blacksmith", [5, 0, 0, 0, 0, 0, 1000]),
+        ("griffin_bastion", [0, 0, 0, 0, 0, 0, 1000]),
+        ("upg_griffin_bastion", [0, 0, 0, 0, 0, 0, 1000]),
+    ] {
+        assert_eq!(cost(castle, key), amounts(a), "{key}");
+    }
+    let guild_5 = cost(faction("base:tower"), "mage_guild_level_5");
+    assert_eq!(guild_5, amounts([5, 10, 5, 10, 10, 10, 1000]));
+    let rampart = faction("base:rampart");
+    for key in ["dendroid_saplings", "upg_dendroid_saplings"] {
+        assert_eq!(cost(rampart, key), amounts([0, 0, 0, 0, 0, 0, 2000]));
+    }
+    for (key, a) in [
+        ("upg_altar_of_air", [2, 2, 0, 0, 0, 2, 1500]),
+        ("upg_altar_of_water", [0, 5, 5, 0, 0, 0, 2000]),
+        ("upg_altar_of_fire", [0, 5, 5, 0, 0, 0, 2000]),
+        ("upg_altar_of_earth", [0, 0, 0, 5, 0, 0, 1000]),
+    ] {
+        assert_eq!(cost(conflux, key), amounts(a), "{key}");
+    }
+    // The Grail building alone is free; the Shipyard of the four factions that list it (§6) is
+    // the building of the role `shipyard`.
+    for (f, shipyard) in [
+        ("base:castle", true),
+        ("base:rampart", false),
+        ("base:tower", false),
+        ("base:inferno", false),
+        ("base:necropolis", true),
+        ("base:dungeon", false),
+        ("base:stronghold", false),
+        ("base:fortress", true),
+        ("ab:conflux", true),
+    ] {
+        let record = faction(f);
+        for b in &record.buildings {
+            assert_eq!(b.cost.is_empty(), b.roles.grail, "{}", b.key);
+        }
+        let shipyards: Vec<&str> = record
+            .buildings
+            .iter()
+            .filter(|b| b.roles.shipyard)
+            .map(|b| b.key.as_str())
+            .collect();
+        assert_eq!(
+            shipyards,
+            if shipyard { &["shipyard"][..] } else { &[] },
+            "{f}"
         );
     }
 }

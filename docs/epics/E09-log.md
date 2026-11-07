@@ -2210,3 +2210,44 @@ The user's computer was connected: the original data staged with the file tool a
 - **Agent's calls (change freely):** `shipyard` after `grail` in the struct and the hash; the
   refusals' wording and the self-requirement told apart from a cycle; no `// covers:` line (the
   rule ids TWN-BLD-006 and -007 come with the rules, T17, and the content's sources, T16b).
+
+### T16b — the harvest of the requirements, the costs and the role `shipyard` (2026-11-07)
+
+One session, the user present at the start; branch `town/e09-t16b`, `cross-lane` (`h3-harvest`,
+the battle lane's crate, and the adventure replays' header line, the adventure lane's).
+Starting point: `master` at a65f303 (#791, T16a's, and #792, #793 merged; the setup's baseline at
+f28200c found CI's fingerprint, the light gates only). Kept whole at its start (the agent's call
+under the user's standing instruction: a cut only for a big task). The user's computer was
+connected: the original data staged with the file tool at the start (the four LODs, the
+executables, the five DLLs, both `.snd`, the videos, both tars, the 40 MP3s), then `cp -rn` into
+the clone; the harvest needed `Heroes3.exe` and `H3bitmap.lod`.
+
+- **`h3-harvest`** (design §25 as built): `towns::Tables::costs` (`Building.txt` of
+  `H3bitmap.lod`, read by `Inputs::read`); `cost_row` picks a building's row as
+  `building_costs_load` 0x5C14C0 fills its tables (checked against its code: rows 4 + 11 f, 104,
+  125 + 16 f; the ids 26 to 29 none); each building's `requires` (the list's direct ids as keys,
+  in its order), `cost` (the zero columns dropped; base's resources prefixed in the AB file) and,
+  for the building 6, the role `shipyard` (after `grail` in the roles' order; refused from the
+  gap-fill as `dwelling`). New refusals: a requirement outside the record, a listed building's
+  blank cost row, a cost cell that is not a number. The report's line is the hordes' growth
+  alone; the files' header names survey `E09-construction.md` §5 and §6.
+- **Tests:** the fixture's `Building.txt` in the original's layout (each neutral, special and
+  dwelling row told apart by its gold), a few requirements and Alpha's Shipyard; the outputs of
+  the Village Hall, a guild, the City Hall, a dwelling, a horde's upgrade, Beta's special row,
+  Gamma's dwelling and Town Hall (prefixed), the Grail (no cost) and the Shipyard; every refusal.
+  `h3-pack-towns`' test of the original packs: T16a's "none" assertion replaced by
+  `the_original_requirements_costs_and_shipyards` (every closure inside its record and never
+  itself, the Capitol's holding the Town Hall and as §6 gives it in every faction, the upgraded
+  level-7 dwelling's closure of every faction from §6's dump, TD-9's two; §5's neutral costs, the
+  Castle's hordes, Rampart's second horde, the Conflux's four upgraded altars, the Tower's fifth
+  guild; the Grail alone free; the Shipyards of Castle, Necropolis, Fortress and Conflux). A
+  throwaway script also matched every generated `requires` (315 buildings) with §6's dump.
+- **Packs:** `packs/base` (231 requirements, 285 costs, three Shipyards) and `packs/ab` (28, 35,
+  one) re-harvested; `packs/sod` only the header's sources line; `--check` passes.
+- **`cross-lane`:** the 55 adventure replays re-recorded from their own commands (skill
+  `homm3-rerecord-replays`, a scratch script, 2 s in release): only `town_ruleset_hash` moved
+  (0x929e9a26ed0bdf34 to 0x8477f2008d862e55). No version moved. The adventure lane's inbox note
+  of T16a amended.
+- **Agent's calls (change freely):** the checks in the harvester and not a gap-fill; the Grail
+  building without a cost (the original asks none); the rule ids TWN-BLD-006 and -007 with the
+  rules (T17), their sources this harvest.

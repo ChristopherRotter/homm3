@@ -4,7 +4,8 @@
 # Do not edit by hand: change the harvester or the gap-fill file and re-run it
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
-# 7.61, docs/rules/surveys/E09-towns.md 16; format: crates/h3-pack-towns.
+# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:
+# crates/h3-pack-towns.
 
 [[town_override]]
 faction = "base:castle"

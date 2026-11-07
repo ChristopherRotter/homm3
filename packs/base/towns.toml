@@ -4,7 +4,8 @@
 # Do not edit by hand: change the harvester or the gap-fill file and re-run it
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
-# 7.61, docs/rules/surveys/E09-towns.md 16; format: crates/h3-pack-towns.
+# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:
+# crates/h3-pack-towns.
 
 [town_params]
 gold = "gold"
@@ -40,29 +41,37 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -70,11 +79,14 @@ creatures = [
   key = "shipyard"
   name = "Shipyard"
   slot = 16
+  cost = { wood = 20, gold = 2000 }
+  shipyard = true
 
   [[town.building]]
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -82,6 +94,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -89,11 +103,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -101,6 +118,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -108,6 +127,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "blacksmith", "mage_guild_level_1", "marketplace"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -115,34 +136,44 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "lighthouse"
   name = "Lighthouse"
   slot = 18
+  requires = ["shipyard"]
+  cost = { ore = 10, gold = 2000 }
 
   [[town.building]]
   key = "griffin_bastion"
   name = "Griffin Bastion"
   slot = 30
   supersedes = ["griffin_tower"]
+  requires = ["griffin_tower"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_griffin_bastion"
@@ -150,17 +181,23 @@ creatures = [
   supersedes = ["griffin_bastion", "upg_griffin_tower"]
   forbidden_with = "griffin_bastion"
   auto_with = ["griffin_bastion", "upg_griffin_tower"]
+  requires = ["upg_griffin_tower"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "stables"
   name = "Stables"
   slot = 20
+  requires = ["barracks"]
+  cost = { wood = 10, gold = 2000 }
 
   [[town.building]]
   key = "brotherhood_of_the_sword"
   name = "Brotherhood of the Sword"
   slot = 19
   supersedes = ["tavern"]
+  requires = ["tavern"]
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 2
 
@@ -174,42 +211,56 @@ creatures = [
   key = "guardhouse"
   name = "Guardhouse"
   slot = 22
+  requires = ["fort"]
+  cost = { ore = 10, gold = 500 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "archers_tower"
   name = "Archers' Tower"
   slot = 25
+  requires = ["guardhouse"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "griffin_tower"
   name = "Griffin Tower"
   slot = 28
+  requires = ["barracks"]
+  cost = { ore = 5, gold = 1000 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "barracks"
   name = "Barracks"
   slot = 31
+  requires = ["guardhouse", "blacksmith"]
+  cost = { ore = 5, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "monastery"
   name = "Monastery"
   slot = 34
+  requires = ["barracks", "mage_guild_level_1"]
+  cost = { wood = 5, mercury = 2, ore = 5, sulfur = 2, crystal = 2, gems = 2, gold = 3000 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "training_grounds"
   name = "Training Grounds"
   slot = 37
+  requires = ["stables"]
+  cost = { wood = 20, gold = 5000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "portal_of_glory"
   name = "Portal of Glory"
   slot = 39
+  requires = ["monastery"]
+  cost = { mercury = 10, sulfur = 10, crystal = 10, gems = 10, gold = 20000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -217,6 +268,8 @@ creatures = [
   name = "Upg. Guardhouse"
   slot = 23
   supersedes = ["guardhouse"]
+  requires = ["guardhouse"]
+  cost = { ore = 5, gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -224,6 +277,8 @@ creatures = [
   name = "Upg. Archers' Tower"
   slot = 26
   supersedes = ["archers_tower"]
+  requires = ["archers_tower"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -231,6 +286,8 @@ creatures = [
   name = "Upg. Griffin Tower"
   slot = 29
   supersedes = ["griffin_tower"]
+  requires = ["griffin_tower"]
+  cost = { ore = 5, gold = 1000 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -238,6 +295,8 @@ creatures = [
   name = "Upg. Barracks"
   slot = 32
   supersedes = ["barracks"]
+  requires = ["barracks"]
+  cost = { ore = 5, crystal = 5, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -245,6 +304,8 @@ creatures = [
   name = "Upg. Monastery"
   slot = 35
   supersedes = ["monastery"]
+  requires = ["monastery"]
+  cost = { wood = 2, mercury = 2, ore = 2, sulfur = 2, crystal = 2, gems = 2, gold = 1000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -252,6 +313,8 @@ creatures = [
   name = "Upg. Training Grounds"
   slot = 38
   supersedes = ["training_grounds"]
+  requires = ["training_grounds"]
+  cost = { wood = 10, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -259,6 +322,8 @@ creatures = [
   name = "Upg. Portal of Glory"
   slot = 40
   supersedes = ["portal_of_glory"]
+  requires = ["portal_of_glory"]
+  cost = { mercury = 10, sulfur = 10, crystal = 10, gems = 10, gold = 20000 }
   dwelling = [7, true]
 
 [[town]]
@@ -279,35 +344,45 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_5"
   name = "Mage Guild Level 5"
   slot = 15
   supersedes = ["mage_guild_level_4"]
+  requires = ["mage_guild_level_4"]
+  cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -315,6 +390,7 @@ creatures = [
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -322,6 +398,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -329,11 +407,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -341,6 +422,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -348,6 +431,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "mage_guild_level_1", "blacksmith", "marketplace"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -355,34 +440,43 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "mystic_pond"
   name = "Mystic Pond"
   slot = 18
+  cost = { wood = 2, mercury = 2, ore = 2, sulfur = 2, crystal = 2, gems = 2, gold = 2000 }
 
   [[town.building]]
   key = "miners_guild"
   name = "Miners' Guild"
   slot = 27
   supersedes = ["dwarf_cottage"]
+  requires = ["dwarf_cottage"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_miners_guild"
@@ -390,24 +484,32 @@ creatures = [
   supersedes = ["miners_guild", "upg_dwarf_cottage"]
   forbidden_with = "miners_guild"
   auto_with = ["miners_guild", "upg_dwarf_cottage"]
+  requires = ["upg_dwarf_cottage"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "fountain_of_fortune"
   name = "Fountain of Fortune"
   slot = 19
   supersedes = ["mystic_pond"]
+  requires = ["mystic_pond"]
+  cost = { crystal = 10, gold = 1500 }
   luck = 2
 
   [[town.building]]
   key = "treasury"
   name = "Treasury"
   slot = 20
+  requires = ["miners_guild"]
+  cost = { wood = 5, ore = 10, gold = 5000 }
 
   [[town.building]]
   key = "dendroid_saplings"
   name = "Dendroid Saplings"
   slot = 36
   supersedes = ["dendroid_arches"]
+  requires = ["dendroid_arches"]
+  cost = { gold = 2000 }
 
   [[town.building]]
   key = "upg_dendroid_saplings"
@@ -415,6 +517,8 @@ creatures = [
   supersedes = ["dendroid_saplings", "upg_dendroid_arches"]
   forbidden_with = "dendroid_saplings"
   auto_with = ["dendroid_saplings", "upg_dendroid_arches"]
+  requires = ["upg_dendroid_arches"]
+  cost = { gold = 2000 }
 
   [[town.building]]
   key = "spirit_guardian"
@@ -426,42 +530,56 @@ creatures = [
   key = "centaur_stables"
   name = "Centaur Stables"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 10, gold = 500 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "dwarf_cottage"
   name = "Dwarf Cottage"
   slot = 25
+  requires = ["centaur_stables"]
+  cost = { wood = 5, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "homestead"
   name = "Homestead"
   slot = 28
+  requires = ["centaur_stables"]
+  cost = { wood = 10, gold = 1500 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "enchanted_spring"
   name = "Enchanted Spring"
   slot = 31
+  requires = ["homestead"]
+  cost = { crystal = 10, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "dendroid_arches"
   name = "Dendroid Arches"
   slot = 34
+  requires = ["homestead"]
+  cost = { gold = 2500 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "unicorn_glade"
   name = "Unicorn Glade"
   slot = 37
+  requires = ["enchanted_spring", "dendroid_arches"]
+  cost = { wood = 5, ore = 5, gems = 10, gold = 4000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "dragon_cliffs"
   name = "Dragon Cliffs"
   slot = 39
+  requires = ["unicorn_glade", "mage_guild_level_2"]
+  cost = { ore = 30, crystal = 20, gold = 10000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -469,6 +587,8 @@ creatures = [
   name = "Upg. Centaur Stables"
   slot = 23
   supersedes = ["centaur_stables"]
+  requires = ["centaur_stables"]
+  cost = { wood = 5, gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -476,6 +596,8 @@ creatures = [
   name = "Upg. Dwarf Cottage"
   slot = 26
   supersedes = ["dwarf_cottage"]
+  requires = ["dwarf_cottage"]
+  cost = { wood = 5, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -483,6 +605,8 @@ creatures = [
   name = "Upg. Homestead"
   slot = 29
   supersedes = ["homestead"]
+  requires = ["homestead"]
+  cost = { wood = 10, gold = 1500 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -490,6 +614,8 @@ creatures = [
   name = "Upg. Enchanted Spring"
   slot = 32
   supersedes = ["enchanted_spring"]
+  requires = ["enchanted_spring"]
+  cost = { crystal = 5, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -497,6 +623,8 @@ creatures = [
   name = "Upg. Dendroid Arches"
   slot = 35
   supersedes = ["dendroid_arches"]
+  requires = ["dendroid_arches"]
+  cost = { gold = 1500 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -504,6 +632,8 @@ creatures = [
   name = "Upg. Unicorn Glade"
   slot = 38
   supersedes = ["unicorn_glade"]
+  requires = ["unicorn_glade"]
+  cost = { gems = 5, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -511,6 +641,8 @@ creatures = [
   name = "Upg. Dragon Cliffs"
   slot = 40
   supersedes = ["dragon_cliffs"]
+  requires = ["dragon_cliffs", "mage_guild_level_3"]
+  cost = { ore = 30, crystal = 20, gold = 20000 }
   dwelling = [7, true]
 
 [[town]]
@@ -531,35 +663,45 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_5"
   name = "Mage Guild Level 5"
   slot = 15
   supersedes = ["mage_guild_level_4"]
+  requires = ["mage_guild_level_4"]
+  cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -567,6 +709,7 @@ creatures = [
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -574,6 +717,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -581,11 +726,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -593,6 +741,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -600,6 +750,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "marketplace", "blacksmith", "mage_guild_level_1"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -607,34 +759,44 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "artifact_merchants"
   name = "Artifact Merchants"
   slot = 10
+  requires = ["marketplace"]
+  cost = { gold = 10000 }
 
   [[town.building]]
   key = "sculptors_wings"
   name = "Sculptor's Wings"
   slot = 27
   supersedes = ["parapet"]
+  requires = ["parapet"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_sculptors_wings"
@@ -642,22 +804,30 @@ creatures = [
   supersedes = ["sculptors_wings", "upg_parapet"]
   forbidden_with = "sculptors_wings"
   auto_with = ["sculptors_wings", "upg_parapet"]
+  requires = ["upg_parapet"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "lookout_tower"
   name = "Lookout Tower"
   slot = 20
+  requires = ["fort"]
+  cost = { wood = 5, gold = 1000 }
   reveal = 20
 
   [[town.building]]
   key = "library"
   name = "Library"
   slot = 18
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 5, ore = 5, sulfur = 5, crystal = 5, gems = 5, gold = 1500 }
 
   [[town.building]]
   key = "wall_of_knowledge"
   name = "Wall of Knowledge"
   slot = 19
+  requires = ["mage_guild_level_1"]
+  cost = { ore = 5, gold = 1000 }
 
   [[town.building]]
   key = "skyship"
@@ -671,42 +841,56 @@ creatures = [
   key = "workshop"
   name = "Workshop"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 5, ore = 5, gold = 300 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "parapet"
   name = "Parapet"
   slot = 25
+  requires = ["workshop"]
+  cost = { ore = 10, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "golem_factory"
   name = "Golem Factory"
   slot = 28
+  requires = ["workshop"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "mage_tower"
   name = "Mage Tower"
   slot = 31
+  requires = ["parapet", "golem_factory", "mage_guild_level_1"]
+  cost = { wood = 5, mercury = 5, ore = 5, sulfur = 5, crystal = 5, gems = 5, gold = 2500 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "altar_of_wishes"
   name = "Altar of Wishes"
   slot = 34
+  requires = ["mage_tower"]
+  cost = { wood = 5, ore = 5, crystal = 6, gems = 6, gold = 3000 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "golden_pavilion"
   name = "Golden Pavilion"
   slot = 37
+  requires = ["mage_tower"]
+  cost = { wood = 5, mercury = 2, ore = 5, sulfur = 2, crystal = 2, gems = 2, gold = 4000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "cloud_temple"
   name = "Cloud Temple"
   slot = 39
+  requires = ["altar_of_wishes", "golden_pavilion"]
+  cost = { wood = 10, ore = 10, gems = 10, gold = 5000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -714,6 +898,8 @@ creatures = [
   name = "Upg. Workshop"
   slot = 23
   supersedes = ["workshop"]
+  requires = ["workshop"]
+  cost = { gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -721,6 +907,8 @@ creatures = [
   name = "Upg. Parapet"
   slot = 26
   supersedes = ["parapet"]
+  requires = ["parapet"]
+  cost = { ore = 5, gold = 1500 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -728,6 +916,8 @@ creatures = [
   name = "Upg. Golem Factory"
   slot = 29
   supersedes = ["golem_factory"]
+  requires = ["golem_factory"]
+  cost = { wood = 5, mercury = 5, ore = 5, gold = 2000 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -735,6 +925,8 @@ creatures = [
   name = "Upg. Mage Tower"
   slot = 32
   supersedes = ["mage_tower"]
+  requires = ["mage_tower", "library"]
+  cost = { wood = 5, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -742,6 +934,8 @@ creatures = [
   name = "Upg. Altar of Wishes"
   slot = 35
   supersedes = ["altar_of_wishes"]
+  requires = ["altar_of_wishes"]
+  cost = { wood = 5, gold = 2000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -749,6 +943,8 @@ creatures = [
   name = "Upg. Golden Pavilion"
   slot = 38
   supersedes = ["golden_pavilion"]
+  requires = ["golden_pavilion"]
+  cost = { mercury = 3, sulfur = 3, crystal = 3, gems = 3, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -756,6 +952,8 @@ creatures = [
   name = "Upg. Cloud Temple"
   slot = 40
   supersedes = ["cloud_temple"]
+  requires = ["cloud_temple"]
+  cost = { wood = 5, ore = 5, gems = 30, gold = 25000 }
   dwelling = [7, true]
 
 [[town]]
@@ -776,35 +974,45 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_5"
   name = "Mage Guild Level 5"
   slot = 15
   supersedes = ["mage_guild_level_4"]
+  requires = ["mage_guild_level_4"]
+  cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -812,6 +1020,7 @@ creatures = [
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -819,6 +1028,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -826,11 +1037,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -838,6 +1052,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -845,6 +1061,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "blacksmith", "marketplace", "mage_guild_level_1"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -852,29 +1070,37 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "birthing_pools"
   name = "Birthing Pools"
   slot = 24
   supersedes = ["imp_crucible"]
+  requires = ["imp_crucible"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_birthing_pools"
@@ -882,28 +1108,38 @@ creatures = [
   supersedes = ["birthing_pools", "upg_imp_crucible"]
   forbidden_with = "birthing_pools"
   auto_with = ["birthing_pools", "upg_imp_crucible"]
+  requires = ["upg_imp_crucible"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "brimstone_stormclouds"
   name = "Brimstone Stormclouds"
   slot = 18
+  requires = ["fort"]
+  cost = { sulfur = 5, gold = 1000 }
   defender = { power = 2 }
 
   [[town.building]]
   key = "castle_gate"
   name = "Castle Gate"
   slot = 19
+  requires = ["citadel"]
+  cost = { wood = 5, ore = 5, gold = 10000 }
 
   [[town.building]]
   key = "order_of_fire"
   name = "Order of Fire"
   slot = 20
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "cages"
   name = "Cages"
   slot = 30
   supersedes = ["kennels"]
+  requires = ["kennels"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_cages"
@@ -911,6 +1147,8 @@ creatures = [
   supersedes = ["cages", "upg_kennels"]
   forbidden_with = "cages"
   auto_with = ["cages", "upg_kennels"]
+  requires = ["upg_kennels"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "deity_of_fire"
@@ -922,42 +1160,56 @@ creatures = [
   key = "imp_crucible"
   name = "Imp Crucible"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 5, ore = 5, gold = 300 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "hall_of_sins"
   name = "Hall of Sins"
   slot = 25
+  requires = ["imp_crucible"]
+  cost = { ore = 5, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "kennels"
   name = "Kennels"
   slot = 28
+  requires = ["imp_crucible"]
+  cost = { wood = 10, gold = 1500 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "demon_gate"
   name = "Demon Gate"
   slot = 31
+  requires = ["hall_of_sins"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "hell_hole"
   name = "Hell Hole"
   slot = 34
+  requires = ["demon_gate"]
+  cost = { gold = 3000 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "fire_lake"
   name = "Fire Lake"
   slot = 37
+  requires = ["demon_gate", "mage_guild_level_1"]
+  cost = { mercury = 3, ore = 10, sulfur = 3, gems = 3, gold = 4000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "forsaken_palace"
   name = "Forsaken Palace"
   slot = 39
+  requires = ["hell_hole", "fire_lake"]
+  cost = { wood = 10, mercury = 20, ore = 10, gold = 15000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -965,6 +1217,8 @@ creatures = [
   name = "Upg. Imp Crucible"
   slot = 23
   supersedes = ["imp_crucible"]
+  requires = ["imp_crucible"]
+  cost = { gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -972,6 +1226,8 @@ creatures = [
   name = "Upg. Hall of Sins"
   slot = 26
   supersedes = ["hall_of_sins"]
+  requires = ["hall_of_sins"]
+  cost = { mercury = 5, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -979,6 +1235,8 @@ creatures = [
   name = "Upg. Kennels"
   slot = 29
   supersedes = ["kennels"]
+  requires = ["kennels"]
+  cost = { sulfur = 5, gold = 1500 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -986,6 +1244,8 @@ creatures = [
   name = "Upg. Demon Gate"
   slot = 32
   supersedes = ["demon_gate"]
+  requires = ["demon_gate"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -993,6 +1253,8 @@ creatures = [
   name = "Upg. Hell Hole"
   slot = 35
   supersedes = ["hell_hole"]
+  requires = ["hell_hole", "mage_guild_level_2"]
+  cost = { mercury = 5, sulfur = 5, gold = 3000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -1000,6 +1262,8 @@ creatures = [
   name = "Upg. Fire Lake"
   slot = 38
   supersedes = ["fire_lake"]
+  requires = ["fire_lake"]
+  cost = { mercury = 5, ore = 5, sulfur = 5, gems = 5, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -1007,6 +1271,8 @@ creatures = [
   name = "Upg. Forsaken Palace"
   slot = 40
   supersedes = ["forsaken_palace"]
+  requires = ["forsaken_palace"]
+  cost = { wood = 5, mercury = 20, ore = 5, gold = 20000 }
   dwelling = [7, true]
 
 [[town]]
@@ -1027,35 +1293,45 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_5"
   name = "Mage Guild Level 5"
   slot = 15
   supersedes = ["mage_guild_level_4"]
+  requires = ["mage_guild_level_4"]
+  cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -1063,11 +1339,14 @@ creatures = [
   key = "shipyard"
   name = "Shipyard"
   slot = 16
+  cost = { wood = 20, gold = 2000 }
+  shipyard = true
 
   [[town.building]]
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -1075,6 +1354,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -1082,11 +1363,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -1094,6 +1378,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -1101,6 +1387,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "marketplace", "blacksmith", "mage_guild_level_1"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -1108,34 +1396,44 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "cover_of_darkness"
   name = "Cover of Darkness"
   slot = 18
+  requires = ["fort"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "unearthed_graves"
   name = "Unearthed Graves"
   slot = 24
   supersedes = ["cursed_temple"]
+  requires = ["skeleton_transformer"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_unearthed_graves"
@@ -1143,16 +1441,22 @@ creatures = [
   supersedes = ["unearthed_graves", "upg_cursed_temple"]
   forbidden_with = "unearthed_graves"
   auto_with = ["unearthed_graves", "upg_cursed_temple"]
+  requires = ["upg_cursed_temple", "skeleton_transformer"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "necromancy_amplifier"
   name = "Necromancy Amplifier"
   slot = 19
+  requires = ["mage_guild_level_1"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "skeleton_transformer"
   name = "Skeleton Transformer"
   slot = 20
+  requires = ["cursed_temple"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "soul_prison"
@@ -1164,42 +1468,56 @@ creatures = [
   key = "cursed_temple"
   name = "Cursed Temple"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 5, ore = 5, gold = 400 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "graveyard"
   name = "Graveyard"
   slot = 25
+  requires = ["cursed_temple"]
+  cost = { ore = 5, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "tomb_of_souls"
   name = "Tomb of Souls"
   slot = 28
+  requires = ["cursed_temple"]
+  cost = { wood = 5, ore = 5, gold = 1500 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "estate"
   name = "Estate"
   slot = 31
+  requires = ["graveyard"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "mausoleum"
   name = "Mausoleum"
   slot = 34
+  requires = ["graveyard", "mage_guild_level_1"]
+  cost = { ore = 10, sulfur = 10, gold = 2000 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "hall_of_darkness"
   name = "Hall of Darkness"
   slot = 37
+  requires = ["estate", "mausoleum"]
+  cost = { wood = 10, ore = 10, gold = 6000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "dragon_vault"
   name = "Dragon Vault"
   slot = 39
+  requires = ["hall_of_darkness"]
+  cost = { wood = 5, mercury = 5, ore = 5, sulfur = 5, crystal = 5, gems = 5, gold = 10000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -1207,6 +1525,8 @@ creatures = [
   name = "Upg. Cursed Temple"
   slot = 23
   supersedes = ["cursed_temple"]
+  requires = ["cursed_temple"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -1214,6 +1534,8 @@ creatures = [
   name = "Upg. Graveyard"
   slot = 26
   supersedes = ["graveyard"]
+  requires = ["graveyard"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -1221,6 +1543,8 @@ creatures = [
   name = "Upg. Tomb of Souls"
   slot = 29
   supersedes = ["tomb_of_souls"]
+  requires = ["tomb_of_souls"]
+  cost = { mercury = 5, gold = 1500 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -1228,6 +1552,8 @@ creatures = [
   name = "Upg. Estate"
   slot = 32
   supersedes = ["estate"]
+  requires = ["estate", "necromancy_amplifier"]
+  cost = { wood = 5, crystal = 10, gems = 10, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -1235,6 +1561,8 @@ creatures = [
   name = "Upg. Mausoleum"
   slot = 35
   supersedes = ["mausoleum"]
+  requires = ["mausoleum"]
+  cost = { ore = 5, sulfur = 5, gold = 2000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -1242,6 +1570,8 @@ creatures = [
   name = "Upg. Hall of Darkness"
   slot = 38
   supersedes = ["hall_of_darkness"]
+  requires = ["hall_of_darkness"]
+  cost = { wood = 5, mercury = 2, ore = 5, sulfur = 2, crystal = 2, gems = 2, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -1249,6 +1579,8 @@ creatures = [
   name = "Upg. Dragon Vault"
   slot = 40
   supersedes = ["dragon_vault"]
+  requires = ["dragon_vault"]
+  cost = { wood = 5, mercury = 20, ore = 5, gold = 15000 }
   dwelling = [7, true]
 
 [[town]]
@@ -1269,35 +1601,45 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { wood = 5, mercury = 8, ore = 5, sulfur = 8, crystal = 8, gems = 8, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_5"
   name = "Mage Guild Level 5"
   slot = 15
   supersedes = ["mage_guild_level_4"]
+  requires = ["mage_guild_level_4"]
+  cost = { wood = 5, mercury = 10, ore = 5, sulfur = 10, crystal = 10, gems = 10, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -1305,6 +1647,7 @@ creatures = [
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -1312,6 +1655,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -1319,11 +1664,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -1331,6 +1679,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -1338,6 +1688,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "blacksmith", "marketplace", "mage_guild_level_1"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -1345,34 +1697,44 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "artifact_merchants"
   name = "Artifact Merchants"
   slot = 10
+  requires = ["marketplace"]
+  cost = { gold = 10000 }
 
   [[town.building]]
   key = "mushroom_rings"
   name = "Mushroom Rings"
   slot = 24
   supersedes = ["warren"]
+  requires = ["warren"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_mushroom_rings"
@@ -1380,21 +1742,27 @@ creatures = [
   supersedes = ["mushroom_rings", "upg_warren"]
   forbidden_with = "mushroom_rings"
   auto_with = ["mushroom_rings", "upg_warren"]
+  requires = ["upg_warren"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "mana_vortex"
   name = "Mana Vortex"
   slot = 18
+  requires = ["mage_guild_level_1"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "portal_of_summoning"
   name = "Portal of Summoning"
   slot = 19
+  cost = { ore = 5, gold = 2500 }
 
   [[town.building]]
   key = "battle_scholar_academy"
   name = "Battle Scholar Academy"
   slot = 20
+  cost = { wood = 5, ore = 5, gold = 1000 }
 
   [[town.building]]
   key = "guardian_of_earth"
@@ -1407,42 +1775,56 @@ creatures = [
   key = "warren"
   name = "Warren"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 10, gold = 400 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "harpy_loft"
   name = "Harpy Loft"
   slot = 25
+  requires = ["warren"]
+  cost = { gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "pillar_of_eyes"
   name = "Pillar of Eyes"
   slot = 28
+  requires = ["warren"]
+  cost = { wood = 1, mercury = 1, ore = 1, sulfur = 1, crystal = 1, gems = 1, gold = 1000 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "chapel_of_stilled_voices"
   name = "Chapel of Stilled Voices"
   slot = 31
+  requires = ["pillar_of_eyes", "harpy_loft"]
+  cost = { wood = 5, ore = 10, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "labyrinth"
   name = "Labyrinth"
   slot = 34
+  requires = ["chapel_of_stilled_voices"]
+  cost = { ore = 10, gems = 10, gold = 4000 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "manticore_lair"
   name = "Manticore Lair"
   slot = 37
+  requires = ["chapel_of_stilled_voices"]
+  cost = { wood = 5, mercury = 5, ore = 5, sulfur = 5, gold = 5000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "dragon_cave"
   name = "Dragon Cave"
   slot = 39
+  requires = ["labyrinth", "manticore_lair", "mage_guild_level_2"]
+  cost = { wood = 15, ore = 15, sulfur = 20, gold = 15000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -1450,6 +1832,8 @@ creatures = [
   name = "Upg. Warren"
   slot = 23
   supersedes = ["warren"]
+  requires = ["warren"]
+  cost = { wood = 5, gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -1457,6 +1841,8 @@ creatures = [
   name = "Upg. Harpy Loft"
   slot = 26
   supersedes = ["harpy_loft"]
+  requires = ["harpy_loft"]
+  cost = { sulfur = 2, crystal = 2, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -1464,6 +1850,8 @@ creatures = [
   name = "Upg. Pillar of Eyes"
   slot = 29
   supersedes = ["pillar_of_eyes"]
+  requires = ["pillar_of_eyes"]
+  cost = { wood = 1, mercury = 1, ore = 1, sulfur = 1, crystal = 1, gems = 1, gold = 1000 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -1471,6 +1859,8 @@ creatures = [
   name = "Upg. Stilled Voices"
   slot = 32
   supersedes = ["chapel_of_stilled_voices"]
+  requires = ["chapel_of_stilled_voices"]
+  cost = { wood = 5, gold = 1500 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -1478,6 +1868,8 @@ creatures = [
   name = "Upg. Labyrinth"
   slot = 35
   supersedes = ["labyrinth"]
+  requires = ["labyrinth"]
+  cost = { ore = 5, gems = 5, gold = 3000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -1485,6 +1877,8 @@ creatures = [
   name = "Upg. Manticore Lair"
   slot = 38
   supersedes = ["manticore_lair"]
+  requires = ["manticore_lair"]
+  cost = { wood = 5, mercury = 5, ore = 5, sulfur = 5, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -1492,6 +1886,8 @@ creatures = [
   name = "Upg. Dragon Cave"
   slot = 40
   supersedes = ["dragon_cave"]
+  requires = ["dragon_cave", "mage_guild_level_3"]
+  cost = { wood = 15, ore = 15, sulfur = 20, gold = 15000 }
   dwelling = [7, true]
 
 [[town]]
@@ -1513,23 +1909,29 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -1537,6 +1939,7 @@ creatures = [
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -1544,6 +1947,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -1551,11 +1956,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -1563,6 +1971,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -1570,6 +1980,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "mage_guild_level_1", "marketplace", "blacksmith"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -1577,28 +1989,36 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "escape_tunnel"
   name = "Escape Tunnel"
   slot = 18
+  requires = ["fort"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   escape_tunnel = true
 
   [[town.building]]
@@ -1606,6 +2026,8 @@ creatures = [
   name = "Mess Hall"
   slot = 24
   supersedes = ["goblin_barracks"]
+  requires = ["goblin_barracks"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_mess_hall"
@@ -1613,21 +2035,29 @@ creatures = [
   supersedes = ["mess_hall", "upg_goblin_barracks"]
   forbidden_with = "mess_hall"
   auto_with = ["mess_hall", "upg_goblin_barracks"]
+  requires = ["upg_goblin_barracks"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "freelancers_guild"
   name = "Freelancer's Guild"
   slot = 19
+  requires = ["marketplace"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "ballista_yard"
   name = "Ballista Yard"
   slot = 20
+  requires = ["blacksmith"]
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "hall_of_valhalla"
   name = "Hall of Valhalla"
   slot = 21
+  requires = ["fort"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "warlords_monument"
@@ -1640,42 +2070,56 @@ creatures = [
   key = "goblin_barracks"
   name = "Goblin Barracks"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 5, ore = 5, gold = 200 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "wolf_pen"
   name = "Wolf Pen"
   slot = 25
+  requires = ["goblin_barracks"]
+  cost = { wood = 10, ore = 5, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "orc_tower"
   name = "Orc Tower"
   slot = 28
+  requires = ["goblin_barracks"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "ogre_fort"
   name = "Ogre Fort"
   slot = 31
+  requires = ["orc_tower"]
+  cost = { wood = 20, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "cliff_nest"
   name = "Cliff Nest"
   slot = 34
+  requires = ["wolf_pen"]
+  cost = { ore = 10, gold = 2500 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "cyclops_cave"
   name = "Cyclops Cave"
   slot = 37
+  requires = ["ogre_fort"]
+  cost = { ore = 20, crystal = 20, gold = 3500 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "behemoth_lair"
   name = "Behemoth Lair"
   slot = 39
+  requires = ["cliff_nest"]
+  cost = { wood = 10, ore = 10, crystal = 10, gold = 10000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -1683,6 +2127,8 @@ creatures = [
   name = "Upg. Goblin Barracks"
   slot = 23
   supersedes = ["goblin_barracks"]
+  requires = ["goblin_barracks"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -1690,6 +2136,8 @@ creatures = [
   name = "Upg. Wolf Pen"
   slot = 26
   supersedes = ["wolf_pen"]
+  requires = ["wolf_pen", "upg_goblin_barracks"]
+  cost = { wood = 5, ore = 5, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -1697,6 +2145,8 @@ creatures = [
   name = "Upg. Orc Tower"
   slot = 29
   supersedes = ["orc_tower"]
+  requires = ["orc_tower", "blacksmith"]
+  cost = { wood = 2, ore = 2, gold = 1000 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -1704,6 +2154,8 @@ creatures = [
   name = "Upg. Ogre Fort"
   slot = 32
   supersedes = ["ogre_fort"]
+  requires = ["ogre_fort", "mage_guild_level_1"]
+  cost = { wood = 5, ore = 5, gems = 5, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -1711,6 +2163,8 @@ creatures = [
   name = "Upg. Cliff Nest"
   slot = 35
   supersedes = ["cliff_nest"]
+  requires = ["cliff_nest"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -1718,6 +2172,8 @@ creatures = [
   name = "Upg. Cyclops Cave"
   slot = 38
   supersedes = ["cyclops_cave"]
+  requires = ["cyclops_cave"]
+  cost = { wood = 5, ore = 5, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -1725,6 +2181,8 @@ creatures = [
   name = "Upg. Behemoth Lair"
   slot = 40
   supersedes = ["behemoth_lair"]
+  requires = ["behemoth_lair"]
+  cost = { wood = 10, ore = 10, crystal = 20, gold = 15000 }
   dwelling = [7, true]
 
 [[town]]
@@ -1745,23 +2203,29 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { wood = 5, ore = 5, gold = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { wood = 5, mercury = 4, ore = 5, sulfur = 4, crystal = 4, gems = 4, gold = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { wood = 5, mercury = 6, ore = 5, sulfur = 6, crystal = 6, gems = 6, gold = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { wood = 5, gold = 500 }
   tavern = true
   morale = 1
 
@@ -1769,11 +2233,14 @@ creatures = [
   key = "shipyard"
   name = "Shipyard"
   slot = 16
+  cost = { wood = 20, gold = 2000 }
+  shipyard = true
 
   [[town.building]]
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { wood = 20, ore = 20, gold = 5000 }
   fort = 1
 
   [[town.building]]
@@ -1781,6 +2248,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { ore = 5, gold = 2500 }
   fort = 2
 
   [[town.building]]
@@ -1788,11 +2257,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { wood = 10, ore = 10, gold = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { gold = 1 }
   hall = 1
 
   [[town.building]]
@@ -1800,6 +2272,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { gold = 2500 }
   hall = 2
 
   [[town.building]]
@@ -1807,6 +2281,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "marketplace", "blacksmith", "mage_guild_level_1"]
+  cost = { gold = 5000 }
   hall = 3
 
   [[town.building]]
@@ -1814,34 +2290,44 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { gold = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { wood = 5, gold = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { ore = 5, gold = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { wood = 5, gold = 1000 }
 
   [[town.building]]
   key = "cage_of_warlords"
   name = "Cage of Warlords"
   slot = 18
+  requires = ["town_hall", "glyphs_of_fear"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "captains_quarters"
   name = "Captain's Quarters"
   slot = 24
   supersedes = ["gnoll_hut"]
+  requires = ["gnoll_hut"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "upg_captains_quarters"
@@ -1849,17 +2335,23 @@ creatures = [
   supersedes = ["captains_quarters", "upg_gnoll_hut"]
   forbidden_with = "captains_quarters"
   auto_with = ["captains_quarters", "upg_gnoll_hut"]
+  requires = ["upg_gnoll_hut"]
+  cost = { gold = 1000 }
 
   [[town.building]]
   key = "glyphs_of_fear"
   name = "Glyphs of Fear"
   slot = 19
+  requires = ["fort"]
+  cost = { gold = 1000 }
   defender = { attack = 2 }
 
   [[town.building]]
   key = "blood_obelisk"
   name = "Blood Obelisk"
   slot = 20
+  requires = ["glyphs_of_fear"]
+  cost = { gold = 1000 }
   defender = { defense = 2 }
 
   [[town.building]]
@@ -1873,42 +2365,56 @@ creatures = [
   key = "gnoll_hut"
   name = "Gnoll Hut"
   slot = 22
+  requires = ["fort"]
+  cost = { wood = 10, gold = 400 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "lizard_den"
   name = "Lizard Den"
   slot = 25
+  requires = ["gnoll_hut"]
+  cost = { wood = 5, gold = 1000 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "serpent_fly_hive"
   name = "Serpent Fly Hive"
   slot = 28
+  requires = ["gnoll_hut"]
+  cost = { wood = 5, mercury = 2, sulfur = 2, gold = 1000 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "basilisk_pit"
   name = "Basilisk Pit"
   slot = 31
+  requires = ["serpent_fly_hive"]
+  cost = { wood = 5, ore = 10, gold = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "gorgon_lair"
   name = "Gorgon Lair"
   slot = 34
+  requires = ["serpent_fly_hive", "lizard_den"]
+  cost = { wood = 10, mercury = 5, ore = 10, sulfur = 5, gold = 2500 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "wyvern_nest"
   name = "Wyvern Nest"
   slot = 37
+  requires = ["lizard_den"]
+  cost = { wood = 15, gold = 3500 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "hydra_pond"
   name = "Hydra Pond"
   slot = 39
+  requires = ["wyvern_nest", "basilisk_pit"]
+  cost = { wood = 10, ore = 10, sulfur = 10, gold = 10000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -1916,6 +2422,8 @@ creatures = [
   name = "Upg. Gnoll Hut"
   slot = 23
   supersedes = ["gnoll_hut"]
+  requires = ["gnoll_hut", "tavern"]
+  cost = { wood = 10, gold = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -1923,6 +2431,8 @@ creatures = [
   name = "Upg. Lizard Den"
   slot = 26
   supersedes = ["lizard_den"]
+  requires = ["lizard_den"]
+  cost = { wood = 5, gold = 1000 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -1930,6 +2440,8 @@ creatures = [
   name = "Upg. Serpent Fly Hive"
   slot = 29
   supersedes = ["serpent_fly_hive"]
+  requires = ["serpent_fly_hive"]
+  cost = { mercury = 2, sulfur = 2, gold = 1000 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -1937,6 +2449,8 @@ creatures = [
   name = "Upg. Basilisk Pit"
   slot = 32
   supersedes = ["basilisk_pit"]
+  requires = ["basilisk_pit"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -1944,6 +2458,8 @@ creatures = [
   name = "Upg. Gorgon Lair"
   slot = 35
   supersedes = ["gorgon_lair"]
+  requires = ["gorgon_lair", "resource_silo"]
+  cost = { wood = 5, ore = 5, gold = 2000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -1951,6 +2467,8 @@ creatures = [
   name = "Upg. Wyvern Nest"
   slot = 38
   supersedes = ["wyvern_nest"]
+  requires = ["wyvern_nest"]
+  cost = { wood = 10, mercury = 10, gold = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -1958,4 +2476,6 @@ creatures = [
   name = "Upg. Hydra Pond"
   slot = 40
   supersedes = ["hydra_pond"]
+  requires = ["hydra_pond"]
+  cost = { wood = 10, ore = 10, sulfur = 20, gold = 15000 }
   dwelling = [7, true]
