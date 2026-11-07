@@ -58,7 +58,10 @@ a step's `replay` (Replay Opponent Turn on the frozen clock) and `at_opening`, `
 [x, y] }`, `again_if = { marks = "any" }`, a `key` step's `answer` and `battle`, and the
 observations replay, replay:views, replay:watched, replay:options, view:before, view:after,
 view:size, explored:x0,y0..x1,y1, at_opening:<observation>, battles, exchange, army:rows and
-hero:in_boat (the README's "Teleporters and Replay Opponent Turn").
+hero:in_boat (the README's "Teleporters and Replay Opponent Turn"). Since E09 T14b (batch TWN-2):
+a walk's `actions` on the town screen, the actions `hall = true` and `slot = <building id>`, the
+hall and a building's dialog as screens (`click = ["build"]`), and the observations
+town:x,y:mark, hall:slot:<id>, build:button, build:text and screen (the README's "Towns").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -914,6 +917,14 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
         if kind == "town":
             events["town_screen"] = True
             events["screens"].append(kind)
+            # E09 T14b (batch TWN-2): the step's `actions` played on the town screen once (the
+            # hall, a slot, Build); a building's dialog or a hall they left open closed (Cancel,
+            # the hall's close: nothing built) before the town screen.
+            if actions and not events["actions"]:
+                events["actions"] = run_actions(game, mem, index, actions)
+                for left, item in (("build", "cancel"), ("hall", "close")):
+                    if screen_kind(mem) == left:
+                        click_item(game, mem, item, {"": index})
             events["town_screen_closed"] = close_town_screen(game, mem)
             if events["town_screen_closed"] == "open":
                 game.dump(game.out / "town-screen.xwd")
@@ -1491,6 +1502,21 @@ SCREEN_KINDS[TOWN_SCREEN_VTABLE] = "town"
 # (recruit_dialog_proc 0x550940, `read`) and the slider 559 (observed; the amount's text 530, the
 # Available's 521, the cost's 512), all listed by `hire:items`.
 SCREEN_KINDS[h3mem.RECRUIT_DIALOG] = "hire"
+# E09 T14b (batch TWN-2): the hall (hall_dialog_fill 0x461190, hall_dialog_proc 0x461AB0; the
+# dialog's vtable 0x6437A0) and a building's dialog (build_dialog_run 0x5D5F30; 0x643944), read
+# live under Wine. The town screen's buildings are its items, each id a building id, its box the
+# picture's (shown: state 0x6); a click on the hall's (the shown one of 10 to 13) opens the hall,
+# the panel's hall picture (item 158) does not. The hall's slot k: its picture 700 + k (its frame
+# the building the slot shows), its name 600 + k, the bar under it 400 + k (frame 0 built, 1
+# buildable, 2 not now, 3 never; a red cross 800 + k drawn with 2 and 3), close 30720. The
+# building's dialog: Build 30722 (state 0x6 when it builds; 0x8 or 0x20 set, greyed: a click does
+# nothing), Cancel 30721, the requirements' text item 5; Build closes the hall too.
+HALL_VTABLE, BUILD_VTABLE = 0x6437A0, 0x643944
+SCREEN_KINDS[HALL_VTABLE] = "hall"
+SCREEN_KINDS[BUILD_VTABLE] = "build"
+HALL_BUILDINGS, HALL_SLOT, HALL_BAR = range(10, 14), 700, 400
+HALL_LOOKS = ("built", "buildable", "not now", "never")
+BUILD_TEXT, BUILD_GREYED = 5, 0x28
 # Each screen's items by name (survey E08-army §1.1, §2.3, §3.1-§3.4, §4, §5.1: the procedures'
 # item ids; checked under Wine, E08 T47a). A name `<part>:<n>` is the part's n-th (an army slot
 # from 0 at the left, a worn position by its number 0-18, a backpack place from 0 at the left of
@@ -1524,6 +1550,8 @@ SCREEN_ITEMS = {
     "battle": {"start": 30722},
     "boat": {"build": 30722, "cancel": 30721},
     "town": {"close": 30720},
+    "hall": {"close": 30720},
+    "build": {"build": 30722, "cancel": 30721},
     "hire": {"max": 532, "recruit": 30722, "close": 30721, "slider": 559},
 }
 # The counts each screen shows under its army slots (text items, first id): the hero screen's
@@ -1534,7 +1562,7 @@ SPLIT_SLIDER, SPLIT_COUNTS = 6, (4, 5)
 SHOWN = 0x4  # an item's state bit while it is drawn (an empty slot's count, an empty place: clear)
 QUESTION = (30725, 30726)  # a message's yes and no
 EXCHANGE_MANAGER, EXCHANGE_HEROES = 0x6A3D30, 0x40  # swap_manager_create 0x5AE500: this
-SCREEN_ACTIONS = ("click", "right", "slider", "amount")
+SCREEN_ACTIONS = ("click", "right", "slider", "amount", "hall", "slot")
 
 
 # A message box's pictures by their DEF (E08 T57; observed at a Treasure Chest under Wine): a
@@ -1851,7 +1879,9 @@ def run_actions(game, mem, step_hero, actions):
     """Plays a step's `actions` in the screens showing (E08 T47a): each action one `click` (a list
     of item names, clicked in order on whichever screen shows at each), `right` (an item's name)
     or `slider = "max"` (the split dialog's) or, since E08 T90, `amount = <n>` (the hire dialog's
-    slider set to n), or none (only reads); a question that comes is
+    slider set to n), since E09 T14b `hall = true` (the town screen's hall opened) and `slot =
+    <building id>` (the hall's slot showing it clicked: the building's dialog), or none (only
+    reads); a question that comes is
     answered with the action's `answer`, a message's OK clicked (its record kept). `record` and
     `note` read right after the action, as a step's do (the step's hero before and after it).
     Returns each action's observation: what it clicked, the questions' and messages' records,
@@ -1876,6 +1906,10 @@ def run_actions(game, mem, step_hero, actions):
                 obs["questions"].append({"record": asked, "kind": "other",
                                          "answer": action["answer"]})
             pass_dialogs(game, mem, obs, action.get("answer"), heroes)
+        if action.get("hall"):
+            open_hall(game, mem)  # E09 T14b
+        if "slot" in action:
+            open_slot(game, mem, int(action["slot"]))  # E09 T14b
         if "amount" in action:
             hire_amount(game, mem, int(action["amount"]))  # E08 T90: the hire dialog's slider
         if "slider" in action:
@@ -1890,6 +1924,76 @@ def run_actions(game, mem, step_hero, actions):
                         if (got := value(obs, what, mem)) != "none"]
         done.append(obs)
     return done
+
+
+def open_hall(game, mem):
+    """E09 T14b (batch TWN-2): on the town screen, a click on the hall's building (the shown one of
+    the items 10 to 13, its box's centre); the hall must open."""
+    if screen_kind(mem) != "town":
+        raise RuntimeError(f"`hall`: no town screen shows ({screen_kind(mem)})")
+    shown = [i for i in mem.dialog_items() if i["id"] in HALL_BUILDINGS and i["state"] == 0x6]
+    if len(shown) != 1:
+        raise RuntimeError(f"`hall`: the town screen shows {len(shown)} hall buildings")
+    x, y, width, height = shown[0]["box"]
+    game.click(x + width // 2, y + height // 2, 0.5)
+    game.move(*PARK)
+    wait_for(lambda: screen_kind(mem) == "hall", lambda: "`hall`: the hall did not open "
+             f"({screen_kind(mem)}; the town screen's building {shown[0]['id']} clicked)", 5.0)
+    quiet_screen(game)
+
+
+def hall_slot(mem, building):
+    """E09 T14b: the hall's slot (from 0) whose picture shows `building`, None for none."""
+    return next((i["id"] - HALL_SLOT for i in mem.dialog_items()
+                 if HALL_SLOT <= i["id"] < HALL_SLOT + 100 and i["frame"] == building), None)
+
+
+def open_slot(game, mem, building):
+    """E09 T14b (batch TWN-2): in the hall, a click on the slot that shows `building`; its
+    building's dialog must open."""
+    if screen_kind(mem) != "hall":
+        raise RuntimeError(f"`slot = {building}`: no hall shows ({screen_kind(mem)})")
+    slot = hall_slot(mem, building)
+    if slot is None:
+        raise RuntimeError(f"`slot = {building}`: no slot of the hall shows that building")
+    game.click(*item_centre(mem, HALL_SLOT + slot), 0.5)
+    game.move(*PARK)
+    wait_for(lambda: screen_kind(mem) == "build", lambda: f"`slot = {building}`: its dialog "
+             f"did not open ({screen_kind(mem)})", 5.0)
+    quiet_screen(game)
+
+
+def hall_text(obs, what, mem):
+    """E09 T14b (batch TWN-2), read live: `hall:slot:<id>` the look of the hall's slot showing
+    building <id> (`built`, `buildable`, `not now`, `never`, `bar <frame>`; `no slot`, `no hall`);
+    `build:button` the building's dialog's Build (`enabled (state 0x6)`, `greyed (state 0x26)`);
+    `build:text` its requirements' text as the record it was written from and the building ids
+    it names (`GENRLTXT:53, names 38`; h3lod.building_names of the town the step's hero visits:
+    the names stay out of the record), `no dialog` without one."""
+    if what.startswith("hall:"):
+        if screen_kind(mem) != "hall":
+            return "no hall"
+        slot = hall_slot(mem, int(what.split(":")[2]))
+        if slot is None:
+            return "no slot"
+        frame = next(i["frame"] for i in mem.dialog_items() if i["id"] == HALL_BAR + slot)
+        return HALL_LOOKS[frame] if 0 <= frame < len(HALL_LOOKS) else f"bar {frame}"
+    if screen_kind(mem) != "build":
+        return "no dialog"
+    items = {i["id"]: i for i in mem.dialog_items()}
+    if what == "build:button":
+        state = items[SCREEN_ITEMS["build"]["build"]]["state"]
+        return f"{'greyed' if state & BUILD_GREYED else 'enabled'} (state {state:#x})"
+    text = items[BUILD_TEXT]["text"] or ""
+    record = h3lod.identify(text) or "?"
+    hero = obs["before"]["hero"]["index"]
+    town = next((t for t in mem.towns() if t["visiting_hero"] == hero), None)
+    names = {} if town is None else h3lod.building_names(town["faction"])
+    named = [part.strip() for line in text.split("\n")[1:] for part in line.split(",")]
+    ids = sorted(b for b, n in names.items() if n in named)
+    unknown = [n for n in named if n and n not in names.values()]
+    return record + (f", names {', '.join(map(str, ids))}" if ids else "") + (
+        f", {len(unknown)} names not known" if unknown else "")
 
 
 def pass_dialogs(game, mem, obs, answer, heroes):
@@ -2348,7 +2452,8 @@ def town_text(mem, x, y, z, part):
     """E09 T3b (batch TWN-1): a part of the record of the town whose entrance is (x, y, z)
     (h3mem.town_at; docs/exe/structs.toml "town"): `owner` (+0x1: `red`, …, `neutral`),
     `visitor` (+0x10: the hero's name, `none`), `built` and `every` (+0x150, +0x158: the building
-    ids ascending, `5, 7, 10, 30`, `none`), `garrison` (+0xE0: `slot 0: 12 Goblins, slot 2: 5
+    ids ascending, `5, 7, 10, 30`, `none`), since E09 T14b `mark` (+0x2, the day's mark: `0`, `1`),
+    `garrison` (+0xE0: `slot 0: 12 Goblins, slot 2: 5
     Wolf Riders`, `empty`) or `slot:<n>` (`5 Pikemen`, `empty`); `no town` without one there."""
     town = mem.town_at(x, y, z)
     if town is None:
@@ -2360,6 +2465,8 @@ def town_text(mem, x, y, z, part):
         return mem.hero(hero)["name"] if hero >= 0 else "none"
     if part in ("built", "every"):
         return ", ".join(map(str, town["built" if part == "built" else "every_built"])) or "none"
+    if part == "mark":
+        return str(town["mark"])  # E09 T14b: the day's mark (+0x2)
     if part == "garrison":
         return slots_text(mem, town["army"])
     return slot_text(mem, *town["army"][int(part.split(":")[1])])
@@ -2980,11 +3087,19 @@ def value(obs, what, mem):
     # visitor, built, every, garrison, slot:<n>; town_text), read live (`before:` right before
     # the step); over every town the every-built sets that differ from the built ones and the
     # owned towns' garrisons (towns_text).
-    if m := re.match(r"town:(\d+),(\d+)(?:,(\d))?:(owner|visitor|built|every|garrison|slot:[0-6])$",
-                     what):
+    if m := re.match(r"town:(\d+),(\d+)(?:,(\d))?:(owner|visitor|built|every|mark|garrison|"
+                     r"slot:[0-6])$", what):
         return town_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0), m.group(4))
     if what in ("towns:every_vs_built", "towns:owned_garrisons"):
         return towns_text(mem, what.split(":")[1])
+    # E09 T14b (batch TWN-2): the hall's slots and the building's dialog, live (hall_text); the
+    # screen an action left (`screen`: town, hall, build, …).
+    if re.match(r"hall:slot:\d+$", what) or what in ("build:button", "build:text"):
+        return hall_text(obs, what, mem)
+    if what == "screen":
+        return obs.get("screen") or "none"
+    if what == "town_screen_closed":
+        return obs.get("town_screen_closed", "none")  # E09 T14b: click, key or open
     # E09 T3b (batch TWN-1's TWN-1-3b, TWN-1-4): whether the town screen opened during the step
     # (settle), and the unknown screens' vtables the step met.
     if what == "town_screen":

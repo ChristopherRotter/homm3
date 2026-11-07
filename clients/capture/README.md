@@ -729,6 +729,31 @@ hero is the selected one and holds it otherwise (observed under Wine, E09 T3b's 
 the gate after entering, −1 while selected, 18 once TWN-1-1 was selected and on Blue's turn; the
 town screen sets it while it shows): read a visitor with another hero selected.
 
+**The hall and the build** (E09 T14b, batch TWN-2; `docs/rules/surveys/E09-construction.md` §1).
+A walk's `actions` play on the town screen when it opens (once), then the walk closes what they
+left open: a building's dialog by its Cancel, the hall by its close, the town screen as above.
+The actions: `hall = true` clicks the hall's building (the town screen's buildings are its items,
+each id a building id and its box the picture's; the hall's is the shown one of 10 to 13, clicked
+at its box's centre: the Conflux's and the Castle's tried; the panel's hall picture, item 158,
+opens nothing) and waits for the hall (vtable 0x6437A0, `h3adv.HALL_VTABLE`); `slot = <building
+id>` clicks the hall's slot that shows that building and waits for its dialog (vtable 0x643944);
+`click = ["build"]` presses its Build (item 30722; Cancel 30721, the hall's close 30720). The
+hall's slot k is its picture item 700 + k (its frame the building shown), its name 600 + k, the bar
+under it 400 + k (frame 0 built, 1 buildable, 2 not now, 3 never: the Shipyard without water) and a
+red cross 800 + k (drawn with 2 and 3). The reads: `town:x,y:mark` (the day's mark +0x2),
+`hall:slot:<id>` (the look of the slot showing building <id>: `built`, `buildable`, `not now`,
+`never`), `build:button` (`enabled (state 0x6)`, or `greyed` with the state: bit 0x8 or 0x20 set;
+a greyed Build does nothing when pressed), `build:text` (the requirements' text item 5 as the
+record it was written from and the building ids it names: `GENRLTXT:53, names 38`;
+`h3lod.building_names` of the visited town's faction, the names never written out),
+`screen` (what shows after an action: `build`, `hall`, `town`) and `town_screen_closed`. A Build
+that builds closes the dialog and the hall at once (the town screen shows). Observed under Wine
+(batch TWN-2): a hero's visit sets a bit of the town's standing set +0x150 that no building of
+its faction has (22 in a Conflux, 23 in a Castle) as the town screen opens, and it stays after
+the screen closes; a build then copies it into the every-built set +0x158 (recomputed from the
+standing set). Without an enemy the game ends at a visit's close ("all your enemies have been
+defeated"): a map whose players are all allies needs a player outside their team.
+
 **Dwellings, the hire dialog and a computer player's turn** (E08 T90, batches E10a and E10b;
 `docs/rules/surveys/E08-dwellings.md` §2.1, §5, §7, §9). `dwelling:x,y[,level]` reads the dwelling
 record whose entrance is that tile (game +0x4E39C, 0x5C bytes each, `h3mem.dwellings`: `record 3;

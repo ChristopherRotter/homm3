@@ -8,21 +8,25 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (next), T15 `shared/`, T16a and T16b, T17, T18a to T18c, T19, T20 the audit; each
+batch TWN-2 (T14a, T14b done; T14c next), T15 `shared/`, T16a and T16b, T17, T18a to T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T14 — batch TWN-2** (design §33; decisions 41, 42; round 2; queued 2026-11-07 by T13): two
-rows observed in the original (SoD, hot seat) as batch TWN-1 was (design §20; `E09-log.md` T3a to
-T3c): row 1 (TD-9), a Conflux town with the Altar of Fire and not the upgraded Altar of Air, the
-hall's upgraded Altar of Fire tried, with a control town; row 2 (TD-11), two human allies (the
-writer's `teams`), the visitor's Build in the ally's town, the town's sets and both treasuries
-read. The maps and spec `experiments/specs/E09-batch-2a.toml` (`h3-experiment`, the battle lane's,
-`cross-lane`); the harness's steps (common: the hall's click path, a treasury read; the client
-lanes' inboxes told); the run; the scoring as the survey's §13 (the verdicts on decisions 41 and
-42: a gap-fill override for row 1, a question to the user for row 2 if the original builds).
-Inputs: design §33, `clients/capture/README.md`, `docs/experiments/README.md`. Cut at its start
-(as TWN-1's T3a to T3c). **Status:** next.
+**E09 T14c — batch TWN-2 scored** (design §33; decisions 41, 42; round 2's last; queued
+2026-11-07 by T14b, T14 cut in three at its start, the user): the two records
+`experiments/results/E09-batch-2a.md` and `-run2.md` (the facts: `E09-log.md`, T14a, T14b) against
+the spec's predictions, as T3c scored TWN-1 (survey `E09-towns.md` §15): a new section of the
+survey `E09-construction.md` (§13) with the verdicts on TD-9 (decision 41: the executable's list,
+or a gap-fill override, §25) and TD-11 (decision 42: if the original's hall refused the ally's
+visitor, by which test, the Build greyed with state 0x26 where every requirement was met; a
+question to the user only if the record leaves the owner rule in doubt), the design note's §33
+and the ADR drafts' lines they touch, the experiments README's row (`cross-lane`, the user's
+consent of T14). **Not predicted, for the survey:** a hero's visit sets a bit of the town's
+standing set that no building of its faction has (22 in a Conflux, 23 in a Castle) and a build
+then copies it into the every-built set: read where (the visit, the town screen) and whether the
+engine's every-built set must leave it out (a quirk candidate `T-10`, or nothing). Docs only;
+code reading with `scripts/exe.py` (the original data staged). Cut at its start. **Status:**
+next.
 
 ## Inbox
 
