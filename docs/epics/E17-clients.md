@@ -226,7 +226,8 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   Wraiths' mana drain, regeneration, Poison's round damage; design §12.22; `starts`,
   `starts-sound`), **T5d2** the strikes'
   and casts', cut in two by the user (2026-11-06): T5d2a done (Death Blow, the Ogre Magi's
-  Bloodlust glow; design §12.23), **T5d2b** Ice Bolt's explosion and the Familiars' channel; **T5e**
+  Bloodlust glow; design §12.23), T5d2b done (Ice Bolt's explosion, the Familiars' channel;
+  design §12.24; `channel`, `channel-sound`); **T5e**
   (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21).
 - **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
   as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
@@ -496,3 +497,13 @@ The next milestone's list starts here.
     the Ballista's double damage line (read, 0x4438DD); a human's Ogre Magi cast by a left click on
     the friendly stack (the casters' cursors, §9.10, as the Faerie Dragon's: the window's mouse
     shows a look there).
+46. Ice Bolt's explosion and the Familiars' channel (T5d2b, *provisional* where marked; design
+    §12.24): built, `channel` and `channel-sound` exact (145 frames each) after one correction
+    (the acting stack outlined through the channel, 0x5A216B). *Provisional:* the channel's line
+    counts the gaining side's channelling stacks by their side (a hypnotized Familiar's
+    controller not followed, as Fear's line), named by the first one's creature (the original's
+    creature 43). Recorded at speed 0 only, where no wait holds: the waits past an animation
+    tested by the unit tests. Not built: category 2's other three sample handles in the window
+    (at a fast speed the channel's fill cuts its drain there; the original's plays both); a
+    creature's Ice Bolt (a Faerie Dragon's) without its frames, projectile or explosion (item 45's
+    other creatures' casts).
