@@ -598,11 +598,13 @@ one bit not predicted in every town whose screen opened: a town-screen piece.**
   list 21 and 22, the Conflux 21, the Stronghold 21 to 23), so none is in the town's mask +0x160:
   never offered by the hall, never a requirement, never counted by the keep (towns survey §16.4),
   in no supersede list. **Readers:** bit 27 none; bit 23 the two of towns survey §16.3, which
-  test the faction first (2, 3, 5, 6); bit 22 sixteen, each testing the faction first (the
-  Castle's Brotherhood, the Rampart's Treasury, the Tower's Library, the Inferno's Castle Gate,
-  the Dungeon's Portal of Summoning, the Fortress' Blood Obelisk, the hall's chains) but one in the
-  computer's pathfinder (0x56A947: a town's every-built bit 22, else `town_can_buy` of 22; its
-  callers not read), the computer's own planning, no rule. They are display pieces, as the hall
+  test the faction first (2, 3, 5, 6); bit 22 in sixteen functions, all but two testing the
+  faction first (the Castle's Brotherhood, the Rampart's Treasury, the Tower's Library, the
+  Inferno's Castle Gate, the Dungeon's Portal of Summoning, the Fortress' Blood Obelisk and its
+  hall chain, case 7 of `hall_dialog_fill`'s faction switch); of the two, one is the town list the
+  Castle Gate fills with Inferno towns (`town_castle_gate` 0x5D852C; Town Portal's use of it not
+  read), the other in the computer's pathfinder (0x56A947: a town's every-built bit 22, else
+  `town_can_buy` of 22; its callers not read), the computer's own planning, no rule. They are display pieces, as the hall
   companions are (towns survey §16.3; there VCMI draws Castle's and Fortress's screen extras
   without a building, §15). **For the engine: nothing** (no quirk candidate, no `T-10`): the part
   leaves them out as decision 27 left the companions, so the engine's sets hold only the faction's

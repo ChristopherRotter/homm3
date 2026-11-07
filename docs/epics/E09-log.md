@@ -2132,8 +2132,8 @@ code reading with `scripts/exe.py`, no probe under Wine needed.
   Stronghold 27, Fortress 23, Conflux 22; with the build-all cheat's flag 0x6AAA5C every building
   instead. The every-built set takes it at the town's next build (`town_build_effects` recomputes
   it from the standing set). None of the four is in its faction's list (dumped again); every
-  reader of 22, 23 and 27 tests the faction first but the computer's pathfinder's
-  (`ai_pathfinder_gate_bit` 0x56A947). Display pieces, as the hall companions: **nothing for the
+  reader of 22, 23 and 27 tests the faction first but the Castle Gate's town list (filled with
+  Infernos) and the computer's pathfinder's (`ai_pathfinder_gate_bit` 0x56A947). Display pieces, as the hall companions: **nothing for the
   engine**, no `T-10` (the next quirk candidate stays T-10). A trap for comparing the original's
   sets: the lane's `TRAPS.md`, "Experiments and the original's records".
 - **Applied:** design §33 (the verdicts), §29 step 2, §36 (TD-11 settled); the drafts' status
