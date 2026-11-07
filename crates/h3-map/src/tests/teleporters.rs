@@ -2,16 +2,16 @@
 //! `docs/rules/surveys/E08-teleporters.md` §2, increment 11's design note §16): the one-way
 //! monoliths' entrances and exits (43, 44), the two-way monoliths (45) by subclass, the
 //! Subterranean Gate (103) and the Whirlpool (111), on either level, read back as written without a
-//! body; an empty boat on a Whirlpool's tile; and the import as it reads them until E08 T103:
-//! blockers without a type, the boat the map's.
+//! body; an empty boat on a Whirlpool's tile; and since E08 T103b the import's types of the five
+//! classes (ADV-TEL-001), the boat the map's.
 
-use super::import::SOD;
+use super::import::{ROE, SOD};
 use super::limits;
 use crate::import::codes;
 use crate::model::{Body, RawMap};
 use crate::writer as w;
-use crate::{import, read};
-use h3_adventure::{BoatSetup, Pos, TileMask};
+use crate::{ImportError, import, read};
+use h3_adventure::{BoatSetup, Holds, MonolithWay, ObjectKind, Pos, TileMask};
 
 /// The game's `Objects.txt` lines of the classes written here: a one-way entrance and exit of
 /// channel 0 (blue), two-way monoliths of channels 0 (green; the anchor visited) and 7 (SoD's;
@@ -164,22 +164,61 @@ fn the_teleporters_read_back_as_written() {
     assert_eq!(masks(6), (0x1f, 0x1f, 0xe0, 0xe0, 0x100));
 }
 
-// covers: ADV-OBJ-002
+// covers: ADV-OBJ-002, ADV-TEL-001
 #[test]
-fn the_teleporters_import_as_blockers_until_their_kinds() {
-    // The import's class table gives the five classes no type yet (E08 T103a adds the kinds).
-    for (class, subclasses) in [(43, 8), (44, 8), (45, 8), (103, 1), (111, 1)] {
-        for subclass in 0..subclasses {
-            assert_eq!(
-                codes::object_type(class, subclass),
-                None,
-                "{class}.{subclass}"
-            );
+fn the_import_types_each_teleporter_class_and_subclass() {
+    // The import's tables (E08 T103b, increment 11's design note §3 and §4): a monolith of class
+    // 43, 44 or 45 is the type of its way with its subclass as the channel, base's for channels 0
+    // to 2 and SoD's for 3 to 7; past 7 a subclass the class does not define (A-39). The gate and
+    // the Whirlpool are one type each whatever the subclass.
+    let part = SOD.adventure();
+    let kind = |class, subclass| {
+        let key = codes::object_type(class, subclass)??;
+        let ty = part.object_type(part.object_type_by_key(key)?)?;
+        Some((key, ty.kind.clone()))
+    };
+    for (class, way) in [
+        (43, MonolithWay::Entrance),
+        (44, MonolithWay::Exit),
+        (45, MonolithWay::TwoWay),
+    ] {
+        for channel in 0..8u8 {
+            let (key, found) = kind(class, u32::from(channel)).unwrap();
+            assert_eq!(found, ObjectKind::Monolith { channel, way }, "{key}");
+            let pack = if channel < 3 { "base:" } else { "sod:" };
+            assert!(key.starts_with(pack), "{key}");
         }
+        assert_eq!(codes::object_type(class, 8), Some(None));
+        assert_eq!(codes::object_type(class, u32::MAX), Some(None));
     }
+    for subclass in [0, 1, 255] {
+        assert_eq!(
+            kind(103, subclass),
+            Some(("base:subterranean_gate", ObjectKind::SubterraneanGate))
+        );
+        assert_eq!(
+            kind(111, subclass),
+            Some(("base:whirlpool", ObjectKind::Whirlpool { divisor: 2 }))
+        );
+    }
+    // Under RoE's rules an SoD channel is content the ruleset lacks (design note §3), as any SoD
+    // object; base's channels import.
+    let mut map = teleporters_map();
+    map.objects.pop();
+    let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
+    assert_eq!(
+        import(&m, &ROE),
+        Err(ImportError::MissingContent("sod:monolith_two_way_7"))
+    );
+}
+
+// covers: ADV-OBJ-002, ADV-TEL-001
+#[test]
+fn the_teleporters_import_as_their_types() {
     // The boat on the Whirlpool's anchor tile is the map's boat, no object; the setup refuses it
-    // while the Whirlpool is a blocker (a boat on a tile an object blocks; no shipped map holds a
-    // boat on a teleporter, survey §1). Batch E11 needs it only in the original.
+    // (a boat on a tile an object blocks or is visited from: every Whirlpool tile is both; no
+    // shipped map holds a boat on a teleporter, survey §1). Batch E11 needs it only in the
+    // original.
     let setup = import(&written(), &SOD).unwrap();
     assert_eq!(
         setup.map.boats,
@@ -194,19 +233,24 @@ fn the_teleporters_import_as_blockers_until_their_kinds() {
             h3_adventure::SetupError::Boat(0)
         ))
     );
-    // Without it the map validates: each teleporter a blocker on its level with its picture's
-    // tiles.
+    // Without it the map validates and builds: each teleporter typed on its level with its
+    // picture's tiles (the maps' templates rule), holding nothing.
     let mut map = teleporters_map();
     map.objects.pop();
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     let setup = import(&m, &SOD).unwrap();
     setup.validate(&SOD).unwrap();
     assert!(setup.map.boats.is_empty());
-    let objects: Vec<(Pos, Option<_>, TileMask)> = setup
+    let part = SOD.adventure();
+    let objects: Vec<(Pos, &str, TileMask)> = setup
         .map
         .objects
         .iter()
-        .map(|o| (o.anchor, o.object_type, o.visitable))
+        .map(|o| {
+            let ty = part.object_type(o.object_type.unwrap()).unwrap();
+            assert_eq!(o.holds, Holds::Nothing);
+            (o.anchor, ty.key.as_str(), o.visitable)
+        })
         .collect();
     let at = |x, y, z| Pos::new(x, y, z);
     let (anchor, two_left) = (TileMask::from_bits(1), TileMask::from_bits(2));
@@ -214,17 +258,17 @@ fn the_teleporters_import_as_blockers_until_their_kinds() {
     assert_eq!(
         objects,
         [
-            (at(4, 4, 0), None, anchor),
-            (at(4, 8, 0), None, anchor),
-            (at(8, 4, 0), None, anchor),
-            (at(8, 8, 0), None, two_left),
-            (at(12, 4, 0), None, two_left),
-            (at(24, 10, 0), None, six),
-            (at(4, 4, 1), None, anchor),
-            (at(8, 4, 1), None, anchor),
-            (at(8, 8, 1), None, two_left),
-            (at(12, 6, 1), None, two_left),
-            (at(24, 20, 1), None, six),
+            (at(4, 4, 0), "base:monolith_entrance_0", anchor),
+            (at(4, 8, 0), "base:monolith_exit_0", anchor),
+            (at(8, 4, 0), "base:monolith_two_way_0", anchor),
+            (at(8, 8, 0), "sod:monolith_two_way_7", two_left),
+            (at(12, 4, 0), "base:subterranean_gate", two_left),
+            (at(24, 10, 0), "base:whirlpool", six),
+            (at(4, 4, 1), "base:monolith_exit_0", anchor),
+            (at(8, 4, 1), "base:monolith_two_way_0", anchor),
+            (at(8, 8, 1), "sod:monolith_two_way_7", two_left),
+            (at(12, 6, 1), "base:subterranean_gate", two_left),
+            (at(24, 20, 1), "base:whirlpool", six),
         ]
     );
 }

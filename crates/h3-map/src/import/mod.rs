@@ -110,7 +110,8 @@ pub enum ImportError {
     /// The object at this index has a subclass its class does not define (a resource pile of
     /// resource 7; since E08 T93b a dwelling of class 17 past subclass 79 or of class 20 past 1,
     /// a random dwelling of class 217 past level 6 or of class 218 past faction 8: A-36's input
-    /// bound, `ADV-QUIRK-38`, not reproduced).
+    /// bound, `ADV-QUIRK-38`, not reproduced; since E08 T103b a monolith of class 43 to 45 past
+    /// channel 7: A-39's, `ADV-QUIRK-41`).
     Subclass(usize),
     /// The hero object at this index belongs to a colour nobody plays.
     HeroOwner(usize),

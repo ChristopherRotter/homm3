@@ -13582,3 +13582,58 @@ the user's repo folder (the four LODs, both executables, the DLLs, both `.snd`, 
 
 **Versions:** adventure ruleset part v18. The game state hash, the adventure state hash, the map
 import and the replay format unchanged. T103b next.
+
+### Increment 11, round 5: T103b, the import (2026-11-07, `adventure/e08-t103b`)
+
+**Baseline:** `master` 74c42c4 (#785, the client lane's; the engine code of 36c9028, T103a's merge,
+green on CI): the setup's full verify with the original data green in the sandbox (its
+`h3-pack-adventure` check skipped there, `extracted/H3ab_bmp` not copied by the setup; run by hand
+after `cp -rn` of the staged `extracted/`: its 26 teleporter types match). The original data staged
+from the user's repo folder (the four LODs, both executables, `maps.tar`, `extracted.tar`; the
+computer's shell not used). Whole, as decision 282 cut it.
+
+- **The import** (`h3-map`'s `import/codes.rs`; design §4): `MONOLITH_ENTRANCES`,
+  `MONOLITH_EXITS`, `TWO_WAY_MONOLITHS`, eight keys each by subclass (the channel; `base:` 0 to 2,
+  `sod:` 3 to 7, so RoE's rules meet an SoD channel as `MissingContent`), for classes 43, 44, 45;
+  103 `base:subterranean_gate` and 111 `base:whirlpool` whatever the subclass. No body (the
+  parser's plain objects), the template's footprint. **A-39** is the tables' bound: a monolith
+  subclass past 7 is `ImportError::Subclass` (`ADV-QUIRK-41`, `exploit-fix`, no flag; decision 267).
+- **Class 220 by the mines' table** (the inbox's E08 T87b note, "for the next import bump"; *agent's
+  call* to fold it into this bump): `53 | 220 => by_subclass(&MINES)`, as the original loads 220 as
+  53 keeping the subclass (`object_class_values` 0x63A6E4) and VCMI makes 220.0 a Sawmill; 220.8
+  refused as 53.8. Every shipped 220 is 220.7: the census is unchanged. ADV-MIN-001 and
+  ADV-OBJ-002 amended; the note moved to `QUEUE-ARCHIVE.md`.
+- **Map import v21.** The 55 adventure replays re-recorded from their commands (a scratch script,
+  `h3 adventure run --script` with each header's options): only `import_version` moved (no fixture
+  holds a teleporter; the generators' blocker is class 118, none of the five classes is a blocker
+  in a generator or test).
+- **The harvest check's last part** (design §3): `h3-map`'s `original_data` counts the teleporters
+  by class, subclass and level and checks each to import as its class and subclass's type (the
+  way of its class, the subclass as the channel; every channel of the three classes stands on the
+  shipped maps, so every table entry is met); `tests/teleporters.rs`'
+  `the_import_types_each_teleporter_class_and_subclass` checks every entry against the packs'
+  kinds without the original data.
+- **The census** (the 160 shipped maps, seed 0): all import, validate and build, every earlier
+  count unchanged; 1 671 teleporters typed: 43 193 (59 maps), 44 157 (59), 45 495 (98), 103 602
+  (98; 301 + 301), 111 224 (62; 215 + 9), by subclass and level as survey §1. No typed twin, no
+  stacked visitable tile added.
+- **Tests:** `the_typed_classes_import_as_their_object_types` with the 26 teleporter cases (the
+  exclusion gone), the gate's and the Whirlpool's subclass ignored, 43 to 45 past 7 refused, 220.0
+  a Sawmill and 220.8 refused; `the_teleporters_import_as_their_types` (was
+  `…_as_blockers_until_their_kinds`): the written map's eleven teleporters typed with their masks,
+  holding nothing, the setup validated and built; the boat on the Whirlpool's tile still refused
+  (`SetupError::Boat`: a Whirlpool tile is blocked and visited from).
+- **Rules and docs:** ADV-OBJ-002, ADV-TEL-001 (its quirk `ADV-QUIRK-41`) and ADV-MIN-001 amended;
+  the ledger's `ADV-QUIRK-41`; `h3m.md`'s import (the classes, 220, the census); design §3, §4 *As
+  built*, §15 done; `OVERVIEW.md`'s import line. The queue trimmed under its aim (T103b out, six
+  inbox notes settled or for information to `QUEUE-ARCHIVE.md`).
+- **For other lanes:** the AI lane's inbox: `h3 ai census` stops on 158 of the 159 maps on
+  `master` too ("an owner it may not have": its setup plays colour 0 alone), so `census-v1.toml`
+  could not be compared; nothing in it should move with this change. The map client reads no
+  object type (no note beyond T103a's).
+- **Gates:** the scoped verify with the original data: every step passing (coverage, determinism,
+  bench-check, the original-data checks with both `original_data` examples' teleporters); `cargo
+  check --workspace --all-targets` clean.
+
+**Versions:** map import v21. The game state hash, the adventure state hash, the ruleset part and
+the replay format unchanged. T103c next.

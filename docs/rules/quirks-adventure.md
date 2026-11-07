@@ -467,3 +467,16 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
 - Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
+
+### ADV-QUIRK-41 — A monolith subclass past 7 writes past the channels' lists
+- Class: exploit-fix (no flag: an input bound, the map refused at the import; A-39)
+- Context / rules affected: adventure, ADV-TEL-001 (the teleporters' kinds), ADV-OBJ-002 (the import's classes), the import (`h3_map`)
+- Original behavior: `setup_map_objects` (0x4C0CC0) appends each one-way exit (class 44) and two-way monolith (45) to the list of its subclass, eight lists of 16 bytes in the game record (+0x4E6FC and +0x4E67C + 16 × subclass) indexed without a bound, so a subclass of 8 or more writes past them into the record; the draw (`teleport_exit_draw` 0x4CDB80) takes an entrance's exits from the list of its subclass the same way (survey `E08-teleporters.md` §3.1, §4.1, §8 A-39).
+- Intended/expected behavior: the import refuses a monolith of class 43, 44 or 45 whose subclass is past 7 (`ImportError::Subclass`), as a subclass past any other class's table.
+- Impact: unreachable on the shipped maps (none has one: the census, every subclass 0 to 7) and from the editor (it offers 0 to 7); a made map is refused.
+- Community status: not documented.
+- Sources: code reading (survey §3.1, §8 A-39).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-map/src/tests/import.rs`, `the_typed_classes_import_as_their_object_types`; `crates/h3-map/src/tests/teleporters.rs`, `the_import_types_each_teleporter_class_and_subclass`
+- Decided by / date: the survey's recommendation (§8), the design note §4 as written (the user 2026-11-06, ADV-Q45, E08 decision 267); built and recorded by E08 T103b

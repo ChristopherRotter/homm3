@@ -6,7 +6,7 @@ the cut. In two parts, cut at T12's start (the user, 2026-11-06): **T12a** the b
 checks, what a build does, the cost and requirement tables, VCMI and the wiki compared (§0 to §7);
 **T12b** the town events (their day, buildings, resources and creatures), the census of the
 shipped maps (forbidden buildings, custom sets, the town events) and the checkpoint with the user
-(§8 to §12, 2026-11-07). Input, not rules (`README.md`): a fact becomes binding when a task writes it into the
+(§8 to §12, 2026-11-07); **T14c** scored batch TWN-2 (§13, 2026-11-07). Input, not rules (`README.md`): a fact becomes binding when a task writes it into the
 catalog with its sources and tests. The building ids are the original's (`docs/formats/h3m.md`,
 "Town buildings"; survey `E09-towns.md` §16): 0 to 4 the mage guilds, 5 the Tavern, 6 the
 Shipyard, 7 to 9 the Fort, Citadel, Castle, 10 to 13 the Village Hall, Town Hall, City Hall,
@@ -34,9 +34,11 @@ specials and hordes, 26 the Grail's, 30 to 36 the dwellings by level, 37 to 43 t
   **T12b read whole:** `town_timed_events` 0x4CDA10, `town_events_apply` 0x5BFEB0; **in part:**
   `load_town_body` 0x5019F0 at its events, `player_turn_start` 0x4CC7D0 at its start,
   `town_event_buildings_message` 0x5C0220 (its text and its human test); the table
-  `map_building_ids` 0x6888C0 dumped. **Not followed:** what the computer chooses to build (0x42AE00 and its siblings, beyond their
-  calls of the tests), network play, a campaign's starting buildings (0x484650), the cheat that
-  builds everything (0x5C33F0), the tutorial's branch (game +0x1F69D: the Castle's Griffin Tower
+  `map_building_ids` 0x6888C0 dumped. **T14c (§13) read whole:** `town_screen_pieces` 0x5C33F0;
+  **in part:** `build_dialog_create` 0x5D55C0 at its end, `town_screen_init` 0x5C63C0 at its
+  calls, the readers of the bits 22, 23 and 27 at their faction tests; the faction lists dumped
+  again. **Not followed:** what the computer chooses to build (0x42AE00 and its siblings, beyond their
+  calls of the tests), network play, a campaign's starting buildings (0x484650), the tutorial's branch (game +0x1F69D: the Castle's Griffin Tower
   without the Blacksmith), the town screen's drawing and animations.
 - The text table `Building.txt` (both archives: byte-identical), its seven numeric columns only.
 - VCMI 1.7.5 (tag `1.7.5`, a sparse clone; T12b's files in §9): `lib/callback/CGameInfoCallback.cpp`
@@ -54,6 +56,13 @@ specials and hordes, 26 the Grail's, 30 to 36 the dwellings by level, 37 to 43 t
   wiki's map editor objects page (https://heroes.shoutwiki.com/wiki/Map_Editor_-_Objects).
 
 ## 0. Findings in short
+
+**T14c** (§13, batch TWN-2 scored): **TD-9** as the reading (the upgraded Altar of Fire needs
+the upgraded Altar of Air; VCMI and the wiki refuted); **TD-11** refused as VCMI does: the build
+dialog's constructor greys Build when the town's owner is not the current player (0x5D5AE2, not
+read by T12a), so only the owner builds and pays; decisions 41 and 42 stand. Not predicted: the
+town screen builds a display piece into the standing set (Castle 23, Stronghold 27, Fortress 23,
+Conflux 22), outside every faction's list; nothing for the engine.
 
 **T12b** (§8 to §12):
 
@@ -115,7 +124,7 @@ building (10 to 13, `town_screen_proc` 0x5D3240's switch on the building) calls 
 the hall dialog (`hall_dialog_fill` 0x461190, its messages `hall_dialog_proc` 0x461AB0), then, if
 a building was chosen (the town manager's +0x1B8, -1 none), `town_screen_show_build` 0x5D6A80
 with it. No step of this path tests
-the town's owner against the current player; the Marketplace's case of the same switch does
+the town's owner against the current player (the build dialog does: §13, T14c); the Marketplace's case of the same switch does
 (0x5D388A: the town's owner must be the current player).
 
 ### 1.2 The hall's slots
@@ -148,7 +157,8 @@ Opening the hall again recomputes it.
 
 A slot's click (`hall_dialog_proc`) opens the building's dialog (`build_dialog_run` 0x5D5F30)
 with its Build button disabled unless the building is not built, is in the buildable-now set and
-is paid (0x462066); a right click shows the same dialog as a popup. The text under it lists the
+is paid (0x462066), and (§13, T14c) the dialog's constructor greys it when the town's owner is
+not the current player (0x5D5AE2); a right click shows the same dialog as a popup. The text under it lists the
 missing requirements (`build_dialog_requirements_text` 0x5D5BE0: the requirement set less the
 every-built set, less what another missing one supersedes but for the hordes 18 and 24, by name),
 or the Capitol's or the Shipyard's own refusal, or the never-buildable text. **Build** (0x7802)
@@ -532,3 +542,71 @@ recommended, the epic's decisions 41 to 44:
 - **The town events** (decision 44): as the original plays them (§8): T-8 is not a quirk to fix
   (an event's Capitol beside the owner's other one stands); TD-12 the original's day (an every-day
   event fires from its first day).
+
+## 13. Batch TWN-2 scored (T14c, 2026-11-07)
+
+Both runs of T14b (the capture harness under Wine, the Complete 4.0 executable in SoD on Easy, hot
+seat, Tan a computer enemy; `experiments/results/E09-batch-2a.md`, the main record, and
+`-run2.md`): every read the same in both but the treasuries' gold (the random starting bonus). The
+predictions are the spec's (`experiments/specs/E09-batch-2a.toml`). **Row 1 as the reading in
+every point; row 2 refused, against the reading's prediction, by an owner test T12a had not read;
+one bit not predicted in every town whose screen opened: a town-screen piece.**
+
+- **TWN-2-1 (TD-9, §6).** Before: C1's standing and every-built sets {0, 7, 10, 23, 30, 31, 33};
+  C2's standing set {0, 7, 10, 23, 30, 33, 38} (38 supersedes 31), its every-built set the same
+  with 31; both marks 0. **C1:** the level-4 slot the upgraded Altar of Fire, its look not now
+  (the bar's frame 2, `town_build_possible` true); its dialog's Build greyed (state 0xE), the text
+  GENRLTXT:53 naming the upgraded Altar of Air (38) alone; Build pressed: nothing (the dialog
+  stays; the sets but for the piece below, the mark 0 and Red's resources unchanged). **C2:** the
+  slot buildable, Build enabled (state 0x6, the text GENRLTXT:220 naming nothing); pressed: the
+  town screen at once, the standing set 40 in and 33 out, the every-built set 40 added (33 stays),
+  the mark 1, Red's 5 mercury, 5 ore and 2 000 gold less. **TD-9: the reading (the executable's
+  list: 40 needs 33 and 38), confirmed**; VCMI's (33 and the Altar of Air 31, which C1 holds) and
+  the fandom wiki's (33 alone) refuted: under either C1 builds. Decision 41 stands; no gap-fill
+  override (§25 of the design note).
+- **TWN-2-2 (TD-11, §1.1, §1.4).** Before: B1's sets {7, 10}, the mark 0. Red's hero's step into
+  its ally's town opened the town screen (§1.1 confirmed), the hall opened, the Tavern's slot
+  showed buildable (the hall's sets computed with Red's resources); its dialog's Build **greyed**
+  (state 0x26), the text GENRLTXT:220 (no requirement missing); pressed: nothing; both
+  treasuries, B1's sets but for the piece and its mark unchanged. **Refused:** the reading's
+  prediction (built, paid by Red) and the third outcome (built, paid by Blue) refuted.
+  **Where:** not the hall's test (here it passes `build_dialog_run` 0 for its disabled flag: the
+  building not built, in the buildable-now set and paid, 0x462066) but the dialog's constructor
+  `build_dialog_create` 0x5D55C0, which T12a did not read: after its buttons it greys Build (the
+  button's method at vtable +0x24 with 0) when the town's owner (+0x1) is not the current player
+  (0x5D5AE2) or, in a network game, when the current player's record lacks a human flag
+  (`player_is_human_both`). The hall's refusal (`build_dialog_run` 0x5D6754) shows as 0x8 in the
+  button's state (C1's 0xE), this one as 0x20 (0x26). So an ally's visitor sees the hall and a
+  slot buildable, and only Build is refused; §1.4's "no owner test on the hall's path" holds for
+  the hall alone. **TD-11: VCMI's rule is the original's**: only the town's owner builds, so the
+  current player who pays (§1.4) is always the owner. Decision 42 stands, now as the original's
+  rule; no question.
+- **The town-screen pieces (not predicted).** In each town whose screen opened, a bit that no
+  building of its faction has: 22 in C1 and C2 (Conflux), 23 in B1 (Castle), set as the screen
+  opened and kept after it closed; C2's build copied it into the every-built set. **Where:**
+  `town_screen_pieces` 0x5C33F0 (read whole; named `town_build_cheat` before), called by the town
+  screen's init (`town_screen_init` 0x5C63C0, at 0x5C653E) and where the screen rebuilds its
+  buildings (`town_screen_proc` 0x5D4310, 0x5D498D, 0x5D4A3C; the Castle Gate's 0x5D863A), each
+  beside the ship's update: with the build-all cheat's flag 0x6AAA5C set (a typed cheat code
+  toggles it, 0x40293D) every building of the faction's mask not yet built, through
+  `town_build_effects` without the mark; else, by faction (the table 0x5C34A8), `town_build` of
+  the faction's piece: **Castle 23, Stronghold 27, Fortress 23, Conflux 22**, nothing in the five
+  others. `town_build` writes only the standing set (towns survey `E09-towns.md` §16.2); the
+  every-built set takes the piece at the town's next build, when `town_build_effects` (§4)
+  recomputes it from the standing set (C2), or when the ship leaves its spot (`town_ship_update`).
+  None of the four is in its faction's list (the lists 0x63EC80 dumped again: Castle and Fortress
+  list 21 and 22, the Conflux 21, the Stronghold 21 to 23), so none is in the town's mask +0x160:
+  never offered by the hall, never a requirement, never counted by the keep (towns survey §16.4),
+  in no supersede list. **Readers:** bit 27 none; bit 23 the two of towns survey §16.3, which
+  test the faction first (2, 3, 5, 6); bit 22 in sixteen functions, all but two testing the
+  faction first (the Castle's Brotherhood, the Rampart's Treasury, the Tower's Library, the
+  Inferno's Castle Gate, the Dungeon's Portal of Summoning, the Fortress' Blood Obelisk and its
+  hall chain, case 7 of `hall_dialog_fill`'s faction switch); of the two, one is the town list the
+  Castle Gate fills with Inferno towns (`town_castle_gate` 0x5D852C; Town Portal's use of it not
+  read), the other in the computer's pathfinder (0x56A947: a town's every-built bit 22, else
+  `town_can_buy` of 22; its callers not read), the computer's own planning, no rule. They are display pieces, as the hall
+  companions are (towns survey §16.3; there VCMI draws Castle's and Fortress's screen extras
+  without a building, §15). **For the engine: nothing** (no quirk candidate, no `T-10`): the part
+  leaves them out as decision 27 left the companions, so the engine's sets hold only the faction's
+  buildings; a comparison of the original's sets with the engine's drops them (the lane's
+  `TRAPS.md`).
