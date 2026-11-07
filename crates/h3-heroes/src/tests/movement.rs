@@ -427,6 +427,39 @@ fn the_sea_artifacts_add_once_per_type_and_the_admirals_hat_boards_free() {
     assert_eq!(sea_points(&veteran, &r, &[u32::MAX, 0, 0, 0], 0), u32::MAX);
 }
 
+/// [`sea_pack`] with the Sea Captain's Hat's protection on `t:helm` (E08 T103a, increment 11's
+/// design note §2): the combination `t:circle` holds it as a part.
+fn whirlpool_pack() -> ContentPack {
+    let mut p = sea_pack(vec![], false);
+    for a in &mut p.artifacts {
+        if a.key.to_string() == "t:helm" {
+            a.effects.push(HeroEffectDef::WhirlpoolProtection);
+        }
+    }
+    p
+}
+
+// covers: HER-ADV-009
+#[test]
+fn the_sea_captains_hat_protects_worn_alone_or_in_the_admirals_hat() {
+    for r in both(whirlpool_pack()) {
+        let d = |skills: &[(&str, u8)], worn: &[&str]| hero(&r, 1, skills, worn);
+        // Worn alone, or as a part of the worn combination (the original's 0x4D91F0 with 123).
+        assert!(whirlpool_protection(&d(&[], &["t:helm"]), &r));
+        assert!(whirlpool_protection(&d(&[], &["t:circle"]), &r));
+        assert!(whirlpool_protection(&d(&[], &["t:band", "t:helm"]), &r));
+        // Another sea artifact, a skill or the Hat in the backpack (the test hero carries one
+        // there) do not protect.
+        assert!(!whirlpool_protection(&d(&[], &["t:band"]), &r));
+        assert!(!whirlpool_protection(&d(&[("t:navigation", 3)], &[]), &r));
+        assert!(!whirlpool_protection(&d(&[], &[]), &r));
+    }
+    // A pack without the effect protects no one.
+    for r in both(sea_pack(vec![], false)) {
+        assert!(!whirlpool_protection(&hero(&r, 1, &[], &["t:helm"]), &r));
+    }
+}
+
 // covers: HER-ADV-009
 #[test]
 fn the_lighthouses_points_come_last_never_grown_by_navigation() {

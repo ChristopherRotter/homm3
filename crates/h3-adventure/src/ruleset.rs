@@ -34,8 +34,8 @@ mod starting;
 
 pub(crate) use objects::{Effect, MAX_DWELLING_CREATURES};
 pub use objects::{
-    KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
-    ObjectTypeId, Pickup, PickupDef, Visit,
+    KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, MonolithWay, ObjectKind, ObjectKindDef, ObjectType,
+    ObjectTypeDef, ObjectTypeId, Pickup, PickupDef, Visit,
 };
 use objects::{
     ObjectTables, Scope, check_object_types, compile_object_types, compile_random_dwelling,

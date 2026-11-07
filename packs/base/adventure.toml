@@ -1614,6 +1614,102 @@ visit = "enter"
 from_above = false
 town = {}
 
+# ADV-TEL-001 (E08 T103a, increment 11's design note sections 1 and 3; survey E08-teleporters.md
+# sections 1 to 3): the teleporters, all entered (none of their classes is in the original's
+# object_classes_not_entered 0x63AA58), only the Whirlpool visitable from above (the only one in
+# object_classes_from_above 0x63AB00). Their jumps come with T105a.
+#
+# The monoliths of channels 0 to 2 (the original's classes 43, 44 and 45, subclass = channel; the
+# names ObjNames.txt's rows 43 to 45 with the channel): the subclasses RoE's and AB's Objects.txt
+# list (H3ab_bmp.lod's: 0 to 2; SoD's 3 to 7 are the sod pack's). A one-way entrance's exits are
+# its channel's one-way exits, a two-way monolith's its channel's other two-way monoliths, an exit
+# leads nowhere (setup_map_objects 0x4C0CC0 cases 44 and 45, one list per class and subclass;
+# teleport_exit_draw 0x4CDB80). Each picture one visitable tile at its anchor, one blocked
+# (Objects.txt's AVXmn1b0 to AVXmn2p0); the maps' templates rule.
+[[object_type]]
+id = "monolith_entrance_0"
+name = "Monolith One Way Entrance 0"
+visit = "enter"
+from_above = false
+monolith = { channel = 0, way = "entrance" }
+
+[[object_type]]
+id = "monolith_entrance_1"
+name = "Monolith One Way Entrance 1"
+visit = "enter"
+from_above = false
+monolith = { channel = 1, way = "entrance" }
+
+[[object_type]]
+id = "monolith_entrance_2"
+name = "Monolith One Way Entrance 2"
+visit = "enter"
+from_above = false
+monolith = { channel = 2, way = "entrance" }
+
+[[object_type]]
+id = "monolith_exit_0"
+name = "Monolith One Way Exit 0"
+visit = "enter"
+from_above = false
+monolith = { channel = 0, way = "exit" }
+
+[[object_type]]
+id = "monolith_exit_1"
+name = "Monolith One Way Exit 1"
+visit = "enter"
+from_above = false
+monolith = { channel = 1, way = "exit" }
+
+[[object_type]]
+id = "monolith_exit_2"
+name = "Monolith One Way Exit 2"
+visit = "enter"
+from_above = false
+monolith = { channel = 2, way = "exit" }
+
+[[object_type]]
+id = "monolith_two_way_0"
+name = "Monolith Two Way 0"
+visit = "enter"
+from_above = false
+monolith = { channel = 0, way = "two_way" }
+
+[[object_type]]
+id = "monolith_two_way_1"
+name = "Monolith Two Way 1"
+visit = "enter"
+from_above = false
+monolith = { channel = 1, way = "two_way" }
+
+[[object_type]]
+id = "monolith_two_way_2"
+name = "Monolith Two Way 2"
+visit = "enter"
+from_above = false
+monolith = { channel = 2, way = "two_way" }
+
+# The Subterranean Gate (class 103, any subclass; ObjNames.txt row 103; Objects.txt AvTCave): its
+# exit is the gate it is paired with when the game is built (gates_pair 0x4C0B60).
+[[object_type]]
+id = "subterranean_gate"
+name = "Subterranean Gate"
+visit = "enter"
+from_above = false
+subterranean_gate = {}
+
+# The Whirlpool (class 111, any subclass; ObjNames.txt row 111; Objects.txt AVXwhrl0, six water
+# tiles all visitable): before the jump to another Whirlpool's tile an unprotected visitor's weakest
+# stack keeps its count divided by 2, rounded down, a lone stack at least one (whirlpool_losses
+# 0x4ACAA0: count >> 1; survey E08-teleporters.md section 4.4; the wiki: 50 % rounded up lost;
+# VCMI 1.7.5 loses max(1, n / 2), D-55, settled as the original's).
+[[object_type]]
+id = "whirlpool"
+name = "Whirlpool"
+visit = "enter"
+from_above = true
+whirlpool = { divisor = 2 }
+
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): what a random dwelling of level n
 # of the faction becomes. The original derives it (random_dwellings_resolve 0x502B60 steps 3 and
 # 4; survey E08-dwellings.md section 3.2): town_creatures 0x6747B4[faction x 14 + level], the

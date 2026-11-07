@@ -87,3 +87,62 @@ name = "Camp"
 visit = "enter"
 from_above = false
 refugee_camp = { levels = [1, 7] }
+
+# E08 T103a: increment 11's kinds (a monolith of each way in two channels, a gate, a Whirlpool
+# with an invented divisor).
+
+[[object_type]]
+id = "entrance_0"
+name = "Monolith entrance 0"
+visit = "enter"
+from_above = false
+monolith = { channel = 0, way = "entrance" }
+
+[[object_type]]
+id = "exit_0"
+name = "Monolith exit 0"
+visit = "enter"
+from_above = false
+monolith = { channel = 0, way = "exit" }
+
+[[object_type]]
+id = "two_way_0"
+name = "Monolith two_way 0"
+visit = "enter"
+from_above = false
+monolith = { channel = 0, way = "two_way" }
+
+[[object_type]]
+id = "entrance_1"
+name = "Monolith entrance 1"
+visit = "enter"
+from_above = false
+monolith = { channel = 1, way = "entrance" }
+
+[[object_type]]
+id = "exit_1"
+name = "Monolith exit 1"
+visit = "enter"
+from_above = false
+monolith = { channel = 1, way = "exit" }
+
+[[object_type]]
+id = "two_way_1"
+name = "Monolith two_way 1"
+visit = "enter"
+from_above = false
+monolith = { channel = 1, way = "two_way" }
+
+[[object_type]]
+id = "gate"
+name = "Gate"
+visit = "enter"
+from_above = false
+subterranean_gate = {}
+
+[[object_type]]
+id = "whirlpool"
+name = "Whirlpool"
+visit = "enter"
+from_above = true
+whirlpool = { divisor = 3 }

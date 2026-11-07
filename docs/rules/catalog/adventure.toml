@@ -3251,3 +3251,37 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-10a.md E10-4, E10-5 and E10-6 and experiments/results/E08-batch-10b.md E10-8 and E10-9 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-03; survey E08-dwellings.md section 16): a Barracks' dialog offered at most 3 of 4 Swordsmen with 1 000 gold, 3 bought for 900, the count 1; an owned Dragon Cliffs' at most 0 without crystal and 1 with one, 1 Green Dragon bought for 2 400 gold and 1 crystal, the count 0; a Barracks bought down by 2 of 4; a Refugee Camp's at most its count, 1 of 2 Phoenixes bought for 2 000 gold and 1 mercury, the count 1; an ally's dialog computed its most with its buttons disabled (E10's read-only dialog). Not observed: the army's room as the bound, a purchase at a four-creature dwelling"
   retrieved  = "2026-11-03"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-TEL-001"
+title    = "The teleporters' kinds"
+context  = "adventure"
+status   = "implemented"
+summary  = "Three entered kinds, none ownable or weekly, the teleporters (increment 11's design note sections 1 and 3): the monolith (classes 43, 44 and 45 by subclass) with its channel, the subclass (the picture's colour), and its way: an entrance (43) leads to its channel's exits, an exit (44) nowhere, a two-way monolith (45) to its channel's other two-way monoliths; a one-way and a two-way channel of one number are distinct; the Subterranean Gate (103), led to the gate it is paired with; the Whirlpool (111) with its divisor (the original's 2, at least 2: the weakest stack keeps its count divided by it, ADV-TEL-006), led to another Whirlpool's tile. Every one is entered (a pack's teleporter visited from the neighbouring tile is refused), only the Whirlpool visited from above (the packs' types; the original's class lists). The packs: base the monoliths of channels 0 to 2 in each way (the subclasses RoE's and AB's Objects.txt list), the gate and the Whirlpool; sod the monoliths of channels 3 to 7 (SoD's alone); ab none; the names ObjNames.txt's rows, a monolith's with its channel. Until the jump is built (E08 T105a) a teleporter's visit is not built: a step onto its entrance is refused (Visit) and the reachable tiles end before it. E08 T103a: `ObjectKind::{Monolith { channel, way }, SubterraneanGate, Whirlpool { divisor }}` (`MonolithWay`), the packs' `monolith`, `subterranean_gate` and `whirlpool` tables, adventure ruleset part v18; the check against the original data (`h3-pack-adventure`'s `original_data` example: the 26 types against both Objects.txt, ObjNames.txt and the executable's class lists). The import of the five classes and the refusal of a monolith subclass past 7 (A-39): E08 T103b (ADV-OBJ-002); the channels and the gates' pairs (ADV-TEL-002) and the surfaces' refusal (A-42): T104."
+quirks   = []
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-teleporters.md sections 2 and 3.1): object_settings_init 0x41B500 with object_classes_not_entered 0x63AA58 (none of 43, 44, 45, 103, 111) and object_classes_from_above 0x63AB00 (111 alone of them); setup_map_objects 0x4C0CC0 cases 44 and 45 (one list per subclass, game +0x4E6FC and +0x4E67C + 16 x subclass), 103 (the gates' list +0x4E78C) and 111 (every Whirlpool's six tiles in one list +0x4E77C, whatever the subclass); whirlpool_losses 0x4ACAA0 (count >> 1); Objects.txt (H3bitmap.lod's, SoD's: classes 43 to 45 subclasses 0 to 7; H3ab_bmp.lod's, AB's: 0 to 2) and ObjNames.txt rows 43 to 45, 103, 111"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp CGMonolith::findMeChannel (a channel by the class pair and subclass), CGSubterraneanGate, CGWhirlpool (VCMI 1.7.5, survey E08-teleporters.md section 7)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/MiscObjects.cpp"
+  retrieved  = "2026-11-05"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Subterranean Gate and Whirlpool, and the Monolith page through its mirror heroes.shoutwiki.com/wiki/Lith (survey E08-teleporters.md section 7): a monolith's channel is its colour; a gate leads to its nearest pair; a Whirlpool to another"
+  url        = "https://heroes.thelazy.net/index.php/Subterranean_Gate"
+  retrieved  = "2026-11-05"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15): heroes stepped onto and stood on the entrances of two-way and one-way monoliths, gates and (in boats) Whirlpools (E11-2, E11-4, E11-5, E11-8, E11-10, E11-14, E11-19); channels kept apart by subclass and way (E11-2, E11-4, E11-15)"
+  retrieved  = "2026-11-07"
+  confidence = "high"

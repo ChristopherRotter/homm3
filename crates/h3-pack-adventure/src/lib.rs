@@ -157,6 +157,10 @@
 //! # refugee_camp = { levels = [1, 7] } # not ownable; 1 <= low <= high <= 7
 //! # town = {}                     # E09 T8a1: a town, ownable, visit = "enter"; its record is
 //! #                                # the town part's (`h3-towns`)
+//! # E08 T103a, increment 11's teleporters, all visit = "enter" (ADV-TEL-001):
+//! # monolith = { channel = 0, way = "entrance" } # or "exit", "two_way"; a channel 0-255
+//! # subterranean_gate = {}         # no parameters
+//! # whirlpool = { divisor = 2 }    # from 2: the weakest stack's count divided by it
 //!
 //! [[random_dwelling]]              # E08 T93a (ADV-DWL-005): one table per faction in the part;
 //! faction = "castle"               # a core faction; the `dwelling` types a random dwelling of
@@ -184,8 +188,8 @@ use std::num::NonZeroU32;
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, BattleTerrainsDef,
     CalendarParams, ChestDef, DWELLING_LEVELS, DwellingParams, FindContentDef, FindDef, GiftDef,
-    Gives, MonsterParamsDef, MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage,
-    PickupDef, PrimarySkill, PyramidDef, RandomDwellingDef, RiverDef, RoadDef,
+    Gives, MonolithWay, MonsterParamsDef, MonthParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus,
+    Passage, PickupDef, PrimarySkill, PyramidDef, RandomDwellingDef, RiverDef, RoadDef,
     StartingResourcesDef, TerrainMovementDef, TerrainWalkerDef, TurnDef, Visit,
 };
 use h3_content::{ArtifactClass, ContentKey, KeyError, PackManifest, Ruleset};
@@ -464,6 +468,30 @@ struct ObjectTypeDto {
     random_dwelling: Option<EmptyDto>,
     refugee_camp: Option<RefugeeCampDto>,
     town: Option<EmptyDto>,
+    monolith: Option<MonolithDto>,
+    subterranean_gate: Option<EmptyDto>,
+    whirlpool: Option<WhirlpoolDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct MonolithDto {
+    channel: u8,
+    way: WayDto,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum WayDto {
+    Entrance,
+    Exit,
+    TwoWay,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WhirlpoolDto {
+    divisor: u32,
 }
 
 #[derive(Deserialize)]
@@ -1009,6 +1037,19 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
             .map(|c| ObjectKindDef::RefugeeCamp { levels: c.levels }),
     );
     kinds.extend(t.town.map(|_| ObjectKindDef::Town));
+    kinds.extend(t.monolith.map(|m| ObjectKindDef::Monolith {
+        channel: m.channel,
+        way: match m.way {
+            WayDto::Entrance => MonolithWay::Entrance,
+            WayDto::Exit => MonolithWay::Exit,
+            WayDto::TwoWay => MonolithWay::TwoWay,
+        },
+    }));
+    kinds.extend(t.subterranean_gate.map(|_| ObjectKindDef::SubterraneanGate));
+    kinds.extend(
+        t.whirlpool
+            .map(|w| ObjectKindDef::Whirlpool { divisor: w.divisor }),
+    );
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {

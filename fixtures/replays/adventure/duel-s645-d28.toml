@@ -836,39 +836,39 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x5efc8f617d84f7ea",
-    "0x3d5001fdc6ce9f39",
-    "0xeeb0e4cbf463a98a",
-    "0x2e793f2f0f006b84",
-    "0x8012712457cda45c",
-    "0x515dca5e823878d2",
-    "0x866737826acad1e1",
-    "0x49a1397cbec2be04",
-    "0x4f80184ae2b6298d",
-    "0x687e25efe60c6c46",
-    "0x96ae1eea59ff1b7a",
-    "0x8678c59b73401994",
-    "0xb52d39867e60ebe4",
-    "0x1621e57da964779d",
-    "0x7e4f971ba3575ed7",
-    "0x0a26df87fe7f1a81",
-    "0x17ed35fda4875337",
-    "0x2fd9f8d408c230e2",
-    "0x9abaa4a5a6f643d5",
-    "0x061f3bf072e77e88",
-    "0x78234e81716ebc75",
-    "0xb270038389c634d6",
-    "0x81146a6d68f297c8",
-    "0xbef1bd533ddd80c7",
-    "0x568fdf7adf6d8faf",
-    "0x2728956dc58dc827",
-    "0x8ec9d05006317b24",
-    "0xe33a239beca62aa2",
-    "0x31216f8083089102",
-    "0x33c4d10e39351f5a",
-    "0x374a80c8ec6077f3",
-    "0xa40243ad4b8008df",
-    "0xf6ef7e00259bbf81",
+    "0x1aa0af271652d0e5",
+    "0xa99de02084b2a4f4",
+    "0x2f000d04540950e3",
+    "0xec7265abe6ef0f4d",
+    "0x140bfcd49b2fac85",
+    "0xac88da62b8303af2",
+    "0xc95419d8949eedc0",
+    "0x89867dc1a9e4f229",
+    "0x0fb034c7c9d25efc",
+    "0xf14d5640699a987e",
+    "0x10f0ee8b8404eeda",
+    "0x634d0c96739c9588",
+    "0x474a0b327acf1632",
+    "0x64c6d399d8696a38",
+    "0xdf1143002038fac8",
+    "0xd0778e36a4fa4456",
+    "0x7a3d6ced6cab90e8",
+    "0xf2a1122274919da1",
+    "0xe8af3c4f4e40e3f2",
+    "0x97e4835dc0b43ff3",
+    "0x9b364ac5bf538f6a",
+    "0x82efa588eadcbef5",
+    "0x7672fe0a5cf651a7",
+    "0xbb7a48b0e2467cdc",
+    "0xb2f58bc5ab5801d4",
+    "0xbcf8678229689cbc",
+    "0x20f7e1b8fcadc8cb",
+    "0xe0a499969c7ac789",
+    "0xd52cddf5c95a9ee9",
+    "0x891d32f7c6f91d51",
+    "0x54f43980a6cbda10",
+    "0x5263a0e55375f764",
+    "0x9dd33ec79eea252e",
 ]
 
 [replay]
@@ -892,7 +892,7 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0xe5ac723212bdce02"
-adventure_ruleset_hash = "0xf7865aeae57de535"
+adventure_ruleset_hash = "0x8295da978eef57d8"
 town_ruleset_hash = "0x3003da8dd5ff664f"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
@@ -909,4 +909,4 @@ import_version = 20
 
 [result]
 day = 29
-final_hash = "0xab6eb367ec10db60"
+final_hash = "0x3073e41aa60e2432"

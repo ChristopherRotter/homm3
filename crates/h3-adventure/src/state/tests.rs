@@ -916,6 +916,7 @@ mod sea;
 mod sea_battles;
 mod sea_pickups;
 mod shipyards;
+mod teleporters;
 mod towns;
 mod visits;
 mod weekly;
