@@ -64,6 +64,10 @@ pub struct DissolveKey {
     pub step: u32,
     /// Its area.
     pub area: DissolveArea,
+    /// The poses the clipped redraws before it drew, by stack, when the saved picture is the back
+    /// buffer they left (E17 M6 T6b2, CLT-Q67: a Pit Lord's Demons in the original's profile,
+    /// [`crate::scene::Saved`]); none: the screen.
+    pub clip: Vec<(u8, Pose)>,
 }
 
 impl DissolveKey {
@@ -74,11 +78,23 @@ impl DissolveKey {
             .saturating_add(DISSOLVE_STEPS.saturating_mul(self.step))
     }
 
-    /// The step showing at `t`, if the dissolve blends then (from `start + 1` to its end; at
-    /// `start` its step 0 is the saved picture itself).
+    /// When it first blends: from `start + 1`, since at `start` its step 0 is the screen itself;
+    /// from `start` when it blends from the back buffer ([`DissolveKey::clip`], E17 M6 T6b2),
+    /// whose step 0 is not the screen.
+    #[must_use]
+    pub fn first(&self) -> u32 {
+        if self.clip.is_empty() {
+            self.start + 1
+        } else {
+            self.start
+        }
+    }
+
+    /// The step showing at `t`, if the dissolve blends then (from [`DissolveKey::first`] to its
+    /// end).
     #[must_use]
     pub fn step_at(&self, t: u32) -> Option<u8> {
-        (self.start < t && t < self.end())
+        (self.first() <= t && t < self.end())
             .then(|| u8::try_from((t - self.start) / self.step.max(1)).unwrap_or(0))
     }
 }
@@ -92,6 +108,12 @@ pub struct Dissolve {
     pub step: u8,
     /// Where it blends.
     pub area: DissolveArea,
+    /// The clipped redraws' poses when it blends from the back buffer ([`DissolveKey::clip`]).
+    pub clip: Vec<(u8, Pose)>,
+    /// At its start (a dissolve from the back buffer, [`DissolveKey::first`]): the battle drawn
+    /// then, its new picture, which the screen shows only from the next millisecond (E17 M6
+    /// T6b2); none: the moment's own.
+    pub after: Option<Box<Moment>>,
 }
 
 /// A stack the battle created (E17 M5 T5a): from `drawn` its record holds it (the harness's
@@ -205,8 +227,19 @@ impl Player<'_> {
     /// A dissolve over `area` from now, of `step` ms a step: its key, and the clock past its
     /// steps, outside the deadline (§7.25).
     pub(super) fn dissolve(&mut self, area: DissolveArea, step: u32) {
+        self.dissolve_from(area, step, Vec::new());
+    }
+
+    /// As [`Player::dissolve`], blending from the back buffer the clipped redraws of `clip`'s
+    /// poses left when there are any ([`DissolveKey::clip`]).
+    fn dissolve_from(&mut self, area: DissolveArea, step: u32, clip: Vec<(u8, Pose)>) {
         let start = self.clock.now;
-        self.dissolves.push(DissolveKey { start, step, area });
+        self.dissolves.push(DissolveKey {
+            start,
+            step,
+            area,
+            clip,
+        });
         self.clock.wait(DISSOLVE_STEPS * step);
     }
 
@@ -565,15 +598,20 @@ impl Player<'_> {
         let Some(dead) = self.corpses.get(&corpse).cloned() else {
             return;
         };
-        let turned = self.creature_casting(stack, dead.position(dead.hex));
+        let (turned, drawn) = self.creature_casting(stack, dead.position(dead.hex));
         let cue = self
             .spell_handle(super::raise::RESURRECTION)
             .map(|spell| self.cue(corpse, Sound::SpellFile(spell), false));
         // The corpse goes (0x5A73DD), in the pose it lay in (memory keeps it), with the redraw
-        // the dissolve blends in. (The original blends from its back buffer, which the casting
-        // frames' clipped redraws left as the background outside the caster's rectangle: the
-        // corpse and the obstacles there pop away at the first step. A slip, not copied: the
-        // user's, 2026-10-29; design §7.25.)
+        // the dissolve blends in. The original blends from its back buffer, which the casting
+        // frames' clipped redraws left as the background alone outside the caster's rectangle
+        // (`Saved`): the corpse and the obstacles there pop away at the first step, the
+        // obstacles fading back in. A slip, fixed; the original's for the comparisons (E17 M6
+        // T6b2, CLT-Q67; design §7.25).
+        let clip = match self.stage.bugs {
+            Bugs::Original => drawn.into_iter().map(|pose| (stack, pose)).collect(),
+            Bugs::Fixed => Vec::new(),
+        };
         self.corpses.remove(&corpse);
         let lying = self.lying.remove(&corpse);
         if let Some(lying) = lying.filter(|_| corpse != new) {
@@ -591,7 +629,7 @@ impl Player<'_> {
             self.key_now(new, pose);
             self.stacks.insert(new, live);
             self.summoned.remove(&new);
-            self.dissolve(DissolveArea::Stacks(vec![new]), CREATION_STEP);
+            self.dissolve_from(DissolveArea::Stacks(vec![new]), CREATION_STEP, clip);
         }
         self.redraw();
         let line = Logged::Raised { stack: new, count };

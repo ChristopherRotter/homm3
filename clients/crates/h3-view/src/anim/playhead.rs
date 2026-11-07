@@ -467,6 +467,9 @@ impl Playhead {
                     before: before.clone(),
                     step,
                     area: d.area.clone(),
+                    clip: d.clip.clone(),
+                    // Taken from the timeline at that one millisecond (E17 M6 T6b2).
+                    after: Moment::drawn_at_start(timeline, d.start, t),
                 })
             }),
         }
@@ -710,7 +713,7 @@ fn bridging(b: &super::BridgeKey) -> (u32, u64) {
 
 /// A dissolve's blending span (E17 M5 T5a, [`super::DissolveKey::step_at`]).
 fn blending(d: &super::DissolveKey) -> (u32, u64) {
-    (d.start + 1, u64::from(d.end()))
+    (d.first(), u64::from(d.end()))
 }
 
 /// `slot` holds the later of its key and the key at `i` in the list.

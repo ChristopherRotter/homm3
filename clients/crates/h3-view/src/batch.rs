@@ -160,9 +160,19 @@ pub fn names(list: &[Draw], layout: &BattleLayout) -> BTreeSet<String> {
             Draw::Within { list, .. } | Draw::Shaken { list, .. } => {
                 all.extend(names(list, layout));
             }
-            Draw::Dissolve { list, measured, .. } => {
+            Draw::Dissolve {
+                list,
+                measured,
+                saved,
+                ..
+            } => {
                 all.extend(names(list, layout));
                 all.extend(names(measured, layout));
+                // The back buffer's battle and what its clip measures (E17 M6 T6b2).
+                if let Some(saved) = saved {
+                    all.extend(names(&saved.clip, layout));
+                    all.extend(names(&saved.list, layout));
+                }
             }
             _ => {}
         }
@@ -416,6 +426,19 @@ mod tests {
                     x: 0,
                     y: 0,
                 }],
+                // E17 M6 T6b2: the back buffer's battle and what its clip measures.
+                saved: Some(crate::scene::Saved {
+                    clip: vec![Draw::Background {
+                        picture: "Clipped.pcx".to_string(),
+                        x: 0,
+                        y: 0,
+                    }],
+                    list: vec![Draw::Background {
+                        picture: "Saved.pcx".to_string(),
+                        x: 0,
+                        y: 0,
+                    }],
+                }),
             },
             // The result window's clips, a start and its loop (E17 M5 T4b2b).
             Draw::Video {
@@ -441,6 +464,7 @@ mod tests {
                 "CCELLSHD.PCX",
                 "CH00.DEF",
                 "CLCBOW.DEF",
+                "CLIPPED.PCX",
                 "CMFLAGL.DEF",
                 "CMNUMWIN.PCX",
                 "CR.DEF",
@@ -455,6 +479,7 @@ mod tests {
                 "PLCBOWX.DEF",
                 "RTLOOP.BIK",
                 "RTSTART.BIK",
+                "SAVED.PCX",
                 "SGCSTW21.PCX",
                 "SGEXPL.DEF",
                 "SHAKEN.PCX",

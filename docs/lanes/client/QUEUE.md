@@ -34,8 +34,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   three by the user (2026-11-07): **T6a** done (the purity test's holes, the dialog items
   through `h3_ui::paint`, R4-2; no capture in the original); **T6b** the recordings, cut in two
   by the user (2026-11-07): **T6b1** done (the deck and the two boats as situations, CLT-Q5),
-  **T6b2** the Demons' dissolve (R4-9 moved into T7); **T6c** `h3-bink` as `BINKW32.DLL`
-  (CLT-Q30), on its own.
+  **T6b2** done (the Demons' dissolve, CLT-Q67; R4-9 moved into T7); **T6c** `h3-bink` as
+  `BINKW32.DLL` (CLT-Q30), on its own, next.
 
 ### E17 M6 T7 — M6's closure
 

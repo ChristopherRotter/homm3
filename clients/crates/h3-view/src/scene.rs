@@ -125,6 +125,27 @@ impl Moment {
     /// The battle at `t` of `timeline` (E17 M2 T4b-2a).
     pub fn at(timeline: &Timeline, t: u32) -> Self {
         Self {
+            dissolve: timeline.dissolving(t).map(|(d, step)| Dissolve {
+                before: Box::new(Self::undissolved(timeline, d.start)),
+                step,
+                area: d.area.clone(),
+                clip: d.clip.clone(),
+                after: Self::drawn_at_start(timeline, d.start, t),
+            }),
+            ..Self::undissolved(timeline, t)
+        }
+    }
+
+    /// At `t`, a dissolve's `start` (one from the back buffer, E17 M6 T6b2): the battle drawn
+    /// then, which the screen shows from the next millisecond ([`Dissolve::after`]).
+    pub(crate) fn drawn_at_start(timeline: &Timeline, start: u32, t: u32) -> Option<Box<Self>> {
+        (t == start).then(|| Box::new(Self::undissolved(timeline, start + 1)))
+    }
+
+    /// The battle at `t` of `timeline` without the dissolve blending then: a dissolve's saved
+    /// battle (E17 M5 T5a; at its own start since E17 M6 T6b2, [`crate::anim::DissolveKey::first`]).
+    fn undissolved(timeline: &Timeline, t: u32) -> Self {
+        Self {
             poses: timeline.at(t),
             active: timeline.outlined(t),
             pulse: timeline.pulse(t),
@@ -153,16 +174,27 @@ impl Moment {
             shade: BTreeSet::new(),
             overlays: Overlays::default(),
             created: timeline.created_at(t),
-            dissolve: timeline.dissolving(t).map(|(d, step)| Dissolve {
-                before: Box::new(Self {
-                    dissolve: None,
-                    ..Self::at(timeline, d.start)
-                }),
-                step,
-                area: d.area.clone(),
-            }),
+            dissolve: None,
         }
     }
+}
+
+/// The back buffer a dissolve blends from when it is not the screen (E17 M6 T6b2, CLT-Q67, design
+/// §7.25): a creature's cast (`creature_cast_action` 0x448260) starts with the backdrop
+/// (`stack_animation_backdrop` 0x446830, which leaves the background +0x53B0 not composed), so
+/// its first clipped redraw (0x4484FE) composes the background and copies it over the whole back
+/// buffer (`compose_battle_background` 0x493CF0, 0x493E8A), then draws only the items that meet
+/// the dirty rectangle, whole (`battle_draw_sprite` 0x495214, `draw_battle_obstacle` 0x4955BF).
+/// Outside the caster's rectangle the back buffer holds the background alone while the screen
+/// still shows the rest; a Pit Lord's Demons dissolve from it (0x47A27B).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Saved {
+    /// What the clipped redraws measured into their dirty rectangle: the caster in each pose they
+    /// drew, with its count box (`battle_refresh_creatures` 0x495BF0).
+    pub clip: Vec<Draw>,
+    /// The battle as the screen shows it at the dissolve's start: its background is drawn whole,
+    /// its other items only when they meet the clip's rectangle.
+    pub list: Vec<Draw>,
 }
 
 /// What the grid and the cursor shadow draw into the background (E17 M6 T4c, design §12.16), in
@@ -419,7 +451,9 @@ pub enum Draw {
     /// one, by `step` eighths over `rect` (left, top, right, bottom, exclusive), or where none is
     /// given over the rectangle `measured` covers: each item's (a creature's frame's content box,
     /// a count box's picture) cut to the battlefield, together (`battle_item_rect` 0x495F50,
-    /// `battle_draw_pcx` 0x4958E0).
+    /// `battle_draw_pcx` 0x4958E0). With `saved` (E17 M6 T6b2, CLT-Q67: the original's slip, its
+    /// profile only) the saved picture inside the rectangle is the back buffer a clipped redraw
+    /// left ([`Saved`]), not the screen.
     Dissolve {
         /// The step (0 to 7).
         step: u8,
@@ -429,6 +463,8 @@ pub enum Draw {
         measured: Vec<Draw>,
         /// The new picture's list.
         list: Vec<Draw>,
+        /// The back buffer it blends from, when not the screen.
+        saved: Option<Saved>,
     },
     /// Earthquake's shake (E17 M4 T2c-2, `earthquake` 0x5A7C80, design §10.2): the list composed
     /// on a frame of its own (the screen saved), copied onto a copy of itself at each offset in
@@ -961,10 +997,10 @@ pub fn battle_at(
     // A dissolve (E17 M5 T5a, §7.25): the battle as the screen showed it at its start, the
     // moment's blended into it over the area by the step's eighths.
     if let Some(d) = &moment.dissolve {
-        let now = Moment {
+        let now = d.after.as_deref().cloned().unwrap_or_else(|| Moment {
             dissolve: None,
             ..moment.clone()
-        };
+        });
         let [list, drawn] =
             [d.before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
         let (rect, measured) = match &d.area {
@@ -977,11 +1013,33 @@ pub fn battle_at(
             }
         };
         let mut list = list?;
+        // The back buffer the caster's clipped redraws left (E17 M6 T6b2, CLT-Q67): each pose
+        // they drew measured as the battle shows it otherwise.
+        let saved = if d.clip.is_empty() {
+            None
+        } else {
+            let mut clip = Vec::new();
+            for &(s, pose) in &d.clip {
+                let mut posed = d.before.as_ref().clone();
+                posed.poses.insert(s, pose);
+                clip.extend(self::measured(
+                    observation,
+                    &posed,
+                    &[s],
+                    (manifest, tables, layout),
+                )?);
+            }
+            Some(Saved {
+                clip,
+                list: list.clone(),
+            })
+        };
         list.push(Draw::Dissolve {
             step: d.step,
             rect,
             measured,
             list: drawn?,
+            saved,
         });
         return Ok(list);
     }

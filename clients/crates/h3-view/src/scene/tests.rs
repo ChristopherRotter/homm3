@@ -1621,6 +1621,8 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
             before: Box::new(before.clone()),
             step: 3,
             area: DissolveArea::Stacks(vec![1, 2, 7]),
+            clip: Vec::new(),
+            after: None,
         }),
         ..Moment::default()
     };
@@ -1630,6 +1632,7 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
         rect,
         measured,
         list: drawn,
+        saved: None,
     }) = list.last()
     else {
         panic!("{list:?}");
@@ -1647,6 +1650,8 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
             before: Box::new(before),
             step: 0,
             area: DissolveArea::Battlefield,
+            clip: Vec::new(),
+            after: None,
         }),
         ..Moment::default()
     };
@@ -1670,6 +1675,8 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
             before: Box::new(magic),
             step: 0,
             area: DissolveArea::Stacks(vec![0, 1]),
+            clip: Vec::new(),
+            after: None,
         }),
         ..Moment::default()
     };
@@ -1699,6 +1706,8 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
             before: Box::new(Moment::default()),
             step: 0,
             area: DissolveArea::Battlefield,
+            clip: Vec::new(),
+            after: None,
         }),
         ..Moment::default()
     };
@@ -1714,6 +1723,8 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
                 before: Box::new(before.clone()),
                 step: 0,
                 area,
+                clip: Vec::new(),
+                after: None,
             }),
             ..now.clone()
         };
@@ -1723,6 +1734,131 @@ fn created_stacks_are_drawn_and_a_dissolve_measures_its_stacks() {
     assert!(fails(&ghost, &nothing, DissolveArea::Battlefield));
     assert!(fails(&ghost, &nothing, DissolveArea::Stacks(vec![5])));
     assert!(fails(&nothing, &ghost, DissolveArea::Stacks(vec![5])));
+}
+
+#[test]
+fn a_dissolve_from_the_back_buffer_measures_its_clip_and_keeps_the_saved_battle() {
+    // E17 M6 T6b2 (CLT-Q67, §7.25): each pose of the clip measured as the saved battle shows the
+    // rest (a sprite and a count box each), the saved battle's list kept for the back buffer; at
+    // its start the new picture is the battle drawn then (`after`), not the moment's own.
+    let layout = layout();
+    let mut o = observation();
+    o.terrain = Some(0);
+    o.stacks = vec![
+        stack(0, Side::Attacker, 0, hex(4, 2), false),
+        stack(1, Side::Defender, 0, hex(4, 9), false),
+    ];
+    // Standing's layer (`anim::STANDING`).
+    let posed = |frame| Pose {
+        group: 13,
+        frame,
+        hex: hex(4, 2),
+        offset: [0, 0],
+        mirrored: false,
+        layer: 4,
+        boxless: false,
+    };
+    let after = Moment {
+        created: [(
+            2,
+            crate::anim::created_stack(
+                (2, Side::Attacker),
+                (0, 4, hex(6, 3)),
+                crate::anim::Body::default(),
+                (false, true),
+            ),
+        )]
+        .into_iter()
+        .collect(),
+        ..Moment::default()
+    };
+    let dissolve = |before: &Moment, clip: Vec<(u8, Pose)>| Moment {
+        dissolve: Some(Dissolve {
+            before: Box::new(before.clone()),
+            step: 0,
+            area: DissolveArea::Stacks(vec![2]),
+            clip,
+            after: Some(Box::new(after.clone())),
+        }),
+        ..Moment::default()
+    };
+    let before = Moment::default();
+    let moment = dissolve(&before, vec![(0, posed(0)), (0, posed(1))]);
+    let list = battle_at(&o, &moment, &keys(), &tables(), &layout).unwrap();
+    let Some(Draw::Dissolve {
+        measured,
+        list: drawn,
+        saved: Some(saved),
+        ..
+    }) = list.last()
+    else {
+        panic!("{list:?}");
+    };
+    let shown = battle_at(&o, &before, &keys(), &tables(), &layout).unwrap();
+    assert_eq!(saved.list, shown);
+    assert_eq!(&list[..list.len() - 1], &shown[..]);
+    let frames: Vec<u32> = saved
+        .clip
+        .iter()
+        .filter_map(|d| match d {
+            Draw::Creature { frame, group, .. } if *group == 13 => Some(*frame),
+            _ => None,
+        })
+        .collect();
+    assert_eq!((frames, saved.clip.len()), (vec![0, 1], 4));
+    // The created stack, drawn then and shown only later: measured and drawn.
+    let boxes = |l: &[Draw]| {
+        l.iter()
+            .filter(|d| matches!(d, Draw::CountBox { stack: 2, .. }))
+            .count()
+    };
+    assert_eq!((boxes(measured), boxes(drawn)), (1, 1));
+    // No clip: no back buffer.
+    let list = battle_at(
+        &o,
+        &dissolve(&before, Vec::new()),
+        &keys(),
+        &tables(),
+        &layout,
+    )
+    .unwrap();
+    assert!(matches!(
+        list.last(),
+        Some(Draw::Dissolve { saved: None, .. })
+    ));
+    // A stack its clip measures that cannot be drawn (a created Ghost, gone from the saved
+    // battle) fails it.
+    let ghost = crate::anim::created_stack(
+        (5, Side::Attacker),
+        (2, 3, hex(7, 3)),
+        crate::anim::Body::default(),
+        (false, false),
+    );
+    let gone = Moment {
+        created: [(5, ghost)].into_iter().collect(),
+        poses: [(
+            5,
+            Pose {
+                layer: GONE,
+                ..posed(0)
+            },
+        )]
+        .into_iter()
+        .collect(),
+        ..Moment::default()
+    };
+    assert!(
+        battle_at(
+            &o,
+            &dissolve(&gone, Vec::new()),
+            &keys(),
+            &tables(),
+            &layout
+        )
+        .is_ok()
+    );
+    let failing = dissolve(&gone, vec![(5, posed(0))]);
+    assert!(battle_at(&o, &failing, &keys(), &tables(), &layout).is_err());
 }
 
 #[test]

@@ -153,7 +153,7 @@ impl Player<'_> {
         let Some(hex) = at else {
             return;
         };
-        let turned = self.creature_casting(stack, hex);
+        let (turned, _) = self.creature_casting(stack, hex);
         let cue = self
             .spell_handle(RESURRECTION)
             .map(|spell| self.cue(target, Sound::SpellFile(spell), false));
