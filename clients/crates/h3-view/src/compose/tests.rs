@@ -712,7 +712,7 @@ fn a_count_box_is_its_picture_tinted_with_the_count_over_it() {
 fn a_text_item_is_its_picture_with_the_text_over_it() {
     let mut layout = small();
     layout.frame = [8, 4];
-    let item = h3_ui::ui::Text {
+    let item = ui::Text {
         id: 1,
         picture: "Roll.pcx".to_string(),
         at: [0, 0],
@@ -740,7 +740,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
         glyphs,
     };
     batch.add("Small.fnt", &build::fnt(&font)).unwrap();
-    let draw = |item: &h3_ui::ui::Text, text: &str| {
+    let draw = |item: &ui::Text, text: &str| {
         Draw::Dialog(ui::Draw::Text {
             item: item.clone(),
             x: 2,
@@ -765,7 +765,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     assert_eq!(empty.pixel(3, 3), Some(0));
     // At most the item's size of its picture (E17 M5 T3a): a box 3 wide cuts the picture's last
     // column.
-    let narrow = h3_ui::ui::Text {
+    let narrow = ui::Text {
         size: [3, 3],
         ..item.clone()
     };
@@ -785,7 +785,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
     assert_eq!(dark.pixel(3, 1), Some(b));
     // What the batch lacks: the font, its palette, the picture.
     let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
-    let lacking = |change: fn(&mut h3_ui::ui::Text)| {
+    let lacking = |change: fn(&mut ui::Text)| {
         let mut other = item.clone();
         change(&mut other);
         compose(&[draw(&other, "a")], &batch, &layout)
@@ -807,7 +807,7 @@ fn a_text_item_is_its_picture_with_the_text_over_it() {
 fn a_text_alone_is_its_text_greyed_while_disabled() {
     let mut layout = small();
     layout.frame = [8, 4];
-    let item = h3_ui::ui::Label {
+    let item = ui::Label {
         id: 1,
         at: [0, 0],
         size: [4, 3],
@@ -830,7 +830,7 @@ fn a_text_alone_is_its_text_greyed_while_disabled() {
         glyphs,
     };
     batch.add("Small.fnt", &build::fnt(&font)).unwrap();
-    let draw = |item: &h3_ui::ui::Label, disabled| {
+    let draw = |item: &ui::Label, disabled| {
         Draw::Dialog(ui::Draw::Label {
             item: item.clone(),
             x: 2,
@@ -848,7 +848,7 @@ fn a_text_alone_is_its_text_greyed_while_disabled() {
     let greyed = compose(&[draw(&item, true)], &batch, &layout).unwrap();
     assert_eq!(greyed.pixel(3, 3), Some(r));
     let gone = |what: &str| Err(ComposeError::Missing(what.to_string()));
-    let lacking = |change: fn(&mut h3_ui::ui::Label)| {
+    let lacking = |change: fn(&mut ui::Label)| {
         let mut other = item.clone();
         change(&mut other);
         compose(&[draw(&other, false)], &batch, &layout)

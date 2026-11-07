@@ -36,7 +36,7 @@ adventure).
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
 | `h3-view situation` | Writes the original's map for a scenario's battle (`cargo run --release -p h3-view -- help`). |
-| `../situations/kept/` | What the last capture of each sequence (`sequences/<id>.toml`) and situation (`set/<id>.toml`) kept: its frames' times and the fidgets and heroes the original's memory showed (numbers only), written by `frames` and `set`; and `drawn.txt`, the digests of the viewer's frames at those times (`drawn --record`). |
+| `../situations/kept/` | What the last capture of each sequence (`sequences/<id>.toml`) and situation (`set/<id>.toml`) kept: its frames' times and the fidgets and heroes the original's memory showed (numbers only), written by `frames` and `set`; and `drawn.txt`, the digests of the viewer's frames at those times and of what their masks depend on (`drawn --record`). |
 
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
@@ -57,8 +57,10 @@ alter (the user, 2026-10-20):
    compares each frame's digest with `kept/drawn.txt`; its timeline check (`h3-view sequences`)
    runs with it. The digest is of the frame's pixels outside the fixed masks its comparison
    applies (a situation's `mask`; a sequence's none since M3 T6c-2, its parked cursor from T6b,
-   its panel before; E17 M3 T6a): a frame whose digest is the same shows the comparison what the
-   last capture compared, so its recorded count still holds.
+   its panel before; E17 M3 T6a) and, for a sequence, of what its other masks depend on (E17 M6
+   T6a, R4-2: the poses and count boxes the viewer drew, `ours.txt`, and its log item's text,
+   `ours-log.json`; `h3drive.py mask_inputs`): a frame whose digest is the same shows the
+   comparison what the last capture compared, so its recorded count still holds.
 2. **Capture what changed:** `frames --only <id>` or `set --only <id>` for each one `drawn` lists
    as `CHANGED` or `new`, and for each sequence or situation whose entry the task adds or
    changes (scenario, actions, `ms`, `boxes`, masks: the kept times or the comparison change

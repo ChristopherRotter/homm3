@@ -69,7 +69,9 @@ xdd.dll (xdd.c: freeze, step, run), so that every frame is taken at an exact gam
                                             the viewer's frames of every sequence and situation
                                             at the times last kept, without the original (no
                                             Wine): each one's pixels outside its comparison's
-                                            fixed masks against situations/kept/drawn.txt
+                                            fixed masks and, for a sequence, what its other
+                                            masks depend on (E17 M6 T6a) against
+                                            situations/kept/drawn.txt
                                             (`same`, `CHANGED`, `new`); exits 1 on a
                                             change; --record writes the digests (runbook, "Which
                                             captures a change needs"; default <dir>:
@@ -1658,22 +1660,7 @@ def run_frames(rest):
         view([h3view, "sequences", e["id"], "--frames", str(out), "--out", str(here)])
         observation = h3cap.snapshot(here / f"{e['id']}.jsonl")
         # The poses the viewer drew (its `ours.txt`): the count boxes are masked where they show.
-        drawn, boxed = {}, {}
-        for line in (here / "ours.txt").read_text().splitlines():
-            poses = re.findall(r"(\d+):g(\d+)f\d+h(\d+)(m?)", line)
-            drawn[int(line.split()[0])] = {int(i): (int(g), int(h), m == "m")
-                                           for i, g, h, m in poses}
-            # The count boxes it drew (E17 M3 T5a: hidden through walks and flights, placed by the
-            # stacks holding their hexes then), each (x0, y0, x1, y1), its count and its stack's
-            # `<side>.<record>` (T5b).
-            boxed[int(line.split()[0])] = [
-                ((int(x), int(y), int(x) + h3cap.COUNT_BOX[0], int(y) + h3cap.COUNT_BOX[1]),
-                 int(n), record)
-                for x, y, n, record in re.findall(r" box(-?\d+),(-?\d+)n(\d+)@?(\d+\.\d+)?",
-                                                  line)]
-        # The log item's text the viewer drew into each frame (E17 M3 T6b), by the frame's name.
-        ours_log = here / "ours-log.json"
-        texts = json.loads(ours_log.read_text()) if ours_log.exists() else {}
+        drawn, boxed, texts = ours_drawn(here)
         shutil.rmtree(here / "diff", ignore_errors=True)
         (here / "diff").mkdir()
         # Each line `<ms> <differing> <redraw artifacts among them>` (M3 T1c, h3cap.redraws).
@@ -1737,6 +1724,49 @@ def run_frames(rest):
     return 1 if failed else 0
 
 
+def ours_drawn(here):
+    """What the viewer drew into a sequence's frames besides their pixels, which the frame check's
+    masks depend on: from its `ours.txt`, each frame's poses by its time ({stack id: (group, hex,
+    mirrored)}) and the count boxes it drew (E17 M3 T5a: hidden through walks and flights, placed
+    by the stacks holding their hexes then), each ((x0, y0, x1, y1), its count, its stack's
+    `<side>.<record>`, T5b); from its `ours-log.json`, the log item's text in each frame by the
+    frame's name (M3 T6b)."""
+    import json
+
+    import h3cap
+
+    drawn, boxed = {}, {}
+    for line in (here / "ours.txt").read_text().splitlines():
+        poses = re.findall(r"(\d+):g(\d+)f\d+h(\d+)(m?)", line)
+        drawn[int(line.split()[0])] = {int(i): (int(g), int(h), m == "m")
+                                       for i, g, h, m in poses}
+        boxed[int(line.split()[0])] = [
+            ((int(x), int(y), int(x) + h3cap.COUNT_BOX[0], int(y) + h3cap.COUNT_BOX[1]),
+             int(n), record)
+            for x, y, n, record in re.findall(r" box(-?\d+),(-?\d+)n(\d+)@?(\d+\.\d+)?", line)]
+    ours_log = here / "ours-log.json"
+    texts = json.loads(ours_log.read_text()) if ours_log.exists() else {}
+    return drawn, boxed, texts
+
+
+def mask_inputs(entry, drew, t, stem):
+    """What a sequence frame's masks depend on besides its pixels and the fixed masks (E17 M6 T6a,
+    the review's R4-2), as the text `drawn` adds to the frame's digest: from what the viewer drew
+    ([`ours_drawn`]), the count boxes as `run_frames` masks them and its log item's text. With
+    `boxes` (every sequence since M3 T5a) each box's place, count and stack (masked where its
+    count is not the original's); without, the poses and the boxes' places (masked where the
+    poses show them, `h3cap.boxes_at`, and where the viewer drew them). A change there changes
+    what the frame check masks or compares, so the recorded count no longer holds although the
+    pixels are the same. (The rest those masks read is fixed by the entry and `kept/`: the
+    original's counts and log text, the scenario's stacks and obstacles.)"""
+    drawn, boxed, texts = drew
+    if entry.get("boxes"):
+        boxes = boxed.get(t, [])
+    else:
+        boxes = (sorted(drawn.get(t, {}).items()), [box for box, _, _ in boxed.get(t, [])])
+    return repr((boxes, texts.get(stem)))
+
+
 def compared_masks(kind, entry, t):
     """The fixed masks a comparison applies to a frame at `t` ms: a sequence's none (its panel
     compared since E17 M3 T6b, its cursor since T6c-2), a situation's its `mask` list. (A
@@ -1747,9 +1777,10 @@ def compared_masks(kind, entry, t):
     return entry.get("mask", [])
 
 
-def png_digest(path, boxes):
+def png_digest(path, boxes, extra=""):
     """The digest of a viewer's PNG (8-bit RGB, unfiltered rows: h3_render::png) with the pixels in
-    `boxes` (each x0, y0, x1, y1) blanked: what a comparison with those masks sees (E17 M3 T6a)."""
+    `boxes` (each x0, y0, x1, y1) blanked: what a comparison with those masks sees (E17 M3 T6a);
+    with `extra`, the text of what the masks depend on besides ([`mask_inputs`], E17 M6 T6a)."""
     import hashlib
     import zlib
 
@@ -1772,7 +1803,7 @@ def png_digest(path, boxes):
         for y in range(max(y0, 0), min(y1, height)):
             if x1 > x0:
                 raw[y * stride + 1 + 3 * x0:y * stride + 1 + 3 * x1] = bytes(3 * (x1 - x0))
-    return hashlib.sha1(bytes(raw)).hexdigest()[:16]
+    return hashlib.sha1(bytes(raw) + extra.encode()).hexdigest()[:16]
 
 
 def kept_or_not(set_path, kind, ident, frames, changed):
@@ -1802,7 +1833,8 @@ def run_drawn(rest):
     viewer draws its frames at the times the harness last kept frames of the original
     (`situations/kept/`, written by `frames` and `set`); each frame's digest (of its pixels
     outside the fixed masks its comparison applies, `compared_masks`: a change only under them
-    leaves the recorded count true; E17 M3 T6a) is compared with `situations/kept/drawn.txt`. One
+    leaves the recorded count true; E17 M3 T6a; for a sequence also of what its other masks
+    depend on, `mask_inputs`: E17 M6 T6a) is compared with `situations/kept/drawn.txt`. One
     line per sequence or situation (`same`, `CHANGED (<n> of <m> frames, the first at <ms>)`,
     `new`, or the viewer's own timeline check failing); exits 1 unless every one is the same.
     With `--record` it writes the digests instead (those not run kept). Needs the release
@@ -1860,10 +1892,16 @@ def run_drawn(rest):
             continue
         listed = tomllib.loads(kept.read_text())["frame"]
         frames = [Path(f["file"]).stem for f in listed]
-        got[name] = {Path(f["file"]).stem: png_digest(
-            here / "ours" / f"{Path(f['file']).stem}.png",
-            h3cap.mask_boxes(compared_masks(kind, entry, f["t"])))
-            for f in listed}
+        # A sequence's masks depend on what the viewer drew besides (R4-2); a situation's are
+        # fixed (none since M3 T6c-1).
+        drew = ours_drawn(here) if kind == "sequences" else None
+        got[name] = {}
+        for f in listed:
+            stem = Path(f["file"]).stem
+            extra = mask_inputs(entry, drew, f["t"], stem) if drew else ""
+            got[name][stem] = png_digest(here / "ours" / f"{stem}.png",
+                                         h3cap.mask_boxes(compared_masks(kind, entry, f["t"])),
+                                         extra)
         before = recorded.get(name)
         if before is None:
             verdict = "new"
@@ -1881,6 +1919,7 @@ def run_drawn(rest):
         recorded.update(got)
         lines = ["# The viewer's frames at the times last kept (h3drive.py drawn --record): each",
                  "# frame's digest outside its comparison's fixed masks (h3drive.py png_digest),",
+                 "# a sequence's with what its other masks depend on (mask_inputs),",
                  "# `<kind>/<id> <frame> <sha1, 16 digits>`."]
         lines += [f"{name} {stem} {digest}" for name in sorted(recorded)
                   for stem, digest in recorded[name].items()]

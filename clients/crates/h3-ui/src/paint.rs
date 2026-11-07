@@ -1,8 +1,8 @@
 //! The dialog items' drawers (E24 M3 T2a): each [`ui::Draw`] drawn as the executable draws its
 //! item, from decoded assets a viewer's batch gives through [`Assets`]. Ported from `h3-view`'s
-//! compositor (E17 M3 T6a to M5 T4b1, `docs/epics/E17-design.md` §9.7), which keeps its own copy
-//! until the client lane takes this one (its inbox, E24 M3 T2a); the adventure screen's dialog
-//! (`docs/epics/E24-design.md` §4.1) is drawn with it.
+//! compositor (E17 M3 T6a to M5 T4b1, `docs/epics/E17-design.md` §9.7), whose copy went at E17 M6
+//! T6a: both viewers draw their dialogs with it (the battle screen's and the adventure screen's,
+//! `docs/epics/E24-design.md` §4.1).
 
 use alloc::string::String;
 use alloc::vec::Vec;
