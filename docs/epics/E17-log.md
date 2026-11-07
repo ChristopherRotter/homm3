@@ -5737,3 +5737,38 @@ the setup's baseline (CI's green run on `master`, 222118f, stood in).
   alone: it and clippy again after them), `h3drive.py drawn` with the new viewer (261 the same
   under the new digests; its `h3-view sequences` as recorded), `h3-view gate`, the scoped verify
   with original data (`check-docs`, `check-lane`, `check-exe-map` among it).
+
+### M6 T6b1: the ship's deck and the two boats (2026-11-07)
+
+T6b cut in two by the user at its start: T6b1 the deck and the two boats (CLT-Q5), T6b2 the
+Demons' dissolve; R4-9 moved into T7 (its check needs every sequence with redraw artifacts
+captured afresh, about 51 of 91, which T7 does anyway). The original data staged by the file
+tool (the PC's shell did not start); the setup's baseline (`check.sh`) passed.
+
+- **The map** (`h3-view situation`, *provisional*): `afloat` names the sides that fight from a
+  boat (the deck Blue alone, Red attacking from the shore as batch E8b's E8-11; the two boats
+  both, E8-12); `special` writes the water (the boats' row and the one north of it, from Red's
+  boat or, on the deck, Blue's, to two columns east of Blue's) and an empty boat for each such
+  side (`Objects.txt`'s class 8, subclass 0, a `Plain` object one column east of its tile),
+  Blue's on the battle's tile, Red's west of it (`boat_tile`); `map` puts each such hero on the
+  land south of its boat and the map's land is grass (the scenario's terrain must be water). A
+  water battlefield needs `--hot-seat` (Blue boards in its turn) and a tile y up to 33 (its
+  heroes start a row south). CLT-Q5 closed (to `QUESTIONS-ANSWERED.md`).
+- **The harness** (`h3drive.py`, additive: no existing entry takes it): `afloat` (the scenario's
+  battlefield), `board` (Red's day 1: its hero walks north onto its boat for the two boats;
+  Blue's turn: the same; then Red's day 2, its hero selected and the view centred), and
+  `into_battle`'s `click` (Blue's tile, east of Red's, clicked twice). Observed: the arrow key
+  toward Blue's boat starts no battle from the shore (the hero stays; the parked mouse then
+  scrolls the view off the map, which the timeout's dump showed), a click does, as E8-11's.
+  `sequence` refuses a water battlefield (`scenario_experience`: it boards no boats).
+- **Recorded:** `deck` exact at the opening with its one water obstacle (`find`: type 55,
+  anchor 158 at the default tile, 1.0), `boats` exact with none (the 32 fixed hexes are its
+  picture's). The whole set again (the harness changed): all 152 others as recorded. Two runs
+  stopped before the main menu (`msg-mine`, `stats-off`: the game exited at its start) and one
+  at `boats`' hot-seat start (the display dumped a 24-bit screen) when it ran right after `deck`
+  in one `set` run; each passed when run again (`--only`). `drawn --record`: 261 the same, the
+  two new.
+- **Reviewed** (a fresh reviewer, the diff only): `afloat`'s comment said "by its step east"
+  (fixed: two clicks); the map's last row (a boat at y 34 would start its hero on the border:
+  refused, tests at both edges); a sequence on a water battlefield would time out unexplained
+  (refused); the bookkeeping (HANDOFF, epic, queue).

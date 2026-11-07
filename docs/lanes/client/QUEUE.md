@@ -33,7 +33,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   recorded; `check.sh`. **Depends on:** nothing (independent of T1 to T5). **Status:** cut in
   three by the user (2026-11-07): **T6a** done (the purity test's holes, the dialog items
   through `h3_ui::paint`, R4-2; no capture in the original); **T6b** the recordings, cut in two
-  by the user (2026-11-07): **T6b1** the deck and the two boats as situations (CLT-Q5),
+  by the user (2026-11-07): **T6b1** done (the deck and the two boats as situations, CLT-Q5),
   **T6b2** the Demons' dissolve (R4-9 moved into T7); **T6c** `h3-bink` as `BINKW32.DLL`
   (CLT-Q30), on its own.
 
@@ -157,8 +157,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
 
-- CLT-Q4: the background variants 0 and 1. NOTES, "Battlefields and boats" (the deck and
-  the two boats: M6 T6).
+- CLT-Q4: the background variants 0 and 1. NOTES, "Battlefields and boats".
 
 - Later milestones: graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to

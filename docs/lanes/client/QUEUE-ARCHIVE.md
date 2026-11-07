@@ -178,6 +178,12 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   the next milestone's tasks in this queue; M5 done.
 - **Depends on:** T1 to T7 (done 2026-10-30). **Status:** T8a, T8b1 and T8b2 done; T8c ready (the user).
 
+### NOTES.md entries done by M6 T6b1 (2026-11-07; `NOTES.md`, "Battlefields and boats")
+
+- 2026-10-15 (E17 M3 T2): **when CLT-Q5 is answered** (boats in `h3-map`'s writer): the deck and
+  the two boats as capture-set situations (`h3-view situation`'s `special` refuses them now: a
+  hero in a boat against one on land, or both heroes in boats), their pictures already drawn.
+
 ### Inbox entries taken by M6 (2026-10-31)
 
 - 2026-10-29 (the user, at E17 M5 T5b1's start; for a free slot or M5's closure): **the

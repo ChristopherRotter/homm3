@@ -181,7 +181,7 @@ why = "exact: the outline's pulse on the original's clock (M3 T1b-2)"
 
 # The special battlefields (M3 T2): each as the original makes it on the defender's tile
 # (`h3-view situation`, design §5), its picture (0x4646D0) and its own obstacles. The ship's deck
-# and the two boats need boats on the map, which h3-map's writer lacks (CLT-Q5).
+# and the two boats follow the shore's absolute obstacle (E17 M6 T6b1).
 
 [[situation]]
 id = "shore"
@@ -282,6 +282,29 @@ tile = [18, 5]
 at = 0
 differing = 0
 why = "exact: the shore with its absolute obstacle 126 (M3 T2)"
+
+# The water battlefields (E17 M6 T6b1, CLT-Q5): each hero who fights from a boat boards an empty
+# one in the game (hot seat: Red on day 1, Blue in its turn), and Red attacks on day 2
+# (`h3drive.py`'s `board`).
+[[situation]]
+id = "deck"
+scenario = "deck.toml"
+hot_seat = true
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: a ship's deck (Blue's hero in its boat, Red's attacking from the shore), its picture and its one water obstacle (E17 M6 T6b1)"
+
+[[situation]]
+id = "boats"
+scenario = "boats.toml"
+hot_seat = true
+
+[[situation.frame]]
+at = 0
+differing = 0
+why = "exact: two boats (both heroes in boats), its picture with its 32 fixed hexes, no obstacles (E17 M6 T6b1)"
 
 # The heroes (M3 T3a): every battle picture of the 18 (`battle_load_heroes` 0x463370: by the
 # class's town and the hero's sex, design §4.5), the grass battle with other heroes; Orrin (CH00)

@@ -751,20 +751,68 @@ def check_clips(where):
                            f"another); {where}")
 
 
-def into_battle(game, key="Right", walls=None):
+def afloat(scenario):
+    """Which sides fight from a boat in the scenario file `scenario` (E17 M6 T6b1, CLT-Q5; `h3-view
+    situation`'s `afloat`): [False, True] on a ship's deck (Red attacks from the shore), [True,
+    True] between two boats, None on land."""
+    field = tomllib.loads(Path(scenario).read_text())["scenario"].get("battlefield") or ""
+    return {"deck": [False, True], "boats": [True, True]}.get(field.split(":")[-1])
+
+
+def board(game, boarding):
+    """The heroes of a water battlefield board their boats (E17 M6 T6b1, CLT-Q5), in hot seat on
+    `h3-view situation`'s map, where each such hero stands south of its empty boat: Red's turn
+    (its hero boards when `boarding[0]`), Blue's (when `boarding[1]`), each walking north onto its
+    boat (`h3adv.walk`: the boat takes the day's points), then Red's day 2, its hero selected and
+    the view centred on it. Returns the tile Red attacks, Blue's, east of Red's: `into_battle`
+    clicks it, as batch E8b's E8-11 (observed: the arrow key toward the boat starts no battle
+    from the shore; the key's check 0x408ED5, survey `E08-sea.md` §13)."""
+    import h3adv
+    import h3mem
+
+    mem = h3mem.Mem()
+    for side in (0, 1):
+        if mem.current_player() != side:
+            raise RuntimeError(f"player {side}'s turn expected, not {mem.current_player()}'s")
+        name = mem.hero(mem.player(side)["heroes"][0])["name"]
+        if boarding[side]:
+            x, y, z = mem.hero_named(name)["tile"]
+            obs = h3adv.walk(game, mem, name, [x, y - 1, z])
+            if not obs["arrived"] or not mem.hero_named(name)["status"] & h3mem.IN_BOAT:
+                raise RuntimeError(f"{name} did not board its boat at {(x, y - 1)}")
+        h3adv.end_turn(game, mem)
+    if mem.current_player() != 0:
+        raise RuntimeError("Red's day 2 expected after Blue's turn")
+    red = h3adv.select(game, mem, mem.hero(mem.player(0)["heroes"][0])["name"])
+    h3adv.centre(game, mem, *red["tile"])
+    x, y, z = red["tile"]
+    return x + 1, y, z
+
+
+def into_battle(game, key="Right", walls=None, click=None):
     """From the adventure map: freezes the clock, moves the selected hero with `key` into the
-    enemy, and steps the clock to the battle screen (`battle_book` when the acting hero's spell
-    book lights its button, M3 T7a-2a). Returns the clock's time at the opening. With `walls`
-    (E17 M4 T1b: a siege's `parts`, its 18 picture states, and `gate`) they are written into the
-    game's memory once the siege's setup has set its parts' states (some above 0) and before the
-    battle screen shows, so that its first frame draws them (`h3mem.write_walls`)."""
+    enemy, or with `click` (E17 M6 T6b1: a tile in the view, the enemy's) by two clicks on it (the
+    path, then the walk), and steps the clock to the battle screen (`battle_book` when the acting
+    hero's spell book lights its button, M3 T7a-2a). Returns the clock's time at the opening.
+    With `walls` (E17 M4 T1b: a siege's `parts`, its 18 picture states, and `gate`) they are
+    written into the game's memory once the siege's setup has set its parts' states (some above 0)
+    and before the battle screen shows, so that its first frame draws them
+    (`h3mem.write_walls`)."""
     game.clock("freeze")
     # The clips' clock is the virtual one (E17 M5 T8b1, R7-2: xdd.dll's 5., the ack's eighth
     # field): else the result window's clip runs in real time while the clock stands.
     if game.ack(need=True)[7] != 1:
         raise RuntimeError("xdd.dll did not point BINKW32.DLL's timeGetTime at the virtual clock "
                            "(the ack's eighth field 0): a clip would run in real time")
-    game.key(key)
+    if click is None:
+        game.key(key)
+    else:
+        import h3adv
+        import h3mem
+
+        mem = h3mem.Mem()
+        for _ in range(2):
+            game.click(*h3adv.hover(game, mem, *click), 0.3)
     game.move(*PARK)
     if walls is None:
         return game.step_until(("battle", "battle_book"), 10)
@@ -869,7 +917,7 @@ def write_screens(screens):
 
 
 def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=False, mouse=None,
-            walls=None, actions=()):
+            walls=None, actions=(), boarding=None):
     """The battle of the map: its opening, then a dump at each time in `frames` (ms after the
     opening, ascending); returns the dumps' paths. With `stacks` (a list; M3 T1b-2) the stacks
     the game's memory holds at each dump (h3mem: the fidgets) are appended to it. With
@@ -878,7 +926,8 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
     clock frozen, after the first turn started (its cursor, the status line's hint, a stack it
     marks: design §9.9). With `walls` (M4 T1b) a siege's wall states, written before its first
     frame (`into_battle`). With `actions` (E17 M5 T3a: the spell book's stills) the actions after
-    the mouse's move, at the frozen clock (`act`)."""
+    the mouse's move, at the frozen clock (`act`). With `boarding` (E17 M6 T6b1: a water
+    battlefield's, `afloat`) its heroes board their boats first, in hot seat (`board`)."""
     game.start(map_path)
     if hot_seat:
         import h3adv
@@ -886,7 +935,8 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
         h3adv.to_hot_seat(game, ["Red", "Blue"], gold=True)
     else:
         to_scenario(game, gold=True)
-    t0 = into_battle(game, key, walls)
+    target = None if boarding is None else board(game, boarding)
+    t0 = into_battle(game, key, walls, click=target)
     if mouse is not None:
         game.move(*mouse)
         time.sleep(0.3)
@@ -959,9 +1009,11 @@ def run_set(rest):
             # town's entrance (`key = "Up"`), any other west of the defender.
             # The actions after the mouse's move (E17 M5 T3a: the spell book opened, a tab or a
             # corner clicked, the mouse over a place).
+            # A water battlefield's heroes board their boats first (E17 M6 T6b1).
             paths = capture(game, map_path, here, list(frames), key=sit.get("key", "Right"),
                             stacks=stacks, hot_seat=bool(hot_seat), mouse=mouse,
-                            walls=sit.get("walls"), actions=sit.get("actions", ()))
+                            walls=sit.get("walls"), actions=sit.get("actions", ()),
+                            boarding=afloat(scenario))
         finally:
             game.stop()
         # Our frame at each time (M3 T1b-2): the battle's idle steps (the outline's pulse) on the
@@ -1367,8 +1419,14 @@ def sequence(game, map_path, out, pre=0, actions=(), ms=1000, screen=False, fram
 def scenario_experience(set_path, entry):
     """The experience of each side's hero by its player's colour (E17 M6 T5b2a, design §12.19):
     the scenario's retreat facts (`[scenario.attacker_retreat]`, Red's hero;
-    `[scenario.defender_retreat]`, Blue's), those above 0, for `sequence`'s `experience`."""
-    scenario = tomllib.loads((set_path.parent / entry["scenario"]).read_text())["scenario"]
+    `[scenario.defender_retreat]`, Blue's), those above 0, for `sequence`'s `experience`. A
+    sequence on a water battlefield is refused (E17 M6 T6b1: `sequence` boards no boats; the
+    capture set's `board` only)."""
+    path = set_path.parent / entry["scenario"]
+    if afloat(path) is not None:
+        raise ValueError(f"{entry['id']}: a ship's deck or two boats are the capture set's only "
+                         "(`set`: its heroes board their boats)")
+    scenario = tomllib.loads(path.read_text())["scenario"]
     found = {}
     for colour, side in enumerate(("attacker", "defender")):
         value = scenario.get(f"{side}_retreat", {}).get("experience", 0)

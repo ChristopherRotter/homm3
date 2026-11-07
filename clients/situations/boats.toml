@@ -1,0 +1,50 @@
+# E17 M6 T6b1 (CLT-Q5): a situation of the capture set (situations/set.toml) between two boats
+# (`CmBkBoat.pcx`: both heroes in boats; survey E04c-battlefields §1): each hero boards an empty
+# boat, Red's on day 1, Blue's in its turn, and Red's sails into Blue's on day 2 (`h3-view
+# situation`, `h3drive.py`'s `board`; batch E8b's E8-12). Fought on water, the shore situation's
+# armies; no obstacles: the field's 32 fixed hexes (the pack's `boats`) are its picture's.
+
+[scenario]
+id = "situation-boats"
+# Both human (hot seat): Blue boards its boat in its own turn.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:water"
+battlefield = "base:boats"
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
