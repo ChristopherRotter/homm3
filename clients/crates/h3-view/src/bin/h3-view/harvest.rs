@@ -161,6 +161,11 @@ const MANA_DRAIN_SOUND: u32 = 0x66_FF94;
 /// A Dread Knight's Death Blow's sound (E17 M6 T5d2a; `damage_stage1_with_luck` 0x443B1E,
 /// `Deathblo.wav`).
 const DEATH_BLOW_SOUND: u32 = 0x66_0A50;
+/// Ice Bolt's explosion's sound (E17 M6 T5d2b; `cast_spell` 0x5A0AAB, `IceRayEx.wav`).
+const ICE_BOLT_SOUND: u32 = 0x68_8480;
+/// The Familiars' channel's sounds, the drain's then the fill's (E17 M6 T5d2b; `cast_spell`
+/// 0x5A26E5, 0x5A270E: `MagChDrn.wav`, `MagChFil.wav`).
+const CHANNEL_SOUNDS: [u32; 2] = [0x68_8430, 0x68_8420];
 /// A wall shot's explosions and sounds (E17 M4 T2b; `wall_shot_animate` 0x4462D5, 0x44618B):
 /// `SGEXPL.DEF`, `CSGRCK.DEF`, `WallHit.82m`, `WallMiss.82m`.
 const WALL_SHOT: [u32; 4] = [0x66_0A60, 0x66_0A6C, 0x66_0A78, 0x66_0A84];
@@ -325,6 +330,8 @@ struct Harvest {
     strike_sounds: [String; 2],
     mana_drain_sound: String,
     death_blow_sound: String,
+    ice_bolt_sound: String,
+    channel_sounds: [String; 2],
     /// A wall shot's explosions (a hit's, a miss's) and sounds (E17 M4 T2b).
     wall_shot: [String; 4],
     /// The drawbridge's and a mine's blast's sounds (E17 M4 T2c-1).
@@ -579,6 +586,9 @@ fn read_harvest(
     let strike_sounds = [stem(&string(drain)?), stem(&string(thunderbolt)?)];
     let mana_drain_sound = stem(&string(MANA_DRAIN_SOUND)?);
     let death_blow_sound = stem(&string(DEATH_BLOW_SOUND)?);
+    let ice_bolt_sound = stem(&string(ICE_BOLT_SOUND)?);
+    let [channel_drain, channel_fill] = CHANNEL_SOUNDS;
+    let channel_sounds = [stem(&string(channel_drain)?), stem(&string(channel_fill)?)];
     let [hit_def, miss_def, hit_sound, miss_sound] = WALL_SHOT;
     let wall_shot = [
         string(hit_def)?,
@@ -715,6 +725,8 @@ fn read_harvest(
         strike_sounds,
         mana_drain_sound,
         death_blow_sound,
+        ice_bolt_sound,
+        channel_sounds,
         wall_shot,
         siege_sounds,
         pickup_sounds,
@@ -978,6 +990,14 @@ fn write_table(
         );
         let _ = writeln!(t, "mana_drain_sound = \"{}\"", plain(&h.mana_drain_sound)?);
         let _ = writeln!(t, "death_blow_sound = \"{}\"", plain(&h.death_blow_sound)?);
+        let _ = writeln!(t, "ice_bolt_sound = \"{}\"", plain(&h.ice_bolt_sound)?);
+        let [channel_drain, channel_fill] = &h.channel_sounds;
+        let _ = writeln!(
+            t,
+            "channel_sounds = [\"{}\", \"{}\"]",
+            plain(channel_drain)?,
+            plain(channel_fill)?
+        );
         let [hit_def, miss_def, hit_sound, miss_sound] = &h.wall_shot;
         let _ = writeln!(
             t,

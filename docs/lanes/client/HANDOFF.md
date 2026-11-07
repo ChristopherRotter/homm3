@@ -24,10 +24,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
   asked; #762 merged; the user added **T5e**, the captured artifacts' message). T5d cut in two
   by the user (2026-11-06): T5d1 done (#771, design §12.22); T5d2 cut in two by the user
-  (2026-11-06): **T5d2a done** (design §12.23: Death Blow, an Ogre Mage's Bloodlust and its
-  glow; `blows` and `blows-sound` as recorded; #774: check it
-  first). **Next: T5d2b** (Ice Bolt's explosion, the Familiars' channel; QUEUE), T5e, T6, T7;
-  then M7 ranked play and the server browser.
+  (2026-11-06): T5d2a done (#774, design §12.23); **T5d2b done** (design §12.24: Ice Bolt's
+  explosion and the Familiars' channel; `channel` and `channel-sound` exact; the PR on
+  `client/e17-m6-t5d2b`: check it first). T5d done. **Next: T5e** (the captured artifacts'
+  message; QUEUE), T6, T7; then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -65,6 +65,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-07, E17 M6 T5d2b (done; `client/e17-m6-t5d2b`).** Kept whole (T5d2a's size). The
+  original data staged by the file tool before the PC went away (its shell did not start).
+  Read and built (`anim/channel.rs`, Ice Bolt's arm), recorded by a capture agent (`channel`,
+  `channel-sound`: exact after one correction, the acting stack's outline during the channel),
+  reviewed by a fresh reviewer. Record: `E17-log.md`.
 - **2026-11-06, E17 M6 T5d2a (done; `client/e17-m6-t5d2a`, #774).** The user cut T5d2 in two
   (T5d2b: Ice Bolt's explosion, the Familiars' channel). The original data staged by the file
   tool (the PC's shell did not start); the sandbox restarted during the setup's baseline (CI's
@@ -77,11 +82,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   start). Read, built (`anim/starts.rs`), recorded by a capture agent (`starts`,
   `starts-sound`: the three effects exact; `motion::magic` now loads their animations), reviewed
   (a passed stack's outline, the round start's clear fixed). Record: `E17-log.md`.
-- **2026-11-06, E17 M6 T5c (done; #762).**
-  Kept whole by the user, who queued the captured artifacts' message as T5e. The original data
-  staged by the file tool (the PC's shell did not start; the PC went offline later, nothing
-  missing). A reading (§12.21), a builder (the box with pictures, Eagle Eye's boxes, the pickup
-  sounds), a capture agent (`eagle-eye`, `eagle-eye-one`: 164 and 37 frames exact after three
-  corrections; CLT-Q66 asked), stopped by the user's interruption after its last digests: the
-  session committed its work and ran its gates. A fresh reviewer. CLT-STUB-3 and the server
-  lane's inbox: a seat's picks.

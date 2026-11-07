@@ -1,0 +1,62 @@
+# E17 M6 T5d2b: Ice Bolt's explosion and the Familiars' channel (design §12.24), in hot seat.
+# Round 1: the Royal Griffins' turn (speed 9) opens the battle; Orrin casts Ice Bolt at the
+# Cerberi (its projectile, `IceRayEx.wav` as 46 strikes them, the line, the sound waited for, his
+# last frames) and Crag Hack's four Familiars channel him 1 spell point (the line GENRLTXT 113, 76
+# at hex 0, 75 at hex 16); the Griffins defend. The Cerberi's turn (speed 8): Crag Hack casts Ice
+# Bolt at the Griffins and Orrin's one Familiar channels (GENRLTXT 112, 76 at hex 16, 75 at hex
+# 0); the sequence ends in the Cerberi's turn. Both heroes hold the 10 spell points their
+# knowledge 1 gives the original's, no school skills (Ice Bolt costs 8: 8 div 5 = 1 channelled;
+# its damage 30). On grass at the capture set's tile, with its obstacles.
+
+[scenario]
+id = "sequence-channel"
+# Both players human, as the original's hot-seat map (`h3-view situation --hot-seat`).
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:grass"
+obstacles = [
+    { hexes = [75, 76, 77, 78, 61, 60, 59, 58], anchor = 74, kind = "base:obstacle_22" },
+    { hexes = [91, 92], anchor = 91, kind = "base:obstacle_20" },
+    { hexes = [122, 123], anchor = 122, kind = "base:obstacle_19" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:familiar"
+count = 1
+
+[[attacker]]
+slot = 1
+creature = "base:royal_griffin"
+count = 5
+
+[[defender]]
+slot = 0
+creature = "base:familiar"
+count = 4
+
+[[defender]]
+slot = 1
+creature = "base:cerberus"
+count = 5
+
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:ice_bolt"]
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+mana = 10
+max_mana = 10
+spell_book = ["base:ice_bolt"]

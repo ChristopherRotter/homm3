@@ -3330,9 +3330,8 @@ each waits for, in its order:
 | the Wraiths' mana drain 0x4657CA (M6 T5d1) | `ManaDrai`'s | after 77 over the Wraiths |
 | Poison's tenth at a round's start 0x44730E (M6 T5d1) | `Poison`'s | after 67 over the stack |
 | Death Blow 0x443B46 (M6 T5d2a, §12.23) | `Deathblo`'s | after 73 over the stack struck |
-
-Not built, as their effects are not drawn yet (T5d2b): Ice Bolt's explosion 0x5A0AFB
-(`IceRayEx`), the Familiars' channel 0x5A2740 and 0x5A2750 (`MagChDrn`, `MagChFil`).
+| Ice Bolt's explosion 0x5A0AFB (M6 T5d2b, §12.24) | `IceRayEx`'s | after 46 over the stack struck and the line |
+| the Familiars' channel 0x5A2740, 0x5A2750 (M6 T5d2b) | `MagChDrn`'s, then `MagChFil`'s | after 76 and 75 at the corners |
 
 **Built.** A cue returns itself; a site waits from now until the cue's start plus its sample's
 length or now plus 4 s, whichever comes first (`Player::wait_for`; `wait_last` for a stack's own
@@ -7395,3 +7394,65 @@ Bloodlust glow), T5d2b the hero's cast's (Ice Bolt's explosion, the Familiars' c
   look there (casters' cursors not modelled, §9.10).
   The Black Dragon is immune to the Dread Knights' Curse (spells up to level 5), so the
   scenario needs no forced roll for it (none in the harness).
+
+### 12.24 Ice Bolt's explosion and the Familiars' channel (M6 T5d2b)
+
+T5d2's second part (the user's cut, 2026-11-06): the hero's cast's effects. Read: `cast_spell`'s
+Ice Bolt case (0x5A0A30 to 0x5A0B07, beside Magic Arrow's 0x5A098A) and its common tail from the
+hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
+
+- **Ice Bolt's explosion** (case 16, any caster kind): unless the battle is hidden its projectile
+  (`spell_projectile` with `ice_bolt_projectile_defs`, as Magic Arrow's); the damage
+  (`spell_damage_modifiers`, `stack_take_damage`); unless hidden `IceRayEx.wav` as a file
+  (category 2, 0x5A0AAB) and the stack marked (+0x20, inside the same test: Magic Arrow marks it
+  outside); `strike_animation` with the spell's animation (46, `C08spW5`, 16 frames) and the hit;
+  unless hidden the damage's line (`battle_log_damage` named by the spell); then the sound waited
+  for (0x5A0AFB, 4 000 ms at most) and the Phoenix's rebirth check before the common tail. Magic
+  Arrow's case plays no sound of its own. `strike_animation` shows its first frame at the sound's
+  millisecond. `IceRayEx.wav` lasts 1 360 ms (29 991 frames at 22 050 Hz).
+- **The channel** (0x5A2170): after the hero's last frames and standing redraw and
+  `outline_turn_stack` (0x5A216B), for a hero's cast (kind 0) with the other hero present and a
+  cost of 5 or more, the creatures of every creature-43 record whose controller is not the side
+  whose turn it is (+0x132C0, the caster's) are counted (0x5A21CC; the loop bound BAT-QUIRK-16);
+  with any, that hero gains cost div 5 (+0x18, 0x5A2228; BAT-MAG-055, the engine's
+  `ManaChanneled` after the cast's effects and a Phoenix's rebirth). Unless hidden then
+  (0x5A222E): the line GENRLTXT 112 ("absorbs") with creature 43's singular name (+0x1390) when
+  exactly one Familiar is counted, else 113 ("absorb") with the plural (+0x1394), and the mana
+  (0x5A224A to 0x5A2463), `battle_log_add`(text, 1, 0); `MagChDrn.wav` (category 2, 0x5A26EA) and
+  `play_magic_animation_at_hex`(76 `sp07_B`, hex 0 when the caster is the attacker, else 16;
+  100, no keep) (0x5A2709); `MagChFil.wav` (0x5A2713) and (75 `sp07_A`, the other corner)
+  (0x5A2736); `wait_for_sample` on the drain's, then on the fill's (0x5A2740, 0x5A2750). Both
+  animations have 12 frames and place 1 (centred 37 above the hex's anchor): at a redraw each
+  trunc(100 F) and the erasing one, 1 300 ms each at speed 0, longer than either sound (1 190 and
+  1 170 ms), so the waits hold only at the faster speeds. Category 2 has four sample handles
+  (§8.2): in the original the fill does not cut the drain.
+- **Built.** `Sound::IceBolt` (the asset tables' `ice_bolt_sound`, harvested from 0x688480),
+  cued on the stack struck in the projectile arm of a hero's cast for Ice Bolt before
+  `strike_animation`, waited for after the damage's line (`ICE_BOLT`). `anim/channel.rs`:
+  `Event::ManaChanneled` drawn as it comes after the cast (`Player::channeled`): the stack whose
+  turn it is outlined from the hero's standing redraw on (0x5A216B; the viewer had outlined it
+  only at the command's end, 26 frames of each recorded channel apart), the line
+  `Logged::Channeled` (the key `battle.log.channeled`, GENRLTXT 112/113 with the mana), the new
+  `Sound::ChannelDrain` and `ChannelFill` (`channel_sounds`, harvested from 0x688430 and
+  0x688420), `CHANNEL_DRAIN` and `CHANNEL_FILL` at the corners by `at_hex`, each sound
+  waited for in turn; `motion::magic` loads 75 and 76 for a channel, `motion::casts` the
+  channelling creatures (`Casts::channellers`, the ruleset's `mana_channel`; `Live::channels`).
+  The line counts the creatures of the channelling stacks the gaining side controls (a
+  hypnotized one by its controller, `Player::controller`, as 0x5A21D5 to 0x5A21EC; the
+  reviewer's finding: first built by their side). *Provisional:* it is named by the first one's
+  creature (the original's creature 43's names); the window plays category 2
+  on one stream, so at a fast speed the fill cuts the drain (the category's other three handles
+  not built, §8.2); a creature's Ice Bolt (a Faerie Dragon's) still takes effect at once, without
+  its frames, projectile or explosion (M6 review list item 45).
+- **Recorded** in the original, in hot seat (`seq-channel.toml`: Orrin with one Familiar and
+  five Royal Griffins, Crag Hack with four Familiars and five Cerberi, both with Ice Bolt and
+  10 spell points; nothing rolled, no seed): `channel` and `channel-sound`, 145 frames each,
+  all exact, the timelines as recorded, after the outline's correction above. Orrin's Ice
+  Bolt: 46 and `IceRayEx.wav` at 1 292, the line at 2 692, standing at 2 992; the channel's
+  line (113) at 2 992, 76 at hex 0 from 3 092, 75 at hex 16 from 4 392, erased at 5 592; Crag
+  Hack's: 46 at 6 851, standing at 8 551, the line 112, 76 at hex 16, 75 at hex 0, done at
+  11 151. At speed 0 no wait holds: `IceRayEx.wav` ends about 40 ms before 46 does, each
+  channel sound inside its animation, the fill after the drain's end (none cut). The waits'
+  timing past an animation is therefore tested by the unit tests only (the harness records at
+  speed 0).
+

@@ -374,6 +374,10 @@ pub struct Casts {
     /// The creatures with a Fire Shield of their own, by handle (the ruleset's innate spell; the
     /// Efreet Sultans, `fire_shield_factor` 0x443130; E17 M3 T7c-3).
     pub shielded: BTreeSet<u16>,
+    /// The creatures that channel the other hero's mana, by handle (the ruleset's `mana_channel`;
+    /// the original's creature 43, the Familiars, `cast_spell` 0x5A21CC; E17 M6 T5d2b): the
+    /// channel's line counts their creatures.
+    pub channellers: BTreeSet<u16>,
     /// The draws Chain Lightning's rays turn by, in order (E17 M3 T7c-3): the original's, which a
     /// capture keeps for the frame check; past them the viewer draws its own ([`crate::ray::chain`]).
     pub rays: Vec<i32>,
@@ -587,6 +591,9 @@ pub const ACID: u8 = 81;
 /// effect, 0x44111A), Acid Breath (its handler lowers the defense by 3 and writes the executable's
 /// own line, 0x5A1E70; its sound and name for the acid, 0x44150E).
 pub const LIGHTNING_BOLT: u16 = 17;
+/// Ice Bolt (the executable's spell number): its explosion's sound as its animation strikes
+/// (`cast_spell` 0x5A0AAB; E17 M6 T5d2b).
+pub const ICE_BOLT: u16 = 16;
 /// The Titans' Lightning Bolt ([`LIGHTNING_BOLT`]).
 pub const TITAN_BOLT: u16 = 57;
 /// Poison ([`LIGHTNING_BOLT`]).
@@ -1013,6 +1020,16 @@ pub enum Sound {
     /// A Dread Knight's Death Blow, cued on the striker (`death_blow_sound`, category 2:
     /// `play_sound_file` from `damage_stage1_with_luck` 0x443B23; E17 M6 T5d2a).
     DeathBlow,
+    /// Ice Bolt's explosion, cued on the stack struck (`ice_bolt_sound`, category 2:
+    /// `play_sound_file` from `cast_spell` 0x5A0AB0; E17 M6 T5d2b).
+    IceBolt,
+    /// The Familiars' channel's drain at the caster's corner, cued on no stack (stack 0; the
+    /// asset tables' first `channel_sounds`, category 2: `play_sound_file` from `cast_spell`
+    /// 0x5A26EA; E17 M6 T5d2b).
+    ChannelDrain,
+    /// Its fill at the other corner (the second `channel_sounds`, 0x5A2713), as
+    /// [`Sound::ChannelDrain`].
+    ChannelFill,
     /// The sound a spell's handler plays with each object it places (its handle: the asset
     /// tables' spell `object_sound`, `play_sample` 0x5A040A, Land Mine's 0x5A061A; E17 M3
     /// T7c-2), cued on no stack (stack 0).
@@ -1818,6 +1835,8 @@ struct Live {
     defense: i32,
     /// Its creature frightens ([`Casts::frighteners`]; E17 M3 T7b-2b-2b).
     frightens: bool,
+    /// Its creature channels the other hero's mana ([`Casts::channellers`]; E17 M6 T5d2b).
+    channels: bool,
     /// Its creature has a Fire Shield of its own ([`Casts::shielded`]; E17 M3 T7c-3).
     shielded: bool,
     /// A siege's turret: its record ([`siege::turret_record`]; E17 M4 T2b).
@@ -1842,6 +1861,7 @@ impl Live {
             spells: s.effects.iter().map(|e| e.spell).collect(),
             defense: s.defense,
             frightens: casts.frighteners.contains(&s.creature),
+            channels: casts.channellers.contains(&s.creature),
             shielded: casts.shielded.contains(&s.creature),
             turret,
         }
@@ -3444,6 +3464,8 @@ impl Player<'_> {
                 }
                 // A Phoenix reborn (E17 M3 T7c-3).
                 Event::Reborn { stack, creatures } => self.reborn(stack, creatures),
+                // The Familiars' channel at the hero's cast's tail (E17 M6 T5d2b).
+                Event::ManaChanneled { side, mana } => self.channeled(side, mana),
                 Event::Defended { stack } => {
                     self.defends(stack, true);
                     // A war machine writes no line (0x479758).
@@ -4350,12 +4372,20 @@ impl Player<'_> {
                             }
                             (Some((damage, kills)), Some(c)) if !look.projectile.is_empty() => {
                                 self.spell_projectile(c.point, &live, &look.projectile);
+                                // Ice Bolt's explosion (0x5A0AAB to 0x5A0AFB; E17 M6 T5d2b,
+                                // design §12.24): its sound as the animation strikes, waited for
+                                // after the line.
+                                let explosion = (look.original == ICE_BOLT)
+                                    .then(|| self.cue(t, Sound::IceBolt, false));
                                 self.marked((t, &live), kills, look.animation);
                                 let line = Logged::SpellDamage {
                                     spell,
                                     hit: (t, damage, kills),
                                 };
                                 self.log.push((self.clock.now, line));
+                                if let Some(cue) = explosion {
+                                    self.wait_for(cue);
+                                }
                             }
                             (Some(_), _) => self.spell_hits((spell, look.animation), effects),
                             _ if applied => {
@@ -6365,6 +6395,7 @@ pub fn differences(ours: &str, expected: &str) -> Vec<String> {
 }
 
 mod chain;
+mod channel;
 mod created;
 mod creature;
 mod entered;
@@ -6374,6 +6405,7 @@ mod siege;
 mod starts;
 
 pub use chain::{CHAIN_LIGHTNING, CHAIN_START};
+pub use channel::{CHANNEL_DRAIN, CHANNEL_FILL};
 pub use created::{
     BATTLEFIELD, Body, CREATION_STEP, CreatedKey, DISSOLVE_STEPS, Dissolve, DissolveArea,
     DissolveKey, Notice, TELEPORT, TELEPORT_STEP, created_stack,
