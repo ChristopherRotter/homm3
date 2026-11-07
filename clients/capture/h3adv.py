@@ -1173,6 +1173,115 @@ def press(game, mem, name, key, answer=None, battle=None, level_up="left"):
             **events}
 
 
+# -- A key again and again (E08 T100b: batch E11b's E11-15 to E11-17) ----------------------------
+PRESSES_LIMIT = 60  # presses at most in one step
+# The events of each press gathered into the step's (`messages`, `battles`, … read as a walk's).
+PRESS_EVENTS = ("messages", "message_pictures", "questions", "battles", "level_ups",
+                "level_up_dialogs", "screens", "exchanges", "choices")
+
+
+def presses(game, mem, name, key, plan, answer=None, battle=None, level_up="left"):
+    """A key pressed again and again (E08 T100b, batch E11b: Space on a monolith or a Whirlpool,
+    a jump each): a step's `repeat = { most = <n>, first = <k>, until = { with = "<hero>" } }`
+    presses `key` at most n times (PRESSES_LIMIT), each one as `press` does (the hero selected,
+    the view centred, the key, what it brings played by `answer`, `battle` and `level_up`, the
+    rest), read after it rests: the hero's tile before and after, its points and army, the press's
+    messages, questions and battles. With `until` it stops before a press once the step's hero
+    stands on the tile of the hero `with` names, also before the first (no press then). `first`
+    numbers the first press's row (default 1: a table whose first row is the step onto the
+    entrance starts the presses at 2). The step's observation: `presses`, `presses:<columns>`,
+    `presses:changed`."""
+    until = plan.get("until")
+    most = plan.get("most")
+    if set(plan) - {"most", "first", "until"} or not isinstance(most, int) \
+            or not 0 < most <= PRESSES_LIMIT or (until is not None and set(until) != {"with"}):
+        raise ValueError(f"`repeat = {plan!r}`: {{ most = <1 to {PRESSES_LIMIT}>, first = <row>, "
+                         "until = { with = \"<hero>\" } }")
+    first = plan.get("first", 1)
+    index = mem.hero_named(name)["index"]
+
+    def met():
+        return until is not None and (mem.hero_named(until["with"])["tile"]
+                                      == mem.hero(index)["tile"])
+
+    done, events = [], {k: [] for k in PRESS_EVENTS}
+    while len(done) < most and not met():
+        army = mem.hero(index)["slots"]
+        got = press(game, mem, name, key, answer, battle, level_up)
+        for k in PRESS_EVENTS:
+            events[k].extend(got.get(k, []))
+        done.append({"n": first + len(done), "from": got["from"], "tile": got["tile"],
+                     "key": got["key"], "points_before": got["points_before"],
+                     "points": got["points"], "army_before": army,
+                     "army": mem.hero(index)["slots"], "messages": got["messages"],
+                     "questions": [q["record"] or "?" for q in got["questions"]],
+                     "battles": len(got["battles"])})
+    if until is None:
+        stop = f"{len(done)} presses"
+    elif met():
+        stop = (f"on {until['with']}'s tile after {len(done)} presses" if done
+                else f"on {until['with']}'s tile at the start: no press")
+    else:
+        stop = f"not on {until['with']}'s tile after {len(done)} presses"
+    tile = mem.hero(index)["tile"]
+    return {"hero": name, "index": index, "presses": done, "stop": stop,
+            "from": done[0]["from"] if done else tile, "tile": tile, "moved": bool(done) and (
+                done[0]["from"] != tile), **events}
+
+
+def presses_value(obs, what, mem):
+    """A `repeat` step's observations (E08 T100b): `presses` how it ended (`60 presses`, `on
+    E11-17's tile after 7 presses`, `… at the start: no press`); `presses:<columns>` one table row
+    per press, the columns named by `n` (the row's number), `from`, `to` (the places, place_name),
+    `tile` (the tile after), `points`, `army` and `messages`; `presses:changed` the presses after
+    which the points or the army differ from before, or that showed a message, a question or a
+    battle (`none`)."""
+    done = obs.get("presses")
+    if done is None:
+        raise ValueError(f"`{what}`: the step presses no key again (`repeat`)")
+    if what == "presses":
+        return obs["stop"]
+    if what == "presses:changed":
+        out = []
+        for p in done:
+            said = []
+            if p["points"] != p["points_before"]:
+                said.append(f"points {p['points_before']} to {p['points']}")
+            if p["army"] != p["army_before"]:
+                said.append(f"army {slots_text(mem, p['army_before'])} to "
+                            f"{slots_text(mem, p['army'])}")
+            said += [f"message {m}" for m in p["messages"]]
+            said += [f"question {q}" for q in p["questions"]]
+            said += [f"{p['battles']} battle(s)"] if p["battles"] else []
+            if said:
+                out.append(f"press {p['n']}: " + ", ".join(said))
+        return "; ".join(out) or "none"
+    columns = what.split(":", 1)[1].split(",")
+    cell = {"n": lambda p: str(p["n"]), "from": lambda p: place_name(p["from"]),
+            "to": lambda p: place_name(p["tile"]),
+            "tile": lambda p: tile_name(p["tile"]),
+            "points": lambda p: str(p["points"]), "army": lambda p: slots_text(mem, p["army"]),
+            "messages": lambda p: ", ".join(p["messages"]) or "none"}
+    if unknown := [c for c in columns if c not in cell]:
+        raise ValueError(f"`{what}`: unknown column(s) {unknown} (of {', '.join(cell)})")
+    return [[cell[c](p) for c in columns] for p in done]
+
+
+def off_tile(mem, name):
+    """The tile a step `walk = "off"` goes to (E08 T100b, batch E11b's E11-16: a step off a
+    shared tile): the first of the hero's eight neighbours, the four straight ones first (north,
+    east, south, west, then north-east, south-east, south-west, north-west), that its player may
+    walk to without visiting or meeting anything (h3mem.open_tiles: explored, no object's class,
+    not closed, outside every guard), of water for a hero in a boat and of land for one on foot."""
+    hero = mem.hero_named(name)
+    x, y, z = hero["tile"]
+    open_ = mem.open_tiles(hero["owner"], z, water=bool(hero["status"] & h3mem.IN_BOAT))
+    for dx, dy in ((0, -1), (1, 0), (0, 1), (-1, 0), (1, -1), (1, 1), (-1, 1), (-1, -1)):
+        if (x + dx, y + dy) in open_:
+            return [x + dx, y + dy] + ([z] if z else [])
+    raise RuntimeError(f"{name} on {x},{y},{z}: no open neighbour to step off to")
+
+
 # -- Replay Opponent Turn (E08 T100a: batch E11a's E11-18) ----------------------------------------
 # adventure_command 0x409A70's control 9 (its switch 0x409AB4) runs adventure_options_run
 # 0x41AB00: the modal dialog of 0x4051D0 (AdvOpts.pcx) with View World 1 (AdvView.def), the Puzzle
@@ -1470,6 +1579,36 @@ def message_record(mem):
 # The batch's own message texts (E08 T79b; batch sets them from its spec): message_record names a
 # message with one of them `the map's text "..."`.
 OWN_TEXTS = []
+
+# The recipe's named places (E08 T100b, batch E11b; batch sets them from its `[places]`): a name
+# for a tile (`M1 = [26, 4]`) or a box of tiles (`W1 = [22, 15, 24, 16]`), each with an optional
+# level last (`[x, y, level]`, `[x0, y0, x1, y1, level]`); `hero:place` and the presses' rows
+# name a tile by the first that holds it.
+PLACES = {}
+
+
+def place_name(tile):
+    """The name of the recipe's first place holding `tile` ([x, y] or [x, y, level]), else the
+    tile itself (`x,y`, `x,y,level` underground)."""
+    x, y, z = (*tile, 0)[:3]
+    for name, where in PLACES.items():
+        if len(where) in (2, 3):
+            if [x, y, z] == [*where, 0][:3]:
+                return name
+        elif len(where) in (4, 5):
+            x0, y0, x1, y1, level = [*where, 0][:5]
+            if z == level and x0 <= x <= x1 and y0 <= y <= y1:
+                return name
+        else:
+            raise ValueError(f"place {name} = {where}: [x, y(, level)] or "
+                             "[x0, y0, x1, y1(, level)]")
+    return tile_name(tile)
+
+
+def tile_name(tile):
+    """A tile as the records write it: `x,y` on the surface, `x,y,level` underground."""
+    x, y, z = (*tile, 0)[:3]
+    return f"{x},{y}" + (f",{z}" if z else "")
 
 
 def own_texts(spec):
@@ -1911,6 +2050,12 @@ def hero_value(mem, hero, field):
     # E08 T100a (batch E11a): whether the hero is in a boat (status bit 18, h3mem.IN_BOAT).
     if field == "in_boat":
         return "yes" if hero["status"] & h3mem.IN_BOAT else "no"
+    # E08 T100b (batch E11b): the recipe's place the hero stands on (place_name: `W2`, else the
+    # tile) and its tile as a table's cell (`x,y`; tile_name).
+    if field == "place":
+        return place_name(hero["tile"])
+    if field == "at":
+        return tile_name(hero["tile"])
     raise ValueError(f"unknown hero detail `{field}`")
 
 
@@ -2536,6 +2681,10 @@ def value(obs, what, mem):
         return ", ".join(q["kind"] for q in obs.get("questions", [])) or "none"
     if what == "questions":
         return ", ".join(q["record"] or "?" for q in obs.get("questions", [])) or "none"
+    if what == "answers":
+        # E08 T100b (batch E11b's E11-14): each question's record with the answer given.
+        return ", ".join(f"{q['record'] or '?'}: {q['answer']}"
+                         for q in obs.get("questions", [])) or "none"
     # E08 T90 (batch E10a): the guards' questions' size words by their ARRAYTXT row.
     if what == "size_words":
         return ", ".join(f"ARRAYTXT:{q['size_word']}" if q["size_word"] is not None else
@@ -2680,6 +2829,35 @@ def value(obs, what, mem):
                 f"ship flag {field['ship']}, blocked hexes {blocked}")
     if what in ("again", "key"):
         return obs.get(what, "none")
+    # E08 T100b (batch E11b): a `repeat` step's presses (presses_value), the Whirlpools' list in
+    # its order (`16 tiles: 22,15 23,15 …`), a walk's target (the tile `walk = "off"` chose) and
+    # the current player's selected hero (`none`).
+    if what.startswith("presses"):
+        return presses_value(obs, what, mem)
+    if what == "whirlpools":
+        found = mem.whirlpools()
+        return f"{len(found)} tiles: " + " ".join(tile_name(t) for t in found)
+    if what == "target":
+        return tile_name(obs["target"]) if "target" in obs else "none"
+    if what == "selected":
+        chosen = mem.player(mem.current_player())["selected"]
+        return mem.hero(chosen)["name"] if chosen >= 0 else "none"
+    # E08 T100b: `tile:` over a box (`tile:x0,y0..x1,y1[,level]`, row by row, each `x,y` and its
+    # tile_text), on the step's hero's tile before the step (`tile:from`) or after it
+    # (`tile:here`), or on another hero's tile now (`tile:hero[<name>]`), each `x,y: <tile_text>`.
+    if m := re.match(r"tile:(\d+),(\d+)\.\.(\d+),(\d+)(?:,(\d))?$", what):
+        x0, y0, x1, y1 = map(int, m.groups()[:4])
+        z = int(m.group(5) or 0)
+        return ", ".join(f"{x},{y} {tile_text(mem, x, y, z)}"
+                         for y in range(y0, y1 + 1) for x in range(x0, x1 + 1))
+    if m := re.match(r"tile:(from|here|hero\[(.+)\])$", what):
+        if m.group(1) == "from":
+            tile = obs["before"]["hero"]["tile"]
+        elif m.group(1) == "here":
+            tile = after["hero"]["tile"]
+        else:
+            tile = mem.hero_named(m.group(2))["tile"]
+        return f"{tile_name(tile)}: {tile_text(mem, *tile)}"
     # E08 T100a (batch E11a): the meetings a step opened (the heroes the exchange showed), the
     # step's hero's army slot by slot before and after it as table rows (slot, creature, count
     # before, count after; the slots that held something), a replay's observations.
@@ -3097,6 +3275,8 @@ def batch(recipe_path, map_path=None, out=None):
         compile_spec(spec, out, name)  # the template; the given map stays the one played
     values, notes, steps = {}, {}, []
     OWN_TEXTS[:] = own_texts(spec)  # E08 T79b: the map's own messages by their text
+    PLACES.clear()
+    PLACES.update(recipe.get("places", {}))  # E08 T100b: the recipe's named places
     log = open(out / "steps.jsonl", "w")
     game = Game(out)
     try:
@@ -3123,6 +3303,20 @@ def batch(recipe_path, map_path=None, out=None):
                 obs["player"] = end_turn(game, mem, obs)
                 obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
                                               for c in range(8) if mem.player(c)["heroes"]}}
+            elif step.get("look"):
+                # E08 T100b (batch E11b's E11-16: a turn's start, before a hero is selected): the
+                # view centred on a hero's tile by the minimap (nothing selected, nothing else
+                # clicked), for the step's live reads and its `dump`; `record` and `note` as an
+                # end-turn step's.
+                if "hero" in step:
+                    raise ValueError("a `look` step has no `hero`: it selects nobody")
+                # Its `before:` reads are read before the view moves (a scroll redraws the view:
+                # whether it changes a tile's record is what they and the reads after show).
+                pre = pre_read(step, {}, mem)
+                centre(game, mem, *mem.hero_named(step["look"])["tile"])
+                obs = {"look": step["look"], "messages": [], "message_pictures": [], "pre": pre}
+                obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
+                                              for c in range(8) if mem.player(c)["heroes"]}}
             else:
                 prepared = None
                 if "walk" in step and (step.get("days") or step.get("near")):
@@ -3141,10 +3335,15 @@ def batch(recipe_path, map_path=None, out=None):
                 # hero is in a boat (status bit 18); else its fields read `not played`.
                 # E08 T100a (batch E11a): `only_if = { at = [x, y] or [x, y, level] }` plays it
                 # only while its hero stands there (a row's branch after a jump).
+                # E08 T100b (batch E11b's E11-16: W1's tile taken or not): with `at`, `empty =
+                # [x, y]` plays it only while no hero stands on that tile (its class not 34),
+                # `occupied = [x, y]` only while one does.
                 skip, only = None, step.get("only_if")
-                if only not in (None, "aboard") and not (isinstance(only, dict)
-                                                         and set(only) == {"at"}):
-                    raise ValueError(f"`only_if = {only!r}`: \"aboard\" or {{ at = [x, y] }}")
+                if only not in (None, "aboard") and not (
+                        isinstance(only, dict) and "at" in only
+                        and set(only) <= {"at", "empty", "occupied"}):
+                    raise ValueError(f"`only_if = {only!r}`: \"aboard\" or {{ at = [x, y] }}, "
+                                     "with empty = [x, y] or occupied = [x, y]")
                 if only == "aboard" and not before["hero"]["status"] & h3mem.IN_BOAT:
                     skip = f"not played: {step['hero']} is not in a boat"
                 if isinstance(only, dict):
@@ -3153,12 +3352,24 @@ def batch(recipe_path, map_path=None, out=None):
                         skip = (f"not played: {step['hero']} stands on "
                                 f"{','.join(map(str, before['hero']['tile']))}, not "
                                 f"{','.join(map(str, at))}")
+                    for want in ("empty", "occupied"):
+                        if want in only and not skip:
+                            tile = [*only[want], 0][:3]
+                            taken = mem.tile(*tile)["class"] == h3mem.HERO_OBJECT
+                            if taken == (want == "empty"):
+                                skip = (f"not played: a hero stands on {tile_name(tile)}"
+                                        if taken else f"not played: no hero on {tile_name(tile)}")
+                if "repeat" in step and "key" not in step:
+                    raise ValueError("`repeat` presses a step's `key` again (E08 T100b)")
                 if "actions" in step and "walk" not in step and "screen" not in step:
                     raise ValueError("`actions` play in a screen a walk or `screen` opens")
                 if skip:
                     obs = {"hero": step["hero"], "skipped": skip}
                 elif "walk" in step:
-                    obs = walk(game, mem, step["hero"], step["walk"], step.get("answer"),
+                    # E08 T100b (batch E11b's E11-16): `walk = "off"` steps onto the hero's first
+                    # open neighbour (off_tile), chosen as the step starts.
+                    target = off_tile(mem, step["hero"]) if step["walk"] == "off" else step["walk"]
+                    obs = walk(game, mem, step["hero"], target, step.get("answer"),
                                step.get("battle"), step.get("level_up", "left"),
                                step.get("actions"), step.get("choice"), step.get("once", False),
                                step.get("again_if"), step.get("at_opening"))
@@ -3175,6 +3386,11 @@ def batch(recipe_path, map_path=None, out=None):
                         obs["hint"] = hint_at(game, mem, *step["hint"])
                     if "popup" in step:
                         obs["popup"] = popup_at(game, mem, *step["popup"])
+                elif "key" in step and "repeat" in step:
+                    # E08 T100b (batch E11b): the key again and again, a row each (presses).
+                    obs = presses(game, mem, step["hero"], step["key"], step["repeat"],
+                                  step.get("answer"), step.get("battle"),
+                                  step.get("level_up", "left"))
                 elif "key" in step:
                     obs = press(game, mem, step["hero"], step["key"], step.get("answer"),
                                 step.get("battle"), step.get("level_up", "left"))

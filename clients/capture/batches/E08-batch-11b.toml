@@ -1,0 +1,273 @@
+# E08 batch E11b played by the capture harness (E08 T100b; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-11b.toml as steps, on Easy, the starting bonus gold, with T100b's
+# reads (README, "Teleporters and Replay Opponent Turn"). Hot seat, Red and Blue human. In the
+# spec's order: day 1, Red: E11-14, E11-15, E11-17 (E11-17b's boarding, then E11-17's 60
+# presses); Blue: E11-16's boarding, its step onto W1 and its presses until it lands on E11-17's
+# tile (60 at most); day 2, Red: E11-17 selected and stepped off; Blue: E11-16 stepped off.
+#
+# A table of jumps is filled a row a step: the step onto the entrance gives row 1 (a step of its
+# own after it, so that a skipped branch adds no row), the presses (`repeat`, `first = 2`) the
+# rest, each row's places named by `[places]`. The tiles' words and classes are `tile:` reads
+# (over a box, on a hero's tile, on the step's hero's tile before it); the Whirlpools' list is
+# `whirlpools` (game +0x4E77C). What the map draws on the shared tile is read from the dumps
+# (`dump`, `look`: the view centred on a hero by the minimap, nothing selected), described in the
+# log; a message's text is its record (`ADVEVENT:35`), never the text (ADR-0009).
+
+spec = "experiments/specs/E08-batch-11b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+[places]
+S = [5, 4]
+A = [19, 4]
+B = [12, 9]
+M1 = [26, 4]
+M2 = [32, 4]
+M3 = [26, 9]
+M4 = [32, 9]
+W1 = [22, 15, 24, 16]
+W2 = [16, 23, 18, 24]
+W3 = [28, 19, 30, 20]
+
+# --- Day 1, Red: E11-14 -----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+record = { "before: points; day's maximum" = ["text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty" }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+walk = [5, 4]
+answer = { hire = "no" }
+record = { "the step onto S: the question (table, line); E11-14's tile; points" = ["text:the question and the answer: ", "answers", "text:messages: ", "messages", "text:screens: ", "screens", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "the step onto S: battles" = "battles" }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+key = "space"
+answer = { hire = "no" }
+record = { "Space on S: what is shown (table, line); tile; points" = ["text:the question and the answer: ", "answers", "text:messages: ", "messages", "text:screens: ", "screens", "text:what the key did: ", "key", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+walk = [10, 4]
+record = { "+the legs: points at (10, 4); at (15, 4)" = ["text:at (10, 4): ", "hero:points", "text:tile: ", "hero:tile"] }
+note = { "the first leg's messages" = "messages" }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+walk = [15, 4]
+record = { "+the legs: points at (10, 4); at (15, 4)" = ["text:at (15, 4): ", "hero:points", "text:tile: ", "hero:tile"] }
+note = { "the second leg's messages" = "messages" }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+walk = [19, 4]
+battle = "auto"
+record = { "the step onto A: messages; tile after; points; day's maximum" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:tile", "text:place: ", "hero:place", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points"] }
+note = { "the third leg's path" = "path_tiles" }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+key = "space"
+battle = "auto"
+record = { "Space 1: messages; tile; points" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:what the key did: ", "key", "text:tile: ", "hero:tile", "text:place: ", "hero:place", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-14"
+hero = "E11-14"
+key = "space"
+battle = "auto"
+record = { "Space 2: messages; tile; points" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:what the key did: ", "key", "text:tile: ", "hero:tile", "text:place: ", "hero:place", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E11-15 -----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-15"
+hero = "E11-15"
+walk = [26, 4]
+battle = "auto"
+record = { "the step onto M1: messages; tile after (M1 to M4); points" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:tile", "text:monolith: ", "hero:place", "text:points: ", "hero:points"] }
+note = { "worn at the start (the starting bonus)" = "before:hero:equipment" }
+
+[[step]]
+encounter = "E11-15"
+hero = "E11-15"
+record = { "row:jump" = ["text:1", "text:M1", "hero:place"] }
+
+[[step]]
+encounter = "E11-15"
+hero = "E11-15"
+key = "space"
+repeat = { most = 60, first = 2 }
+battle = "auto"
+record = { "row:jump" = "presses:n,from,to", "after the 60th press: points" = ["text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:presses: ", "presses"] }
+note = { "the presses that changed the points or the army, or showed something" = "presses:changed" }
+
+# --- Day 1, Red: E11-17 (E11-17b's boarding, then E11-17's presses) ---------------------------------
+
+[[step]]
+encounter = "E11-17"
+hero = "E11-17b"
+record = { "at the start: the Whirlpools' list (positions in order); each Whirlpool tile's word; the class of (18, 24) and of (29, 20)" = ["text:the list: ", "whirlpools", "text:W1: ", "tile:22,15..24,16", "text:W2: ", "tile:16,23..18,24", "text:W3: ", "tile:28,19..30,20", "text:(18, 24): ", "tile:18,24", "text:(29, 20): ", "tile:29,20"] }
+note = { "E11-17b worn at the start (the starting bonus)" = "hero:equipment", "E11-17 worn at the start" = "hero[E11-17]:equipment" }
+
+[[step]]
+encounter = "E11-17"
+hero = "E11-17b"
+walk = [18, 24]
+again_if = { marks = "any" }
+battle = "auto"
+record = { "E11-17b's click: what is shown; tile; points; army; in a boat; the class of (18, 24) after" = ["text:the path: ", "path_tiles", "text:clicked again: ", "again", "text:messages: ", "messages", "text:questions: ", "questions", "text:screens: ", "screens", "text:battles: ", "battles", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:army: ", "hero:slots", "text:in a boat: ", "hero:in_boat", "text:(18, 24): ", "tile:18,24"] }
+
+[[step]]
+encounter = "E11-17"
+hero = "E11-17"
+walk = [22, 14]
+record = { "E11-17 after the boarding: points; day's maximum; in a boat" = ["text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat", "text:tile: ", "hero:tile"] }
+note = { "the boarding's messages" = "messages" }
+
+[[step]]
+encounter = "E11-17"
+hero = "E11-17"
+walk = [22, 15]
+battle = "auto"
+record = { "the step onto W1's (22, 15): messages; tile after (Whirlpool; column, row); army; points" = ["text:messages: ", "messages", "text:battles: ", "battles", "text:tile: ", "hero:place", "hero:at", "text:army: ", "hero:slots", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-17"
+hero = "E11-17"
+record = { "row:jump" = ["text:1", "text:W1", "hero:place", "hero:at"] }
+
+[[step]]
+encounter = "E11-17"
+hero = "E11-17"
+key = "space"
+repeat = { most = 60, first = 2 }
+battle = "auto"
+record = { "row:jump" = "presses:n,from,to,tile", "after the 60th press: army; points; E11-17b's tile" = ["text:army: ", "hero:slots", "text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:E11-17b's tile: ", "hero[E11-17b]:tile", "text:presses: ", "presses"] }
+note = { "the presses that changed the points or the army, or showed something" = "presses:changed", "E11-17b's tile after the presses" = "tile:hero[E11-17b]" }
+
+[[step]]
+end_turn = true
+encounter = "E11-16"
+note = { "Blue's turn's start: messages" = "messages" }
+
+# --- Day 1, Blue: E11-16 ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+record = { "day 1, Blue, first: E11-17's tile; E11-17b's tile" = ["text:E11-17: ", "hero[E11-17]:place", "hero[E11-17]:tile", "text:E11-17's tile: ", "tile:hero[E11-17]", "text:E11-17b: ", "hero[E11-17b]:tile"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+walk = [24, 14]
+record = { "after the boarding: points; day's maximum" = ["text:points: ", "hero:points", "text:day's maximum: ", "hero:day_points", "text:in a boat: ", "hero:in_boat", "text:tile: ", "hero:tile"] }
+note = { "the boarding's messages" = "messages" }
+
+# The step onto W1: (24, 15), or (23, 15) when a Red hero stands on (24, 15); a battle (none is
+# expected) Red's stacks attacking, Blue's Pikeman defending.
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+only_if = { at = [24, 14], empty = [24, 15] }
+walk = [24, 15]
+battle = { attack = "Pikeman", by = "defender", then = "attack" }
+record = { "the step onto W1 (which tile): messages, dialogs, battles; tile after" = ["text:onto: ", "target", "text:messages: ", "messages", "text:screens: ", "screens", "text:battles: ", "battles", "text:tile after: ", "hero:place", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+only_if = { at = [24, 14], occupied = [24, 15] }
+walk = [23, 15]
+battle = { attack = "Pikeman", by = "defender", then = "attack" }
+record = { "the step onto W1 (which tile): messages, dialogs, battles; tile after" = ["text:onto: ", "target", "text:messages: ", "messages", "text:screens: ", "screens", "text:battles: ", "battles", "text:tile after: ", "hero:place", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+record = { "row:jump" = ["text:1", "text:W1", "hero:place", "hero:at"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+key = "space"
+repeat = { most = 60, first = 2, until = { with = "E11-17" } }
+battle = { attack = "Pikeman", by = "defender", then = "attack" }
+record = { "row:jump" = "presses:n,from,to,tile", "+on the Red hero's tile (or none in 60): messages, dialogs, battles; both heroes' tiles; the tile's class, word and hero; the hero drawn (a screenshot); E11-16's army; points" = ["text:presses: ", "presses", "text:messages: ", "messages", "text:screens: ", "screens", "text:battles: ", "battles", "text:E11-16: ", "hero:tile", "text:E11-17: ", "hero[E11-17]:tile", "text:the tile: ", "tile:here", "text:army: ", "hero:slots", "text:points: ", "hero:points"] }
+note = { "the presses that changed the points or the army, or showed something" = "presses:changed" }
+
+[[step]]
+encounter = "E11-16"
+look = "E11-16"
+dump = "blue-day1-landed"
+record = { "+on the Red hero's tile (or none in 60): messages, dialogs, battles; both heroes' tiles; the tile's class, word and hero; the hero drawn (a screenshot); E11-16's army; points" = ["text:a moment later, the tile: ", "before:tile:hero[E11-16]", "text:the view centred on E11-16, the tile: ", "tile:hero[E11-16]", "text:drawn: ", "text:the dump blue-day1-landed (the log)"] }
+
+[[step]]
+end_turn = true
+encounter = "E11-16"
+record = { "+day 2, Red, at the start: anything shown; both tiles; the tile's class, word and hero; the hero drawn" = ["text:shown: ", "messages", "text:selected: ", "selected", "text:E11-17: ", "hero[E11-17]:tile", "text:E11-16: ", "hero[E11-16]:tile", "text:E11-17's tile as the dialogs closed: ", "tile:hero[E11-17]"] }
+
+# --- Day 2, Red: E11-17 selected and stepped off ----------------------------------------------------
+
+[[step]]
+encounter = "E11-16"
+look = "E11-17"
+dump = "red-day2-start"
+record = { "+day 2, Red, at the start: anything shown; both tiles; the tile's class, word and hero; the hero drawn" = ["text:a moment later: ", "before:tile:hero[E11-17]", "text:the view centred on E11-17: ", "tile:hero[E11-17]", "text:drawn: ", "text:the dump red-day2-start (the log)"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-17"
+dump = "red-day2-selected"
+record = { "E11-17 selected: the tile's class, word and hero; the hero drawn" = ["text:selected: ", "selected", "text:the tile: ", "tile:here", "text:drawn: ", "text:the dump red-day2-selected (the log)"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-17"
+walk = "off"
+battle = { attack = "Pikeman", by = "attacker", then = "attack" }
+dump = "red-day2-off"
+record = { "E11-17's step off (to which tile): battles, meetings, messages; both tiles after; the old tile's class, word and hero; the hero drawn there" = ["text:to: ", "target", "text:battles: ", "battles", "text:meetings: ", "exchange", "text:screens: ", "screens", "text:messages: ", "messages", "text:E11-17: ", "hero:tile", "text:E11-16: ", "hero[E11-16]:tile", "text:the old tile: ", "tile:from", "text:drawn: ", "text:the dump red-day2-off (the log)"] }
+note = { "E11-17's step off: the path" = "path_tiles", "E11-17's points after the step off" = "hero:points" }
+
+[[step]]
+end_turn = true
+encounter = "E11-16"
+record = { "+day 2, Blue: E11-16's tile; drawn; selectable; selected, the tile's class, word and hero" = ["text:at the start, E11-16's tile: ", "hero[E11-16]:tile", "text:selected: ", "selected", "text:its tile as the dialogs closed: ", "tile:hero[E11-16]"] }
+note = { "Blue's day 2: messages at the start" = "messages" }
+
+# --- Day 2, Blue: E11-16 stepped off ----------------------------------------------------------------
+
+[[step]]
+encounter = "E11-16"
+look = "E11-16"
+dump = "blue-day2-start"
+record = { "+day 2, Blue: E11-16's tile; drawn; selectable; selected, the tile's class, word and hero" = ["text:a moment later: ", "before:tile:hero[E11-16]", "text:the view centred on E11-16: ", "tile:hero[E11-16]", "text:drawn: ", "text:the dump blue-day2-start (the log)"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+dump = "blue-day2-selected"
+record = { "+day 2, Blue: E11-16's tile; drawn; selectable; selected, the tile's class, word and hero" = ["text:selectable: ", "selected", "text:selected, its tile: ", "tile:here", "text:drawn: ", "text:the dump blue-day2-selected (the log)"] }
+
+[[step]]
+encounter = "E11-16"
+hero = "E11-16"
+walk = "off"
+battle = { attack = "Pikeman", by = "defender", then = "attack" }
+dump = "blue-day2-off"
+record = { "E11-16's step off (to which tile): battles, meetings, messages; its tile after; the old tile's class, word and hero; the hero drawn there" = ["text:to: ", "target", "text:battles: ", "battles", "text:meetings: ", "exchange", "text:screens: ", "screens", "text:messages: ", "messages", "text:tile after: ", "hero:tile", "text:E11-17: ", "hero[E11-17]:tile", "text:the old tile: ", "tile:from", "text:drawn: ", "text:the dump blue-day2-off (the log)"] }
+note = { "E11-16's step off: the path" = "path_tiles", "E11-16's points after the step off" = "hero:points" }
