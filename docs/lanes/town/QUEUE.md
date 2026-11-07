@@ -6,20 +6,21 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN-Q7`); done tasks
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. T11 (decision 39) done;
-increment 2's first round (decision 38): the survey T12, the drafts with the design note and the
-cut T13 (queued when T12's checkpoint is done). Each task's cut confirmed at its start; every
-entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+increment 2's first round (decision 38): the survey T12 (cut in two: T12a done, T12b next), the
+drafts with the design note and the cut T13 (queued when T12b's checkpoint is done). Each task's
+cut confirmed at its start; every entry's acceptance includes the Definition of Done
+(`docs/05-testing.md`).
 
-**E09 T12 — the construction survey** (decision 38; increment 2's first round): survey
-`docs/rules/surveys/E09-construction.md` (or the next sections of `E09-towns.md`, the task's
-call): the code reading of the build command's checks (the requirements, the costs, one a town a
-day, one Capitol per player, the Shipyard's water, the Grail building), the requirement and cost
-tables (`building_tables_init` 0x4EB730, `town_build` 0x5BE930; survey `E09-towns.md` §16 read the
-lists and supersedes), the town events' day and their buildings and resources; VCMI 1.7.5 and the
-wiki compared; a census of the shipped maps (forbidden buildings, custom sets, the town events);
-the disputes (TD-9 first) and quirk candidates; the checkpoint with the user. Needs the original
-data (the executable, the LODs, the text tables). Its cut confirmed at its start. **Status:**
-next.
+**E09 T12b — the construction survey's second part** (decision 38; increment 2's first round;
+T12 cut in two at its start, the user 2026-11-06; T12a done 2026-11-07, `E09-log.md`): append to
+`docs/rules/surveys/E09-construction.md` from §8: the town events' code reading (`load_town_body`
+0x5019F0 at its events, `town_timed_events` 0x4CDA10 and its callee 0x5BFEB0, which builds through
+`town_build_effects` 0x5BEDE0: the day and the interval, the players, the buildings and whether
+they take the day's mark, the resources, the creatures, the message), VCMI 1.7.5 and the wiki
+compared; a census of the shipped maps (the forbidden buildings and custom sets, the town events
+by kind and day); the disputes and quirk candidates of both parts (TD-9, TD-11, survey §7's open
+points); the checkpoint with the user (`TWN-Q8`). Needs the original data (the executable, the
+maps). Its cut confirmed at its start. **Status:** next.
 
 ## Inbox
 
