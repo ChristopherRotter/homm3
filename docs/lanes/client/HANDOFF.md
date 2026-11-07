@@ -11,11 +11,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   adventure game, the epic's "Later"). **T6** cut in three by the user (2026-11-07): **T6a done**
   (#781); T6b cut in two by the user (2026-11-07; R4-9 moved into T7): **T6b1 done** (#785, CLT-Q5's
   deck and boats, design §6.2); **T6b2 done** (#789, CLT-Q67, design §7.25). T6c cut in two by the
-  user (2026-11-07): **T6c1 done** (`h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers; the ten
-  clips and the samples exact against the DLL's planes; CLT-Q68 answered fix; design §7.27; the PR
-  on `client/e17-m6-t6c1`: check it first). **Next: T6c2** (the captures' listed DCT pixels captured
-  again, `drawn` recorded: its result-window clip digests are stale since T6c1, no gate runs it;
-  CLT-Q30 closed), T7 (with R4-9); then M7 ranked play and the server browser.
+  user (2026-11-07): **T6c1 done** (#792: `h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers;
+  CLT-Q68 answered fix; design §7.27), **T6c2 done** (the four captures whose clips differed
+  captured again, every clip frame exact, `drawn` recorded, CLT-Q30 closed; the PR on
+  `client/e17-m6-t6c2`: check it first). T6 done. **Next: T7** (M6's closure with R4-9; cut with
+  the user at its start); then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -52,6 +52,10 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-07, E17 M6 T6c2 (done; `client/e17-m6-t6c2`).** Kept whole. The original data
+  staged by the file tool (the PC's shell did not start). `drawn` listed the four captures whose
+  clips differed; captured, recorded (`defended`'s window only its 122 artifacts, the others
+  exact), `drawn` recorded; CLT-Q30 closed. Record: `E17-log.md`.
 - **2026-11-07, E17 M6 T6c1 (done; `client/e17-m6-t6c1`).** T6c cut by the user. The original
   data staged by the file tool (the PC's shell did not start). Read the DLL's DCT (a symbolic
   trace of its x87 code), built it in integers, checked against the DLL's planes under Wine
@@ -61,7 +65,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `compose_battle_background`'s whole copy), probed (the back buffer read from memory each
   millisecond of `demons`), asked (CLT-Q67, answered (a)), built (`scene::Saved`, `compose`'s
   `back_buffer`), `demons` exact; reviewed by a fresh reviewer. Record: `E17-log.md`.
-- **2026-11-07, E17 M6 T6b1 (done; `client/e17-m6-t6b1`).** T6b cut by the user (R4-9 into
-  T7). The original data staged by the file tool (the PC's shell did not start). Built (`h3-view situation`'s boats, `h3drive.py`'s `board` and
-  `into_battle`'s `click`), recorded (`deck`, `boats` exact), the whole set captured again,
-  reviewed by a fresh reviewer. Record: `E17-log.md`.

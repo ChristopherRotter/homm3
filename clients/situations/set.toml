@@ -1175,8 +1175,8 @@ why = "the retreat's window: Orrin's and Crag Hack's portraits and names, Defeat
 
 [[situation.frame]]
 at = 2700
-differing = 1
-why = "rtstart's frame 38, its last shown: 1 pixel, the inverse DCT's rounding (CLT-Q30) (T4b2b)"
+differing = 0
+why = "exact: rtstart's frame 38, its last shown (1 pixel, the inverse DCT's rounding, at T4b2b; `h3-bink`'s DCT the DLL's since E17 M6 T6c1, CLT-Q30; recorded at T6c2)"
 
 [[situation.frame]]
 at = 2733
@@ -1185,8 +1185,8 @@ why = "exact: rtloop's frame 0, at once at rtstart's last decode (T4b2b, CLT-Q31
 
 [[situation.frame]]
 at = 3000
-differing = 9
-why = "rtloop's frame 4: 9 pixels, the inverse DCT's rounding (CLT-Q30) (T4b2b)"
+differing = 0
+why = "exact: rtloop's frame 4 (9 pixels, the inverse DCT's rounding, at T4b2b; the DLL's DCT since E17 M6 T6c1, CLT-Q30; recorded at T6c2)"
 
 [[situation]]
 id = "result-surrender"

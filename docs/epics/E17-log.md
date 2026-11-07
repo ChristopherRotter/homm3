@@ -5869,3 +5869,25 @@ T6c2 the captures. The original data staged by the file tool (the PC's shell did
 - **Gates:** `check.sh`, the scoped verify with original data (its first run failed
   `check-exe-map`: 0x61E646 cited, `crt_math_error_return` entered), `scripts/exe.py check`,
   `h3-view gate`, `bink-check.sh`. `drawn` not run (T6c2).
+
+### M6 T6c2: the clips' captures again (2026-11-07)
+
+Kept whole (a small task). The original data staged by the file tool (the PC's shell did not
+start); the VM restarted once after staging (the files kept).
+
+- **`drawn`** (the viewer of `master`, T6c1's decoder): 263 sequences and situations, 4 not the
+  same, exactly the ones whose clips differed from the DLL's: `defended` (36 of 62 frames, from
+  1 487), `auto-retreat-surrender` (18 of 46), `auto-retreat-flee` (32 of 46), `result-retreat`
+  (2 of 4: 2 700, 3 000). `end` (`Win3`) and `result-surrender` the same: their clips were exact
+  before T6c1.
+- **Captured** (`set --only result-retreat`, `frames --only <id>` for the three; then recorded,
+  `--reuse` and `set` again as recorded, `kept/` unchanged): `result-retreat` at 2 700 and 3 000
+  exact (1 and 9 pixels before); `defended`'s window frames 122 differing, all redraw artifacts
+  (the keep's shooter outside the slot, as before; 153 to 298 DCT pixels more each before);
+  `auto-retreat-surrender` and `-flee` exact in all 46 frames. `end` captured as well (the task
+  listed it): as recorded.
+- **Recorded:** the three `timelines/<id>-frames.txt`, `set.toml`'s two frames, the sequences'
+  comments, `drawn --record`; `TRAPS.md`'s clip line; CLT-Q30 closed (`QUESTIONS-ANSWERED.md`);
+  design §7.27's last item.
+- **Gates:** `drawn` (after the record: 263 the same), `check.sh` (`verify-once.sh clients`),
+  the scoped verify with original data, `h3-view gate`.

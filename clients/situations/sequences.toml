@@ -1167,9 +1167,9 @@ command = [
 # keeps its shot's climax frame (its later frames never shown, CLT-Q19 (5)), where the viewer
 # draws it standing as the action ends (memory's last frame, 1 010 pixels, is not it either).
 # Since E17 M5 T4b2b the window plays its clip, `Defendall` (frame 1 from 1 687 ms, then every 66
-# or 67): each of its 36 frames differs by the same 122 artifacts outside the clip's slot and,
-# inside it, by exactly the pixels where `h3-bink`'s integer inverse DCT rounds otherwise than
-# BINKW32's float one (CLT-Q30; 200 to 300 a frame).
+# or 67): each of its 36 frames differs by the same 122 artifacts outside the clip's slot; inside
+# it exact since E17 M6 T6c2 (`h3-bink`'s inverse DCT BINKW32's since T6c1, CLT-Q30; 153 to 298
+# pixels a frame where FFmpeg's integer one rounded otherwise before).
 [[sequence]]
 id = "defended"
 scenario = "seq-defended.toml"
@@ -1950,8 +1950,8 @@ command = [
 # gold: half the army's worth) at once, 320 x 320 at (240, 140), the gold's picture
 # (`resour82.def` frame 6, its caption 3750); its OK clicked at 2000: the surrender, the result
 # window at once, the battle behind it still one idle step on from the opening (the Champions
-# outlined as behind the boxes). 46 frames: the boxes' exact, 18 of the result window's differ
-# in 2 or 3 pixels inside its clip (`Surrender`, CLT-Q30's rounding).
+# outlined as behind the boxes). 46 frames exact since E17 M6 T6c2 (18 of the result window's
+# differed in 2 or 3 pixels inside its clip before, `Surrender`: CLT-Q30's rounding).
 [[sequence]]
 id = "auto-retreat-surrender"
 scenario = "seq-auto-retreat.toml"
@@ -1967,8 +1967,9 @@ command = [
 ]
 
 # `auto-retreat-flee`: Enter at 1000, the offer's Cancel (Escape) at 2000: the retreat, the
-# result window at once as the surrender's. 46 frames: the boxes' exact, 32 of the result
-# window's differ in up to 49 pixels inside its clip (`rtstart`, `rtloop`: CLT-Q30's rounding).
+# result window at once as the surrender's. 46 frames exact since E17 M6 T6c2 (32 of the result
+# window's differed in up to 49 pixels inside its clip before, `rtstart`, `rtloop`: CLT-Q30's
+# rounding).
 [[sequence]]
 id = "auto-retreat-flee"
 scenario = "seq-auto-retreat.toml"
