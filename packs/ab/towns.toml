@@ -4,7 +4,8 @@
 # Do not edit by hand: change the harvester or the gap-fill file and re-run it
 # (`cargo run -p h3-harvest -- --install original-data/install --out packs`).
 # Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md
-# 7.61, docs/rules/surveys/E09-towns.md 16; format: crates/h3-pack-towns.
+# 7.61, docs/rules/surveys/E09-towns.md 16, E09-construction.md 5 and 6; format:
+# crates/h3-pack-towns.
 
 [town_visions]
 creatures = ["rogue"]
@@ -27,35 +28,45 @@ creatures = [
   key = "mage_guild_level_1"
   name = "Mage Guild Level 1"
   slot = 11
+  cost = { "base:wood" = 5, "base:ore" = 5, "base:gold" = 2000 }
 
   [[town.building]]
   key = "mage_guild_level_2"
   name = "Mage Guild Level 2"
   slot = 12
   supersedes = ["mage_guild_level_1"]
+  requires = ["mage_guild_level_1"]
+  cost = { "base:wood" = 5, "base:mercury" = 4, "base:ore" = 5, "base:sulfur" = 4, "base:crystal" = 4, "base:gems" = 4, "base:gold" = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_3"
   name = "Mage Guild Level 3"
   slot = 13
   supersedes = ["mage_guild_level_2"]
+  requires = ["mage_guild_level_2"]
+  cost = { "base:wood" = 5, "base:mercury" = 6, "base:ore" = 5, "base:sulfur" = 6, "base:crystal" = 6, "base:gems" = 6, "base:gold" = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_4"
   name = "Mage Guild Level 4"
   slot = 14
   supersedes = ["mage_guild_level_3"]
+  requires = ["mage_guild_level_3"]
+  cost = { "base:wood" = 5, "base:mercury" = 8, "base:ore" = 5, "base:sulfur" = 8, "base:crystal" = 8, "base:gems" = 8, "base:gold" = 1000 }
 
   [[town.building]]
   key = "mage_guild_level_5"
   name = "Mage Guild Level 5"
   slot = 15
   supersedes = ["mage_guild_level_4"]
+  requires = ["mage_guild_level_4"]
+  cost = { "base:wood" = 5, "base:mercury" = 10, "base:ore" = 5, "base:sulfur" = 10, "base:crystal" = 10, "base:gems" = 10, "base:gold" = 1000 }
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
   slot = 6
+  cost = { "base:wood" = 5, "base:gold" = 500 }
   tavern = true
   morale = 1
 
@@ -63,11 +74,14 @@ creatures = [
   key = "shipyard"
   name = "Shipyard"
   slot = 16
+  cost = { "base:wood" = 20, "base:gold" = 2000 }
+  shipyard = true
 
   [[town.building]]
   key = "fort"
   name = "Fort"
   slot = 3
+  cost = { "base:wood" = 20, "base:ore" = 20, "base:gold" = 5000 }
   fort = 1
 
   [[town.building]]
@@ -75,6 +89,8 @@ creatures = [
   name = "Citadel"
   slot = 4
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { "base:ore" = 5, "base:gold" = 2500 }
   fort = 2
 
   [[town.building]]
@@ -82,11 +98,14 @@ creatures = [
   name = "Castle"
   slot = 5
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { "base:wood" = 10, "base:ore" = 10, "base:gold" = 5000 }
   fort = 3
 
   [[town.building]]
   key = "village_hall"
   name = "Village Hall"
+  cost = { "base:gold" = 1 }
   hall = 1
 
   [[town.building]]
@@ -94,6 +113,8 @@ creatures = [
   name = "Town Hall"
   slot = 0
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { "base:gold" = 2500 }
   hall = 2
 
   [[town.building]]
@@ -101,6 +122,8 @@ creatures = [
   name = "City Hall"
   slot = 1
   supersedes = ["town_hall"]
+  requires = ["town_hall", "marketplace", "blacksmith", "mage_guild_level_1"]
+  cost = { "base:gold" = 5000 }
   hall = 3
 
   [[town.building]]
@@ -108,34 +131,44 @@ creatures = [
   name = "Capitol"
   slot = 2
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { "base:gold" = 10000 }
   hall = 4
 
   [[town.building]]
   key = "marketplace"
   name = "Marketplace"
   slot = 8
+  cost = { "base:wood" = 5, "base:gold" = 500 }
 
   [[town.building]]
   key = "resource_silo"
   name = "Resource Silo"
   slot = 9
+  requires = ["marketplace"]
+  cost = { "base:ore" = 5, "base:gold" = 5000 }
   silo = true
 
   [[town.building]]
   key = "blacksmith"
   name = "Blacksmith"
   slot = 7
+  cost = { "base:wood" = 5, "base:gold" = 1000 }
 
   [[town.building]]
   key = "artifact_merchants"
   name = "Artifact Merchants"
   slot = 10
+  requires = ["marketplace"]
+  cost = { "base:gold" = 10000 }
 
   [[town.building]]
   key = "garden_of_life"
   name = "Garden of Life"
   slot = 24
   supersedes = ["magic_lantern"]
+  requires = ["magic_lantern"]
+  cost = { "base:gold" = 1000 }
 
   [[town.building]]
   key = "upg_garden_of_life"
@@ -143,11 +176,15 @@ creatures = [
   supersedes = ["garden_of_life", "upg_magic_lantern"]
   forbidden_with = "garden_of_life"
   auto_with = ["garden_of_life", "upg_magic_lantern"]
+  requires = ["upg_magic_lantern"]
+  cost = { "base:gold" = 1000 }
 
   [[town.building]]
   key = "magic_university"
   name = "Magic University"
   slot = 18
+  requires = ["mage_guild_level_1"]
+  cost = { "base:wood" = 10, "base:ore" = 10, "base:gold" = 5000 }
 
   [[town.building]]
   key = "aurora_borealias"
@@ -159,42 +196,56 @@ creatures = [
   key = "magic_lantern"
   name = "Magic Lantern"
   slot = 22
+  requires = ["fort"]
+  cost = { "base:wood" = 5, "base:ore" = 5, "base:gold" = 300 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "altar_of_air"
   name = "Altar of Air"
   slot = 25
+  requires = ["magic_lantern", "mage_guild_level_1"]
+  cost = { "base:ore" = 5, "base:gold" = 1500 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "altar_of_water"
   name = "Altar of Water"
   slot = 28
+  requires = ["magic_lantern", "mage_guild_level_1"]
+  cost = { "base:ore" = 5, "base:gold" = 1500 }
   dwelling = [3, false]
 
   [[town.building]]
   key = "altar_of_fire"
   name = "Altar of Fire"
   slot = 31
+  requires = ["altar_of_air"]
+  cost = { "base:wood" = 5, "base:ore" = 5, "base:gold" = 2000 }
   dwelling = [4, false]
 
   [[town.building]]
   key = "altar_of_earth"
   name = "Altar of Earth"
   slot = 34
+  requires = ["altar_of_water"]
+  cost = { "base:ore" = 10, "base:gold" = 2000 }
   dwelling = [5, false]
 
   [[town.building]]
   key = "altar_of_thought"
   name = "Altar of Thought"
   slot = 37
+  requires = ["altar_of_fire", "altar_of_earth"]
+  cost = { "base:wood" = 5, "base:mercury" = 2, "base:ore" = 5, "base:sulfur" = 2, "base:crystal" = 2, "base:gems" = 2, "base:gold" = 3000 }
   dwelling = [6, false]
 
   [[town.building]]
   key = "pyre"
   name = "Pyre"
   slot = 39
+  requires = ["altar_of_thought"]
+  cost = { "base:wood" = 10, "base:mercury" = 10, "base:ore" = 10, "base:gold" = 10000 }
   dwelling = [7, false]
 
   [[town.building]]
@@ -202,6 +253,8 @@ creatures = [
   name = "Upg. Magic Lantern"
   slot = 23
   supersedes = ["magic_lantern"]
+  requires = ["magic_lantern"]
+  cost = { "base:gold" = 1000 }
   dwelling = [1, true]
 
   [[town.building]]
@@ -209,6 +262,8 @@ creatures = [
   name = "Upg. Altar of Air"
   slot = 26
   supersedes = ["altar_of_air"]
+  requires = ["altar_of_air"]
+  cost = { "base:wood" = 2, "base:mercury" = 2, "base:gems" = 2, "base:gold" = 1500 }
   dwelling = [2, true]
 
   [[town.building]]
@@ -216,6 +271,8 @@ creatures = [
   name = "Upg. Altar of Water"
   slot = 29
   supersedes = ["altar_of_water"]
+  requires = ["altar_of_water"]
+  cost = { "base:mercury" = 5, "base:ore" = 5, "base:gold" = 2000 }
   dwelling = [3, true]
 
   [[town.building]]
@@ -223,6 +280,8 @@ creatures = [
   name = "Upg. Altar of Fire"
   slot = 32
   supersedes = ["altar_of_fire"]
+  requires = ["altar_of_fire", "upg_altar_of_air"]
+  cost = { "base:mercury" = 5, "base:ore" = 5, "base:gold" = 2000 }
   dwelling = [4, true]
 
   [[town.building]]
@@ -230,6 +289,8 @@ creatures = [
   name = "Upg. Altar of Earth"
   slot = 35
   supersedes = ["altar_of_earth"]
+  requires = ["altar_of_earth"]
+  cost = { "base:sulfur" = 5, "base:gold" = 1000 }
   dwelling = [5, true]
 
   [[town.building]]
@@ -237,6 +298,8 @@ creatures = [
   name = "Upg. Altar of Thought"
   slot = 38
   supersedes = ["altar_of_thought"]
+  requires = ["altar_of_thought", "mage_guild_level_2"]
+  cost = { "base:mercury" = 3, "base:sulfur" = 3, "base:crystal" = 3, "base:gems" = 3, "base:gold" = 3000 }
   dwelling = [6, true]
 
   [[town.building]]
@@ -244,4 +307,6 @@ creatures = [
   name = "Upg. Pyre"
   slot = 40
   supersedes = ["pyre"]
+  requires = ["pyre"]
+  cost = { "base:wood" = 10, "base:mercury" = 20, "base:ore" = 10, "base:gold" = 15000 }
   dwelling = [7, true]
