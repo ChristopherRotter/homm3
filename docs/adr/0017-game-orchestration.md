@@ -116,6 +116,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the ruleset's with a town record, a player's within its allowed set (E09 decision 14: with AB
    or SoD enabled, an RoE-format map's player whose eight bits are all allowed may have Conflux;
    one restricted to fewer stays restricted).
+   **E09's increment 2** (construction with the town events; E09 decisions 37, 45) adds the
+   game's first **town command**: `GameCommand::Town(TownCommand::Build { town, building })`.
+   Legal for a player in its turn with no open decision (as every map command) that **owns the
+   town** (TD-11 the owner, E09 decision 42; the original's build dialog refuses any other player,
+   batch TWN-2, survey `E09-construction.md` §13), for a building `h3-towns` finds buildable now
+   in it (ADR-0028 point 2: the hall's tests, the day's mark, one Capitol a player over the
+   player's towns) whose cost the treasury pays; no hero needs to be in the town. Each refusal is
+   typed and changes nothing. **The setup gains nothing**: the requirements and costs are the
+   part's, the forbidden sets and the town events the map's (already in the towns' setups), the
+   boat spot the adventure's (ADR-0016 point 1).
    **Increment 10** (dwellings and hiring; E08 decision 231) adds no command: a dwelling's or a
    Refugee Camp's visit is a step of `MoveHero` (both kinds are entered), and the free creatures
    and the purchases are answers (point 6). The setup gains nothing beyond ADR-0016's (the
@@ -149,7 +159,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    public facts only), and `h3-game` maps onto them. From E09 the observation adds to each town
    a viewer sees the public facts and the garrison by the viewer's level (ADR-0016 point 6),
    which the game derives: the viewer's towns with a Tavern from the store and the owners, the
-   owner's team, a hero within reach with expert Visions or a Rogue in its army.
+   owner's team, a hero within reach with expert Visions or a Rogue in its army. From E09's
+   increment 2 the observation gives the **owner** of a town its buildings (ever built,
+   forbidden, standing) and its day's mark, and every viewer that sees the town whether it was
+   built in today (E09 decision 47, ADR-0016 point 6); a player whose hero enters an ally's town
+   is told its buildings by the step (E10's teams).
 3. **Turn groups.** A day is a schedule: an ordered list of turn groups, each a set of players
    who act together. A group's turn starts with each context's start-of-turn step for its
    players and ends when each of them has ended its turn or left the game. After the last group
@@ -192,6 +206,20 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    (GAM-RES-004's path): the day's income `h3-towns` derives (the gold by its highest hall and
    the Grail's, the Resource Silo's resources; E09 decision 10); a neutral town pays nobody. The
    Plague and the week's creature stay E09 increment 3's.
+   From E09's increment 2 **the day's start** clears every town's day's mark (the original's
+   `new_day` towns' loop; GAM-CAL-002 amended; one a town a day for every player, E09 decision
+   43: the computer's every other day on Easy and Normal comes with the computer player). **At
+   each player's turn start**, right after the map's timed events, **the town events** fire (E09
+   decision 44; GAM-CAL-004's test): over the towns in `TownId` order (the map's objects' order)
+   and each town's events in the map's order, every event whose players include the player,
+   whose kind (human or computer) applies and whose day it is (its first day or every interval
+   after it: an interval of 1 from its first day, TD-12 the original's), **whose town the player
+   owns**. Each fired event's resources are added as a timed event's (the gains, then the losses
+   floored at 0), then its buildings are built (`h3-towns`' event buildings, in the part's order,
+   with the boat spot's water, without the day's mark, no requirement, forbidden, Capitol, Grail
+   or cost test; T-8's second Capitol stands), then its creatures are kept for increment 3's
+   recruits (`TWN-STUB-10`: lost until then). Day 1's fire with the first group's turn inside the
+   build, as the timed events'.
    From increment 10 **the adventure's week step** first refills **every dwelling**, owned or not
    (each count its creature's growth, set; the guards the kind's full guards; no week's or month's
    kind), then draws the weekly objects' contents and **the camps' creatures** in one pass in
@@ -252,6 +280,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    **The draw** (`hero_draw_of_faction`): uniform over the free types of the faction's two
    classes the player may take, else over every free type it may take, else a typed failure of
    the build (T-4, E09 decision 12: no shipped map reaches it); no tavern weights.
+   **E09's increment 2 draws nothing**: the build, the day's mark, the events and the Shipyard's
+   water are draw-free. At the build, after the adventure's static map is built, a town whose
+   faction has a building of role `shipyard` and whose object has no boat spot gets that building
+   forbidden and, if the setup built it, unbuilt (TWN-SET-011; E09 decision 46; `TWN-STUB-2`'s
+   Shipyard half lifted; its Grail half stays with increment 5 and E10's victory conditions): a
+   write of the store before the first turn, after every draw, so no stream position moves.
    **Increment 10's setup placeholders**: in the static map's placement walk, in object order,
    each **random dwelling's faction** (uniform among its set) then **level** (uniform in its
    range), after E09's placeholders and **before every other existing one** (the drawn type's
@@ -409,6 +443,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    decision 279, for every entered object): a step onto a guarded tile opens the guard's visit,
    and the tile's own visit (a jump among them) is a visit's rest after it, given to a hero still
    on the tile, as an event's on a guarded tile.
+
+   **E09's increment 2 adds no decision kind**: a build is a command (point 1), the town events
+   need no answer (their messages are events).
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -419,7 +456,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    state that commands of two players can both write is listed in the epic file when it is
    added: the inventory for that decision. Increment 2 adds an object two players can remove
    (a pile, a border guard) and the per-player object state (purchases, keys), which only its
-   owner's commands write.
+   owner's commands write. E09's increment 2: a town's record is written by its **owner's**
+   build, by the town events at its owner's turn start and by a capture (increment 1); its day's
+   mark by a build, the day's start and a capture. Two players' commands can write one town only
+   through a capture.
 8. **`AdventureEnv`** (`crates/h3-sim/src/adventure/`; the lanes below) drives `h3-game`,
    not `h3-adventure`, so it sees turns, days and projections as a player does: reset (a map, a
    seed), step, mask, fork, state hash. Its action is a destination among the reachable tiles of
@@ -479,6 +519,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    change is the AI lane's (point 8's ownership), made `cross-lane` in the game's task with the
    user's consent, as increments 7's, 9's and 10's. A revisit at no points can repeat within a
    turn: the rollout's step cap is the AI lane's.
+   E09's increment 2: the env plays the build (E09 decision 7): the action encoding gains one
+   entry, **build**, with the tile head naming the town's entrance and a **building head** over
+   the record's buildings (`h3_towns::MAX_BUILDINGS`), masked by the legal builds; the AI lane's
+   version and layout, `cross-lane` in its paths.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -504,7 +548,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    E09: the town lane's rows (ADR-0028 point 9). E09's increment 1 bumps the game state hash
    (the store of towns, the pool), the adventure state hash and ruleset part (the town type and
    kind), the map import and the adventure replay format (the town part's hash in its header),
-   each `cross-lane`; the env's encodings are the AI lane's.
+   each `cross-lane`; the env's encodings are the AI lane's. **E09's increment 2** bumps the game
+   state hash (the store's v2 folded in, the town command), the adventure ruleset part (the kind
+   `Town`'s offsets) and the adventure replay format (the town command), each `cross-lane`; the
+   town lane's part v4 and state hash v2 (ADR-0028 point 9); the action encoding the AI lane's.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -556,6 +603,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     army (told by its event to the owner alone), no loss of resources; **the jump to hold** (the
     hero and the exit) beside the battle at an occupied exit, given by the adventure's infallible
     arrival when the rest runs; a gate's meeting is the outcome's meeting. No price, no gain.
+    **E09's increment 2: a build**: `h3-towns` checks the town and the building and names the
+    price (the building's cost); the game checks the owner and the treasury before anything
+    changes, then pays the price (`ResourceLost`'s payment, as `BuildBoat`'s) and calls the
+    store's infallible build with the day's mark. Its events: the building built, to the town's
+    owner alone; the town's public facts (fort level, Capitol, built today) to every viewer that
+    sees the town, and its top level's facts (hall, income) to the viewers at that level (point
+    2), when they change (the original redraws the picture at a first fort or a Capitol). **A
+    capture** (increment 1's application) also keeps the day's mark, clearing it when the old
+    owner is not human and the new one is (survey `E09-construction.md` §3, E09 decision 43). **A
+    town event's** resources are a timed event's (gains saturating, losses floored at 0, each told
+    to the player); its buildings are told as a build's, its firing by the town and the event's
+    place in the town's list (the message is the client's).
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -701,6 +760,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the game state hash and the replays (each adventure golden replay re-recorded with the bump).
   E10's scenario setup keeps the rest of the setup (teams, conditions, the computer's choices);
   the faction choice and the pick are its seam with E09 (E09 decision 6).
+- E09's increment 2: `GameCommand`, `GameCommandError` and `GameEvent` gain the town's variants
+  (the adventure lane's `command.rs`, `cross-lane`; the server's wire maps no game command or
+  event yet, so no `h3-protocol` change); `legal_commands` lists the builds after the boats, in
+  `TownId` and building order. The day's start and the turn start each gain one call into the
+  game's town module (the adventure lane's `state/day.rs`, `cross-lane`). Increment 3 gives the
+  town events' creatures their recruits (`TWN-STUB-10` lifted) and a dwelling's first creatures
+  at its build; increment 4 the heroes' visit after a build (the services, the guild's spells)
+  and the Tower's reveals; increment 5 the Grail's building.
 - Increment 10: one new decision kind and its answer, so the game state hash (v23) and the
   adventure replay format bump (E09's T5a2 took the replay format's v9 first, so increment 10's is
   v10; E09 bumps the game state hash too, the second to merge bumps again). The dialog's purchase
@@ -773,6 +840,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the map; E09 decision 12: fixed, not a flag); the town draws after the existing placeholders
   (the drawn heroes' armies and experiences would need a second walk); every starting hero drawn
   until E10, or the pick for every colour (TWN-Q2, E09 decision 9).
+- E09's increment 2: a visitor building at an ally's town from its own treasury (T12a's reading
+  of the hall's path, TD-11): refuted by batch TWN-2 (the build dialog greys Build for a town the
+  current player does not own; E09 decision 42); the computer's every other day on Easy and
+  Normal now (E09 decision 43: no computer player yet); the town events in the player's order of
+  its towns (VCMI's: the original's list is the map's); firing an every-day event from the day
+  before its first (VCMI's, TD-12: the original's day).
 - Increment 10 (ADV-Q41 to ADV-Q43): every amount in the legal set (each creature's 1 to its most:
   up to the count per creature, where the most and a query of the range serve, as a split's
   counts); an ally's dialog as an event (VCMI shows none; the original shows the disabled dialog,
@@ -883,3 +956,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   outcome; the battle at an exit. Drafted in E08 T98b2 (design part C); batch E11's outcome
   (T101, survey `E08-teleporters.md` §15: every row as read but E11-19, the guard first) folded
   in.
+- 2026-11-07 (E09 T15 `shared/`; the user at `TWN-Q7` to `TWN-Q10`, E09 decisions 37, 41–48):
+  points 1, 2, 3, 4, 6, 7, 8, 9 and 10 amended for E09 increment 2, construction with the town
+  events: the town command `GameCommand::Town(TownCommand::Build)`, its owner's; the owner's
+  views of its buildings, the built-today mark public; the day's start clears the marks, the
+  town events at the turn start after the timed events; no draw, the Shipyard forbidden without
+  water at the build (`TWN-STUB-2`'s Shipyard half); no decision kind; the inventory; the env's
+  build entry; the versions; a build's and a town event's outcome, the capture's mark. Drafted in
+  E09 T13 (design note `E09-design.md` §29 to §32); batch TWN-2 (T14c, survey
+  `E09-construction.md` §13) confirmed point 1's owner test (TD-11) and decision 41 (TD-9).

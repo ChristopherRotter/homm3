@@ -28,9 +28,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   **T5e deferred** by the user at its start (2026-11-07) to when the battle client runs inside
   an adventure game (the epic's "Later": the captured artifacts are the adventure's outcome, not
   the battle scenario's); T5 done. **T6** cut in three by the user (2026-11-07): **T6a done**
-  (#781); T6b cut in two by the user (2026-11-07; R4-9 moved into T7): **T6b1 done** (CLT-Q5's
-  deck and boats as capture situations, design §6.2; the PR on `client/e17-m6-t6b1`: check it
-  first). **Next: T6b2** (the Demons' dissolve re-investigated, design §7.25), T6c (`h3-bink` as
+  (#781); T6b cut in two by the user (2026-11-07; R4-9 moved into T7): **T6b1 done** (#785,
+  CLT-Q5's deck and boats, design §6.2); **T6b2 done** (CLT-Q67: the Demons' corpse leaves by
+  the same slip as the rock; fixed, the original's for the comparisons; `demons` exact; design
+  §7.25; the PR on `client/e17-m6-t6b2`: check it first). **Next: T6c** (`h3-bink` as
   `BINKW32.DLL`, CLT-Q30), T7 (with R4-9); then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
@@ -48,7 +49,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   lane) are commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
   change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
   (#739 and #745 were). Next ids:
-  CLT-Q67, CLT-STUB-4.
+  CLT-Q68, CLT-STUB-4.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -68,6 +69,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-07, E17 M6 T6b2 (done; `client/e17-m6-t6b2`).** Kept whole. The original data
+  staged by the file tool before the PC went (its shell not used). Read (the cast's backdrop,
+  `compose_battle_background`'s whole copy), probed (the back buffer read from memory each
+  millisecond of `demons`), asked (CLT-Q67, answered (a)), built (`scene::Saved`, `compose`'s
+  `back_buffer`), `demons` exact; reviewed by a fresh reviewer. Record: `E17-log.md`.
 - **2026-11-07, E17 M6 T6b1 (done; `client/e17-m6-t6b1`).** T6b cut by the user (R4-9 into
   T7). The original data staged by the file tool (the PC's shell did not start). Built (`h3-view situation`'s boats, `h3drive.py`'s `board` and
   `into_battle`'s `click`), recorded (`deck`, `boats` exact), the whole set captured again,
@@ -77,8 +83,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   restarted during the setup's baseline (CI's green run on `master` stood in). `drawn`'s new
   digest recorded with `master`'s viewer first, then the viewer's change: `drawn` all the same.
   Reviewed by a fresh reviewer. Record: `E17-log.md`.
-- **2026-11-07, E17 M6 T5d2b (done; `client/e17-m6-t5d2b`, #777).** Kept whole (T5d2a's size). The
-  original data staged by the file tool before the PC went away (its shell did not start).
-  Read and built (`anim/channel.rs`, Ice Bolt's arm), recorded by a capture agent (`channel`,
-  `channel-sound`: exact after one correction, the acting stack's outline during the channel),
-  reviewed by a fresh reviewer. Record: `E17-log.md`.

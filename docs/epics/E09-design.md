@@ -746,7 +746,7 @@ the ADRs are applied once with the rows' verdicts:
 
 Increment 2's note (the epic's decision 37). A handover, not binding, as Parts A to C: the working
 detail behind the drafts `docs/lanes/town/adr-drafts/0028-increment-2.md`, `0016-increment-2.md`
-and `0017-increment-2.md`, written by T13 from the survey `docs/rules/surveys/E09-construction.md`
+and `0017-increment-2.md` (moved into ADR-0028, -0016 and -0017 by T15), written by T13 from the survey `docs/rules/surveys/E09-construction.md`
 (§ numbers are the survey's unless they name this note) and the decisions 41–44 (`TWN-Q8`) and
 45–47 (`TWN-Q9`). Accepted at the checkpoint (`TWN-Q10`, the epic's decisions 48–51): the drafts as
 written, the cut of §35, the exit criteria, the agent's calls. The task that builds a section
@@ -866,7 +866,7 @@ Pure functions of a town, the part and plain inputs, beside increment 1's deriva
   forbidden and, if its setup built it, out of the ever-built set (`h3_towns::without_water`; the
   original's buildable set less the forbidden, survey `E09-towns.md` §5.3); a building that
   required it stays (the original keeps it: a custom set's Lighthouse beside a removed
-  Shipyard). No draw, no stream position moved (ADR-0017 point 4's draft).
+  Shipyard). No draw, no stream position moved (ADR-0017 point 4).
 - **Not read yet:** whether the original's `town_buildings_setup` 0x5C08C0 runs before or after
   the random dwellings' resolution (`random_dwellings_resolve` 0x502B60), which a dwelling resolved
   over a spot would tell apart: the build task reads it (the new game's setup sequence) and keeps

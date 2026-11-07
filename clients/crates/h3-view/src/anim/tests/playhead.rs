@@ -218,6 +218,7 @@ fn dissolving() -> Timeline {
         start,
         step: 75,
         area: DissolveArea::Battlefield,
+        clip: Vec::new(),
     };
     timeline.dissolves = vec![dissolve(100), dissolve(200)];
     timeline
@@ -241,6 +242,28 @@ fn a_dissolve_keeps_the_battle_without_the_one_blending_then() {
     assert_eq!(kept, [0, 1, 2, 1, 0]);
     head.seek(&timeline, timeline.end + 1_000);
     assert_eq!(head.dissolves_kept(), 0);
+}
+
+#[test]
+fn a_dissolve_from_the_back_buffer_blends_from_its_start() {
+    // E17 M6 T6b2 (CLT-Q67): its step 0, the back buffer, is not the screen, so it shows at its
+    // start; the playhead keeps the battle then and agrees.
+    let mut timeline = dissolving();
+    let pose = timeline.keys[0].pose;
+    timeline.dissolves[0].clip = vec![(0, pose)];
+    let first = &timeline.dissolves[0];
+    assert_eq!((first.first(), timeline.dissolves[1].first()), (100, 201));
+    assert_eq!(
+        [99, 100, 174, 175].map(|t| first.step_at(t)),
+        [None, Some(0), Some(0), Some(1)]
+    );
+    let at_start = Moment::at(&timeline, 100).dissolve.unwrap();
+    assert_eq!(at_start.clip, vec![(0, pose)]);
+    assert_eq!(at_start.before.dissolve, None);
+    let mut head = Playhead::new(&timeline);
+    head.seek(&timeline, 100);
+    assert_eq!(head.moment(&timeline), Moment::at(&timeline, 100));
+    agrees(&timeline);
 }
 
 #[test]

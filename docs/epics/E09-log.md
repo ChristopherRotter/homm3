@@ -2144,3 +2144,33 @@ code reading with `scripts/exe.py`, no probe under Wine needed.
   `ai_pathfinder_gate_bit` (inferred). T15 queued.
 - **Agent's calls (change freely):** the names above; the trap's wording; the pieces left out of
   the part with no rule id (as decision 27's companions).
+
+### T15 — `shared/`: increment 2's drafts into `docs/adr/` (2026-11-07)
+
+One session, the user present at the start; branch `claude/zealous-euler-msupe1` (the session's
+given branch; `shared/e09-t15` by the convention), `cross-lane` (the town lane's docs ride along,
+as T4a's). Starting point: `master` at c22c25c (#786 merged). Kept whole at its start (the user,
+asked; recommended). The user's computer was not connected (no folder, no file tool): not
+needed, docs only. No code, no version.
+
+- **ADR-0028** points 2 (the day's mark; buildable now with the hall's offer, the build, an
+  event's buildings, the mark's life; the boat spot the adventure's), 5 (the requirements, the
+  costs, the role `shipyard`; TD-9 as TWN-2 observed it), 6 (`TownCommand`), 9 (part v4, state
+  hash v2); its header's amendments and detail, consequences, alternatives, revision history.
+- **ADR-0016** points 1 (the town's boat spot, in its E09 item), 4 (the random dwelling tied to a
+  town typed, `ADV-STUB-13`'s sentence replaced; the kind `Town` gains no visit rule), 6 (a
+  town's buildings its owner's and an ally visitor's, built-today public); consequences,
+  alternatives, revision history.
+- **ADR-0017** points 1 (the town command, its owner's: TD-11 with TWN-2's verdict), 2, 3 (the
+  day's start's marks, the town events at the turn start), 4 (no draw; the Shipyard without
+  water), 6, 7 (the inventory), 8 (the env's build entry), 9, 10 (a build's and a town event's
+  outcome, the capture's mark); consequences, alternatives, revision history. Each text after
+  its point's E09 increment 1 text, or at the point's end where the point has none (6, 7) or the
+  draft named a later one (8, 10).
+- **Also:** the ADR index (the three rows' status and Read-when cells); `docs/03-domain.md`'s
+  town terms (build, hall's offer, day's build, requirements and cost, boat spot, town event);
+  `docs/06-security.md`'s section "A town's construction (E09 increment 2)" (design §31's words)
+  and the trust boundaries' example (`TownCommand::Build`); the design note's Part D header and
+  §28 (the ADRs, not the drafts); the adventure lane's inbox note of T13 (the pointer). The drafts
+  deleted. Each draft sentence checked against its target by a throwaway script (every one found
+  but the headings and the reworded decision references). T16a queued.

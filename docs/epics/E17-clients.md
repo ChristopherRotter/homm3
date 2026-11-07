@@ -241,9 +241,12 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   **T6b** the recordings (CLT-Q5's deck and boats, the Demons' dissolve, R4-9), cut in two by the
   user (2026-11-07): **T6b1** (done 2026-11-07) the deck and the two boats as capture
   situations (CLT-Q5 closed: `h3-view situation` writes empty boats, the harness boards them in
-  hot seat and attacks on day 2 by clicks; `deck` and `boats` exact; design §6.2), **T6b2** the
-  Demons' dissolve; R4-9 moved into T7 (its check needs every sequence with redraw
-  artifacts captured afresh, about 51 of 91, as T7 captures everything); **T6c** `h3-bink` as
+  hot seat and attacks on day 2 by clicks; `deck` and `boats` exact; design §6.2), **T6b2**
+  (done 2026-11-07) the Demons' dissolve (CLT-Q67: the corpse leaves by the same slip as the
+  rock, the cast's first clipped redraw copying the background into the whole back buffer;
+  fixed, the original's for the comparisons; `demons` exact; design §7.25); R4-9 moved into
+  T7 (its check needs every sequence with redraw artifacts captured afresh, about 51 of 91, as
+  T7 captures everything); **T6c** `h3-bink` as
   `BINKW32.DLL` (CLT-Q30).
 - **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined;
   R4-9 (a stricter shadow chain in `h3cap.redraws`, checked on T7's captures).

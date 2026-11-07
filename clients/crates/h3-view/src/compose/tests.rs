@@ -1257,6 +1257,7 @@ fn a_dissolve_blends_the_new_picture_over_what_it_measures() {
             rect,
             measured,
             list: new.clone(),
+            saved: None,
         };
         compose(&[background("bg.pcx"), dissolve], &b, &small())
             .unwrap()
@@ -1320,6 +1321,7 @@ fn a_dissolve_blends_the_new_picture_over_what_it_measures() {
             rect,
             measured,
             list,
+            saved: None,
         };
         compose(&[background("bg.pcx"), dissolve], b, &small()).is_err()
     };
@@ -1344,6 +1346,119 @@ fn a_dissolve_blends_the_new_picture_over_what_it_measures() {
     assert!(fails(&batch(), None, vec![count], new.clone()));
     let unknown = vec![background("none.pcx")];
     assert!(fails(&b, Some([0, 0, 6, 2]), Vec::new(), unknown));
+}
+
+#[test]
+fn a_dissolve_from_the_back_buffer_starts_from_the_items_its_clip_meets() {
+    // E17 M6 T6b2 (CLT-Q67, `compose_battle_background` 0x493CF0, `battle_draw_sprite`
+    // 0x495214): inside the rectangle the saved picture is the background composed whole and
+    // each other item whose rectangle meets the clip's, drawn whole, in order; an item of a kind
+    // not measured as the screen shows it.
+    let mut b = batch();
+    let red = build::pcx_indexed(6, 2, &[1; 12], &palette(&[(1, RED)]));
+    b.add("Red.pcx", &red).unwrap();
+    b.add(
+        "CmNumWin.pcx",
+        &build::pcx_indexed(1, 1, &[1], &palette(&[(1, GREEN)])),
+    )
+    .unwrap();
+    let magic = build::def(
+        0x40,
+        (2, 1),
+        &palette(&[(3, RED)]),
+        &[(0, &[("m", 0)])],
+        &[row(&[3], &[false])],
+    );
+    b.add("Mg.def", &magic).unwrap();
+    let background = |picture: &str| Draw::Background {
+        picture: picture.to_string(),
+        x: 0,
+        y: 0,
+    };
+    let obstacle = |def: &str, x: i32, y: i32| Draw::Obstacle {
+        def: def.to_string(),
+        group: 2,
+        frame: 0,
+        x,
+        y,
+    };
+    let hero = |x: i32, y: i32| Draw::Hero {
+        def: "CR.DEF".to_string(),
+        group: 2,
+        frame: 0,
+        x,
+        y,
+        mirrored: false,
+    };
+    let wall = Draw::Wall {
+        picture: "red.pcx".to_string(),
+        x: 5,
+        y: 0,
+        clip: None,
+    };
+    // The caster's content box, (3, 1) and (4, 1): the clip.
+    let caster = creature([4, 1], false, None);
+    let list = vec![
+        background("bg.pcx"),
+        // Missing it: an obstacle's canvas left of it, one above it, a hero's frame left of it, a
+        // flag's, a count box's picture.
+        obstacle("OB.DEF", 0, 0),
+        obstacle("OB.DEF", 4, 0),
+        hero(0, 1),
+        Draw::Flag {
+            def: "MG.DEF".to_string(),
+            frame: 0,
+            x: 0,
+            y: 0,
+            palette: "players.pal".to_string(),
+            player: 0,
+        },
+        Draw::CountBox {
+            stack: 0,
+            x: 0,
+            y: 0,
+            count: 0,
+            tint: [0, 0],
+        },
+        // Meeting it: an obstacle whose canvas reaches it (drawn whole, at x 2 outside it), the
+        // caster, a hero's frame; a siege's part, not measured.
+        obstacle("OB.DEF", 2, 1),
+        caster.clone(),
+        hero(4, 1),
+        wall.clone(),
+    ];
+    let saved = |clip: Vec<Draw>, list: Vec<Draw>| {
+        let dissolve = Draw::Dissolve {
+            step: 0,
+            rect: Some([0, 0, 6, 2]),
+            measured: Vec::new(),
+            list: vec![background("bg.pcx")],
+            saved: Some(crate::scene::Saved { clip, list }),
+        };
+        compose(&[background("red.pcx"), dissolve], &b, &small())
+    };
+    let back = [
+        background("bg.pcx"),
+        obstacle("OB.DEF", 2, 1),
+        caster.clone(),
+        hero(4, 1),
+        wall,
+    ];
+    assert_eq!(
+        saved(vec![caster.clone()], list.clone()).unwrap().pixels(),
+        compose(&back, &b, &small()).unwrap().pixels()
+    );
+    // Nothing measured for the clip: the background and the part alone.
+    assert_eq!(
+        saved(Vec::new(), list.clone()).unwrap().pixels(),
+        compose(&[background("bg.pcx"), back[4].clone()], &b, &small())
+            .unwrap()
+            .pixels()
+    );
+    // A clip or an item the batch cannot measure fails the frame.
+    let unknown = obstacle("none.def", 0, 0);
+    assert!(saved(vec![unknown.clone()], list).is_err());
+    assert!(saved(vec![caster], vec![unknown]).is_err());
 }
 
 /// The stats dialog's creature and its morale's shared frame (E17 M6 T2a1, CLT-Q36): both drawn by

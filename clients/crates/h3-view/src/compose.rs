@@ -120,6 +120,7 @@ pub fn compose(
                 rect,
                 measured,
                 list,
+                saved,
             } => {
                 // The new picture on its own frame, blended into the saved one (E17 M5 T5a).
                 let rect = match rect {
@@ -127,6 +128,12 @@ pub fn compose(
                     None => measure(measured, batch, layout)?,
                 };
                 if let Some(rect) = rect {
+                    // The back buffer a clipped redraw left, the original's slip (E17 M6 T6b2,
+                    // CLT-Q67): the saved picture inside the rectangle.
+                    if let Some(saved) = saved {
+                        let back = back_buffer(saved, batch, layout, bugs)?;
+                        copy_rect(&mut screen, &back, rect);
+                    }
                     let new = compose(list, batch, layout, bugs)?;
                     screen.dissolve_rect(&new, rect.map(i64::from), *step);
                 }
@@ -454,53 +461,11 @@ fn measure(
     batch: &Batch,
     layout: &BattleLayout,
 ) -> Result<Option<[i32; 4]>, ComposeError> {
-    let [width, height] = layout.mouse.field;
     let mut dirty = [799, 599, 0, 0];
     for item in measured {
-        let [x0, y0, x1, y1] = match item {
-            Draw::Creature {
-                def,
-                group,
-                frame,
-                anchor,
-                mirrored,
-                ..
-            } => {
-                let (sprite, frame) = frame_of(batch, def, *group, *frame)?;
-                let [dx, dy] = layout.stack_canvas;
-                let canvas = i32::try_from(sprite.def.width).unwrap_or(i32::MAX);
-                let size = [frame.width, frame.height].map(|v| i32::try_from(v).unwrap_or(0));
-                let y = anchor[1].saturating_sub(dy).saturating_add(frame.top);
-                let (x0, x1) = if *mirrored {
-                    // 0x495F80: the canvas's x plus its width less the margin and the width.
-                    let x = anchor[0].saturating_sub(canvas).saturating_add(dx);
-                    let right = x.saturating_add(canvas).saturating_sub(frame.left);
-                    (right.saturating_sub(size[0]), right.saturating_sub(1))
-                } else {
-                    let x = anchor[0].saturating_sub(dx).saturating_add(frame.left);
-                    (x, x.saturating_add(size[0]).saturating_sub(1))
-                };
-                [x0, y, x1, y.saturating_add(size[1]).saturating_sub(1)]
-            }
-            // `battle_draw_magic_frame` 0x4953B0: its DEF's canvas (+0x30, +0x34) at its corner,
-            // mirrored or not.
-            Draw::Magic {
-                def, frame, x, y, ..
-            } => {
-                let (sprite, _) = frame_of(batch, def, 0, *frame)?;
-                let size =
-                    [sprite.def.width, sprite.def.height].map(|v| i32::try_from(v).unwrap_or(0));
-                [*x, *y, x + size[0] - 1, y + size[1] - 1]
-            }
-            Draw::CountBox { x, y, .. } => {
-                let picture = picture_of(batch, &layout.count_box.picture)?;
-                let size =
-                    [picture.width(), picture.height()].map(|v| i32::try_from(v).unwrap_or(0));
-                [*x, *y, x + size[0] - 1, y + size[1] - 1]
-            }
-            _ => continue,
+        let Some(cut) = item_box(item, batch, layout)? else {
+            continue;
         };
-        let cut = [x0.max(0), y0.max(0), x1.min(width - 1), y1.min(height - 1)];
         dirty = [
             dirty[0].min(cut[0]),
             dirty[1].min(cut[1]),
@@ -510,6 +475,140 @@ fn measure(
     }
     let [x0, y0, x1, y1] = dirty;
     Ok((x0 <= x1 && y0 <= y1).then_some([x0, y0, x1 + 1, y1 + 1]))
+}
+
+/// An item's rectangle as a measuring or clipped redraw takes it (left, top, right, bottom, all
+/// inclusive), cut to the battlefield (0x694F18: the layout's mouse field, its bounds inclusive);
+/// none for an item of a kind not measured. A creature's, a hero's and a flag's is its frame's
+/// content box as `battle_item_rect` 0x495F50 places it (mirrored in the DEF's width; a
+/// creature's canvas at its anchor less the layout's offset, `battle_draw_sprite` 0x4951B0, a
+/// hero's or a flag's at its corner, `battle_draw_hero_def` 0x4952B0), a count box's its
+/// picture's (`battle_draw_pcx` 0x4958E0, its clip's test 0x49599F), a magic animation's its
+/// DEF's whole canvas at its corner (`battle_draw_magic_frame` 0x4953B0), an obstacle's too
+/// (`draw_battle_obstacle` 0x495525, E17 M6 T6b2).
+fn item_box(
+    item: &Draw,
+    batch: &Batch,
+    layout: &BattleLayout,
+) -> Result<Option<[i32; 4]>, ComposeError> {
+    let [width, height] = layout.mouse.field;
+    let [x0, y0, x1, y1] = if let Draw::CountBox { x, y, .. } = item {
+        let picture = picture_of(batch, &layout.count_box.picture)?;
+        let size = [picture.width(), picture.height()].map(|v| i32::try_from(v).unwrap_or(0));
+        [*x, *y, x + size[0] - 1, y + size[1] - 1]
+    } else {
+        // Each sprite's DEF, group and frame, its canvas's corner (a creature's: its anchor),
+        // whether that is a creature's anchor, mirrored, and whether its whole canvas counts.
+        let (def, group, frame, at, stack, mirrored, whole) = match item {
+            Draw::Creature {
+                def,
+                group,
+                frame,
+                anchor,
+                mirrored,
+                ..
+            } => (def, *group, *frame, *anchor, true, *mirrored, false),
+            Draw::Hero {
+                def,
+                group,
+                frame,
+                x,
+                y,
+                mirrored,
+            } => (def, *group, *frame, [*x, *y], false, *mirrored, false),
+            Draw::Flag {
+                def, frame, x, y, ..
+            } => (def, 0, *frame, [*x, *y], false, false, false),
+            Draw::Magic {
+                def, frame, x, y, ..
+            } => (def, 0, *frame, [*x, *y], false, false, true),
+            Draw::Obstacle {
+                def,
+                group,
+                frame,
+                x,
+                y,
+            } => (def, *group, *frame, [*x, *y], false, false, true),
+            _ => return Ok(None),
+        };
+        let (sprite, frame) = frame_of(batch, def, group, frame)?;
+        let canvas = [sprite.def.width, sprite.def.height].map(|v| i32::try_from(v).unwrap_or(0));
+        let [dx, dy] = layout.stack_canvas;
+        // A creature's canvas lies left of its anchor by the offset, a mirrored one by its width
+        // less the offset.
+        let corner = match (stack, mirrored) {
+            (false, _) => at,
+            (true, false) => [at[0].saturating_sub(dx), at[1].saturating_sub(dy)],
+            (true, true) => [
+                at[0].saturating_sub(canvas[0]).saturating_add(dx),
+                at[1].saturating_sub(dy),
+            ],
+        };
+        if whole {
+            [
+                corner[0],
+                corner[1],
+                corner[0] + canvas[0] - 1,
+                corner[1] + canvas[1] - 1,
+            ]
+        } else {
+            let size = [frame.width, frame.height].map(|v| i32::try_from(v).unwrap_or(0));
+            let y = corner[1].saturating_add(frame.top);
+            let (x0, x1) = if mirrored {
+                // 0x495F80: the canvas's x plus its width less the margin and the width.
+                let right = corner[0]
+                    .saturating_add(canvas[0])
+                    .saturating_sub(frame.left);
+                (right.saturating_sub(size[0]), right.saturating_sub(1))
+            } else {
+                let x = corner[0].saturating_add(frame.left);
+                (x, x.saturating_add(size[0]).saturating_sub(1))
+            };
+            [x0, y, x1, y.saturating_add(size[1]).saturating_sub(1)]
+        }
+    };
+    Ok(Some([
+        x0.max(0),
+        y0.max(0),
+        x1.min(width - 1),
+        y1.min(height - 1),
+    ]))
+}
+
+/// The back buffer a creature's clipped redraws left (E17 M6 T6b2, CLT-Q67, design §7.25;
+/// [`crate::scene::Saved`]): the background composed over the whole frame
+/// (`compose_battle_background` 0x493CF0), then each other item of the saved battle whose
+/// rectangle meets the one the clip's items cover, whole, in order (`battle_draw_sprite` 0x495214
+/// and the other drawers: an item outside it is skipped, never cut); an item of a kind not
+/// measured (a siege's parts, a projectile) drawn as the screen shows it (*provisional*: a
+/// creature's cast draws none).
+fn back_buffer(
+    saved: &crate::scene::Saved,
+    batch: &Batch,
+    layout: &BattleLayout,
+    bugs: Bugs,
+) -> Result<Screen, ComposeError> {
+    let clip = measure(&saved.clip, batch, layout)?;
+    let mut kept = Vec::new();
+    for item in &saved.list {
+        let drawn = match item {
+            Draw::Background { .. }
+            | Draw::AbsoluteObstacle { .. }
+            | Draw::Shade { .. }
+            | Draw::Grid { .. } => true,
+            _ => match item_box(item, batch, layout)? {
+                // Exclusive on the clip's right and bottom (`measure`).
+                Some([x0, y0, x1, y1]) => clip.is_some_and(|[cx0, cy0, cx1, cy1]| {
+                    x0 < cx1 && x1 >= cx0 && y0 < cy1 && y1 >= cy0
+                }),
+                None => true,
+            },
+        };
+        if drawn {
+            kept.push(item.clone());
+        }
+    }
+    compose(&kept, batch, layout, bugs)
 }
 
 /// The plain drawer with runs skipped (`def_draw_plain` 0x47BCF0 → 0x47C570).

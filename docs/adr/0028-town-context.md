@@ -7,9 +7,11 @@
 - Date: 2026-11-02
 - Deciders: user; town lane session (E09 T2a)
 - Amends with it: ADR-0015, ADR-0016, ADR-0017, ADR-0023 (E09 increment 1's amendments, each in
-  its revision history or status line).
+  its revision history or status line); ADR-0016 and ADR-0017 again with increment 2's (E09 T15,
+  2026-11-07; `TWN-Q10`, decision 48).
 - Working detail: the survey `docs/rules/surveys/E09-towns.md` (§0's findings, §15 batch TWN-1),
-  the design note `docs/epics/E09-design.md` (T2b).
+  the design note `docs/epics/E09-design.md` (T2b); increment 2's the survey
+  `docs/rules/surveys/E09-construction.md` (§13 batch TWN-2) and the design note's Part D (T13).
 
 <!-- Decisions only; the readings are the survey's, the build's detail the design note's. -->
 
@@ -50,6 +52,23 @@ same record (the day's construction, the available creatures, the guild's spells
      the Grail's, the silo's resources), the **fort level**, the **siege's facts** (point 7), the
      **reveal radius** of a capture, whether it has a **Tavern** (another player's view level),
      the **Capitol's limit** (given the owner's other towns).
+     **Increment 2** (construction with the town events; decisions 37, 41–47) adds to the town's
+     record **the day's mark** (whether a building was bought in it today, the original's +0x2,
+     decision 43) and to its rules, each a pure function of a town, the part and plain inputs the
+     game gives: **buildable now** (not ever built, every requirement in the ever-built set, not
+     forbidden, not of role `grail`, a hall-4 building only while the player holds no Capitol,
+     the day's mark clear; the hall's offer: a horde whose level's upgraded dwelling is ever built
+     is offered as its upgraded horde), **the build** (the building, what it supersedes and what
+     then builds automatically into the ever-built set; the mark set or not), **an event's
+     buildings** (the event's set less what is ever built, what another of the event's buildings
+     supersedes and a `shipyard` without water; in the part's order) and **the mark's life**
+     (cleared at every day's start; at a capture kept, but cleared when the old owner is not human
+     and the new one is). The record's map events are applied from increment 2 (resources and
+     buildings; their creatures with increment 3's recruits, decision 37). The adventure holds
+     the town's **boat spot** (ADR-0016 point 1); "whether the town has water" is the game's
+     input to `h3-towns`, never a second copy. Every derivation of increment 1 (hall, income,
+     fort, siege, reveal, Tavern, Capitol) reads the record as a build leaves it, so a build
+     changes them at once.
    - **The adventure** holds the map object of kind `Town` (ADR-0016 points 1, 3 and 4, E09's amendment): its static
      part (footprint, entrance, the `TownId`), its **owner**, its **garrison** (the armies on
      objects, as a mine's guards) and its **visiting hero** (the hero on its entrance).
@@ -80,12 +99,30 @@ same record (the day's construction, the available creatures, the guild's spells
    header and the server's manifest record its hash. Content is harvested where the original
    has it as data; a constant of the executable is tier-2 data whose source is the reading
    (decision 10).
+   **Increment 2** gives each building of a town record its **direct requirements** (buildings
+   of the same record: the executable's lists, survey `E09-construction.md` §6) and its **cost**
+   (resources of the core, `Building.txt`'s rows, §5); the compiler closes the requirements (the
+   original's `building_requirements` 0x697798) and refuses a requirement outside the record, a
+   cycle, a building requiring itself and a resource the core lacks. A new role **`shipyard`**
+   names the building that needs water (decision 46). The content is harvested (decision 23's
+   route: `h3-harvest`'s gap-fill, `cross-lane`): the costs from `Building.txt`, the requirements
+   from the executable's lists; TD-9 the executable's (decision 41), as batch TWN-2 observed it
+   (survey §13; no gap-fill override).
 6. **Seams.** `h3-towns` and `h3-adventure` never import each other; `h3-game` reads both. The
    only new contract type of increment 1 is `TownId`. The siege's facts cross to the battle as
    ADR-0023's `Siege` (point 7). From increment 4 a town's service reads a hero's details by
    reference and returns `h3_heroes::HeroChange`s, which the game applies (ADR-0017 point 10), as
    a visit of the adventure does; recruitment returns the creatures for the game to place in an
    army the adventure holds.
+   **Increment 2** adds the **town command**, `h3_towns::TownCommand` (decision 45; increment 2's
+   one variant `Build { town: TownId, building: BuildingId }`), which the game wraps as
+   `GameCommand::Town` (ADR-0017 point 1) and whose later variants are the town's own actions
+   (increment 3's recruitment, increment 4's services). `h3-towns` validates the town's part
+   (buildable now) and names the price (the part's cost), each refusal typed
+   (`TownCommandError`); the game checks the turn, the owner and the treasury, pays and applies
+   the build infallibly (ADR-0017 point 10). No new contract type: the command and its errors are
+   `h3-towns`' types, which `h3-game` re-exports. The town events cross the same way: `h3-towns`
+   says which buildings an event builds, the game pays its resources and writes the store.
 7. **The siege's facts and the editions by the packs** (decisions 14 and 20): `h3-towns` derives
    `Siege` (ADR-0023 point 2, E09's amendment) from the town and its faction's record; no game version exists.
    The faction's record holds the moat's kind (absent, harmless, damaging) and whether a siege
@@ -102,6 +139,11 @@ same record (the day's construction, the available creatures, the guild's spells
 9. **Versions owned by the town lane:** `h3-towns`' state hash and the town part's hash (v1 when
    the crate is created). Its changes bump the adventure lane's versions it touches (the game
    state hash, the import, the adventure replay format) in `cross-lane` pull requests.
+   **Increment 2** bumps the town ruleset part (v4: the requirements, the costs, the role
+   `shipyard`) and the town state hash (v2: the day's mark); the adventure lane's versions it
+   touches, each `cross-lane`: the adventure ruleset part (the kind `Town`'s boat-spot offsets),
+   the game state hash (it folds the store's hash in), the adventure replay format (the town
+   command); the env's action encoding is the AI lane's (ADR-0017 point 8).
 
 ## Consequences
 
@@ -117,6 +159,15 @@ same record (the day's construction, the available creatures, the guild's spells
 - A fork costs one more reference count (the XL fork benchmark, `bench-check`).
 - A town is never half in one context: a capture writes the owner in the adventure and the
   Capitol's limit in the store in one infallible application (ADR-0017 point 11's rule).
+- Increment 2: one `shared/` pull request after acceptance and batch TWN-2 (E09 T15, design
+  §35's round 3): its amendments into this ADR, ADR-0016 and ADR-0017, `docs/03-domain.md`'s
+  terms (the day's build, the hall's offer, a town event), `docs/06-security.md`'s town section.
+  `cross-lane` after it: the harvest (`h3-harvest`, the battle lane's), the kind `Town`'s offsets
+  and the town's boat spot (the adventure lane's static map), `GameCommand` and the replay
+  format, the turn start's and the day's calls, the env (the AI lane's); each adventure golden
+  replay re-recorded (skill `homm3-rerecord-replays`). A town's day's mark makes a fork's first
+  build in a town copy that town (the store's rule); the day's start writes only the towns built
+  in the day before.
 
 ## Alternatives considered
 
@@ -132,6 +183,17 @@ same record (the day's construction, the available creatures, the guild's spells
   (TWN-Q3): each change `cross-lane`; a rule keyed by names, against ADR-0006.
 - A module inside `h3-adventure` split out later; `h3-towns` owning the town's armies (TWN-Q1,
   decision 2).
+- Increment 2 (`TWN-Q9`): a game command `GameCommand::Build { town, building }`, the rules as
+  `h3-towns` functions, each later town action a variant of its own (the game's command type
+  grows with every town service, and the town context's validation has no command of its own to
+  name); a pending decision opened by entering an own town, its answers building (the original
+  builds from the town list without a visit); the Shipyard refused until increment 4, or
+  buildable without water until then (the Castle's Lighthouse needs the Shipyard; a Shipyard
+  without water is a deviation the start already removes in the original).
+- Increment 2: the requirements stored closed in the pack (the closure written by the harvester:
+  two sources of one fact; the executable's lists are direct); the day's mark as the day of the
+  town's last build (no write at the day's start: two states that play alike would hash apart;
+  the original's flag is kept).
 
 ## Revision history
 
@@ -141,3 +203,11 @@ same record (the day's construction, the available creatures, the guild's spells
   amendments; batch TWN-1 (T3c, survey §15) confirmed TD-3, TD-5, TD-7 and the siege's
   aftermath, so no point changed; its unpredicted building 23 changes no point (decision 25:
   re-read in T5b). The Consequences' `shared/` work split in two (T4a, T4b).
+- 2026-11-07 (E09 T15 `shared/`; the user at `TWN-Q7` to `TWN-Q10`, decisions 37, 41–48): points
+  2, 5, 6 and 9 amended for increment 2, construction with the town events (with ADR-0016 points
+  1, 4, 6 and ADR-0017 points 1 to 4 and 6 to 10): the day's mark and the rules buildable now,
+  the build, an event's buildings and the mark's life; the part's requirements, costs and role
+  `shipyard`; the town command `TownCommand::Build`; the versions. Drafted in E09 T13 (design
+  note `E09-design.md` Part D, §23 to §36); batch TWN-2 (T14c, survey `E09-construction.md` §13)
+  confirmed decisions 41 (TD-9, the executable's list) and 42 (TD-11, the owner builds), so no
+  point changed.

@@ -15,7 +15,7 @@ untrusted files  ──bytes──▶ [formats adapter: validates, bounds, conve
 ```
 
 1. **Identity comes from the session, never from the payload.** The `Actor` passed to `apply` is created by the trusted session layer from the authenticated connection. Commands never contain "who I am" or "whose resources to use".
-2. **Commands carry intent only.** No prices, resource amounts, ownership claims, derived stats or results. Everything derivable is computed from state. Example: `BuildStructure { town, structure }` — cost and payer come from the ruleset and the actor's own treasury.
+2. **Commands carry intent only.** No prices, resource amounts, ownership claims, derived stats or results. Everything derivable is computed from state. Example: `TownCommand::Build { town, building }` (E09 increment 2) — cost and payer come from the ruleset and the actor's own treasury.
 3. **Validation is total and centralized.** `apply` checks: it is the actor's turn/phase, the actor owns every referenced entity (or the interaction is explicitly modelled), all references exist, preconditions hold, resource checks use the *actor's* stock, bounds hold. The validator runs before any mutation; on failure state is unchanged (atomicity is property-tested).
 4. **No reach-through.** Domain functions receive the minimal capability they need (e.g., the actor's own treasury handle), not the whole state plus an id, which makes cross-player access impossible to express by accident.
 5. **Legal-command consistency.** `legal_commands` and `apply` share one precondition implementation (or are tested equivalent), so UI hints can't diverge from enforcement.
@@ -138,6 +138,36 @@ player's team is the player alone; a neutral town is nobody's team.
   order, seen or not. Kept, as ADR-0028 point 3 names a town by it in the commands, events and
   observations (unlike an object, named by type and anchor); in the original each player of a
   game holds the map file, which lists the same towns.
+
+### A town's construction (E09 increment 2)
+
+ADR-0028 points 2 and 6, ADR-0017 points 1, 2 and 10, ADR-0016 point 6 (E09 decisions 42, 45,
+47; the design note `epics/E09-design.md` §29 and §31; rule TWN-VEW-004). The build task
+(E09 T18b) implements it; `h3-game`'s view tests and the hygiene and told-views properties check
+it with builds.
+
+- **The build is the owner's** (`GameCommand::Town(TownCommand::Build { town, building })`):
+  the actor must own the town and be in its turn with no open decision; the price is the
+  building's cost from the town part, paid from the actor's own treasury, never named by the
+  command. The original's build dialog refuses any other player (batch TWN-2, survey
+  `rules/surveys/E09-construction.md` §13), so no visitor spends its own or another player's
+  resources in a town it does not own. A refused build changes nothing.
+- **Public where the town is seen:** as increment 1's, plus **whether it was built in today**
+  (the popup's portrait); its fort level and Capitol change with a build.
+- **The owner's:** the town's buildings (ever built, forbidden, so the standing ones) and the
+  legal builds, as the town screen opens from the town list at any time. Not the owner's team,
+  not Visions' top level (the popup shows no buildings).
+- **An ally's visit** (E10's teams; until then no town is an ally's): the entering step tells
+  the visiting player the town's buildings once, as the original's town screen opens at the
+  visit.
+- **Never public:** another player's town's buildings and legal builds; the town's boat spot
+  (increment 4 places its view as a Shipyard's boat tile, the owner's team).
+- **Events:** a build and a town event's buildings (`TownBuilt`) and a town event's firing
+  (`TownEventFired`) to the owner alone, its resources in the owner's `ResourceGained` and
+  `ResourceLost`; a change of the town's public facts (fort, Capitol, built today; `TownChanged`)
+  to the players that see the town, its top level's facts (hall, income) only to the viewers at
+  that level. A new Tavern raises its owner's view level of every other town, told by its
+  `TownBuilt`.
 
 ## Denial of service and resource limits
 
