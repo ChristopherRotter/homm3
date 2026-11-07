@@ -249,8 +249,8 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   T7 captures everything); **T6c** `h3-bink` as `BINKW32.DLL` (CLT-Q30), cut in two by the
   user (2026-11-07): **T6c1** (done 2026-11-07) the decoder as the DLL's (its x87 DCT and
   dequantizers in integers; the ten clips and the samples exact against its planes; CLT-Q68
-  asked, answered fix; design §7.27), **T6c2** the captures' listed DCT pixels captured again,
-  `drawn` recorded, CLT-Q30 closed.
+  asked, answered fix; design §7.27), **T6c2** (done 2026-11-07) the captures' listed DCT
+  pixels captured again (every clip frame exact), `drawn` recorded, CLT-Q30 closed. T6 done.
 - **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined;
   R4-9 (a stricter shadow chain in `h3cap.redraws`, checked on T7's captures).
 - **Exit:** a played battle shows every dialog and popup of the original's battle screen, each

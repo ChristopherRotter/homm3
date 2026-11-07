@@ -3141,8 +3141,13 @@ as binary32) and gave the dataflow below.
 - **Cost** (release, this sandbox's CPU, best of 20): the ten clips decode in 355 ms instead of
   300 (+18 %): `Defendall`, the DCT-heaviest, 73 to 126 ms (1.3 ms a frame), the others within
   noise. The window decodes its pair once, at the battle's end (§7.21).
-- **Left** (T6c2): the captures' listed DCT pixels (`result-retreat` at 2 700 and 3 000,
-  `defended`, `auto-retreat-flee` and `-surrender`, `end`) captured again, CLT-Q30 closed.
+- **Captured again** (M6 T6c2): `drawn` moved exactly the four whose clips differed
+  (`defended`, `auto-retreat-surrender`, `auto-retreat-flee`, `result-retreat`; `end`'s `Win3`
+  and `result-surrender`'s frames were exact and stayed the same). In the original: `result-retreat`
+  at 2 700 and 3 000 exact (1 and 9 pixels before); `defended`'s 36 clip frames differ only by
+  the 122 redraw artifacts outside the slot (153 to 298 pixels more before); `auto-retreat-surrender`
+  and `-flee` exact in all 46 frames (18 and 32 differed before). Every clip frame in the
+  captures is the DLL's. CLT-Q30 closed.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

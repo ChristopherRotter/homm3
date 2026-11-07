@@ -131,7 +131,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `Bugs::Original` only). `Draw::Video` carries the time since the window opened, so the draw
   list changes every millisecond: the window draws the clip at its decodes (`Battle::clip_times`),
   never by comparing lists. Its pixels are the DLL's since E17 M6 T6c1 (`h3-bink`'s DCT is the
-  DLL's x87 one; the captures' listed DCT pixels go at T6c2, CLT-Q30); the colours are exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
+  DLL's x87 one, CLT-Q30; the captures' clip frames exact since T6c2); the colours are exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
   copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs. A
   new kind of asset in the batch needs its line in `battle.rs`'s `held`, or the window decodes
   it again at every frame (the clip did: 119 ms late a frame). Since M5 T8b1 the window decodes

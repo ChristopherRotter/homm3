@@ -18,30 +18,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M6 T6 — the inbox's waiting items
-
-- **Scope:** the items that waited for a free slot (their entries in `QUEUE-ARCHIVE.md`,
-  2026-10-31): the deck and the two boats as capture-set situations (CLT-Q5: a hero beside an
-  empty boat boards it in the game; `NOTES.md`, "Battlefields and boats"); `h3-bink` decoding as
-  `BINKW32.DLL` (CLT-Q30: its float transform in integer arithmetic, checked against the DLL's
-  planes; the captures' listed DCT pixels then go); the Demons' dissolve re-investigated (the
-  user, 2026-10-29; design §7.25); the compositor's dialog items through `h3_ui::paint`
-  (`h3-view`'s copy removed); `tests/purity.rs`'s three holes (R2-15: the map viewer's fixes);
-  R4-2 (`drawn`'s digest of what the masks depend on) and R4-9 (a stricter shadow chain in
-  `h3cap.redraws`).
-- **Acceptance:** each done or its reason recorded; `drawn` and the captures it touches as
-  recorded; `check.sh`. **Depends on:** nothing (independent of T1 to T5). **Status:** cut in
-  three by the user (2026-11-07): **T6a** done (the purity test's holes, the dialog items
-  through `h3_ui::paint`, R4-2; no capture in the original); **T6b** the recordings, cut in two
-  by the user (2026-11-07): **T6b1** done (the deck and the two boats as situations, CLT-Q5),
-  **T6b2** done (the Demons' dissolve, CLT-Q67; R4-9 moved into T7); **T6c** `h3-bink` as
-  `BINKW32.DLL` (CLT-Q30), cut in two by the user (2026-11-07): **T6c1** done (the decoder:
-  the ten clips and the samples exact against the DLL's planes; CLT-Q68 answered fix; design
-  §7.27); **T6c2** next: the captures' listed DCT pixels (`result-retreat` at 2 700 and 3 000,
-  `defended`, `auto-retreat-flee` and `-surrender`, `end`) captured again as recorded, `drawn`
-  recorded (the result window's clip frames' digests moved with the decoder), the runbook's and
-  `TRAPS.md`'s CLT-Q30 lines, CLT-Q30 closed.
-
 ### E17 M6 T7 — M6's closure
 
 - **Scope:** a fresh reviewer, every capture afresh, the review list, M7 refined with the user
@@ -50,8 +26,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
   M7's tasks in this queue; M6 done. Also R4-9 (moved from T6b by the user, 2026-11-07): a
   stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
-  anything), its counts checked on T7's captures of every sequence. **Depends on:** T1 to T6.
-  **Status:** waiting.
+  anything), its counts checked on T7's captures of every sequence. **Depends on:** T1 to T6 (done).
+  **Status:** next; cut with the user at its start.
 
 ## Inbox
 
