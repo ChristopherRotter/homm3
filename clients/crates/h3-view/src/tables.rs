@@ -113,6 +113,15 @@ pub struct Battle {
     /// `damage_stage1_with_luck` 0x443B1E, `Deathblo.wav`), category 2 as the heal's.
     #[serde(default)]
     pub death_blow_sound: Option<String>,
+    /// Ice Bolt's explosion as its animation strikes (E17 M6 T5d2b; `cast_spell` 0x5A0AAB,
+    /// `IceRayEx.wav`), category 2 as the heal's.
+    #[serde(default)]
+    pub ice_bolt_sound: Option<String>,
+    /// The Familiars' channel after a hero's cast (E17 M6 T5d2b; `cast_spell` 0x5A26E5 and
+    /// 0x5A270E), category 2 as the heal's: the drain's at the caster's corner (`MagChDrn.wav`),
+    /// then the fill's at the other (`MagChFil.wav`).
+    #[serde(default)]
+    pub channel_sounds: Option<[String; 2]>,
     /// A wall shot's explosions (E17 M4 T2b; `wall_shot_animate` 0x4462D5): the one a shot with
     /// damage lands in (`SGEXPL.DEF`), then the one of a shot without (`CSGRCK.DEF`).
     #[serde(default)]
@@ -145,6 +154,8 @@ impl Battle {
             .chain(&self.thunderbolt_sound)
             .chain(&self.mana_drain_sound)
             .chain(&self.death_blow_sound)
+            .chain(&self.ice_bolt_sound)
+            .chain(self.channel_sounds.iter().flatten())
             .chain(self.wall_sounds.iter().flatten())
             .chain(self.siege_sounds.iter().flatten())
             .chain(self.pickup_sounds.iter().flatten())
@@ -418,6 +429,9 @@ impl Sounds {
             | Sound::Thunderbolt
             | Sound::ManaDrain
             | Sound::DeathBlow
+            | Sound::IceBolt
+            | Sound::ChannelDrain
+            | Sound::ChannelFill
             | Sound::SpellFile(_)
             | Sound::Object(_)
             | Sound::WallHit
@@ -946,6 +960,8 @@ drain_sound = "DrainLif"
 thunderbolt_sound = "LightBlt"
 mana_drain_sound = "ManaDrai"
 death_blow_sound = "Deathblo"
+ice_bolt_sound = "IceRayEx"
+channel_sounds = ["MagChDrn", "MagChFil"]
 wall_explosions = ["SGEXPL.DEF", "CSGRCK.DEF"]
 wall_sounds = ["WallHit", "WallMiss"]
 siege_sounds = ["drawbrg", "landkill"]
@@ -1077,8 +1093,9 @@ at = [124, 254]
             t.battle.sounds().collect::<Vec<_>>(),
             [
                 "Regener", "MagicRes", "GoodMrle", "BadMrle", "Fear", "goodluck", "DrainLif",
-                "LightBlt", "ManaDrai", "Deathblo", "WallHit", "WallMiss", "drawbrg", "landkill",
-                "pickup01", "pickup02", "pickup03", "pickup04", "pickup05", "pickup06", "pickup07"
+                "LightBlt", "ManaDrai", "Deathblo", "IceRayEx", "MagChDrn", "MagChFil", "WallHit",
+                "WallMiss", "drawbrg", "landkill", "pickup01", "pickup02", "pickup03", "pickup04",
+                "pickup05", "pickup06", "pickup07"
             ]
         );
         assert_eq!(
@@ -1541,6 +1558,9 @@ at = [124, 254]
             Sound::Thunderbolt,
             Sound::ManaDrain,
             Sound::DeathBlow,
+            Sound::IceBolt,
+            Sound::ChannelDrain,
+            Sound::ChannelFill,
             Sound::SpellFile(79),
             Sound::TurretShot,
             Sound::WallHit,
@@ -1565,15 +1585,17 @@ at = [124, 254]
         // The archer has none; the tent's heal sound is the battle's (E17 M3 T3b), and so are
         // morale's, Fear's and good luck's (E17 M3 T7b-2b-2b), Life Drain's and the Thunderbird's
         // bolt's (E17 M3 T7b-2b-3), the wall shots' (E17 M4 T2b), the drawbridge's and a mine's
-        // blast's (E17 M4 T2c-1), the mana drain's (E17 M6 T5d1), Death Blow's (T5d2a).
+        // blast's (E17 M4 T2c-1), the mana drain's (E17 M6 T5d1), Death Blow's (T5d2a), Ice Bolt's
+        // explosion's and the Familiars' channel's (T5d2b).
         let names: Vec<String> = tables.sound_names().into_iter().collect();
         assert_eq!(
             names,
             [
                 "BADMRLE", "DEATHBLO", "DRAINLIF", "DRAWBRG", "FEAR", "GOODLUCK", "GOODMRLE",
-                "LANDKILL", "LIGHTBLT", "MAGICRES", "MANADRAI", "PICKUP01", "PICKUP02", "PICKUP03",
-                "PICKUP04", "PICKUP05", "PICKUP06", "PICKUP07", "PIKEATTK", "PIKEDFND", "PIKEKILL",
-                "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW", "WALLHIT", "WALLMISS"
+                "ICERAYEX", "LANDKILL", "LIGHTBLT", "MAGCHDRN", "MAGCHFIL", "MAGICRES", "MANADRAI",
+                "PICKUP01", "PICKUP02", "PICKUP03", "PICKUP04", "PICKUP05", "PICKUP06", "PICKUP07",
+                "PIKEATTK", "PIKEDFND", "PIKEKILL", "PIKEMOVE", "PIKEWNCE", "REGENER", "SLOW",
+                "WALLHIT", "WALLMISS"
             ]
         );
     }

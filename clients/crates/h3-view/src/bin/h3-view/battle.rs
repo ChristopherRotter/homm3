@@ -464,6 +464,16 @@ pub fn battle_sounds(record: &Record, tables: &Tables) -> BTreeMap<Sound, String
         (Sound::Thunderbolt, battle.thunderbolt_sound.clone()),
         (Sound::ManaDrain, battle.mana_drain_sound.clone()),
         (Sound::DeathBlow, battle.death_blow_sound.clone()),
+        // Ice Bolt's explosion and the Familiars' channel (E17 M6 T5d2b).
+        (Sound::IceBolt, battle.ice_bolt_sound.clone()),
+        (
+            Sound::ChannelDrain,
+            battle.channel_sounds.as_ref().map(|[d, _]| d.clone()),
+        ),
+        (
+            Sound::ChannelFill,
+            battle.channel_sounds.as_ref().map(|[_, f]| f.clone()),
+        ),
         // A siege's drawbridge and a mine's blast (E17 M4 T2c-1).
         (
             Sound::Drawbridge,

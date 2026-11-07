@@ -2244,3 +2244,59 @@ command = [
     { seat = "Attacker", at = 7800, command = { CreatureCast = { target = { Stack = { stack = 1 } } } } },
     { seat = "Attacker", at = 10296, command = { Attack = { target = 2, from = 137 } } },
 ]
+
+# E17 M6 T5d2b: Ice Bolt's explosion and the Familiars' channel (design §12.24), in hot seat
+# (`seq-channel.toml`). Round 1, the Royal Griffins' turn: Orrin casts Ice Bolt at the Cerberi (his
+# frames from 0, the projectile from 500); 46 strikes them with their hit at 1 292 (its first frame
+# shown, `IceRayEx.wav`'s millisecond), the line (30 damage, one Cerberus perishes) at its end,
+# 2 692, his last frames, standing at 2 992. As he stands Crag Hack's four Familiars channel 1
+# (8 div 5): GENRLTXT 113 ("The Familiars absorb …"), 76 at hex 0 (the caster's corner) from 3 092,
+# erased at 4 292, then 75 at hex 16 from 4 392, erased at 5 592; the Griffins defend. The Cerberi's
+# turn (5 592): Crag Hack's Ice Bolt at the Griffins, 46 at 6 851, the line at 8 251 (one Royal
+# Griffin), standing at 8 551; Orrin's one Familiar: GENRLTXT 112 ("The Familiar absorbs …"), 76 at
+# hex 16 from 8 651, 75 at hex 0 from 9 951, erased at 11 151 (the corners swapped). Through each
+# channel the stack whose turn it is stays outlined (`outline_turn_stack` 0x5A216B runs before it).
+# Spell damage is not rolled and nothing else acts: no seed. Frames: 145, all exact (no box or log
+# masked).
+[[sequence]]
+id = "channel"
+scenario = "seq-channel.toml"
+hot_seat = true
+actions = ["turn:0.1", "cast:0:151", "key:d", "turn:1.1", "cast:0:137"]
+fail = ["good_morale", "bad_morale"]
+ms = 5700
+heroes = true
+screens = true
+timeline = "timelines/channel.txt"
+frames = "timelines/channel-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 16, target = { Stack = { stack = 3 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 5592, command = { Defend = {} } },
+    { seat = "Defender", at = 5592, command = { Cast = { spell = 16, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]
+
+# `channel-sound`: the same with the original's sounds (`sound`, design §8.3). At speed 0 every
+# wait holds nothing: `IceRayEx.wav` (1 360 ms) from 1 292 ends about 40 ms before 46's end
+# (2 692; the second from 6 851, 8 251); `MagChDrn.wav` (1 190) from 2 992 ends inside 76's 1 300
+# (to 4 292), `MagChFil.wav` (1 170) from 4 292 inside 75's (to 5 592; the second channel's from
+# 8 551 and 9 851, the fill after the drain's end: none cut). The timeline and the frames are
+# `channel`'s: 145, all exact.
+[[sequence]]
+id = "channel-sound"
+sound = true
+scenario = "seq-channel.toml"
+hot_seat = true
+actions = ["turn:0.1", "cast:0:151", "key:d", "turn:1.1", "cast:0:137"]
+fail = ["good_morale", "bad_morale"]
+ms = 5700
+heroes = true
+screens = true
+timeline = "timelines/channel-sound.txt"
+frames = "timelines/channel-sound-frames.txt"
+boxes = true
+command = [
+    { seat = "Attacker", at = 0, command = { Cast = { spell = 16, target = { Stack = { stack = 3 } }, second = { None = {} } } } },
+    { seat = "Attacker", at = 5592, command = { Defend = {} } },
+    { seat = "Defender", at = 5592, command = { Cast = { spell = 16, target = { Stack = { stack = 1 } }, second = { None = {} } } } },
+]

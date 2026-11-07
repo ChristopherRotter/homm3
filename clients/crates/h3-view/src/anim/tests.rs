@@ -2915,7 +2915,8 @@ fn the_log_records_what_the_battle_writes_and_when() {
             | Logged::Raised { .. }
             | Logged::Summoned { .. }
             | Logged::Created { .. }
-            | Logged::CreatureCast { .. } => "spell",
+            | Logged::CreatureCast { .. }
+            | Logged::Channeled { .. } => "spell",
             Logged::Drain { .. }
             | Logged::DeathStare { .. }
             | Logged::Thunderbolt { .. }
@@ -5733,6 +5734,7 @@ fn objects_outside_casts_and_without_their_looks() {
 }
 
 mod blows;
+mod channel;
 pub(crate) mod created;
 mod looks;
 pub(crate) mod playhead;
