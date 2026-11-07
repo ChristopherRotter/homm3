@@ -70,6 +70,12 @@ adventure kind naming artifacts, and a combination's parts read outside `h3-hero
 The weakest stack's measure (note §8) reads the core creature's fight value (`fight_value`,
 harvested; the original's creature record +0x3C): no new content.
 
+*As built* (T102, `shared/e08-t102`): `HeroEffect::WhirlpoolProtection` (code 60), pack format
+v51, core ruleset hash v52; the gap-fill's Sea Captain's Hat with three sources
+(`exe-whirlpool-protection`, `vcmi-whirlpool-protection`: VCMI 1.7.5's `seaCaptainsHat`
+`WHIRLPOOL_PROTECTION`, read for it; `wiki-whirlpool-protection`); `h3_heroes::whirlpool_protection`
+is T103a's.
+
 ###### 3. The packs
 
 - **`base`**: the monoliths of channels 0 to 2 in each way (nine types: RoE's and AB's
@@ -473,7 +479,7 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 
 | Version | Change | Task |
 |---|---|---|
-| pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102 |
+| pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102: done |
 | adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a |
 | map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b |
 | game state hash v26 | the held jump `Rest::Jump` (§13) | T105b |

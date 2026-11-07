@@ -8,7 +8,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **CLT-Q40 carried** (BAT-Q64, 2026-11-03; branch `claude/keen-cori-oaahgi`, `cross-lane`): `EffectSource` on the morale and luck effects, `Siege.bonuses`, derived in `h3-heroes`, kept and public in the observation with each stack's unclamped values, on the wire. Pull request #685 (label `cross-lane`) open: watch it until it merges (merge `master` into it after #647).
 - E05, `h3-sim` and `h3-ffi` are the AI lane's (AI-Q1), `h3-heroes` the adventure lane's.
 - **Open:** BAT-Q28 (rows 1, 3, 5, 6, 11, 12), BAT-Q32, BAT-Q35, BAT-Q58, BAT-STUB-1, BAT-STUB-18 (E26's checkpoint), the inbox (by kind since 2026-10-19; what is left: BAT-MAG-010's Acid Breath reading, which needs the executable, and the consolidated readings), Q43.
-- **Versions:** battle state hash v55 (CLT-Q40), battle part hash v7 (E23 T3-0; the encodings, replay format v32 and C ABI are the AI lane's); shared: core ruleset hash v51, pack format v50 (E08 T81b), protocol v37, quirk flags 39. Next ids: BAT-Q65, BAT-QUIRK-31, BAT-STUB-19, BAT-AI-026, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
+- **Versions:** battle state hash v55 (CLT-Q40), battle part hash v7 (E23 T3-0; the encodings, replay format v32 and C ABI are the AI lane's); shared: core ruleset hash v52, pack format v51 (E08 T102), protocol v37, quirk flags 39. Next ids: BAT-Q65, BAT-QUIRK-31, BAT-STUB-19, BAT-AI-026, BAT-TER-007, BAT-SIE-030, BAT-WAR-009; survey D-24, S-30.
 - Working agreement: increments with a user checkpoint (Q41); the user confirms seams and ADRs; batches by the user or an agent; small increments (2026-10-19).
 
 ## Standing traps

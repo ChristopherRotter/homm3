@@ -172,6 +172,14 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      skips one while an empty boat stands on it (design §5, §7); `ADV-QUIRK-45`, written by T104.
      Not chosen: refused when the game is built (as A-42); reproduced.
 
+### Decision at T102's start (2026-11-07, user)
+
+281. **T102 whole, one `shared/` pull request** (the user at T102's start, `AskUserQuestion`,
+     with the consent to the `cross-lane` change; recommended, as decision 274 and T70): the two
+     ADRs, the glossary, the security lines, the experiments README's row and the effect kind with
+     the harvester's gap-fill, the replays' headers and the bot reports in one session. Not
+     chosen: two pull requests (the docs, then the code), in one session or two.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
@@ -180,7 +188,8 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
 - **T99 Batch E11's maps** (decisions 269, 274), in two at the code's seam (decision 275): **T99a** done (2026-11-06, `adventure/e08-t99a`, `cross-lane`: the writer's classes 43 to 45, 103 and 111 on either level, the spec's `level`, the gates' `pair` and `vcmi_pair`, a boat on a Whirlpool's tile and its `vcmi_tile`); **T99b** in two by land and water (decision 276): **T99b1** done (2026-11-06, `adventure/e08-t99b1`: the spec `E08-batch-11a` with E11-1 to E11-9, E11-18 and E11-19, its template, each walk priced and the fog checked on the written map, a fresh review); **T99b2** in two by spec (decision 277): **T99b2a** done (2026-11-06, `adventure/e08-t99b2a`: 11a's Whirlpool rows E11-10 to E11-13, every Whirlpool army Blue's, boarded on day 1 and jumping on day 2 through one entrance; E11-18's hero with the Admiral's Hat; the walks priced, a fresh review); **T99b2b** done (2026-11-06, `adventure/e08-t99b2b`, `cross-lane`: the spec `E08-batch-11b` with E11-14 to E11-17, E11-16's sides swapped (the agent's call), its template, the walks priced, the setup's Whirlpools' list read for a boat's tile, a fresh review; the batch's row in the experiments README). Round 2 done.
 - **T100 Batch E11's harness reads, recipes and runs** (design §16, §17's round 3), in two by spec (decision 278): **T100a** done (2026-11-06, `adventure/e08-t100a`: the harness's replay on the frozen clock, branches by tile, box and opening reads; the recipe `E08-batch-11a`, three runs, the template filled); **T100b** done (2026-11-07, `adventure/e08-t100b`, whole: the key pressed again and again (`repeat`), the recipe's places, `look`, the Whirlpools' list and the tiles' reads; the recipe `E08-batch-11b`, three runs, the template filled); then **T101** the scoring.
 - **T101 Batch E11 scored** (decisions 269, 274). Done (2026-11-07, whole, docs only: survey §15, every row as read but E11-19, the guard fought before the jump; the spread uniform; A-37's consequences, A-43; the checkpoint ADV-Q47, decisions 279, 280). Round 3 done.
-- **T102 to T107** (design §17's rounds 4 to 8): the `shared/` task (queued), the kinds and the import, the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done; batch E11c and decision 279's order before T105a (their cut at round 5's start).
+- **T102 Increment 11's shared change** (decisions 272–274, 279, 280; `cross-lane`). Done (2026-11-07, `shared/e08-t102`, whole: decision 281): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 4, 6, 8, 10, 11 amended with batch E11's outcome, the drafts deleted; the glossary's teleporter terms; `docs/06-security.md`'s increment 11 lines; the effect kind `whirlpool_protection` (pack format v51, core ruleset hash v52) on the Sea Captain's Hat with three sources; the 65 golden replays' `ruleset_hash` and the bot reports' `engine.core` moved alone; the experiments README's batch E11 row evaluated. Round 4 done.
+- **T103 to T107** (design §17's rounds 5 to 8): the kinds and the import (queued), the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done; batch E11c and decision 279's order before T105a (their cut at round 5's start).
 
 ## Later increments (sketch)
 
