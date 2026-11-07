@@ -96,4 +96,5 @@ effects = [
     { kind = "mana_regain", points = 3 },
     { kind = "extra_mana_regain", points = 1 },
     { kind = "full_mana" },
+    { kind = "whirlpool_protection" },
 ]

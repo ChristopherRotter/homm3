@@ -658,6 +658,7 @@ different creatures or statistics.
 | `extra_mana_regain` | `points` (1..=999) | since v50: spell points regained a day on top, each worn artifact type once (the Charm, the Talisman and the Mystic Orb of Mana 1, 2, 3) |
 | `full_mana` | — | since v50: the day's spell points fill to the hero's maximum when below it (the Wizard's Well) |
 | `free_boarding` | — | since v49: a boarding or a landing converts the hero's points left to the new surface's instead of setting them to 0; only the artifact type that carries it counts, not its parts worn apart (the Admiral's Hat, 0x4A1010, 0x49E670; HER-ADV-009) |
+| `whirlpool_protection` | — | since v51 (E08 T102; read from E08 T103a, `h3_heroes::whirlpool_protection`): a Whirlpool's visit takes nothing from the hero's army; any source, a worn artifact type or a part of a worn combination (the Sea Captain's Hat, so the Admiral's Hat through its part: `hero_wears_artifact` 0x4D91F0 with 123; HER-ADV-009, ADV-TEL-006) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

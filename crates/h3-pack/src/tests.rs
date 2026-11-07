@@ -502,6 +502,47 @@ fn the_harvested_navigation_and_sea_artifacts() {
     assert_eq!(hat.effects, [HeroEffect::FreeBoarding], "{hat:?}");
 }
 
+/// E08 T102 (pack format v51, increment 11): the Whirlpool's protection parses, takes no
+/// parameter, and is harvested onto the Sea Captain's Hat alone in every expansion; the
+/// Admiral's Hat protects through its part, not by an effect of its own (HER-ADV-009).
+#[test]
+fn the_whirlpool_protection_parses_and_is_harvested() {
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let artifact = |effect: &str| {
+        format!(
+            "{manifest}[[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+             effects = [{{ {effect} }}]\n"
+        )
+    };
+    let pack = parse_pack(&artifact("kind = \"whirlpool_protection\"")).unwrap();
+    assert_eq!(pack.artifacts[0].effects, [HeroEffect::WhirlpoolProtection]);
+    assert!(matches!(
+        parse_pack(&artifact("kind = \"whirlpool_protection\", level = 1")),
+        Err(PackError::Syntax(_))
+    ));
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        let r = compile(packs, "base:faithful").unwrap();
+        let protects = |key: &str| {
+            r.artifact(r.artifact_by_key(key).unwrap())
+                .unwrap()
+                .effects
+                .contains(&HeroEffect::WhirlpoolProtection)
+        };
+        assert!(protects("base:sea_captains_hat"));
+        assert!(!protects("base:necklace_of_ocean_guidance"));
+        let others = r
+            .artifacts()
+            .iter()
+            .filter(|a| a.effects.contains(&HeroEffect::WhirlpoolProtection))
+            .count();
+        assert_eq!(others, 1, "only the Sea Captain's Hat");
+    }
+}
+
 /// E08 T81b (pack format v50): the day's income and spell points from the gap-fill in every
 /// expansion (ADR-0013 points 3 and 16; GAM-RES-004, -005, HER-MAN-002).
 #[test]

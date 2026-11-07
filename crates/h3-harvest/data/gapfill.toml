@@ -1997,6 +1997,28 @@ ref = "Navigation - Heroes 3 wiki: '+50/100/150 %', the base 1500 'fixed and doe
 url = "https://heroes.thelazy.net/index.php/Navigation"
 retrieved = "2026-10-28"
 
+# The Whirlpool's protection (E08 T102, pack format v51; survey E08-teleporters.md §4.4, §7, §15).
+[[source]]
+id = "exe-whirlpool-protection"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E08 T98a1; docs/exe/map.toml 0x4A95A5, 0x4ACAA0, 0x4D91F0): the Whirlpool's visit takes its losses (whirlpool_losses) only when the hero does not wear artifact 123, the Sea Captain's Hat, alone or in a combination (hero_wears_artifact looks into combinations, so the Admiral's Hat, 136, protects through its part); batch E11's E11-13 (E08 T100a, T101) saw both Hats keep the army with no message"
+url = "docs/rules/surveys/E08-teleporters.md"
+retrieved = "2026-11-07"
+
+[[source]]
+id = "vcmi-whirlpool-protection"
+kind = "vcmi"
+ref = "config/artifacts.json (1.7.5): seaCaptainsHat has the bonus WHIRLPOOL_PROTECTION beside its sea movement and spells; admiralsHat has FREE_SHIP_BOARDING and the components necklaceOfOceanGuidance and seaCaptainsHat, so the protection through its part"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+retrieved = "2026-11-07"
+
+[[source]]
+id = "wiki-whirlpool-protection"
+kind = "wiki"
+ref = "Whirlpool - Heroes 3 wiki: a hero wearing the Sea Captain's Hat or the Admiral's Hat loses no troops (survey E08-teleporters.md §7)"
+url = "https://heroes.thelazy.net/index.php/Whirlpool"
+retrieved = "2026-11-05"
+
 # The day's income and spell points (E08 T81b, pack format v50; survey E08-economy.md §8, §12;
 # batch E9's E9-7 and E9-12, scored in §19).
 [[source]]
@@ -2928,14 +2950,20 @@ artifacts = ["Spellbinder's Hat"]
 effects = [{ kind = "spells", level = 5 }]
 sources = ["exe-available-spells"]
 
+# The Whirlpool's protection (E08 T102, pack format v51; HER-ADV-009, ADV-TEL-006): the Hat's
+# alone, the Admiral's Hat protecting through its part (the code tests 123 in combinations).
 [[artifacts.effects]]
 artifacts = ["Sea Captain's Hat"]
 effects = [
     { kind = "spells", spell = "summon_boat" },
     { kind = "spells", spell = "scuttle_boat" },
     { kind = "sea_movement_points", points = 500 },
+    { kind = "whirlpool_protection" },
 ]
-sources = ["exe-available-spells", "exe-sea-movement", "vcmi-sea-movement", "wiki-sea-movement"]
+sources = [
+    "exe-available-spells", "exe-sea-movement", "vcmi-sea-movement", "wiki-sea-movement",
+    "exe-whirlpool-protection", "vcmi-whirlpool-protection", "wiki-whirlpool-protection",
+]
 
 # Armageddon at Expert while worn (0x4E5080; HER-SPL-003); its stacks immune to it (T8b2).
 [[artifacts.effects]]
