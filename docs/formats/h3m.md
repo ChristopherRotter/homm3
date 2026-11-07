@@ -512,6 +512,13 @@ moat; 1 098 at a Village Hall, 258 a Town Hall, 89 a City Hall, 23 a Capitol. Th
 start pay 643 000 gold a day in all (`daily_income`, from day 2), 7 of them another resource too (a
 Resource Silo). 60 heroes level at load, with 338 levels (T7b2b's 156 maps: 54, 304).
 
+E08 T103b's census (import v21, the 160 shipped maps; `original_data`, seed 0): all 160 import,
+validate and build, every other count as E09 T9c's. The 1 671 teleporters are typed, each as its
+class and subclass (checked): 43 193 on 59 maps, 44 157 on 59, 45 495 on 98 (every channel 0 to 7
+of the three classes stands on them, 3 to 7 on SoD maps only), 103 602 on 98 (301 on each level),
+111 224 on 62 (9 underground), the survey's counts (`docs/rules/surveys/E08-teleporters.md` §1).
+No shipped 220 is below subclass 7 (the mines' table changes none of them).
+
 ## The subset we write (E04a T2)
 
 ### Order of a SoD map (version `0x1C`), as we write it
