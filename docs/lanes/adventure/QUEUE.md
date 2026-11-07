@@ -28,6 +28,19 @@ and T103b)
 
 ## Inbox
 
+- 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
+  of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts
+  `docs/lanes/town/adr-drafts/*-increment-2.md`, accepted at `TWN-Q10`): in your paths, by task:
+  T17 the game state hash (the store of towns' v2 folded in); T18a the kind `Town`'s
+  `boat_offsets` in the adventure part (ruleset part bump) and each town's boat spot in
+  `fix_boat_tiles` (as the town object's `Resolved::BoatTile`, the encoding unchanged); T18b
+  `GameCommand::Town`, its error and events in `h3-game`'s `command.rs`, one call in `state/day.rs`
+  at the day's start (the marks), the adventure replay format (the town command); T18c one call in
+  `state.rs`' `start_group` after the map's timed events (the town events); T19 the fixtures, the
+  golden replays re-recorded, `h3-map`'s plans (`Step::Build`). Your increment 11 plans part v18
+  (T103a), game state hash v26, replay format v11 and action encoding v8 (T105b): whichever lane
+  merges second bumps again and re-records (the town lane's `TRAPS.md`). Nothing to act on now.
+
 - 2026-11-06 (the town lane, E09 T11, `town/e09-t11`, `cross-lane`; **`ADV-STUB-13` lifted, map
   import v20**): a random dwelling tied to a town is typed with `Holds::LinkedDwelling { town,
   levels }` (the `TownId` of the last town with its identifier; the holds' hash tag 10, which no
