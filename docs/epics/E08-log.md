@@ -13637,3 +13637,41 @@ computer's shell not used). Whole, as decision 282 cut it.
 
 **Versions:** map import v21. The game state hash, the adventure state hash, the ruleset part and
 the replay format unchanged. T103c next.
+
+### Increment 11, round 5: T103c, batch E11c (2026-11-07, `adventure/e08-t103c`, `cross-lane`)
+
+Baseline: `master` 128e135 (#787, T103b merged; CI green; the setup's run found CI's fingerprint,
+the light gates passed). The original data staged at the start (the four LODs, the executables and
+five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, `maps.tar`, `extracted.tar`, the 40
+MP3s; the computer's shell not used). **The cut** (decision 284): whole, one pull request; the
+experiments README's row `cross-lane` with the user's consent.
+
+- **The spec** `experiments/specs/E08-batch-11c.toml` (stamp `e12e6373`; a 36 × 36 grass map, Red's
+  turn of day 1, four Red heroes with ten Archangels, Blue's one idle): E11-20 one-way channel 0
+  (E20 (4, 4), X20 (14, 4)) with a Peasant east of X20; E11-21 a neutral crystal cavern (entered at
+  (5, 12)) with a Peasant south-west of its entrance; E11-22 a Learning Stone (6, 20) with a Peasant
+  east of it, its hero at experience 0; E11-23 two-way channel 0 (A23 (4, 28), B23 (14, 28)) with a
+  Peasant east of B23. Each hero two columns or more from every monster. The walks one step each,
+  priced by hand; a throwaway import of the written map (not committed) checked the entrances, each
+  target's guard (`guard_of`) and the reach of the plain steps (the mine's 1 859, the stone's 1 900).
+- **The recipe** `clients/capture/batches/E08-batch-11c.toml` (11 steps, no new read): the order at
+  a guarded entered object read at the battle's opening (`at_opening`: `mine:5,12`,
+  `hero[E11-22]:experience`, `:level`; a bare `hero:` or `treasury:` read fails there, both read
+  the step's snapshot); E11-23's presses as table rows (`row:press`). A key step that shows a
+  message needs `expect = { dialogs = true }`: the first run stopped in `oddities` at the walk's
+  missing target (the lane's `TRAPS.md`). **Three runs** of 87 s each, alike in every record but
+  Red's starting gold (31 000, 30 800, 30 500) and E11-22's level-up offers; the template filled
+  from the third (`experiments/results/E08-batch-11c.md`).
+- **Scored** (survey §15.1): **every row as read**. E11-20: no battle at the arrival on X20 beside
+  P20 (1 900), Space ADVEVENT 70 alone, the step to (14, 5) fought at once (1 800). E11-21: the
+  battle opened with the hero on the entrance and the mine's owner none; then MINEEVNT:4 and the
+  mine Red's (1 859). E11-22: the battle opened at experience 0, level 1; then ADVEVENT:143
+  (1 000), 1 001 and the level-up to 2 after it. E11-23: four presses between A23 and B23 (two
+  arrivals by the key on the guarded tile), never a battle or message (1 900); the control fought.
+  GENRLTXT 7 (the townless warning) after the turn's first battle. No question: decision 279's
+  order for every entered kind stands for T103d.
+- **Docs:** survey §15.1 and §15's end; design §16's batch E11c done; the experiments README's E11c
+  row (`cross-lane`); decision 284.
+- **Gates:** the scoped verify with the original data (no code changed; docs and experiment files).
+
+**Versions:** none moved. T103d next.

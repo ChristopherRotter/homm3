@@ -194,6 +194,14 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      `bots-neutral-v1.json` move only their `engine.adventure` line with part v18. Not chosen: the
      AI lane's inbox.
 
+### Decision at T103c's start (2026-11-07, user)
+
+284. **T103c whole** (the user at T103c's start, `AskUserQuestion`; recommended): the spec and
+     template, the recipe, three runs and the scoring in survey §15 in one session and one pull
+     request (a harness change or a row against the reading would have left the scoring as T103c2);
+     the experiments README's row `cross-lane` with the user's consent. Not chosen: the runs, then
+     the scoring; the spec, then the runs.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
@@ -203,7 +211,7 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
 - **T100 Batch E11's harness reads, recipes and runs** (design §16, §17's round 3), in two by spec (decision 278): **T100a** done (2026-11-06, `adventure/e08-t100a`: the harness's replay on the frozen clock, branches by tile, box and opening reads; the recipe `E08-batch-11a`, three runs, the template filled); **T100b** done (2026-11-07, `adventure/e08-t100b`, whole: the key pressed again and again (`repeat`), the recipe's places, `look`, the Whirlpools' list and the tiles' reads; the recipe `E08-batch-11b`, three runs, the template filled); then **T101** the scoring.
 - **T101 Batch E11 scored** (decisions 269, 274). Done (2026-11-07, whole, docs only: survey §15, every row as read but E11-19, the guard fought before the jump; the spread uniform; A-37's consequences, A-43; the checkpoint ADV-Q47, decisions 279, 280). Round 3 done.
 - **T102 Increment 11's shared change** (decisions 272–274, 279, 280; `cross-lane`). Done (2026-11-07, `shared/e08-t102`, whole: decision 281): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 4, 6, 8, 10, 11 amended with batch E11's outcome, the drafts deleted; the glossary's teleporter terms; `docs/06-security.md`'s increment 11 lines; the effect kind `whirlpool_protection` (pack format v51, core ruleset hash v52) on the Sea Captain's Hat with three sources; the 65 golden replays' `ruleset_hash` and the bot reports' `engine.core` moved alone; the experiments README's batch E11 row evaluated. Round 4 done.
-- **T103 Increment 11's kinds and import, batch E11c, decision 279's order** (round 5), in four (decision 282): **T103a** done (2026-11-07, `adventure/e08-t103a`, `cross-lane`: the three kinds, the 26 types and their check, `whirlpool_protection`; ADV-TEL-001; part v18; decision 283); **T103b** done (2026-11-07, `adventure/e08-t103b`: the five classes typed, A-39 refused, `ADV-QUIRK-41`, 220 by the mines' table; map import v21; the shipped maps' census); **T103c** batch E11c (queued), **T103d** decision 279's order (queued, after T103c). Records: `E08-log.md`.
+- **T103 Increment 11's kinds and import, batch E11c, decision 279's order** (round 5), in four (decision 282): **T103a** done (2026-11-07, `adventure/e08-t103a`, `cross-lane`: the three kinds, the 26 types and their check, `whirlpool_protection`; ADV-TEL-001; part v18; decision 283); **T103b** done (2026-11-07, `adventure/e08-t103b`: the five classes typed, A-39 refused, `ADV-QUIRK-41`, 220 by the mines' table; map import v21; the shipped maps' census); **T103c** done (2026-11-07, `adventure/e08-t103c`, whole: decision 284; batch E11c, E11-20 to E11-23, every row as read, survey §15.1; the README row `cross-lane`); **T103d** decision 279's order (queued, ready). Records: `E08-log.md`.
 - **T104 to T107** (design §17's rounds 6 to 8): the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done.
 
 ## Later increments (sketch)

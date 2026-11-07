@@ -1,0 +1,118 @@
+# E08 batch E11c played by the capture harness (E08 T103c; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-11c.toml as steps, on Easy, the starting bonus gold, with batch E11's
+# reads (README, "Teleporters and Replay Opponent Turn"); no new read. Hot seat, Red and Blue human;
+# Red's turn of day 1 alone: E11-20, E11-21, E11-22, E11-23 (Blue never plays).
+#
+# Which came first at a guarded entered object, the guard's battle or the object's visit, is read
+# from the game's memory as the step's first battle opens (`at_opening`): the mine's record (its
+# owner) for E11-21, the hero's experience and level for E11-22. A row's branch
+# after a jump is a step `only_if = { at = [x, y] }`; E11-23's presses fill its table a row a step
+# (`row:press`). A step that shows a message says so (`expect = { dialogs = true }`): without it
+# `oddities` notes the dialog, and on a `key` step stops at the walk's missing target. A message's text is its record (`ADVEVENT:70`), never the text (ADR-0009).
+
+spec = "experiments/specs/E08-batch-11c.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: E11-20 ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-20"
+hero = "E11-20"
+walk = [4, 4]
+battle = "auto"
+record = { "E11-20 before: points" = "before:hero:points", "the step onto E20: battles (the defender; the result); messages" = ["text:battles: ", "battles", "text:messages: ", "messages"], "after the step onto E20: E11-20's tile; points; P20 (15, 4)" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:P20: ", "monster:15,4"] }
+note = { "worn at the start (the starting bonus)" = "before:hero:equipment", "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty", "the step's screens" = "screens", "the step's level-ups" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E11-20"
+hero = "E11-20"
+only_if = { at = [14, 4] }
+key = "space"
+battle = "auto"
+expect = { dialogs = true }
+record = { "Space on X20: battles; messages" = ["text:battles: ", "battles", "text:messages: ", "messages", "text:what the key did: ", "key"], "after Space: E11-20's tile; points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "the key's screens" = "screens" }
+
+[[step]]
+encounter = "E11-20"
+hero = "E11-20"
+only_if = { at = [14, 4] }
+walk = [14, 5]
+battle = "auto"
+expect = { dialogs = true }
+record = { "the step off X20 to (14, 5): the battle or none (the defender; the result); messages" = ["text:battles: ", "battles", "text:messages: ", "messages"], "after the step off: E11-20's tile; points; P20 (15, 4)" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:P20: ", "monster:15,4"] }
+note = { "the step off's level-ups" = "level_up_dialogs" }
+
+# --- Day 1, Red: E11-21 ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-21"
+hero = "E11-21"
+walk = [5, 12]
+battle = "auto"
+expect = { dialogs = true }
+at_opening = ["mine:5,12"]
+record = { "before: E11-21's points; the mine's record (owner, resource); Red's treasury" = ["text:points: ", "before:hero:points", "text:the mine: ", "before:mine:5,12", "text:treasury: ", "before:treasury:red"], "the step onto the entrance: battles in order (the defender; the hero's tile as it opens; the result)" = "battles", "as the battle opens: the mine's record (owner)" = "at_opening:mine:5,12", "after it: messages; the mine's record (owner); Red's treasury" = ["text:messages: ", "messages", "text:pictures: ", "message_pictures", "text:the mine: ", "mine:5,12", "text:treasury: ", "treasury:red"], "after it: E11-21's tile; points; Q21 (4, 13)" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:Q21: ", "monster:4,13"] }
+note = { "worn at the start (the starting bonus)" = "before:hero:equipment", "the step's screens" = "screens", "the step's level-ups" = "level_up_dialogs" }
+
+# --- Day 1, Red: E11-22 ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-22"
+hero = "E11-22"
+walk = [6, 20]
+battle = "auto"
+expect = { dialogs = true }
+at_opening = ["hero[E11-22]:experience", "hero[E11-22]:level"]
+record = { "before: E11-22's points; experience; level" = ["text:points: ", "before:hero:points", "text:experience: ", "before:hero:experience", "text:level: ", "before:hero:level"], "the step onto the stone: battles in order (the defender; the hero's tile as it opens; the result)" = "battles", "as the battle opens: E11-22's experience; level" = ["text:experience: ", "at_opening:hero[E11-22]:experience", "text:level: ", "at_opening:hero[E11-22]:level"], "after it: messages (their pictures); level-ups (the level, the two offers, the one taken)" = ["text:messages: ", "messages", "text:pictures: ", "message_pictures", "text:level-ups: ", "level_up_dialogs"], "after it: E11-22's experience; level; tile; points; R22 (7, 20)" = ["text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:R22: ", "monster:7,20"] }
+note = { "worn at the start (the starting bonus)" = "before:hero:equipment", "the step's screens" = "screens" }
+
+# --- Day 1, Red: E11-23 ----------------------------------------------------------------------------
+
+[[step]]
+encounter = "E11-23"
+hero = "E11-23"
+walk = [4, 28]
+battle = "auto"
+record = { "E11-23 before: points" = "before:hero:points", "the step onto A23: battles; messages; E11-23's tile; points" = ["text:battles: ", "battles", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+note = { "worn at the start (the starting bonus)" = "before:hero:equipment", "the step's screens" = "screens" }
+
+[[step]]
+encounter = "E11-23"
+hero = "E11-23"
+key = "space"
+battle = "auto"
+record = { "row:press" = ["text:1", "battles", "messages", "hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E11-23"
+hero = "E11-23"
+key = "space"
+battle = "auto"
+record = { "row:press" = ["text:2", "battles", "messages", "hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E11-23"
+hero = "E11-23"
+key = "space"
+battle = "auto"
+record = { "row:press" = ["text:3", "battles", "messages", "hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E11-23"
+hero = "E11-23"
+key = "space"
+battle = "auto"
+record = { "row:press" = ["text:4", "battles", "messages", "hero:tile", "hero:points"] }
+
+[[step]]
+encounter = "E11-23"
+hero = "E11-23"
+only_if = { at = [14, 28] }
+walk = [14, 29]
+battle = "auto"
+expect = { dialogs = true }
+record = { "the control: the step to (14, 29): the battle or none; messages; E11-23's tile; points; N23 (15, 28)" = ["text:battles: ", "battles", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:N23: ", "monster:15,28"] }
+note = { "the control's level-ups" = "level_up_dialogs" }
