@@ -71,8 +71,9 @@ specials and hordes, 26 the Grail's, 30 to 36 the dwellings by level, 37 to 43 t
   town events on 110 towns of 29 maps: 70 build (27 builds without a requirement in three maps, six
   Capitols that can be a player's second: **T-8**), 56 add creatures, 105 give resources, 199 carry
   a message only; 98 repeat, 18 of them every day.
-- **For the checkpoint** (§11, `TWN-Q8`): TD-9, TD-11, TD-12, T-8, the computer's every other day
-  and the day's mark across a capture.
+- **The checkpoint** (§11, §12, `TWN-Q8`): TD-9 the executable's list and TD-11 the owner, each
+  with a row of batch TWN-2; one a town a day for every player; the town events as the original
+  plays them (T-8 kept, TD-12 the original's day).
 
 **T12a** (§1 to §7):
 
@@ -512,3 +513,22 @@ The fandom wiki's Conflux page gives the upgraded Altar of Fire the Altar of Fir
   town with the Altar of Fire and the Altar of Air: the hall's state of the upgraded Altar of Fire)
   and TD-11 (two human allies in hot seat: the hall's Build for the visitor in the ally's town, and
   whose treasury pays).
+
+## 12. The checkpoint (T12b; `TWN-Q8`, the user, 2026-11-07)
+
+Asked interactively (`AskUserQuestion`, one round of four, a recommendation each); each answer as
+recommended, the epic's decisions 41 to 44:
+
+- **TD-9** (decision 41): the executable's list (the upgraded Altar of Fire needs the Altar of Fire
+  and the upgraded Altar of Air); a row of an experiment batch TWN-2 observes the original's hall,
+  and its verdict overrides.
+- **TD-11** (decision 42): the town's owner builds and pays (VCMI's rule); a TWN-2 row (two allied
+  humans in hot seat, the visitor at the ally's hall) observes the original; revisited if the
+  original lets the visitor build.
+- **The day's build** (decision 43): one a town a day for every player; the computer's every
+  other day on Easy and Normal comes with the computer player (E10, E13); the day's mark is kept
+  across a capture and cleared when the town passes from a team without a human to a team with
+  one, as read (§3).
+- **The town events** (decision 44): as the original plays them (§8): T-8 is not a quirk to fix
+  (an event's Capitol beside the owner's other one stands); TD-12 the original's day (an every-day
+  event fires from its first day).

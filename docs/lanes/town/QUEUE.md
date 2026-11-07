@@ -6,21 +6,20 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN-Q7`); done tasks
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. T11 (decision 39) done;
-increment 2's first round (decision 38): the survey T12 (cut in two: T12a done, T12b next), the
-drafts with the design note and the cut T13 (queued when T12b's checkpoint is done). Each task's
+increment 2's first round (decision 38): the survey T12 (cut in two: T12a and T12b done), the
+drafts with the design note and the cut T13 (next). Each task's
 cut confirmed at its start; every entry's acceptance includes the Definition of Done
 (`docs/05-testing.md`).
 
-**E09 T12b — the construction survey's second part** (decision 38; increment 2's first round;
-T12 cut in two at its start, the user 2026-11-06; T12a done 2026-11-07, `E09-log.md`): append to
-`docs/rules/surveys/E09-construction.md` from §8: the town events' code reading (`load_town_body`
-0x5019F0 at its events, `town_timed_events` 0x4CDA10 and its callee 0x5BFEB0, which builds through
-`town_build_effects` 0x5BEDE0: the day and the interval, the players, the buildings and whether
-they take the day's mark, the resources, the creatures, the message), VCMI 1.7.5 and the wiki
-compared; a census of the shipped maps (the forbidden buildings and custom sets, the town events
-by kind and day); the disputes and quirk candidates of both parts (TD-9, TD-11, survey §7's open
-points); the checkpoint with the user (`TWN-Q8`). Needs the original data (the executable, the
-maps). Its cut confirmed at its start. **Status:** next.
+**E09 T13 — increment 2's drafts, the design note and the cut** (decision 38; increment 2's first
+round; queued 2026-11-07 after T12b's checkpoint, `TWN-Q8`): the ADR amendment drafts in
+`docs/lanes/town/adr-drafts/` (the build command, its validation and events, the town events'
+place in the turn start, what a build changes of increment 1's reads; ADR-0016 point 4's sentence
+on the tied random dwellings, T11), the design note as Part D of `docs/epics/E09-design.md` from
+§23 (decision 40), the exit criteria and the cut into build rounds with batch TWN-2's rows (TD-9,
+TD-11; decisions 41, 42) placed; accepted by the user before anything is built. Inputs: survey
+`docs/rules/surveys/E09-construction.md` (§0's findings, §11 and §12), the epic's decisions 37 and
+41–44. Its cut confirmed at its start. **Status:** next.
 
 ## Inbox
 
