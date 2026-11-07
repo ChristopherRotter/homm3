@@ -92,8 +92,9 @@ const BORDER_GATES: [&str; 8] = [
 ];
 
 /// Class 53 by subclass (E08 T83a; increment 9's design note §4): the seven mines by their
-/// resource's code, then the abandoned mine (7); class 220 is the abandoned mine too (the
-/// original's `object_class_values` 0x63A6E4 makes it 53.7).
+/// resource's code, then the abandoned mine (7); class 220 by the same table (the original's
+/// `object_class_values` 0x63A6E4 loads it as 53, the subclass kept: every shipped one is 220.7,
+/// the abandoned mine; since E08 T103b a crafted 220.0 is a Sawmill, as in the original and VCMI).
 const MINES: [&str; 8] = [
     "base:sawmill",
     "base:alchemists_lab",
@@ -194,6 +195,46 @@ pub(crate) const DWELLINGS: [&str; 80] = [
 /// Class 20 by subclass (E08 T93b): the four-creature dwellings (`# original class 20 subclass N`).
 pub(crate) const DWELLINGS_4: [&str; 2] = ["base:elemental_conflux", "base:golem_factory"];
 
+/// The monoliths (E08 T103b; increment 11's design note §4, ADV-TEL-001) by subclass, the channel
+/// 0 to 7 (the picture's colour): channels 0 to 2 the `base` pack's (RoE's and AB's `Objects.txt`
+/// list them), 3 to 7 the `sod` pack's. A subclass past 7 is one its class does not define: the
+/// original indexes eight lists without a bound (A-39, `ADV-QUIRK-41`; `setup_map_objects`
+/// 0x4C0CC0, survey `E08-teleporters.md` §3.1). Class 43, the one-way entrances.
+const MONOLITH_ENTRANCES: [&str; 8] = [
+    "base:monolith_entrance_0",
+    "base:monolith_entrance_1",
+    "base:monolith_entrance_2",
+    "sod:monolith_entrance_3",
+    "sod:monolith_entrance_4",
+    "sod:monolith_entrance_5",
+    "sod:monolith_entrance_6",
+    "sod:monolith_entrance_7",
+];
+
+/// Class 44 by subclass (E08 T103b): the one-way exits.
+const MONOLITH_EXITS: [&str; 8] = [
+    "base:monolith_exit_0",
+    "base:monolith_exit_1",
+    "base:monolith_exit_2",
+    "sod:monolith_exit_3",
+    "sod:monolith_exit_4",
+    "sod:monolith_exit_5",
+    "sod:monolith_exit_6",
+    "sod:monolith_exit_7",
+];
+
+/// Class 45 by subclass (E08 T103b): the two-way monoliths.
+const TWO_WAY_MONOLITHS: [&str; 8] = [
+    "base:monolith_two_way_0",
+    "base:monolith_two_way_1",
+    "base:monolith_two_way_2",
+    "sod:monolith_two_way_3",
+    "sod:monolith_two_way_4",
+    "sod:monolith_two_way_5",
+    "sod:monolith_two_way_6",
+    "sod:monolith_two_way_7",
+];
+
 /// The original's faction codes 0 to 8 (a random dwelling's faction set, bit i for code i; E08
 /// T93b, increment 10's design note §4). The town lane's import reuses it for a town's faction.
 pub(crate) const FACTIONS: [&str; 9] = [
@@ -208,7 +249,8 @@ pub(crate) const FACTIONS: [&str; 9] = [
     "ab:conflux",
 ];
 
-/// The abandoned mine's own class (E08 T83a): 53.7 in the original.
+/// The abandoned mine's own class (E08 T83a): 53 in the original, its subclass kept (220.7 the
+/// abandoned mine).
 pub(crate) const ABANDONED_MINE: u32 = 220;
 
 /// An object's owner byte for none (ADV-OWN-002, E08 T83a; `docs/formats/h3m.md`).
@@ -452,8 +494,7 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         // E08 T83a (increment 9's design note §4): the mines and the abandoned mines, the
         // Lighthouse, the Shipyard and the three weekly objects.
         // rule: ADV-MIN-001
-        53 => by_subclass(&MINES),
-        ABANDONED_MINE => Some("base:abandoned_mine"),
+        53 | ABANDONED_MINE => by_subclass(&MINES),
         42 => Some("base:lighthouse"),
         87 => Some("base:shipyard"),
         55 => Some("base:mystical_garden"),
@@ -480,6 +521,16 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         // E09 T8a1 (the town epic's design note §8): the random town and the town, one type
         // whatever the subclass (a town's faction is its record's, `town::towns`).
         77 | 98 => Some("base:town"),
+        // E08 T103b (increment 11's design note §4): the teleporters, none with a body; the
+        // monoliths by subclass (the channel; past 7 refused, A-39), the Subterranean Gate and
+        // the Whirlpool whatever the subclass (the original's setup ignores 111's; every shipped
+        // 103 and 111 is subclass 0, survey `E08-teleporters.md` §1).
+        // rule: ADV-TEL-001
+        43 => by_subclass(&MONOLITH_ENTRANCES),
+        44 => by_subclass(&MONOLITH_EXITS),
+        45 => by_subclass(&TWO_WAY_MONOLITHS),
+        103 => Some("base:subterranean_gate"),
+        111 => Some("base:whirlpool"),
         _ => return None,
     })
 }

@@ -110,7 +110,10 @@ is T103a's.
   `original_data` (its check 5): the 26 types against H3bitmap.lod's (SoD's) and H3ab_bmp.lod's
   (AB's) `Objects.txt` (base when AB lists the subclass), `ObjNames.txt` and the executable's
   `object_classes_not_entered` 0x63AA58 and `object_classes_from_above` 0x63AB00; the import's
-  tables join it in T103b.
+  tables join it in T103b. *As built* (T103b): `h3-map`'s `original_data` checks every
+  teleporter of the 160 shipped maps to import as its class and subclass's type (every channel of
+  the three classes stands on them, so each table entry is met), its tests every entry of the three
+  tables against the packs' kinds without the original data.
 
 ##### Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -127,6 +130,10 @@ is T103a's.
 - Nothing else: the census found no entrance shared with another object, none off the map, none with
   a body (§1). The surfaces are the build's check (note §5), so a setup from any source is held to
   them.
+- *As built* (T103b, `adventure/e08-t103b`): `codes.rs`' `MONOLITH_ENTRANCES`, `MONOLITH_EXITS`,
+  `TWO_WAY_MONOLITHS` (eight keys each, `base:` 0 to 2, `sod:` 3 to 7) in `object_type`'s classes
+  43 to 45, 103 and 111 one key each; A-39 is the table's bound (`Subclass`, `ADV-QUIRK-41`). Map
+  import v21.
 
 ###### 5. The build: the surfaces and the channels (`h3-adventure`'s `StaticMap`; ADV-TEL-001, -002)
 
@@ -497,8 +504,8 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 | Version | Change | Task |
 |---|---|---|
 | pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102: done |
-| adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a |
-| map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b |
+| adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a: done |
+| map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b: done |
 | game state hash v26 | the held jump `Rest::Jump` (§13) | T105b |
 | adventure replay format v11 | `revisit` (§13) | T105b |
 | env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b (`cross-lane`) |

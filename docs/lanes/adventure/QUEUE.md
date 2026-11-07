@@ -4,26 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 in four (decision 282): T103a done (`adventure/e08-t103a`, `cross-lane`: the kinds, the packs and their check, `whirlpool_protection`; part v18; the bot reports' line, decision 283); T103b, T103c (batch E11c) and T103d (decision 279's order) below, in that order; T104 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T103b — increment 11's import** (round 5; design §17, note §4; decisions 260, 267, 282)
-
-- **Scope:** the import of classes 43 to 45 by subclass (the channel), 103 and 111 whatever the
-  subclass into T103a's types (`h3-map`'s `import/codes.rs`; no body, the maps' templates rule);
-  A-39's refusal (a monolith subclass past 7: `ImportError::Subclass`, as A-36's) and its quirk
-  entry `ADV-QUIRK-41`; ADV-OBJ-002 amended, ADV-TEL-001's import line; **map import v21** (E09
-  T11 took v20; a town-lane bump in between: the second to merge bumps again); `h3m.md`'s classes;
-  the harvest check's last part (design §3: each monolith type's channel and way equal its class
-  and subclass in the import's tables); the census of the 160 shipped maps (survey §1's counts);
-  the replays re-recorded (the import version; the maps that hold teleporters). Check that no
-  generator or test map uses classes 43 to 45, 103 or 111 as a blocker (`TRAPS.md`, a blocker
-  becomes a typed object). The step onto an entrance is already refused (T103a's
-  `a_step_onto_a_teleporters_entrance_is_refused_until_its_jump_is_built`); `h3-map`'s
-  `the_typed_classes_import_as_their_object_types` leaves the 26 teleporter types out of its cases
-  until this task adds them.
-- **Inputs:** design §4, §11, §15; survey `E08-teleporters.md` §1, §2, §8 (A-39); T103a's record
-  in `E08-log.md`.
-- **Depends on:** T103a. **Status:** ready (reads the shipped maps: stage `maps.tar`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 in four (decision 282): T103a done (`adventure/e08-t103a`, `cross-lane`: the kinds, the packs and their check, `whirlpool_protection`; part v18; the bot reports' line, decision 283); T103b done (`adventure/e08-t103b`: the import of the five classes, A-39 refused, `ADV-QUIRK-41`; map import v21, with the inbox's class 220 by the mines' table; the census of the shipped maps); T103c (batch E11c) and T103d (decision 279's order) below, in that order; T104 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T103c — batch E11c** (round 5; design §16; decisions 269, 279, 282)
 
@@ -55,16 +36,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
-  `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
-  open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the
-  hall, vtable 0x6437A0) and `slot = <building id>` (the hall's slot showing it: the building's
-  dialog, 0x643944; `click = ["build"]` its Build 30722, `cancel` 30721), and the reads
-  `town:x,y:mark`, `hall:slot:<id>`, `build:button`, `build:text`, `screen`, `town_screen_closed`;
-  `h3mem`'s town record gains `mark` (+0x2), `h3lod` gains `building_names`. A walk without
-  `actions` behaves as before. Learned: the panel's hall picture opens nothing; a map whose players
-  are all allies ends at a visit's close (an enemy is needed). The harness check passed after.
-  `clients/capture/README.md`, "The hall and the build".
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts
   `docs/lanes/town/adr-drafts/*-increment-2.md`, accepted at `TWN-Q10`): in your paths, by task:
@@ -78,37 +49,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   (T103a), game state hash v26, replay format v11 and action encoding v8 (T105b): whichever lane
   merges second bumps again and re-records (the town lane's `TRAPS.md`). Nothing to act on now.
 
-- 2026-11-06 (the town lane, E09 T11, `town/e09-t11`, `cross-lane`; **`ADV-STUB-13` lifted, map
-  import v20**): a random dwelling tied to a town is typed with `Holds::LinkedDwelling { town,
-  levels }` (the `TownId` of the last town with its identifier; the holds' hash tag 10, which no
-  built state holds). `AdventureSetup` has a new field `town_factions` (one faction per town by
-  `TownId`, the game's step-2 factions; `SetupError::TownFactions`, checked after the walk, before
-  `Garrisons`): a literal with towns sets it. In the placement walk a tied dwelling takes its
-  town's faction (no draw) then draws its level (`dwellings::resolve` takes the factions); its
-  tiles and names are checked against every table's outcomes. `GameSetupError::LinkedTown`
-  refuses a tied dwelling's town that may take a faction without a table. The 55 replays'
-  `import_version` moved alone; the property plans generate no tied dwelling (the writer writes
-  none: `OwnedBody::RandomDwelling` keeps identifier 0).
-
-- 2026-11-06 (the town lane, E09 T9b1, `town/e09-t9b1`, `cross-lane`; **for your plans**):
-  `h3-map`'s `play.rs` plays towns. `Plan` has a new field `towns` (`TownPlan`, drawn last by
-  `towns()`; a plan literal sets `towns: Vec::new()`), laid out by `towns_laid_out` after every
-  other object but the boats, each with a template of its own: a town's template is no `KINDS`
-  entry, so code that reads a kind from a template skips `Body::Town` first (the town lane's
-  `TRAPS.md`). New: `Step::Town` with its runs in `steps()` (as `Step::Hire` on a map without
-  towns), `check_towns`, `check_town_battle_end` (`check_unowned_battle_end`'s town arm), the
-  entrances in `check_invariants`, the towns' income in `check_income`, a siege's merge in
-  `check_isolation` (`told_army`), the cover test `the_plans_capture_and_besiege_towns`;
-  `h3-towns` a dev-dependency of `h3-map`. `view.rs` draws its plans without towns (`townless`)
-  until E09 T9b2 teaches `vary` and `check_told` the towns.
-- 2026-11-06 (the town lane, E09 T9a, `town/e09-t9a`, `cross-lane`; **for your replays and the
-  writer**): `h3_map::writer`'s `MapObject` has two new variants, `AnyTown` (a town of any kind:
-  random with its alignment, a main town in the header, a name, random garrison stacks) and
-  `RandomHero` (the code in the town lane's `src/writer/town.rs`; `docs/formats/h3m.md`, "The town
-  lane's additions"); a map without them is written as before. The new fixture
-  `e09-towns-36.h3m` and its replays `towns-*` make the adventure replays 55 (the skill
-  `homm3-rerecord-replays`' count and `adventure_replays.rs`' least): re-record them with yours at
-  each bump.
 - 2026-11-06 (the town lane, E09 T8c2, `town/e09-t8c2`, `cross-lane` with the user's consent;
   **for when E08 places Visions**): new `h3_heroes::power` (HER-ADV-001 amended: the effective
   Power beside `attack_defense`); the 47 adventure replays' `town_ruleset_hash` line moved (town
@@ -121,18 +61,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   read the same parameters, or move them to the spell's record and the core with us (a town part
   version to bump).
 
-- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
-  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
-  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
-  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
-  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
-  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
-  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
-  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
-  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
-  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
-  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
-  after. `clients/capture/README.md`, "Towns (E09 T3b)".
 - 2026-11-03 (the client lane's CLT-Q40, carried by the battle lane, BAT-Q64; `cross-lane`): the
   morale and luck sources ride on the effects (`h3_contracts::EffectSource`). `derive_battle_hero`
   now names the skill and level, the artifact and the specialty (HER-BAT-003) and gives the battle
@@ -140,13 +68,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   for you: the visits by once-mark (`EffectSource::Visit { mark }`, the original's +0x105 lines)
   once the derivation knows each mark's amounts (your content), the rest staying temporary; the
   owner's Grail building is the town lane's (its inbox).
-
-- 2026-11-02 (the town lane, E09 T1b2b, `TWN-Q2`; **nothing to build, for your import and
-  setup**): E09's increment 1 builds **the random hero** (class 70, drawn as the main town's hero;
-  E09 decision 8) and **the starting-hero pick per colour in the setup** beside the faction
-  (decision 9), `cross-lane` in your import and setup, merged in order with yours; leave both to
-  it (your 2026-10-20 note's 18 random heroes with a custom experience come with it). An allied
-  town is entered and never captured (decision 16), as your owned objects' team test.
 
 - 2026-10-31 (the town lane, E09 T0, `shared/town-lane`; **read before your next task**): the user
   opened a lane `town` (`TWN`) for E09 in parallel with E08 (TWN-Q1). It owns the crate `h3-towns`
@@ -192,14 +113,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
   (runbook, "Sound", "The clips", "Traps").
 
-- 2026-11-03 (E08 T87b's audit; **for the next import bump**, increment 10's or the town lane's
-  T7a): the parser reads class 220 below subclass 7 as a mine body (`parse/objects.rs`) while the
-  class table types every 220 as the abandoned mine (`import/codes.rs`), so a crafted 220.0 is
-  refused at the build (`SetupError::Holds`) where the original (220 loaded as 53, the subclass
-  kept, `object_class_values` 0x63A6E4) and VCMI make a sawmill. No shipped map has one (all 94
-  are 220.7). Type 220 by `MINES` like 53, test 220.0 as a sawmill, amend ADV-MIN-001 and
-  ADV-OBJ-002 and `docs/formats/h3m.md`, with the bump that moves `MAP_IMPORT_VERSION` anyway.
-
 - 2026-11-03 (E08 T87, decision 230; **a performance task**): the month's walk's tile test
   from the static map's flags, without a lookup of the events per tile (increment 9's design
   note §19): `month-start-xl-144` costs 12.7 M Ir a creature month's start, mostly the walk
@@ -223,6 +136,5 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 - 2026-10-20 (T24a2b1, survey §6; for the increments that build them): **levels at load beyond placed heroes.** 61 prisoners in 28 shipped maps have a custom experience (levels 3 to 15, two at 42 in `Pandora's Box `) and 18 random heroes carry one: their levels at load come with prisons and random heroes (the wiki's "fictitious level-ups" of a prisoner, §5). `Marshland Menace` gives 15 hero types a map-wide experience of 2 000 that only its taverns reach (E09); a hired hero type may start with a skill its map bans (19 SoD maps ban skills; D-18), where the original's handling of such a skill was not read.
 
 - 2026-10-20 (T22b, E3-9's reading; for E10's computer players or the formation command: increment 6 since decision 90, T44a's survey point 4): the battle places an army in the tight formation only for a human player's side (`battle_war_machine_stacks` 0x463679, the side's +0x54A4): a computer player's hero always fights loose, whatever its formation. The engine has no computer player and keeps the map's formation (`ADV-QUIRK-8`); decide then whether a computer player's side fights loose (a rule or a quirk; the battle lane's inbox has the tables).
-
 
 Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").

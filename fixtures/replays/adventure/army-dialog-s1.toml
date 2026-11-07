@@ -44,7 +44,7 @@ checkpoint_every = 5
 [map]
 path = "fixtures/maps/e08-army-12.h3m"
 hash = "0x40320993e64e5b23"
-import_version = 20
+import_version = 21
 
 [result]
 day = 2

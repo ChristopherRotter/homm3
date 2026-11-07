@@ -73,8 +73,11 @@ pub use parse::parse;
 /// stay unsupported there); a random dwelling tied to a town of the map has its levels and owner
 /// checked before it stays a blocker. v20 (E09 T11): a random dwelling tied to a town of the map
 /// typed, holding its town (the last with its identifier) and its levels, which takes the town's
-/// faction when the game is built.
-pub const MAP_IMPORT_VERSION: u32 = 20;
+/// faction when the game is built. v21 (E08 T103b): the teleporters typed (the monoliths 43 to 45
+/// by subclass, the channel; the Subterranean Gate 103 and the Whirlpool 111), a monolith subclass
+/// past 7 refused (A-39); class 220 typed by the mines' subclasses as 53 (a crafted 220.0 a
+/// Sawmill, 220.8 refused; every shipped one is 220.7).
+pub const MAP_IMPORT_VERSION: u32 = 21;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///
