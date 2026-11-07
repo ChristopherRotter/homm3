@@ -70,6 +70,11 @@ its sources and tests.
   shown in the shroud is A-41 (§10). **The space key** revisits any entered object under the hero,
   at no points, no version test in SoD (§11). The interfaces' sketch (§11), batch E11's 18 rows
   (§12), the family ADV-TEL (§13) and the checkpoint's six questions (§14).
+- **Batch E11 scored** (T101, §15): every row as read (D-53 to D-58 the original's, A-37, A-38 and
+  A-41 as read, the draws uniform) but **E11-19**: a guard beside an entrance fights before the
+  jump, the original's order for every entered object and VCMI's, against ADV-MON-006 as built
+  (ADV-Q47: the original's taken, decision 279); A-37's consequences (a hero not drawn, a ghost)
+  and A-43, a placed boat's Whirlpool tile out of the list (not reproduced, decision 280).
 
 ## 1. The census
 
@@ -359,7 +364,7 @@ before the battle (§4.2).
   value: 56 315 × 1 775 = 99 959 125 is below 99 999 999, × 1 776 = 100 015 440 is not (by AI
   value, 78 845, the count would be 1 269): it supports the reading's measure (D-54) and bound.
 
-Next ids: disputes D-59, reading quirk candidates A-42.
+Next ids: disputes D-59, reading quirk candidates A-44 (A-42 the design note's, A-43 §15).
 
 ## 9. The reach and the paths through a teleporter (T98a2)
 
@@ -578,3 +583,111 @@ each as recommended. (1) D-53 to D-58 **the original**; (2) A-37 **the battle**,
 monolith; (3) A-38 **no bound**; (4) A-39 **refused at the import**, A-40 and A-41 **not
 reproduced**, no flags; (5) **`Revisit` in increment 11** with the original's gate (every entered
 kind, no points); (6) **batch E11 before the build**.
+
+## 15. Batch E11 scored (T101)
+
+Scored on 2026-11-07 (E08 T101; docs only) from the recorded runs: E11a
+`experiments/results/E08-batch-11a.md` (T100a: three runs, the second and third alike in all 97
+records, the first differing only in E11-8's branches, since ordered) and E11b `E08-batch-11b.md`
+(T100b: three runs, every record alike but the draws; runs 1 and 2's draws in `E08-log.md`,
+T100b), played by the capture harness (`clients/capture/batches/E08-batch-11a.toml`, `-11b.toml`)
+in SoD 4.0 on Easy, hot seat, and read from the game's memory. Each row against §12's prediction
+with design §16's additions (the specs' tiles; the texts by table and line).
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E11-1 (§9.1, D-58) | no path through A (around or none); A's ends on A | no path to B (beyond the wall, past A); the path to A the one tile A | **D-58 confirmed**: VCMI's path through a two-way pair is not the original's |
+| E11-2 (§5, §6) | on B; the step's price paid, no more; B's scouting radius explored; the walk ended | on B (12, 10) with 1 900 of 2 000 (the step's 100, the maximum kept), not on again; around B (16, 13) and (17, 10) explored, (16, 14) and (18, 10) not; no message | confirmed |
+| E11-3 (§4.5, §5) | no battle on arrival | none beside P (13, 11); the control step to (13, 10) fought P | confirmed (VCMI's `IGNORE_GUARDS`; the wiki: "A monolith or similar object does not trigger combat") |
+| E11-4 (§4.2) | stays on the entrance, nothing shown | on E4 (32, 10) with 1 900; no message, screen or battle; E11-5 still on X4 | confirmed (VCMI's `isExitPassable`) |
+| E11-5 (§4.2) | ADVEVENT 70 | ADVEVENT 70; on X4 with 1 900 | confirmed (VCMI the same) |
+| E11-6 (§4.3; design §16) | the meeting; the mover stays; the tiles within 1 of the pair explored before it | E11-6b to U6 with 1 859 (a diagonal step); E11-6's step opened the exchange (E11-6 left, the visitor; E11-6b right), closed unchanged; E11-6 on G6's entrance (surface) with 1 859, E11-6b on U6; the ten underground tiles explored before and after (by E11-6b's arrival: the radius-1 reveal not tellable here; E11-7 tells it) | confirmed |
+| E11-7 (§4.3; design §16) | the battle, then Red on the exit; radius 1 explored before it; the exit's terrain | Red's underground bits unexplored on day 1 and on day 2 before the step; at the battle's opening the 3 × 3 about U7 (44, 30) explored, (46, 30) not, Red's hero on G7's entrance (surface); the battle subterranean, Red attacking Blue's Pikeman; won (510 experience, no level-up); then on U7 with 1 859, (46, 30) and (49, 30) explored, (50, 30) not | confirmed |
+| E11-8 (§4.3) | ADVEVENT 153; stays | the walk to Un's entrance (623: by (17, 28), (17, 29), (18, 30), (17, 31)), ADVEVENT 153, on Un with 1 277 | confirmed (VCMI and the wiki the same) |
+| E11-9 (§3.2, D-56) | the first in the walk (truncated); VCMI the nearer by squares | G9 (20, 30) led to Uf (17, 27): truncated distances 4 and 4 (squares 18 and 16), Uf first in the walk; on Uf with 1 900 | **D-56 confirmed**: VCMI's squared distance (Un) is not the original's; the wiki's tie "north, then west" is the walk's order |
+| E11-10 (§4.4, D-54, D-55) | Pegasi 3 → 1; VCMI the Dendroids 3 → 2; ADVEVENT 168 | Pegasi 3 → 1, the Dendroids' 3 and the Angels' 2 kept; ADVEVENT 168; on W3's (66, 69) in its boat, 1 400 of 1 500 | **D-54 and D-55 confirmed**: VCMI's AI value and `max(1, ⌊n / 2⌋)` are not the original's; the wiki's total fight value and "50 % rounded up" lost agree |
+| E11-11 (§4.4, D-54's tie) | slot 1 keeps 2 (the first); VCMI slot 2 keeps 3 | slot 1's Pikemen 5 → 2, slot 2's 5 kept; ADVEVENT 168; on W3's (66, 68) | confirmed: the first slot of a tie |
+| E11-12 (§4.4, A-38) | 1 kept with the message; 1 775 → 887; 1 776 all kept | one Pikeman kept, ADVEVENT 168; 1 775 → 887; 1 776 kept, ADVEVENT 168; each on W2 or W3 with 1 400 | confirmed: **A-38 as read**, at the wiki's 1 776 exactly (the engine has no bound, decision 266: 1 776 → 888) |
+| E11-13 (§4.4) | nothing lost, no message | the Sea Captain's Hat: ten Pikemen kept, no message, on W3's (67, 69); the Admiral's Hat (E11-18's hero, in a boat with 2 615 of 3 000, a path at once to W1): ten kept, no message, on W2's (60, 68) | confirmed (VCMI's `WHIRLPOOL_PROTECTION`, the wiki: either Hat) |
+| E11-14 (§11) | back on A at 0 points; the hire question again | onto S: ADVEVENT 35 (no), 1 400; Space on S: ADVEVENT 35 again, unmoved, 1 400; the walk to A with its last 400 points: on B with 0; Space: on A with 0; again: on B with 0; no message | confirmed (the wiki: AB and SoD, no movement points) |
+| E11-15 (§4.1, D-53) | each of the three others about 20 times, never the entrance | 61 jumps a run (the step's and 60 presses), 1 900 kept by every press; never the monolith stood on (0 of 183); the spread below | confirmed: uniform among the three others |
+| E11-16 (A-37) | both on one tile, no battle; what follows recorded | the landing on E11-17's (Red's) tile after 33, 26 and 1 presses (runs 1 to 3): no battle, message or dialog; both heroes on (17, 23), E11-16 with 2 707 and its Pikeman; the next turns below | **A-37 confirmed**, state-corrupting (below); fixed by the battle first (decision 265) |
+| E11-17 (§4.1, D-57; design §16) | W2's five other tiles and W3's six alike (5/11 on W2); VCMI never W2; W3's empty boat never drawn | the list at the start 16 tiles in the walk's order, W1's six, W3's five, W2's five (both boats' tiles out, §3.1), the words W1 0, W3 1, W2 2; E11-17b boarded the boat on (18, 24) with no visit; 61 jumps a run, 2 750 and the five Archangels kept, no message; W2 drawn (58 of 183), never (18, 24) or (29, 20), never the Whirlpool stood on, every listed tile 7 to 19 times | **D-57 confirmed**: VCMI's "never W2" is not the original's. With both boats' tiles out of the list the row tells neither the team's hero's exclusion on a Whirlpool's tile nor the empty boat's at the draw (both §4.1's test, as E11-4) |
+| E11-18 (§10, A-41) | the view goes to the exit (the wiki); nothing explored | Replay Opponent Turn (about a second of the game's time): the view's corner 35,22,0 → 35,22,1 (centred on U7, E11-7b's gate) → 38,25,0 → 39,25,0 (M18) → 57,52,0 (centred on X18, in Red's shroud) → back to 36,23,0; at each jump the old picture fades to black, the exit's surroundings never drawn; no view on the boardings' tiles; none of Red's tiles explored | confirmed: **A-41 as read**, the view's corner names a hidden exit, nothing drawn or explored (not reproduced, decision 267) |
+| E11-19 (design §7, §13) | *the agent's call* (decision 272): no battle (not M: the hero jumped; not N: the arrival); at Space no battle, on A | **M fought first**: the battle opened with the hero on A19 (10, 50), won; then the jump, on B19 with 1 900, N (beside B19) untouched; Space on B19: no battle, on A19 with 1 900; the control: no battle (M gone) | **against the agent's call**: the step's guard before the entrance's visit, the jump after the win (VCMI the same: `CGameHandler::moveHero`'s `objectVisited(guardian)`, then the destination after a victory, `visitDestAfterVictory`); the arrival's silence (E11-3) and the revisit's (decision 273) confirmed. **ADV-Q47** |
+
+**The spread** (all three runs of E11b; the draws differ between runs, the game running in real
+time between the presses; χ² of each draw's candidates against equal odds):
+- **E11-15:** the monoliths drawn per run (M1/M2/M3/M4) 13/18/14/16, 20/12/14/15, 14/18/14/15, over
+  the three 47/48/42/46 (45.75 each expected: §12's "about 20 times" was a fixed entrance's); the
+  draws by the monolith stood on, to the other three in order: M1 15/13/21, M2 15/18/15, M3 20/10/10,
+  M4 12/23/11; χ² 13.3, 8 degrees of freedom, p ≈ 0.10.
+- **E11-17:** the Whirlpools drawn per run (W1/W2/W3) 21/17/23, 22/21/18, 22/20/19, over the three
+  65/58/60 (the chain's shares 12 : 11 : 11 give 64.6/59.2/59.2); from W1 W2 35, W3 33 (5 : 5),
+  from W2 W1 28, W3 27 (6 : 5), from W3 W1 37, W2 23 (6 : 5); χ² by Whirlpool 1.6 (3 df, p ≈ 0.66),
+  by tile over each draw's ten or eleven candidates 35.0 (29 df, p ≈ 0.21).
+- **E11-16:** 34, 27 and 2 jumps from W1's (24, 15) to the landing, never the Whirlpool stood on;
+  from W1 W2 6 and W3 17 (alone p ≈ 0.03; with E11-17's, W2 41 of 91); each landing from W3 (an
+  enemy hero's tile is a candidate from its own Whirlpool too, §4.1: not seen).
+
+So the draw is uniform over the candidates as read (`random_between(1, n)`, the r-th in the list's
+order); its sequence is the game's (the engine draws from its own stream, ADR-0017).
+
+**Beyond the predictions:**
+- **A-37's consequences** (E11-16, three runs alike; the tile's records and the dumps): the landing
+  puts the mover's record on the other hero's: (17, 23) names E11-16 (class 34) over E11-17 (34)
+  over the Whirlpool (111, word 2), and the map draws the hero on top. Selecting a hero takes its
+  record off the tile and writes back what lay under it (below): on Red's day 2 E11-17's selection
+  writes (111, 2) over E11-16's record, so after E11-17's step off the tile shows the Whirlpool alone
+  (**E11-16 not drawn for Red**, though it stands there); on Blue's day 2 E11-16's selection writes
+  back E11-17's stale record, and after E11-16's step off **a ghost of E11-17** stays on (17, 23) (a
+  boat with Red's flag besides E11-17's own on (17, 22)) and the Whirlpool's record is gone from the
+  tile (class 0 under the ghost). No battle, meeting or message at any step. Recorded with A-37
+  (`ADV-QUIRK-39`, written by T105b), *the agent's call*: one cause (two heroes on one tile) and one
+  fix (decision 265: no two heroes share a tile), not a new candidate.
+- **A-43 (quirk candidate). A Whirlpool's tile under a map-placed boat** (E11-17b's boarding, §3.1):
+  the setup's walk skips the boat's tile, so it is never in the list, also once the boat has left
+  (never an exit); after the boarding its record reads class 111 with the word −1 (the Whirlpool
+  under the boat; read with E11-17b lifted, below). By §4.1's test (not seen) a visit there
+  excludes the word −1, so its draw takes every listed tile, its own Whirlpool's five included.
+  Harmless (nothing corrupted) and on crafted maps only: none of the 160 shipped maps holds a boat on
+  a Whirlpool (§1). As designed (note §5, §7) the engine lists every Whirlpool tile and skips one
+  while an empty boat stands on it, so it differs only after such a boat has left, or at a visit from
+  its tile. **Not reproduced**, no flag (ADV-Q47, decision 280; `ADV-QUIRK-45`, written by T104).
+- **The selected hero lifted** (the harness's read; `clients/capture/README.md`, the lane's
+  `TRAPS.md`): at its selection and after its move the original takes the selected hero's record
+  off its tile (the tile reads what lies under it) and a scroll of the view puts it back. A display's
+  bookkeeping of the tile records: the engine keeps a hero's tile in the hero alone (ADR-0016 point
+  1) and reproduces nothing of it; it explains the reads and A-37's vanishing hero.
+- **The messages of a townless player** (GENRLTXT 7 after E11-3's control battle; at each turn's
+  start GENRLTXT 14 and the countdown ARRAYTXT 128): the batch maps give no player a town, the
+  harness's known messages (E10's defeat), not this increment's. **A boarding** without the Admiral's
+  Hat leaves 0 points with the land's maximum, with it the points and the sea's maximum (increment
+  8's, ADV-SEA).
+
+**The rules** (§13, design §15): the new and amended rules cite these rows as `observation` sources
+and are written `verified` when T103 to T105 build them; until then nothing in the catalog
+changes. ADV-TEL-001 and ADV-OBJ-002 every row (the five classes as the original reads them);
+ADV-TEL-002 E11-9 (D-56), E11-8, E11-17's list; ADV-TEL-003 E11-15, E11-16, E11-17 (the spread,
+never the entrance), E11-4; ADV-TEL-004 E11-2, E11-4, E11-5, E11-15, E11-19; ADV-TEL-005 E11-6 to
+E11-9; ADV-TEL-006 E11-10 to E11-13, E11-16, E11-17 (HER-ADV-009 E11-13); ADV-TEL-007 E11-2, E11-3,
+E11-7, E11-10, E11-19; ADV-TEL-008 E11-14, E11-15, E11-17, E11-19's Space; ADV-OBJ-003 E11-1
+(D-58); ADV-FOG-004 E11-18 (A-41); ADV-MON-006 E11-19, E11-3; GAM-BAT-004 E11-7, E11-16 (A-37);
+GAM-MET-001 E11-6; GAM-DEC-007 E11-7 (the move after the won battle), E11-19.
+
+**Against the design: E11-19 alone** (ADV-Q47, before T102). Every other row is as read: D-53 to
+D-58 confirmed as the original (decision 264), A-37, A-38 and A-41 as read (their decisions 265 to
+267 stand). E11-19 answers design §7's open point: the original's order is the guard first, then
+the visit. It agrees with §6's reading (the step's guard test inside `hero_move_step`, 0x48169D;
+the visit after the walk, `hero_move_loop` 0x4080E9) and with the event's order on a guarded tile
+(`E08-rewards.md` §8.5, already built), and it is VCMI's for every visited object; but ADV-MON-006
+as built (E08 T20b1, T63b) visits the tile's object first and its guard after ("testing the guard
+once it returns", never read): **every entered object on a guarded tile**, not only a teleporter.
+**Answered** (2026-11-07, ADV-Q47; decisions 279, 280): **the original's order for every entered
+object** (the guard first, the tile's visit after it for a hero still there; ADV-MON-006 and
+GAM-DEC-007 amended by their building task), and A-43 not reproduced. The user, from play: a
+two-way monolith's exit starts no fight and a hero on it cycles between the pair without one; a
+fight starts only on a step off it onto a guarded tile (E11-3, E11-19's Space agree); a one-way
+exit probably alike (the hero then forced off it onto the guarded tile), **to be investigated**:
+§5's reading (`visit_monolith_one_way` read whole, `hero_relocate` as the two-way's) predicts no
+fight on arrival, unobserved; batch E11c (design §16) runs the row before T105a builds the arrival.
