@@ -4931,7 +4931,7 @@ impl Player<'_> {
             self.effects(effects);
             return;
         };
-        let turned = self.creature_casting(stack, hex);
+        let (turned, _) = self.creature_casting(stack, hex);
         // `cast_spell`'s start: the outline and the mouse's stack cleared, a redraw at once each
         // (the mouse's stack unmarked already at the action's start with the bugs fixed, as after
         // a hero's: [`calms`]).
@@ -4958,7 +4958,10 @@ impl Player<'_> {
 
     /// A creature caster's frames toward the hex `hex` (`creature_cast_action` 0x448380 to
     /// 0x44851C, [`Player::creature_cast`]): turned toward it, its shot sound started, its group by
-    /// the angle played, its last frame kept. Returns whether it turned.
+    /// the angle played, its last frame kept. Returns whether it turned, and the poses its clipped
+    /// redraws drew into the dirty rectangle the turn leaves (0x448338): standing as measured at
+    /// 0x4483A5 (*provisional*: its idle frame then taken as the standing group's first), then
+    /// each frame (E17 M6 T6b2, [`crate::scene::Saved`]).
     ///
     /// The original's angle is a drawing bug (CLT-Q8): its Δy is not negated as a shot's is and
     /// runs from the caster's mid-height to the hex's anchor, so a caster rears up toward a target
@@ -4966,9 +4969,9 @@ impl Player<'_> {
     /// angle is VCMI's choice (`RangedAttackAnimation::setAnimationGroup`: hex to hex, y up) at the
     /// shot's 25°: from the caster's centre to the same point over the hex, so the rise is the
     /// anchors' (*provisional*): above 25° up, below −25° down, else straight (the same row too).
-    fn creature_casting(&mut self, stack: u8, hex: u8) -> bool {
+    fn creature_casting(&mut self, stack: u8, hex: u8) -> (bool, Vec<Pose>) {
         let Some(live) = self.live(stack) else {
-            return false;
+            return (false, Vec::new());
         };
         let [cx, cy] = self.centre(&live);
         let [tx, ty] = self.stage.anchor(hex);
@@ -5007,10 +5010,13 @@ impl Player<'_> {
         let frames = live.look.count(group);
         let time = self.speed.scale(live.look.times[2] / frames.max(1));
         self.cue(stack, Sound::Shot, false);
+        let mut drawn = vec![self.standing(&live, live.hex)];
         for f in 0..frames {
-            self.frame(&[(stack, Self::posed(&live, group, f, live.hex))], time);
+            let pose = Self::posed(&live, group, f, live.hex);
+            drawn.push(pose);
+            self.frame(&[(stack, pose)], time);
         }
-        turned
+        (turned, drawn)
     }
 
     /// A creature's cast is over (0x4486E2, 0x44872F): the battle waits for its shot sound

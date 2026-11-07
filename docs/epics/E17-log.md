@@ -5775,3 +5775,56 @@ tool (the PC's shell did not start); the setup's baseline (`check.sh`) passed.
 - **Gates:** `check.sh` (100 % coverage; its first run stopped at `cargo fmt`, fixed), the
   scoped verify with original data (`check-docs`, `check-lane`, `check-exe-map` among it),
   `h3-view gate`, `h3drive.py drawn --record` (above), the whole capture set.
+
+### M6 T6b2: the Demons' dissolve (2026-11-07)
+
+On `client/e17-m6-t6b2`, the user present at the start. Kept whole (one question, the user told at
+the start). The original data staged by the file tool before the PC went (its shell not used);
+the setup's baseline (`check.sh`) passed and CI's run on `master` was green.
+
+- **Read** (design §7.25, §7.11; map entries amended): `pit_lord_raise_demons` (Resurect.wav,
+  `remove_corpse` 0x5A7320 only edits the hexes' corpse lists, `create_battle_stack`: the Demons
+  measured alone, the back buffer's rectangle saved at 0x47A27B, a full redraw unseen, the
+  dissolve), `creature_cast_action` (the backdrop at 0x448306 before the turn and the frames),
+  `stack_animation_backdrop` (clears +0x53B8), `battle_redraw`'s background paths (0x4944BE to
+  0x4944FD only while 0x69D7C4 or 0x69D7D4 is set, the clipped restore 0x49456F, the
+  composition 0x4945BE), `compose_battle_background` (copies all 800 × 556 into the back buffer,
+  0x493E8A), the drawers' clip tests (`battle_draw_sprite` 0x495214, `battle_draw_hero_def`,
+  `draw_battle_obstacle` 0x4955BF with the DEF's whole canvas, `battle_draw_pcx` 0x49599F). T5a's
+  0x4944FD was the wrong path; its conclusion about the back buffer held.
+- **Probed** (a scratch script wrapping `h3drive.Game.clock`, not committed; the runbook's "The
+  original's state" says how): `demons` played as recorded, the screen and the back buffer (the
+  window manager's +0x40 picture) read with the dirty rectangle and the clip flag at 14 times.
+  At 1 687 ms (the Pit Lords' turn) the back buffer held the corpse in its last pose and the rock
+  (the screen still an earlier death frame); at 1 689 (the first casting frame drawn, unseen; the
+  Imps still in the corpse list) neither; the dirty rectangle the caster's alone, (66, 116, 153,
+  215) growing to (20, 92, 153, 251); at 2 221 the back buffer and the screen differed by 804
+  pixels in the Demons' rectangle, the step 0 difference. So the corpse leaves by the slip.
+- **Asked:** CLT-Q67 (the user's view of 2026-10-29 was that the corpse did not), answered (a):
+  both fixed in play, the slip reproduced for the comparisons only.
+- **Built** (design §7.25, "The viewer"): `scene::Saved` and `Draw::Dissolve::saved`;
+  `compose::item_box` (shared with `measure`; heroes, flags and obstacles measured as their
+  drawers test them) and `back_buffer`; `creature_casting` returns the poses its clipped redraws
+  drew; the Demons' `DissolveKey::clip` in the original's profile; `DissolveKey::first` (such a
+  dissolve's step 0 is not the screen, so it blends from its start) and `Dissolve::after` (the
+  battle drawn at the start, shown a millisecond later: without it the created Demons were in
+  neither picture at the start and no rectangle was measured, found on the first capture);
+  `Moment::at` split (`undissolved`) so the saved battle cannot recurse. Tests: the compositor's
+  back buffer, the scene's clip and saved list, the playhead at the start, the Demons' clip in
+  both profiles. *Provisional:* the caster measured standing as the standing group's first
+  frame at 0x4483A5; heroes, flags and animated objects left out of the clip; an item reaching
+  out of the rectangle not drawn over itself once a frame (its shadow compounding, §7.11 (1)).
+- **Recorded:** `demons` all 56 frames exact (the dissolve's 8 from 804 to 704 differing to 0;
+  `demons-frames.txt`); `drawn`: of 263 only `demons` changed (its 8 frames from 2 222), then
+  `drawn --record`.
+- **Reviewed** (a fresh reviewer, the diff only): no bug; `drawn.txt` and this record not yet in
+  the commit; `screen_save_rect`'s map entry still said the screen; the clip's left-out heroes
+  and objects unmarked; the count box's skip had no reading (read: 0x49599F); ADR-0020's
+  amendment draft point 3 now names this case; a long line.
+- **Gates:** `check.sh` (100 % coverage; a run missed one region, `batch.rs`'s `if let` without
+  `else`, fixed with `iter().flat_map`, clippy refusing a `for` over an `Option`; one run's report
+  mismatched `scene.rs` after a comment edit mid-run, run again untouched), the scoped verify
+  with original data (its first run failed `check-exe-map`: the two globals cited got inferred
+  entries, `redraw_unclipped_flag` and `_2`, the six setters cited no more), `scripts/exe.py
+  check`, `h3-view gate`, `h3drive.py drawn --record` (only `demons`' 8 digests moved), `frames
+  --only demons` as recorded.

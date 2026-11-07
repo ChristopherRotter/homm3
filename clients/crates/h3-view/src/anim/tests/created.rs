@@ -603,6 +603,20 @@ fn a_pit_lord_raises_demons_where_a_corpse_lay() {
     };
     assert!(t.log.iter().any(|(_, l)| *l == line));
     assert_eq!(t.created.len(), 1);
+    // In the original's profile (E17 M6 T6b2, CLT-Q67) it blends from its start, from the back
+    // buffer the Pit Lord's clipped redraws left: standing as measured, then each casting frame.
+    let d = &t.dissolves[0];
+    assert_eq!(d.first(), start);
+    let (stacks, frames): (Vec<u8>, Vec<u32>) = d.clip.iter().map(|(s, p)| (*s, p.frame)).unzip();
+    assert!(stacks.iter().all(|&s| s == 0));
+    assert_eq!((d.clip[0].1.group, frames[0]), (2, 0));
+    let n = u32::try_from(frames.len() - 1).unwrap();
+    assert!(n > 0);
+    assert_eq!(frames[1..], (0..n).collect::<Vec<u32>>());
+    // Fixed, from the screen as any other dissolve.
+    let fixed = play_in(&o, &commands, &created_casts(), Bugs::Fixed);
+    let d = &fixed.dissolves[0];
+    assert_eq!((d.clip.len(), d.first()), (0, d.start + 1));
 }
 
 #[test]
@@ -738,6 +752,7 @@ fn a_dissolve_steps_from_the_saved_picture_to_the_new() {
         start: 100,
         step: 75,
         area: DissolveArea::Battlefield,
+        clip: Vec::new(),
     };
     assert_eq!(d.end(), 700);
     assert_eq!(

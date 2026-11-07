@@ -1214,8 +1214,10 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
 - **A strike's iterations and the idle step** (`strike_animation` 0x46906E, `battle_idle_step`
   0x49680B): `battle_redraw` with its second argument (`RefreshCreatures` 0x495BF0 marks the
   dirty rectangle, not read) and its fifth: the composed background restored inside the dirty
-  rectangle (recomposed whole first when +0x53B8 is clear, as after a backdrop), each item meeting
-  it drawn whole, the rectangle shown.
+  rectangle (recomposed whole first when +0x53B8 is clear, as after a backdrop, and then copied
+  into the whole back buffer, 0x493E8A: outside the rectangle the back buffer holds the
+  background alone, the screen everything; E17 M6 T6b2, §7.25), each item meeting it drawn
+  whole, the rectangle shown. A creature's casting frames are such redraws (0x4484FE).
 - **What it leaves on the screen:** (1) an item drawn whole where its earlier image was not
   restored is drawn over itself, and its shadow pixels darken again (§3.3: shadows compound);
   (2) under a moving stack's rectangle the saved screen comes back as it was at the backdrop, so
@@ -2959,21 +2961,43 @@ BAT-MAG-052, `installation.md` §7.19).
   dissolve's battle at its start only until the dissolve ends (R6-4). The log names a created stack from its `Created` entry on (a reused id its
   latest). The clone's message is a notice the window opens as a message box at its time, the
   battle standing behind it (`Timeline::notices`, `Battle::open_notice`).
-- **The saved picture is the back buffer** (a slip of the original, not copied: the user's,
-  2026-10-29). `screen_save_rect` copies the back buffer, which a clipped redraw (the second
-  argument of `battle_redraw`: the dirty rectangle) leaves as the background outside its
-  rectangle, since the redraw copies the whole background first (0x4944FD) and draws the rest
-  clipped. The Pit Lord's casting frames are such redraws (0x4484FE), so the Demons' dissolve
-  starts from the terrain alone outside the caster: the corpse and the obstacles in the Demons'
-  rectangle pop away at its first step. The viewer blends from the picture shown, the corpse
-  going with the new picture in the pose it lay in (`Player::lying`: memory keeps the pose).
-  The other recorded dissolves start from a full redraw or a rectangle the clip held whole.
-  **To re-investigate** (the user, 2026-10-29, at T5b1's start): the slip is the rock clipped
-  out (the obstacles in the rectangle); the corpse gone before the fade-out's end is *not* part
-  of it in the user's view. Open: where the Imps' corpse leaves the original's picture (before
-  the save, by the raise itself, or by the clip as read above), and, if not by the slip, the
-  viewer to model it. Until then the viewer fades the corpse out with the blend, and `demons`'
-  8 differing frames hold both the rock and the corpse.
+- **The saved picture is the back buffer** (a slip of the original; re-investigated at M6 T6b2,
+  CLT-Q67: fixed, the original's for the comparisons only). `screen_save_rect` copies the back
+  buffer, not the screen. Every creature's cast starts with the backdrop (`creature_cast_action`
+  0x448306, `stack_animation_backdrop` 0x446830, §7.11), which leaves the background +0x53B0
+  not composed (+0x53B8 = 0, 0x44692A); the cast's first frame, a clipped redraw (0x4484FE:
+  `battle_redraw` (1, 1, 0, t, 1, 1)), then composes the background and copies all 800 × 556
+  of it into the back buffer (0x4945BE, `compose_battle_background` 0x493CF0, 0x493E8A) and
+  draws only the items whose rectangle meets the dirty rectangle, whole (`battle_draw_sprite`
+  0x495214, `draw_battle_obstacle` 0x4955BF: an obstacle's rectangle its DEF's whole canvas,
+  0x495525), showing that rectangle alone. The dirty rectangle is the caster's, measured
+  standing after the turn (0x4483A5) and widened by each casting frame (the original's grew
+  from (66, 116, 153, 215) to (20, 92, 153, 251) in `demons`). Outside it the back buffer holds
+  the background alone while the screen still shows the corpse and the obstacles, and a Pit
+  Lord's Demons dissolve from it (0x47A27B): the corpse and the obstacles in the Demons'
+  rectangle pop away at its first step, the obstacles fading back in. `remove_corpse` 0x5A7320
+  only edits the hexes' corpse lists, and nothing draws between it and the save. (T5a cited
+  0x4944FD for the copy: that path, the whole background and the clip cleared, so everything
+  drawn, runs only while 0x69D7C4 or 0x69D7D4 is set, by six functions not read; the probe
+  below shows the clipped path in a local battle.) **Recorded**
+  (T6b2: a probe reading the back buffer, the window manager's +0x40 picture, from the game's
+  memory each millisecond of `demons`): at 1 687 ms, the Pit Lords' turn, it held the corpse in
+  its last pose and the rock; at 1 689, the first casting frame drawn and not yet shown, the
+  Imps still in the corpse list, neither; the screen both until 2 222, when the dissolve's
+  step 0 showed the 804 pixels gone. So the corpse leaves by the same slip as the rock (the
+  user's view of 2026-10-29 was that it did not). **The viewer:** in play it blends from the
+  picture shown, the corpse going with the new picture in the pose it lay in (`Player::lying`);
+  in the original's profile the Demons' `DissolveKey::clip` holds the caster's poses (standing,
+  *provisional*: its idle frame then taken as the standing group's first; then each casting
+  frame), the scene measures them (`scene::Saved`) and the compositor's `back_buffer` draws the
+  background whole and each item of the saved battle meeting their rectangle, whole, in order
+  (a siege's parts, not measured, as the screen shows them, *provisional*). Not modelled
+  (*provisional*): the frames after the first restore the background only inside the rectangle,
+  so an item meeting it but reaching out of it is drawn there over itself once a frame, its
+  shadow compounding (§7.11 (1)); none does in `demons`. Such a dissolve's step 0 is not the
+  screen, so it blends from its start (`DissolveKey::first`), toward the battle drawn then,
+  which the screen shows from the next millisecond (`Dissolve::after`). The other recorded
+  dissolves start from a full redraw or a rectangle the clip held whole.
 - **Recorded** (`seq-teleport.toml`, `seq-clone.toml`, `seq-summon.toml`, `seq-demons.toml`, all
   on `sacrifice`'s grass and obstacles): `sacrifice`'s victim's dissolve now exact (its frames'
   counts re-recorded). `teleport`: the timeline as recorded, its frames exact but the aim's
@@ -2983,7 +3007,8 @@ BAT-MAG-052, `installation.md` §7.19).
   (the Archers, on their native grass as fast as the Imps, act before the Imps: the side that
   did not act goes first; the Pit Lords' raise a creature cast at the corpse's stack): the
   timeline as recorded (28 changes), 56 frames, the dissolve's 8 differing only by the slip
-  above (about 800 pixels each: the Imps' corpse fading), the rest exact.
+  above (about 800 pixels each: the Imps' corpse fading), the rest exact; since M6 T6b2 all 56
+  exact (the slip in the original's profile).
 
 ### 7.26 A stack's palette effects (M5 T5b1)
 

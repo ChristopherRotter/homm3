@@ -1330,6 +1330,13 @@ prints the battle's state as JSON while a battle runs, `h3mem.py adventure` the 
 `Mem` is the library. How to read a battle's state (drawn now, shown at the next deadline):
 design §7.1.
 
+The back buffer, where everything is drawn before a rectangle of it is shown (design §7.11), can
+be read too (E17 M6 T6b2, a scratch probe; no `Mem` method): the window manager's pointer at
+0x699280, its picture at +0x40, that picture's width +0x24, height +0x28, pitch in bytes +0x2C
+and 5-6-5 pixels +0x30. Read it at a frozen step beside the screen's dump (`Game.pixels`) when a
+question is what a redraw left unshown, as `screen_save_rect` 0x602CC0 copies it (§7.25: after a
+creature's cast it holds the background alone outside the caster).
+
 ## Traps
 
 - The game draws its own cursor: the recipes park it (the battle's at (618, 593) since M3

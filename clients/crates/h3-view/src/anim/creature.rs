@@ -155,7 +155,7 @@ impl Player<'_> {
         (target, struck): (u8, &Live),
         effects: &[Event],
     ) {
-        let turned = self.creature_casting(stack, struck.hex);
+        let (turned, _) = self.creature_casting(stack, struck.hex);
         self.outlined.push((self.clock.now, None));
         self.log.push((self.clock.now, Logged::Unmark));
         self.redraw();
