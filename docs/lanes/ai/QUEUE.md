@@ -54,6 +54,17 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the adventure lane** (E08 T95b; the adventure agents' action space grows):
 
+- 2026-11-07 (the adventure lane, E08 T103b, `adventure/e08-t103b`; **for when you regenerate
+  `census-v1.toml`**): `h3 ai census original-data/install/Maps` counts 1 of the 159 maps on
+  `master` and on this branch: every other map stops at `GameState::new` with "object N has an
+  owner it may not have" (`SetupError`), as `src/ai/census.rs`' setup plays colour 0 alone while
+  the maps' owned objects and towns (typed since E08 T83a and E09 T8a1) belong to other colours.
+  `h3-map`'s `original_data` builds each map in a game of its own players (the map's colours whose
+  human or computer flag is set); the same would let the census count all 159 again. The committed
+  `census-v1.toml` is untouched (no gate regenerates it). T103b's change (the teleporters typed,
+  map import v21) should move none of its numbers (their tiles block and are visited as before),
+  unchecked while the census stops.
+
 - 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`, `cross-lane` with the user's
   consent, E08 decision 243; **the env's action encoding v7, for the adventure agents**):
   `crates/h3-sim/src/adventure/action.rs` appends four entries `HIRE_BASE + c` (18 to 21,

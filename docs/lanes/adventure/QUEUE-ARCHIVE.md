@@ -905,3 +905,78 @@ fixed by T96b1 in the test's `vary` (no engine change), the seeds committed in
   `model::Mission`, written in the SoD layout with no deadline, no texts and a seer's reward
   nothing (`writer::extras::write_quest`; refused on another class or with a list past 255).
   A literal `Extras { tiles, objects }` now needs `..Extras::default()`. *Moved by E08 T97c: for information; the quests' increment reads it.*
+
+## Inbox notes settled or for information (moved 2026-11-07, E08 T103b)
+
+- 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
+  `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
+  open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the
+  hall, vtable 0x6437A0) and `slot = <building id>` (the hall's slot showing it: the building's
+  dialog, 0x643944; `click = ["build"]` its Build 30722, `cancel` 30721), and the reads
+  `town:x,y:mark`, `hall:slot:<id>`, `build:button`, `build:text`, `screen`, `town_screen_closed`;
+  `h3mem`'s town record gains `mark` (+0x2), `h3lod` gains `building_names`. A walk without
+  `actions` behaves as before. Learned: the panel's hall picture opens nothing; a map whose players
+  are all allies ends at a visit's close (an enemy is needed). The harness check passed after.
+  `clients/capture/README.md`, "The hall and the build".
+  *Moved by E08 T103b: for information (the capture harness).*
+- 2026-11-06 (the town lane, E09 T11, `town/e09-t11`, `cross-lane`; **`ADV-STUB-13` lifted, map
+  import v20**): a random dwelling tied to a town is typed with `Holds::LinkedDwelling { town,
+  levels }` (the `TownId` of the last town with its identifier; the holds' hash tag 10, which no
+  built state holds). `AdventureSetup` has a new field `town_factions` (one faction per town by
+  `TownId`, the game's step-2 factions; `SetupError::TownFactions`, checked after the walk, before
+  `Garrisons`): a literal with towns sets it. In the placement walk a tied dwelling takes its
+  town's faction (no draw) then draws its level (`dwellings::resolve` takes the factions); its
+  tiles and names are checked against every table's outcomes. `GameSetupError::LinkedTown`
+  refuses a tied dwelling's town that may take a faction without a table. The 55 replays'
+  `import_version` moved alone; the property plans generate no tied dwelling (the writer writes
+  none: `OwnedBody::RandomDwelling` keeps identifier 0).
+  *Moved by E08 T103b: for information; landed (map import v20, the replays' `import_version`); T103b bumped to v21 after it.*
+- 2026-11-06 (the town lane, E09 T9b1, `town/e09-t9b1`, `cross-lane`; **for your plans**):
+  `h3-map`'s `play.rs` plays towns. `Plan` has a new field `towns` (`TownPlan`, drawn last by
+  `towns()`; a plan literal sets `towns: Vec::new()`), laid out by `towns_laid_out` after every
+  other object but the boats, each with a template of its own: a town's template is no `KINDS`
+  entry, so code that reads a kind from a template skips `Body::Town` first (the town lane's
+  `TRAPS.md`). New: `Step::Town` with its runs in `steps()` (as `Step::Hire` on a map without
+  towns), `check_towns`, `check_town_battle_end` (`check_unowned_battle_end`'s town arm), the
+  entrances in `check_invariants`, the towns' income in `check_income`, a siege's merge in
+  `check_isolation` (`told_army`), the cover test `the_plans_capture_and_besiege_towns`;
+  `h3-towns` a dev-dependency of `h3-map`. `view.rs` draws its plans without towns (`townless`)
+  until E09 T9b2 teaches `vary` and `check_told` the towns.
+  *Moved by E08 T103b: for information (the plans' towns, `play.rs`).*
+- 2026-11-06 (the town lane, E09 T9a, `town/e09-t9a`, `cross-lane`; **for your replays and the
+  writer**): `h3_map::writer`'s `MapObject` has two new variants, `AnyTown` (a town of any kind:
+  random with its alignment, a main town in the header, a name, random garrison stacks) and
+  `RandomHero` (the code in the town lane's `src/writer/town.rs`; `docs/formats/h3m.md`, "The town
+  lane's additions"); a map without them is written as before. The new fixture
+  `e09-towns-36.h3m` and its replays `towns-*` make the adventure replays 55 (the skill
+  `homm3-rerecord-replays`' count and `adventure_replays.rs`' least): re-record them with yours at
+  each bump.
+  *Moved by E08 T103b: for information (the writer's two variants; the 55 replays, the skill's count).*
+- 2026-11-03 (the town lane, E09 T3b, branch `town/e09-t3b`; the capture harness, informational
+  unless you play battles with `attack`): `h3adv` gains the town reads (`town:x,y:owner`,
+  `visitor`, `built`, `every`, `garrison`, `slot:N`; `towns:every_vs_built`,
+  `towns:owned_garrisons`), `hero[NAME]:slot:N`, `opening:slot:N:<side>`, `town_screen`,
+  `unknown_screens`, a `new_game = true` step, the town screen (vtable 0x64372C, closed by item
+  30720) and the level-up dialog (0x63FE60, `level_up`) as known screens, and a list of creatures
+  in the table battle plan's `attack`. Behaviour changes: `play_turns` reads the turn again after
+  its 0.5 s wait (an order went into the next stack's turn), a retreat waits out the retreating
+  side's Catapult, a `text:` literal ending in `: ` joins the next value without `; `, and `batch
+  --map` fills the template beside the map when its stamp matches (no cargo build). A town's
+  visitor (+0x10) reads −1 while its hero is the selected one. The harness check passed before and
+  after. `clients/capture/README.md`, "Towns (E09 T3b)".
+  *Moved by E08 T103b: for information (the capture harness).*
+- 2026-11-03 (E08 T87b's audit; **for the next import bump**, increment 10's or the town lane's
+  T7a): the parser reads class 220 below subclass 7 as a mine body (`parse/objects.rs`) while the
+  class table types every 220 as the abandoned mine (`import/codes.rs`), so a crafted 220.0 is
+  refused at the build (`SetupError::Holds`) where the original (220 loaded as 53, the subclass
+  kept, `object_class_values` 0x63A6E4) and VCMI make a sawmill. No shipped map has one (all 94
+  are 220.7). Type 220 by `MINES` like 53, test 220.0 as a sawmill, amend ADV-MIN-001 and
+  ADV-OBJ-002 and `docs/formats/h3m.md`, with the bump that moves `MAP_IMPORT_VERSION` anyway.
+  *Moved by E08 T103b: acted upon (class 220 by the mines' table with map import v21; ADV-MIN-001, ADV-OBJ-002, `h3m.md` amended).*
+- 2026-11-02 (the town lane, E09 T1b2b, `TWN-Q2`; **nothing to build, for your import and
+  setup**): E09's increment 1 builds **the random hero** (class 70, drawn as the main town's hero;
+  E09 decision 8) and **the starting-hero pick per colour in the setup** beside the faction
+  (decision 9), `cross-lane` in your import and setup, merged in order with yours; leave both to
+  it (your 2026-10-20 note's 18 random heroes with a custom experience come with it). An allied
+  town is entered and never captured (decision 16), as your owned objects' team test.
+  *Moved by E08 T103b: settled (the random hero and the starting-hero pick were built by E09 T7a1 to T7b2b).*

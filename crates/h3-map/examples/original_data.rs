@@ -33,7 +33,10 @@
 //! spell book in a town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-6`),
 //! and on the maps of 36 tiles a side. Since E09 T9c each built town's siege facts (its fort
 //! level, a moat; TWN-SIE-003) and hall level, and the owned towns' day's income (TWN-INC-001,
-//! -002).
+//! -002). Since E08 T103b the teleporters (43 to 45, 103, 111) by class, subclass and level, and
+//! the maps with each class; each checked to import as its class and subclass's type (a monolith
+//! of its class's way with its subclass as the channel: the import's tables against the shipped
+//! maps, increment 11's design note §3 and §4).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -46,7 +49,8 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use h3_adventure::{
-    DWELLING_LEVELS, Holds, MapSetup, ObjectKind, ObjectTypeId, Pos, SetupError, land_table_points,
+    DWELLING_LEVELS, Holds, MapSetup, MonolithWay, ObjectKind, ObjectTypeId, Pos, SetupError,
+    land_table_points,
 };
 use h3_content::{CreatureTypeId, Formation};
 use h3_game::{
@@ -62,7 +66,7 @@ use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 /// with stacked visitable tiles, with the classes on each such tile in map order; each map with
 /// typed objects that share their type and anchor with an earlier one, with how many; the
 /// monsters' and grounds' counts (E08 T20a2a); the dwellings the game's build gives (E08 T94a);
-/// the dwellings' and the Refugee Camps' weeks it gives (E08 T94b).
+/// the dwellings' and the Refugee Camps' weeks it gives (E08 T94b); the teleporters (E08 T103b).
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
@@ -73,7 +77,14 @@ struct Peaks(
     BTreeMap<&'static str, usize>,
     Built,
     Weeks,
+    Teleporters,
 );
+
+/// The census of the teleporters (E08 T103b, [`teleporters`]; survey
+/// `docs/rules/surveys/E08-teleporters.md` §1): the objects by class and subclass, on the surface
+/// and underground, and the maps holding each class.
+#[derive(Default)]
+struct Teleporters(BTreeMap<(u32, u32), [usize; 2]>, BTreeMap<u32, usize>);
 
 /// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
 /// counts, and the resolved random dwellings by faction (the core's index) and level.
@@ -230,6 +241,19 @@ fn main() -> ExitCode {
         "    the camps' draws by creature level, 1 to {DWELLING_LEVELS} (seed {SEED}): {:?}",
         weeks.1
     );
+    let teleporters = &peaks.8;
+    println!("  teleporters, each typed as its class and subclass (checked):");
+    for (class, maps) in &teleporters.1 {
+        let of_class = || teleporters.0.range((*class, 0)..=(*class, u32::MAX));
+        let subclasses: Vec<String> = of_class()
+            .map(|((_, subclass), [above, below])| format!("{subclass}: {above} + {below}"))
+            .collect();
+        let objects: usize = of_class().map(|(_, levels)| levels[0] + levels[1]).sum();
+        println!(
+            "    class {class}: {objects} ({maps} maps); by subclass, surface + underground: {}",
+            subclasses.join(", ")
+        );
+    }
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -375,6 +399,7 @@ fn check(
         peaks.4.insert(name.to_owned(), twins);
     }
     census(&map, &setup.map, rules, &mut peaks.5);
+    teleporters(&map, &setup.map, rules, &mut peaks.8)?;
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -1088,6 +1113,57 @@ fn census(
         "tiles two or more special grounds lie on",
         lying.values().filter(|&&n| n > 1).count(),
     );
+}
+
+/// Counts the teleporters (E08 T103b; ADV-TEL-001, ADV-OBJ-002, increment 11's design note §3 and
+/// §4) into the census. Checked (an error fails the map): each object of classes 43 to 45, 103 and
+/// 111 imports as its class and subclass's type, a monolith of its class's way (43 an entrance, 44
+/// an exit, 45 two-way) with its subclass as the channel, 103 the Subterranean Gate, 111 the
+/// Whirlpool.
+fn teleporters(
+    raw: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    census: &mut Teleporters,
+) -> Result<(), String> {
+    let mut classes = BTreeSet::new();
+    for ((placed, class), object) in placed(raw).zip(&setup.objects) {
+        let way = match class {
+            43 => Some(MonolithWay::Entrance),
+            44 => Some(MonolithWay::Exit),
+            45 => Some(MonolithWay::TwoWay),
+            103 | 111 => None,
+            _ => continue,
+        };
+        let subclass = usize::try_from(placed.template)
+            .ok()
+            .and_then(|i| raw.templates.get(i))
+            .map_or(u32::MAX, |t| t.subclass);
+        let kind = object
+            .object_type
+            .and_then(|id| rules.adventure().object_type(id))
+            .map(|ty| &ty.kind);
+        let typed = match kind {
+            Some(ObjectKind::Monolith { channel, way: w }) => {
+                way == Some(*w) && u32::from(*channel) == subclass
+            }
+            Some(ObjectKind::SubterraneanGate) => class == 103,
+            Some(ObjectKind::Whirlpool { .. }) => class == 111,
+            _ => false,
+        };
+        if !typed {
+            return Err(format!(
+                "a teleporter of class {class} subclass {subclass} at {:?} imports as {kind:?}",
+                object.anchor
+            ));
+        }
+        census.0.entry((class, subclass)).or_default()[usize::from(object.anchor.level > 0)] += 1;
+        classes.insert(class);
+    }
+    for class in classes {
+        *census.1.entry(class).or_default() += 1;
+    }
+    Ok(())
 }
 
 /// Counts the sea's objects (E08 T72, increment 8's design note §4): the boats and the maps with

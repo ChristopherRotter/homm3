@@ -996,7 +996,7 @@ checkpoint_every = 25
 [map]
 path = "fixtures/maps/e08-economy-36.h3m"
 hash = "0x0d7ea287c88b7469"
-import_version = 20
+import_version = 21
 
 [result]
 day = 61

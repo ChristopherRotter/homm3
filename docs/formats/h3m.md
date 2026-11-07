@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1; E09 T7a1, T8a1, T11; `MAP_IMPORT_VERSION` 20)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b; E09 T7a1, T8a1, T11; `MAP_IMPORT_VERSION` 21)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -242,8 +242,9 @@ content and draws nothing; it rejects what the current increment cannot represen
 - **Increment 9's objects** (v15, E08 T83a, increment 9's design note §4; ADV-OBJ-002): 53 by
   subclass, 0 to 6 the mines by resource (`base:sawmill`, `alchemists_lab`, `ore_pit`,
   `sulfur_dune`, `crystal_cavern`, `gem_pond`, `gold_mine`), 7 `base:abandoned_mine` (a subclass
-  past 7 is `Subclass`), 220 (SoD) `base:abandoned_mine` whatever its subclass (the original's
-  53.7), 42 `base:lighthouse`, 87 `base:shipyard`, 112 `base:windmill`, 109 `base:water_wheel`,
+  past 7 is `Subclass`), 220 (SoD) by the same subclasses (since v21, E08 T103b: the original
+  loads it as 53 keeping the subclass, so a crafted 220.0 is a Sawmill; every shipped one is 220.7,
+  the abandoned mine; before, 220 was `base:abandoned_mine` whatever its subclass), 42 `base:lighthouse`, 87 `base:shipyard`, 112 `base:windmill`, 109 `base:water_wheel`,
   55 `base:mystical_garden`; 220 is ownable scenery as 53 (GAM-BAT-011). A mine's, Lighthouse's
   and Shipyard's owner byte (`Body::Mine`, `Body::Owned`): `0xFF` none, else the player of that
   colour, a colour nobody plays (or past the eight) refused (`ObjectOwner`, ADV-OWN-002); an
@@ -280,6 +281,15 @@ content and draws nothing; it rejects what the current increment cannot represen
   no town of the map has (`DwellingTown`, A-35); a faction bit past 8 (`UnknownCode`, `faction`); an
   empty set (`DwellingFactions`, A-34); a level code past 6 or a lowest above the highest
   (`DwellingLevels`, A-36); then the owner.
+- **Increment 11's objects** (v21, E08 T103b, increment 11's design note §4; ADV-OBJ-002,
+  ADV-TEL-001): the teleporters, no body (plain objects, VCMI's `readGeneric`), each on its
+  template's tiles as every object (42 SoD monoliths carry a template that blocks one tile where
+  `Objects.txt` blocks two): 43, 44 and 45 by subclass, the channel 0 to 7 (`codes.rs`'s three
+  tables: `base:monolith_entrance_N`, `monolith_exit_N`, `monolith_two_way_N` for 0 to 2,
+  `sod:` for 3 to 7, so an RoE or AB ruleset meets an SoD channel as `MissingContent`), 103
+  `base:subterranean_gate` and 111 `base:whirlpool` whatever the subclass. Refused: a monolith
+  subclass past 7 (`Subclass`, A-39, ADV-QUIRK-41; the original indexes eight lists without a
+  bound).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by

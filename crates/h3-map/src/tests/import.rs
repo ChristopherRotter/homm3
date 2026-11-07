@@ -282,7 +282,7 @@ fn pile_body(amount: u32, message: Option<Message>) -> Body {
     Body::Resource { message, amount }
 }
 
-// covers: ADV-OBJ-002, ADV-MIN-001
+// covers: ADV-OBJ-002, ADV-MIN-001, ADV-TEL-001
 #[test]
 fn the_typed_classes_import_as_their_object_types() {
     let colours = [
@@ -410,6 +410,16 @@ fn the_typed_classes_import_as_their_object_types() {
     // E09 T8a1: a town (here without a town's body, never the reader's: a neutral town's
     // defaults); the random town (77) below.
     cases.push((98, 0, "base:town".into()));
+    // E08 T103b: the teleporters, the monoliths by subclass (the channel: 0 to 2 base's, 3 to 7
+    // SoD's), the gate and the Whirlpool.
+    for (class, way) in [(43, "entrance"), (44, "exit"), (45, "two_way")] {
+        for channel in 0..8 {
+            let pack = if channel < 3 { "base" } else { "sod" };
+            cases.push((class, channel, format!("{pack}:monolith_{way}_{channel}")));
+        }
+    }
+    cases.push((103, 0, "base:subterranean_gate".into()));
+    cases.push((111, 0, "base:whirlpool".into()));
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -442,9 +452,8 @@ fn the_typed_classes_import_as_their_object_types() {
         assert_eq!(object.blocked, TileMask::from_bits(0b11));
     }
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
-    // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b, and
-    // increment 11's teleporters (E08 T103a's content: 24 monoliths, the gate, the Whirlpool), whose
-    // classes it types from T103b.
+    // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
+    // (`dwellings.rs`; since E08 T103b increment 11's teleporters are among the cases).
     let typed = part
         .object_types()
         .iter()
@@ -454,14 +463,11 @@ fn the_typed_classes_import_as_their_object_types() {
                 h3_adventure::ObjectKind::Dwelling { .. }
                     | h3_adventure::ObjectKind::RandomDwelling
                     | h3_adventure::ObjectKind::RefugeeCamp { .. }
-                    | h3_adventure::ObjectKind::Monolith { .. }
-                    | h3_adventure::ObjectKind::SubterraneanGate
-                    | h3_adventure::ObjectKind::Whirlpool { .. }
             )
         })
         .count();
     assert_eq!(cases.len(), typed);
-    assert_eq!(part.object_types().len() - typed, 82 + 2 + 26);
+    assert_eq!(part.object_types().len() - typed, 82 + 2);
     let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
     assert_eq!(
         (town.map.objects[0].owner, &town.map.objects[0].holds),
@@ -477,28 +483,49 @@ fn the_typed_classes_import_as_their_object_types() {
         random.map.objects[0].object_type,
         part.object_type_by_key("base:town")
     );
-    // A typed class ignores the subclass where it has one type.
-    let fire = import(&typed_map(12, 7, Body::None), &SOD).unwrap();
-    assert_eq!(
-        fire.map.objects[0].object_type,
-        part.object_type_by_key("base:campfire")
-    );
+    // A typed class ignores the subclass where it has one type (E08 T103b: the gate's and the
+    // Whirlpool's too, as the original's setup).
+    for (class, key) in [
+        (12, "base:campfire"),
+        (103, "base:subterranean_gate"),
+        (111, "base:whirlpool"),
+    ] {
+        let setup = import(&typed_map(class, 7, Body::None), &SOD).unwrap();
+        assert_eq!(
+            setup.map.objects[0].object_type,
+            part.object_type_by_key(key)
+        );
+    }
     // A class without a type stays a blocker (since E08 T83a the Mystical Garden is typed: a
     // Magic Spring, 48, a later increment's, here).
     let other = import(&typed_map(48, 0, Body::None), &SOD).unwrap();
     assert_eq!(other.map.objects[0].object_type, None);
-    // E08 T83a: SoD's abandoned mine (220) whatever its subclass; a mine's subclass past 7 is one
-    // its class does not define.
+    // E08 T83a: SoD's abandoned mine (220.7); since E08 T103b class 220 by the mines' table, as the
+    // original loads it as 53 with its subclass (a crafted 220.0 a Sawmill with its owner; E08
+    // T87b's audit). A mine's subclass past 7 is one its class does not define.
     let abandoned = part.object_type_by_key("base:abandoned_mine");
     let set = || Body::AbandonedMine(Bits(vec![1, 0, 0, 0]));
-    for subclass in [0, 7] {
-        let setup = import(&typed_map(220, subclass, set()), &SOD).unwrap();
-        assert_eq!(setup.map.objects[0].object_type, abandoned);
-    }
+    let setup = import(&typed_map(220, 7, set()), &SOD).unwrap();
+    assert_eq!(setup.map.objects[0].object_type, abandoned);
+    let sawmill = import(&typed_map(220, 0, Body::Mine { owner: 0xFF }), &SOD).unwrap();
     assert_eq!(
-        import(&typed_map(53, 8, set()), &SOD).unwrap_err(),
-        ImportError::Subclass(0)
+        sawmill.map.objects[0].object_type,
+        part.object_type_by_key("base:sawmill")
     );
+    for class in [53, 220] {
+        assert_eq!(
+            import(&typed_map(class, 8, set()), &SOD).unwrap_err(),
+            ImportError::Subclass(0)
+        );
+    }
+    // E08 T103b: a monolith past channel 7 (A-39, `ADV-QUIRK-41`: the original writes past its
+    // eight lists).
+    for class in [43, 44, 45] {
+        assert_eq!(
+            import(&typed_map(class, 8, Body::None), &SOD).unwrap_err(),
+            ImportError::Subclass(0)
+        );
+    }
 }
 
 // covers: ADV-OBJ-002, ADV-PIK-004
