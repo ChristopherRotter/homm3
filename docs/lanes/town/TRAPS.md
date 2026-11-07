@@ -44,6 +44,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **A town's entrance is blocked and visitable** in the shipped maps' templates: a test "does a town block this tile" also hits the entrance, where a moved hero (TWN-SET-010) and a town's visitor stand. Use `town::in_town` (a blocked tile that is not an entrance), not `blocks` (E09 T7a1, found by the census).
 - **Every struct literal of `GameSetup`, `PlayerSetup` and `GameHeroSetup`** lives in other lanes' crates too (`h3-cli`'s `src/ai/census.rs`, the ai lane's; `h3-map`'s examples): a new field is a `cross-lane` change there.
 
+## Experiments and the original's records (`experiments/`, the capture harness)
+
+- **The original's sets hold bits the engine never has** (E09 T14c, survey `E09-construction.md`
+  §13; towns survey §16.3): the hall companions (Rampart, Necropolis, Conflux: 23, 27 to 29 with
+  the halls) and the town screen's display pieces (Castle 23, Stronghold 27, Fortress 23, Conflux
+  22), the pieces in the standing set from the first time a town screen opens and in the
+  every-built set after the town's next build. Drop them before comparing a record with the
+  engine's sets or predicting a set; a prediction from the reading names them.
+
 ## The game's setup (`h3-game` `src/town*`, `setup.rs`)
 
 - **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example and `h3-cli`'s `src/ai/census.rs` do).

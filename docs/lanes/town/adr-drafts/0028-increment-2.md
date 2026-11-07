@@ -2,7 +2,8 @@
 
 - Status: **Accepted as written** at T13's checkpoint (`TWN-Q10`, 2026-11-07; E09 decision 48),
   to be applied by the round's `shared/` task T15 into ADR-0028, with batch TWN-2's outcome
-  (decisions 41, 42). Drafted by E09 T13 (2026-11-07).
+  (decisions 41, 42; scored by T14c: both stand, survey `E09-construction.md` §13). Drafted by
+  E09 T13 (2026-11-07).
 - Amends: ADR-0028 points 2, 5, 6 and 9 (each text below goes in after the point's increment 1
   text); its consequences, alternatives and revision history. ADR-0015 and ADR-0023 are not
   amended: the crates, the import and the siege's facts stand as they are (a build changes the
@@ -50,7 +51,7 @@ refuses a requirement outside the record, a cycle, a building requiring itself a
 core lacks. A new role **`shipyard`** names the building that needs water (decision 46). The
 content is harvested (decision 23's route: `h3-harvest`'s gap-fill, `cross-lane`): the costs from
 `Building.txt`, the requirements from the executable's lists; TD-9 the executable's (decision 41),
-batch TWN-2's verdict overriding through the gap-fill.
+as batch TWN-2 observed it (no gap-fill override).
 
 **Point 6** (seams), after its increment 1 text: **increment 2** adds the **town command**,
 `h3_towns::TownCommand` (decision 45; increment 2's one variant `Build { town: TownId, building:

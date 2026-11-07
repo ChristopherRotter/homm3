@@ -1,8 +1,9 @@
 # ADR-0017 amendment (draft): E09 increment 2, construction with the town events (the game side)
 
 - Status: **Accepted as written** at T13's checkpoint (`TWN-Q10`, 2026-11-07; E09 decision 48),
-  to be applied by T15 into ADR-0017 with batch TWN-2's outcome (decisions 41, 42: TD-11's row may
-  revisit point 1's owner test). Drafted by E09 T13 (2026-11-07).
+  to be applied by T15 into ADR-0017 with batch TWN-2's outcome (scored by T14c: decisions 41 and
+  42 stand, point 1's owner test is the original's; survey `E09-construction.md` §13). Drafted by
+  E09 T13 (2026-11-07).
 - Amends: ADR-0017 points 1, 2, 3, 4, 6, 7, 8, 9 and 10 (each text below goes in after the point's
   E09 increment 1 text, or after its increment 10 text where that comes later); its consequences,
   alternatives and revision history. Point 11 is not amended (a build changes the siege's facts
@@ -23,7 +24,8 @@ each player's turn start (the map's timed events, GAM-CAL-004), the capture, the
 **Point 1** (one entry point), after its E09 text: **E09 increment 2** (construction; decisions
 37, 45) adds the game's first **town command**: `GameCommand::Town(TownCommand::Build { town,
 building })`. Legal for a player in its turn with no open decision (as every map command) that
-**owns the town** (TD-11 the owner, decision 42; batch TWN-2's row may revisit it), for a building
+**owns the town** (TD-11 the owner, decision 42; the original's build dialog refuses any other
+player, batch TWN-2), for a building
 `h3-towns` finds buildable now in it (ADR-0028 point 2's draft: the hall's tests, the day's mark,
 one Capitol a player over the player's towns) whose cost the treasury pays; no hero needs to be
 in the town. Each refusal is typed and changes nothing. **The setup gains nothing**: the
@@ -102,8 +104,9 @@ by the town and the event's place in the town's list (the message is the client'
 
 ## Alternatives considered
 
-- A visitor building at an ally's town from its own treasury (the reading's path, TD-11): kept for
-  batch TWN-2's verdict (decision 42).
+- A visitor building at an ally's town from its own treasury (T12a's reading of the hall's path,
+  TD-11): refuted by batch TWN-2 (the build dialog greys Build for a town the current player does
+  not own; decision 42).
 - The computer's every other day on Easy and Normal now (decision 43): no computer player yet.
 - The town events in the player's order of its towns (VCMI's): the original's list is the map's.
 - Firing an every-day event from the day before its first (VCMI's, TD-12): the original's day.
