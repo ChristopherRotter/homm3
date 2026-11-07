@@ -168,6 +168,21 @@ def identify(text):
     return f"{name.split('.')[0]}:{record}"
 
 
+def building_names(faction):
+    """E09 T14b (batch TWN-2): a faction's (0 Castle to 8 Conflux) building names by building id,
+    as the town screen and the hall show them: 0 to 14 and 16 from BLDGNEUT.TXT (a record an id),
+    15 and 17 to 26 from BLDGSPEC.TXT (11 records a faction: 17 to 26, then the Resource Silo),
+    30 to 43 from DWELLING.TXT (14 records a faction: the seven dwellings, then their upgrades);
+    an empty name left out. For naming ids in a record, never written out."""
+    neutral, special, dwelling = (table(n) for n in ("BLDGNEUT.TXT", "BLDGSPEC.TXT",
+                                                     "DWELLING.TXT"))
+    names = {b: neutral[b][0] for b in (*range(15), 16)}
+    names.update({17 + j: special[11 * faction + j][0] for j in range(10)})
+    names[15] = special[11 * faction + 10][0]
+    names.update({30 + k: dwelling[14 * faction + k][0] for k in range(14)})
+    return {b: n.strip() for b, n in sorted(names.items()) if n.strip()}
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 4 and sys.argv[1] == "find":
         print(matches(sys.argv[2], sys.argv[3]))

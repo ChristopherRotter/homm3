@@ -2055,3 +2055,51 @@ proposed (T14 to T20 in rounds 2 to 8); the eight exit criteria; the agent's cal
 without a flag. **The queue:** T13 out, T14 (batch TWN-2) written; a note in the adventure lane's
 inbox on the planned `cross-lane` bumps and their order with E08's increment 11. No version moved.
 Ids: questions next 11, decisions next 52, quirk candidates next 10 (T-9), disputes next 13.
+
+### T14a, T14b — batch TWN-2's spec, the harness's hall path and two runs (2026-11-07)
+
+One session, the user present at the start; branch `town/e09-t14`, `cross-lane` (the user's
+consent at the start: `docs/experiments/README.md` is the battle lane's; `h3-experiment` needed no
+change). Starting point: `master` at 2efcb26 (#782 merged; CI green on efaae07, the same code; the
+setup's baseline lost to a VM restart). T14 cut in three at its start (the user, asked;
+recommended): T14a and T14b in this session, the scoring T14c next. The user's computer's shell
+did not start: a sandbox cloned from GitHub, the original data staged with the file tool at the
+start.
+
+- **T14a, the spec** `experiments/specs/E09-batch-2a.toml` (stamp `1128298c`): TWN-2-1, Red's
+  Conflux C1 (7, 7) with the Fort, the Mage Guild, the level-1, -2 and -4 dwellings (the closure
+  of the Altar of Fire 33, without the upgraded Altar of Air 38), and the control C2 (17, 7) with
+  38 too, each with a Red hero on the tile south of its entrance; TWN-2-2, Blue's Castle B1
+  (27, 7) with a Fort only and Red's hero south of it, Red and Blue one team (`teams`), both
+  human; the predictions of the reading, VCMI and the wiki. Two changes found by T14b's probe: a
+  hero of Blue's far off (a player without a hero is offered no Artifact as its starting bonus,
+  which moved the harness's choice of Gold off its place) and Tan's Castle T1 (7, 30), a computer
+  player alone on its team (without an enemy the game declared Red's victory at the first visit's
+  end). The batch's row in `docs/experiments/README.md`.
+- **T14b, the harness** (`clients/capture/`, common; README "The hall and the build"), learned
+  live under Wine with a throwaway probe: the town screen's buildings are its items (id the
+  building id); a click on the shown hall building (10 to 13) opens the hall (vtable 0x6437A0),
+  the panel's hall picture does not; the hall's slot k is item 700 + k (its frame the building),
+  its bar 400 + k (frame 0 built, 1 buildable, 2 not now, 3 never); a slot's click opens the
+  building's dialog (0x643944): Build 30722 (state 0x6 when it builds; 0x8 or 0x20 set, greyed),
+  Cancel 30721, the requirements' text item 5. New: a walk's `actions` on the town screen, the
+  actions `hall` and `slot`, the reads `town:x,y:mark`, `hall:slot:<id>`, `build:button`,
+  `build:text` (the record and the building ids it names, `h3lod.building_names`), `screen`,
+  `town_screen_closed`; `h3mem`'s town record gains the day's mark. `docs/exe/map.toml` gains
+  the two vtables. The recipe `clients/capture/batches/E09-batch-2a.toml` (5 steps). The harness
+  check ran after the change; the client, map-client and adventure lanes' inboxes told.
+- **The runs** (Easy, hot seat, the starting bonus Gold, under Wine; about 4 minutes each): two,
+  recorded (`experiments/results/E09-batch-2a.md`, `-run2.md`), the same but for the random
+  bonus's gold.
+
+**What the runs showed** (for T14c; not scored here): **TWN-2-1** C1's level-4 slot the upgraded
+Altar of Fire, its look not now; its dialog's Build greyed (state 0xE), the text GENRLTXT:53
+naming 38; Build pressed: nothing (the dialog stays; the sets, the mark 0 and Red's resources
+unchanged). C2's slot buildable, Build enabled; pressed: the town screen at once, the standing set
+40 in and 33 out, every-built 40 added, the mark 1, Red's 5 mercury, 5 ore and 2 000 gold less.
+**TWN-2-2** Red's hero in Blue's town: the town screen, the hall, the Tavern's slot buildable;
+its dialog's Build greyed (state 0x26), the text GENRLTXT:220 (every requirement met); pressed:
+nothing; both treasuries, B1's sets and its mark unchanged. **Not predicted:** a hero's visit sets
+a bit of the town's standing set that no building of its faction has (22 in each Conflux, 23 in
+the Castle) as the town screen opens; it stays after the screen closes, and C2's build copied it
+into the every-built set (recomputed from the standing set).
