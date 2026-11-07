@@ -15,6 +15,7 @@ use h3_assets::fnt::{Font, decode_fnt};
 use h3_assets::palette::{Palette, decode_pal};
 use h3_assets::pcx::{Pcx, decode_pcx};
 
+use h3_render::Bugs;
 use h3_ui::sprite::Sprite;
 
 use crate::clip::Video;
@@ -30,6 +31,8 @@ pub struct Batch {
     fonts: BTreeMap<String, Font>,
     /// The result window's clips, decoded (E17 M5 T4b2b).
     videos: BTreeMap<String, Video>,
+    /// How the clips are decoded (E17 M6 T6c1: the residues' reading, CLT-Q68).
+    bugs: Bugs,
 }
 
 /// Why an asset is not in the batch.
@@ -51,6 +54,16 @@ impl fmt::Display for BatchError {
 }
 
 impl Batch {
+    /// An empty batch whose clips decode as `bugs` says ([`Bugs::Original`] for the
+    /// comparisons with the original's captures; the default [`Bugs::Fixed`]).
+    #[must_use]
+    pub fn with_bugs(bugs: Bugs) -> Self {
+        Self {
+            bugs,
+            ..Self::default()
+        }
+    }
+
     /// Decodes `bytes` as the asset `name` (by its extension) and keeps it.
     ///
     /// # Errors
@@ -77,7 +90,7 @@ impl Batch {
             let font = decode_fnt(bytes).map_err(failed)?;
             self.fonts.insert(upper, font);
         } else if upper.ends_with(".BIK") {
-            let video = Video::decode(bytes)
+            let video = Video::decode(bytes, self.bugs)
                 .map_err(|e| BatchError::Decode(upper.clone(), format!("{e:?}")))?;
             self.videos.insert(upper, video);
         } else {
@@ -519,9 +532,13 @@ mod tests {
         assert_eq!(sprite.frame(9, 0), None);
         assert!(batch.picture("b.PCX").is_some());
         assert_eq!(batch.palette("GAME.PAL"), Some(&Palette::default()));
-        // A clip (E17 M5 T4b2b), decoded whole.
+        // A clip (E17 M5 T4b2b), decoded whole; read as the DLL in the original's batch (E17 M6
+        // T6c1: sample 1 has a residue from 128, CLT-Q68).
         batch.add("w.bik", &h3_bink::build::sample(1)).unwrap();
         assert_eq!(batch.video("W.BIK").map(|v| v.frames.len()), Some(8));
+        let mut original = Batch::with_bugs(Bugs::Original);
+        original.add("w.bik", &h3_bink::build::sample(1)).unwrap();
+        assert_ne!(original.video("w.bik"), batch.video("w.bik"));
         assert_eq!(batch.sprite("t.def"), None);
         assert_eq!(
             batch.add("x.txt", b""),

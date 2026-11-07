@@ -35,7 +35,12 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   through `h3_ui::paint`, R4-2; no capture in the original); **T6b** the recordings, cut in two
   by the user (2026-11-07): **T6b1** done (the deck and the two boats as situations, CLT-Q5),
   **T6b2** done (the Demons' dissolve, CLT-Q67; R4-9 moved into T7); **T6c** `h3-bink` as
-  `BINKW32.DLL` (CLT-Q30), on its own, next.
+  `BINKW32.DLL` (CLT-Q30), cut in two by the user (2026-11-07): **T6c1** done (the decoder:
+  the ten clips and the samples exact against the DLL's planes; CLT-Q68 answered fix; design
+  §7.27); **T6c2** next: the captures' listed DCT pixels (`result-retreat` at 2 700 and 3 000,
+  `defended`, `auto-retreat-flee` and `-surrender`, `end`) captured again as recorded, `drawn`
+  recorded (the result window's clip frames' digests moved with the decoder), the runbook's and
+  `TRAPS.md`'s CLT-Q30 lines, CLT-Q30 closed.
 
 ### E17 M6 T7 — M6's closure
 

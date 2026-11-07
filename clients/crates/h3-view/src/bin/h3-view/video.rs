@@ -1,15 +1,17 @@
 //! `h3-view video` (E17 M5 T4b2a): the Bink clips of a video archive decoded by `h3-bink`, each
 //! written out as the file it is and as its frames in raw YUV 4:2:0 (the bytes of FFmpeg's
 //! `rawvideo` output in `yuv420p`), and compared with a reference decoding of the same files
-//! (FFmpeg's: `clients/scripts/bink-check.sh`). The synthetic samples (`h3_bink::build::sample`)
-//! go the same way, so that FFmpeg checks the block types the game's clips may not use.
+//! (the game's `BINKW32.DLL`'s since E17 M6 T6c1, read as it reads with `--original`:
+//! `clients/scripts/bink-check.sh`; FFmpeg's before). The synthetic samples
+//! (`h3_bink::build::sample`) go the same way, so that the reference checks the block types the
+//! game's clips may not use.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_assets::vid::VidArchive;
-use h3_bink::{Clip, Decoder, Frame};
+use h3_bink::{Clip, Decoder, Frame, Reading};
 
 use crate::connect::printable;
 
@@ -21,14 +23,18 @@ pub struct Options {
     out: PathBuf,
     reference: Option<PathBuf>,
     samples: Vec<u64>,
+    /// `--original`: the residues read as the DLL reads them (CLT-Q68).
+    reading: Reading,
 }
 
 impl Options {
-    /// Parses `[<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...`.
+    /// Parses `[<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
+    /// [--original]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let (mut vid, mut out, mut reference) = (None, None, None);
         let (mut names, mut samples) = (Vec::new(), Vec::new());
+        let mut reading = Reading::Fixed;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -40,6 +46,7 @@ impl Options {
                 "--vid" => vid = Some(PathBuf::from(value()?)),
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--reference" => reference = Some(PathBuf::from(value()?)),
+                "--original" => reading = Reading::Original,
                 "--sample" => {
                     let v = value()?;
                     samples.push(v.parse().map_err(|_| format!("video: bad seed `{v}`"))?);
@@ -56,6 +63,7 @@ impl Options {
             out: out.unwrap_or_else(|| repo.join("clients/out/video")),
             reference,
             samples,
+            reading,
         })
     }
 
@@ -110,11 +118,13 @@ fn raw(frames: &[Frame]) -> Vec<u8> {
 }
 
 /// Decodes one file; prints its line and each failing frame; the frames decoded.
-fn decode(name: &str, bytes: &[u8]) -> Result<(Vec<Frame>, bool), String> {
+fn decode(name: &str, bytes: &[u8], reading: Reading) -> Result<(Vec<Frame>, bool), String> {
     // Printed without its control characters (E17 M5 T8b1, R2b-6).
     let name = printable(name);
     let clip = Clip::parse(bytes).map_err(|e| format!("{name}: {e:?}"))?;
-    let mut decoder = Decoder::new(&clip).map_err(|e| format!("{name}: {e:?}"))?;
+    let mut decoder = Decoder::new(&clip)
+        .map_err(|e| format!("{name}: {e:?}"))?
+        .reading(reading);
     let mut frames = Vec::new();
     let mut clean = true;
     for n in 0..clip.frames().len() {
@@ -214,7 +224,7 @@ fn video(options: &Options) -> Result<bool, String> {
             fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))
         };
         write(options.out.join(name), bytes)?;
-        let (frames, clean) = decode(name, bytes)?;
+        let (frames, clean) = decode(name, bytes, options.reading)?;
         good &= clean;
         let ours = raw(&frames);
         write(options.out.join(format!("{stem}.yuv")), &ours)?;
@@ -253,6 +263,7 @@ mod tests {
             "r",
             "--sample",
             "7",
+            "--original",
         ]))
         .unwrap();
         assert_eq!(
@@ -260,10 +271,14 @@ mod tests {
             (Path::new("v.vid"), Path::new("o"))
         );
         assert_eq!(o.reference.as_deref(), Some(Path::new("r")));
-        assert_eq!(o.samples, [7]);
+        assert_eq!(
+            (o.samples.as_slice(), o.reading),
+            ([7].as_slice(), Reading::Original)
+        );
         assert!(o.wants("WIN3.BIK") && o.wants("lbloop.bik") && !o.wants("RTLOOP.BIK"));
         let samples_only = Options::parse(&args(&["--sample", "1"])).unwrap();
         assert!(!samples_only.wants("WIN3.BIK"));
+        assert_eq!(samples_only.reading, Reading::Fixed);
         assert!(Options::parse(&args(&["--sample", "x"])).is_err());
         assert!(Options::parse(&args(&["--vid"])).is_err());
         assert!(Options::parse(&args(&["--what"])).is_err());
@@ -278,6 +293,7 @@ mod tests {
             out: dir.clone(),
             reference: None,
             samples: vec![3],
+            reading: Reading::Fixed,
         };
         assert_eq!(video(&options), Ok(true));
         let ours = fs::read(dir.join("sample-3.yuv")).unwrap();
@@ -332,6 +348,7 @@ mod tests {
             out: out.clone(),
             reference: None,
             samples: Vec::new(),
+            reading: Reading::Original,
         };
         assert_eq!(video(&options), Ok(false));
         assert!(out.join("\u{1b}[2Jgood.bik").exists());

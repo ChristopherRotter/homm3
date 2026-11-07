@@ -5828,3 +5828,44 @@ the setup's baseline (`check.sh`) passed and CI's run on `master` was green.
   entries, `redraw_unclipped_flag` and `_2`, the six setters cited no more), `scripts/exe.py
   check`, `h3-view gate`, `h3drive.py drawn --record` (only `demons`' 8 digests moved), `frames
   --only demons` as recorded.
+
+### M6 T6c1: the clips decoded as `BINKW32.DLL` (2026-11-07)
+
+T6c (`h3-bink` as `BINKW32.DLL`, CLT-Q30) cut in two by the user at its start: T6c1 the decoder,
+T6c2 the captures. The original data staged by the file tool (the PC's shell did not start).
+
+- **Read** (design §7.27): `ExpandPlane` 0x10002040's DCTs 0x10001640 and 0x10001A50, their rows'
+  output 0x100019A0 and 0x10001DD0, the tables' builder 0x10001E70, the residue 0x10010630; a
+  scratch symbolic interpreter over the DLL's instructions gave each pass's rounding points
+  (columns and rows round at different places; the add variant's arithmetic the same). The
+  game's control word 0x27F (`Heroes3.exe`'s CRT helpers restore it).
+- **Found:** `binkprobe.exe` (mingw) ran at 0x37F; set to 0x27F now, the planes the same at both.
+  The DLL's dequantizers equal the reading's (all 2 048, `binkprobe tables`). On synthetic clips:
+  the DLL never reads a file's last 8 bytes; a vector outside the plane reads memory there (the
+  samples now end with 8 zeros and keep their vectors inside); the residue's signed-byte masks
+  from 128 (CLT-Q68).
+- **Asked:** CLT-Q68, answered fix: FFmpeg's reading shown, the DLL's for the comparisons.
+- **Built:** `h3_bink::x87` (the x87 at 53 bits in integers: `X`, `add`, `sub`, `mul`, `single`,
+  `pixel`, `ratio`; public, hidden, for `tests/x87.rs`), `dsp::dll_put` and `dll_add`
+  (`dll_columns`, `dll_column`, `dll_row`), `tables::DLL_SCALE`, `dll_quantizers`, `DLL_INTRA`,
+  `DLL_INTER`; FFmpeg's integer transform, its quantizers and the read positions removed;
+  `Reading` and `Decoder::reading`, the residue in both readings; `check::frames_read`;
+  `build::TAIL`, `build`'s `inside`. `h3_view::clip::Video::decode(bytes, bugs)`,
+  `Batch::with_bugs` (the sequences' batch the original's), `h3-view video --original`.
+  `binkprobe tables` and its control word; `bink-dll.py`; `bink-check.sh` the DLL's;
+  `bink-reference.py` (FFmpeg's, PyAV) removed.
+- **Checked:** `bink-check.sh`: the ten clips (759 frames) and samples 1 to 8 (coefficients to
+  15 bits) exact against the DLL; samples 1 to 3 at 256 × 120, three clips of large DCT
+  coefficients and `dsp`'s test blocks (an overflowing word among them) exact by hand;
+  `tests/x87.rs` against the hardware's binary64. Cost: the ten clips 300 to 355 ms (+18 %),
+  `Defendall` 73 to 126 ms; no fallback needed (the user's note: an imperfect playback would do
+  if it were too costly).
+- **Reviewed** (a fresh reviewer, the diff and the DLL's code: it traced the transforms from
+  the disassembly itself): no arithmetic or transcription defect; fixed: `x87`'s lower bound
+  (2^-76, not 2^-160), `ratio` exact for every positive pair (it was for n/d ≥ 2^-11 only;
+  `x87` is public), the crate doc's FFmpeg claim (now what it takes from FFmpeg, checked at
+  T4b2a), the check's large coefficients (the samples' to 15 bits, the overflow block measured).
+  Noted: no check tells the 53-bit precision from 64 (the reading's).
+- **Gates:** `check.sh`, the scoped verify with original data (its first run failed
+  `check-exe-map`: 0x61E646 cited, `crt_math_error_return` entered), `scripts/exe.py check`,
+  `h3-view gate`, `bink-check.sh`. `drawn` not run (T6c2).

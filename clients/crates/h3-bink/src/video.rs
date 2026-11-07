@@ -15,8 +15,8 @@ use alloc::vec::Vec;
 
 use crate::bits::Bits;
 use crate::dsp;
-use crate::tables::{INTER_QUANT, INTRA_QUANT, PATTERNS, RUN_BITS, SCAN};
-use crate::{Clip, Error, MAX_HEIGHT, MAX_WIDTH};
+use crate::tables::{DLL_INTER, DLL_INTRA, PATTERNS, RUN_BITS, SCAN};
+use crate::{Clip, Error, MAX_HEIGHT, MAX_WIDTH, Reading};
 
 /// The video flags' alpha plane (FFmpeg's `BINK_FLAG_ALPHA`).
 pub const FLAG_ALPHA: u32 = 0x0010_0000;
@@ -223,6 +223,8 @@ pub struct Decoder {
     bundles: Bundles,
     /// How many frames were decoded (`frame_num`): the first is the key frame.
     decoded: u32,
+    /// The residues' reading (CLT-Q68).
+    reading: Reading,
 }
 
 /// Where a plane's blocks are: the plane's grid, its stride and the last block's top left (the
@@ -267,7 +269,15 @@ impl Decoder {
             },
             bundles: Bundles::new(wide * high),
             decoded: 0,
+            reading: Reading::Fixed,
         })
+    }
+
+    /// The decoder reading as `reading` says (default [`Reading::Fixed`]).
+    #[must_use]
+    pub fn reading(mut self, reading: Reading) -> Self {
+        self.reading = reading;
+        self
     }
 
     /// The frame as last decoded (all 0 before the first).
@@ -310,6 +320,7 @@ impl Decoder {
             last: 8 * (high - 1) * stride + 8 * (wide - 1),
         };
         let ybias = if key { -15 } else { 0 };
+        let reading = self.reading;
         let Self { frame, bundles, .. } = self;
         let pixels = &mut frame.planes[index % 3].pixels;
         bundles.reset();
@@ -319,7 +330,7 @@ impl Decoder {
             }
             for bx in 0..grid.wide {
                 let at = 8 * by * stride + 8 * bx;
-                block_at(bits, bundles, pixels, grid, at, ybias)?;
+                block_at(bits, bundles, pixels, grid, at, (ybias, reading))?;
             }
         }
         bits.align32();
@@ -334,7 +345,7 @@ fn block_at(
     pixels: &mut [u8],
     grid: Grid,
     at: usize,
-    ybias: i32,
+    (ybias, reading): (i32, Reading),
 ) -> Result<(), Error> {
     let stride = grid.stride;
     // The pixel at position `p` of the block (`coordmap`), its row the position's high bits.
@@ -371,15 +382,14 @@ fn block_at(
             let mut block = [0; 64];
             block[0] = bundles.take(INTRA_DC);
             let q = bundles.take(INTRA_Q);
-            let read = coefficients(bits, &mut block)?;
-            dsp::unquantize(&mut block, &INTRA_QUANT[(q & 15) as usize], read.as_slice());
-            dsp::idct_put(pixels, at, stride, &block);
+            coefficients(bits, &mut block)?;
+            dsp::dll_put(pixels, at, stride, &block, &DLL_INTRA[(q & 15) as usize]);
         }
         3 => {
             motion(bundles, pixels, grid, at, ybias);
             let mut block = [0; 64];
             let count = bundles.take(INTER_COEFS);
-            residue(bits, &mut block, count);
+            residue(bits, &mut block, count, reading);
             dsp::add_residue(pixels, at, stride, &block);
         }
         4 => {
@@ -387,9 +397,8 @@ fn block_at(
             let mut block = [0; 64];
             block[0] = bundles.take(INTER_DC);
             let q = bundles.take(INTER_Q);
-            let read = coefficients(bits, &mut block)?;
-            dsp::unquantize(&mut block, &INTER_QUANT[(q & 15) as usize], read.as_slice());
-            dsp::idct_add(pixels, at, stride, &block);
+            coefficients(bits, &mut block)?;
+            dsp::dll_add(pixels, at, stride, &block, &DLL_INTER[(q & 15) as usize]);
         }
         5 => {
             let colour = bundles.colour();
@@ -437,19 +446,6 @@ fn motion(bundles: &mut Bundles, pixels: &mut [u8], grid: Grid, at: usize, ybias
     }
     for (i, &value) in copy.iter().enumerate() {
         dsp::set(pixels, at + (i & 7) + (i >> 3) * grid.stride, value);
-    }
-}
-
-/// The scan positions a block's coefficients were read at, in order.
-#[derive(Debug)]
-struct Read {
-    positions: [u8; 64],
-    count: usize,
-}
-
-impl Read {
-    fn as_slice(&self) -> &[u8] {
-        self.positions.get(..self.count).unwrap_or_default()
     }
 }
 
@@ -512,20 +508,13 @@ fn coefficient(bits: &mut Bits<'_>, magnitude: i32) -> i32 {
 
 /// `read_dct_coeffs` (the quantizer index given by the bundles): the AC coefficients into
 /// `block` by the scan order, from the largest magnitude down.
-fn coefficients(bits: &mut Bits<'_>, block: &mut [i32; 64]) -> Result<Read, Error> {
+fn coefficients(bits: &mut Bits<'_>, block: &mut [i32; 64]) -> Result<(), Error> {
     if !bits.has(4) {
         return Err(Error::Invalid("coefficients"));
     }
-    let mut read = Read {
-        positions: [0; 64],
-        count: 0,
-    };
     let mut lists = Lists::new(&DCT_LISTS);
-    let mut store = |read: &mut Read, position: u8, value: i32| {
+    let mut store = |position: u8, value: i32| {
         block[usize::from(SCAN[usize::from(position & 63)])] = value;
-        // At most 63 coefficients: each position is read once.
-        read.positions[read.count & 63] = position;
-        read.count += 1;
     };
     let mut magnitude = bits.read(4) as i32 - 1;
     while magnitude >= 0 {
@@ -549,7 +538,7 @@ fn coefficients(bits: &mut Bits<'_>, block: &mut [i32; 64]) -> Result<Read, Erro
                             lists.insert_single(p);
                         } else {
                             let value = coefficient(bits, magnitude);
-                            store(&mut read, p, value);
+                            store(p, value);
                         }
                     }
                 }
@@ -561,7 +550,7 @@ fn coefficients(bits: &mut Bits<'_>, block: &mut [i32; 64]) -> Result<Read, Erro
                 }
                 _ => {
                     let value = coefficient(bits, magnitude);
-                    store(&mut read, position, value);
+                    store(position, value);
                     lists.set(at, 0, 0);
                     at += 1;
                 }
@@ -569,7 +558,7 @@ fn coefficients(bits: &mut Bits<'_>, block: &mut [i32; 64]) -> Result<Read, Erro
         }
         magnitude -= 1;
     }
-    Ok(read)
+    Ok(())
 }
 
 /// `read_residue`'s state: the stream, the block, the coefficients set so far by their place in
@@ -580,15 +569,27 @@ struct Residue<'b, 'a> {
     set: [u8; 64],
     sets: usize,
     left: i32,
+    /// The DLL's bytes ([`Reading::Original`]): each coefficient kept a signed byte.
+    bytes: bool,
 }
 
 impl Residue<'_, '_> {
+    /// `value`, a signed byte's when the DLL's bytes are read.
+    fn kept(&self, value: i16) -> i16 {
+        if self.bytes {
+            i16::from(value as i8)
+        } else {
+            value
+        }
+    }
+
     /// Sets the coefficient at scan position `position` to ±`mask`; false once the count is spent.
     fn start(&mut self, position: u8, mask: i16) -> bool {
         let at = SCAN[usize::from(position & 63)];
         self.set[self.sets & 63] = at;
         self.sets += 1;
-        self.block[usize::from(at & 63)] = if self.bits.flag() { -mask } else { mask };
+        let value = if self.bits.flag() { -mask } else { mask };
+        self.block[usize::from(at & 63)] = self.kept(value);
         self.left -= 1;
         self.left >= 0
     }
@@ -601,11 +602,12 @@ impl Residue<'_, '_> {
                 continue;
             }
             let at = usize::from(self.set[i & 63] & 63);
-            if self.block[at] < 0 {
-                self.block[at] -= mask;
+            let value = self.block[at];
+            self.block[at] = self.kept(if value < 0 {
+                value - mask
             } else {
-                self.block[at] += mask;
-            }
+                value + mask
+            });
             self.left -= 1;
             if self.left < 0 {
                 return false;
@@ -616,18 +618,33 @@ impl Residue<'_, '_> {
 }
 
 /// `read_residue`: the residue's coefficients into `block`, bit plane by bit plane from the
-/// largest, until `count` + 1 of them were set or refined (`masks_count`).
-fn residue(bits: &mut Bits<'_>, block: &mut [i16; 64], count: i32) {
+/// largest (`n` + 1 of them, `n` the first 3 bits), until `count` + 1 coefficients were set or
+/// refined (`masks_count`).
+///
+/// [`Reading::Original`] reads as `BINKW32.DLL` does (0x10010630, E17 M6 T6c1): the mask and the
+/// coefficients signed bytes, the mask halved by an arithmetic shift. Below a first mask of 128
+/// that is the same; from 128 (0x80, −128 as a byte) its masks run −128, −64, …, −1, so each
+/// coefficient started below 128 takes the opposite sign and each refinement shrinks it, where
+/// the format means magnitudes up to 255 ([`Reading::Fixed`], FFmpeg's). CLT-Q68 (answered
+/// fix): no game clip has such a residue.
+fn residue(bits: &mut Bits<'_>, block: &mut [i16; 64], count: i32, reading: Reading) {
     let mut lists = Lists::new(&RESIDUE_LISTS);
-    let mut mask: i16 = 1 << bits.read(3);
+    let planes = bits.read(3);
+    let bytes = reading == Reading::Original;
+    let mut mask = if bytes {
+        i16::from((1u8 << planes).cast_signed())
+    } else {
+        1 << planes
+    };
     let mut state = Residue {
         bits,
         block,
         set: [0; 64],
         sets: 0,
         left: count,
+        bytes,
     };
-    while mask != 0 {
+    for _ in 0..=planes {
         if !state.refine(mask) {
             return;
         }
@@ -678,6 +695,7 @@ mod tests {
     use super::*;
     use crate::build::{self, BitWriter, Block, Header, Run};
     use crate::check;
+    use crate::x87::X;
     use alloc::vec;
     use proptest::prelude::*;
 
@@ -789,28 +807,23 @@ mod tests {
         }
     }
 
-    /// The pixels `block` (AC coefficients by scan position, the DC apart) gives through
-    /// unquantization and the inverse DCT put on zeros, or added to `base`.
+    /// The pixels `block` (AC coefficients by scan position, the DC apart) gives through the
+    /// DLL's inverse DCT put on zeros, or added to `base`.
     fn transformed(
         dc: i32,
-        quant: &[i32; 64],
+        quant: &[X; 64],
         coefficients: &[i16; 64],
         base: Option<u8>,
     ) -> [u8; 64] {
         let mut block = [0; 64];
         block[0] = dc;
-        let mut read = Vec::new();
         for (p, &c) in coefficients.iter().enumerate().skip(1) {
-            if c != 0 {
-                block[usize::from(SCAN[p])] = i32::from(c);
-                read.push(p as u8);
-            }
+            block[usize::from(SCAN[p])] = i32::from(c);
         }
-        dsp::unquantize(&mut block, quant, &read);
         let mut pixels = [base.unwrap_or(0); 64];
         match base {
-            None => dsp::idct_put(&mut pixels, 0, 8, &block),
-            Some(_) => dsp::idct_add(&mut pixels, 0, 8, &block),
+            None => dsp::dll_put(&mut pixels, 0, 8, &block, quant),
+            Some(_) => dsp::dll_add(&mut pixels, 0, 8, &block, quant),
         }
         pixels
     }
@@ -845,11 +858,11 @@ mod tests {
             Block::Fill(50),
         ];
         let frame = decode(&mut d, [&luma, NONE, NONE]).unwrap();
-        // A DC alone: 800 × 65536 >> 11, then (v + 127) >> 8 everywhere.
+        // A DC alone: 800 × 0.125 (q 0's DC dequantizer) everywhere.
         assert_eq!(block(&frame, 0, 0), [100; 64]);
         assert_eq!(
             block(&frame, 0, 1),
-            transformed(1234, &INTRA_QUANT[7], &coefficients, None)
+            transformed(1234, &DLL_INTRA[7], &coefficients, None)
         );
         let inter = [
             Block::Skip,
@@ -865,7 +878,7 @@ mod tests {
         let frame = decode(&mut d, [&inter, NONE, NONE]).unwrap();
         assert_eq!(
             block(&frame, 0, 2),
-            transformed(-300, &INTER_QUANT[15], &coefficients, Some(50))
+            transformed(-300, &DLL_INTER[15], &coefficients, Some(50))
         );
     }
 
@@ -907,6 +920,42 @@ mod tests {
         assert_eq!(block(&frame, 0, 0), expected);
         assert_eq!(block(&frame, 0, 1), [10; 64]);
         assert_eq!(block(&frame, 0, 3), [42; 64]);
+    }
+
+    #[test]
+    fn a_residue_from_128_reads_as_the_format_means_or_as_the_dll() {
+        // A first bit plane of 128 (CLT-Q68): fixed, the coefficients as written; the DLL's
+        // byte masks (−128, −64, …) give the later ones the other sign, each refinement
+        // shrinking them: 5 (4, then 1) is −3, −3 (2, then 1) is 1.
+        let mut coefficients = [0i16; 64];
+        for (p, v) in [(0, 128), (9, 5), (30, -3)] {
+            coefficients[p] = v;
+        }
+        // The key frame: its vector's y biased by −15.
+        let luma = [
+            Block::Fill(100),
+            Block::Residue {
+                x: -8,
+                y: 15,
+                coefficients,
+            },
+        ];
+        for (reading, values) in [
+            (Reading::Fixed, [128, 5, -3]),
+            (Reading::Original, [-128, -3, 1]),
+        ] {
+            let mut d = decoder(16, 8).reading(reading);
+            let frame = decode(&mut d, [&luma, NONE, NONE]).unwrap();
+            let pixels = block(&frame, 0, 1);
+            for ((p, _), v) in [(0, 128), (9, 5), (30, -3)].into_iter().zip(values) {
+                assert_eq!(
+                    pixels[usize::from(SCAN[p])],
+                    100u8.wrapping_add(v as u8),
+                    "{reading:?} {p}"
+                );
+            }
+            assert_eq!(pixels[1], 100);
+        }
     }
 
     #[test]
@@ -1160,34 +1209,40 @@ mod tests {
         );
     }
 
-    /// The hashes of the samples' frames as FFmpeg 6.1.1's decoder gives them (`bink-check.sh`
-    /// at E17 M5 T4b2a, through PyAV; seeds 1 to 8 checked there).
+    /// The samples' frames as the game's `BINKW32.DLL` decodes them, read as it reads
+    /// ([`Reading::Original`]): the hashes of its own planes (`bink-check.sh` at E17 M6 T6c1,
+    /// `binkprobe frames` in YUY2), seeds 1 to 8 checked there. Fixed, a residue starting at
+    /// 128 reads as the format means (CLT-Q68): each of these seeds has one.
     #[test]
-    fn the_samples_decode_as_ffmpeg_decodes_them() {
-        for (seed, hash) in [
-            (1, 0x474c_73f5_718c_0ddc_u64),
-            (2, 0x6329_f584_b68e_62e6),
-            (3, 0x5542_c890_ab86_20a4),
+    fn the_samples_decode_as_the_dll_decodes_them() {
+        for (seed, dll, fixed) in [
+            (1, 0x364d_b0e2_1181_c746_u64, 0xc457_f78a_4a92_ae30_u64),
+            (2, 0x8b41_2ed7_9b56_8b91, 0xa74a_0acc_86f5_57e7),
+            (3, 0xa75c_a94e_54d9_84b3, 0x094c_1c65_bc81_05f9),
         ] {
-            let frames = check::frames(&build::sample(seed)).unwrap();
+            let bytes = build::sample(seed);
+            let frames = check::frames_read(&bytes, Reading::Original).unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
-            assert_eq!(check::hash(&frames), hash, "seed {seed}");
+            assert_eq!(check::hash(&frames), dll, "seed {seed}");
+            let frames = check::frames(&bytes).unwrap();
+            assert_eq!(check::hash(&frames), fixed, "seed {seed}, fixed");
         }
     }
 
     /// The samples at the game's clips' size, 256 × 120 (E17 M5 T8b1, R2a-4): the chroma's
-    /// block grid holds four rows below the picture, which motion vectors read and write.
-    /// Hashes of FFmpeg's decoding through PyAV (`bink-reference.py`; PyAV 19.0.2, whose
-    /// FFmpeg 9.0.2's `bink.c` is 6.1.1's but for includes and fall-through markers, and which
-    /// gives the 256 × 48 hashes above too).
+    /// block grid holds four rows below the picture, which motion vectors read and write, as the
+    /// DLL does (its planes' hashes, E17 M6 T6c1: these three clips through `bink-dll.py` by
+    /// hand, as `h3-view video` writes the 256 × 48 samples only).
     #[test]
-    fn the_samples_at_the_games_size_decode_as_ffmpeg_decodes_them() {
+    fn the_samples_at_the_games_size_decode_as_the_dll_decodes_them() {
         for (seed, hash) in [
-            (1, 0x3b26_7165_5755_2c84_u64),
-            (2, 0x4aba_eef3_e4de_546f),
-            (3, 0x31dd_6ca1_a9da_5973),
+            (1, 0x8ea7_e25f_b74f_523e_u64),
+            (2, 0x8efd_ed6c_c025_bbbc),
+            (3, 0x460d_e921_6215_2047),
         ] {
-            let frames = check::frames(&build::sample_sized(seed, 256, 120)).unwrap();
+            let frames =
+                check::frames_read(&build::sample_sized(seed, 256, 120), Reading::Original)
+                    .unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
             assert_eq!(frames[0].planes()[1].pixels().len(), 128 * 64);
             assert_eq!(check::hash(&frames), hash, "seed {seed}");

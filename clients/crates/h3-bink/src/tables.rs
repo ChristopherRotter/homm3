@@ -1,8 +1,10 @@
 //! The decoder's tables, from FFmpeg 6.1.1's `libavcodec/binkdata.h` (Copyright (C) 2009
-//! Konstantin Shishkov; LGPL-2.1-or-later, here under the GPL-2.0-or-later: the crate's header)
-//! and `binkb_calc_quant`'s scale factors in `libavcodec/bink.c`, converted by a script from
-//! FFmpeg's sources (the values unchanged), with the quantizer tables revision `b` derives from
-//! them at compile time.
+//! Konstantin Shishkov; LGPL-2.1-or-later, here under the GPL-2.0-or-later: the crate's header),
+//! converted by a script from FFmpeg's sources (the values unchanged); and the dequantizers
+//! `BINKW32.DLL` derives from them at compile time (E17 M6 T6c1: its scale factors and its
+//! arithmetic, not FFmpeg's `binkb_calc_quant`).
+
+use crate::x87::X;
 
 /// The coefficients' scan order (`bink_scan`).
 pub(crate) const SCAN: [u8; 64] = [
@@ -153,91 +155,91 @@ pub(crate) const NUM: [u8; 16] = [1, 4, 5, 2, 7, 8, 3, 7, 4, 9, 5, 6, 7, 8, 9, 1
 /// The quantizers' scales' denominators (`binkb_den`).
 pub(crate) const DEN: [u8; 16] = [1, 3, 3, 1, 3, 3, 1, 2, 1, 2, 1, 1, 1, 1, 1, 1];
 
-/// The DCT's scale factors (`binkb_calc_quant`'s `s`).
-pub(crate) const SCALE: [i64; 64] = [
-    1_073_741_824,
-    1_489_322_693,
-    1_402_911_301,
-    1_262_586_814,
-    1_073_741_824,
-    843_633_538,
-    581_104_888,
-    296_244_703,
-    1_489_322_693,
-    2_065_749_918,
-    1_945_893_874,
-    1_751_258_219,
-    1_489_322_693,
-    1_170_153_332,
-    806_015_634,
-    410_903_207,
-    1_402_911_301,
-    1_945_893_874,
-    1_832_991_949,
-    1_649_649_171,
-    1_402_911_301,
-    1_102_260_336,
-    759_250_125,
-    387_062_357,
-    1_262_586_814,
-    1_751_258_219,
-    1_649_649_171,
-    1_484_645_031,
-    1_262_586_814,
-    992_008_094,
-    683_307_060,
-    348_346_918,
-    1_073_741_824,
-    1_489_322_693,
-    1_402_911_301,
-    1_262_586_814,
-    1_073_741_824,
-    843_633_538,
-    581_104_888,
-    296_244_703,
-    843_633_538,
-    1_170_153_332,
-    1_102_260_336,
-    992_008_094,
-    843_633_538,
-    662_838_617,
-    456_571_181,
-    232_757_969,
-    581_104_888,
-    806_015_634,
-    759_250_125,
-    683_307_060,
-    581_104_888,
-    456_571_181,
-    314_491_699,
-    160_326_478,
-    296_244_703,
-    410_903_207,
-    387_062_357,
-    348_346_918,
-    296_244_703,
-    232_757_969,
-    160_326_478,
-    81_733_730,
+/// `BINKW32.DLL`'s scale factors of the inverse DCT (E17 M6 T6c1, CLT-Q30): binary64 bits by
+/// natural position (row `r`, column `c`), as its table builder 0x10001E70 leaves them: 1 where
+/// both of `r` and `c` are 0 or 4, `√2 · cos(kπ/16)` where one is (`k` the other), else
+/// `2 · cos(rπ/16) · cos(cπ/16)`; `fcos` of `k · π / 16` (π the binary64 one, the product at
+/// 53 bits), `fsqrt 2` and the products at the game's 53-bit precision. Numbers computed from
+/// that reading (exact rational arithmetic, `fcos` as cos rounded to 64 bits), not copied: the
+/// tables below built from them equal the DLL's own (`binkprobe tables`).
+const DLL_SCALE: [u64; 64] = [
+    0x3FF0000000000000,
+    0x3FF63150B15E8536,
+    0x3FF4E7AE9144F0FC,
+    0x3FF2D062EF88E31A,
+    0x3FF0000000000000,
+    0x3FE92469C0DCF32E,
+    0x3FE1517A7BDB3896,
+    0x3FD1A855DEC071B7,
+    0x3FF63150B15E8536,
+    0x3FFEC835E79946A3,
+    0x3FFCFEFEFC82FF2A,
+    0x3FFA18851AD8E489,
+    0x3FF63150B15E8536,
+    0x3FF16FC7DCEB483F,
+    0x3FE8056948C8D24C,
+    0x3FD87DE2A6AEA965,
+    0x3FF4E7AE9144F0FC,
+    0x3FFCFEFEFC82FF2A,
+    0x3FFB504F333F9DE6,
+    0x3FF894E984D2E2BC,
+    0x3FF4E7AE9144F0FC,
+    0x3FF06CCA1C148593,
+    0x3FE6A09E667F3BCD,
+    0x3FD7121A5527FE8D,
+    0x3FF2D062EF88E31A,
+    0x3FFA18851AD8E489,
+    0x3FF894E984D2E2BC,
+    0x3FF61F78A9ABAA59,
+    0x3FF2D062EF88E31A,
+    0x3FED906BCF328D47,
+    0x3FE45D3819F43821,
+    0x3FD4C35A264FCE38,
+    0x3FF0000000000000,
+    0x3FF63150B15E8536,
+    0x3FF4E7AE9144F0FC,
+    0x3FF2D062EF88E31A,
+    0x3FF0000000000000,
+    0x3FE92469C0DCF32E,
+    0x3FE1517A7BDB3896,
+    0x3FD1A855DEC071B7,
+    0x3FE92469C0DCF32E,
+    0x3FF16FC7DCEB483F,
+    0x3FF06CCA1C148593,
+    0x3FED906BCF328D47,
+    0x3FE92469C0DCF32E,
+    0x3FE3C10EACA8AB4F,
+    0x3FDB36B92C91E7D1,
+    0x3FCBBF35A2CD45E9,
+    0x3FE1517A7BDB3896,
+    0x3FE8056948C8D24C,
+    0x3FE6A09E667F3BCD,
+    0x3FE45D3819F43821,
+    0x3FE1517A7BDB3896,
+    0x3FDB36B92C91E7D1,
+    0x3FD2BEC333018868,
+    0x3FC31CC69BA2EC37,
+    0x3FD1A855DEC071B7,
+    0x3FD87DE2A6AEA965,
+    0x3FD7121A5527FE8D,
+    0x3FD4C35A264FCE38,
+    0x3FD1A855DEC071B7,
+    0x3FCBBF35A2CD45E9,
+    0x3FC31CC69BA2EC37,
+    0x3FB37CA1866B95D2,
 ];
 
-/// Revision `b`'s quantizer tables for a seed (`binkb_calc_quant`): for each of the 16 quantizer
-/// indices, the factor of each coefficient by its position in the scan order, in FFmpeg's 64-bit
-/// integer arithmetic (each fits in an `i32`; the compiler checks the arithmetic).
-const fn quantizers(seed: &[u8; 64]) -> [[i32; 64]; 16] {
-    let mut inverse = [0; 64];
-    let mut i = 0;
-    while i < 64 {
-        inverse[SCAN[i] as usize] = i;
-        i += 1;
-    }
-    let mut out = [[0; 64]; 16];
+/// Revision `b`'s dequantizers as `BINKW32.DLL` builds them (0x10001E70): for each of the 16
+/// quantizer indices `q` and each natural position `i`, `seed[i] · NUM[q] / (16 · DEN[q])`, times
+/// the scale factor, over 8, each step at 53 bits, stored as binary32 (`fstp dword`).
+const fn dll_quantizers(seed: &[u8; 64]) -> [[X; 64]; 16] {
+    let mut out = [[X::ZERO; 64]; 16];
     let mut q = 0;
     while q < 16 {
         let mut i = 0;
         while i < 64 {
-            let factor = seed[i] as i64 * SCALE[i] * NUM[q] as i64 / (DEN[q] as i64 * (1 << 18));
-            out[q][inverse[i]] = factor as i32;
+            let ratio = X::ratio(seed[i] as i64 * NUM[q] as i64, 16 * DEN[q] as i64);
+            out[q][i] = ratio.mul(X::from_bits64(DLL_SCALE[i])).scaled(-3).single();
             i += 1;
         }
         q += 1;
@@ -245,32 +247,35 @@ const fn quantizers(seed: &[u8; 64]) -> [[i32; 64]; 16] {
     out
 }
 
-/// The intra blocks' quantizers (`binkb_intra_quant`), by quantizer index and scan position.
-pub(crate) const INTRA_QUANT: [[i32; 64]; 16] = quantizers(&INTRA_SEED);
-/// The inter blocks' quantizers (`binkb_inter_quant`), by quantizer index and scan position.
-pub(crate) const INTER_QUANT: [[i32; 64]; 16] = quantizers(&INTER_SEED);
+/// The DLL's intra blocks' dequantizers (0x1001B2F8), by quantizer index and natural position.
+pub(crate) const DLL_INTRA: [[X; 64]; 16] = dll_quantizers(&INTRA_SEED);
+/// The DLL's inter blocks' dequantizers (0x1001C2F8), by quantizer index and natural position.
+pub(crate) const DLL_INTER: [[X; 64]; 16] = dll_quantizers(&INTER_SEED);
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// The sums and first row a Python transcription of `binkb_calc_quant` gives from the same
-    /// tables (the session's check, E17 M5 T4b2a).
+    /// The DLL's own tables (`binkprobe tables`, E17 M6 T6c1: intra then inter, 16 × 64
+    /// binary32 values each as little-endian bits): their FNV-1a hash, and a few values.
     #[test]
-    fn the_quantizers_are_ffmpegs() {
-        let sum = |t: &[[i32; 64]; 16]| t.iter().flatten().map(|&v| i64::from(v)).sum::<i64>();
-        assert_eq!(sum(&INTRA_QUANT), 463_567_992);
-        assert_eq!(sum(&INTER_QUANT), 357_351_665);
-        assert_eq!(
-            INTRA_QUANT[0][..8],
-            [
-                65536, 90901, 124_988, 173_364, 85626, 91511, 192_997, 160_332
-            ]
-        );
-        assert_eq!(INTER_QUANT[15][60..], [335_913, 171_247, 189_595, 102_890]);
-        // The same function at run time (the constants are the compiler's evaluation).
-        assert_eq!(quantizers(&INTRA_SEED), INTRA_QUANT);
-        assert_eq!(quantizers(&INTER_SEED), INTER_QUANT);
+    fn the_dequantizers_are_the_dlls() {
+        let mut hash: u64 = 0xCBF2_9CE4_8422_2325;
+        for table in [&DLL_INTRA, &DLL_INTER] {
+            for row in table {
+                for v in row {
+                    for byte in v.to_bits32().unwrap_or(0).to_le_bytes() {
+                        hash = (hash ^ u64::from(byte)).wrapping_mul(0x0100_0000_01B3);
+                    }
+                }
+            }
+        }
+        assert_eq!(hash, 0xCE5B_7600_EF7F_3C45);
+        // q 0's DC: 16 · 1 / 16 · 1 / 8.
+        assert_eq!(DLL_INTRA[0][0].to_bits32(), Some(0x3E00_0000));
+        // Rebuilt at run time: the constants are the compiler's evaluation.
+        assert_eq!(dll_quantizers(&INTRA_SEED), DLL_INTRA);
+        assert_eq!(dll_quantizers(&INTER_SEED), DLL_INTER);
     }
 
     #[test]

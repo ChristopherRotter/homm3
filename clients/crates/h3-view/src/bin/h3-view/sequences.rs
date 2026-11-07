@@ -1356,7 +1356,8 @@ pub(crate) fn draw_frames(
     for (_, list) in &lists {
         names.extend(batch::names(list, layout));
     }
-    let mut batch = Batch::default();
+    // The original's clips' reading too (E17 M6 T6c1, CLT-Q68).
+    let mut batch = Batch::with_bugs(Bugs::Original);
     for name in &names {
         // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
         let clip = name.ends_with(".BIK");
