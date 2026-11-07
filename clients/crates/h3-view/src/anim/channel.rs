@@ -24,9 +24,9 @@ impl Player<'_> {
     /// is outlined from the hero's standing redraw on (`outline_turn_stack` 0x5A216B ran before
     /// it: the recorded `channel`, outlined through both animations), the log's line, GENRLTXT
     /// 112 with the Familiars' singular name when the side controls exactly one of them, else 113
-    /// with their plural, and the mana (*provisional*: the creatures of every channelling stack
-    /// of the side counted, named by the first's, as Fear's line, [`Player::frozen`]; the
-    /// original's are creature 43's, by each record's controller); `MagChDrn.wav` (category 2)
+    /// with their plural, and the mana (the creatures of every channelling stack the side
+    /// controls counted, a hypnotized one by its controller as 0x5A21D5 to 0x5A21EC; named by the
+    /// first's creature, *provisional*: the original's are creature 43's); `MagChDrn.wav` (category 2)
     /// and animation [`CHANNEL_DRAIN`] at the caster's corner, a frame a redraw at trunc(100 F)
     /// and a last redraw erasing it; `MagChFil.wav` and [`CHANNEL_FILL`] at the other corner the
     /// same; then each sound waited for in turn.
@@ -35,10 +35,14 @@ impl Player<'_> {
         let mut channellers = self
             .stacks
             .iter()
-            .filter(|(_, l)| l.channels && l.side == side && l.count > 0);
-        if let Some((&stack, first)) = channellers.next() {
-            let count = first.count + channellers.map(|(_, l)| l.count).sum::<u32>();
-            let line = Logged::Channeled { stack, count, mana };
+            .filter(|&(&id, l)| l.channels && l.count > 0 && self.controller(id) == side);
+        let first = channellers.next().map(|(&stack, l)| (stack, l.count));
+        let line = first.map(|(stack, count)| Logged::Channeled {
+            stack,
+            count: count + channellers.map(|(_, l)| l.count).sum::<u32>(),
+            mana,
+        });
+        if let Some(line) = line {
             self.log.push((self.clock.now, line));
         }
         let (attacker, defender) = CORNERS;

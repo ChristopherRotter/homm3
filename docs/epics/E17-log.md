@@ -5661,3 +5661,33 @@ shell did not start); the sandbox restarted once during the setup's baseline (CI
 - **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (89 as recorded), `h3drive.py
   drawn` (259: the two new sequences new, the rest the same; recorded), `h3-view gate`,
   `exe.py check` and `cited`, the scoped verify with original data.
+
+### M6 T5d2b: Ice Bolt's explosion and the Familiars' channel (2026-11-07)
+
+On `client/e17-m6-t5d2b`. Kept whole (T5d2a's size). The original data staged by the file tool
+before the PC went away (its shell did not start); the setup's baseline passed.
+
+- **Read** (design §12.24): `cast_spell`'s Ice Bolt case (0x5A0A30: `IceRayEx.wav` as 46 strikes,
+  the line, the sound waited for; Magic Arrow's case plays no sound of its own) and its common
+  tail from the hero's last frames (the channel 0x5A2170: creature 43's records not the caster's
+  side counted by their creatures, GENRLTXT 112/113 with the mana, `MagChDrn.wav` with 76 at the
+  caster's corner, `MagChFil.wav` with 75 at the other, both waited for in turn).
+- **Built** (`anim/channel.rs`; the projectile arm's `ICE_BOLT`): the new `Sound::IceBolt`,
+  `ChannelDrain`, `ChannelFill` (harvested `ice_bolt_sound` from 0x688480, `channel_sounds` from
+  0x688430 and 0x688420), `Logged::Channeled` with `battle.log.channeled`, `Casts::channellers`
+  (the ruleset's `mana_channel`) and `Live::channels`; `motion::magic` loads 75 and 76.
+- **Recorded** (a capture agent; §12.24, "Recorded"): `channel` and `channel-sound` over the new
+  hot-seat `seq-channel.toml` (Orrin with one Familiar, Crag Hack with four; each casts Ice Bolt;
+  nothing rolled), 145 frames each, all exact after one correction: the acting stack outlined
+  from the hero's standing redraw on (0x5A216B; 26 frames of each channel apart before). At
+  speed 0 no wait holds (each sound ends inside its animation): the waits past an animation are
+  tested by the unit tests only.
+- **Reviewed** (a fresh reviewer): one deviation, fixed: the line counted the Familiars by their
+  stacks' side, the original (0x5A21D5 to 0x5A21EC) and the engine by the controller
+  (`Player::controller`, a hypnotized Familiar for the other side; a test added); three tests
+  tightened (the drain's own wait, Ice Bolt's line before its wait, the cues without a
+  channeller). Order, corners, rows 112/113, the arguments, the harvested strings and the
+  samples' lengths confirmed.
+- **Gates:** `check.sh` (100 % coverage), `h3-view sequences` (91 as recorded), `h3drive.py
+  drawn` (261: the two new sequences new, the rest the same; recorded), `h3-view gate`,
+  `exe.py check` and `cited`, the scoped verify with original data.

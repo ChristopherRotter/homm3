@@ -176,7 +176,7 @@ pub enum Logged {
     /// The Familiars channel `mana` of a hero's cast to the other hero (`cast_spell` 0x5A224A to
     /// 0x5A26E0; E17 M6 T5d2b): after the cast's tail, before the channel's sounds and animations.
     Channeled {
-        /// A channelling stack of the side that gains, which names them.
+        /// A channelling stack the gaining side controls, which names them.
         stack: u8,
         /// The channelling creatures that side controls, which pick the name and verb.
         count: u32,

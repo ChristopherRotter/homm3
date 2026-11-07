@@ -15,13 +15,15 @@ use super::{
     spell_magic, tables, timeline,
 };
 use crate::anim::{
-    CHANNEL_DRAIN, CHANNEL_FILL, Caster, Casts, Command, ICE_BOLT, Logged, MagicLook, Shell, Sound,
-    Speed, SpellLook, Stage, Timeline,
+    CHANNEL_DRAIN, CHANNEL_FILL, Caster, Casts, Command, HYPNOTIZE, ICE_BOLT, Logged, MagicLook,
+    Shell, Sound, Speed, SpellLook, Stage, Timeline,
 };
 use crate::sound::Lengths;
 
 /// Ice Bolt's animation (`C08spW5`, 4 frames here, centred, translucent in the tables).
 const ICE_BOLT_LOOK: u8 = 46;
+/// Hypnotize's handle here.
+const HYPNOTIZE_SPELL: u16 = 59;
 
 /// The casts' spells with Ice Bolt (its projectile `c08spw0`–`4`) and both heroes casting, the
 /// Goblins channelling.
@@ -179,6 +181,13 @@ fn ice_bolt_s_explosion_sounds_as_its_animation_strikes_and_is_waited_for() {
     let long = lengths(&[(Sound::IceBolt, 3000)]);
     let heard = play(&armies(), &[(Some(0), events)], Some(&long), &casts);
     assert_eq!(hero_shown(&heard, 0, 5), Some(cued + 3000));
+    // The line before the wait (0x5A0AEB, then 0x5A0AFB).
+    let heard_line = heard
+        .log
+        .iter()
+        .find(|(_, l)| *l == line)
+        .map(|(at, _)| *at);
+    assert_eq!(heard_line, written);
     // Magic Arrow plays no explosion.
     let arrow = vec![cast_by(Side::Attacker, 15, 1), spell_damage(1, 12, 1)];
     let t = play(&armies(), &[(Some(0), arrow)], Some(&long), &casts);
@@ -276,12 +285,65 @@ fn the_familiars_channel_after_a_hero_s_cast() {
     let turn = |t: &Timeline| t.turns.last().map(|t| t.0);
     assert_eq!(turn(&quiet).map(|q| q - at), Some(800));
     assert_eq!(turn(&heard).map(|h| h - at), Some(400 + 2000));
+    // A drain outlasting the fill's end holds the turn by itself.
+    let long = lengths(&[(Sound::ChannelDrain, 3000), (Sound::ChannelFill, 500)]);
+    let heard = play(&armies(), &commands, Some(&long), &casts);
+    assert_eq!(turn(&heard).map(|h| h - at), Some(3000));
+}
+
+#[test]
+fn a_hypnotized_familiar_channels_for_its_controller() {
+    // The left Goblins (3) hypnotized: the defender's channel counts them with its own (0x5A21D5
+    // to 0x5A21EC: the controller), the attacker's has none to name.
+    let mut casts = channel_casts();
+    casts.spells.insert(
+        HYPNOTIZE_SPELL,
+        SpellLook {
+            original: HYPNOTIZE,
+            ..SpellLook::default()
+        },
+    );
+    let hypnotized = Event::EffectApplied {
+        target: 3,
+        spell: HYPNOTIZE_SPELL,
+        rounds: Some(2),
+    };
+    let channel = |side, mana| Event::ManaChanneled { side, mana };
+    let commands = [
+        (
+            Some(0),
+            vec![
+                hypnotized,
+                cast_by(Side::Attacker, 54, 1),
+                applied(1, 54),
+                channel(Side::Defender, 2),
+            ],
+        ),
+        (
+            Some(20_000),
+            vec![
+                cast_by(Side::Defender, 54, 0),
+                applied(0, 54),
+                channel(Side::Attacker, 1),
+            ],
+        ),
+    ];
+    let t = play(&armies(), &commands, None, &casts);
+    let lines: Vec<_> = t
+        .log
+        .iter()
+        .filter_map(|(_, l)| match l {
+            Logged::Channeled { stack, count, mana } => Some((*stack, *count, *mana)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(lines, [(2, 85, 2)]);
 }
 
 #[test]
 fn a_channel_without_a_channeller_in_sight_writes_no_line() {
-    // No stack of the gaining side channels (the record's creatures not known as such): the
-    // animations and sounds only.
+    // No stack the gaining side controls channels (the record's creatures not known as such):
+    // the animations and sounds only.
     let mut casts = channel_casts();
     casts.channellers.clear();
     let events = vec![
@@ -300,4 +362,6 @@ fn a_channel_without_a_channeller_in_sight_writes_no_line() {
     );
     assert_eq!(spots(&t, CHANNEL_DRAIN).len(), 4);
     assert_eq!(spots(&t, CHANNEL_FILL).len(), 4);
+    let heard: Vec<_> = cues(&t).into_iter().map(|c| c.2).collect();
+    assert!(heard.contains(&Sound::ChannelDrain) && heard.contains(&Sound::ChannelFill));
 }

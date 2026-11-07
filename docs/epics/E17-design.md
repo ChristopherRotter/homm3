@@ -7437,9 +7437,10 @@ hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
   0x688420), `CHANNEL_DRAIN` and `CHANNEL_FILL` at the corners by `at_hex`, each sound
   waited for in turn; `motion::magic` loads 75 and 76 for a channel, `motion::casts` the
   channelling creatures (`Casts::channellers`, the ruleset's `mana_channel`; `Live::channels`).
-  *Provisional:* the line counts the creatures of the gaining side's channelling stacks by their
-  side, named by the first one's creature (the original's creature 43 by each record's
-  controller: a hypnotized Familiar's not followed, as Fear's line); the window plays category 2
+  The line counts the creatures of the channelling stacks the gaining side controls (a
+  hypnotized one by its controller, `Player::controller`, as 0x5A21D5 to 0x5A21EC; the
+  reviewer's finding: first built by their side). *Provisional:* it is named by the first one's
+  creature (the original's creature 43's names); the window plays category 2
   on one stream, so at a fast speed the fill cuts the drain (the category's other three handles
   not built, §8.2); a creature's Ice Bolt (a Faerie Dragon's) still takes effect at once, without
   its frames, projectile or explosion (M6 review list item 45).
