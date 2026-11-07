@@ -166,6 +166,13 @@ pub fn file(header: &Header, frames: &[Vec<u8>]) -> Vec<u8> {
     out
 }
 
+/// The zeros after a sample's last frame: `BINKW32.DLL` never reads a file's last 8 bytes
+/// (black box, E17 M6 T6c1: the header's size field is the file's less 8; a last frame's last
+/// block coded there decoded wrongly, and right with 8 bytes more), and the game's clips need
+/// none of theirs. A decoder that reads them (FFmpeg, `h3-bink`) finds the packet's planes
+/// complete before them.
+pub const TAIL: usize = 8;
+
 /// A run of a [`Block::Run`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Run {
@@ -625,10 +632,18 @@ impl Random {
     }
 }
 
-/// A random block of type `kind` (0 to 8).
-fn random_block(rng: &mut Random, kind: u32) -> Block {
+/// A random block of type `kind` (0 to 8), its motion vectors' x and y drawn from `vectors`
+/// (each a range within −16 to 15).
+fn random_block(rng: &mut Random, kind: u32, vectors: [(i32, i32); 2]) -> Block {
     let colour = |rng: &mut Random| rng.below(256) as u8;
-    let vector = |rng: &mut Random| rng.range(-16, 15) as i8;
+    let [(x0, x1), (y0, y1)] = vectors;
+    let vector = |rng: &mut Random, axis: usize| {
+        if axis == 0 {
+            rng.range(x0, x1) as i8
+        } else {
+            rng.range(y0, y1) as i8
+        }
+    };
     let coefficients = |rng: &mut Random, first: usize, bits: u32| {
         let mut out = [0i16; 64];
         for _ in 0..rng.below(12) {
@@ -670,13 +685,13 @@ fn random_block(rng: &mut Random, kind: u32) -> Block {
             coefficients: coefficients(rng, 1, 11),
         },
         3 => Block::Residue {
-            x: vector(rng),
-            y: vector(rng),
+            x: vector(rng, 0),
+            y: vector(rng, 1),
             coefficients: coefficients(rng, 0, 8),
         },
         4 => Block::Inter {
-            x: vector(rng),
-            y: vector(rng),
+            x: vector(rng, 0),
+            y: vector(rng, 1),
             dc: rng.range(-1024, 1023) as i16,
             q: rng.below(16) as u8,
             coefficients: coefficients(rng, 1, 11),
@@ -687,11 +702,27 @@ fn random_block(rng: &mut Random, kind: u32) -> Block {
             rows: core::array::from_fn(|_| colour(rng)),
         },
         7 => Block::Motion {
-            x: vector(rng),
-            y: vector(rng),
+            x: vector(rng, 0),
+            y: vector(rng, 1),
         },
         _ => Block::Raw(core::array::from_fn(|_| colour(rng))),
     }
+}
+
+/// The vectors' ranges that keep the block at column `x`, row `y` of a plane of `columns` ×
+/// `rows` blocks copying from inside the plane (the key frame's y biased by −15, the decoder's):
+/// where a vector reaches outside, FFmpeg leaves the block and `BINKW32.DLL` reads memory beyond
+/// its plane (E17 M6 T6c1), so the samples stay inside, as the game's clips do.
+fn inside(x: usize, y: usize, columns: usize, rows: usize, key: bool) -> [(i32, i32); 2] {
+    let span = |at: usize, count: usize, bias: i32| {
+        let at = 8 * at as i32 + bias;
+        let last = 8 * (count as i32 - 1);
+        ((-at).max(-16), (last - at).min(15))
+    };
+    [
+        span(x, columns, 0),
+        span(y, rows, if key { -15 } else { 0 }),
+    ]
 }
 
 /// The sample's frame size and length.
@@ -720,21 +751,25 @@ pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
     let mut rng = Random::new(seed);
     let header = Header::new(width, height);
     let (width, height) = (width as usize, height as usize);
-    let frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
+    let mut frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
         .map(|f| {
             let planes: [Vec<Block>; 3] = core::array::from_fn(|i| {
                 let size = if i == 0 { 8 } else { 16 };
-                let count = width.div_ceil(size) * height.div_ceil(size);
-                (0..count)
-                    .map(|_| {
+                let (columns, rows) = (width.div_ceil(size), height.div_ceil(size));
+                (0..columns * rows)
+                    .map(|b| {
                         let kind = rng.below(9);
                         let kind = if f == 0 && kind == 0 { 8 } else { kind };
-                        random_block(&mut rng, kind)
+                        let vectors = inside(b % columns, b / columns, columns, rows, f == 0);
+                        random_block(&mut rng, kind, vectors)
                     })
                     .collect()
             });
             frame(width, height, [&planes[0], &planes[1], &planes[2]])
         })
         .collect();
+    if let Some(last) = frames.last_mut() {
+        last.resize(last.len() + TAIL, 0);
+    }
     file(&header, &frames)
 }

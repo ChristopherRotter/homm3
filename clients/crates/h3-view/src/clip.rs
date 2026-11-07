@@ -41,7 +41,7 @@
 
 use alloc::vec::Vec;
 
-use h3_bink::{Clip as BinkClip, Decoder, Error, Frame};
+use h3_bink::{Clip as BinkClip, Decoder, Error, Frame, Reading};
 use h3_render::Bugs;
 
 use crate::sound::Tune;
@@ -266,14 +266,20 @@ pub struct Video {
 }
 
 impl Video {
-    /// Decodes every frame of the Bink file `bytes` and converts it as the DLL does.
+    /// Decodes every frame of the Bink file `bytes` and converts it as the DLL does; `bugs`
+    /// the residues' reading (`h3_bink::Reading`: [`Bugs::Original`] as the DLL reads, for the
+    /// comparisons; CLT-Q68).
     ///
     /// # Errors
     /// What `h3-bink` rejects: the file, or a frame; frames past the [`BUDGET`], found before
     /// any is decoded.
-    pub fn decode(bytes: &[u8]) -> Result<Self, VideoError> {
+    pub fn decode(bytes: &[u8], bugs: Bugs) -> Result<Self, VideoError> {
         let clip = BinkClip::parse(bytes)?;
-        let mut decoder = Decoder::new(&clip)?;
+        let reading = match bugs {
+            Bugs::Fixed => Reading::Fixed,
+            Bugs::Original => Reading::Original,
+        };
+        let mut decoder = Decoder::new(&clip)?.reading(reading);
         if !fits(clip.frames().len(), clip.width, clip.height) {
             return Err(VideoError::Budget);
         }

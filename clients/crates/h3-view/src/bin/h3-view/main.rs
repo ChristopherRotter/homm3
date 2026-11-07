@@ -182,13 +182,15 @@ commands:
           the repository's packs/); prints the gaps. The committed tables (clients/assets) are
           source edited by hand: diff a fresh harvest against them, never overwrite them.
   video [<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
+        [--original]
           decodes the Bink clips of a video archive (default the repository's
           original-data/battle-videos.vid; a game's Data/VIDEO.VID) with h3-bink, the named ones
           (by name or stem) or all, and the synthetic samples of the seeds given (h3_bink's
           build::sample): writes each to <out> (default clients/out/video) as <name> and its
           frames as <stem>.yuv (raw YUV 4:2:0, as FFmpeg's rawvideo yuv420p), prints each
           clip's size, frames and hash; --reference compares each with <dir>/<stem>.yuv (exit 1
-          on a difference). clients/scripts/bink-check.sh runs it against FFmpeg.
+          on a difference); --original reads as the game's BINKW32.DLL reads (CLT-Q68).
+          clients/scripts/bink-check.sh runs it against the DLL.
   connect <ws://… | wss://…> (--game <id> | --create <offer>) --seat attacker|defender|spectator
           [--token <t>] [--name <display>] [--pins <file>] [--packs <dir>] [--out <file>]
           [--drop <n>]
