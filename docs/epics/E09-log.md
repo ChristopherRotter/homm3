@@ -2103,3 +2103,44 @@ nothing; both treasuries, B1's sets and its mark unchanged. **Not predicted:** a
 a bit of the town's standing set that no building of its faction has (22 in each Conflux, 23 in
 the Castle) as the town screen opens; it stays after the screen closes, and C2's build copied it
 into the every-built set (recomputed from the standing set).
+
+### T14c — batch TWN-2 scored (2026-11-07)
+
+One session, the user present at the start; branch `town/e09-t14c`, `cross-lane` (the user's
+consent of T14: `docs/experiments/README.md`'s row is the battle lane's). Starting point: `master`
+at 74c42c4 (#783 merged; T14a's and T14b's). Kept whole at its start (the user, asked; the cut in
+two, the verdicts and the stray bit, recommended). The user's computer's shell did not start: a
+sandbox cloned from GitHub, the original data staged with the file tool at the start. Docs only;
+code reading with `scripts/exe.py`, no probe under Wine needed.
+
+- **The scoring** (survey `E09-construction.md` §13; §0, §1.1, §1.4 and the sources amended):
+  both records the same but the starting bonus's gold. **TWN-2-1 (TD-9) as the reading**: C1's
+  upgraded Altar of Fire not now, Build greyed (0xE), the text naming the upgraded Altar of Air
+  alone, nothing on Build; C2 built it (40 in, 33 out of the standing set, 40 into the every-built
+  set, the mark 1, 5 mercury, 5 ore, 2 000 gold); VCMI's and the wiki's requirements refuted.
+  Decision 41 stands. **TWN-2-2 (TD-11) refused**, against the reading's prediction: the hall
+  opened for the ally's visitor and showed the Tavern buildable, Build greyed (0x26) with no
+  requirement missing; nothing paid by either player. The re-read: the hall's own test passes
+  here; the dialog's constructor `build_dialog_create` 0x5D55C0 (not read by T12a) greys Build
+  when the town's owner is not the current player (`build_dialog_owner_test` 0x5D5AE2; in a
+  network game also for a current player without the human flags); the two greyings show as the
+  button's 0x8 (the hall's) and 0x20 (the owner's). Decision 42 stands, now as the original's
+  rule; no question.
+- **The stray bit** (not predicted): `town_screen_pieces` 0x5C33F0 (read whole; the map's
+  `town_build_cheat` renamed), called by the town screen's init and where the screen rebuilds its
+  buildings, builds the faction's display piece into the standing set (`town_build`): Castle 23,
+  Stronghold 27, Fortress 23, Conflux 22; with the build-all cheat's flag 0x6AAA5C every building
+  instead. The every-built set takes it at the town's next build (`town_build_effects` recomputes
+  it from the standing set). None of the four is in its faction's list (dumped again); every
+  reader of 22, 23 and 27 tests the faction first but the Castle Gate's town list (filled with
+  Infernos) and the computer's pathfinder's (`ai_pathfinder_gate_bit` 0x56A947). Display pieces, as the hall companions: **nothing for the
+  engine**, no `T-10` (the next quirk candidate stays T-10). A trap for comparing the original's
+  sets: the lane's `TRAPS.md`, "Experiments and the original's records".
+- **Applied:** design §33 (the verdicts), §29 step 2, §36 (TD-11 settled); the drafts' status
+  lines and TD-9's, TD-11's (`0016`, `0017`, `0028`; accepted as written, T15 applies them); the
+  experiments README's row (evaluated); `docs/exe/map.toml`: `build_dialog_create`,
+  `build_dialog_owner_test`, `town_screen_init` (inferred), `town_screen_pieces`,
+  `town_castle_gate` (inferred), `build_all_cheat_flag`, `build_all_cheat_toggle`,
+  `ai_pathfinder_gate_bit` (inferred). T15 queued.
+- **Agent's calls (change freely):** the names above; the trap's wording; the pieces left out of
+  the part with no rule id (as decision 27's companions).

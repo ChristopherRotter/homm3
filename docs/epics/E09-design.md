@@ -881,7 +881,8 @@ Pure functions of a town, the part and plain inputs, beside increment 1's deriva
   actor's turn, no open decision), then `town::command` (the town lane's module):
   1. the town in the store, else `TownCommandError::UnknownTown`;
   2. **the owner** (the adventure's owner of the town's object) is the actor, else `NotOwner`
-     (TD-11, decision 42; a visitor of an ally's town is refused);
+     (TD-11, decision 42; a visitor of an ally's town is refused, as the original's build dialog
+     refuses it: batch TWN-2, §33);
   3. `holds_capitol`: another town the actor owns with a standing Capitol (as the capture's,
      `town/capture.rs`);
   4. `h3_towns::check_build` → the cost;
@@ -1003,6 +1004,14 @@ hot seat, from maps `h3-experiment` writes (`experiments/specs/E09-batch-2a.toml
   the town screen, a slot, Build), a treasury read; the writer's teams exist (E08 T89a).
 - **Tasks** (§35's round 2): its maps and spec, the harness steps and the run, the scoring; cut at
   its start.
+- **Scored** (T14c, 2026-11-07; survey `E09-construction.md` §13): row 1 as the reading (40
+  refused without 38, the text naming 38; built in the control): decision 41's list stands, no
+  override. Row 2 **refused**: the hall opens for the ally's visitor and shows the slot buildable,
+  but the build dialog's constructor greys Build when the town's owner is not the current player
+  (0x5D5AE2, which T12a did not read): decision 42 is the original's rule, §29 step 2 as written,
+  nothing widens with E10's teams. Not predicted: the town screen builds a display piece into the
+  standing set (Castle 23, Stronghold 27, Fortress 23, Conflux 22; outside every faction's list),
+  left out of the part as decision 27's companions are; nothing to build.
 
 ### 34. Versions, rule ids, quirks, stubs
 
@@ -1101,6 +1110,6 @@ batch TWN-2 runs first, so the ADRs are applied once with its verdicts, as incre
   same cost and end state in every faction).
 - **Not read:** the Shipyard's spot against the random dwellings' resolution (§28); the town
   events' messages for a computer owner (none shown: no rule).
-- **TD-11:** if the original lets an ally's visitor build, the owner test widens with E10's teams
-  (nothing plays differently before them).
+- **TD-11:** settled by batch TWN-2 (§33): the original refuses an ally's visitor too; the owner
+  test does not widen.
 - **The creatures of 56 shipped town events** are lost until increment 3 (`TWN-STUB-10`).
