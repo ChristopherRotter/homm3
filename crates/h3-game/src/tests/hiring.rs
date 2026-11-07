@@ -4,8 +4,8 @@
 //! most of each creature, bounded by its count, each resource of the treasury and the room in the
 //! army, every amount in the range accepted; each refusal leaves the state as it was; a purchase
 //! pays, joins and keeps a dialog of several creatures open, closes one of a single creature;
-//! `Close`, the system's default; no move or end of the turn while it is open; the guard's visit
-//! after it closes (GAM-DEC-007). E08 T97a: a Plague or a creature's month leaves the hut's and
+//! `Close`, the system's default; no move or end of the turn while it is open; on a guarded tile
+//! the dwelling's visit after the guard's battle (GAM-DEC-007, E08 T103d). E08 T97a: a Plague or a creature's month leaves the hut's and
 //! the camp's week as their growth (ADV-DWL-003).
 
 use std::num::{NonZeroU8, NonZeroU16};
@@ -19,7 +19,7 @@ use h3_content::ResourceId;
 use super::decisions::{ACCEPT, CLOSE, move_hero, play};
 use super::dwellings::{ANCHOR, BLUE, GOG, RED, RED_HERO, hut_type, rules_edited};
 use super::manage::imp;
-use super::rewards::{guard, reward_at, starts_battle};
+use super::rewards::{guard, reward_at, starts_battle, win};
 use super::*;
 use crate::MonthKind;
 
@@ -412,7 +412,7 @@ fn a_single_creature_s_dialog_closes_after_its_purchase() {
 
 // covers: GAM-DEC-008, GAM-DEC-007, ADV-MON-006
 #[test]
-fn the_guard_visits_once_the_dialog_closes() {
+fn the_dwelling_is_visited_once_its_guard_is_beaten() {
     let rules = rules();
     let mut state = game_of(
         &rules,
@@ -420,15 +420,27 @@ fn the_guard_visits_once_the_dialog_closes() {
         vec![imp(1, 9)],
         100,
     );
-    let events = open(&mut state, &rules);
-    assert!(!starts_battle(&events));
-    assert!(matches!(events.last(), Some(GameEvent::HireOpened { .. })));
-    // A purchase keeps it open and the guard waiting; its closing lets the guard fight.
-    let events = play(&mut state, &rules, RED, buy(GOG, 1)).unwrap();
-    assert!(!starts_battle(&events));
-    let events = play(&mut state, &rules, RED, HIRE_CLOSE).unwrap();
-    assert_eq!(events[0], GameEvent::DecisionClosed { player: RED });
+    // The guard's battle at once, the hut's visit held (E08 T103d, decision 279; before it the
+    // guard waited for the dialog's close, E08 T95b to T103d).
+    let events = play(&mut state, &rules, RED, move_hero(0, &[ANCHOR])).unwrap();
     assert!(starts_battle(&events), "{events:?}");
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e, GameEvent::OfferOpened { .. }))
+    );
+    // Won: the hut's question, then its dialog; a purchase and the close, nothing held after.
+    let events = win(&mut state, &rules);
+    assert!(
+        matches!(events.last(), Some(GameEvent::OfferOpened { .. })),
+        "{events:?}"
+    );
+    let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert!(matches!(events.last(), Some(GameEvent::HireOpened { .. })));
+    play(&mut state, &rules, RED, buy(GOG, 1)).unwrap();
+    let events = play(&mut state, &rules, RED, HIRE_CLOSE).unwrap();
+    assert_eq!(events, [GameEvent::DecisionClosed { player: RED }]);
+    assert_eq!(state.held_rests(), 0);
 }
 
 // covers: ADV-DWL-003, ADV-RFG-001, GAM-CAL-002

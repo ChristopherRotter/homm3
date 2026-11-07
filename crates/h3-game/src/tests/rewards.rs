@@ -9,6 +9,7 @@ use h3_heroes::SlotState;
 use h3_heroes::{ArtifactInstance, HeroChange};
 
 use super::decisions::{ACCEPT, BLUE, DECLINE, GOLD, RED, after_steps, move_hero, play};
+use super::mines::fight;
 use super::*;
 
 pub(super) const HERO: HeroId = HeroId::new(0);
@@ -511,57 +512,70 @@ pub(super) fn starts_battle(events: &[GameEvent]) -> bool {
         .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
 }
 
-// covers: ADV-MON-006, GAM-DEC-005, GAM-DEC-006
+/// Plays red's battle to its end ([`fight`]) and answers the level-ups it gave with
+/// their first skill: every event.
+pub(super) fn win(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
+    let mut events = fight(state, rules);
+    while state.level_up(RED).is_some() {
+        let first = answered(Answer::LevelUp(SkillOffer::First));
+        events.extend(play(state, rules, RED, first).unwrap());
+    }
+    events
+}
+
+/// Red's side retreats from its battle at its first turn to act (the system playing the other
+/// side): every event.
+fn retreat(state: &mut GameState, rules: &GameRuleset) -> Vec<GameEvent> {
+    let mut all = Vec::new();
+    while let Some(battle) = state.battle(RED) {
+        let actor = battle.owner_to_act().map_or(Actor::System, Actor::Player);
+        let listed = legal_commands(state, rules, actor);
+        let leaves = |c: &&GameCommand| matches!(c, GameCommand::Battle(c) if c.leaves_battle());
+        let command = match actor {
+            Actor::Player(_) => listed.iter().find(leaves),
+            _ => listed.iter().rfind(|c| !leaves(c)),
+        };
+        apply(state, rules, actor, command.unwrap().clone(), &mut all).unwrap();
+    }
+    all
+}
+
+// covers: ADV-MON-006, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007
 #[test]
-fn a_guard_waits_for_a_choice_or_a_university_and_follows_a_gift() {
+fn a_guard_fights_first_and_the_tiles_choice_university_or_gift_follows_its_win() {
     let rules = rules();
     let with_guard = |k: &str| {
         let mut setup = setup();
         setup.map.objects = vec![reward_at(&rules, k, Holds::Nothing), guard(&rules)];
         GameState::new(&rules, &setup, 7).unwrap()
     };
-    // The guard's visit waits for the choice's answer or the University's leaving.
-    let leave = Answer::University(UniversityAnswer::Leave);
-    for (k, answer) in [
-        ("t:in_arena", Answer::Arena(ArenaChoice::Defense)),
-        ("t:in_school", Answer::School(SchoolChoice::Leave)),
-        ("t:in_university", leave),
-    ] {
+    let opens = |events: &[GameEvent]| {
+        events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::ChoiceOpened { .. } | GameEvent::UniversityOpened { .. }
+            )
+        })
+    };
+    // The guard's battle at once, the tile's visit held (E08 T103d, decision 279); its choice or
+    // University once the battle is won and its levels given (before it the guard waited for
+    // the choice's answer or the University's leaving, E08 T63b to T103d).
+    for k in ["t:in_arena", "t:in_school", "t:in_university"] {
         let mut state = with_guard(k);
-        assert!(!starts_battle(&visit(&mut state, &rules)), "{k}");
-        let events = play(&mut state, &rules, RED, answered(answer)).unwrap();
-        assert!(starts_battle(&events), "{k}: {events:?}");
+        let events = visit(&mut state, &rules);
+        assert!(starts_battle(&events) && !opens(&events), "{k}: {events:?}");
+        assert_eq!(state.held_rests(), 1);
+        let events = win(&mut state, &rules);
+        assert!(opens(&events), "{k}: {events:?}");
+        assert_eq!(state.held_rests(), 0);
     }
-    // A purchase keeps the University open and the guard waiting.
-    let mut state = with_guard("t:in_university");
-    state.set_resource(RED, GOLD, 4000);
-    visit(&mut state, &rules);
-    if let Some(&GameCommand::Answer(buy)) = legal_commands(&state, &rules, Actor::Player(RED))
-        .iter()
-        .find(|&c| *c != answered(leave))
-    {
-        let events = play(&mut state, &rules, RED, answered(buy)).unwrap();
-        assert!(!starts_battle(&events));
-    }
-    // A School the treasury cannot pay: refused, then the guard at once.
-    let mut state = with_guard("t:in_school");
-    state.set_resource(RED, GOLD, 0);
-    let events = visit(&mut state, &rules);
-    assert!(matches!(events[0], GameEvent::OfferRefused { .. }) && starts_battle(&events));
-    // A gift without a decision: its experience, then the guard's battle (before E08 T63a the
-    // monster's answer dropped the hero's gains), once the level-up it brings is answered (before
-    // E08 T63b the battle opened beside it, its hero read before the level).
+    // A gift without a decision: the battle reads the hero as it stepped, the stone's experience
+    // and its level after the win (batch E11c's E11-22: experience 0 at the battle's opening).
     let mut state = with_guard("t:in_stone");
-    let events = visit(&mut state, &rules);
-    assert!(events.contains(&changed(HeroChange::GainExperience(1000))));
-    assert!(
-        state.level_up(RED).is_some() && !starts_battle(&events),
-        "{events:?}"
-    );
-    let first = Answer::LevelUp(SkillOffer::First);
-    let events = play(&mut state, &rules, RED, answered(first)).unwrap();
-    assert!(starts_battle(&events), "{events:?}");
     let primary = state.hero(HERO).unwrap().primary;
+    let events = visit(&mut state, &rules);
+    assert!(starts_battle(&events), "{events:?}");
+    assert!(!events.contains(&changed(HeroChange::GainExperience(1000))));
     let fought = state
         .battle(RED)
         .unwrap()
@@ -569,4 +583,20 @@ fn a_guard_waits_for_a_choice_or_a_university_and_follows_a_gift() {
         .hero(BattleSide::Attacker);
     let fought = fought.map(|h| [h.attack, h.defense, h.power, h.knowledge]);
     assert_eq!(fought, Some(primary));
+    let events = fight(&mut state, &rules);
+    let ended = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::BattleEnded { .. }));
+    let gained = events
+        .iter()
+        .position(|e| *e == changed(HeroChange::GainExperience(1000)));
+    assert!(ended.unwrap() < gained.unwrap(), "{events:?}");
+    assert!(state.level_up(RED).is_some());
+    // A hero the battle takes off the map visits nothing: the held visit runs and gives nothing.
+    let mut state = with_guard("t:in_stone");
+    visit(&mut state, &rules);
+    let events = retreat(&mut state, &rules);
+    assert!(state.adventure().hero(HERO).is_none(), "{events:?}");
+    assert!(!events.contains(&changed(HeroChange::GainExperience(1000))));
+    assert_eq!(state.held_rests(), 0);
 }

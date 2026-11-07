@@ -195,8 +195,11 @@
 //!   (morale and luck), a Warrior's Tomb searched (its artifact and −3 morale), a School of War
 //!   left, the Pyramid declined.
 //! - `rewards-s88-d28`: a Scholar, a guard's battle and days later the event it guarded, Adela on
-//!   the guarded Learning Stone (its level-up, then the guard's battle), a School of Magic paid,
-//!   the University's four purchases, a chest's experience and its level-up, a Witch Hut.
+//!   the guarded Learning Stone (the guard's battle, then the stone's level-up; E08 T103d: its own
+//!   commands with the battle's three moved before the level-up's answer, decision 279, the game
+//!   unchanged from there: random play from the seed now diverges at the stone and meets less), a
+//!   School of Magic paid, the University's four purchases, a chest's experience and its level-up,
+//!   a Witch Hut.
 //!
 //! **Scripted** (E08 T64a: the order-dependent paths of increment 7's design note §16), on the same
 //! map, recorded with `h3 adventure run --map fixtures/maps/e08-rewards-36.h3m --seed 1
@@ -218,9 +221,10 @@
 //!   Prayer, a level-4 spell her Wisdom now allows (GAM-DEC-007, HER-SPL-005).
 //! - `rewards-event-guard-s1`: Orrin steps onto the event on (6, 8): the gnolls guarding it fight
 //!   first, then the event fires for him (five crystals; `ADV-QUIRK-29`).
-//! - `rewards-stone-guard-s1`: Orrin enters the Learning Stone on (3, 8): its 1 000 experience and
-//!   level-up first; only once he answers do the gnolls guarding it fight (ADV-MON-006,
-//!   GAM-DEC-007).
+//! - `rewards-stone-guard-s1`: Orrin enters the Learning Stone on (3, 8): the gnolls guarding it
+//!   fight first; once he wins, its 1 000 experience and level-up (ADV-MON-006, GAM-DEC-007; E08
+//!   T103d, decision 279: before it the stone's came first and the gnolls fought once he
+//!   answered).
 //!
 //! **Sea** (E08 T75a, increment 8), on `fixtures/maps/e08-sea-36.h3m` (a strait between two
 //! shores, written by `h3_map::writer`; `fixtures/maps/README.md`): red's Sylvia (hero 0, the

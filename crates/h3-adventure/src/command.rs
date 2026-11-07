@@ -203,14 +203,17 @@ pub struct AdventureOutcome {
     /// The battle the command's visit starts, if any: another player's hero's (GAM-BAT-004, E08
     /// T19a), which the game opens at once (ADR-0017 point 11).
     pub battle: Option<BattleStart>,
-    /// The hero whose tile's guard visits after this outcome (ADV-MON-006; E08 T20b1, since E08
-    /// T63b for every visited object): the step entered a guarded tile and visited the tile's own
-    /// object. The original tests the guard once the object's visit returns, after its questions,
-    /// choices and dialogs, its guards' battle and the levels they gave; a player has at most one
-    /// open decision (ADR-0017 point 6), so the game holds the guard's visit as a rest of the
-    /// visit (GAM-DEC-007) and asks [`crate::AdventureState::visit_guard`] once the player has no
-    /// open decision, at once when the outcome opens none.
-    pub guard_after: Option<HeroId>,
+    /// The hero whose tile's entered object is visited after the visit of the monster guarding
+    /// the tile (ADV-MON-006, GAM-DEC-007; E08 T103d, decision 279): the step entered a guarded
+    /// tile with an object visited from it, and the outcome is the guard's visit (its offer or
+    /// its battle). The original's step tests the guard (`hero_move_step`, 0x48169D) and the walk
+    /// visits the tile's object after it (`hero_move_loop`, 0x4080E9), once the guard's answer,
+    /// battle and levels are over, for a hero still on the tile (batch E11's E11-19, E11c's
+    /// E11-21 and E11-22: a mine flagged and a Learning Stone's experience after the won battle).
+    /// The game holds it as a rest of the visit and asks [`crate::AdventureState::visit_held`]
+    /// once the player has no open decision (until then the hero cannot move). From E08 T20b1 to
+    /// T103d the object was visited first and the guard after it (`guard_after`).
+    pub visit_after: Option<HeroId>,
     /// The meeting the command's step toward an own hero makes (GAM-MET-001, E08 T50): the game
     /// opens it as the owner's decision (T51b).
     pub meeting: Option<Meeting>,

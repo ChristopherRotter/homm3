@@ -607,7 +607,7 @@ fn a_visit_from_a_guarded_tile_tests_no_guard() {
     let outcome = visit(&mut s, p(1, 1));
     assert_eq!(outcome.gains.len(), 1);
     assert_eq!(
-        (outcome.offer, outcome.battle, outcome.guard_after),
+        (outcome.offer, outcome.battle, outcome.visit_after),
         (None, None, None)
     );
     assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
@@ -616,7 +616,7 @@ fn a_visit_from_a_guarded_tile_tests_no_guard() {
     let offer = outcome
         .offer
         .expect("the gnolls' answer to a stronger hero");
-    assert_eq!((offer.anchor, outcome.guard_after), (p(3, 2), None));
+    assert_eq!((offer.anchor, outcome.visit_after), (p(3, 2), None));
     assert_eq!(s.hero(HeroId::new(1)).unwrap().pos, p(2, 1));
 }
 

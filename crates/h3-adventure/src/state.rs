@@ -1587,8 +1587,9 @@ impl AdventureState {
     /// stays on the tile before. A border gate whose key the player holds is not visited: the step
     /// crosses it as any tile, and the path may go on or end there (ADV-VIS-005, T15b). A step
     /// onto a tile a monster guards (ADV-MON-005) is the path's last too and visits the guard
-    /// after any visit of the tile's own object ([`Self::visit_guard`], ADV-MON-006, E08 T20a2b);
-    /// the hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
+    /// (ADV-MON-006, E08 T20a2b), before the tile's own object, whose visit waits for it
+    /// ([`AdventureOutcome::visit_after`], [`Self::visit_held`]; E08 T103d, decision 279); the
+    /// hero's own tile may be guarded: it leaves it. A step that does not enter (toward a
     /// neighbour-visited object or a hero) tests no guard, even from a guarded tile: the original
     /// tests the hero's tile only after a step that changed it (E08 T20b3a). A step toward another
     /// hero visits it from the tile before as well: another player's starts a battle (GAM-BAT-004),
@@ -1744,7 +1745,16 @@ impl AdventureState {
                 ..outcome
             });
         }
-        let visited = matches!(visit, Some(Meets::Object(_)));
+        // On a guarded tile the guard visits first and the tile's own object waits for it
+        // (ADV-MON-006, E08 T103d, decision 279: the original's step tests the guard, 0x48169D,
+        // and its walk visits the object after it, 0x4080E9; batch E11's E11-19, E11c's E11-21
+        // and E11-22). The game holds the visit as a rest (GAM-DEC-007).
+        if let (Some(guard), Some(Meets::Object(_))) = (guard, visit) {
+            return Ok(AdventureOutcome {
+                visit_after: Some(id),
+                ..self.visit_monster(rules, id, guard)
+            });
+        }
         let outcome = match visit {
             None => AdventureOutcome::default(),
             Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
@@ -1769,19 +1779,12 @@ impl AdventureState {
                 ..AdventureOutcome::default()
             },
         };
-        // The guard visits after the tile's own object (ADV-MON-006): once the object's visit is
-        // over, with everything it opened (E08 T63b: the game holds it as a rest of the visit,
-        // GAM-DEC-007; before it the guard came after an offer's answer, E08 T20b1, a choice's or
-        // a University's, T63a, or at once beside what the visit gave). On a tile without an
-        // object the guard's visit is the step's, a landing's after the landing (its tile's
-        // guards attack once the hero is on land, `hero_lands_from_boat`'s guard_attack; E08
-        // T73). A step that does not enter tests no guard (T20b3a), nor a boarding.
+        // On a tile without an object the guard's visit is the step's, a landing's after the
+        // landing (its tile's guards attack once the hero is on land, `hero_lands_from_boat`'s
+        // guard_attack; E08 T73). A step that does not enter tests no guard (T20b3a), nor a
+        // boarding.
         Ok(match guard {
             None => outcome,
-            Some(_) if visited => AdventureOutcome {
-                guard_after: Some(id),
-                ..outcome
-            },
             Some(guard) => self.visit_monster(rules, id, guard),
         })
     }
@@ -2259,6 +2262,33 @@ impl AdventureState {
             }
         }
         outcome
+    }
+
+    /// The visit of the entered object at `player`'s hero `hero`'s tile, held while the monster
+    /// guarding the tile visited the hero (ADV-MON-006, GAM-DEC-007; E08 T103d, decision 279;
+    /// [`AdventureOutcome::visit_after`]): once the guard's visit is over (its offer answered, its
+    /// battle and the levels it gave), the object visited from the hero's tile as it stands now
+    /// ([`Self::visit_at`]) is visited as after the step ([`Self::visit`]): a mine flagged, a
+    /// Learning Stone's experience given after the won battle (batch E11c's E11-21, E11-22). The
+    /// hero is still on the tile it entered (its owner had an open decision until now, so it did
+    /// not move); nothing for a hero the guard's battle took off the map or another player's,
+    /// nor when no object is visited from the tile any more.
+    // rule: ADV-MON-006
+    pub fn visit_held<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        (player, hero): (PlayerId, HeroId),
+        sink: &mut S,
+    ) -> AdventureOutcome {
+        let tile = self
+            .hero(hero)
+            .filter(|h| h.owner == player)
+            .map(|h| h.pos)
+            .filter(|&at| self.live(at, self.map.at(at)).visitable);
+        match tile.and_then(|at| self.visit_at(rules.1, player, at)) {
+            Some(visit) if !visit.pass => self.visit(rules, (player, hero), visit, sink),
+            _ => AdventureOutcome::default(),
+        }
     }
 
     /// Takes the object at `index` of the static map, of type `object_type`, off the map
