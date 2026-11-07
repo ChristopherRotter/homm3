@@ -712,7 +712,7 @@ guarded entered object is the game's memory as the step's first battle opens (`a
 **Every row as read; no question.** Decision 279's order holds beyond the teleporters: a step onto a
 guarded tile meets the guard first and the tile's entered object is visited after a win (a mine's
 flag and message, a Learning Stone's experience with its level-up, as E11-19's jump), so T103d builds
-it for every entered kind. A teleporter's arrival tests no guard whether by a one-way or a two-way
+it for every entered kind (built by E08 T103d). A teleporter's arrival tests no guard whether by a one-way or a two-way
 exit or by the key (E11-3, E11-19, E11-20, E11-23), and the key's visit tests none either (E11-19,
 E11-20, E11-23): a hero leaves a guarded exit freely except by a step into the guard's zone, which
 is fought. **Beyond the predictions:** GENRLTXT 7 (the townless player's warning, as batch E11a's

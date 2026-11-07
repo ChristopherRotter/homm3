@@ -3,7 +3,8 @@
 //! neutral abandoned mine's guards are asked, then fought as a monster the system plays, a win
 //! flagging it after the winner's levels; an owned mine's guards are their owner's side, played by
 //! that player outside its turn. E08 T84b1: a weekly object's contents go to its week's first
-//! visitor's treasury (design §9).
+//! visitor's treasury (design §9). E08 T103d: a mine a monster guards is flagged after the
+//! guard's battle (decision 279).
 
 use h3_adventure::{
     AdventureEvent, AdventureEventKind, Holds, ObjectSetup, TileMask, TileRand, Viewers, split,
@@ -13,6 +14,7 @@ use h3_contracts::BattleSide;
 use super::decisions::{ACCEPT, CLOSE, GOLD, after_steps, move_hero, play};
 use super::manage::{army, group, imp, slot};
 use super::monsters::valued;
+use super::rewards::{guard, starts_battle, win};
 use super::*;
 
 const RED: PlayerId = PlayerId::new(0);
@@ -226,6 +228,41 @@ fn a_neutral_mine_s_guards_fight_as_a_monster_and_a_win_flags_it_after_the_level
     assert_eq!(adventure.owner(0), Some(RED));
     assert!(adventure.mine_guards(rules.adventure(), 0).is_empty());
     assert_eq!(adventure.hero(RED_HERO).unwrap().pos, anchor);
+}
+
+// covers: ADV-MON-006, ADV-OWN-001, GAM-DEC-007
+#[test]
+fn a_guarded_mine_is_flagged_once_the_monster_guarding_it_is_beaten() {
+    let rules = rules();
+    let anchor = Pos::new(1, 0, 0);
+    let objects = vec![mine(&rules, "t:mine", anchor, None), guard(&rules)];
+    let mut state = game(&rules, 9, objects);
+    // The guard's battle opens with the mine still neutral (batch E11c's E11-21; E08 T103d,
+    // decision 279: before it the mine was flagged first and the guard fought after).
+    let events = play(&mut state, &rules, RED, move_hero(0, &[anchor])).unwrap();
+    assert!(starts_battle(&events), "{events:?}");
+    assert!(
+        !adventure(&events)
+            .iter()
+            .any(|e| matches!(e.kind, AdventureEventKind::ObjectFlagged { .. }))
+    );
+    assert_eq!(state.adventure().owner(0), None);
+    // Won: the flag after the battle's end, the hero on the mine.
+    let events = win(&mut state, &rules);
+    let at = |pred: &dyn Fn(&GameEvent) -> bool| events.iter().position(pred);
+    let ended = at(&|e| matches!(e, GameEvent::BattleEnded { .. }));
+    let flagged = at(&|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectFlagged { owner: RED, .. },
+                ..
+            })
+        )
+    });
+    assert!(ended.unwrap() < flagged.unwrap(), "{events:?}");
+    assert_eq!(state.adventure().owner(0), Some(RED));
+    assert_eq!(state.adventure().hero(RED_HERO).unwrap().pos, anchor);
 }
 
 // covers: ADV-MIN-002, GAM-BAT-001
