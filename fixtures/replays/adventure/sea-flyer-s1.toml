@@ -26,7 +26,7 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0xe5ac723212bdce02"
-adventure_ruleset_hash = "0xf7865aeae57de535"
+adventure_ruleset_hash = "0x8295da978eef57d8"
 town_ruleset_hash = "0x3003da8dd5ff664f"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
@@ -43,4 +43,4 @@ import_version = 20
 
 [result]
 day = 2
-final_hash = "0x991dea1bae5a7a85"
+final_hash = "0x8224869170dea13f"

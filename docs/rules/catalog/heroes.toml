@@ -1612,10 +1612,10 @@ numeric  = "integer"
 
 [[rule]]
 id       = "HER-ADV-009"
-title    = "A hero's day's sea points and free boarding"
+title    = "A hero's day's sea points, free boarding and a Whirlpool's protection"
 context  = "heroes"
 status   = "verified"
-summary  = "The day's sea points from the sea table the adventure gives (the points by Navigation level 0 to 3; the original's 1 500, 2 250, 3 000, 3 750): the entry at the highest of the hero's navigation levels (the skill's 1, 2, 3, any source; 0 without one); then, for each skill the hero has that gives a Navigation level at its level, the bp_per_level of its skill specialties of the table's first entry per hero level, rounded down once (the original's Navigation specialists Sylvia and Voy: floor(level x 1 500 / 20), 75 a level, nothing without the skill, a share and never a growth of the level); then the sea_movement_points of the effects, each worn artifact type once, worn or as a part of a worn combination, one that needs a skill only with it (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts: 1 500); saturating. The army's speeds do not count; exact integers in every profile (no Q-0005 term). Free boarding: whether an effect of the hero is free_boarding (the Admiral's Hat, the combination itself: its two parts worn apart give its points but not free boarding; any source counts, a part of a worn combination with its skill too); the conversion at a boarding or a landing it allows is the adventure's (ADV-SEA-002, ADV-SEA-003). Then the Lighthouses' points the adventure gives (its owner's Lighthouses, 500 each, ADV-OWN-005; E08 T82, ADR-0013 point 13.6): added last, never grown by Navigation, saturating (the adventure passes its owner's, `AdventureState::lighthouse_points`, since E08 T84b1). Not here: a computer player's bonus (E10), an input then; when the day's sea points apply (the turn start in a boat, a boarding, a landing) is the adventure's. E08 T71: `h3_heroes::{sea_points, free_boarding}`; T82: the Lighthouses' input."
+summary  = "The day's sea points from the sea table the adventure gives (the points by Navigation level 0 to 3; the original's 1 500, 2 250, 3 000, 3 750): the entry at the highest of the hero's navigation levels (the skill's 1, 2, 3, any source; 0 without one); then, for each skill the hero has that gives a Navigation level at its level, the bp_per_level of its skill specialties of the table's first entry per hero level, rounded down once (the original's Navigation specialists Sylvia and Voy: floor(level x 1 500 / 20), 75 a level, nothing without the skill, a share and never a growth of the level); then the sea_movement_points of the effects, each worn artifact type once, worn or as a part of a worn combination, one that needs a skill only with it (the Necklace of Ocean Guidance 1 000, the Sea Captain's Hat 500, the Admiral's Hat both through its parts: 1 500); saturating. The army's speeds do not count; exact integers in every profile (no Q-0005 term). Free boarding: whether an effect of the hero is free_boarding (the Admiral's Hat, the combination itself: its two parts worn apart give its points but not free boarding; any source counts, a part of a worn combination with its skill too); the conversion at a boarding or a landing it allows is the adventure's (ADV-SEA-002, ADV-SEA-003). Then the Lighthouses' points the adventure gives (its owner's Lighthouses, 500 each, ADV-OWN-005; E08 T82, ADR-0013 point 13.6): added last, never grown by Navigation, saturating (the adventure passes its owner's, `AdventureState::lighthouse_points`, since E08 T84b1). Not here: a computer player's bonus (E10), an input then; when the day's sea points apply (the turn start in a boat, a boarding, a landing) is the adventure's. E08 T71: `h3_heroes::{sea_points, free_boarding}`; T82: the Lighthouses' input. A Whirlpool's protection (E08 T103a, increment 11's design note section 2): whether an effect of the hero is whirlpool_protection, from a worn artifact type or a part of a worn combination (one that needs a skill only with it), a skill or the specialty; the packs give it to the Sea Captain's Hat, so the Hat protects worn alone and the Admiral's Hat through its part, its other part (the Necklace of Ocean Guidance) not; the loss it spares is the adventure's (ADV-TEL-006, E08 T105a). E08 T103a: `h3_heroes::whirlpool_protection`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1652,4 +1652,29 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-9a.md E9-4 (stamp bfafdcac, the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-10-30; survey E08-economy.md §19): Red owning two Lighthouses at load, a hero without Navigation in a boat has 2 500 of 2 500 sea points at day 2 (1 500 + 2 x 500)"
   retrieved  = "2026-10-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T98a1; survey E08-teleporters.md section 4.4; docs/exe/map.toml 0x4A95A5, 0x4ACAA0, 0x4D91F0): the Whirlpool's visit takes its losses (whirlpool_losses) only when the hero does not wear artifact 123, the Sea Captain's Hat, alone or in a combination (hero_wears_artifact looks into combinations, so the Admiral's Hat, 136, protects through its part)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json (1.7.5): seaCaptainsHat has the bonus WHIRLPOOL_PROTECTION; admiralsHat has the components necklaceOfOceanGuidance and seaCaptainsHat, so the protection through its part (read for E08 T102)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Whirlpool - Heroes 3 wiki: a hero wearing the Sea Captain's Hat or the Admiral's Hat loses no troops (survey E08-teleporters.md section 7)"
+  url        = "https://heroes.thelazy.net/index.php/Whirlpool"
+  retrieved  = "2026-11-05"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-13 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06; survey E08-teleporters.md section 15): a hero wearing the Sea Captain's Hat and E11-18's hero wearing the Admiral's Hat each kept ten Pikemen through a Whirlpool, with no message"
+  retrieved  = "2026-11-07"
   confidence = "high"

@@ -389,10 +389,11 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // E08 T61a: increment 7's 31 types after them; E08 T72: the sea's four pickups and the hole;
     // E08 T83a: increment 9's thirteen (seven mines, the abandoned mine, the Lighthouse, the
     // Shipyard and the three weekly objects); E08 T93a: increment 10's 64 (the 62 RoE dwellings,
-    // the Refugee Camp, the random dwelling); E09 T8a1: the town.
+    // the Refugee Camp, the random dwelling); E09 T8a1: the town; E08 T103a: increment 11's
+    // eleven (nine monoliths, the Subterranean Gate, the Whirlpool).
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11
     );
     // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above.
     let town = ty("base:town");
@@ -968,8 +969,9 @@ fn the_expansions_add_the_border_gates() {
         ab.object_types()[..base.object_types().len()],
         *base.object_types()
     );
-    // SoD adds its nine special grounds (E08 T20a2a) and Favorable Winds (E08 T72).
-    assert_eq!(sod.object_types().len(), ab.object_types().len() + 10);
+    // SoD adds its nine special grounds (E08 T20a2a), Favorable Winds (E08 T72) and, since E08
+    // T103a, the monoliths of channels 3 to 7.
+    assert_eq!(sod.object_types().len(), ab.object_types().len() + 10 + 15);
     let gate = ab
         .object_type(ab.object_type_by_key("ab:border_gate_black").unwrap())
         .unwrap();
@@ -1065,6 +1067,24 @@ fn the_synthetic_packs_compile() {
     assert_eq!(
         kind("synthetic:camp"),
         &ObjectKind::RefugeeCamp { levels: [1, 7] }
+    );
+    // E08 T103a: increment 11's kinds, a monolith of each way in channels 0 and 1.
+    for channel in 0..2 {
+        for (way, name) in [
+            (MonolithWay::Entrance, "entrance"),
+            (MonolithWay::Exit, "exit"),
+            (MonolithWay::TwoWay, "two_way"),
+        ] {
+            assert_eq!(
+                kind(&format!("synthetic:{name}_{channel}")),
+                &ObjectKind::Monolith { channel, way }
+            );
+        }
+    }
+    assert_eq!(kind("synthetic:gate"), &ObjectKind::SubterraneanGate);
+    assert_eq!(
+        kind("synthetic:whirlpool"),
+        &ObjectKind::Whirlpool { divisor: 3 }
     );
     assert_eq!(
         part.params().dwellings(),
@@ -1167,6 +1187,49 @@ fn kind_error(table: &str) -> AdventurePackError {
         "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
     );
     parse(&text).unwrap_err()
+}
+
+// E08 T103a: increment 11's kind tables (ADV-TEL-001).
+// covers: ADV-TEL-001
+#[test]
+fn parses_the_teleporters() {
+    let kind = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0).kind
+    };
+    for (text, way) in [
+        ("entrance", MonolithWay::Entrance),
+        ("exit", MonolithWay::Exit),
+        ("two_way", MonolithWay::TwoWay),
+    ] {
+        assert_eq!(
+            kind(&format!("monolith = {{ channel = 7, way = \"{text}\" }}")),
+            ObjectKindDef::Monolith { channel: 7, way }
+        );
+    }
+    assert_eq!(
+        kind("subterranean_gate = {}"),
+        ObjectKindDef::SubterraneanGate
+    );
+    assert_eq!(
+        kind("whirlpool = { divisor = 2 }"),
+        ObjectKindDef::Whirlpool { divisor: 2 }
+    );
+    // An unknown way, a channel past a byte and a missing divisor are syntax errors.
+    for bad in [
+        "monolith = { channel = 0, way = \"both\" }",
+        "monolith = { channel = 256, way = \"exit\" }",
+        "monolith = { way = \"exit\" }",
+        "whirlpool = {}",
+        "subterranean_gate = { pair = 1 }",
+    ] {
+        assert!(
+            matches!(kind_error(bad), AdventurePackError::Syntax(_)),
+            "{bad}"
+        );
+    }
 }
 
 // E08 T93a (increment 10's design note §2, "Costs"): every creature a dwelling of the packs offers
@@ -2339,4 +2402,82 @@ fn the_packs_type_the_dwellings_of_increment_10() {
         assert!(!outcomes.contains(&id), "{key}");
     }
     assert_eq!(core.factions().len(), 8);
+}
+
+// covers: ADV-TEL-001
+#[test]
+fn the_packs_type_the_teleporters_of_increment_11() {
+    // E08 T103a (increment 11's design note §1, §3): base's monoliths of channels 0 to 2 in each
+    // way, the Subterranean Gate and the Whirlpool; ab none; sod's monoliths of channels 3 to 7.
+    let (_, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let (_, ab) = compile(&ORIGINAL_PACKS[..2], PROFILE).unwrap();
+    let (_, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let monoliths = |part: &AdventureRuleset| {
+        part.object_types()
+            .iter()
+            .filter_map(|t| match t.kind {
+                ObjectKind::Monolith { channel, way } => Some((channel, way)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    let ways = [
+        (
+            MonolithWay::Entrance,
+            "monolith_entrance",
+            "Monolith One Way Entrance",
+        ),
+        (MonolithWay::Exit, "monolith_exit", "Monolith One Way Exit"),
+        (MonolithWay::TwoWay, "monolith_two_way", "Monolith Two Way"),
+    ];
+    let expected = |channels: core::ops::Range<u8>| {
+        ways.iter()
+            .flat_map(|&(way, ..)| channels.clone().map(move |c| (c, way)))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(monoliths(&base), expected(0..3));
+    assert_eq!(monoliths(&ab), monoliths(&base));
+    assert_eq!(monoliths(&sod), [expected(0..3), expected(3..8)].concat());
+    for (way, key, name) in ways {
+        for channel in 0..8 {
+            let pack = if channel < 3 { "base" } else { "sod" };
+            let id = sod.object_type_by_key(&format!("{pack}:{key}_{channel}"));
+            let ty = sod.object_type(id.unwrap()).unwrap();
+            assert_eq!(ty.kind, ObjectKind::Monolith { channel, way });
+            assert_eq!(ty.name, format!("{name} {channel}"));
+            assert_eq!((ty.visit, ty.from_above), (Visit::Enter, false));
+        }
+    }
+    let ty = |key: &str| {
+        base.object_type(base.object_type_by_key(key).unwrap())
+            .unwrap()
+    };
+    let gate = ty("base:subterranean_gate");
+    assert_eq!(gate.kind, ObjectKind::SubterraneanGate);
+    assert_eq!(
+        (gate.name.as_str(), gate.visit, gate.from_above),
+        ("Subterranean Gate", Visit::Enter, false)
+    );
+    // Only the Whirlpool is visited from above (the original's 0x63AB00).
+    let whirlpool = ty("base:whirlpool");
+    assert_eq!(whirlpool.kind, ObjectKind::Whirlpool { divisor: 2 });
+    assert_eq!(
+        (
+            whirlpool.name.as_str(),
+            whirlpool.visit,
+            whirlpool.from_above
+        ),
+        ("Whirlpool", Visit::Enter, true)
+    );
+    // None is ownable or weekly.
+    for t in sod.object_types() {
+        if matches!(
+            t.kind,
+            ObjectKind::Monolith { .. }
+                | ObjectKind::SubterraneanGate
+                | ObjectKind::Whirlpool { .. }
+        ) {
+            assert!(!t.kind.ownable() && !t.kind.weekly(), "{}", t.key.as_str());
+        }
+    }
 }

@@ -75,11 +75,11 @@ pub use ruleset::{
     BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef, DWELLING_LEVELS,
     DwellingParams, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef, Gives, KEY_COLOURS,
     MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
-    MonsterParams, MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef,
-    ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid,
-    PyramidDef, RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
-    StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker,
-    TerrainWalkerDef, Turn, TurnDef, Visit,
+    MonolithWay, MonsterParams, MonsterParamsDef, MonthParams, MonthParamsDef, ObjectKind,
+    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef,
+    Pyramid, PyramidDef, RandomDwellingDef, RiverDef, RiverId, RiverKind, RoadDef, RoadId,
+    RoadKind, StartingResources, StartingResourcesDef, TerrainMovement, TerrainMovementDef,
+    TerrainWalker, TerrainWalkerDef, Turn, TurnDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -137,5 +137,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 21;
 /// increment 9's seven kinds (mines, abandoned mines, Lighthouses, Shipyards, Windmills, Water
 /// Wheels, Gardens), the monsters' growth, the calendar and the months. v15 (E08 T83b1): the flag
 /// radius. v16 (E08 T93a): the dwellings' kinds, `[params.dwellings]`, `[[random_dwelling]]`.
-/// v17 (E09 T8a1): the town's kind.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 17;
+/// v17 (E09 T8a1): the town's kind. v18 (E08 T103a): increment 11's three kinds (the monoliths
+/// with their channel and way, the Subterranean Gate, the Whirlpool with its divisor).
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 18;

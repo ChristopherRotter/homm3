@@ -11,7 +11,8 @@
 //! 0x4D91F0 is a test per type). Since E08 T71 the day's sea points and free boarding
 //! (HER-ADV-009; ADR-0013 points 13.6, 13.7; survey `docs/rules/surveys/E08-sea.md` §3.1, §4.2):
 //! the kinds `navigation`, `sea_movement_points` and `free_boarding`, Navigation's skill
-//! specialty; since E08 T82 the Lighthouses' points the adventure gives (ADR-0013 point 13.6).
+//! specialty; since E08 T82 the Lighthouses' points the adventure gives (ADR-0013 point 13.6);
+//! since E08 T103a a Whirlpool's protection, the kind `whirlpool_protection` (HER-ADV-009).
 
 use h3_content::{CreatureTypeId, FULL_BP, HeroEffect, Ruleset};
 use h3_kernel::arith::mul_div_floor;
@@ -119,6 +120,18 @@ pub fn sea_points(
 pub fn free_boarding(details: &HeroDetails, core: &Ruleset) -> bool {
     // rule: HER-ADV-009
     effects(details, core, Count::OncePerType).any(|e| matches!(e, HeroEffect::FreeBoarding))
+}
+
+/// Whether a Whirlpool spares the hero's army its loss (HER-ADV-009, E08 T103a; increment 11's
+/// design note §2): one of its effects is `whirlpool_protection`, from a worn artifact type or a
+/// part of a worn combination (one that needs a skill only with it), a skill or the specialty.
+/// The packs give it to the Sea Captain's Hat, so the Admiral's Hat protects through its part:
+/// the original tests the Hat (`hero_wears_artifact` 0x4D91F0 with 123, which looks into worn
+/// combinations), as VCMI's `WHIRLPOOL_PROTECTION` bonus. The loss itself is the adventure's
+/// (ADV-TEL-006).
+pub fn whirlpool_protection(details: &HeroDetails, core: &Ruleset) -> bool {
+    // rule: HER-ADV-009
+    effects(details, core, Count::OncePerType).any(|e| matches!(e, HeroEffect::WhirlpoolProtection))
 }
 
 /// The speed a stack of `creature` counts with in the hero's army for the day's points

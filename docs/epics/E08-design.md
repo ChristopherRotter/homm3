@@ -53,6 +53,12 @@ Three kinds, every one **entered** (none of the five classes is in `object_class
 the visit reading the kind; the building task names it); the visit is note §7. Hash tags follow the
 part's last (the building task's); **ruleset part v18**.
 
+*As built* (T103a, `adventure/e08-t103a`): `ObjectKind::Monolith { channel: u8, way: MonolithWay }`
+(`Entrance`, `Exit`, `TwoWay`), `SubterraneanGate`, `Whirlpool { divisor: u32 }` (hash tags 34 to
+36; the way 0 to 2), their `Def`s; a teleporter not entered and a divisor below 2 refused;
+`effect` none for the three until T105a, so a step onto an entrance is refused (`Visit`) and the
+reach ends before it (no `Effect::Teleport` yet); adventure ruleset part v18.
+
 ###### 2. The Whirlpool's protection (`h3-content`'s effect kinds; HER-ADV-009 amended)
 
 The original spares a hero wearing the Sea Captain's Hat (123), alone or in a combination
@@ -86,7 +92,11 @@ is T103a's.
 - Keys and names (*agent's call*; the building task fixes them): `base:monolith_entrance_0` to
   `sod:two_way_monolith_7`; the names the original's class names (`ObjNames.txt`: Monolith One Way
   Entrance, Monolith One Way Exit, Two-Way Monolith, Subterranean Gate, Whirlpool), a monolith's
-  with its channel's number.
+  with its channel's number. *As built* (T103a): the keys `monolith_entrance_N`,
+  `monolith_exit_N`, `monolith_two_way_N`, `subterranean_gate`, `whirlpool`; `ObjNames.txt`'s row
+  45 is "Monolith Two Way" (not "Two-Way Monolith"), so the names "Monolith One Way Entrance N",
+  "Monolith One Way Exit N", "Monolith Two Way N" with the channel N, "Subterranean Gate",
+  "Whirlpool".
 - **The harvest's check** (with the original data, `h3-map`'s tests): each monolith type's channel
   and way equal its class and subclass in the import's tables (note §4); the subclasses each
   expansion's `Objects.txt` lists (RoE and AB 0 to 2, SoD 0 to 7) are defined by the pack of that
@@ -94,6 +104,13 @@ is T103a's.
   as the mines'.
 - **The synthetic packs** gain a monolith of each way in two channels, a gate and a Whirlpool, for
   the crates' own tests.
+- *As built* (T103a): base's 11 types after the town, sod's 15 after Favorable Winds (base's new
+  types move ab's and sod's type ids: the duel and sea replays' checkpoints moved), `synthetic`'s
+  eight (divisor 3). The check against the original data is `h3-pack-adventure`'s
+  `original_data` (its check 5): the 26 types against H3bitmap.lod's (SoD's) and H3ab_bmp.lod's
+  (AB's) `Objects.txt` (base when AB lists the subclass), `ObjNames.txt` and the executable's
+  `object_classes_not_entered` 0x63AA58 and `object_classes_from_above` 0x63AB00; the import's
+  tables join it in T103b.
 
 ##### Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -562,7 +579,7 @@ ADRs are applied once with the rows' verdicts:
 | 2 | **T99** | Batch E11's maps: the writer's five classes, the spec's fields (`cross-lane`), the two specs and templates (§16) |
 | 3 | **T100** + **T101** | T100: the harness's reads and keys, the recipes, the runs E11a and E11b. T101: scored (survey §15) |
 | 4 | **T102** | `shared/` (`cross-lane`): the two ADRs with T101's outcome, the glossary, `docs/06-security.md`, the effect kind with the harvester's gap-fill (pack format v51, core ruleset hash v52) |
-| 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v21); a step onto an entrance refused as any unbuilt visit's until T105a |
+| 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v21); a step onto an entrance refused as any unbuilt visit's until T105a. *Cut at its start* (decision 282): T103c batch E11c, T103d decision 279's order, after T103c |
 | 6 | **T104** | The build: the surfaces (A-42 and its entry), the channels, the gates' pairs (note §5); `build-gates-xl-144` |
 | 7 | **T105** | T105a: the stream in `apply`, the jump (the candidates, the draw, each kind, the arrival), the Whirlpool's loss, the events and views, the entrance's guard, the reach's measure against `master` (note §7 to §10, §13's stream; A-38's, A-40's, A-41's entries). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v26, replay format v11, `cross-lane` v8; A-37's entry) |
 | 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined |

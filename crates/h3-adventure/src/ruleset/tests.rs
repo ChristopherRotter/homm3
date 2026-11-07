@@ -1717,4 +1717,5 @@ fn the_hash_sees_the_monsters_and_the_grounds() {
 mod dwellings;
 mod economy;
 mod rewards;
+mod teleporters;
 mod towns;

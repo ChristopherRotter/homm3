@@ -80,6 +80,7 @@ pub use level::{
 pub use level_up::{Choice, Draws, LevelUp, Offers, OriginalDraws, draw_level_up};
 pub use movement::{
     Movement, free_boarding, land_points, movement, movement_speed, scouting_radius, sea_points,
+    whirlpool_protection,
 };
 pub use moves::{ArtifactMove, MoveChanges, check_move, move_changes};
 pub use positions::{Position, equip, first_position, positions, takes, wearing};

@@ -303,6 +303,42 @@ pub enum ObjectKind {
     /// (TWN-VIS-001); since E09 T8b2a besieged from the tile before when its garrison defends it,
     /// since T8b2b when a visitor of another team does (TWN-SIE-001, TWN-SIE-002).
     Town,
+    /// A monolith (E08 T103a, increment 11's design note §1; ADV-TEL-001, the original's classes
+    /// 43 to 45 by subclass): entered, a teleporter. Its exits are its channel's monoliths of the
+    /// way it leads to, when the game is built (ADV-TEL-002, T104): an entrance's the channel's
+    /// exits, a two-way monolith's the channel's other two-way ones, an exit's none (it leads
+    /// nowhere). A one-way and a two-way channel of one number are distinct.
+    Monolith {
+        /// Its channel's number (the original's subclass, its picture's colour).
+        channel: u8,
+        /// Its way.
+        way: MonolithWay,
+    },
+    /// A Subterranean Gate (E08 T103a, increment 11's design note §1; ADV-TEL-001, the original's
+    /// class 103): entered, a teleporter; its exit is the gate it is paired with when the game is
+    /// built (ADV-TEL-002, T104). Not the border gate ([`Self::KeyGate`]).
+    SubterraneanGate,
+    /// A Whirlpool (E08 T103a, increment 11's design note §1; ADV-TEL-001, the original's class
+    /// 111): entered by a boat, a teleporter; its exits are the other Whirlpools' tiles (ADV-TEL-002,
+    /// T104), and before the jump an unprotected visitor's weakest stack keeps its count divided
+    /// by the divisor (ADV-TEL-006, T105a).
+    Whirlpool {
+        /// What the weakest stack's count is divided by, rounded down, a lone stack keeping at
+        /// least one (the original's 2); at least 2.
+        divisor: u32,
+    },
+}
+
+/// A monolith's way (E08 T103a, increment 11's design note §1; ADV-TEL-001): which of the
+/// original's three classes it is, so which monoliths of its channel are its exits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MonolithWay {
+    /// A one-way entrance (class 43): its exits are its channel's [`Self::Exit`] monoliths.
+    Entrance,
+    /// A one-way exit (class 44): it leads nowhere.
+    Exit,
+    /// A two-way monolith (class 45): its exits are its channel's other two-way monoliths.
+    TwoWay,
 }
 
 /// What a visit of an object does, for the kinds whose visit is built ([`ObjectKind::effect`]):
@@ -426,12 +462,17 @@ impl ObjectKind {
             // kinds are typed; the dwellings' and the camps' visits came with T95a1. A random
             // dwelling becomes a dwelling when the game is built (ADV-DWL-005); one its draw
             // found no dwelling for stays random and is never visited. E09 T8a1: the town is
-            // typed; its step came with E09 T8a2.
+            // typed; its step came with E09 T8a2. E08 T103a: increment 11's three kinds are
+            // typed; their jump comes with T105a (increment 11's design note §7), so a step onto
+            // a teleporter's entrance is refused until then.
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling => None,
+            | Self::RandomDwelling
+            | Self::Monolith { .. }
+            | Self::SubterraneanGate
+            | Self::Whirlpool { .. } => None,
         }
     }
 
@@ -734,6 +775,21 @@ pub enum ObjectKindDef {
     },
     /// [`ObjectKind::Town`] (E09 T8a1): its type entered, as every ownable one's.
     Town,
+    /// [`ObjectKind::Monolith`] (E08 T103a): any channel number; its type entered, as every
+    /// teleporter's.
+    Monolith {
+        /// The channel's number.
+        channel: u8,
+        /// The way.
+        way: MonolithWay,
+    },
+    /// [`ObjectKind::SubterraneanGate`] (E08 T103a): its type entered.
+    SubterraneanGate,
+    /// [`ObjectKind::Whirlpool`] (E08 T103a): a divisor from 2; its type entered.
+    Whirlpool {
+        /// The divisor.
+        divisor: u32,
+    },
 }
 
 /// An object type as a pack defines it.
@@ -900,6 +956,19 @@ pub(super) fn compile_object_types(
         // rule: ADV-RFG-001
         if matches!(kind, ObjectKind::RefugeeCamp { .. }) && def.visit != Visit::Enter {
             return Err(invalid("a refugee camp is not entered"));
+        }
+        // A teleporter is entered (E08 T103a, increment 11's design note §1: none of classes 43
+        // to 45, 103 and 111 is in the original's `object_classes_not_entered` 0x63AA58): its
+        // visitor steps onto the entrance, from which it jumps.
+        // rule: ADV-TEL-001
+        if matches!(
+            kind,
+            ObjectKind::Monolith { .. }
+                | ObjectKind::SubterraneanGate
+                | ObjectKind::Whirlpool { .. }
+        ) && def.visit != Visit::Enter
+        {
+            return Err(invalid("a teleporter is not entered"));
         }
         tables.types.push(ObjectType {
             key: def.key.clone(),
@@ -1398,6 +1467,18 @@ fn compile_kind(
                 Err("a refugee camp's levels are not 1 <= low <= high <= DWELLING_LEVELS")
             }
         }
+        ObjectKindDef::Monolith { channel, way } => Ok(ObjectKind::Monolith {
+            channel: *channel,
+            way: *way,
+        }),
+        ObjectKindDef::SubterraneanGate => Ok(ObjectKind::SubterraneanGate),
+        ObjectKindDef::Whirlpool { divisor } => {
+            if *divisor >= 2 {
+                Ok(ObjectKind::Whirlpool { divisor: *divisor })
+            } else {
+                Err("a whirlpool's divisor is below 2")
+            }
+        }
     })
 }
 
@@ -1499,7 +1580,8 @@ impl CanonicalHash for ObjectType {
     /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid;
     /// since part v13 20 message, 21 ground of the sea, 22 hole; since part v14 23 mine, 24
     /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden; since
-    /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town) and
+    /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town; since
+    /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool) and
     /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in order; a
     /// monster's levels as 0 for none, else 1, low, high; a ground's battlefield key, since part
     /// v10 whether it takes the native price away; an artifact's classes as 0 for none, else 1
@@ -1508,7 +1590,8 @@ impl CanonicalHash for ObjectType {
     /// else 1 and the terrain; a Shipyard's price, boat type and offsets as length and each column
     /// and row; a Garden's gifts as a price; a dwelling's creatures as length and handles, its
     /// blocked and visitable masks' bits, its guards as length and each creature and count, its
-    /// shift; a Refugee Camp's low and high level; the others' fields in order).
+    /// shift; a Refugee Camp's low and high level; a monolith's channel and way as 0 entrance,
+    /// 1 exit, 2 two-way; a Whirlpool's divisor; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -1702,6 +1785,20 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(*high);
             }
             ObjectKind::Town => h.write_u8(33),
+            ObjectKind::Monolith { channel, way } => {
+                h.write_u8(34);
+                h.write_u8(*channel);
+                h.write_u8(match way {
+                    MonolithWay::Entrance => 0,
+                    MonolithWay::Exit => 1,
+                    MonolithWay::TwoWay => 2,
+                });
+            }
+            ObjectKind::SubterraneanGate => h.write_u8(35),
+            ObjectKind::Whirlpool { divisor } => {
+                h.write_u8(36);
+                h.write_u32(*divisor);
+            }
         }
     }
 }

@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-07 (the adventure lane, E08 T103a, branch `adventure/e08-t103a`; **the teleporters'
+  types, for when E24 draws them**): `h3_adventure::ObjectKind` has three new variants,
+  `Monolith { channel: u8, way: MonolithWay }` (`Entrance`, `Exit`, `TwoWay`; the original's classes
+  43 to 45, the channel its subclass), `SubterraneanGate` (103) and `Whirlpool { divisor: u32 }`
+  (111); the packs' types `base:monolith_{entrance,exit,two_way}_0` to `_2`, `sod:…_3` to `_7`,
+  `base:subterranean_gate`, `base:whirlpool` (adventure ruleset part v18). The import maps the
+  classes to them in T103b (map import v21); until then they import as blockers. No view changes:
+  a viewer sees the type as for any object (ADV-FOG-004); a jump's events come with T105a.
 - 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
   `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
   open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the

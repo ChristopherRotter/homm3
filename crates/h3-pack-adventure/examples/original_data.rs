@@ -11,18 +11,26 @@
 //! (design note `docs/epics/E08-design.md` §2; survey `docs/rules/surveys/E08-dwellings.md` §3.2
 //! steps 3–4): a faction's level is the dwelling of its town's unupgraded creature of that level,
 //! the Golem Factory for the Stone Golem and otherwise the last class-17 subclass that offers it.
-//! Fails with the mismatches of the first check that has any.
+//! Since E08 T103a the teleporters (design note §3; survey `docs/rules/surveys/E08-teleporters.md`
+//! §1, §2): each monolith subclass of classes 43 to 45 that SoD's `Objects.txt` lists has exactly
+//! one monolith type of its way with the subclass as its channel, in `base` when AB's
+//! `Objects.txt` lists it too and in `sod` otherwise, named `ObjNames.txt`'s row with the
+//! channel; classes 103 and 111 their one base type each, named by their rows; each teleporter
+//! type entered and visited from above as the executable's class lists say
+//! (`object_classes_not_entered`, `object_classes_from_above`). Fails with the mismatches of the
+//! first check that has any.
 //!
 //! `cargo run -p h3-pack-adventure --example original_data -- original-data/install`
 //!
-//! The text tables are read from `<install>/../extracted/H3ab_bmp`. The installation copy is only
-//! read. Without its files the check is skipped with a note.
+//! The text tables are read from `<install>/../extracted/H3ab_bmp` (AB's) and, for the
+//! teleporters, `<install>/../extracted/H3bitmap` (SoD's). The installation copy is only read.
+//! Without its files the check is skipped with a note.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_adventure::{AdventureRuleset, ObjectKind, ObjectType};
+use h3_adventure::{AdventureRuleset, MonolithWay, ObjectKind, ObjectType, Visit};
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
@@ -48,6 +56,16 @@ const FACTIONS: [&str; 9] = [
 const STONE_GOLEM: i32 = 32;
 /// The class-17 subclasses the derivation never yields.
 const NEVER: [u32; 5] = [7, 13, 16, 47, 51];
+/// The executable's 42 classes (u32) a hero visits from the neighbouring tile without entering.
+const OBJECT_CLASSES_NOT_ENTERED: u32 = 0x0063_AA58;
+/// The executable's 42 classes (u32) whose objects may be entered from above.
+const OBJECT_CLASSES_FROM_ABOVE: u32 = 0x0063_AB00;
+/// The monoliths' classes, their ways and their types' key prefixes (E08 T103a).
+const MONOLITHS: [(u32, MonolithWay, &str); 3] = [
+    (43, MonolithWay::Entrance, "monolith_entrance"),
+    (44, MonolithWay::Exit, "monolith_exit"),
+    (45, MonolithWay::TwoWay, "monolith_two_way"),
+];
 
 /// An original object class and subclass.
 type Class = (u32, u32);
@@ -59,11 +77,14 @@ fn main() -> ExitCode {
     };
     let install = Path::new(&install);
     let texts = install.join("..").join("extracted").join("H3ab_bmp");
+    let sod_texts = install.join("..").join("extracted").join("H3bitmap");
     let files = [
         install.join("Heroes3.exe"),
         texts.join("Objects.txt"),
         texts.join("CrGen1.txt"),
         texts.join("CrGen4.txt"),
+        sod_texts.join("Objects.txt"),
+        sod_texts.join("ObjNames.txt"),
     ];
     if let Some(missing) = files.iter().find(|f| !f.is_file()) {
         println!(
@@ -87,7 +108,7 @@ fn main() -> ExitCode {
 }
 
 /// Runs the checks; the summary, or the first check's mismatches.
-fn check(files: &[PathBuf; 4]) -> Result<String, Vec<String>> {
+fn check(files: &[PathBuf; 6]) -> Result<String, Vec<String>> {
     let read = |path: &PathBuf| {
         std::fs::read(path).map_err(|e| vec![format!("{} does not read: {e}", path.display())])
     };
@@ -301,15 +322,132 @@ fn check(files: &[PathBuf; 4]) -> Result<String, Vec<String>> {
     }
     done(mismatches)?;
 
+    // 5. The teleporters (E08 T103a).
+    let not_entered = table(OBJECT_CLASSES_NOT_ENTERED, 42, "object_classes_not_entered")?;
+    let from_above = table(OBJECT_CLASSES_FROM_ABOVE, 42, "object_classes_from_above")?;
+    let names = lines(&files[5])?;
+    let teleporters = teleporters(
+        &part,
+        [&objects, &lines(&files[4])?],
+        &names,
+        [&not_entered, &from_above],
+    )?;
+
     Ok(format!(
         "{} dwelling types match {} CrGen1 + {} CrGen4 rows, their Objects.txt footprints and \
          the executable's creatures; the {} factions' random dwelling tables match the \
-         original's derivation ({} outcomes)",
+         original's derivation ({} outcomes); {teleporters}",
         types.len(),
         rows[0].1.len(),
         rows[1].1.len(),
         FACTIONS.len(),
         outcomes.len()
+    ))
+}
+
+/// Check 5 (E08 T103a): the teleporter types against AB's and SoD's `Objects.txt` (`objects`),
+/// SoD's `ObjNames.txt` and the executable's class lists (`lists`: not entered, from above).
+fn teleporters(
+    part: &AdventureRuleset,
+    objects: [&[String]; 2],
+    names: &[String],
+    lists: [&[i32]; 2],
+) -> Result<String, Vec<String>> {
+    let listed = |lines: &[String]| {
+        lines
+            .iter()
+            .filter_map(|line| {
+                let fields = line.split_whitespace().collect::<Vec<_>>();
+                let (class, sub) = (fields.get(5)?.parse().ok()?, fields.get(6)?.parse().ok()?);
+                [43, 44, 45, 103, 111]
+                    .contains(&class)
+                    .then_some((class, sub))
+            })
+            .collect::<BTreeSet<Class>>()
+    };
+    let [ab, sod] = objects.map(listed);
+    let mut mismatches = Vec::new();
+    let mut checked = Vec::new();
+    let row = |class: u32| names.get(class as usize).map_or("", String::as_str);
+    for &(class, sub) in &sod {
+        let (pack, key, kind, name) = match MONOLITHS.iter().find(|m| m.0 == class) {
+            Some(&(_, way, prefix)) => (
+                if ab.contains(&(class, sub)) {
+                    "base"
+                } else {
+                    "sod"
+                },
+                format!("{prefix}_{sub}"),
+                ObjectKind::Monolith {
+                    channel: u8::try_from(sub).unwrap_or(u8::MAX),
+                    way,
+                },
+                format!("{} {sub}", row(class)),
+            ),
+            // The gate and the Whirlpool: one type whatever the subclass (subclass 0 only).
+            None if class == 103 => (
+                "base",
+                "subterranean_gate".to_owned(),
+                ObjectKind::SubterraneanGate,
+                row(class).to_owned(),
+            ),
+            None => (
+                "base",
+                "whirlpool".to_owned(),
+                ObjectKind::Whirlpool { divisor: 2 },
+                row(class).to_owned(),
+            ),
+        };
+        let key = format!("{pack}:{key}");
+        let Some(ty) = part
+            .object_type_by_key(&key)
+            .and_then(|id| part.object_type(id))
+        else {
+            mismatches.push(format!("class {class} subclass {sub} has no type {key}"));
+            continue;
+        };
+        let class = i32::try_from(class).expect("a class fits");
+        let visit = if lists[0].contains(&class) {
+            Visit::Neighbour
+        } else {
+            Visit::Enter
+        };
+        let expected = (&kind, name.as_str(), visit, lists[1].contains(&class));
+        if (&ty.kind, ty.name.as_str(), ty.visit, ty.from_above) != expected {
+            mismatches.push(format!(
+                "{key}: {:?} {:?} {:?} from above {} in the pack, {expected:?} in the original",
+                ty.kind, ty.name, ty.visit, ty.from_above
+            ));
+        }
+        checked.push(ty.key.as_str().to_owned());
+    }
+    // No other teleporter type, and AB's subclasses a subset of SoD's.
+    for ty in part.object_types() {
+        let teleporter = matches!(
+            ty.kind,
+            ObjectKind::Monolith { .. }
+                | ObjectKind::SubterraneanGate
+                | ObjectKind::Whirlpool { .. }
+        );
+        if teleporter && !checked.iter().any(|k| k == ty.key.as_str()) {
+            mismatches.push(format!(
+                "{} is a teleporter type of no listed class and subclass",
+                ty.key.as_str()
+            ));
+        }
+    }
+    for (class, sub) in ab.difference(&sod) {
+        mismatches.push(format!(
+            "class {class} subclass {sub} is in AB's Objects.txt, not SoD's"
+        ));
+    }
+    done(mismatches)?;
+    Ok(format!(
+        "{} teleporter types match SoD's {} listed teleporter classes and subclasses ({} in AB's), \
+         ObjNames.txt and the executable's class lists",
+        checked.len(),
+        sod.len(),
+        ab.len()
     ))
 }
 

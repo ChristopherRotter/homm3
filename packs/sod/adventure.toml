@@ -87,3 +87,114 @@ name = "Favorable Winds"
 visit = "enter"
 from_above = true
 sea_ground = {}
+
+# ADV-TEL-001 (E08 T103a, increment 11's design note sections 1 and 3; survey E08-teleporters.md
+# sections 1 and 2): the monoliths of channels 3 to 7 (classes 43, 44 and 45, subclass = channel),
+# which only SoD's Objects.txt lists (H3bitmap.lod's: 0 to 7) and only SoD maps place; channels 0
+# to 2 are the base pack's. Pictures AVXmn4i0 to AVXmn8b0: channel 3 one visitable tile at the
+# anchor with one blocked, channels 4 to 7 one left of it with two blocked; the maps' templates
+# rule (42 SoD monoliths block one tile where Objects.txt blocks two).
+[[object_type]]
+id = "monolith_entrance_3"
+name = "Monolith One Way Entrance 3"
+visit = "enter"
+from_above = false
+monolith = { channel = 3, way = "entrance" }
+
+[[object_type]]
+id = "monolith_entrance_4"
+name = "Monolith One Way Entrance 4"
+visit = "enter"
+from_above = false
+monolith = { channel = 4, way = "entrance" }
+
+[[object_type]]
+id = "monolith_entrance_5"
+name = "Monolith One Way Entrance 5"
+visit = "enter"
+from_above = false
+monolith = { channel = 5, way = "entrance" }
+
+[[object_type]]
+id = "monolith_entrance_6"
+name = "Monolith One Way Entrance 6"
+visit = "enter"
+from_above = false
+monolith = { channel = 6, way = "entrance" }
+
+[[object_type]]
+id = "monolith_entrance_7"
+name = "Monolith One Way Entrance 7"
+visit = "enter"
+from_above = false
+monolith = { channel = 7, way = "entrance" }
+
+[[object_type]]
+id = "monolith_exit_3"
+name = "Monolith One Way Exit 3"
+visit = "enter"
+from_above = false
+monolith = { channel = 3, way = "exit" }
+
+[[object_type]]
+id = "monolith_exit_4"
+name = "Monolith One Way Exit 4"
+visit = "enter"
+from_above = false
+monolith = { channel = 4, way = "exit" }
+
+[[object_type]]
+id = "monolith_exit_5"
+name = "Monolith One Way Exit 5"
+visit = "enter"
+from_above = false
+monolith = { channel = 5, way = "exit" }
+
+[[object_type]]
+id = "monolith_exit_6"
+name = "Monolith One Way Exit 6"
+visit = "enter"
+from_above = false
+monolith = { channel = 6, way = "exit" }
+
+[[object_type]]
+id = "monolith_exit_7"
+name = "Monolith One Way Exit 7"
+visit = "enter"
+from_above = false
+monolith = { channel = 7, way = "exit" }
+
+[[object_type]]
+id = "monolith_two_way_3"
+name = "Monolith Two Way 3"
+visit = "enter"
+from_above = false
+monolith = { channel = 3, way = "two_way" }
+
+[[object_type]]
+id = "monolith_two_way_4"
+name = "Monolith Two Way 4"
+visit = "enter"
+from_above = false
+monolith = { channel = 4, way = "two_way" }
+
+[[object_type]]
+id = "monolith_two_way_5"
+name = "Monolith Two Way 5"
+visit = "enter"
+from_above = false
+monolith = { channel = 5, way = "two_way" }
+
+[[object_type]]
+id = "monolith_two_way_6"
+name = "Monolith Two Way 6"
+visit = "enter"
+from_above = false
+monolith = { channel = 6, way = "two_way" }
+
+[[object_type]]
+id = "monolith_two_way_7"
+name = "Monolith Two Way 7"
+visit = "enter"
+from_above = false
+monolith = { channel = 7, way = "two_way" }
