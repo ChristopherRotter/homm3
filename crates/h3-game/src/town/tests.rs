@@ -219,6 +219,8 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
             supersedes: vec![],
             forbidden_with: None,
             auto_with: vec![],
+            requires: vec![],
+            cost: vec![],
             roles,
         })
         .collect();

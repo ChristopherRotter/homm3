@@ -1234,6 +1234,8 @@ fn a_town_needs_its_siege() {
             supersedes: vec![],
             forbidden_with: None,
             auto_with: vec![],
+            requires: vec![],
+            cost: vec![],
             roles,
         })
         .collect();

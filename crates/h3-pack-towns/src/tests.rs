@@ -143,6 +143,79 @@ fn the_roles_parse() {
 }
 
 #[test]
+fn the_requirements_costs_and_the_shipyard_parse() {
+    // E09 T16a: the direct requirements closed, the costs in the core's resource order.
+    let part = compiled();
+    let record = vale(&part);
+    let id = |k: &str| record.building_by_key(k).unwrap();
+    let set = |keys: &[&str]| {
+        keys.iter()
+            .fold(BuildingSet::EMPTY, |set, &k| set.with(id(k)))
+    };
+    assert_eq!(
+        building(record, "capitol").requires,
+        set(&[
+            "city_hall",
+            "town_hall",
+            "tavern",
+            "castle",
+            "citadel",
+            "fort"
+        ])
+    );
+    assert_eq!(
+        building(record, "horde_up").requires,
+        set(&["horde", "dwelling_2", "dwelling_1", "fort"])
+    );
+    assert_eq!(
+        building(record, "village_hall").requires,
+        BuildingSet::EMPTY
+    );
+    let core = core(&[h3_pack::SYNTHETIC_CORE, h3_pack::SYNTHETIC_EXT_CORE]);
+    let resource = |k: &str| {
+        let index = core.resources().iter().position(|r| r.key.as_str() == k);
+        index.and_then(h3_content::ResourceId::from_index).unwrap()
+    };
+    let (coin, shard) = (resource("synthetic:coin"), resource("synthetic:shard"));
+    assert_eq!(
+        building(record, "capitol").cost,
+        [(coin, 10_000), (shard, 10)]
+    );
+    assert_eq!(building(record, "horde_up").cost, [(coin, 1000)]);
+    assert!(building(record, "grail").cost.is_empty());
+    let shipyard = building(record, "shipyard");
+    assert!(shipyard.roles.shipyard);
+    assert_eq!(
+        (shipyard.requires, shipyard.cost.as_slice()),
+        (set(&["tavern"]), [(coin, 2000), (shard, 20)].as_slice())
+    );
+    assert_eq!(
+        record.buildings.iter().filter(|b| b.roles.shipyard).count(),
+        1
+    );
+    // A cost's key of another pack, as a silo's.
+    let text = VALE.replace(
+        "cost = { coin = 2500 }",
+        r#"cost = { "synthetic:shard" = 7 }"#,
+    );
+    let pack = parse(&text).unwrap();
+    let town_hall = pack.towns[0]
+        .buildings
+        .iter()
+        .find(|b| b.key == "town_hall")
+        .unwrap();
+    assert_eq!(town_hall.requires, ["tavern"]);
+    assert_eq!(
+        town_hall
+            .cost
+            .iter()
+            .map(|(k, a)| (k.as_str(), *a))
+            .collect::<Vec<_>>(),
+        [("synthetic:shard", 7)]
+    );
+}
+
+#[test]
 fn an_upgrade_and_a_parsed_pack_keep_what_they_say() {
     let manifest = h3_pack::parse_pack(h3_pack::SYNTHETIC_CORE)
         .unwrap()
@@ -228,6 +301,16 @@ fn the_parser_is_strict() {
         r#"auto_with = ["horde", "dwelling_2"]"#,
         r#"auto_with = "horde""#
     )));
+    assert!(syntax(
+        &VALE.replace(r#"requires = ["tavern"]"#, r#"requires = "tavern""#)
+    ));
+    assert!(syntax(
+        &VALE.replace("cost = { coin = 2500 }", "cost = { coin = -1 }")
+    ));
+    assert!(syntax(
+        &VALE.replace("cost = { coin = 2500 }", "cost = 2500")
+    ));
+    assert!(syntax(&VALE.replace("shipyard = true", "shipyard = 1")));
     let key = |text: &str| matches!(parse(text), Err(TownPackError::Key(_)));
     assert!(key(
         &VALE.replace("faction = \"vale\"", "faction = \"Vale\"")
@@ -238,6 +321,9 @@ fn the_parser_is_strict() {
         &VALE.replace("[\"spearman\"]", "[\"spearman\", \"x:\"]")
     ));
     assert!(key(&VALE.replace("shard = 1", "Shard = 1")));
+    assert!(key(
+        &VALE.replace("cost = { coin = 2500 }", "cost = { Coin = 2500 }")
+    ));
     assert!(key(&VALE_OVERRIDE.replace("synthetic:vale", "Vale")));
     assert!(key(&VALE_OVERRIDE.replace("\"lurker\"", "\"Lurker\"")));
     assert!(key(
@@ -428,4 +514,13 @@ fn the_original_packs_compile_with_every_faction() {
     );
     let conflux = sod.town(faction("ab:conflux")).unwrap();
     assert!(building(conflux, "aurora_borealias").roles.grail);
+    // E09 T16a: the shipped packs have no requirements, costs or Shipyard until T16b's harvest.
+    for record in sod.towns() {
+        assert!(
+            record
+                .buildings
+                .iter()
+                .all(|b| b.requires.is_empty() && b.cost.is_empty() && !b.roles.shipyard)
+        );
+    }
 }

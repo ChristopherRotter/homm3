@@ -8,7 +8,7 @@
 //! `h3-pack`'s (unknown fields are errors, numbers must fit their types), and the compiler
 //! validates everything again (E09 increment 1's design note §2).
 //!
-//! # Format (E09 T5a1)
+//! # Format (E09 T5a1; the requirements, costs and role `shipyard` since E09 T16a)
 //!
 //! ```toml
 //! [town_params]                    # exactly one enabled pack gives them when any pack has a
@@ -47,6 +47,10 @@
 //!                                  # upgrade with its horde), no cycle
 //!   auto_with = ["horde_1", "upg_dwelling_3"] # optional: built once each of these is ever
 //!                                  # built (a horde's upgrade, E09 decision 29), not itself
+//!   requires = ["village_hall", "tavern"] # optional: its direct requirements, buildings of the
+//!                                  # record in the executable's list order; the compiler
+//!                                  # closes them, no cycle, not itself (E09 design §24)
+//!   cost = { gold = 2500 }         # optional: core resources, each amount >= 1; absent: free
 //!   hall = 2                       # its roles, each optional (below)
 //!
 //! [[town_override]]                # ADR-0006: a record a pack of the closure defined; only the
@@ -67,6 +71,7 @@
 //! | `tavern = true` | counts for a viewer's Tavern level (TWN-VEW-002) | standing |
 //! | `silo = true` | one building: pays the record's `silo` (TWN-INC-002) | standing |
 //! | `grail = true` | one building: pays `grail_gold` | ever built |
+//! | `shipyard = true` | at most one building: the one that needs water (TWN-SET-011, E09 decision 46) | the setup (from E09 T18a) |
 //! | `dwelling = [level, upgraded]` | a level of the record, upgraded only with the level's upgrade; each once, `[1, false]` and `[2, false]` present | the standard set's setup (TWN-SET-003) |
 //! | `morale = n` | the siege's defender, -3 to 3 (the Brotherhood of the Sword replaces the Tavern) | standing |
 //! | `luck = n` | the siege's defender, -3 to 3 (the Fountain of Fortune); at most 8 buildings of a record change morale or luck (a siege names each, E09 T6b) | ever built |
@@ -243,6 +248,10 @@ struct BuildingDto {
     forbidden_with: Option<String>,
     #[serde(default)]
     auto_with: Vec<String>,
+    #[serde(default)]
+    requires: Vec<String>,
+    #[serde(default)]
+    cost: BTreeMap<String, u32>,
     hall: Option<u8>,
     fort: Option<u8>,
     #[serde(default)]
@@ -251,6 +260,8 @@ struct BuildingDto {
     silo: bool,
     #[serde(default)]
     grail: bool,
+    #[serde(default)]
+    shipyard: bool,
     dwelling: Option<(u8, bool)>,
     #[serde(default)]
     morale: i8,
@@ -307,26 +318,31 @@ fn reference(pack: &str, text: &str) -> Result<ContentKey, KeyError> {
     }
 }
 
-fn silo(pack: &str, silo: BTreeMap<String, u32>) -> Result<Vec<(ContentKey, u32)>, KeyError> {
-    silo.into_iter()
+/// Amounts of resources (a silo's, a cost) as written, their keys resolved.
+fn amounts(pack: &str, amounts: BTreeMap<String, u32>) -> Result<Vec<(ContentKey, u32)>, KeyError> {
+    amounts
+        .into_iter()
         .map(|(resource, amount)| Ok((reference(pack, &resource)?, amount)))
         .collect()
 }
 
-fn building(b: BuildingDto) -> BuildingDef {
-    BuildingDef {
+fn building(pack: &str, b: BuildingDto) -> Result<BuildingDef, KeyError> {
+    Ok(BuildingDef {
         key: b.key,
         name: b.name,
         slot: b.slot,
         supersedes: b.supersedes,
         forbidden_with: b.forbidden_with,
         auto_with: b.auto_with,
+        requires: b.requires,
+        cost: amounts(pack, b.cost)?,
         roles: BuildingRoles {
             hall: b.hall,
             fort: b.fort,
             tavern: b.tavern,
             silo: b.silo,
             grail: b.grail,
+            shipyard: b.shipyard,
             dwelling: b
                 .dwelling
                 .map(|(level, upgraded)| Dwelling { level, upgraded }),
@@ -344,7 +360,7 @@ fn building(b: BuildingDto) -> BuildingDef {
                 RevealDto::Word(RevealWord::All) => Reveal::All,
             }),
         },
-    }
+    })
 }
 
 fn town(pack: &str, t: TownDto) -> Result<TownDef, TownPackError> {
@@ -367,9 +383,13 @@ fn town(pack: &str, t: TownDto) -> Result<TownDef, TownPackError> {
         faction: reference(pack, &t.faction)?,
         moat: t.moat.into(),
         siege_obstacles: t.siege_obstacles,
-        silo: silo(pack, t.silo)?,
+        silo: amounts(pack, t.silo)?,
         creatures,
-        buildings: t.building.into_iter().map(building).collect(),
+        buildings: t
+            .building
+            .into_iter()
+            .map(|b| building(pack, b))
+            .collect::<Result<_, _>>()?,
     })
 }
 
@@ -423,7 +443,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                 patch: TownPatch {
                     moat: o.moat.map(Moat::from),
                     siege_obstacles: o.siege_obstacles,
-                    silo: o.silo.map(|s| silo(pack, s)).transpose()?,
+                    silo: o.silo.map(|s| amounts(pack, s)).transpose()?,
                 },
             })
         })
