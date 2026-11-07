@@ -32,9 +32,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** each done or its reason recorded; `drawn` and the captures it touches as
   recorded; `check.sh`. **Depends on:** nothing (independent of T1 to T5). **Status:** cut in
   three by the user (2026-11-07): **T6a** done (the purity test's holes, the dialog items
-  through `h3_ui::paint`, R4-2; no capture in the original); **T6b** the recordings: the deck
-  and the two boats as situations (CLT-Q5), the Demons' dissolve, R4-9; **T6c** `h3-bink` as
-  `BINKW32.DLL` (CLT-Q30), on its own.
+  through `h3_ui::paint`, R4-2; no capture in the original); **T6b** the recordings, cut in two
+  by the user (2026-11-07): **T6b1** the deck and the two boats as situations (CLT-Q5),
+  **T6b2** the Demons' dissolve (R4-9 moved into T7); **T6c** `h3-bink` as `BINKW32.DLL`
+  (CLT-Q30), on its own.
 
 ### E17 M6 T7 — M6's closure
 
@@ -42,7 +43,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   (ranked play and the server browser: the ladders, the pause by agreement, the browser;
   `NOTES.md`, "The live client"), HD and graphics options placed.
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
-  M7's tasks in this queue; M6 done. **Depends on:** T1 to T6. **Status:** waiting.
+  M7's tasks in this queue; M6 done. Also R4-9 (moved from T6b by the user, 2026-11-07): a
+  stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
+  anything), its counts checked on T7's captures of every sequence. **Depends on:** T1 to T6.
+  **Status:** waiting.
 
 ## Inbox
 

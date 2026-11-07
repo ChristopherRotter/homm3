@@ -238,9 +238,13 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   (2026-11-07): **T6a** (done 2026-11-07) the purity test's three holes closed, the dialog items
   drawn by `h3_ui::paint` alone (`h3-view`'s copy gone; `drawn` all the same) and `drawn`'s
   digest of what a sequence's masks depend on (R4-2, recorded from `master`'s viewer first);
-  **T6b** the recordings (CLT-Q5's deck and boats, the Demons' dissolve, R4-9); **T6c** `h3-bink`
-  as `BINKW32.DLL` (CLT-Q30).
-- **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined.
+  **T6b** the recordings (CLT-Q5's deck and boats, the Demons' dissolve, R4-9), cut in two by the
+  user (2026-11-07): **T6b1** the deck and the two boats as capture situations (CLT-Q5),
+  **T6b2** the Demons' dissolve; R4-9 moved into T7 (its check needs every sequence with redraw
+  artifacts captured afresh, about 51 of 91, as T7 captures everything); **T6c** `h3-bink` as
+  `BINKW32.DLL` (CLT-Q30).
+- **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined;
+  R4-9 (a stricter shadow chain in `h3cap.redraws`, checked on T7's captures).
 - **Exit:** a played battle shows every dialog and popup of the original's battle screen, each
   passing against the original or with each difference a listed fix or a classified quirk; the
   combat options in effect.
