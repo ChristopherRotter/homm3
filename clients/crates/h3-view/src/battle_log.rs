@@ -173,6 +173,16 @@ pub enum Logged {
         /// Its number, which picks its name and verb.
         count: u32,
     },
+    /// The Familiars channel `mana` of a hero's cast to the other hero (`cast_spell` 0x5A224A to
+    /// 0x5A26E0; E17 M6 T5d2b): after the cast's tail, before the channel's sounds and animations.
+    Channeled {
+        /// A channelling stack of the side that gains, which names them.
+        stack: u8,
+        /// The channelling creatures that side controls, which pick the name and verb.
+        count: u32,
+        /// The mana gained.
+        mana: u16,
+    },
     /// A creature casts a spell on a stack as its action (`battle_log_cast` 0x5A902A, caster
     /// kind 1, a spell without a row of its own; E17 M6 T5d2a): written after the spell's effect,
     /// before its glow (Bloodlust's handler 0x5A1217).
@@ -581,6 +591,15 @@ pub fn word(
                 "battle.log.death-blow",
                 n.stack(count),
                 Args::new(),
+            ))
+        }
+        Logged::Channeled { stack, count, mana } => {
+            let (n, count) = named(*stack, *count)?;
+            Some(by_count(
+                catalogue,
+                "battle.log.channeled",
+                n.stack(count),
+                Args::new().number("mana", i64::from(*mana)),
             ))
         }
         Logged::CreatureCast {

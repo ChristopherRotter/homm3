@@ -318,6 +318,7 @@ impl Player<'_> {
             spells: BTreeSet::new(),
             defense: 0,
             frightens: self.stage.casts.frighteners.contains(&creature),
+            channels: self.stage.casts.channellers.contains(&creature),
             shielded: self.stage.casts.shielded.contains(&creature),
             turret: None,
         };

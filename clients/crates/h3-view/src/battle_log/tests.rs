@@ -54,6 +54,8 @@ const PACK: &str = r#"{
         "creature-cast_one": "{{creature}} casts {{spell}}",
         "creature-cast_other": "{{creature}} cast {{spell}}",
         "creature-cast-on": " on {{creature}}",
+        "channeled_one": "{{creature}} absorbs {{mana}}.",
+        "channeled_other": "{{creature}} absorb {{mana}}.",
         "summoned_one": "{{hero}} calls {{count}} {{creature}}.",
         "summoned_other": "{{hero}} calls {{count}} {{creature}}.",
         "acid-breath": "Acid: {{creature}} -{{defense}}.",
@@ -748,6 +750,14 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
         Some("Ants cast Dart on Bees")
     );
     assert_eq!(worded(&lust(4, 16, 6)), None);
+    // The Familiars' channel (E17 M6 T5d2b): their name and verb by their number, the mana.
+    let channel = |count, mana| Logged::Channeled {
+        stack: 2,
+        count,
+        mana,
+    };
+    assert_eq!(worded(&channel(1, 3)).as_deref(), Some("Bee absorbs 3."));
+    assert_eq!(worded(&channel(7, 12)).as_deref(), Some("Bees absorb 12."));
     // A stack the record does not name writes nothing.
     for unnamed in [
         Logged::Drain {
@@ -784,6 +794,11 @@ fn the_striker_effects_and_the_spells_after_a_strike_have_their_lines() {
         Logged::Petrified { stack: 9, count: 1 },
         Logged::Regenerated { stack: 9, count: 1 },
         Logged::DeathBlow { stack: 9, count: 1 },
+        Logged::Channeled {
+            stack: 9,
+            count: 1,
+            mana: 1,
+        },
         Logged::CreatureCast {
             stack: 9,
             count: 1,

@@ -267,6 +267,18 @@ original = [
     { form = "other", at = "GENRLTXT:367", printf = ["creature"] },
 ]
 
+# The Familiars' channel after a hero's cast (`cast_spell` 0x5A224A to 0x5A26E0, E17 M6 T5d2b): the
+# Familiars' name and verb by the number of them the gaining side controls (creature 43's names),
+# then the mana gained.
+[[key]]
+id = "battle.log.channeled"
+args = { creature = "text", mana = "number" }
+plural = true
+original = [
+    { form = "one", at = "GENRLTXT:112", printf = ["creature", "mana"] },
+    { form = "other", at = "GENRLTXT:113", printf = ["creature", "mana"] },
+]
+
 # A creature's cast as its action (`battle_log_cast` 0x5A902A to 0x5A9237, caster kind 1, the
 # spells without a row of their own; E17 M6 T5d2a): the caster (the stack whose turn it is) by its
 # number and the spell's name, then `battle.log.creature-cast-on` with the target's name when it has

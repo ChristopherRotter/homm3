@@ -12,11 +12,12 @@ use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
-    ACID, ACID_BREATH, BAD_MORALE, BOLT, Body, Burst, CHAIN_LIGHTNING, CHAIN_START, Caster, Casts,
-    DEATH_BLOW, DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR, FIRE_SHIELD, GOOD_LUCK,
-    GOOD_MORALE, HEAL, LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look, MANA_DRAIN, MINE_BLAST,
-    MagicLook, Missile, ObjectLook, POISON_TENTH, RAISE, REGENERATION, RESISTED, RESURRECTION,
-    SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage, THUNDERBOLT, TITAN_BOLT,
+    ACID, ACID_BREATH, BAD_MORALE, BOLT, Body, Burst, CHAIN_LIGHTNING, CHAIN_START, CHANNEL_DRAIN,
+    CHANNEL_FILL, Caster, Casts, DEATH_BLOW, DEATH_STARE, DEATH_STARE_SPELL, Explosion, FEAR,
+    FIRE_SHIELD, GOOD_LUCK, GOOD_MORALE, HEAL, LAND_MINE, LIFE_DRAIN, LIGHTNING_BOLT, Look,
+    MANA_DRAIN, MINE_BLAST, MagicLook, Missile, ObjectLook, POISON_TENTH, RAISE, REGENERATION,
+    RESISTED, RESURRECTION, SACRIFICED, SHIELD_RETURN, Shell, SiegeStage, SpellLook, Stage,
+    THUNDERBOLT, TITAN_BOLT,
 };
 use h3_view::batch::Batch;
 use h3_view::hero::{HeroLook, Heroes};
@@ -306,8 +307,9 @@ fn missile(
 /// Life Drain's, Death Stare's and the acid's ([`LIFE_DRAIN`], [`DEATH_STARE`], [`ACID`]); since
 /// E17 M3 T7c-2 each spell object's placing and vanishing ones; since E17 M4 T2c-1 a Land Mine's
 /// blast ([`MINE_BLAST`]); since E17 M6 T5d1 regeneration's, a Wraith's mana drain's and Poison's
-/// tenth's ([`REGENERATION`], [`MANA_DRAIN`], [`POISON_TENTH`]); each with its DEF's frames and
-/// size. With `every` (E17 M5 T1b: a
+/// tenth's ([`REGENERATION`], [`MANA_DRAIN`], [`POISON_TENTH`]); since T5d2a a Death Blow's
+/// ([`DEATH_BLOW`]); since T5d2b the Familiars' channel's ([`CHANNEL_DRAIN`], [`CHANNEL_FILL`]);
+/// each with its DEF's frames and size. With `every` (E17 M5 T1b: a
 /// battle fought as it is played, whose events are not known yet), every magic animation of the
 /// asset tables.
 pub fn magic(
@@ -412,6 +414,11 @@ pub fn magic(
             Event::StrikeDamage { .. } => {
                 numbers.insert(ACID);
             }
+            // The Familiars' channel's two (E17 M6 T5d2b).
+            Event::ManaChanneled { .. } => {
+                numbers.insert(CHANNEL_DRAIN);
+                numbers.insert(CHANNEL_FILL);
+            }
             // A Land Mine's blast over the stack it hurts (E17 M4 T2c-1).
             Event::ObstacleTriggered { spell, .. }
                 if spell_entry(record, tables, *spell).is_some_and(|e| e.original == LAND_MINE) =>
@@ -467,7 +474,7 @@ pub fn casts(
     let snapshot = record
         .first_snapshot()
         .ok_or("the record holds no snapshot")?;
-    let (mut cast, mut frightened, mut reflected) = (every, every, every);
+    let (mut cast, mut frightened, mut reflected, mut channeled) = (every, every, every, every);
     // The creatures the battle creates (E17 M5 T5a): their bodies from the ruleset.
     let mut made: Vec<u16> = Vec::new();
     let mut spells: Vec<u16> = snapshot
@@ -500,6 +507,8 @@ pub fn casts(
                 spells.push(spell);
             }
             Event::Frightened { .. } => frightened = true,
+            // The Familiars' channel names them (E17 M6 T5d2b).
+            Event::ManaChanneled { .. } => channeled = true,
             // Fire Shield's return names it and plays its sound; an Archangel's raise and a
             // Phoenix's rebirth play Resurrection's (E17 M3 T7c-3).
             Event::Reflected { .. } => {
@@ -524,7 +533,7 @@ pub fn casts(
     spells.sort_unstable();
     spells.dedup();
     let manifest = &record.header.manifest;
-    let ruleset = if cast || frightened || reflected || !made.is_empty() {
+    let ruleset = if cast || frightened || reflected || channeled || !made.is_empty() {
         Some(crate::scenario::ruleset(packs, manifest)?)
     } else {
         None
@@ -538,6 +547,20 @@ pub fn casts(
                 r.abilities(CreatureTypeId::from_raw(c))
                     .iter()
                     .any(|a| matches!(a, Ability::Fear { .. }))
+            })
+            .collect();
+    }
+    // The creatures that channel the other hero's mana (E17 M6 T5d2b: the ruleset's
+    // `mana_channel`, the Familiars).
+    if let Some(r) = ruleset.as_ref().filter(|_| channeled) {
+        casts.channellers = snapshot
+            .stacks
+            .iter()
+            .map(|s| s.creature)
+            .filter(|&c| {
+                r.abilities(CreatureTypeId::from_raw(c))
+                    .iter()
+                    .any(|a| matches!(a, Ability::ManaChannel { .. }))
             })
             .collect();
     }
