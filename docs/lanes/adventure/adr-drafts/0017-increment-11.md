@@ -50,7 +50,10 @@ the two heroes are not neighbours), and `Revisit`'s visit opens what the object'
 **The jump after a won battle at an exit** is a fifth **visit's rest** (GAM-DEC-007): held by the
 game when the battle opens and given once the winner's levels are answered, as the original moves
 the hero after the levels; nothing when the mover left the map. A visit that jumps, or holds a
-jump, holds no guard's visit of the entrance (subject to batch E11's E11-19).
+jump, holds no guard's visit of the entrance: **a guard is met first** (batch E11's E11-19, E08
+decision 279, for every entered object): a step onto a guarded tile opens the guard's visit, and
+the tile's own visit (a jump among them) is a visit's rest after it, given to a hero still on the
+tile, as an event's on a guarded tile.
 
 **Point 8** (`AdventureEnv`), after increment 10's text: increment 11's **action encoding v8**
 appends eight entries, the `Revisit` of the hero in each of the eight hero slots (the move entries'

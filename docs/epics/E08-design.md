@@ -209,15 +209,17 @@ points and the day's maximum are kept; **no guard test and no visit** at the exi
 is not re-entered), no event fired; the tiles within the hero's scouting radius of the exit are
 revealed to its owner (ADV-FOG-002's disk, as a step's); the move ends. The jump's event: note §10.
 
-**The entrance's guards** (an open point: not read; part C §16 adds a batch row). ADV-MON-006 as
-built visits the guard of the hero's tile once the tile's object's visit returns (`guard_after`;
-`visit_guard` reads the hero's tile as it is then), so after a jump it would meet the exit's guard
-when the entrance had one, a combination nothing supports. *Agent's call until batch E11 says:* a
-jump drops the entrance's held guard (the hero has left the entrance, and the arrival tests no
-guard, §5); a failed jump leaves the hero on the entrance, whose guard visits as after any visit.
-The original's order (the guard tested before the visit, after it at the step's tile, or after it
-at the hero's new tile) is unread; the row: a monster beside A, the hero steps onto A with B free
-and unguarded, then with B guarded too.
+**The entrance's guards** (decision 279, batch E11's E11-19; survey §15). ADV-MON-006 as built
+visits the guard of the hero's tile once the tile's object's visit returns (`guard_after`), so
+after a jump it would meet the exit's guard. **The original's order is the guard first**: the step
+onto a guarded entrance meets its guard (its answer, its battle and levels) and the jump follows
+for a hero still on the entrance (a win, a join, a flight); the arrival tests no guard (E11-3,
+E11-19's N), nor does a revisit (E11-19's Space; the user: a hero on a two-way pair cycles without a
+fight). Decision 279 takes this order for **every entered object** (ADV-MON-006, GAM-DEC-007: the
+tile's visit held as a rest after its guard's, as an event's), built by its own task before the
+jump (round 7's cut, §17); the jump then needs nothing of its own for the entrance's guard. A
+one-way exit beside a guard: no fight on arrival by §5's reading, unobserved; batch E11c (§16).
+*(Decision 272's agent's call, a jump dropping the entrance's held guard, is replaced.)*
 
 ###### 8. The Whirlpool's loss (ADV-TEL-006; `whirlpool_losses` 0x4ACAA0, §4.4)
 
@@ -379,9 +381,9 @@ lines are added to `0016-increment-11.md` (point 4).
   and the rest, as `reward_after` and `Rest::Won`. Not chosen: the exit kept in the open battle and
   given at its end, which would move the hero before its levels (the original gives the levels
   first, 0x4DA720, then `hero_relocate`).
-- **The entrance's guard** (ADV-MON-006 amended; note §7): a visit that jumps or holds a jump sets
-  no `guard_after`; a failed jump, "leads nowhere" and a gate's meeting set it as any visit. Batch
-  E11's E11-19 decides the original's order (§16); the rule follows the row.
+- **The entrance's guard** (ADV-MON-006 amended; note §7, decision 279): the guard first, for every
+  entered object; the tile's visit (the jump, a meeting, "leads nowhere") is the guard's rest, given
+  to a hero still on the tile. Built before T105a; the jump's visit sets no `guard_after`.
 - **`Revisit { hero }`** (ADV-TEL-008; decision 268; the original's space key, §11): an adventure
   command, **`AdventureCommand::Revisit { hero }`**, the entered object under the hero visited
   again.
@@ -485,7 +487,7 @@ first).
 Rule ids (survey §13): ADV-TEL-001 to -008 new; amended: ADV-OBJ-002, ADV-OBJ-003, ADV-FOG-004,
 ADV-MON-006 (§13: a jump drops the entrance's guard), HER-ADV-009 (note §2), GAM-BAT-004,
 GAM-MET-001 (§12), GAM-DEC-007 (§13). Quirks (note §11): `ADV-QUIRK-39` A-37, `-40` A-38, `-41`
-A-39, `-42` A-40, `-43` A-41, `-44` A-42, none with a flag; each entry written by the task that
+A-39, `-42` A-40, `-43` A-41, `-44` A-42, `-45` A-43 (decision 280), none with a flag; each entry written by the task that
 builds its rule (§17). Stubs: none (a computer player's revisit and its paths through a channel
 are E10's; no player meets them).
 
@@ -521,7 +523,12 @@ top class, not read for a boat).
   texts (ADVEVENT 70, 153, 168); the recipes, the runs.
 - **The scoring** (T101): survey §15 (new), each row against its prediction; a row against the
   reading opens an `ADV-Q` before the shared task; the rows each new rule cites (`verified` when
-  built).
+  built). *Done:* every row as read but E11-19 (ADV-Q47, decisions 279, 280).
+- **Batch E11c** (decision 279's investigation, the agent's call): a hero arriving on a one-way
+  exit beside a guard (no fight predicted, §5's reading) and its step off onto the guarded tile (the
+  fight); a guarded entered object of another kind (a mine or a Learning Stone beside a monster:
+  the guard first, the visit after a win); Space on a two-way monolith whose own tile is guarded (no
+  fight, the user's play). Spec, run and scoring before T105a, their cut at round 5's start.
 - **Not in the batch** (survey §12): A-39 (refused at the import), A-40 and the computer's paths
   (E10), RoE's space key, network play; A-42 (refused when the game is built, whatever the original
   does; none on the shipped maps).
@@ -554,6 +561,9 @@ ADRs are applied once with the rows' verdicts:
 | 7 | **T105** | T105a: the stream in `apply`, the jump (the candidates, the draw, each kind, the arrival), the Whirlpool's loss, the events and views, the entrance's guard, the reach's measure against `master` (note §7 to §10, §13's stream; A-38's, A-40's, A-41's entries). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v26, replay format v11, `cross-lane` v8; A-37's entry) |
 | 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined |
 
+*Added at T101* (decisions 279, 280): batch E11c (§16) and decision 279's order for every entered
+kind (ADV-MON-006, GAM-DEC-007), both before T105a; their ids and cut at round 5's start.
+
 **Increment 11's exit criteria:**
 1. The five classes import typed (a monolith's channel and way by its class and subclass, the gate,
    the Whirlpool) by the packs of their expansions; A-39 is refused and recorded (ADV-TEL-001,
@@ -569,7 +579,8 @@ ADRs are applied once with the rows' verdicts:
    (GAM-BAT-004, GAM-MET-001, GAM-DEC-007).
 5. The arrival keeps the points, fights no guard, visits nothing and reveals the scouting radius;
    the Whirlpool's loss takes D-54 and D-55 without the bound (A-38), every hero alike (A-40)
-   unless protected by the Hats (ADV-TEL-006, -007, HER-ADV-009).
+   unless protected by the Hats (ADV-TEL-006, -007, HER-ADV-009); a guard beside an entered
+   object, an entrance too, is met before its visit (decision 279; ADV-MON-006, GAM-DEC-007).
 6. No path goes through a teleporter: the reach and `MoveHero` meet an entrance as a destination;
    the reach's workloads hold their baselines (ADV-OBJ-003, D-58).
 7. `Revisit` visits the entered object under the hero again without points, every entered kind
@@ -580,7 +591,7 @@ ADRs are applied once with the rows' verdicts:
 9. Every new rule has its id, source and tests; `ADV-QUIRK-39` to `-44` recorded; the gates pass
    (coverage, determinism with the new and rehashed replays, the benchmarks at their baselines and
    the new ones baselined).
-10. Batch E11 run and scored (T101); the consensus rows `verified`.
+10. Batch E11 run and scored (T101), batch E11c too; the consensus rows `verified`.
 
 ###### 18. Risks and open points
 
@@ -598,8 +609,10 @@ ADRs are applied once with the rows' verdicts:
 - **The gates' pairing is quadratic:** harmless on the shipped maps (at most a few dozen gates a
   map), about 17 M comparisons on a crafted XL (note §5); `build-gates-xl-144` measures it, the
   row-band search is the lever (§14).
-- **The entrance's guard** rests on an agent's call until E11-19 (note §7, §13); a row against it
-  amends ADV-MON-006 and the design before T105a.
+- **The guard's order** (decision 279) changes increment 3's built rule for every entered kind:
+  golden replays with a guarded entered object are re-recorded, the game state hash bumps with its
+  task (the second of it and T105b bumps again), the town lane's inbox told (a guarded town's visit
+  after the guard).
 - **A-42 refuses** a crafted map the original loads (none shipped); the map client's inbox hears of
   the refusal with T104.
 - **Not read** (survey §5, §9.1, §10): `hero_relocate`'s network message, the Replay Opponent

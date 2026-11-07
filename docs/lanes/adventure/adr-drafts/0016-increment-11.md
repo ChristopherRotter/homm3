@@ -89,7 +89,7 @@ subclass, 103 and 111; every one entered, none ownable, only the Whirlpool visit
   it again (ADR-0017's `Revisit`): the kind's own visit with what it opens, as the step onto the
   tile gives it, but without a step (no points spent or required, the points and the day's maximum
   kept, no step's reveal or event) and without the guard's test (the original tests a guard only at
-  a step's end; subject to batch E11's E11-19). Every entered kind alike: a two-way monolith or a
+  a step's end; batch E11's E11-19 confirmed it). Every entered kind alike: a two-way monolith or a
   gate leads back and a Whirlpool takes its loss again, a one-way exit tells "leads nowhere" again,
   a weekly object tells it was visited; a neighbour-visited object, a boat or a tile without an
   object has no revisit.
