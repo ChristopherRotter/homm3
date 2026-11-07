@@ -442,7 +442,9 @@ fn the_typed_classes_import_as_their_object_types() {
         assert_eq!(object.blocked, TileMask::from_bits(0b11));
     }
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
-    // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b.
+    // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b, and
+    // increment 11's teleporters (E08 T103a's content: 24 monoliths, the gate, the Whirlpool), whose
+    // classes it types from T103b.
     let typed = part
         .object_types()
         .iter()
@@ -452,11 +454,14 @@ fn the_typed_classes_import_as_their_object_types() {
                 h3_adventure::ObjectKind::Dwelling { .. }
                     | h3_adventure::ObjectKind::RandomDwelling
                     | h3_adventure::ObjectKind::RefugeeCamp { .. }
+                    | h3_adventure::ObjectKind::Monolith { .. }
+                    | h3_adventure::ObjectKind::SubterraneanGate
+                    | h3_adventure::ObjectKind::Whirlpool { .. }
             )
         })
         .count();
     assert_eq!(cases.len(), typed);
-    assert_eq!(part.object_types().len() - typed, 82 + 2);
+    assert_eq!(part.object_types().len() - typed, 82 + 2 + 26);
     let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
     assert_eq!(
         (town.map.objects[0].owner, &town.map.objects[0].holds),

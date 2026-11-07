@@ -180,6 +180,20 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      the harvester's gap-fill, the replays' headers and the bot reports in one session. Not
      chosen: two pull requests (the docs, then the code), in one session or two.
 
+### Decisions at T103's start (2026-11-07, user)
+
+282. **Round 5 in four tasks** (the user at T103's start, `AskUserQuestion`; recommended): **T103a**
+     the kinds, the packs, the harvest's check and `whirlpool_protection` (part v18) in this
+     session; **T103b** the import, A-39's refusal and its entry (map import v21); **T103c** batch
+     E11c (spec, recipe, three runs, scored); **T103d** decision 279's order for every entered
+     kind, after T103c's scoring (its mine or Learning Stone row tests that order); all before
+     T105a. Not chosen: T103a and T103b in one session (two pull requests); batch E11c first; T103a
+     and T103b as one task with one re-record.
+283. **The bots tables' adventure hash in T103a's pull request** (the user's consent, `cross-lane`,
+     as decisions 214, 217, 249): the AI lane's `python/records/bots-report-v1.json` and
+     `bots-neutral-v1.json` move only their `engine.adventure` line with part v18. Not chosen: the
+     AI lane's inbox.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
@@ -189,7 +203,8 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
 - **T100 Batch E11's harness reads, recipes and runs** (design §16, §17's round 3), in two by spec (decision 278): **T100a** done (2026-11-06, `adventure/e08-t100a`: the harness's replay on the frozen clock, branches by tile, box and opening reads; the recipe `E08-batch-11a`, three runs, the template filled); **T100b** done (2026-11-07, `adventure/e08-t100b`, whole: the key pressed again and again (`repeat`), the recipe's places, `look`, the Whirlpools' list and the tiles' reads; the recipe `E08-batch-11b`, three runs, the template filled); then **T101** the scoring.
 - **T101 Batch E11 scored** (decisions 269, 274). Done (2026-11-07, whole, docs only: survey §15, every row as read but E11-19, the guard fought before the jump; the spread uniform; A-37's consequences, A-43; the checkpoint ADV-Q47, decisions 279, 280). Round 3 done.
 - **T102 Increment 11's shared change** (decisions 272–274, 279, 280; `cross-lane`). Done (2026-11-07, `shared/e08-t102`, whole: decision 281): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 4, 6, 8, 10, 11 amended with batch E11's outcome, the drafts deleted; the glossary's teleporter terms; `docs/06-security.md`'s increment 11 lines; the effect kind `whirlpool_protection` (pack format v51, core ruleset hash v52) on the Sea Captain's Hat with three sources; the 65 golden replays' `ruleset_hash` and the bot reports' `engine.core` moved alone; the experiments README's batch E11 row evaluated. Round 4 done.
-- **T103 to T107** (design §17's rounds 5 to 8): the kinds and the import (queued), the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done; batch E11c and decision 279's order before T105a (their cut at round 5's start).
+- **T103 Increment 11's kinds and import, batch E11c, decision 279's order** (round 5), in four (decision 282): **T103a** done (2026-11-07, `adventure/e08-t103a`, `cross-lane`: `ObjectKind::{Monolith, SubterraneanGate, Whirlpool}` and `MonolithWay`, entered, no visit yet; the 26 original types, base's 11 and sod's 15, with their check against the original data; `h3_heroes::whirlpool_protection`; ADV-TEL-001, HER-ADV-009 amended; part v18, the 55 replays re-recorded, the bot reports' line, decision 283); **T103b** the import (queued), **T103c** batch E11c (queued), **T103d** decision 279's order (queued, after T103c).
+- **T104 to T107** (design §17's rounds 6 to 8): the build, the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done.
 
 ## Later increments (sketch)
 

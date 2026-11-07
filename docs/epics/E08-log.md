@@ -13513,3 +13513,72 @@ LODs, both executables, `maps.tar`, `extracted.tar`; the computer's shell not tr
 
 **Versions:** pack format v51, core ruleset hash v52 (shared). T103 (round 5, its cut at its
 start) next.
+
+### Increment 11, round 5: T103a, the kinds, the packs and the protection (2026-11-07, `adventure/e08-t103a`, `cross-lane`)
+
+**The cut** (decision 282; asked at the start, `AskUserQuestion`): round 5 in four tasks, T103a in
+this session; T103b the import, T103c batch E11c, T103d decision 279's order after T103c's
+scoring. **Decision 283** (asked before the build): the AI lane's two bots tables' `engine.adventure`
+line in this pull request, `cross-lane`. **Baseline:** `master` 2efcb26 (#782, docs only; its code
+verified by CI on efaae07): the VM restarted during the setup's baseline, which ran in full
+because the shallow clone lacked the history for CI's fingerprint; after `git fetch --depth=60`
+`verify-once` found the fingerprint and ran the light gates only. The original data staged from
+the user's repo folder (the four LODs, both executables, the DLLs, both `.snd`, the videos,
+`maps.tar`, `extracted.tar`; the computer's shell not tried).
+
+- **The kinds** (`h3-adventure`'s `ruleset/objects.rs`; design §1): `ObjectKind::Monolith {
+  channel: u8, way: MonolithWay }` (`Entrance`, `Exit`, `TwoWay`, exported), `SubterraneanGate`,
+  `Whirlpool { divisor: u32 }`, their `Def`s; hash tags 34 (the channel, the way 0 to 2), 35, 36
+  (the divisor); a teleporter visited from the neighbouring tile refused ("a teleporter is not
+  entered"), a divisor below 2 refused. `effect` none for the three until T105a: a step onto an
+  entrance is refused (`Visit`) and the reach ends before it; no `Effect::Teleport` yet.
+  **Adventure ruleset part v18.**
+- **The pack syntax** (`h3-pack-adventure`): `monolith = { channel, way }` (`"entrance"`,
+  `"exit"`, `"two_way"`), `subterranean_gate = {}`, `whirlpool = { divisor }`, in the format's doc
+  block.
+- **The packs** (design §3; *agent's calls*, the design note corrected): `base` the monoliths of
+  channels 0 to 2 in each way (`monolith_entrance_N`, `monolith_exit_N`, `monolith_two_way_N`),
+  `subterranean_gate` and `whirlpool` (divisor 2, the only one from above), after the town; `sod`
+  the monoliths of channels 3 to 7 after Favorable Winds; `ab` none. The names `ObjNames.txt`'s
+  rows, a monolith's with its channel ("Monolith Two Way 3": row 45 is not design §3's "Two-Way
+  Monolith"). `synthetic` six monoliths (each way, channels 0 and 1), a gate and a Whirlpool
+  (divisor 3). Each with its sources in the pack's comments.
+- **The check against the original data** (`h3-pack-adventure`'s `original_data`, check 5): each
+  teleporter class and subclass SoD's `Objects.txt` (H3bitmap.lod's: 43 to 45 subclasses 0 to 7,
+  103, 111) lists has exactly one type, in `base` when AB's (H3ab_bmp.lod's: 0 to 2) lists it too,
+  else in `sod`, with its kind, `ObjNames.txt`'s name, entered and from above as the executable's
+  `object_classes_not_entered` 0x63AA58 and `object_classes_from_above` 0x63AB00 say; no other
+  teleporter type. It passes on the staged installation (26 types) and fails on a perturbed
+  channel, name or from-above flag. The import's tables join it in T103b.
+- **`h3_heroes::whirlpool_protection(details, core)`** (`movement.rs`; design §2): whether an
+  effect is `whirlpool_protection` (`Count::OncePerType`), so the Sea Captain's Hat worn alone or
+  through the Admiral's Hat; HER-ADV-009 amended (its title, the protection, four sources: the code
+  reading, VCMI 1.7.5's `config/artifacts.json` as read for T102, the wiki, batch E11's E11-13).
+- **Tests:** `h3-adventure`'s `ruleset/tests/teleporters.rs` (the kinds, the checks' texts, the
+  hash) and `state/tests/teleporters.rs` (a step onto each kind's entrance refused with nothing
+  changed, the reach ending before it); `h3-pack-adventure`'s `parses_the_teleporters`,
+  `the_packs_type_the_teleporters_of_increment_11` and the synthetic pack's kinds, the two type
+  counts moved (base + 11, sod + 15), `h3-map`'s `the_typed_classes_import_as_their_object_types`
+  leaving the 26 teleporter types out until T103b imports them; `h3-heroes`'
+  `the_sea_captains_hat_protects_worn_alone_or_in_the_admirals_hat`.
+- **Rules:** ADV-TEL-001 new (`implemented`; the import T103b, the channels and A-42 T104), citing
+  batch E11a and E11b as observations; HER-ADV-009 amended.
+- **Replays and records:** the 55 adventure goldens re-recorded from their commands (a scratch
+  script: `h3 adventure run --script` with each header's options, every difference checked to be a
+  hash line): commands and days unchanged; the 55 headers' `adventure_ruleset_hash` moved (to
+  `0x8295da978eef57d8`), and in the 21 duel and sea replays the checkpoints and final hash too
+  (base's new types come before ab's and sod's, so those maps' AB and SoD objects' type ids moved,
+  as at T93a). **The AI lane's** two bots tables regenerated in release: only `engine.adventure`
+  moved, to `8295da978eef57d8` (decision 283).
+- **Docs:** design §1 and §3's *As built*, §17's round 5 row; decisions 282, 283, the task's line;
+  the queue (T103 out, T103b to T103d in); `OVERVIEW.md`'s part and heroes lines; the map client's
+  inbox (the five classes' types).
+- **Gates:** the scoped verify with the original data: every step but `check-lane` (`cross-lane`
+  by design; `check-lane --cross-lane` passes), coverage 100 %, determinism, bench-check and the
+  original-data checks (the teleporters' among them) passing; the first run's coverage step met
+  the import test's count, fixed, then coverage passed on a run that skipped the two passed slow
+  gates (the fix a test's alone). `cargo check` and `cargo clippy --workspace --all-targets`
+  clean.
+
+**Versions:** adventure ruleset part v18. The game state hash, the adventure state hash, the map
+import and the replay format unchanged. T103b next.
