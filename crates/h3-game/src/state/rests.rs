@@ -18,10 +18,13 @@ use crate::command::{AdventureSink, Sink};
 /// What a visit still owes its hero (GAM-DEC-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Rest {
-    /// The visit of the monster guarding the hero's tile, after the visit of the tile's own object
-    /// with everything it opened (ADV-MON-006: the original tests the guard once the object's
-    /// visit returns).
-    Guard,
+    /// The visit of the entered object at the hero's tile, after the visit of the monster guarding
+    /// the tile with everything it opened (its offer, its battle and the levels it gave), for a
+    /// hero still on the map (ADV-MON-006, E08 T103d, decision 279: the original's step tests the
+    /// guard and its walk visits the object after it; `AdventureState::visit_held`). The hero's
+    /// tile is the one it entered: its owner has an open decision until the rest runs. From E08
+    /// T63b to T103d the rest was the guard's visit after the object's (`Guard`), hashed the same.
+    Visit,
     /// A reward record's experience (ADV-RWD-001, HER-CHG-003: computed with the record), given
     /// with its levels once the record's army dialog closes (the original's order, D-39).
     Experience(u32),
@@ -48,13 +51,14 @@ pub(super) struct Held {
 }
 
 impl CanonicalHash for Held {
-    /// The owner, the hero, then the rest's kind: 0 the guard's visit, 1 an experience (its
-    /// amount), 2 a won battle's reward (its tile), 3 an event (its tile).
+    /// The owner, the hero, then the rest's kind: 0 an entered object's visit after its guard's
+    /// (before E08 T103d the guard's visit after the object's), 1 an experience (its amount), 2 a
+    /// won battle's reward (its tile), 3 an event (its tile).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.owner.raw());
         h.write_u16(self.hero.raw());
         match self.rest {
-            Rest::Guard => h.write_u8(0),
+            Rest::Visit => h.write_u8(0),
             Rest::Experience(experience) => {
                 h.write_u8(1);
                 h.write_u32(experience);
@@ -93,8 +97,9 @@ impl GameState {
         }
     }
 
-    /// Runs one rest: the guard's visit ([`Self::visit_guard`]; nothing for a hero that left the
-    /// map or a tile no monster guards any more), the experience with its levels
+    /// Runs one rest: an entered object's visit after its guard's (`AdventureState::visit_held`:
+    /// nothing for a hero that left the map or a tile no object is visited from any more),
+    /// the experience with its levels
     /// ([`Self::give_hero`]), a won battle's reward (`AdventureState::give_won`; nothing when
     /// the object left the map meanwhile; a won siege's capture, TWN-CAP-003), or a held event
     /// (`AdventureState::fire_held_event`: nothing for a hero no longer on its tile), each applied
@@ -104,8 +109,11 @@ impl GameState {
     fn run_rest<S: Sink>(&mut self, rules: &GameRuleset, held: Held, sink: &mut S) {
         let Held { owner, hero, rest } = held;
         match rest {
-            Rest::Guard => {
-                let outcome = self.visit_guard(rules, hero);
+            Rest::Visit => {
+                let (adventure, store) = self.adventure_with_heroes();
+                let context = (rules.core(), rules.adventure(), store);
+                let events = &mut AdventureSink(&mut *sink);
+                let outcome = adventure.visit_held(context, (owner, hero), events);
                 self.settle_outcome(rules, owner, outcome, sink);
             }
             Rest::Experience(experience) => {

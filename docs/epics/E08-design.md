@@ -240,8 +240,8 @@ is not re-entered), no event fired; the tiles within the hero's scouting radius 
 revealed to its owner (ADV-FOG-002's disk, as a step's); the move ends. The jump's event: note §10.
 
 **The entrance's guards** (decision 279, batch E11's E11-19; survey §15). ADV-MON-006 as built
-visits the guard of the hero's tile once the tile's object's visit returns (`guard_after`), so
-after a jump it would meet the exit's guard. **The original's order is the guard first**: the step
+until T103d visited the guard of the hero's tile once the tile's object's visit returned
+(`guard_after`), so after a jump it would have met the exit's guard. **The original's order is the guard first**: the step
 onto a guarded entrance meets its guard (its answer, its battle and levels) and the jump follows
 for a hero still on the entrance (a win, a join, a flight); the arrival tests no guard (E11-3,
 E11-19's N), nor does a revisit (E11-19's Space; the user: a hero on a two-way pair cycles without a
@@ -414,6 +414,12 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 - **The entrance's guard** (ADV-MON-006 amended; note §7, decision 279): the guard first, for every
   entered object; the tile's visit (the jump, a meeting, "leads nowhere") is the guard's rest, given
   to a hero still on the tile. Built before T105a; the jump's visit sets no `guard_after`.
+  *As built (T103d):* the step's outcome is the guard's visit with `AdventureOutcome::visit_after`
+  (the hero), held by the game as `Rest::Visit` (the hash's tag 0 as `Rest::Guard`'s before: no
+  version moves, the hero being on the tile it entered while its owner has an open decision) and
+  given by `AdventureState::visit_held`, which visits the object at the hero's tile as it stands
+  (nothing for a hero off the map); the jump will be that visit. Batch E11c's E11-21 and E11-22
+  are its tests (a mine, a Learning Stone).
 - **`Revisit { hero }`** (ADV-TEL-008; decision 268; the original's space key, §11): an adventure
   command, **`AdventureCommand::Revisit { hero }`**, the entered object under the hero visited
   again.

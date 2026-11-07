@@ -1,8 +1,8 @@
 //! Tests of the wandering monsters' offers through the game (E08 T20b1; ADR-0017 points 6 and
 //! 10): a monster's answer opens as its visitor's owner's decision, a declined offer to join
 //! goes on to the next in the same command, a price to join the treasury cannot pay counts as
-//! declined, an accepted join pays and gains the treasure, and a guard's visit waits for the
-//! answer to the offer of the tile's own object; a monster's battle (E08 T20b2): its split, the
+//! declined, an accepted join pays and gains the treasure, and the visit of the tile's own object
+//! waits for the answer to its guard's offer (E08 T103d); a monster's battle (E08 T20b2): its split, the
 //! system actor playing its side, its outcome; a guarded pile's question and battle (E08 T21a).
 
 use h3_adventure::{
@@ -209,9 +209,9 @@ fn a_price_to_join_opens_when_the_treasury_can_pay_and_else_counts_as_declined()
     );
 }
 
-// covers: ADV-MON-006, GAM-DEC-001
+// covers: ADV-MON-006, GAM-DEC-001, GAM-DEC-007
 #[test]
-fn a_guards_visit_waits_for_the_answer_to_the_tiles_own_offer() {
+fn the_tiles_own_offer_waits_for_the_answer_to_its_guards_offer() {
     let rules = rules();
     let chart = rules.adventure().object_type_by_key("t:chart").unwrap();
     let (tile, guard) = (Pos::new(1, 0, 0), Pos::new(2, 0, 0));
@@ -221,40 +221,41 @@ fn a_guards_visit_waits_for_the_answer_to_the_tiles_own_offer() {
             object(rules, "t:monster", guard, gogs(4, 0)),
         ]
     };
-    // On Easy the Cartographer's offer opens; the guard's comes once it is answered.
+    // The guard's offer opens first (E08 T103d, decision 279; before it the Cartographer's came
+    // first, E08 T20b1 to T103d); on Easy the Cartographer's once it is answered.
     let mut state = game(&rules, 0, objects(&rules));
     let events = play(&mut state, &rules, RED, move_hero(0, &[tile])).unwrap();
+    assert_eq!(after_steps(events), [opened(&rules, guard)]);
+    assert_eq!(
+        state.decision(RED),
+        Some(&offer(&rules, guard, OfferKind::Join))
+    );
+    let hash = state.state_hash();
+    let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
     let chart_opened = GameEvent::OfferOpened {
         player: RED,
         hero: HeroId::new(0),
         object_type: chart,
         anchor: tile,
     };
-    assert_eq!(after_steps(events), [chart_opened]);
-    let hash = state.state_hash();
-    let events = play(&mut state, &rules, RED, DECLINE).unwrap();
-    let chart_declined = GameEvent::OfferAnswered {
-        player: RED,
-        object_type: chart,
-        anchor: tile,
-        accepted: false,
-    };
-    assert_eq!(events, [chart_declined, opened(&rules, guard)]);
-    assert_eq!(
-        state.decision(RED),
-        Some(&offer(&rules, guard, OfferKind::Join))
-    );
+    assert_eq!(events.first(), Some(&answered(&rules, guard, true)));
+    assert_eq!(events.last(), Some(&chart_opened), "{events:?}");
+    assert!(state.adventure().is_removed(1));
     assert_ne!(state.state_hash(), hash);
-    // On Normal it cannot open: refused, and the guard's visit follows at once.
+    // On Normal it cannot open: refused once the guard's offer is answered.
     let mut state = game(&rules, 1, objects(&rules));
     let events = play(&mut state, &rules, RED, move_hero(0, &[tile])).unwrap();
+    assert_eq!(after_steps(events), [opened(&rules, guard)]);
     let refused = GameEvent::OfferRefused {
         player: RED,
         hero: HeroId::new(0),
         object_type: chart,
         anchor: tile,
     };
-    assert_eq!(after_steps(events), [refused, opened(&rules, guard)]);
+    let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
+    assert_eq!(events.first(), Some(&answered(&rules, guard, true)));
+    assert_eq!(events.last(), Some(&refused), "{events:?}");
+    assert_eq!(state.decision(RED), None);
 }
 
 // covers: GAM-DEC-001

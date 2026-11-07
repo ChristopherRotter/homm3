@@ -1,7 +1,7 @@
 //! The wandering monsters' visits (E08 T20b1): the monster's answer to a hero (ADV-MON-007, its
 //! rule in `answer.rs`) turned into an offer or a fight, the offers' answers (ADV-MON-008: the
-//! group joining, the monster fleeing) and the guard's visit after a step onto a tile it guards
-//! (ADV-MON-006).
+//! group joining, the monster fleeing); the guard's visit is a step's onto a tile it guards
+//! (ADV-MON-006), before the tile's own object since E08 T103d.
 
 use alloc::sync::Arc;
 use alloc::vec;
@@ -421,22 +421,6 @@ impl AdventureState {
         self.offer_object(offer)
             .and_then(|index| self.wanderer(index).map(|monster| (index, monster)))
             .map(|(index, monster)| self.fight(part, offer.hero, index, monster))
-            .unwrap_or_default()
-    }
-
-    /// The guard's visit that waited for an offer's answer (ADV-MON-006, E08 T20b1;
-    /// [`AdventureOutcome::guard_after`]): the monster that guards the hero `hero`'s tile now
-    /// ([`Self::guard_of`]), if any, visits as after the step ([`Self::visit_monster`]).
-    /// Infallible: nothing for a hero not on the map or a tile no monster guards any more.
-    // rule: ADV-MON-006
-    pub fn visit_guard(
-        &self,
-        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
-        hero: HeroId,
-    ) -> AdventureOutcome {
-        self.hero(hero)
-            .and_then(|h| self.guard_at(rules.1, h.pos))
-            .map(|guard| self.visit_monster(rules, hero, guard))
             .unwrap_or_default()
     }
 }

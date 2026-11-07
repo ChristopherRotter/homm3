@@ -1,6 +1,7 @@
 //! Tests of the wandering monsters' visits (E08 T20b1): the monster's answer as an offer or a
 //! fight (ADV-MON-007), the offers' answers (ADV-MON-008: joining, the flight) and the guard's
-//! visit after a step onto a guarded tile (ADV-MON-006).
+//! visit after a step onto a guarded tile (ADV-MON-006), before the tile's own object since E08
+//! T103d.
 
 use h3_content::{
     ContentPack, CreatureDef, CreatureInfoDef, HeroEffectDef, HeroTypeId, SecondarySkillDef,
@@ -199,7 +200,7 @@ fn a_step_toward_a_monster_visits_it_from_the_tile_before() {
     assert!(reach.points_left(Pos::new(2, 0, 0)).is_some());
     let (outcome, events) = walk(&rules, &mut s, &[], &[(2, 0)]);
     assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
-    assert_eq!(outcome.guard_after, None);
+    assert_eq!(outcome.visit_after, None);
     // The hero stays, pays the step and moves nowhere: no step event.
     let hero = s.hero(HERO).unwrap();
     assert_eq!(hero.pos, Pos::new(1, 1, 0));
@@ -300,7 +301,7 @@ fn a_join_is_offered_whatever_room_the_army_has() {
     }
 }
 
-/// The rules' tuple for `decline_offer` and `visit_guard`.
+/// The rules' tuple for `decline_offer` and `visit_held`.
 fn triple<'a>(
     rules: &'a Rules,
     heroes: &'a [Arc<HeroDetails>],
@@ -532,15 +533,18 @@ fn an_offer_whose_monster_is_gone_does_nothing_and_a_join_without_room_is_report
 
 // covers: ADV-MON-006, ADV-MON-007
 #[test]
-fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
+fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
     let rules = rules();
+    let mut events: Vec<AdventureEvent> = Vec::new();
     // The hero steps onto (2, 1), guarded by the pikemen at (2, 0): their answer.
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
-    let (outcome, events) = walk(&rules, &mut s, &[], &[(2, 1)]);
+    let (outcome, events_of_step) = walk(&rules, &mut s, &[], &[(2, 1)]);
     assert_eq!(outcome.offer, offer(2, 0, OfferKind::Join));
-    assert_eq!(events.len(), 1);
+    assert_eq!((events_of_step.len(), outcome.visit_after), (1, None));
     // Onto a Cartographer's tile the pikemen guard (beside it: the row above is left out, the
-    // Cartographer is not visited from above): its offer first, the guard's visit waits.
+    // Cartographer is not visited from above): the guard's answer first, the Cartographer's visit
+    // held for after it (E08 T103d, decision 279; before it the Cartographer's offer came first
+    // and the guard waited, E08 T20b1 to T103d).
     let mut s = state(
         &rules,
         &["gggggg", "ggCggg", "gggggg"],
@@ -551,13 +555,22 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
     );
     set_aggression(&mut s, 1, -4);
     let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
-    assert_eq!(outcome.offer.map(|o| o.object_type), Some(CHART));
-    assert_eq!(outcome.guard_after, Some(HERO));
-    let guard = s.visit_guard(triple(&rules, &[]), HERO);
-    assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
-    // Onto an observatory's tile: its reveal, and the guard's visit after it (E08 T63b: the game
-    // holds it as a rest of the visit, GAM-DEC-007; before it, the answer came in the same
-    // outcome).
+    let join = offer(3, 1, OfferKind::Join);
+    assert_eq!(
+        (outcome.offer, outcome.visit_after),
+        (join.clone(), Some(HERO))
+    );
+    // The join accepted, the hero still on the tile: the Cartographer's offer.
+    s.accept_offer(
+        triple(&rules, &[]),
+        RED,
+        join.as_ref().unwrap(),
+        &mut events,
+    );
+    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut events);
+    assert_eq!(visit.offer.map(|o| o.object_type), Some(CHART));
+    // Onto an observatory's tile: the guard's answer, the reveal held for after it (the step's
+    // event alone), then given by the held visit.
     let mut s = state(
         &rules,
         &["gggggg", "ggOggg", "gggggg"],
@@ -567,27 +580,32 @@ fn the_guard_answers_after_the_step_or_after_the_tiles_offer() {
         1,
     );
     set_aggression(&mut s, 1, -4);
-    let (outcome, _) = walk(&rules, &mut s, &[], &[(2, 1)]);
-    assert_eq!((outcome.offer, outcome.guard_after), (None, Some(HERO)));
-    let guard = s.visit_guard(triple(&rules, &[]), HERO);
-    assert_eq!(guard.offer, offer(3, 1, OfferKind::Join));
-    // No guard, or no hero: nothing.
+    let (outcome, events_of_step) = walk(&rules, &mut s, &[], &[(2, 1)]);
     assert_eq!(
-        s.visit_guard(triple(&rules, &[]), HeroId::new(9)),
-        AdventureOutcome::default()
+        (outcome.offer, outcome.visit_after),
+        (join.clone(), Some(HERO))
     );
-    let s = state(
-        &rules,
-        &ROWS,
-        vec![monster_at(5, 0, PIKEMAN, 10)],
-        (0, 2),
-        &[(PEASANT, 100)],
-        1,
-    );
-    assert_eq!(
-        s.visit_guard(triple(&rules, &[]), HERO),
-        AdventureOutcome::default()
-    );
+    assert_eq!(events_of_step.len(), 1);
+    let mut revealed: Vec<AdventureEvent> = Vec::new();
+    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut revealed);
+    assert_eq!(visit, AdventureOutcome::default());
+    assert!(matches!(
+        revealed[..],
+        [AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed { .. },
+            ..
+        }]
+    ));
+    // Another hero, another player's, or a tile no object is visited from: nothing.
+    let mut none: Vec<AdventureEvent> = Vec::new();
+    for (player, hero) in [(RED, HeroId::new(9)), (PlayerId::new(1), HERO)] {
+        let visit = s.visit_held(triple(&rules, &[]), (player, hero), &mut none);
+        assert_eq!(visit, AdventureOutcome::default());
+    }
+    let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
+    walk(&rules, &mut s, &[], &[(2, 1)]);
+    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut none);
+    assert_eq!((visit, none.len()), (AdventureOutcome::default(), 0));
 }
 
 // covers: ADV-MON-009

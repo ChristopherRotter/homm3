@@ -1217,8 +1217,8 @@ numeric  = "integer"
 id       = "ADV-MON-006"
 title    = "A step onto a guarded tile"
 context  = "adventure"
-status   = "implemented"
-summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard after any visit of the tile's own object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (ADV-MON-007, E08 T20b1); after a visit of the tile's own object it waits for the whole visit (E08 T63b: the game holds it as a rest of the visit, GAM-DEC-007): what the object gave (its resources, losses and the hero's gains), its offer, choice or University answered or left or not opened, and the level-ups, army dialog and battle the visit opened, so the guard's battle reads the hero after its levels (the original asks the object's question and gives its rewards and levels inside the visit, testing the guard once it returns; a player has at most one open decision). Before E08 T63a the monster's answer dropped all but the object's resources (a Learning Stone or a Shrine on a guarded tile marked the hero and gave nothing); from T63a to T63b the guard came as soon as the object's decision closed, beside what its answer opened (a level-up opened with the guard's battle). A visit from the neighbouring tile (a pickup, another monster, a hero: the hero stays) tests no guard, even from a guarded tile: the original tests the hero's tile only after a step that changed it (E08 T20b3a). Flying and a hero at sea come with later increments. E08 T20a2b: `MoveHero`, `Reach`; T20b1: `AdventureOutcome::guard_after`, `AdventureState::visit_guard`; T63b: the guard's visit held as a rest."
+status   = "verified"
+summary  = "A step that enters a tile a monster guards (ADV-MON-005) is the path's last (a later step is refused, PastVisit) and visits the guard first, before the tile's own entered object; a hero standing on a guarded tile may leave it. The reachable tiles end there: the query reports a guarded tile as a destination and goes on only from the hero's own tile. The guard's visit is the monster's answer (ADV-MON-007, E08 T20b1): its offer or its battle, which reads the hero as it stepped; the tile's own object is visited after it, once the guard's offer is answered (a join, with its army dialog when the group finds no room; a flight let go) or its battle and the winner's levels are over, for a hero still on the map (E08 T103d, decision 279; the game holds it as a rest of the visit, GAM-DEC-007, as an event's on a guarded tile, ADV-OBJ-007): a mine is flagged and a Learning Stone gives its experience and levels after the won battle (batch E11c's E11-21, E11-22), a dwelling asks its hire question, a Cartographer makes its offer, a town is entered or captured; a teleporter's jump follows the beaten guard (E11-19, built by T105a). A teleporter's arrival tests no guard (ADV-TEL-004). From E08 T20b1 to T103d the engine visited the object first and its guard after the whole visit (the original's order was never read; batch E11's E11-19 refuted it); before E08 T63a the monster's answer dropped all but the object's resources. A visit from the neighbouring tile (a pickup, another monster, a hero: the hero stays) tests no guard, even from a guarded tile: the original tests the hero's tile only after a step that changed it (E08 T20b3a). Flying: only the move's last tile is tested; a hero at sea: a water monster attacks at each step's stop, a landing's guards after the landing (E08 T73). E08 T20a2b: `MoveHero`, `Reach`; T20b1: the guard's answer; T63b: the rest; T103d: `AdventureOutcome::visit_after`, `AdventureState::visit_held`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1228,9 +1228,20 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/pathfinder/CPathfinder.cpp and CGPathNode: no path continues from a guarded tile but the start; the server starts the fight after the step (server/CGameHandler.cpp, moveHero: a blocking visit, from the neighbouring tile, moves with IGNORE_GUARDS)"
+  ref        = "lib/pathfinder/CPathfinder.cpp and CGPathNode: no path continues from a guarded tile but the start; the server starts the fight after the step (server/CGameHandler.cpp, moveHero: a blocking visit, from the neighbouring tile, moves with IGNORE_GUARDS; on a guarded destination objectVisited(guardian) first and the destination's visit after a victory, visitDestAfterVictory, survey E08-teleporters.md section 15)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
   retrieved  = "2026-10-13"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-teleporters.md sections 6 and 15): the step's guard test inside hero_move_step (0x48169D), the walk's visit of the tile's object after the walk (hero_move_loop 0x4080E9), so the guard comes first"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11c.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-07; survey E08-teleporters.md sections 15 and 15.1): a guarded monolith's entrance fought before the jump (E11-19); a guarded mine's battle opened with the mine still neutral, flagged after the win (E11-21); a guarded Learning Stone's battle at experience 0, its 1 000 and the level-up after the win (E11-22); the step off a guarded exit into the guard's zone fought (E11-20, E11-23's control)"
+  retrieved  = "2026-11-07"
   confidence = "high"
 
 [[rule]]

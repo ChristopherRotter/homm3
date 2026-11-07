@@ -473,10 +473,10 @@ impl GameState {
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
     /// point 10): first the capture of the undefended town the step entered (TWN-CAP-001,
-    /// TWN-CAP-002, E09 T8a2: [`town::capture`]), at once; then the visit of the monster guarding
-    /// the hero's tile held as a rest of the
-    /// visit (`AdventureOutcome::guard_after`, ADV-MON-006, GAM-DEC-007; E08 T63b), so that it
-    /// waits for whatever the outcome opens, a won guards' battle's reward
+    /// TWN-CAP-002, E09 T8a2: [`town::capture`]), at once; then the visit of the entered object
+    /// whose tile's guard the outcome visits, held as a rest of the visit
+    /// (`AdventureOutcome::visit_after`, ADV-MON-006, GAM-DEC-007; E08 T103d), so that it waits
+    /// for whatever the guard's visit opens, a won guards' battle's reward
     /// (`AdventureOutcome::reward_after`) and an event on a guarded tile
     /// (`AdventureOutcome::event_after`, `ADV-QUIRK-29`) held the same way; then the gains
     /// (GAM-RES-001), the losses
@@ -507,8 +507,8 @@ impl GameState {
                 let (adventure, towns) = (&mut self.adventure, &mut self.towns);
                 town::capture(adventure, towns, rules, (captured, player), sink);
             }
-            if let Some(hero) = outcome.guard_after {
-                self.hold(player, hero, Rest::Guard);
+            if let Some(hero) = outcome.visit_after {
+                self.hold(player, hero, Rest::Visit);
             }
             if let Some((hero, tile)) = outcome.reward_after {
                 self.hold(player, hero, Rest::Won(tile));
@@ -631,15 +631,6 @@ impl GameState {
             object_type,
             anchor,
         });
-    }
-
-    /// The visit of the monster guarding `hero`'s tile that waited for the visit of the tile's
-    /// object (ADV-MON-006, GAM-DEC-007; [`AdventureState::visit_guard`]): nothing when none
-    /// guards it now or the hero left the map.
-    fn visit_guard(&mut self, rules: &GameRuleset, hero: HeroId) -> AdventureOutcome {
-        let (adventure, heroes) = self.adventure_with_heroes();
-        let context = (rules.core(), rules.adventure(), heroes);
-        adventure.visit_guard(context, hero)
     }
 
     /// Pays `price` from `player`'s treasury (GAM-RES-001), each resource told to it alone

@@ -13675,3 +13675,57 @@ experiments README's row `cross-lane` with the user's consent.
 - **Gates:** the scoped verify with the original data (no code changed; docs and experiment files).
 
 **Versions:** none moved. T103d next.
+
+### Increment 11, round 5: T103d, the guard first for every entered kind (2026-11-07, `adventure/e08-t103d`)
+
+Baseline: `master` cffb5c1 (#790; CI's fingerprint, the setup's light gates). No original data
+staged (the task reads none). Whole: the engine change was small and the fallout bounded (two
+replays, three oracles), so no cut.
+
+- **The order** (decision 279; survey §15 E11-19, §15.1 E11-21, E11-22): `move_hero` on a guarded
+  tile whose step met an entered object returns the guard's visit (`visit_monster`: its offer or
+  its battle) with `AdventureOutcome::visit_after` (the hero), replacing `guard_after`; the game
+  holds it as `Rest::Visit` (replacing `Rest::Guard`) and runs it once the owner has no open
+  decision with `AdventureState::visit_held`, which visits the object visited from the hero's tile
+  as it stands (`visit_at`, `visit`): nothing for a hero off the map or another player's, or a
+  tile no object is visited from any more. `visit_guard` (both crates) removed. Every kind at once:
+  a mine flagged, a Learning Stone's experience and levels, a dwelling's question, a Cartographer's
+  offer, a town entered or captured, after the guard's answer (a join with its army dialog, a
+  flight let go) or its battle and the winner's levels; a teleporter's jump will be that visit
+  (T105a).
+- ***Agent's call:* no version moves.** `Rest::Visit` carries no tile and hashes as tag 0, exactly
+  as `Rest::Guard` did: the hero cannot move while its owner has an open decision, so the tile it
+  entered is the one it stands on when the rest runs (the old rest read the hero's tile the same
+  way). Not chosen: the tile in the rest (`Rest::Visit(Pos)`, as `Event` and `Won`), which bumps the
+  game state hash to v26 ahead of T105b's planned jump (design §15) and moves every replay's hashes,
+  hiding which ones the order changed.
+- **Tests:** `h3-adventure`'s `the_guard_answers_first_and_the_tiles_own_object_waits_for_it`
+  (a Cartographer's offer and an observatory's reveal after the guard's answer; `visit_held`'s
+  nothing cases); `h3-game`'s `a_guard_fights_first_and_the_tiles_choice_university_or_gift_follows_its_win`
+  (the Arena, a School, the University and a Learning Stone after the won battle, the battle
+  reading the hero as it stepped, a retreat giving nothing), `the_tiles_own_offer_waits_for_the_answer_to_its_guards_offer`,
+  `the_dwelling_is_visited_once_its_guard_is_beaten`, `a_guarded_mine_is_flagged_once_the_monster_guarding_it_is_beaten`
+  (E11-21's order); the old order's three tests rewritten.
+- **The plans' oracles** (`h3-map`'s `play.rs`): an offer's answer may go on to the guard's
+  held visit's offer (`check_legal`: the answer to the guarding monster's offer, then the offer of
+  the object visited from the hero's tile; the old object-then-guard case gone); nothing follows a
+  hire dialog's close (`check_hire`); a dwelling's question counts a won battle only when it beat
+  the dwelling's own guards (a guarding monster's battle now comes first and leaves them). The
+  first failed on a random plan with the old oracle, the third once the first was fixed (its case
+  kept in the regression file); the second was a branch no longer reached. The plans meet the held visit often (dwellings, mines,
+  Shipyards, tents, towns, gifts, Lighthouses, weekly objects: a throwaway count, not committed).
+- **Replays:** 53 of 55 unchanged byte for byte (none meets a guarded entered object);
+  `rewards-stone-guard-s1` re-scripted (the battle's command before the level-up's answer, the
+  checkpoint unchanged) and `rewards-s88-d28` re-recorded from its own commands with Adela's
+  battle on the guarded stone before her level-up's answer (one checkpoint moved, the final hash
+  unchanged; random play from the seed now diverges there and loses the University, the School
+  and the chest, so not chosen). The bot reports unchanged.
+- **Docs:** ADV-MON-006 verified (the observation and the reading of §6; the VCMI line's
+  `visitDestAfterVictory`), GAM-DEC-007 and GAM-DEC-008 amended; design §7's and §13's as-built
+  lines; survey §15.1's pointer.
+- **Gates:** the scoped verify (no original data): every step but `bench-check`'s
+  `random-play-rewards-36`, −4.05 % against `master` measured in a worktree (1 287 steps instead of
+  1 358, every function's share the same), re-baselined with the reason in its file; the fork
+  workloads' +1.4 to +1.9 % is this sandbox's (`master`'s `fork-rewards-36` the same count).
+
+**Versions:** none moved. Round 5 done; T104 next.

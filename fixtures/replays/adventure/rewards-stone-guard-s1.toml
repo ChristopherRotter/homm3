@@ -1,7 +1,7 @@
 commands = [
     "0 move 0 5,5,0 4,6,0 4,7,0 4,8,0 3,8,0",
-    "0 answer level-up first",
     "0 battle attack 7 116",
+    "0 answer level-up first",
     "0 end-turn",
     "1 end-turn",
 ]

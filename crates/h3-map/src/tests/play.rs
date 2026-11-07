@@ -3550,10 +3550,10 @@ fn hire_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec
 /// joins the amount to the army where ADV-ARM-007's room is (its first stack of the creature that
 /// takes them within a stack's most, else its first free slot; `CreaturesJoined` to the owner
 /// alone) and lowers the source's count by it, the dialog closing (`DecisionClosed`) exactly when
-/// its source sells one creature; `Close` closes it and does nothing else. What follows a close
-/// (E08 T96b1) comes from the visit's held rests: on a tile a monster guards, its visit, starting
-/// with its offer or its battle (GAM-DEC-007, ADV-MON-006), which leave the treasury and the army
-/// as the close left them; on any other tile, nothing.
+/// its source sells one creature; `Close` closes it and does nothing else, and nothing follows it
+/// (E08 T103d, decision 279: on a tile a monster guards, the dwelling's visit came after the
+/// guard's, ADV-MON-006, GAM-DEC-007; from E08 T96b1 to T103d the guard's visit followed the
+/// close).
 fn check_hire(
     state: &GameState,
     rules: &GameRuleset,
@@ -3614,31 +3614,10 @@ fn check_hire(
         let params = rules.adventure().params();
         (params.army_slots(), params.max_stack_count())
     };
-    // E08 T96b1: what may follow the dialog's close, the visit's held rests (GAM-DEC-007,
-    // ADV-MON-006): the visit of the monster guarding the hero's tile (an added one's too), its
-    // offer to the hero (to join, to flee) or its battle with the hero first; nothing on a tile
-    // no monster guards.
-    let guard = state.adventure().hero(hero).and_then(|h| {
-        let index = state.adventure().guard_of(rules.adventure(), h.pos)?;
-        state.adventure().object(index)
-    });
-    let held = |rest: &[GameEvent]| match (guard, rest.first()) {
-        (_, None) => true,
-        (
-            Some(o),
-            Some(&GameEvent::OfferOpened {
-                player,
-                hero: by,
-                object_type,
-                anchor,
-            }),
-        ) => (player, by, Some(object_type), anchor) == (actor, hero, o.object_type, o.anchor),
-        (Some(o), Some(&GameEvent::BattleStarted { heroes, tile, .. })) => {
-            let (blocks, visited) = o.covers(tile);
-            heroes == [Some(hero), None] && (blocks || visited)
-        }
-        _ => false,
-    };
+    // E08 T103d (decision 279): nothing follows the dialog's close, the guard of the hero's tile
+    // having visited before the dwelling (ADV-MON-006, GAM-DEC-007); from E08 T96b1 the guard's
+    // visit, held as a rest, followed it.
+    let held = |rest: &[GameEvent]| rest.is_empty();
     for command in legal {
         let (after, events, result) = probe(command);
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
@@ -3648,9 +3627,7 @@ fn check_hire(
                 command,
                 &GameCommand::Answer(Answer::Hire(HireAnswer::Close))
             );
-            // E08 T96b1: what follows the close comes from the visit's held rests (GAM-DEC-007,
-            // ADV-MON-006: the visit of a monster guarding the dwelling's entrance, held until the
-            // dialog closes), as after a meeting's or an army dialog's ([`check_legal`]).
+            // E08 T103d: nothing follows the close (`held`).
             prop_assert_eq!(
                 events.first(),
                 Some(&GameEvent::DecisionClosed { player: actor })
@@ -3680,9 +3657,7 @@ fn check_hire(
             seen_by: Viewers::NONE.with(actor),
         }));
         expected.extend(single.then_some(GameEvent::DecisionClosed { player: actor }));
-        // E08 T96b1: after a purchase that closes the dialog, its visit's held rests (a guarding
-        // monster's visit, GAM-DEC-007, ADV-MON-006: `held`), which start with an offer or a
-        // battle and so leave the treasury and the army as the purchase left them.
+        // E08 T103d: nothing follows a purchase that closes the dialog (`held`).
         prop_assert_eq!(events.get(..expected.len()), Some(&expected[..]));
         let rest = &events[expected.len()..];
         prop_assert!(single || rest.is_empty(), "{:?}", events);
@@ -3850,8 +3825,10 @@ fn check_legal(
             );
             prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", answer, result);
             // E08 T20b3b1: a declined offer to join goes on to the monster's offer to flee
-            // (ADV-MON-007), and the answer to an object's offer on a guarded tile to the
-            // guard's visit, which may offer too (ADV-MON-006); every other answer closes the
+            // (ADV-MON-007), and (E08 T103d, decision 279) the answer to the offer of a monster
+            // guarding the hero's tile to the visit of the tile's own entered object, held for
+            // after it, which may offer too (ADV-MON-006, GAM-DEC-007; before T103d the answer
+            // to the object's offer went on to the guard's visit); every other answer closes the
             // decision.
             let open = state.decision(actor).unwrap();
             let next = probe.decision(actor);
@@ -3873,12 +3850,15 @@ fn check_legal(
                 let o = state.adventure().object(index)?;
                 Some((o.object_type, o.anchor))
             });
-            let guarded = !monster(&open.kind)
-                && next.is_some_and(|n| {
-                    monster(&n.kind) && Some((Some(n.object_type), n.anchor)) == guard
-                });
+            let visited = state.adventure().hero(open.hero).and_then(|hero| {
+                let o = state.adventure().object(visited_at(state, hero.pos)?)?;
+                Some((o.object_type, o.anchor))
+            });
+            let held = monster(&open.kind)
+                && guard == Some((Some(open.object_type), open.anchor))
+                && next.is_some_and(|n| Some((Some(n.object_type), n.anchor)) == visited);
             prop_assert!(
-                next.is_none() || flees || guarded,
+                next.is_none() || flees || held,
                 "{:?} after {:?}: {:?}",
                 open,
                 answer,
@@ -3895,9 +3875,10 @@ fn check_legal(
         prop_assert!(result.is_ok(), "Close rejected: {:?}", result);
         // The meeting or the army dialog closes, the dialog's group lost stack by stack
         // (GAM-DEC-003, GAM-DEC-004); what follows comes from the visit's held rests and may open
-        // another decision (E08 T63b, GAM-DEC-007: the guard's visit, a record's experience with
-        // its levels, an event on the hero's tile with its guards' battle; E08 T71: a guard's join
-        // without room, then the event it guarded and its guards' battle).
+        // another decision (E08 T63b, GAM-DEC-007: a record's experience with its levels, an event
+        // on the hero's tile with its guards' battle; E08 T71: a guard's join without room, then
+        // the event it guarded and its guards' battle; E08 T103d: a guard's join without room,
+        // then the visit of the entered object it guarded).
         // E08 T86b1: a Leave Guards dialog's group is kept as the mine's guards, lost never
         // ([`check_mine_guards`]).
         let lost = state
@@ -6864,14 +6845,18 @@ fn check_decisions(
                         let index = object_index(before, object_type, anchor).unwrap();
                         let (b, a) = (before.adventure(), after.adventure());
                         let (was, guards) = (b.owner(index), b.dwelling_guards(index));
-                        let won = events.iter().any(|e| {
-                            matches!(
-                                e,
-                                GameEvent::BattleEnded { heroes, result, .. }
-                                    if heroes[BattleSide::Attacker.index()] == Some(hero)
-                                        && result.winner() == Some(BattleSide::Attacker)
-                            )
-                        });
+                        // E08 T103d (decision 279): a battle this command won against a monster
+                        // guarding the dwelling's entrance came before its visit and leaves its
+                        // guards standing: only a win that beat them counts.
+                        let won = a.dwelling_guards(index).is_empty()
+                            && events.iter().any(|e| {
+                                matches!(
+                                    e,
+                                    GameEvent::BattleEnded { heroes, result, .. }
+                                        if heroes[BattleSide::Attacker.index()] == Some(hero)
+                                            && result.winner() == Some(BattleSide::Attacker)
+                                )
+                            });
                         let flagged = events.iter().any(|e| {
                             matches!(
                                 e,
