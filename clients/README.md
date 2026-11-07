@@ -45,14 +45,15 @@ search the parent directories).
   game searches them, each row's `%s` and `%d` as the key names them, and the battle log's
   sample lines compose from them. A debug build takes about ten times as long.
 - **The Bink clips** (E17 M5 T4b2a): `cargo run --release -p h3-view -- video [<name>...]
-  [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...` (from `clients/`)
-  decodes a video archive's Bink clips (default the repository's
+  [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]... [--original]` (from
+  `clients/`) decodes a video archive's Bink clips (default the repository's
   `original-data/battle-videos.vid`, the result window's ten; the game's `Data/VIDEO.VID` holds
   them too) with `h3-bink` and writes each as `clients/out/video/<name>` and its frames as
   `<stem>.yuv` (raw YUV 4:2:0, FFmpeg's `rawvideo` `yuv420p` bytes); `--reference` compares them
-  with another decoder's (exit 1 on a difference). `clients/scripts/bink-check.sh` runs it
-  against FFmpeg's decoder (`bink-reference.py`, through PyAV: `pip install
-  --break-system-packages av`) on the clips and eight synthetic samples: all byte for byte.
+  with another decoder's (exit 1 on a difference), `--original` reads as the game's DLL reads
+  (CLT-Q68). `clients/scripts/bink-check.sh` runs it against the game's own `BINKW32.DLL` under
+  Wine (E17 M6 T6c1: `bink-dll.py`, the capture harness's setup first) on the clips and eight
+  synthetic samples: all byte for byte.
 - **A look at the drawers:** `cargo run --release -p h3-view -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched

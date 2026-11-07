@@ -2589,7 +2589,7 @@ under Wine (`clients/capture/binkprobe.c`) and, where that stalled, read in its 
   `h3-bink`'s planes 1 and 2. Exact but where a sum leaves −256 to 511 (the DLL then reads its
   neighbouring tables; the clips' sums never do) and, in the synthetic clip only, a frame's first
   ten pixels where V is 0 (the clips' V is 87 to 205). `h3_view::clip::rgb565`.
-- **The decoder against the DLL's:** `binkprobe frames` in YUY2 gives the DLL's own planes. The
+- **The decoder against the DLL's** (since M6 T6c1 exact: §7.27): `binkprobe frames` in YUY2 gives the DLL's own planes. The
   chroma's hidden rows (60 to 63, review item 16): the DLL keeps them as `h3-bink` does (RTLOOP
   from frame 12 and LBSTART's frame 46 as `h3-bink`'s). But Bink 0.5b's inverse DCT is x87
   floating point (`ExpandPlane`'s 8 × 8 transform; single-precision constants √2, 1.848, 1.082,
@@ -3075,6 +3075,70 @@ Bloodlust and Stone Gaze handlers). Built as `h3_render::recolour` (the effects)
 - **Recorded** (`seq-bloodlust.toml`, `seq-stone.toml`; the epic's log, M5 T5b1): `bloodlust`
   (Basic on one stack, Expert on two together) as recorded, every frame exact; `stone` (the
   Basilisks' strike back) as recorded, its glow, line and petrified look exact; `clone` exact.
+
+### 7.27 The clips decoded as `BINKW32.DLL` (M6 T6c1)
+
+Read (the user's leave of 2026-10-28, CLT-Q30): `BINKW32.DLL`'s export `ExpandPlane` 0x10002040
+and its callees: the intra blocks' DCT 0x10001A20 (into 0x10001640), the inter blocks' 0x10001A50,
+their rows' output 0x100019A0 and 0x10001DD0, the residue 0x10010B30 (reading 0x10010630), the
+tables' builder 0x10001E70 (BinkOpen's first call, 0x10004A2E). A scratch interpreter ran the
+transforms' own instructions on symbols (each x87 result a node, rounded on the stack or stored
+as binary32) and gave the dataflow below.
+
+- **The control word.** The transforms keep intermediates on the x87 stack, so their rounding
+  depends on its precision control. The game runs at 0x27F (53 bits, to nearest: `Heroes3.exe`'s
+  CRT math helpers restore 0x27F, 0x61E646; the DLL loads none). `binkprobe.exe` (mingw-w64)
+  ran at 0x37F, its startup's `fninit` (measured under Wine); it now sets 0x27F (`BINKPROBE_CW`
+  to compare). Every clip, sample and stress clip below gives the same planes at both (a
+  difference needs a double rounding's near-tie): T4b2b's probe runs stand.
+- **Dequantization** happens in the columns' pass: each coefficient (a 16-bit word, natural
+  order) times its binary32 dequantizer on the stack (exact). The tables (0x1001B2F8 intra,
+  0x1001C2F8 inter, 16 × 64 each): R24(R53(R53(seed · num / (16 · den)) · s) / 8), `s` the AAN
+  scale factor by row `r` and column `c` (1 where both are 0 or 4; √2 · cos(kπ/16) where one is,
+  `k` the other; else 2 · cos(rπ/16) · cos(cπ/16); `fcos`, `fsqrt` and the products in doubles):
+  `h3_bink`'s `DLL_SCALE` (binary64 bits computed from the reading) and `dll_quantizers`, equal to
+  the DLL's own 2 048 values (`binkprobe tables`).
+- **The columns' pass** (products p0 to p7 of a column; `s()` a binary32 store, everything else
+  a 53-bit stack value, chains left to right; √2, 1.848, 2.613, 1.082 binary32 at 0x1001813C to
+  0x10018130): a6 = s(p1 + s(p7)), a4 = s(p5 + p3), b0 = s(a6 + a4), a2 = s(p6) + s(p2),
+  a0 = s(p4 + p0), e0 = s(a2 + a0), a7 = p1 − s(p7), a5 = s(p5 − p3), b1 = (a7 + a5) · 1.848,
+  b2 = s(b1 − a5 · 2.613 − b0), a3 = s((s(p2) − s(p6)) · √2 − a2), a1 = p0 − p4, e1 = s(a3 + a1),
+  b3 = s((a6 − a4) · √2 − b2), e2 = a1 − a3, b4 = s(a7 · 1.082 − b1 + b3), e3 = s(a0 − a2); rows
+  0 to 7: s(b0 + e0), s(b2 + e1), s(b3 + e2), s(e3 − b4), s(b4 + e3), s(e2 − b3), s(e1 − b2),
+  s(e0 − b0). A column whose rows 1 to 7 are zero stores s(p0) in every row (what the
+  butterflies give it). The add variant's pass is the same.
+- **The rows' pass**, other rounding points (v0 to v7 a row of the columns' output):
+  a2 = v6 + v2, a0 = v4 + v0, e0 = s(a2 + a0), a6 = s(v7 + v1), a4 = v5 + v3, b0 = s(a6 + a4),
+  a3 = s((v2 − v6) · √2 − a2), a1 = s(v0 − v4), e1 = s(a3 + a1), a7 = s(v1 − v7), a5 = v5 − v3,
+  b1 = s((a7 + a5) · 1.848), b2 = s(b1 − a5 · 2.613 − b0), e2 = s(a1 − a3),
+  b3 = s((a6 − a4) · √2 − b2), e3 = s(a0 − a2), b4 = s(a7 · 1.082 − b1 + b3); the pixels the
+  stack's e0 + b0, e1 + b2, e2 + b3, e3 − b4, e3 + b4, e2 − b3, e1 − b2, e0 − b0, each by
+  `fistp word` (ties to even; out of −32 768 to 32 767 the indefinite 0x8000), its low byte
+  stored (intra) or added to the moved block (inter), modulo 256.
+- **The residue** (0x10010630): its mask (`mov bl, 1; shl bl, cl`, halved by `sar cl, 1` over
+  `n` + 1 planes) and its coefficients are signed bytes. Below a first mask of 128 that is
+  FFmpeg's reading; from 128 the masks run −128, −64, …, −1: every later coefficient takes the
+  other sign and its refinements shrink it. **CLT-Q68** (the user, 2026-11-07: fix): FFmpeg's
+  reading shown, the DLL's for the comparisons (`h3_bink::Reading::Original`; the sequences'
+  batch, `h3-view video --original`). No game clip has such a residue.
+- **Black-box findings on synthetic clips** (none occurs in the game's clips): the DLL never
+  reads a file's last 8 bytes (its header's size field is the file's less 8; a last frame's last
+  block coded there decoded wrongly, right with 8 bytes more): the samples end with 8 zeros
+  (`build::TAIL`); a motion vector reaching outside the plane leaves the block in FFmpeg and
+  reads memory outside the plane in the DLL: the samples' vectors stay inside (`build`'s
+  `inside`, the key frame's bias counted). Wine once failed to start the probe (no output; the
+  same file ran after): `bink-dll.py` tries twice.
+- **Checked** (`clients/scripts/bink-check.sh`, the DLL's planes in YUY2 under Wine, read as the
+  DLL): the ten clips (759 frames) exact, five of which differed by a level before (§7.21);
+  samples 1 to 8 (256 × 48) exact, 1 to 3 at 256 × 120 too (their hashes in `h3-bink`'s tests,
+  the hidden chroma rows as the DLL's); three scratch clips of DCT blocks only, coefficients up
+  to 15 bits on every quantizer index, exact; `dsp`'s test blocks the DLL's (a clip of them).
+  `h3_bink::x87` against the hardware's binary64 (`tests/x87.rs`, 20 000 cases a property).
+- **Cost** (release, this sandbox's CPU, best of 20): the ten clips decode in 355 ms instead of
+  300 (+18 %): `Defendall`, the DCT-heaviest, 73 to 126 ms (1.3 ms a frame), the others within
+  noise. The window decodes its pair once, at the battle's end (§7.21).
+- **Left** (T6c2): the captures' listed DCT pixels (`result-retreat` at 2 700 and 3 000,
+  `defended`, `auto-retreat-flee` and `-surrender`, `end`) captured again, CLT-Q30 closed.
 
 ## 8. The window, input and audio evaluation (M2 T2)
 

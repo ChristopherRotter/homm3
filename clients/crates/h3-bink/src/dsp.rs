@@ -16,9 +16,9 @@ const K1082: X = X::from_bits32(0x3F8A_8BD4);
 /// The DLL's columns' pass (0x10001640's loop 0x10001664 to 0x1000188E; 0x10001A50's the
 /// same): each column's coefficients (16-bit words, `movsx`) times their dequantizers on the x87
 /// stack (exact: 16 by 24 bits), then the butterflies, each result stored as binary32 or kept on
-/// the stack (53 bits) exactly where the DLL keeps it (its trace in the design note, §7.21). A
-/// column whose rows 1 to 7 are all zero takes the DLL's shortcut, its first product stored in
-/// every row (the same values the butterflies give).
+/// the stack (53 bits) exactly where the DLL keeps it (its trace: `docs/epics/E17-design.md`
+/// §7.27). A column whose rows 1 to 7 are all zero takes the DLL's shortcut, its first product
+/// stored in every row (the same values the butterflies give).
 fn dll_columns(block: &[i32; 64], quant: &[X; 64]) -> [X; 64] {
     let mut out = [X::ZERO; 64];
     for x in 0..8 {

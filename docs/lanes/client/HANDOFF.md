@@ -4,35 +4,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E17 M0–M5 done** (M5 closed at T8c on 2026-10-31: the review list accepted; the lane split
-  at M3 T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's
-  E24). **M6 (the battle screen complete)**, its tasks in QUEUE and the epic's M6: T1 and T2
-  done (#620 to #672, T2's cuts in the epic). T3 cut in two by the user (2026-11-03): T3a done
-  (#676, the panel's controls' help, design §12.7); T3b cut in two too: T3b1 done (#679), T3b2
-  done (#690; CLT-Q42 asked); T3c cut by the user (2026-11-03): T3c1 done (#692), T3c2 done
-  (#699), T3c3 done (#706). T3 done. **T4** cut in three by the user (2026-11-04): T4a done
-  (#709, design §12.12); T4b cut in three by the user (2026-11-04): T4b1 done (the Auto
-  Combat options, §12.13; CLT-Q45) and T4b2a done (#714: F5, the status line's damage, §12.14;
-  CLT-Q46; the windows' own keys on Ctrl+F5 to Ctrl+F8). T4b2b cut in two by the user
-  (2026-11-04): T4b2b1 done (#717, the heroes' windows, §12.15; CLT-Q47 to Q50) and T4b2b2 done
-  (#722). **T4c done** (kept whole by the user: the grid, the movement and cursor shadows, the
-  aims' shades, F6 to F8 saved at once, §12.16; CLT-Q52 to Q56 answered, all fixed; 11 stills
-  exact, 5 sequences; #729 merged). T4 done. **T5** cut in four by the user (2026-11-05):
-  T5a done (#736, design §12.17); T5b cut in two by the user (2026-11-05): T5b1 done (#743,
-  design §12.18); T5b2 cut in two by the user (2026-11-05): T5b2a done (#745, #751, design
-  §12.19); T5b2b done (#757, design §12.20); **T5c done** (kept whole by the user, design
-  §12.21: Eagle Eye's message and the box with pictures, two sequences exact; CLT-Q65 and Q66
-  asked; #762 merged; the user added **T5e**, the captured artifacts' message). T5d cut in two
-  by the user (2026-11-06): T5d1 done (#771, design §12.22); T5d2 cut in two by the user
-  (2026-11-06): T5d2a done (#774, design §12.23); T5d2b done (#777, design §12.24). T5d done.
-  **T5e deferred** by the user at its start (2026-11-07) to when the battle client runs inside
-  an adventure game (the epic's "Later": the captured artifacts are the adventure's outcome, not
-  the battle scenario's); T5 done. **T6** cut in three by the user (2026-11-07): **T6a done**
-  (#781); T6b cut in two by the user (2026-11-07; R4-9 moved into T7): **T6b1 done** (#785,
-  CLT-Q5's deck and boats, design §6.2); **T6b2 done** (CLT-Q67: the Demons' corpse leaves by
-  the same slip as the rock; fixed, the original's for the comparisons; `demons` exact; design
-  §7.25; the PR on `client/e17-m6-t6b2`: check it first). **Next: T6c** (`h3-bink` as
-  `BINKW32.DLL`, CLT-Q30), T7 (with R4-9); then M7 ranked play and the server browser.
+- **E17 M0–M5 done** (M5 closed at T8c on 2026-10-31: the review list accepted; the lane split at M3
+  T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's E24). **M6
+  (the battle screen complete)**, its tasks in QUEUE and the epic's M6 (each task's cuts, dates and
+  pull requests there): T1 to T5 done (T5e deferred by the user to the battle client inside an
+  adventure game, the epic's "Later"). **T6** cut in three by the user (2026-11-07): **T6a done**
+  (#781); T6b cut in two by the user (2026-11-07; R4-9 moved into T7): **T6b1 done** (#785, CLT-Q5's
+  deck and boats, design §6.2); **T6b2 done** (#789, CLT-Q67, design §7.25). T6c cut in two by the
+  user (2026-11-07): **T6c1 done** (`h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers; the ten
+  clips and the samples exact against the DLL's planes; CLT-Q68 answered fix; design §7.27; the PR
+  on `client/e17-m6-t6c1`: check it first). **Next: T6c2** (the captures' listed DCT pixels captured
+  again, `drawn` recorded: its result-window clip digests are stale since T6c1, no gate runs it;
+  CLT-Q30 closed), T7 (with R4-9); then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -49,7 +32,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   lane) are commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
   change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
   (#739 and #745 were). Next ids:
-  CLT-Q68, CLT-STUB-4.
+  CLT-Q69, CLT-STUB-4.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -69,6 +52,10 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-07, E17 M6 T6c1 (done; `client/e17-m6-t6c1`).** T6c cut by the user. The original
+  data staged by the file tool (the PC's shell did not start). Read the DLL's DCT (a symbolic
+  trace of its x87 code), built it in integers, checked against the DLL's planes under Wine
+  (`binkprobe` now at the game's control word); CLT-Q68 asked (fix). Record: `E17-log.md`.
 - **2026-11-07, E17 M6 T6b2 (done; `client/e17-m6-t6b2`).** Kept whole. The original data
   staged by the file tool before the PC went (its shell not used). Read (the cast's backdrop,
   `compose_battle_background`'s whole copy), probed (the back buffer read from memory each
@@ -78,8 +65,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   T7). The original data staged by the file tool (the PC's shell did not start). Built (`h3-view situation`'s boats, `h3drive.py`'s `board` and
   `into_battle`'s `click`), recorded (`deck`, `boats` exact), the whole set captured again,
   reviewed by a fresh reviewer. Record: `E17-log.md`.
-- **2026-11-07, E17 M6 T6a (done; `client/e17-m6-t6a`).** T5e deferred by the user, T6 cut in
-  three. The original data staged by the file tool (the PC's shell did not start); the VM
-  restarted during the setup's baseline (CI's green run on `master` stood in). `drawn`'s new
-  digest recorded with `master`'s viewer first, then the viewer's change: `drawn` all the same.
-  Reviewed by a fresh reviewer. Record: `E17-log.md`.

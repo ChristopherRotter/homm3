@@ -25,7 +25,7 @@ adventure).
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b; an empty archive without it, and it says which); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
-| `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond (below, "The clips"). |
+| `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
@@ -1182,6 +1182,7 @@ cd original-data/wine/game
 wine binkprobe.exe frames Data/VIDEO.VID rtstart 3 rtstart.565   # every frame, surface type 3
 wine binkprobe.exe frames Data/VIDEO.VID rtstart 7 rtstart.yuy2  # the DLL's own planes, YUY2
 wine binkprobe.exe play Data/VIDEO.VID rtstart rtloop 3 4000 rt.play 100 2  # the window's
+wine binkprobe.exe tables Data/VIDEO.VID rtstart rt.tables          # the dequantizers
 ```
 
 `frames` writes each frame's pixels (the clip's size, little-endian words; YUY2 two bytes a
@@ -1190,8 +1191,11 @@ clock's 0, makes the `<redraws>` decodes the window's show makes at `<first>` (2
 window), then ticks every millisecond: one line per frame drawn, `<ms> <clip> <frame> <rects>`
 (clip 0 the start, 1 the loop), and `<out>.screen` the slot as the screen shows it. A clip of
 every colour (`h3_bink::build` raw blocks, 256 frames of 256 × 256) in an archive of its own gave
-the colour tables. The DLL's frames match `h3-bink`'s converted (`h3_view::clip::rgb565`) but
-where the inverse DCT rounds otherwise (CLT-Q30).
+the colour tables. The DLL's frames match `h3-bink`'s converted (`h3_view::clip::rgb565`), its
+DCT's pixels too since E17 M6 T6c1 (CLT-Q30; `clients/scripts/bink-check.sh` compares the
+planes). `tables` writes the DLL's intra and inter dequantizers (16 × 64 binary32 each, 8 KiB).
+The probe sets the game's x87 control word 0x27F first (mingw's startup leaves 0x37F;
+`BINKPROBE_CW=37f` to compare): the DLL's DCT keeps intermediates on the x87 stack.
 
 ## Sound
 
