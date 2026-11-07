@@ -14,7 +14,9 @@
 //! (`h3drive.py`). With `--hot-seat` (E17 M3 T1a) Blue may be a human too, so that the
 //! harness plays both sides of a hot-seat battle (`hot_seat` in `sequences.toml`). A special
 //! battlefield (E17 M3 T2) is set up as the original makes it, on the defender's tile: water
-//! beside Blue for the shore, a special ground under both heroes for the others. The creatures'
+//! beside Blue for the shore, a special ground under both heroes for the others, and since E17 M6
+//! T6b1 (CLT-Q5) a ship's deck and the two boats: empty boats on water, each boarded in the game by
+//! the hero standing south of it (hot seat; `h3drive.py`'s `board`). The creatures'
 //! original ids come from `crtraits.txt` (`H3bitmap.lod`) by the packs' names, as `harvest` keys
 //! the asset tables, the heroes' from the ruleset checked against its `hotraits.txt`; the grounds'
 //! pictures from its `Objects.txt`. An adapter: it reads files and
@@ -29,7 +31,7 @@ use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, ObjectTemplate,
-    PLAYERS, Patch, Player, TOWN_OBJECT, Terrain, Town, TownBuildings, gzip, write,
+    PLAYERS, Patch, Plain, Player, TOWN_OBJECT, Terrain, Town, TownBuildings, gzip, write,
 };
 
 use crate::gate::find_ci;
@@ -179,10 +181,16 @@ fn situation(options: &Options) -> Result<(), String> {
             names(human)
         ));
     }
+    if afloat(battle.battlefield.as_deref()).is_some() && !options.hot_seat {
+        return Err(format!(
+            "{id}: a ship's deck and the two boats need --hot-seat (Blue boards its boat in its \
+             own turn)"
+        ));
+    }
     let mut map = map(&id, &battle, &numbers, options.tile, options.hot_seat)?;
-    let (patches, ground) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
+    let (patches, placed) = special(battle.battlefield.as_deref(), &objects, options.tile)?;
     map.patches = patches;
-    map.objects.extend(ground);
+    map.objects.extend(placed);
     if let Some(siege) = &battle.siege {
         if battle.battlefield.is_some() {
             return Err(format!("{id}: a siege on a special battlefield"));
@@ -252,15 +260,17 @@ fn original_tables(install: &Path) -> Result<Originals, String> {
 /// (the writer gives it the coast flag 0x40), so water east of Blue; a special ground's field,
 /// the ground under the tile: its class's first picture in `objects` (`Objects.txt`), its
 /// bottom-right tile one east and one south of Blue's, so that the picture (3 × 3 or 6 × 4
-/// tiles) lies under both heroes. A ship's deck or two boats need boats, which h3-map's writer
-/// lacks (CLT-Q5).
+/// tiles) lies under both heroes. A ship's deck or the two boats (E17 M6 T6b1, CLT-Q5): the
+/// water around the boats ([`afloat`]), each an empty boat (`objects`' first picture of class 8,
+/// subclass 0), Blue's on `tile`, Red's (the two boats) west of it; their heroes start south of
+/// them ([`map`]).
 fn special(
     key: Option<&str>,
     objects: &str,
     tile: (u8, u8),
-) -> Result<(Vec<Patch>, Option<MapObject>), String> {
+) -> Result<(Vec<Patch>, Vec<MapObject>), String> {
     let Some(key) = key else {
-        return Ok((Vec::new(), None));
+        return Ok((Vec::new(), Vec::new()));
     };
     let name = key.rsplit(':').next().unwrap_or(key);
     if name == "shore" {
@@ -269,15 +279,49 @@ fn special(
             from: (tile.0 + 1, tile.1 - 1),
             to: ((tile.0 + 3).min(35), tile.1 + 1),
         };
-        return Ok((vec![water], None));
+        return Ok((vec![water], Vec::new()));
+    }
+    if let Some(boarding) = afloat(Some(key)) {
+        // The heroes start south of their boats, off the map's last row (its border).
+        if tile.1 > 33 {
+            return Err(format!(
+                "`{key}` needs a row south of the boats (tile y up to 33)"
+            ));
+        }
+        // The water: the boats' row and the one north of it, from Red's boat (the two boats) or
+        // Blue's (the deck: Red stands west of it on the shore) to two columns east of Blue's.
+        let west = if boarding[0] { tile.0 - 1 } else { tile.0 };
+        let water = Patch {
+            terrain: Terrain::Water,
+            from: (west, tile.1 - 1),
+            to: ((tile.0 + 2).min(35), tile.1),
+        };
+        let line = objects
+            .lines()
+            .find(|l| {
+                let mut fields = l.split_whitespace().skip(5);
+                (fields.next(), fields.next()) == (Some("8"), Some("0"))
+            })
+            .ok_or("Objects.txt has no boat (class 8, subclass 0)")?;
+        let template = ObjectTemplate::from_objects_txt(line).map_err(|e| e.to_string())?;
+        // A boat's template stands one column west of its position (h3-map's `PLAIN_OBJECTS`).
+        let boats = (0..2)
+            .filter(|&side| boarding[side])
+            .map(|side| {
+                let (x, y) = boat_tile(side, tile);
+                MapObject::Plain(Plain {
+                    tile: (x + 1, y),
+                    template: template.clone(),
+                })
+            })
+            .collect();
+        return Ok((vec![water], boats));
     }
     let class = GROUNDS
         .iter()
         .find(|(k, _)| *k == name)
         .map(|&(_, class)| class)
-        .ok_or_else(|| {
-            format!("no map for the battlefield `{key}` (a ship's deck, two boats: CLT-Q5)")
-        })?;
+        .ok_or_else(|| format!("no map for the battlefield `{key}`"))?;
     let line = objects
         .lines()
         .find(|l| l.split_whitespace().nth(5) == Some(class.to_string().as_str()))
@@ -287,7 +331,32 @@ fn special(
         tile: (tile.0 + 1, tile.1 + 1),
         template,
     };
-    Ok((Vec::new(), Some(MapObject::Ground(ground))))
+    Ok((Vec::new(), vec![MapObject::Ground(ground)]))
+}
+
+/// The water battlefields (E17 M6 T6b1, CLT-Q5; survey `E04c-battlefields.md` §1): which sides
+/// fight from a boat, Red's and Blue's: on a ship's deck Blue alone (Red attacks it from the shore
+/// west of it, as batch E8b's E8-11), the two boats both (E8-12); `None` for a battlefield on
+/// land. A map cannot put a hero in a boat (the original gives a hero placed on water none, survey
+/// `E08-sea.md` §2): each such hero starts on the land south of its boat ([`map`]) and boards it
+/// in the game, Red on day 1 and Blue in its turn, so in hot seat; Red attacks on day 2 by two
+/// clicks on Blue's tile, east of it (`h3drive.py`'s `board`).
+fn afloat(key: Option<&str>) -> Option<[bool; 2]> {
+    match key.map(|k| k.rsplit(':').next().unwrap_or(k)) {
+        Some("deck") => Some([false, true]),
+        Some("boats") => Some([true, true]),
+        _ => None,
+    }
+}
+
+/// Where a side's boat stands on a water battlefield, Blue's on `tile` (the battle's: the
+/// defender's), Red's one west of it; on the deck that is where Red stands on the shore.
+fn boat_tile(side: usize, tile: (u8, u8)) -> (u8, u8) {
+    if side == 0 {
+        (tile.0 - 1, tile.1)
+    } else {
+        tile
+    }
 }
 
 /// The map's building bits of the fort levels (`docs/formats/h3m.md`, "Town buildings"): the
@@ -470,12 +539,22 @@ fn map(
     tile: (u8, u8),
     hot_seat: bool,
 ) -> Result<Map, String> {
-    let ground = terrain(
-        battle
-            .terrain
-            .as_deref()
-            .ok_or("the scenario has no terrain")?,
-    )?;
+    let fought_on = battle
+        .terrain
+        .as_deref()
+        .ok_or("the scenario has no terrain")?;
+    // A water battlefield (E17 M6 T6b1): the battle is fought on water, the heroes start on land
+    // (grass: the land around a boat gives its battle nothing).
+    let boarding = afloat(battle.battlefield.as_deref());
+    let ground = match boarding {
+        Some(_) if fought_on.rsplit(':').next() == Some("water") => Terrain::Grass,
+        Some(_) => {
+            return Err(format!(
+                "{id}: a ship's deck or two boats are fought on water"
+            ));
+        }
+        None => terrain(fought_on)?,
+    };
     let hero = |tile, owner: usize| -> Result<MapObject, String> {
         let side = ["attacker", "defender"][owner];
         let h = battle.heroes[owner]
@@ -518,10 +597,20 @@ fn map(
             primary: Some(h.primary),
         }))
     };
+    // Each side's tile: Blue on `tile`, Red west of it; a hero who boards a boat in the game
+    // starts south of it ([`afloat`]); Red south of the town's entrance in a siege.
+    let place = |side: usize| {
+        let (x, y) = boat_tile(side, tile);
+        if boarding.is_some_and(|b| b[side]) {
+            (x, y + 1)
+        } else {
+            (x, y)
+        }
+    };
     let red = if battle.siege.is_some() {
         (tile.0, tile.1 + 1)
     } else {
-        (tile.0 - 1, tile.1)
+        place(0)
     };
     let mut players: [Option<Player>; PLAYERS] = Default::default();
     players[0] = Some(Player {
@@ -542,8 +631,9 @@ fn map(
         patches: Vec::new(),
         roads: Vec::new(),
         players,
-        // Red west of Blue, or south of the town's entrance in a siege (E17 M4 T1b).
-        objects: vec![hero(red, 0)?, hero(tile, 1)?],
+        // Red west of Blue, or south of the town's entrance in a siege (E17 M4 T1b), or the
+        // heroes south of their boats (E17 M6 T6b1).
+        objects: vec![hero(red, 0)?, hero(place(1), 1)?],
         underground: None,
         // No level limit (E08 T32a's field; the byte the writer wrote before it).
         level_limit: 0,
@@ -808,14 +898,14 @@ mod tests {
     #[test]
     fn a_special_battlefield_lies_under_the_defender() {
         let blue = BLUE_TILE;
-        assert_eq!(special(None, OBJECTS, blue), Ok((Vec::new(), None)));
+        assert_eq!(special(None, OBJECTS, blue), Ok((Vec::new(), Vec::new())));
         // The shore: water east of Blue's tile.
         let (patches, ground) = special(Some("base:shore"), OBJECTS, blue).unwrap();
         assert_eq!(
             (patches[0].terrain, patches[0].from, patches[0].to),
             (Terrain::Water, (12, 9), (14, 11))
         );
-        assert!(ground.is_none());
+        assert!(ground.is_empty());
         // At the map's eastern edge the water stops at the last column.
         let (patches, _) = special(Some("base:shore"), OBJECTS, (34, 10)).unwrap();
         assert_eq!(patches[0].to, (35, 11));
@@ -825,7 +915,7 @@ mod tests {
             ("sod:holy_ground", "AVXhg0.def"),
         ] {
             let (patches, ground) = special(Some(key), OBJECTS, blue).unwrap();
-            let Some(MapObject::Ground(g)) = ground else {
+            let [MapObject::Ground(g)] = &ground[..] else {
                 panic!("{key}: a ground");
             };
             assert_eq!(
@@ -833,13 +923,8 @@ mod tests {
                 (0, (12, 11), def)
             );
         }
-        // The water fields need boats; a ground without a picture cannot be placed.
-        assert!(
-            special(Some("base:deck"), OBJECTS, blue)
-                .unwrap_err()
-                .contains("CLT-Q5")
-        );
-        assert!(special(Some("base:boats"), OBJECTS, blue).is_err());
+        // A ground without a picture cannot be placed, nor a field the map does not know.
+        assert!(special(Some("base:nowhere"), OBJECTS, blue).is_err());
         assert!(
             special(Some("sod:rocklands"), OBJECTS, blue)
                 .unwrap_err()
@@ -853,6 +938,83 @@ mod tests {
         map.patches = patches;
         map.objects.extend(ground);
         assert!(write(&map).is_ok());
+    }
+
+    /// A boat's picture (`Objects.txt`'s line of class 8, subclass 0).
+    const BOAT: &str = "AVXboat0.def 101111111111111111111111111111111111111111111111 \
+        010000000000000000000000000000000000000000000000 100000000 100000000 8 0 0 0\n";
+
+    #[test]
+    fn a_water_battlefield_puts_its_heroes_south_of_their_boats() {
+        let objects = format!("{OBJECTS}{BOAT}");
+        let blue = BLUE_TILE;
+        let boats = |placed: &[MapObject]| -> Vec<((u8, u8), u32)> {
+            placed
+                .iter()
+                .map(|o| match o {
+                    MapObject::Plain(p) => (p.tile, p.template.class),
+                    _ => panic!("a boat"),
+                })
+                .collect()
+        };
+        // The deck: Blue's boat on Blue's tile (its object one column east), water from there to
+        // two columns east and a row north.
+        let (patches, placed) = special(Some("base:deck"), &objects, blue).unwrap();
+        assert_eq!(
+            (patches[0].terrain, patches[0].from, patches[0].to),
+            (Terrain::Water, (11, 9), (13, 10))
+        );
+        assert_eq!(boats(&placed), [((12, 10), 8)]);
+        // The two boats: Red's west of Blue's, the water from it.
+        let (patches, placed) = special(Some("base:boats"), &objects, blue).unwrap();
+        assert_eq!((patches[0].from, patches[0].to), ((10, 9), (13, 10)));
+        assert_eq!(boats(&placed), [((11, 10), 8), ((12, 10), 8)]);
+        // At the map's eastern edge the water stops at the last column; at its northern edge
+        // the water starts on the first row; a boat on the last row but one is refused (its hero
+        // would start on the border).
+        let (patches, _) = special(Some("base:deck"), &objects, (34, 10)).unwrap();
+        assert_eq!(patches[0].to, (35, 10));
+        let (patches, _) = special(Some("base:boats"), &objects, (2, 1)).unwrap();
+        assert_eq!((patches[0].from, patches[0].to), ((1, 0), (4, 1)));
+        assert!(special(Some("base:boats"), &objects, (2, 33)).is_ok());
+        assert!(
+            special(Some("base:deck"), &objects, (2, 34))
+                .unwrap_err()
+                .contains("up to 33")
+        );
+        // No boat's picture.
+        assert!(
+            special(Some("base:deck"), OBJECTS, blue)
+                .unwrap_err()
+                .contains("class 8")
+        );
+        assert!(special(Some("base:boats"), "AVXboat1.def 1 2 3 4 8 0 0 0", blue).is_err());
+        // The map: grass under the heroes, each hero who boards south of its boat, Red on the
+        // shore west of the deck's boat; a deck on land is an error.
+        for (key, red, blue_start) in [
+            ("base:deck", (10, 10), (11, 11)),
+            ("base:boats", (10, 11), (11, 11)),
+        ] {
+            let mut battle = sides_of(Some("base:water"), &[]);
+            battle.battlefield = Some(key.to_owned());
+            let mut on_water = map("t", &battle, &ids(), blue, true).unwrap();
+            assert_eq!(on_water.terrain, Terrain::Grass);
+            let [MapObject::Hero(r), MapObject::Hero(b)] = &on_water.objects[..] else {
+                panic!("two heroes");
+            };
+            assert_eq!((r.tile, b.tile), (red, blue_start));
+            let (patches, placed) = special(Some(key), &objects, blue).unwrap();
+            on_water.patches = patches;
+            on_water.objects.extend(placed);
+            assert!(write(&on_water).is_ok());
+            battle.terrain = Some("base:grass".to_owned());
+            assert!(
+                map("t", &battle, &ids(), blue, true)
+                    .unwrap_err()
+                    .contains("on water")
+            );
+        }
+        assert_eq!(afloat(Some("base:shore")), None);
     }
 
     /// Two towns' pictures (`Objects.txt`'s lines of class 98: Castle and Conflux).

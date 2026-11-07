@@ -8510,6 +8510,7 @@ set/army-info-spells-f5 t00100 760796a9456a3f9f
 set/army-info-stack t00100 042f759375ea2430
 set/army-info-stack-enemy t00100 c6663495059d2933
 set/army-info-stack-f5 t00100 c6663495059d2933
+set/boats t00000 22cd118ee8b73f80
 set/book t00000 291199e911c0b032
 set/book-fire t00000 1e42a0a812f8cf8d
 set/book-hint t00100 87b838d5d1a041b2
@@ -8519,6 +8520,7 @@ set/clover-field t00000 dd175f07e6b9ea68
 set/counts t00000 39f639f64ac2a772
 set/counts t00400 b93e520351c2eaa4
 set/cursed-ground t00000 95f19126673b9d39
+set/deck t00000 df3b1d887244690f
 set/dirt t00000 aa51ffaf2f1e966e
 set/dirt-absolute t00000 b9bf6b52649704d7
 set/evil-fog t00000 66b7d1bf8577d6f6

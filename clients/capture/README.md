@@ -156,8 +156,13 @@ Blue's opens idle instead of acting (`smoke`);
 the packs in their order (base, ab, sod) give the original's hero types. A scenario's
 `battlefield` (M3 T2) is set up on the defender's (Blue's) tile: water east of it for the shore
 (`base:shore`, on sand), a special ground under both heroes for the nine ground fields; `find`
-then tries the field's own obstacle types. The deck and the two boats cannot be set up yet
-(CLT-Q5).
+then tries the field's own obstacle types. A ship's deck (`base:deck`) and the two boats
+(`base:boats`), fought on water (E17 M6 T6b1, CLT-Q5), need `hot_seat = true`: the map puts an
+empty boat north of each hero who fights from one (Blue's on its tile; Red's, for the boats, west
+of it), and `board` (`set` runs it before the step into the battle) has Red's hero board on day 1,
+Blue's in its turn (`h3adv.walk` onto the boat), then on Red's day 2 clicks Blue's boat twice
+(`into_battle`'s `click`: the arrow key starts no battle from the shore); `find` tries the water's
+types on the deck (type 55).
 
 **A siege over time** (E17 M4 T2b, design §10.2): a sequence's `key = "Up"` steps into the town
 (`sequence --key Up`); in a siege the timeline adds, after the heroes, each change of a turret

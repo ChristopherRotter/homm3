@@ -1,0 +1,54 @@
+# E17 M6 T6b1 (CLT-Q5): a situation of the capture set (situations/set.toml) on a ship's deck
+# (`CmBkDeck.pcx`: a hero in a boat against one on land; survey E04c-battlefields §1): Blue's hero
+# boards an empty boat in its turn, Red's attacks it from the shore on day 2 (`h3-view situation`,
+# `h3drive.py`'s `board`; batch E8b's E8-11). Fought on water, the shore situation's armies; the
+# obstacles are the original's (at most the water's type 55), found in its capture (`h3cap.py
+# find`).
+
+[scenario]
+id = "situation-deck"
+# Both human (hot seat): Blue boards its boat in its own turn.
+human = ["attacker", "defender"]
+packs = ["base"]
+profile = "base:faithful"
+terrain = "base:water"
+battlefield = "base:deck"
+obstacles = [
+    { hexes = [142, 141, 125], anchor = 158, kind = "base:obstacle_55" },
+]
+
+[[attacker]]
+slot = 0
+creature = "base:royal_griffin"
+count = 5
+
+[[attacker]]
+slot = 2
+creature = "base:pikeman"
+count = 12
+
+[[defender]]
+slot = 0
+creature = "base:wolf_rider"
+count = 8
+
+[[defender]]
+slot = 2
+creature = "base:goblin"
+count = 15
+
+# The heroes (E17 M3 T3a), as the original's map gets them (`h3-view situation`): Orrin, a
+# Knight, and Crag Hack, a Barbarian, each with 1 in every primary skill.
+[scenario.attacker_hero]
+hero_type = "base:orrin"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1
+
+[scenario.defender_hero]
+hero_type = "base:crag_hack"
+attack = 1
+defense = 1
+power = 1
+knowledge = 1

@@ -573,8 +573,8 @@ What `h3-view harvest` reads (2026-10-13; the format: `clients/README.md`, "The 
   `sod:rocklands`, `sod:magic_clouds`, a ship's deck `base:deck`, two boats `base:boats`;
   `harvest` keys their pictures so (the field numbers by the packs' keys), and the scene draws a
   special battlefield's picture over the terrain's. A battle on water always has the deck or the
-  boats. The capture set checks the shore and the nine grounds (§6.2); the deck and the boats need
-  boats on the map (CLT-Q5).
+  boats. The capture set checks the shore and the nine grounds (§6.2), and since M6 T6b1 the deck
+  and the boats (§6.2, CLT-Q5).
 - **Obstacles:** the type table 0x63C7C8 (`def`, `rows` = height, `layer`) and the absolute table
   0x63BEC0 (`pcx`, `at`), §4.4; keys `obstacle_<n>`: type n, absolute record n − 100 (VCMI's
   numbering, as the packs).
@@ -672,6 +672,18 @@ The runbook: `clients/capture/README.md`. What it rests on:
   cover them). Every one shows its picture and its own obstacle types (`h3cap.py find` takes the
   field's), all exact: the shore twice (at (18, 5) with its absolute obstacle 126), Magic Plains,
   Cursed Ground and the seven SoD fields. The original's obstacles follow the tile here too.
+  **The ship's deck and the two boats** (M6 T6b1, CLT-Q5): a map cannot put a hero in a boat, so
+  `h3-view situation` writes an empty boat (class 8, subclass 0) for each hero who fights from one,
+  on water, the hero on the land south of it, the battle's tile (Blue's boat) the defender's; the
+  harness plays hot seat: Red's hero boards on day 1 (the two boats), Blue's in its turn, and on
+  day 2 Red attacks Blue's boat east of it by two clicks, as batch E8b's E8-11 did
+  (`h3drive.py`'s `board` and `into_battle`'s `click`; observed: the arrow key toward the boat
+  started no battle on the deck, the hero staying on the shore; the key's check 0x408ED5 passes
+  the fourth argument 1, survey `E08-sea.md` §13, its refusal here not read). Both exact at the
+  opening: the deck
+  (`CmBkDeck.pcx`) with its one water obstacle (type 55, anchor 158 at the default tile), the
+  boats (`CmBkBoat.pcx`, the 32 fixed hexes in the picture) with none, as batch E8b's E8-11 and
+  E8-12 read them.
 - **The heroes** (M3 T3a; §4.5, §7.14): drawn in every situation since, the `heroes` mask gone;
   each situation names its heroes (Orrin and Crag Hack, as before), and eight grass situations
   show the other 16 battle pictures (a male and a female hero of every town), all exact. The

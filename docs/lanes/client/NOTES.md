@@ -116,9 +116,6 @@ a line there while the work waits.
 
 ## Battlefields and boats
 
-- 2026-10-15 (E17 M3 T2): **when CLT-Q5 is answered** (boats in `h3-map`'s writer): the deck and
-  the two boats as capture-set situations (`h3-view situation`'s `special` refuses them now: a
-  hero in a boat against one on land, or both heroes in boats), their pictures already drawn.
 - 2026-10-13 (E17 M2 T1): **the background variants** 0 and 1 need trees, mountains or dead vegetation around the battle (design §5: `h3-map`'s writer has no decorative objects yet: an adventure-lane change); CLT-Q4: how a record carries the variant. (The rest of the capture set's growth went into M3 T1b, T2, T3, T5 and T6 at T5c.)
 
 ## Sieges
