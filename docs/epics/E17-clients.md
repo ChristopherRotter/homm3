@@ -246,8 +246,11 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   rock, the cast's first clipped redraw copying the background into the whole back buffer;
   fixed, the original's for the comparisons; `demons` exact; design §7.25); R4-9 moved into
   T7 (its check needs every sequence with redraw artifacts captured afresh, about 51 of 91, as
-  T7 captures everything); **T6c** `h3-bink` as
-  `BINKW32.DLL` (CLT-Q30).
+  T7 captures everything); **T6c** `h3-bink` as `BINKW32.DLL` (CLT-Q30), cut in two by the
+  user (2026-11-07): **T6c1** (done 2026-11-07) the decoder as the DLL's (its x87 DCT and
+  dequantizers in integers; the ten clips and the samples exact against its planes; CLT-Q68
+  asked, answered fix; design §7.27), **T6c2** the captures' listed DCT pixels captured again,
+  `drawn` recorded, CLT-Q30 closed.
 - **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined;
   R4-9 (a stricter shadow chain in `h3cap.redraws`, checked on T7's captures).
 - **Exit:** a played battle shows every dialog and popup of the original's battle screen, each
@@ -528,3 +531,13 @@ The next milestone's list starts here.
     (at a fast speed the channel's fill cuts its drain there; the original's plays both); a
     creature's Ice Bolt (a Faerie Dragon's) without its frames, projectile or explosion (item 45's
     other creatures' casts).
+47. The clips decoded as `BINKW32.DLL` (T6c1, *provisional* where marked; design §7.27): its x87
+    arithmetic emulated in integers (`h3_bink::x87`, public but hidden for its integration test
+    against the hardware's binary64: the crate's sources hold no floating point), FFmpeg's
+    integer transform removed rather than kept as an option (the DLL's rounding is the
+    original's, no bug); CLT-Q68's fix as `h3_bink::Reading` (`Bugs` for a crate depending on
+    nothing), the comparisons' batch built with `Batch::with_bugs`. The synthetic samples
+    changed to what both decoders define (vectors inside the plane, 8 zeros after the last
+    frame), so `bink-check.sh` compares them with the DLL; the check needs Wine and the user's
+    DLL, so it is no CI step (FFmpeg's was none either). *Provisional:* `x87` models no overflow,
+    underflow or zero's sign (none reachable from 16-bit coefficients, its doc).

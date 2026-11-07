@@ -122,7 +122,7 @@ fn pixels_are_the_dlls() {
 
 #[test]
 fn a_frame_takes_its_blocks_chroma_and_decodes_as_a_clip() {
-    let video = Video::decode(&h3_bink::build::sample(3)).unwrap();
+    let video = Video::decode(&h3_bink::build::sample(3), Bugs::Fixed).unwrap();
     assert_eq!((video.width, video.height, video.rate), (256, 48, [15, 1]));
     assert_eq!(video.frames.len(), 8);
     assert!(video.frames.iter().all(|f| f.len() == 256 * 48));
@@ -147,7 +147,7 @@ fn a_frame_takes_its_blocks_chroma_and_decodes_as_a_clip() {
         );
         assert_eq!(video.frames[0][row * 256 + col], expected);
     }
-    assert!(Video::decode(b"BIKb").is_err());
+    assert!(Video::decode(b"BIKb", Bugs::Fixed).is_err());
     // A file that parses with a video the decoder refuses (revision f), a frame whose audio
     // packet runs out, a frame of an unknown block type.
     use h3_bink::build::{Block, Header, file, frame as packet};
@@ -159,20 +159,20 @@ fn a_frame_takes_its_blocks_chroma_and_decodes_as_a_clip() {
         ..header.clone()
     };
     assert_eq!(
-        Video::decode(&file(&other, &[good])),
+        Video::decode(&file(&other, &[good]), Bugs::Fixed),
         Err(VideoError::Bink(Error::Revision(b'f')))
     );
     let audio = Header {
         audio_tracks: 1,
         ..header.clone()
     };
-    assert!(Video::decode(&file(&audio, &[alloc::vec![0, 0]])).is_err());
+    assert!(Video::decode(&file(&audio, &[alloc::vec![0, 0]]), Bugs::Fixed).is_err());
     let bad = packet(
         16,
         16,
         [&alloc::vec![Block::Unknown(9); 4], &skip(0), &skip(0)],
     );
-    assert!(Video::decode(&file(&header, &[bad])).is_err());
+    assert!(Video::decode(&file(&header, &[bad]), Bugs::Fixed).is_err());
     assert_eq!(Video::default().timing().frames, 0);
 }
 
@@ -252,9 +252,12 @@ fn a_clip_past_the_budget_is_refused_before_it_is_decoded() {
         frames.resize(n, alloc::vec![0, 0]);
         file(&Header::new(800, 600), &frames)
     };
-    assert_eq!(Video::decode(&frames(70)), Err(VideoError::Budget));
     assert_eq!(
-        Video::decode(&frames(69)),
+        Video::decode(&frames(70), Bugs::Fixed),
+        Err(VideoError::Budget)
+    );
+    assert_eq!(
+        Video::decode(&frames(69), Bugs::Original),
         Err(VideoError::Bink(Error::Invalid("block type")))
     );
 }

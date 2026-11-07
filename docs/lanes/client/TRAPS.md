@@ -130,9 +130,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   redraw's too: two before the first tick put the original's clip two frames late (CLT-Q31,
   `Bugs::Original` only). `Draw::Video` carries the time since the window opened, so the draw
   list changes every millisecond: the window draws the clip at its decodes (`Battle::clip_times`),
-  never by comparing lists. Its pixels differ from the original's only where `h3-bink`'s integer
-  DCT rounds otherwise than the DLL's float one (CLT-Q30: five clips, listed); the colours are
-  exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
+  never by comparing lists. Its pixels are the DLL's since E17 M6 T6c1 (`h3-bink`'s DCT is the
+  DLL's x87 one; the captures' listed DCT pixels go at T6c2, CLT-Q30); the colours are exact. The clips come from the video archives entry by entry (`videos.rs`; an installation
   copy without `VIDEO.VID` takes `original-data/battle-videos.vid`), never from the LODs. A
   new kind of asset in the batch needs its line in `battle.rs`'s `held`, or the window decodes
   it again at every frame (the clip did: 119 ms late a frame). Since M5 T8b1 the window decodes
@@ -211,12 +210,15 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   Catapult's, never a creature's: `key:t` finds no creature, and in the Catapult's turn a press on
   a stack opens nothing; a defender stack's dialog needs a Citadel, the keep commanded, hot seat
   and `click:` on the stack (E17 M6 T3c3, design §12.11).
-- The Bink decoder (`h3-bink`, E17 M5 T4b2a) is checked against FFmpeg only through
-  `clients/scripts/bink-reference.py` (PyAV, each frame released before the next): the `ffmpeg`
-  command line holds the frame before, so its decoder copies only the picture's rows into a new
-  buffer and the chroma's hidden rows (60 to 63) differ (`LBSTART`, `RTLOOP`, `RTSTART`); and a
-  test clip is 256 pixels wide, as the game's (FFmpeg pads narrower rows, so a vector crossing
-  a row's end reads its padding).
+- The Bink decoder (`h3-bink`) is checked against the game's `BINKW32.DLL` since E17 M6 T6c1
+  (`clients/scripts/bink-check.sh`, `bink-dll.py`: `binkprobe frames` in YUY2 under Wine, read
+  with `h3-view video --original`; design §7.27). The DLL's DCT rounds on the x87 stack, so the
+  probe sets the game's control word 0x27F (mingw starts at 0x37F); `x87` emulates it, never
+  hardware floats in the crate's sources (its hardware check is `tests/x87.rs`, as the purity
+  test forbids relaxing `float_arithmetic` under `src`). A synthetic clip for the DLL ends with
+  8 spare bytes (it never reads a file's last 8: `build::TAIL`) and keeps its vectors inside the
+  plane (the DLL reads memory outside it); a residue from 128 is CLT-Q68's (`Reading`). FFmpeg's
+  old check (E17 M5 T4b2a) needed each frame released before the next and 256-pixel rows.
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is

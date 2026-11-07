@@ -25,8 +25,20 @@
          BinkGetRects gives on the handle the game asks after the frame; <out>.screen the
          buffer as the screen would show it (the frame's rects copied) after each drawn frame.
 
+     binkprobe tables <vid> <entry> <out>
+         Opens the entry (BinkOpen builds the DLL's tables at its first call, 0x10001E70) and
+         writes the dequantization tables the inverse DCT multiplies by (E17 M6 T6c1): the
+         intra blocks' (0x1001B2F8) and the inter blocks' (0x1001C2F8), each 16 quantizer
+         indices of 64 binary32 values in natural order, as little-endian bits (8 KiB).
+
    The surface type is the value BinkDDSurfaceType gives the game's primary surface (read from
-   the running game's 0x694CA0, the runbook). */
+   the running game's 0x694CA0, the runbook).
+
+   The x87 control word (E17 M6 T6c1): the DLL's inverse DCT keeps intermediates on the x87
+   stack, so its pixels depend on the precision control. The game runs at its CRT's 0x27F
+   (53-bit precision, round to nearest: Heroes3.exe's math helpers restore 0x27F, 0x61E646);
+   mingw-w64's startup leaves 0x37F (64-bit), so main sets 0x27F before anything else, or the
+   hexadecimal value of BINKPROBE_CW when set (to compare). */
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -81,9 +93,10 @@ static int hook_clock(HMODULE dll)
     return 0;
 }
 
+static HMODULE dll;
+
 static int load(void)
 {
-    HMODULE dll;
     LoadLibraryA("winmm.dll");
     dll = LoadLibraryA("BINKW32.DLL");
     if (!dll) {
@@ -196,6 +209,22 @@ static int frames(const char *vid, const char *entry, DWORD type, const char *ou
     return 0;
 }
 
+/* The DLL's dequantization tables, built by BinkOpen (0x10001E70; relative to the DLL's base). */
+static int tables(const char *vid, const char *entry, const char *out)
+{
+    void *h;
+    FILE *f;
+    if (!open_archive(vid) || !(h = open_entry(entry, 0)))
+        return 1;
+    if (!(f = fopen(out, "wb")))
+        return 1;
+    fwrite((BYTE *)dll + 0x1B2F8, 4, 16 * 64, f);
+    fwrite((BYTE *)dll + 0x1C2F8, 4, 16 * 64, f);
+    fclose(f);
+    bink_close(h);
+    return 0;
+}
+
 static int play(const char *vid, const char *start_name, const char *loop_name, DWORD type,
                 DWORD ms, const char *out, DWORD first, DWORD redraws)
 {
@@ -271,6 +300,9 @@ static int play(const char *vid, const char *start_name, const char *loop_name, 
 
 int main(int argc, char **argv)
 {
+    const char *cw = getenv("BINKPROBE_CW");
+    unsigned short word = cw ? (unsigned short)strtoul(cw, NULL, 16) : 0x27F;
+    __asm__ volatile("fldcw %0" : : "m"(word));
     if (!load())
         return 2;
     if (argc == 6 && !strcmp(argv[1], "frames"))
@@ -279,7 +311,10 @@ int main(int argc, char **argv)
         return play(argv[2], argv[3], argv[4], strtoul(argv[5], NULL, 0),
                     strtoul(argv[6], NULL, 0), argv[7], argc >= 9 ? strtoul(argv[8], NULL, 0) : 0,
                     argc == 10 ? strtoul(argv[9], NULL, 0) : 0);
+    if (argc == 5 && !strcmp(argv[1], "tables"))
+        return tables(argv[2], argv[3], argv[4]);
     fprintf(stderr, "usage: binkprobe frames <vid> <entry> <type> <out>\n"
+                    "       binkprobe tables <vid> <entry> <out>\n"
                     "       binkprobe play <vid> <start> <loop|-> <type> <ms> <out> [<first> [<redraws>]]\n");
     return 2;
 }
