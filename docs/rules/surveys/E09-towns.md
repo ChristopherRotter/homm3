@@ -345,7 +345,7 @@ players / maps. 744 colours play (human or computer).
   `Freedom`, `Pestilence Lake` and its allied copy). Formation tight on 3.
 - **Names** customised on 252 towns; **required spells** on 32, **banned spells** on 396.
 - **Town events:** 369 on 110 towns: 70 build, 56 add creatures, 105 give resources,
-  189 carry only a message (3 maps); the increments that apply them read them (decision 5).
+  199 carry only a message (5 maps; 189 in 3 before E09 T12b's recount, `E09-construction.md` §10); the increments that apply them read them (decision 5).
 
 ### 1.4 Heroes in and at towns
 
