@@ -769,23 +769,29 @@ and the building task may still change.
 
 ### 24. The town part: requirements, costs, the role `shipyard` (`h3-towns`, `h3-pack-towns`; part v4)
 
-- **The format** (`h3-pack-towns`' `lib.rs` documents it): each `[[town.building]]` gains
+Built by T16a (`E09-log.md`).
+
+- **The format** (`h3-pack-towns`' `lib.rs` documents it): each `[[town.building]]` has
   `requires = ["key", …]` (its **direct** requirements, buildings of the same record, in the
-  executable's list order; absent: none) and `cost = { gold = 2000, wood = 5 }` (core resource
-  keys, each amount at least 1; absent: free); `BuildingRoles` gains **`shipyard`** (a flag, at
-  most one building a record: the original's 6).
+  executable's list order; absent: none), `cost = { gold = 2000, wood = 5 }` (core resources,
+  another pack's with its prefix as a silo's; each amount at least 1; absent: free) and the role
+  **`shipyard`** (a flag, at most one building a record: the original's 6).
 - **Compiled:** `Building::requires: BuildingSet`, **the closure** (the original tests
   `building_requirements` 0x697798, the transitive closure, §2.1: after a town event built a
   building without its requirements, a building that needs it still needs theirs, §8.3), never
-  itself; `Building::cost: Vec<(ResourceId, u32)>` in the core's resource order. The compiler
-  refuses a requirement outside the record, a cycle (a building requiring itself through
-  others), an unknown resource, an amount of 0, a second `shipyard` (each a `TownCompileError`).
-- **The hash** (v4): after each building's `auto_with`, its `requires` and its cost, then the
-  role `shipyard` with the other roles.
-- **Overrides:** none needed now (RoE's costs are E11's; SoD's are AB's file). `TownPatch` gains
-  nothing (*agent's call*).
-- **The synthetic packs** get requirements and costs where the tests need them (a chain, a
-  shipyard, a horde and its upgrade, a hall 4).
+  itself; `Building::cost: Vec<(ResourceId, u32)>` in the core's resource order. Refused, each a
+  `TownCompileError` of the existing variants: a requirement outside the record, a building
+  requiring itself, directly or through others (a cycle; the first of it in the record named), a
+  cost's unknown resource or one outside the pack's dependencies, a cost naming a resource twice
+  or 0, a second `shipyard`.
+- **The hash** (v4): after each building's `auto_with`, its required set's bits and its cost
+  (length, each resource handle and amount); `shipyard` after `grail` among the roles. Pinned in
+  `ruleset/tests.rs`.
+- **Overrides:** none (RoE's costs are E11's; SoD's are AB's file); `TownPatch` gains nothing.
+- **The synthetic pack:** requirements and costs on every building but the Village Hall and the
+  Grail (the halls' chain to the Capitol through the Tavern and the Castle, the forts', the
+  dwellings', the hordes'), a Shipyard requiring the Tavern. The shipped packs have none until
+  T16b's harvest (`h3-pack-towns`' test of the original packs says so).
 
 ### 25. The content and its harvest (`h3-harvest`, the battle lane's crate, `cross-lane`; original data)
 
