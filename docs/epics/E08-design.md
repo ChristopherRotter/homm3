@@ -558,7 +558,9 @@ top class, not read for a boat).
   exit beside a guard (no fight predicted, §5's reading) and its step off onto the guarded tile (the
   fight); a guarded entered object of another kind (a mine or a Learning Stone beside a monster:
   the guard first, the visit after a win); Space on a two-way monolith whose own tile is guarded (no
-  fight, the user's play). Spec, run and scoring before T105a, their cut at round 5's start.
+  fight, the user's play). Spec, run and scoring before T105a, their cut at round 5's start. *Done:*
+  T103c, whole (decision 284): E11-20 to E11-23, every row as read (survey §15.1): the guard
+  before a mine's flag and a Learning Stone's experience; no fight at a one-way exit's arrival.
 - **Not in the batch** (survey §12): A-39 (refused at the import), A-40 and the computer's paths
   (E10), RoE's space key, network play; A-42 (refused when the game is built, whatever the original
   does; none on the shipped maps).

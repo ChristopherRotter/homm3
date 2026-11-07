@@ -135,6 +135,8 @@ mod tests {
             supersedes: set(supersedes),
             forbidden_with: None,
             auto_with: BuildingSet::EMPTY,
+            requires: BuildingSet::EMPTY,
+            cost: Vec::new(),
             roles: BuildingRoles::default(),
         }
     }

@@ -147,12 +147,17 @@ pub struct BuildingDef {
     /// the level's upgraded dwelling, as the original's `town_build`; E09 survey §16.2, decision
     /// 29); empty for a building only built itself.
     pub auto_with: Vec<String>,
+    /// The buildings of the record it requires (direct, in the executable's list order; the
+    /// compiler closes them, E09 design §24); empty for none.
+    pub requires: Vec<String>,
+    /// What it costs: core resources, each once, each amount at least 1; empty for free.
+    pub cost: Vec<(ContentKey, u32)>,
     /// What the rules read of it.
     pub roles: BuildingRoles,
 }
 
-/// What the rules read of a building, each optional (increment 1's roles; E09 increment 1's
-/// design note §2). Each is read over one of a town's two sets, the buildings standing (built
+/// What the rules read of a building, each optional (increment 1's roles, E09 increment 1's
+/// design note §2; increment 2's `shipyard`, design §24). Each is read over one of a town's two sets, the buildings standing (built
 /// and not superseded) or the buildings ever built, as `h3-pack-towns`' format doc lists.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct BuildingRoles {
@@ -166,6 +171,9 @@ pub struct BuildingRoles {
     pub silo: bool,
     /// The Grail building: the Grail's gold a day.
     pub grail: bool,
+    /// The Shipyard: at most one building of a record, the one that needs water (TWN-SET-011,
+    /// E09 decision 46; the original's building 6).
+    pub shipyard: bool,
     /// The creature dwelling of a level, if it is one.
     pub dwelling: Option<Dwelling>,
     /// The defender's morale in a siege, -3 to 3 (the Tavern, the Brotherhood of the Sword).
@@ -417,6 +425,11 @@ pub struct Building {
     /// empty for none; read over the ever-built set by the setup and, from increment 2,
     /// construction).
     pub auto_with: BuildingSet,
+    /// Every building it requires, directly or through another (the closure, as the original's
+    /// `building_requirements` 0x697798; never itself; E09 design §24).
+    pub requires: BuildingSet,
+    /// What it costs, in the core's resource order, each amount at least 1; empty for free.
+    pub cost: Vec<(ResourceId, u32)>,
     /// What the rules read of it.
     pub roles: BuildingRoles,
 }
@@ -513,8 +526,9 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v3 (E09 T8c2; v2, T5b2a's, without Visions; v1, T5a1's first, without the automatic
-    /// set): version; the parameters (0 for none, else 1, the gold resource's handle, the four hall
+    /// Encoding v4 (E09 T16a; v3, T8c2's, without the requirements, the costs and the role
+    /// `shipyard`; v2, T5b2a's, without Visions; v1, T5a1's first, without the automatic set):
+    /// version; the parameters (0 for none, else 1, the gold resource's handle, the four hall
     /// amounts, the Grail's, the reveal radius, the level-2 dwelling chance, the four garrison
     /// rows' chance and bounds, the demoted Capitol's key, Visions' factor and least radius, its
     /// creatures as their number and handles); the records in faction order as their number and
@@ -522,8 +536,9 @@ impl CanonicalHash for TownRuleset {
     /// silo (length, each resource handle and amount), the creatures (length, each base handle and
     /// the upgrade as an option), the buildings (length, each key, name, slot as an option, the
     /// superseded set's bits, the forbidden-with building as an option, the automatic set's bits
-    /// (`auto_with`), then the roles: hall and fort as options, tavern, silo, grail, the dwelling
-    /// as an option of its level and upgrade flag, morale, luck, the escape tunnel, the defender's
+    /// (`auto_with`), the required set's bits (the closure), the cost (length, each resource
+    /// handle and amount), then the roles: hall and fort as options, tavern, silo, grail,
+    /// shipyard, the dwelling as an option of its level and upgrade flag, morale, luck, the escape tunnel, the defender's
     /// attack, defense, power and mana, the reveal as 0 none, 1 and the radius, 2 all) and the
     /// demoted Capitol's building. The core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
@@ -567,6 +582,12 @@ impl CanonicalHash for TownRuleset {
                 h.write_u64(b.supersedes.bits());
                 hash_option(h, b.forbidden_with, |h, w| h.write_u8(w.raw()));
                 h.write_u64(b.auto_with.bits());
+                h.write_u64(b.requires.bits());
+                h.write_len(b.cost.len());
+                for &(resource, amount) in &b.cost {
+                    resource.hash_into(h);
+                    h.write_u32(amount);
+                }
                 hash_roles(h, &b.roles);
             }
             h.write_u8(t.capitol_demoted_to.raw());
@@ -581,6 +602,7 @@ fn hash_roles(h: &mut StateHasher, r: &BuildingRoles) {
     h.write_bool(r.tavern);
     h.write_bool(r.silo);
     h.write_bool(r.grail);
+    h.write_bool(r.shipyard);
     hash_option(h, r.dwelling, |h, d| {
         h.write_u8(d.level);
         h.write_bool(d.upgraded);

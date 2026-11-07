@@ -32,5 +32,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A row's two branches as `only_if = { at = [x, y] }` steps (the capture harness, E08 T100a): the first branch played can leave the hero on the other's tile, which then plays too (batch E11a's E11-8 in its first run: Uf to Un, then Un back to Uf and a jump): put first the branch whose end cannot be the other's start.
 - Replay Opponent Turn's view (E08 T100a): the view's corner in memory moves to a jump's exit while the screen still fades the old view out and never draws the exit's; read what Red saw from the frozen clock's dumps (`dumps = "every"`), not from `replay:views`, and never from a real-time dump (it lags a view).
 - The selected hero's tile in the capture harness (E08 T100b): after the hero's move and at its player's turn start the tile's record shows what lies under the hero (lifted), and a scroll of the view (every walk's, key's and `look`'s minimap click) puts the hero back on top; a read of that tile depends on the harness's last scroll. Read it in a `look` step with `before:` (before its scroll) and after. A long run of `repeat` presses draws differently in each run (real time between presses): compare runs by their spread, not row by row.
+- The capture harness's reads at a battle's opening and a key's message (E08 T103c): `at_opening`
+  reads the game's memory alone, so `hero:` and `treasury:` (the step's snapshots) fail there; name
+  the hero (`hero[E11-22]:experience`) or read a record (`mine:x,y`). A `key` step that shows a
+  message needs `expect = { dialogs = true }`, or `oddities` stops at the walk's missing target.
 
 - **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression` and `homm3-rerecord-replays`; measure right after the first build (`AGENTS.md`, "Measure before you polish").

@@ -74,6 +74,8 @@ fn siege_rules_with(edit: impl FnOnce(&mut ContentPack)) -> GameRuleset {
         supersedes: vec![],
         forbidden_with: None,
         auto_with: vec![],
+        requires: vec![],
+        cost: vec![],
         roles: BuildingRoles {
             defender: DefenderBonus {
                 attack: 20,

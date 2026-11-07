@@ -1,6 +1,8 @@
 # The synthetic pack's town data (E09 T5b2a; format: crates/h3-pack-towns). Invented values for
 # tests, not original game data (docs/05-testing.md, "Test data policy"): the parameters and a
-# town record of `vale`, its two levels without upgrades, every role once.
+# town record of `vale`, its two levels without upgrades, every role once; since E09 T16a the
+# requirements (the halls' chain to the Capitol through the Tavern and the Castle, the forts',
+# the dwellings', the hordes') and the costs, and a Shipyard.
 
 [town_params]
 gold = "coin"
@@ -32,46 +34,60 @@ creatures = [["spearman"], ["synthetic:brute"]]
   name = "Town Hall"
   slot = 11
   supersedes = ["village_hall"]
+  requires = ["tavern"]
+  cost = { coin = 2500 }
   hall = 2
 
   [[town.building]]
   key = "city_hall"
   name = "City Hall"
   supersedes = ["town_hall"]
+  requires = ["town_hall"]
+  cost = { coin = 5000, shard = 5 }
   hall = 3
 
   [[town.building]]
   key = "capitol"
   name = "Capitol"
   supersedes = ["city_hall"]
+  requires = ["city_hall", "castle"]
+  cost = { coin = 10000, shard = 10 }
   hall = 4
 
   [[town.building]]
   key = "fort"
   name = "Fort"
+  cost = { coin = 5000, shard = 20 }
   fort = 1
 
   [[town.building]]
   key = "citadel"
   name = "Citadel"
   supersedes = ["fort"]
+  requires = ["fort"]
+  cost = { coin = 2500, shard = 5 }
   fort = 2
 
   [[town.building]]
   key = "castle"
   name = "Castle"
   supersedes = ["citadel"]
+  requires = ["citadel"]
+  cost = { coin = 5000, shard = 20 }
   fort = 3
 
   [[town.building]]
   key = "tavern"
   name = "Tavern"
+  cost = { coin = 500, shard = 5 }
   tavern = true
   morale = 1
 
   [[town.building]]
   key = "silo"
   name = "Resource Silo"
+  requires = ["tavern"]
+  cost = { coin = 5000, shard = 5 }
   silo = true
 
   [[town.building]]
@@ -86,16 +102,22 @@ creatures = [["spearman"], ["synthetic:brute"]]
   [[town.building]]
   key = "dwelling_1"
   name = "Dwelling 1"
+  requires = ["fort"]
+  cost = { coin = 300 }
   dwelling = [1, false]
 
   [[town.building]]
   key = "dwelling_2"
   name = "Dwelling 2"
+  requires = ["dwelling_1"]
+  cost = { coin = 500, shard = 5 }
   dwelling = [2, false]
 
   [[town.building]]
   key = "lookout"
   name = "Lookout"
+  requires = ["fort"]
+  cost = { coin = 1000, shard = 5 }
   reveal = 20
 
   # A horde superseding its level's dwelling, and its upgrade: forbidden with it, built once the
@@ -105,6 +127,8 @@ creatures = [["spearman"], ["synthetic:brute"]]
   key = "horde"
   name = "Horde"
   supersedes = ["dwelling_2"]
+  requires = ["dwelling_2"]
+  cost = { coin = 1000 }
 
   [[town.building]]
   key = "horde_up"
@@ -112,3 +136,13 @@ creatures = [["spearman"], ["synthetic:brute"]]
   supersedes = ["horde"]
   forbidden_with = "horde"
   auto_with = ["horde", "dwelling_2"]
+  requires = ["horde"]
+  cost = { coin = 1000 }
+
+  # The Shipyard (E09 T16a): the building that needs water (TWN-SET-011).
+  [[town.building]]
+  key = "shipyard"
+  name = "Shipyard"
+  requires = ["tavern"]
+  cost = { coin = 2000, shard = 20 }
+  shipyard = true

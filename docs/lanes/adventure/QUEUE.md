@@ -4,22 +4,7 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 in four (decision 282): T103a done (`adventure/e08-t103a`, `cross-lane`: the kinds, the packs and their check, `whirlpool_protection`; part v18; the bot reports' line, decision 283); T103b done (`adventure/e08-t103b`: the import of the five classes, A-39 refused, `ADV-QUIRK-41`; map import v21, with the inbox's class 220 by the mines' table; the census of the shipped maps); T103c (batch E11c) and T103d (decision 279's order) below, in that order; T104 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T103c — batch E11c** (round 5; design §16; decisions 269, 279, 282)
-
-- **Scope:** decision 279's investigation (the agent's call): a hero arriving on a one-way exit
-  beside a guard (no fight predicted, note §5's reading) and its step off onto the guarded tile
-  (the fight); a guarded entered object of another kind (a mine or a Learning Stone beside a
-  monster: the guard first, the visit after a win); Space on a two-way monolith whose own tile is
-  guarded (no fight, the user's play). The spec and template (`experiments/specs/E08-batch-11c.toml`,
-  the walks priced), the recipe on the capture harness (a harness change is common: the client
-  lanes' inboxes), three runs under Wine, the scoring in survey §15 (a row against the reading
-  opens an `ADV-Q` before T103d); the cut (spec and runs, then the scoring) confirmed at its start.
-- **Inputs:** design §16, §7; survey §12, §15 (E11-19); decision 279; `experiments/specs/E08-batch-11a.toml`
-  and the recipe `clients/capture/batches/E08-batch-11a.toml` as models.
-- **Depends on:** T103a (none in code; before T103d). **Status:** ready (the original data with
-  the MP3s staged, Wine).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 in four (decision 282): T103a done (`adventure/e08-t103a`, `cross-lane`: the kinds, the packs and their check, `whirlpool_protection`; part v18; the bot reports' line, decision 283); T103b done (`adventure/e08-t103b`: the import of the five classes, A-39 refused, `ADV-QUIRK-41`; map import v21, with the inbox's class 220 by the mines' table; the census of the shipped maps); T103c done (`adventure/e08-t103c`, `cross-lane` for the experiments README's row, whole: decision 284; batch E11c, E11-20 to E11-23 every row as read, survey §15.1); T103d (decision 279's order) below; T104 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T103d — decision 279's order for every entered kind** (round 5; decisions 279, 282)
 
@@ -30,11 +15,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   T103c's verdicts; the tests in `h3-adventure` and `h3-game`; the replays that meet a guarded
   entered object re-recorded, the plans' oracles checked (`h3-map`'s `play.rs`); game state hash
   and replay format only if the rest's encoding changes.
-- **Inputs:** decision 279; survey §15 (E11-19) and T103c's scoring; the catalog's ADV-MON-006,
+- **Inputs:** decision 279; survey §15 (E11-19) and §15.1 (T103c's E11-20 to E11-23); the catalog's ADV-MON-006,
   GAM-DEC-007; `h3-game`'s `state/rests.rs`.
-- **Depends on:** T103c's scoring. **Status:** waits for T103c.
+- **Depends on:** T103c's scoring (done: survey §15.1, E11-21 and E11-22 the guard first, a mine's
+  flag and a Learning Stone's experience with its level-up after the win). **Status:** ready.
 
 ## Inbox
+
+- 2026-11-07 (the town lane, E09 T16a, `town/e09-t16a`, `cross-lane`; **informational**): the 55
+  adventure replays' `town_ruleset_hash` line moved (town part v4: the buildings' requirements,
+  costs and the role `shipyard`; the shipped packs still have none), nothing else; the
+  `BuildingDef` literal in `h3-game`'s `src/tests/mod.rs` gained `requires` and `cost`. T16b's
+  harvest moves the line again. Nothing to act on.
 
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts

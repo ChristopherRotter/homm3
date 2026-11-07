@@ -1,0 +1,298 @@
+# Experiment batch E11c (E08 T103c; decisions 269, 279, 282): decision 279's investigation, the
+# agent's call (docs/epics/E08-design.md §16, "Batch E11c"; survey docs/rules/surveys/E08-teleporters.md
+# §15): a hero arriving on a one-way monolith's exit beside a guard and its step off onto the guarded
+# tile; guarded entered objects of other kinds (a mine, a Learning Stone: the guard first, the visit
+# after a win?); Space on a two-way pair whose exit is guarded (the user's play). In SoD on Easy, hot
+# seat, Red's turn of day 1 alone. Build: docs/experiments/README.md. Predictions are for the agent who
+# evaluates the results; the template never shows them.
+#
+# | row    | settles                                   | the reading (faithful)                       | the other source(s)                     |
+# | E11-20 | §4.2, §5, §11: a one-way exit beside a     | no battle on arrival; Space: ADVEVENT 70, no | VCMI the same (IGNORE_GUARDS); the user |
+# |        | guard, Space on it, the step off it        | battle; the step off into the zone fought    | from play: a fight only on a step off   |
+# | E11-21 | decision 279: a guarded mine               | the guard first (the mine neutral at the     | VCMI the same (visitDestAfterVictory);  |
+# |        |                                           | battle's opening), then the flag             | the engine as built: the flag first     |
+# | E11-22 | decision 279: a guarded Learning Stone     | the guard first (experience 0 at the         | VCMI the same; the engine as built: the |
+# |        |                                           | opening), then the stone's 1 000             | stone first (1 000 at the opening)      |
+# | E11-23 | §11, decision 273: Space cycling on a pair | no battle at any press, also arriving by the | the user from play; the wiki            |
+# |        | whose exit is guarded                      | key on the guarded tile; the control fought  | ("unlimited cycling")                   |
+#
+# **Why these rows.** Batch E11a's E11-19 showed the original fights a step's guard before the
+# entrance's visit (ADV-Q47): decision 279 makes that order every entered kind's, and its building
+# task (T103d) needs it observed on kinds other than a teleporter. A mine (flagged by the visit) and
+# a Learning Stone (experience given by the visit) each beside a monster tell the order by what the
+# game's memory holds as the battle opens (`at_opening`): the mine's owner, the hero's experience.
+# E11-20 is the one-way case the user expected alike (survey §15's end: §5's reading predicts no
+# fight on arrival, unobserved); E11-23 the two-way cycle the user saw, with an arrival by the key on
+# the guarded tile (E11-19's Space left the guarded tile only).
+#
+# **The guards** (ADV-MON-005): each monster stands on its object's row or the row below; a tile
+# whose object is not entered from above leaves the row above out of its guard scan (the original's
+# 0x41A460, VCMI's `checkForVisitableDir`). P20 (15, 4) guards X20 and (14, 5); Q21 (4, 13) the
+# mine's entrance (5, 12); R22 (7, 20) the stone (6, 20); N23 (15, 28) B23 and (14, 29). Every
+# hero starts two columns or more from every monster: outside every zone. Every monster is a lone
+# Peasant (savage, never flees: the battle at once, won by auto combat).
+#
+# **The heroes.** Red has four, one a row, each with ten Archangels (2 000 land points a day,
+# packs/base/adventure.toml `land_points`), no skills, no artifacts; Blue one, far from every row,
+# which never moves (the batch ends in Red's turn). A step costs 100 on grass, 141 diagonally; a
+# hero's scouting radius is 5 (ADV-FOG-002), so every target is explored at its click (each within
+# 5 of its hero's tile then: the start's, or the exit's after a jump).
+#
+# **The pictures** (docs/experiments/README.md): a monolith is the one tile `at`, entered there from
+# any side but the three tiles above it; the crystal cavern `AVMcrys0` covers `at` and the two tiles
+# west of it and is entered at the middle one from the row below; the Learning Stone `AVSgzbo0` is
+# the tile `at`, entered there. One-way channel 0 (blue): the entrance E20 (4, 4), its one exit X20
+# (14, 4); two-way channel 0 (green): A23 (4, 28) and B23 (14, 28). One exit for each entrance: no
+# jump draws (`random_between` returns an equal bound without a draw, survey §4.1).
+#
+# **The walks** are one step each (priced by hand: grass, 100 straight, 141 diagonal; the teleporters
+# import as entered kinds whose step the engine refuses until T105a, so no reach query prices them).
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource; an artifact on a moving hero goes under "anything odd" (boots would move
+# the points).
+
+[map]
+name = "E08 batch E11c"
+description = "Engine-generated experiment map (E08, batch E11c): guards and entered objects: a one-way monolith's exit beside a monster, Space on it, the step off it; a mine and a Learning Stone beside a monster; Space back and forth on a two-way pair whose exit is guarded. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-11c.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1).",
+    "Most records are the game's memory: a hero's tile, its movement points (hero +0x4D), experience and level, a mine's record (owner, resource), Red's treasury, the messages and dialogs shown (by their text's table and line), the battles (the defender, the hero's tile as each opens, the result) and what the memory holds as the first battle of a step opens. The capture harness reads them (`clients/capture/batches/E08-batch-11c.toml`, E08 T103c). Played by hand, read the screens instead and leave the memory-only lines empty (a battle's opening: note whether the mine's flag or the stone's message came before it).",
+    "Tiles are (column, row) from 0 at the top left. A step: click the target once (the path's marks show), then again (the hero goes). **Space:** with the hero selected, press the space bar once.",
+    "Each battle against a monster by auto combat. A level-up's dialog: take the left skill.",
+    "Order: day 1, Red's turn: E11-20, E11-21, E11-22, E11-23. Then the map is done (Blue never plays).",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E11-20: one-way channel 0, its entrance E20 and its one exit X20; a monster beside X20 -------------
+
+[[map.object]]
+picture = "AVXmn1b0"
+at = [4, 4]
+
+[[map.object]]
+picture = "AVXmx1b0"
+at = [14, 4]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [15, 4]
+
+# --- E11-21: a neutral crystal cavern, (4, 12) to (6, 12), entered at (5, 12); a monster beside it ---
+
+[[map.ownable]]
+picture = "AVMcrys0"
+at = [6, 12]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [4, 13]
+
+# --- E11-22: a Learning Stone, a monster beside it ------------------------------------------------------
+
+[[map.object]]
+picture = "AVSgzbo0"
+at = [6, 20]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [7, 20]
+
+# --- E11-23: two-way channel 0, A23 and B23; a monster beside B23 ----------------------------------------
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [4, 28]
+
+[[map.object]]
+picture = "AVXmn2g0"
+at = [14, 28]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [15, 28]
+
+# --- E11-20 ---------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-20"
+title = "A one-way monolith's exit beside a monster: the arrival, Space on the exit, the step off into the monster's zone"
+questions = ["ADV-MON-005", "ADV-MON-006", "ADV-TEL-004", "ADV-TEL-008"]
+procedure = [
+    "Day 1, Red's turn, first: E11-20 stands at (3, 4) with ten Archangels. East of it the one-way monolith's entrance E20 (4, 4), blue; its one exit X20 (14, 4), blue, with a Peasant P20 at (15, 4), east of X20. Read E11-20's points.",
+    "Click E20 (4, 4) twice: E11-20 steps onto it. Note every battle (by auto combat; the defender) and every message, then E11-20's tile and points.",
+    "If E11-20 stands on X20 (14, 4): press **Space** once. Note every battle and message, then E11-20's tile and points.",
+    "If E11-20 stands on X20 (14, 4) and P20 is still there: click (14, 5) (south of X20, beside P20) twice: the step off the exit. Note the battle or that none came, every message, then E11-20's tile and points.",
+]
+record = [
+    { field = "E11-20 before: points" },
+    { field = "the step onto E20: battles (the defender; the result); messages" },
+    { field = "after the step onto E20: E11-20's tile; points; P20 (15, 4)" },
+    { field = "Space on X20: battles; messages" },
+    { field = "after Space: E11-20's tile; points" },
+    { field = "the step off X20 to (14, 5): the battle or none (the defender; the result); messages" },
+    { field = "after the step off: E11-20's tile; points; P20 (15, 4)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The guard** (ADV-MON-005): P20 at (15, 4) guards X20 (its west neighbour, on its row: the
+  monolith's scan leaves out only the row above) and (14, 5) (its south-west neighbour, a plain
+  tile: the whole 3 × 3). E11-20's start (3, 4) and E20 lie far outside its zone.
+- **The arrival** (survey §4.2, §5; ADV-TEL-004): the step onto E20 costs **100**; class 43's visit
+  (`visit_monolith_one_way` 0x4A8230, read whole) finds the one exit X20 free and calls
+  `hero_relocate` 0x41D930, which runs **no guard test** (`after_step_guard_check` runs only at a
+  step's end) and visits nothing at the exit: **no battle, no message**; E11-20 on **X20 (14, 4)**
+  with **1 900**; P20 in place. E20 itself is unguarded, so decision 279's order plays no part.
+  VCMI: `IGNORE_GUARDS` on a teleport, the same; the wiki: "A monolith or similar object does not
+  trigger combat". The user from play (ADV-Q47): a two-way exit starts no fight, a one-way exit
+  "probably alike".
+- **Space on X20** (§11, ADV-TEL-008; `key_space_visit` 0x408E65): the visit of the tile's entered
+  object again, at no points: class 44's visit, a human's (0x4A9538): **ADVEVENT 70**; the key's
+  visit tests no guard: **no battle**; E11-20 on **X20** with **1 900**.
+- **The step off** (ADV-MON-006): the straight step to (14, 5), in P20's zone, ends with the guard's
+  test: **a battle with P20 at once** (the hero on (14, 5) as it opens), won by auto combat;
+  E11-20 on **(14, 5)** with **1 800**; no message but the battle's. The user from play: a fight
+  starts only on a step off the exit onto a guarded tile.
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [3, 4]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-21 ---------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-21"
+title = "A neutral mine whose entrance a monster guards: which comes first, the battle or the flag"
+questions = ["ADV-MON-005", "ADV-MON-006", "GAM-DEC-007"]
+procedure = [
+    "Day 1, Red's turn, after E11-20: a neutral crystal cavern covers (4, 12) to (6, 12), its entrance the middle tile (5, 12); a Peasant Q21 stands at (4, 13), south-west of the entrance. E11-21 stands at (6, 13), south-east of the entrance, with ten Archangels. Read its points, the mine's record (owner, resource) and Red's treasury.",
+    "Click the entrance (5, 12) twice: E11-21 steps onto it (a diagonal step). Note every battle in order (by auto combat; the defender) and, **as the battle opens**, the mine's owner (played by hand: whether the mine's message came before the battle); then every message after it, the mine's record, Red's treasury, and E11-21's tile and points.",
+]
+record = [
+    { field = "before: E11-21's points; the mine's record (owner, resource); Red's treasury" },
+    { field = "the step onto the entrance: battles in order (the defender; the hero's tile as it opens; the result)" },
+    { field = "as the battle opens: the mine's record (owner)" },
+    { field = "after it: messages; the mine's record (owner); Red's treasury" },
+    { field = "after it: E11-21's tile; points; Q21 (4, 13)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The guard** (ADV-MON-005): Q21 at (4, 13) guards the entrance (5, 12) (its south-west
+  neighbour; the entrance is not entered from above, so its scan leaves out only row 11) and not
+  E11-21's start (6, 13) (two columns east).
+- **Decision 279's reading** (survey §15's E11-19; the step's guard test inside `hero_move_step`,
+  0x48169D, the visit after the walk, `hero_move_loop` 0x4080E9; VCMI's `CGameHandler::moveHero`:
+  the guardian's visit, then the destination's after a victory, `visitDestAfterVictory`): the step
+  (141, diagonal) meets **Q21 first**: the battle opens with E11-21 on the entrance (5, 12), **the
+  mine still neutral** (its record's owner none); won by auto combat;
+  **then the visit**: the mine Red's, **MINEEVNT:4** (the crystal's flag, as batch E9a's C), Red's
+  crystal unchanged (a mine's income comes at a day's start); E11-21 on **(5, 12)** with
+  **1 859**; Q21 gone.
+- **The engine as built** (ADV-MON-006, E08 T20b1, T63b: the tile's object first, its guard as a
+  held rest): the flag first, **the mine Red's at the battle's opening** and MINEEVNT:4 before it.
+  Either way the end is the same (the mine Red's, the hero on the entrance): only the opening tells.
+"""
+[encounter.hero]
+type = "Valeska"
+specialty = "creature Archer"
+at = [6, 13]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-22 ---------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-22"
+title = "A Learning Stone a monster guards: which comes first, the battle or the stone's experience"
+questions = ["ADV-MON-005", "ADV-MON-006", "GAM-DEC-007", "HER-EXP-002"]
+procedure = [
+    "Day 1, Red's turn, after E11-21: a Learning Stone at (6, 20); a Peasant R22 at (7, 20), east of it. E11-22 stands at (5, 20), west of the stone, with ten Archangels, no experience (level 1). Read its points, experience and level.",
+    "Click the stone (6, 20) twice: E11-22 steps onto it. Note every battle in order (by auto combat; the defender) and, **as the battle opens**, E11-22's experience and level (played by hand: whether the stone's message came before the battle); then every message and level-up after it (a level-up: the left skill), and E11-22's experience, level, tile and points.",
+]
+record = [
+    { field = "before: E11-22's points; experience; level" },
+    { field = "the step onto the stone: battles in order (the defender; the hero's tile as it opens; the result)" },
+    { field = "as the battle opens: E11-22's experience; level" },
+    { field = "after it: messages (their pictures); level-ups (the level, the two offers, the one taken)" },
+    { field = "after it: E11-22's experience; level; tile; points; R22 (7, 20)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The guard** (ADV-MON-005): R22 at (7, 20) guards the stone (6, 20) (its east neighbour, on its
+  row) and not E11-22's start (5, 20) (two columns west).
+- **Decision 279's reading** (as E11-21's): the straight step (100) meets **R22 first**: the battle
+  opens with E11-22 on the stone, **experience 0, level 1**; won by auto combat (the slain
+  Peasant's experience, its hit points: 1); **then the visit**: the stone's message (its picture
+  **1 000 experience**; HER-EXP-001, no Learning), experience **1 001**, then the level-up to **2**
+  (HER-EXP-002: 1 000; its dialog after the stone's message); E11-22 on **(6, 20)** with
+  **1 900**; R22 gone.
+- **The engine as built** (ADV-MON-006): the stone first: **experience 1 000, level 2 at the
+  battle's opening** (the level-up before the battle), 1 001 after it.
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [5, 20]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E11-23 ---------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E11-23"
+title = "Space back and forth on a two-way pair whose exit a monster guards"
+questions = ["ADV-MON-005", "ADV-MON-006", "ADV-TEL-004", "ADV-TEL-008"]
+procedure = [
+    "Day 1, Red's turn, after E11-22: the two-way monoliths A23 (4, 28) and B23 (14, 28), green (channel 0, no other member); a Peasant N23 at (15, 28), east of B23. E11-23 stands at (3, 28), west of A23, with ten Archangels. Read its points.",
+    "Click A23 (4, 28) twice: E11-23 steps onto it. Note every battle and message, then E11-23's tile and points.",
+    "Press **Space** four times, one press at a time. After each press note every battle and message, then E11-23's tile and points.",
+    "The control: if E11-23 stands on B23 (14, 28) and N23 is still there, click (14, 29) (south of B23, beside N23) twice. Note the battle or that none came, then E11-23's tile and points.",
+]
+record = [
+    { field = "E11-23 before: points" },
+    { field = "the step onto A23: battles; messages; E11-23's tile; points" },
+    { table = ["press", "battles", "messages", "tile after", "points after"], rows = 4 },
+    { field = "the control: the step to (14, 29): the battle or none; messages; E11-23's tile; points; N23 (15, 28)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The guard** (ADV-MON-005): N23 at (15, 28) guards B23 (its west neighbour) and (14, 29); A23 and
+  E11-23's start lie far outside its zone.
+- **The step onto A23** (E11-2's, E11-3's): 100, the jump to B23 (one other member, no draw), no
+  guard test at the arrival: **no battle, no message**; on **B23 (14, 28)** with **1 900**.
+- **The presses** (§11, ADV-TEL-008; decision 273): each the visit of the monolith under the hero
+  again, at no points, the jump to the other; no guard test at the key's visit or at its arrival:
+  **no battle and no message at any press**; press 1 on **A23**, 2 on **B23** (the arrival by the key
+  on the guarded tile), 3 on **A23**, 4 on **B23**, always **1 900**. The user from play: a hero on
+  the pair cycles between them without a fight; the wiki: "unlimited cycling through two-way
+  monoliths" (AB and SoD).
+- **The control:** the straight step from B23 to (14, 29), in N23's zone: **a battle with N23** at
+  once, won; E11-23 on **(14, 29)** with **1 800**.
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+at = [3, 28]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+[[encounter.also]]
+type = "Loynis"
+specialty = "spell Prayer"
+owner = "blue"
+name = "E11-23b"
+at = [30, 32]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
