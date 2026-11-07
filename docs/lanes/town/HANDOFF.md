@@ -30,6 +30,14 @@ In `TRAPS.md`.
 
 ## Recent sessions
 
+### 2026-11-07 — T12b: the construction survey's second part (in progress)
+
+Baseline d383d40 (#775, #776 merged; CI green on 708dd41; the setup's baseline lost to a VM
+restart). Kept whole (the user, asked). Branch `town/e09-t12b`, docs only. **Done:** the survey
+§8 to §11 (the town events' reading, VCMI and the wiki, the census, the disputes TD-9, TD-11, the
+new TD-12 and T-8), the code map, `TWN-Q8` in `OPEN-QUESTIONS.md`. **Next:** the checkpoint's
+answers (the survey's §12, the epic's decisions from 41), the bookkeeping, the pull request.
+
 ### 2026-11-07 — T12a: the construction survey's first part
 
 Baseline cf3e701 (#771 to #773 merged; CI green there; the setup's baseline lost to a VM restart).
@@ -46,12 +54,3 @@ asked). The user's computer's shell did not start: a sandbox cloned from GitHub,
 `extracted.tar` staged. The planned `GameRuleset` check became a setup check
 (`GameSetupError::LinkedTown`): the `synthetic` pack has a town record without tables. The census
 diffed with `master`'s: all 160 build, the 1 397 resolved by their town's faction.
-
-### 2026-11-06 — T10: the audit; increment 1 closed; increment 2 refined
-
-Baseline 798b2e2 (#767, #768 merged; CI green there; `verify-once` found CI's fingerprint). At
-the start (the user, asked with a first look at the audit, `TWN-Q7`): T10 whole, increment 2 as
-construction with the town events, a survey then the drafts, `ADV-STUB-13` first as T11. The
-user's computer's shell did not start: a sandbox cloned from GitHub, docs only. Five rules
-observed by batch TWN-1 now `verified`; increment 1's design note stays in place (85 comment
-lines cite it).

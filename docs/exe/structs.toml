@@ -403,6 +403,7 @@ fields = [
   { offset = 0x1F458, name = "campaign_info", type = "bytes[0x7C]", summary = "H3API's campaignInfo (H3CmpInfo): +0x2 the scenario's index (campaignMapIndex), +0x4 the campaign (bigCampaignIndex), +0x3C the carried-over heroes (crossoverHeroes, walked by carried_heroes_setup 0x487290)", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §3.1"] },
   { offset = 0x1F45C, name = "campaign_index", type = "i32", summary = "H3API's campaignInfo.bigCampaignIndex, the campaign's number (E08 T24a2a; T24a1 guessed a scenario): compared with 14 (with 0x69774C and hero 45) by the level-up's campaign branch and with 8 by a campaign case of the new game (called at 0x4C004D) and of placed_hero_setup", confidence = "inferred", refs = ["rules/surveys/E08-progression.md §2.3"] },
   { offset = 0x1F636, name = "defeated", type = "u8[8]", summary = "per colour a flag set when the player is defeated (player_defeated 0x4F11A0)", confidence = "read", refs = ["rules/surveys/E08-economy.md §2.5"] },
+  { offset = 0x1F63E, name = "date", type = "u16[3]", summary = "the day of the week (1-7), the week (1-4) and the month (H3API's date): the day number (4 x month + week - 5) x 7 + day (town_timed_events 0x4CDA1B)", confidence = "read", refs = ["rules/surveys/E08-economy.md §7.1", "rules/surveys/E09-construction.md §8.2"] },
   { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0); at a new game new_game_heroes writes it (0x4BFF09) from new_game_start's scenario dialog version (0x58C593), a campaign's by its index (E09 T1b1)", confidence = "inferred", refs = ["installation.md §7.27", "rules/surveys/E09-towns.md §9.4"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
   { offset = 0x1F6B0, name = "chosen_factions", type = "i32[8]", summary = "per colour the faction it plays (H3API playersInfo.townType, playersInfo at +0x1F6A0): written when the game begins (scenario_dialog_begin 0x588330, a Random choice drawn there), read by load_town_body for a random town of that owner or alignment", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.2"] },
@@ -415,6 +416,7 @@ fields = [
   { offset = 0x1F8D0, name = "victory_hero", type = "i32", summary = "the victory condition's hero (kind 5), against a hero's id +0x1A: that hero never retreats (0x41E60A)", confidence = "inferred", refs = ["installation.md §7.55"] },
   { offset = 0x1F90C, name = "player_attributes", type = "bytes[0x44][8]", summary = "per colour the map's player record (H3API's H3PlayerAttributes): +0x0 a human may play, +0x1 a computer may play, +0x8 the allowed factions (u16, bits 0 to 8), +0xA the map's random-town flag (read only by the scenario dialog), +0xB generate a hero at the main town (main_town_heroes 0x4CA074), +0x14 the main town's packed position (its entrance), +0x18 the random-hero flag and +0x1C the customised main hero's type (-1 none; both read only by the scenario dialog, E09 T1a2); the other fields not read", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.2"] },
   { offset = 0x1FB5C, name = "allowed_heroes", type = "u32[5]", summary = "a bit per hero type the map allows (map_header_read 0x4C4390: RoE's 128 bits and the Conflux heroes 128 to 143; AB and SoD 156 bits); hero_pool_init 0x4C4E30 frees the allowed types", confidence = "read", refs = ["rules/surveys/E09-towns.md §4.2"] },
+  { offset = 0x1FC00, name = "town_events", type = "vector", summary = "the map's town events in one list (begin +0x1FC04, end +0x1FC08; 0x50 bytes each, town_event; inside H3API's mainSetup at +0x1FB70): the towns in the map's object order, each town's events in its file's (load_town_body 0x5019F0); read only by town_timed_events 0x4CDA10", confidence = "read", refs = ["rules/surveys/E09-construction.md §8.1"] },
   { offset = 0x1FC40, name = "tiles", type = "map_item*", summary = "the map's tiles, level by level, row by row", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x1FC44, name = "side", type = "i32", summary = "the map's side in tiles", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0x1FC48, name = "two_levels", type = "u8", summary = "1 with an underground level", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
@@ -843,6 +845,18 @@ fields = [
   { offset = 0x8C, name = "artifacts", type = "vector", summary = "artifact ids (u32), begin +0x90, end +0x94: each given while the backpack holds fewer than 64", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
   { offset = 0x9C, name = "spells", type = "vector", summary = "spell ids (u32), begin +0xA0, end +0xA4: learned with a Spell Book at level 2 + Wisdom or less", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
   { offset = 0xAC, name = "creatures", type = "army", summary = "the creatures given, slot by slot (army_add_stack; no room: army_dialog_with)", confidence = "read", refs = ["rules/surveys/E08-rewards.md §7.4"] },
+]
+
+[[struct]]
+name = "town_event"
+size = 0x50
+summary = "A town's timed event (H3API's H3CastleEvent): the map's timed event's 0x34 bytes (the message, seven i32 resources +0x10, the players' bits +0x2C, the human +0x2D and computer +0x2E flags, the first day +0x30 as the file's + 1, the interval +0x32; E08 survey section 11), then the town and what it builds and adds (load_town_body 0x5019F0; E09 T12b)."
+refs = ["rules/surveys/E09-construction.md §8.1"]
+h3api = "H3CastleEvent"
+fields = [
+  { offset = 0x34, name = "town", type = "i8", summary = "the town's index (its town_setup's and its town's): written as a byte by load_town_body, read as one by town_timed_events (H3API an INT32, castleNumber)", confidence = "read", refs = ["rules/surveys/E09-construction.md §8.1"] },
+  { offset = 0x38, name = "buildings", type = "u64", summary = "the map's town building bits (h3m order, the file's six bytes in the low 48 bits), mapped through map_building_ids 0x6888C0 by the town's faction when it fires (town_events_apply 0x5BFEB0)", confidence = "read", refs = ["rules/surveys/E09-construction.md §8.3"] },
+  { offset = 0x40, name = "creatures", type = "u16[7]", summary = "the creatures it adds by level 1-7: to the upgraded dwelling's recruits when it stands, else the dwelling's, else none (town_events_apply)", confidence = "read", refs = ["rules/surveys/E09-construction.md §8.4"] },
 ]
 
 [[struct]]

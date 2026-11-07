@@ -135,7 +135,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Town lane (`TWN-Q<n>`)
 
-(no open questions)
+#### TWN-Q8 — Increment 2's survey checkpoint: TD-9, TD-11, TD-12, T-8, the computer's day (E09 T12b)
+
+**Context.** The construction survey `docs/rules/surveys/E09-construction.md` (§0 to §11) is done: the human's build through the hall, its tests, costs and requirements (T12a), the map's town events and the census (T12b). Its §11 lists what T13's drafts need decided. **TD-9** (the Conflux's upgraded Altar of Fire, 40): the executable's list needs the Altar of Fire and the upgraded Altar of Air; VCMI and the fandom wiki the Altar of Fire. **TD-11** (who builds and pays): the hall's path tests no owner and the current player pays, so a visitor might build in an ally's town at its own cost; VCMI the owner only. **TD-12** (an every-day town event, 18 on the shipped maps, daily gold): the reading from its first day, as the wiki; VCMI from the day before. **T-8** (quirk candidate): an event's Capitol beside the owner's other one stands (the reading and VCMI; six shipped events can give it). **The computer's every other day** on Easy and Normal and the day's mark across a capture (§3): the engine has no difficulty and no computer player yet. **Options and recommendations:** TD-9 and TD-11 the reading or VCMI, or observed first in a batch TWN-2 (recommended: TD-9 the executable's list until a TWN-2 row says otherwise; TD-11 the owner only until a TWN-2 row says otherwise); TD-12 and T-8 as the original (recommended); one a town a day for every player, the handicap left to E10 and E13, the capture's mark as read (recommended). **Blocked:** T13 (the drafts, the design note's Part D and the cut).
 
 ## Answered
 

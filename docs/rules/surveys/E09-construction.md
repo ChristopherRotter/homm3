@@ -6,7 +6,7 @@ the cut. In two parts, cut at T12's start (the user, 2026-11-06): **T12a** the b
 checks, what a build does, the cost and requirement tables, VCMI and the wiki compared (§0 to §7);
 **T12b** the town events (their day, buildings, resources and creatures), the census of the
 shipped maps (forbidden buildings, custom sets, the town events) and the checkpoint with the user
-(appended). Input, not rules (`README.md`): a fact becomes binding when a task writes it into the
+(§8 to §12, 2026-11-07). Input, not rules (`README.md`): a fact becomes binding when a task writes it into the
 catalog with its sources and tests. The building ids are the original's (`docs/formats/h3m.md`,
 "Town buildings"; survey `E09-towns.md` §16): 0 to 4 the mage guilds, 5 the Tavern, 6 the
 Shipyard, 7 to 9 the Fort, Citadel, Castle, 10 to 13 the Village Hall, Town Hall, City Hall,
@@ -31,12 +31,15 @@ specials and hordes, 26 the Grail's, 30 to 36 the dwellings by level, 37 to 43 t
   Shipyard's spot, `town_ship_update` 0x5BF210 (the ship, 20), `ai_town_visit` 0x5253D0 at its
   Grail. **Tables dumped** (a throwaway script, not committed): the faction lists 0x63EC80 (again,
   for the direct requirements), the hall's slots 0x66CF98 with their counts 0x66D03C.
-  **Not followed:** what the computer chooses to build (0x42AE00 and its siblings, beyond their
+  **T12b read whole:** `town_timed_events` 0x4CDA10, `town_events_apply` 0x5BFEB0; **in part:**
+  `load_town_body` 0x5019F0 at its events, `player_turn_start` 0x4CC7D0 at its start,
+  `town_event_buildings_message` 0x5C0220 (its text and its human test); the table
+  `map_building_ids` 0x6888C0 dumped. **Not followed:** what the computer chooses to build (0x42AE00 and its siblings, beyond their
   calls of the tests), network play, a campaign's starting buildings (0x484650), the cheat that
   builds everything (0x5C33F0), the tutorial's branch (game +0x1F69D: the Castle's Griffin Tower
   without the Blacksmith), the town screen's drawing and animations.
 - The text table `Building.txt` (both archives: byte-identical), its seven numeric columns only.
-- VCMI 1.7.5 (tag `1.7.5`, a sparse clone): `lib/callback/CGameInfoCallback.cpp`
+- VCMI 1.7.5 (tag `1.7.5`, a sparse clone; T12b's files in §9): `lib/callback/CGameInfoCallback.cpp`
   (`canBuildStructure`), `server/CGameHandler.cpp` (`buildStructure`), `server/NetPacksServer.cpp`
   (`visitBuildStructure`), `lib/gameState/GameStatePackVisitor.cpp` (the new day),
   `lib/entities/faction/CTownHandler.cpp` (`loadLegacyData`), `lib/mapObjects/IObjectInterface.cpp`
@@ -47,9 +50,31 @@ specials and hordes, 26 the Grail's, 30 to 36 the dwellings by level, 37 to 43 t
   page as the shoutwiki copy has it (https://heroes.shoutwiki.com/wiki/Difficulty); the Might and
   Magic fandom wiki's Conflux page (https://mightandmagic.fandom.com/wiki/Conflux_(town)) and its
   Shipyard page (https://mightandmagic.fandom.com/wiki/Shipyard); the Heroes 3 wiki's dwelling
-  page (https://heroes.thelazy.net/index.php/Dwelling).
+  page (https://heroes.thelazy.net/index.php/Dwelling); T12b: the shoutwiki copy of the Heroes 3
+  wiki's map editor objects page (https://heroes.shoutwiki.com/wiki/Map_Editor_-_Objects).
 
-## 0. Findings in short (T12a)
+## 0. Findings in short
+
+**T12b** (§8 to §12):
+
+- **The town events** (§8) are one list for the map, read at each player's turn start right after
+  the map's timed events; a record fires as a map event does (its day, its players, its kind) and
+  **only when its town's owner is the current player**: the resources and the message first, then
+  the buildings, then the creatures.
+- **The buildings** are the event's bits through the town's faction, less what stands, what the
+  faction lacks, what the event's own buildings supersede and the Shipyard without its spot; built
+  in id order **with no requirement, forbidden, Capitol, Grail, cost or day's-mark test**, with the
+  heroes' visit. **The creatures** go to the level's upgraded dwelling, else its dwelling, else are
+  lost. VCMI and the wiki agree (§9) but for **TD-12** (an every-day event: VCMI fires it from the
+  day before its first) and two cases no shipped map has.
+- **The census** (§10): 173 custom sets forbid something (39 maps; the level-7 dwelling most); 369
+  town events on 110 towns of 29 maps: 70 build (27 builds without a requirement in three maps, six
+  Capitols that can be a player's second: **T-8**), 56 add creatures, 105 give resources, 199 carry
+  a message only; 98 repeat, 18 of them every day.
+- **For the checkpoint** (§11, `TWN-Q8`): TD-9, TD-11, TD-12, T-8, the computer's every other day
+  and the day's mark across a capture.
+
+**T12a** (§1 to §7):
 
 - **The human's build** is the hall's (§1): the town screen's hall opens a list of slots, each the
   next building of a chain; a slot's Build button is enabled when the building is not built, is in
@@ -316,3 +341,174 @@ The fandom wiki's Conflux page gives the upgraded Altar of Fire the Altar of Fir
 - **For T12b:** the town events build through `town_build_effects` too (`town_timed_events`
   0x4CDA10 calls `town_events_apply` 0x5BFEB0, which calls it): whether with the day's mark and
   the visit is T12b's reading.
+
+## 8. The town events (T12b; `town_timed_events` 0x4CDA10 and `town_events_apply` 0x5BFEB0, read whole)
+
+### 8.1 The record and its list (`load_town_body` 0x5019F0 at its events)
+
+- **Read** for each town after its spells: a u32 count, then per event `load_timed_event` 0x4FC1A0
+  (the map's timed event: the message, seven resources, the players' bits, the human flag, 1
+  before SoD, the computer flag, the first day stored as the file's + 1, the interval; E08 survey
+  `E08-economy.md` §11), six bytes of buildings (the map's town building bits, `h3m.md`'s "Town
+  buildings" order), seven u16 creature counts (levels 1 to 7) and four bytes skipped.
+- **The record** (0x50 bytes, H3API's H3CastleEvent; `structs.toml` `town_event`) adds the town's
+  index (+0x34: the number of town records before this town's, so the index its record and its
+  town get), the buildings (+0x38, the file's 48 bits in a 64-bit set) and the creatures (+0x40).
+- **The list:** one for the whole map (game +0x1FC00, begin +0x1FC04): the towns in the map's
+  object order, each town's events in its file order. A grep of its offsets finds no other reader
+  than `town_timed_events`; a random town's bits are read through its faction only when an event
+  fires (§8.3), so its drawn faction applies.
+
+### 8.2 When (`town_timed_events`, from `player_turn_start` 0x4CC7D0)
+
+- At each player's turn start, **right after the map's timed events** (`map_timed_events`
+  0x4CD910; E08 survey §7.5): a computer's turn start runs the two and nothing else; a human's
+  runs the scenario's tests first (and nothing when its record's second human flag +0xE1 is
+  clear, network play's case, not followed).
+- **The day number** from the date (game +0x1F63E): (4 × month + week − 5) × 7 + day, as the
+  map's events (E08 survey §7.1).
+- **Each record of the list, in order, fires** when all of these hold: the current player is human
+  and the human flag is set, or a computer and the computer flag is set; the current player's bit
+  is in the players' bits; the day is the first day, or the interval is not 0, the day is past the
+  first and (day − first) is a multiple of the interval (the map's events' test, E08 survey §11);
+  **and the town's owner (the town's +0x1) is the current player.** So an event fires only at its
+  town's owner's turn and only for an owner it names: a neutral town's never; a captured town's for
+  its new owner when the event names it.
+- **Fired:** `apply_timed_event` 0x4CD710 first (the resources to the current player, each floored
+  at 0; the message for a human), then `town_events_apply` with the town.
+- Not followed: the call from `new_game_start_other` 0x4EE3E0 (network play's path).
+
+### 8.3 What it builds (`town_events_apply`)
+
+- **The bits** are mapped through the town's faction (`map_building_ids` 0x6888C0, faction × 41 +
+  bit; a bit the faction has no building for is 44, none). The loop runs over 44 bits although the
+  map has 41: bits 41 to 43 would read the next faction's row, past the table for the Conflux; no
+  shipped event sets them (§10).
+- **Taken out:** what the town has (the every-built set +0x158: the building or one that supersedes
+  it); what the faction's list lacks (`faction_buildings` 0x6976F0); what another building of the
+  same event supersedes (`superseded_buildings` 0x6A8BB8: an event with the Fort and the Castle
+  builds the Castle); the Shipyard (6) when the town has no boat spot (+0x8 0xFF, §2.5).
+- **Not tested:** the requirements (§6), the forbidden set (+0x160), one Capitol a player (§2.4),
+  the Grail (§2.6), the cost (§5) and the day's mark (§3); the owner's turn is the only "who".
+- **Each building left, in id order,** through `town_build_effects` 0x5BEDE0 **without the mark and
+  with the visit** (its arguments 0 and 1, 0x5C0053): all of §4 (increment 1's `town_build` with
+  the standing set, the supersedes, the hordes and a dwelling's first creatures; the guild and the
+  heroes' spells; the map's picture; the scenario's tests; the Tower's reveals; the garrison hero's
+  then the visitor's visit of the buildings). So an event's build leaves the day's build free.
+- **Two Capitols:** the one-Capitol rule outside the hall is `capitol_limit` 0x5BEC60, run only
+  after a capture (`town_visit` 0x4AAFD0: the captured town loses its Capitol when its new owner
+  holds another). An event's Capitol beside the owner's other one stands until one of the two towns
+  changes hands (T-8, §11).
+- **For a human owner** a message names the buildings with their pictures, eight a box
+  (`town_event_buildings_message` 0x5C0220, read in part: the general text's +0x92C with the town's
+  name; shown only when the current player is human and owns the town).
+
+### 8.4 What it adds (the creatures)
+
+- **Per level 1 to 7 with a count:** added to the town's recruits (+0x16) of the upgraded dwelling
+  (index 7 + level − 1) when that dwelling (37 + level − 1) is in the every-built set, else of the
+  dwelling (index level − 1) when it (30 + level − 1) is, **else lost**. After the buildings, so a
+  dwelling the same event builds takes them (on top of its first creatures from `town_build`). No
+  cap; the week's growth is not involved (increment 3).
+- **For a human owner** a message with the creatures' pictures (`town_event_creatures_message`
+  0x5C0400, inferred: its calls are 0x5C0220's).
+
+## 9. VCMI and the wiki compared (T12b)
+
+- **VCMI 1.7.5** (`server/processors/NewTurnProcessor.cpp`, `onPlayerTurnStarted` and
+  `handleTownEvents`; `lib/mapping/CMap.cpp`, `CMapEvent::occursToday` and `affectsPlayer`;
+  `server/CGameHandler.cpp`, `buildStructure` with `force`; `lib/mapping/MapFormatH3M.cpp`, the
+  town's events; `lib/gameState/CGameState.cpp`, the hordes' bits remapped at the start): at a
+  player's turn start, after the map's events, each of the player's towns' events (a town's in file
+  order; the towns in the player's order, not the map's). The same day test but for an interval of
+  1, which fires one day early (`occursToday`: (day − first − 1) % 1 is 0 on the day before;
+  **TD-12**); the same players and kinds, plus a difficulty filter of VCMI's own map format; the
+  resources given as the map's events'; each building of the faction not yet built through
+  `buildStructure(…, force)`: **no requirement, forbidden, Capitol, Grail or cost test, the day's
+  count `built` unchanged**, no visit inside it (the heroes visit every town of the player at every
+  turn start, after the events); a Shipyard is not skipped without water (the reading skips it; no
+  shipped event builds one, §10). The creatures go to the level's one count when the level has a
+  dwelling, else are lost. One window with the message, the resources, the buildings and the
+  creatures.
+- **The wiki** (the shoutwiki copy of the Heroes 3 wiki's "Map Editor - Objects", its town events;
+  https://heroes.shoutwiki.com/wiki/Map_Editor_-_Objects): the events run down the list, each on
+  its days; only for the town's owner, of the kind the event names; a take larger than the supply
+  leaves 0; an event may build a building, a forbidden one included; one already built does
+  nothing, though the message still shows; no creatures without the level's dwelling (the editor
+  offers the basic creatures; an upgraded dwelling's owner can upgrade them at once). It is silent
+  on the requirements.
+- **Agreement:** the days, the players and kinds, the owner only, the resources, no forbidden test
+  (all three), no requirement test (the reading and VCMI; the wiki silent), the creatures lost
+  without the level's dwelling (all three), the day's mark left alone (the reading and VCMI).
+  **Differences:** TD-12; the Shipyard without its spot (no shipped case: the reading's skip); the
+  towns' order (the map's in the reading, the player's in VCMI: it decides only the messages' order
+  and, for a take floored at 0 beside a gain of another town of the same player on the same day,
+  the amount taken; the shipped takes sit in one town each, §10).
+
+## 10. The census (T12b; the 160 shipped maps, a throwaway example over `h3_map::read`, not committed)
+
+- **Custom sets and forbidden buildings:** 574 custom sets in 100 maps (survey `E09-towns.md`
+  §1.3's), 173 forbid something, in 39 maps (112 fixed towns, 61 random). The forbidden h3m bits,
+  most first: the level-7 dwelling (39) 95, the Tavern (6) 63, the level-7 upgrade (40) 51, the
+  level-6 dwelling (37) 45, the level-5 one (34) 37, the level-4 one (31) 32, the Fort (3) 20, the
+  level-6 upgrade (38) 16, the Shipyard (16) 12, the level-5 upgrade (35) 12, the Grail (17) 10,
+  the Silo (9) and the level-4 upgrade (32) 9 each, the Capitol (2) and the second special (19) 8
+  each, 22 other bits 7 times or fewer; none is built as well. In 83 fixed towns a forbidden building is the direct requirement
+  of a building not forbidden (225 such buildings): the buildable-now test (§2.1) blocks those too
+  unless the requirement stands, with no list of their own.
+- **The town events:** 369 on 110 towns of 29 maps (RoE 193, AB 45, SoD 131); 49 of the towns are
+  random, 17 neutral at the start (their events fire only after a capture). **By content:** 70
+  build, 56 add creatures, 105 give resources (5 take some: one town of `Myth and Legend`, one of
+  `Rebellion`), **199 carry a message only** (159 in `Myth and Legend`, 23 in `Overthrow Thy
+  Neighbors`, 7 in `Twins`, 5 each in `Resource War` and its allied copy; survey `E09-towns.md`
+  §1.3 said 189 in 3 maps: corrected); 85 have no message. **By kind:** 219 for humans only, 48
+  for computers only, 102 for both, none for neither; every event names a player; 8 do not name
+  their town's owner at the start and 11 name it but not its kind (they fire after a capture or
+  never).
+- **The days** (the file's + 1): 271 once (day 1 39 times, day 2 20, day 4 20, day 6 13, day 8 10,
+  the rest spread to day 168), 98 repeating: every 7 days 45, every 14 days 33, every 5 days 2 and
+  **every day 18** (daily gold, 1 000 to 4 000, from day 21, 28 or 29 in `Marshland Menace`,
+  `Pestilence Lake` and its allied copy, `Shadow Valleys`: TD-12).
+- **The buildings** by h3m bit: the Town Hall (0) 23, the level-6 dwelling (37) and its upgrade
+  (38) 19 each, the Fort (3) 12, the Citadel (4) 10, the City Hall (1), the Capitol (2), the
+  level-1 dwelling (22) and the level-1 horde slot (24) 6 each, the Marketplace (8), the level-2
+  dwelling (25), the level-2 horde slot (27), the level-4 dwelling (31) and the level-5 dwelling
+  (34) and upgrade (35) 4 each, the Blacksmith (7), the Mage Guild 1 (11) and the first special
+  (18) 2 each. **None** builds the Shipyard or the Grail, sets a bit past 40 or builds a building
+  its own town forbids. **In the fixed towns** (the reading's rules, the events in day order, no
+  build of the owner's between): 57 buildings built, 30 skipped as standing, **27 built without a
+  requirement** (the `Back For Revenge` pair's day-11 dwellings and day-140 Capitol, `Undead
+  Unrest`'s day-14 level-6 dwelling): the missing requirement test decides those three maps.
+  **Six Capitols** by event (the `Back For Revenge` pair, neutral towns, days 125 to 140): a player
+  who takes such a town and holds a Capitol elsewhere gets a second one (T-8).
+- **The creatures:** 56 events, naming the levels 55, 52, 48, 38, 39, 38 and 38 times; in the
+  fixed towns 106 of those levels have no dwelling at the start nor from an earlier event (lost
+  unless the owner has built it by then), 61 go to an upgraded dwelling.
+
+## 11. Disputes, quirk candidates and open points (T12b; both parts, for the checkpoint)
+
+| Id | What | Reading | VCMI | Others | Increment |
+|---|---|---|---|---|---|
+| TD-9 | The Conflux's upgraded Altar of Fire (40) | needs the Altar of Fire (33) and the upgraded Altar of Air (38), §6 | the Altar of Fire (and the Altar of Air, which it needs) | the fandom wiki: the Altar of Fire | 2 |
+| TD-11 | Who builds in a town, and who pays | no owner test on the hall's path, the current player pays (§1.1, §1.4): a visitor in an ally's town at its own cost | the owner only, the owner pays | silent | 2 |
+| TD-12 | A town event repeating every day | from its first day on (§8.2; the map's events' test) | one day early, from the day before its first (`occursToday`) | the wiki: on the chosen date | 2 |
+
+- **Quirk candidate T-8 (new):** an event's Capitol beside the owner's other one (§8.3): the
+  one-Capitol rule is the hall's and the capture's, not the event's; VCMI's `force` skips it too.
+  Six shipped events can give it (§10). Recommendation: not a quirk to fix: the event is the map's
+  override, both sources agree; play it as read.
+- **The town events' rules as read** (§8; for T13 to place): no requirement, forbidden, Capitol,
+  Grail, cost or mark test; skip what stands, what the faction lacks, what the event's own
+  buildings supersede and the Shipyard without its spot; creatures lost without the dwelling; the
+  owner's turn only; in the map's order, after the map's events. The reading, VCMI and the wiki
+  agree but for TD-12, the Shipyard (no shipped case) and the towns' order.
+- **Open from T12a:** the computer's every other day on Easy and Normal (§3; the engine has no
+  difficulty and no computer player yet; recommendation: one a town a day for every player, the
+  handicap with E10's and E13's computer player); the day's mark across a capture (§3: kept, but
+  cleared from a team without a human to one with a human; recommendation: as read); the Grail's
+  building (§2.6, increment 5), the Lookout Tower's and the Skyship's reveals (§4, increment 4); the
+  tutorial's exception (out of scope).
+- **For an experiment batch TWN-2** (if the user wants the original observed): TD-9 (a Conflux
+  town with the Altar of Fire and the Altar of Air: the hall's state of the upgraded Altar of Fire)
+  and TD-11 (two human allies in hot seat: the hall's Build for the visitor in the ally's town, and
+  whose treasury pays).
