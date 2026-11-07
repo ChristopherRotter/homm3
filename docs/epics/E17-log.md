@@ -5889,3 +5889,5 @@ start); the VM restarted once after staging (the files kept).
 - **Recorded:** the three `timelines/<id>-frames.txt`, `set.toml`'s two frames, the sequences'
   comments, `drawn --record`; `TRAPS.md`'s clip line; CLT-Q30 closed (`QUESTIONS-ANSWERED.md`);
   design §7.27's last item.
+- **Gates:** `drawn` (after the record: 263 the same), `check.sh` (`verify-once.sh clients`),
+  the scoped verify with original data, `h3-view gate`.
