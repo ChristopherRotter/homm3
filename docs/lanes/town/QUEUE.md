@@ -8,19 +8,23 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (next), T16a and T16b, T17, T18a to T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a (next) and T16b, T17, T18a to T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T15 — `shared/`: increment 2's drafts into `docs/adr/`** (design §35's round 3; decision
-48; queued 2026-11-07 by T14c): the three accepted drafts `docs/lanes/town/adr-drafts/0028-`,
-`0016-` and `0017-increment-2.md` applied into ADR-0028, -0016 and -0017 (each text after its
-point's increment 1 text, as the drafts say; their consequences, alternatives and revision
-history), with batch TWN-2's verdicts as T14c wrote them into the drafts (decisions 41 and 42
-stand; survey `E09-construction.md` §13); `docs/03-domain.md`'s terms (the day's build, the hall's
-offer, a town event) and `docs/06-security.md`'s town section (ADR-0017 point 2's draft); the ADR
-index's rows; the drafts deleted (as increment 1's T4a did). A `shared/e09-t15` pull request
-(`cross-lane` if it touches another lane's path; it merges before T16a). Docs only. Cut at its start. **Status:** next.
+**E09 T16a — the town part's requirements, costs and the role `shipyard`** (design §24, §35's
+round 4; decisions 41, 46, 49; queued 2026-11-07 by T15; ADR-0028 point 5's increment 2 text):
+`h3-pack-towns`' format (each `[[town.building]]`'s `requires` and `cost`, `BuildingRoles`'
+`shipyard`; its `lib.rs` documents it), `h3-towns`' compiled `Building::requires` (the closure,
+never itself) and `Building::cost` (the core's resource order), the compiler's refusals (a
+requirement outside the record, a cycle, an unknown resource, an amount of 0, a second
+`shipyard`; each a `TownCompileError`), the part's hash v4 (`TOWN_RULESET_HASH_VERSION`; the
+order of §24) and its pinned test; the synthetic packs' requirements and costs where the tests
+need them (a chain, a shipyard, a horde and its upgrade, a hall 4). The shipped packs stay
+without requirements and costs until T16b's harvest. The adventure replays' `town_ruleset_hash`
+line moves (`cross-lane`, as T8c2's: re-hash only, skill `homm3-rerecord-replays`); the
+adventure lane's inbox told (its replays' header line). No original data. Cut at its start.
+**Status:** next.
 
 ## Inbox
 
