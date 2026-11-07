@@ -284,7 +284,9 @@ fn special(
     if let Some(boarding) = afloat(Some(key)) {
         // The heroes start south of their boats, off the map's last row (its border).
         if tile.1 > 33 {
-            return Err(format!("`{key}` needs a row south of the boats (tile y up to 33)"));
+            return Err(format!(
+                "`{key}` needs a row south of the boats (tile y up to 33)"
+            ));
         }
         // The water: the boats' row and the one north of it, from Red's boat (the two boats) or
         // Blue's (the deck: Red stands west of it on the shore) to two columns east of Blue's.
@@ -350,7 +352,11 @@ fn afloat(key: Option<&str>) -> Option<[bool; 2]> {
 /// Where a side's boat stands on a water battlefield, Blue's on `tile` (the battle's: the
 /// defender's), Red's one west of it; on the deck that is where Red stands on the shore.
 fn boat_tile(side: usize, tile: (u8, u8)) -> (u8, u8) {
-    if side == 0 { (tile.0 - 1, tile.1) } else { tile }
+    if side == 0 {
+        (tile.0 - 1, tile.1)
+    } else {
+        tile
+    }
 }
 
 /// The map's building bits of the fort levels (`docs/formats/h3m.md`, "Town buildings"): the
@@ -542,7 +548,11 @@ fn map(
     let boarding = afloat(battle.battlefield.as_deref());
     let ground = match boarding {
         Some(_) if fought_on.rsplit(':').next() == Some("water") => Terrain::Grass,
-        Some(_) => return Err(format!("{id}: a ship's deck or two boats are fought on water")),
+        Some(_) => {
+            return Err(format!(
+                "{id}: a ship's deck or two boats are fought on water"
+            ));
+        }
         None => terrain(fought_on)?,
     };
     let hero = |tile, owner: usize| -> Result<MapObject, String> {
