@@ -121,6 +121,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    and the purchases are answers (point 6). The setup gains nothing beyond ADR-0016's (the
    dwellings' owners and the random dwellings' faction sets and level ranges come with the map's
    objects).
+   **Increment 11** (the teleporters; E08 decision 260) adds one command, **`Revisit { hero }`**
+   (an adventure command; E08 decision 268, the original's space key): the entered object under
+   the player's hero visited again, as the step onto it visits it, without points spent or
+   required, without a step and without a guard test (batch E11's E11-19: no battle at a revisit
+   beside a guard). The player's turn must be running with no open decision; the hero must be the
+   player's and stand on the visitable tile of an entered object whose kind has a built visit (one
+   typed refusal for every other case). A jump is a step of `MoveHero` (its last step's visit) and
+   needs no command; no command names an exit (D-53, confirmed by E11-15). The setup gains
+   nothing: the channels are the static map's, built with the game from its objects (ADR-0016
+   point 1).
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -251,6 +261,17 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    growth, no draw) in the first week's walk with the weekly objects, in object order. **At a new
    week** each camp's creature from the game's stream in the weekly objects' pass, in object
    order. No visit, question, battle's end or purchase of increment 10 draws.
+   **Increment 11's jump** is the first draw a command causes inside the adventure: a monolith's
+   or a Whirlpool's exit is one uniform draw among its candidates from **the acting player's
+   stream** (the visitor's, ADR-0016 point 4), none for a single candidate (the original's), none
+   for a gate. `AdventureState::apply` takes that stream from the game for every adventure command
+   and draws only after the whole command is checked, so a rejected command leaves the stream
+   untouched. In a command the jump's draw comes before the draws of the battle it opens (the
+   battle's seed, then under `strict-fixed` its obstacles). The answers and the rests draw nothing
+   (a held jump's exit was drawn at its visit). Both profiles draw alike: the original's exit comes
+   from the C runtime's one `rand()` stream, which no profile reproduces (batch E11's E11-15 and
+   E11-17: uniform over the candidates, the sequence the game's). No setup placeholder is added
+   and none moves (the channels and the gates' pairs are built without a draw).
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -376,6 +397,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
      each creature's count and cost. An ally's dwelling (E10's teams) opens it **read-only**,
      `Close` alone (E10-6). E09's recruitment reuses the kind, with a town's dwelling as its
      source and the hero's or the garrison's army as its target.
+
+   **Increment 11 adds no decision kind.** A battle at a teleporter's exit is a hero battle
+   (point 11), a hero of the team on a gate's pair is increment 6's **meeting** (its owner's
+   alone; the visitor stays on the entrance and the two heroes are not neighbours; batch E11's
+   E11-6), and `Revisit`'s visit opens what the object's visit opens. **The jump after a won
+   battle at an exit** is a fifth **visit's rest** (GAM-DEC-007): held by the game when the
+   battle opens and given once the winner's levels are answered, as the original moves the hero
+   after the levels (E11-7); nothing when the mover left the map. A visit that jumps, or holds a
+   jump, holds no guard's visit of the entrance: **a guard is met first** (batch E11's E11-19, E08
+   decision 279, for every entered object): a step onto a guarded tile opens the guard's visit,
+   and the tile's own visit (a jump among them) is a visit's rest after it, given to a hero still
+   on the tile, as an event's on a guarded tile.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -439,6 +472,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the env returns gains the dialog's view (`GameObservation` as it is, E08 decision 187). The
    change is the AI lane's (point 8's ownership), made `cross-lane` in the game's task with the
    user's consent, as increments 7's and 9's.
+   Increment 11's **action encoding v8** appends eight entries, the `Revisit` of the hero in each
+   of the eight hero slots (the move entries' slots), masked by its legality; a jump needs no
+   entry (a destination among the reach's tiles). The observation the env returns gains the
+   teleporters' types in the objects' views (`GameObservation` as it is, E08 decision 187). The
+   change is the AI lane's (point 8's ownership), made `cross-lane` in the game's task with the
+   user's consent, as increments 7's, 9's and 10's. A revisit at no points can repeat within a
+   turn: the rollout's step cap is the AI lane's.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -512,6 +552,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     the room and names the price (the creature's cost times the amount, by resource); the game
     checks the treasury before and pays after, then calls the adventure's infallible purchase; a
     rejection leaves everything untouched. The flag is increment 9's.
+    **Increment 11's outcomes:** a Whirlpool's loss is the adventure's own change of the hero's
+    army (told by its event to the owner alone), no loss of resources; **the jump to hold** (the
+    hero and the exit) beside the battle at an occupied exit, given by the adventure's infallible
+    arrival when the rest runs; a gate's meeting is the outcome's meeting. No price, no gain.
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -584,6 +628,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     dwelling's guards until the week's step (none after a draw); a loss or a retreat changes
     nothing else; a win flags the dwelling for the attacker after its levels, then the hire
     question.
+    **Increment 11's battles** (GAM-BAT-004 amended): an enemy hero on a teleporter's exit (a
+    monolith's, a gate's, a Whirlpool's drawn tile: A-37 fixed so, E08 decision 265; batch E11's
+    E11-16 showed the original's two heroes on one tile, state-corrupting) defends as any hero
+    against the mover, who attacks from the entrance: the battle at the defender's tile, the exit,
+    with its terrain, special ground and background, the attacker's ground the entrance's (E11-7:
+    a gate's battle underground); at a Whirlpool both heroes are in boats, so on the two boats.
+    The tiles within 1 of the exit are revealed to the mover's owner first (ADR-0016 point 5).
+    Won: the defender leaves the map, the winner's levels, then the held jump (point 6). Lost,
+    retreated or surrendered: the mover leaves the map (in a boat with it), the jump dropped; a
+    draw, both leave.
 
 ## Consequences
 
@@ -655,6 +709,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   the static map's: a map that holds one draws every later placeholder differently than before; no
   recorded game holds one. An agent of v7 buys the most of a creature, never less; a finer amount
   is the AI lane's.
+- Increment 11: `AdventureState::apply` takes the acting player's stream (every caller passes
+  it; a rejected command leaves it untouched), the game a fifth rest (game state hash v26), one
+  command (adventure replay format v11) and eight env entries (action encoding v8, the AI
+  lane's); the space key's revisit repeats at no points, so the env's rollout needs a step cap.
+  The guard first (decision 279) moves every entered kind's visit on a guarded tile to a rest
+  after the guard's battle, so the golden replays with such a visit change with it.
 
 ## Alternatives considered
 
@@ -722,6 +782,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   University's `Leave`, so an answer names its decision); the random dwellings drawn after the
   existing placeholders (their footprints fix the tiles the later draws read); the guards on the
   owner's side (VCMI; rejected by the user, E08 decision 238).
+- Increment 11 (ADV-Q45 to ADV-Q47): the exit named by the command (VCMI's, D-53), so no draw;
+  the exit's draw from the game's stream or a stream inside the adventure state; the jump kept in
+  the open battle and given at its end, before the winner's levels; the revisit for the
+  teleporters only, or later as a stub (decision 268); the revisit with the guard's test; one env
+  entry for the selected hero instead of one per slot; a jump dropping the entrance's guard, or
+  the guard first for the teleporters only (decision 279).
 
 ## Revision history
 
@@ -809,3 +875,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   guards' and the hire questions, the hire dialog; the env's v7; the purchase's outcome; the
   guards' battle unowned. Drafted in E08 T88b2 (survey `E08-dwellings.md` §4, §5, §6, §7, §12);
   batch E10's outcome (T91, §16: every row as read) folded in.
+- 2026-11-07 (E08 T102 `shared/`; the user at ADV-Q45 to ADV-Q47, E08 decisions 260, 264–268,
+  273, 279): points 1, 4, 6, 8, 10 and 11 amended for E08 increment 11, the teleporters: the
+  command `Revisit`; the jump's draw from the acting player's stream, passed to the adventure's
+  `apply`; no decision kind, the jump after a won battle at an exit a visit's rest, a gate's
+  meeting, the guard met first for every entered object; action encoding v8; the jump held as an
+  outcome; the battle at an exit. Drafted in E08 T98b2 (design part C); batch E11's outcome
+  (T101, survey `E08-teleporters.md` §15: every row as read but E11-19, the guard first) folded
+  in.

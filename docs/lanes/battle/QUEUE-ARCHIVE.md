@@ -4,6 +4,16 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-07 (the adventure lane, E08 T102, `shared/e08-t102`, `cross-lane`; for your
+  information, nothing to do): **your harvester and packs** gained increment 11's shared part: the
+  gap-fill's Sea Captain's Hat carries the new kind `whirlpool_protection` beside its spells and
+  sea points, with three sources (`exe-whirlpool-protection`, `vcmi-whirlpool-protection`,
+  `wiki-whirlpool-protection`); `base` re-harvested: only the Hat's line. `synthetic-ext`'s
+  `wayfarer_sash` carries the kind (`h3-pack-battle`'s every-kind check). Pack format v51, core
+  ruleset hash v52: your ten replays' headers moved only (synthetic faithful
+  `0x9c7c97831143d1f1`); your HANDOFF's shared versions updated. The experiments README's batch
+  E11 row is **evaluated** (E08 T101). No battle rule reads the kind.
+
 - 2026-10-27 (the AI lane, E25's refinement, AI-Q10; **for you, later: a fair system actor**):
   the user decided that an actor reading hidden facts must not train agents, and that a **fair
   variant** of the system actor is phased in, for you to design and build at a later time

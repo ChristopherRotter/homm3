@@ -7,7 +7,7 @@ these notes as "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 11's
 amendments, drafted in the lane's `adr-drafts/` (`0016-increment-11.md` by T98b1,
-`0017-increment-11.md` by T98b2); written from T98a's survey and the answers at ADV-Q44 and
+`0017-increment-11.md` by T98b2; applied to ADR-0016 and ADR-0017 by T102, then deleted); written from T98a's survey and the answers at ADV-Q44 and
 ADV-Q45 (the epic's decisions 260, 264–269). A building task adds an *As built* line to the section
 it builds; the note moves to `E08-log.md` when the increment closes.
 Facts and sources: survey `docs/rules/surveys/E08-teleporters.md` (§ numbers are the survey's
@@ -70,6 +70,12 @@ adventure kind naming artifacts, and a combination's parts read outside `h3-hero
 The weakest stack's measure (note §8) reads the core creature's fight value (`fight_value`,
 harvested; the original's creature record +0x3C): no new content.
 
+*As built* (T102, `shared/e08-t102`): `HeroEffect::WhirlpoolProtection` (code 60), pack format
+v51, core ruleset hash v52; the gap-fill's Sea Captain's Hat with three sources
+(`exe-whirlpool-protection`, `vcmi-whirlpool-protection`: VCMI 1.7.5's `seaCaptainsHat`
+`WHIRLPOOL_PROTECTION`, read for it; `wiki-whirlpool-protection`); `h3_heroes::whirlpool_protection`
+is T103a's.
+
 ###### 3. The packs
 
 - **`base`**: the monoliths of channels 0 to 2 in each way (nine types: RoE's and AB's
@@ -91,7 +97,7 @@ harvested; the original's creature record +0x3C): no new content.
 
 ##### Part B — the map (`h3-map`, `h3-adventure`)
 
-###### 4. The import (`h3-map`; map import v20)
+###### 4. The import (`h3-map`; map import v21: E09 T11 took v20)
 
 - **Classes** (ADV-OBJ-002 amended): 43, 44 and 45 by subclass (three tables of eight: the
   channel's number is the subclass), 103 `base:subterranean_gate` and 111 `base:whirlpool`
@@ -303,7 +309,7 @@ one-way exit beside a guard: no fight on arrival by §5's reading, unobserved; b
   encoding (part C, `Revisit`); the map client: the five kinds' types and the new events (its inbox
   when built); the town lane: none (Town Portal is a spell, the Castle Gate a town building, neither
   here).
-- **Versions** (parts A and B): map import v20, adventure ruleset part v18; the adventure state hash
+- **Versions** (parts A and B): map import v21 (E09 T11 took v20), adventure ruleset part v18; the adventure state hash
   unmoved; shared: pack format v51, core ruleset hash v52 (note §2). A town-lane bump of the same
   rows in between: the second to merge bumps again (part C §15 orders them).
 
@@ -313,8 +319,8 @@ Written by T98b2 (decision 270; whole: decision 271): §12 the battle and the me
 §13 the game (the visitor's stream, the jump held as a rest, `Revisit`), §14 the env, replays,
 fixtures, properties and benchmarks, §15 versions, rule ids, quirks, §16 batch E11, §17 shared and
 `cross-lane` work, the building tasks and the exit criteria, §18 risks. ADR-0017's amendment
-(points 1, 4, 6, 8, 10, 11) is drafted in `adr-drafts/0017-increment-11.md`; `Revisit`'s map-side
-lines are added to `0016-increment-11.md` (point 4).
+(points 1, 4, 6, 8, 10, 11) was drafted in `adr-drafts/0017-increment-11.md`; `Revisit`'s map-side
+lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 
 ###### 12. The battle and the meeting at an exit (GAM-BAT-004, GAM-MET-001 amended)
 
@@ -473,9 +479,9 @@ lines are added to `0016-increment-11.md` (point 4).
 
 | Version | Change | Task |
 |---|---|---|
-| pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102 |
+| pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102: done |
 | adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a |
-| map import v20 | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b |
+| map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b |
 | game state hash v26 | the held jump `Rest::Jump` (§13) | T105b |
 | adventure replay format v11 | `revisit` (§13) | T105b |
 | env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b (`cross-lane`) |
@@ -485,7 +491,7 @@ to merge bumps again**, each change once (the table's numbers are this increment
 first).
 
 Rule ids (survey §13): ADV-TEL-001 to -008 new; amended: ADV-OBJ-002, ADV-OBJ-003, ADV-FOG-004,
-ADV-MON-006 (§13: a jump drops the entrance's guard), HER-ADV-009 (note §2), GAM-BAT-004,
+ADV-MON-006 (decision 279: the guard first, for every entered kind), HER-ADV-009 (note §2), GAM-BAT-004,
 GAM-MET-001 (§12), GAM-DEC-007 (§13). Quirks (note §11): `ADV-QUIRK-39` A-37, `-40` A-38, `-41`
 A-39, `-42` A-40, `-43` A-41, `-44` A-42, `-45` A-43 (decision 280), none with a flag; each entry written by the task that
 builds its rule (§17). Stubs: none (a computer player's revisit and its paths through a channel
@@ -556,7 +562,7 @@ ADRs are applied once with the rows' verdicts:
 | 2 | **T99** | Batch E11's maps: the writer's five classes, the spec's fields (`cross-lane`), the two specs and templates (§16) |
 | 3 | **T100** + **T101** | T100: the harness's reads and keys, the recipes, the runs E11a and E11b. T101: scored (survey §15) |
 | 4 | **T102** | `shared/` (`cross-lane`): the two ADRs with T101's outcome, the glossary, `docs/06-security.md`, the effect kind with the harvester's gap-fill (pack format v51, core ruleset hash v52) |
-| 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v20); a step onto an entrance refused as any unbuilt visit's until T105a |
+| 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v21); a step onto an entrance refused as any unbuilt visit's until T105a |
 | 6 | **T104** | The build: the surfaces (A-42 and its entry), the channels, the gates' pairs (note §5); `build-gates-xl-144` |
 | 7 | **T105** | T105a: the stream in `apply`, the jump (the candidates, the draw, each kind, the arrival), the Whirlpool's loss, the events and views, the entrance's guard, the reach's measure against `master` (note §7 to §10, §13's stream; A-38's, A-40's, A-41's entries). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v26, replay format v11, `cross-lane` v8; A-37's entry) |
 | 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined |

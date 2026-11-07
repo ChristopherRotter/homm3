@@ -13457,3 +13457,59 @@ not reproduced** (`ADV-QUIRK-45`, T104). Updated with them: design §7, §13, §
 ADR-0017 draft's line on the entrance's guard and the ADR-0016 draft's revisit line; T102 queued.
 
 **Versions:** none moved (documents only).
+
+### Increment 11, round 4: T102, the `shared/` task (2026-11-07, `shared/e08-t102`, `cross-lane`)
+
+**The cut** (decision 281; asked at the start, `AskUserQuestion`, with the consent to the
+`cross-lane` change): whole, one `shared/` pull request, as decision 274 and T70. Not chosen: two
+pull requests (the docs, then the code), in one session or two. **Baseline:** `master` 98b2c14
+(#779; T101's c1c3a2e green on CI); the setup's baseline stopped once it reached coverage (CI's run
+on `master` stands for it). The installation's files staged from the user's repo folder (the four
+LODs, both executables, `maps.tar`, `extracted.tar`; the computer's shell not tried).
+
+- **The ADRs** (the two drafts accepted at ADV-Q46, decisions 272, 273, applied with batch E11's
+  outcome, then deleted with their folder): ADR-0016 point 1 (a part **Increment 11's channels**:
+  the static channels, the gates' pairs, the surfaces' check; A-43 not reproduced, decision 280),
+  point 3 (a jump without a step), point 4 (the random contents' bullet: the jump the first visit
+  that draws; a part **Increment 11's kinds**: the monoliths, the gate, the Whirlpool and its loss,
+  the exit, the battle at an exit, the arrival, **the guard met first** for every entered kind as
+  its own bullet (decision 279), the import's bound, the revisit; then a batch E11 paragraph as
+  increment 10's), point 5 (a jump's reveals, E11-7), point 6 (a teleporter's type, a jump's two
+  ends, E11-18), a consequence (map import v21, after E09's v20), an alternative and the history;
+  ADR-0017 points 1 (`Revisit`, E11-19's Space), 4 (the visitor's stream, E11-15 and E11-17), 6
+  (no decision kind, the fifth rest, the guard first), 8 (v8), 10 and 11 (E11-7, E11-16), a
+  consequence, an alternative and the history; the index's two Read-when cells. *Agent's calls*
+  (change freely): the draft's "(the Visits bullet)" for the exit's draw pointed to the random
+  contents' bullet, which names the visitor's stream; each point cites the rows that confirmed it.
+- **The glossary** (`docs/03-domain.md`): teleporter, channel, entrance, exit, jump, monolith,
+  Subterranean Gate, Whirlpool, a Whirlpool's loss, revisit.
+- **`docs/06-security.md`**: increment 11's lines (a teleporter's type and never its exits or pair;
+  a jump's two ends, A-41 not reproduced, the draw server-only and after every check; the loss,
+  "leads nowhere" and a gate's meeting the visitor's owner's; `Revisit`'s validation and its
+  `NothingToRevisit`).
+- **`h3-content`** (design §2): `HeroEffect::WhirlpoolProtection`, code 60, without parameters
+  (`NAMES`, `try_map`, the hash with the kinds without parameters, the every-kind list);
+  **core ruleset hash v52** (the golden base hash `0x96d2_52ae_63d7_a8ad`).
+- **`h3-pack`**: **pack format v51** (`whirlpool_protection` a struct variant `{}`); the test
+  `the_whirlpool_protection_parses_and_is_harvested` (the syntax, a parameter refused, the Sea
+  Captain's Hat alone carrying it in every expansion, the Admiral's Hat through its part).
+- **The harvester** (battle-owned, `cross-lane`): the gap-fill's Sea Captain's Hat gains the kind
+  beside its spells and sea points; three sources (`exe-whirlpool-protection`: 0x4A95A5, 0x4ACAA0,
+  0x4D91F0 and batch E11's E11-13; `vcmi-whirlpool-protection`: VCMI 1.7.5's
+  `config/artifacts.json`, read today from a sparse clone of its tag: `seaCaptainsHat`'s
+  `WHIRLPOOL_PROTECTION`, `admiralsHat`'s components; `wiki-whirlpool-protection`: the Whirlpool
+  page as the survey's §7). `base` re-harvested from the staged installation: only the Hat's line.
+  `synthetic-ext`'s `wayfarer_sash` carries the kind (the every-kind check); `packs/README.md`'s
+  row.
+- **Replays and records**: the 65 golden replays (10 battle, 55 adventure) keep commands and state
+  hashes; only `ruleset_hash` moved (synthetic faithful `0x9c7c97831143d1f1`, base faithful
+  `0xe5ac723212bdce02`, strict-fixed `0x18093bcc03928d9d`; read from a recording of each with
+  the CLI, every replay then verified with `h3 verify` and `h3 adventure verify`). The AI lane's
+  `bots-report-v1.json` and `bots-neutral-v1.json` regenerated: only `engine.core` moved.
+- **Docs**: the experiments README's batch E11 row evaluated (battle-owned); design §2's *As
+  built*, §15's rows (map import v21, ADV-MON-006's line), the drafts' mentions repointed; decision
+  281 and the task's line; the queue (T102 out, T103 in); the battle lane's HANDOFF's shared
+  versions and its and the AI lane's archives (for their information).
+
+**Versions:** pack format v51, core ruleset hash v52 (shared). T103 (round 5, its cut at its
+start) next.

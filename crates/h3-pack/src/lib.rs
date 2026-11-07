@@ -635,6 +635,9 @@ enum EffectDto {
         points: u16,
     },
     FullMana {},
+    /// Pack format v51 (E08 T102, increment 11): the Sea Captain's Hat's protection at a
+    /// Whirlpool.
+    WhirlpoolProtection {},
 }
 
 /// A creature's ability outside battle, as files write it (pack format v50, E08 T81b):
@@ -922,6 +925,7 @@ impl EffectDto {
             Self::ManaRegain { points } => HeroEffect::ManaRegain { points },
             Self::ExtraManaRegain { points } => HeroEffect::ExtraManaRegain { points },
             Self::FullMana {} => HeroEffect::FullMana,
+            Self::WhirlpoolProtection {} => HeroEffect::WhirlpoolProtection,
         })
     }
 }

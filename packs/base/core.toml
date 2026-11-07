@@ -5413,7 +5413,7 @@ name = "Sea Captain's Hat"
 class = "relic"
 cost = { "gold" = 15000 }
 slot = "head"
-effects = [{ kind = "spells", spell = "summon_boat" }, { kind = "spells", spell = "scuttle_boat" }, { kind = "sea_movement_points", points = 500 }]
+effects = [{ kind = "spells", spell = "summon_boat" }, { kind = "spells", spell = "scuttle_boat" }, { kind = "sea_movement_points", points = 500 }, { kind = "whirlpool_protection" }]
 
 [[artifact]]
 id = "spellbinders_hat"  # original id 124

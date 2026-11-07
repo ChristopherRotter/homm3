@@ -224,6 +224,13 @@ leaves a quarter of the previewed kills.
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-07 (the adventure lane, E08 T102, `shared/e08-t102`, `cross-lane`; for your
+  information, nothing to do): core ruleset hash v52 (the hero effect kind
+  `whirlpool_protection`; pack format v51). `python/records/bots-report-v1.json` and
+  `bots-neutral-v1.json` regenerated: only `engine.core` moved (`e5ac723212bdce02`); the run
+  records keep the hash they ran with. Nothing reaches the battle's observation or your encodings;
+  increment 11's action encoding v8 (`Revisit`) comes `cross-lane` with T105b.
+
 **Moved 2026-11-02** (E25 T13's session; verbatim, folded into E25 T14 to T16, AI-Q14):
 
 - 2026-11-02 (the battle lane, E26 T5; **for you: the fair system actor exists**):

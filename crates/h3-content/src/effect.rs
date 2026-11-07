@@ -728,6 +728,11 @@ pub enum HeroEffect<C, K, S, F, L, R> {
     /// The day's spell points fill to the maximum when below it (pack format v50, E08
     /// increment 9; ADR-0013 point 16.2, HER-MAN-002; the Wizard's Well).
     FullMana,
+    /// A Whirlpool's visit takes nothing from the hero's army (pack format v51, E08 increment 11;
+    /// HER-ADV-009, ADV-TEL-006): any source, each worn artifact type or part of a worn
+    /// combination (the Sea Captain's Hat, so the Admiral's Hat through its part: tested as
+    /// `hero_wears_artifact` 0x4D91F0 with 123; VCMI's `WHIRLPOOL_PROTECTION`).
+    WhirlpoolProtection,
 }
 
 /// The highest [`HeroEffect::DailyResource`] amount: a treasury's bound (GAM-RES-001, the
@@ -747,7 +752,7 @@ pub type CompiledHeroEffect =
 
 impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 60] = [
+    pub const NAMES: [&'static str; 61] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -808,6 +813,7 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
         "mana_regain",
         "extra_mana_regain",
         "full_mana",
+        "whirlpool_protection",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -873,6 +879,7 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
             Self::ManaRegain { .. } => 57,
             Self::ExtraManaRegain { .. } => 58,
             Self::FullMana => 59,
+            Self::WhirlpoolProtection => 60,
         }
     }
 
@@ -1083,6 +1090,7 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
             Self::ManaRegain { points } => HeroEffect::ManaRegain { points: *points },
             Self::ExtraManaRegain { points } => HeroEffect::ExtraManaRegain { points: *points },
             Self::FullMana => HeroEffect::FullMana,
+            Self::WhirlpoolProtection => HeroEffect::WhirlpoolProtection,
         })
     }
 
@@ -1430,7 +1438,8 @@ impl CanonicalHash for CompiledHeroEffect {
             | Self::NegateImmunities
             | Self::GivesSpellBook
             | Self::FreeBoarding
-            | Self::FullMana => {}
+            | Self::FullMana
+            | Self::WhirlpoolProtection => {}
             Self::SpellLevelLimit { level } | Self::SpellLevelImmunity { level } => {
                 h.write_u8(*level);
             }
@@ -1641,6 +1650,7 @@ mod tests {
             E::ManaRegain { points: 2 },
             E::ExtraManaRegain { points: 3 },
             E::FullMana,
+            E::WhirlpoolProtection,
         ]
     }
 

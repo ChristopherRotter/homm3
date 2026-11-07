@@ -4,29 +4,27 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 (below); T103 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 (below) with batch E11c and decision 279's order; T104 to T107 queued as each round before is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T102 — increment 11's shared change: the ADRs, the glossary, the security lines, the effect kind**
-(decisions 272–274, 279, 280; design §17's round 4 and §2; one `shared/` pull request, `cross-lane`,
-the user's consent at its start, as increment 8's T70; code and docs together, decision 274)
+**E08 T103 — increment 11's kinds, packs and import** (round 5; design §17, note §1 to §4;
+decisions 260, 264–268, 272, 279, 280; the cut confirmed at its start: design §17 proposes T103a
+and T103b)
 
-- **Scope:** the drafts `adr-drafts/0016-increment-11.md` and `0017-increment-11.md` applied to
-  ADR-0016 and ADR-0017 with batch E11's outcome (survey `E08-teleporters.md` §15: every row as
-  read; decision 279's order, a guard met before its tile's visit for every entered object, already
-  in 0017's draft; A-43 not reproduced), then the drafts deleted (in the lane's pull request, as
-  T92); `docs/03-domain.md`'s terms (teleporter, channel, entrance, exit, jump, monolith,
-  Subterranean Gate, Whirlpool, a Whirlpool's loss, revisit); `docs/06-security.md`'s lines (design
-  §10, §13); the artifact effect kind **`whirlpool_protection`** (`h3-content`: its code, name and
-  hash; `h3-pack`'s syntax; pack format v51, core ruleset hash v52; design §2) with the harvester's
-  gap-fill (the battle lane's: the Sea Captain's Hat's effect); the experiments README's batch E11
-  row **evaluated** (battle-owned: E11-19 against the design, ADV-Q47; batch E11c planned).
-- **Inputs:** the drafts; design §2, §10, §13, §15 to §17; survey §15.
-- **Depends on:** T101. **Status:** ready (no original data needed).
-
-After T102 (round 5's start, the cut confirmed then): T103 (the kinds and the import), batch E11c
-(design §16: a one-way exit's arrival beside a guard and the step off, a guarded entered object of
-another kind, Space on a guarded two-way monolith; decision 279's investigation) and decision
-279's order for every entered kind (ADV-MON-006, GAM-DEC-007), both before T105a.
+- **Scope:** **T103a** the three kinds (`monolith` with its channel and way, `subterranean_gate`,
+  `whirlpool` with its divisor) in `h3-adventure`'s `ObjectKind`, the packs' `adventure.toml`
+  types by expansion, the harvest's check, `h3_heroes::whirlpool_protection(details, core)` (the
+  effect kind T102 added, `Count::OncePerType`; HER-ADV-009 amended), adventure ruleset part v18.
+  **T103b** the import of classes 43 to 45 by subclass, 103 and 111 (A-39's refusal and its quirk
+  entry `ADV-QUIRK-41`), **map import v21** (E09 T11 took v20); a step onto an entrance refused as
+  any unbuilt visit's until T105a; the replays on maps that hold teleporters re-recorded.
+- **Added at T101** (decisions 279, 280), both before T105a, their ids and cut at round 5's start:
+  batch E11c (design §16: a one-way exit's arrival beside a guard and the step off, a guarded
+  entered object of another kind, Space on a guarded two-way monolith) and decision 279's order for
+  every entered kind (ADV-MON-006, GAM-DEC-007: the guard first, the tile's visit its rest).
+- **Inputs:** design §1 to §4, §11, §15, §17; survey `E08-teleporters.md` §1 to §3, §15;
+  ADR-0016 point 4 (increment 11's kinds, applied by T102).
+- **Depends on:** T102. **Status:** ready (T103a needs no original data beyond the harvest's
+  check; T103b reads the shipped maps).
 
 ## Inbox
 
