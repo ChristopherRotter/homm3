@@ -13417,3 +13417,43 @@ committed; h3lod's tables leave ARRAYTXT out).
   on 16,23).
 
 **Versions:** none moved (the harness, a recipe, a filled template, docs).
+
+### Increment 11, round 3: T101, batch E11 scored (2026-11-07, `claude/epic-brahmagupta-rp3lje`)
+
+Baseline: `master` d383d40 (#776, T100b merged). Docs only; whole (the agent's call: one survey
+section and its checkpoint); no original data needed (none staged).
+
+**Scored** (survey `E08-teleporters.md` §15) from T100a's and T100b's filled templates and T100b's
+record of runs 1 and 2: **every row as read but E11-19**. E11-1 no path past A (**D-58**); E11-2 on
+B, the step's 100 alone, the scouting radius about B; E11-3 no battle on arrival; E11-4 nothing, on
+the entrance; E11-5 ADVEVENT 70; E11-6 the exchange, the mover on G6; E11-7 the 3 × 3 about U7
+explored before the battle, subterranean, then on U7; E11-8 ADVEVENT 153; E11-9 Uf (**D-56**, the
+truncated tie, the first in the walk); E11-10 Pegasi 3 → 1 (**D-54**, **D-55**); E11-11 the first
+slot of a tie; E11-12 1 kept, 887, 1 776 kept (**A-38** as read); E11-13 either Hat; E11-14 the
+hire question again, the pair at 0 points; E11-15 uniform, never the monolith stood on; E11-16
+**A-37** (no battle, both on one tile); E11-17 W2 drawn (**D-57**), the boats' tiles out of the list;
+E11-18 the view's corner on the hidden exit, nothing drawn or explored (**A-41** as read). **E11-19:
+the guard M fought before the jump**, against design §7's agent's call (decision 272) and against
+ADV-MON-006 as built for every entered object (the tile's object first: an unread claim); the
+reading (`hero_move_step` 0x48169D, `hero_move_loop` 0x4080E9), the event's built order and VCMI
+1.7.5's `moveHero` (`visitDestAfterVictory`, fetched for the check) take the guard first.
+
+**The spread** (a scratch script over the three runs, not committed): E11-15 47/48/42/46, χ² 13.3
+(8 df, p ≈ 0.10); E11-17 65/58/60 (expected 64.6/59.2/59.2), per tile χ² 35.0 (29 df, p ≈ 0.21);
+E11-16 34, 27 and 2 jumps to the landing.
+
+**Beyond the rows:** A-37's consequences (E11-16 not drawn for Red after E11-17's selection, a ghost
+of E11-17 after E11-16's step off, the Whirlpool's record gone from the tile): recorded with A-37
+(`ADV-QUIRK-39`), the agent's call; **A-43** (a placed boat's Whirlpool tile out of the list, its
+word −1 after the boarding); the selected hero lifted (a display's bookkeeping, nothing for the
+engine); the townless player's messages.
+
+**The checkpoint** (ADV-Q47, `AskUserQuestion`; the epic's decisions 279, 280): (1) **the original's
+order for every entered object**, the guard first and the tile's visit as its rest (the placement,
+its own task before T105a or inside it, left to round 7's cut); the user added from play: no fight
+at a two-way exit, free cycling on the pair, a fight only on a step off onto a guarded tile; a
+one-way exit probably alike, to be investigated: batch E11c (design §16) before T105a. (2) **A-43
+not reproduced** (`ADV-QUIRK-45`, T104). Updated with them: design §7, §13, §15 to §18, the
+ADR-0017 draft's line on the entrance's guard and the ADR-0016 draft's revisit line; T102 queued.
+
+**Versions:** none moved (documents only).

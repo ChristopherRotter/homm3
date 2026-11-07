@@ -1974,3 +1974,37 @@ builds and who pays: the reading finds no owner test on the hall's path and pays
 player's treasury, so a visitor might build in an ally's town at its own cost; VCMI the owner
 only). No quirk candidate. Both disputes, the computer's every other day and the other open points
 go to T12b's checkpoint (survey §7). Ids: disputes next 12, quirk candidates next 8 (unchanged).
+
+### T12b — the construction survey: the town events, the census, the checkpoint (2026-11-07)
+
+Decision 38's survey, its second part (T12 cut in two at its start); kept whole at its start (the
+user, `AskUserQuestion`, recommended over a cut after the census or after the reading). Branch
+`town/e09-t12b`, docs only (the survey, the code map, the open and answered questions, the epic,
+the lane's bookkeeping). Starting point: `master` at d383d40 (#775, #776 merged; CI green on
+708dd41; the setup's baseline lost to a VM restart while the cut was asked, replaced by CI's run
+as the sandbox skill says). The user's computer's shell did not start: a sandbox cloned from
+GitHub, `Heroes3.exe`, `h3maped.exe`, the four LODs, the DLLs, `maps.tar` and `extracted.tar`
+staged with the file tool before the computer went offline.
+
+**Written:** `docs/rules/surveys/E09-construction.md` §8 to §12 and §0's T12b findings: the town
+events' record and the map's one list (`load_town_body`'s events), when they fire
+(`town_timed_events`: at the owner's turn start after the map's timed events, the map's day test,
+the town's owner the current player), what they build (`town_events_apply`: the bits through the
+faction, less what stands, what the faction lacks, what the event's own buildings supersede and
+the Shipyard without its spot; no requirement, forbidden, Capitol, Grail, cost or mark test; with
+the visit) and add (the creatures to the level's upgraded dwelling, else its dwelling, else lost);
+VCMI 1.7.5 (`handleTownEvents`, `buildStructure` with `force`, `occursToday`) and the wiki's copy
+compared; the census of the 160 maps (a throwaway example over `h3_map::read`, not committed: 173
+custom sets forbid something, 83 fixed towns where a forbidden requirement blocks 225 buildings;
+369 events, 70 build, 27 of their buildings without a requirement in three maps, six Capitols, 56
+add creatures, 105 give resources, 199 a message only, correcting `E09-towns.md` §1.3's 189; 98
+repeat, 18 every day). The code map: `town_timed_events` and `town_events_apply` read whole, two
+message functions named (0x5C0220 read in part, 0x5C0400 inferred), `load_town_body` and
+`player_turn_start` extended; `structs.toml`'s `town_event` (H3API's H3CastleEvent confirmed) and
+the game's `date` and `town_events`.
+
+**Disputes:** TD-12 new (an every-day event: VCMI one day early); quirk candidate T-8 new (an
+event's second Capitol). **Checkpoint** (`TWN-Q8`, one round of four, each as recommended;
+decisions 41–44, survey §12): TD-9 the executable's list and TD-11 the owner, each with a row of
+batch TWN-2; one a town a day for every player; the town events as the original plays them.
+Ids: disputes next 13, quirk candidates next 9, questions next 9, decisions next 45.
