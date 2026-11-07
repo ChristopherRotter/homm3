@@ -28,6 +28,16 @@ and T103b)
 
 ## Inbox
 
+- 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
+  `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
+  open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the
+  hall, vtable 0x6437A0) and `slot = <building id>` (the hall's slot showing it: the building's
+  dialog, 0x643944; `click = ["build"]` its Build 30722, `cancel` 30721), and the reads
+  `town:x,y:mark`, `hall:slot:<id>`, `build:button`, `build:text`, `screen`, `town_screen_closed`;
+  `h3mem`'s town record gains `mark` (+0x2), `h3lod` gains `building_names`. A walk without
+  `actions` behaves as before. Learned: the panel's hall picture opens nothing; a map whose players
+  are all allies ends at a visit's close (an enemy is needed). The harness check passed after.
+  `clients/capture/README.md`, "The hall and the build".
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts
   `docs/lanes/town/adr-drafts/*-increment-2.md`, accepted at `TWN-Q10`): in your paths, by task:

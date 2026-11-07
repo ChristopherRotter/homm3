@@ -2252,7 +2252,9 @@ def town_fields(index, at, raw):
     place ([x, y, level] of its entrance, u8 +0x5 to +0x7), garrison_hero (i32 +0xC) and
     visiting_hero (i32 +0x10; -1 none), army (+0xE0: [creature, count] for the seven slots, an
     empty one [-1, 0]), built (the buildings standing, u64 +0x150) and every_built (u64 +0x158;
-    with what each built one supersedes), each as the building ids ascending."""
+    with what each built one supersedes), each as the building ids ascending; since E09 T14b
+    (batch TWN-2) mark, the day's mark (u8 +0x2: 0 none, 1 a building built today, 2 a
+    computer-only team's on Easy or Normal; survey E09-construction §3)."""
     types = struct.unpack_from("<7i", raw, TOWN_ARMY)
     counts = struct.unpack_from("<7i", raw, TOWN_ARMY + 28)
     built = struct.unpack_from("<Q", raw, TOWN_STANDING)[0]
@@ -2264,7 +2266,8 @@ def town_fields(index, at, raw):
             "visiting_hero": struct.unpack_from("<i", raw, TOWN_VISITING_HERO)[0],
             "army": [[t, c] for t, c in zip(types, counts)],
             "built": [b for b in range(64) if built >> b & 1],
-            "every_built": [b for b in range(64) if every >> b & 1]}
+            "every_built": [b for b in range(64) if every >> b & 1],
+            "mark": raw[TOWN_BUILT_TODAY]}
 
 
 def adventure_state(mem):

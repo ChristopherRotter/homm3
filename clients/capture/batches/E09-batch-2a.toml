@@ -1,0 +1,104 @@
+# E09 batch TWN-2 played by the capture harness (E09 T14b; h3adv.py batch): the procedure of
+# experiments/specs/E09-batch-2a.toml as steps, on Easy, with T14b's hall path and reads (README,
+# "Towns"). Hot seat, Red and Blue human and allied, Tan the computer, the starting bonus Gold,
+# everything on Red's day 1 (Blue and Tan never play).
+#
+# Each visit is a walk onto a town's entrance whose `actions` play on its town screen: `hall`
+# (a click on the hall's building opens the hall), `slot = <building id>` (the hall's slot that
+# shows it: the building's dialog), `click = ["build"]` (its Build; a greyed one does nothing);
+# the walk then closes what is left open (the dialog by its cancel, the hall, the town screen).
+# The reads in an action are live right after it; the step's after the visit. A town by its
+# entrance (`town:x,y:<part>`), a player's resources by colour (`treasury:<colour>`). The game's
+# building ids: 40 the upgraded Altar of Fire (the Conflux's level-4 slot), 5 the Tavern.
+
+spec = "experiments/specs/E09-batch-2a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- TWN-2-1: the reads before any hero moves ----------------------------------------------------
+
+[[step]]
+encounter = "TWN-2-1"
+hero = "TWN-2-1"
+[step.record]
+"before: C1's standing and every-built sets, its mark; C2's the same; Red's resources" = ["text:C1 standing: ", "town:7,7:built", "text:every: ", "town:7,7:every", "text:mark: ", "town:7,7:mark", "text:C2 standing: ", "town:17,7:built", "text:every: ", "town:17,7:every", "text:mark: ", "town:17,7:mark", "text:Red: ", "treasury:red"]
+[step.note]
+"the game's version" = "map_kind"
+"the teams" = "teams"
+
+# --- TWN-2-1: C1, the Altar of Fire without the upgraded Altar of Air -----------------------------
+
+[[step]]
+encounter = "TWN-2-1"
+hero = "TWN-2-1"
+walk = [7, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+hall = true
+record = { "C1: the screen after the hall's click; the level-4 slot's look" = ["screen", "hall:slot:40"] }
+note = { "C1's standing set while its town screen shows" = "town:7,7:built" }
+[[step.actions]]
+slot = 40
+record = { "C1: the slot's dialog: Build (enabled or greyed); the text (its record, the buildings it names)" = ["build:button", "build:text"] }
+[[step.actions]]
+click = ["build"]
+record = { "C1: the screen after Build pressed" = "screen" }
+[step.record]
+"C1 after the visit: its standing and every-built sets, its mark; Red's resources" = ["text:standing: ", "town:7,7:built", "text:every: ", "town:7,7:every", "text:mark: ", "town:7,7:mark", "text:Red: ", "treasury:red"]
+[step.note]
+"C1's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"C1's visit: screens not known by their vtable" = "unknown_screens"
+
+# --- TWN-2-1: C2, the control with the upgraded Altar of Air -------------------------------------
+
+[[step]]
+encounter = "TWN-2-1"
+hero = "TWN-2-1c"
+walk = [17, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+hall = true
+record = { "C2: the screen after the hall's click; the level-4 slot's look" = ["screen", "hall:slot:40"] }
+note = { "C2's standing set while its town screen shows" = "town:17,7:built" }
+[[step.actions]]
+slot = 40
+record = { "C2: the slot's dialog: Build (enabled or greyed); the text (its record, the buildings it names)" = ["build:button", "build:text"] }
+[[step.actions]]
+click = ["build"]
+record = { "C2: the screen after Build pressed" = "screen" }
+[step.record]
+"C2 after the visit: its standing and every-built sets, its mark; Red's resources" = ["text:standing: ", "town:17,7:built", "text:every: ", "town:17,7:every", "text:mark: ", "town:17,7:mark", "text:Red: ", "treasury:red"]
+[step.note]
+"C2's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"C2's visit: screens not known by their vtable" = "unknown_screens"
+
+# --- TWN-2-2: Red's hero in its ally Blue's town ---------------------------------------------------
+
+[[step]]
+encounter = "TWN-2-2"
+hero = "TWN-2-2"
+[step.record]
+"before: B1's standing and every-built sets, its mark; Red's resources; Blue's resources" = ["text:standing: ", "town:27,7:built", "text:every: ", "town:27,7:every", "text:mark: ", "town:27,7:mark", "text:Red: ", "treasury:red", "text:Blue: ", "treasury:blue"]
+
+[[step]]
+encounter = "TWN-2-2"
+hero = "TWN-2-2"
+walk = [27, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+hall = true
+record = { "the screen after the hall's click; the Tavern's slot's look" = ["screen", "hall:slot:5"] }
+note = { "B1's standing set while its town screen shows" = "town:27,7:built" }
+[[step.actions]]
+slot = 5
+record = { "the Tavern's dialog: Build (enabled or greyed); the text (its record, the buildings it names)" = ["build:button", "build:text"] }
+[[step.actions]]
+click = ["build"]
+record = { "the screen after Build pressed" = "screen" }
+[step.record]
+"the step: a town screen (yes/no)" = "town_screen"
+"after the visit: B1's standing and every-built sets, its mark; Red's resources; Blue's resources" = ["text:standing: ", "town:27,7:built", "text:every: ", "town:27,7:every", "text:mark: ", "town:27,7:mark", "text:Red: ", "treasury:red", "text:Blue: ", "treasury:blue"]
+[step.note]
+"B1's visit: how the town screen closed" = "town_screen_closed"
+"B1's visit: screens not known by their vtable" = "unknown_screens"

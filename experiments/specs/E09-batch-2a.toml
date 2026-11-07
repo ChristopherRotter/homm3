@@ -16,7 +16,11 @@
 # **The towns** (`[[map.town]]`, custom sets by name; the map's bits name the levels, the game's
 # ids below): three towns on map row 7, the entrances 10 columns apart from column 7, each with a
 # hero of Red's on the tile south of its entrance. C1 (7, 7) and C2 (17, 7) Red's Conflux, B1
-# (27, 7) Blue's Castle with a Fort only. Red and Blue are one team (`teams`); both human.
+# (27, 7) Blue's Castle with a Fort only. Red and Blue are one team (`teams`); both human. Blue's
+# hero TWN-2-2b stands far off at (27, 30) and never moves (a player without a hero is offered no
+# Artifact as its starting bonus, which moved the harness's choice of Gold off its place). T1
+# (7, 30) is Tan's Castle (a computer player, alone on its team): without an enemy the game
+# declares Red's victory at the first visit's end (seen in T14b's probe).
 #
 # **The building ids** (the game's; a town's standing set +0x150 and every-built set +0x158 hold a
 # bit per id; the Conflux's requirements: survey §6, the executable's list): 0 Mage Guild 1, 5
@@ -34,7 +38,7 @@
 
 [map]
 name = "E09 batch TWN-2"
-description = "Engine-generated experiment map (E09, batch TWN-2): the hall's build of the Conflux's upgraded Altar of Fire without the upgraded Altar of Air, with a control town; an allied visitor's build in the ally's town. Hot seat, Red and Blue human and allied, difficulty Easy; follow the results template."
+description = "Engine-generated experiment map (E09, batch TWN-2): the hall's build of the Conflux's upgraded Altar of Fire without the upgraded Altar of Air, with a control town; an allied visitor's build in the ally's town. Hot seat, Red and Blue human and allied, Tan the computer, difficulty Easy; follow the results template."
 size = 36
 terrain = "grass"
 difficulty = "easy"
@@ -42,7 +46,7 @@ teams = [["red", "blue"]]
 instructions = [
     "Copy `E09-batch-2a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
     "Use the HD launcher with plain HD (HD+ off).",
-    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human (one team: the map's alliance), difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human (one team: the map's alliance), Tan the computer, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
     "The records are the game's memory: a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml`): its day's mark +0x2 (survey E09-construction.md §3), its standing set +0x150 and every-built set +0x158 (a bit per building id); a player's resources (the player record +0x9C: wood, mercury, ore, sulfur, crystal, gems, gold). The capture harness reads them (`clients/capture/batches/E09-batch-2a.toml`, E09 T14b). Played by hand, the sets show in the town screen and the resources in the kingdom's bar.",
     "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes). The hall: on the town screen, the Village Hall's building (or its successor's); in the hall, a building's slot; in its dialog, the Build button.",
     "Order: day 1, Red's turn, before any hero moves: the reads of TWN-2-1, then its two visits; then TWN-2-2. Close each town screen before the next step.",
@@ -69,6 +73,12 @@ faction = "castle"
 owner = "blue"
 buildings = ["fort"]
 
+[[map.town]]  # T1: Tan's (the computer's), the enemy; no hero comes near it
+entrance = [7, 30]
+faction = "castle"
+owner = "tan"
+buildings = ["fort"]
+
 # --- TWN-2-1: the upgraded Altar of Fire without the upgraded Altar of Air ---------------------
 
 [[encounter]]
@@ -77,15 +87,19 @@ title = "The Conflux's upgraded Altar of Fire (40): C1 without the upgraded Alta
 questions = ["TD-9", "TWN-BLD-002", "TWN-BLD-007"]
 procedure = [
     "Red's turn, day 1, before any hero moves. Read C1's (entrance (7, 7)) and C2's (17, 7) standing and every-built sets and day's marks, and Red's resources.",
-    "C1: Red's hero TWN-2-1 stands south of it at (7, 8). Step north onto the entrance (the town screen opens). Open the hall; the level-4 slot shows the upgraded Altar of Fire. Note the slot's look (built, buildable, short of resources, not now). Click the slot: note whether the dialog's Build button is enabled and which buildings the text under it names. Press Build (it does nothing when disabled); close the dialogs and the town screen. Read C1's sets and mark, and Red's resources.",
-    "C2: Red's hero TWN-2-1c stands south of it at (17, 8). The same: step in, the hall, the level-4 slot, its dialog (Build's state, the text), Build pressed, the screens closed. Read C2's sets and mark, and Red's resources.",
+    "C1: Red's hero TWN-2-1 stands south of it at (7, 8). Step north onto the entrance (the town screen opens). Open the hall (a click on the hall's building); the level-4 slot shows the upgraded Altar of Fire. Note the slot's look (built, buildable, not now, never). Click the slot: note whether the dialog's Build button is enabled or greyed and which buildings the text under it names. Press Build (a greyed one does nothing) and note what shows then; close what is left open (the dialog by its cancel, the hall, the town screen). Read C1's sets and mark, and Red's resources.",
+    "C2: Red's hero TWN-2-1c stands south of it at (17, 8). The same: step in, the hall, the level-4 slot, its dialog (Build's state, the text), Build pressed, what shows then, the screens closed. Read C2's sets and mark, and Red's resources.",
 ]
 record = [
     { field = "before: C1's standing and every-built sets, its mark; C2's the same; Red's resources" },
-    { field = "C1: the slot's look; Build enabled (yes/no); the buildings the text names" },
-    { field = "C1 after Build pressed: its standing and every-built sets, its mark; Red's resources" },
-    { field = "C2: the slot's look; Build enabled (yes/no); the buildings the text names" },
-    { field = "C2 after Build pressed: its standing and every-built sets, its mark; Red's resources" },
+    { field = "C1: the screen after the hall's click; the level-4 slot's look" },
+    { field = "C1: the slot's dialog: Build (enabled or greyed); the text (its record, the buildings it names)" },
+    { field = "C1: the screen after Build pressed" },
+    { field = "C1 after the visit: its standing and every-built sets, its mark; Red's resources" },
+    { field = "C2: the screen after the hall's click; the level-4 slot's look" },
+    { field = "C2: the slot's dialog: Build (enabled or greyed); the text (its record, the buildings it names)" },
+    { field = "C2: the screen after Build pressed" },
+    { field = "C2 after the visit: its standing and every-built sets, its mark; Red's resources" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -128,14 +142,16 @@ title = "An allied visitor's build: Red's hero in Blue's town (Red and Blue one 
 questions = ["TD-11", "TWN-BLD-001"]
 procedure = [
     "After TWN-2-1, in the same turn (Red's, day 1). Blue's Castle B1 (a Fort only) has its entrance at (27, 7); Red's hero TWN-2-2 stands south of it at (27, 8). Read B1's standing and every-built sets and mark, and both players' resources.",
-    "Step north onto the entrance: Red's hero enters its ally's town (a town screen: yes/no). Open the hall; the Tavern's slot shows the Tavern. Note the slot's look; click it: note whether Build is enabled and what the text says. Press Build; close the dialogs and the town screen.",
+    "Step north onto the entrance: Red's hero enters its ally's town (a town screen: yes/no). Open the hall (what shows then); the Tavern's slot shows the Tavern. Note the slot's look; click it: note whether Build is enabled or greyed and what the text says. Press Build and note what shows then; close what is left open (the dialog by its cancel, the hall, the town screen).",
     "Read B1's standing and every-built sets and mark, and both players' resources.",
 ]
 record = [
     { field = "before: B1's standing and every-built sets, its mark; Red's resources; Blue's resources" },
-    { field = "the step: a town screen (yes/no); the hall opened (yes/no)" },
-    { field = "the Tavern's slot: its look; Build enabled (yes/no); the text's refusal, if any" },
-    { field = "after Build pressed: B1's standing and every-built sets, its mark; Red's resources; Blue's resources" },
+    { field = "the step: a town screen (yes/no)" },
+    { field = "the screen after the hall's click; the Tavern's slot's look" },
+    { field = "the Tavern's dialog: Build (enabled or greyed); the text (its record, the buildings it names)" },
+    { field = "the screen after Build pressed" },
+    { field = "after the visit: B1's standing and every-built sets, its mark; Red's resources; Blue's resources" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -155,5 +171,13 @@ Before: B1 standing and every-built {7, 10}, the mark 0.
 type = "Octavia"
 specialty = "resource gold"
 at = [27, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Aine"
+specialty = "resource gold"
+owner = "blue"
+name = "TWN-2-2b"
+at = [27, 30]
 primary = [1, 1, 1, 1]
 army = [["Pikeman", 1]]
