@@ -748,9 +748,11 @@ Increment 2's note (the epic's decision 37). A handover, not binding, as Parts A
 detail behind the drafts `docs/lanes/town/adr-drafts/0028-increment-2.md`, `0016-increment-2.md`
 and `0017-increment-2.md`, written by T13 from the survey `docs/rules/surveys/E09-construction.md`
 (§ numbers are the survey's unless they name this note) and the decisions 41–44 (`TWN-Q8`) and
-45–47 (`TWN-Q9`). The task that builds a section shortens it to what it built; the code cites it
-as "E09 design §N" ("design §N" in the town modules). *Agent's call (change freely)* marks a
-choice of this note the checkpoint may keep and the building task may still change.
+45–47 (`TWN-Q9`). Accepted at the checkpoint (`TWN-Q10`, the epic's decisions 48–51): the drafts as
+written, the cut of §35, the exit criteria, the agent's calls. The task that builds a section
+shortens it to what it built; the code cites it as "E09 design §N" ("design §N" in the town
+modules). *Agent's call (change freely)* marks a choice of this note the user kept (decision 51)
+and the building task may still change.
 
 - **Built:** the build command (§27, §29): the requirements and costs (§24, §25), one a town a
   day (§26), the forbidden buildings, one Capitol a player, the Shipyard's water (§28); the map's

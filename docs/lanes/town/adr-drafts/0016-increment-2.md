@@ -1,8 +1,7 @@
 # ADR-0016 amendment (draft): E09 increment 2, construction with the town events (the map side)
 
-- Status: **Draft** (E09 T13, 2026-11-07), for the user's acceptance at T13's checkpoint
-  (`TWN-Q10`), then into ADR-0016 through the round's `shared/` pull request with batch TWN-2's
-  outcome.
+- Status: **Accepted as written** at T13's checkpoint (`TWN-Q10`, 2026-11-07; E09 decision 48),
+  to be applied by T15 into ADR-0016 with batch TWN-2's outcome. Drafted by E09 T13 (2026-11-07).
 - Amends: ADR-0016 points 1, 4 and 6 (each text below goes in after the point's E09 increment 1
   text, or replaces the sentence it names); its consequences and revision history.
 - Choices: the epic's decisions 39 (T11), 46 and 47 (`TWN-Q9`). Detail: the design note
@@ -70,4 +69,5 @@ these views (ADR-0017 point 2's draft); `docs/06-security.md` lists them.
 
 ## Revision history
 
-- 2026-11-07: Drafted (E09 T13), with the user's answers at `TWN-Q9` (decisions 46, 47).
+- 2026-11-07: Drafted (E09 T13) with the user's answers at `TWN-Q9` (decisions 46, 47); accepted as
+  written at `TWN-Q10` (decision 48).

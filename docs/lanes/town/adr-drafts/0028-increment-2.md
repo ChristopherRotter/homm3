@@ -1,8 +1,8 @@
 # ADR-0028 amendment (draft): E09 increment 2, construction with the town events (the town context)
 
-- Status: **Draft** (E09 T13, 2026-11-07), for the user's acceptance at T13's checkpoint
-  (`TWN-Q10`) before anything is built (the epic's decision 38); then into ADR-0028 through the
-  round's `shared/` pull request, with batch TWN-2's outcome (decisions 41, 42).
+- Status: **Accepted as written** at T13's checkpoint (`TWN-Q10`, 2026-11-07; E09 decision 48),
+  to be applied by the round's `shared/` task T15 into ADR-0028, with batch TWN-2's outcome
+  (decisions 41, 42). Drafted by E09 T13 (2026-11-07).
 - Amends: ADR-0028 points 2, 5, 6 and 9 (each text below goes in after the point's increment 1
   text); its consequences, alternatives and revision history. ADR-0015 and ADR-0023 are not
   amended: the crates, the import and the siege's facts stand as they are (a build changes the
@@ -100,4 +100,5 @@ draft).
 
 ## Revision history
 
-- 2026-11-07: Drafted (E09 T13), with the user's answers at `TWN-Q9` (decisions 45–47).
+- 2026-11-07: Drafted (E09 T13) with the user's answers at `TWN-Q9` (decisions 45–47); accepted as
+  written at `TWN-Q10` (decision 48).

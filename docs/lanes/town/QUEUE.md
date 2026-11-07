@@ -5,21 +5,24 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 ## Tasks
 
 Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN-Q7`); done tasks
-in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. T11 (decision 39) done;
-increment 2's first round (decision 38): the survey T12 (cut in two: T12a and T12b done), the
-drafts with the design note and the cut T13 (next). Each task's
-cut confirmed at its start; every entry's acceptance includes the Definition of Done
-(`docs/05-testing.md`).
+in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
+(decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
+T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
+batch TWN-2 (next), T15 `shared/`, T16a and T16b, T17, T18a to T18c, T19, T20 the audit; each
+queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
+acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T13 — increment 2's drafts, the design note and the cut** (decision 38; increment 2's first
-round; queued 2026-11-07 after T12b's checkpoint, `TWN-Q8`): the ADR amendment drafts in
-`docs/lanes/town/adr-drafts/` (the build command, its validation and events, the town events'
-place in the turn start, what a build changes of increment 1's reads; ADR-0016 point 4's sentence
-on the tied random dwellings, T11), the design note as Part D of `docs/epics/E09-design.md` from
-§23 (decision 40), the exit criteria and the cut into build rounds with batch TWN-2's rows (TD-9,
-TD-11; decisions 41, 42) placed; accepted by the user before anything is built. Inputs: survey
-`docs/rules/surveys/E09-construction.md` (§0's findings, §11 and §12), the epic's decisions 37 and
-41–44. Its cut confirmed at its start. **Status:** next.
+**E09 T14 — batch TWN-2** (design §33; decisions 41, 42; round 2; queued 2026-11-07 by T13): two
+rows observed in the original (SoD, hot seat) as batch TWN-1 was (design §20; `E09-log.md` T3a to
+T3c): row 1 (TD-9), a Conflux town with the Altar of Fire and not the upgraded Altar of Air, the
+hall's upgraded Altar of Fire tried, with a control town; row 2 (TD-11), two human allies (the
+writer's `teams`), the visitor's Build in the ally's town, the town's sets and both treasuries
+read. The maps and spec `experiments/specs/E09-batch-2a.toml` (`h3-experiment`, the battle lane's,
+`cross-lane`); the harness's steps (common: the hall's click path, a treasury read; the client
+lanes' inboxes told); the run; the scoring as the survey's §13 (the verdicts on decisions 41 and
+42: a gap-fill override for row 1, a question to the user for row 2 if the original builds).
+Inputs: design §33, `clients/capture/README.md`, `docs/experiments/README.md`. Cut at its start
+(as TWN-1's T3a to T3c). **Status:** next.
 
 ## Inbox
 

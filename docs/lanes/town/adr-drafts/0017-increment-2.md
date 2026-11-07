@@ -1,8 +1,8 @@
 # ADR-0017 amendment (draft): E09 increment 2, construction with the town events (the game side)
 
-- Status: **Draft** (E09 T13, 2026-11-07), for the user's acceptance at T13's checkpoint
-  (`TWN-Q10`), then into ADR-0017 through the round's `shared/` pull request with batch TWN-2's
-  outcome (decisions 41, 42: TD-11's row may revisit point 1's owner test).
+- Status: **Accepted as written** at T13's checkpoint (`TWN-Q10`, 2026-11-07; E09 decision 48),
+  to be applied by T15 into ADR-0017 with batch TWN-2's outcome (decisions 41, 42: TD-11's row may
+  revisit point 1's owner test). Drafted by E09 T13 (2026-11-07).
 - Amends: ADR-0017 points 1, 2, 3, 4, 6, 7, 8, 9 and 10 (each text below goes in after the point's
   E09 increment 1 text, or after its increment 10 text where that comes later); its consequences,
   alternatives and revision history. Point 11 is not amended (a build changes the siege's facts
@@ -110,4 +110,5 @@ by the town and the event's place in the town's list (the message is the client'
 
 ## Revision history
 
-- 2026-11-07: Drafted (E09 T13), with the user's answers at `TWN-Q9` (decisions 45–47).
+- 2026-11-07: Drafted (E09 T13) with the user's answers at `TWN-Q9` (decisions 45–47); accepted as
+  written at `TWN-Q10` (decision 48).

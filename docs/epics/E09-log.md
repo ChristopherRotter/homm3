@@ -2008,3 +2008,50 @@ event's second Capitol). **Checkpoint** (`TWN-Q8`, one round of four, each as re
 decisions 41–44, survey §12): TD-9 the executable's list and TD-11 the owner, each with a row of
 batch TWN-2; one a town a day for every player; the town events as the original plays them.
 Ids: disputes next 13, quirk candidates next 9, questions next 9, decisions next 45.
+
+### T13 — increment 2's drafts, the design note's Part D and the cut (2026-11-07)
+
+Decision 38's second task; kept whole at its start (the user, `AskUserQuestion`, over T13a the
+drafts then T13b the note with the checkpoint, recommended as increment 1's T2a and T2b, and over
+the note first). Branch `town/e09-t13`, docs only (the drafts, the design note, the epic, the
+answered questions, the lane's and the adventure lane's queues, the HANDOFF). Starting point:
+`master` at 98b2c14 (#779 merged; CI green there; the setup's baseline lost to a VM restart,
+replaced by CI's run as the sandbox skill says). The user's computer's shell did not start: a
+sandbox cloned from GitHub, `Heroes3.exe`, `h3maped.exe`, the four LODs, the two `.snd`, the
+DLLs, `H3ab_ahd.vid`, `battle-videos.vid`, `maps.tar` and `extracted.tar` staged with the file
+tool at the start.
+
+**The ADR-level choices** (`TWN-Q9`, one round of three before the drafts; decisions 45–47): the
+build a town command `GameCommand::Town(TownCommand::Build)` (recommended); the Shipyard's water
+now (recommended; `TWN-STUB-2`'s Shipyard half from increment 4); the views as the original shows
+them (the user's own answer; read for it: the owner's town screen from the town list, an ally's at
+its visit, the popup's portrait showing a town built in today at every level, no buildings in the
+popup).
+
+**Written:**
+- **The drafts** `docs/lanes/town/adr-drafts/0028-increment-2.md` (the record's day's mark, the
+  rules: buildable now with the hall's offer, the build, an event's buildings, the mark's life;
+  the part's requirements, costs and the role `shipyard`; `TownCommand`; part v4, state hash v2),
+  `0016-increment-2.md` (the town's boat spot by the kind `Town`'s offsets; point 4's sentence on
+  the tied random dwellings, T11's; the views of the buildings and the public day's mark),
+  `0017-increment-2.md` (the command's checks and payment, the observation, the day's start
+  clearing the marks, the town events after the map's timed events, the draw-free Shipyard forbid
+  at the build, no decision kind, the inventory, the env's build entry, the versions, the capture's
+  mark). ADR-0015 and ADR-0023 are not amended.
+- **The design note** `docs/epics/E09-design.md` Part D, §23 to §36: scope (§23), the part (§24),
+  the harvest (§25), the record and the store (§26), the rules (§27), the Shipyard's water (§28),
+  the command (§29), the day and the turn with the town events (§30), information (§31), the env and
+  the gates (§32), batch TWN-2's two rows (§33), versions, rule ids (TWN-BLD-001 to -007,
+  TWN-SET-011, TWN-EVT-001 to -004, TWN-VEW-004), the quirk T-9 (new: the event loop's bits 41 to
+  43 past the table), the stubs `TWN-STUB-10` to `-12` planned (§34), the cut and the exit criteria
+  (§35), risks (§36).
+- **Read for it, not new:** `Building.txt`'s horde rows (each horde and its upgrade cost the same
+  in every faction: the hall's offer changes no price); the original's town popup at every level
+  shows the day's mark (survey `E09-towns.md` §12.3).
+
+**The checkpoint** (`TWN-Q10`, one round of four after a summary was sent; decisions 48–51, each
+as recommended): the drafts accepted as written (T15 applies them after batch TWN-2); the cut as
+proposed (T14 to T20 in rounds 2 to 8); the eight exit criteria; the agent's calls kept, T-9 fixed
+without a flag. **The queue:** T13 out, T14 (batch TWN-2) written; a note in the adventure lane's
+inbox on the planned `cross-lane` bumps and their order with E08's increment 11. No version moved.
+Ids: questions next 11, decisions next 52, quirk candidates next 10 (T-9), disputes next 13.
