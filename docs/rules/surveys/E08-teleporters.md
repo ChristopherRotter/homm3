@@ -690,4 +690,36 @@ two-way monolith's exit starts no fight and a hero on it cycles between the pair
 fight starts only on a step off it onto a guarded tile (E11-3, E11-19's Space agree); a one-way
 exit probably alike (the hero then forced off it onto the guarded tile), **to be investigated**:
 §5's reading (`visit_monolith_one_way` read whole, `hero_relocate` as the two-way's) predicts no
-fight on arrival, unobserved; batch E11c (design §16) runs the row before T105a builds the arrival.
+fight on arrival, unobserved; batch E11c (design §16) runs the row before T105a builds the arrival:
+**as read**, §15.1.
+
+### 15.1 Batch E11c scored (T103c)
+
+Scored on 2026-11-07 (E08 T103c) from `experiments/results/E08-batch-11c.md`: decision 279's
+investigation (design §16, the agent's call), the spec `experiments/specs/E08-batch-11c.toml` and
+the recipe `clients/capture/batches/E08-batch-11c.toml`, played by the capture harness as batch
+E11 (SoD 4.0, Easy, hot seat, Red's turn of day 1; no new read). Three runs, alike in every record
+but Red's starting gold and E11-22's level-up offers (the game's draws). Which came first at a
+guarded entered object is the game's memory as the step's first battle opens (`at_opening`).
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E11-20 (§4.2, §5, §11) | the arrival on a one-way exit beside a guard: no battle; Space on it: ADVEVENT 70, no battle; the step off into the zone fought | the step onto E20 (4, 4): no battle, no message, on X20 (14, 4) with 1 900, P20 (beside X20) in place; Space: ADVEVENT 70 and nothing else, unmoved, 1 900; the step to (14, 5): the battle with P20 at once (the hero on (14, 5) as it opened), won, on (14, 5) with 1 800 | confirmed: **the one-way exit as the two-way's** (E11-3), the user's "probably alike" |
+| E11-21 (decision 279) | a guarded mine: the guard first (the mine neutral at the opening), then the flag | the diagonal step onto the crystal cavern's entrance (5, 12): the battle with Q21 opened with the hero on the entrance and **the mine's owner none**; won; then MINEEVNT:4 (1/day), the mine Red's, Red's treasury unchanged; on (5, 12) with 1 859 | confirmed: **the guard before the visit** (against the engine as built) |
+| E11-22 (decision 279) | a guarded Learning Stone: the guard first (experience 0 at the opening), then 1 000 | the step onto the stone (6, 20): the battle with R22 opened with the hero on the stone at **experience 0, level 1**; won (the Peasant's 1); then ADVEVENT:143 (1 000 experience), 1 001, the level-up to 2 after it (its offers the game's draws); on (6, 20) with 1 900 | confirmed: **the guard before the visit and its levels** (against the engine as built) |
+| E11-23 (§11, decision 273) | Space cycling on a pair whose exit is guarded: no battle at any press; the control fought | the step onto A23: no battle, on B23 (14, 28) with 1 900; presses 1 to 4 on A23, B23, A23, B23 (two arrivals by the key on the guarded tile), no battle or message, 1 900 throughout; the control to (14, 29): the battle with N23, won, 1 800 | confirmed: the user's cycle, the wiki's "unlimited cycling" |
+
+**Every row as read; no question.** Decision 279's order holds beyond the teleporters: a step onto a
+guarded tile meets the guard first and the tile's entered object is visited after a win (a mine's
+flag and message, a Learning Stone's experience with its level-up, as E11-19's jump), so T103d builds
+it for every entered kind. A teleporter's arrival tests no guard whether by a one-way or a two-way
+exit or by the key (E11-3, E11-19, E11-20, E11-23), and the key's visit tests none either (E11-19,
+E11-20, E11-23): a hero leaves a guarded exit freely except by a step into the guard's zone, which
+is fought. **Beyond the predictions:** GENRLTXT 7 (the townless player's warning, as batch E11a's
+E11-3 control) after the turn's first battle, E11-20's step off; the key's visit of a one-way exit
+moves nothing (the harness's "nothing").
+
+**The rules:** ADV-MON-006 E11-21, E11-22 (the order, T103d), E11-20's step off, E11-23's control;
+GAM-DEC-007 E11-21, E11-22 (the visit as the battle's held rest, T103d); ADV-TEL-004 and -007
+E11-20, E11-23 (the arrival); ADV-TEL-008 E11-20's and E11-23's presses; HER-EXP-002 E11-22 (the
+level after the stone).
