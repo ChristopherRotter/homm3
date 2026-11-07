@@ -5730,3 +5730,10 @@ the setup's baseline (CI's green run on `master`, 222118f, stood in).
   to `drawn` alone: `master`'s viewer drew all 261 the same with the old digest, then `drawn
   --record` with it wrote the new digests (every sequence's changed, every situation's the
   same), before the viewer's change.
+- **Reviewed** (a fresh reviewer, the diff only): the compositor's output, names and errors the
+  same; the scanner's two holes and the digest's branches (above) fixed; stale texts (the
+  harness's usage and `run_drawn`'s note, `compose`'s module note) brought up to date.
+- **Gates:** `check.sh` (100 % coverage; before the review's purity fixes, which touch the test
+  alone: it and clippy again after them), `h3drive.py drawn` with the new viewer (261 the same
+  under the new digests; its `h3-view sequences` as recorded), `h3-view gate`, the scoped verify
+  with original data (`check-docs`, `check-lane`, `check-exe-map` among it).
