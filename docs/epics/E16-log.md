@@ -1884,3 +1884,37 @@ for E08, the ecosystem for its refinement).
   the profile and the trade-off.
 - **The workload** re-baselined (+3.44 %): `master`'s drift (e7fd849..aaa9630), measured on a
   clean worktree of `master` at the same count.
+
+### The inbox's battle-wire items and M5's refinement, part 1 (2026-11-09)
+
+The user's SRV-Q25 (`QUESTIONS-ANSWERED.md`): M5 part 1 refined (the epic's "M5 part 1"); of the
+inbox's three battle-wire items for the client lane, the first two before M5 T0, the previews
+when online play needs them.
+
+- **The own hero's Eagle Eye picks at the end** (CLT-STUB-3). The picks are made during the
+  battle with no event (BAT-MAG-069), so a seat learned them only from a snapshot. Options were a
+  field in `GameEnded`, a private event per pick (the battle lane's) or a last snapshot; built:
+  `Session::tell_end` sends every seat and spectator its last `Snapshot` (the battle as it ended,
+  `map::observe` for its viewer) right before `GameEnded`, also after a forfeit, a void game and a
+  ranked game's held end. No new field: the end's whole view, the picks in `OwnHero::learned`.
+- **The start's events** (CLT-Q20). `Session::new` starts the battle with `BattleState::start`
+  and keeps its events (`Session::opening`); when every seat is held, every viewer then watching
+  gets them in one `Events` message, before the bots' first command and any `YourTurn`, projected
+  as every message is. A seat re-taken and a spectator joining later never get them; a restore
+  sends nothing (its viewers start afresh). The join's `Snapshot` is taken after the start (the
+  engine keeps no state before it), so it already shows their effects; the client lane's inbox
+  says so.
+- **Versions.** Protocol v38 (the messages unchanged, their order new); record format v3 (a
+  record's first `Events` is no longer a command's, and it ends with a `Snapshot`). The HANDOFF's
+  versions line said 35: v36 (`NotCreated`, the client lane's T5a, reviewed as built) and v37
+  (CLT-Q40, the morale and luck sources) had landed without it.
+- **Tests.** `the_start_is_told_before_any_command_and_the_end_after_a_last_snapshot`: the start's
+  events as `Events { n: 2 }` for both seats and an early spectator, none for a late spectator or
+  a re-taken seat; each viewer's last snapshot equals the observation of the journal's re-run. Six
+  tests' expected message sequences and numbers moved by the two messages; in the client lane's
+  crate (`cross-lane`, the user's consent) `record.rs`'s version text and `connect/tests.rs`'s
+  snapshot count (3: the last one).
+- **Bench.** `session-random-play-full` 339 230 528 Ir, +4.77 % against `master`'s 323 786 098
+  (itself +3.93 % over the old baseline 311 535 698: the battle engine's drift): the shape is
+  `master`'s but `Session::tell_end` (15.2 M inclusive, the 40 last snapshots, as the joins' 40
+  cost 12.9 M) and the start's `Events` (0.2 M); re-baselined.

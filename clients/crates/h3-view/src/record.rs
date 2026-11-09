@@ -98,6 +98,7 @@ fn decode<T: serde::de::DeserializeOwned>(n: usize, line: &str) -> Result<T, Rec
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+    use alloc::format;
     use alloc::string::{String, ToString};
     use alloc::vec;
     use h3_protocol::wire::{
@@ -235,7 +236,8 @@ pub(crate) mod tests {
         ] {
             assert_eq!(e.to_string(), shown);
         }
-        assert!(RecordError::Format(1).to_string().contains("reads 2"));
+        let reads = format!("reads {RECORD_FORMAT_VERSION}");
+        assert!(RecordError::Format(1).to_string().contains(&reads));
         assert!(
             RecordError::Protocol(1)
                 .to_string()

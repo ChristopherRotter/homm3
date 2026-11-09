@@ -297,7 +297,8 @@ async fn spectators_watch_a_hosted_game_within_its_limit() {
             reason: Refusal::NoSpectators
         })
     );
-    // The spectator sees the game to its end, never a turn, and gets no replay.
+    // The spectator sees the game to its end (its last snapshot before), never a turn, and gets
+    // no replay.
     let (_, seen) = tokio::time::timeout(GAME_TIME, play(a, 3)).await.unwrap();
     let ended = end(&seen);
     let mut watched = Vec::new();
@@ -314,8 +315,18 @@ async fn spectators_watch_a_hosted_game_within_its_limit() {
     assert_eq!(end(&watched), ended);
     assert!(watched.iter().all(|m| matches!(
         m,
-        ServerMessage::Events { .. } | ServerMessage::GameEnded { .. }
+        ServerMessage::Events { .. }
+            | ServerMessage::Snapshot { .. }
+            | ServerMessage::GameEnded { .. }
     )));
+    assert!(matches!(
+        watched[..],
+        [
+            ..,
+            ServerMessage::Snapshot { .. },
+            ServerMessage::GameEnded { .. }
+        ]
+    ));
     watcher
         .send(&ClientMessage::FetchReplay { seq: 9 })
         .await

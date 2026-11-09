@@ -399,12 +399,13 @@ fn two_seats_play_over_tls_and_one_re_joins_after_a_drop() {
     assert_eq!((a.rejoined, d.rejoined), (0, 1));
     assert_eq!((a.content, d.content), (Content::Same, Content::Same));
     // The battle waits for the defender's turn: it re-joins mid-battle, its record from the
-    // server holding what came before the drop and the re-join's snapshot, and plays on.
+    // server holding what came before the drop and the re-join's snapshot, and plays on; the
+    // last snapshot comes before the end (protocol v38, CLT-STUB-3).
     assert_eq!(whole(&a.record), whole(&d.record));
     let snapshots = (d.record.messages.iter())
         .filter(|m| matches!(m, ServerMessage::Snapshot { .. }))
         .count();
-    assert_eq!(snapshots, 2);
+    assert_eq!(snapshots, 3);
     assert!(
         lines
             .iter()
