@@ -277,32 +277,28 @@ record format v3, done before T0). What the map viewer reads (E24 M4 T3, T4; the
 2026-10-31) is the target; an object's identity in the map's list is the adventure lane's (its
 inbox, the same day), mapped when it lands.
 
-- **T0 `shared/`** (merged first): `arch.toml` gives `h3-protocol` the edges to `h3-game`,
-  `h3-adventure`, `h3-heroes` and `h3-towns` (dev: the adventure's and the towns' packs, `h3-map`
-  for test games), `h3-server` the same and `h3-map`, `h3-pack-adventure`, `h3-pack-towns`;
-  ADR-0018 point 5 amended (the game's enums and observation structs mapped exhaustively) and
-  point 7 (a game's viewers are its players; a spectator once `h3_game::Viewer` has one); the
-  global trap "Battle types on the wire" widened to the game's types, in force from T2.
-- **T1 the measurement** (SRV-Q25): on the golden adventure replays and a game on the largest
-  shipped map with eight players, per command and viewer: `h3_game::observe`'s cost against the
-  command's `apply`, a snapshot's size and a diff's (the planes' changed words, the objects, heroes
-  and towns changed by identity), against the events' projection. The numbers and the decision go
-  to the design note (§14); a diff is "really cheap" when observing and diffing every viewer costs
-  no more than the command's own `apply` and its bytes are a small part of a snapshot.
+- **T0 done** (2026-11-09, #799; `E16-log.md`): the crates' edges, ADR-0018 points 5 and 7 amended.
+- **T1 done** (2026-11-09; the design note §14, `E16-log.md`): **events only** (observing and
+  diffing every viewer costs 22 times an `apply` on the golden replays, 730 to 860 times on an XL
+  map with eight players); what a fold lacks is the adventure and town lanes' (SRV-Q26: foldable
+  events and a query for what a viewer sees on the tiles it explored since a given grid).
 - **T2 the observation's wire** (`wire::game`): the players, the turn group, the kingdom (the
   treasury, today's timed events), the open decision, the heroes (types, the owner's details), the
   adventure map (the planes and tiles as packed arrays, heroes, objects, boats, what the viewer
-  knows), the towns, the battle (the existing `Observation`); the mapping names every field. With
-  a diff (T1), its message and the function that applies it.
+  knows), the towns, the battle (the existing `Observation`); the mapping names every field. No
+  diff (T1): the observation is the snapshot.
 - **T3 the commands, answers, rejections and events**, projected per viewer (`h3_game::project`);
-  round trips; the exhaustive arms.
+  round trips; the exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records)
+  and its test over the golden replays (a snapshot folded with the events equals `observe` after
+  every command, for every viewer), each gap of SRV-Q26 a stub until its lane lands it.
 - **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
   the map's identity (its content hash), the key tables of the game's content kinds.
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
   `h3_game::apply` with the trusted actor, the legal commands to whoever must act (decisions, a
   battle's side outside the turn), the system actor's commands from its caller (computer seats are
   part 2's), the journal (the adventure replay's commands with their actors), each viewer's record
-  (a game record's header: record format v4).
+  (a game record's header: record format v4); each viewer's last explored grid, and the engine's
+  answer for what it newly sees sent with the events when its count grew (SRV-Q26).
 - **T6 a golden replay as a record**: `h3-server record <replay>` runs an adventure replay through
   the session and writes each player's record; a test over the golden replays (each re-runs to its
   hashes through the session; a viewer's bytes depend only on what it may see); the map client
