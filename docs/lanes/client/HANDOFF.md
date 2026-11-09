@@ -14,7 +14,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user (2026-11-07): **T6c1 done** (#792: `h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers;
   CLT-Q68 answered fix; design §7.27), **T6c2 done** (#795). T6 done. **T7** (M6's closure) cut in
   three by the user (2026-11-09): **T7a done** (R4-9's stricter redraw rule and every capture
-  afresh; the PR on `client/e17-m6-t7a`: check it first); **next: the inbox's protocol v38
+  afresh; PR **#812** on `client/e17-m6-t7a`: check it first); **next: the inbox's protocol v38
   readers** (master's #800 broke the viewer's sequences: `drawn` 81 of 91 not the same after
   merging `master`; QUEUE, T7's status), then T7b (the fresh reviewer and its fixes), T7c (the
   review list, M7 refined, M6 closed); then M7 ranked play and the server browser.
