@@ -35,6 +35,26 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**, for the whole game on
+  the wire): **make the events foldable.** A server game keeps a viewer's view current by events
+  only (the server lane's measurement, `docs/epics/E16-design.md` §14: diffing every viewer's
+  observation costs 730 to 860 times a command's `apply` on an XL map with eight players), so a
+  client must fold its snapshot with its projected events into what `h3_game::observe` gives after
+  every command. What it cannot fold today (the golden replays and two eight-player XL games):
+  (1) **a query for what a viewer sees on the tiles it explored since a given explored grid** (a
+  `BitGrid` the server keeps per viewer): their `TileView`s, explored and fringe, and the objects,
+  heroes and towns it now sees there as `observe` shows them; the server asks when the viewer's
+  `explored(..).count()` grew (a step's reveal has no event, `TilesRevealed` only a count);
+  (2) **a hero's movement points left** after a step or a visit (no event or `HeroChange` carries
+  them; `OwnHeroView::movement` changes with every move); (3) **what comes into view without a
+  reveal, with its public view**: another player's hero stepping into sight (`HeroStepped` gives
+  its id and tiles, not its owner, type or boat), an object or a boat that appears (63 objects and
+  9 boats in the golden replays); (4) **a visit that changes only the hero's points and the
+  viewer's knowledge emits nothing**: `rewards-s162-d28` command 35, player 1's hero 3 visits the
+  object of type 65 at (29, 23, 0), learns it is emptied and spends 141 points. Each lands as an
+  event field or variant the server lane maps (the global trap from M5 T2 on); the server's fold
+  test over the golden replays (M5 T3) checks them, each gap a stub there until it lands.
+
 - 2026-11-09 (E08 T104, decision 285; **a performance task**): the gates' pairing
   (`state/channels.rs`' `pair_gates`) is 91.6 % of `build-gates-xl-144`'s build (898.7 M of
   981.3 M Ir for two builds of 8 116 gates, 63 ms each in release; about 17 M comparisons a build,

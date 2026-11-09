@@ -42,6 +42,14 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   player's stream). Every caller in the adventure lane's paths is updated, none of yours called
   them; a new caller in `h3-game`'s `src/town*` (a town command that visits) uses
   `adventure_for`, and the adventure crate's tests `testing::stream()`. Nothing moved in a hash.
+- 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**): **a town's garrison
+  change is told to every player who sees the town.** In `towns-s173-d21` command 205 player 1's
+  battle empties neutral town 4's garrison; player 0 sees the town and its `TownView::garrison`
+  changes, but every event of the command is player 1's alone. A server game keeps a viewer's view
+  current by events only (`docs/epics/E16-design.md` §14), so the change needs an event projected
+  to every player whose view of the town changes (a `TownChanged`'s `seen_by`, or a garrison
+  event). The server's fold test over the golden replays (M5 T3) checks it, a stub there until it
+  lands.
 - 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
   increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
   (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey
