@@ -18,7 +18,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   Waiting elsewhere: a walled Stronghold's natural obstacles (`TWN-STUB-8`, the battle lane's
   inbox), the guild's spells at the start (`TWN-STUB-6`, increment 4), the Grail building's forbid
   (`TWN-STUB-2`, the victory conditions).
-- **Open pull requests:** T18b1's (branch `town/e09-t18b1`, `cross-lane`: `h3-game`'s command,
+- **Open pull requests:** T18b1's **#809** (branch `town/e09-t18b1`, `cross-lane`: `h3-game`'s command,
   day and capture lines, the replay format v11 and its 55 replays, `h3-sim`'s arms and
   `h3-files`' words, `h3-map`'s test matches); merge it before E08 T105b, which then bumps the
   replay format to v12.
@@ -42,7 +42,7 @@ The user's computer was connected: the original data staged at the start. `GameC
 `GameCommandError::Town`, `GameEvent::TownBuilt`, `town::command` and `town::holds_capitol`;
 `Towns::start_day` before the income; the capture's mark; `TownCommand` and its error made
 exhaustive (SRV-Q25); replay format v11, the 55 replays' `format` line only; the adventure and
-server lanes' inboxes told.
+server lanes' inboxes told; #808 merged in (the replay words now in `h3-files`); PR #809.
 
 ### 2026-11-09 — T18a: the Shipyard's water
 
