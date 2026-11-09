@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799) and T1 done 2026-11-09: **events only** (the design note §14); what a client cannot fold yet is the adventure and town lanes' (SRV-Q26: foldable events and a query for what a viewer newly sees; their inboxes). **Open pull requests:** T1's, PR_LINK (docs only). **Next:** T2 (the observation's wire: the snapshot). **For the next milestone's review list:** `Query::CreatureCastTargets {}` (a message shape, provisional); the last `Snapshot` before `GameEnded` and the start's `Events` (v38).
+- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799) and T1 done 2026-11-09: **events only** (the design note §14); what a client cannot fold yet is the adventure and town lanes' (SRV-Q26: foldable events and a query for what a viewer newly sees; their inboxes). **Open pull requests:** T1's, [#803](https://github.com/ChristopherRotter/homm3/pull/803) (docs only). **Next:** T2 (the observation's wire: the snapshot). **For the next milestone's review list:** `Query::CreatureCastTargets {}` (a message shape, provisional); the last `Snapshot` before `GameEnded` and the start's `Events` (v38).
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -26,7 +26,7 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ### 2026-11-09 — M5 T1: the measurement, events only
 
-Baseline: `master` a0d5504 by the sandbox's full verify (CI's last two `master` runs never started: no job). No original data or computer folder: the XL fixtures with eight players stood in for the shipped maps. A scratch `h3-server` example (not kept) measured the diff at 22 times an `apply` on the golden replays and 730 to 860 times on the XL maps: events only (design note §14). The fold's gaps: SRV-Q26 (the user: foldable engine events and a query), the adventure and town lanes' inboxes.
+Baseline: `master` a0d5504 by the sandbox's full verify (CI's last two `master` runs never started: no job). No original data or computer folder: the XL fixtures with eight players stood in for the shipped maps. A scratch `h3-server` example (not kept) measured the diff at 22 times an `apply` on the golden replays and 730 to 860 times on the XL maps: events only (design note §14). The fold's gaps: SRV-Q26 (the user: foldable engine events and a query), the adventure and town lanes' inboxes. PR #803.
 
 ### 2026-11-09 — the battle-wire inbox items, M5 part 1 refined
 
