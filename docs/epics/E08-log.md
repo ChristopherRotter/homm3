@@ -13876,7 +13876,8 @@ setup's light gates on its verified fingerprint). Staged: `maps.tar`, `extracted
   added), -007, ADV-OBJ-003 and HER-ADV-009 amended; `ADV-QUIRK-40` and `-42` in the ledger,
   `ADV-QUIRK-45`'s candidates line; design §7, §8's as-built lines, §17's round 7 row; the map
   client's inbox told of the event.
-- **Gates:** the scoped verify with the original data (below); `cargo check --workspace
-  --all-targets`; clippy on `h3-adventure` and `h3-map`.
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `original-data`); `cargo check
+  --workspace --all-targets`.
 
 **Versions:** none moved (no replay holds a Whirlpool; the event is in no hash). T105b next.
