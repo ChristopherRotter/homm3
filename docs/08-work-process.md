@@ -73,13 +73,13 @@ time per lane**. A lane owns paths; everything else it may not change in its own
 
 - **battle:** `h3-battle`, `h3-heroes`, the battle part `h3-content-battle` and its pack adapter
   `h3-pack-battle` (since R01; the core `h3-content` and `h3-pack` are shared), `h3-cli` (its
-  `src/ai/` the AI lane's), the formats/tools crates `h3-formats`, `h3-harvest`, `h3-experiment`
+  `src/ai/` the AI lane's), `h3-files` (since 2026-11-09), the formats/tools crates `h3-formats`, `h3-harvest`, `h3-experiment`
   and `docs/formats/` (until a formats/tools lane opens), packs, fixtures, experiments,
   `benches/battle/`, the BAT rules, the quirks ledger, the surveys, the epics E01–E04c and E23.
   `h3-heroes` moved to adventure when E04c closed (ADV-Q13).
 - **adventure:** `h3-adventure`, `h3-game`, `h3-map` and `h3-pack-adventure` (E08) but for the
   town lane's modules in them, adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and
-  `h3-cli`'s `src/adventure/`, `fixtures/replays/adventure/`, the packs' `adventure.toml`; the
+  `h3-cli`'s and `h3-files`' `src/adventure/`, `fixtures/replays/adventure/`, the packs' `adventure.toml`; the
   longest match decides), `docs/formats/h3m.md`, the ADV and GAM rules, its own quirks
   ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07, E08, E10 and
   E12–E14.
@@ -165,7 +165,7 @@ conflict on rebase and bumps again.
 | game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure (the town lane bumps it, the adventure state hash, the map import and the replay format in `cross-lane` pull requests) |
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
-| adventure replay format | `h3-sim/src/adventure/replay.rs`: `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`) | adventure |
+| adventure replay format | `h3-sim/src/adventure/replay.rs`: `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-files`' `src/adventure/`, `h3-cli`'s until 2026-11-09) | adventure |
 | town state hash | `TOWN_STATE_HASH_VERSION`, `h3-towns` (the store of towns; the game state hash folds it in, ADR-0028 point 4) | town |
 | town ruleset-part hash | `TOWN_RULESET_HASH_VERSION`, `h3-towns` (the town part; ADR-0028 point 5) | town |
 | adventure action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a); no observation encoding before E13 | ai (the adventure lane's until E08 T45, ADR-0017 point 8) |

@@ -17,6 +17,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **the
+  adventure's files moved from `h3-cli`'s `src/adventure/` into `h3-files`' `src/adventure/`**, yours
+  (`lanes.toml`; ADR-0005's amendment): `load_rules`, `read_map`, `load_map`, the replay file
+  format v8 (`replay_to_toml`, `parse_replay`), the commands' text form and `verify_file`, verbatim
+  (`AdventureCliError` is `h3_files::adventure::AdventureFileError`). `h3-cli`'s `src/adventure/`
+  keeps the runs, the scripts, the benchmarks and the commands and re-exports the rest; a replay
+  file format change goes to `h3-files` now.
+
 - 2026-11-09 (the town lane, E09 T18a, `town/e09-t18a`, `cross-lane`; **a kind's field and a
   version, for your matches and bumps**): `ObjectKind::Town` and `ObjectKindDef::Town` carry
   `boat_offsets: Vec<(i8, i8)>` (match `Town { .. }`; the base pack's `town = { boat_offsets =

@@ -290,7 +290,10 @@ inbox, the same day), mapped when it lands.
     players, the turn group, the month, the treasury, today's timed events, the open decision,
     the heroes with the owner's details, the towns, the battle as the existing `Observation`) and
     `map::game::observe`, the one public entry. No diff (T1): the observation is the snapshot.
-- **T3 the commands, answers, rejections and events**, projected per viewer (`h3_game::project`);
+- **T3 the commands, answers, rejections and events**, in three parts (the user, 2026-11-09; one
+  pull request after T3c): **T3a** the commands and rejections both ways, **T3b** the events,
+  **T3c** the fold and its test (in `h3-protocol`'s tests through `h3-files`, the user's crate for
+  the files, made first); no message and no version step (with T5's session). Projected per viewer (`h3_game::project`);
   round trips; the exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records)
   and its test over the golden replays (a snapshot folded with the events equals `observe` after
   every command, for every viewer), each gap of SRV-Q26 a stub until its lane lands it.
@@ -331,8 +334,8 @@ against duplicates, long journals measured, spectators once `h3_game::Viewer` ha
   file names in the data directory, the snapshot cadence of the logs.
 - **Queue for the milestone review:** the message schema inside the accepted ADR, the record
   and journal formats, the configuration format, a light dependency (`getrandom`, a logging
-  facade), a dependency on `h3-cli`'s library for the replay file writer (or a move of the
-  writer into `h3-sim`, a battle-lane ask), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
+  facade), a dependency on `h3-cli`'s library for the replay file writer (since 2026-11-09
+  `h3-files`, the user's crate for the files), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
   default of the shadow-instance option.
 - **Stop the line:** seams and contracts, the engine API the server calls (a spectator viewer,
   `h3-game`'s surface), a second runtime, more `tokio` features or an HTTP framework, a TLS

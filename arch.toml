@@ -285,13 +285,27 @@ external = []
 dev_deps = []
 dev_external = []
 
+# The project's own files on disk (the user, 2026-11-09, E16 M5 T3; moved out of h3-cli's library,
+# which the server and tests had used for them): packs, scenarios and maps read from their folders,
+# the battle's and the adventure's replay files and the commands' text form, a replay file's
+# verification. The replay models are h3-sim's; the adventure's files in the adventure-owned
+# src/adventure/ (ADR-0017 point 8).
+[crate.h3-files]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure", "h3-pack-towns"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = []
+
 [crate.h3-cli]
 layer = "adapter"
 logic = false
 # The adventure crates: the adventure commands in the adventure-owned src/adventure/ (ADR-0017 point 8).
 # h3-battle-ai: the battle AI's gated benchmark, `h3 bench-computer` (ADR-0027 point 11, E23 T2b).
-# The town part and its adapter (E09 T4b, for T5a): the adventure loader's and the census's rules.
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure", "h3-battle-ai", "h3-towns", "h3-pack-towns"]
+# The town part and its adapter (E09 T4b, for T5a): the census's rules. h3-files: the files the tool
+# reads and writes (2026-11-09).
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure", "h3-battle-ai", "h3-towns", "h3-pack-towns", "h3-files"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
@@ -307,18 +321,18 @@ layer = "adapter"
 logic = true
 deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-game", "h3-adventure", "h3-heroes", "h3-towns"]
 external = ["serde", "serde_json"]
-dev_deps = ["h3-pack-battle", "h3-sim", "h3-map", "h3-pack-adventure", "h3-pack-towns"]
+dev_deps = ["h3-pack-battle", "h3-sim", "h3-map", "h3-pack-adventure", "h3-pack-towns", "h3-files"]
 dev_external = ["proptest", "postcard"]
 
-# The server binary (E16, ADR-0018): the I/O shell around h3-protocol. `h3-cli` for the pack,
-# scenario and replay-file functions (provisional, E16 M1 review; else they move into h3-sim).
+# The server binary (E16, ADR-0018): the I/O shell around h3-protocol. `h3-files` for the pack,
+# scenario and replay-file functions (from `h3-cli` until 2026-11-09).
 # `ed25519-dalek` checks logins; `argon2` derives the test client's keys (E16 M3, ADR-0019).
 # The whole game's crates (E16 M5 T0, SRV-Q25): a game hosted from a map and its rules, an adventure
-# replay run through the session as a record (`h3-cli`'s loaders, `h3-sim`'s replay).
+# replay run through the session as a record (`h3-files`' loaders, `h3-sim`'s replay).
 [crate.h3-server]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-cli", "h3-protocol", "h3-game", "h3-adventure", "h3-heroes", "h3-towns", "h3-map", "h3-pack-adventure", "h3-pack-towns"]
+deps = ["h3-kernel", "h3-content", "h3-content-battle", "h3-contracts", "h3-battle", "h3-pack-battle", "h3-sim", "h3-files", "h3-protocol", "h3-game", "h3-adventure", "h3-heroes", "h3-towns", "h3-map", "h3-pack-adventure", "h3-pack-towns"]
 external = ["serde", "serde_json", "toml", "tokio", "tokio-tungstenite", "futures-util", "getrandom", "ed25519-dalek", "argon2", "rustls", "rustls-graviola", "rustls-native-certs"]
 dev_deps = []
 dev_external = ["tokio-rustls"]

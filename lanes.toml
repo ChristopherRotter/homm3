@@ -134,6 +134,9 @@ paths = [
     "crates/h3-pack-battle/",
     # The CLI's battle commands and golden replays; its AI commands are the AI lane's (`src/ai/`).
     "crates/h3-cli/",
+    # The files on disk and the battle's replay file (moved out of `h3-cli`, 2026-11-09, ADR-0005's
+    # amendment); the adventure's files are the adventure lane's (`src/adventure/`).
+    "crates/h3-files/",
     # Until a formats/tools lane opens.
     "crates/h3-formats/",
     "crates/h3-harvest/",
@@ -176,6 +179,7 @@ paths = [
     # determinism`), the replays, test maps.
     "crates/h3-sim/src/adventure/replay.rs",
     "crates/h3-cli/src/adventure/",
+    "crates/h3-files/src/adventure/",
     "crates/h3-cli/tests/adventure_replays.rs",
     "fixtures/replays/adventure/",
     "fixtures/maps/",

@@ -6,8 +6,8 @@ Read first, then your lane's HANDOFF: the lane index and the few traps that cros
 
 | Lane | Owns (`lanes.toml`) | State, traps, tasks |
 |---|---|---|
-| battle | `h3-battle`, `h3-content-battle`, `h3-pack-battle`, `h3-cli`, formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
-| adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`, `h3-heroes`; `src/adventure/` in `h3-cli`, its `replay.rs` in `h3-sim`, its replays, `h3m.md` | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
+| battle | `h3-battle`, `h3-content-battle`, `h3-pack-battle`, `h3-cli`, `h3-files`, formats/tools crates, packs, fixtures, experiments | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`, `h3-heroes`; `src/adventure/` in `h3-cli` and `h3-files`, its `replay.rs` in `h3-sim`, its replays, `h3m.md` | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | town | `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`; the town modules of `h3-adventure`, `h3-game` and `h3-map` (`src/town*`, `import/town*`, `writer/town*`); E09 | [HANDOFF](lanes/town/HANDOFF.md), [QUEUE](lanes/town/QUEUE.md) |
 | ai | `h3-sim`, `h3-ffi`, `python/` | [HANDOFF](lanes/ai/HANDOFF.md), [QUEUE](lanes/ai/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
