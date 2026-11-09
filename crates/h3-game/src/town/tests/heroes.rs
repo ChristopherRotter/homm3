@@ -9,7 +9,7 @@ use h3_adventure::{Pos, SetupError, StandError, TileMask};
 use h3_content::{Formation, HeroTypeId};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_kernel::{Rng, StreamId};
-use h3_towns::{TownFaction, town_setup};
+use h3_towns::{TownFaction, town_setup, without_water};
 
 use super::{faction, hero, start, town, town_object, towns_rules, towns_rules_with, towns_setup};
 use crate::town::pool::{HeroPool, HeroStatus};
@@ -167,7 +167,9 @@ fn the_main_towns_heroes_draw_after_the_random_towns_and_before_the_towns_buildi
             );
             let built = built.unwrap();
             let id = TownId::new(u16::try_from(index).unwrap());
-            assert_eq!(game.towns().get(id), Some(&built.town));
+            // No water on the map: each Shipyard forbidden (TWN-SET-011, E09 T18a).
+            let dry = without_water(&built.town, rules.towns());
+            assert_eq!(game.towns().get(id), Some(&dry));
             assert_eq!(
                 game.adventure().town_garrison(index),
                 Some(&built.garrison[..])

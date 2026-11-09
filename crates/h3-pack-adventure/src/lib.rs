@@ -155,8 +155,10 @@
 //! #                                # a template (the entrance blocked too); guards derived
 //! # random_dwelling = {}           # ownable as a dwelling; becomes one by the tables below
 //! # refugee_camp = { levels = [1, 7] } # not ownable; 1 <= low <= high <= 7
-//! # town = {}                     # E09 T8a1: a town, ownable, visit = "enter"; its record is
-//! #                                # the town part's (`h3-towns`)
+//! # town = { boat_offsets = [[-1, 2], [1, 2]] } # E09 T8a1: a town, ownable, visit = "enter";
+//! #                                # its record is the town part's (`h3-towns`); E09 T18a: its
+//! #                                # Shipyard's spot, (column, row) from the entrance tried in
+//! #                                # order, optional (none: no spot, `town = {}`)
 //! # E08 T103a, increment 11's teleporters, all visit = "enter" (ADV-TEL-001):
 //! # monolith = { channel = 0, way = "entrance" } # or "exit", "two_way"; a channel 0-255
 //! # subterranean_gate = {}         # no parameters
@@ -467,7 +469,7 @@ struct ObjectTypeDto {
     dwelling: Option<DwellingDto>,
     random_dwelling: Option<EmptyDto>,
     refugee_camp: Option<RefugeeCampDto>,
-    town: Option<EmptyDto>,
+    town: Option<TownDto>,
     monolith: Option<MonolithDto>,
     subterranean_gate: Option<EmptyDto>,
     whirlpool: Option<WhirlpoolDto>,
@@ -536,6 +538,13 @@ struct ShipyardDto {
     price: BTreeMap<String, u32>,
     boat_type: u8,
     offsets: Vec<[i8; 2]>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct TownDto {
+    #[serde(default)]
+    boat_offsets: Vec<[i8; 2]>,
 }
 
 #[derive(Deserialize)]
@@ -1036,7 +1045,9 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
         t.refugee_camp
             .map(|c| ObjectKindDef::RefugeeCamp { levels: c.levels }),
     );
-    kinds.extend(t.town.map(|_| ObjectKindDef::Town));
+    kinds.extend(t.town.map(|t| ObjectKindDef::Town {
+        boat_offsets: t.boat_offsets.iter().map(|&[c, r]| (c, r)).collect(),
+    }));
     kinds.extend(t.monolith.map(|m| ObjectKindDef::Monolith {
         channel: m.channel,
         way: match m.way {

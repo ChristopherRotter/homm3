@@ -657,7 +657,12 @@ fn dwelling_rules() -> Rules {
             }));
             part.object_types
                 .push(ty("t:random", ObjectKindDef::RandomDwelling));
-            part.object_types.push(ty("t:town", ObjectKindDef::Town));
+            part.object_types.push(ty(
+                "t:town",
+                ObjectKindDef::Town {
+                    boat_offsets: Vec::new(),
+                },
+            ));
             part.random_dwellings = vec![RandomDwellingDef {
                 faction: key("t:castle"),
                 dwellings: core::array::from_fn(|i| key(&format!("t:d{}", i + 1))),

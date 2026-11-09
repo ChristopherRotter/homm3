@@ -123,7 +123,9 @@ fn the_teleporters_parameters_are_in_the_hash() {
             way: MonolithWay::Exit,
         },
         ObjectKindDef::Whirlpool { divisor: 3 },
-        ObjectKindDef::Town,
+        ObjectKindDef::Town {
+            boat_offsets: Vec::new(),
+        },
     ]);
     let hashes = defs.into_iter().map(hash).collect::<BTreeSet<_>>();
     assert_eq!(hashes.len(), 9);

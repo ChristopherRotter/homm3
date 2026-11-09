@@ -639,8 +639,13 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                     ],
                 },
             ),
-            // E09 T8a1: a town.
-            entered("t:town", ObjectKindDef::Town),
+            // E09 T8a1: a town; E09 T18a: its spot by the original's two offsets.
+            entered(
+                "t:town",
+                ObjectKindDef::Town {
+                    boat_offsets: vec![(-1, 2), (1, 2)],
+                },
+            ),
             // E08 T105a1: a one-way entrance and exit of channel 0 (`jumps.rs`).
             entered(
                 "t:entrance",

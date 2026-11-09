@@ -71,7 +71,7 @@ pub(super) fn check_holds(
         (Some(ObjectKind::RandomDwelling), Holds::LinkedDwelling { levels, .. }) => {
             levels_fit(*levels)
         }
-        (Some(ObjectKind::Town), Holds::Town { .. }) => true,
+        (Some(ObjectKind::Town { .. }), Holds::Town { .. }) => true,
         (
             Some(
                 ObjectKind::Artifact { classes: None }
@@ -83,7 +83,7 @@ pub(super) fn check_holds(
                 | ObjectKind::Event
                 | ObjectKind::AbandonedMine { .. }
                 | ObjectKind::RandomDwelling
-                | ObjectKind::Town,
+                | ObjectKind::Town { .. },
             ),
             _,
         ) => false,
