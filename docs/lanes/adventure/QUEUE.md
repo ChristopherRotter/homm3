@@ -35,6 +35,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **the
+  adventure's files moved from `h3-cli`'s `src/adventure/` into `h3-files`' `src/adventure/`**, yours
+  (`lanes.toml`; ADR-0005's amendment): `load_rules`, `read_map`, `load_map`, the replay file
+  format v8 (`replay_to_toml`, `parse_replay`), the commands' text form and `verify_file`, verbatim
+  (`AdventureCliError` is `h3_files::adventure::AdventureFileError`). `h3-cli`'s `src/adventure/`
+  keeps the runs, the scripts, the benchmarks and the commands and re-exports the rest; a replay
+  file format change goes to `h3-files` now.
+
 - 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**, for the whole game on
   the wire): **make the events foldable.** A server game keeps a viewer's view current by events
   only (the server lane's measurement, `docs/epics/E16-design.md` §14: diffing every viewer's

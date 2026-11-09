@@ -92,6 +92,7 @@ the capture harness) read your installation from a copy in `original-data/`
 | `crates/h3-sim`, `h3-ffi` | RL environments, action/observation encodings, replays; the C ABI (`include/h3.h`) |
 | `crates/h3-protocol`, `h3-server` | the wire protocol (sans-I/O core) and the WebSocket game server |
 | `crates/h3-formats`, `h3-harvest`, `h3-experiment` | readers for the original's files; the pack harvester; experiment compiler (staged battles to confirm rules in the original) |
+| `crates/h3-files` | the files on disk: packs, scenarios, maps, the replay files and their verification |
 | `crates/h3-cli` | the `h3` command-line tool (runs, replays, benchmarks, evaluation) |
 | `xtask` | `cargo xtask verify` and the individual gates (`check-arch`, `check-rules`, `check-lane`, …) |
 | `lanes.toml` | which paths each work lane owns ([docs/08-work-process.md](docs/08-work-process.md), "Lanes") |

@@ -331,8 +331,8 @@ against duplicates, long journals measured, spectators once `h3_game::Viewer` ha
   file names in the data directory, the snapshot cadence of the logs.
 - **Queue for the milestone review:** the message schema inside the accepted ADR, the record
   and journal formats, the configuration format, a light dependency (`getrandom`, a logging
-  facade), a dependency on `h3-cli`'s library for the replay file writer (or a move of the
-  writer into `h3-sim`, a battle-lane ask), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
+  facade), a dependency on `h3-cli`'s library for the replay file writer (since 2026-11-09
+  `h3-files`, the user's crate for the files), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
   default of the shadow-instance option.
 - **Stop the line:** seams and contracts, the engine API the server calls (a spectator viewer,
   `h3-game`'s surface), a second runtime, more `tokio` features or an HTTP framework, a TLS

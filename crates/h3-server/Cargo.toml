@@ -27,7 +27,8 @@ h3-contracts.workspace = true
 h3-battle.workspace = true
 h3-pack-battle.workspace = true
 h3-sim.workspace = true
-h3-cli.workspace = true
+# The packs, scenarios and replay files (moved from `h3-cli`, 2026-11-09).
+h3-files.workspace = true
 h3-protocol.workspace = true
 serde.workspace = true
 serde_json.workspace = true

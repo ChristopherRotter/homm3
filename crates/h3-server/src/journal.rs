@@ -76,7 +76,7 @@ enum Line {
     },
     /// [`Entry::Started`].
     Started {},
-    /// [`Entry::Command`] in the replay's text form (`h3_cli::format_command`).
+    /// [`Entry::Command`] in the replay's text form (`h3_files::format_command`).
     Command { command: String },
     /// [`Entry::Checkpoint`] as 16 hex digits.
     Checkpoint { hash: String },
@@ -128,7 +128,7 @@ impl Line {
             },
             Entry::Started => Self::Started {},
             Entry::Command(side, command) => Self::Command {
-                command: h3_cli::format_command(side, command),
+                command: h3_files::format_command(side, command),
             },
             Entry::Checkpoint(hash) => Self::Checkpoint {
                 hash: format!("{hash:#018x}"),
@@ -158,7 +158,8 @@ impl Line {
             }
             Self::Started {} => Entry::Started,
             Self::Command { command } => {
-                let (side, command) = h3_cli::parse_command(&command).map_err(|e| e.to_string())?;
+                let (side, command) =
+                    h3_files::parse_command(&command).map_err(|e| e.to_string())?;
                 Entry::Command(side, command)
             }
             Self::Checkpoint { hash } => hash
