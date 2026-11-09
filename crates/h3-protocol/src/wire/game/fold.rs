@@ -12,6 +12,11 @@
 //! battle is its snapshots' (SRV-Q27 (1)): its events are the battle client's, and the fold only
 //! ends it.
 //!
+//! Each gap is a stub (`SRV-STUB-1` to `SRV-STUB-13`, `docs/stubs.toml`, marked where its event
+//! is folded), lifted when its lane's events carry it. The gate is `tests/game_fold.rs`: over the
+//! golden replays the fold equals `observe` after every command for every viewer, but for the
+//! parts a stub names.
+//!
 //! Provisional (E16 M5 part 1's review): the fold's place, what it derives from an event.
 
 use alloc::collections::BTreeMap;
@@ -45,6 +50,7 @@ impl GameObservation {
         match *event {
             GameEvent::TurnEnded { player } => self.set_acting(player, false),
             GameEvent::DayStarted { day } => {
+                // The spell points a new day restores are not carried (stub: SRV-STUB-6).
                 self.day = day;
                 // Today's timed events fire at the viewer's turn start (GAM-CAL-004).
                 self.events_today.clear();
@@ -79,17 +85,20 @@ impl GameObservation {
                 }
             }
             // Their views are not carried (SRV-Q27 (2)): an offer's kind and price, a choice's
-            // options, a University's skills and slots, a hire dialog's creatures and costs.
+            // options, a University's skills and slots, a hire dialog's creatures and costs
+            // (stub: SRV-STUB-5).
             GameEvent::OfferOpened { .. }
             | GameEvent::ChoiceOpened { .. }
             | GameEvent::UniversityOpened { .. }
             | GameEvent::HireOpened { .. } => {}
             // A message: the treasury could not pay.
             GameEvent::OfferRefused { .. } => {}
+            // A Cartographer's type is not carried (stub: SRV-STUB-11).
             GameEvent::OfferAnswered { .. } => self.decision = None,
             // The battle's snapshot follows its start; its events are the battle client's
             // (SRV-Q27 (1)).
             GameEvent::BattleStarted { .. } | GameEvent::Battle { .. } => {}
+            // Its losses in the heroes' armies are not carried (stub: SRV-STUB-9).
             GameEvent::BattleEnded { .. } => self.battle = None,
             GameEvent::HeroChanged {
                 player: _,
@@ -100,7 +109,7 @@ impl GameObservation {
                     details.fold(change);
                 }
             }
-            // Where they join is the rules' (SRV-Q27 (2)).
+            // Where they join is the rules' (SRV-Q27 (2); stub: SRV-STUB-9).
             GameEvent::CreaturesRaised { .. } => {}
             GameEvent::LevelUpOpened {
                 player: _,
@@ -125,6 +134,8 @@ impl GameObservation {
                 primary,
                 skill,
             } => {
+                // The levels at which Wisdom and a school were last offered are not carried
+                // (stub: SRV-STUB-8).
                 if matches!(&self.decision, Some(Decision::LevelUp { level_up }) if level_up.hero == hero)
                 {
                     self.decision = None;
@@ -196,7 +207,8 @@ impl GameObservation {
     /// Folds an adventure event.
     fn fold_adventure(&mut self, event: AdventureEvent) {
         match event {
-            // A hero coming into sight is not carried (SRV-Q26 (c)): its owner, type and boat.
+            // A hero coming into sight is not carried (SRV-Q26 (c)): its owner, type and boat
+            // (stub: SRV-STUB-3); nor the mover's movement points (SRV-Q26 (b); stub: SRV-STUB-2).
             AdventureEvent::HeroStepped { hero, from: _, to }
             | AdventureEvent::HeroTeleported { hero, from: _, to } => match to {
                 Some(to) => {
@@ -214,15 +226,17 @@ impl GameObservation {
                 object_type,
                 anchor,
             }),
-            // Its tiles' content is not carried (SRV-Q26 (a)).
+            // Its tiles' content is not carried, nor a step's reveal (SRV-Q26 (a);
+            // stub: SRV-STUB-1).
             AdventureEvent::TilesRevealed { .. } => {}
             AdventureEvent::KeyGained { key } => {
                 self.adventure.keys |= 1_u8.checked_shl(u32::from(key)).unwrap_or(0);
             }
             AdventureEvent::HeroRemoved { hero, pos: _ } => self.remove_hero(hero),
-            // Where they join is the rules' (SRV-Q27 (2)).
+            // Where they join is the rules' (SRV-Q27 (2); stub: SRV-STUB-9).
             AdventureEvent::CreaturesJoined { .. } => {}
-            // Messages: nothing the view holds changes.
+            // Messages: nothing the view holds changes. What a visit tells the viewer (the objects
+            // it knows, a once-per-hero mark) has no event (SRV-Q26 (d); stub: SRV-STUB-4).
             AdventureEvent::EventFired { .. }
             | AdventureEvent::MessageRead { .. }
             | AdventureEvent::ObjectEmpty { .. }
@@ -270,6 +284,8 @@ impl GameObservation {
             }
             // It left with its hero (`HeroRemoved` before).
             AdventureEvent::BoatRemoved { .. } => {}
+            // What its new owner's team sees (a mine's production, a Shipyard's boat tile) is not
+            // carried (stub: SRV-STUB-10).
             AdventureEvent::ObjectFlagged {
                 object_type,
                 anchor,
@@ -283,6 +299,9 @@ impl GameObservation {
                     object.owner = Some(owner);
                 }
             }
+            // Its garrison's and its owner facts' views after a capture, a siege or a merge are
+            // not carried, nor a neutral town's garrison emptied by another player's battle
+            // (SRV-Q26 (d); stub: SRV-STUB-12; stub: SRV-STUB-13).
             AdventureEvent::TownCaptured {
                 town,
                 anchor: _,
@@ -646,6 +665,7 @@ impl HeroDetails {
                 self.experience = self.experience.saturating_add(amount);
             }
             HeroChange::SetSpellPoints { points } => self.mana = points,
+            // Where it lands is the rules' (stub: SRV-STUB-7).
             HeroChange::AddArtifact { artifact: _ } => {}
             HeroChange::RemoveArtifact { place } => self.remove_artifact(place),
             HeroChange::PlaceArtifact { artifact, at } => self.place_artifact(artifact, at),

@@ -2139,3 +2139,40 @@ verify passed its tests and coverage (CI's run on `master` is red by `h3-map`'s 
   the garrisons' and owner facts' views after a change. The gate: the harness's equality but for
   the stubbed parts.
 - **No message, no version step** (T5).
+
+### M5 T3c2 — the fold's gaps as stubs, the gate (2026-11-09)
+
+The second part of T3c (SRV-Q27 (3)): each gap of T3c1's table a stub with its lane's inbox
+note, the harness made the gate. Baseline: the branch's T3c1 on `master` d1b90fb (CI green on it);
+`master` 737d007 (#811, E08 T105b1: no new event, the replays rehashed) merged in, the harness's
+numbers unmoved.
+
+- **The stubs** (`docs/stubs.toml`; provisional): one per gap an event must come to carry, each
+  marked where its event is folded in `wire/game/fold.rs`. The adventure lane's (its inbox): 1 a
+  reveal's content (SRV-Q26 (a), the query), 2 a hero's movement points and maximum ((b)), 3 a
+  hero coming into sight ((c); in the golden replays objects and boats appear with a reveal only),
+  4 what a visit tells (the known objects, the once-marks; (d)'s visit), 5 the views of an offer,
+  a choice, a University and a hire dialog, 6 a new day's spell points, 7 an added artifact's
+  place, 8 `LevelGained`'s offered levels, 9 where joined, hired or raised creatures land and a
+  battle's survivors, 10 an object's new owner's team view (a mine's production, a Shipyard's
+  boat tile), 11 a Cartographer's type. The town lane's (its inbox, for E09 T18b2's
+  `TownChanged`): 12 a garrison's view after a change no event tells the viewer ((d)'s garrison
+  among them), 13 a town's owner facts likewise.
+- **The gate** (`tests/game_fold.rs`): each part names its stubs. The 31 parts became 35: the
+  hero details split into their spell points, artifacts, offered levels and the rest, the
+  decision into the views no event carries (an offer's, a choice's, a University's, a hire
+  dialog's) and the rest, so that what the events carry of them stays gated. Asserted after every
+  command for every viewer: the 16 parts without a stub equal `observe`; the 5 only the reveal's
+  stub names (explored tiles, tile views, objects, towns and empty boats in sight) differ only
+  where the viewer's explored tiles grew; each of the 19 stubbed parts differs somewhere (else
+  its stubs are lifted from it); each stub a part names is registered. A deliberate fold error (a
+  removed object's blocked tiles kept) fails it at "tile views" without a reveal (87
+  viewer-commands), which the part's stub alone would have hidden. 28 528 viewer-commands, 20 s
+  (debug build).
+- **The numbers** (viewer-commands, with a reveal): decision views 102 (40), spell points 155 (1),
+  artifacts 12 (2), offered levels 8 (0), armies 44 (0), movement 3 925 (1 499), heroes in sight
+  226 (39), once-marks 7 (3), known objects 7 (3), mine production 11 (3), shipyard tiles 5 (4),
+  bought 2 (2), garrisons 29 (15), town owner facts 19 (12); the reveal's five as T3c1's table.
+  The town's owner facts and garrison levels also follow a hero's Visions in reach, which a step
+  moves without an event (`towns-s3435-d21` command 107, viewer 0): the town lane's stubs.
+- **No message, no version step** (T5).

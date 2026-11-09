@@ -1,7 +1,8 @@
-//! The game fold over the golden replays (E16 M5 T3c1; SRV-Q26, SRV-Q27): each viewer's view,
-//! folded with its projected events after every command, against `observe`, part by part. A
+//! The game fold over the golden replays (E16 M5 T3c1, T3c2; SRV-Q26, SRV-Q27): each viewer's
+//! view, folded with its projected events after every command, against `observe`, part by part. A
 //! battle's snapshot replaces the view's battle when it opens (SRV-Q27 (1)); after each command the
-//! view is `observe`'s again, so each difference is that command's own.
+//! view is `observe`'s again, so each difference is that command's own. The gate: a part differs
+//! only where a stub of its own lets it (`PARTS`), and a stubbed part still differs somewhere.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -16,8 +17,13 @@ use h3_game::{GameRuleset, GameSetup, GameState, Viewer, apply};
 use crate::map::game::{events, observe};
 use crate::wire::game::*;
 
-/// A part of a view: its name and whether two views agree on it.
-type Part = (&'static str, fn(&GameObservation, &GameObservation) -> bool);
+/// A part of a view: its name, the stubs that let the fold differ from `observe` on it (none: the
+/// events carry it whole), and whether two views agree on it.
+struct Part {
+    name: &'static str,
+    stubs: &'static [&'static str],
+    agree: fn(&GameObservation, &GameObservation) -> bool,
+}
 
 /// The entries of `a` and `b` with one key, in `b`'s order: a part compares what both views hold,
 /// which entries they hold being another part.
@@ -61,113 +67,272 @@ fn towns<T: PartialEq>(
     pairs(&a.towns, &b.towns, |t| t.town).all(|(x, y)| f(x) == f(y))
 }
 
-/// The parts, every field of the view in one of them.
-const PARTS: &[Part] = &[
-    ("day and month", |a, b| (a.day, a.month) == (b.day, b.month)),
-    ("turns", |a, b| {
-        (&a.players, &a.turn_group) == (&b.players, &b.turn_group)
-    }),
-    ("treasury", |a, b| a.treasury == b.treasury),
-    ("timed events", |a, b| a.events_today == b.events_today),
-    ("decision", |a, b| a.decision == b.decision),
-    ("battle open", |a, b| {
-        a.battle.is_some() == b.battle.is_some()
-    }),
-    ("heroes in sight", |a, b| {
-        let ids = |o: &GameObservation| {
-            let map: Vec<_> = o.adventure.heroes.iter().map(|h| (h.id, h.owner)).collect();
-            let info: Vec<_> = o.heroes.iter().map(|h| (h.id, h.hero_type)).collect();
-            (map, info)
-        };
-        ids(a) == ids(b)
-    }),
-    ("hero tiles and boats", |a, b| {
-        pairs(&a.adventure.heroes, &b.adventure.heroes, |h| h.id)
-            .all(|(x, y)| (x.pos, x.boat) == (y.pos, y.boat))
-    }),
-    ("hero details", |a, b| {
-        pairs(&a.heroes, &b.heroes, |h| h.id).all(|(x, y)| x.details == y.details)
-    }),
-    ("armies", |a, b| own(a, b, |o| o.army.clone())),
-    ("movement", |a, b| {
-        own(a, b, |o| (o.movement, o.max_movement))
-    }),
-    ("formation and tactics", |a, b| {
-        own(a, b, |o| (o.formation, o.tactics))
-    }),
-    ("once-marks", |a, b| own(a, b, |o| o.marks.clone())),
-    ("explored tiles", |a, b| {
-        let planes =
-            |o: &GameObservation| (o.adventure.explored.clone(), o.adventure.fringe.clone());
-        planes(a) == planes(b)
-    }),
-    ("tile views", |a, b| {
-        (&a.adventure.palette, &a.adventure.tiles) == (&b.adventure.palette, &b.adventure.tiles)
-    }),
-    ("objects in sight", |a, b| {
-        let ids = |o: &GameObservation| {
-            o.adventure
-                .objects
-                .iter()
-                .map(|o| {
-                    (
-                        o.object_type,
-                        o.anchor,
-                        o.blocked,
-                        o.visitable,
-                        o.drawn,
-                        o.town,
-                    )
-                })
-                .collect::<Vec<_>>()
-        };
-        ids(a) == ids(b)
-    }),
-    ("monsters", |a, b| objects(a, b, |o| o.monster)),
-    ("object owners", |a, b| objects(a, b, |o| o.owner)),
-    ("mine production", |a, b| objects(a, b, |o| o.production)),
-    ("mine guards", |a, b| objects(a, b, |o| o.guards.clone())),
-    ("visited marks", |a, b| objects(a, b, |o| o.visited)),
-    ("shipyard tiles", |a, b| objects(a, b, |o| o.boat_tile)),
-    ("known objects", |a, b| {
-        a.adventure.known == b.adventure.known
-    }),
-    ("bought", |a, b| a.adventure.bought == b.adventure.bought),
-    ("keys", |a, b| a.adventure.keys == b.adventure.keys),
-    ("empty boats", |a, b| a.adventure.boats == b.adventure.boats),
-    ("towns in sight", |a, b| {
-        let ids = |o: &GameObservation| o.towns.iter().map(|t| t.town).collect::<Vec<_>>();
-        ids(a) == ids(b)
-    }),
-    ("town owners", |a, b| towns(a, b, |t| t.owner)),
-    ("town pictures", |a, b| {
-        towns(a, b, |t| {
-            (t.anchor, t.faction, t.name.clone(), t.fort, t.capitol)
-        })
-    }),
-    ("garrisons", |a, b| towns(a, b, |t| t.garrison.clone())),
-    ("town owner facts", |a, b| {
-        towns(a, b, |t| t.owner_facts.clone())
-    }),
-];
+/// The reveal's stub (SRV-Q26 (a)): a part it alone lets differ differs only where the viewer's
+/// explored tiles grew.
+const REVEAL: &str = "SRV-STUB-1";
 
-/// The parts the events carry whole: the fold equals `observe` on them after every command of
-/// every golden replay, for every viewer.
-const EXACT: &[&str] = &[
-    "day and month",
-    "turns",
-    "treasury",
-    "timed events",
-    "battle open",
-    "hero tiles and boats",
-    "formation and tactics",
-    "monsters",
-    "object owners",
-    "mine guards",
-    "visited marks",
-    "keys",
-    "town owners",
-    "town pictures",
+/// Whether a decision's view is one no event carries (SRV-STUB-5): an offer's, a choice's, a
+/// University's or a hire dialog's.
+fn untold(decision: Option<&Decision>) -> bool {
+    matches!(
+        decision,
+        Some(
+            Decision::Offer { .. }
+                | Decision::Choice { .. }
+                | Decision::University { .. }
+                | Decision::Hire { .. }
+        )
+    )
+}
+
+/// The hero's details but for the parts of their own (spell points, artifacts, offered levels).
+fn rest(details: &HeroDetails) -> HeroDetails {
+    HeroDetails {
+        offered: OfferLevels {
+            wisdom: 0,
+            school: 0,
+        },
+        worn: Vec::new(),
+        backpack: Vec::new(),
+        mana: 0,
+        ..details.clone()
+    }
+}
+
+/// Whether the details of the heroes both views hold agree on what `f` reads of them.
+fn details<T: PartialEq>(
+    a: &GameObservation,
+    b: &GameObservation,
+    f: impl Fn(&HeroDetails) -> T + Copy,
+) -> bool {
+    pairs(&a.heroes, &b.heroes, |h| h.id)
+        .all(|(x, y)| x.details.as_ref().map(f) == y.details.as_ref().map(f))
+}
+
+/// The parts, every field of the view in one of them, each with the stubs (`docs/stubs.toml`) of
+/// the gaps that let the fold differ there (SRV-Q26, SRV-Q27 (2)): the gate (E16 M5 T3c2).
+const PARTS: &[Part] = &[
+    Part {
+        name: "day and month",
+        stubs: &[],
+        agree: |a, b| (a.day, a.month) == (b.day, b.month),
+    },
+    Part {
+        name: "turns",
+        stubs: &[],
+        agree: |a, b| (&a.players, &a.turn_group) == (&b.players, &b.turn_group),
+    },
+    Part {
+        name: "treasury",
+        stubs: &[],
+        agree: |a, b| a.treasury == b.treasury,
+    },
+    Part {
+        name: "timed events",
+        stubs: &[],
+        agree: |a, b| a.events_today == b.events_today,
+    },
+    Part {
+        name: "decision",
+        stubs: &[],
+        agree: |a, b| {
+            untold(a.decision.as_ref()) || untold(b.decision.as_ref()) || a.decision == b.decision
+        },
+    },
+    Part {
+        name: "decision views",
+        stubs: &["SRV-STUB-5"],
+        agree: |a, b| {
+            !(untold(a.decision.as_ref()) || untold(b.decision.as_ref()))
+                || a.decision == b.decision
+        },
+    },
+    Part {
+        name: "battle open",
+        stubs: &[],
+        agree: |a, b| a.battle.is_some() == b.battle.is_some(),
+    },
+    Part {
+        name: "heroes in sight",
+        stubs: &[REVEAL, "SRV-STUB-3"],
+        agree: |a, b| {
+            let ids = |o: &GameObservation| {
+                let map: Vec<_> = o.adventure.heroes.iter().map(|h| (h.id, h.owner)).collect();
+                let info: Vec<_> = o.heroes.iter().map(|h| (h.id, h.hero_type)).collect();
+                (map, info)
+            };
+            ids(a) == ids(b)
+        },
+    },
+    Part {
+        name: "hero tiles and boats",
+        stubs: &[],
+        agree: |a, b| {
+            pairs(&a.adventure.heroes, &b.adventure.heroes, |h| h.id)
+                .all(|(x, y)| (x.pos, x.boat) == (y.pos, y.boat))
+        },
+    },
+    Part {
+        name: "hero details",
+        stubs: &[],
+        agree: |a, b| details(a, b, rest),
+    },
+    Part {
+        name: "spell points",
+        stubs: &["SRV-STUB-6"],
+        agree: |a, b| details(a, b, |d| d.mana),
+    },
+    Part {
+        name: "artifacts",
+        stubs: &["SRV-STUB-7"],
+        agree: |a, b| details(a, b, |d| (d.worn.clone(), d.backpack.clone())),
+    },
+    Part {
+        name: "offered levels",
+        stubs: &["SRV-STUB-8"],
+        agree: |a, b| details(a, b, |d| d.offered),
+    },
+    Part {
+        name: "armies",
+        stubs: &["SRV-STUB-9"],
+        agree: |a, b| own(a, b, |o| o.army.clone()),
+    },
+    Part {
+        name: "movement",
+        stubs: &["SRV-STUB-2"],
+        agree: |a, b| own(a, b, |o| (o.movement, o.max_movement)),
+    },
+    Part {
+        name: "formation and tactics",
+        stubs: &[],
+        agree: |a, b| own(a, b, |o| (o.formation, o.tactics)),
+    },
+    Part {
+        name: "once-marks",
+        stubs: &["SRV-STUB-4"],
+        agree: |a, b| own(a, b, |o| o.marks.clone()),
+    },
+    Part {
+        name: "explored tiles",
+        stubs: &[REVEAL],
+        agree: |a, b| {
+            let planes =
+                |o: &GameObservation| (o.adventure.explored.clone(), o.adventure.fringe.clone());
+            planes(a) == planes(b)
+        },
+    },
+    Part {
+        name: "tile views",
+        stubs: &[REVEAL],
+        agree: |a, b| {
+            (&a.adventure.palette, &a.adventure.tiles) == (&b.adventure.palette, &b.adventure.tiles)
+        },
+    },
+    Part {
+        name: "objects in sight",
+        stubs: &[REVEAL],
+        agree: |a, b| {
+            let ids = |o: &GameObservation| {
+                o.adventure
+                    .objects
+                    .iter()
+                    .map(|o| {
+                        (
+                            o.object_type,
+                            o.anchor,
+                            o.blocked,
+                            o.visitable,
+                            o.drawn,
+                            o.town,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+            };
+            ids(a) == ids(b)
+        },
+    },
+    Part {
+        name: "monsters",
+        stubs: &[],
+        agree: |a, b| objects(a, b, |o| o.monster),
+    },
+    Part {
+        name: "object owners",
+        stubs: &[],
+        agree: |a, b| objects(a, b, |o| o.owner),
+    },
+    Part {
+        name: "mine production",
+        stubs: &["SRV-STUB-10"],
+        agree: |a, b| objects(a, b, |o| o.production),
+    },
+    Part {
+        name: "mine guards",
+        stubs: &[],
+        agree: |a, b| objects(a, b, |o| o.guards.clone()),
+    },
+    Part {
+        name: "visited marks",
+        stubs: &[],
+        agree: |a, b| objects(a, b, |o| o.visited),
+    },
+    Part {
+        name: "shipyard tiles",
+        stubs: &["SRV-STUB-10"],
+        agree: |a, b| objects(a, b, |o| o.boat_tile),
+    },
+    Part {
+        name: "known objects",
+        stubs: &["SRV-STUB-4"],
+        agree: |a, b| a.adventure.known == b.adventure.known,
+    },
+    Part {
+        name: "bought",
+        stubs: &["SRV-STUB-11"],
+        agree: |a, b| a.adventure.bought == b.adventure.bought,
+    },
+    Part {
+        name: "keys",
+        stubs: &[],
+        agree: |a, b| a.adventure.keys == b.adventure.keys,
+    },
+    Part {
+        name: "empty boats",
+        stubs: &[REVEAL],
+        agree: |a, b| a.adventure.boats == b.adventure.boats,
+    },
+    Part {
+        name: "towns in sight",
+        stubs: &[REVEAL],
+        agree: |a, b| {
+            let ids = |o: &GameObservation| o.towns.iter().map(|t| t.town).collect::<Vec<_>>();
+            ids(a) == ids(b)
+        },
+    },
+    Part {
+        name: "town owners",
+        stubs: &[],
+        agree: |a, b| towns(a, b, |t| t.owner),
+    },
+    Part {
+        name: "town pictures",
+        stubs: &[],
+        agree: |a, b| {
+            towns(a, b, |t| {
+                (t.anchor, t.faction, t.name.clone(), t.fort, t.capitol)
+            })
+        },
+    },
+    Part {
+        name: "garrisons",
+        stubs: &[REVEAL, "SRV-STUB-12"],
+        agree: |a, b| towns(a, b, |t| t.garrison.clone()),
+    },
+    Part {
+        name: "town owner facts",
+        stubs: &[REVEAL, "SRV-STUB-13"],
+        agree: |a, b| towns(a, b, |t| t.owner_facts.clone()),
+    },
 ];
 
 /// Where a part differed.
@@ -182,6 +347,8 @@ struct Differences {
     replays: BTreeSet<String>,
     /// The first: its replay, command, viewer and the kinds of the events it was told.
     first: Option<String>,
+    /// The first without a reveal.
+    first_unrevealed: Option<String>,
 }
 
 /// The workspace's root.
@@ -260,7 +427,10 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                 let reveal = (&view.adventure.explored, &view.adventure.fringe)
                     != (&observed.adventure.explored, &observed.adventure.fringe);
                 let mut any = false;
-                for &(part, agree) in PARTS {
+                for &Part {
+                    name: part, agree, ..
+                } in PARTS
+                {
                     if agree(view, &observed) {
                         continue;
                     }
@@ -269,10 +439,14 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                     at.count += 1;
                     at.replays.insert(name.clone());
                     at.with_reveal += usize::from(reveal);
-                    at.first.get_or_insert_with(|| {
+                    let first = || {
                         let kinds: BTreeSet<String> = told.iter().map(kind).collect();
                         format!("{name} command {step} viewer {}: {kinds:?}", view.viewer)
-                    });
+                    };
+                    if !reveal && at.first_unrevealed.is_none() {
+                        at.first_unrevealed = Some(first());
+                    }
+                    at.first.get_or_insert_with(first);
                 }
                 // The views' battles agree between its snapshots only by its own events.
                 view.battle.clone_from(&observed.battle);
@@ -291,7 +465,7 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
 #[test]
 fn the_fold_against_observe_over_the_golden_replays() {
     let (differences, runs) = run();
-    // The report (T3c1; T3c2 makes it the gate): `cargo test -p h3-protocol fold_against -- --nocapture`.
+    // The report: `cargo test -p h3-protocol fold_against -- --nocapture`.
     #[allow(clippy::print_stderr)] // a test's report
     {
         eprintln!("{runs} viewer-commands; the parts that differed:");
@@ -305,12 +479,40 @@ fn the_fold_against_observe_over_the_golden_replays() {
             );
         }
     }
-    for part in EXACT {
-        assert!(
-            !differences.contains_key(part),
-            "{part}: {}",
-            differences[part].first.as_deref().unwrap_or_default()
-        );
+    // The gate (E16 M5 T3c2): a part the events carry whole equals `observe` after every command
+    // for every viewer, a part the reveal's stub alone names wherever the viewer's explored tiles
+    // did not grow; a stubbed part still differs somewhere, else its stubs are lifted from it (and
+    // from the registry once no part and no fold names them).
+    let registry = fs::read_to_string(root().join("docs/stubs.toml")).unwrap();
+    for part in PARTS {
+        for stub in part.stubs {
+            assert!(
+                registry.contains(&format!("\"{stub}\"")),
+                "{}: {stub} is not in docs/stubs.toml",
+                part.name
+            );
+        }
+        let at = differences.get(part.name);
+        match (part.stubs, at) {
+            ([], Some(at)) => panic!(
+                "{}: the fold differs from `observe` in {} viewer-commands, first {}",
+                part.name,
+                at.count,
+                at.first.as_deref().unwrap_or_default()
+            ),
+            ([REVEAL], Some(at)) if at.with_reveal < at.count => panic!(
+                "{}: the fold differs from `observe` without a reveal in {} viewer-commands, \
+                 first {}",
+                part.name,
+                at.count - at.with_reveal,
+                at.first_unrevealed.as_deref().unwrap_or_default()
+            ),
+            ([_, ..], None) => panic!(
+                "{}: the fold equals `observe` everywhere now: lift {:?} from it",
+                part.name, part.stubs
+            ),
+            _ => {}
+        }
     }
 }
 

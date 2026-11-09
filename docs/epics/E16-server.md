@@ -315,6 +315,10 @@ inbox, the same day), mapped when it lands.
     `wire/game/fold.rs`) and the harness (`tests/game_fold.rs`): of 31 parts, 14 equal `observe`
     after each of the 28 528 viewer-commands, the other 17 differ by SRV-Q26's and SRV-Q27's gaps
     (the log's table).
+  - **T3c2 done** (2026-11-09; `E16-log.md`): the gaps as `SRV-STUB-1` to `-13` (the adventure
+    lane's 1 to 11, the town lane's 12 and 13, their inbox notes), the harness made the gate: 35
+    parts, 16 exact (the hero details and the decision split so that their folded fields are), 5
+    that only the reveal's stub names differ only with a reveal, a stubbed part still differs.
 - **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
   the map's identity (its content hash), the key tables of the game's content kinds.
 - **T5 the game session in-process**: the players as seats and viewers, the loop over

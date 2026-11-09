@@ -17,17 +17,28 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-09 (the server lane, seen in CI; **`master` is red**): **`h3-map`'s proptest
-  `tests::play::every_step_keeps_the_commands_invariants` failed in CI's coverage run on
-  `master` 1e8568d** (run 42711145647; its test step passed, the coverage run drew other cases).
-  `check_unowned_battle_end` (`crates/h3-map/src/tests/play.rs:6159`): `prop_assert_eq!(gained,
-  gains)` with `left: [(#5, 5)]`, `right: []`: a battle without an enemy hero (a guarded object's,
-  ending with an `ObjectMarked` at (8, 1, 0) of type #89) tells `ResourceGained { player 0,
-  resource #5, amount 5 }` that the check does not expect. The persisted case: `cc
-  1cdbcf09cc8245120e020faccea23f2423edbc040c1a09f3d6feec7bd86d21e9` (add it to
-  `crates/h3-map/proptest-regressions/tests/play.txt`; the minimal plan is in the run's log, AB,
-  side 9, one level). `master`'s two runs before (#806, #807) were cancelled, so either may have
-  brought it (#807 touched `play.rs`). Whether the gain or the check is wrong is yours.
+- 2026-11-09 (the server lane, E16 M5 T3c2, SRV-Q26 and SRV-Q27; **the user's decisions**, for
+  the whole game on the wire): **the fold's gaps are the stubs `SRV-STUB-1` to `-11`**
+  (`docs/stubs.toml`; `-12` and `-13` are the town lane's). The server lane's fold
+  (`h3-protocol`'s `wire/game/fold.rs`) keeps a viewer's view current by its projected events; its
+  gate (`tests/game_fold.rs`, the 55 golden replays) asserts it equals `observe` after every
+  command for every viewer but for the parts a stub names. The SRV-Q26 note below: its (1) is
+  `SRV-STUB-1` (the query), (2) `-2`, (3) `-3` (its heroes; in the golden replays objects and boats
+  appear with a reveal only), (4) `-4`. Beyond it (SRV-Q27 (2): what the rules derive):
+  `-4` also what any visit tells (`AdventureObservation::known`, ADV-VIS-006, and
+  `OwnHeroView::marks`: no event carries them); `-5` the views of an offer, a choice, a University
+  and a hire dialog (their `…Opened` events open them without their view, nor tell a University's
+  slots or a hire's counts after a purchase); `-6` the spell points a new day restores (no
+  `SetSpellPoints` at the day's start); `-7` an added artifact's place (`HeroChange::AddArtifact`:
+  a pickup, a reward, a battle's spoils); `-8` `GameEvent::LevelGained`'s levels at which Wisdom
+  and a school were last offered (as `HeroChange::GainLevel` carries them); `-9` the slot where
+  joined, hired or raised creatures land (`CreaturesJoined`, `CreaturesRaised`) and each hero's
+  survivors at a battle's end (`BattleEnded`); `-10` what an object's new owner's team sees at
+  `ObjectFlagged` (a mine's production, a Shipyard's boat tile); `-11` a Cartographer's type at
+  `OfferAnswered`. Each lands as an event field or variant, which breaks `h3-protocol`'s build
+  until mapped (the global trap: map it in the same `cross-lane` pull request, or ask the server
+  lane first); once the fold folds it the gate fails until the stub is lifted from its part, and
+  from the registry when no part and no marker names it.
 
 - 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **a version and a
   variant, for your bumps and matches**): **adventure replay format v11** is taken (`town build

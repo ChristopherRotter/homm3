@@ -40,6 +40,19 @@ and events on the wire; its inbox has T18b1's note).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-09 (the server lane, E16 M5 T3c2, SRV-Q26 and SRV-Q27; **the user's decisions**; for
+  E09 T18b2's `TownChanged`): **the fold's town gaps are the stubs `SRV-STUB-12` and `-13`**
+  (`docs/stubs.toml`). A town's garrison as a viewer sees it (`TownView::garrison`: its stacks at
+  the viewer's level, and the army by slot for the owner's team) and its owner facts (hall and
+  income) change where no event tells that viewer: a capture, a siege or a battle's end, a hero's
+  army merged with the garrison (a `StackChanged` gives the owner's slot, not the level's
+  stacks), the viewer's level moving (a hero's Visions in reach after a step), a build
+  (`TownBuilt` names the building, not the facts), and the note below's neutral garrison emptied
+  by another player's battle (SRV-Q26 (d)). The server lane's fold gate (`h3-protocol`'s
+  `tests/game_fold.rs`, the 55 golden replays) asserts the fold equals `observe` after every
+  command for every viewer but for the parts a stub names; a new event field or variant breaks
+  `h3-protocol`'s build until mapped (the global trap), and once the fold folds it the gate fails
+  until the stub is lifted.
 - 2026-11-09 (the adventure lane, E08 T105a1, `adventure/e08-t105a1`; **a signature, for your
   callers**; increment 11's design note §13, §18): `AdventureState::apply` takes `(player, draws)`
   in place of `player` (`draws: &mut Rng`, the acting player's stream: a visit's draw, a
