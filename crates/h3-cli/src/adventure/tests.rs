@@ -35,6 +35,8 @@ const ECONOMY_XL: &str = "fixtures/maps/e08-economy-144.h3m";
 const DWELLINGS_XL: &str = "fixtures/maps/e08-dwellings-144.h3m";
 /// The town map (E09 T9a): eight towns of every kind the import reads.
 const TOWNS: &str = "fixtures/maps/e09-towns-36.h3m";
+/// The gates XL map (E08 T104): a Subterranean Gate on every fifth tile of both levels.
+const GATES_XL: &str = "fixtures/maps/e08-gates-144.h3m";
 
 fn options(days: u32) -> RunOptions {
     RunOptions {
@@ -1138,6 +1140,30 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     let none = siege(DUEL, 1);
     assert_eq!((none.operations, none.visitors), (0, 0), "{none:?}");
     assert!(none.steps >= 4, "{none:?}");
+    // E08 T104: `build` counts the game's builds, without play (`build-gates-xl-144` on the gates
+    // XL map).
+    let built = bench::run(
+        &root().join("packs"),
+        &root(),
+        &bench::BenchOptions {
+            map: GATES_XL.to_owned(),
+            profile: DEFAULT_PROFILE.to_owned(),
+            difficulty: h3_game::DEFAULT_DIFFICULTY,
+            workload: bench::Workload::Build,
+            games: 2,
+            days: 1,
+            seed: 1,
+            forks: 0,
+            observe: false,
+            masks: false,
+            battle: false,
+            meeting: false,
+            dwelling: false,
+            queries: 0,
+        },
+    )
+    .unwrap();
+    assert_eq!((built.operations, built.steps), (2, 0), "{built:?}");
     let dir = root().display().to_string();
     let packs = format!("{dir}/packs");
     let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
@@ -1149,6 +1175,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         ("manage", "1"),
         ("day-start", "1"),
         ("siege", "1"),
+        ("build", "1"),
     ] {
         cli::main(&args(&[
             "bench",
@@ -1200,6 +1227,20 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "5",
         ]),
         args(&["bench", "--map", DUEL, "--speed", "1"]),
+        // E08 T104: a build the setup refuses.
+        args(&[
+            "bench",
+            "--map",
+            DUEL,
+            "--root",
+            &dir,
+            "--packs-dir",
+            &packs,
+            "--workload",
+            "build",
+            "--difficulty",
+            "5",
+        ]),
         args(&[
             "bench",
             "--map",

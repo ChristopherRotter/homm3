@@ -249,9 +249,10 @@ fn bench(args: &Args) -> Result<(), String> {
         "manage" => Workload::Manage,
         "day-start" => Workload::DayStart,
         "siege" => Workload::Siege,
+        "build" => Workload::Build,
         other => {
             return Err(format!(
-                "--workload: `{other}` is not play, reach, fork, manage, day-start or siege"
+                "--workload: `{other}` is not play, reach, fork, manage, day-start, siege or build"
             ));
         }
     };
@@ -287,6 +288,7 @@ fn bench(args: &Args) -> Result<(), String> {
         Workload::Manage => "listings",
         Workload::DayStart => "day starts",
         Workload::Siege => "sieges",
+        Workload::Build => "builds",
     };
     let counted = if workload == Workload::Play {
         String::new()

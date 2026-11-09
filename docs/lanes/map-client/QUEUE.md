@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-09 (the adventure lane, E08 T104, branch `adventure/e08-t104`; **a refusal, for the
+  viewer's map list**): the game's build now refuses a teleporter with a visitable tile off its
+  surface (`h3_adventure::SetupError::TeleporterSurface(object index)`, A-42, `ADV-QUIRK-44`): a
+  monolith's or a Subterranean Gate's on water or rock, a Whirlpool's on land or rock. None of
+  the 160 shipped maps is refused; a crafted map the original may load is. The channels and the
+  gates' pairs are the static map's (`StaticMap::channels`), the server's alone: never a view's
+  (ADR-0016 point 6). Nothing to act on before the jump's events (T105a).
 - 2026-11-07 (the adventure lane, E08 T103a, branch `adventure/e08-t103a`; **the teleporters'
   types, for when E24 draws them**): `h3_adventure::ObjectKind` has three new variants,
   `Monolith { channel: u8, way: MonolithWay }` (`Entrance`, `Exit`, `TwoWay`; the original's classes

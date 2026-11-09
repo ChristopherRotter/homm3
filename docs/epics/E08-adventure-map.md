@@ -202,6 +202,20 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      the experiments README's row `cross-lane` with the user's consent. Not chosen: the runs, then
      the scoring; the spec, then the runs.
 
+### Decisions at T104's start (2026-11-09, user)
+
+285. **T104 whole, one pull request** (the user at T104's start, `AskUserQuestion`; recommended):
+     the build (A-42, the channels, the gates' pairs), its tests and docs and the benchmark
+     `build-gates-xl-144` in one session; if the benchmark shows the quadratic pairing dominating
+     the build, its lever (design §18's row-band search) goes to a follow-up task instead of
+     growing this one. Not chosen: two tasks and two pull requests (the build, then the
+     benchmark), in one session or two.
+286. **The shipped maps' check of the channels and the pairs brought forward** from T106 (the user
+     at T104's start; recommended): `h3-map`'s `original_data` counts the build's channels and
+     pairs on the 160 shipped maps and checks them against the survey's census (§1: 301 pairs, 18
+     gates on 8 maps not with their nearest), no map refused by A-42; `maps.tar` staged. Not
+     chosen: left to T106 as design §14 planned.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
@@ -212,8 +226,9 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
 - **T101 Batch E11 scored** (decisions 269, 274). Done (2026-11-07, whole, docs only: survey §15, every row as read but E11-19, the guard fought before the jump; the spread uniform; A-37's consequences, A-43; the checkpoint ADV-Q47, decisions 279, 280). Round 3 done.
 - **T102 Increment 11's shared change** (decisions 272–274, 279, 280; `cross-lane`). Done (2026-11-07, `shared/e08-t102`, whole: decision 281): ADR-0016 points 1, 3 to 6 and ADR-0017 points 1, 4, 6, 8, 10, 11 amended with batch E11's outcome, the drafts deleted; the glossary's teleporter terms; `docs/06-security.md`'s increment 11 lines; the effect kind `whirlpool_protection` (pack format v51, core ruleset hash v52) on the Sea Captain's Hat with three sources; the 65 golden replays' `ruleset_hash` and the bot reports' `engine.core` moved alone; the experiments README's batch E11 row evaluated. Round 4 done.
 - **T103 Increment 11's kinds and import, batch E11c, decision 279's order** (round 5), in four (decision 282): **T103a** done (2026-11-07, `adventure/e08-t103a`, `cross-lane`: the three kinds, the 26 types and their check, `whirlpool_protection`; ADV-TEL-001; part v18; decision 283); **T103b** done (2026-11-07, `adventure/e08-t103b`: the five classes typed, A-39 refused, `ADV-QUIRK-41`, 220 by the mines' table; map import v21; the shipped maps' census); **T103c** done (2026-11-07, `adventure/e08-t103c`, whole: decision 284; batch E11c, E11-20 to E11-23, every row as read, survey §15.1; the README row `cross-lane`); **T103d** done (2026-11-07, `adventure/e08-t103d`: decision 279's order for every entered kind, the guard first and the tile's visit held as `Rest::Visit` after it; ADV-MON-006 verified, GAM-DEC-007 and -008 amended; no version moved; two replays). Round 5 done. Records: `E08-log.md`.
-- **T104 The build** (round 6; design §5): queued, ready (its cut confirmed at its start).
-- **T105 to T107** (design §17's rounds 7 and 8): the jump and the game, the fixtures and benchmarks, the audit; each queued when the round before it is done.
+- **T104 The build** (round 6; design §5). Done (2026-11-09, `adventure/e08-t104`, whole: decisions 285, 286): A-42 refused when the game is built (`SetupError::TeleporterSurface`, rock too; `ADV-QUIRK-44`), the channels and the gates' pairs (`StaticMap::channels`; ADV-TEL-002; `ADV-QUIRK-45` recorded), checked against the shipped maps' census; `build-gates-xl-144` (the gates XL map, the workload `build`), the pairing 91.6 % of that build, its lever queued. No version moved. Round 6 done. Records: `E08-log.md`.
+- **T105 The jump and the game** (round 7; design §7 to §10, §12 to §14): queued, ready (T105a and T105b as design §17 plans; the cut confirmed at its start).
+- **T106 and T107** (design §17's round 8): the fixtures and benchmarks (the shipped maps' channels already checked by T104, decision 286), the audit; queued when round 7 is done.
 
 ## Later increments (sketch)
 
