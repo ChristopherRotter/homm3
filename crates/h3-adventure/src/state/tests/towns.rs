@@ -15,7 +15,7 @@ use crate::army::{ArmyRef, ArmySlot};
 use crate::ruleset::{AdventurePack, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
     FLYING, MAX_STACK, PEASANT, PIKEMAN, WATER_WALKING, draws, hero_at, hero_details, hero_skills,
-    key, movement_rules_with, started, world,
+    key, movement_rules_with, started, stream, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -366,7 +366,14 @@ fn walk(
         path: path.to_vec(),
     };
     let mut events = Vec::new();
-    let outcome = state.apply(&rules.0, &rules.1, heroes, RED, &walk, &mut events)?;
+    let outcome = state.apply(
+        &rules.0,
+        &rules.1,
+        heroes,
+        (RED, &mut stream()),
+        &walk,
+        &mut events,
+    )?;
     Ok((outcome, events))
 }
 

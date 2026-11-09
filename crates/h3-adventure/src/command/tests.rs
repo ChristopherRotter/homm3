@@ -20,7 +20,7 @@ use crate::setup::SetupError;
 use crate::state::AdventureState;
 use crate::testing::{
     CHART, FIRE, GNOLL, GUARD, MAX_STACK, OPEN_CHART, PEASANT, PIKEMAN, TOWER, WOLF, WOOD_PILE,
-    draws, hero_at, movement_rules, world, world_state,
+    draws, hero_at, movement_rules, stream, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -42,7 +42,14 @@ fn move_hero(
         hero: HeroId::new(hero),
         path: path.to_vec(),
     };
-    let result = state.apply(&rules.0, &rules.1, &[], player, &command, &mut events);
+    let result = state.apply(
+        &rules.0,
+        &rules.1,
+        &[],
+        (player, &mut stream()),
+        &command,
+        &mut events,
+    );
     assert!(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
@@ -545,7 +552,14 @@ fn a_step_toward_a_pile_visits_it_from_the_tile_before() {
             path: vec![p(1, 0), p(2, 0)],
         };
         let outcome = state
-            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+            .apply(
+                &rules.0,
+                &rules.1,
+                &[],
+                (RED, &mut stream()),
+                &command,
+                &mut events,
+            )
             .unwrap();
         // The owner gains the pile; the hero stays on (1, 0) and pays both steps.
         assert_eq!(outcome.gains, contents);
@@ -593,7 +607,14 @@ fn a_visit_from_the_hero_s_own_tile_moves_nothing_and_a_fire_gives_two_resources
         path: vec![p(1, 0)],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     // The fire's wood, then its gold (ADV-PIK-003's order).
     assert_eq!(outcome.gains, contents);
@@ -682,7 +703,14 @@ fn a_step_onto_a_chart_enters_it_and_ends_the_move() {
             path: vec![p(1, 0), p(2, 0)],
         };
         let outcome = state
-            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+            .apply(
+                &rules.0,
+                &rules.1,
+                &[],
+                (RED, &mut stream()),
+                &command,
+                &mut events,
+            )
             .unwrap();
         // The hero stands on the chart's tile, both steps paid as steps are; the visit gains and
         // removes nothing, and offers the chart's type (E08 T14b).
@@ -745,7 +773,14 @@ fn enter(
         path: vec![to],
     };
     state
-        .apply(&rules.0, &rules.1, &[], player, &command, &mut Vec::new())
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (player, &mut stream()),
+            &command,
+            &mut Vec::new(),
+        )
         .unwrap()
 }
 
@@ -907,7 +942,7 @@ fn objects_visited_from_above_are_entered_and_left_across_their_top() {
             &rules.0,
             &rules.1,
             &[],
-            RED,
+            (RED, &mut stream()),
             &AdventureCommand::MoveHero {
                 hero: HeroId::new(1),
                 path: vec![p(2, 1)],
@@ -1042,7 +1077,14 @@ fn visit_by(
         path: path.to_vec(),
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], player, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (player, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
     (events, outcome)
@@ -1279,7 +1321,14 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
         path: blue.to_vec(),
     };
     state
-        .apply(&rules.0, &rules.1, &[], BLUE, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (BLUE, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     assert_eq!(hero(&state, 2).0, p(3, 0));
     // An offer that no longer stands carries nothing out (the game rejects its acceptance
@@ -1422,7 +1471,14 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
     // The defender's tactics flag off goes with its side (GAM-BAT-009, E08 T51a).
     state.set_tactics(BLUE, HeroId::new(2), false).unwrap();
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     // Two steps, then the visit from (2, 0) at the step's price: 1300 - 3 × 100.
     assert_eq!(events.len(), 2);
@@ -1497,7 +1553,14 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
         path,
     };
     let outcome = met
-        .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     let meeting = Meeting {
         visitor: HeroId::new(1),
@@ -1545,7 +1608,14 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
         path: vec![p(1, 0)],
     };
     state
-        .apply(&rules.0, &rules.1, &[], RED, &step, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &step,
+            &mut events,
+        )
         .unwrap();
     assert_eq!(hero(&state, 1), (p(1, 0), 1200));
     assert_eq!(
@@ -1564,7 +1634,14 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
         path: vec![p(0, 1), p(1, 1)],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &side, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &side,
+            &mut events,
+        )
         .unwrap();
     let battle = outcome.battle.unwrap();
     assert_eq!(

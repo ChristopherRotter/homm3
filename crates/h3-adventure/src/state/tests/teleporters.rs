@@ -6,7 +6,9 @@
 
 use super::*;
 use crate::ruleset::{MonolithWay, ObjectKindDef, ObjectTypeDef, Visit};
-use crate::testing::{PIKEMAN, hero_at, hero_details, key, movement_rules_with, started, world};
+use crate::testing::{
+    PIKEMAN, hero_at, hero_details, key, movement_rules_with, started, stream, world,
+};
 
 type Rules = (Ruleset, AdventureRuleset);
 
@@ -95,7 +97,14 @@ fn a_step_onto_a_teleporters_entrance_is_refused_until_its_jump_is_built() {
         };
         let mut events = Vec::new();
         assert_eq!(
-            state.apply(&rules.0, &rules.1, &heroes, RED, &walk, &mut events),
+            state.apply(
+                &rules.0,
+                &rules.1,
+                &heroes,
+                (RED, &mut stream()),
+                &walk,
+                &mut events
+            ),
             Err(AdventureCommandError::Visit { step: 1 }),
             "{k}"
         );

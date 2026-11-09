@@ -1582,23 +1582,27 @@ impl AdventureState {
     /// what the player gains beyond the map is the outcome (ADR-0017 point 10). `heroes` is the
     /// game's store of heroes' details by [`HeroId`] (ADR-0016's E08 amendment, decision 25; E08
     /// T20a2b), which the adventure reads only through `h3-heroes`' derivations: the monsters'
-    /// answer reads the visitor's (E08 T20b).
+    /// answer reads the visitor's (E08 T20b). `draws` is the player's stream (ADR-0017 point 4,
+    /// ADV-TEL-003; E08 T105a1): a rule that draws at a visit draws from the visitor's stream
+    /// (ADR-0016 point 4), the jump to a drawn exit first; the game passes the acting player's
+    /// for every adventure command. Nothing is drawn before the whole command is checked.
     ///
     /// # Errors
     ///
-    /// An [`AdventureCommandError`]; the state is then unchanged and no event was emitted.
+    /// An [`AdventureCommandError`]; the state and `draws` are then unchanged and no event was
+    /// emitted.
     pub fn apply<S: Sink>(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
-        player: PlayerId,
+        (player, draws): (PlayerId, &mut Rng),
         command: &AdventureCommand,
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
         match command {
             AdventureCommand::MoveHero { hero, path } => {
-                self.move_hero(core, part, heroes, (player, *hero), path, sink)
+                self.move_hero((core, part, heroes), (player, *hero), path, draws, sink)
             }
             AdventureCommand::BuildBoat {
                 object_type,
@@ -1660,13 +1664,13 @@ impl AdventureState {
     // rule: ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005
     fn move_hero<S: Sink>(
         &mut self,
-        core: &Ruleset,
-        part: &AdventureRuleset,
-        heroes: &[Arc<HeroDetails>],
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, id): (PlayerId, HeroId),
         path: &[Pos],
+        draws: &mut Rng,
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
+        let (core, part, heroes) = rules;
         let index = self
             .heroes
             .binary_search_by_key(&id, |h| h.id)
@@ -1759,7 +1763,6 @@ impl AdventureState {
             });
             from = to;
         }
-        let rules = (core, part, heroes);
         if let Some((step, event, _)) = fired {
             // On a guarded tile the guard visits first (a flyer stopped there is at its move's
             // end for the guard test, 0x48147D) and the event waits for the guard's visit
@@ -1788,7 +1791,7 @@ impl AdventureState {
         }
         let outcome = match visit {
             None => AdventureOutcome::default(),
-            Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
+            Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, draws, sink),
             Some(Meets::Board(boat)) => {
                 self.board(rules, (player, index), boat, sink);
                 AdventureOutcome::default()
@@ -2200,6 +2203,7 @@ impl AdventureState {
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
         visit: StepVisit<'_>,
+        draws: &mut Rng,
         sink: &mut S,
     ) -> AdventureOutcome {
         let core = rules.0;
@@ -2303,12 +2307,15 @@ impl AdventureState {
     /// Learning Stone's experience given after the won battle (batch E11c's E11-21, E11-22). The
     /// hero is still on the tile it entered (its owner had an open decision until now, so it did
     /// not move); nothing for a hero the guard's battle took off the map or another player's,
-    /// nor when no object is visited from the tile any more.
+    /// nor when no object is visited from the tile any more. `draws` is the visitor's owner's
+    /// stream, as for [`Self::apply`]: a teleporter's jump after its guard draws its exit from it
+    /// (ADV-TEL-003, E08 T105a1).
     // rule: ADV-MON-006
     pub fn visit_held<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
+        draws: &mut Rng,
         sink: &mut S,
     ) -> AdventureOutcome {
         let tile = self
@@ -2317,7 +2324,7 @@ impl AdventureState {
             .map(|h| h.pos)
             .filter(|&at| self.live(at, self.map.at(at)).visitable);
         match tile.and_then(|at| self.visit_at(rules.1, player, at)) {
-            Some(visit) if !visit.pass => self.visit(rules, (player, hero), visit, sink),
+            Some(visit) if !visit.pass => self.visit(rules, (player, hero), visit, draws, sink),
             _ => AdventureOutcome::default(),
         }
     }

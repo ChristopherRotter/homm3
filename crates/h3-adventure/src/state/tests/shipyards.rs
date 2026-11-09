@@ -7,7 +7,7 @@
 use super::economy::{GRASS_ROWS, Rules, object, owned, rules, setup};
 use super::*;
 use crate::ShipyardBlock;
-use crate::testing::started;
+use crate::testing::{started, stream};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -41,7 +41,14 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
         path: vec![Pos::new(1, 7, 0), ENTRANCE],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &walk, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &walk,
+            &mut events,
+        )
         .unwrap();
     events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
     (outcome, events)
@@ -137,15 +144,29 @@ fn a_shipyard_s_visit_flags_it_then_offers_a_boat_on_its_tile() {
         hero: HERO,
         path: vec![Pos::new(1, 7, 0)],
     };
-    s.apply(&rules.0, &rules.1, &[], RED, &back, &mut Vec::new())
-        .unwrap();
+    s.apply(
+        &rules.0,
+        &rules.1,
+        &[],
+        (RED, &mut stream()),
+        &back,
+        &mut Vec::new(),
+    )
+    .unwrap();
     let again = AdventureCommand::MoveHero {
         hero: HERO,
         path: vec![ENTRANCE],
     };
     let mut events = Vec::new();
     let outcome = s
-        .apply(&rules.0, &rules.1, &[], RED, &again, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &again,
+            &mut events,
+        )
         .unwrap();
     events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
     assert_eq!(outcome, AdventureOutcome::default());
@@ -286,7 +307,7 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     };
     let mut events = Vec::new();
     let outcome = s
-        .apply(core, part, &[], RED, &command, &mut events)
+        .apply(core, part, &[], (RED, &mut stream()), &command, &mut events)
         .unwrap();
     assert_eq!(outcome, AdventureOutcome::default());
     assert_eq!(
@@ -305,7 +326,7 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     let before = s.clone();
     let mut events = Vec::new();
     assert_eq!(
-        s.apply(core, part, &[], RED, &command, &mut events),
+        s.apply(core, part, &[], (RED, &mut stream()), &command, &mut events),
         Err(AdventureCommandError::BoatTileTaken)
     );
     assert!(events.is_empty());
@@ -319,7 +340,7 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     let before = s.clone();
     let mut events = Vec::new();
     assert_eq!(
-        s.apply(core, part, &[], RED, &command, &mut events),
+        s.apply(core, part, &[], (RED, &mut stream()), &command, &mut events),
         Err(AdventureCommandError::BoatTileTaken)
     );
     assert!(events.is_empty());

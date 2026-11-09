@@ -34,6 +34,12 @@ pub(crate) fn draws() -> Rng {
     Rng::for_stream(0, StreamId::SETUP)
 }
 
+/// The first player's stream of seed 0, which the tests pass to `AdventureState::apply` as the
+/// game passes the acting player's (ADR-0017 point 4, E08 T105a1).
+pub(crate) fn stream() -> Rng {
+    Rng::for_stream(0, StreamId::player(0))
+}
+
 pub(crate) fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
 }

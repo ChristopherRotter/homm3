@@ -15,7 +15,7 @@ use crate::command::{AdventureCommand, AdventureEvent, NoRoom};
 use crate::setup::MonsterSetup;
 use crate::testing::{
     CHART, GNOLL, MAX_STACK, MONSTER, PEASANT, PIKEMAN, TOWER, WOLF, hero_at, key,
-    movement_rules_edited, world,
+    movement_rules_edited, stream, world,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -157,7 +157,14 @@ fn walk(
         path: path.iter().map(|&(x, y)| Pos::new(x, y, 0)).collect(),
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, heroes, RED, &step, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            heroes,
+            (RED, &mut stream()),
+            &step,
+            &mut events,
+        )
         .unwrap();
     (outcome, events)
 }
@@ -567,7 +574,7 @@ fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
         join.as_ref().unwrap(),
         &mut events,
     );
-    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut events);
+    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut stream(), &mut events);
     assert_eq!(visit.offer.map(|o| o.object_type), Some(CHART));
     // Onto an observatory's tile: the guard's answer, the reveal held for after it (the step's
     // event alone), then given by the held visit.
@@ -587,7 +594,12 @@ fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
     );
     assert_eq!(events_of_step.len(), 1);
     let mut revealed: Vec<AdventureEvent> = Vec::new();
-    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut revealed);
+    let visit = s.visit_held(
+        triple(&rules, &[]),
+        (RED, HERO),
+        &mut stream(),
+        &mut revealed,
+    );
     assert_eq!(visit, AdventureOutcome::default());
     assert!(matches!(
         revealed[..],
@@ -599,12 +611,17 @@ fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
     // Another hero, another player's, or a tile no object is visited from: nothing.
     let mut none: Vec<AdventureEvent> = Vec::new();
     for (player, hero) in [(RED, HeroId::new(9)), (PlayerId::new(1), HERO)] {
-        let visit = s.visit_held(triple(&rules, &[]), (player, hero), &mut none);
+        let visit = s.visit_held(
+            triple(&rules, &[]),
+            (player, hero),
+            &mut stream(),
+            &mut none,
+        );
         assert_eq!(visit, AdventureOutcome::default());
     }
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     walk(&rules, &mut s, &[], &[(2, 1)]);
-    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut none);
+    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut stream(), &mut none);
     assert_eq!((visit, none.len()), (AdventureOutcome::default(), 0));
 }
 
