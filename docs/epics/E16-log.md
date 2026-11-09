@@ -1986,3 +1986,25 @@ The user split T2 in two pull requests (T2a the adventure map, T2b the rest of t
   profile shows the fringe's objects, ADV-QUIRK-1): the hand-built case covers it.
 - **Dependencies.** `h3-protocol` takes `h3-adventure` and `h3-game` (dev: `h3-map`, the
   adventure's and the towns' packs), as T0's `arch.toml` edges allow.
+
+### M5 T2b — the rest of the game's observation (2026-11-09)
+
+- **The types** (`wire::game`, provisional): `GameObservation` (the viewer, the day, `Month`, the
+  `Player`s, the turn group, the treasury, today's timed events, the open `Decision`, the
+  `HeroInfo`s, the adventure map, the `Town`s, the battle as the battle wire's `Observation`);
+  `Decision`'s seven kinds as struct variants (`Offer { offer }` with `Offer` and its 13
+  `OfferKind`s, `LevelUp { level_up }`, `Meeting`, `ArmyDialog`, `Choice { choice }` with its two
+  `ChoiceKind`s, `University` with `UniversityVisit` and the `SlotState`s, `Hire { hire }` with
+  `HireTarget` and `HireCreature`), `PrimarySkill`; `HeroDetails` with `OfferLevels`,
+  `SkillLevel`, `Artifact`, `Bonuses`; `Town` with `Garrison`, `GarrisonStack`, `TownOwnerFacts`
+  (a fort level as 0 to 3, as the battle's `Siege`).
+- **The mapping** (`map::game`): `observe(state, rules, viewer)` calls `h3_game::observe` and maps
+  the whole, every field named, every enum without a wildcard; the battle through the battle's
+  own `map::observation`. T2a's `map::game::adventure` is gone: one public entry.
+- **Tests:** the inverse covers the whole observation (the battle compared on the wire); a
+  hand-built observation for each decision kind, each offer's and choice's kind, the four primary
+  skills and slot states, the three months, the four fort levels, details and owner facts present
+  and absent, maps back and round-trips; the played games of T2a check `observe` for every viewer
+  after every step, round-tripping every observation with a decision or a battle (they meet
+  offers, level-ups, meetings, a choice and battles).
+- **Dependencies.** `h3-heroes` too (T0's edge).

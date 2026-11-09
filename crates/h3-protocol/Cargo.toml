@@ -16,6 +16,7 @@ h3-battle.workspace = true
 # The whole game (E16 M5 T2, SRV-Q25).
 h3-adventure.workspace = true
 h3-game.workspace = true
+h3-heroes.workspace = true
 # no_std + alloc (ADR-0018 point 1): not inherited, the workspace entries enable `std`.
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }

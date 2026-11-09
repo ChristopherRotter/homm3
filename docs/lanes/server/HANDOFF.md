@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2a (the adventure map's wire, `wire::game`, `map::game`) done 2026-11-09; T2 is two pull requests (the user). **Open pull requests:** T2a's (this branch, `claude/determined-keller-jzd3w8`). **Next:** T2b (the rest of the observation: players, kingdom, decisions, heroes' details, towns, the battle, `map::game::observe`). **The review list so far:** the epic's "M5 part 1".
+- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2 (the observation's wire, `wire::game`, `map::game::observe`; two pull requests, the user: T2a #805, T2b) done 2026-11-09. **Open pull requests:** T2a's #805; T2b's from the same branch once #805 merged. **Next:** T3 (the game's commands, answers, rejections and events, the fold). **The review list so far:** the epic's "M5 part 1".
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -24,9 +24,9 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
-### 2026-11-09 — M5 T2a: the adventure map on the wire
+### 2026-11-09 — M5 T2: the game's observation on the wire
 
-Baseline: `master` ae7d260, CI green; the scoped verify's steps up to its tests passed (a VM restart cut its coverage). No original data. The user split T2 (T2a the adventure map, T2b the rest). Built: `wire::game` (the planes as `WireU64` words, the tiles as a palette and an index per tile: lossless, 4 to 64 views on the fixture maps), `map::game::adventure`, a test-only inverse checked on random games over five fixture maps. No message, no version step.
+Baseline: `master` ae7d260, CI green; the scoped verify's steps up to its tests passed (a VM restart cut its coverage). No original data. The user split T2 (T2a the adventure map, #805; T2b the rest). Built: `wire::game` (the planes as `WireU64` words, the tiles as a palette and an index per tile: lossless, 4 to 64 views on the fixture maps; the decisions, heroes' details, towns, the battle), `map::game::observe`, a test-only inverse checked on random games over five fixture maps. No message, no version step.
 
 ### 2026-11-09 — M5 T1: the measurement, events only
 

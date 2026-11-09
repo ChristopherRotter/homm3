@@ -1,18 +1,25 @@
-//! The whole game's wire (E16 M5 T2a): the adventure map maps every field of the engine's
-//! observation, losslessly (a test-only inverse gives the engine's observation back), for every
-//! viewer of games played at random on the fixture maps; its parts round-trip.
+//! The whole game's wire (E16 M5 T2): the observation maps every field of the engine's,
+//! losslessly (a test-only inverse gives the engine's observation back), for a hand-built one
+//! with every variant and for every viewer of games played at random on the fixture maps; its
+//! parts round-trip.
 
 use std::sync::{Arc, LazyLock};
 use std::vec;
 use std::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, BoatView, GuardsView, HeroView, Known as EngineKnown, KnownObject,
-    MonsterView, ObjectView, OwnHeroView, StaticTile, TileMask, TileView,
+    AdventureObservation, BoatView, ChoiceKind as EngineChoiceKind, GuardsView, HeroView,
+    Known as EngineKnown, KnownObject, MonsterView, ObjectView, OfferKind as EngineOfferKind,
+    OwnHeroView, StaticTile, TileMask, TileView,
 };
+use h3_battle::BattleSide;
 use h3_content::Formation as EngineFormation;
-use h3_contracts::{ArmyStack as EngineStack, HeroId, PlayerId, TownId};
-use h3_game::{GameRuleset, Viewer};
+use h3_contracts::{ArmyStack as EngineStack, FortLevel, HeroId, PlayerId, TownId};
+use h3_game::{
+    DecisionView, GameRuleset, GarrisonStackView, GarrisonView, HireView, LevelUpView, MonthKind,
+    PlayerView, SlotState as EngineSlot, TownOwnerView, TownView, Viewer,
+};
+use h3_heroes::PrimarySkill as EnginePrimary;
 use h3_kernel::handle::Handle;
 use h3_kernel::rng::{Rng, StreamId};
 use h3_sim::adventure::AdventureEnv;
@@ -20,7 +27,7 @@ use h3_sim::adventure::rollout::choose;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::map::game::{adventure, adventure_view};
+use crate::map::game::{adventure_view, observation, observe};
 use crate::wire::WireU64;
 use crate::wire::game::*;
 
@@ -406,7 +413,7 @@ fn the_adventure_maps_json_is_serdes_default_form() {
     assert_eq!(WireU64(52), wire.explored[0]);
 }
 
-/// Plays `steps` random steps of `map` and checks every viewer's map after each.
+/// Plays `steps` random steps of `map` and checks every viewer's observation after each.
 fn check_played(map: &[u8], seed: u64, steps: usize) -> (usize, usize) {
     let rules = &*RULES;
     let m = h3_map::read(map, &h3_map::Limits::default()).unwrap();
@@ -417,18 +424,19 @@ fn check_played(map: &[u8], seed: u64, steps: usize) -> (usize, usize) {
     for step in 0..steps {
         for player in (0..=u8::MAX).take(env.state().players()) {
             let viewer = PlayerId::new(player);
-            let o = env
-                .state()
-                .adventure()
-                .observe(rules.core(), rules.adventure(), viewer);
-            let wire = adventure(env.state(), rules, Viewer::Player(viewer));
-            assert_eq!(wire, adventure_view(&o));
-            assert_eq!(inverse(&wire), o, "step {step}, player {player}");
-            check_palette(&wire);
-            if step % 50 == 0 {
+            let o = h3_game::observe(env.state(), rules, Viewer::Player(viewer));
+            let wire = observe(env.state(), rules, Viewer::Player(viewer));
+            assert_eq!(wire, observation(&o));
+            assert_eq!(
+                inverse_game(&wire, o.battle.clone()),
+                o,
+                "step {step}, player {player}"
+            );
+            check_palette(&wire.adventure);
+            if step % 50 == 0 || wire.decision.is_some() || wire.battle.is_some() {
                 round_trips(&wire);
             }
-            largest = largest.max(wire.palette.len());
+            largest = largest.max(wire.adventure.palette.len());
             checked += 1;
         }
         let Some(seat) = env.to_move().next() else {
@@ -441,7 +449,7 @@ fn check_played(map: &[u8], seed: u64, steps: usize) -> (usize, usize) {
 }
 
 #[test]
-fn a_played_games_maps_map_back_for_every_viewer() {
+fn a_played_games_observations_map_back_for_every_viewer() {
     let maps: [(&[u8], u64); 5] = [
         (
             include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m"),
@@ -470,4 +478,495 @@ fn a_played_games_maps_map_back_for_every_viewer() {
         // A map's distinct tile views are few: 4 to 64 on these maps of 2 592 tiles.
         assert!((2..200).contains(&largest), "{largest}");
     }
+}
+
+// The whole observation's inverse (T2b); the battle's own mapping is the battle wire's
+// (`tests/mapping.rs`), so the battle is passed in and compared on the wire.
+
+fn amounts_back(a: &[Amount]) -> Vec<(h3_content::ResourceId, u32)> {
+    a.iter()
+        .map(|p| (Handle::from_raw(p.resource), p.amount))
+        .collect()
+}
+
+fn primary_back(p: PrimarySkill) -> EnginePrimary {
+    match p {
+        PrimarySkill::Attack => EnginePrimary::Attack,
+        PrimarySkill::Defense => EnginePrimary::Defense,
+        PrimarySkill::Power => EnginePrimary::Power,
+        PrimarySkill::Knowledge => EnginePrimary::Knowledge,
+    }
+}
+
+fn decision_back(d: &Decision) -> DecisionView {
+    match d {
+        Decision::Offer { offer } => DecisionView::Offer(h3_adventure::Offer {
+            hero: HeroId::new(offer.hero),
+            object_type: Handle::from_raw(offer.object_type),
+            anchor: pos_back(offer.anchor),
+            kind: match &offer.kind {
+                OfferKind::Reveal { price } => EngineOfferKind::Reveal {
+                    price: amounts_back(price),
+                },
+                OfferKind::Pass {} => EngineOfferKind::Pass,
+                OfferKind::Join {} => EngineOfferKind::Join,
+                OfferKind::JoinForGold { price } => EngineOfferKind::JoinForGold {
+                    price: amounts_back(price),
+                },
+                OfferKind::Pursue {} => EngineOfferKind::Pursue,
+                OfferKind::Fight {} => EngineOfferKind::Fight,
+                OfferKind::Gift { price } => EngineOfferKind::Gift {
+                    price: amounts_back(price),
+                },
+                OfferKind::Search {} => EngineOfferKind::Search,
+                OfferKind::OpenBox {} => EngineOfferKind::OpenBox,
+                OfferKind::SearchPyramid {} => EngineOfferKind::SearchPyramid,
+                OfferKind::Boat { price } => EngineOfferKind::Boat {
+                    price: amounts_back(price),
+                },
+                OfferKind::Hire { creatures } => EngineOfferKind::Hire {
+                    creatures: creatures.iter().copied().map(Handle::from_raw).collect(),
+                },
+                OfferKind::Guarded {
+                    creature,
+                    count_word,
+                } => EngineOfferKind::Guarded {
+                    creature: Handle::from_raw(*creature),
+                    count_word: *count_word,
+                },
+            },
+        }),
+        Decision::LevelUp { level_up } => DecisionView::LevelUp(LevelUpView {
+            hero: HeroId::new(level_up.hero),
+            level: level_up.level,
+            primary: primary_back(level_up.primary),
+            offers: level_up.offers.map(Handle::from_raw),
+        }),
+        Decision::Meeting { heroes } => DecisionView::Meeting {
+            heroes: heroes.map(HeroId::new),
+        },
+        Decision::ArmyDialog { hero, group, mine } => DecisionView::ArmyDialog {
+            hero: HeroId::new(*hero),
+            group: army_back(group),
+            mine: mine.map(|m| (Handle::from_raw(m.object_type), pos_back(m.anchor))),
+        },
+        Decision::Choice { choice } => DecisionView::Choice(h3_adventure::Choice {
+            hero: HeroId::new(choice.hero),
+            object_type: Handle::from_raw(choice.object_type),
+            anchor: pos_back(choice.anchor),
+            kind: match &choice.kind {
+                ChoiceKind::Chest { gold, experience } => EngineChoiceKind::Chest {
+                    gold: (Handle::from_raw(gold.resource), gold.amount),
+                    experience: *experience,
+                },
+                ChoiceKind::Primary {
+                    skills,
+                    amount,
+                    price,
+                    leave,
+                } => EngineChoiceKind::Primary {
+                    skills: skills.map(primary_back),
+                    amount: *amount,
+                    price: amounts_back(price),
+                    leave: *leave,
+                },
+            },
+        }),
+        Decision::University { visit, slots } => DecisionView::University {
+            visit: h3_adventure::UniversityVisit {
+                hero: HeroId::new(visit.hero),
+                object_type: Handle::from_raw(visit.object_type),
+                anchor: pos_back(visit.anchor),
+                skills: visit.skills.iter().copied().map(Handle::from_raw).collect(),
+                price: amounts_back(&visit.price),
+            },
+            slots: slots
+                .iter()
+                .map(|s| match s {
+                    SlotState::Known => EngineSlot::Known,
+                    SlotState::NoRoom => EngineSlot::NoRoom,
+                    SlotState::Barred => EngineSlot::Barred,
+                    SlotState::Open => EngineSlot::Open,
+                })
+                .collect(),
+        },
+        Decision::Hire { hire } => DecisionView::Hire(HireView {
+            target: match hire.target {
+                HireTarget::Hero { hero } => h3_adventure::HireTarget::Hero(HeroId::new(hero)),
+            },
+            object_type: Handle::from_raw(hire.object_type),
+            anchor: pos_back(hire.anchor),
+            creatures: hire
+                .creatures
+                .iter()
+                .map(|c| h3_game::HireCreature {
+                    creature: Handle::from_raw(c.creature),
+                    count: c.count,
+                    cost: amounts_back(&c.cost),
+                })
+                .collect(),
+        }),
+    }
+}
+
+fn artifact_back(a: Artifact) -> h3_heroes::ArtifactInstance {
+    h3_heroes::ArtifactInstance {
+        artifact: Handle::from_raw(a.artifact),
+        spell: a.spell.map(Handle::from_raw),
+    }
+}
+
+fn details_back(d: &HeroDetails) -> h3_heroes::HeroDetails {
+    h3_heroes::HeroDetails {
+        hero_type: Handle::from_raw(d.hero_type),
+        level: d.level,
+        experience: d.experience,
+        offered: h3_heroes::OfferLevels {
+            wisdom: d.offered.wisdom,
+            school: d.offered.school,
+        },
+        primary: d.primary,
+        skills: d
+            .skills
+            .iter()
+            .map(|s| (Handle::from_raw(s.skill), s.level))
+            .collect(),
+        worn: d.worn.iter().map(|a| a.map(artifact_back)).collect(),
+        backpack: d.backpack.iter().copied().map(artifact_back).collect(),
+        spells: d.spells.iter().copied().map(Handle::from_raw).collect(),
+        mana: d.mana,
+        bonuses: h3_heroes::BattleBonuses {
+            morale: d.bonuses.morale,
+            luck: d.bonuses.luck,
+            marks: d.bonuses.marks,
+        },
+    }
+}
+
+fn town_back(t: &Town) -> TownView {
+    TownView {
+        town: TownId::new(t.town),
+        anchor: pos_back(t.anchor),
+        owner: t.owner.map(PlayerId::new),
+        faction: Handle::from_raw(t.faction),
+        name: t.name.clone(),
+        fort: [
+            FortLevel::None,
+            FortLevel::Fort,
+            FortLevel::Citadel,
+            FortLevel::Castle,
+        ][usize::from(t.fort)],
+        capitol: t.capitol,
+        garrison: GarrisonView {
+            level: t.garrison.level,
+            stacks: t
+                .garrison
+                .stacks
+                .iter()
+                .map(|s| GarrisonStackView {
+                    creature: Handle::from_raw(s.creature),
+                    count_word: s.count_word,
+                    count: s.count,
+                })
+                .collect(),
+            army: t.garrison.army.as_deref().map(army_back),
+        },
+        owner_facts: t.owner_facts.as_ref().map(|f| TownOwnerView {
+            hall: f.hall,
+            income: amounts_back(&f.income),
+        }),
+    }
+}
+
+/// The wire's observation back in the engine's types, with `battle` for the battle's part.
+fn inverse_game(
+    g: &GameObservation,
+    battle: Option<h3_battle::Observation>,
+) -> h3_game::GameObservation {
+    assert_eq!(g.battle, battle.as_ref().map(crate::map::observation));
+    h3_game::GameObservation {
+        viewer: PlayerId::new(g.viewer),
+        day: g.day,
+        month: match g.month {
+            Month::Normal {} => MonthKind::Normal,
+            Month::Creature { creature } => MonthKind::Creature(Handle::from_raw(creature)),
+            Month::Plague {} => MonthKind::Plague,
+        },
+        players: g
+            .players
+            .iter()
+            .map(|p| PlayerView {
+                colour: p.colour,
+                acting: p.acting,
+            })
+            .collect(),
+        turn_group: g.turn_group.iter().copied().map(PlayerId::new).collect(),
+        treasury: g.treasury.clone(),
+        events_today: g.events_today.clone(),
+        decision: g.decision.as_ref().map(decision_back),
+        heroes: g
+            .heroes
+            .iter()
+            .map(|h| h3_game::HeroInfo {
+                id: HeroId::new(h.id),
+                hero_type: Handle::from_raw(h.hero_type),
+                details: h.details.as_ref().map(|d| Arc::new(details_back(d))),
+            })
+            .collect(),
+        adventure: inverse(&g.adventure),
+        towns: g.towns.iter().map(town_back).collect(),
+        battle,
+    }
+}
+
+fn price() -> Vec<(h3_content::ResourceId, u32)> {
+    vec![(Handle::from_raw(6), 1500), (Handle::from_raw(1), 2)]
+}
+
+/// One open decision of every kind, every offer's kind and every choice's.
+fn every_decision() -> Vec<DecisionView> {
+    let p = h3_adventure::Pos::new;
+    let hero = HeroId::new(4);
+    let (object_type, anchor) = (Handle::from_raw(70), p(5, 6, 1));
+    let offers = [
+        EngineOfferKind::Reveal { price: price() },
+        EngineOfferKind::Pass,
+        EngineOfferKind::Join,
+        EngineOfferKind::JoinForGold { price: price() },
+        EngineOfferKind::Pursue,
+        EngineOfferKind::Fight,
+        EngineOfferKind::Gift { price: Vec::new() },
+        EngineOfferKind::Search,
+        EngineOfferKind::OpenBox,
+        EngineOfferKind::SearchPyramid,
+        EngineOfferKind::Boat { price: price() },
+        EngineOfferKind::Hire {
+            creatures: vec![Handle::from_raw(3), Handle::from_raw(4)],
+        },
+        EngineOfferKind::Guarded {
+            creature: Handle::from_raw(9),
+            count_word: 3,
+        },
+    ];
+    let mut out: Vec<DecisionView> = offers
+        .into_iter()
+        .map(|kind| {
+            DecisionView::Offer(h3_adventure::Offer {
+                hero,
+                object_type,
+                anchor,
+                kind,
+            })
+        })
+        .collect();
+    let primaries = [
+        EnginePrimary::Attack,
+        EnginePrimary::Defense,
+        EnginePrimary::Power,
+        EnginePrimary::Knowledge,
+    ];
+    out.extend(primaries.map(|primary| {
+        DecisionView::LevelUp(LevelUpView {
+            hero,
+            level: 5,
+            primary,
+            offers: [Handle::from_raw(2), Handle::from_raw(14)],
+        })
+    }));
+    out.push(DecisionView::Meeting {
+        heroes: [hero, HeroId::new(7)],
+    });
+    out.push(DecisionView::ArmyDialog {
+        hero,
+        group: stacks(2),
+        mine: Some((object_type, anchor)),
+    });
+    out.push(DecisionView::ArmyDialog {
+        hero,
+        group: Vec::new(),
+        mine: None,
+    });
+    let choice = |kind| {
+        DecisionView::Choice(h3_adventure::Choice {
+            hero,
+            object_type,
+            anchor,
+            kind,
+        })
+    };
+    out.push(choice(EngineChoiceKind::Chest {
+        gold: (Handle::from_raw(6), 1000),
+        experience: 500,
+    }));
+    out.push(choice(EngineChoiceKind::Primary {
+        skills: [EnginePrimary::Attack, EnginePrimary::Knowledge],
+        amount: 2,
+        price: price(),
+        leave: true,
+    }));
+    out.push(DecisionView::University {
+        visit: h3_adventure::UniversityVisit {
+            hero,
+            object_type,
+            anchor,
+            skills: vec![
+                Handle::from_raw(1),
+                Handle::from_raw(2),
+                Handle::from_raw(3),
+            ],
+            price: price(),
+        },
+        slots: vec![
+            EngineSlot::Known,
+            EngineSlot::NoRoom,
+            EngineSlot::Barred,
+            EngineSlot::Open,
+        ],
+    });
+    out.push(DecisionView::Hire(HireView {
+        target: h3_adventure::HireTarget::Hero(hero),
+        object_type,
+        anchor,
+        creatures: vec![h3_game::HireCreature {
+            creature: Handle::from_raw(12),
+            count: 7,
+            cost: price(),
+        }],
+    }));
+    out
+}
+
+/// A whole observation with every optional part present, over the hand-built adventure map.
+fn every_game_part(decision: Option<DecisionView>, month: MonthKind) -> h3_game::GameObservation {
+    let p = h3_adventure::Pos::new;
+    let (ruleset, state) = super::battle();
+    let details = h3_heroes::HeroDetails {
+        hero_type: Handle::from_raw(33),
+        level: 6,
+        experience: 4500,
+        offered: h3_heroes::OfferLevels {
+            wisdom: 3,
+            school: 5,
+        },
+        primary: [2, 1, 3, 4],
+        skills: vec![(Handle::from_raw(7), 2), (Handle::from_raw(21), 1)],
+        worn: vec![
+            None,
+            Some(Handle::from_raw(40).into()),
+            Some(h3_heroes::ArtifactInstance::scroll(
+                Handle::from_raw(1),
+                Handle::from_raw(15),
+            )),
+        ],
+        backpack: vec![Handle::from_raw(55).into()],
+        spells: vec![Handle::from_raw(10), Handle::from_raw(12)],
+        mana: 30,
+        bonuses: h3_heroes::BattleBonuses {
+            morale: -3,
+            luck: 2,
+            marks: 0b101,
+        },
+    };
+    let town = |fort, top: bool| TownView {
+        town: TownId::new(2),
+        anchor: p(9, 9, 0),
+        owner: top.then_some(PlayerId::new(1)),
+        faction: Handle::from_raw(4),
+        name: top.then(|| std::string::String::from("Arran")),
+        fort,
+        capitol: top,
+        garrison: GarrisonView {
+            level: if top { 3 } else { 1 },
+            stacks: vec![GarrisonStackView {
+                creature: Handle::from_raw(8),
+                count_word: top.then_some(2),
+                count: top.then_some(14),
+            }],
+            army: top.then(|| stacks(1)),
+        },
+        owner_facts: top.then(|| TownOwnerView {
+            hall: 4,
+            income: price(),
+        }),
+    };
+    h3_game::GameObservation {
+        viewer: PlayerId::new(1),
+        day: 30,
+        month,
+        players: vec![
+            PlayerView {
+                colour: 0,
+                acting: false,
+            },
+            PlayerView {
+                colour: 3,
+                acting: true,
+            },
+        ],
+        turn_group: vec![PlayerId::new(1)],
+        treasury: vec![20, 5, 10, 5, 5, 5, 7500],
+        events_today: vec![0, 2],
+        decision,
+        heroes: vec![
+            h3_game::HeroInfo {
+                id: HeroId::new(4),
+                hero_type: Handle::from_raw(33),
+                details: Some(Arc::new(details)),
+            },
+            h3_game::HeroInfo {
+                id: HeroId::new(9),
+                hero_type: Handle::from_raw(70),
+                details: None,
+            },
+        ],
+        adventure: every_part(),
+        towns: vec![
+            town(FortLevel::None, false),
+            town(FortLevel::Fort, true),
+            town(FortLevel::Citadel, false),
+            town(FortLevel::Castle, true),
+        ],
+        battle: Some(h3_battle::observe(&state, &ruleset, BattleSide::Attacker)),
+    }
+}
+
+#[test]
+fn every_part_of_the_game_maps_back_and_round_trips() {
+    let months = [
+        MonthKind::Normal,
+        MonthKind::Creature(Handle::from_raw(13)),
+        MonthKind::Plague,
+    ];
+    let cases = every_decision()
+        .into_iter()
+        .map(Some)
+        .chain([None])
+        .zip(months.into_iter().cycle());
+    for (decision, month) in cases {
+        let o = every_game_part(decision, month);
+        let wire = observation(&o);
+        assert_eq!(inverse_game(&wire, o.battle.clone()), o);
+        round_trips(&wire);
+    }
+    // Without a battle.
+    let o = h3_game::GameObservation {
+        battle: None,
+        ..every_game_part(None, MonthKind::Normal)
+    };
+    assert_eq!(inverse_game(&observation(&o), None), o);
+}
+
+#[test]
+fn the_games_json_is_serdes_default_form() {
+    assert_eq!(text(&Month::Plague {}), r#"{"Plague":{}}"#);
+    assert_eq!(
+        text(&Decision::Meeting { heroes: [4, 7] }),
+        r#"{"Meeting":{"heroes":[4,7]}}"#
+    );
+    assert_eq!(text(&OfferKind::Pass {}), r#"{"Pass":{}}"#);
+    assert_eq!(text(&SlotState::NoRoom), r#""NoRoom""#);
+    assert_eq!(
+        text(&HireTarget::Hero { hero: 4 }),
+        r#"{"Hero":{"hero":4}}"#
+    );
 }

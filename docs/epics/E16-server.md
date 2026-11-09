@@ -286,10 +286,10 @@ inbox, the same day), mapped when it lands.
   - **T2a done** (2026-11-09; `E16-log.md`): the adventure map (`wire::game::Adventure`: the
     planes, the tiles as a palette and an index per tile, heroes, objects, boats, what the viewer
     knows), `map::game::adventure`; no message yet, no version step.
-  - **T2b** the rest: the players, the turn group, the kingdom (the treasury, today's timed
-    events), the open decision, the heroes (types, the owner's details), the towns, the battle
-    (the existing `Observation`), the whole observation and `map::game::observe`; the mapping
-    names every field. No diff (T1): the observation is the snapshot.
+  - **T2b done** (2026-11-09; `E16-log.md`): the rest (`wire::game::GameObservation`: the
+    players, the turn group, the month, the treasury, today's timed events, the open decision,
+    the heroes with the owner's details, the towns, the battle as the existing `Observation`) and
+    `map::game::observe`, the one public entry. No diff (T1): the observation is the snapshot.
 - **T3 the commands, answers, rejections and events**, projected per viewer (`h3_game::project`);
   round trips; the exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records)
   and its test over the golden replays (a snapshot folded with the events equals `observe` after
@@ -313,8 +313,10 @@ inbox, the same day), mapped when it lands.
 `Query::CreatureCastTargets {}` (a message shape); the last `Snapshot` before `GameEnded` and the
 start's `Events` (v38); T2a's shapes: a map's tiles as a palette of distinct views and an index
 per tile (lossless, a few views a map; one packed number cannot hold every handle below 2^53), the
-planes' words and an object's masks as `WireU64` strings, `map::game::adventure` as a public entry
-of its own (T2b may fold it into `observe`).
+planes' words and an object's masks as `WireU64` strings; T2b's: a decision's parts as struct
+variants holding their own types (`Decision::Offer { offer }`, for T3's events to reuse), a fort
+level as 0 to 3 (as the battle's `Siege`), a town's map name as a string (bounded with the frames
+in T7), a hero's `offered` levels shown to its owner as the engine's observation holds them.
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

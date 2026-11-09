@@ -457,6 +457,7 @@ dependencies = [
  "h3-content-battle",
  "h3-contracts",
  "h3-game",
+ "h3-heroes",
  "h3-kernel",
  "serde",
  "serde_json",

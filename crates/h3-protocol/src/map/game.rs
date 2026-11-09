@@ -2,35 +2,395 @@
 //! engine's observation of a game on the wire ([`crate::wire::game`]). Every field of the
 //! engine's types is named in a pattern, without `..`, and every enum is matched without a
 //! wildcard: a new field or variant fails this crate's build until it is mapped. What leaves is
-//! projected by construction: [`adventure`] takes the viewer and calls the engine's `observe`.
-//! M5 T2a: the adventure map; T2b the rest of the observation.
+//! projected by construction: [`observe`] takes the viewer and calls the engine's `observe`.
 
 use alloc::collections::BTreeMap;
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, BoatView, GuardsView, HeroView, Known as EngineKnown, KnownObject,
-    MonsterView, ObjectTypeId, ObjectView, OwnHeroView, StaticTile, TileMask, TileView,
+    AdventureObservation, BoatView, Choice as EngineChoice, ChoiceKind as EngineChoiceKind,
+    GuardsView, HeroView, HireTarget as EngineHireTarget, Known as EngineKnown, KnownObject,
+    MonsterView, ObjectTypeId, ObjectView, Offer as EngineOffer, OfferKind as EngineOfferKind,
+    OwnHeroView, StaticTile, TileMask, TileView, UniversityVisit as EngineVisit,
 };
 use h3_content::{Formation as EngineFormation, ResourceId};
-use h3_contracts::ArmyStack as EngineStack;
-use h3_game::{GameRuleset, GameState, Viewer};
+use h3_contracts::{ArmyStack as EngineStack, FortLevel};
+use h3_game::{
+    DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
+    HireCreature as EngineCreature, HireView, LevelUpView, MonthKind, PlayerView,
+    SlotState as EngineSlot, TownOwnerView, TownView, Viewer,
+};
+use h3_heroes::{
+    ArtifactInstance, BattleBonuses, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
+    PrimarySkill as EnginePrimary,
+};
 use h3_kernel::handle::Handle;
 
 use crate::wire::WireU64;
 use crate::wire::game::{
-    Adventure, Amount, ArmyStack, Boat, Formation, Guards, Known, KnownObject as WireKnownObject,
-    MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos, Tile,
+    Adventure, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind, Decision, Formation,
+    GameObservation, Garrison, GarrisonStack, Guards, HeroDetails, HeroInfo, Hire, HireCreature,
+    HireTarget, Known, KnownObject as WireKnownObject, LevelUp, MapHero, Monster, Month, Object,
+    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, SkillLevel,
+    SlotState, Tile, Town, TownOwnerFacts, UniversityVisit,
 };
 
-/// The adventure map as `viewer` sees it, on the wire (ADV-FOG-004 to ADV-FOG-006).
-pub fn adventure(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> Adventure {
-    let Viewer::Player(player) = viewer;
-    adventure_view(
-        &state
-            .adventure()
-            .observe(rules.core(), rules.adventure(), player),
-    )
+/// What `viewer` may know of the game, on the wire (`h3_game::observe`).
+pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {
+    observation(&h3_game::observe(state, rules, viewer))
+}
+
+/// A game observation on the wire.
+pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
+    let h3_game::GameObservation {
+        viewer,
+        day,
+        month,
+        players,
+        turn_group,
+        treasury,
+        events_today,
+        decision,
+        heroes,
+        adventure,
+        towns,
+        battle,
+    } = o;
+    GameObservation {
+        viewer: viewer.raw(),
+        day: *day,
+        month: match month {
+            MonthKind::Normal => Month::Normal {},
+            MonthKind::Creature(creature) => Month::Creature {
+                creature: creature.raw(),
+            },
+            MonthKind::Plague => Month::Plague {},
+        },
+        players: players
+            .iter()
+            .map(|&PlayerView { colour, acting }| Player { colour, acting })
+            .collect(),
+        turn_group: turn_group.iter().map(|p| p.raw()).collect(),
+        treasury: treasury.clone(),
+        events_today: events_today.clone(),
+        decision: decision.as_ref().map(decision_view),
+        heroes: heroes.iter().map(hero_info).collect(),
+        adventure: adventure_view(adventure),
+        towns: towns.iter().map(town).collect(),
+        battle: battle.as_ref().map(crate::map::observation),
+    }
+}
+
+/// An open decision on the wire.
+fn decision_view(d: &DecisionView) -> Decision {
+    match d {
+        DecisionView::Offer(o) => Decision::Offer { offer: offer(o) },
+        DecisionView::LevelUp(LevelUpView {
+            hero,
+            level,
+            primary,
+            offers,
+        }) => Decision::LevelUp {
+            level_up: LevelUp {
+                hero: hero.raw(),
+                level: *level,
+                primary: primary_skill(*primary),
+                offers: offers.map(Handle::raw),
+            },
+        },
+        DecisionView::Meeting { heroes } => Decision::Meeting {
+            heroes: heroes.map(h3_contracts::HeroId::raw),
+        },
+        DecisionView::ArmyDialog { hero, group, mine } => Decision::ArmyDialog {
+            hero: hero.raw(),
+            group: army(group),
+            mine: mine.map(object_ref),
+        },
+        DecisionView::Choice(c) => Decision::Choice { choice: choice(c) },
+        DecisionView::University { visit, slots } => {
+            let EngineVisit {
+                hero,
+                object_type,
+                anchor,
+                skills,
+                price,
+            } = visit;
+            Decision::University {
+                visit: UniversityVisit {
+                    hero: hero.raw(),
+                    object_type: object_type.raw(),
+                    anchor: pos(*anchor),
+                    skills: skills.iter().map(|&s| s.raw()).collect(),
+                    price: amounts(price),
+                },
+                slots: slots
+                    .iter()
+                    .map(|slot| match slot {
+                        EngineSlot::Known => SlotState::Known,
+                        EngineSlot::NoRoom => SlotState::NoRoom,
+                        EngineSlot::Barred => SlotState::Barred,
+                        EngineSlot::Open => SlotState::Open,
+                    })
+                    .collect(),
+            }
+        }
+        DecisionView::Hire(h) => Decision::Hire { hire: hire(h) },
+    }
+}
+
+/// An offer on the wire.
+fn offer(o: &EngineOffer) -> Offer {
+    let EngineOffer {
+        hero,
+        object_type,
+        anchor,
+        kind,
+    } = o;
+    Offer {
+        hero: hero.raw(),
+        object_type: object_type.raw(),
+        anchor: pos(*anchor),
+        kind: match kind {
+            EngineOfferKind::Reveal { price } => OfferKind::Reveal {
+                price: amounts(price),
+            },
+            EngineOfferKind::Pass => OfferKind::Pass {},
+            EngineOfferKind::Join => OfferKind::Join {},
+            EngineOfferKind::JoinForGold { price } => OfferKind::JoinForGold {
+                price: amounts(price),
+            },
+            EngineOfferKind::Pursue => OfferKind::Pursue {},
+            EngineOfferKind::Fight => OfferKind::Fight {},
+            EngineOfferKind::Gift { price } => OfferKind::Gift {
+                price: amounts(price),
+            },
+            EngineOfferKind::Search => OfferKind::Search {},
+            EngineOfferKind::OpenBox => OfferKind::OpenBox {},
+            EngineOfferKind::SearchPyramid => OfferKind::SearchPyramid {},
+            EngineOfferKind::Boat { price } => OfferKind::Boat {
+                price: amounts(price),
+            },
+            EngineOfferKind::Hire { creatures } => OfferKind::Hire {
+                creatures: creatures.iter().map(|&c| c.raw()).collect(),
+            },
+            EngineOfferKind::Guarded {
+                creature,
+                count_word,
+            } => OfferKind::Guarded {
+                creature: creature.raw(),
+                count_word: *count_word,
+            },
+        },
+    }
+}
+
+/// A primary skill on the wire.
+const fn primary_skill(skill: EnginePrimary) -> PrimarySkill {
+    match skill {
+        EnginePrimary::Attack => PrimarySkill::Attack,
+        EnginePrimary::Defense => PrimarySkill::Defense,
+        EnginePrimary::Power => PrimarySkill::Power,
+        EnginePrimary::Knowledge => PrimarySkill::Knowledge,
+    }
+}
+
+/// A visit's choice on the wire.
+fn choice(c: &EngineChoice) -> Choice {
+    let EngineChoice {
+        hero,
+        object_type,
+        anchor,
+        kind,
+    } = c;
+    Choice {
+        hero: hero.raw(),
+        object_type: object_type.raw(),
+        anchor: pos(*anchor),
+        kind: match kind {
+            EngineChoiceKind::Chest { gold, experience } => ChoiceKind::Chest {
+                gold: amount(*gold),
+                experience: *experience,
+            },
+            EngineChoiceKind::Primary {
+                skills,
+                amount: gain,
+                price,
+                leave,
+            } => ChoiceKind::Primary {
+                skills: skills.map(primary_skill),
+                amount: *gain,
+                price: amounts(price),
+                leave: *leave,
+            },
+        },
+    }
+}
+
+/// A hire dialog on the wire.
+fn hire(h: &HireView) -> Hire {
+    let HireView {
+        target,
+        object_type,
+        anchor,
+        creatures,
+    } = h;
+    Hire {
+        target: match target {
+            EngineHireTarget::Hero(hero) => HireTarget::Hero { hero: hero.raw() },
+        },
+        object_type: object_type.raw(),
+        anchor: pos(*anchor),
+        creatures: creatures
+            .iter()
+            .map(
+                |EngineCreature {
+                     creature,
+                     count,
+                     cost,
+                 }| HireCreature {
+                    creature: creature.raw(),
+                    count: *count,
+                    cost: amounts(cost),
+                },
+            )
+            .collect(),
+    }
+}
+
+/// What a viewer knows of a hero on the wire.
+fn hero_info(h: &EngineInfo) -> HeroInfo {
+    let EngineInfo {
+        id,
+        hero_type,
+        details,
+    } = h;
+    HeroInfo {
+        id: id.raw(),
+        hero_type: hero_type.raw(),
+        details: details.as_deref().map(hero_details),
+    }
+}
+
+/// A hero's details on the wire.
+fn hero_details(d: &EngineDetails) -> HeroDetails {
+    let EngineDetails {
+        hero_type,
+        level,
+        experience,
+        offered,
+        primary,
+        skills,
+        worn,
+        backpack,
+        spells,
+        mana,
+        bonuses,
+    } = d;
+    let EngineLevels { wisdom, school } = *offered;
+    let BattleBonuses {
+        morale,
+        luck,
+        marks,
+    } = *bonuses;
+    HeroDetails {
+        hero_type: hero_type.raw(),
+        level: *level,
+        experience: *experience,
+        offered: OfferLevels { wisdom, school },
+        primary: *primary,
+        skills: skills
+            .iter()
+            .map(|&(skill, level)| SkillLevel {
+                skill: skill.raw(),
+                level,
+            })
+            .collect(),
+        worn: worn.iter().map(|a| a.map(artifact)).collect(),
+        backpack: backpack.iter().copied().map(artifact).collect(),
+        spells: spells.iter().map(|&s| s.raw()).collect(),
+        mana: *mana,
+        bonuses: Bonuses {
+            morale,
+            luck,
+            marks,
+        },
+    }
+}
+
+/// An artifact on the wire.
+const fn artifact(a: ArtifactInstance) -> Artifact {
+    let ArtifactInstance { artifact, spell } = a;
+    Artifact {
+        artifact: artifact.raw(),
+        spell: match spell {
+            Some(s) => Some(s.raw()),
+            None => None,
+        },
+    }
+}
+
+/// A town as its viewer sees it on the wire.
+fn town(t: &TownView) -> Town {
+    let TownView {
+        town,
+        anchor,
+        owner,
+        faction,
+        name,
+        fort,
+        capitol,
+        garrison,
+        owner_facts,
+    } = t;
+    let GarrisonView {
+        level,
+        stacks,
+        army: garrison_army,
+    } = garrison;
+    Town {
+        town: town.raw(),
+        anchor: pos(*anchor),
+        owner: owner.map(h3_contracts::PlayerId::raw),
+        faction: faction.raw(),
+        name: name.as_deref().map(String::from),
+        fort: match fort {
+            FortLevel::None => 0,
+            FortLevel::Fort => 1,
+            FortLevel::Citadel => 2,
+            FortLevel::Castle => 3,
+        },
+        capitol: *capitol,
+        garrison: Garrison {
+            level: *level,
+            stacks: stacks
+                .iter()
+                .map(
+                    |&GarrisonStackView {
+                         creature,
+                         count_word,
+                         count,
+                     }| GarrisonStack {
+                        creature: creature.raw(),
+                        count_word,
+                        count,
+                    },
+                )
+                .collect(),
+            army: garrison_army.as_deref().map(army),
+        },
+        owner_facts: owner_facts
+            .as_ref()
+            .map(|TownOwnerView { hall, income }| TownOwnerFacts {
+                hall: *hall,
+                income: amounts(income),
+            }),
+    }
+}
+
+/// Amounts of resources on the wire.
+fn amounts(price: &[(ResourceId, u32)]) -> Vec<Amount> {
+    price.iter().copied().map(amount).collect()
 }
 
 /// An adventure observation on the wire.
@@ -288,7 +648,7 @@ fn known_object(k: &KnownObject) -> WireKnownObject {
                 skill: skill.map(Handle::raw),
             },
             EngineKnown::Price(price) => Known::Price {
-                price: price.iter().copied().map(amount).collect(),
+                price: amounts(price),
             },
             EngineKnown::Skills(skills) => Known::Skills {
                 skills: skills.iter().map(|&s| s.raw()).collect(),
