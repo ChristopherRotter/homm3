@@ -42,6 +42,8 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// `AdventureState::buildable_shipyards`). Empty for a player whose turn is not running or who
 /// is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves are
 /// [`legal_moves`]; a meeting's and an army dialog's management commands [`legal_management`]'s.
+/// A town's build (`GameCommand::Town`, E09 T18b1) is not listed yet: E09 T18b2 lists the
+/// payable builds with the views that tell them.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
 // rule: GAM-DEC-008, ADV-SHY-003
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {

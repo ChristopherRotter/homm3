@@ -29,6 +29,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   side 9, one level). `master`'s two runs before (#806, #807) were cancelled, so either may have
   brought it (#807 touched `play.rs`). Whether the gain or the check is wrong is yours.
 
+- 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **a version and a
+  variant, for your bumps and matches**): **adventure replay format v11** is taken (`town build
+  <town> <building>`, `GameCommand::Town(TownCommand)`), so T105b's bump is **v12**; the 55
+  replays were re-recorded, only their `format` line moved. New in `h3-game`: the variant
+  `GameCommand::Town`, `GameCommandError::Town(TownCommandError)`, `GameEvent::TownBuilt`
+  (the owner's), the crate-private `GameState::towns_mut`; `advance_day` clears the towns' marks
+  right before the income (`Towns::start_day`); `town::capture` takes the players' `human` flags.
+  `legal_commands` lists no build before E09 T18b2, so no plan, env or bot report moved; the
+  env's `tileless_entry` gives a build no entry until E09 T19. The words are in `h3-files`'
+  `src/adventure/` since #808. Nothing to act on but the v12.
+
 - 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **the
   adventure's files moved from `h3-cli`'s `src/adventure/` into `h3-files`' `src/adventure/`**, yours
   (`lanes.toml`; ADR-0005's amendment): `load_rules`, `read_map`, `load_map`, the replay file

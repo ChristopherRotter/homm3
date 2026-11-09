@@ -29,7 +29,7 @@ pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
     GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
-    StandReject, UniversityAnswer,
+    StandReject, TownCommand, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
 

@@ -15,8 +15,9 @@ use h3_content::{CreatureTypeId, Formation as EngineFormation};
 use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace,
-    ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
-    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, UniversityAnswer,
+    BuildingId, ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
+    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, TownCommand, TownCommandError,
+    UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -114,6 +115,10 @@ fn every_command() -> Vec<GameCommand> {
         },
     ];
     commands.extend(manage.map(GameCommand::Manage));
+    commands.push(GameCommand::Town(TownCommand::Build {
+        town: TownId::new(3),
+        building: BuildingId::from_index(9).unwrap(),
+    }));
     commands
 }
 
@@ -224,6 +229,21 @@ fn every_rejection() -> Vec<GameCommandError> {
             HireError::NoRoom,
         ]
         .map(E::Hire),
+    );
+    errors.extend(
+        [
+            TownCommandError::UnknownTown,
+            TownCommandError::NotOwner,
+            TownCommandError::UnknownBuilding,
+            TownCommandError::Built,
+            TownCommandError::Forbidden,
+            TownCommandError::Grail,
+            TownCommandError::Requirements,
+            TownCommandError::Capitol,
+            TownCommandError::OfferedAs(BuildingId::from_index(37).unwrap()),
+            TownCommandError::BuiltToday,
+        ]
+        .map(E::Town),
     );
     errors
 }
@@ -365,6 +385,20 @@ fn reject_back(reject: w::GameReject) -> GameCommandError {
             w::HireReject::Amount { amount } => HireError::Amount(amount),
             w::HireReject::NoRoom {} => HireError::NoRoom,
         }),
+        R::Town { error } => E::Town(match error {
+            w::TownReject::UnknownTown {} => TownCommandError::UnknownTown,
+            w::TownReject::NotOwner {} => TownCommandError::NotOwner,
+            w::TownReject::UnknownBuilding {} => TownCommandError::UnknownBuilding,
+            w::TownReject::Built {} => TownCommandError::Built,
+            w::TownReject::Forbidden {} => TownCommandError::Forbidden,
+            w::TownReject::Grail {} => TownCommandError::Grail,
+            w::TownReject::Requirements {} => TownCommandError::Requirements,
+            w::TownReject::Capitol {} => TownCommandError::Capitol,
+            w::TownReject::OfferedAs { building } => {
+                TownCommandError::OfferedAs(BuildingId::from_index(usize::from(building)).unwrap())
+            }
+            w::TownReject::BuiltToday {} => TownCommandError::BuiltToday,
+        }),
     }
 }
 
@@ -392,16 +426,29 @@ fn every_command_maps_to_the_wire_and_back_and_round_trips() {
     for c in every_command() {
         let wire = command(&c);
         round_trips(&wire);
-        assert_eq!(command_to_engine(wire), c);
+        assert_eq!(command_to_engine(wire), Ok(c));
     }
+}
+
+#[test]
+fn a_building_beyond_every_record_is_refused_before_the_engine() {
+    let build = |building| w::GameCommand::Town {
+        command: w::TownCommand::Build { town: 3, building },
+    };
+    let refused = w::GameReject::Town {
+        error: w::TownReject::UnknownBuilding {},
+    };
+    assert_eq!(command_to_engine(build(64)), Err(refused));
+    assert_eq!(command_to_engine(build(u8::MAX)), Err(refused));
+    assert!(command_to_engine(build(63)).is_ok());
 }
 
 #[test]
 fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
     // 15 of the game's own, 31 of the battle's, 21 of the adventure's, 10 of the army's, 6 of
-    // an artifact's move, 3 of a combination's, 4 of a hire's.
-    assert_eq!(errors.len(), 90);
+    // an artifact's move, 3 of a combination's, 4 of a hire's, 10 of a town's.
+    assert_eq!(errors.len(), 100);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {
@@ -500,7 +547,7 @@ fn check_played(map: &[u8], seed: u64, steps: usize, met: &mut BTreeSet<String>)
     let mut rng = Rng::for_stream(seed, StreamId::AGENT);
     let back = |c: &GameCommand| {
         let wire = command(c);
-        assert_eq!(&command_to_engine(wire.clone()), c);
+        assert_eq!(command_to_engine(wire.clone()).as_ref(), Ok(c));
         wire
     };
     let mut checked = 0;

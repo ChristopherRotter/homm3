@@ -280,6 +280,17 @@ fn event(e: &EngineEvent) -> GameEvent {
             town: town.raw(),
             capitol,
         },
+        EngineEvent::TownBuilt {
+            player,
+            town,
+            building,
+            event,
+        } => GameEvent::TownBuilt {
+            player: player.raw(),
+            town: town.raw(),
+            building: building.raw(),
+            event,
+        },
     }
 }
 

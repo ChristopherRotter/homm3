@@ -349,7 +349,8 @@ battle wire's `Event`, a hero's change's tuple variants as struct variants; T3c1
 a method of the wire's observation (`GameObservation::fold`, `no_std`, for clients and records),
 what it takes from an event's documentation (a built boat's facing 2, a creature month's
 monster's one-tile masks, a group's first turn start ending the group before), a Leave Guards
-dialog's group kept on its mine at the close.
+dialog's group kept on its mine at the close, `command_to_engine` refusing a building beyond any
+record (64 or more) as `UnknownBuilding` before the engine (E09 T18b1's build, mapped in T3c1).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

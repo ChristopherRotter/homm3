@@ -589,6 +589,17 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             capitol,
             seen_by: alone,
         },
+        G::TownBuilt {
+            player,
+            town,
+            building,
+            event,
+        } => GameEvent::TownBuilt {
+            player: PlayerId::new(player),
+            town: TownId::new(town),
+            building: h3_game::BuildingId::from_index(usize::from(building)).unwrap(),
+            event,
+        },
     }
 }
 
@@ -788,6 +799,18 @@ fn every_event() -> Vec<GameEvent> {
             town: TownId::new(2),
             capitol: false,
             seen_by,
+        },
+        GameEvent::TownBuilt {
+            player: P0,
+            town: TownId::new(2),
+            building: h3_game::BuildingId::from_index(12).unwrap(),
+            event: None,
+        },
+        GameEvent::TownBuilt {
+            player: P0,
+            town: TownId::new(1),
+            building: h3_game::BuildingId::from_index(63).unwrap(),
+            event: Some(4),
         },
     ];
     events.extend(
@@ -1006,8 +1029,8 @@ fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 32 kinds of event (the adventure's as one).
-    assert_eq!(distinct.len(), 32, "{distinct:?}");
+    // The game's 33 kinds of event (the adventure's as one).
+    assert_eq!(distinct.len(), 33, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

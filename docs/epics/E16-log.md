@@ -2126,6 +2126,13 @@ verify passed its tests and coverage (CI's run on `master` is red by `h3-map`'s 
 | once-marks | 7 (3) | 4 | a once-per-hero visit's mark (no event) |
 | bought | 2 (2) | 2 | a Cartographer's type (the offer's kind is not carried) |
 
+- **The town lane's build mapped** (E09 T18b1, #809, merged into the branch the same day; its
+  variants broke only this branch, `master` holding T2 alone): `wire::game::{TownCommand,
+  TownReject}` and `GameEvent::TownBuilt`, one to one; the fold leaves a build's effect on its
+  town's view to the rules (SRV-Q27 (2)), no golden replay builds yet. `command_to_engine` now
+  returns a `Result`: a building at an index of 64 or more, which `h3_towns::BuildingId` cannot
+  hold, is refused as `TownReject::UnknownBuilding` before the engine, never substituted. The
+  hand-built lists: 100 rejections, 33 event kinds. The harness's numbers did not move.
 - **For T3c2:** each row a stub (`SRV-STUB-<n>`) with its lane's inbox note: the adventure lane
   (a) to (c), (d)'s visit, the decision views, the derived values of the heroes, armies, mines and
   Shipyards, a visit's knowledge and marks, the Cartographer's type; the town lane (d)'s garrison,

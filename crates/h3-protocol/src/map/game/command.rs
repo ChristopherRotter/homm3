@@ -12,10 +12,11 @@ use h3_contracts::{HeroId, TownId};
 use h3_game::{
     Answer as EngineAnswer, ArenaChoice as EngineArena, ArmyCommand as EngineArmy,
     ArmyCommandError, ArmyRef as EngineArmyRef, ArmySlot as EngineSlot,
-    ArtifactPlace as EnginePlace, ChestChoice as EngineChest, Consent as EngineConsent,
+    ArtifactPlace as EnginePlace, BuildingId, ChestChoice as EngineChest, Consent as EngineConsent,
     GameCommand as EngineCommand, GameCommandError, HireAnswer as EngineHire, HireError,
     Manage as EngineManage, ManageError, Position, SchoolChoice as EngineSchool,
-    SkillOffer as EngineOffer, UniversityAnswer as EngineUniversity,
+    SkillOffer as EngineOffer, TownCommand as EngineTown, TownCommandError,
+    UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -26,7 +27,7 @@ use crate::wire::game::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
     GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, Pos,
-    SchoolChoice, SkillOffer, StandReject, UniversityAnswer,
+    SchoolChoice, SkillOffer, StandReject, TownCommand, TownReject, UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -53,6 +54,14 @@ pub fn command(command: &EngineCommand) -> GameCommand {
             command: from_engine::command(*c),
         },
         EngineCommand::Manage(m) => GameCommand::Manage { manage: manage(*m) },
+        EngineCommand::Town(c) => GameCommand::Town {
+            command: match *c {
+                EngineTown::Build { town, building } => TownCommand::Build {
+                    town: town.raw(),
+                    building: building.raw(),
+                },
+            },
+        },
     }
 }
 
@@ -203,8 +212,13 @@ fn step(step: usize) -> u32 {
 
 /// A client's command in the engine. The engine validates every value against the state and the
 /// actor, which the session gives (ADR-0008).
-pub fn command_to_engine(command: GameCommand) -> EngineCommand {
-    match command {
+///
+/// # Errors
+///
+/// A value no engine command holds: a building at an index of 64 or more, which no faction's
+/// record has ([`TownReject::UnknownBuilding`]), the state untouched.
+pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReject> {
+    Ok(match command {
         GameCommand::EndTurn {} => EngineCommand::EndTurn,
         GameCommand::Adventure { command } => EngineCommand::Adventure(match command {
             AdventureCommand::MoveHero { hero, path } => EngineAdventure::MoveHero {
@@ -222,7 +236,15 @@ pub fn command_to_engine(command: GameCommand) -> EngineCommand {
         GameCommand::Answer { answer } => EngineCommand::Answer(answer_to_engine(answer)),
         GameCommand::Battle { command } => EngineCommand::Battle(battle_to_engine(command)),
         GameCommand::Manage { manage } => EngineCommand::Manage(manage_to_engine(manage)),
-    }
+        GameCommand::Town {
+            command: TownCommand::Build { town, building },
+        } => EngineCommand::Town(EngineTown::Build {
+            town: TownId::new(town),
+            building: BuildingId::from_index(usize::from(building)).ok_or(GameReject::Town {
+                error: TownReject::UnknownBuilding {},
+            })?,
+        }),
+    })
 }
 
 /// A wire tile in the engine.
@@ -378,6 +400,22 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 },
                 HireError::Amount(amount) => HireReject::Amount { amount },
                 HireError::NoRoom => HireReject::NoRoom {},
+            },
+        },
+        E::Town(error) => GameReject::Town {
+            error: match error {
+                TownCommandError::UnknownTown => TownReject::UnknownTown {},
+                TownCommandError::NotOwner => TownReject::NotOwner {},
+                TownCommandError::UnknownBuilding => TownReject::UnknownBuilding {},
+                TownCommandError::Built => TownReject::Built {},
+                TownCommandError::Forbidden => TownReject::Forbidden {},
+                TownCommandError::Grail => TownReject::Grail {},
+                TownCommandError::Requirements => TownReject::Requirements {},
+                TownCommandError::Capitol => TownReject::Capitol {},
+                TownCommandError::OfferedAs(building) => TownReject::OfferedAs {
+                    building: building.raw(),
+                },
+                TownCommandError::BuiltToday => TownReject::BuiltToday {},
             },
         },
     }

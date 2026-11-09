@@ -187,6 +187,9 @@ impl GameObservation {
                     town.capitol = capitol;
                 }
             }
+            // What a building changes in its town's view (its fort, its hall and income for the
+            // owner's team) is the rules' (SRV-Q27 (2)); its price came as `ResourcePaid`.
+            GameEvent::TownBuilt { .. } => {}
         }
     }
 

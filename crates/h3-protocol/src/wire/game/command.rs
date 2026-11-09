@@ -41,6 +41,25 @@ pub enum GameCommand {
         /// The command.
         manage: Manage,
     },
+    /// A command to one of the actor's towns (E09 T18b1).
+    Town {
+        /// The command.
+        command: TownCommand,
+    },
+}
+
+/// A command to a town (`h3_towns::TownCommand`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum TownCommand {
+    /// Builds a building in a town of the actor's, as its hall offers it (TWN-BLD-001).
+    Build {
+        /// The town.
+        town: u16,
+        /// The building: its index in the town's faction's record, below 64 (a building beyond
+        /// is refused as not of the record, [`TownReject::UnknownBuilding`]).
+        building: u8,
+    },
 }
 
 /// A command to the adventure map (`h3_adventure::AdventureCommand`).
@@ -368,6 +387,40 @@ pub enum GameReject {
         /// Why.
         error: HireReject,
     },
+    /// A town command the town refused.
+    Town {
+        /// Why.
+        error: TownReject,
+    },
+}
+
+/// Why a town command was refused (`h3_towns::TownCommandError`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum TownReject {
+    /// The town is not the game's.
+    UnknownTown {},
+    /// The actor does not own the town.
+    NotOwner {},
+    /// The building is not of the town's faction's record.
+    UnknownBuilding {},
+    /// It was ever built: it stands, or a building that supersedes it does.
+    Built {},
+    /// It is forbidden in this town.
+    Forbidden {},
+    /// The Grail's building, which the hall never builds.
+    Grail {},
+    /// Not every building it requires was ever built.
+    Requirements {},
+    /// A Capitol while the player holds another.
+    Capitol {},
+    /// A horde the hall offers as another building.
+    OfferedAs {
+        /// The building the hall offers it as.
+        building: u8,
+    },
+    /// The town was built in today (TWN-BLD-004).
+    BuiltToday {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is

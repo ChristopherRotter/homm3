@@ -11,9 +11,9 @@ use h3_contracts::TownId;
 use crate::building::BuildingId;
 
 /// A command to the town context, issued by a player (E09 decision 45). Increment 3's recruitment
-/// and increment 4's services add their variants.
+/// and increment 4's services add their variants; exhaustive, as the game's other commands, so
+/// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
 // rule: TWN-BLD-001
 pub enum TownCommand {
     /// Builds `building` in `town`, the player's, as its hall offers it ([`crate::buildable`]),
@@ -31,7 +31,6 @@ pub enum TownCommand {
 /// applies in the order they are listed (E09 design §27: the hall's texts' order, the day's mark
 /// last).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[non_exhaustive]
 pub enum TownCommandError {
     /// The town is not in the game's store.
     UnknownTown,

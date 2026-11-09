@@ -496,6 +496,12 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 stack: stack(0, 2),
             },
             GameEvent::DecisionClosed { player: 1 },
+            GameEvent::TownBuilt {
+                player: 1,
+                town: 1,
+                building: 4,
+                event: None,
+            },
             // Heroes without details or own view, an unknown one, a town not in sight.
             GameEvent::HeroChanged {
                 player: 1,

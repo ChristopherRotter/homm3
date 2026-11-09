@@ -219,11 +219,11 @@ fn a_hire_dialog_is_answered_through_the_env() {
     assert!(!env.state().has_decision(RED));
 }
 
-/// E08 T95b (replay format v10): a recorded game of a hire dialog's answers, a purchase and its
-/// `Close`, verifies.
+/// E08 T95b (replay format v10; v11 since E09 T18b1, the town context's commands): a recorded
+/// game of a hire dialog's answers, a purchase and its `Close`, verifies.
 #[test]
 fn a_replay_records_a_hire_dialogs_answers() {
-    assert_eq!(replay::REPLAY_FORMAT_VERSION, 10);
+    assert_eq!(replay::REPLAY_FORMAT_VERSION, 11);
     let (mut env, mut commands) = hired("t:several");
     for action in [Action::hire(2), Action::decline()] {
         let (_, command) = env.step_decoded(RED, action, &mut Vec::new()).unwrap();

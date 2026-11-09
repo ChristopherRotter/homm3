@@ -8,28 +8,31 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a (done), T18b (next), T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1 (done), T18b2 (next), T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T18b — the command, the legal builds, the day's start, the capture's mark, the views**
-(design §29 to §31 but the town events, §34, §35's round 6; queued 2026-11-09 by T18a;
-`cross-lane`: `h3-game`'s `command.rs`, `legal.rs`, `state/day.rs`, the adventure replay format
-and `h3-sim`'s replay are the adventure and AI lanes'; look at the adventure lane's open pull
-requests first, E08 T105b bumps the same versions): `GameCommand::Town(TownCommand)` run as
-`GameCommand::Adventure` (`check_ready`, then `town::command`: the store, the owner, the actor's
-other Capitol, `h3_towns::check_build`, the treasury, then infallibly the price paid, `Towns::build`
-with the mark, the events; TWN-BLD-001's game half, `GameCommandError::Town`); `legal_commands`
-after the boats (each owned town whose mark is clear, each payable building of `buildable`, in
-`TownId` and record order) and `GameState::town_offer`; `Towns::start_day()` at the income's step
-from day 2 (GAM-CAL-002 amended, TWN-BLD-004); the capture's mark (`Towns::captured`, decision 43;
-TWN-CAP-001 amended); the views and events of §31 (`TownView::built_today`, the owner's
-`TownBuildingsView`, `TownBuilt`, `TownChanged`'s public facts; TWN-VEW-001 amended, TWN-VEW-004;
-read the inbox's SRV-Q26 note with it); the adventure replay format bumped (v12 after T105b's v11,
-or v11 if first) with `town build`. A town event's Shipyard reads `StaticMap::town_boat_spot`
-(T18c). Before mapping new commands or events, look at the server lane's E16 M5 T2 (the global
-HANDOFF's trap: the game's types on the wire). The replays re-recorded only if a hash or the
-format moves (skill `homm3-rerecord-replays`).
+**E09 T18b2 — the legal builds and the views** (design §29's `legal_commands` and
+`town_offer`, §31, §34's TWN-VEW-004, §35's round 6; queued 2026-11-09 by T18b1, the cut of T18b
+by the user; `cross-lane`: `h3-game`'s `legal.rs`, `observe.rs`, `command.rs`, `h3-protocol`'s
+`map::game` and `wire::game` (the server lane's), `h3-map`'s property plans and `h3-sim`'s
+rollout are other lanes'): `legal_commands` after the boats (each owned town whose mark is clear,
+each payable building of `buildable` with `town::holds_capitol`, in `TownId` and record order)
+and `GameState::town_offer`, measured right after the first build (design §36: the env calls it
+every step; skill `homm3-bench-regression`); the views and events of §31 (`TownView::built_today`
+public, the owner's `TownBuildingsView { built, forbidden }`, `TownChanged` grown to the town's
+public facts for `seen_by` and `owner_facts` for the top level's viewers, told after a build when
+a seen fact changed (`Towns::build`'s facts before, kept by `town::command`), a Tavern's raised
+view levels told by its `TownBuilt`; TWN-VEW-001 amended, TWN-VEW-004); their mapping on the wire
+in `h3-protocol` (a field of `GameObservation`'s structs breaks its build: the global HANDOFF's
+trap); the plans then build through `Step::Legal` (the told-views property's `TownBuilt` arm
+checks only the owner today; the hygiene property with builds; the town lane's `TRAPS.md`); the
+rollout's draw of a build, which has no action before T19's encoding (today it would end the
+turn and move the bot reports): skipped or kept, decided with the AI lane's encoding in view.
+**At its start:** decide SRV-Q26's town gap (the inbox's note: a neutral town's garrison emptied
+by another player's battle told to every viewer) in `TownChanged` here or as a task of its own,
+and confirm the cut. Before mapping events, look at the server lane's M5 T3 (the game's commands
+and events on the wire; its inbox has T18b1's note).
 **Status:** next.
 
 ## Inbox
