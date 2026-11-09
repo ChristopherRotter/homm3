@@ -59,14 +59,16 @@ impl GameState {
     ///    kind drawn from the game's stream ([`Self::draw_month`]), [`GameEvent::MonthStarted`],
     ///    then in a creature's month the adventure's month step with the game's stream
     ///    (`start_month`: its monsters added on free land tiles);
-    /// 4. every player's income ([`Self::pay_income`]);
+    /// 4. the towns' day (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
+    ///    cleared, TWN-BLD-004; the original's `new_day` towns' loop 0x4C8067, before its
+    ///    income), then every player's income ([`Self::pay_income`]);
     /// 5. every hero's spell points ([`Self::regain_mana`]);
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
     ///
     /// The week's kind and creature (the towns' growth, E09) are not drawn: decision 197 gives
     /// them a stream of their own when they come, so the game's stream stays as it is.
-    // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003
+    // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -99,6 +101,7 @@ impl GameState {
                 );
             }
         }
+        self.towns.start_day();
         self.pay_income(rules, week_start, sink);
         self.regain_mana(rules);
         self.adventure.start_day(core, part, &self.heroes);

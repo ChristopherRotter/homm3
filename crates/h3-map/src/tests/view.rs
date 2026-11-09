@@ -1110,6 +1110,9 @@ fn check_told(
                 decision = Some(Open::Offer(hero, object_type, anchor));
             }
             GameEvent::OfferRefused { player, .. } => prop_assert_eq!(player, viewer),
+            // E09 T18b1: a town's build, its owner's; no plan builds before E09 T18b2, which
+            // folds the views it changes (the mark, the owner's buildings, the Tavern's levels).
+            GameEvent::TownBuilt { player, .. } => prop_assert_eq!(player, viewer),
             // E08 T63a: a choice and a University open as the viewer's decision.
             GameEvent::ChoiceOpened {
                 player,

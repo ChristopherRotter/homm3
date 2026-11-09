@@ -4,7 +4,8 @@
 //! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` in
 //! `legal.rs`, T8b2a; T14b: the pending decisions and their answers, in `state.rs`; T19a: battles,
 //! in `state/battle.rs`; T30: the level-ups, in `state/levels.rs`; T51a: the management commands,
-//! [`Manage`], in `state/manage.rs`).
+//! [`Manage`], in `state/manage.rs`; E09 T18b1: the town context's commands, [`TownCommand`], in
+//! `town/command.rs`).
 
 use core::fmt;
 
@@ -15,6 +16,7 @@ use h3_adventure::{
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId, TownId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
+use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
 use crate::{GameRuleset, GameState, MonthKind};
@@ -48,6 +50,10 @@ pub enum GameCommand {
     /// A management command on the actor's heroes on the map, in its turn (ADR-0017 points 1 and
     /// 6, GAM-MAN-001; E08 T51a).
     Manage(Manage),
+    /// A command to the town context, given in the actor's turn (ADR-0028 point 6, TWN-BLD-001;
+    /// E09 decision 45, T18b1): checked and applied as an adventure command is, with no hero and
+    /// no visit (the original's town list opens the hall).
+    Town(TownCommand),
 }
 
 /// An answer to a pending decision, typed by the decision's kind (ADR-0017 point 6; E08 decision
@@ -259,6 +265,10 @@ pub enum GameCommandError {
     /// order: the creature not the source's, the amount 0 or above its count, no room in the army
     /// (`h3_adventure::AdventureState::check_hire`).
     Hire(HireError),
+    /// The town command was refused (TWN-BLD-001; E09 T18b1): the town not in the store, not the
+    /// actor's, or the hall's refusal (`h3_towns::check_build`), in that order; the treasury's
+    /// is [`Self::CannotPay`], checked after them.
+    Town(TownCommandError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -285,6 +295,7 @@ impl fmt::Display for GameCommandError {
             Self::SlotClosed => f.write_str("the University's slot is not open for the hero"),
             Self::CannotPay => f.write_str("the treasury cannot pay the price"),
             Self::Hire(error) => write!(f, "{error}"),
+            Self::Town(error) => write!(f, "{error}"),
         }
     }
 }
@@ -628,6 +639,20 @@ pub enum GameEvent {
         /// The players that see it (the viewer alone in a projection).
         seen_by: Viewers,
     },
+    /// A building was built in a player's town (TWN-BLD-001, TWN-BLD-005; E09 T18b1, the town
+    /// epic's design note §31): by the owner's build command, after its price's `ResourcePaid`
+    /// events. Seen by the owner.
+    TownBuilt {
+        /// The town's owner.
+        player: PlayerId,
+        /// The town.
+        town: TownId,
+        /// The building built (of the town's faction's record).
+        building: BuildingId,
+        /// The town event that built it, by its place in the town's list (`h3_towns::TownStatic`'s
+        /// events); none for the owner's command.
+        event: Option<u16>,
+    },
 }
 
 /// Receiver of the game's events.
@@ -710,6 +735,10 @@ fn run<S: Sink>(
         GameCommand::Answer(answer) => state.answer(rules, player, answer, sink),
         GameCommand::Battle(command) => state.battle_command(rules, player, command, sink),
         GameCommand::Manage(command) => state.manage(rules, player, command, sink),
+        GameCommand::Town(command) => {
+            state.check_ready(player)?;
+            crate::town::command(state, rules, player, command, sink)
+        }
         GameCommand::Adventure(command) => {
             state.check_ready(player)?;
             // E08 T84b2 (ADV-SHY-003; increment 9's design note §14): `BuildBoat`'s checks and the

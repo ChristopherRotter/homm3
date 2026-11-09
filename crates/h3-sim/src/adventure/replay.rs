@@ -33,9 +33,10 @@ use super::rollout::choose;
 /// (`h3_game::Answer`: a meeting or an army dialog closed by `Close`, increment 7's choices and
 /// University); version 8 (E08 T84b2): a Shipyard's boat without a visit (`BuildBoat`); version 9
 /// (E09 T5a2): the town part's hash; version 10 (E08 T95b): a hire dialog's answers
-/// (`Answer::Hire`: a purchase with its creature and amount, `Close`). A replay of another
-/// version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 10;
+/// (`Answer::Hire`: a purchase with its creature and amount, `Close`); version 11 (E09 T18b1):
+/// the town context's commands (`GameCommand::Town`: a town's build by its town and building). A
+/// replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 11;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

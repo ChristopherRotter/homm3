@@ -2395,3 +2395,52 @@ order.
   spot out of `ObjectView::boat_tile`; `without_water` a transform of the built town rather than
   an input of `town_buildings_setup` (the spots come after the towns' draws); the census in
   `built_town_water`.
+
+### T18b1 — the build command, the day's start, the capture's mark (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t18b1`, `cross-lane` (`h3-game`'s
+`command.rs`, `lib.rs`, `observe.rs`, `legal.rs`, `state.rs`, `state/day.rs`, `h3-sim`'s replay
+and action, `h3-files`' replay words (moved there from `h3-cli` by #808, merged in), `h3-cli`'s
+replay tests, the replays and `game.toml` are the adventure and AI lanes').
+Starting point: `master` at 31e0ea3 (#806, #807 merged; #808 merged in before the pull request; the setup's baseline lost to a restart of
+the sandbox, CI's run on `master` stands for it). **T18b cut in two at its start** (the user):
+T18b1 this session; T18b2 queued (the legal builds and `town_offer`, the views and events of §31,
+`h3-protocol`'s mapping, SRV-Q26's place decided at its start). The seam: as soon as
+`legal_commands` lists builds, the adventure property plans build (`Step::Legal` picks any listed
+command), so the told-views property needs §31's events with them; the command itself goes
+first. The user's computer was connected: the original data staged at the start (the scoped
+verify).
+
+- **The command** (design §29 as built): `GameCommand::Town(TownCommand)`, run as an adventure
+  command (`check_ready`), then the town lane's new `town/command.rs`: the store (`UnknownTown`),
+  the owner by the adventure's owner of the town's object (`NotOwner`), `holds_capitol` (the
+  capture's test moved to a function the build shares), `h3_towns::check_build`, the treasury
+  (`CannotPay`), then `pay_price` (`ResourcePaid` per resource, as `BuildBoat`'s: the design's
+  `ResourceLost` was a slip), `Towns::build(…, mark: true)` and `GameEvent::TownBuilt { player,
+  town, building, event: None }` (the owner's; `event` T18c's). `GameCommandError::Town` wraps the
+  town's refusals; `GameState::towns_mut` (crate-private) the store's write. `legal_commands` lists
+  no build yet (its doc says so; T18b2).
+- **`TownCommand` and `TownCommandError` exhaustive** (`#[non_exhaustive]` dropped, the only two
+  in the workspace): the game's match needs no wildcard arm coverage cannot reach, and the wire's
+  mapping is exhaustive (SRV-Q25). Re-exported by `h3-game` with `BuildingId`.
+- **The day's start:** `Towns::start_day()` in `advance_day` right before the income (GAM-CAL-002
+  amended; the original's towns' loop 0x4C8067 before its income).
+- **The capture's mark** (decision 43): `town::capture` reads the old owner before the adventure's
+  capture and calls `Towns::captured(town, clear)`, `clear` when the old owner is none or not
+  human and the new owner human (a team its player alone until E10), before the Capitol's limit;
+  the game passes its players' `human` flags.
+- **The replays:** adventure replay format **v11** (`town build <town> <building>`; T105b's
+  bump becomes v12); the 55 adventure replays re-recorded from their commands, only the `format`
+  line moved in each. The env's entry for a build is none until T19 (`h3-sim`'s `tileless_entry`
+  arm). The bot reports did not move (no part or behaviour change: no build is listed).
+- **Tests** (`h3-game` `town/tests/command.rs`, `capture.rs`): a build paid and told to the owner
+  alone, a free one paying nothing; the mark refusing a second build, the day's start clearing
+  every town's, a requirement met the next day; every refusal (unknown town, not the owner,
+  built, unknown building, requirements, the treasury, another player's turn, the system actor)
+  changing no hash and telling nothing; the Capitol refused while another is held, built while
+  the other Capitol is another player's; the capture's mark in five owner and human cases. The
+  replay words round trip and nine malformed `town` lines are refused (`h3-files`).
+- **Catalog:** TWN-BLD-001's and TWN-BLD-004's game halves, TWN-CAP-001 and GAM-CAL-002 amended.
+- **Agent's calls (change freely):** the capture's `human` a closure over the game's players; the
+  build's facts before (`Towns::build`'s return) kept for T18b2's `TownChanged`; `TownBuilt`'s
+  `event` field now, so T18c moves no event shape.
