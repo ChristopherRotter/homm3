@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the game's build of 2 games on the gates XL map (E08 T104, increment 11's design note §14: 144 x 144 with an underground, a Subterranean Gate on every fifth tile of both levels, 8 116 gates, the pairing's worst case, each surface gate paired with the one below it); counts only inside h3_cli::adventure::bench::game_build (GameState::new: the static map, its draws, the channels and the gates' pairs, the heroes, the start)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-gates-144.h3m",
+    "--workload",
+    "build",
+    "--games",
+    "2",
+    "--days",
+    "1",
+    "--seed",
+    "1",
+]
+collect = "*game_build*"
+instructions = 981270116
+threshold_percent = 2

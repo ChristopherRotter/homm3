@@ -169,6 +169,20 @@ shared by forks (decision 6); empty for a map without teleporters.
 - *Agent's call:* the representation is the building task's (for example a table sorted by the
   way's group and number, the Whirlpools' list, the pairs by gate entry), read by the visit alone
   (note §7), never by the reach (note §9).
+- *As built* (T104, `adventure/e08-t104`; decisions 285, 286): `state/channels.rs`'
+  `StaticMap::channels`, a `Channels` of the one-way exits and the two-way members by channel
+  number (`BTreeMap<u8, Vec<Pos>>`), the Whirlpools' tiles with their object (`WhirlpoolTile`) and
+  the gates' entries with their pairs (`GateEntry`, `gate_pair` by a binary search in walk
+  order); built after `list_economy`, empty without a teleporter, out of the hash. A tile is listed
+  for the last object in map order visited from it (the original's tile class), so a teleporter
+  under a later object is in no list. A-42 is `SetupError::TeleporterSurface`, the first
+  teleporter in object order with a visitable tile off its surface; *agent's call:* rock is off
+  both surfaces (nothing walks or sails it). The pairing compares squares against the best
+  distance's square (`⌊√s⌋ < d` exactly when `s < d²`) and scans the levels after the entry's own
+  (the walk's order puts them after it). `build-gates-xl-144` (8 116 gates): 981 M Ir for two
+  builds, the channels 91.6 % of it, 63 ms a build: the lever (§18) is queued. Checked against the
+  160 shipped maps with T106's census brought forward (`h3-map`'s `original_data`): §1's counts
+  exactly, no map refused.
 
 ###### 6. The state (`h3-adventure`; adventure state hash v21, unmoved)
 
@@ -512,7 +526,7 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 | pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102: done |
 | adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a: done |
 | map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b: done |
-| game state hash v26 | the held jump `Rest::Jump` (§13) | T105b |
+| game state hash v27 (E09 T17a took v26) | the held jump `Rest::Jump` (§13) | T105b |
 | adventure replay format v11 | `revisit` (§13) | T105b |
 | env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b (`cross-lane`) |
 

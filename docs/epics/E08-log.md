@@ -13729,3 +13729,58 @@ replays, three oracles), so no cut.
   workloads' +1.4 to +1.9 % is this sandbox's (`master`'s `fork-rewards-36` the same count).
 
 **Versions:** none moved. Round 5 done; T104 next.
+
+### Increment 11, round 6: T104, the build (2026-11-09, `adventure/e08-t104`)
+
+Whole (decision 285), with the shipped maps' check brought forward from T106 (decision 286).
+Baseline: `master` 2e5e08f (#795; CI's fingerprint, the setup's light gates). `maps.tar` staged
+alone (the census reads the maps, nothing else).
+
+- **The surfaces (A-42, `ADV-QUIRK-44`):** `SetupError::TeleporterSurface(index)`, the first
+  teleporter in object order with a visitable tile of the map off its surface: a monolith's or a
+  gate's not on land (water or rock), a Whirlpool's not on water (land or rock). *Agent's call:*
+  rock added to the design's water and land (nothing walks or sails it; a jump there would put a
+  hero on a tile no rule lets it stand on). Checked after the towns' factions, before the
+  monsters' marks; the import's validation passes it on.
+- **The channels** (`state/channels.rs`, `StaticMap::channels`; ADV-TEL-002, design §5's as-built
+  line): `Channels` holds the one-way exits and the two-way members by channel number, the
+  Whirlpools' tiles with their object (`WhirlpoolTile`) and the gates' entries with their pairs
+  (`GateEntry`; `gate_pair` by a binary search in walk order). The lists walk the static map's
+  `visits` by tile index (the walk's order); a tile is listed for the last object in map order
+  visited from it, as the original dispatches on the tile's class, so a teleporter under a later
+  object is in no list. Empty (no allocation) without a teleporter; out of the static map's hash.
+- **The pairing** (D-56): greedy over the entries in walk order, each unpaired one scanning the
+  entries of the levels after its own (`partition_point`), the best kept by its square
+  (`⌊√s⌋ < d` exactly when `s < d²`: one `isqrt` per improvement, none in the comparison).
+- **The census** (`h3-map`'s `original_data`, decision 286): on the 160 shipped maps every visitable
+  tile of an exit, a two-way monolith, a gate and a Whirlpool listed once, every gate paired and
+  mutual, no map refused; survey §1's counts exactly: 111 one-way channels by entrances and exits
+  (1 → 1 71, 2 → 1 8, 3 → 1 7, 3 → 3 8, …), 219 two-way channels by size (2: 185, 3: 19, 4: 11,
+  5: 2, 6: 1, 8: 1), 1 344 Whirlpool tiles, 301 pairs, 18 gates on 8 maps not with their nearest
+  (the survey's eight maps); checked against `SURVEY_GATES` in `main`.
+- **The benchmark** `build-gates-xl-144`: `fixtures/maps/e08-gates-144.h3m` (`gates_map.rs`: SoD
+  XL, a gate on every fifth tile of both levels where it lies whole and covers no hero, 4 058 a
+  level; every surface gate paired with the one below it), the workload `build` in `h3-cli`'s bench
+  (`game_build`, `GameState::new` without an env). Baseline 981 270 116 Ir for two builds; the
+  channels' build is 91.6 % of it (898.7 M; about 17 M comparisons a build, 63 ms in release).
+  Two rewrites of the inner loop (slices zipped, a bound instead of an `Option`) measured +27 % and
+  +44 % (worse codegen), so the first form stays. The lever (a row-band search or a compacted list
+  of the unpaired entries) is queued in the inbox, as decision 285 says.
+- **Tests:** `h3-adventure`'s `the_channels_list_each_ways_tiles_in_the_walks_order` (walk order
+  against `Pos`' order, an entrance and a tile under a blocker in no list, an off-map tile, channels
+  of one number apart, no draw), `the_whirlpools_list_every_tile_with_its_whirlpool`,
+  `the_gates_pair_greedily_in_the_walks_order_by_the_truncated_distance` (the greedy miss, a tie
+  at ⌊√5⌋ = ⌊√4⌋ taken by the first in walk order, a leftover, one level never paired),
+  `a_teleporter_off_its_surface_is_refused_when_the_game_is_built` (each kind on water, land or
+  rock); T103a's step test keeps the monolith and the gate (a Whirlpool on land is refused now);
+  `h3-map`'s `the_gates_map_is_committed_as_written_and_pairs_every_gate_below_it`; `h3-cli`'s
+  bench test runs `build`.
+- **Docs:** ADV-TEL-002 (new), ADV-TEL-001 amended (A-42); `ADV-QUIRK-44` and `-45` in the
+  ledger; design §5's as-built line; `h3m.md`'s import line; the fixtures README's row; the
+  benches README's row in `shared/e08-t104-benches`; the map client's inbox (A-42's refusal).
+- **Gates:** the scoped verify (no original data): every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `build-gates-xl-144` at its baseline);
+  `check-rules` re-run once the catalog had ADV-TEL-002; `cargo check --workspace --all-targets`;
+  `h3-map`'s `original_data` on the 160 maps (the census above).
+
+**Versions:** none moved. Round 6 done; T105 next.

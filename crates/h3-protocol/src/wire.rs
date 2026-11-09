@@ -1698,7 +1698,8 @@ pub enum ServerMessage {
         /// Why.
         reason: Refusal,
     },
-    /// The whole battle as the viewer sees it (after a join, and on request).
+    /// The whole battle as the viewer sees it (after a join, on request, and as it ended, before
+    /// `GameEnded`: v38).
     Snapshot {
         /// The viewer's message number.
         n: u32,

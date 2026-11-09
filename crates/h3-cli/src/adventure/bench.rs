@@ -33,6 +33,10 @@
 //!   siege, whose game step runs inside [`siege_step`] (the action decoded before it): the walk,
 //!   the town's facts in the battle's setup (TWN-SIE-003), the garrison's merge into a defending
 //!   visitor's army (TWN-SIE-002), the battle's start (`siege-towns-36` on the town map).
+//! * `build` (E08 T104, increment 11's design note §14): the game's build of each game, inside
+//!   [`game_build`] (`h3_game::GameState::new` from the map's setup: the static map with its
+//!   objects' draws, the teleporters' channels and the gates' pairs, the heroes, the start), no
+//!   play (`build-gates-xl-144` on the gates XL map: the pairing's worst case).
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -47,8 +51,8 @@ use h3_adventure::Pos;
 use h3_battle::LegalCommands;
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
-    Actor, ArmyRef, ArmySlot, GameCommand, MonthKind, NoopSink, legal_management, legal_moves,
-    movement, split_range,
+    Actor, ArmyRef, ArmySlot, GameCommand, GameRuleset, GameSetup, GameState, MonthKind, NoopSink,
+    legal_management, legal_moves, movement, split_range,
 };
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
@@ -74,6 +78,8 @@ pub enum Workload {
     DayStart,
     /// The step that opens a siege (E09 T9c).
     Siege,
+    /// The game's build (E08 T104).
+    Build,
 }
 
 /// What [`run`] plays.
@@ -113,7 +119,7 @@ pub struct BenchOptions {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BenchResult {
     /// Counted operations: steps (`play`), queries (`reach`), forks (`fork`), listings
-    /// (`manage`), day starts (`day-start`) or sieges opened (`siege`).
+    /// (`manage`), day starts (`day-start`), sieges opened (`siege`) or games built (`build`).
     pub operations: u64,
     /// Steps played in all.
     pub steps: u64,
@@ -152,6 +158,9 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
     let rules = load_rules(packs_dir, &ids, &options.profile)?;
     let (_, mut setup) = load_map(root, &options.map, &rules)?;
     setup.difficulty = options.difficulty;
+    if options.workload == Workload::Build {
+        return builds(&rules, &setup, options);
+    }
     let mut env = AdventureEnv::new(rules, Arc::new(setup), options.seed, options.days)
         .map_err(super::AdventureCliError::Setup)?;
     let mut result = BenchResult {
@@ -229,12 +238,57 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 result.visitors += u64::from(besieged.visitor);
                 (besieged.counted, besieged.steps, besieged.seconds)
             }
+            // Built above, without an env.
+            Workload::Build => (0, 0, 0.0),
         };
         result.operations += operations;
         result.steps += steps;
         result.seconds += seconds;
     }
     Ok(result)
+}
+
+/// The `build` workload (E08 T104): game `g` built with seed `seed + g`, each inside
+/// [`game_build`], the state dropped after the count.
+///
+/// # Errors
+///
+/// The setup's error.
+fn builds(rules: &GameRuleset, setup: &GameSetup, options: &BenchOptions) -> Result<BenchResult> {
+    let mut seconds = 0.0;
+    for g in 0..options.games {
+        let start = Instant::now();
+        let game = game_build(rules, setup, options.seed.wrapping_add(g));
+        seconds += start.elapsed().as_secs_f64();
+        black_box(game.map_err(super::AdventureCliError::Setup)?);
+    }
+    Ok(BenchResult {
+        operations: options.games,
+        steps: 0,
+        seconds,
+        battles: 0,
+        meetings: 0,
+        visits: 0,
+        dwellings: 0,
+        afloat: 0,
+        creature_months: 0,
+        added: 0,
+        visitors: 0,
+    })
+}
+
+/// The game's build, counted by `build-gates-xl-144` (`*game_build*`): `GameState::new`.
+///
+/// # Errors
+///
+/// The setup's error.
+#[inline(never)]
+pub fn game_build(
+    rules: &GameRuleset,
+    setup: &GameSetup,
+    seed: u64,
+) -> core::result::Result<GameState, h3_game::GameSetupError> {
+    GameState::new(rules, black_box(setup), seed)
 }
 
 /// Play until a battle opens or the episode ends (`fork` with `battle`): the steps played. Random

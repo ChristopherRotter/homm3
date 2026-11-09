@@ -83,6 +83,7 @@ impl StaticTile {
 
 mod boats;
 mod calendar;
+mod channels;
 mod draws;
 mod dwellings;
 mod economy;
@@ -103,6 +104,7 @@ mod weekly;
 
 pub use boats::Boat;
 use boats::Boats;
+pub use channels::{Channels, GateEntry, WhirlpoolTile};
 pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
 pub use dwellings::{HirePurchase, hire_price};
@@ -313,6 +315,10 @@ pub struct StaticMap {
     /// Each camp's kind's levels, by camp index (E08 T94b): what its draws read
     /// ([`dwellings::draw_camp`]). Follows from the objects.
     camp_levels: Vec<[u8; 2]>,
+    /// The teleporters' channels and the gates' pairs (E08 T104; ADV-TEL-002, increment 11's
+    /// design note §5), built without a draw after every type is final; empty without
+    /// teleporters. Follows from the objects, so the hash leaves it out.
+    channels: Channels,
     hash: u64,
 }
 
@@ -396,6 +402,7 @@ impl StaticMap {
             full_weeks: Vec::new(),
             camps: Vec::new(),
             camp_levels: Vec::new(),
+            channels: Channels::default(),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -505,6 +512,9 @@ impl StaticMap {
         if town_factions.len() != map.towns.len() {
             return Err(SetupError::TownFactions(town_factions.len()));
         }
+        // rule: ADV-TEL-001, ADV-TEL-002
+        // E08 T104: the surfaces checked (A-42) and the channels built, every type final.
+        map.channels = channels::build(&map, part)?;
         map.mark_near_monsters();
         map.mark_grounds(part);
         // After the objects, as the original counts after placing its map's objects.
@@ -877,6 +887,20 @@ impl StaticMap {
         self.index(pos).map(|_| pos)
     }
 
+    /// The tile at `index` in [`Self::tiles`], an index of the map (E08 T104).
+    fn pos_of(&self, index: usize) -> Pos {
+        let width = usize::from(self.width);
+        let rows = index / width;
+        let height = usize::from(self.height);
+        // The map's sides and levels fit their types, so do a tile's column, row and level.
+        let narrow = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+        Pos::new(
+            narrow(index % width),
+            narrow(rows % height),
+            u8::try_from(rows / height).unwrap_or(u8::MAX),
+        )
+    }
+
     /// The index of a tile in [`Self::tiles`], if it is on the map.
     pub fn index(&self, pos: Pos) -> Option<usize> {
         (pos.x < self.width && pos.y < self.height && pos.level < self.levels).then(|| {
@@ -1021,6 +1045,13 @@ impl StaticMap {
             .filter(|&index| self.event_tiles[index / 64] >> (index % 64) & 1 == 1)
             .and_then(|index| self.events.get(&index))
             .map_or(&[], Vec::as_slice)
+    }
+
+    /// The teleporters' channels and the gates' pairs (E08 T104; ADV-TEL-002, increment 11's
+    /// design note §5), in the walk's order; empty for a map without teleporters. What a
+    /// teleporter's visit reads (T105a), never the reach.
+    pub const fn channels(&self) -> &Channels {
+        &self.channels
     }
 
     /// The canonical hash of the static map, computed once when it is built.
