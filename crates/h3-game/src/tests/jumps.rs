@@ -152,6 +152,11 @@ fn a_battle_at_a_monoliths_exit_holds_the_jump_until_the_winners_levels() {
     assert!(starts_at(&events, exit), "{events:?}");
     assert!(exits(&events).is_empty());
     assert_eq!(state.adventure().hero(HERO).unwrap().pos, AT);
+    // The jump is held beside the open battle, in the hash (tag 4, game state hash v27).
+    assert_eq!(state.held_rests(), 1);
+    let mut bare = state.clone();
+    bare.drop_rests();
+    assert_ne!(state.state_hash(), bare.state_hash());
     // Won: Blue's hero leaves the map and Red's gains its level, still on the entrance while it
     // is open; the jump once it is answered.
     let events = fight(&mut state, &rules);
