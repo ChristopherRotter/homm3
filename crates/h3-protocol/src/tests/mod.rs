@@ -9,6 +9,7 @@ mod connection;
 mod game;
 mod game_command;
 mod game_event;
+mod game_fold;
 mod ladder;
 mod list;
 mod lobby;

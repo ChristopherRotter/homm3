@@ -2,7 +2,8 @@
 //! amended): what a player sees of a game ([`GameObservation`]), its adventure map
 //! ([`Adventure`]) and its battle (the battle's [`super::Observation`]); what it commands
 //! ([`GameCommand`]) and why a command was rejected ([`GameReject`], T3a); what happened, as it
-//! sees it ([`GameEvent`], T3b).
+//! sees it ([`GameEvent`], T3b); and how a viewer keeps its observation current by its events
+//! ([`GameObservation::fold`], T3c).
 //!
 //! The same rules as [`super`]'s: the protocol's own types, translated by [`crate::map::game`]
 //! with every engine field named; serde's default enum form with `deny_unknown_fields`; content
@@ -22,6 +23,7 @@ use super::WireU64;
 
 mod command;
 mod event;
+mod fold;
 
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,

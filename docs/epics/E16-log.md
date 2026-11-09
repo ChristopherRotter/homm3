@@ -2067,3 +2067,68 @@ is the record).
   public and seen kinds only; the JSON is serde's default form, an unknown field refused; five
   fixture maps (400 random steps) map every viewer's events of every step back (28 kinds met).
 - **No message, no version step** (T5). The fold (T3c) folds these into T2's snapshot.
+
+### M5 T3c1 — the game's fold and its harness over the golden replays (2026-11-09)
+
+The user split T3c in two parts (SRV-Q27): T3c1 the fold of what the events carry and a harness
+reporting where it differs from `observe`, T3c2 the stubs, the inbox notes and the gate; one pull
+request after T3c2. Baseline: the branch's T3a and T3b on `master` 1e8568d; the sandbox's full
+verify passed its tests and coverage (CI's run on `master` is red by `h3-map`'s proptest
+`every_step_keeps_the_commands_invariants`, the adventure lane's; it passed here).
+
+- **The fold** (`wire::game`, in `wire/game/fold.rs`; provisional): `GameObservation::fold(&mut
+  self, &GameEvent)`, a viewer's projected events (`map::game::events`) folded in their order. It
+  applies what an event carries and nothing the rules derive (SRV-Q27 (2)): the day, the month and
+  the turns (a group's first `TurnStarted` ends the group before), the treasury, today's timed
+  events (cleared by a new day), the heroes' tiles and boats (a step out of sight and a removal
+  take the hero off both lists), the empty boats (boarded, landed, built: facing 2, as the event's
+  documentation says), the objects (a removed one with what the viewer knew of it, the seen tiles
+  it covered freed where no other object in sight covers them; a creature month's monster added on
+  its one tile; monsters' count words, owners, guards' hints, visited marks, a captured town's
+  owner), the keys, a hero's details by its `HeroChange`s and `LevelGained`, the armies by slot (a
+  hero's, a dialog's group, a garrison's owner view, a Whirlpool's loss), the formation and the
+  tactics flag, the decisions whose events hold their view (a level-up, a meeting, an army dialog,
+  a Leave Guards dialog, whose group stays on its mine as its guards at the close), and a battle's
+  end; its snapshot is the session's (SRV-Q27 (1)). After an object's change the tiles' palette is
+  packed anew in first-use order, as `map::game::observe` packs it.
+- **The harness** (`tests/game_fold.rs`, the replays through `h3-files`): the 55 golden adventure
+  replays; after every command each viewer's view folded with its events is compared with
+  `observe` part by part (31 parts holding every field; what both views hold, which entries they
+  hold being a part of its own), then made `observe`'s again, so each difference is its command's
+  own; a battle's snapshot is taken when it opens and its presence compared. 28 528
+  viewer-commands in 19 s (debug build). It asserts the 14 parts the events carry whole and
+  reports the others (`cargo test -p h3-protocol fold_against -- --nocapture`). It found one fold
+  error, fixed: guards left by a Leave Guards dialog on a mine that had none (their hint's
+  `GuardsChanged` comes with the close). Seven hand-built tests cover every arm.
+- **Exact after every command, for every viewer:** day and month, turns, treasury, timed events,
+  battle open, hero tiles and boats, formation and tactics, monsters, object owners, mine guards,
+  visited marks, keys, town owners, town pictures.
+- **What differs** (viewer-commands; "with a reveal": the viewer's explored tiles grew in the
+  command; (a) to (d) are SRV-Q26's):
+
+| Part | Viewer-commands (with a reveal) | Replays | Why |
+|---|---|---|---|
+| explored tiles | 1 505 (1 505) | 53 | (a) a reveal's content |
+| tile views | 1 414 (1 414) | 53 | (a) |
+| objects in sight | 429 (429) | 42 | (a) |
+| towns in sight | 21 (21) | 5 | (a) |
+| empty boats | 13 (13) | 9 | (a) |
+| movement | 3 925 (1 499) | 54 | (b) a hero's movement points and its day's maximum |
+| heroes in sight | 226 (39) | 22 | (c) a hero stepping into sight (179 commands with steps alone); (a) |
+| decision | 102 (40) | 28 | SRV-Q27: an offer's, a choice's, a University's and a hire dialog's views; a University's slots and a hire dialog's counts after a purchase |
+| hero details | 175 (3) | 16 | derived: the spell points (188 heroes, most at a new day), where an added artifact lands (12), a `LevelGained`'s offered levels (8; the event has no field) |
+| armies | 44 (0) | 21 | derived: a battle's losses; where joined, bought or raised creatures land |
+| garrisons | 29 (15) | 7 | (a); a garrison's view after a merge, a siege or a capture; (d) a neutral town's garrison emptied (`towns-s173-d21` command 205, viewer 0, told nothing) |
+| town owner facts | 19 (12) | 7 | (a); a new owner's hall and income |
+| mine production | 11 (3) | 4 | derived: a new owner's production |
+| shipyard tiles | 5 (4) | 3 | derived: a new owner's boat tile |
+| known objects | 7 (3) | 4 | what a visit told (no event carries it); (d) the visit to an emptied object (`rewards-s162-d28` command 35, viewer 1) |
+| once-marks | 7 (3) | 4 | a once-per-hero visit's mark (no event) |
+| bought | 2 (2) | 2 | a Cartographer's type (the offer's kind is not carried) |
+
+- **For T3c2:** each row a stub (`SRV-STUB-<n>`) with its lane's inbox note: the adventure lane
+  (a) to (c), (d)'s visit, the decision views, the derived values of the heroes, armies, mines and
+  Shipyards, a visit's knowledge and marks, the Cartographer's type; the town lane (d)'s garrison,
+  the garrisons' and owner facts' views after a change. The gate: the harness's equality but for
+  the stubbed parts.
+- **No message, no version step** (T5).

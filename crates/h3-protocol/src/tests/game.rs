@@ -839,7 +839,10 @@ fn every_decision() -> Vec<DecisionView> {
 }
 
 /// A whole observation with every optional part present, over the hand-built adventure map.
-fn every_game_part(decision: Option<DecisionView>, month: MonthKind) -> h3_game::GameObservation {
+pub(super) fn every_game_part(
+    decision: Option<DecisionView>,
+    month: MonthKind,
+) -> h3_game::GameObservation {
     let p = h3_adventure::Pos::new;
     let (ruleset, state) = super::battle();
     let details = h3_heroes::HeroDetails {

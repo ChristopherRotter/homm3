@@ -311,6 +311,10 @@ inbox, the same day), mapped when it lands.
     (through `h3-files`) reporting per part where the fold and `observe` differ; **T3c2** each
     gap a stub (`SRV-STUB-<n>`) with its lane's inbox note, the test made the gate (equality but
     for the stubbed parts).
+  - **T3c1 done** (2026-11-09; `E16-log.md`): the fold (`GameObservation::fold`, in
+    `wire/game/fold.rs`) and the harness (`tests/game_fold.rs`): of 31 parts, 14 equal `observe`
+    after each of the 28 528 viewer-commands, the other 17 differ by SRV-Q26's and SRV-Q27's gaps
+    (the log's table).
 - **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
   the map's identity (its content hash), the key tables of the game's content kinds.
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
@@ -341,7 +345,11 @@ engine's payload (a path's step, a hero, a slot: what the actor sent or may know
 place and a position as `u16`, a step as `u32`; T3b's: a projected event without its viewer sets
 (`seen_by`, a step's `seen_from` and `seen_to`: the viewer alone, or a `None` end), an
 owner's event keeping its `player` (the viewer itself, as the engine's), a battle's event as the
-battle wire's `Event`, a hero's change's tuple variants as struct variants.
+battle wire's `Event`, a hero's change's tuple variants as struct variants; T3c1's: the fold as
+a method of the wire's observation (`GameObservation::fold`, `no_std`, for clients and records),
+what it takes from an event's documentation (a built boat's facing 2, a creature month's
+monster's one-tile masks, a group's first turn start ending the group before), a Leave Guards
+dialog's group kept on its mine at the close.
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08
