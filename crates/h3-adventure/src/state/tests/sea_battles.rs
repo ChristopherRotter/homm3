@@ -15,7 +15,7 @@ use h3_content::ContentKey;
 use super::*;
 use crate::command::{AdventureCommand, AdventureEvent, AdventureEventKind, Viewers};
 use crate::setup::{ObjectSetup, Pos};
-use crate::testing::{GRASS, HALLOW, PEASANT, SWAMP, coasted, hero_at, lying, started};
+use crate::testing::{GRASS, HALLOW, PEASANT, SWAMP, coasted, hero_at, lying, started, stream};
 
 type Rules = (Ruleset, AdventureRuleset);
 
@@ -78,7 +78,14 @@ fn battle(
         path: path.to_vec(),
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &command, &mut Vec::new())
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &command,
+            &mut Vec::new(),
+        )
         .unwrap();
     assert!(state.check_boats(&rules.1));
     outcome.battle.map(|b| (b.tile, b.terrain, b.battlefield))

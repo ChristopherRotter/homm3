@@ -4,7 +4,7 @@
 
 use super::economy::{GRASS_ROWS, Rules, object, rules, setup};
 use super::*;
-use crate::testing::started;
+use crate::testing::{started, stream};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -30,7 +30,14 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
         path: vec![Pos::new(1, 7, 0), ENTRANCE],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &walk, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &walk,
+            &mut events,
+        )
         .unwrap();
     events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
     (outcome, events)

@@ -17,7 +17,7 @@ use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, Ad
 use crate::setup::{ObjectSetup, Pos, TileMask};
 use crate::testing::{
     FLYING, HOLE, PEASANT, ROCK, SEA, WATER_WALKING, WINDS, coasted, hero_at, hero_details,
-    hero_skills, lying, movement_rules_with, sea_skills, started, world,
+    hero_skills, lying, movement_rules_with, sea_skills, started, stream, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -110,7 +110,14 @@ fn sail(
         hero: HERO,
         path: path.to_vec(),
     };
-    let result = state.apply(&rules.0, &rules.1, store, RED, &command, &mut events);
+    let result = state.apply(
+        &rules.0,
+        &rules.1,
+        store,
+        (RED, &mut stream()),
+        &command,
+        &mut events,
+    );
     if result.is_err() {
         assert!(events.is_empty(), "a rejected move emitted events");
         assert_eq!(*state, before, "a rejected move changed the state");

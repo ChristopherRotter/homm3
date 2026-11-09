@@ -13784,3 +13784,56 @@ alone (the census reads the maps, nothing else).
   `h3-map`'s `original_data` on the 160 maps (the census above).
 
 **Versions:** none moved. Round 6 done; T105 next.
+
+### Increment 11, round 7: T105a1, the monoliths' and the gates' jumps (2026-11-09, `adventure/e08-t105a1`)
+
+T105a in two by land and water (decision 287). Baseline: `master` 14e5335 (#797; CI's `CI` run
+green, the setup's light gates on its fingerprint; `Clients` on that commit failed with no job
+started, re-run). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the two LODs.
+
+- **The visitor's stream** (design §13; its own commit): `AdventureState::apply(core, part,
+  heroes, (player, draws), command, sink)` (a tuple, the argument count's lint) and
+  `visit_held(rules, (player, hero), draws, sink)`; `move_hero` and `visit` pass it on. The game
+  passes the acting player's (`GameState::adventure_for`) for every adventure command and the
+  owner's for `Rest::Visit`. Every caller updated (the adventure crate's tests through
+  `testing::stream`); no behaviour change, no draw yet. The town lane's inbox told.
+- **The jump** (`state/jumps.rs`; design §7): `Effect::Monolith { channel, way }` and
+  `Effect::SubterraneanGate` (the Whirlpool's effect still none). `visit_monolith`: an entrance
+  over its channel's exits, a two-way monolith over its channel's members, a one-way exit
+  `leads_nowhere`; `visit_gate`: the pair, else `leads_nowhere`. `draw_exit` (ADV-TEL-003): the
+  candidates counted over the list (a hero of another team; else no hero, no empty boat, not the
+  entrance), none no exit, one no draw, else `below(n)` and the n-th again (no allocation).
+  `jump`: no hero on the exit, `arrive` (the tile, the points and the day's maximum kept, the
+  scouting radius explored, `HeroTeleported`); else the radius-1 reveal and the mover stays
+  (`ADV-STUB-16`, T105b's battle and meeting). No guard test and no visit at the exit.
+- **Events and views** (design §10): `HeroTeleported` (`HeroStepped`'s fields and projection: an
+  end a viewer does not see left out, A-41 not reproduced, `ADV-QUIRK-43`) and `LeadsNowhere {
+  hero, object_type, anchor }` (the owner's alone); `h3-map`'s view oracle takes the jump as a
+  step's two ends and the event as a message's. The map client's inbox told.
+- **The reach's measure** (design §14; `homm3-bench-regression`): `master`'s worktree against the
+  branch right after the jump's first build, every workload within 0.01 % (reach-xl-144 452.09 M
+  against 452.10 M Ir, reach-lifted-xl-144 857.40 M against 857.42 M, reach-sea-xl-144 4 235.38 M
+  against 4 235.35 M, reach-towns-36 719.35 M against 719.36 M; random-play duel +0.010 %, sea
+  +0.007 %, dwellings, economy and rewards +0.005 %): the dispatch's arms cost nothing on maps
+  without teleporters; no re-baseline.
+- **Tests:** `h3-adventure`'s teleporters tests: the one exit without a draw (the points the
+  reach predicted, the maximum, the scouting radius, `PastVisit` past it), the draw among three
+  candidates over 24 streams (Red's own hero's exit never, Blue's hero's the stub's radius 1),
+  no candidate (nothing), a two-way channel of three (never itself), "leads nowhere" for a one-way
+  exit and an unpaired gate, a gate's pair (no draw; a hero on the pair the stub), the arrival
+  beside a monster (no guard, no visit of the exit), a guarded entrance (the guard first, then
+  `visit_held`'s jump), the projections (one end, the other, neither), a boat's step onto a
+  Whirlpool still refused; the ruleset's effects; `h3-game`'s `jumps.rs`: the exit from the acting
+  player's stream (a rejected move leaves it, Blue's untouched) and a guarded entrance's jump after
+  the won battle (the game's test pack gains `t:entrance` and `t:exit`).
+- **Docs:** ADV-TEL-003 and -007 (verified: batch E11's E11-2, -3, -15, -19), ADV-TEL-004 and -005
+  (implemented: their battle and meeting T105b's) new; ADV-TEL-001, -002, ADV-OBJ-003, ADV-FOG-004
+  and ADV-MON-006 amended; `ADV-QUIRK-43` in the ledger; `ADV-STUB-16`; design §7, §10, §13's
+  as-built lines, §17's round 7 row; decision 287.
+
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `original-data`); the doc gates re-run
+  after the docs; `cargo check --workspace --all-targets`.
+
+**Versions:** none moved (no replay holds a teleporter; the new events are not in any hash).
+T105a2 next.

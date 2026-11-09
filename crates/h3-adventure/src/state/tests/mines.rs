@@ -9,7 +9,7 @@ use super::economy::{
 };
 use super::*;
 use crate::command::{BattleStart, Defender, Garrison};
-use crate::testing::{PEASANT, PIKEMAN, started};
+use crate::testing::{PEASANT, PIKEMAN, started, stream};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -46,7 +46,14 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
         path: vec![Pos::new(1, 7, 0), ENTRANCE],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &walk, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &walk,
+            &mut events,
+        )
         .unwrap();
     (outcome, events)
 }
@@ -493,8 +500,15 @@ fn each_lighthouse_its_owner_holds_adds_its_points_to_the_sea_s_maximum() {
         hero: HERO,
         path: vec![Pos::new(1, 7, 0)],
     };
-    s.apply(&rules.0, &rules.1, &[], RED, &board, &mut Vec::new())
-        .unwrap();
+    s.apply(
+        &rules.0,
+        &rules.1,
+        &[],
+        (RED, &mut stream()),
+        &board,
+        &mut Vec::new(),
+    )
+    .unwrap();
     assert_eq!(s.hero(HERO).unwrap().boat, Some(0));
     assert_eq!(s.hero(HERO).unwrap().max_movement, 1500 + 1000);
     s.start_turn(&rules.0, &rules.1, &[], RED);

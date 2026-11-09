@@ -721,13 +721,15 @@ fn run<S: Sink>(
                 } => Some(state.boat_price(rules, player, *object_type, *anchor)?),
                 AdventureCommand::MoveHero { .. } => None,
             };
-            let (adventure, heroes) = state.adventure_with_heroes();
+            // The acting player's stream (ADR-0017 point 4; E08 T105a1): a visit's draw, a
+            // jump's exit, comes from it, after the whole command is checked.
+            let (adventure, heroes, draws) = state.adventure_for(player);
             let outcome = adventure
                 .apply(
                     rules.core(),
                     rules.adventure(),
                     heroes,
-                    player,
+                    (player, draws),
                     &command,
                     &mut AdventureSink(sink),
                 )

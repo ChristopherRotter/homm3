@@ -110,10 +110,12 @@ impl GameState {
         let Held { owner, hero, rest } = held;
         match rest {
             Rest::Visit => {
-                let (adventure, store) = self.adventure_with_heroes();
+                // The visitor's owner's stream: a jump after its entrance's guard draws its exit
+                // from it (ADV-TEL-003, E08 T105a1).
+                let (adventure, store, draws) = self.adventure_for(owner);
                 let context = (rules.core(), rules.adventure(), store);
                 let events = &mut AdventureSink(&mut *sink);
-                let outcome = adventure.visit_held(context, (owner, hero), events);
+                let outcome = adventure.visit_held(context, (owner, hero), draws, events);
                 self.settle_outcome(rules, owner, outcome, sink);
             }
             Rest::Experience(experience) => {

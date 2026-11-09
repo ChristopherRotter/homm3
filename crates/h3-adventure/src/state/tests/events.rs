@@ -16,7 +16,9 @@ use super::rewards::{GOLD, HERO, RED, Rules, hero, rules, store};
 use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, Defender};
 use crate::setup::{EventSetup, Guards, Holds, MonsterSetup, RewardRecord, Seat};
-use crate::testing::{FLYING, MONSTER, PEASANT, PIKEMAN, hero_at, hero_details, started, world};
+use crate::testing::{
+    FLYING, MONSTER, PEASANT, PIKEMAN, hero_at, hero_details, started, stream, world,
+};
 
 /// Red's colour bit.
 const RED_ONLY: u8 = 0b01;
@@ -81,7 +83,14 @@ fn walk(
         path: path.to_vec(),
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, heroes, RED, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            heroes,
+            (RED, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     (outcome, events)
 }
@@ -401,7 +410,14 @@ fn no_player_sees_an_event_in_its_views_its_paths_or_its_reach() {
             path: far.clone(),
         };
         s.clone()
-            .apply(core, part, &heroes, RED, &command, &mut Vec::new())
+            .apply(
+                core,
+                part,
+                &heroes,
+                (RED, &mut stream()),
+                &command,
+                &mut Vec::new(),
+            )
             .unwrap_err()
     };
     assert_eq!(reject(&with), reject(&without));

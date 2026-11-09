@@ -10,7 +10,7 @@
 use super::dwellings::{Rules, mask, placed, rules, setup, type_of};
 use super::*;
 use crate::command::{BattleStart, Defender};
-use crate::testing::{PEASANT, started};
+use crate::testing::{PEASANT, started, stream};
 
 pub(super) const RED: PlayerId = PlayerId::new(0);
 pub(super) const BLUE: PlayerId = PlayerId::new(1);
@@ -67,7 +67,14 @@ pub(super) fn visit(
         path: vec![Pos::new(1, 7, 0), ENTRANCE],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &walk, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &walk,
+            &mut events,
+        )
         .unwrap();
     assert_eq!(state.hero(HERO).unwrap().pos, ENTRANCE);
     events.retain(|e| !matches!(e.kind, AdventureEventKind::HeroStepped { .. }));
@@ -666,8 +673,15 @@ fn a_hero_in_a_boat_visits_a_dwelling_entered_from_water_as_on_land() {
     // The step onto the entrance: the guards' question.
     let sail = |s: &mut AdventureState, path: Vec<Pos>| {
         let walk = AdventureCommand::MoveHero { hero: HERO, path };
-        s.apply(&rules.0, &rules.1, &[], RED, &walk, &mut Vec::new())
-            .unwrap()
+        s.apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &walk,
+            &mut Vec::new(),
+        )
+        .unwrap()
     };
     let outcome = sail(&mut s, vec![Pos::new(2, 0, 0), at]);
     let ask = Offer {

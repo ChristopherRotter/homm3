@@ -481,6 +481,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-map/src/tests/import.rs`, `the_typed_classes_import_as_their_object_types`; `crates/h3-map/src/tests/teleporters.rs`, `the_import_types_each_teleporter_class_and_subclass`
 - Decided by / date: the survey's recommendation (§8), the design note §4 as written (the user 2026-11-06, ADV-Q45, E08 decision 267); built and recorded by E08 T103b
 
+### ADV-QUIRK-43 — A jump's hidden exit shown to a viewer
+- Class: harmless, not reproduced (no flag; E08 decision 267; A-41)
+- Context / rules affected: adventure, ADV-FOG-004 (what a viewer sees of a hero), ADV-TEL-007 (the arrival), the observation and the events' projections
+- Original behavior: a jump appends a record of the move (the player, the hero, the old tile and the new) to the turn's records (`hero_relocate_inner` 0x49CF50); the other players' Replay Opponent Turn plays it back and its view's corner moves to the exit, even one in the viewer's shroud, though nothing there is drawn or explored (batch E11's E11-18). The wiki: an enemy hero entering a monolith in the open has its exit "shown" in the shroud (survey `E08-teleporters.md` §8 A-41, §10).
+- Intended/expected behavior: a jump is seen as a step's two ends (`HeroTeleported`), each by the players that see the hero there; a viewer that sees one end only is told that one, the other left out, so no viewer learns a hidden exit or where a channel leads.
+- Impact: information only: a display's leak of a channel's exit to the players watching the entrance.
+- Community status: documented by the wiki (the Monolith page).
+- Sources: code reading (survey §10); observation, batch E11's E11-18 (survey §15); the wiki (survey §7).
+- Flag: none (not reproduced)
+- Defaults: not reproduced in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_viewer_is_told_the_ends_of_a_jump_it_sees_never_a_hidden_one`
+- Decided by / date: the survey's recommendation (§8), not reproduced (the user 2026-11-06, ADV-Q45, E08 decision 267); recorded by E08 T105a1
+
 ### ADV-QUIRK-44 — A teleporter off its surface
 - Class: exploit-fix (no flag: state-corrupting, always fixed; the map refused when the game is built; A-42)
 - Context / rules affected: adventure, ADV-TEL-001 (the teleporters' kinds), ADV-TEL-002 (the channels), the game's build (`h3_adventure::StaticMap`)
@@ -496,9 +509,9 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 
 ### ADV-QUIRK-45 — A Whirlpool's tile under a map-placed boat is never listed
 - Class: harmless, not reproduced (no flag; E08 decision 280; A-43)
-- Context / rules affected: adventure, ADV-TEL-002 (the Whirlpools' list), ADV-TEL-006 (the Whirlpool, T105a)
+- Context / rules affected: adventure, ADV-TEL-002 (the Whirlpools' list), ADV-TEL-006 (the Whirlpool, T105a2)
 - Original behavior: the setup's walk (`setup_map_objects` 0x4C0CC0) dispatches on a tile's class, the last object placed there, and a boat (class 8) has no case, so a Whirlpool tile under a boat the map places is never appended to the Whirlpools' list, also once the boat has left: never an exit; a visit from it excludes no word of its own (−1), so its draw takes its own Whirlpool's other five tiles too (survey `E08-teleporters.md` §3.1, §15 E11-17b).
-- Intended/expected behavior: every visitable tile of every Whirlpool is listed (ADV-TEL-002); the setup refuses a boat on a tile an object is visited from (ADV-SEA-001, `SetupError::Boat`), so no map-placed boat lies on one, and a jump's candidates skip a tile while an empty boat stands on it (the design note §7, T105a).
+- Intended/expected behavior: every visitable tile of every Whirlpool is listed (ADV-TEL-002); the setup refuses a boat on a tile an object is visited from (ADV-SEA-001, `SetupError::Boat`), so no map-placed boat lies on one, and a jump's candidates skip a tile while an empty boat stands on it (the design note §7; `jumps.rs`' candidates since E08 T105a1, the Whirlpools' with T105a2).
 - Impact: none on the shipped maps (none holds a boat on a Whirlpool, survey §1); a crafted map's boat there is refused.
 - Community status: not documented.
 - Sources: code reading (survey §3.1); observation, batch E11b's E11-17 and E11-17b (survey §15).

@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-09 (the adventure lane, E08 T105a1, branch `adventure/e08-t105a1`; **two new events,
+  for the views**): `h3_adventure::AdventureEventKind` gains `HeroTeleported { hero, from, to,
+  seen_from, seen_to }` (a monolith's or a gate's jump: `HeroStepped`'s fields and projection, a
+  viewer told an end only where it sees the hero, so `from` or `to` may be `None`; the two tiles are
+  not neighbours: draw it as a jump, not a step) and `LeadsNowhere { hero, object_type, anchor }`
+  (a one-way exit or a gate without a pair, the hero's owner's alone: the original's ADVEVENT 70
+  for a monolith, 153 for a gate, chosen by the object's kind). The Whirlpool's loss event comes
+  with T105a2, the battle at an exit with T105b. Nothing to act on before E24 shows a turn's moves.
 - 2026-11-09 (the adventure lane, E08 T104, branch `adventure/e08-t104`; **a refusal, for the
   viewer's map list**): the game's build now refuses a teleporter with a visitable tile off its
   surface (`h3_adventure::SetupError::TeleporterSurface(object index)`, A-42, `ADV-QUIRK-44`): a

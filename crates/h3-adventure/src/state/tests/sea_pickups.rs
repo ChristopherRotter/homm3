@@ -19,7 +19,9 @@ use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::setup::{Holds, ObjectSetup, Pos};
 use crate::state::Resolved;
-use crate::testing::{FLYING, PEASANT, WATER_WALKING, coasted, hero_at, hero_details, started};
+use crate::testing::{
+    FLYING, PEASANT, WATER_WALKING, coasted, hero_at, hero_details, started, stream,
+};
 
 fn p(x: u16, y: u16) -> Pos {
     Pos::new(x, y, 0)
@@ -82,7 +84,14 @@ fn step(
         hero: HERO,
         path: path.to_vec(),
     };
-    let result = state.apply(&rules.0, &rules.1, heroes, RED, &command, &mut events);
+    let result = state.apply(
+        &rules.0,
+        &rules.1,
+        heroes,
+        (RED, &mut stream()),
+        &command,
+        &mut events,
+    );
     if result.is_err() {
         assert!(events.is_empty(), "a rejected move emitted events");
         assert_eq!(*state, before, "a rejected move changed the state");

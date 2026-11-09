@@ -1350,6 +1350,17 @@ impl GameState {
         (&mut self.adventure, &self.heroes)
     }
 
+    /// The adventure state to change for a command or a rest of `player`'s, with the store of
+    /// heroes it reads and `player`'s stream, from which the adventure draws what a visit draws
+    /// (ADR-0017 point 4, ADV-TEL-003; E08 T105a1: the visitor's stream).
+    pub(crate) fn adventure_for(
+        &mut self,
+        player: PlayerId,
+    ) -> (&mut AdventureState, &[Arc<HeroDetails>], &mut Rng) {
+        let stream = &mut self.players[player.index()].rng;
+        (&mut self.adventure, &self.heroes, stream)
+    }
+
     /// The canonical state hash (ADR-0003 point 12): content only. It covers the seed and the
     /// streams, so it never reaches a client (ADR-0017 point 5).
     pub fn state_hash(&self) -> u64 {
