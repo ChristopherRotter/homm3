@@ -5699,14 +5699,17 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
     prop_assert!(adventure.check_camps(rules.core(), rules.adventure()));
     // E09 T9b1: no hero stands on the entrance of a town of another team or of none (TWN-VIS-002:
     // a town's visitor is of its owner's team; another team's hero besieges it from the tile
-    // before, an undefended town is captured as it is entered).
+    // before, an undefended town is captured as it is entered), but while its battle is open: a
+    // step onto an undefended town's entrance that a guard watches meets the guard first, and the
+    // town's capture follows that battle (E08 T103d, decision 279; found by the server lane's CI
+    // of #800, the town lane's inbox, 2026-11-09).
     let map = adventure.map();
     for &i in map.towns() {
         let entrance = map.objects()[i].entrance(map);
         for hero in adventure
             .heroes()
             .iter()
-            .filter(|h| Some(h.pos) == entrance)
+            .filter(|h| Some(h.pos) == entrance && state.battle(h.owner).is_none())
         {
             let owner = adventure.owner(i);
             prop_assert!(
