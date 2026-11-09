@@ -23,11 +23,13 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-07 (the town lane, E09 T16a and T16b, `town/e09-t16a`, `town/e09-t16b`, `cross-lane`;
-  **informational**): the 55 adventure replays' `town_ruleset_hash` line moved twice (T16a: town
-  part v4, the buildings' requirements, costs and the role `shipyard`; T16b: the shipped packs'
-  harvested ones), nothing else; the `BuildingDef` literal in `h3-game`'s `src/tests/mod.rs`
-  gained `requires` and `cost` (T16a). Nothing to act on.
+- 2026-11-09 (the town lane, E09 T17a, `town/e09-t17a`, `cross-lane`; **for T105b, the
+  versions**): T17a takes game state hash v26 (the store of towns' encoding v2: each town's day's
+  mark, `h3_towns::Town::built_today`, after its forbidden set; your HANDOFF's versions line
+  updated), so T105b's is v27 (your design §15's table and T105's queue entry still say v26). The
+  55 adventure replays re-recorded from their own commands: only `game_state_hash_version`, the
+  checkpoints and the final hashes moved, in every replay (an empty store's hash moves with its
+  version too). Nothing else of yours changed.
 
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts

@@ -1,7 +1,8 @@
 # Town rules (context `town`, crate `h3-towns`; E09): a town's record, its setup, the derivations
 # over it (the hall and the day's income, the siege's facts, the reveal, the Tavern, the
-# Capitol's limit) and the town on the map (ADR-0028). Format: docs/04-rules-and-sources.md §3.
-# Survey: docs/rules/surveys/E09-towns.md; ids: docs/epics/E09-design.md §19 (created by E09 T6b).
+# Capitol's limit), the town on the map (ADR-0028) and construction (increment 2). Format:
+# docs/04-rules-and-sources.md §3. Surveys: docs/rules/surveys/E09-towns.md, E09-construction.md;
+# ids: docs/epics/E09-design.md §19 and §34 (created by E09 T6b).
 
 [[rule]]
 id       = "TWN-INC-001"
@@ -677,4 +678,56 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 7 (TD-6 by the reading): the import moves the hero; a hero on another blocked tile of a town stays Unsupported::HeroInTown"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-004"
+title    = "One build a town a day: the day's mark"
+context  = "town"
+status   = "implemented"
+summary  = "A town is built in at most once a day: its day's mark (`h3_towns::Town::built_today`, the original's +0x2) is set by a build of its owner's, cleared for every town at each day's start, kept by a capture unless the town passes from a team without a human to a team with one (then cleared), so that a town a human built in today cannot be built in again today by the human who took it, and neither set nor cleared by a town event's build, which leaves the day's build free. One a town a day for every player (E09 decision 43): the computer's once every two days on Easy and Normal comes with the computer player (E10, E13). Hashed (town state hash v2: after each town's forbidden set). E09 T17a (design section 26): the mark and the store's writes `h3_towns::Towns::build` (its `mark`), `Towns::start_day`, `Towns::captured` (the Capitol's limit, `Towns::apply_capitol_limit`, keeps it); the refusal of a second build (`TownCommandError::BuiltToday`) comes with E09 T17b, the game's calls (the day's start, the capture, the command) and the mark's view with E09 T18b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12a; survey E09-construction.md section 3): town_build_effects (0x5BEDE0) sets the town's +0x2 with its mark argument, 1 (2 for a team without a human on Easy and Normal, 0x5BEE6C); new_day (0x4C8067) clears it for every town (a computer-only team's 2 counted down); town_change_owner (0x4C63B8) clears it only when the old owner's team has no human and the new owner's has one; town_events_apply (0x5BFEB0) builds without the mark (section 8.3)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 3: the town's built counter against TOWNS_BUILDINGS_PER_TURN_CAP (1), reset for every town at each new day; no difference by difficulty"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/GameStatePackVisitor.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "The game's manual (Heroes III, Towns, the Hall; survey E09-construction.md section 3): only one structure a day may be built in each town; the Heroes 3 wiki's difficulty page: the computer builds once every two days on Easy and Normal"
+  url        = "https://heroes.shoutwiki.com/wiki/Difficulty"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-BLD-005"
+title    = "What a build does to a town"
+context  = "town"
+status   = "implemented"
+summary  = "A build of a building in a town adds to its ever-built set the building and every building it supersedes, then each building whose non-empty `auto_with` is all ever built, with what it supersedes, to a fixed point, so that a horde and its level's upgraded dwelling make the upgraded horde whichever is built first; no test of the forbidden set, the requirements, the Capitol or the day's mark (the hall's tests are the command's, TWN-BLD-001 to -003; a town event's build has none, TWN-EVT-003). The standing set follows (derived, E09 decision 29) and every derivation of increment 1 reads the new record at once: the hall's income (TWN-INC-001), the silo (TWN-INC-002), the fort and the siege's facts (TWN-SIE-003), the Tavern's view level (TWN-VEW-002), the Capitol (TWN-VEW-001). The original's hall companions (23, 27 to 29 of the Rampart, the Necropolis and the Conflux) are display pieces the engine never has. A building's other effects come with the increments that build them (a dwelling's first creatures 3; the guild, the heroes' visit and the Tower's reveals 4). E09 T17a (design sections 26 and 27): `h3_towns::built_with`, written by `h3_towns::Towns::build`, which copies only the one town (ADR-0028 point 4) and gives its public facts before the build (`TownFacts`: the fort level, the Capitol, the mark) for the game's `TownChanged` (E09 T18b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a and T12a; survey E09-towns.md section 16.2, E09-construction.md section 4): town_build_effects (0x5BEDE0, read whole) calls town_build (0x5BE930: the building in the standing set +0x150, what it supersedes out, a horde with its level's upgraded dwelling standing or the upgraded dwelling with its level's horde standing turned into the upgraded horde, the hall companions of factions 1, 4 and 8), then recomputes the every-built set +0x158 as the standing set with what each standing building supersedes; no forbidden or requirement test there"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 4: CGameHandler::buildStructure adds the building with its automatic buildings (BUILD_AUTO, built when what they need stands), then the dwelling's creatures, the guild's spells, the Lookout's reveal and the visitors' visit: the same steps"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 26 and 27 (E09 decision 51): the hall's offer and the automatic buildings read over the ever-built set; the store's write copies one town"
   confidence = "high"

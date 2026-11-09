@@ -126,5 +126,6 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// timed events. v23 (E09 T7b1): the hero pool (TWN-SET-005: each hero type's status and colour
 /// mask), after the store of heroes. v24 (E09 T7b2a): the store of towns (`h3_towns::Towns`'
 /// encoding, the town state hash), after the hero pool. v25 (E08 T95b): the hire dialogs among the
-/// decisions (GAM-DEC-008: the owner, the target, the source).
-pub const GAME_STATE_HASH_VERSION: u32 = 25;
+/// decisions (GAM-DEC-008: the owner, the target, the source). v26 (E09 T17a): the store of
+/// towns' encoding v2, each town's day's mark (`h3_towns::Town::built_today`, E09 design §26).
+pub const GAME_STATE_HASH_VERSION: u32 = 26;
