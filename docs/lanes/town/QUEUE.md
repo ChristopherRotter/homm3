@@ -32,6 +32,15 @@ buildings with and without water). No version moves (the part and the store are 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**): **a town's garrison
+  change is told to every player who sees the town.** In `towns-s173-d21` command 205 player 1's
+  battle empties neutral town 4's garrison; player 0 sees the town and its `TownView::garrison`
+  changes, but every event of the command is player 1's alone. A server game keeps a viewer's view
+  current by events only (`docs/epics/E16-design.md` §14), so the change needs an event projected
+  to every player whose view of the town changes (a `TownChanged`'s `seen_by`, or a garrison
+  event). The server's fold test over the golden replays (M5 T3) checks it, a stub there until it
+  lands.
+
 - 2026-11-09 (the server lane, CI of #800, a random find; **an invariant of yours broken**):
   `h3-map`'s property test `tests::play::every_step_keeps_the_commands_invariants` failed in CI's
   coverage run on code that touches neither `h3-map` nor the game crates (`master` 2e5e08f plus

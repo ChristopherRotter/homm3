@@ -1918,3 +1918,39 @@ when online play needs them.
   (itself +3.93 % over the old baseline 311 535 698: the battle engine's drift): the shape is
   `master`'s but `Session::tell_end` (15.2 M inclusive, the 40 last snapshots, as the joins' 40
   cost 12.9 M) and the start's `Events` (0.2 M); re-baselined.
+
+### M5 T0 and T1 — the edges; the measurement: events only (2026-11-09)
+
+T0 merged as #799 (`master` 3c9cff3), the epic's bullet verbatim:
+
+- **T0 `shared/`** (merged first): `arch.toml` gives `h3-protocol` the edges to `h3-game`,
+  `h3-adventure`, `h3-heroes` and `h3-towns` (dev: the adventure's and the towns' packs, `h3-map`
+  for test games), `h3-server` the same and `h3-map`, `h3-pack-adventure`, `h3-pack-towns`;
+  ADR-0018 point 5 amended (the game's enums and observation structs mapped exhaustively) and
+  point 7 (a game's viewers are its players; a spectator once `h3_game::Viewer` has one); the
+  global trap "Battle types on the wire" widened to the game's types, in force from T2.
+
+T1 (SRV-Q25's measurement; the numbers, the method and the gaps in the design note §14):
+
+- **The program.** A scratch example of `h3-server` (release build, in a worktree; not kept in the
+  repo: its method is §14's, sent to the user as a file). Per command: `apply` with a recording
+  sink, then every player viewer's `observe`, its diff against the previous observation and the
+  projection of the command's events; the least of three runs each; sizes as JSON estimates
+  calibrated on the battle observation's wire (`Debug`/JSON 1.09 to 1.22).
+- **The games.** The 55 golden adventure replays (14 264 commands, maps of 12 to 36 tiles) and two
+  random games of eight players, 28 days, on `e08-xl-144` (1 351 commands) and `e08-economy-144`
+  (1 495), the fixtures' eight heroes one to each colour. The shipped XL maps were not staged (no
+  computer folder linked, no original data): the fixtures are the stand-in, as rich in objects.
+- **The result.** Observing and diffing every viewer: 22 times an `apply` on the golden replays,
+  864 and 730 times on the XL games, never at or below it; only the viewers told an event: 17,
+  237, 192; only those whose explored tiles grew: 0.75, 10.8, 9.1. A snapshot 15.5 KB (small maps)
+  and 96 KB (XL) per viewer; a diff's median 343 B and 0 B, its mean mostly the battle
+  observation sent whole; the events 338, 78 and 69 B per viewer and command. **Events only**, by
+  SRV-Q25's rule.
+- **What a fold lacks** (SRV-Q26, the user: foldable engine events and one query): a reveal's
+  content, a hero's points left, what comes into view without a reveal, two changes told to
+  nobody who saw them (`rewards-s162-d28` command 35, `towns-s173-d21` command 205). The adventure
+  and town lanes' inboxes hold them; T3's fold test checks them.
+- **The baseline.** CI's last two runs on `master` (3c9cff3, a0d5504) never started (no job, an
+  outage); the sandbox's full local verify of a0d5504's code passed and stands in
+  (`docs/05-testing.md`, "When CI cannot run").

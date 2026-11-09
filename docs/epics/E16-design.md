@@ -469,3 +469,79 @@ as `login_message` does; `h3-protocol` builds the bytes, `h3-server` and clients
 | A hostile peer | it is dialed only at its configured address and must answer with its configured key; its frames, pages and time are bounded; a card it relays is kept only if it verifies and its chain holds from the peer's own card; what it relays for its lists stays its own |
 | A forged or stale list | signed by the list's key, with issue and expiry times and bounds; skipped and logged otherwise; the client chooses which list keys to trust and checks that a list names each card marked with it |
 | Browsing reveals the player's address | cards are relayed by servers the player already knows; a new server is contacted only on the player's choice |
+
+## 14. The whole game's updates: a diff or events only (M5 T1, 2026-11-09)
+
+SRV-Q25's measurement. **Method.** A scratch program (`h3-server`'s example in a worktree, release
+build; not kept in the repo) runs every command of the 55 golden adventure replays (14 264
+commands; maps of 12 to 36 tiles, two players) and two random games of eight players on the XL
+fixtures, 28 days each (`e08-xl-144`, 1 351 commands; `e08-economy-144`, 1 495; the fixtures'
+eight heroes dealt one to each colour, the setups otherwise as imported: the shipped XL maps were
+not staged, and `observe` costs per tile and object, which the fixtures hold as many of as the
+shipped maps). Per command: `apply` with a recording sink (the least of three runs on clones of the
+state), then for each player viewer `observe` (least of three), a diff against its previous
+observation (least of three) and the projection of the command's events. Sizes are JSON
+estimates: a plane's word as a string, a tile as one packed number, every other part as its
+`Debug` text divided by the battle observation's measured `Debug`/JSON ratio (1.09 to 1.22 against
+`h3-protocol`'s wire). A diff holds the planes' changed words and the changed tiles with their
+indices, the heroes, objects, known objects, boats and towns changed, added or removed by
+identity (an object by type and anchor), every other part whole when it changed.
+
+| Per command | golden replays | XL, 8 players | economy XL, 8 players |
+|---|---|---|---|
+| `apply`, µs | 2.9 | 4.0 | 3.5 |
+| `observe` of every viewer, µs | 33 | 2 925 | 2 036 |
+| the diffs of every viewer, µs | 32 | 499 | 512 |
+| (observe + diff) / apply, all commands | 22 | 864 | 730 |
+| commands where observe + diff ≤ apply | 0 % | 0 % | 0 % |
+| … only the viewers that were told an event | 17 | 237 | 192 |
+| … only the viewers whose explored tiles grew | 0.75 | 10.8 | 9.1 |
+| the explored counts of every viewer (`BitGrid::count`), µs | 0.43 | 3.1 | 5.1 |
+| a snapshot, KB per viewer | 15.5 | 96.6 | 96.1 |
+| a diff, B per viewer: mean, median, 99th percentile | 2 539, 343, 11 175 | 746, 0, 8 970 | 660, 0, 9 710 |
+| the projected events, B per viewer | 338 | 78 | 69 |
+
+An XL snapshot is 83 KB of tiles, 7 KB of planes and 3 to 4 KB of objects. A diff's mean is
+mostly the battle observation sent whole at each battle command (671 of 746 B on the XL map, 2 443
+of 2 539 in the golden replays); with the battle's own events in its place an adventure diff is
+50 to 75 B. On the XL maps a move applies in 5 to 7.5 µs against 450 to 480 times that for
+observing and diffing, an end of turn (every viewer's `acting` changes) in 2.5 to 3.4 µs against
+750 to 1 350 times.
+
+**Decision (SRV-Q25's rule): events only.** Observing and diffing every viewer costs 22 times a
+command's `apply` on the small maps and 730 to 860 times on an XL map with eight players, below
+it for no command; even only for the viewers an event reached, 17 to 240 times. The bytes decide
+nothing (a diff is small, so are the events). So T2 has no diff message: a viewer gets a snapshot
+when it joins and its projected events after every command, as a battle's seat does.
+
+**What a fold needs that the engine's events do not carry** (SRV-Q26; found by the same run):
+
+- (a) **A reveal's content.** A step's reveal has no event, an object's (`TilesRevealed`) a count:
+  the client needs the newly explored and fringe tiles' views and the objects, heroes and towns it
+  now sees there (1 505 viewer-commands in the golden replays, 134 and 151 in the XL games; as a
+  diff 26 to 73 B per viewer and command).
+- (b) **A hero's movement points left.** `HeroStepped` names the tiles; no event or `HeroChange`
+  carries the points, which `OwnHeroView::movement` shows after every move (a client must not
+  compute them: the rules are the server's).
+- (c) **What comes into view without a reveal**: another player's hero stepping into sight
+  (`HeroStepped` gives the id and the tiles, not the owner, type or boat), a boat left on landing
+  or built: 174 heroes, 63 objects and 9 boats in the golden replays, none or 4 in the XL games.
+- (d) **Two changes told to nobody who saw them** (of 28 528 viewer-commands in the golden
+  replays; none in the XL games): in `rewards-s162-d28` command 35 player 1's hero visits the
+  object of type 65 at (29, 23, 0), finds it emptied and spends 141 points, and the engine emits
+  no event; in `towns-s173-d21` command 205 player 1's battle empties neutral town 4's garrison,
+  which player 0 sees, but every event of the command is player 1's.
+
+No other check failed: every other change of a viewer's view came with an event for it (8 events
+changed nothing), and a viewer's explored count grew exactly when its planes did, so the server
+can tell a reveal for 3 to 5 µs a command for eight viewers.
+
+**SRV-Q26 (the user): the engine's events made foldable, and one query.** (a) is the adventure
+lane's query for what a viewer sees on the tiles it explored since a given explored grid, which
+the server asks when the viewer's count grew; (b), (c) and (d)'s visit are the adventure lane's
+events, (d)'s garrison the town lane's (their inboxes, 2026-11-09). For the server, provisional
+until each task shapes it: T2 maps the observation whole (the snapshot); T3 maps the events and
+gives the fold, a function of `h3-protocol` that clients and records share, with its test over
+the golden replays (each viewer's snapshot folded with its events equals `observe` after every
+command), each gap a stub (`SRV-STUB-<n>`) until its lane lands it; T5's session keeps each
+viewer's last explored grid and sends the query's answer with the command's events.
