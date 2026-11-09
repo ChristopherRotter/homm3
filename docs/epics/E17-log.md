@@ -5891,3 +5891,35 @@ start); the VM restarted once after staging (the files kept).
   design §7.27's last item.
 - **Gates:** `drawn` (after the record: 263 the same), `check.sh` (`verify-once.sh clients`),
   the scoped verify with original data, `h3-view gate`.
+
+### M6 T7a: R4-9 and every capture afresh (2026-11-09/10)
+
+T7 cut in three by the user at its start (T7a the captures with R4-9, T7b the fresh reviewer,
+T7c the review list and M7); T7a taken whole. The original data staged by the file tool at once
+(the user's computer left about an hour in); the baseline `check.sh` passed
+(`verify-once.sh clients`), `drawn` 263 of 263 the same with the release viewer.
+
+- **Captured** (the two instances side by side; a shared queue, longest first, popped by one
+  runner per instance that starts no new sequence after 75 minutes, restarted by the agent):
+  `set` all 172 situations, 222 frames, as recorded (49 minutes); all 91 sequences as recorded
+  at their first run (about 6 hours for both instances, 4.6 s a kept frame); no rerun needed;
+  `kept/` unchanged.
+- **R4-9** (`h3cap.redraws`, design §7.11): the near-black pixels and the earlier moments' black
+  ones fitted a deep chain over almost anything. Measured on the old rule's artifacts of every
+  sequence (the diff PNGs' yellow) before choosing: a pure chain (one op repeated) rejects real
+  artifacts where two shadows overlap (`behind` 10, `fly` 22, `thunder` 7 pixels of frames of
+  artifacts alone); a chain witnessed frame by frame by the original's own screens fails `melee`
+  at 3 735 (the Angels' shadow four deep at once: the back buffer compounds outside the shown
+  rectangle); the viewer's pixel a shadow's value rejects only one real pixel (`lightning` and
+  `mass` at 0 ms, a shadow over the count box's frame: one shadow over a non-shadow value).
+  Built: one shadow at the same moment anywhere, deeper chains and the earlier moments' only
+  over `SHADOW_VALUES`. Every sequence `--reuse`d with it: 78 as recorded, 13 changed in 16
+  frames, each a listed difference's (1 044 pixels moved from artifacts, all at or beside the
+  difference: `mine` 802, `starts` 70, `stare` 15, `summon-other` 28, `blows` 9, `auto` 4,
+  `stone` 3, `acid` 1 and the twins); recorded, `--reuse` again as recorded. The frames'
+  "only by redraw artifacts" counts unchanged everywhere. Frames shifted one pixel (`walk`,
+  `shot`): both rules fit 0.5 % of the differing pixels (the near-black cases are rare there).
+- **Recorded:** the 13 `timelines/<id>-frames.txt`, `blows`' comment, the runbook's frame check,
+  design §7.11, M6's review item 48.
+- **Gates:** `check.sh` (the baseline), the scoped verify with original data, `drawn` (the viewer
+  unchanged: 263 the same at the start).

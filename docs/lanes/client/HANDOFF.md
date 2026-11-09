@@ -12,10 +12,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (#781); T6b cut in two by the user (2026-11-07; R4-9 moved into T7): **T6b1 done** (#785, CLT-Q5's
   deck and boats, design §6.2); **T6b2 done** (#789, CLT-Q67, design §7.25). T6c cut in two by the
   user (2026-11-07): **T6c1 done** (#792: `h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers;
-  CLT-Q68 answered fix; design §7.27), **T6c2 done** (the four captures whose clips differed
-  captured again, every clip frame exact, `drawn` recorded, CLT-Q30 closed; the PR on
-  `client/e17-m6-t6c2`: check it first). T6 done. **Next: T7** (M6's closure with R4-9; cut with
-  the user at its start); then M7 ranked play and the server browser.
+  CLT-Q68 answered fix; design §7.27), **T6c2 done** (#795). T6 done. **T7** (M6's closure) cut in
+  three by the user (2026-11-09): **T7a done** (R4-9's stricter redraw rule and every capture
+  afresh; the PR on `client/e17-m6-t7a`: check it first); **next: T7b** (the fresh reviewer and
+  its fixes), then T7c (the review list, M7 refined, M6 closed); then M7 ranked play and the
+  server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -52,6 +53,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-09/10, E17 M6 T7a (done; `client/e17-m6-t7a`).** T7 cut in three by the user; T7a
+  kept whole. The original data staged by the file tool at once (the PC left after an hour).
+  Every capture afresh on two instances (172 situations, 91 sequences, all as recorded, about
+  6 hours); R4-9 built (`h3cap.SHADOW_VALUES`), its counts moved only in listed differences'
+  frames (recorded). Record: `E17-log.md`.
 - **2026-11-07, E17 M6 T6c2 (done; `client/e17-m6-t6c2`).** Kept whole. The original data
   staged by the file tool (the PC's shell did not start). `drawn` listed the four captures whose
   clips differed; captured, recorded (`defended`'s window only its 122 artifacts, the others
@@ -60,8 +66,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   data staged by the file tool (the PC's shell did not start). Read the DLL's DCT (a symbolic
   trace of its x87 code), built it in integers, checked against the DLL's planes under Wine
   (`binkprobe` now at the game's control word); CLT-Q68 asked (fix). Record: `E17-log.md`.
-- **2026-11-07, E17 M6 T6b2 (done; `client/e17-m6-t6b2`).** Kept whole. The original data
-  staged by the file tool before the PC went (its shell not used). Read (the cast's backdrop,
-  `compose_battle_background`'s whole copy), probed (the back buffer read from memory each
-  millisecond of `demons`), asked (CLT-Q67, answered (a)), built (`scene::Saved`, `compose`'s
-  `back_buffer`), `demons` exact; reviewed by a fresh reviewer. Record: `E17-log.md`.
