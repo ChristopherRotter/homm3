@@ -83,3 +83,17 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: faithful = fixed, strict-fixed = fixed
 - Regression test: `crates/h3-game/src/town/tests/heroes.rs`, `twn_quirk_6_a_main_towns_hero_is_refused_on_a_visitors_entrance`
 - Decided by / date: the agent, 2026-11-05 (state-corrupting, so fixed; the refusal proposed to the user at the task's start, the user told of it after the reading); entered by E09 T7b2b, 2026-11-05
+
+### TWN-QUIRK-7 — A town event's bits past the map's slots
+- Class: fix, no flag (a read past a table, which the engine never reproduces; quirk candidate T-9; the user, 2026-11-07, TWN-Q10, the epic's decision 51)
+- Context / rules affected: town, TWN-EVT-003 (a town event's buildings; E09 T17b), TWN-SET-003 (the map's slots resolved through the faction)
+- Original behavior: `town_events_apply` (0x5BFEB0) loops over the 44 bits of `building_bits` (0x66CD98 to 0x66CEF8, 8 bytes a bit) and maps each set bit of the event through `map_building_ids` (0x6888C0) at faction × 41 + bit, a table of 41 entries a faction: the bits 41 to 43 would read the next faction's entries 0 to 2 (past the table for the Conflux, the last faction). The map has 41 slots; no shipped event sets those bits (survey `E09-construction.md` §10).
+- Intended/expected behavior: a town event's buildings are its slots below the map's 41 (`h3_towns::SlotSet` drops the higher bits, `SlotSet::from_bits`, the import's reading of the six bytes), each resolved through the town's own faction (`SlotSet::buildings`); the bits 41 to 47 build nothing.
+- Impact: none on the shipped maps; a hand-made map setting those bits builds nothing instead of another faction's building.
+- Community status: unknown; VCMI 1.7.5 reads the event's bits through the town's faction alone (survey §9).
+- Sources: code reading of `town_events_apply` 0x5BFEB0, read whole (E09 T12b; survey `docs/rules/surveys/E09-construction.md` §8.3), the loop's bound and index read again by E09 T17b (0x5BFEF9 to 0x5BFF4C).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-towns/src/build.rs`, `twn_quirk_7_an_events_bits_past_the_maps_slots_build_nothing`
+- Decided by / date: the user, 2026-11-07 (TWN-Q10; decision 51); entered by E09 T17b, 2026-11-09
+
