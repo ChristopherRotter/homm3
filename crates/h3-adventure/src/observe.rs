@@ -617,7 +617,8 @@ impl AdventureEvent {
                 | AdventureEventKind::MonsterAdded { .. }
                 | AdventureEventKind::NoneToRecruit { .. }
                 | AdventureEventKind::JoinRefused { .. }
-                | AdventureEventKind::LeadsNowhere { .. } => self.kind,
+                | AdventureEventKind::LeadsNowhere { .. }
+                | AdventureEventKind::WhirlpoolLoss { .. } => self.kind,
             },
             seen_by: alone,
         })

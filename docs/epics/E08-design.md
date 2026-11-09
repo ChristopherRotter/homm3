@@ -273,6 +273,11 @@ arrives when no hero stands on the exit, else explores radius 1 and leaves the m
 entrance (`ADV-STUB-16`: the battle and the meeting are T105b's); `arrive` writes the tile, keeps
 the points, explores the scouting radius and emits `HeroTeleported`. The entrance's guard needed
 nothing: T103d's held visit is the jump, `visit_held` passing the stream.
+*As built* (T105a2, `adventure/e08-t105a2`): `Effect::Whirlpool(divisor)`, `visit_whirlpool` (the
+loss unless protected, then `draw_exit` over `Channels::whirlpools`, each tile excluded when its
+Whirlpool is the entrance's object); `draw_exit` takes the list's tiles with what the visit
+excludes, so one pass serves the three kinds; the arrival with the boat needed nothing (the hero's
+tile is the boat's). An enemy hero on a drawn Whirlpool tile: `ADV-STUB-16` as the monoliths'.
 
 ###### 8. The Whirlpool's loss (ADV-TEL-006; `whirlpool_losses` 0x4ACAA0, §4.4)
 
@@ -290,6 +295,10 @@ nothing: T103d's held visit is the jump, `visit_held` passing the stream.
   alone, as its army is.
 - The army is never left empty (a lone stack keeps one); its slowest speed may change, the day's
   points do not (neither the loss nor `hero_relocate` touches them).
+- *As built* (T105a2): `jumps.rs`' `whirlpool_loss` (the least `(fight value × count, slot)`, the
+  stack's count set, an emptied slot dropped), `AdventureEventKind::WhirlpoolLoss { hero, slot,
+  creature, count }`; a hero without details is unprotected; `ADV-QUIRK-40` (A-38),
+  `ADV-QUIRK-42` (A-40).
 
 ###### 9. The reach and the paths (ADV-OBJ-003 amended; D-58 as the original)
 
@@ -624,7 +633,7 @@ ADRs are applied once with the rows' verdicts:
 | 4 | **T102** | `shared/` (`cross-lane`): the two ADRs with T101's outcome, the glossary, `docs/06-security.md`, the effect kind with the harvester's gap-fill (pack format v51, core ruleset hash v52) |
 | 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v21); a step onto an entrance refused as any unbuilt visit's until T105a. *Cut at its start* (decision 282): T103c batch E11c, T103d decision 279's order, after T103c |
 | 6 | **T104** | The build: the surfaces (A-42 and its entry), the channels, the gates' pairs (note §5); `build-gates-xl-144` |
-| 7 | **T105** | T105a, in two by land and water (decision 287): T105a1 the stream in `apply`, the monoliths' and the gates' jumps, the events and views, the entrance's guard, the reach's measure against `master`, A-41's entry (done); T105a2 the Whirlpool, its loss and jump (A-38's, A-40's entries). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v26, replay format v11, `cross-lane` v8; A-37's entry) |
+| 7 | **T105** | T105a, in two by land and water (decision 287): T105a1 the stream in `apply`, the monoliths' and the gates' jumps, the events and views, the entrance's guard, the reach's measure against `master`, A-41's entry (done); T105a2 the Whirlpool, its loss and jump (A-38's, A-40's entries; done). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v27, E09 T17a having taken v26; replay format v11, `cross-lane` v8; A-37's entry) |
 | 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined |
 
 *Added at T101* (decisions 279, 280): batch E11c (§16) and decision 279's order for every entered

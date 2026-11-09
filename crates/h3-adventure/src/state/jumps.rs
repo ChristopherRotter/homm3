@@ -1,17 +1,17 @@
 //! The teleporters' jumps (E08 T105a1; ADV-TEL-003, ADV-TEL-004, ADV-TEL-005, ADV-TEL-007;
 //! increment 11's design note §7 and §10, survey `E08-teleporters.md` §4 and §5): the visit of a
-//! monolith or a Subterranean Gate the hero stands on, the step onto it having been priced, paid
-//! and revealed as any step's (its walk ends there, D-58). The exit comes from the static map's
-//! channels and pairs (ADV-TEL-002, E08 T104), read here alone; a monolith's is drawn among its
-//! candidates from the visitor's stream (ADR-0016 point 4, ADR-0017 point 4), after the whole
-//! command was checked. The Whirlpool's jump, its loss first, is T105a2's; the battle at an
-//! occupied exit and a gate's meeting are T105b's (`ADV-STUB-16`).
+//! monolith, a Subterranean Gate or (E08 T105a2, ADV-TEL-006, design note §8) a Whirlpool the
+//! hero stands on, the step onto it having been priced, paid and revealed as any step's (its walk
+//! ends there, D-58). The exit comes from the static map's channels and pairs (ADV-TEL-002, E08
+//! T104), read here alone; a monolith's and a Whirlpool's is drawn among its candidates from the
+//! visitor's stream (ADR-0016 point 4, ADR-0017 point 4), after the whole command was checked.
+//! The battle at an occupied exit and a gate's meeting are T105b's (`ADV-STUB-16`).
 
 use alloc::sync::Arc;
 
 use h3_content::Ruleset;
-use h3_contracts::{HeroId, PlayerId};
-use h3_heroes::HeroDetails;
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_heroes::{HeroDetails, whirlpool_protection};
 use h3_kernel::Rng;
 
 use super::{AdventureState, StepVisit};
@@ -46,9 +46,89 @@ impl AdventureState {
             MonolithWay::TwoWay => channels.two_way(channel),
             MonolithWay::Exit => return self.leads_nowhere((player, hero), visit, sink),
         };
-        if let Some(exit) = self.draw_exit(player, tiles, visit.tile, draws) {
+        let listed = tiles.iter().map(|&tile| (tile, tile == visit.tile));
+        if let Some(exit) = self.draw_exit(player, listed, draws) {
             self.jump(rules, (player, hero), (visit.tile, exit), sink);
         }
+    }
+
+    /// A Whirlpool's visit by `player`'s hero `hero`, which stands in its boat on one of its
+    /// tiles (ADV-TEL-006; the original's case 111 at 0x4A95A5, survey §4.4): first **the loss**
+    /// ([`Self::whirlpool_loss`]) unless the hero is protected (`h3_heroes::whirlpool_protection`:
+    /// the Sea Captain's Hat, alone or in the Admiral's Hat; a hero without details is not), then
+    /// the jump to a tile drawn among the other Whirlpools' ([`Self::draw_exit`] over the
+    /// Whirlpools' list, the entrance's own Whirlpool's tiles excluded by its object: the
+    /// original's shared word, so one draw gives the object and the tile). The hero arrives with
+    /// its boat, whose record keeps its boarded tile (ADR-0016 point 1); no candidate: it stays,
+    /// the loss taken (the wiki: a lone Whirlpool only takes troops; batch E11's E11-10 to E11-13,
+    /// E11-17).
+    // rule: ADV-TEL-006
+    pub(super) fn visit_whirlpool<S: Sink>(
+        &mut self,
+        rules: Rules<'_>,
+        (player, hero): (PlayerId, HeroId),
+        (visit, divisor): (StepVisit<'_>, u32),
+        draws: &mut Rng,
+        sink: &mut S,
+    ) {
+        let (core, _, heroes) = rules;
+        if !details_of(heroes, hero).is_some_and(|details| whirlpool_protection(details, core)) {
+            self.whirlpool_loss(core, (player, hero), divisor, sink);
+        }
+        let listed = (self.map.channels().whirlpools().iter())
+            .map(|whirlpool| (whirlpool.tile, whirlpool.object == visit.object));
+        if let Some(exit) = self.draw_exit(player, listed, draws) {
+            self.jump(rules, (player, hero), (visit.tile, exit), sink);
+        }
+    }
+
+    /// **The Whirlpool's loss** of `player`'s hero `hero` with `divisor` (ADV-TEL-006;
+    /// `whirlpool_losses` 0x4ACAA0, survey §4.4; D-54, D-55 as the original): its **weakest
+    /// stack**, the least creature fight value × count as a 64-bit product, the first slot on a
+    /// tie (the army is in slot order, the slot breaks the tie), keeps `count / divisor` rounded
+    /// down, the slot emptied at 0, when the army holds more than one stack; a lone stack keeps
+    /// `max(1, count / divisor)`. Told to the owner alone with the count lost, 0 for a lone
+    /// creature kept (the original's ADVEVENT 168 shows then too). **A-38 not reproduced**
+    /// (`ADV-QUIRK-40`, decision 266): the original ranks from 99 999 999 with an `i32` product,
+    /// so a stack at that bound or past it is never the weakest (a lone stack of 1 776 Azure
+    /// Dragons keeps them all, the wiki's "bug", batch E11's E11-12) and several such stacks
+    /// corrupt the army. **A-40 not reproduced** (`ADV-QUIRK-42`, decision 267): every hero
+    /// loses, where the original spares a computer player's (decision 16: no human or computer
+    /// player here). The day's points stay (the army's speed counts at the next day's start).
+    // rule: ADV-TEL-006
+    fn whirlpool_loss<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        (player, hero): (PlayerId, HeroId),
+        divisor: u32,
+        sink: &mut S,
+    ) {
+        let index = self.heroes.partition_point(|h| h.id < hero);
+        let army = &mut self.heroes[index].army;
+        let lone = army.len() == 1;
+        let value = |stack: &ArmyStack| {
+            let fight = core.creature(stack.creature).map_or(0, |c| c.fight_value);
+            (u64::from(fight) * u64::from(stack.count), stack.slot)
+        };
+        let lost = (army.iter_mut().min_by_key(|stack| value(stack))).map(|stack| {
+            let kept = stack.count / divisor;
+            let kept = if lone { kept.max(1) } else { kept };
+            let lost = (stack.slot, stack.creature, stack.count - kept);
+            stack.count = kept;
+            lost
+        });
+        army.retain(|stack| stack.count > 0);
+        lost.into_iter().for_each(|(slot, creature, count)| {
+            sink.emit(AdventureEvent {
+                kind: AdventureEventKind::WhirlpoolLoss {
+                    hero,
+                    slot,
+                    creature,
+                    count,
+                },
+                seen_by: Viewers::NONE.with(player),
+            });
+        });
     }
 
     /// A Subterranean Gate's visit by `player`'s hero `hero`, which stands on it (ADV-TEL-005;
@@ -70,41 +150,45 @@ impl AdventureState {
         }
     }
 
-    /// The exit of `player`'s jump from `entrance` among `tiles`, a channel's list in the walk's
-    /// order (ADV-TEL-003; `teleport_exit_draw` 0x4CDB80, survey §4.1, read whole; D-53, D-57 as
-    /// the original): over the list, a tile is a **candidate** when a hero of another team stands
-    /// on it, whatever lies there (a team is its player until E10's allies), or when no hero and
-    /// no empty boat stand on it and it is not `entrance` (a two-way monolith excludes its own
-    /// tile; the mover stands there anyway, a hero of its team). *Agent's call* (design note §7):
-    /// a tile with an empty boat is no candidate. None: no exit. **One: no draw** (the original's
+    /// The exit of `player`'s jump among `listed`, a channel's tiles in the walk's order, each
+    /// with whether the visit excludes it (ADV-TEL-003; `teleport_exit_draw` 0x4CDB80, survey
+    /// §4.1, read whole; D-53, D-57 as the original): over the list, a tile is a **candidate** when
+    /// a hero of another team stands on it, whatever lies there (a team is its player until E10's
+    /// allies), or when no hero and no empty boat stand on it and the visit does not exclude it (a
+    /// two-way monolith excludes its own tile, a Whirlpool its own Whirlpool's; the mover stands
+    /// on the entrance anyway, a hero of its team). *Agent's call* (design note §7): a tile with
+    /// an empty boat is no candidate. None: no exit. **One: no draw** (the original's
     /// `random_between` returns equal bounds at once). Else one uniform draw of the candidate's
     /// place among them from the visitor's stream, which no profile can reproduce (the original
-    /// draws from the C runtime's one stream; the spread uniform as read, batch E11's E11-15).
+    /// draws from the C runtime's one stream; the spread uniform as read, batch E11's E11-15 and
+    /// E11-17).
     // rule: ADV-TEL-003
     fn draw_exit(
         &self,
         player: PlayerId,
-        tiles: &[Pos],
-        entrance: Pos,
+        listed: impl Iterator<Item = (Pos, bool)> + Clone,
         draws: &mut Rng,
     ) -> Option<Pos> {
-        let candidate = |tile: &&Pos| match self.heroes.iter().find(|h| h.pos == **tile) {
-            Some(other) => other.owner != player,
-            None => **tile != entrance && !self.is_empty_boat(**tile),
-        };
-        let count = u32::try_from(tiles.iter().filter(candidate).count()).unwrap_or(u32::MAX);
+        let candidate =
+            |&(tile, excluded): &(Pos, bool)| match self.heroes.iter().find(|h| h.pos == tile) {
+                Some(other) => other.owner != player,
+                None => !excluded && !self.is_empty_boat(tile),
+            };
+        let count = u32::try_from(listed.clone().filter(candidate).count()).unwrap_or(u32::MAX);
         let place = match count {
             0 => return None,
             1 => 0,
             count => usize::try_from(draws.below(count)).unwrap_or(usize::MAX),
         };
-        tiles.iter().filter(candidate).nth(place).copied()
+        listed.filter(candidate).nth(place).map(|(tile, _)| tile)
     }
 
     /// The jump of `player`'s hero `hero` from `entrance` to `exit`: **the arrival** when no hero
     /// stands on the exit ([`Self::arrive`]); else the tiles within 1 of the exit are explored by
     /// the mover's owner, with no event (`reveal_disk` with radius 1 before `visit_hero`, survey
-    /// §4.2, §4.3; batch E11's E11-7), and the hero stays on the entrance.
+    /// §4.2, §4.3; batch E11's E11-7), and the hero stays on the entrance. A Whirlpool's exit
+    /// under an enemy hero is met the same way (A-37 fixed by the battle, decision 265: the
+    /// original moves the mover onto that hero's tile).
     fn jump<S: Sink>(
         &mut self,
         rules: Rules<'_>,
@@ -126,8 +210,10 @@ impl AdventureState {
     /// `hero_relocate` 0x41D930, survey §5; batch E11's E11-2, E11-3): its tile becomes the exit,
     /// its points and the day's maximum kept; the tiles within its scouting radius of the exit
     /// explored by its owner (ADV-FOG-002's disk, as a step's); **no guard test and no visit**
-    /// there (a two-way exit is not entered again); the move ends. Told as
-    /// [`AdventureEventKind::HeroTeleported`] (ADV-FOG-004).
+    /// there (a two-way exit is not entered again); the move ends. A hero in a boat (a
+    /// Whirlpool's) arrives in it: the boat's record keeps the tile it was boarded on (ADR-0016
+    /// point 1), the hero's tile is the boat's. Told as [`AdventureEventKind::HeroTeleported`]
+    /// (ADV-FOG-004).
     // rule: ADV-TEL-007, ADV-FOG-004
     fn arrive<S: Sink>(
         &mut self,

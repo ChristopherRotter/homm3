@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-09 (the adventure lane, E08 T105a2, branch `adventure/e08-t105a2`; **one new event,
+  for the views**): `h3_adventure::AdventureEventKind` gains `WhirlpoolLoss { hero, slot,
+  creature, count }`, told before a Whirlpool's jump to the hero's owner alone: the weakest
+  stack's slot and creature and how many it lost (0 for a lone creature kept, when the original's
+  ADVEVENT 168 shows too; the whole count for a slot emptied); none for a hero the Sea Captain's
+  Hat spares. The jump itself is `HeroTeleported`, the hero in its boat. A boat's step onto a
+  Whirlpool's tile is now a visit (it was refused). Nothing to act on before E24 shows a turn's
+  moves.
 - 2026-11-09 (the adventure lane, E08 T105a1, branch `adventure/e08-t105a1`; **two new events,
   for the views**): `h3_adventure::AdventureEventKind` gains `HeroTeleported { hero, from, to,
   seen_from, seen_to }` (a monolith's or a gate's jump: `HeroStepped`'s fields and projection, a

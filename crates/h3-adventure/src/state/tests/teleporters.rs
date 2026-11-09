@@ -1,14 +1,19 @@
 //! Increment 11's teleporters on the map (E08 T103a, increment 11's design note §1): since E08
 //! T104 (design note §5) the build's channels and gates' pairs, and its refusal of a teleporter off
 //! its surface (A-42); since E08 T105a1 (design note §7, §10) the monoliths' and the Subterranean
-//! Gates' jumps (`jumps.rs`), the Whirlpool's step still refused until T105a2.
+//! Gates' jumps (`jumps.rs`); since T105a2 (design note §7 item 5, §8) the Whirlpool's loss and
+//! jump.
 
 use std::string::String;
+
+use h3_content::{ArtifactClass, ArtifactDef, ArtifactSlotDef, HeroEffect};
+use h3_heroes::wearing;
 
 use super::*;
 use crate::ruleset::{MonolithWay, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
-    PIKEMAN, hero_at, hero_details, key, movement_rules_with, started, stream, world,
+    GNOLL, PEASANT, PIKEMAN, WOLF, hero_at, hero_details, key, movement_rules_with, started,
+    stream, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -20,12 +25,36 @@ const HERO: HeroId = HeroId::new(1);
 /// `t:underground_gate` (the test rules hold a border gate `t:gate`) and a Whirlpool
 /// `t:whirlpool`, all entered, the Whirlpool from above; since E08 T104 a one-way entrance
 /// `t:entrance` and exit `t:exit` of channel 0, an exit `t:exit_1` and a two-way monolith
-/// `t:two_way_1` of channel 1.
+/// `t:two_way_1` of channel 1; since T105a2 a Whirlpool `t:whirlpool_3` of divisor 3, the
+/// creatures' fight values (the Pikeman the Pegasus's 407, the Gnoll the Dendroid Guard's 690, the
+/// Peasant 15, the Wolf the Azure Dragon's 56 315: batch E11's E11-10 and E11-12) and a hat
+/// `t:hat` worn on the head, which spares its wearer a Whirlpool's loss.
 fn teleporter_rules() -> Rules {
     movement_rules_with(
         true,
         32,
-        |_| {},
+        |core| {
+            for (creature, value) in core.creatures.iter_mut().zip([407, 690, 15, 56_315]) {
+                creature.info.fight_value = value;
+            }
+            core.artifact_slots = vec![ArtifactSlotDef {
+                key: key("t:head"),
+                name: "Head".into(),
+                count: 1,
+                backpack: true,
+            }];
+            core.artifacts = vec![ArtifactDef {
+                key: key("t:hat"),
+                name: "Hat".into(),
+                class: ArtifactClass::Treasure,
+                cost: vec![],
+                slot: Some(key("t:head")),
+                war_machine: None,
+                needs_skill: None,
+                effects: vec![HeroEffect::WhirlpoolProtection],
+                parts: vec![],
+            }];
+        },
         |part| {
             let ty = |k: &str, from_above, kind| ObjectTypeDef {
                 key: key(k),
@@ -45,6 +74,11 @@ fn teleporter_rules() -> Rules {
                 ),
                 ty("t:underground_gate", false, ObjectKindDef::SubterraneanGate),
                 ty("t:whirlpool", true, ObjectKindDef::Whirlpool { divisor: 2 }),
+                ty(
+                    "t:whirlpool_3",
+                    true,
+                    ObjectKindDef::Whirlpool { divisor: 3 },
+                ),
             ]);
             let monolith =
                 |k: &str, channel, way| ty(k, false, ObjectKindDef::Monolith { channel, way });
@@ -623,20 +657,284 @@ fn a_viewer_is_told_the_ends_of_a_jump_it_sees_never_a_hidden_one() {
     }
 }
 
-// covers: ADV-TEL-001
-#[test]
-fn a_boats_step_onto_a_whirlpool_is_refused_until_its_jump_is_built() {
-    let rules = teleporter_rules();
-    // Red's hero in the boat on (1, 0) (from the land beside it), a Whirlpool's tile on (2, 0).
-    let mut setup = world(&["gb~~"], 1, vec![hero_at(1, 0, p(0, 0), &[PIKEMAN])]);
-    setup
-        .map
-        .objects
-        .push(object(&rules, Some("t:whirlpool"), p(2, 0), 1));
-    let mut state = started(&rules, &setup).unwrap();
+/// A stack of `count` of `creature` in `slot`.
+const fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
+    ArmyStack {
+        slot,
+        creature,
+        count,
+    }
+}
+
+/// The step from Red's boat on (1, 1) onto the Whirlpool's tile (2, 1).
+const INTO: [Pos; 1] = [Pos::new(2, 1, 0)];
+
+/// The started state of a sea of [`WIDE`] × 2 tiles above a row of grass, with `whirlpools` (each
+/// of a type by key, its anchor and its tiles' mask; the first's tiles (2, 0) to (3, 1)) and Red's
+/// hero [`HERO`] with `army` aboard boat 0 on (1, 1), 100 points to the step; empty boats 1 to 3
+/// on (12, 1) to (14, 1); Blue's hero 2 and Red's hero 3, each with a Pikeman, on the grass at
+/// (13, 2) and (12, 2).
+fn whirlpool_state(
+    rules: &Rules,
+    army: Vec<ArmyStack>,
+    whirlpools: &[(&str, Pos, u64)],
+) -> AdventureState {
+    let mut boats = "~".repeat(WIDE);
+    boats.replace_range(1..2, "b");
+    boats.replace_range(12..15, "bbb");
+    let rows = ["~".repeat(WIDE), boats, "g".repeat(WIDE)];
+    let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
+    let heroes = vec![
+        HeroSetup {
+            army,
+            ..hero_at(1, 0, p(0, 2), &[])
+        },
+        hero_at(2, 1, p(13, 2), &[PIKEMAN]),
+        hero_at(3, 0, p(12, 2), &[PIKEMAN]),
+    ];
+    let mut setup = world(&rows, 1, heroes);
+    for &(k, anchor, tiles) in whirlpools {
+        setup
+            .map
+            .objects
+            .push(object(rules, Some(k), anchor, tiles));
+    }
+    let mut state = started(rules, &setup).unwrap();
     state.put_aboard(HERO, 0);
-    assert_eq!(
-        walk(&mut state, &rules, &[p(2, 0)], &mut stream()).err(),
-        Some(AdventureCommandError::Visit { step: 0 })
-    );
+    state
+}
+
+/// Red's hero [`HERO`] steps into the Whirlpool with `store` and `draws`: the outcome and the
+/// events (the boats keep their invariants).
+fn whirl(
+    state: &mut AdventureState,
+    rules: &Rules,
+    store: &[Arc<HeroDetails>],
+    draws: &mut Rng,
+) -> (AdventureOutcome, Vec<AdventureEvent>) {
+    let command = AdventureCommand::MoveHero {
+        hero: HERO,
+        path: INTO.to_vec(),
+    };
+    let mut events = Vec::new();
+    let outcome = state
+        .apply(
+            &rules.0,
+            &rules.1,
+            store,
+            (RED, draws),
+            &command,
+            &mut events,
+        )
+        .unwrap();
+    assert!(state.check_boats(&rules.1));
+    (outcome, events)
+}
+
+/// The Whirlpools' losses among `events`, as `(hero, slot, creature, count)`.
+fn losses(events: &[AdventureEvent]) -> Vec<(HeroId, u8, CreatureTypeId, u32)> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            AdventureEventKind::WhirlpoolLoss {
+                hero,
+                slot,
+                creature,
+                count,
+            } => {
+                assert_eq!(e.seen_by, Viewers::NONE.with(RED));
+                Some((hero, slot, creature, count))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: ADV-TEL-006, ADV-OBJ-003
+#[test]
+fn a_whirlpool_takes_the_weakest_stack_by_fight_value_times_count_first_slot_on_a_tie() {
+    let rules = teleporter_rules();
+    let alone = |k| [(k, p(3, 1), 0x0303)];
+    // Each army in the Whirlpool alone (no exit: the hero stays, the loss taken, no draw), with
+    // its army after and its loss (slot, creature, count lost).
+    let cases = [
+        // E11-10: 3 Pegasi (1 221) below 3 Dendroids (2 070): 3 → 1.
+        (
+            "t:whirlpool",
+            vec![stack(0, PIKEMAN, 3), stack(1, GNOLL, 3), stack(2, WOLF, 2)],
+            vec![stack(0, PIKEMAN, 1), stack(1, GNOLL, 3), stack(2, WOLF, 2)],
+            (0, PIKEMAN, 2),
+        ),
+        // E11-11: a tie between slots 1 and 2, the first taken.
+        (
+            "t:whirlpool",
+            vec![
+                stack(0, WOLF, 1),
+                stack(1, PEASANT, 5),
+                stack(2, PEASANT, 5),
+            ],
+            vec![
+                stack(0, WOLF, 1),
+                stack(1, PEASANT, 2),
+                stack(2, PEASANT, 5),
+            ],
+            (1, PEASANT, 3),
+        ),
+        // E11-12: a lone creature kept, told with 0 lost; a lone stack of 3 keeps 1.
+        (
+            "t:whirlpool",
+            vec![stack(0, PIKEMAN, 1)],
+            vec![stack(0, PIKEMAN, 1)],
+            (0, PIKEMAN, 0),
+        ),
+        (
+            "t:whirlpool",
+            vec![stack(3, PIKEMAN, 3)],
+            vec![stack(3, PIKEMAN, 1)],
+            (3, PIKEMAN, 2),
+        ),
+        // A-38 not reproduced (ADV-QUIRK-40): a lone 1 776 Azure Dragons (100 015 440, past the
+        // original's 99 999 999) halved, and of two such stacks the lesser, none corrupted.
+        (
+            "t:whirlpool",
+            vec![stack(0, WOLF, 1776)],
+            vec![stack(0, WOLF, 888)],
+            (0, WOLF, 888),
+        ),
+        (
+            "t:whirlpool",
+            vec![stack(0, WOLF, 1800), stack(1, WOLF, 1776)],
+            vec![stack(0, WOLF, 1800), stack(1, WOLF, 888)],
+            (1, WOLF, 888),
+        ),
+        // Beside another stack a lone creature is lost, its slot emptied.
+        (
+            "t:whirlpool",
+            vec![stack(0, WOLF, 2), stack(4, PEASANT, 1)],
+            vec![stack(0, WOLF, 2)],
+            (4, PEASANT, 1),
+        ),
+        // The divisor: 7 keep 7 / 3 = 2; a lone stack of 2 keeps 1 (2 / 3 is 0).
+        (
+            "t:whirlpool_3",
+            vec![stack(0, PIKEMAN, 7), stack(1, WOLF, 1)],
+            vec![stack(0, PIKEMAN, 2), stack(1, WOLF, 1)],
+            (0, PIKEMAN, 5),
+        ),
+        (
+            "t:whirlpool_3",
+            vec![stack(0, PIKEMAN, 2)],
+            vec![stack(0, PIKEMAN, 1)],
+            (0, PIKEMAN, 1),
+        ),
+    ];
+    let store = [Arc::new(hero_details(&[]))];
+    for (k, army, after, (slot, creature, count)) in cases {
+        let mut state = whirlpool_state(&rules, army, &alone(k));
+        // The Whirlpool's tile is a destination of the boat's reach, never a tile on the way.
+        let reach = state.reach(&rules.0, &rules.1, &store, HERO).unwrap();
+        assert_eq!(reach.path(INTO[0]), Some(INTO.to_vec()));
+        let past = [INTO[0], p(3, 1)];
+        assert_eq!(
+            walk(&mut state, &rules, &past, &mut stream()).err(),
+            Some(AdventureCommandError::PastVisit { step: 1 })
+        );
+        let mut draws = stream();
+        let (outcome, events) = whirl(&mut state, &rules, &store, &mut draws);
+        assert_eq!(outcome, AdventureOutcome::default());
+        let hero = state.hero(HERO).unwrap();
+        assert_eq!((hero.pos, hero.boat), (INTO[0], Some(0)));
+        assert_eq!(hero.army, after, "{k}");
+        // The step, then the loss to Red alone; no jump, no draw.
+        assert_eq!(events.len(), 2);
+        assert_eq!(losses(&events), [(HERO, slot, creature, count)]);
+        assert_eq!(draws, stream());
+    }
+}
+
+// covers: ADV-TEL-006, HER-ADV-009
+#[test]
+fn a_whirlpool_spares_a_hero_wearing_the_hat() {
+    let rules = teleporter_rules();
+    let hat = rules.0.artifact_by_key("t:hat").unwrap();
+    let hatted = HeroDetails {
+        worn: wearing(&rules.0, &[hat.into()]),
+        ..hero_details(&[])
+    };
+    let army = vec![stack(0, PIKEMAN, 10)];
+    let bare = Arc::new(hero_details(&[]));
+    // With the hat nothing is lost and nothing told (E11-13); without it the loss is taken.
+    for (details, after, lost) in [(hatted, 10, vec![]), (hero_details(&[]), 5, vec![5])] {
+        let store = [Arc::clone(&bare), Arc::new(details)];
+        let mut state = whirlpool_state(&rules, army.clone(), &[("t:whirlpool", p(3, 1), 0x0303)]);
+        let (_, events) = whirl(&mut state, &rules, &store, &mut stream());
+        assert_eq!(state.hero(HERO).unwrap().army, [stack(0, PIKEMAN, after)]);
+        let told: Vec<u32> = losses(&events).iter().map(|loss| loss.3).collect();
+        assert_eq!(told, lost);
+    }
+}
+
+// covers: ADV-TEL-006, ADV-TEL-003, ADV-TEL-007
+#[test]
+fn a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_in_its_boat() {
+    let rules = teleporter_rules();
+    // The Whirlpools' list in the walk's order: W1's (2, 0), (3, 0), W2's (19, 0), (20, 0), then
+    // W1's (2, 1) (the entrance) and (3, 1), W2's (19, 1), (20, 1) and W3's (27, 1). W1's own
+    // tiles are excluded, (19, 0) holds an empty boat (a hero landed from it) and (19, 1) Red's
+    // own hero 3 in its boat: the candidates are (20, 0) free, (20, 1) under Blue's hero 2 in its
+    // boat and (27, 1) free.
+    let whirlpools = [
+        ("t:whirlpool", p(3, 1), 0x0303),
+        ("t:whirlpool", p(20, 1), 0x0303),
+        ("t:whirlpool", p(27, 1), 1),
+    ];
+    let candidates = [p(20, 0), p(20, 1), p(27, 1)];
+    let store = [Arc::new(hero_details(&[]))];
+    let mut seen = [false; 3];
+    for seed in 0..24 {
+        let mut state = whirlpool_state(&rules, vec![stack(0, PIKEMAN, 4)], &whirlpools);
+        for (hero, boat, tile) in [(HeroId::new(3), 1, p(19, 1)), (HeroId::new(2), 2, p(20, 1))] {
+            state.put_aboard(hero, boat);
+            let at = state.heroes.partition_point(|h| h.id < hero);
+            state.heroes[at].pos = tile;
+        }
+        let boats = state.boats.as_mut().unwrap();
+        let mut landed = *boats.records.get(3).unwrap();
+        boats.empty.set(landed.tile, false);
+        landed.tile = p(19, 0);
+        boats.empty.set(landed.tile, true);
+        boats.records.set(3, Some(landed));
+        assert!(state.check_boats(&rules.1));
+        let (points, max) = (red(&state).1 - 100, red(&state).2);
+        let mut draws = Rng::for_stream(seed, StreamId::player(0));
+        let mut expected = draws.clone();
+        let place = usize::try_from(expected.below(3)).unwrap();
+        seen[place] = true;
+        let (outcome, events) = whirl(&mut state, &rules, &store, &mut draws);
+        // One draw for the Whirlpool and its tile among the three candidates.
+        assert_eq!(draws, expected, "seed {seed}");
+        assert_eq!(outcome, AdventureOutcome::default());
+        // The loss first, whatever follows.
+        assert_eq!(losses(&events), [(HERO, 0, PIKEMAN, 2)]);
+        assert!(matches!(
+            events[1].kind,
+            AdventureEventKind::WhirlpoolLoss { .. }
+        ));
+        let drawn = candidates[place];
+        if drawn == p(20, 1) {
+            // Blue's hero on the exit (A-37 fixed by the battle, T105b; ADV-STUB-16): the tiles
+            // within 1 of it explored by Red, the hero still on the entrance in its boat.
+            assert_eq!(red(&state), (INTO[0], points, max));
+            assert!(jumps(&events).is_empty());
+            assert!(state.is_explored(RED, p(21, 0)) && !state.is_explored(RED, p(22, 1)));
+        } else {
+            // On the exit in its boat, the points and the maximum kept; the boat's record keeps
+            // the tile it was boarded on (ADR-0016 point 1).
+            assert_eq!(red(&state), (drawn, points, max));
+            assert_eq!(state.hero(HERO).unwrap().boat, Some(0));
+            assert_eq!(state.boat(0).unwrap().tile, p(1, 1));
+            assert_eq!(jumps(&events), [(Some(INTO[0]), Some(drawn))]);
+        }
+    }
+    assert_eq!(seen, [true; 3]);
 }
