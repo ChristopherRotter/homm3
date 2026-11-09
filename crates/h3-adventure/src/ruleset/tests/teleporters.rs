@@ -1,7 +1,7 @@
 //! Increment 11's kinds in the ruleset part (E08 T103a, increment 11's design note §1): the
 //! monoliths with their channel and way, the Subterranean Gate and the Whirlpool with its divisor,
 //! compiled, entered and in the hash (part v18); the monoliths' and the gates' visit since E08
-//! T105a1 (their jump), the Whirlpool's still none until T105a2.
+//! T105a1 (their jump), the Whirlpool's since T105a2 (its loss and the jump).
 
 use super::*;
 
@@ -60,8 +60,8 @@ fn the_teleporters_are_entered_kinds() {
         teleporter(ObjectKindDef::Whirlpool { divisor: 7 }).kind,
         ObjectKind::Whirlpool { divisor: 7 }
     );
-    // The monoliths' and the gates' visit is their jump (E08 T105a1); the Whirlpool's comes
-    // with T105a2.
+    // The monoliths' and the gates' visit is their jump (E08 T105a1); the Whirlpool's its loss
+    // and the jump (T105a2).
     let types = kinds().map(teleporter);
     assert_eq!(
         types[2].kind.effect(),
@@ -71,7 +71,7 @@ fn the_teleporters_are_entered_kinds() {
         })
     );
     assert_eq!(types[3].kind.effect(), Some(Effect::SubterraneanGate));
-    assert_eq!(types[4].kind.effect(), None);
+    assert_eq!(types[4].kind.effect(), Some(Effect::Whirlpool(2)));
     for def in kinds() {
         let ty = teleporter(def.clone());
         assert_eq!(ty.visit, Visit::Enter);

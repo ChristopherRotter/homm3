@@ -1118,6 +1118,22 @@ pub enum AdventureEventKind {
         /// Its anchor.
         anchor: Pos,
     },
+    /// A Whirlpool took a hero's troops before its jump (ADV-TEL-006; E08 T105a2, increment 11's
+    /// design note §8): its weakest stack, by fight value × count, kept its count divided by the
+    /// Whirlpool's divisor, the slot emptied at 0 when the army holds other stacks, a lone stack
+    /// keeping one (the original's ADVEVENT 168, shown also when a lone creature lost nothing).
+    /// Told before the jump; not told to a hero the Whirlpool spares (a Sea Captain's Hat). Seen
+    /// by the hero's owner alone, as its army is.
+    WhirlpoolLoss {
+        /// The hero.
+        hero: HeroId,
+        /// The stack's army slot.
+        slot: u8,
+        /// Its creature.
+        creature: CreatureTypeId,
+        /// How many it lost: 0 for a lone creature kept, all of its count for a slot emptied.
+        count: u32,
+    },
 }
 
 /// Receiver of the adventure context's events.
