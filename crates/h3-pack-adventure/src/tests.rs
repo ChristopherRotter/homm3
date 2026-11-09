@@ -395,9 +395,15 @@ fn the_base_pack_types_the_objects_of_increment_2() {
         part.object_types().len(),
         7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11
     );
-    // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above.
+    // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above; E09
+    // T18a: the original's two boat offsets (town_buildings_setup 0x5C08C0).
     let town = ty("base:town");
-    assert_eq!(town.kind, ObjectKind::Town);
+    assert_eq!(
+        town.kind,
+        ObjectKind::Town {
+            boat_offsets: vec![(-1, 2), (1, 2)]
+        }
+    );
     assert!(town.kind.ownable());
     assert_eq!((town.visit, town.from_above), (Visit::Enter, false));
     assert!(part.object_type_by_key("base:border_gate_red").is_none());
@@ -1122,8 +1128,19 @@ fn parses_the_dwellings() {
         kind("refugee_camp = { levels = [1, 7] }"),
         ObjectKindDef::RefugeeCamp { levels: [1, 7] }
     );
-    // E09 T8a1: the town.
-    assert_eq!(kind("town = {}"), ObjectKindDef::Town);
+    // E09 T8a1: the town; E09 T18a: its boat offsets, none when left out.
+    assert_eq!(
+        kind("town = {}"),
+        ObjectKindDef::Town {
+            boat_offsets: Vec::new()
+        }
+    );
+    assert_eq!(
+        kind("town = { boat_offsets = [[-1, 2], [1, 2]] }"),
+        ObjectKindDef::Town {
+            boat_offsets: vec![(-1, 2), (1, 2)]
+        }
+    );
     let params = |table: &str| {
         let text = format!(
             "[params]\nnative_cost = 100\nland_points = [1]\nscouting_radius = 1\n\

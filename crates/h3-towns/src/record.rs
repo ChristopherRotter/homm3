@@ -52,6 +52,17 @@ impl Town {
         }
     }
 
+    /// The town with the buildings `built` ever built and `forbidden` forbidden, its faction and
+    /// day's mark kept (a Shipyard without water, [`crate::without_water`], E09 T18a).
+    pub(crate) const fn reset(&self, built: BuildingSet, forbidden: BuildingSet) -> Self {
+        Self {
+            faction: self.faction,
+            built,
+            forbidden,
+            built_today: self.built_today,
+        }
+    }
+
     /// Its faction, which has a town record in the town part.
     pub const fn faction(&self) -> FactionId {
         self.faction

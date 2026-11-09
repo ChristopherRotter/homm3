@@ -17,6 +17,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-09 (the town lane, E09 T18a, `town/e09-t18a`, `cross-lane`; **a kind's field and a
+  version, for your matches and bumps**): `ObjectKind::Town` and `ObjectKindDef::Town` carry
+  `boat_offsets: Vec<(i8, i8)>` (match `Town { .. }`; the base pack's `town = { boat_offsets =
+  [[-1, 2], [1, 2]] }`, optional), **adventure ruleset part v19**; `fix_boat_tiles` fixes each
+  town's spot in ADV-SHY-001's step (the town object's `Resolved::BoatTile`, in the static map's
+  hash; `StaticMap::town_boat_spot(TownId)`; not in `ObjectView::boat_tile`), and the game forbids
+  a town's Shipyard without one (TWN-SET-011). The 55 replays were re-recorded (only hash lines:
+  the part's hash, the `towns-*` checkpoints); a pull request of yours that bumps the part again
+  merges after it and re-records again. Nothing else moved.
+
 - 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**, for the whole game on
   the wire): **make the events foldable.** A server game keeps a viewer's view current by events
   only (the server lane's measurement, `docs/epics/E16-design.md` §14: diffing every viewer's

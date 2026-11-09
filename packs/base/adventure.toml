@@ -1606,13 +1606,16 @@ random_dwelling = {}
 # E09 T8a1 (the town epic's design note section 8; ADR-0016's amendment point 4): the town and the
 # random town (classes 98 and 77, ObjNames.txt rows 98 and 77), one type, ownable and entered (the
 # entrance is the template's visitable cell, the town's gate); its faction, buildings and garrison
-# are the town part's and the game's. Its step comes with E09 T8a2.
+# are the town part's and the game's. Its step comes with E09 T8a2. E09 T18a (TWN-SET-011): its
+# Shipyard's spot, the first of the two offsets from the entrance that is free water when the game
+# is built (town_buildings_setup 0x5C08C0 calls town_boat_spot 0x5C0C90 with column - 1, then
+# column + 1, both row + 2); without one its Shipyard is forbidden.
 [[object_type]]
 id = "town"
 name = "Town"
 visit = "enter"
 from_above = false
-town = {}
+town = { boat_offsets = [[-1, 2], [1, 2]] }
 
 # ADV-TEL-001 (E08 T103a, increment 11's design note sections 1 and 3; survey E08-teleporters.md
 # sections 1 to 3): the teleporters, all entered (none of their classes is in the original's

@@ -459,6 +459,60 @@ fn the_whole_town_draws_its_garrison_then_its_buildings() {
 }
 
 #[test]
+fn a_town_without_water_has_its_shipyard_forbidden_and_unbuilt() {
+    // covers: TWN-SET-011
+    let part = part();
+    let mut rng = draws(16);
+    // A custom set's built Shipyard: out of the ever-built set, forbidden; the rest kept.
+    let built = keep_town(
+        &part,
+        custom(&[SHIPYARD, TAVERN], &[CITADEL]),
+        true,
+        &mut rng,
+    );
+    assert!(
+        built
+            .built()
+            .contains(BuildingId::from_index(SHIPYARD).unwrap())
+    );
+    let dry = without_water(&built, &part);
+    assert_eq!(dry.faction(), KEEP);
+    assert_eq!(dry.built(), set(&[VILLAGE_HALL, TAVERN]));
+    assert_eq!(dry.forbidden(), set(&[CITADEL, SHIPYARD]));
+    assert!(!dry.built_today());
+    // Once is enough; a standard set's town gets it forbidden too.
+    assert_eq!(without_water(&dry, &part), dry);
+    let standard = keep_town(
+        &part,
+        BuildingsSetup::Standard { fort: false },
+        true,
+        &mut rng,
+    );
+    let dry = without_water(&standard, &part);
+    assert_eq!(dry.built(), standard.built());
+    assert_eq!(dry.forbidden(), set(&[SHIPYARD]));
+    // A building that requires the Shipyard stays (a custom set's Lighthouse, as the original's).
+    let lighthouse = part_with_keep(|keep| {
+        keep.buildings[TAVERN].requires = set(&[SHIPYARD]);
+    });
+    let built = keep_town(
+        &lighthouse,
+        custom(&[SHIPYARD, TAVERN], &[]),
+        true,
+        &mut rng,
+    );
+    let dry = without_water(&built, &lighthouse);
+    assert_eq!(dry.built(), set(&[VILLAGE_HALL, TAVERN]));
+    // The day's mark is kept; a faction without a Shipyard or a record keeps its town.
+    let marked = built.rebuilt(built.built(), true);
+    assert!(without_water(&marked, &part).built_today());
+    let marsh = town_of(MARSH, &[]);
+    assert_eq!(without_water(&marsh, &part), marsh);
+    let wild = town_of(WILD, &[]);
+    assert_eq!(without_water(&wild, &part), wild);
+}
+
+#[test]
 fn a_faction_without_a_town_record_or_parameters_cannot_be_set_up() {
     let setup = TownSetup {
         faction: TownFaction::Fixed(WILD),

@@ -891,13 +891,20 @@ town's boat spot, §28).
   original's buildable set less the forbidden, survey `E09-towns.md` §5.3); a building that
   required it stays (the original keeps it: a custom set's Lighthouse beside a removed
   Shipyard). No draw, no stream position moved (ADR-0017 point 4).
-- **Not read yet:** whether the original's `town_buildings_setup` 0x5C08C0 runs before or after
-  the random dwellings' resolution (`random_dwellings_resolve` 0x502B60), which a dwelling resolved
-  over a spot would tell apart: the build task reads it (the new game's setup sequence) and keeps
-  the order found; *agent's call* until then: after (the static map complete).
-- **The census** (with the original data, the build task): the towns with a Shipyard in their
-  faction and no spot, and the custom sets that lose a built Shipyard (survey `E09-towns.md` §5.3:
-  the Shipyard built in 9 towns).
+- **The order, read by T18a:** after. `new_game_heroes` 0x4BFE70 reads the map first
+  (`new_game_bans` at 0x4BFFB9: `map_objects_place_all` resolves the random dwellings, 0x4FD90B,
+  and fixes the Shipyards' boat tiles, 0x4FD935) and calls `setup_towns` (0x4C0013, whose
+  `town_buildings_setup` 0x5C08C0 calls `town_boat_spot` 0x5C0C90) later in the same straight
+  line of calls; so the spot is fixed in ADV-SHY-001's step, after every object.
+- **The census** (with the original data, T18a, `h3-map`'s `original_data`, checked): 1 468
+  towns, 67 with a spot; 625 of a faction with a Shipyard, 591 of them without a spot; the 9
+  custom sets that build a Shipyard (survey `E09-towns.md` §5.3) all have a spot, none loses it.
+- **As built (T18a):** `ObjectKind::Town { boat_offsets }` (adventure ruleset part v19; in the
+  pack optional, none: no spot), `StaticMap::town_boat_spot`, `h3_towns::without_water` (the
+  record's `shipyard` buildings forbidden and out of the ever-built set, the day's mark kept) and
+  `h3-game`'s `town::without_water` before the reveals and the store. *Agent's calls:* the town's
+  spot stays out of `ObjectView::boat_tile` (the Shipyard's; the town's Shipyard's view is §31's);
+  `without_water` transforms the built town (the spots come after the towns' draws).
 
 ### 29. The command in the game (`h3-game` `src/town*`, `command.rs` `cross-lane`; TWN-BLD-001)
 

@@ -28,7 +28,7 @@ pub(crate) mod pool;
 pub(crate) mod siege;
 pub(crate) mod view;
 
-pub(crate) use build::{adventure_reveal, build_towns, draw_towns};
+pub(crate) use build::{adventure_reveal, build_towns, draw_towns, without_water};
 pub(crate) use capture::capture;
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use income::add_income;
@@ -308,7 +308,7 @@ fn town_objects<'s>(setup: &'s GameSetup, rules: &GameRuleset) -> Vec<&'s Object
             object
                 .object_type
                 .and_then(|id| rules.adventure().object_type(id))
-                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Town { .. }))
         })
         .collect()
 }

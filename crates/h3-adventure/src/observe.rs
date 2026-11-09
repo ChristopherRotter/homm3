@@ -159,7 +159,7 @@ pub struct ObjectView {
     /// owner's team only (ADV-OWN-003, E08 decision 229): that team has explored every offset (the
     /// flag's reveal, an owned object's at the start), so the tile tells no other viewer which
     /// earlier offsets were land or taken; none for every other viewer, for a neutral Shipyard,
-    /// for one without a tile and for every other object.
+    /// for one without a tile and for every other object (a town's spot, E09 T18a, among them).
     pub boat_tile: Option<Pos>,
     /// The town it is (E09 T8c1, the town epic's design note §17; ADR-0028 point 3: observations
     /// name a town by its `TownId`), for every viewer that sees it: what the viewer sees of the
@@ -456,7 +456,10 @@ impl AdventureState {
                         production: ours.then(|| self.production(part, index)).flatten(),
                         guards: self.guards_view(part, index, ours),
                         visited: self.visited_by(index, viewer),
-                        boat_tile: ours.then(|| object.resolved.boat_tile()).flatten(),
+                        // A town's spot is its Shipyard's (E09 T18a), not the object's.
+                        boat_tile: (ours && map.town_id(index).is_none())
+                            .then(|| object.resolved.boat_tile())
+                            .flatten(),
                         town: map.town_id(index),
                     }
                 })

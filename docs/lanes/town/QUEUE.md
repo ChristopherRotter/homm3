@@ -8,25 +8,28 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b (done), T18a (next), T18b, T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a (done), T18b (next), T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T18a — the Shipyard's water** (design §28, §34, §35's round 6; decision 46; queued
-2026-11-09 by T17b; `cross-lane`: the adventure part and the static map are the adventure lane's;
-look at its open pull requests first; E08 T104, #797, merged 2026-11-09): the adventure part's kind `Town`
-gains `boat_offsets` (the base pack's `[[-1, 2], [1, 2]]`, column and row from the entrance;
-adventure ruleset part v19 after T103a's v18, or again after theirs); `fix_boat_tiles` (ADV-SHY-001's
-step) fixes each town's spot as a Shipyard's tile (the town object's `Resolved::BoatTile`,
-`StaticMap::town_boat_spot(TownId) -> Option<Pos>`); at the game's start, before the store is made,
-a town whose record has a building of role `shipyard` and no spot gets it forbidden and out of the
-ever-built set (`h3_towns::without_water`; a building requiring it kept), no draw moved;
-TWN-SET-011 in `town.toml`, `TWN-STUB-2` narrowed to the Grail building, ADV-SHY-001 amended (the
-towns' spots in the same step). Read first the original's order of `town_buildings_setup`
-0x5C08C0 against `random_dwellings_resolve` 0x502B60 (design §28's open point; *agent's call*
-until then: after). With the original data, the census: the towns with a Shipyard in their faction
-and no spot, the custom sets that lose a built Shipyard (survey `E09-towns.md` §5.3). The adventure
-replays re-recorded if their headers' part hash moves (skill `homm3-rerecord-replays`).
+**E09 T18b — the command, the legal builds, the day's start, the capture's mark, the views**
+(design §29 to §31 but the town events, §34, §35's round 6; queued 2026-11-09 by T18a;
+`cross-lane`: `h3-game`'s `command.rs`, `legal.rs`, `state/day.rs`, the adventure replay format
+and `h3-sim`'s replay are the adventure and AI lanes'; look at the adventure lane's open pull
+requests first, E08 T105b bumps the same versions): `GameCommand::Town(TownCommand)` run as
+`GameCommand::Adventure` (`check_ready`, then `town::command`: the store, the owner, the actor's
+other Capitol, `h3_towns::check_build`, the treasury, then infallibly the price paid, `Towns::build`
+with the mark, the events; TWN-BLD-001's game half, `GameCommandError::Town`); `legal_commands`
+after the boats (each owned town whose mark is clear, each payable building of `buildable`, in
+`TownId` and record order) and `GameState::town_offer`; `Towns::start_day()` at the income's step
+from day 2 (GAM-CAL-002 amended, TWN-BLD-004); the capture's mark (`Towns::captured`, decision 43;
+TWN-CAP-001 amended); the views and events of §31 (`TownView::built_today`, the owner's
+`TownBuildingsView`, `TownBuilt`, `TownChanged`'s public facts; TWN-VEW-001 amended, TWN-VEW-004;
+read the inbox's SRV-Q26 note with it); the adventure replay format bumped (v12 after T105b's v11,
+or v11 if first) with `town build`. A town event's Shipyard reads `StaticMap::town_boat_spot`
+(T18c). Before mapping new commands or events, look at the server lane's E16 M5 T2 (the global
+HANDOFF's trap: the game's types on the wire). The replays re-recorded only if a hash or the
+format moves (skill `homm3-rerecord-replays`).
 **Status:** next.
 
 ## Inbox

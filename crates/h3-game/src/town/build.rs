@@ -1,13 +1,14 @@
 //! The towns at the game's build (E09 T7b2a, design note `E09-design.md` §14, §5): step 2's random
 //! towns' factions (TWN-SET-002), after the random heroes' draws ([`super::draw_heroes`]), then
 //! step 4, each town's garrison and buildings (TWN-SET-004, TWN-SET-003: `h3_towns::town_setup`),
-//! both from the setup stream; and each town's reveal at the start (TWN-CAP-001).
+//! both from the setup stream; since E09 T18a the Shipyards without water once the static map fixed
+//! the towns' spots (TWN-SET-011); and each town's reveal at the start (TWN-CAP-001).
 
 use alloc::vec::Vec;
 
-use h3_adventure::TownReveal;
+use h3_adventure::{StaticMap, TownReveal};
 use h3_content::FactionId;
-use h3_contracts::PlayerId;
+use h3_contracts::{PlayerId, TownId};
 use h3_kernel::Rng;
 use h3_towns::{BuiltTown, MAX_TOWNS, Reveal, Town, TownFaction};
 
@@ -83,6 +84,19 @@ pub(crate) fn build_towns(
             })
         })
         .collect()
+}
+
+/// The towns without water (TWN-SET-011; E09 T18a, design note §28): after the adventure built
+/// the static map, which fixed each town's spot (`StaticMap::town_boat_spot`), and before the
+/// store is made, each town (by `TownId`, its place in `towns`) whose spot is none gets its
+/// Shipyard forbidden and out of its ever-built set (`h3_towns::without_water`); no draw.
+// rule: TWN-SET-011
+pub(crate) fn without_water<S>(towns: &mut [(Town, S)], map: &StaticMap, rules: &GameRuleset) {
+    for ((town, _), id) in towns.iter_mut().zip((0..=u16::MAX).map(TownId::new)) {
+        if map.town_boat_spot(id).is_none() {
+            *town = h3_towns::without_water(town, rules.towns());
+        }
+    }
 }
 
 /// What `town` reveals to its owner (TWN-CAP-001; design note §8 and §11), as the adventure takes

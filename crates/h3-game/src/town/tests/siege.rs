@@ -54,7 +54,7 @@ const DEFENDER_SLOT: u8 = 22;
 /// [`siege_rules`]' native terrain of `t:town`, `t:rock`.
 const ROCK: TerrainId = TerrainId::from_raw(1);
 
-/// [`super::towns_rules`] with `t:town`'s native terrain `t:rock` and a building `b12` on
+/// [`super::towns_rules`] with `t:town`'s native terrain `t:rock` and a building `defender` on
 /// [`DEFENDER_SLOT`] raising a siege's defending hero by 20 attack, 2 defense, 1 power and 150
 /// spell points.
 fn siege_rules() -> GameRuleset {
@@ -68,7 +68,7 @@ fn siege_rules_with(edit: impl FnOnce(&mut ContentPack)) -> GameRuleset {
     edit(&mut core);
     let mut towns = town_pack(false);
     towns.towns[0].buildings.push(BuildingDef {
-        key: "b12".into(),
+        key: "defender".into(),
         name: "Building".into(),
         slot: Some(DEFENDER_SLOT),
         supersedes: vec![],
