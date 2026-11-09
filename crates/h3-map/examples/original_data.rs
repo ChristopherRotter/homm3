@@ -401,7 +401,7 @@ fn check(
             object
                 .object_type
                 .and_then(|id| rules.adventure().object_type(id))
-                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Town { .. }))
         })
         .map(|_| TownSetup {
             faction,
@@ -488,7 +488,7 @@ fn check(
                 },
                 Ok(game) => game,
             };
-            built_towns(&setup, &game, rules, &mut peaks.5);
+            built_towns(&setup, &game, rules, &mut peaks.5).map_err(|e| format!("{name}: {e}"))?;
             built_linked(&setup, &game, rules, name, &mut peaks.5)?;
             built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
@@ -576,13 +576,14 @@ fn built_linked(
 
 /// E09 T7b2a: the towns of a game that builds as the build resolved them (TWN-SET-002 to -004,
 /// TWN-CAP-001): each random town by what gave its faction, the neutral towns' drawn garrisons,
-/// the owned towns whose start reveals more than the part's radius.
+/// the owned towns whose start reveals more than the part's radius; since E09 T18a their spots
+/// and Shipyards ([`built_town_water`]).
 fn built_towns(
     setup: &GameSetup,
     game: &GameState,
     rules: &GameRuleset,
     counts: &mut BTreeMap<&'static str, usize>,
-) {
+) -> Result<(), String> {
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
     let adventure = game.adventure();
     let objects = adventure.map().towns();
@@ -607,6 +608,7 @@ fn built_towns(
         }
         if let Some(stored) = game.towns().get(h3_contracts::TownId::new(index)) {
             built_town_facts(stored, owner.is_some(), rules.towns(), &mut add);
+            built_town_water(town, stored, game, index, rules, &mut add)?;
         }
         let built = game
             .towns()
@@ -634,6 +636,67 @@ fn built_towns(
             );
         }
     }
+    Ok(())
+}
+
+/// E09 T18a (TWN-SET-011, design §28; survey `E09-towns.md` §5.3): a built town's spot and its
+/// Shipyard: the towns with a spot, those of a faction with a Shipyard without one, the custom
+/// sets that build a Shipyard and those that lose it for want of water. Checked (an error fails
+/// the map): a town without a spot has its faction's Shipyard forbidden and never built, one with
+/// a spot keeps a custom set's.
+fn built_town_water(
+    setup: &h3_towns::TownSetup,
+    town: &h3_towns::Town,
+    game: &GameState,
+    index: u16,
+    rules: &GameRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let id = h3_contracts::TownId::new(index);
+    let spot = game.adventure().map().town_boat_spot(id);
+    add("E09 built: towns with a spot", usize::from(spot.is_some()));
+    let Some(record) = rules.towns().town(town.faction()) else {
+        return Ok(());
+    };
+    let shipyards = (0..h3_towns::MAX_BUILDINGS)
+        .filter_map(h3_towns::BuildingId::from_index)
+        .filter(|&b| record.building(b).is_some_and(|b| b.roles.shipyard))
+        .fold(h3_towns::BuildingSet::EMPTY, |set, b| set.with(b));
+    if shipyards.is_empty() {
+        return Ok(());
+    }
+    add("E09 built: towns of a faction with a Shipyard", 1);
+    // Whether `set` holds a Shipyard.
+    let meets = |set: h3_towns::BuildingSet| set.difference(shipyards) != set;
+    let picked = match setup.buildings {
+        BuildingsSetup::Custom { built, forbidden } => {
+            meets(built.buildings(record)) && !meets(forbidden.buildings(record))
+        }
+        BuildingsSetup::Standard { .. } => false,
+    };
+    add(
+        "E09 built: custom sets building a Shipyard",
+        usize::from(picked),
+    );
+    let kept = meets(town.built());
+    let forbidden = shipyards.difference(town.forbidden()).is_empty();
+    if spot.is_none() {
+        add("E09 built: towns of a faction with a Shipyard, no spot", 1);
+        add(
+            "E09 built: custom sets losing a built Shipyard, no spot",
+            usize::from(picked),
+        );
+        if kept || !forbidden {
+            return Err(format!(
+                "town {index} has no spot but its Shipyard is not forbidden or still built"
+            ));
+        }
+    } else if picked && !kept {
+        return Err(format!(
+            "town {index} has a spot {spot:?} but lost its custom set's Shipyard"
+        ));
+    }
+    Ok(())
 }
 
 /// E09 T9c: a built town's facts for a battle at it (TWN-SIE-003: its fort level, a moat) and its
@@ -841,7 +904,7 @@ fn towns(
             object
                 .object_type
                 .and_then(|id| rules.adventure().object_type(id))
-                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Town { .. }))
         })
         .map(|object| object.owner)
         .collect();
@@ -1797,7 +1860,7 @@ fn economy(
             ObjectKind::WaterWheel { .. } => add("economy: Water Wheels", 1),
             ObjectKind::Garden { .. } => add("economy: Mystical Gardens", 1),
             // E09 T8a1: the towns typed, their owners at load and formations.
-            ObjectKind::Town => {
+            ObjectKind::Town { .. } => {
                 add("E09 towns: typed", 1);
                 add("E09 towns: owned at load", owned);
                 let tight = Holds::Town {

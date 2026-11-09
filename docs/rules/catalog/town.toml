@@ -465,7 +465,7 @@ id       = "TWN-SET-003"
 title    = "A town's buildings at the start"
 context  = "town"
 status   = "verified"
-summary  = "At the game's build each town's buildings ever built and forbidden are set from the map's (h3m) set, its faction's record read through the map editor's 41 slots (a slot without one of the faction's buildings gives nothing). The record's Village Hall (its building of `hall` 1) is always ever built, even when a custom set forbids it. A custom set: forbidden its forbidden slots' buildings and, to a fixpoint, each building whose `forbidden_with` is forbidden (a horde's upgrade with its horde); built each built slot's building with every building it supersedes, less the forbidden; no draw. A standard set: the Fort (`fort` 1) with the map's flag; an owned town its Tavern (the building of role `tavern` that supersedes no other, not the Castle's Brotherhood of the Sword) and, only with the map's Fort, the level-1 dwelling and, when one draw of 1 to 100 from the setup stream is at most the part's `level_2_dwelling_chance` (the base pack's 30), the level-2 one (owned without a Fort: no dwelling and no draw; the draw is made with the Fort whether or not the record has the dwellings); a neutral town both dwellings, Fort or not, without a draw (TD-3); each with what it supersedes. Then the hordes' upgrade (decision 29): a building not forbidden whose non-empty `auto_with` is all ever built becomes ever built with what it supersedes, to a fixpoint, so that a horde and its level's upgraded dwelling stand as the upgraded horde alone. The standing set is derived from the ever-built set, so a custom set's horde never leaves its dwelling standing (the original's does: TWN-QUIRK-5, fixed). Not yet: the start's forbidden Grail building on a Grail-victory map in another town and Shipyard without a boat's spot (TWN-STUB-2, increments 2 and 4). The game draws the garrison (TWN-SET-004) before the buildings. E09 T6c (design §5): `h3_towns::town_buildings_setup`, `h3_towns::town_setup`; the game calls them at its build (E09 T7b2a, design §14 step 4: `h3_game`'s `town::build_towns`, each town in `TownId` order, owned when it has an owner at the start, after the random towns' factions and before the starting armies)."
+summary  = "At the game's build each town's buildings ever built and forbidden are set from the map's (h3m) set, its faction's record read through the map editor's 41 slots (a slot without one of the faction's buildings gives nothing). The record's Village Hall (its building of `hall` 1) is always ever built, even when a custom set forbids it. A custom set: forbidden its forbidden slots' buildings and, to a fixpoint, each building whose `forbidden_with` is forbidden (a horde's upgrade with its horde); built each built slot's building with every building it supersedes, less the forbidden; no draw. A standard set: the Fort (`fort` 1) with the map's flag; an owned town its Tavern (the building of role `tavern` that supersedes no other, not the Castle's Brotherhood of the Sword) and, only with the map's Fort, the level-1 dwelling and, when one draw of 1 to 100 from the setup stream is at most the part's `level_2_dwelling_chance` (the base pack's 30), the level-2 one (owned without a Fort: no dwelling and no draw; the draw is made with the Fort whether or not the record has the dwellings); a neutral town both dwellings, Fort or not, without a draw (TD-3); each with what it supersedes. Then the hordes' upgrade (decision 29): a building not forbidden whose non-empty `auto_with` is all ever built becomes ever built with what it supersedes, to a fixpoint, so that a horde and its level's upgraded dwelling stand as the upgraded horde alone. The standing set is derived from the ever-built set, so a custom set's horde never leaves its dwelling standing (the original's does: TWN-QUIRK-5, fixed). Not yet: the start's forbidden Grail building on a Grail-victory map in another town (TWN-STUB-2, with the victory conditions); the Shipyard without a boat's spot is forbidden by the game once the static map fixed the spots (TWN-SET-011, E09 T18a). The game draws the garrison (TWN-SET-004) before the buildings. E09 T6c (design §5): `h3_towns::town_buildings_setup`, `h3_towns::town_setup`; the game calls them at its build (E09 T7b2a, design §14 step 4: `h3_game`'s `town::build_towns`, each town in `TownId` order, owned when it has an owner at the start, after the random towns' factions and before the starting armies)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -678,6 +678,31 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 7 (TD-6 by the reading): the import moves the hero; a hero on another blocked tile of a town stays Unsupported::HeroInTown"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-011"
+title    = "A town's Shipyard needs water by its entrance from the start"
+context  = "town"
+status   = "implemented"
+summary  = "Each town's spot, its Shipyard's boat tile, is fixed once when the game is built, after every object of the static map is placed and resolved (the random dwellings among them): the first of its type's boat offsets (the base pack's two: one column left, then one right, two rows below the entrance; column and row from the entrance, on its level) that is a tile of the map on water that no object blocks or is visited from (a boat lies on no object's tile and does not count), the test of a Shipyard's boat tile (ADV-SHY-001). Every town gets one or none, whatever its faction; an object leaving the tile later does not move it, nothing ever computes it again. A town without a spot has, from the start, its faction's buildings of role `shipyard` forbidden and out of its ever-built set (a custom set's built Shipyard removed, a standard set's never offered); a building that requires the Shipyard is kept (a custom set's Lighthouse beside the removed Shipyard), the rest of its sets unchanged; no draw, no stream position moved. E09 T18a (design §28): `ObjectKind::Town::boat_offsets` (adventure ruleset part v19), `StaticMap::town_boat_spot` (the town object's `Resolved::BoatTile`, in the static map's hash; not in the object's view), `h3_towns::without_water`, applied by the game after `AdventureState::new` and before the store of towns is made (`town::without_water`). A town event's Shipyard reads the spot too (TWN-EVT-003)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E09-towns.md section 5.3; E09 T1a2, T12a and T18a): town_buildings_setup (0x5C08C0, read whole) forbids the Shipyard (6) before the map's sets when the faction has none or when town_boat_spot (0x5C0C90, read whole; its only calls 0x5C09A5 with the entrance's column - 1, 0x5C09BF with column + 1, both row + 2) finds neither tile on the map, water, not blocked and without an object or with a boat (class 8); the custom set's built bits are then built less what is not buildable. new_game_heroes (0x4BFE70) reads the map first (new_game_bans at 0x4BFFB9, whose map_objects_place_all resolves the random dwellings, 0x4FD90B, and fixes the Shipyards' boat tiles, 0x4FD935) and calls setup_towns (0x4C0013, the towns' setups) after it, in one straight line of calls"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 5.3: CGameState::initTowns removes a built Shipyard from a town without water"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 28 (decision 46): the spot in the adventure's static map at ADV-SHY-001's step, the Shipyard forbidden and unbuilt by the game at its build"
   confidence = "high"
 
 [[rule]]

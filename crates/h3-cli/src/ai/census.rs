@@ -365,7 +365,7 @@ impl Accumulator {
                 object
                     .object_type
                     .and_then(|id| rules.adventure().object_type(id))
-                    .is_some_and(|ty| ty.kind == ObjectKind::Town)
+                    .is_some_and(|ty| matches!(ty.kind, ObjectKind::Town { .. }))
             })
             .map(|_| TownSetup {
                 faction,

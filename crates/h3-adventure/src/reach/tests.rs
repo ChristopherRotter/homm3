@@ -305,7 +305,9 @@ fn town_hero_rules(faithful: bool, skills: Vec<SecondarySkillDef>) -> (Ruleset, 
                 name: "Town".into(),
                 visit: Visit::Enter,
                 from_above: false,
-                kind: ObjectKindDef::Town,
+                kind: ObjectKindDef::Town {
+                    boat_offsets: Vec::new(),
+                },
             });
         },
     )

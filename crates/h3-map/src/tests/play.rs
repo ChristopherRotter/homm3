@@ -6003,7 +6003,7 @@ fn check_unowned_battle_end(
         Some((index, ObjectKind::Dwelling { .. })) => {
             return check_dwelling_battle_end((before, after), events, (visitor, index, result));
         }
-        Some((index, ObjectKind::Town)) => {
+        Some((index, ObjectKind::Town { .. })) => {
             return check_town_battle_end((before, after), events, (visitor, index, result));
         }
         _ => {}

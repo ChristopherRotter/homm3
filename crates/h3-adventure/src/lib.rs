@@ -139,5 +139,6 @@ pub const ADVENTURE_STATE_HASH_VERSION: u32 = 21;
 /// Wheels, Gardens), the monsters' growth, the calendar and the months. v15 (E08 T83b1): the flag
 /// radius. v16 (E08 T93a): the dwellings' kinds, `[params.dwellings]`, `[[random_dwelling]]`.
 /// v17 (E09 T8a1): the town's kind. v18 (E08 T103a): increment 11's three kinds (the monoliths
-/// with their channel and way, the Subterranean Gate, the Whirlpool with its divisor).
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 18;
+/// with their channel and way, the Subterranean Gate, the Whirlpool with its divisor). v19 (E09
+/// T18a): the town's boat offsets.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 19;

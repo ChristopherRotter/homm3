@@ -59,7 +59,8 @@ pub enum Resolved {
         guards: u32,
     },
     /// A Shipyard's boat tile, fixed when the game is built (ADV-SHY-001, E08 T83b1); a Shipyard
-    /// with none is [`Self::Nothing`] and never builds.
+    /// with none is [`Self::Nothing`] and never builds. Since E09 T18a also a town's spot
+    /// (TWN-SET-011), a town with none [`Self::Nothing`].
     BoatTile(Pos),
 }
 

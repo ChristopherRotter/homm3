@@ -162,12 +162,16 @@ fn siege_field() -> SiegeFieldDef {
 /// `t:town`'s town record: the roles every record needs, its two levels the imp and the gog; with
 /// `elf`, `t:other`'s too, its two levels the elf and the ent.
 /// The map slots of [`town_pack`]'s Capitol (`b3`, its hall 4; its part demotes it to `b2`), its
-/// Grail building (`b9`, it reveals every tile), its silo (`b10`) and its lookout (`b11`, it
-/// reveals [`LOOKOUT_RADIUS`]); its other buildings have none.
+/// Grail building (`b9`, it reveals every tile), its silo (`b10`), its lookout (`b11`, it
+/// reveals [`LOOKOUT_RADIUS`]) and (E09 T18a) its Shipyard (`b12`, [`SHIPYARD`]); its other
+/// buildings have none.
 pub(super) const CAPITOL_SLOT: u8 = 13;
 pub(super) const GRAIL_SLOT: u8 = 26;
 pub(super) const SILO_SLOT: u8 = 15;
 pub(super) const LOOKOUT_SLOT: u8 = 21;
+pub(super) const SHIPYARD_SLOT: u8 = 6;
+/// [`town_pack`]'s Shipyard, building `b12`.
+pub(super) const SHIPYARD: usize = 12;
 /// [`town_pack`]'s lookout's reveal radius; its part's is 5.
 pub(super) const LOOKOUT_RADIUS: u8 = 20;
 
@@ -202,6 +206,10 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
         reveal: Some(Reveal::Radius(LOOKOUT_RADIUS)),
         ..BuildingRoles::default()
     });
+    roles.push(BuildingRoles {
+        shipyard: true,
+        ..BuildingRoles::default()
+    });
     let buildings = roles
         .into_iter()
         .zip(0_u8..)
@@ -213,6 +221,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
                 (9, GRAIL_SLOT),
                 (10, SILO_SLOT),
                 (11, LOOKOUT_SLOT),
+                (12, SHIPYARD_SLOT),
             ]
             .into_iter()
             .find_map(|(building, slot)| (building == i).then_some(slot)),
