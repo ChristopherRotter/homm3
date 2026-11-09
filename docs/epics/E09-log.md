@@ -2300,3 +2300,45 @@ with them.
 - **Agent's calls (change freely):** `built_with` in `h3-towns`' new `build.rs` beside setup's
   helpers made crate-public (not moved); `TownFacts` in the store; `captured` returning whether it
   wrote, as `apply_capitol_limit`.
+
+### T17b — the rules that decide a build, `TownCommand` and its errors (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t17b`, not `cross-lane` (only
+`h3-towns`, `h3-pack-towns`' test marker and the lane's docs). Starting point: `master` at 75299e8
+(#796, T17a's, and #798 merged; the setup's baseline found CI's fingerprint, the light gates
+only). Kept whole (the agent's call: one crate, no version). The user's computer was connected:
+the original data staged with the file tool at the start, then `cp -rn` into the clone and both
+tars unpacked; the scoped verify ran with them, and `scripts/exe.py` read the event loop again.
+
+- **`h3-towns`** (design §27 as built): in `build.rs` beside `built_with`, `buildable`,
+  `possible`, `check_build` (the cost as the part's slice or the first refusal; one private
+  `refusal` decides both it and `buildable`, so the offer is exactly what it allows) and
+  `event_buildings`; the private `offered_as` (a horde's upgrade: superseding it, automatic with
+  it, the rest of its `auto_with` ever built, itself not; T17b's refinement of design §27's call,
+  the supersedes test); new `command.rs`: `TownCommand::Build { town, building }` and
+  `TownCommandError` (both `#[non_exhaustive]`; `UnknownTown`, `NotOwner` for the game, then the
+  eight refusals in their order; `Display`, `Error`); setup's `indexed` made crate-public. No
+  version moved (the part and the store unchanged).
+- **The fixture** (test-only): the Keep's requirements (the closures by hand: the halls through
+  the Tavern and the Castle, the forts, the dwellings from the Fort, the hordes from their
+  dwellings, the upgraded horde from the upgraded dwelling alone), its costs (all but the Village
+  Hall and the Grail) and a Shipyard (23, slot 6, no requirement); `part_with_keep` changes the
+  Keep's record. Every earlier test passed unchanged.
+- **Tests:** the offer at the start and after the Fort and the Tavern (a Castle keeps its Fort,
+  the forbidden out, the Marsh's free buildings, no record), a horde offered as its upgraded horde
+  (the same outcome either way, the shrine no upgrade, a forbidden upgrade leaving neither, a custom
+  set's upgrade without its horde), the Capitol's limit, the Grail never by the hall (possible as
+  the original's), the day's mark, every refusal in its order (the horde made a Grail and a Capitol,
+  one cause taken away a step), the offer equal to `check_build`'s Ok and inside `possible` over
+  six towns, `possible`'s never (a forbidden Fort), the event's buildings with and without water
+  (no requirement, forbidden, Capitol, Grail or mark test; built in order as builds), TWN-QUIRK-7.
+- **Catalog:** TWN-BLD-001 (the command; the game's half with T18b) and -003, TWN-EVT-003
+  `implemented`; TWN-BLD-002, -006, -007 `verified` (batch TWN-2's rows; -006 and -007's markers in
+  the compiler, covered by its test and `h3-pack-towns`' test of the original packs); TWN-BLD-004's
+  summary with the refusal. **Quirk:** `TWN-QUIRK-7` (T-9, fixed without a flag), its loop read
+  again (0x5BFEF9 to 0x5BFF4C: 44 bits of `building_bits`, `map_building_ids` at faction × 41 +
+  bit).
+- **Agent's calls (change freely):** the supersedes test of the hall's offer; the errors without a
+  building but `OfferedAs`'s; `possible` holding the Grail's building as the original's
+  `town_build_possible` does; the rules in `build.rs`, the command in `command.rs`.
+

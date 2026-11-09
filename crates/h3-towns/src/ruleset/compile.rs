@@ -435,6 +435,7 @@ fn compile_buildings(
             return Err(invalid_building(faction, def, "it requires itself"));
         }
         required.push(needs);
+        // rule: TWN-BLD-006
         costs.push(scope.amounts(&def.cost)?.ok_or_else(|| {
             invalid_building(faction, def, "a cost names each resource once, at least 1")
         })?);
@@ -452,6 +453,7 @@ fn compile_buildings(
         );
     }
     let closed = close(&ids, &direct);
+    // rule: TWN-BLD-007
     let requires = close(&ids, &required);
     let mut buildings = Vec::with_capacity(defs.len());
     for ((((((def, &id), &supersedes), &forbidden_with), &auto_with), &requires), cost) in defs

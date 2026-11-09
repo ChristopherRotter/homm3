@@ -39,6 +39,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   seen town's `TownId` counts the towns before it, so a town is removed only after every seen one
   and added after every other.
 
+- **A guard's battle comes before the town's visit** (E08 T103d, decision 279): a step onto an
+  undefended town's entrance that a guard watches leaves the hero on the entrance while that
+  battle is open; the capture follows it. A check over a town's visitor (the hero on its
+  entrance, TWN-VIS-002) exempts a hero whose player has an open battle (`GameState::battle`),
+  as `check_invariants` does since the server lane's CI found it (2026-11-09).
+
 ## The import (`h3-map` `src/import/town.rs`)
 
 - **A town's entrance is blocked and visitable** in the shipped maps' templates: a test "does a town block this tile" also hits the entrance, where a moved hero (TWN-SET-010) and a town's visitor stand. Use `town::in_town` (a blocked tile that is not an entrance), not `blocks` (E09 T7a1, found by the census).

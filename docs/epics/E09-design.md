@@ -838,30 +838,41 @@ Built by T17a (`E09-log.md`).
 - **The hash** (v2): after each town's forbidden set, its mark. The game state hash folds the
   store in, so it bumped with it (v26; the replays record the game's version, not the store's).
 
-### 27. The rules (`h3-towns`; TWN-BLD-002 to -005, TWN-EVT-003)
+### 27. The rules (`h3-towns`; TWN-BLD-001 to -006, TWN-EVT-003)
 
-Pure functions of a town, the part and plain inputs, beside increment 1's derivations (§6):
+Built by T17a (`built_with`) and T17b (the rest; `E09-log.md`): pure functions of a town, the
+part and plain inputs in `h3-towns`' `build.rs`, beside increment 1's derivations (§6). The game
+gives `holds_capitol` (another town of the owner's with a standing Capitol) and `water` (the
+town's boat spot, §28).
 
 | Function | Gives | Rule |
 |---|---|---|
-| `buildable(town, part, holds_capitol)` | the **hall's offer**: every building not ever built, its `requires` in the ever-built set, not forbidden, not of role `grail` (the Grail's path, increment 5), not a hall-4 one while `holds_capitol`; then each horde `h` replaced by the building `u` it would make automatic (`h` in `u.auto_with`, the rest of `u.auto_with` ever built, `u` not); empty while `built_today` | TWN-BLD-002, -003, -004 |
-| `possible(town, part, holds_capitol)` | the hall's "not now" against "never" (§2.2): not forbidden, not a hall 4 while `holds_capitol`, each requirement ever built or still not forbidden; for clients over the owner's view | TWN-BLD-002 |
-| `check_build(town, part, building, holds_capitol)` | the building's cost, or the first refusal of `TownCommandError` in this order: `UnknownBuilding`, `Built`, `Forbidden`, `Grail`, `Requirements`, `Capitol`, `OfferedAs(BuildingId)` (a horde the hall offers as its upgrade), `BuiltToday` | TWN-BLD-001 (the town's part) |
-| `built_with(town, part, building)` | built by T17a (`build.rs`; `None` outside the record): the ever-built set after a build: the building and what it supersedes, then every building whose `auto_with` is all ever built, with what it supersedes, to a fixed point, with no forbidden test (the hordes' one step; survey §4 steps 1 and 3, `town_build` 0x5BE930) | TWN-BLD-005 |
-| `event_buildings(town, part, event, water)` | an event's buildings in the record's order (the original's id order): its set less the ever-built, less what another of its buildings supersedes, less a `shipyard` without `water` (§8.3); no other test | TWN-EVT-003 |
+| `buildable(town, part, holds_capitol) -> BuildingSet` | the **hall's offer**: the record's buildings `check_build` allows, in index order; empty while `built_today` and for a faction without a record | TWN-BLD-002 to -004 |
+| `possible(town, part, holds_capitol) -> BuildingSet` | the hall's "not now" against "never" (§2.2, for clients over the owner's view): not forbidden, not a hall 4 while `holds_capitol`, each requirement ever built or not forbidden; neither "not built", the Grail nor the mark tested (the original's); holds `buildable`'s set | TWN-BLD-002 |
+| `check_build(town, part, building, holds_capitol) -> Result<&[(ResourceId, u32)], TownCommandError>` | the building's cost (the part's slice; empty when free), or the first refusal in this order: `UnknownBuilding`, `Built`, `Forbidden`, `Grail`, `Requirements`, `Capitol`, `OfferedAs(BuildingId)`, `BuiltToday` | TWN-BLD-001 (the town's part), -006 |
+| `built_with(town, part, building)` | the ever-built set after a build: the building and what it supersedes, then every building whose `auto_with` is all ever built, with what it supersedes, to a fixed point, with no forbidden test (survey §4 steps 1 and 3, `town_build` 0x5BE930); `None` outside the record | TWN-BLD-005 |
+| `event_buildings(town, part, event, water) -> BuildingSet` | an event's buildings of the record in index order: its set less the ever-built, less what another of its buildings supersedes, less a `shipyard` without `water` (§8.3); no other test | TWN-EVT-003 |
 
-- **The hall's offer** (*agent's call*): the original's buildable-now set (§2.1) also holds a horde
-  whose level's upgraded dwelling stands, which its hall shows as the upgraded horde (§1.2), at the
-  same cost in every faction (`Building.txt`), and buying it gives the same ever-built set; the
-  engine offers the upgraded horde alone, so one command names one outcome.
+- **The hall's offer** (*agent's call*, refined by T17b): the original's buildable-now set (§2.1)
+  also holds a horde whose level's upgraded dwelling stands, which its hall shows as the upgraded
+  horde (§1.2), at the same cost in every faction (`Building.txt`); the engine refuses the horde
+  `h` with `OfferedAs(u)` for the record's first `u` that **supersedes `h`**, holds `h` in its
+  `auto_with` with the rest ever built, and is not ever built itself, so that buying `u` leaves the
+  same ever-built set; `u` is offered on its own tests (it requires the upgraded dwelling alone).
+  T17b's refinement: the supersedes test (a building automatic with `h` that does not supersede it,
+  the fixture's shrine, is no upgrade); a forbidden `u` leaves neither offered (a build of `h` would
+  make `u`, `built_with` testing no forbidden set).
 - **The order of the refusals** (*agent's call*): the hall's texts' order (built, never, missing
-  requirements, the Capitol's own text) and the day's mark last.
-- **`TownCommand`** (decision 45): `Build { town: TownId, building: BuildingId }`; `#[non_exhaustive]`
-  for increment 3's and 4's variants. `TownCommandError` adds `UnknownTown` and `NotOwner`, which
-  the game gives (§29).
-- **Every derivation of increment 1** (hall, income, fort, siege, siege obstacles, defender
-  bonuses, reveal, Tavern, Capitol) reads the record a build leaves: tests per role, a build of a
-  Town Hall raising the income, a Citadel the moat, a Tavern the view level.
+  requirements, the Capitol's own text) and the day's mark last. The errors carry no building but
+  `OfferedAs`'s upgrade (the command names it); `Requirements` lists none (the client derives the
+  missing ones from the part and the owner's view).
+- **`TownCommand`** (decision 45; `command.rs`): `Build { town: TownId, building: BuildingId }`;
+  `TownCommand` and `TownCommandError` `#[non_exhaustive]` for increment 3's and 4's variants;
+  `TownCommandError::UnknownTown` and `NotOwner`, which the game gives (§29), come first.
+- **TWN-QUIRK-7** (T-9): `SlotSet::from_bits` keeps the 41 slots, so an event's bits 41 to 47
+  build nothing (the regression test with `event_buildings`).
+- **Every derivation of increment 1** reads the record a build leaves (T17a's tests per role: a
+  Town Hall's income, a Citadel's moat, a Tavern's view level, a silo, the Capitol).
 
 ### 28. The Shipyard's water (`h3-adventure` `src/town*`, `h3-game`; TWN-SET-011, decision 46)
 

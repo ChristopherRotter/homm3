@@ -8,23 +8,25 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a (done), T17b (next), T18a to T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b (done), T18a (next), T18b, T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T17b — `h3-towns`: the rules that decide a build, `TownCommand` and its errors** (design
-§27, §34, §35's round 5; decisions 45, 49, 51; queued 2026-11-09 by T17a, which built the mark,
-`built_with` and the store's writes; not `cross-lane`): in `h3-towns`' `build.rs` beside
-`built_with`, the rules `buildable` (the hall's offer, a horde offered as its upgrade; empty while
-`built_today`; TWN-BLD-002, -003), `possible` (TWN-BLD-002), `check_build` (§27's order of the
-refusals, the day's mark last: TWN-BLD-004's refusal) and `event_buildings` (TWN-EVT-003);
-`TownCommand::Build { town, building }` and `TownCommandError` (`#[non_exhaustive]`, with
-`UnknownTown` and `NotOwner` for the game); `docs/rules/catalog/town.toml`'s TWN-BLD-001 to -003,
--006 and -007 (-006 and -007 sourced from T16b's harvest and survey `E09-construction.md` §5,
-§6), TWN-EVT-003, TWN-BLD-004's summary amended with the refusal; `TWN-QUIRK-7` (T-9) where design
-§34 places it. Checked by `h3-towns`' tests on its synthetic part (every refusal in its order, the
-hall's offer with the hordes, the Capitol's limit, the Grail never by the hall, the event's
-buildings with and without water). No version moves (the part and the store are unchanged).
+**E09 T18a — the Shipyard's water** (design §28, §34, §35's round 6; decision 46; queued
+2026-11-09 by T17b; `cross-lane`: the adventure part and the static map are the adventure lane's;
+look at its open pull requests first; E08 T104, #797, merged 2026-11-09): the adventure part's kind `Town`
+gains `boat_offsets` (the base pack's `[[-1, 2], [1, 2]]`, column and row from the entrance;
+adventure ruleset part v19 after T103a's v18, or again after theirs); `fix_boat_tiles` (ADV-SHY-001's
+step) fixes each town's spot as a Shipyard's tile (the town object's `Resolved::BoatTile`,
+`StaticMap::town_boat_spot(TownId) -> Option<Pos>`); at the game's start, before the store is made,
+a town whose record has a building of role `shipyard` and no spot gets it forbidden and out of the
+ever-built set (`h3_towns::without_water`; a building requiring it kept), no draw moved;
+TWN-SET-011 in `town.toml`, `TWN-STUB-2` narrowed to the Grail building, ADV-SHY-001 amended (the
+towns' spots in the same step). Read first the original's order of `town_buildings_setup`
+0x5C08C0 against `random_dwellings_resolve` 0x502B60 (design §28's open point; *agent's call*
+until then: after). With the original data, the census: the towns with a Shipyard in their faction
+and no spot, the custom sets that lose a built Shipyard (survey `E09-towns.md` §5.3). The adventure
+replays re-recorded if their headers' part hash moves (skill `homm3-rerecord-replays`).
 **Status:** next.
 
 ## Inbox
@@ -40,17 +42,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   to every player whose view of the town changes (a `TownChanged`'s `seen_by`, or a garrison
   event). The server's fold test over the golden replays (M5 T3) checks it, a stub there until it
   lands.
-
-- 2026-11-09 (the server lane, CI of #800, a random find; **an invariant of yours broken**):
-  `h3-map`'s property test `tests::play::every_step_keeps_the_commands_invariants` failed in CI's
-  coverage run on code that touches neither `h3-map` nor the game crates (`master` 2e5e08f plus
-  `h3-protocol`'s session): E09 T9b1's check (TWN-VIS-002, `play.rs`, "no hero stands on the
-  entrance of a town of another team or of none") reported `HeroId(2) on town 18 of
-  Some(PlayerId(0))` on a 16×16 RoE plan, one level. The test draws a new seed each run (48
-  cases), so it shows only now and then. To replay the shrunk case, add proptest's line
-  `cc e663c03d407272cf82960aa4edf2492dcbec39f73811da59da67c47f238f4f46` to
-  `crates/h3-map/proptest-regressions/tests/play.txt` (the adventure lane's file: `cross-lane`, or
-  ask it) and run the test; the full plan is in the CI log of run 42665928151.
 
 - 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
   increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind

@@ -435,6 +435,7 @@ fn the_buildings_close_what_they_supersede() {
 
 #[test]
 fn the_buildings_close_what_they_require_and_list_their_costs() {
+    // covers: TWN-BLD-006, TWN-BLD-007
     let (core, part) = compiled();
     for record in part.towns() {
         let id = |k: &str| record.building_by_key(k).unwrap();
