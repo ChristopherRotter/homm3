@@ -289,7 +289,10 @@ content and draws nothing; it rejects what the current increment cannot represen
   `sod:` for 3 to 7, so an RoE or AB ruleset meets an SoD channel as `MissingContent`), 103
   `base:subterranean_gate` and 111 `base:whirlpool` whatever the subclass. Refused: a monolith
   subclass past 7 (`Subclass`, A-39, ADV-QUIRK-41; the original indexes eight lists without a
-  bound).
+  bound). Since E08 T104 the game's build refuses a teleporter with a visitable tile off its
+  surface (`SetupError::TeleporterSurface`, A-42, ADV-QUIRK-44: a monolith's or a gate's on water
+  or rock, a Whirlpool's on land or rock; none of the shipped maps) and makes the channels and the
+  gates' pairs (ADV-TEL-002).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by

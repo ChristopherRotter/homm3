@@ -480,3 +480,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-map/src/tests/import.rs`, `the_typed_classes_import_as_their_object_types`; `crates/h3-map/src/tests/teleporters.rs`, `the_import_types_each_teleporter_class_and_subclass`
 - Decided by / date: the survey's recommendation (§8), the design note §4 as written (the user 2026-11-06, ADV-Q45, E08 decision 267); built and recorded by E08 T103b
+
+### ADV-QUIRK-44 — A teleporter off its surface
+- Class: exploit-fix (no flag: state-corrupting, always fixed; the map refused when the game is built; A-42)
+- Context / rules affected: adventure, ADV-TEL-001 (the teleporters' kinds), ADV-TEL-002 (the channels), the game's build (`h3_adventure::StaticMap`)
+- Original behavior: unread. A monolith's or a Subterranean Gate's visitable tile on water, or a Whirlpool's on land, would be a jump's exit on the other surface: a hero in a boat put on land or a walker on water. Six monolith templates of `Objects.txt` allow water, none of the 160 shipped maps places one there; every gate stands on land and every Whirlpool tile on water (survey `E08-teleporters.md` §1, §8 A-42).
+- Intended/expected behavior: the game's build refuses a teleporter with a visitable tile of the map off its surface (`SetupError::TeleporterSurface`, the first in object order; the import's validation passes it on): a monolith's or a gate's on water or rock, a Whirlpool's on land or rock (rock, which nothing walks or sails, by the same reason: the agent's call at E08 T104). Not chosen (decision 272): such an exit left out of its channel's candidates, which would load every map at the cost of a test per candidate and a gate's pair to drop.
+- Impact: none on the shipped maps (`h3-map`'s `original_data`: none refused); a crafted map the original may load is refused (the map client's inbox told).
+- Community status: not documented.
+- Sources: the census (survey §1); the design note §5 (the agent's candidate, accepted at ADV-Q46).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_teleporter_off_its_surface_is_refused_when_the_game_is_built`
+- Decided by / date: the design note §5 as written (the user 2026-11-06, ADV-Q46, E08 decision 272); built and recorded by E08 T104
+
+### ADV-QUIRK-45 — A Whirlpool's tile under a map-placed boat is never listed
+- Class: harmless, not reproduced (no flag; E08 decision 280; A-43)
+- Context / rules affected: adventure, ADV-TEL-002 (the Whirlpools' list), ADV-TEL-006 (the Whirlpool, T105a)
+- Original behavior: the setup's walk (`setup_map_objects` 0x4C0CC0) dispatches on a tile's class, the last object placed there, and a boat (class 8) has no case, so a Whirlpool tile under a boat the map places is never appended to the Whirlpools' list, also once the boat has left: never an exit; a visit from it excludes no word of its own (−1), so its draw takes its own Whirlpool's other five tiles too (survey `E08-teleporters.md` §3.1, §15 E11-17b).
+- Intended/expected behavior: every visitable tile of every Whirlpool is listed (ADV-TEL-002); the setup refuses a boat on a tile an object is visited from (ADV-SEA-001, `SetupError::Boat`), so no map-placed boat lies on one, and a jump's candidates skip a tile while an empty boat stands on it (the design note §7, T105a).
+- Impact: none on the shipped maps (none holds a boat on a Whirlpool, survey §1); a crafted map's boat there is refused.
+- Community status: not documented.
+- Sources: code reading (survey §3.1); observation, batch E11b's E11-17 and E11-17b (survey §15).
+- Flag: none (not reproduced)
+- Defaults: not reproduced in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `the_whirlpools_list_every_tile_with_its_whirlpool`; `crates/h3-map/src/tests/teleporters.rs`, `the_teleporters_import_as_their_types` (the boat on a Whirlpool's tile refused)
+- Decided by / date: the survey's scoring (§15), not reproduced (the user 2026-11-07, ADV-Q47, E08 decision 280); recorded by E08 T104
