@@ -16,6 +16,17 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **for T3's mapping of
+  the game's commands, rejections and events**): `GameCommand::Town(h3_towns::TownCommand)` (one
+  variant, `Build { town: TownId, building: BuildingId }`, the building by its index in the town's
+  faction's record, below `h3_towns::MAX_BUILDINGS`), `GameCommandError::Town(TownCommandError)`
+  (ten variants, `OfferedAs(BuildingId)` among them) and `GameEvent::TownBuilt { player, town,
+  building, event: Option<u16> }` (the owner's alone; `event` a town event's place, E09 T18c).
+  Both town enums are exhaustive now (no `#[non_exhaustive]`, for SRV-Q25's mapping). E09 T18b2
+  adds the view's fields (`TownView::built_today`, the owner's buildings) and `TownChanged`'s
+  public facts, with their mapping in `h3-protocol`'s `map::game`, and decides SRV-Q26's town
+  garrison change at its start.
+
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero
   forbids casting, its spell level limit; public, as the original's book names the Orb's wearer

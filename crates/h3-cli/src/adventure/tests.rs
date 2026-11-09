@@ -530,7 +530,7 @@ fn the_difficulty_and_the_answers_round_trip_through_the_file() {
     let e = verify(&text.replacen("difficulty = 0\n", "", 1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
     assert!(
-        e.to_string().contains("format 10 needs a difficulty"),
+        e.to_string().contains("format 11 needs a difficulty"),
         "{e}"
     );
     // A v8 file has no town part's hash (format v9, E09 T5a2): it reads, and its version refuses
