@@ -282,7 +282,7 @@ inbox, the same day), mapped when it lands.
   diffing every viewer costs 22 times an `apply` on the golden replays, 730 to 860 times on an XL
   map with eight players); what a fold lacks is the adventure and town lanes' (SRV-Q26: foldable
   events and a query for what a viewer sees on the tiles it explored since a given grid).
-- **T2 the observation's wire** (`wire::game`), in two pull requests (the user, 2026-11-09):
+- **T2 the observation's wire** (`wire::game`), in two parts (the user, 2026-11-09; one pull request, #805):
   - **T2a done** (2026-11-09; `E16-log.md`): the adventure map (`wire::game::Adventure`: the
     planes, the tiles as a palette and an index per tile, heroes, objects, boats, what the viewer
     knows), `map::game::adventure`; no message yet, no version step.

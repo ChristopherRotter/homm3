@@ -1957,7 +1957,7 @@ T1 (SRV-Q25's measurement; the numbers, the method and the gaps in the design no
 
 ### M5 T2a — the adventure map on the wire (2026-11-09)
 
-The user split T2 in two pull requests (T2a the adventure map, T2b the rest of the observation).
+The user split T2 in two parts (T2a the adventure map, T2b the rest of the observation), then took both in one pull request (#805).
 
 - **The types** (`wire::game`, provisional): `Adventure` (the viewer, the map's size, the
   explored and fringe planes as `WireU64` words, the tiles, heroes, objects, the bought
