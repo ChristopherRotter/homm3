@@ -2342,3 +2342,56 @@ tars unpacked; the scoped verify ran with them, and `scripts/exe.py` read the ev
   building but `OfferedAs`'s; `possible` holding the Grail's building as the original's
   `town_build_possible` does; the rules in `build.rs`, the command in `command.rs`.
 
+
+### T18a — the Shipyard's water (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t18a`, `cross-lane` (the adventure
+part, the static map, `h3-game`'s `state.rs`, the replays, the bot reports and `h3-map`'s census
+are the adventure and AI lanes'). Starting point: `master` at ae7d260 (#801, #802, #804 merged;
+CI's `CI` green on it; the setup's baseline was lost to a restart of the sandbox, so CI's run
+stands for it). Kept whole (the user, at its start). The user's computer was connected: the
+original data staged with the file tool at the start, then `cp -rn` into the clone and both tars
+unpacked; the census and the scoped verify ran with them, and `scripts/exe.py` read the setup's
+order.
+
+- **The reading** (design §28's open point, settled): `new_game_heroes` 0x4BFE70 calls, in one
+  straight line, the map's read (`new_game_bans` at 0x4BFFB9, whose `map_objects_place_all`
+  resolves the random dwellings at 0x4FD90B and fixes the Shipyards' boat tiles at 0x4FD935),
+  `resolve_random_objects`, `setup_map_objects`, `gates_pair`, then `setup_towns` at 0x4C0013,
+  whose `town_buildings_setup` calls `town_boat_spot` 0x5C0C90 (read by T12a: water, not blocked,
+  no object or a boat). So a town's spot sees the resolved dwellings: the agent's call "after"
+  kept, the spot fixed in ADV-SHY-001's step.
+- **The adventure** (design §28 as built): `ObjectKind::Town { boat_offsets }` and its def
+  (distinct, never (0, 0), possibly none: no spot; hashed as a Shipyard's offsets), adventure
+  ruleset part **v19**; the pack's `town = { boat_offsets = [[-1, 2], [1, 2]] }` in the base pack
+  (optional, `town = {}` none); `fix_boat_tiles` takes a town's offsets with the Shipyard's test
+  (`Resolved::BoatTile` on the town object, in the static map's hash);
+  `StaticMap::town_boat_spot(TownId)`; `ObjectView::boat_tile` stays the Shipyard's (a town's spot
+  is the town's Shipyard's, its view T18b's, §31). Every match on the kind updated (`h3-adventure`,
+  `h3-game`, `h3-map`'s play tests and census, `h3-cli`'s ai census).
+- **The town and the game:** `h3_towns::without_water` (the record's buildings of role `shipyard`
+  forbidden and out of the ever-built set, the rest and the day's mark kept; `Town::reset`);
+  `h3-game`'s `town::without_water` by `TownId` after `AdventureState::new` and before the
+  reveals and the store (one line in `state.rs`); no draw. `TWN-STUB-2` narrowed to the Grail
+  building. The game's town fixture gained a Shipyard (`b12`, slot 6; the siege tests' defender
+  renamed `defender`), its adventure part the original's two offsets.
+- **Tests:** the part's offsets (refused twice, at the entrance; hashed by value, order and
+  count), the static map's spots (first offset, land, a blocker, a visited tile, owned and
+  neutral, the owner's view without it, the hash), `without_water` (a custom set's Shipyard out, a
+  standard set's forbidden, a requiring building kept, the mark kept, a faction without a Shipyard
+  or a record unchanged), the game's start (no water, either offset, water elsewhere); the two
+  tests comparing the store with `town_setup` now apply `without_water` (their maps have no
+  water).
+- **The census** (the original data, `h3-map`'s `original_data`, checked): 1 468 towns, 67 with a
+  spot; 625 of a faction with a Shipyard, 591 of them without a spot (their Shipyard forbidden);
+  the 9 custom sets that build a Shipyard (survey §5.3's 9) all have a spot, none loses it.
+- **Versions:** adventure ruleset part v19 (after T103a's v18); no other. The 55 adventure
+  replays re-recorded from their commands: only hash lines moved (the part's hash in each; the
+  checkpoints and final hashes of the eight `towns-*` replays, whose towns without water now
+  forbid their Shipyard). The bot reports' `engine` line only.
+- **Catalog:** TWN-SET-011 `implemented` (the reading, VCMI's `initTowns`, the design);
+  TWN-SET-003's "not yet" narrowed; ADV-SHY-001 amended (the towns' spots in the same step).
+- **Agent's calls (change freely):** the offsets optional in the pack (none: no spot); the town's
+  spot out of `ObjectView::boat_tile`; `without_water` a transform of the built town rather than
+  an input of `town_buildings_setup` (the spots come after the towns' draws); the census in
+  `built_town_water`.
