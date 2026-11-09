@@ -291,14 +291,16 @@ inbox, the same day), mapped when it lands.
     the heroes with the owner's details, the towns, the battle as the existing `Observation`) and
     `map::game::observe`, the one public entry. No diff (T1): the observation is the snapshot.
 - **T3 the commands, answers, rejections and events**, in three parts (the user, 2026-11-09; one
-  pull request after T3c): **T3b** the events, **T3c** the fold and its test (in `h3-protocol`'s
-  tests through `h3-files`, the user's crate for the files, made first); no message and no
-  version step (with T5's session). Projected per viewer (`h3_game::project`); round trips; the
+  pull request after T3c): T3a the commands and rejections, T3b the events, **T3c** the fold
+  and its test (in `h3-protocol`'s tests through `h3-files`, the user's crate for the files, made
+  first); no message and no version step (with T5's session). Projected per viewer (`h3_game::project`); round trips; the
   exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records) and its test over
   the golden replays (a snapshot folded with the events equals `observe` after every command, for
   every viewer), each gap of SRV-Q26 a stub until its lane lands it.
   - **T3a done** (2026-11-09; `E16-log.md`): the commands both ways and the rejections
     (`wire::game::{GameCommand, GameReject}`, `map::game::{command, command_to_engine, reject}`).
+  - **T3b done** (2026-11-09; `E16-log.md`): the events, projected for their viewer
+    (`wire::game::GameEvent`, `map::game::events`).
 - **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
   the map's identity (its content hash), the key tables of the game's content kinds.
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
@@ -326,7 +328,10 @@ T3a's: the game's commands and rejections as the engine's one to one in struct v
 command's part named after its kind, `Answer { answer }`, `Manage { manage }`), a battle's command
 and refusal inside them as the battle wire's `Command` and `RejectCode`, a rejection with the
 engine's payload (a path's step, a hero, a slot: what the actor sent or may know), an artifact's
-place and a position as `u16`, a step as `u32`.
+place and a position as `u16`, a step as `u32`; T3b's: a projected event without its viewer sets
+(`seen_by`, a step's `seen_from` and `seen_to`: the viewer alone, or a `None` end), an
+owner's event keeping its `player` (the viewer itself, as the engine's), a battle's event as the
+battle wire's `Event`, a hero's change's tuple variants as struct variants.
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

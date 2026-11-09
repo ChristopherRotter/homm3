@@ -2042,3 +2042,28 @@ is the record).
   system actor, a battle's for the other side or without a battle, an answer without a decision):
   about 476 000 checks, most of them the sea map's management commands, in 2 s.
 - **No message, no version step** (with T5's session, the user's order): nothing sends these yet.
+
+### M5 T3b — the game's events on the wire, projected (2026-11-09)
+
+- **The types** (`wire::game`, in `wire/game/event.rs`; provisional): `GameEvent`
+  (`h3_game::GameEvent`'s 32 kinds), `AdventureEvent` (`h3_adventure::AdventureEventKind`'s 25),
+  `HeroChange` (`h3_heroes::HeroChange`'s 11, as struct variants), `ShipyardBlock`; a battle's
+  event is the battle wire's `Event`, a battle's result its `Outcome`, a month's kind T2b's
+  `Month`. A projected event is the viewer's alone (`h3_game::project`), so the sets of viewers
+  are not sent: `seen_by`, and a step's or a jump's `seen_from` and `seen_to`, whose end the
+  viewer does not see is already `None`. An owner's event keeps its `player` (the viewer, as the
+  engine's: one to one).
+- **The mapping** (`map::game::events(events, viewer)`, in `map/game/event.rs`): projects with
+  `h3_game::project`, drops what the viewer may not see, maps the rest in order; the viewer sets
+  named `seen_by: _` with the reason. The battle's event through the battle's own
+  `from_engine::event` (the game projects a battle's events by its owners; the battle's own
+  projection only filters, so the event is the battle's as is). T2b's month and stack mappings
+  are shared (`month_kind`, `army_stack`), T3a's slot and artifact place.
+- **Tests** (`tests/game_event.rs`): a test-only inverse gives the engine's projected event back
+  (the viewer sets as the viewer alone, a step's end seen where it is `Some`; a battle's event
+  compared on the wire); a hand-built event of each of the 32 kinds, with every part's variant
+  (the three months, the four results, the 11 hero changes, the 25 adventure kinds, steps and
+  jumps seen at one end only) maps back for both viewers and round-trips; player 1 gets the
+  public and seen kinds only; the JSON is serde's default form, an unknown field refused; five
+  fixture maps (400 random steps) map every viewer's events of every step back (28 kinds met).
+- **No message, no version step** (T5). The fold (T3c) folds these into T2's snapshot.

@@ -153,7 +153,7 @@ fn manage(m: EngineManage) -> Manage {
 }
 
 /// An army slot on the wire.
-const fn slot(s: EngineSlot) -> ArmySlot {
+pub(super) const fn slot(s: EngineSlot) -> ArmySlot {
     let EngineSlot { army, slot } = s;
     ArmySlot {
         army: match army {
@@ -174,7 +174,7 @@ fn artifact_at((hero, place): (HeroId, EnginePlace)) -> ArtifactAt {
 }
 
 /// An artifact place on the wire.
-fn artifact_place(place: EnginePlace) -> ArtifactPlace {
+pub(super) fn artifact_place(place: EnginePlace) -> ArtifactPlace {
     match place {
         EnginePlace::Worn(at) => ArtifactPlace::Worn {
             position: position(at),

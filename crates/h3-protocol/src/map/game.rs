@@ -4,7 +4,8 @@
 //! wildcard: a new field or variant fails this crate's build until it is mapped. What leaves is
 //! projected by construction: [`observe`] takes the viewer and calls the engine's `observe`.
 //! The commands both ways and the rejections: [`command`], [`command_to_engine`], [`reject`]
-//! (T3a, `game/command.rs`).
+//! (T3a, `game/command.rs`); the events, projected for their viewer: [`events`] (T3b,
+//! `game/event.rs`).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -39,8 +40,10 @@ use crate::wire::game::{
 };
 
 mod command;
+mod event;
 
 pub use command::{command, command_to_engine, reject};
+pub use event::events;
 
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {
@@ -66,13 +69,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
     GameObservation {
         viewer: viewer.raw(),
         day: *day,
-        month: match month {
-            MonthKind::Normal => Month::Normal {},
-            MonthKind::Creature(creature) => Month::Creature {
-                creature: creature.raw(),
-            },
-            MonthKind::Plague => Month::Plague {},
-        },
+        month: month_kind(*month),
         players: players
             .iter()
             .map(|&PlayerView { colour, acting }| Player { colour, acting })
@@ -85,6 +82,17 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         adventure: adventure_view(adventure),
         towns: towns.iter().map(town).collect(),
         battle: battle.as_ref().map(crate::map::observation),
+    }
+}
+
+/// A month's kind on the wire.
+const fn month_kind(month: MonthKind) -> Month {
+    match month {
+        MonthKind::Normal => Month::Normal {},
+        MonthKind::Creature(creature) => Month::Creature {
+            creature: creature.raw(),
+        },
+        MonthKind::Plague => Month::Plague {},
     }
 }
 
@@ -524,20 +532,21 @@ pub(crate) const fn amount((resource, amount): (ResourceId, u32)) -> Amount {
 
 /// An army's stacks on the wire.
 pub(crate) fn army(stacks: &[EngineStack]) -> Vec<ArmyStack> {
-    stacks
-        .iter()
-        .map(
-            |&EngineStack {
-                 slot,
-                 creature,
-                 count,
-             }| ArmyStack {
-                slot,
-                creature: creature.raw(),
-                count,
-            },
-        )
-        .collect()
+    stacks.iter().copied().map(army_stack).collect()
+}
+
+/// An army's stack on the wire.
+const fn army_stack(s: EngineStack) -> ArmyStack {
+    let EngineStack {
+        slot,
+        creature,
+        count,
+    } = s;
+    ArmyStack {
+        slot,
+        creature: creature.raw(),
+        count,
+    }
 }
 
 /// A tile mask on the wire: its bits.

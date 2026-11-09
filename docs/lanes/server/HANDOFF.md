@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2 (#805, the observation's wire) done; #808 (the files crate `h3-files`) merged 2026-11-09. **T3** in three parts (the user; the epic's T3), one pull request after T3c, none open yet: **T3a done** on `claude/youthful-newton-lrlkoz` (the game's commands both ways and its rejections, `wire::game::{GameCommand, GameReject}`, `map::game::{command, command_to_engine, reject}`). **Next:** T3b the events, then T3c the fold and its test over the golden replays (through `h3-files`), then the pull request. **The review list so far:** the epic's "M5 part 1".
+- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2 (#805, the observation's wire) done; #808 (the files crate `h3-files`) merged 2026-11-09. **T3** in three parts (the user; the epic's T3), one pull request after T3c, none open yet: **T3a and T3b done** on `claude/youthful-newton-lrlkoz` (the game's commands both ways and its rejections, `wire::game::{GameCommand, GameReject}`, `map::game::{command, command_to_engine, reject}`; its events projected, `wire::game::GameEvent`, `map::game::events`). **Next:** T3c the fold and its test over the golden replays (through `h3-files`), then the pull request. **The review list so far:** the epic's "M5 part 1".
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -24,9 +24,9 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
-### 2026-11-09 — M5 T3a: the game's commands and rejections on the wire
+### 2026-11-09 — M5 T3a and T3b: the game's commands, rejections and events on the wire
 
-Baseline: `master` 1e8568d (#808 merged; CI's run on it in progress at the start); the sandbox's full verify passed up to its tests, its coverage stopped (CI's is the record). No original data. Built T3a (`E16-log.md`): the wire types, the mapping, a test-only inverse of the rejections, hand-built lists of every variant and three played fixture games. No message, no version step (T5). Next: T3b.
+Baseline: `master` 1e8568d (#808 merged; CI's run on it in progress at the start); the sandbox's full verify passed up to its tests, its coverage stopped (CI's is the record). No original data. Built T3a and T3b (`E16-log.md`): the wire types, the mapping (the events projected), test-only inverses, hand-built lists of every variant and played fixture games. No message, no version step (T5). Next: T3c.
 
 ### 2026-11-09 — T3's split; the files crate `h3-files`
 
