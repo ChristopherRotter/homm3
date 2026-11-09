@@ -5923,3 +5923,8 @@ T7c the review list and M7); T7a taken whole. The original data staged by the fi
   design §7.11, M6's review item 48.
 - **Gates:** `check.sh` (the baseline), the scoped verify with original data, `drawn` (the viewer
   unchanged: 263 the same at the start).
+- **Master merged** (1e8568d) before the pull request: `drawn` with the merged viewer lists 81
+  of the 91 sequences changed or failing their timeline check (`walk` at 0 ms: the Champions'
+  outline and their "Move" hint gone): master's #800 (protocol v38, the battle's start
+  `Events` before the first command's) is the inbox's item for the client's readers, not
+  T7a's; the situations all the same. T7a's records stand on its base; the readers first.

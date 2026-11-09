@@ -30,7 +30,11 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   worktree of `master`) and its fixes, `drawn` and the captures a fix changes. **T7c** the review
   list with the user (M6's items 1 to 48), M7 refined (ranked play and the server browser, HD and
   the graphics options placed), M6 closed (its scope to `E17-archive.md`).
-  **Status:** T7b next.
+  **Status:** T7b next, after the inbox's protocol v38 item (the server lane's of 2026-11-09:
+  the battle's start `Events` and the last `Snapshot`): master's #800 broke the viewer's
+  sequences (`drawn` on T7a's branch merged with `master` at 1e8568d: 81 of the 91 changed or
+  failing, the active stack's outline and hint missing at 0 ms; on T7a's base 2e5e08f all the
+  same), so the readers come first and `drawn` must be all the same again before T7b.
 
 ## Inbox
 

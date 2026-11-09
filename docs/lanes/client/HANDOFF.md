@@ -14,9 +14,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user (2026-11-07): **T6c1 done** (#792: `h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers;
   CLT-Q68 answered fix; design §7.27), **T6c2 done** (#795). T6 done. **T7** (M6's closure) cut in
   three by the user (2026-11-09): **T7a done** (R4-9's stricter redraw rule and every capture
-  afresh; the PR on `client/e17-m6-t7a`: check it first); **next: T7b** (the fresh reviewer and
-  its fixes), then T7c (the review list, M7 refined, M6 closed); then M7 ranked play and the
-  server browser.
+  afresh; the PR on `client/e17-m6-t7a`: check it first); **next: the inbox's protocol v38
+  readers** (master's #800 broke the viewer's sequences: `drawn` 81 of 91 not the same after
+  merging `master`; QUEUE, T7's status), then T7b (the fresh reviewer and its fixes), T7c (the
+  review list, M7 refined, M6 closed); then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -57,7 +58,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   kept whole. The original data staged by the file tool at once (the PC left after an hour).
   Every capture afresh on two instances (172 situations, 91 sequences, all as recorded, about
   6 hours); R4-9 built (`h3cap.SHADOW_VALUES`), its counts moved only in listed differences'
-  frames (recorded). Record: `E17-log.md`.
+  frames (recorded). Merging `master` (#800, protocol v38) broke `drawn` (81 of 91 sequences):
+  the inbox's readers come first. Record: `E17-log.md`.
 - **2026-11-07, E17 M6 T6c2 (done; `client/e17-m6-t6c2`).** Kept whole. The original data
   staged by the file tool (the PC's shell did not start). `drawn` listed the four captures whose
   clips differed; captured, recorded (`defended`'s window only its 122 artifacts, the others
