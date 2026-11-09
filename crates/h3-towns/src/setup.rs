@@ -204,7 +204,7 @@ impl fmt::Display for TownSetupError {
 impl core::error::Error for TownSetupError {}
 
 /// The record's buildings with their ids, in index order.
-fn indexed(record: &TownRecord) -> impl Iterator<Item = (BuildingId, &Building)> {
+pub(crate) fn indexed(record: &TownRecord) -> impl Iterator<Item = (BuildingId, &Building)> {
     (0..MAX_BUILDINGS)
         .filter_map(BuildingId::from_index)
         .zip(&record.buildings)
