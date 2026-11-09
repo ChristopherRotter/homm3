@@ -1,11 +1,13 @@
 //! Tests of the teleporters' jumps through the game (E08 T105a1; ADV-TEL-003, ADR-0017 point 4):
 //! a monolith's exit is drawn from the acting player's stream, after the whole command is
 //! checked; a guarded entrance's jump follows the guard's battle as the held visit (GAM-DEC-007).
+//! Since E08 T105b1 an enemy hero on the exit is fought there first, the jump held as a rest
+//! after the winner's levels (`Rest::Jump`; GAM-BAT-004, GAM-DEC-007 amended).
 
 use h3_adventure::{AdventureCommandError, AdventureEventKind, ObjectSetup, TileMask};
 
 use super::decisions::{move_hero, play};
-use super::mines::adventure;
+use super::mines::{adventure, fight};
 use super::rewards::{AT, HERO, guard, starts_battle, win};
 use super::*;
 
@@ -102,4 +104,87 @@ fn a_guarded_entrances_jump_follows_its_guards_battle() {
     let events = win(&mut state, &rules);
     assert_eq!(exits(&events), [exit]);
     assert_eq!(state.adventure().hero(HERO).unwrap().pos, exit);
+}
+
+/// [`game`] with Blue's hero on `at` leading `count` Imps and Red's with `red` Imps at 999
+/// experience, one point from its second level.
+fn facing(
+    rules: &GameRuleset,
+    objects: Vec<ObjectSetup>,
+    at: Pos,
+    (red, count): (u32, u32),
+) -> GameState {
+    let mut setup = setup();
+    setup.map.objects = objects;
+    let imps = |count| {
+        HeroArmy::Custom(vec![ArmyStack {
+            slot: 0,
+            creature: IMP,
+            count,
+        }])
+    };
+    setup.heroes[0].army = imps(red);
+    setup.heroes[0].details.experience = Some(999);
+    setup.heroes[1].pos = at;
+    setup.heroes[1].army = imps(count);
+    GameState::new(rules, &setup, 7).unwrap()
+}
+
+/// Whether `events` start a battle at `tile`.
+fn starts_at(events: &[GameEvent], tile: Pos) -> bool {
+    events
+        .iter()
+        .any(|e| matches!(e, GameEvent::BattleStarted { tile: at, .. } if *at == tile))
+}
+
+// covers: GAM-BAT-004, GAM-DEC-007, ADV-TEL-004, ADV-TEL-007
+#[test]
+fn a_battle_at_a_monoliths_exit_holds_the_jump_until_the_winners_levels() {
+    let rules = rules();
+    // Blue's hero, with one Imp, on the one exit: no draw, the battle at the exit.
+    let exit = Pos::new(2, 2, 0);
+    let objects = vec![
+        monolith(&rules, "t:entrance", AT),
+        monolith(&rules, "t:exit", exit),
+    ];
+    let mut state = facing(&rules, objects, exit, (9, 1));
+    let events = play(&mut state, &rules, RED, move_hero(0, &[AT])).unwrap();
+    assert!(starts_at(&events, exit), "{events:?}");
+    assert!(exits(&events).is_empty());
+    assert_eq!(state.adventure().hero(HERO).unwrap().pos, AT);
+    // The jump is held beside the open battle, in the hash (tag 4, game state hash v27).
+    assert_eq!(state.held_rests(), 1);
+    let mut bare = state.clone();
+    bare.drop_rests();
+    assert_ne!(state.state_hash(), bare.state_hash());
+    // Won: Blue's hero leaves the map and Red's gains its level, still on the entrance while it
+    // is open; the jump once it is answered.
+    let events = fight(&mut state, &rules);
+    assert!(exits(&events).is_empty());
+    assert!(state.adventure().hero(HeroId::new(1)).is_none());
+    assert!(state.level_up(RED).is_some());
+    assert_eq!(state.adventure().hero(HERO).unwrap().pos, AT);
+    let events = win(&mut state, &rules);
+    assert_eq!(exits(&events), [exit]);
+    assert_eq!(state.adventure().hero(HERO).unwrap().pos, exit);
+}
+
+// covers: GAM-BAT-004, GAM-DEC-007
+#[test]
+fn a_mover_lost_at_a_monoliths_exit_never_jumps() {
+    let rules = rules();
+    let exit = Pos::new(2, 2, 0);
+    let objects = vec![
+        monolith(&rules, "t:entrance", AT),
+        monolith(&rules, "t:exit", exit),
+    ];
+    // One Imp against twenty: Red's hero loses and leaves the map; the held jump finds no hero.
+    let mut state = facing(&rules, objects, exit, (1, 20));
+    let events = play(&mut state, &rules, RED, move_hero(0, &[AT])).unwrap();
+    assert!(starts_at(&events, exit));
+    let events = fight(&mut state, &rules);
+    assert!(exits(&events).is_empty());
+    assert!(state.adventure().hero(HERO).is_none());
+    assert_eq!(state.adventure().hero(HeroId::new(1)).unwrap().pos, exit);
+    assert!(state.battle(RED).is_none() && !state.has_decision(RED));
 }
