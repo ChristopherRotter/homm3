@@ -382,7 +382,9 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::BoatBuilt { .. }
                     | AdventureEventKind::MonsterAdded { .. }
                     | AdventureEventKind::NoneToRecruit { .. }
-                    | AdventureEventKind::JoinRefused { .. } => (None, None),
+                    | AdventureEventKind::JoinRefused { .. }
+                    | AdventureEventKind::HeroTeleported { .. }
+                    | AdventureEventKind::LeadsNowhere { .. } => (None, None),
                 })
             })
             .collect();

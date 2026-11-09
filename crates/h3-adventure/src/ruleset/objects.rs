@@ -321,7 +321,7 @@ pub enum ObjectKind {
     /// A Whirlpool (E08 T103a, increment 11's design note §1; ADV-TEL-001, the original's class
     /// 111): entered by a boat, a teleporter; its exits are the other Whirlpools' tiles (ADV-TEL-002,
     /// T104), and before the jump an unprotected visitor's weakest stack keeps its count divided
-    /// by the divisor (ADV-TEL-006, T105a).
+    /// by the divisor (ADV-TEL-006, T105a2).
     Whirlpool {
         /// What the weakest stack's count is divided by, rounded down, a lone stack keeping at
         /// least one (the original's 2); at least 2.
@@ -412,6 +412,17 @@ pub(crate) enum Effect<'k> {
     /// before when its garrison or a visitor of another team defends it
     /// ([`crate::AdventureOutcome::battle`], E09 T8b2a, T8b2b; a town, TWN-VIS-001, E09 T8a2).
     Town,
+    /// The jump to an exit drawn among this channel's tiles of the way it leads to, or, for a
+    /// one-way exit, that it leads nowhere (a monolith, ADV-TEL-003, ADV-TEL-004, E08 T105a1).
+    Monolith {
+        /// Its channel's number.
+        channel: u8,
+        /// Its way.
+        way: MonolithWay,
+    },
+    /// The jump to its pair, or that it leads nowhere (a Subterranean Gate, ADV-TEL-005, E08
+    /// T105a1).
+    SubterraneanGate,
 }
 
 impl ObjectKind {
@@ -424,8 +435,9 @@ impl ObjectKind {
     /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
     /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message; T84a: the mines
     /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects; T84b2: the
-    /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns. Who reaches a
-    /// kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
+    /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns; E08 T105a1:
+    /// the monoliths and the Subterranean Gates, whose visit is the jump. Who reaches a kind's
+    /// visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -455,6 +467,11 @@ impl ObjectKind {
             Self::Dwelling { creatures, .. } => Some(Effect::Dwelling(creatures)),
             Self::RefugeeCamp { .. } => Some(Effect::Camp),
             Self::Town => Some(Effect::Town),
+            Self::Monolith { channel, way } => Some(Effect::Monolith {
+                channel: *channel,
+                way: *way,
+            }),
+            Self::SubterraneanGate => Some(Effect::SubterraneanGate),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -463,15 +480,14 @@ impl ObjectKind {
             // dwelling becomes a dwelling when the game is built (ADV-DWL-005); one its draw
             // found no dwelling for stays random and is never visited. E09 T8a1: the town is
             // typed; its step came with E09 T8a2. E08 T103a: increment 11's three kinds are
-            // typed; their jump comes with T105a (increment 11's design note §7), so a step onto
-            // a teleporter's entrance is refused until then.
+            // typed; the monoliths' and the gates' jump came with T105a1 (increment 11's design
+            // note §7), the Whirlpool's comes with T105a2 (its loss first, note §8), so a boat's
+            // step onto a Whirlpool's tile is refused until then.
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
             | Self::RandomDwelling
-            | Self::Monolith { .. }
-            | Self::SubterraneanGate
             | Self::Whirlpool { .. } => None,
         }
     }

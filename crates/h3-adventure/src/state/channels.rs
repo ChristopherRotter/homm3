@@ -2,9 +2,9 @@
 //! the game is built, after the static map's tiles and objects (the random dwellings resolved,
 //! every type final), from the typed objects alone and **without a draw**, so no setup draw moves
 //! (ADR-0017 point 4). Static, behind the static map's `Arc` and so shared by forks (decision 6);
-//! empty for a map without teleporters. Read by a teleporter's visit alone (T105a), never by the
-//! reach (D-58). They follow from the objects, which the static map's hash covers, so the hash
-//! leaves them out.
+//! empty for a map without teleporters. Read by a teleporter's visit alone (T105a1: `jumps.rs`),
+//! never by the reach (D-58). They follow from the objects, which the static map's hash covers, so
+//! the hash leaves them out.
 //!
 //! The original's setup (`setup_map_objects` 0x4C0CC0, survey `E08-teleporters.md` §3.1) walks
 //! the tiles level by level, row by row, column by column and fills a word per tile by the tile's

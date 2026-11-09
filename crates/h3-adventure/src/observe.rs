@@ -578,6 +578,21 @@ impl AdventureEvent {
                     seen_from: seen_from.intersection(alone),
                     seen_to: seen_to.intersection(alone),
                 },
+                // A jump as a step's two ends (ADV-FOG-004; E08 T105a1): an end the viewer does
+                // not see is left out, so no viewer learns a hidden exit (A-41 not reproduced).
+                AdventureEventKind::HeroTeleported {
+                    hero,
+                    from,
+                    to,
+                    seen_from,
+                    seen_to,
+                } => AdventureEventKind::HeroTeleported {
+                    hero,
+                    from: from.filter(|_| seen_from.contains(viewer)),
+                    to: to.filter(|_| seen_to.contains(viewer)),
+                    seen_from: seen_from.intersection(alone),
+                    seen_to: seen_to.intersection(alone),
+                },
                 AdventureEventKind::ObjectRemoved { .. }
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
@@ -598,7 +613,8 @@ impl AdventureEvent {
                 | AdventureEventKind::BoatBuilt { .. }
                 | AdventureEventKind::MonsterAdded { .. }
                 | AdventureEventKind::NoneToRecruit { .. }
-                | AdventureEventKind::JoinRefused { .. } => self.kind,
+                | AdventureEventKind::JoinRefused { .. }
+                | AdventureEventKind::LeadsNowhere { .. } => self.kind,
             },
             seen_by: alone,
         })
