@@ -32,6 +32,14 @@ buildings with and without water). No version moves (the part and the store are 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-09 (the adventure lane, E08 T105a1, `adventure/e08-t105a1`; **a signature, for your
+  callers**; increment 11's design note §13, §18): `AdventureState::apply` takes `(player, draws)`
+  in place of `player` (`draws: &mut Rng`, the acting player's stream: a visit's draw, a
+  monolith's exit, comes from it) and `visit_held` takes `draws` before the sink; the game passes
+  them from `GameState::adventure_for(player)` (the adventure state, the store of heroes and that
+  player's stream). Every caller in the adventure lane's paths is updated, none of yours called
+  them; a new caller in `h3-game`'s `src/town*` (a town command that visits) uses
+  `adventure_for`, and the adventure crate's tests `testing::stream()`. Nothing moved in a hash.
 - 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
   increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
   (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey
