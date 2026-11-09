@@ -5,7 +5,8 @@
 //! ends there, D-58). The exit comes from the static map's channels and pairs (ADV-TEL-002, E08
 //! T104), read here alone; a monolith's and a Whirlpool's is drawn among its candidates from the
 //! visitor's stream (ADR-0016 point 4, ADR-0017 point 4), after the whole command was checked.
-//! The battle at an occupied exit and a gate's meeting are T105b's (`ADV-STUB-16`).
+//! Since E08 T105b1 (design note §12, §13) a hero on the exit is met or fought from the entrance,
+//! the jump after a won battle held as the visit's rest ([`AdventureState::arrive`]).
 
 use alloc::sync::Arc;
 
@@ -15,7 +16,9 @@ use h3_heroes::{HeroDetails, whirlpool_protection};
 use h3_kernel::Rng;
 
 use super::{AdventureState, StepVisit};
-use crate::command::{AdventureEvent, AdventureEventKind, Sink, Viewers};
+use crate::command::{
+    AdventureEvent, AdventureEventKind, AdventureOutcome, Meeting, Sink, Viewers,
+};
 use crate::fog::reveal;
 use crate::movement::{details_of, hero_radius};
 use crate::ruleset::{AdventureRuleset, MonolithWay};
@@ -39,16 +42,20 @@ impl AdventureState {
         (visit, (channel, way)): (StepVisit<'_>, (u8, MonolithWay)),
         draws: &mut Rng,
         sink: &mut S,
-    ) {
+    ) -> AdventureOutcome {
         let channels = self.map.channels();
         let tiles = match way {
             MonolithWay::Entrance => channels.exits(channel),
             MonolithWay::TwoWay => channels.two_way(channel),
-            MonolithWay::Exit => return self.leads_nowhere((player, hero), visit, sink),
+            MonolithWay::Exit => {
+                self.leads_nowhere((player, hero), visit, sink);
+                return AdventureOutcome::default();
+            }
         };
         let listed = tiles.iter().map(|&tile| (tile, tile == visit.tile));
-        if let Some(exit) = self.draw_exit(player, listed, draws) {
-            self.jump(rules, (player, hero), (visit.tile, exit), sink);
+        match self.draw_exit(player, listed, draws) {
+            Some(exit) => self.jump(rules, (player, hero), (visit.tile, exit), sink),
+            None => AdventureOutcome::default(),
         }
     }
 
@@ -70,15 +77,16 @@ impl AdventureState {
         (visit, divisor): (StepVisit<'_>, u32),
         draws: &mut Rng,
         sink: &mut S,
-    ) {
+    ) -> AdventureOutcome {
         let (core, _, heroes) = rules;
         if !details_of(heroes, hero).is_some_and(|details| whirlpool_protection(details, core)) {
             self.whirlpool_loss(core, (player, hero), divisor, sink);
         }
         let listed = (self.map.channels().whirlpools().iter())
             .map(|whirlpool| (whirlpool.tile, whirlpool.object == visit.object));
-        if let Some(exit) = self.draw_exit(player, listed, draws) {
-            self.jump(rules, (player, hero), (visit.tile, exit), sink);
+        match self.draw_exit(player, listed, draws) {
+            Some(exit) => self.jump(rules, (player, hero), (visit.tile, exit), sink),
+            None => AdventureOutcome::default(),
         }
     }
 
@@ -143,10 +151,13 @@ impl AdventureState {
         (player, hero): (PlayerId, HeroId),
         visit: StepVisit<'_>,
         sink: &mut S,
-    ) {
+    ) -> AdventureOutcome {
         match self.map.channels().gate_pair(visit.tile) {
             Some(exit) => self.jump(rules, (player, hero), (visit.tile, exit), sink),
-            None => self.leads_nowhere((player, hero), visit, sink),
+            None => {
+                self.leads_nowhere((player, hero), visit, sink);
+                AdventureOutcome::default()
+            }
         }
     }
 
@@ -184,26 +195,71 @@ impl AdventureState {
     }
 
     /// The jump of `player`'s hero `hero` from `entrance` to `exit`: **the arrival** when no hero
-    /// stands on the exit ([`Self::arrive`]); else the tiles within 1 of the exit are explored by
-    /// the mover's owner, with no event (`reveal_disk` with radius 1 before `visit_hero`, survey
-    /// §4.2, §4.3; batch E11's E11-7), and the hero stays on the entrance. A Whirlpool's exit
-    /// under an enemy hero is met the same way (A-37 fixed by the battle, decision 265: the
-    /// original moves the mover onto that hero's tile).
+    /// stands on the exit ([`Self::arrival`]). Else the tiles within 1 of the exit are explored
+    /// by the mover's owner, with no event (`reveal_disk` with radius 1 before `visit_hero`,
+    /// survey §4.2, §4.3; batch E11's E11-7), the mover stays on the entrance and visits the hero
+    /// on the exit from there (E08 T105b1, increment 11's design note §12): one of its team (only
+    /// a gate's pair can hold one: ADV-TEL-003's candidates leave them out) is **met**
+    /// (GAM-MET-001 amended: the outcome's meeting, the two heroes no neighbours; batch E11's
+    /// E11-6, the mover staying); an enemy is **fought** (GAM-BAT-004 amended: the outcome's
+    /// battle at the exit, the defender's tile, with the attacker's ground under the entrance),
+    /// the jump held after it (the outcome's `jump_after`, given by [`Self::arrive`] after the
+    /// winner's levels). A Whirlpool's exit under an enemy hero is fought the same way, on the two
+    /// boats (A-37 fixed by the battle, decision 265, `ADV-QUIRK-39`: the original moves the
+    /// mover onto that hero's tile, two heroes on one tile, batch E11's E11-16).
+    // rule: GAM-BAT-004, GAM-MET-001
     fn jump<S: Sink>(
         &mut self,
         rules: Rules<'_>,
         (player, hero): (PlayerId, HeroId),
         (entrance, exit): (Pos, Pos),
         sink: &mut S,
-    ) {
-        if self.heroes.iter().any(|h| h.pos == exit) {
-            // stub: ADV-STUB-16 (the battle with an enemy hero on the exit, GAM-BAT-004, and a
-            // gate's meeting with one of the team on its pair, GAM-MET-001: E08 T105b, design
-            // note §12)
-            reveal(&mut self.explored[usize::from(player.raw())], exit, 1);
-            return;
+    ) -> AdventureOutcome {
+        let Some(visited) = self.heroes.iter().position(|h| h.pos == exit) else {
+            self.arrival(rules, (player, hero), (entrance, exit), sink);
+            return AdventureOutcome::default();
+        };
+        reveal(&mut self.explored[usize::from(player.raw())], exit, 1);
+        let other = &self.heroes[visited];
+        if other.owner == player {
+            let meeting = Meeting {
+                visitor: hero,
+                visited: other.id,
+            };
+            return AdventureOutcome {
+                meeting: Some(meeting),
+                ..AdventureOutcome::default()
+            };
         }
-        self.arrive(rules, (player, hero), (entrance, exit), sink);
+        let mover = self.heroes.partition_point(|h| h.id < hero);
+        AdventureOutcome {
+            battle: Some(self.battle_start(rules.1, mover, visited)),
+            jump_after: Some((hero, exit)),
+            ..AdventureOutcome::default()
+        }
+    }
+
+    /// **The held jump** of `player`'s hero `hero` to `exit` (GAM-DEC-007 amended; E08 T105b1,
+    /// increment 11's design note §13; [`AdventureOutcome::jump_after`]): once the battle at the
+    /// exit and the winner's levels are over, the hero arrives on `exit` from the entrance it
+    /// still stands on ([`Self::arrival`], with its event). Nothing for a hero the battle took
+    /// off the map or another player's, nor when the exit holds a hero or an empty boat
+    /// (unreachable after a won battle, whose defender left the map with its boat, ADV-SEA-006;
+    /// the original tests that the exit is still a teleporter's, 0x4AA4A6): a rest never puts two
+    /// heroes, or a hero and an empty boat, on one tile.
+    // rule: GAM-DEC-007, ADV-TEL-007
+    pub fn arrive<S: Sink>(
+        &mut self,
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
+        (player, hero): (PlayerId, HeroId),
+        exit: Pos,
+        sink: &mut S,
+    ) {
+        let entrance = self.hero(hero).filter(|h| h.owner == player).map(|h| h.pos);
+        let taken = self.heroes.iter().any(|h| h.pos == exit) || self.is_empty_boat(exit);
+        if let Some(entrance) = entrance.filter(|_| !taken) {
+            self.arrival(rules, (player, hero), (entrance, exit), sink);
+        }
     }
 
     /// **The arrival** of `player`'s hero `hero` from `entrance` on the free `exit` (ADV-TEL-007;
@@ -215,7 +271,7 @@ impl AdventureState {
     /// point 1), the hero's tile is the boat's. Told as [`AdventureEventKind::HeroTeleported`]
     /// (ADV-FOG-004).
     // rule: ADV-TEL-007, ADV-FOG-004
-    fn arrive<S: Sink>(
+    fn arrival<S: Sink>(
         &mut self,
         (core, part, heroes): Rules<'_>,
         (player, hero): (PlayerId, HeroId),

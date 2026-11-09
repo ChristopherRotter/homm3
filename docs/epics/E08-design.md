@@ -419,6 +419,10 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   it closes, the entrance's guard visits as after any visit (note §7, ADV-MON-006). *Agent's
   call:* the meeting as the original's `visit_hero` gives it (batch E11-6 records the dialog and
   that the mover stays); an ally's hero on the pair (E10's teams) is E10's.
+- *As built* (T105b1): `jumps.rs`' `jump` returns the outcome (the three visits pass it on): a
+  hero of the player's own on the exit (a gate's pair alone) gives `meeting`, an enemy `battle`
+  (the existing `battle_start`, so the sea's ground with two boats needs nothing new) and
+  `jump_after`; `ADV-STUB-16` lifted, `ADV-QUIRK-39` written.
 
 ###### 13. The game (`h3-game`; GAM-DEC-007 amended, ADV-TEL-008; game state hash v26)
 
@@ -448,6 +452,10 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   and the rest, as `reward_after` and `Rest::Won`. Not chosen: the exit kept in the open battle and
   given at its end, which would move the hero before its levels (the original gives the levels
   first, 0x4DA720, then `hero_relocate`).
+  *As built* (T105b1): `AdventureState::arrive(context, (player, hero), exit, sink)` (the owner
+  beside the hero, as `visit_held`; the entrance is the hero's tile), the arrival proper
+  `arrival`; `Rest::Jump` hashed with the tag 4 and the exit, **game state hash v27**; run as `Rest::Won`
+  is, its arrival opening nothing.
 - **The entrance's guard** (ADV-MON-006 amended; note §7, decision 279): the guard first, for every
   entered object; the tile's visit (the jump, a meeting, "leads nowhere") is the guard's rest, given
   to a hero still on the tile. Built before T105a; the jump's visit sets no `guard_after`.

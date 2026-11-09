@@ -128,4 +128,6 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// encoding, the town state hash), after the hero pool. v25 (E08 T95b): the hire dialogs among the
 /// decisions (GAM-DEC-008: the owner, the target, the source). v26 (E09 T17a): the store of
 /// towns' encoding v2, each town's day's mark (`h3_towns::Town::built_today`, E09 design §26).
-pub const GAME_STATE_HASH_VERSION: u32 = 26;
+/// v27 (E08 T105b1): the held jump after a battle at a teleporter's exit among the rests (its
+/// tag 4, then the exit; increment 11's design note §13, which planned v26 before E09 T17a).
+pub const GAME_STATE_HASH_VERSION: u32 = 27;

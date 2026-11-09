@@ -260,6 +260,14 @@ pub struct AdventureOutcome {
     /// visit is the outcome's. The game holds it as a rest of the visit (GAM-DEC-007) and fires
     /// it with [`crate::AdventureState::fire_held_event`] once the player has no open decision.
     pub event_after: Option<(HeroId, Pos)>,
+    /// The hero and the exit of a jump held for the battle at the exit (GAM-DEC-007 amended,
+    /// ADV-TEL-003; E08 T105b1, increment 11's design note §12 and §13): set beside
+    /// [`Self::battle`] when a teleporter's exit holds an enemy hero, whom the mover fights from
+    /// the entrance. The game holds it as a rest of the visit, so it waits for the battle and the
+    /// winner's levels (the original gives the levels, 0x4DA720, then `hero_relocate`), and gives
+    /// it with [`crate::AdventureState::arrive`] once the player has no open decision: nothing
+    /// for a mover the battle took off the map.
+    pub jump_after: Option<(HeroId, Pos)>,
     /// The town the outcome captures for its player, which the game applies at once (TWN-CAP-001;
     /// E09 T8a2, the town epic's design note §9 and §11): `h3_towns::reveal`, then
     /// [`crate::AdventureState::capture_town`], then the Capitol's limit (TWN-CAP-002): the
