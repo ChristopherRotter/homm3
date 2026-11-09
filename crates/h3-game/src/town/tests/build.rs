@@ -6,14 +6,17 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::Pos;
-use h3_content::FactionId;
+use h3_content::{FactionId, TerrainId};
 use h3_contracts::{ArmyStack, PlayerId, TownId};
 use h3_kernel::{Rng, StreamId};
-use h3_towns::{BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet, TownFaction, town_setup};
+use h3_towns::{
+    BuildingId, BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet, TownFaction, town_setup,
+    without_water,
+};
 
 use super::{
-    GRAIL_SLOT, LOOKOUT_RADIUS, LOOKOUT_SLOT, faction, town_object, towns_rules, towns_rules_on,
-    towns_rules_with, towns_setup,
+    GRAIL_SLOT, LOOKOUT_RADIUS, LOOKOUT_SLOT, SHIPYARD, SHIPYARD_SLOT, faction, town_object,
+    towns_rules, towns_rules_on, towns_rules_with, towns_setup,
 };
 use crate::town::{FactionChoice, FactionSet, PlayerStart};
 use crate::{GameRuleset, GameSetup, GameSetupError, GameState};
@@ -203,7 +206,9 @@ fn the_store_holds_each_town_as_built_before_the_starting_armies() {
             )
             .unwrap();
             let id = TownId::new(u16::try_from(index).unwrap());
-            assert_eq!(towns.get(id), Some(&built.town));
+            // No water on the map: each Shipyard forbidden (TWN-SET-011, E09 T18a).
+            let dry = without_water(&built.town, rules.towns());
+            assert_eq!(towns.get(id), Some(&dry));
             assert_eq!(towns.town_static(id), Some(&built.town_static));
             assert_eq!(
                 game.adventure().town_garrison(index),
@@ -296,4 +301,51 @@ fn the_start_reveals_each_owned_towns_radius() {
     for player in [RED, BLUE] {
         assert!(!game.adventure().is_explored(player, Pos::new(47, 47, 0)));
     }
+}
+
+// covers: TWN-SET-011
+#[test]
+fn a_town_without_water_loses_its_shipyard_at_the_start() {
+    let rules = towns_rules_on(false, 48);
+    let shipyard = BuildingId::from_index(SHIPYARD).unwrap();
+    // Red's town at (20, 20) with a custom set's Shipyard; blue's standard town at (3, 0).
+    let land = far_town(&rules, SlotSet::EMPTY.with(SHIPYARD_SLOT));
+    let wet = |water: &[(usize, usize)]| {
+        let mut setup = land.clone();
+        for &(x, y) in water {
+            setup.map.tiles[y * 48 + x].terrain = TerrainId::from_raw(2);
+        }
+        setup
+    };
+    let sets = |setup: &GameSetup| {
+        let game = GameState::new(&rules, setup, 7).unwrap();
+        let sets = |town| {
+            let town = game.towns().get(town).unwrap();
+            (
+                town.built().contains(shipyard),
+                town.forbidden().contains(shipyard),
+            )
+        };
+        (sets(T0), sets(T1), game)
+    };
+    // No water by either: red's built Shipyard removed and forbidden, blue's never built
+    // forbidden.
+    let (red, blue, dry) = sets(&land);
+    assert_eq!((red, blue), ((false, true), (false, true)));
+    // Water two rows below red's entrance, one column left or right: red's Shipyard kept, its
+    // spot the first offset's; blue's town, on land, still without.
+    for (water, spot) in [
+        (vec![(19, 22), (21, 22)], (19, 22)),
+        (vec![(21, 22)], (21, 22)),
+    ] {
+        let (red, blue, game) = sets(&wet(&water));
+        assert_eq!((red, blue), ((true, false), (false, true)));
+        let spot = Pos::new(spot.0, spot.1, 0);
+        assert_eq!(game.adventure().map().town_boat_spot(T0), Some(spot));
+        // Blue's town as without water (the spots draw nothing).
+        assert_eq!(game.towns().get(T1), dry.towns().get(T1));
+    }
+    // Water elsewhere by the town (beside it, one row below) gives no spot.
+    let (red, _, _) = sets(&wet(&[(19, 21), (20, 22), (22, 22)]));
+    assert_eq!(red, (false, true));
 }

@@ -75,6 +75,7 @@ pub use ruleset::{
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,
     TownFaction, TownSetup, TownSetupError, town_buildings_setup, town_garrison, town_setup,
+    without_water,
 };
 pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
 pub use store::{MAX_TOWNS, TownFacts, Towns};

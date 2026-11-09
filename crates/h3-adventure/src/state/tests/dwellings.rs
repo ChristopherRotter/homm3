@@ -110,7 +110,12 @@ pub(super) fn rules() -> Rules {
                         amount: [3, 6],
                     },
                 ),
-                ty("t:town", ObjectKindDef::Town),
+                ty(
+                    "t:town",
+                    ObjectKindDef::Town {
+                        boat_offsets: Vec::new(),
+                    },
+                ),
             ]);
             let table = |faction: &str, prefix: &str| RandomDwellingDef {
                 faction: key(faction),

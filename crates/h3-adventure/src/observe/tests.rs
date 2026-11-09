@@ -384,7 +384,8 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::NoneToRecruit { .. }
                     | AdventureEventKind::JoinRefused { .. }
                     | AdventureEventKind::HeroTeleported { .. }
-                    | AdventureEventKind::LeadsNowhere { .. } => (None, None),
+                    | AdventureEventKind::LeadsNowhere { .. }
+                    | AdventureEventKind::WhirlpoolLoss { .. } => (None, None),
                 })
             })
             .collect();

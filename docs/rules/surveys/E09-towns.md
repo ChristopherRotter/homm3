@@ -663,7 +663,9 @@ presumably).
    dwellings (30, 31), with a Fort or without.
 - **The census:** standard sets: owned with a Fort 495, owned without 51, neutral with 205,
   neutral without 143; custom sets: none builds a forbidden building; the Shipyard built in 9
-  towns, the Grail in 10; 7 maps' victory is to build the Grail.
+  towns, the Grail in 10; 7 maps' victory is to build the Grail. E09 T18a's census of the built
+  games (TWN-SET-011): 67 of the 1 468 towns have a boat spot; 591 of the 625 towns of a faction
+  with a Shipyard have none (their Shipyard forbidden); the 9 built Shipyards all have one.
 - **VCMI** (`initTowns`, `startingDwellingChances` [100, 50]): the Village Hall; a Tavern when
   owned; **the level-1 dwelling always and the level-2 one half the time, for every standard
   town**, owned or neutral, Fort or not (TD-3); a built Shipyard without water removed.

@@ -531,17 +531,25 @@ impl StaticMap {
     /// object's entrance; it also takes a boat's entrance, and the state's boats are no objects,
     /// ADV-SEA-001; survey `E08-economy.md` §5.1). None found: the Shipyard keeps
     /// [`Resolved::Nothing`] and never builds. Computed once: an object that leaves an earlier
-    /// offset later does not move it.
-    // rule: ADV-SHY-001
+    /// offset later does not move it. Since E09 T18a a town's spot in the same step, of its kind's
+    /// boat offsets ([`ObjectKind::Town`]; TWN-SET-011, [`Self::town_boat_spot`]), as the
+    /// original's `town_boat_spot` 0x5C0C90 tests the same three marks; the original runs it at
+    /// `setup_towns` (0x4C0013), after the map's read resolved the random dwellings and fixed the
+    /// Shipyards' tiles (`new_game_heroes` 0x4BFFB9), so after every object here too. Every town
+    /// gets one, whatever its faction (the original only asks for a faction with a Shipyard; no
+    /// other rule reads it).
+    // rule: ADV-SHY-001, TWN-SET-011
     fn fix_boat_tiles(&mut self, part: &AdventureRuleset) {
         for index in 0..self.objects.len() {
             let object = &self.objects[index];
-            let Some(ObjectKind::Shipyard { offsets, .. }) = object
+            let offsets = match object
                 .object_type
                 .and_then(|id| part.object_type(id))
                 .map(|ty| &ty.kind)
-            else {
-                continue;
+            {
+                Some(ObjectKind::Shipyard { offsets, .. }) => offsets,
+                Some(ObjectKind::Town { boat_offsets }) => boat_offsets,
+                _ => continue,
             };
             let free = |pos: &Pos| {
                 self.tile(*pos).is_some_and(|tile| {
@@ -578,7 +586,7 @@ impl StaticMap {
             if kind.is_some_and(ObjectKind::ownable) {
                 self.ownables.push(index);
             }
-            if matches!(kind, Some(ObjectKind::Town)) {
+            if matches!(kind, Some(ObjectKind::Town { .. })) {
                 self.towns.push(index);
             }
             if kind.is_some_and(ObjectKind::weekly) {
@@ -990,6 +998,14 @@ impl StaticMap {
     /// The object index of the town `town`, if the map has it.
     pub fn town_object(&self, town: TownId) -> Option<usize> {
         self.towns.get(town.index()).copied()
+    }
+
+    /// The spot of the town `town` (E09 T18a, TWN-SET-011): its Shipyard's boat tile, fixed when
+    /// the game was built (ADV-SHY-001's step), if it has one; without it the town's Shipyard is
+    /// forbidden from the start.
+    pub fn town_boat_spot(&self, town: TownId) -> Option<Pos> {
+        self.town_object(town)
+            .and_then(|index| self.objects[index].resolved.boat_tile())
     }
 
     /// The weekly objects' indices, in object order (E08 T83b1): the state's weekly contents are
@@ -2198,7 +2214,8 @@ impl AdventureState {
     /// T8a2 a town ([`Self::visit_town`]: entered, or captured; since T8b2a besieged from the tile
     /// before). Since E08 T105a1 a monolith ([`Self::visit_monolith`]) and a Subterranean Gate
     /// ([`Self::visit_gate`]), whose visit is the jump; `draws` is the visitor's stream, from
-    /// which a monolith's exit is drawn (ADV-TEL-003).
+    /// which a monolith's exit is drawn (ADV-TEL-003). Since T105a2 a Whirlpool
+    /// ([`Self::visit_whirlpool`]): its loss, then the jump with the hero's boat.
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
     fn visit<S: Sink>(
@@ -2287,6 +2304,9 @@ impl AdventureState {
                 self.visit_monolith(rules, (player, hero), (visit, (channel, way)), draws, sink);
             }
             Effect::SubterraneanGate => self.visit_gate(rules, (player, hero), visit, sink),
+            Effect::Whirlpool(divisor) => {
+                self.visit_whirlpool(rules, (player, hero), (visit, divisor), draws, sink);
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {

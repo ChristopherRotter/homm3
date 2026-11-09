@@ -300,7 +300,9 @@ impl GameState {
     /// default experience, GAM-HER-001, the map objects' contents, ADR-0016 point 4, then each
     /// hero's level seed in hero id order, GAM-HER-002;
     /// last of the stream's draws, so the earlier ones do not depend on the heroes' levels), the
-    /// store of towns (E09 T7b2a) with each town's garrison written into the adventure, the
+    /// Shipyards of the towns without a spot forbidden (TWN-SET-011, E09 T18a, once the adventure
+    /// built the static map), the store of towns (E09 T7b2a) with each town's garrison written
+    /// into the adventure, the
     /// levels at load of each hero with a custom experience in hero id order (GAM-SET-002: its
     /// levels' draws from the setup stream in `strict-fixed`), the adventure's start of the game
     /// after them (the heroes' day's points and reveals from their details, E08 T40; each owned
@@ -320,12 +322,14 @@ impl GameState {
             .get(usize::from(setup.difficulty))
             .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
-        let (part, mut heroes, pool, towns, generated) =
+        let (part, mut heroes, pool, mut towns, generated) =
             setup.adventure_setup(rules, &mut draws)?;
         // E09 T7b2b: the main towns' heroes follow the setup's (TWN-SET-009).
         let all = || setup.heroes.iter().chain(&generated);
         let mut adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
+        // E09 T18a: the Shipyards without water, the spots fixed by the static map (TWN-SET-011).
+        town::without_water(&mut towns, adventure.map(), rules);
         // rule: TWN-CAP-001
         let reveals: Vec<TownReveal> = towns
             .iter()

@@ -890,6 +890,19 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T105a2: a Whirlpool's loss, told to the hero's owner alone, as its army is
+            // (ADV-TEL-006).
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::WhirlpoolLoss { hero, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let own = before
+                    .heroes
+                    .iter()
+                    .any(|h| h.id == hero && h.details.is_some());
+                prop_assert!(own, "{:?} of a hero not the viewer's", event);
+            }
             // E08 T95a1: a dwelling's free creatures refused for want of room, told to the hero's
             // owner alone, as its army is; none of a free creature at its dwelling, told to the
             // dwelling's owner alone (ADV-HIR-001): nothing the viewer sees changes.

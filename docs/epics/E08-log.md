@@ -13837,3 +13837,47 @@ started, re-run). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the two
 
 **Versions:** none moved (no replay holds a teleporter; the new events are not in any hash).
 T105a2 next.
+
+### Increment 11, round 7: T105a2, the Whirlpool (2026-11-09, `adventure/e08-t105a2`)
+
+The water half of T105a's cut (decision 287), whole. Baseline: `master` ae7d260 (#802; the
+setup's light gates on its verified fingerprint). Staged: `maps.tar`, `extracted.tar`,
+`Heroes3.exe` and the two LODs.
+
+- **The visit** (design §7 item 5): `ObjectKind::Whirlpool`'s effect `Effect::Whirlpool(divisor)`,
+  dispatched to `jumps.rs`' `visit_whirlpool`: the loss unless `h3_heroes::whirlpool_protection`
+  (a hero without details unprotected), then `draw_exit` over `Channels::whirlpools`, each tile
+  excluded when its Whirlpool is the entrance's object (the original's word), so one draw gives the
+  Whirlpool and its tile; no candidate: the hero stays, the loss taken. `draw_exit` now takes the
+  list's tiles with what the visit excludes (`(Pos, bool)`, two passes, no allocation), the
+  monoliths passing `tile == entrance`. An enemy hero on the drawn tile: `jump`'s radius-1 reveal,
+  the mover staying (`ADV-STUB-16`; A-37's battle, decision 265, is T105b's). The arrival needed
+  nothing for the boat: the hero's tile is the boat's, the record keeps its boarded tile (ADR-0016
+  point 1); the boats' invariants hold after every jump.
+- **The loss** (design §8): `whirlpool_loss`: the least `(fight value × count as u64, slot)` among
+  the army's stacks (D-54; A-38 not reproduced, `ADV-QUIRK-40`), `count / divisor` with more than
+  one stack, an emptied slot dropped, a lone stack `max(1, count / divisor)` (D-55); every owner's
+  hero (A-40 not reproduced, `ADV-QUIRK-42`); written with combinators (no dead branch for an
+  empty army, which the setup refuses). `AdventureEventKind::WhirlpoolLoss { hero, slot, creature,
+  count }` to the owner alone, before the jump, 0 for a lone creature kept; projected as is.
+  `h3-map`'s view oracle takes it as the viewer's own hero's.
+- **The reach's measure** (`homm3-bench-regression`, `master`'s worktree): reach-sea-xl-144
+  4 235.38 M against 4 235.35 M Ir (+0.0005 %), random-play-sea-36 2 682.22 M against 2 682.05 M
+  (+0.0065 %): no teleporter on either map, the dispatch's arm costs nothing; no re-baseline.
+- **Tests:** `h3-adventure`'s teleporters tests: nine armies in a lone Whirlpool (E11-10's
+  Pegasi, E11-11's tie, E11-12's lone creature, lone 3 and 1 776 Azure Dragons, two stacks past the
+  original's bound, an emptied slot, a divisor of 3 for several and a lone stack; the tile a
+  destination of the boat's reach, `PastVisit` past it; no draw); the hat (nothing lost, nothing
+  told; without it the loss); the draw over 24 streams among three candidates (the entrance's own
+  tiles, an empty boat's tile and Red's own hero's never; Blue's hero's the stub's radius 1;
+  else on the exit in the boat, the points and the maximum kept, the record's tile kept); the
+  ruleset's effect. The replaced test: a boat's step onto a Whirlpool refused.
+- **Docs:** ADV-TEL-006 (verified: batch E11's E11-10 to -13, -16) new; ADV-TEL-001, -003 (E11-17
+  added), -007, ADV-OBJ-003 and HER-ADV-009 amended; `ADV-QUIRK-40` and `-42` in the ledger,
+  `ADV-QUIRK-45`'s candidates line; design §7, §8's as-built lines, §17's round 7 row; the map
+  client's inbox told of the event.
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `original-data`); `cargo check
+  --workspace --all-targets`.
+
+**Versions:** none moved (no replay holds a Whirlpool; the event is in no hash). T105b next.
