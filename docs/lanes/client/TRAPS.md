@@ -225,3 +225,8 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   uncovered until a test calls it at run time.
 
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
+- **The sandbox's disk after a full capture** (E17 M6 T7a): about 43 GB usable; the 91
+  sequences' `clients/out/frames` (9 GB) and `out/drawn` (3.6 GB) beside the client's targets
+  left none for `check.sh`'s coverage build ("No space left on device"). Delete them once the
+  counts are recorded. Never edit `clients/capture/*.py` while a capture batch runs: each new
+  `frames --only` process imports the file as it then is.
