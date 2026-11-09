@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2 (the observation's wire, `wire::game`, `map::game::observe`; in two parts, T2a and T2b, both in #805) done 2026-11-09. **Open pull requests:** [#805](https://github.com/ChristopherRotter/homm3/pull/805) (T2). **Next:** T3 (the game's commands, answers, rejections and events, the fold). **The review list so far:** the epic's "M5 part 1".
+- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2 (the observation's wire, `wire::game`, `map::game::observe`; in two parts, T2a and T2b, both in #805) done 2026-11-09. **Open pull requests:** none (#805 merged). **In progress:** the files crate `h3-files` (the user's decision before T3c: `h3-cli`'s loaders and replay files moved out, ADR-0005's amendment), committed and pushed on `claude/modest-thompson-99eu4j`, **no PR yet**: finish the battle-scoped verify (cut by a restart after its tests), then open it labelled `cross-lane`. **Next:** T3 in three parts (the user, 2026-11-09; the epic's T3): T3a, T3b, T3c. **The review list so far:** the epic's "M5 part 1".
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -24,6 +24,10 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
+### 2026-11-09 — T3's split; the files crate `h3-files`
+
+Baseline: `master` a14e30f (its code verified). No original data. The user: T3 in three parts (T3a commands and rejections, T3b events, T3c the fold), one PR after T3c; the messages and v39 with T5's session; the fold's golden-replay test needs `h3-cli`'s loaders, which the user had moved into a new crate first (`h3-files`, done on the branch, see Current state). Then the user stopped the session before T3a.
+
 ### 2026-11-09 — M5 T2: the game's observation on the wire
 
 Baseline: `master` ae7d260, CI green; the scoped verify's steps up to its tests passed (a VM restart cut its coverage). No original data. The user split T2 (T2a the adventure map, T2b the rest), both in #805. Built: `wire::game` (the planes as `WireU64` words, the tiles as a palette and an index per tile: lossless, 4 to 64 views on the fixture maps; the decisions, heroes' details, towns, the battle), `map::game::observe`, a test-only inverse checked on random games over five fixture maps. No message, no version step.
@@ -31,7 +35,3 @@ Baseline: `master` ae7d260, CI green; the scoped verify's steps up to its tests 
 ### 2026-11-09 — M5 T1: the measurement, events only
 
 Baseline: `master` a0d5504 by the sandbox's full verify (CI's last two `master` runs never started: no job). No original data or computer folder: the XL fixtures with eight players stood in for the shipped maps. A scratch `h3-server` example (not kept) measured the diff at 22 times an `apply` on the golden replays and 730 to 860 times on the XL maps: events only (design note §14). The fold's gaps: SRV-Q26 (the user: foldable engine events and a query), the adventure and town lanes' inboxes. PR #803.
-
-### 2026-11-09 — the battle-wire inbox items, M5 part 1 refined
-
-Baseline: `master` 2e5e08f (CI's fingerprint, the setup's light gates). No original data. The user (SRV-Q25): the game's types exhaustive, diff or events by measurement, CLT-STUB-3 and CLT-Q20 first. Built: the start's events at the game's start and the last snapshot before the end (v38, record v3); the client lane's inbox told. M5 part 1's task list in the epic and the QUEUE. PRs #800 and #799 (see Current state).

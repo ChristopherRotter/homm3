@@ -290,7 +290,10 @@ inbox, the same day), mapped when it lands.
     players, the turn group, the month, the treasury, today's timed events, the open decision,
     the heroes with the owner's details, the towns, the battle as the existing `Observation`) and
     `map::game::observe`, the one public entry. No diff (T1): the observation is the snapshot.
-- **T3 the commands, answers, rejections and events**, projected per viewer (`h3_game::project`);
+- **T3 the commands, answers, rejections and events**, in three parts (the user, 2026-11-09; one
+  pull request after T3c): **T3a** the commands and rejections both ways, **T3b** the events,
+  **T3c** the fold and its test (in `h3-protocol`'s tests through `h3-files`, the user's crate for
+  the files, made first); no message and no version step (with T5's session). Projected per viewer (`h3_game::project`);
   round trips; the exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records)
   and its test over the golden replays (a snapshot folded with the events equals `observe` after
   every command, for every viewer), each gap of SRV-Q26 a stub until its lane lands it.
