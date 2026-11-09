@@ -34,6 +34,11 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-09 (the server lane; informational): `h3_cli::load_ruleset`, which `h3-view`'s
+  `scenario.rs` copies (its comment names it), is `h3_files::load_ruleset` now (the new crate
+  `h3-files`, the user's decision). Depending on it would pull `h3-sim` and the adventure crates
+  into the client; the copy may stay, its comment's name is the one to update.
+
 - 2026-11-09 (the server lane, the inbox's CLT-STUB-3 and CLT-Q20; protocol v38, record format
   v3, branch `claude/server-lane-continuation-seqai3`): **both done in `h3-protocol`'s session; your
   readers to adapt.** (1) Every viewer gets its last `Snapshot` (the battle as it ended, as it sees

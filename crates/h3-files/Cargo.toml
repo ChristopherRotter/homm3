@@ -1,0 +1,29 @@
+[package]
+name = "h3-files"
+description = "Adapter: the project's files on disk (packs, scenarios, maps, replay files)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-kernel.workspace = true
+h3-content.workspace = true
+h3-content-battle.workspace = true
+h3-contracts.workspace = true
+h3-battle.workspace = true
+h3-pack-battle.workspace = true
+# The replay models whose file form this crate is.
+h3-sim.workspace = true
+# The adventure's files (adventure-owned src/adventure/).
+h3-adventure.workspace = true
+h3-game.workspace = true
+h3-map.workspace = true
+h3-pack-adventure.workspace = true
+h3-pack-towns.workspace = true
+serde.workspace = true
+toml.workspace = true
+
+[lints]
+workspace = true

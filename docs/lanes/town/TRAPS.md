@@ -10,7 +10,7 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **The scoped verify** `cargo xtask verify --scope town --summary` also runs the adventure lane's crates, replays and benchmark workloads (`verify_with`); its `check-lane` step fails by design on a `cross-lane` branch. It does not run the other lanes' tests (`h3-cli`'s ai census, E09 T8a1's CI failure): a change to the setup's checks or the static map also runs `cargo test --workspace --exclude xtask --all-targets`.
 - **A new game command, answer or event variant breaks matches in other lanes' crates** (E09
   T18b1): `h3-map`'s property tests (`play.rs`' `as_move`, `view.rs`' told views), `h3-sim`'s
-  action entries, `h3-cli`'s replay words; the scoped verify builds `h3-map`'s tests only in its
+  action entries, `h3-files`' replay words; the scoped verify builds `h3-map`'s tests only in its
   clippy and coverage steps. Run `cargo check --workspace --all-targets` right after adding one.
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's

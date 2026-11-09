@@ -2400,8 +2400,9 @@ order.
 
 One session, the user present at the start; branch `town/e09-t18b1`, `cross-lane` (`h3-game`'s
 `command.rs`, `lib.rs`, `observe.rs`, `legal.rs`, `state.rs`, `state/day.rs`, `h3-sim`'s replay
-and action, `h3-cli`'s replay words, the replays and `game.toml` are the adventure and AI lanes').
-Starting point: `master` at 31e0ea3 (#806, #807 merged; the setup's baseline lost to a restart of
+and action, `h3-files`' replay words (moved there from `h3-cli` by #808, merged in), `h3-cli`'s
+replay tests, the replays and `game.toml` are the adventure and AI lanes').
+Starting point: `master` at 31e0ea3 (#806, #807 merged; #808 merged in before the pull request; the setup's baseline lost to a restart of
 the sandbox, CI's run on `master` stands for it). **T18b cut in two at its start** (the user):
 T18b1 this session; T18b2 queued (the legal builds and `town_offer`, the views and events of §31,
 `h3-protocol`'s mapping, SRV-Q26's place decided at its start). The seam: as soon as
@@ -2438,7 +2439,7 @@ verify).
   built, unknown building, requirements, the treasury, another player's turn, the system actor)
   changing no hash and telling nothing; the Capitol refused while another is held, built while
   the other Capitol is another player's; the capture's mark in five owner and human cases. The
-  replay words round trip and nine malformed `town` lines are refused (`h3-cli`).
+  replay words round trip and nine malformed `town` lines are refused (`h3-files`).
 - **Catalog:** TWN-BLD-001's and TWN-BLD-004's game halves, TWN-CAP-001 and GAM-CAL-002 amended.
 - **Agent's calls (change freely):** the capture's `human` a closure over the game's players; the
   build's facts before (`Towns::build`'s return) kept for T18b2's `TownChanged`; `TownBuilt`'s
