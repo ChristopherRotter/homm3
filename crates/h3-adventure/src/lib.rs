@@ -94,8 +94,9 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, Boat, HeroOnMap, HirePurchase, MapObject, Monster, Resolved,
-    StaticMap, StaticTile, Visits, Weekly, allied, hire_price,
+    AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroOnMap, HirePurchase,
+    MapObject, Monster, Resolved, StaticMap, StaticTile, Visits, Weekly, WhirlpoolTile, allied,
+    hire_price,
 };
 pub use town::TownReveal;
 
