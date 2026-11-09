@@ -8,25 +8,23 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17 (next), T18a to T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a (done), T17b (next), T18a to T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T17 — `h3-towns`: the day's mark, the store's writes, the rules and `TownCommand`** (design
-§26, §27, §34, §35's round 5; decisions 43, 45, 49; queued 2026-11-07 by T16b; `cross-lane`: the
-game state hash, the adventure lane's): `Town::built_today` and the town state hash v2 (after
-each town's forbidden set, its mark; pinned); `Towns::build`, `start_day` and `captured`, each
-copying only the town it changes (ADR-0028 point 4); the rules `buildable` (the hall's offer, a
-horde offered as its upgrade; TWN-BLD-002 to -004), `possible`, `check_build` (§27's order of the
-refusals), `built_with` (to a fixed point; TWN-BLD-005) and `event_buildings` (TWN-EVT-003);
-`TownCommand::Build` and `TownCommandError` (`#[non_exhaustive]`); `docs/rules/catalog/town.toml`'s
-TWN-BLD-001 to -007 (-006 and -007 sourced from T16b's harvest and survey `E09-construction.md`
-§5, §6) and TWN-EVT-003; `TWN-QUIRK-7` (T-9) where design §34 places it. Checked by `h3-towns`'
-tests on its synthetic part (every refusal, the hall's offer, the automatic builds, the event's
-buildings with and without water, increment 1's reads after a build: a Town Hall's income, a
-Citadel's moat, a Tavern's view level; a fork's write copies one town). The game state hash bumps
-with the store's v2 (v26 unless E08 T105b's lands first, design §34); the adventure replays
-re-hashed (skill `homm3-rerecord-replays`). Cut at its start.
+**E09 T17b — `h3-towns`: the rules that decide a build, `TownCommand` and its errors** (design
+§27, §34, §35's round 5; decisions 45, 49, 51; queued 2026-11-09 by T17a, which built the mark,
+`built_with` and the store's writes; not `cross-lane`): in `h3-towns`' `build.rs` beside
+`built_with`, the rules `buildable` (the hall's offer, a horde offered as its upgrade; empty while
+`built_today`; TWN-BLD-002, -003), `possible` (TWN-BLD-002), `check_build` (§27's order of the
+refusals, the day's mark last: TWN-BLD-004's refusal) and `event_buildings` (TWN-EVT-003);
+`TownCommand::Build { town, building }` and `TownCommandError` (`#[non_exhaustive]`, with
+`UnknownTown` and `NotOwner` for the game); `docs/rules/catalog/town.toml`'s TWN-BLD-001 to -003,
+-006 and -007 (-006 and -007 sourced from T16b's harvest and survey `E09-construction.md` §5,
+§6), TWN-EVT-003, TWN-BLD-004's summary amended with the refusal; `TWN-QUIRK-7` (T-9) where design
+§34 places it. Checked by `h3-towns`' tests on its synthetic part (every refusal in its order, the
+hall's offer with the hordes, the Capitol's limit, the Grail never by the hall, the event's
+buildings with and without water). No version moves (the part and the store are unchanged).
 **Status:** next.
 
 ## Inbox

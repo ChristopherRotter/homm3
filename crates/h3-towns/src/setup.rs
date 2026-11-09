@@ -216,7 +216,7 @@ fn first(record: &TownRecord, pick: impl Fn(&Building) -> bool) -> Option<Buildi
 }
 
 /// `id` with every building it supersedes (the compiler's closure).
-fn closed(record: &TownRecord, id: BuildingId) -> BuildingSet {
+pub(crate) fn closed(record: &TownRecord, id: BuildingId) -> BuildingSet {
     record
         .building(id)
         .map_or(BuildingSet::EMPTY, |b| b.supersedes)
@@ -242,8 +242,9 @@ fn close_forbidden(record: &TownRecord, mut forbidden: BuildingSet) -> BuildingS
 
 /// The hordes' upgrade (E09 survey §16.2, decision 29): each building not forbidden whose
 /// non-empty `auto_with` is all ever built becomes ever built with what it supersedes (less the
-/// forbidden), to a fixpoint.
-fn upgrade_hordes(
+/// forbidden), to a fixpoint. A build's ([`crate::built_with`]) tests no forbidden set (E09
+/// design §27).
+pub(crate) fn upgrade_hordes(
     record: &TownRecord,
     mut built: BuildingSet,
     forbidden: BuildingSet,

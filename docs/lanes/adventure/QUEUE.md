@@ -14,8 +14,8 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   kind, the arrival), the Whirlpool's loss, the events and views, the entrance's guard, the
   reach's measure against `master` (note §7 to §10, §13's stream; A-38's, A-40's, A-41's ledger
   entries); **T105b** the battle and the meeting at an exit, the held jump `Rest::Jump`, `Revisit`
-  and its legal set, the env (§12, §13, §14's env; game state hash v26, replay format v11,
-  `cross-lane` action encoding v8; A-37's entry).
+  and its legal set, the env (§12, §13, §14's env; game state hash v27, E09 T17a having taken
+  v26; replay format v11, `cross-lane` action encoding v8; A-37's entry).
 - **Inputs:** design §7 to §10, §12 to §15; survey §4 to §6, §9 to §11, §15; ADV-TEL-002 (T104's
   lists: the one-way exits, the two-way members, the Whirlpools' tiles with their object, the
   gates' pairs, each in walk order); decisions 264 to 269, 272, 273, 279, 280.
@@ -30,12 +30,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   unpaired entries per level (half the scan, no `is_some` test) or design §18's row-band search;
   both must keep the original's walk order and first-on-tie. Harmless on the shipped maps (a few
   dozen gates a map). Measure with `homm3-bench-regression`; re-baseline the workload down.
-
-- 2026-11-07 (the town lane, E09 T16a and T16b, `town/e09-t16a`, `town/e09-t16b`, `cross-lane`;
-  **informational**): the 55 adventure replays' `town_ruleset_hash` line moved twice (T16a: town
-  part v4, the buildings' requirements, costs and the role `shipyard`; T16b: the shipped packs'
-  harvested ones), nothing else; the `BuildingDef` literal in `h3-game`'s `src/tests/mod.rs`
-  gained `requires` and `cost` (T16a). Nothing to act on.
 
 - 2026-11-07 (the town lane, E09 T13, `town/e09-t13`, docs only; **the planned `cross-lane` changes
   of E09 increment 2, construction**; design `docs/epics/E09-design.md` §34, §35, the drafts

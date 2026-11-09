@@ -15,9 +15,12 @@
 //! and the Capitol's limit with the store's first write ([`reveal`], [`has_tavern`],
 //! [`Towns::apply_capitol_limit`]), and the two version constants; the town's setup at the
 //! game's build (E09 T6c): what the map gives ([`TownSetup`]) and the functions the game calls
-//! with the setup stream ([`town_buildings_setup`], [`town_garrison`], [`town_setup`]). What
-//! comes next: the map's import of the towns and the game's build that calls the setup (E09 T7a,
-//! T7b2; the design note §13, §14).
+//! with the setup stream ([`town_buildings_setup`], [`town_garrison`], [`town_setup`]).
+//! Increment 2 (construction, E09 design Part D): the day's mark ([`Town::built_today`]), what a
+//! build does ([`built_with`]) and the store's writes of a build, a day's start and a capture
+//! ([`Towns::build`], [`Towns::start_day`], [`Towns::captured`]) with the town's public facts
+//! ([`TownFacts`]; E09 T17a). What comes next: the hall's tests and the build command (E09
+//! T17b), the game's command, day and town events (E09 T18).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -39,6 +42,7 @@
 
 extern crate alloc;
 
+mod build;
 mod building;
 mod capture;
 mod derive;
@@ -52,6 +56,7 @@ mod siege;
 mod store;
 mod view;
 
+pub use build::built_with;
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 pub use capture::{capitol_limit, reveal};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
@@ -68,15 +73,17 @@ pub use setup::{
     TownFaction, TownSetup, TownSetupError, town_buildings_setup, town_garrison, town_setup,
 };
 pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
-pub use store::{MAX_TOWNS, Towns};
+pub use store::{MAX_TOWNS, TownFacts, Towns};
 pub use view::has_tavern;
 
 /// Version of the store of towns' canonical hash encoding, which the game state hash folds in
 /// (ADR-0028 points 4 and 9; `docs/08-work-process.md`, "Versions"; owned by the town lane). Bump
 /// it with any change to what the hash covers. v1 (E09 T6a; the constant since T4b): the first
 /// encoding, the town count, each town's faction, ever-built and forbidden buildings, then each
-/// town's static part (its name, its events), in `TownId` order ([`Towns`]' `hash_into`).
-pub const TOWN_STATE_HASH_VERSION: u32 = 1;
+/// town's static part (its name, its events), in `TownId` order ([`Towns`]' `hash_into`). v2
+/// (E09 T17a): each town's day's mark after its forbidden set ([`Town::built_today`]; E09 design
+/// §26).
+pub const TOWN_STATE_HASH_VERSION: u32 = 2;
 
 /// Version of the town ruleset part's canonical hash encoding (ADR-0028 points 5 and 9; owned by
 /// the town lane). v1 (E09 T5a1; the constant since T4b): the first encoding, the parameters and

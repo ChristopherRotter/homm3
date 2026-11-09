@@ -526,7 +526,7 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 | pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102: done |
 | adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a: done |
 | map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b: done |
-| game state hash v26 | the held jump `Rest::Jump` (§13) | T105b |
+| game state hash v27 (E09 T17a took v26) | the held jump `Rest::Jump` (§13) | T105b |
 | adventure replay format v11 | `revisit` (§13) | T105b |
 | env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b (`cross-lane`) |
 
