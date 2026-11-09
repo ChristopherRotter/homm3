@@ -40,6 +40,16 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   player's stream). Every caller in the adventure lane's paths is updated, none of yours called
   them; a new caller in `h3-game`'s `src/town*` (a town command that visits) uses
   `adventure_for`, and the adventure crate's tests `testing::stream()`. Nothing moved in a hash.
+- 2026-11-09 (the server lane, CI of #800, a random find; **an invariant of yours broken**):
+  `h3-map`'s property test `tests::play::every_step_keeps_the_commands_invariants` failed in CI's
+  coverage run on code that touches neither `h3-map` nor the game crates (`master` 2e5e08f plus
+  `h3-protocol`'s session): E09 T9b1's check (TWN-VIS-002, `play.rs`, "no hero stands on the
+  entrance of a town of another team or of none") reported `HeroId(2) on town 18 of
+  Some(PlayerId(0))` on a 16×16 RoE plan, one level. The test draws a new seed each run (48
+  cases), so it shows only now and then. To replay the shrunk case, add proptest's line
+  `cc e663c03d407272cf82960aa4edf2492dcbec39f73811da59da67c47f238f4f46` to
+  `crates/h3-map/proptest-regressions/tests/play.txt` (the adventure lane's file: `cross-lane`, or
+  ask it) and run the test; the full plan is in the CI log of run 42665928151.
 - 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
   increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
   (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey

@@ -279,6 +279,102 @@ fn two_players_join_and_play_a_hosted_battle_to_its_end() {
     assert_eq!(replay.verify(&r), Ok(()));
 }
 
+/// CLT-Q20, CLT-STUB-3 (protocol v38, record format v3): the battle's start is told when the game
+/// starts, before any command (to the seats and to a spectator watching then, never again), and
+/// every viewer's last snapshot before `GameEnded` is the battle as it ended, as it sees it (a
+/// seat's own hero's Eagle Eye picks, BAT-MAG-069, which no event shows).
+#[test]
+fn the_start_is_told_before_any_command_and_the_end_after_a_last_snapshot() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let watcher = ConnId(3);
+    let mut all = join(&mut s, watcher, Seat::Spectator, None);
+    all.extend(join(&mut s, A, Seat::Attacker, None));
+    assert!(
+        to(&all, A)
+            .iter()
+            .all(|m| !matches!(m, ServerMessage::Events { .. }))
+    );
+    let second = join(&mut s, B, Seat::Defender, None);
+    let mut start = Vec::new();
+    let setup = config(5).setup;
+    BattleState::start(&r, &setup, 5, &mut start).unwrap();
+    assert!(!start.is_empty(), "the first turn at least");
+    let viewers = [
+        (A, map::events(&start, BattleSide::Attacker)),
+        (B, map::events(&start, BattleSide::Defender)),
+        (watcher, map::events(&start, h3_battle::Viewer::Spectator)),
+    ];
+    for (conn, events) in &viewers {
+        // The join's Snapshot is 1 (the spectator's too), the start's Events 2, before any turn.
+        let told = to(&second, *conn);
+        let at = told
+            .iter()
+            .position(|m| matches!(m, ServerMessage::Events { .. }))
+            .unwrap();
+        assert_eq!(
+            told[at],
+            ServerMessage::Events {
+                n: 2,
+                events: events.clone()
+            }
+        );
+        assert!(
+            !told[..at]
+                .iter()
+                .any(|m| matches!(m, ServerMessage::YourTurn { .. }))
+        );
+    }
+    // A spectator watching from now on, and a seat taken again, hear no start.
+    let late = ConnId(4);
+    let out = join(&mut s, late, Seat::Spectator, None);
+    assert!(matches!(
+        to(&out, late)[..],
+        [
+            ServerMessage::Joined { .. },
+            ServerMessage::Snapshot { n: 1, .. }
+        ]
+    ));
+    let out = join(&mut s, A, Seat::Attacker, Some(TOKENS[0]));
+    assert!(
+        to(&out, A)
+            .iter()
+            .all(|m| !matches!(m, ServerMessage::Events { .. }))
+    );
+    all.extend(second);
+    all.extend(out);
+    let all = play(&mut s, all, &mut Rng::from_seed(9), 5000);
+    assert!(s.result().is_some(), "the battle is over");
+    // The battle as it ended: the journal's commands re-run.
+    let mut state = BattleState::new(&r, &setup, 5).unwrap();
+    for &(side, command) in &s.journal().commands {
+        h3_battle::apply(&mut state, &r, side, command, &mut h3_battle::NoopSink).unwrap();
+    }
+    let ends = [
+        (A, map::observe(&state, &r, BattleSide::Attacker)),
+        (B, map::observe(&state, &r, BattleSide::Defender)),
+        (
+            watcher,
+            map::observe(&state, &r, h3_battle::Viewer::Spectator),
+        ),
+        (late, map::observe(&state, &r, h3_battle::Viewer::Spectator)),
+    ];
+    for (conn, observation) in ends {
+        let messages = to(&all, conn);
+        let [.., last, ended] = &messages[..] else {
+            panic!("{messages:?}")
+        };
+        assert!(matches!(ended, ServerMessage::GameEnded { .. }));
+        let ServerMessage::Snapshot {
+            observation: seen, ..
+        } = last
+        else {
+            panic!("{last:?}")
+        };
+        assert_eq!(*seen, observation);
+    }
+}
+
 #[test]
 fn an_accepted_command_is_acknowledged_then_told_to_every_viewer() {
     let r = ruleset();
@@ -467,7 +563,10 @@ fn a_seat_is_retaken_with_its_token_and_the_record_spans_the_gap() {
     let ServerMessage::Snapshot { n, .. } = messages[1] else {
         panic!("{messages:?}")
     };
-    assert_eq!(n, 3, "Snapshot 1, then Events 2 while away");
+    assert_eq!(
+        n, 4,
+        "Snapshot 1, the start's Events 2, then Events 3 while away"
+    );
     let ServerMessage::Record {
         record,
         n: last,
@@ -1536,6 +1635,7 @@ fn a_record_keeps_the_latest_messages_within_its_bound() {
     };
     let mut s = Session::new(&r, small.clone(), players()).unwrap();
     started(&mut s);
+    let other = fetched_record(&mut s, B).0.first;
     // Queries without end: every answer is numbered and recorded.
     for seq in 1..200 {
         let query = Query::CastTargets { spell: 0 };
@@ -1554,7 +1654,7 @@ fn a_record_keeps_the_latest_messages_within_its_bound() {
         "no more went than had to"
     );
     // The other seat's record is its own.
-    assert_eq!(fetched_record(&mut s, B).0.first, 1);
+    assert_eq!(fetched_record(&mut s, B).0.first, other);
     // A bound below one message: the newest alone.
     let tiny = GameConfig {
         record_bytes: 1,
@@ -2337,7 +2437,8 @@ fn a_player_away_beyond_the_total_forfeits_the_game() {
     };
     assert!(matches!(
         to(&out, A)[..],
-        [ServerMessage::GameEnded { result, .. }] if result == forfeit
+        [ServerMessage::Snapshot { .. }, ServerMessage::GameEnded { result, .. }]
+            if result == forfeit
     ));
     let points = |rating, deviation| Points { rating, deviation };
     let ratings = [
@@ -2349,7 +2450,7 @@ fn a_player_away_beyond_the_total_forfeits_the_game() {
     assert_eq!(
         to(&out, A),
         [ServerMessage::Rating {
-            n: 5,
+            n: 7,
             ladder: "arena".to_string(),
             before: points(1500, 350),
             after: points(1662, 290),
@@ -2436,13 +2537,17 @@ fn a_stretch_beyond_the_grace_forfeits_and_both_away_is_void() {
     // The game does not verify (E16 M4 T3b): void, and Bob hears so.
     let mut out = Vec::new();
     s.withhold_replay(&mut out);
-    assert_eq!(
-        to(&out, B),
-        [ServerMessage::GameEnded {
-            n: 2,
-            result: Outcome::Unverified {}
-        }]
-    );
+    // Snapshot 1 at the join, the start's Events 2, the last Snapshot 3.
+    assert!(matches!(
+        to(&out, B)[..],
+        [
+            ServerMessage::Snapshot { n: 3, .. },
+            ServerMessage::GameEnded {
+                n: 4,
+                result: Outcome::Unverified {}
+            }
+        ]
+    ));
     // Nobody comes to a match's game: void, a no-show each; its spectator hears it.
     let mut s = ranked(&r, 34);
     let c = ConnId(3);
@@ -2453,10 +2558,13 @@ fn a_stretch_beyond_the_grace_forfeits_and_both_away_is_void() {
     s.publish_replay("[replay]".to_string(), &mut out);
     assert!(matches!(
         to(&out, c)[..],
-        [ServerMessage::GameEnded {
-            result: Outcome::NoShow {},
-            ..
-        }]
+        [
+            ServerMessage::Snapshot { .. },
+            ServerMessage::GameEnded {
+                result: Outcome::NoShow {},
+                ..
+            }
+        ]
     ));
     assert_eq!((s.forfeited(), s.started()), ([true, true], false));
     let entries = drained(&mut s);
@@ -2540,7 +2648,8 @@ fn a_restore_keeps_the_totals_and_starts_a_stretch_afresh() {
     };
     assert!(matches!(
         to(&out, A)[..],
-        [ServerMessage::GameEnded { result, .. }] if result == forfeit
+        [ServerMessage::Snapshot { .. }, ServerMessage::GameEnded { result, .. }]
+            if result == forfeit
     ));
 }
 
@@ -2598,10 +2707,13 @@ fn a_ranked_game_that_ends_counts_no_absence_after() {
     s.publish_replay("[replay]".to_string(), &mut out);
     assert!(matches!(
         to(&out, actor)[..],
-        [ServerMessage::GameEnded {
-            result: Outcome::Retreat { .. },
-            ..
-        }]
+        [
+            ServerMessage::Snapshot { .. },
+            ServerMessage::GameEnded {
+                result: Outcome::Retreat { .. },
+                ..
+            }
+        ]
     ));
     drained(&mut s);
     // Over, nobody's absence counts: neither the running one nor a new one.

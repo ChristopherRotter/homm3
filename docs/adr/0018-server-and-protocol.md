@@ -40,7 +40,11 @@ from inputs to outputs, with sockets, clock and files outside.
 5. **The wire types are the protocol's own.** Only `h3-protocol`'s mapping module knows both
    sides; its matches on the engine's enums are exhaustive, so a new engine variant fails
    `h3-protocol`'s build until its wire variant and arm exist (amended 2026-10-10). Messages
-   carry dense handles; keys are in the manifest.
+   carry dense handles; keys are in the manifest. *Amended 2026-11-09 (E16 M5 T0; the user,
+   SRV-Q25):* the whole game's types are mapped the same way: `h3-game`'s, `h3-adventure`'s and
+   `h3-towns`' enums and observation structs, so a variant or field the adventure or town lane
+   adds fails the build until mapped (the adding pull request maps it, `cross-lane`, or the server
+   lane first).
 6. **Identity is the seat of the connection**, never a payload field (commands name no side or
    player). A seat is taken, and re-taken after a disconnect, with a server-issued token (128 bits
    of OS randomness); accounts bind seats later (identity ADR); bot seats are the server's.
@@ -48,7 +52,10 @@ from inputs to outputs, with sockets, clock and files outside.
    its account (ADR-0019 point 1), re-taken by the account alone and by no token.
 7. **Everything outbound is projected per viewer** with the engine's `observe` and `project`.
    Spectators come with the battle's spectator viewer (before M2, SRV-Q4). Sequence numbers are
-   per viewer. A command is acknowledged by the client's own sequence number: `Accepted` or
+   per viewer. *Amended 2026-11-09 (E16 M5 T0):* a whole game's viewers are its players
+   (`h3_game::Viewer::Player`), a spectator once `h3_game::Viewer` has one (additive, the adventure
+   lane's); whether a player's view stays current by a diff of its observation or by events only
+   is M5 T1's measurement (SRV-Q25: the diff only if really cheap). A command is acknowledged by the client's own sequence number: `Accepted` or
    `Rejected { code }` (the engine's error variants; text is the client's).
 8. **Hidden information** (into `docs/06-security.md` in M1): the game seed is 64 bits of OS
    randomness, never derived from or revealed by anything a client sees; random obstacles come
@@ -102,3 +109,5 @@ different content diverge). Serializing live state (a second format, when the jo
   to `Unsupported` and `Other`, which could never run while every variant is mapped and needed a
   coverage exclusion. A new engine variant now fails the build until it is mapped; the
   consequences and alternatives follow.
+- 2026-11-09: points 5 and 7 amended (E16 M5 T0; the user, SRV-Q25): the whole game's types
+  mapped exhaustively as the battle's; a game's viewers are its players.

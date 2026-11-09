@@ -78,12 +78,18 @@ pub mod wire;
 /// a clone or summoned stack that found no place. v37 (CLT-Q40): public, for viewers: each
 /// side's hero's morale and luck effects with their sources, a siege town's morale and luck
 /// buildings and each stack's unclamped morale and luck; a stack's `morale` and `luck` are
-/// unchanged (their documentation said "before the timed effects", they always held them).
-pub const PROTOCOL_VERSION: u32 = 37;
+/// unchanged (their documentation said "before the timed effects", they always held them). v38
+/// (the server lane's inbox, CLT-Q20, CLT-STUB-3): the messages are unchanged, their order is
+/// new: every viewer hears the battle's start's events in an `Events` message when the game
+/// starts, before any command, and its last `Snapshot`, the battle as it ended, before
+/// `GameEnded` (a seat's own hero's Eagle Eye picks, which no event shows).
+pub const PROTOCOL_VERSION: u32 = 38;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
-/// its layout changes.
-pub const RECORD_FORMAT_VERSION: u32 = 2;
+/// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
+/// its first command's, and the last `Snapshot` before `GameEnded`; an `Events` message is no
+/// longer always a command's.
+pub const RECORD_FORMAT_VERSION: u32 = 3;
 
 #[cfg(test)]
 mod tests;
