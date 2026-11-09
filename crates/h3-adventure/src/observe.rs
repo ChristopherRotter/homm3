@@ -159,7 +159,7 @@ pub struct ObjectView {
     /// owner's team only (ADV-OWN-003, E08 decision 229): that team has explored every offset (the
     /// flag's reveal, an owned object's at the start), so the tile tells no other viewer which
     /// earlier offsets were land or taken; none for every other viewer, for a neutral Shipyard,
-    /// for one without a tile and for every other object.
+    /// for one without a tile and for every other object (a town's spot, E09 T18a, among them).
     pub boat_tile: Option<Pos>,
     /// The town it is (E09 T8c1, the town epic's design note §17; ADR-0028 point 3: observations
     /// name a town by its `TownId`), for every viewer that sees it: what the viewer sees of the
@@ -456,7 +456,10 @@ impl AdventureState {
                         production: ours.then(|| self.production(part, index)).flatten(),
                         guards: self.guards_view(part, index, ours),
                         visited: self.visited_by(index, viewer),
-                        boat_tile: ours.then(|| object.resolved.boat_tile()).flatten(),
+                        // A town's spot is its Shipyard's (E09 T18a), not the object's.
+                        boat_tile: (ours && map.town_id(index).is_none())
+                            .then(|| object.resolved.boat_tile())
+                            .flatten(),
                         town: map.town_id(index),
                     }
                 })
@@ -578,6 +581,21 @@ impl AdventureEvent {
                     seen_from: seen_from.intersection(alone),
                     seen_to: seen_to.intersection(alone),
                 },
+                // A jump as a step's two ends (ADV-FOG-004; E08 T105a1): an end the viewer does
+                // not see is left out, so no viewer learns a hidden exit (A-41 not reproduced).
+                AdventureEventKind::HeroTeleported {
+                    hero,
+                    from,
+                    to,
+                    seen_from,
+                    seen_to,
+                } => AdventureEventKind::HeroTeleported {
+                    hero,
+                    from: from.filter(|_| seen_from.contains(viewer)),
+                    to: to.filter(|_| seen_to.contains(viewer)),
+                    seen_from: seen_from.intersection(alone),
+                    seen_to: seen_to.intersection(alone),
+                },
                 AdventureEventKind::ObjectRemoved { .. }
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
@@ -598,7 +616,9 @@ impl AdventureEvent {
                 | AdventureEventKind::BoatBuilt { .. }
                 | AdventureEventKind::MonsterAdded { .. }
                 | AdventureEventKind::NoneToRecruit { .. }
-                | AdventureEventKind::JoinRefused { .. } => self.kind,
+                | AdventureEventKind::JoinRefused { .. }
+                | AdventureEventKind::LeadsNowhere { .. }
+                | AdventureEventKind::WhirlpoolLoss { .. } => self.kind,
             },
             seen_by: alone,
         })

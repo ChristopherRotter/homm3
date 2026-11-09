@@ -547,6 +547,11 @@ pub enum SetupError {
     /// visited from, on an earlier boat's tile or under a hero (ADV-SEA-001, E08 T72, decision
     /// 164: no bound on the number of boats beyond one a tile).
     Boat(usize),
+    /// The object at this index is a teleporter with a visitable tile off its surface (A-42,
+    /// `ADV-QUIRK-44`, E08 T104; ADV-TEL-001): a monolith's or a Subterranean Gate's on water or
+    /// rock, a Whirlpool's on land or rock. Checked when the game is built, after the objects'
+    /// types are final.
+    TeleporterSurface(usize),
 }
 
 impl fmt::Display for SetupError {
@@ -608,6 +613,12 @@ impl fmt::Display for SetupError {
             Self::HeroTile { hero, error } => write!(f, "hero {}: {error}", hero.raw()),
             Self::Army { hero, error } => write!(f, "hero {}'s army: {error}", hero.raw()),
             Self::Boat(boat) => write!(f, "boat {boat} lies where no boat may"),
+            Self::TeleporterSurface(object) => {
+                write!(
+                    f,
+                    "teleporter {object} has a visitable tile off its surface"
+                )
+            }
         }
     }
 }

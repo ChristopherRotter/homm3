@@ -205,7 +205,7 @@ async fn fetched_replay(client: &mut Client, config: &Config, game: u32) {
     };
     let path = replay_file(&config.server.data, game);
     assert_eq!(replay, std::fs::read_to_string(&path).unwrap());
-    let verified = h3_cli::verify_file(&path, &config.content.packs).unwrap();
+    let verified = h3_files::verify_file(&path, &config.content.packs).unwrap();
     assert!(verified.commands > 0);
     assert!(
         !journal_file(&config.server.data, game).exists(),
@@ -297,7 +297,8 @@ async fn spectators_watch_a_hosted_game_within_its_limit() {
             reason: Refusal::NoSpectators
         })
     );
-    // The spectator sees the game to its end, never a turn, and gets no replay.
+    // The spectator sees the game to its end (its last snapshot before), never a turn, and gets
+    // no replay.
     let (_, seen) = tokio::time::timeout(GAME_TIME, play(a, 3)).await.unwrap();
     let ended = end(&seen);
     let mut watched = Vec::new();
@@ -314,8 +315,18 @@ async fn spectators_watch_a_hosted_game_within_its_limit() {
     assert_eq!(end(&watched), ended);
     assert!(watched.iter().all(|m| matches!(
         m,
-        ServerMessage::Events { .. } | ServerMessage::GameEnded { .. }
+        ServerMessage::Events { .. }
+            | ServerMessage::Snapshot { .. }
+            | ServerMessage::GameEnded { .. }
     )));
+    assert!(matches!(
+        watched[..],
+        [
+            ..,
+            ServerMessage::Snapshot { .. },
+            ServerMessage::GameEnded { .. }
+        ]
+    ));
     watcher
         .send(&ClientMessage::FetchReplay { seq: 9 })
         .await
@@ -1127,7 +1138,7 @@ async fn finished_games_are_archived_for_anyone_to_download() {
         panic!("no replay")
     };
     assert_eq!(replay, std::fs::read_to_string(file(newest)).unwrap());
-    assert!(h3_cli::verify_file(&file(newest), &config.content.packs).is_ok());
+    assert!(h3_files::verify_file(&file(newest), &config.content.packs).is_ok());
     let no_such = Some(ServerMessage::Refused {
         reason: Refusal::NoSuchReplay,
     });
@@ -1734,7 +1745,7 @@ fn tokens_are_128_bits_of_os_randomness() {
 
 #[test]
 fn the_workload_plays_hosted_battles_to_their_end() {
-    let (_, ruleset, setup) = h3_cli::load_scenario(
+    let (_, ruleset, setup) = h3_files::load_scenario(
         &root().join("packs/synthetic/scenarios/full.toml"),
         &root().join("packs"),
         1,

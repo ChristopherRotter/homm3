@@ -204,7 +204,7 @@ impl fmt::Display for TownSetupError {
 impl core::error::Error for TownSetupError {}
 
 /// The record's buildings with their ids, in index order.
-fn indexed(record: &TownRecord) -> impl Iterator<Item = (BuildingId, &Building)> {
+pub(crate) fn indexed(record: &TownRecord) -> impl Iterator<Item = (BuildingId, &Building)> {
     (0..MAX_BUILDINGS)
         .filter_map(BuildingId::from_index)
         .zip(&record.buildings)
@@ -216,7 +216,7 @@ fn first(record: &TownRecord, pick: impl Fn(&Building) -> bool) -> Option<Buildi
 }
 
 /// `id` with every building it supersedes (the compiler's closure).
-fn closed(record: &TownRecord, id: BuildingId) -> BuildingSet {
+pub(crate) fn closed(record: &TownRecord, id: BuildingId) -> BuildingSet {
     record
         .building(id)
         .map_or(BuildingSet::EMPTY, |b| b.supersedes)
@@ -242,8 +242,9 @@ fn close_forbidden(record: &TownRecord, mut forbidden: BuildingSet) -> BuildingS
 
 /// The hordes' upgrade (E09 survey §16.2, decision 29): each building not forbidden whose
 /// non-empty `auto_with` is all ever built becomes ever built with what it supersedes (less the
-/// forbidden), to a fixpoint.
-fn upgrade_hordes(
+/// forbidden), to a fixpoint. A build's ([`crate::built_with`]) tests no forbidden set (E09
+/// design §27).
+pub(crate) fn upgrade_hordes(
     record: &TownRecord,
     mut built: BuildingSet,
     forbidden: BuildingSet,
@@ -302,8 +303,9 @@ pub fn town_buildings_setup(
     let hall = first(record, |b| b.roles.hall == Some(1))
         .map_or(BuildingSet::EMPTY, |id| closed(record, id));
     // The original's forbidden from the start whatever the set: the Grail building on a map whose
-    // victory is to build the Grail in another town (0x5F2160, increment 2) and the Shipyard
-    // without a boat's spot by the entrance (0x5C0C90, increment 4).
+    // victory is to build the Grail in another town (0x5F2160, increment 2). The Shipyard without
+    // a boat's spot by the entrance (0x5C0C90) is the game's, once the static map fixed the spots
+    // ([`without_water`], E09 T18a).
     // stub: TWN-STUB-2
     let start_forbidden = BuildingSet::EMPTY;
     let (picked, forbidden) = match *setup {
@@ -347,6 +349,30 @@ pub fn town_buildings_setup(
     };
     let built = upgrade_hordes(record, hall.union(picked.difference(forbidden)), forbidden);
     Town::new(record.faction, built, forbidden)
+}
+
+/// `town` without water (E09 T18a, design §28; TWN-SET-011): the town whose spot the static map
+/// left empty, its record's buildings of role `shipyard` forbidden and out of the ever-built set,
+/// its faction, its other buildings (one that requires the Shipyard among them: a custom set's
+/// Lighthouse stays, as the original's) and its day's mark kept; a faction without a record or a
+/// Shipyard, the town unchanged. The original forbids the Shipyard before the map's sets
+/// (`town_buildings_setup` 0x5C08C0's step 2, survey `E09-towns.md` §5.3), which then build it
+/// nowhere: the same sets, since no building of a record supersedes, is forbidden with or is
+/// built automatically with the Shipyard. The game calls it at its build, after the adventure
+/// fixed the spots and before the store is made; no draw.
+// rule: TWN-SET-011
+pub fn without_water(town: &Town, part: &TownRuleset) -> Town {
+    let shipyards = part
+        .town(town.faction())
+        .map_or(BuildingSet::EMPTY, |record| {
+            indexed(record)
+                .filter(|(_, b)| b.roles.shipyard)
+                .fold(BuildingSet::EMPTY, |set, (id, _)| set.with(id))
+        });
+    town.reset(
+        town.built().difference(shipyards),
+        town.forbidden().union(shipyards),
+    )
 }
 
 /// A town's garrison at the start (E09 survey §5.2, design §5), of `record`'s faction.

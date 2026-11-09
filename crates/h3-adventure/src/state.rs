@@ -83,12 +83,14 @@ impl StaticTile {
 
 mod boats;
 mod calendar;
+mod channels;
 mod draws;
 mod dwellings;
 mod economy;
 mod events;
 mod flags;
 mod holds;
+mod jumps;
 mod manage;
 mod mines;
 mod monsters;
@@ -103,6 +105,7 @@ mod weekly;
 
 pub use boats::Boat;
 use boats::Boats;
+pub use channels::{Channels, GateEntry, WhirlpoolTile};
 pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
 pub use dwellings::{HirePurchase, hire_price};
@@ -313,6 +316,10 @@ pub struct StaticMap {
     /// Each camp's kind's levels, by camp index (E08 T94b): what its draws read
     /// ([`dwellings::draw_camp`]). Follows from the objects.
     camp_levels: Vec<[u8; 2]>,
+    /// The teleporters' channels and the gates' pairs (E08 T104; ADV-TEL-002, increment 11's
+    /// design note §5), built without a draw after every type is final; empty without
+    /// teleporters. Follows from the objects, so the hash leaves it out.
+    channels: Channels,
     hash: u64,
 }
 
@@ -396,6 +403,7 @@ impl StaticMap {
             full_weeks: Vec::new(),
             camps: Vec::new(),
             camp_levels: Vec::new(),
+            channels: Channels::default(),
             hash: 0,
         };
         if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
@@ -505,6 +513,9 @@ impl StaticMap {
         if town_factions.len() != map.towns.len() {
             return Err(SetupError::TownFactions(town_factions.len()));
         }
+        // rule: ADV-TEL-001, ADV-TEL-002
+        // E08 T104: the surfaces checked (A-42) and the channels built, every type final.
+        map.channels = channels::build(&map, part)?;
         map.mark_near_monsters();
         map.mark_grounds(part);
         // After the objects, as the original counts after placing its map's objects.
@@ -520,17 +531,25 @@ impl StaticMap {
     /// object's entrance; it also takes a boat's entrance, and the state's boats are no objects,
     /// ADV-SEA-001; survey `E08-economy.md` §5.1). None found: the Shipyard keeps
     /// [`Resolved::Nothing`] and never builds. Computed once: an object that leaves an earlier
-    /// offset later does not move it.
-    // rule: ADV-SHY-001
+    /// offset later does not move it. Since E09 T18a a town's spot in the same step, of its kind's
+    /// boat offsets ([`ObjectKind::Town`]; TWN-SET-011, [`Self::town_boat_spot`]), as the
+    /// original's `town_boat_spot` 0x5C0C90 tests the same three marks; the original runs it at
+    /// `setup_towns` (0x4C0013), after the map's read resolved the random dwellings and fixed the
+    /// Shipyards' tiles (`new_game_heroes` 0x4BFFB9), so after every object here too. Every town
+    /// gets one, whatever its faction (the original only asks for a faction with a Shipyard; no
+    /// other rule reads it).
+    // rule: ADV-SHY-001, TWN-SET-011
     fn fix_boat_tiles(&mut self, part: &AdventureRuleset) {
         for index in 0..self.objects.len() {
             let object = &self.objects[index];
-            let Some(ObjectKind::Shipyard { offsets, .. }) = object
+            let offsets = match object
                 .object_type
                 .and_then(|id| part.object_type(id))
                 .map(|ty| &ty.kind)
-            else {
-                continue;
+            {
+                Some(ObjectKind::Shipyard { offsets, .. }) => offsets,
+                Some(ObjectKind::Town { boat_offsets }) => boat_offsets,
+                _ => continue,
             };
             let free = |pos: &Pos| {
                 self.tile(*pos).is_some_and(|tile| {
@@ -567,7 +586,7 @@ impl StaticMap {
             if kind.is_some_and(ObjectKind::ownable) {
                 self.ownables.push(index);
             }
-            if matches!(kind, Some(ObjectKind::Town)) {
+            if matches!(kind, Some(ObjectKind::Town { .. })) {
                 self.towns.push(index);
             }
             if kind.is_some_and(ObjectKind::weekly) {
@@ -877,6 +896,20 @@ impl StaticMap {
         self.index(pos).map(|_| pos)
     }
 
+    /// The tile at `index` in [`Self::tiles`], an index of the map (E08 T104).
+    fn pos_of(&self, index: usize) -> Pos {
+        let width = usize::from(self.width);
+        let rows = index / width;
+        let height = usize::from(self.height);
+        // The map's sides and levels fit their types, so do a tile's column, row and level.
+        let narrow = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+        Pos::new(
+            narrow(index % width),
+            narrow(rows % height),
+            u8::try_from(rows / height).unwrap_or(u8::MAX),
+        )
+    }
+
     /// The index of a tile in [`Self::tiles`], if it is on the map.
     pub fn index(&self, pos: Pos) -> Option<usize> {
         (pos.x < self.width && pos.y < self.height && pos.level < self.levels).then(|| {
@@ -967,6 +1000,14 @@ impl StaticMap {
         self.towns.get(town.index()).copied()
     }
 
+    /// The spot of the town `town` (E09 T18a, TWN-SET-011): its Shipyard's boat tile, fixed when
+    /// the game was built (ADV-SHY-001's step), if it has one; without it the town's Shipyard is
+    /// forbidden from the start.
+    pub fn town_boat_spot(&self, town: TownId) -> Option<Pos> {
+        self.town_object(town)
+            .and_then(|index| self.objects[index].resolved.boat_tile())
+    }
+
     /// The weekly objects' indices, in object order (E08 T83b1): the state's weekly contents are
     /// by their place here ([`AdventureState::weekly`]).
     pub fn weeklies(&self) -> &[usize] {
@@ -1021,6 +1062,13 @@ impl StaticMap {
             .filter(|&index| self.event_tiles[index / 64] >> (index % 64) & 1 == 1)
             .and_then(|index| self.events.get(&index))
             .map_or(&[], Vec::as_slice)
+    }
+
+    /// The teleporters' channels and the gates' pairs (E08 T104; ADV-TEL-002, increment 11's
+    /// design note §5), in the walk's order; empty for a map without teleporters. What a
+    /// teleporter's visit reads (E08 T105a1: the jump), never the reach.
+    pub const fn channels(&self) -> &Channels {
+        &self.channels
     }
 
     /// The canonical hash of the static map, computed once when it is built.
@@ -1551,23 +1599,27 @@ impl AdventureState {
     /// what the player gains beyond the map is the outcome (ADR-0017 point 10). `heroes` is the
     /// game's store of heroes' details by [`HeroId`] (ADR-0016's E08 amendment, decision 25; E08
     /// T20a2b), which the adventure reads only through `h3-heroes`' derivations: the monsters'
-    /// answer reads the visitor's (E08 T20b).
+    /// answer reads the visitor's (E08 T20b). `draws` is the player's stream (ADR-0017 point 4,
+    /// ADV-TEL-003; E08 T105a1): a rule that draws at a visit draws from the visitor's stream
+    /// (ADR-0016 point 4), the jump to a drawn exit first; the game passes the acting player's
+    /// for every adventure command. Nothing is drawn before the whole command is checked.
     ///
     /// # Errors
     ///
-    /// An [`AdventureCommandError`]; the state is then unchanged and no event was emitted.
+    /// An [`AdventureCommandError`]; the state and `draws` are then unchanged and no event was
+    /// emitted.
     pub fn apply<S: Sink>(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
-        player: PlayerId,
+        (player, draws): (PlayerId, &mut Rng),
         command: &AdventureCommand,
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
         match command {
             AdventureCommand::MoveHero { hero, path } => {
-                self.move_hero(core, part, heroes, (player, *hero), path, sink)
+                self.move_hero((core, part, heroes), (player, *hero), path, draws, sink)
             }
             AdventureCommand::BuildBoat {
                 object_type,
@@ -1629,13 +1681,13 @@ impl AdventureState {
     // rule: ADV-SEA-002, ADV-SEA-003, ADV-SEA-004, ADV-SEA-005
     fn move_hero<S: Sink>(
         &mut self,
-        core: &Ruleset,
-        part: &AdventureRuleset,
-        heroes: &[Arc<HeroDetails>],
+        rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, id): (PlayerId, HeroId),
         path: &[Pos],
+        draws: &mut Rng,
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
+        let (core, part, heroes) = rules;
         let index = self
             .heroes
             .binary_search_by_key(&id, |h| h.id)
@@ -1728,7 +1780,6 @@ impl AdventureState {
             });
             from = to;
         }
-        let rules = (core, part, heroes);
         if let Some((step, event, _)) = fired {
             // On a guarded tile the guard visits first (a flyer stopped there is at its move's
             // end for the guard test, 0x48147D) and the event waits for the guard's visit
@@ -1757,7 +1808,7 @@ impl AdventureState {
         }
         let outcome = match visit {
             None => AdventureOutcome::default(),
-            Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, sink),
+            Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, draws, sink),
             Some(Meets::Board(boat)) => {
                 self.board(rules, (player, index), boat, sink);
                 AdventureOutcome::default()
@@ -2161,7 +2212,10 @@ impl AdventureState {
     /// T84b2 a Shipyard ([`Self::visit_shipyard`]), since T95a1 a dwelling
     /// ([`Self::visit_dwelling`]) and a Refugee Camp ([`Self::visit_refugee_camp`]). Since E09
     /// T8a2 a town ([`Self::visit_town`]: entered, or captured; since T8b2a besieged from the tile
-    /// before).
+    /// before). Since E08 T105a1 a monolith ([`Self::visit_monolith`]) and a Subterranean Gate
+    /// ([`Self::visit_gate`]), whose visit is the jump; `draws` is the visitor's stream, from
+    /// which a monolith's exit is drawn (ADV-TEL-003). Since T105a2 a Whirlpool
+    /// ([`Self::visit_whirlpool`]): its loss, then the jump with the hero's boat.
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
     fn visit<S: Sink>(
@@ -2169,6 +2223,7 @@ impl AdventureState {
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
         visit: StepVisit<'_>,
+        draws: &mut Rng,
         sink: &mut S,
     ) -> AdventureOutcome {
         let core = rules.0;
@@ -2245,6 +2300,13 @@ impl AdventureState {
             Effect::Town => {
                 outcome = self.visit_town(rules.1, (player, hero), (visit.object, visit.mode));
             }
+            Effect::Monolith { channel, way } => {
+                self.visit_monolith(rules, (player, hero), (visit, (channel, way)), draws, sink);
+            }
+            Effect::SubterraneanGate => self.visit_gate(rules, (player, hero), visit, sink),
+            Effect::Whirlpool(divisor) => {
+                self.visit_whirlpool(rules, (player, hero), (visit, divisor), draws, sink);
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2272,12 +2334,15 @@ impl AdventureState {
     /// Learning Stone's experience given after the won battle (batch E11c's E11-21, E11-22). The
     /// hero is still on the tile it entered (its owner had an open decision until now, so it did
     /// not move); nothing for a hero the guard's battle took off the map or another player's,
-    /// nor when no object is visited from the tile any more.
+    /// nor when no object is visited from the tile any more. `draws` is the visitor's owner's
+    /// stream, as for [`Self::apply`]: a teleporter's jump after its guard draws its exit from it
+    /// (ADV-TEL-003, E08 T105a1).
     // rule: ADV-MON-006
     pub fn visit_held<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
+        draws: &mut Rng,
         sink: &mut S,
     ) -> AdventureOutcome {
         let tile = self
@@ -2286,7 +2351,7 @@ impl AdventureState {
             .map(|h| h.pos)
             .filter(|&at| self.live(at, self.map.at(at)).visitable);
         match tile.and_then(|at| self.visit_at(rules.1, player, at)) {
-            Some(visit) if !visit.pass => self.visit(rules, (player, hero), visit, sink),
+            Some(visit) if !visit.pass => self.visit(rules, (player, hero), visit, draws, sink),
             _ => AdventureOutcome::default(),
         }
     }

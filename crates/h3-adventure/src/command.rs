@@ -1082,6 +1082,58 @@ pub enum AdventureEventKind {
         /// The word of its count ([`crate::MonsterParams::count_word`]).
         count_word: u8,
     },
+    /// A hero jumped through a teleporter (ADV-TEL-007; E08 T105a1, increment 11's design note
+    /// §10): from the entrance it stepped onto (or stood on, for a visit after its guard) to the
+    /// exit, without a step. Seen as a step's two ends ([`Self::HeroStepped`]'s fields and
+    /// projection, ADV-FOG-004, ADV-FOG-005): by the players that see the hero on the entrance or
+    /// on the exit, a viewer that sees one end only told that one, the other `None`; so no viewer
+    /// learns a hidden exit (A-41 not reproduced, `ADV-QUIRK-43`). Its own event, not a step's,
+    /// whose two tiles a client takes for neighbours. The exit's reveal is told by the explored
+    /// tiles alone.
+    HeroTeleported {
+        /// The hero.
+        hero: HeroId,
+        /// The entrance (always given when emitted; `None` in a projection for a viewer that does
+        /// not see the hero there).
+        from: Option<Pos>,
+        /// The exit (likewise).
+        to: Option<Pos>,
+        /// The players that see the hero on the entrance (the viewer alone, or none, in a
+        /// projection).
+        seen_from: Viewers,
+        /// The players that see the hero on the exit (likewise).
+        seen_to: Viewers,
+    },
+    /// A hero's teleporter leads nowhere (ADV-TEL-004, ADV-TEL-005; E08 T105a1, increment 11's
+    /// design note §10): a one-way exit (the original's ADVEVENT 70, a human's only: every
+    /// owner's here, decision 16) or a Subterranean Gate without a pair (ADVEVENT 153); the hero
+    /// stays on it. Named by type and anchor, as the observation names the object (the client
+    /// chooses the text by its kind). Seen by the hero's owner alone. A monolith without a
+    /// candidate tells nothing (the original's silence).
+    LeadsNowhere {
+        /// The hero.
+        hero: HeroId,
+        /// The teleporter's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+    },
+    /// A Whirlpool took a hero's troops before its jump (ADV-TEL-006; E08 T105a2, increment 11's
+    /// design note §8): its weakest stack, by fight value × count, kept its count divided by the
+    /// Whirlpool's divisor, the slot emptied at 0 when the army holds other stacks, a lone stack
+    /// keeping one (the original's ADVEVENT 168, shown also when a lone creature lost nothing).
+    /// Told before the jump; not told to a hero the Whirlpool spares (a Sea Captain's Hat). Seen
+    /// by the hero's owner alone, as its army is.
+    WhirlpoolLoss {
+        /// The hero.
+        hero: HeroId,
+        /// The stack's army slot.
+        slot: u8,
+        /// Its creature.
+        creature: CreatureTypeId,
+        /// How many it lost: 0 for a lone creature kept, all of its count for a slot emptied.
+        count: u32,
+    },
 }
 
 /// Receiver of the adventure context's events.

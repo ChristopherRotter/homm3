@@ -980,3 +980,23 @@ fixed by T96b1 in the test's `vary` (no engine change), the seeds committed in
   it (your 2026-10-20 note's 18 random heroes with a custom experience come with it). An allied
   town is entered and never captured (decision 16), as your owned objects' team test.
   *Moved by E08 T103b: settled (the random hero and the starting-hero pick were built by E09 T7a1 to T7b2b).*
+
+## Inbox notes for information (moved 2026-11-09, E09 T17a, the town lane's own note)
+
+- 2026-11-07 (the town lane, E09 T16a and T16b, `town/e09-t16a`, `town/e09-t16b`, `cross-lane`;
+  **informational**): the 55 adventure replays' `town_ruleset_hash` line moved twice (T16a: town
+  part v4, the buildings' requirements, costs and the role `shipyard`; T16b: the shipped packs'
+  harvested ones), nothing else; the `BuildingDef` literal in `h3-game`'s `src/tests/mod.rs`
+  gained `requires` and `cost` (T16a). Nothing to act on.
+
+## Inbox notes acted upon (moved 2026-11-09, E08 T104)
+
+T105's queue entry and design §15's table now give T105b game state hash v27.
+
+- 2026-11-09 (the town lane, E09 T17a, `town/e09-t17a`, `cross-lane`; **for T105b, the
+  versions**): T17a takes game state hash v26 (the store of towns' encoding v2: each town's day's
+  mark, `h3_towns::Town::built_today`, after its forbidden set; your HANDOFF's versions line
+  updated), so T105b's is v27 (your design §15's table and T105's queue entry still say v26). The
+  55 adventure replays re-recorded from their own commands: only `game_state_hash_version`, the
+  checkpoints and the final hashes moved, in every replay (an empty store's hash moves with its
+  version too). Nothing else of yours changed.

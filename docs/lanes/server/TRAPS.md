@@ -15,10 +15,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A journal's line holds tokens: errors reading one name its line and column, never its text (serde_json quotes values); a log line never carries a hash (`journal.rs`).
 - No file I/O under the registry's lock (T5e): a game opens its journal on its own thread (`game::launch`); its opening is queued under the lock first (`registry::Opening::first`).
 - Replays go into `archive::dir` through `game::finish`, then `Registry::archived`: one written elsewhere is neither listed nor trimmed.
+- The game's mapping is checked by a test-only inverse (`tests/game.rs`, wire to engine): a new engine field is mapped in `map/game.rs` and inverted there, or the tests do not build. A battle inside it is compared on the wire, as `map::observation` maps it.
 - `PROPTEST_CASES` applies to every proptest of a crate: name the test for a longer mutation run (`cargo test -p h3-protocol mutat`).
 - A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the task subtracts each frame's bytes as it takes it (a frame queued around the count wraps it).
 - Write-ahead order in a game's thread: drain and sync the session's entries before `deliver`; anything a restart must redo needs an `Entry` (`Entry::Resumed`), or the restore diverges.
-- The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..` (a field left out: `name: _` with its reason), those read through a method too.
+- The observations' mappings (`map/mod.rs`, the game's `map/game.rs`) name every field of the engine's types in patterns, without `..` (a field left out: `name: _` with its reason), those read through a method too.
 - The workspace's clippy bans `std::time::Instant` and `SystemTime`: the server uses `tokio::time::Instant`, a file's age `fs::metadata(p)?.modified()?.elapsed()`.
 - A `watch::Receiver` whose sender is gone fails `wait_for` at once, repeatedly: a select arm on it must then never resolve (`net::stopped`).
 - A paused game has no thread: `Hosted::Paused` holds its tokens, `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (a resuming game would pause again).

@@ -13,6 +13,10 @@ h3-content.workspace = true
 h3-content-battle.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
+# The whole game (E16 M5 T2, SRV-Q25).
+h3-adventure.workspace = true
+h3-game.workspace = true
+h3-heroes.workspace = true
 # no_std + alloc (ADR-0018 point 1): not inherited, the workspace entries enable `std`.
 serde = { version = "1", default-features = false, features = ["derive", "alloc"] }
 serde_json = { version = "1", default-features = false, features = ["alloc"] }
@@ -21,6 +25,10 @@ serde_json = { version = "1", default-features = false, features = ["alloc"] }
 h3-pack-battle.workspace = true
 proptest.workspace = true
 h3-sim.workspace = true
+# Test games on the fixture maps (E16 M5 T2).
+h3-map.workspace = true
+h3-pack-adventure.workspace = true
+h3-pack-towns.workspace = true
 # Provisional (E16 M1 review): the wire types round-trip in a format that is not self-describing.
 postcard.workspace = true
 

@@ -1,8 +1,9 @@
 //! The derivations' and the setup's test part (E09 T6b, T6c), built in code (a domain crate takes
 //! no pack adapter as a dev-dependency): a core of three resources and three factions, a town part
 //! with the Keep's full record (every role of increment 1, the Castle's and the Rampart's roles
-//! side by side, map slots, four levels of creatures, a horde and its upgrade), the Marsh's small
-//! one (a silo that pays gold, one level of creatures) and no record for the Wild.
+//! side by side, map slots, four levels of creatures, a horde and its upgrade; increment 2's
+//! requirements, costs and Shipyard, E09 T17b), the Marsh's small one (a silo that pays gold, one
+//! level of creatures, free buildings without requirements) and no record for the Wild.
 
 extern crate std;
 
@@ -70,12 +71,17 @@ pub(crate) const HORDE_1: usize = 20;
 /// upgraded dwelling are, superseding both (and the dwelling).
 pub(crate) const UPG_HORDE_1: usize = 21;
 /// The fixture's own shrine (no slot; no original's building is one): forbidden with the upgraded
-/// horde and built once it is, so that both closures take two steps.
+/// horde and built once it is, so that both closures take two steps; automatic with the upgraded
+/// horde without superseding it, so the hall never offers it in the upgraded horde's place.
 pub(crate) const SHRINE: usize = 22;
+/// The Shipyard: `shipyard`, requiring nothing (as the original's, E09 survey
+/// `E09-construction.md` §6).
+pub(crate) const SHIPYARD: usize = 23;
 
 /// The Keep's buildings' map slots by index (the Mystic Pond, the upgraded horde and the shrine
 /// have none): not their indices, so that a slot and a building's index are told apart.
-const KEEP_SLOTS: [(usize, u8); 20] = [
+const KEEP_SLOTS: [(usize, u8); 21] = [
+    (SHIPYARD, 6),
     (VILLAGE_HALL, 10),
     (TOWN_HALL, 11),
     (CITY_HALL, 12),
@@ -96,6 +102,62 @@ const KEEP_SLOTS: [(usize, u8); 20] = [
     (UPG_DWELLING_1, 37),
     (DWELLING_2, 31),
     (HORDE_1, 18),
+];
+
+/// The Keep's requirements (E09 design §24), each the closure as the compiler gives it: the halls'
+/// chain to the Capitol through the Tavern and the Castle, the forts', the dwellings' from the
+/// Fort, the hordes' from their dwellings, the upgraded horde's from the upgraded dwelling alone
+/// (the original's, survey `E09-construction.md` §6); the Village Hall, the Grail, the Tavern, the
+/// Mystic Pond, the Fort and the Shipyard require nothing.
+const KEEP_REQUIRES: [(usize, &[usize]); 18] = [
+    (TOWN_HALL, &[TAVERN]),
+    (CITY_HALL, &[TOWN_HALL, TAVERN]),
+    (
+        CAPITOL,
+        &[CITY_HALL, TOWN_HALL, TAVERN, CASTLE, CITADEL, FORT],
+    ),
+    (CITADEL, &[FORT]),
+    (CASTLE, &[CITADEL, FORT]),
+    (BROTHERHOOD, &[TAVERN]),
+    (SILO, &[TAVERN]),
+    (LOOKOUT, &[FORT]),
+    (FOUNTAIN, &[MYSTIC_POND]),
+    (ESCAPE_TUNNEL, &[FORT]),
+    (OBELISK, &[FORT]),
+    (GLYPHS, &[FORT]),
+    (DWELLING_1, &[FORT]),
+    (UPG_DWELLING_1, &[DWELLING_1, FORT]),
+    (DWELLING_2, &[DWELLING_1, FORT]),
+    (HORDE_1, &[DWELLING_1, FORT]),
+    (UPG_HORDE_1, &[UPG_DWELLING_1, DWELLING_1, FORT]),
+    (SHRINE, &[UPG_HORDE_1, UPG_DWELLING_1, DWELLING_1, FORT]),
+];
+
+/// The Keep's costs in the core's resource order (wood, ore, gold): every building but the Village
+/// Hall and the Grail, which are free.
+const KEEP_COSTS: [(usize, &[(ResourceId, u32)]); 22] = [
+    (TOWN_HALL, &[(GOLD, 2500)]),
+    (CITY_HALL, &[(WOOD, 5), (GOLD, 5000)]),
+    (CAPITOL, &[(GOLD, 10_000)]),
+    (FORT, &[(WOOD, 20), (ORE, 20), (GOLD, 5000)]),
+    (CITADEL, &[(ORE, 5), (GOLD, 2500)]),
+    (CASTLE, &[(WOOD, 10), (ORE, 10), (GOLD, 5000)]),
+    (TAVERN, &[(WOOD, 5), (GOLD, 500)]),
+    (BROTHERHOOD, &[(GOLD, 500)]),
+    (SILO, &[(ORE, 5), (GOLD, 5000)]),
+    (LOOKOUT, &[(WOOD, 5), (GOLD, 1000)]),
+    (FOUNTAIN, &[(GOLD, 1500)]),
+    (MYSTIC_POND, &[(GOLD, 2000)]),
+    (ESCAPE_TUNNEL, &[(GOLD, 2000)]),
+    (OBELISK, &[(GOLD, 1000)]),
+    (GLYPHS, &[(GOLD, 1000)]),
+    (DWELLING_1, &[(ORE, 10), (GOLD, 500)]),
+    (UPG_DWELLING_1, &[(ORE, 5), (GOLD, 1000)]),
+    (DWELLING_2, &[(WOOD, 5), (ORE, 5), (GOLD, 1000)]),
+    (HORDE_1, &[(GOLD, 1000)]),
+    (UPG_HORDE_1, &[(GOLD, 1000)]),
+    (SHRINE, &[(GOLD, 100)]),
+    (SHIPYARD, &[(WOOD, 20), (GOLD, 2000)]),
 ];
 
 /// A map slot no building of the Keep's has.
@@ -280,9 +342,16 @@ fn keep() -> TownRecord {
             auto_with: set(&[UPG_HORDE_1]),
             ..building("shrine", &[], BuildingRoles::default())
         },
+        building("shipyard", &[], roles(|r| r.shipyard = true)),
     ];
     for (index, slot) in KEEP_SLOTS {
         buildings[index].slot = Some(slot);
+    }
+    for (index, requires) in KEEP_REQUIRES {
+        buildings[index].requires = set(requires);
+    }
+    for (index, cost) in KEEP_COSTS {
+        buildings[index].cost = cost.to_vec();
     }
     let level = |base: u16, upgrade: Option<u16>| CreatureLevel {
         base: creature(base),
@@ -354,6 +423,13 @@ pub(crate) fn part_with(change: impl FnOnce(&mut TownParams)) -> TownRuleset {
     let mut params = params();
     change(&mut params);
     TownRuleset::new(&core(), Some(params), vec![keep(), marsh()])
+}
+
+/// The part with the Keep's record changed by `change`.
+pub(crate) fn part_with_keep(change: impl FnOnce(&mut TownRecord)) -> TownRuleset {
+    let mut keep = keep();
+    change(&mut keep);
+    TownRuleset::new(&core(), Some(params()), vec![keep, marsh()])
 }
 
 /// The part without towns (no parameters, no record).

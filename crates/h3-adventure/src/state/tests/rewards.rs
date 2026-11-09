@@ -23,7 +23,7 @@ use crate::ruleset::{
 use crate::setup::Holds;
 use crate::state::Resolved;
 use crate::testing::{
-    LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, hero_at, hero_details, key, started, world,
+    LOGISTICS, PATHFINDING, PEASANT, PIKEMAN, hero_at, hero_details, key, started, stream, world,
 };
 
 pub(super) type Rules = (Ruleset, AdventureRuleset);
@@ -304,7 +304,14 @@ pub(super) fn visit(
         path: vec![AT],
     };
     state
-        .apply(&rules.0, &rules.1, heroes, RED, &command, &mut Vec::new())
+        .apply(
+            &rules.0,
+            &rules.1,
+            heroes,
+            (RED, &mut stream()),
+            &command,
+            &mut Vec::new(),
+        )
         .unwrap()
 }
 

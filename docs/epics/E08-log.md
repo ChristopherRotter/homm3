@@ -13729,3 +13729,155 @@ replays, three oracles), so no cut.
   workloads' +1.4 to +1.9 % is this sandbox's (`master`'s `fork-rewards-36` the same count).
 
 **Versions:** none moved. Round 5 done; T104 next.
+
+### Increment 11, round 6: T104, the build (2026-11-09, `adventure/e08-t104`)
+
+Whole (decision 285), with the shipped maps' check brought forward from T106 (decision 286).
+Baseline: `master` 2e5e08f (#795; CI's fingerprint, the setup's light gates). `maps.tar` staged
+alone (the census reads the maps, nothing else).
+
+- **The surfaces (A-42, `ADV-QUIRK-44`):** `SetupError::TeleporterSurface(index)`, the first
+  teleporter in object order with a visitable tile of the map off its surface: a monolith's or a
+  gate's not on land (water or rock), a Whirlpool's not on water (land or rock). *Agent's call:*
+  rock added to the design's water and land (nothing walks or sails it; a jump there would put a
+  hero on a tile no rule lets it stand on). Checked after the towns' factions, before the
+  monsters' marks; the import's validation passes it on.
+- **The channels** (`state/channels.rs`, `StaticMap::channels`; ADV-TEL-002, design §5's as-built
+  line): `Channels` holds the one-way exits and the two-way members by channel number, the
+  Whirlpools' tiles with their object (`WhirlpoolTile`) and the gates' entries with their pairs
+  (`GateEntry`; `gate_pair` by a binary search in walk order). The lists walk the static map's
+  `visits` by tile index (the walk's order); a tile is listed for the last object in map order
+  visited from it, as the original dispatches on the tile's class, so a teleporter under a later
+  object is in no list. Empty (no allocation) without a teleporter; out of the static map's hash.
+- **The pairing** (D-56): greedy over the entries in walk order, each unpaired one scanning the
+  entries of the levels after its own (`partition_point`), the best kept by its square
+  (`⌊√s⌋ < d` exactly when `s < d²`: one `isqrt` per improvement, none in the comparison).
+- **The census** (`h3-map`'s `original_data`, decision 286): on the 160 shipped maps every visitable
+  tile of an exit, a two-way monolith, a gate and a Whirlpool listed once, every gate paired and
+  mutual, no map refused; survey §1's counts exactly: 111 one-way channels by entrances and exits
+  (1 → 1 71, 2 → 1 8, 3 → 1 7, 3 → 3 8, …), 219 two-way channels by size (2: 185, 3: 19, 4: 11,
+  5: 2, 6: 1, 8: 1), 1 344 Whirlpool tiles, 301 pairs, 18 gates on 8 maps not with their nearest
+  (the survey's eight maps); checked against `SURVEY_GATES` in `main`.
+- **The benchmark** `build-gates-xl-144`: `fixtures/maps/e08-gates-144.h3m` (`gates_map.rs`: SoD
+  XL, a gate on every fifth tile of both levels where it lies whole and covers no hero, 4 058 a
+  level; every surface gate paired with the one below it), the workload `build` in `h3-cli`'s bench
+  (`game_build`, `GameState::new` without an env). Baseline 981 270 116 Ir for two builds; the
+  channels' build is 91.6 % of it (898.7 M; about 17 M comparisons a build, 63 ms in release).
+  Two rewrites of the inner loop (slices zipped, a bound instead of an `Option`) measured +27 % and
+  +44 % (worse codegen), so the first form stays. The lever (a row-band search or a compacted list
+  of the unpaired entries) is queued in the inbox, as decision 285 says.
+- **Tests:** `h3-adventure`'s `the_channels_list_each_ways_tiles_in_the_walks_order` (walk order
+  against `Pos`' order, an entrance and a tile under a blocker in no list, an off-map tile, channels
+  of one number apart, no draw), `the_whirlpools_list_every_tile_with_its_whirlpool`,
+  `the_gates_pair_greedily_in_the_walks_order_by_the_truncated_distance` (the greedy miss, a tie
+  at ⌊√5⌋ = ⌊√4⌋ taken by the first in walk order, a leftover, one level never paired),
+  `a_teleporter_off_its_surface_is_refused_when_the_game_is_built` (each kind on water, land or
+  rock); T103a's step test keeps the monolith and the gate (a Whirlpool on land is refused now);
+  `h3-map`'s `the_gates_map_is_committed_as_written_and_pairs_every_gate_below_it`; `h3-cli`'s
+  bench test runs `build`.
+- **Docs:** ADV-TEL-002 (new), ADV-TEL-001 amended (A-42); `ADV-QUIRK-44` and `-45` in the
+  ledger; design §5's as-built line; `h3m.md`'s import line; the fixtures README's row; the
+  benches README's row in `shared/e08-t104-benches`; the map client's inbox (A-42's refusal).
+- **Gates:** the scoped verify (no original data): every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `build-gates-xl-144` at its baseline);
+  `check-rules` re-run once the catalog had ADV-TEL-002; `cargo check --workspace --all-targets`;
+  `h3-map`'s `original_data` on the 160 maps (the census above).
+
+**Versions:** none moved. Round 6 done; T105 next.
+
+### Increment 11, round 7: T105a1, the monoliths' and the gates' jumps (2026-11-09, `adventure/e08-t105a1`)
+
+T105a in two by land and water (decision 287). Baseline: `master` 14e5335 (#797; CI's `CI` run
+green, the setup's light gates on its fingerprint; `Clients` on that commit failed with no job
+started, re-run). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the two LODs.
+
+- **The visitor's stream** (design §13; its own commit): `AdventureState::apply(core, part,
+  heroes, (player, draws), command, sink)` (a tuple, the argument count's lint) and
+  `visit_held(rules, (player, hero), draws, sink)`; `move_hero` and `visit` pass it on. The game
+  passes the acting player's (`GameState::adventure_for`) for every adventure command and the
+  owner's for `Rest::Visit`. Every caller updated (the adventure crate's tests through
+  `testing::stream`); no behaviour change, no draw yet. The town lane's inbox told.
+- **The jump** (`state/jumps.rs`; design §7): `Effect::Monolith { channel, way }` and
+  `Effect::SubterraneanGate` (the Whirlpool's effect still none). `visit_monolith`: an entrance
+  over its channel's exits, a two-way monolith over its channel's members, a one-way exit
+  `leads_nowhere`; `visit_gate`: the pair, else `leads_nowhere`. `draw_exit` (ADV-TEL-003): the
+  candidates counted over the list (a hero of another team; else no hero, no empty boat, not the
+  entrance), none no exit, one no draw, else `below(n)` and the n-th again (no allocation).
+  `jump`: no hero on the exit, `arrive` (the tile, the points and the day's maximum kept, the
+  scouting radius explored, `HeroTeleported`); else the radius-1 reveal and the mover stays
+  (`ADV-STUB-16`, T105b's battle and meeting). No guard test and no visit at the exit.
+- **Events and views** (design §10): `HeroTeleported` (`HeroStepped`'s fields and projection: an
+  end a viewer does not see left out, A-41 not reproduced, `ADV-QUIRK-43`) and `LeadsNowhere {
+  hero, object_type, anchor }` (the owner's alone); `h3-map`'s view oracle takes the jump as a
+  step's two ends and the event as a message's. The map client's inbox told.
+- **The reach's measure** (design §14; `homm3-bench-regression`): `master`'s worktree against the
+  branch right after the jump's first build, every workload within 0.01 % (reach-xl-144 452.09 M
+  against 452.10 M Ir, reach-lifted-xl-144 857.40 M against 857.42 M, reach-sea-xl-144 4 235.38 M
+  against 4 235.35 M, reach-towns-36 719.35 M against 719.36 M; random-play duel +0.010 %, sea
+  +0.007 %, dwellings, economy and rewards +0.005 %): the dispatch's arms cost nothing on maps
+  without teleporters; no re-baseline.
+- **Tests:** `h3-adventure`'s teleporters tests: the one exit without a draw (the points the
+  reach predicted, the maximum, the scouting radius, `PastVisit` past it), the draw among three
+  candidates over 24 streams (Red's own hero's exit never, Blue's hero's the stub's radius 1),
+  no candidate (nothing), a two-way channel of three (never itself), "leads nowhere" for a one-way
+  exit and an unpaired gate, a gate's pair (no draw; a hero on the pair the stub), the arrival
+  beside a monster (no guard, no visit of the exit), a guarded entrance (the guard first, then
+  `visit_held`'s jump), the projections (one end, the other, neither), a boat's step onto a
+  Whirlpool still refused; the ruleset's effects; `h3-game`'s `jumps.rs`: the exit from the acting
+  player's stream (a rejected move leaves it, Blue's untouched) and a guarded entrance's jump after
+  the won battle (the game's test pack gains `t:entrance` and `t:exit`).
+- **Docs:** ADV-TEL-003 and -007 (verified: batch E11's E11-2, -3, -15, -19), ADV-TEL-004 and -005
+  (implemented: their battle and meeting T105b's) new; ADV-TEL-001, -002, ADV-OBJ-003, ADV-FOG-004
+  and ADV-MON-006 amended; `ADV-QUIRK-43` in the ledger; `ADV-STUB-16`; design §7, §10, §13's
+  as-built lines, §17's round 7 row; decision 287.
+
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `original-data`); the doc gates re-run
+  after the docs; `cargo check --workspace --all-targets`.
+
+**Versions:** none moved (no replay holds a teleporter; the new events are not in any hash).
+T105a2 next.
+
+### Increment 11, round 7: T105a2, the Whirlpool (2026-11-09, `adventure/e08-t105a2`)
+
+The water half of T105a's cut (decision 287), whole. Baseline: `master` ae7d260 (#802; the
+setup's light gates on its verified fingerprint). Staged: `maps.tar`, `extracted.tar`,
+`Heroes3.exe` and the two LODs.
+
+- **The visit** (design §7 item 5): `ObjectKind::Whirlpool`'s effect `Effect::Whirlpool(divisor)`,
+  dispatched to `jumps.rs`' `visit_whirlpool`: the loss unless `h3_heroes::whirlpool_protection`
+  (a hero without details unprotected), then `draw_exit` over `Channels::whirlpools`, each tile
+  excluded when its Whirlpool is the entrance's object (the original's word), so one draw gives the
+  Whirlpool and its tile; no candidate: the hero stays, the loss taken. `draw_exit` now takes the
+  list's tiles with what the visit excludes (`(Pos, bool)`, two passes, no allocation), the
+  monoliths passing `tile == entrance`. An enemy hero on the drawn tile: `jump`'s radius-1 reveal,
+  the mover staying (`ADV-STUB-16`; A-37's battle, decision 265, is T105b's). The arrival needed
+  nothing for the boat: the hero's tile is the boat's, the record keeps its boarded tile (ADR-0016
+  point 1); the boats' invariants hold after every jump.
+- **The loss** (design §8): `whirlpool_loss`: the least `(fight value × count as u64, slot)` among
+  the army's stacks (D-54; A-38 not reproduced, `ADV-QUIRK-40`), `count / divisor` with more than
+  one stack, an emptied slot dropped, a lone stack `max(1, count / divisor)` (D-55); every owner's
+  hero (A-40 not reproduced, `ADV-QUIRK-42`); written with combinators (no dead branch for an
+  empty army, which the setup refuses). `AdventureEventKind::WhirlpoolLoss { hero, slot, creature,
+  count }` to the owner alone, before the jump, 0 for a lone creature kept; projected as is.
+  `h3-map`'s view oracle takes it as the viewer's own hero's.
+- **The reach's measure** (`homm3-bench-regression`, `master`'s worktree): reach-sea-xl-144
+  4 235.38 M against 4 235.35 M Ir (+0.0005 %), random-play-sea-36 2 682.22 M against 2 682.05 M
+  (+0.0065 %): no teleporter on either map, the dispatch's arm costs nothing; no re-baseline.
+- **Tests:** `h3-adventure`'s teleporters tests: nine armies in a lone Whirlpool (E11-10's
+  Pegasi, E11-11's tie, E11-12's lone creature, lone 3 and 1 776 Azure Dragons, two stacks past the
+  original's bound, an emptied slot, a divisor of 3 for several and a lone stack; the tile a
+  destination of the boat's reach, `PastVisit` past it; no draw); the hat (nothing lost, nothing
+  told; without it the loss); the draw over 24 streams among three candidates (the entrance's own
+  tiles, an empty boat's tile and Red's own hero's never; Blue's hero's the stub's radius 1;
+  else on the exit in the boat, the points and the maximum kept, the record's tile kept); the
+  ruleset's effect. The replaced test: a boat's step onto a Whirlpool refused.
+- **Docs:** ADV-TEL-006 (verified: batch E11's E11-10 to -13, -16) new; ADV-TEL-001, -003 (E11-17
+  added), -007, ADV-OBJ-003 and HER-ADV-009 amended; `ADV-QUIRK-40` and `-42` in the ledger,
+  `ADV-QUIRK-45`'s candidates line; design §7, §8's as-built lines, §17's round 7 row; the map
+  client's inbox told of the event.
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism, every adventure workload inside its gate, `original-data`); `cargo check
+  --workspace --all-targets`.
+
+**Versions:** none moved (no replay holds a Whirlpool; the event is in no hash). T105b next.

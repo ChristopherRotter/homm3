@@ -36,7 +36,7 @@ fn run(args: &[String]) -> Result<(), String> {
         }
     }
     let (_, ruleset, setup) =
-        h3_cli::load_scenario(&scenario, &packs_dir, seed).map_err(|e| e.to_string())?;
+        h3_files::load_scenario(&scenario, &packs_dir, seed).map_err(|e| e.to_string())?;
     let start = Instant::now();
     let totals = bench::run(&ruleset, &setup, seed, games, MAX_COMMANDS).map_err(|e| e.0)?;
     let secs = start.elapsed().as_secs_f64();

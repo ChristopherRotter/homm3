@@ -2251,3 +2251,147 @@ the clone; the harvest needed `Heroes3.exe` and `H3bitmap.lod`.
 - **Agent's calls (change freely):** the checks in the harvester and not a gap-fill; the Grail
   building without a cost (the original asks none); the rule ids TWN-BLD-006 and -007 with the
   rules (T17), their sources this harvest.
+
+### T17a — the day's mark, what a build does and the store's writes (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t17a`, `cross-lane` (the game state
+hash's version in `h3-game`'s `lib.rs` and the adventure replays, the adventure lane's).
+Starting point: `master` at 2e5e08f (#794, T16b's, and #795 merged; CI green; the setup's
+baseline found CI's fingerprint, the light gates only). **T17 cut in two at its start** (the
+user, `AskUserQuestion`; recommended, the last session's proposal with `built_with` moved in,
+since the store's build needs it): **T17a** what a build does to a town (the mark, `built_with`,
+the store's three writes, the town state hash v2, the game state hash v26), **T17b** the rules
+that decide a build (`buildable`, `possible`, `check_build`, `event_buildings`), `TownCommand`
+and its errors, TWN-BLD-001 to -003, -006, -007, TWN-EVT-003 and `TWN-QUIRK-7`; T17a this
+session, T17b queued. The user's computer was connected: the original data staged with the file
+tool at the start (the four LODs, the executables, the five DLLs, both `.snd`, the videos, both
+tars, the 40 MP3s), then `cp -rn` into the clone and both tars unpacked; the scoped verify ran
+with them.
+
+- **`h3-towns`** (design §26 and §27's `built_with` as built): `Town::built_today` (a flag,
+  false from `Town::new`; `Town::rebuilt`, crate-private, for the store's writes);
+  `built_with(town, part, building) -> Option<BuildingSet>` (new module `build.rs`, which T17b
+  fills): the building with what it supersedes (setup's `closed`), then the setup's
+  `upgrade_hordes` with no forbidden set, as `town_build` 0x5BE930 tests none (a town event's
+  forbidden horde still upgrades); `None` for a faction without a record or a building the record
+  lacks. `TownFacts { fort, capitol, built_today }` and `Towns::facts`; `Towns::build(town,
+  building, part, mark) -> Option<TownFacts>` (the facts before; the mark set with `mark`, else
+  kept: an event's build neither sets nor clears it), `Towns::start_day()` (writes only the
+  marked towns; a store without one copies nothing), `Towns::captured(town, clear_mark) -> bool`
+  (whether the mark was cleared); the old `set_built` became `write(town, change)`, which
+  `apply_capitol_limit` uses too (the mark kept). The hash v2: each town's mark after its forbidden
+  set (pinned 0x1F7C_E05E_64B8_2246).
+- **Tests** on the synthetic part: `built_with`'s closure (a Capitol over a custom City Hall, the
+  Brotherhood's Tavern), its fixed point both ways (the horde first or the upgraded dwelling first,
+  the fixture's shrine a second step; no forbidden test), its `None`s; the store's build copying
+  one town of a fork and no list twice, an event's build keeping either mark and building a
+  forbidden Fort, the `None`s copying nothing, the day's start writing only the marked towns, the
+  capture's two cases (the Capitol's limit keeps the mark), increment 1's reads at once (a Town
+  Hall's income, a Citadel's moat, a Tavern's view, a silo's resources, the Capitol public), the
+  hash's mark.
+- **Catalog:** TWN-BLD-004 (the mark's writes; the refusal comes with T17b, the game's calls with
+  T18b) and TWN-BLD-005 (what a build does), both `implemented`.
+- **`cross-lane`:** `GAME_STATE_HASH_VERSION` 25 to 26 (the store's v2 folded in; E08 T105b's
+  planned v26 becomes v27: the adventure lane's HANDOFF versions line and an inbox note); the 55
+  adventure replays re-recorded from their own commands (skill `homm3-rerecord-replays`, a scratch
+  script, 3 s in release): only `game_state_hash_version`, the checkpoints and the final hashes
+  moved, in every replay (the empty store's hash moves with its version too). The bot reports
+  record the part hashes only: untouched.
+- **Agent's calls (change freely):** `built_with` in `h3-towns`' new `build.rs` beside setup's
+  helpers made crate-public (not moved); `TownFacts` in the store; `captured` returning whether it
+  wrote, as `apply_capitol_limit`.
+
+### T17b — the rules that decide a build, `TownCommand` and its errors (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t17b`, not `cross-lane` (only
+`h3-towns`, `h3-pack-towns`' test marker and the lane's docs). Starting point: `master` at 75299e8
+(#796, T17a's, and #798 merged; the setup's baseline found CI's fingerprint, the light gates
+only). Kept whole (the agent's call: one crate, no version). The user's computer was connected:
+the original data staged with the file tool at the start, then `cp -rn` into the clone and both
+tars unpacked; the scoped verify ran with them, and `scripts/exe.py` read the event loop again.
+
+- **`h3-towns`** (design §27 as built): in `build.rs` beside `built_with`, `buildable`,
+  `possible`, `check_build` (the cost as the part's slice or the first refusal; one private
+  `refusal` decides both it and `buildable`, so the offer is exactly what it allows) and
+  `event_buildings`; the private `offered_as` (a horde's upgrade: superseding it, automatic with
+  it, the rest of its `auto_with` ever built, itself not; T17b's refinement of design §27's call,
+  the supersedes test); new `command.rs`: `TownCommand::Build { town, building }` and
+  `TownCommandError` (both `#[non_exhaustive]`; `UnknownTown`, `NotOwner` for the game, then the
+  eight refusals in their order; `Display`, `Error`); setup's `indexed` made crate-public. No
+  version moved (the part and the store unchanged).
+- **The fixture** (test-only): the Keep's requirements (the closures by hand: the halls through
+  the Tavern and the Castle, the forts, the dwellings from the Fort, the hordes from their
+  dwellings, the upgraded horde from the upgraded dwelling alone), its costs (all but the Village
+  Hall and the Grail) and a Shipyard (23, slot 6, no requirement); `part_with_keep` changes the
+  Keep's record. Every earlier test passed unchanged.
+- **Tests:** the offer at the start and after the Fort and the Tavern (a Castle keeps its Fort,
+  the forbidden out, the Marsh's free buildings, no record), a horde offered as its upgraded horde
+  (the same outcome either way, the shrine no upgrade, a forbidden upgrade leaving neither, a custom
+  set's upgrade without its horde), the Capitol's limit, the Grail never by the hall (possible as
+  the original's), the day's mark, every refusal in its order (the horde made a Grail and a Capitol,
+  one cause taken away a step), the offer equal to `check_build`'s Ok and inside `possible` over
+  six towns, `possible`'s never (a forbidden Fort), the event's buildings with and without water
+  (no requirement, forbidden, Capitol, Grail or mark test; built in order as builds), TWN-QUIRK-7.
+- **Catalog:** TWN-BLD-001 (the command; the game's half with T18b) and -003, TWN-EVT-003
+  `implemented`; TWN-BLD-002, -006, -007 `verified` (batch TWN-2's rows; -006 and -007's markers in
+  the compiler, covered by its test and `h3-pack-towns`' test of the original packs); TWN-BLD-004's
+  summary with the refusal. **Quirk:** `TWN-QUIRK-7` (T-9, fixed without a flag), its loop read
+  again (0x5BFEF9 to 0x5BFF4C: 44 bits of `building_bits`, `map_building_ids` at faction × 41 +
+  bit).
+- **Agent's calls (change freely):** the supersedes test of the hall's offer; the errors without a
+  building but `OfferedAs`'s; `possible` holding the Grail's building as the original's
+  `town_build_possible` does; the rules in `build.rs`, the command in `command.rs`.
+
+
+### T18a — the Shipyard's water (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t18a`, `cross-lane` (the adventure
+part, the static map, `h3-game`'s `state.rs`, the replays, the bot reports and `h3-map`'s census
+are the adventure and AI lanes'). Starting point: `master` at ae7d260 (#801, #802, #804 merged;
+CI's `CI` green on it; the setup's baseline was lost to a restart of the sandbox, so CI's run
+stands for it). Kept whole (the user, at its start). The user's computer was connected: the
+original data staged with the file tool at the start, then `cp -rn` into the clone and both tars
+unpacked; the census and the scoped verify ran with them, and `scripts/exe.py` read the setup's
+order.
+
+- **The reading** (design §28's open point, settled): `new_game_heroes` 0x4BFE70 calls, in one
+  straight line, the map's read (`new_game_bans` at 0x4BFFB9, whose `map_objects_place_all`
+  resolves the random dwellings at 0x4FD90B and fixes the Shipyards' boat tiles at 0x4FD935),
+  `resolve_random_objects`, `setup_map_objects`, `gates_pair`, then `setup_towns` at 0x4C0013,
+  whose `town_buildings_setup` calls `town_boat_spot` 0x5C0C90 (read by T12a: water, not blocked,
+  no object or a boat). So a town's spot sees the resolved dwellings: the agent's call "after"
+  kept, the spot fixed in ADV-SHY-001's step.
+- **The adventure** (design §28 as built): `ObjectKind::Town { boat_offsets }` and its def
+  (distinct, never (0, 0), possibly none: no spot; hashed as a Shipyard's offsets), adventure
+  ruleset part **v19**; the pack's `town = { boat_offsets = [[-1, 2], [1, 2]] }` in the base pack
+  (optional, `town = {}` none); `fix_boat_tiles` takes a town's offsets with the Shipyard's test
+  (`Resolved::BoatTile` on the town object, in the static map's hash);
+  `StaticMap::town_boat_spot(TownId)`; `ObjectView::boat_tile` stays the Shipyard's (a town's spot
+  is the town's Shipyard's, its view T18b's, §31). Every match on the kind updated (`h3-adventure`,
+  `h3-game`, `h3-map`'s play tests and census, `h3-cli`'s ai census).
+- **The town and the game:** `h3_towns::without_water` (the record's buildings of role `shipyard`
+  forbidden and out of the ever-built set, the rest and the day's mark kept; `Town::reset`);
+  `h3-game`'s `town::without_water` by `TownId` after `AdventureState::new` and before the
+  reveals and the store (one line in `state.rs`); no draw. `TWN-STUB-2` narrowed to the Grail
+  building. The game's town fixture gained a Shipyard (`b12`, slot 6; the siege tests' defender
+  renamed `defender`), its adventure part the original's two offsets.
+- **Tests:** the part's offsets (refused twice, at the entrance; hashed by value, order and
+  count), the static map's spots (first offset, land, a blocker, a visited tile, owned and
+  neutral, the owner's view without it, the hash), `without_water` (a custom set's Shipyard out, a
+  standard set's forbidden, a requiring building kept, the mark kept, a faction without a Shipyard
+  or a record unchanged), the game's start (no water, either offset, water elsewhere); the two
+  tests comparing the store with `town_setup` now apply `without_water` (their maps have no
+  water).
+- **The census** (the original data, `h3-map`'s `original_data`, checked): 1 468 towns, 67 with a
+  spot; 625 of a faction with a Shipyard, 591 of them without a spot (their Shipyard forbidden);
+  the 9 custom sets that build a Shipyard (survey §5.3's 9) all have a spot, none loses it.
+- **Versions:** adventure ruleset part v19 (after T103a's v18); no other. The 55 adventure
+  replays re-recorded from their commands: only hash lines moved (the part's hash in each; the
+  checkpoints and final hashes of the eight `towns-*` replays, whose towns without water now
+  forbid their Shipyard). The bot reports' `engine` line only.
+- **Catalog:** TWN-SET-011 `implemented` (the reading, VCMI's `initTowns`, the design);
+  TWN-SET-003's "not yet" narrowed; ADV-SHY-001 amended (the towns' spots in the same step).
+- **Agent's calls (change freely):** the offsets optional in the pack (none: no spot); the town's
+  spot out of `ObjectView::boat_tile`; `without_water` a transform of the built town rather than
+  an input of `town_buildings_setup` (the spots come after the towns' draws); the census in
+  `built_town_water`.

@@ -33,10 +33,16 @@
 //! spell book in a town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-6`),
 //! and on the maps of 36 tiles a side. Since E09 T9c each built town's siege facts (its fort
 //! level, a moat; TWN-SIE-003) and hall level, and the owned towns' day's income (TWN-INC-001,
-//! -002). Since E08 T103b the teleporters (43 to 45, 103, 111) by class, subclass and level, and
+//! -002); since E09 T18a their spots and Shipyards (TWN-SET-011: a town without a spot has its
+//! Shipyard forbidden and unbuilt, checked). Since E08 T103b the teleporters (43 to 45, 103, 111) by class, subclass and level, and
 //! the maps with each class; each checked to import as its class and subclass's type (a monolith
 //! of its class's way with its subclass as the channel: the import's tables against the shipped
-//! maps, increment 11's design note §3 and §4).
+//! maps, increment 11's design note §3 and §4). Since E08 T104 the channels and the gates' pairs
+//! the game's build gives (ADV-TEL-002, design note §5; no shipped map refused for a teleporter
+//! off its surface, A-42): the one-way channels by entrances and exits, the two-way ones by size,
+//! the Whirlpools' tiles, every visitable tile listed once, every gate paired, and the pairs and
+//! the gates not paired with their nearest checked against the survey's census (§1: 301 pairs, 18
+//! gates on 8 maps).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -66,7 +72,8 @@ use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 /// with stacked visitable tiles, with the classes on each such tile in map order; each map with
 /// typed objects that share their type and anchor with an earlier one, with how many; the
 /// monsters' and grounds' counts (E08 T20a2a); the dwellings the game's build gives (E08 T94a);
-/// the dwellings' and the Refugee Camps' weeks it gives (E08 T94b); the teleporters (E08 T103b).
+/// the dwellings' and the Refugee Camps' weeks it gives (E08 T94b); the teleporters (E08 T103b);
+/// the channels and the gates' pairs the game's build gives (E08 T104).
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
@@ -78,7 +85,25 @@ struct Peaks(
     Built,
     Weeks,
     Teleporters,
+    ChannelCensus,
 );
+
+/// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
+/// increment 11's design note §5, survey `docs/rules/surveys/E08-teleporters.md` §1): its counts,
+/// the one-way channels by their entrances and exits, the two-way channels by their size, and each
+/// map with gates not paired with their nearest gate on the other level, with how many.
+#[derive(Default)]
+struct ChannelCensus(
+    BTreeMap<&'static str, usize>,
+    BTreeMap<(usize, usize), usize>,
+    BTreeMap<usize, usize>,
+    BTreeMap<String, usize>,
+);
+
+/// The survey's census of the shipped maps' gates (§1, by the original's rule, §3.2): the pairs,
+/// the gates not paired with their nearest and the maps holding them. [`main`] checks the build's
+/// against them.
+const SURVEY_GATES: (usize, usize, usize) = (301, 18, 8);
 
 /// The census of the teleporters (E08 T103b, [`teleporters`]; survey
 /// `docs/rules/surveys/E08-teleporters.md` §1): the objects by class and subclass, on the surface
@@ -254,6 +279,43 @@ fn main() -> ExitCode {
             subclasses.join(", ")
         );
     }
+    let channels = &peaks.9;
+    println!("  the channels and the gates' pairs the game's build gives (checked):");
+    for (what, n) in &channels.0 {
+        println!("    {what}: {n}");
+    }
+    let one_way: Vec<String> = channels
+        .1
+        .iter()
+        .map(|((entrances, exits), n)| format!("{entrances} → {exits}: {n}"))
+        .collect();
+    println!(
+        "    one-way channels by entrances → exits: {}",
+        one_way.join(", ")
+    );
+    let two_way: Vec<String> = channels
+        .2
+        .iter()
+        .map(|(size, n)| format!("{size}: {n}"))
+        .collect();
+    println!("    two-way channels by size: {}", two_way.join(", "));
+    let greedy: usize = channels.3.values().sum();
+    println!(
+        "    gates not paired with their nearest: {greedy} on {} maps",
+        channels.3.len()
+    );
+    for (map, n) in &channels.3 {
+        println!("      {map}: {n}");
+    }
+    let pairs = channels.0.get(PAIRS).copied().unwrap_or(0);
+    if (pairs, greedy, channels.3.len()) != SURVEY_GATES {
+        println!(
+            "h3-map: the gates' pairs ({pairs}; {greedy} not with their nearest on {} maps) \
+             are not the survey's census {SURVEY_GATES:?}",
+            channels.3.len()
+        );
+        failures += 1;
+    }
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -340,7 +402,7 @@ fn check(
             object
                 .object_type
                 .and_then(|id| rules.adventure().object_type(id))
-                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Town { .. }))
         })
         .map(|_| TownSetup {
             faction,
@@ -388,6 +450,9 @@ fn check(
     }
     // E08 T94b: the dwellings' and the camps' weeks it builds (ADV-DWL-002, ADV-RFG-001).
     built_weeks(&built, rules, name, &mut peaks.7)?;
+    // E08 T104: the channels and the gates' pairs it builds (ADV-TEL-002); a map it refuses for
+    // a teleporter off its surface (A-42) fails above.
+    built_channels(&built, rules, name, &mut peaks.9)?;
     most_dwellings(&map, &setup.map, peaks, name);
     let (visitable, stacked) = stacked(&map, &setup.map);
     peaks.2 += visitable;
@@ -424,7 +489,7 @@ fn check(
                 },
                 Ok(game) => game,
             };
-            built_towns(&setup, &game, rules, &mut peaks.5);
+            built_towns(&setup, &game, rules, &mut peaks.5).map_err(|e| format!("{name}: {e}"))?;
             built_linked(&setup, &game, rules, name, &mut peaks.5)?;
             built_heroes(&setup, &game, rules, map.header.size, &mut peaks.5);
             // E08 T29: the placed heroes' levels at load (GAM-SET-002; survey
@@ -512,13 +577,14 @@ fn built_linked(
 
 /// E09 T7b2a: the towns of a game that builds as the build resolved them (TWN-SET-002 to -004,
 /// TWN-CAP-001): each random town by what gave its faction, the neutral towns' drawn garrisons,
-/// the owned towns whose start reveals more than the part's radius.
+/// the owned towns whose start reveals more than the part's radius; since E09 T18a their spots
+/// and Shipyards ([`built_town_water`]).
 fn built_towns(
     setup: &GameSetup,
     game: &GameState,
     rules: &GameRuleset,
     counts: &mut BTreeMap<&'static str, usize>,
-) {
+) -> Result<(), String> {
     let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
     let adventure = game.adventure();
     let objects = adventure.map().towns();
@@ -543,6 +609,7 @@ fn built_towns(
         }
         if let Some(stored) = game.towns().get(h3_contracts::TownId::new(index)) {
             built_town_facts(stored, owner.is_some(), rules.towns(), &mut add);
+            built_town_water(town, stored, game, index, rules, &mut add)?;
         }
         let built = game
             .towns()
@@ -570,6 +637,67 @@ fn built_towns(
             );
         }
     }
+    Ok(())
+}
+
+/// E09 T18a (TWN-SET-011, design §28; survey `E09-towns.md` §5.3): a built town's spot and its
+/// Shipyard: the towns with a spot, those of a faction with a Shipyard without one, the custom
+/// sets that build a Shipyard and those that lose it for want of water. Checked (an error fails
+/// the map): a town without a spot has its faction's Shipyard forbidden and never built, one with
+/// a spot keeps a custom set's.
+fn built_town_water(
+    setup: &TownSetup,
+    town: &h3_towns::Town,
+    game: &GameState,
+    index: u16,
+    rules: &GameRuleset,
+    add: &mut impl FnMut(&'static str, usize),
+) -> Result<(), String> {
+    let id = h3_contracts::TownId::new(index);
+    let spot = game.adventure().map().town_boat_spot(id);
+    add("E09 built: towns with a spot", usize::from(spot.is_some()));
+    let Some(record) = rules.towns().town(town.faction()) else {
+        return Ok(());
+    };
+    let shipyards = (0..h3_towns::MAX_BUILDINGS)
+        .filter_map(h3_towns::BuildingId::from_index)
+        .filter(|&b| record.building(b).is_some_and(|b| b.roles.shipyard))
+        .fold(h3_towns::BuildingSet::EMPTY, |set, b| set.with(b));
+    if shipyards.is_empty() {
+        return Ok(());
+    }
+    add("E09 built: towns of a faction with a Shipyard", 1);
+    // Whether `set` holds a Shipyard.
+    let meets = |set: h3_towns::BuildingSet| set.difference(shipyards) != set;
+    let picked = match setup.buildings {
+        BuildingsSetup::Custom { built, forbidden } => {
+            meets(built.buildings(record)) && !meets(forbidden.buildings(record))
+        }
+        BuildingsSetup::Standard { .. } => false,
+    };
+    add(
+        "E09 built: custom sets building a Shipyard",
+        usize::from(picked),
+    );
+    let kept = meets(town.built());
+    let forbidden = shipyards.difference(town.forbidden()).is_empty();
+    if spot.is_none() {
+        add("E09 built: towns of a faction with a Shipyard, no spot", 1);
+        add(
+            "E09 built: custom sets losing a built Shipyard, no spot",
+            usize::from(picked),
+        );
+        if kept || !forbidden {
+            return Err(format!(
+                "town {index} has no spot but its Shipyard is not forbidden or still built"
+            ));
+        }
+    } else if picked && !kept {
+        return Err(format!(
+            "town {index} has a spot {spot:?} but lost its custom set's Shipyard"
+        ));
+    }
+    Ok(())
 }
 
 /// E09 T9c: a built town's facts for a battle at it (TWN-SIE-003: its fort level, a moat) and its
@@ -707,7 +835,8 @@ const FACTIONS: [&str; 9] = [
 /// E09 T7a1's census of a map that imports (`docs/formats/h3m.md`, "Import"): its towns by kind,
 /// faction and alignment, their custom building sets (with a horde built, a Shipyard built and
 /// that Shipyard without water on either tile two rows below the entrance and one column aside,
-/// TWN-STUB-2's case), custom garrisons (with random stacks), names and events; the players'
+/// by the terrain alone: TWN-SET-011's case, the built game's census in [`built_town_water`]),
+/// custom garrisons (with random stacks), names and events; the players'
 /// starts (main towns, those generating a hero, the random-hero flag, the choices, an RoE map's
 /// players with all eight bits); the random heroes (with a custom experience), the placed heroes
 /// on a town's entrance (moved there, TWN-SET-010: no map places one there itself, survey §1.4)
@@ -777,7 +906,7 @@ fn towns(
             object
                 .object_type
                 .and_then(|id| rules.adventure().object_type(id))
-                .is_some_and(|ty| ty.kind == ObjectKind::Town)
+                .is_some_and(|ty| matches!(ty.kind, ObjectKind::Town { .. }))
         })
         .map(|object| object.owner)
         .collect();
@@ -849,7 +978,7 @@ fn towns(
             );
             let wet = water(x.wrapping_sub(1), y + 2, level) || water(x + 1, y + 2, level);
             add(
-                "E09 towns: a built Shipyard without water (TWN-STUB-2)",
+                "E09 towns: a built Shipyard without water by the terrain (TWN-SET-011)",
                 usize::from(yard && !wet),
             );
         }
@@ -1163,6 +1292,103 @@ fn teleporters(
     for class in classes {
         *census.1.entry(class).or_default() += 1;
     }
+    Ok(())
+}
+
+/// The census's key for the gates' pairs ([`built_channels`]).
+const PAIRS: &str = "gates' pairs";
+
+/// Counts the channels and the gates' pairs the game's build gives (E08 T104; ADV-TEL-002,
+/// increment 11's design note §5) into the census: the one-way channels by their entrances (from
+/// the objects: an entrance is in no list) and exits, the two-way channels by size, the Whirlpools'
+/// tiles, the gates' entries, pairs and those not paired with their nearest gate on another level
+/// by the truncated distance (the greedy order, survey §1). Checked (an error fails the map): every
+/// visitable tile of an exit, a two-way monolith, a gate and a Whirlpool is listed once (no
+/// shipped entrance is another object's, none lies off the map: survey §1), every pair is mutual,
+/// and every gate is paired (the shipped maps' gates are as many on each level as on the other).
+fn built_channels(
+    built: &GameState,
+    rules: &GameRuleset,
+    name: &str,
+    census: &mut ChannelCensus,
+) -> Result<(), String> {
+    let map = built.adventure().map();
+    let channels = map.channels();
+    let mut entrances = BTreeMap::<u8, usize>::new();
+    let mut visitable = 0;
+    for object in map.objects() {
+        let kind = object
+            .object_type
+            .and_then(|id| rules.adventure().object_type(id))
+            .map(|ty| &ty.kind);
+        match kind {
+            Some(ObjectKind::Monolith {
+                channel,
+                way: MonolithWay::Entrance,
+            }) => *entrances.entry(*channel).or_default() += 1,
+            Some(
+                ObjectKind::Monolith { .. }
+                | ObjectKind::SubterraneanGate
+                | ObjectKind::Whirlpool { .. },
+            ) => visitable += object.visitable.offsets().count(),
+            _ => {}
+        }
+    }
+    let exits: usize = channels.one_way_channels().map(|(_, e)| e.len()).sum();
+    let members: usize = channels.two_way_channels().map(|(_, m)| m.len()).sum();
+    let (whirlpools, gates) = (channels.whirlpools().len(), channels.gates().len());
+    if exits + members + whirlpools + gates != visitable {
+        return Err(format!(
+            "the channels list {} entries of {visitable} visitable tiles",
+            exits + members + whirlpools + gates
+        ));
+    }
+    let numbers: BTreeSet<u8> = entrances
+        .keys()
+        .copied()
+        .chain(channels.one_way_channels().map(|(channel, _)| channel))
+        .collect();
+    for channel in numbers {
+        let ends = (
+            entrances.get(&channel).copied().unwrap_or(0),
+            channels.exits(channel).len(),
+        );
+        *census.1.entry(ends).or_default() += 1;
+    }
+    for (_, members) in channels.two_way_channels() {
+        *census.2.entry(members.len()).or_default() += 1;
+    }
+    let distance = |a: Pos, b: Pos| {
+        let (dx, dy) = (u64::from(a.x.abs_diff(b.x)), u64::from(a.y.abs_diff(b.y)));
+        (dx * dx + dy * dy).isqrt()
+    };
+    let mut greedy = 0;
+    for gate in channels.gates() {
+        let Some(pair) = gate.pair else {
+            return Err(format!("the gate at {:?} has no pair", gate.tile));
+        };
+        if channels.gate_pair(pair) != Some(gate.tile) {
+            return Err(format!("the gate at {:?}'s pair is not mutual", gate.tile));
+        }
+        let nearest = channels
+            .gates()
+            .iter()
+            .filter(|other| other.tile.level != gate.tile.level)
+            .map(|other| distance(gate.tile, other.tile))
+            .min();
+        greedy += usize::from(nearest < Some(distance(gate.tile, pair)));
+    }
+    if greedy > 0 {
+        census.3.insert(name.to_owned(), greedy);
+    }
+    let counts = &mut census.0;
+    let mut add = |what, n| *counts.entry(what).or_default() += n;
+    add("one-way exits listed", exits);
+    add("two-way members listed", members);
+    add("Whirlpools' tiles listed", whirlpools);
+    add("gates' entries listed", gates);
+    add(PAIRS, gates / 2);
+    add("maps with channels", usize::from(!channels.is_empty()));
     Ok(())
 }
 
@@ -1636,7 +1862,7 @@ fn economy(
             ObjectKind::WaterWheel { .. } => add("economy: Water Wheels", 1),
             ObjectKind::Garden { .. } => add("economy: Mystical Gardens", 1),
             // E09 T8a1: the towns typed, their owners at load and formations.
-            ObjectKind::Town => {
+            ObjectKind::Town { .. } => {
                 add("E09 towns: typed", 1);
                 add("E09 towns: owned at load", owned);
                 let tight = Holds::Town {

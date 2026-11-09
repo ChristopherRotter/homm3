@@ -14,6 +14,7 @@ mod economy_xl_map;
 mod encode;
 mod fixtures;
 mod full_maps;
+mod gates_map;
 mod import;
 mod play;
 mod rewards;

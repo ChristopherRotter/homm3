@@ -12,7 +12,8 @@ use super::*;
 use crate::command::{AdventureCommand, AdventureEvent};
 use crate::command::{Offer, OfferKind};
 use crate::testing::{
-    FLYING, GUARD, MONSTER, PEASANT, army, hero_at, hero_details, hero_rules, started, world,
+    FLYING, GUARD, MONSTER, PEASANT, army, hero_at, hero_details, hero_rules, started, stream,
+    world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -109,7 +110,14 @@ fn walk(
         path: path.to_vec(),
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, heroes, RED, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            heroes,
+            (RED, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     (outcome, events)
 }

@@ -890,6 +890,19 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T105a2: a Whirlpool's loss, told to the hero's owner alone, as its army is
+            // (ADV-TEL-006).
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::WhirlpoolLoss { hero, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let own = before
+                    .heroes
+                    .iter()
+                    .any(|h| h.id == hero && h.details.is_some());
+                prop_assert!(own, "{:?} of a hero not the viewer's", event);
+            }
             // E08 T95a1: a dwelling's free creatures refused for want of room, told to the hero's
             // owner alone, as its army is; none of a free creature at its dwelling, told to the
             // dwelling's owner alone (ADV-HIR-001): nothing the viewer sees changes.
@@ -948,11 +961,13 @@ fn check_told(
                 aboard.push((hero, None));
             }
             // E08 T62b2: an event's firing, told to its visitor's owner alone (ADV-FOG-007); E08
-            // T74a: a message read likewise (ADV-PIK-017; the plans' bottles since T75b).
+            // T74a: a message read likewise (ADV-PIK-017; the plans' bottles since T75b); E08
+            // T105a1: a teleporter that leads nowhere likewise (ADV-TEL-004, ADV-TEL-005).
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::EventFired { hero, .. }
-                    | AdventureEventKind::MessageRead { hero, .. },
+                    | AdventureEventKind::MessageRead { hero, .. }
+                    | AdventureEventKind::LeadsNowhere { hero, .. },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
@@ -1316,9 +1331,18 @@ fn check_told(
                 }
                 group.push(player);
             }
+            // E08 T105a1: a jump is told as a step's two ends (ADV-FOG-004, A-41 not reproduced):
+            // a viewer is told an end only where it sees the hero.
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::HeroStepped {
+                        hero,
+                        from,
+                        to,
+                        seen_from,
+                        seen_to,
+                    }
+                    | AdventureEventKind::HeroTeleported {
                         hero,
                         from,
                         to,

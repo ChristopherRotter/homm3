@@ -75,6 +75,12 @@ where  = "crates/h3-adventure/src/state/passage.rs::AdventureState::passage"
 reason = "The original's class 85 (the Shipwreck) is the one object whose water tile a flight passes and a walker steps onto from land (0x4B26D6, 0x481D0D; survey E08-sea.md §15); it is an untyped blocker in the engine, so its water tile is closed to a flight as every other object's (D-46, ADV-MOV-009) until creature banks type it (the sketch's item 10)"
 epic   = "E08"
 
+[[stub]]
+id     = "ADV-STUB-16"
+where  = "crates/h3-adventure/src/state/jumps.rs::AdventureState::jump"
+reason = "A hero on a teleporter's exit: the battle with an enemy hero there (GAM-BAT-004, the jump held as Rest::Jump after a win) and a Subterranean Gate's meeting with a hero of the team on its pair (GAM-MET-001) come with E08 T105b (increment 11's design note §12, §13); until then the tiles within 1 of the exit are explored by the mover's owner and the mover stays on the entrance"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---
@@ -102,7 +108,7 @@ epic   = "E08"
 [[stub]]
 id     = "TWN-STUB-2"
 where  = "crates/h3-towns/src/setup.rs::town_buildings_setup"
-reason = "The start's two forbids the original adds before a town's buildings (E09 survey E09-towns.md section 5.3 step 2; design note E09-design.md section 5, 'Not now'): the Grail building forbidden in every town a Grail-victory map's condition does not name (0x5F2160, increment 2, with the victory conditions) and the Shipyard forbidden when the faction has none or neither tile two rows below the entrance, one column left or right, is a boat's spot (0x5C0C90, increment 4, with the Shipyard). Until then a custom set's built Shipyard without water is kept (the siege's keep counts it) and the Grail building may be built anywhere"
+reason = "The start's forbid the original adds before a town's buildings (E09 survey E09-towns.md section 5.3 step 2; design note E09-design.md section 5, 'Not now'): the Grail building forbidden in every town a Grail-victory map's condition does not name (0x5F2160, with the victory conditions). Until then the Grail building may be built anywhere. Narrowed by E09 T18a: the Shipyard without a boat's spot is forbidden by the game at its build (TWN-SET-011, h3_towns::without_water)"
 epic   = "E09"
 
 [[stub]]

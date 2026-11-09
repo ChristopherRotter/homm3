@@ -11,7 +11,9 @@ use h3_heroes::HeroDetails;
 use super::*;
 use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::setup::ObjectSetup;
-use crate::testing::{FLYING, PEASANT, WATER_WALKING, hero_at, hero_details, hero_rules, world};
+use crate::testing::{
+    FLYING, PEASANT, WATER_WALKING, hero_at, hero_details, hero_rules, stream, world,
+};
 
 const RED: PlayerId = PlayerId::new(0);
 
@@ -60,7 +62,14 @@ fn fly(
         hero: HeroId::new(1),
         path: path.to_vec(),
     };
-    let result = state.apply(&rules.0, &rules.1, store, RED, &command, &mut events);
+    let result = state.apply(
+        &rules.0,
+        &rules.1,
+        store,
+        (RED, &mut stream()),
+        &command,
+        &mut events,
+    );
     if result.is_err() {
         assert!(events.is_empty(), "a rejected move emitted events");
         assert_eq!(*state, before, "a rejected move changed the state");

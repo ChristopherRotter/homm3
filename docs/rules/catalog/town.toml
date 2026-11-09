@@ -1,7 +1,8 @@
 # Town rules (context `town`, crate `h3-towns`; E09): a town's record, its setup, the derivations
 # over it (the hall and the day's income, the siege's facts, the reveal, the Tavern, the
-# Capitol's limit) and the town on the map (ADR-0028). Format: docs/04-rules-and-sources.md §3.
-# Survey: docs/rules/surveys/E09-towns.md; ids: docs/epics/E09-design.md §19 (created by E09 T6b).
+# Capitol's limit), the town on the map (ADR-0028) and construction (increment 2). Format:
+# docs/04-rules-and-sources.md §3. Surveys: docs/rules/surveys/E09-towns.md, E09-construction.md;
+# ids: docs/epics/E09-design.md §19 and §34 (created by E09 T6b).
 
 [[rule]]
 id       = "TWN-INC-001"
@@ -294,7 +295,7 @@ id       = "TWN-VIS-002"
 title    = "A town's visitor: the hero on its entrance"
 context  = "town"
 status   = "implemented"
-summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town (whoever owns it: a step onto the entrance of an own town that only a map's placement gives another player's hero, TWN-SET-010, is its siege too), and the step onto it is the town's visit from the tile before, the siege against that visitor (TWN-SIE-001, TWN-SIE-002), never a field battle (GAM-BAT-004): a destination of the reachable tiles and the legal moves as a monster's, a flight's from a stop node only (it passes over the tile), never a boat's (a landing onto a hero). E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges` (the tile's object a town whose entrance it is, the object `visit_at` reads); E09 T8b2b: `check_step`'s and the passage's hero branch visit the town (`visit_at`, `town_visit`), the reach's cold `unmark_visitors` pass kept (the search's loop untouched)."
+summary  = "A town's visitor is the hero standing on its entrance (the first tile it is visited from), never stored: a hero that entered it, the main town's hero (TWN-SET-001), a hero moved onto the entrance (TWN-SET-010). A step onto another hero on a town's entrance meets it when it is of the mover's team (GAM-MET-001); one of another team defends the town (whoever owns it: a step onto the entrance of an own town that only a map's placement gives another player's hero, TWN-SET-010, is its siege too), and the step onto it is the town's visit from the tile before, the siege against that visitor (TWN-SIE-001, TWN-SIE-002), never a field battle (GAM-BAT-004): a destination of the reachable tiles and the legal moves as a monster's, a flight's from a stop node only (it passes over the tile), never a boat's (a landing onto a hero). A step onto an undefended town's entrance that a guard watches meets the guard first (E08 decision 279, ADV-MON-006): the hero stands on the entrance while that battle is open, and the town's capture follows it for a hero still on the map, so a hero of another team stands on a town's entrance only then. E09 T8a2 (design §9): `AdventureState::town_visitor`, `StaticMap::town_at`, `besieges` (the tile's object a town whose entrance it is, the object `visit_at` reads); E09 T8b2b: `check_step`'s and the passage's hero branch visit the town (`visit_at`, `town_visit`), the reach's cold `unmark_visitors` pass kept (the search's loop untouched)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -464,7 +465,7 @@ id       = "TWN-SET-003"
 title    = "A town's buildings at the start"
 context  = "town"
 status   = "verified"
-summary  = "At the game's build each town's buildings ever built and forbidden are set from the map's (h3m) set, its faction's record read through the map editor's 41 slots (a slot without one of the faction's buildings gives nothing). The record's Village Hall (its building of `hall` 1) is always ever built, even when a custom set forbids it. A custom set: forbidden its forbidden slots' buildings and, to a fixpoint, each building whose `forbidden_with` is forbidden (a horde's upgrade with its horde); built each built slot's building with every building it supersedes, less the forbidden; no draw. A standard set: the Fort (`fort` 1) with the map's flag; an owned town its Tavern (the building of role `tavern` that supersedes no other, not the Castle's Brotherhood of the Sword) and, only with the map's Fort, the level-1 dwelling and, when one draw of 1 to 100 from the setup stream is at most the part's `level_2_dwelling_chance` (the base pack's 30), the level-2 one (owned without a Fort: no dwelling and no draw; the draw is made with the Fort whether or not the record has the dwellings); a neutral town both dwellings, Fort or not, without a draw (TD-3); each with what it supersedes. Then the hordes' upgrade (decision 29): a building not forbidden whose non-empty `auto_with` is all ever built becomes ever built with what it supersedes, to a fixpoint, so that a horde and its level's upgraded dwelling stand as the upgraded horde alone. The standing set is derived from the ever-built set, so a custom set's horde never leaves its dwelling standing (the original's does: TWN-QUIRK-5, fixed). Not yet: the start's forbidden Grail building on a Grail-victory map in another town and Shipyard without a boat's spot (TWN-STUB-2, increments 2 and 4). The game draws the garrison (TWN-SET-004) before the buildings. E09 T6c (design §5): `h3_towns::town_buildings_setup`, `h3_towns::town_setup`; the game calls them at its build (E09 T7b2a, design §14 step 4: `h3_game`'s `town::build_towns`, each town in `TownId` order, owned when it has an owner at the start, after the random towns' factions and before the starting armies)."
+summary  = "At the game's build each town's buildings ever built and forbidden are set from the map's (h3m) set, its faction's record read through the map editor's 41 slots (a slot without one of the faction's buildings gives nothing). The record's Village Hall (its building of `hall` 1) is always ever built, even when a custom set forbids it. A custom set: forbidden its forbidden slots' buildings and, to a fixpoint, each building whose `forbidden_with` is forbidden (a horde's upgrade with its horde); built each built slot's building with every building it supersedes, less the forbidden; no draw. A standard set: the Fort (`fort` 1) with the map's flag; an owned town its Tavern (the building of role `tavern` that supersedes no other, not the Castle's Brotherhood of the Sword) and, only with the map's Fort, the level-1 dwelling and, when one draw of 1 to 100 from the setup stream is at most the part's `level_2_dwelling_chance` (the base pack's 30), the level-2 one (owned without a Fort: no dwelling and no draw; the draw is made with the Fort whether or not the record has the dwellings); a neutral town both dwellings, Fort or not, without a draw (TD-3); each with what it supersedes. Then the hordes' upgrade (decision 29): a building not forbidden whose non-empty `auto_with` is all ever built becomes ever built with what it supersedes, to a fixpoint, so that a horde and its level's upgraded dwelling stand as the upgraded horde alone. The standing set is derived from the ever-built set, so a custom set's horde never leaves its dwelling standing (the original's does: TWN-QUIRK-5, fixed). Not yet: the start's forbidden Grail building on a Grail-victory map in another town (TWN-STUB-2, with the victory conditions); the Shipyard without a boat's spot is forbidden by the game once the static map fixed the spots (TWN-SET-011, E09 T18a). The game draws the garrison (TWN-SET-004) before the buildings. E09 T6c (design §5): `h3_towns::town_buildings_setup`, `h3_towns::town_setup`; the game calls them at its build (E09 T7b2a, design §14 step 4: `h3_game`'s `town::build_towns`, each town in `TownId` order, owned when it has an owner at the start, after the random towns' factions and before the starting armies)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -677,4 +678,252 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 7 (TD-6 by the reading): the import moves the hero; a hero on another blocked tile of a town stays Unsupported::HeroInTown"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-SET-011"
+title    = "A town's Shipyard needs water by its entrance from the start"
+context  = "town"
+status   = "implemented"
+summary  = "Each town's spot, its Shipyard's boat tile, is fixed once when the game is built, after every object of the static map is placed and resolved (the random dwellings among them): the first of its type's boat offsets (the base pack's two: one column left, then one right, two rows below the entrance; column and row from the entrance, on its level) that is a tile of the map on water that no object blocks or is visited from (a boat lies on no object's tile and does not count), the test of a Shipyard's boat tile (ADV-SHY-001). Every town gets one or none, whatever its faction; an object leaving the tile later does not move it, nothing ever computes it again. A town without a spot has, from the start, its faction's buildings of role `shipyard` forbidden and out of its ever-built set (a custom set's built Shipyard removed, a standard set's never offered); a building that requires the Shipyard is kept (a custom set's Lighthouse beside the removed Shipyard), the rest of its sets unchanged; no draw, no stream position moved. E09 T18a (design §28): `ObjectKind::Town::boat_offsets` (adventure ruleset part v19), `StaticMap::town_boat_spot` (the town object's `Resolved::BoatTile`, in the static map's hash; not in the object's view), `h3_towns::without_water`, applied by the game after `AdventureState::new` and before the store of towns is made (`town::without_water`). A town event's Shipyard reads the spot too (TWN-EVT-003)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E09-towns.md section 5.3; E09 T1a2, T12a and T18a): town_buildings_setup (0x5C08C0, read whole) forbids the Shipyard (6) before the map's sets when the faction has none or when town_boat_spot (0x5C0C90, read whole; its only calls 0x5C09A5 with the entrance's column - 1, 0x5C09BF with column + 1, both row + 2) finds neither tile on the map, water, not blocked and without an object or with a boat (class 8); the custom set's built bits are then built less what is not buildable. new_game_heroes (0x4BFE70) reads the map first (new_game_bans at 0x4BFFB9, whose map_objects_place_all resolves the random dwellings, 0x4FD90B, and fixes the Shipyards' boat tiles, 0x4FD935) and calls setup_towns (0x4C0013, the towns' setups) after it, in one straight line of calls"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-towns.md section 5.3: CGameState::initTowns removes a built Shipyard from a town without water"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-11-02"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 28 (decision 46): the spot in the adventure's static map at ADV-SHY-001's step, the Shipyard forbidden and unbuilt by the game at its build"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-001"
+title    = "The build command: the owner builds in its town for the part's price"
+context  = "town"
+status   = "implemented"
+summary  = "A player builds a building in a town by the command `h3_towns::TownCommand::Build { town, building }` (no hero, no visit: the original's town list opens the hall; no field trusted but the two ids): only the town's owner, in its turn (TD-11 by batch TWN-2: the original's build dialog greys Build when the town's owner is not the current player, so a visitor of an ally's town never builds there), a building the hall offers (TWN-BLD-002 to -004), paid from the owner's treasury at the part's cost (TWN-BLD-006), then built with the day's mark (TWN-BLD-005). A refusal is typed (`h3_towns::TownCommandError`), the first in this order: `UnknownTown`, `NotOwner` (the game's), `UnknownBuilding`, `Built`, `Forbidden`, `Grail`, `Requirements`, `Capitol`, `OfferedAs` (a horde offered as its upgraded horde), `BuiltToday` (the hall's texts' order, the day's mark last; E09 design section 27, the agent's call), and leaves the state unchanged; a treasury short of the price is the game's `CannotPay`. E09 T17b: the command, its errors and the town's part `h3_towns::check_build` (the refusals from `UnknownBuilding` on and the price); the game's `GameCommand::Town` (the turn, the owner, the treasury, the payment and the build) comes with E09 T18b (design section 29)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12a and T14c; survey E09-construction.md sections 1.4 and 13): build_dialog_run (0x5D5F30) enables Build only for a building not built, in the buildable-now set and paid (0x462066); build_dialog_create (0x5D55C0) greys it when the town's owner (+0x1) is not the current player (0x5D5AE2); Build takes each non-zero resource of the cost (building_cost_list 0x5C1180) from the current player's record (0x5D679C) and town_screen_show_build (0x5D6A80) builds through town_build_effects with the mark and the visit"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-2a.md and E09-batch-2a-run2.md, batch TWN-2 row TWN-2-2 (the capture harness under Wine, 2026-11-07; scored in survey E09-construction.md section 13): a human's hero in its ally's town opens the hall, sees the Tavern buildable, and its dialog's Build is greyed; pressed, nothing is built or paid (TD-11 refused as VCMI does); row TWN-2-1: a build pays its cost from the owner's treasury and sets the mark"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md sections 7 and 9: the build request is refused unless the player owns the town (throwIfWrongOwner), and CGameHandler::buildStructure tests the building's state and takes the cost from the owner"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 27 and 29 (E09 decisions 42, 45 and 51): the command and its errors in h3-towns, the game's checks, the refusals' order"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-002"
+title    = "Buildable now: the requirements, the forbidden, the Grail, one Capitol"
+context  = "town"
+status   = "verified"
+summary  = "A town's hall may build a building of its faction's record that was never built (it or a building superseding it, the ever-built set), whose every requirement (the closure, TWN-BLD-007) is in the ever-built set (so a Castle satisfies a Fort, a Capitol a Town Hall), that is not forbidden (the map's set; the Shipyard without water is forbidden from the start, TWN-SET-011) and not of role `grail` (no hall slot offers it: the Grail's path, increment 5), and a Capitol (a hall-4 building) only while the owner holds no other town with a standing Capitol; nothing while the town was built in today (TWN-BLD-004). Ever buildable (the hall's \"not now\" against \"never\", for clients): not forbidden, not a Capitol while the owner holds one, every requirement ever built or not forbidden; neither the ever-built set nor the mark tested (the original's, so the Grail's building is ever buildable too). E09 T17b (design section 27): `h3_towns::buildable` (with the hall's offer of the hordes, TWN-BLD-003), `h3_towns::possible`, the refusals `Built`, `Forbidden`, `Grail`, `Requirements`, `Capitol` of `h3_towns::check_build`; the game's holds_capitol and the legal builds with E09 T18b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12a; survey E09-construction.md sections 1.2, 1.3, 2.1, 2.2, 2.4 and 2.6): town_buildable_now (0x5C0F20, read whole): each id not in the every-built set +0x158 whose requirement mask (building_requirements 0x697798) is in it, kept to the buildable mask +0x160 (the faction's list less the forbidden), the Shipyard out without its boat spot, the Capitol out while player_has_capitol (0x4B9F40: a standing 13 in another of the player's towns); hall_dialog_fill (0x461190) empties it while the day's mark +0x2 is set (0x461710); town_build_possible (0x5C0E60, read whole): the buildable mask, the Capitol's test, every requirement built or still allowed; no hall slot offers the Grail's building (26), which town_grail_build (0x5D30D0) builds at a visit with the Grail"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-2a.md and E09-batch-2a-run2.md, batch TWN-2 row TWN-2-1 (2026-11-07; survey E09-construction.md section 13): a Conflux town without the upgraded Altar of Air shows the upgraded Altar of Fire not now (town_build_possible true) and its Build greyed; with it, the slot buildable and the build done"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md sections 3 and 6: the same requirement closures over config/factions/*.json with config/buildingsLibrary.json (but the upgraded hordes, automatic, and TD-9), one Capitol a player, one build a town a turn (TOWNS_BUILDINGS_PER_TURN_CAP)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 27 (E09 decision 51): the hall's offer, the Grail never by the hall, the refusals' order; possible for clients over the owner's view"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-003"
+title    = "The hall's offer: a horde as its upgraded horde"
+context  = "town"
+status   = "implemented"
+summary  = "Once a level's upgraded dwelling was ever built, the hall offers the level's horde as its upgraded horde alone: a building `h` buildable now (TWN-BLD-002) for which the record has a building `u` that supersedes `h`, holds `h` in its `auto_with`, has the rest of its `auto_with` ever built and is not ever built itself is not offered (`TownCommandError::OfferedAs(u)`), and `u` is offered when it is buildable now on its own (it requires the upgraded dwelling alone, as the original's lists give 19 and 25). The original's buildable-now set holds both, and its hall's horde slot shows the upgraded horde, at the same cost in every faction (`Building.txt`), buying either leaving the same ever-built set (TWN-BLD-005): the engine offers the one so that one command names one outcome (E09 design section 27, the agent's call; a building automatic with `h` that does not supersede it is no such upgrade, and a forbidden `u` leaves neither offered, since a build of `h` would make `u`). E09 T17b: `h3_towns::buildable`, `h3_towns::check_build`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12a; survey E09-construction.md sections 1.2 and 6): hall_dialog_fill (0x461190) shows the horde's slot (18, and 24 for Rampart and Inferno) as its upgrade (19, 25) once the level's upgraded dwelling is built; the faction lists (0x63EC80) give the upgraded hordes the level's upgraded dwelling alone; town_build (0x5BE930) turns a horde with its level's upgraded dwelling standing into the upgraded horde, so the standing set is the same whichever is built"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 6: the upgraded hordes also need the horde and are automatic (BUILD_AUTO), never bought: the same end state, another buildable id"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 27 (E09 decision 51): the hall's offer, a horde as its upgraded horde"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-004"
+title    = "One build a town a day: the day's mark"
+context  = "town"
+status   = "implemented"
+summary  = "A town is built in at most once a day: its day's mark (`h3_towns::Town::built_today`, the original's +0x2) is set by a build of its owner's, cleared for every town at each day's start, kept by a capture unless the town passes from a team without a human to a team with one (then cleared), so that a town a human built in today cannot be built in again today by the human who took it, and neither set nor cleared by a town event's build, which leaves the day's build free. One a town a day for every player (E09 decision 43): the computer's once every two days on Easy and Normal comes with the computer player (E10, E13). Hashed (town state hash v2: after each town's forbidden set). E09 T17a (design section 26): the mark and the store's writes `h3_towns::Towns::build` (its `mark`), `Towns::start_day`, `Towns::captured` (the Capitol's limit, `Towns::apply_capitol_limit`, keeps it); E09 T17b: the refusal of a second build, `TownCommandError::BuiltToday`, the last of `h3_towns::check_build`'s, and the hall's empty offer while the mark is set (`h3_towns::buildable`); the game's calls (the day's start, the capture, the command) and the mark's view come with E09 T18b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12a; survey E09-construction.md section 3): town_build_effects (0x5BEDE0) sets the town's +0x2 with its mark argument, 1 (2 for a team without a human on Easy and Normal, 0x5BEE6C); new_day (0x4C8067) clears it for every town (a computer-only team's 2 counted down); town_change_owner (0x4C63B8) clears it only when the old owner's team has no human and the new owner's has one; town_events_apply (0x5BFEB0) builds without the mark (section 8.3)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 3: the town's built counter against TOWNS_BUILDINGS_PER_TURN_CAP (1), reset for every town at each new day; no difference by difficulty"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/GameStatePackVisitor.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "The game's manual (Heroes III, Towns, the Hall; survey E09-construction.md section 3): only one structure a day may be built in each town; the Heroes 3 wiki's difficulty page: the computer builds once every two days on Easy and Normal"
+  url        = "https://heroes.shoutwiki.com/wiki/Difficulty"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+[[rule]]
+id       = "TWN-BLD-005"
+title    = "What a build does to a town"
+context  = "town"
+status   = "implemented"
+summary  = "A build of a building in a town adds to its ever-built set the building and every building it supersedes, then each building whose non-empty `auto_with` is all ever built, with what it supersedes, to a fixed point, so that a horde and its level's upgraded dwelling make the upgraded horde whichever is built first; no test of the forbidden set, the requirements, the Capitol or the day's mark (the hall's tests are the command's, TWN-BLD-001 to -003; a town event's build has none, TWN-EVT-003). The standing set follows (derived, E09 decision 29) and every derivation of increment 1 reads the new record at once: the hall's income (TWN-INC-001), the silo (TWN-INC-002), the fort and the siege's facts (TWN-SIE-003), the Tavern's view level (TWN-VEW-002), the Capitol (TWN-VEW-001). The original's hall companions (23, 27 to 29 of the Rampart, the Necropolis and the Conflux) are display pieces the engine never has. A building's other effects come with the increments that build them (a dwelling's first creatures 3; the guild, the heroes' visit and the Tower's reveals 4). E09 T17a (design sections 26 and 27): `h3_towns::built_with`, written by `h3_towns::Towns::build`, which copies only the one town (ADR-0028 point 4) and gives its public facts before the build (`TownFacts`: the fort level, the Capitol, the mark) for the game's `TownChanged` (E09 T18b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a and T12a; survey E09-towns.md section 16.2, E09-construction.md section 4): town_build_effects (0x5BEDE0, read whole) calls town_build (0x5BE930: the building in the standing set +0x150, what it supersedes out, a horde with its level's upgraded dwelling standing or the upgraded dwelling with its level's horde standing turned into the upgraded horde, the hall companions of factions 1, 4 and 8), then recomputes the every-built set +0x158 as the standing set with what each standing building supersedes; no forbidden or requirement test there"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 4: CGameHandler::buildStructure adds the building with its automatic buildings (BUILD_AUTO, built when what they need stands), then the dwelling's creatures, the guild's spells, the Lookout's reveal and the visitors' visit: the same steps"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 26 and 27 (E09 decision 51): the hall's offer and the automatic buildings read over the ever-built set; the store's write copies one town"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-006"
+title    = "The costs of the buildings: Building.txt"
+context  = "town"
+status   = "verified"
+summary  = "A building's cost is the part's (`h3_towns::Building::cost`, in the core's resource order, each amount at least 1; empty for a free building), harvested from `Building.txt` as the original's start-up reads it into three tables: the neutral buildings 0 to 16 for every faction, the faction's buildings 17 to 25, the dwellings 30 to 43; the zero columns dropped, the Village Hall's 1 gold kept (never bought), the Grail's building free; the upgraded hordes cost their own rows (as their hordes). The AB part's costs name base's resources with their prefix. RoE's costs are E11's (SoD's are AB's file). E09 T16a (design section 24): the part's format and compiler (a cost's unknown resource, a resource twice or 0 refused); E09 T16b (design section 25): the harvest; E09 T17b: the price `h3_towns::check_build` names, which the game takes (E09 T18b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12a; survey E09-construction.md section 5): building_costs_load (0x5C14C0, read whole) reads Building.txt's seven columns (wood, mercury, ore, sulfur, crystal, gems, gold) into the neutral table (17 rows from row 104), the factions' 17 to 25 (nine rows a faction from row 4) and the dwellings (14 rows a faction from row 125); building_cost (0x5C1080) picks by id; the ids 26 to 29 are never asked; Building.txt of H3bitmap.lod harvested by h3-harvest (E09 T16b) into packs/base and packs/ab"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-2a.md and E09-batch-2a-run2.md, batch TWN-2 row TWN-2-1 (2026-11-07; survey E09-construction.md section 13): the Conflux's upgraded Altar of Fire built takes 5 mercury, 5 ore and 2 000 gold from Red's treasury, its Building.txt row"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 24 and 25: the format, the compiler's refusals, the harvest's three tables and prefixes"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-BLD-007"
+title    = "The requirements of the buildings: the executable's lists, closed"
+context  = "town"
+status   = "verified"
+summary  = "A building's requirements are the part's (`h3_towns::Building::requires`): its direct requirements in the pack (buildings of the same record, as the executable's faction lists give them), closed transitively by the compiler (the original's `building_requirements` table), never itself; a requirement outside the record and a cycle are refused. Tested against the ever-built set (TWN-BLD-002), so after a town event built a building without its requirements, a building that needs it still needs theirs. TD-9 (E09 decision 41, batch TWN-2): the Conflux's upgraded Altar of Fire needs the Altar of Fire and the upgraded Altar of Air, the executable's list (VCMI's and the fandom wiki's refuted); the upgraded hordes need the level's upgraded dwelling alone (TWN-BLD-003). E09 T16a (design section 24): the format and the closure; E09 T16b (design section 25): the harvest of the lists 0x63EC80."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a, T12a and T16b; survey E09-towns.md section 16.1, E09-construction.md section 6): the faction lists 0x63EC80, each building with its direct requirements, dumped again for every faction; building_requirements (0x697798) their transitive closure, which town_buildable_now and town_build_possible test; harvested by h3-harvest (h3_formats::exe::towns) into packs/base and packs/ab"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-2a.md and E09-batch-2a-run2.md, batch TWN-2 row TWN-2-1 (2026-11-07; survey E09-construction.md section 13): the upgraded Altar of Fire not now without the upgraded Altar of Air (the dialog names it alone), built with it: TD-9 as the executable's list"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as compared by survey E09-construction.md section 6 (config/factions/*.json with config/buildingsLibrary.json, a building's upgrades counted as a requirement): the same closures but the upgraded hordes (automatic, needing the horde too) and the Conflux's upgraded Altar of Fire (the Altar of Air instead of its upgrade: TD-9, refuted by TWN-2-1)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/factions"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 24 and 25 (E09 decision 41): the closure in the compiler, the harvest, TD-9 the list's"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-EVT-003"
+title    = "A town event's buildings"
+context  = "town"
+status   = "implemented"
+quirks   = ["TWN-QUIRK-7"]
+summary  = "A town event that fires (TWN-EVT-001) builds, after its resources, its buildings of the town's faction's record (the map's slots resolved through the faction at the build, a slot without one of the faction's none; the map's bits past its 41 slots none, TWN-QUIRK-7) less those ever built, less what another of its buildings supersedes (an event with the Fort and the Castle builds the Castle), less the Shipyard (role `shipyard`) when the town has no water, in index order (the original's id order), each as a build (TWN-BLD-005) without the day's mark, so the day's build stays free. No other test: not the requirements, the forbidden set, the Capitol (an event's Capitol beside its owner's other one stands: T-8, no quirk, E09 decision 44), the Grail, the cost or the mark. E09 T17b (design section 27): `h3_towns::event_buildings` (the town's water the game's input); the game's firing, builds and events come with E09 T18c (design section 30)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12b; survey E09-construction.md section 8.3): town_events_apply (0x5BFEB0, read whole) maps the event's bits through the town's faction (map_building_ids 0x6888C0), takes out what the every-built set +0x158 holds, what the faction's list lacks (0x6976F0), what another of the event's buildings supersedes (0x6A8BB8) and the Shipyard (6) without its boat spot, and builds each left in id order through town_build_effects without the mark and with the visit (0x5C0053); no requirement, forbidden, Capitol, Grail, cost or mark test"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 9: handleTownEvents builds each of the event's buildings the town lacks through buildStructure with force: no requirement, forbidden, Capitol, Grail or cost test, the day's count unchanged; it does not skip a Shipyard without water (no shipped event builds one)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Map Editor - Objects (the shoutwiki copy, its town events; survey E09-construction.md section 9): an event may build a building, a forbidden one included; one already built does nothing"
+  url        = "https://heroes.shoutwiki.com/wiki/Map_Editor_-_Objects"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 27 and 30 (E09 decision 44): the event's buildings in h3-towns, the water the game's; T-8 kept"
   confidence = "high"

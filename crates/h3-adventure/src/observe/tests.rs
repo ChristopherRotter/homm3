@@ -18,7 +18,8 @@ use crate::fog::{Sight, on_fringe};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::HeroSetup;
 use crate::testing::{
-    GNOLL, PEASANT, PIKEMAN, WOOD_PILE, hero_at, movement_rules, movement_rules_up_to, world_state,
+    GNOLL, PEASANT, PIKEMAN, WOOD_PILE, hero_at, movement_rules, movement_rules_up_to, stream,
+    world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -321,7 +322,14 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             path,
         };
         state
-            .apply(&rules.0, &rules.1, &[], RED, &command, &mut events)
+            .apply(
+                &rules.0,
+                &rules.1,
+                &[],
+                (RED, &mut stream()),
+                &command,
+                &mut events,
+            )
             .unwrap();
         // Then back from (5, 0) to (3, 0): out of blue's explored tiles onto its fringe, then off
         // the fringe onto a hidden tile.
@@ -330,7 +338,14 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             path: vec![p(4, 0), p(3, 0)],
         };
         state
-            .apply(&rules.0, &rules.1, &[], RED, &back, &mut events)
+            .apply(
+                &rules.0,
+                &rules.1,
+                &[],
+                (RED, &mut stream()),
+                &back,
+                &mut events,
+            )
             .unwrap();
         // The step onto (4, 0) enters blue's fringe, the one onto (5, 0) its explored tiles; back,
         // the step onto (4, 0) leaves them, the one onto (3, 0) leaves the fringe.
@@ -367,7 +382,10 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::BoatBuilt { .. }
                     | AdventureEventKind::MonsterAdded { .. }
                     | AdventureEventKind::NoneToRecruit { .. }
-                    | AdventureEventKind::JoinRefused { .. } => (None, None),
+                    | AdventureEventKind::JoinRefused { .. }
+                    | AdventureEventKind::HeroTeleported { .. }
+                    | AdventureEventKind::LeadsNowhere { .. }
+                    | AdventureEventKind::WhirlpoolLoss { .. } => (None, None),
                 })
             })
             .collect();

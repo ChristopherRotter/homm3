@@ -6,7 +6,7 @@ crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12);
 T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), done
 2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint passed the same day (SRV-Q22), T8 after
 it; M6 refined 2026-10-13 (SRV-Q23), done the same day (T1 to T6), its checkpoint passed the
-same day (SRV-Q24)). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+same day (SRV-Q24); M5 part 1 refined 2026-11-09, SRV-Q25). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); [ADR-0021](../adr/0021-server-discovery.md)
 (discovery, accepted at the M6 refinement). Working detail (messages, flows, journals, the ladder sketch):
@@ -245,7 +245,10 @@ M0 starts now, while E04b finishes (SRV-Q7).
   decisions, the per-player record; the server-side pieces E08 decision 8 lists (trusted
   system commands for disconnects and turn timers, sequence numbers against duplicates,
   concurrent battles); `h3-game`'s surface as the adventure lane's game-orchestration draft gives it (points 1, 2, 6; SRV-Q6); long journals and the case for
-  state saves measured.
+  state saves measured. **In two parts** (the user's order of 2026-10-31, the map client lane's
+  note; SRV-Q25): part 1 the whole game's wire, a session hosting one game in-process and its
+  per-viewer record, so that a golden adventure replay becomes a record (tasks below); part 2,
+  refined after part 1's checkpoint, the rest.
 - **M6 Discovery** (refined 2026-10-13, SRV-Q23, ADR-0021; done 2026-10-13, its checkpoint passed
   the same day, SRV-Q24; `E16-log.md`): the server keypair and the signed
   welcome, the server card and `Describe`, peers in the configuration, the peer fetch with its TLS
@@ -262,7 +265,67 @@ M0 starts now, while E04b finishes (SRV-Q7).
 
 ## Closed milestones' tasks, exit criteria and review lists
 
-Moved to `E16-archive.md` (verbatim; the checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24 passed; the done tasks in full: `E16-log.md`): the task lists of M1, M2, M3, M4 and M6, their exit criteria, and the review lists of the M1, M2, M3, M4 and M6 checkpoints. Read a review list when a decision cites it (`git grep -n 'F-4' docs/epics/E16-archive.md`). M5 has no task list yet: it is refined when E08's increment 3 has been built.
+Moved to `E16-archive.md` (verbatim; the checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24 passed; the done tasks in full: `E16-log.md`): the task lists of M1, M2, M3, M4 and M6, their exit criteria, and the review lists of the M1, M2, M3, M4 and M6 checkpoints. Read a review list when a decision cites it (`git grep -n 'F-4' docs/epics/E16-archive.md`). M5's part 1 is below.
+
+## M5 part 1: the whole game on the wire (refined 2026-11-09, SRV-Q25)
+
+The user's decisions: the game's types are mapped exhaustively, as the battle's (ADR-0018 point
+5); a viewer's view stays current by a diff of its observation if T1 measures a diff really
+cheap, else by events only, folded by the client; the two battle-wire items of the inbox first
+(the own hero's Eagle Eye picks at the end, the start's events in the record: protocol v38,
+record format v3, done before T0). What the map viewer reads (E24 M4 T3, T4; the queue's inbox,
+2026-10-31) is the target; an object's identity in the map's list is the adventure lane's (its
+inbox, the same day), mapped when it lands.
+
+- **T0 done** (2026-11-09, #799; `E16-log.md`): the crates' edges, ADR-0018 points 5 and 7 amended.
+- **T1 done** (2026-11-09; the design note §14, `E16-log.md`): **events only** (observing and
+  diffing every viewer costs 22 times an `apply` on the golden replays, 730 to 860 times on an XL
+  map with eight players); what a fold lacks is the adventure and town lanes' (SRV-Q26: foldable
+  events and a query for what a viewer sees on the tiles it explored since a given grid).
+- **T2 the observation's wire** (`wire::game`), in two parts (the user, 2026-11-09; one pull request, #805):
+  - **T2a done** (2026-11-09; `E16-log.md`): the adventure map (`wire::game::Adventure`: the
+    planes, the tiles as a palette and an index per tile, heroes, objects, boats, what the viewer
+    knows), `map::game::adventure`; no message yet, no version step.
+  - **T2b done** (2026-11-09; `E16-log.md`): the rest (`wire::game::GameObservation`: the
+    players, the turn group, the month, the treasury, today's timed events, the open decision,
+    the heroes with the owner's details, the towns, the battle as the existing `Observation`) and
+    `map::game::observe`, the one public entry. No diff (T1): the observation is the snapshot.
+- **T3 the commands, answers, rejections and events**, in three parts (the user, 2026-11-09; one
+  pull request after T3c): **T3a** the commands and rejections both ways, **T3b** the events,
+  **T3c** the fold and its test (in `h3-protocol`'s tests through `h3-files`, the user's crate for
+  the files, made first); no message and no version step (with T5's session). Projected per viewer (`h3_game::project`);
+  round trips; the exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records)
+  and its test over the golden replays (a snapshot folded with the events equals `observe` after
+  every command, for every viewer), each gap of SRV-Q26 a stub until its lane lands it.
+- **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
+  the map's identity (its content hash), the key tables of the game's content kinds.
+- **T5 the game session in-process**: the players as seats and viewers, the loop over
+  `h3_game::apply` with the trusted actor, the legal commands to whoever must act (decisions, a
+  battle's side outside the turn), the system actor's commands from its caller (computer seats are
+  part 2's), the journal (the adventure replay's commands with their actors), each viewer's record
+  (a game record's header: record format v4); each viewer's last explored grid, and the engine's
+  answer for what it newly sees sent with the events when its count grew (SRV-Q26).
+- **T6 a golden replay as a record**: `h3-server record <replay>` runs an adventure replay through
+  the session and writes each player's record; a test over the golden replays (each re-runs to its
+  hashes through the session; a viewer's bytes depend only on what it may see); the map client
+  lane's inbox note with the record's form.
+- **T7 closure**: mutation tests over the game's messages, the frame and record bounds for large
+  observations, `docs/06-security.md`'s game part, a fresh reviewer, the checkpoint.
+
+**Review list so far** (the autonomy contract's queue, for part 1's checkpoint):
+`Query::CreatureCastTargets {}` (a message shape); the last `Snapshot` before `GameEnded` and the
+start's `Events` (v38); T2a's shapes: a map's tiles as a palette of distinct views and an index
+per tile (lossless, a few views a map; one packed number cannot hold every handle below 2^53), the
+planes' words and an object's masks as `WireU64` strings; T2b's: a decision's parts as struct
+variants holding their own types (`Decision::Offer { offer }`, for T3's events to reuse), a fort
+level as 0 to 3 (as the battle's `Siege`), a town's map name as a string (bounded with the frames
+in T7), a hero's `offered` levels shown to its owner as the engine's observation holds them.
+
+**Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
+offers, players as seats), turn groups, timers and the level-up hold (system commands, E08
+decision 8; the inbox's 2026-10-21 note, SRV-Q19), computer seats for the unowned sides
+(`h3_battle_ai::choose_fair`, the inbox's 2026-11-02 note), concurrent battles, sequence numbers
+against duplicates, long journals measured, spectators once `h3_game::Viewer` has one.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
@@ -271,8 +334,8 @@ Moved to `E16-archive.md` (verbatim; the checkpoints SRV-Q12, -Q16, -Q18, -Q22, 
   file names in the data directory, the snapshot cadence of the logs.
 - **Queue for the milestone review:** the message schema inside the accepted ADR, the record
   and journal formats, the configuration format, a light dependency (`getrandom`, a logging
-  facade), a dependency on `h3-cli`'s library for the replay file writer (or a move of the
-  writer into `h3-sim`, a battle-lane ask), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
+  facade), a dependency on `h3-cli`'s library for the replay file writer (since 2026-11-09
+  `h3-files`, the user's crate for the files), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
   default of the shadow-instance option.
 - **Stop the line:** seams and contracts, the engine API the server calls (a spectator viewer,
   `h3-game`'s surface), a second runtime, more `tokio` features or an HTTP framework, a TLS

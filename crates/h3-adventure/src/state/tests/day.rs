@@ -16,7 +16,7 @@ use crate::ruleset::ObjectTypeId;
 use crate::setup::{ObjectSetup, Pos, TileMask};
 use crate::testing::{
     BARRENS, GNOLL, HALLOW, LOGISTICS, PATHFINDING, PIKEMAN, SCOUTING, hero_at, hero_details,
-    hero_rules, world,
+    hero_rules, stream, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -76,7 +76,14 @@ fn walk(
         path: path.to_vec(),
     };
     state
-        .apply(&rules.0, &rules.1, heroes, RED, &command, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            heroes,
+            (RED, &mut stream()),
+            &command,
+            &mut events,
+        )
         .map(|_| events)
 }
 

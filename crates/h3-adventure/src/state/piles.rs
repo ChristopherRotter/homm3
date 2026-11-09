@@ -163,7 +163,7 @@ impl AdventureState {
             ObjectKind::Dwelling { .. } => {
                 self.end_dwelling_battle(index, (hero, tile), (survivors, won))
             }
-            ObjectKind::Town => self.end_town_battle(index, (hero, tile), (survivors, won)),
+            ObjectKind::Town { .. } => self.end_town_battle(index, (hero, tile), (survivors, won)),
             _ if self.object_at(index).guards.is_some() => {
                 let left = if won { Vec::new() } else { survivors.to_vec() };
                 self.army_left.set(index, Some(left));

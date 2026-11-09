@@ -1884,3 +1884,127 @@ for E08, the ecosystem for its refinement).
   the profile and the trade-off.
 - **The workload** re-baselined (+3.44 %): `master`'s drift (e7fd849..aaa9630), measured on a
   clean worktree of `master` at the same count.
+
+### The inbox's battle-wire items and M5's refinement, part 1 (2026-11-09)
+
+The user's SRV-Q25 (`QUESTIONS-ANSWERED.md`): M5 part 1 refined (the epic's "M5 part 1"); of the
+inbox's three battle-wire items for the client lane, the first two before M5 T0, the previews
+when online play needs them.
+
+- **The own hero's Eagle Eye picks at the end** (CLT-STUB-3). The picks are made during the
+  battle with no event (BAT-MAG-069), so a seat learned them only from a snapshot. Options were a
+  field in `GameEnded`, a private event per pick (the battle lane's) or a last snapshot; built:
+  `Session::tell_end` sends every seat and spectator its last `Snapshot` (the battle as it ended,
+  `map::observe` for its viewer) right before `GameEnded`, also after a forfeit, a void game and a
+  ranked game's held end. No new field: the end's whole view, the picks in `OwnHero::learned`.
+- **The start's events** (CLT-Q20). `Session::new` starts the battle with `BattleState::start`
+  and keeps its events (`Session::opening`); when every seat is held, every viewer then watching
+  gets them in one `Events` message, before the bots' first command and any `YourTurn`, projected
+  as every message is. A seat re-taken and a spectator joining later never get them; a restore
+  sends nothing (its viewers start afresh). The join's `Snapshot` is taken after the start (the
+  engine keeps no state before it), so it already shows their effects; the client lane's inbox
+  says so.
+- **Versions.** Protocol v38 (the messages unchanged, their order new); record format v3 (a
+  record's first `Events` is no longer a command's, and it ends with a `Snapshot`). The HANDOFF's
+  versions line said 35: v36 (`NotCreated`, the client lane's T5a, reviewed as built) and v37
+  (CLT-Q40, the morale and luck sources) had landed without it.
+- **Tests.** `the_start_is_told_before_any_command_and_the_end_after_a_last_snapshot`: the start's
+  events as `Events { n: 2 }` for both seats and an early spectator, none for a late spectator or
+  a re-taken seat; each viewer's last snapshot equals the observation of the journal's re-run. Six
+  tests' expected message sequences and numbers moved by the two messages; in the client lane's
+  crate (`cross-lane`, the user's consent) `record.rs`'s version text and `connect/tests.rs`'s
+  snapshot count (3: the last one).
+- **Bench.** `session-random-play-full` 339 230 528 Ir, +4.77 % against `master`'s 323 786 098
+  (itself +3.93 % over the old baseline 311 535 698: the battle engine's drift): the shape is
+  `master`'s but `Session::tell_end` (15.2 M inclusive, the 40 last snapshots, as the joins' 40
+  cost 12.9 M) and the start's `Events` (0.2 M); re-baselined.
+
+### M5 T0 and T1 — the edges; the measurement: events only (2026-11-09)
+
+T0 merged as #799 (`master` 3c9cff3), the epic's bullet verbatim:
+
+- **T0 `shared/`** (merged first): `arch.toml` gives `h3-protocol` the edges to `h3-game`,
+  `h3-adventure`, `h3-heroes` and `h3-towns` (dev: the adventure's and the towns' packs, `h3-map`
+  for test games), `h3-server` the same and `h3-map`, `h3-pack-adventure`, `h3-pack-towns`;
+  ADR-0018 point 5 amended (the game's enums and observation structs mapped exhaustively) and
+  point 7 (a game's viewers are its players; a spectator once `h3_game::Viewer` has one); the
+  global trap "Battle types on the wire" widened to the game's types, in force from T2.
+
+T1 (SRV-Q25's measurement; the numbers, the method and the gaps in the design note §14):
+
+- **The program.** A scratch example of `h3-server` (release build, in a worktree; not kept in the
+  repo: its method is §14's, sent to the user as a file). Per command: `apply` with a recording
+  sink, then every player viewer's `observe`, its diff against the previous observation and the
+  projection of the command's events; the least of three runs each; sizes as JSON estimates
+  calibrated on the battle observation's wire (`Debug`/JSON 1.09 to 1.22).
+- **The games.** The 55 golden adventure replays (14 264 commands, maps of 12 to 36 tiles) and two
+  random games of eight players, 28 days, on `e08-xl-144` (1 351 commands) and `e08-economy-144`
+  (1 495), the fixtures' eight heroes one to each colour. The shipped XL maps were not staged (no
+  computer folder linked, no original data): the fixtures are the stand-in, as rich in objects.
+- **The result.** Observing and diffing every viewer: 22 times an `apply` on the golden replays,
+  864 and 730 times on the XL games, never at or below it; only the viewers told an event: 17,
+  237, 192; only those whose explored tiles grew: 0.75, 10.8, 9.1. A snapshot 15.5 KB (small maps)
+  and 96 KB (XL) per viewer; a diff's median 343 B and 0 B, its mean mostly the battle
+  observation sent whole; the events 338, 78 and 69 B per viewer and command. **Events only**, by
+  SRV-Q25's rule.
+- **What a fold lacks** (SRV-Q26, the user: foldable engine events and one query): a reveal's
+  content, a hero's points left, what comes into view without a reveal, two changes told to
+  nobody who saw them (`rewards-s162-d28` command 35, `towns-s173-d21` command 205). The adventure
+  and town lanes' inboxes hold them; T3's fold test checks them.
+- **The baseline.** CI's last two runs on `master` (3c9cff3, a0d5504) never started (no job, an
+  outage); the sandbox's full local verify of a0d5504's code passed and stands in
+  (`docs/05-testing.md`, "When CI cannot run").
+
+### M5 T2a — the adventure map on the wire (2026-11-09)
+
+The user split T2 in two parts (T2a the adventure map, T2b the rest of the observation), then took both in one pull request (#805).
+
+- **The types** (`wire::game`, provisional): `Adventure` (the viewer, the map's size, the
+  explored and fringe planes as `WireU64` words, the tiles, heroes, objects, the bought
+  Cartographers, the keys, the known objects, the empty boats), `Tile` (`Hidden {}`, `Ground`,
+  `Seen` with the static tile's five flags), `MapHero` and `OwnMapHero`, `Object` (its three masks
+  as `WireU64`), `Monster`, `Guards`, `KnownObject` and `Known` (five variants), `Boat`, and the
+  shared `Pos`, `ObjectRef`, `Amount`, `ArmyStack`, `Formation`.
+- **The tiles as a palette.** A tile's view is three handles and five flags; packed losslessly
+  into one number it needs 57 bits field by field, and even counted exactly (one hidden view, the
+  ground views over a `u16` terrain and two optional `u16` handles, 32 seen views per ground one)
+  the views number 33 × 2^48 and more, beyond the 2^53 a JavaScript client holds. So `palette` holds each
+  distinct view once, in the order the tiles first use it, and `tiles` an index per tile;
+  `Adventure::tile` reads one. The fixture maps of 2 592 tiles hold 4 to 64 views over 28 days of
+  random play.
+- **The mapping** (`map::game`): every field named in a pattern, every enum matched without a
+  wildcard; the palette by a `BTreeMap` from view to index. `map::game::adventure(state, rules,
+  viewer)` takes the viewer and calls the engine's `observe` (ADR-0018 point 7); T2b's `observe`
+  maps the whole observation through the same parts. No message carries it yet (T3), so no
+  protocol version step.
+- **Tests** (`tests/game.rs`): a test-only inverse gives the engine's observation back from the
+  wire; a hand-built observation with every variant maps back and round-trips (JSON, postcard);
+  the JSON is serde's default form with the 64-bit words as strings; random games on five
+  fixture maps (duel, towns, rewards, economy, sea; 28 days, up to 400 steps) map back for every
+  viewer after every step, the palette distinct and in first-use order. The played games show
+  foreign heroes, known objects, boats, mine guards and towns; no `Ground` tile (the faithful
+  profile shows the fringe's objects, ADV-QUIRK-1): the hand-built case covers it.
+- **Dependencies.** `h3-protocol` takes `h3-adventure` and `h3-game` (dev: `h3-map`, the
+  adventure's and the towns' packs), as T0's `arch.toml` edges allow.
+
+### M5 T2b — the rest of the game's observation (2026-11-09)
+
+- **The types** (`wire::game`, provisional): `GameObservation` (the viewer, the day, `Month`, the
+  `Player`s, the turn group, the treasury, today's timed events, the open `Decision`, the
+  `HeroInfo`s, the adventure map, the `Town`s, the battle as the battle wire's `Observation`);
+  `Decision`'s seven kinds as struct variants (`Offer { offer }` with `Offer` and its 13
+  `OfferKind`s, `LevelUp { level_up }`, `Meeting`, `ArmyDialog`, `Choice { choice }` with its two
+  `ChoiceKind`s, `University` with `UniversityVisit` and the `SlotState`s, `Hire { hire }` with
+  `HireTarget` and `HireCreature`), `PrimarySkill`; `HeroDetails` with `OfferLevels`,
+  `SkillLevel`, `Artifact`, `Bonuses`; `Town` with `Garrison`, `GarrisonStack`, `TownOwnerFacts`
+  (a fort level as 0 to 3, as the battle's `Siege`).
+- **The mapping** (`map::game`): `observe(state, rules, viewer)` calls `h3_game::observe` and maps
+  the whole, every field named, every enum without a wildcard; the battle through the battle's
+  own `map::observation`. T2a's `map::game::adventure` is gone: one public entry.
+- **Tests:** the inverse covers the whole observation (the battle compared on the wire); a
+  hand-built observation for each decision kind, each offer's and choice's kind, the four primary
+  skills and slot states, the three months, the four fort levels, details and owner facts present
+  and absent, maps back and round-trips; the played games of T2a check `observe` for every viewer
+  after every step, round-tripping every observation with a decision or a battle (they meet
+  offers, level-ups, meetings, a choice and battles).
+- **Dependencies.** `h3-heroes` too (T0's edge).

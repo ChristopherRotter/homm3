@@ -13,12 +13,15 @@
 //!   any connection logged in as it re-takes the seat, with no token, and no token takes it
 //!   ([`refusal`]); its `Joined` carries none. A seat an anonymous connection takes keeps its
 //!   token.
-//! - **The loop.** The game starts when every seat is held (a bot's always is). A command is
+//! - **The loop.** The game starts when every seat is held (a bot's always is): every viewer then
+//!   gets the events of the battle's start (an `Events` message before any command, CLT-Q20; the
+//!   snapshot of a join already shows them). A command is
 //!   validated and applied by the engine; a rejected one changes neither the battle nor the
 //!   log. An accepted one is acknowledged to its seat (`Accepted`, echoed), then every viewer gets
 //!   the events projected for it (an `Events` message for every accepted command, even an empty
 //!   one, so that what a viewer receives does not depend on what it may not see), then bots act
-//!   while it is their turn, then the seat to act gets `YourTurn` or every viewer `GameEnded`.
+//!   while it is their turn, then the seat to act gets `YourTurn` or every viewer its last
+//!   `Snapshot` (the battle as it ended, as it sees it: CLT-STUB-3) and `GameEnded`.
 //! - **Viewers.** Each side is a viewer with its own message numbers `n` and its *record*, the
 //!   log of every numbered message it was sent (also while no connection holds the seat).
 //!   `Replay` and `Record` answers carry the last number and are not recorded. Everything a viewer
@@ -413,6 +416,10 @@ pub struct Session<'r> {
     manifest: Manifest,
     /// The battle.
     state: BattleState,
+    /// The events of the battle's start (`BattleState::start`: a tactics phase, the first turn,
+    /// a bad-morale freeze, a town's turrets and Catapult acting in round 1), told to every viewer
+    /// when the game starts, before any command (CLT-Q20); empty once told.
+    opening: Vec<h3_battle::Event>,
     /// The attacker's and the defender's seat.
     seats: [SeatState; 2],
     /// Whether every seat was held at once.
@@ -473,7 +480,8 @@ impl<'r> Session<'r> {
         config: GameConfig,
         seats: [SeatKind; 2],
     ) -> Result<Self, SetupError> {
-        let state = BattleState::new(ruleset, &config.setup, config.seed)?;
+        let mut opening = Vec::new();
+        let state = BattleState::start(ruleset, &config.setup, config.seed, &mut opening)?;
         // A ranked game's player seats are empty from its start (E16 M4 T3a).
         let ranked = config.ranked.is_some();
         let seats = seats.map(|kind| SeatState {
@@ -496,6 +504,7 @@ impl<'r> Session<'r> {
             game: config.game,
             manifest: map::manifest(ruleset),
             state,
+            opening,
             seats,
             started: false,
             journal: Journal {
@@ -996,6 +1005,8 @@ impl<'r> Session<'r> {
             self.started = true;
             self.entries.push(Entry::Spectators(self.watchable));
             self.entries.push(Entry::Started);
+            let opening = core::mem::take(&mut self.opening);
+            self.tell(&opening, out);
             self.advance(out);
         } else if self.started && self.state.side_to_act() == Some(side) {
             self.your_turn(side, out);
@@ -1353,8 +1364,24 @@ impl<'r> Session<'r> {
         }
     }
 
-    /// Every viewer and spectator hears the game's end.
+    /// Every viewer and spectator hears the game's end: first its last `Snapshot`, the battle as
+    /// it ended as the viewer sees it (CLT-STUB-3: a seat's own hero's Eagle Eye picks, which no
+    /// event shows, BAT-MAG-069), then `GameEnded`.
     fn tell_end(&mut self, result: Outcome, out: &mut Vec<Outbound>) {
+        for side in BattleSide::BOTH {
+            let observation = map::observe(&self.state, self.ruleset, side);
+            self.send(side, |n| ServerMessage::Snapshot { n, observation }, out);
+        }
+        if !self.watchers.is_empty() {
+            let observation = map::observe(&self.state, self.ruleset, h3_battle::Viewer::Spectator);
+            self.spectate(
+                |n| ServerMessage::Snapshot {
+                    n,
+                    observation: observation.clone(),
+                },
+                out,
+            );
+        }
         self.tell_all(|n| ServerMessage::GameEnded { n, result }, out);
     }
 

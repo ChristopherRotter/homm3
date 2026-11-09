@@ -1,6 +1,6 @@
 //! A town's own record (ADR-0028 point 2; E09 increment 1's design note §4): [`Town`], what the
-//! rules change (its faction, the buildings ever built and forbidden), and [`TownStatic`], what
-//! the map gives and nothing changes (its name, its events). The store ([`crate::Towns`]) holds
+//! rules change (its faction, the buildings ever built and forbidden, the day's mark), and
+//! [`TownStatic`], what the map gives and nothing changes (its name, its events). The store ([`crate::Towns`]) holds
 //! both by `h3_contracts::TownId`.
 
 use alloc::string::String;
@@ -13,7 +13,8 @@ use crate::building::BuildingSet;
 use crate::ruleset::{MAX_CREATURE_LEVELS, TownRecord};
 
 /// A town's record: its faction and the buildings ever built and forbidden, each a set over its
-/// faction's town record's buildings ([`TownRecord::buildings`]).
+/// faction's town record's buildings ([`TownRecord::buildings`]), and whether it was built in
+/// today (the day's mark, E09 design §26).
 ///
 /// `built` is **every building ever built**, the superseded ones too (the original's every-built
 /// set +0x158; E09 survey §16.5); the buildings **standing** are derived from it
@@ -24,16 +25,41 @@ pub struct Town {
     faction: FactionId,
     built: BuildingSet,
     forbidden: BuildingSet,
+    built_today: bool,
 }
 
 impl Town {
     /// A town of `faction` with the buildings `built` ever built and `forbidden` forbidden, each
-    /// a set over the faction's town record (the build's setup gives them, E09 T6c).
+    /// a set over the faction's town record (the build's setup gives them, E09 T6c), not built in
+    /// today.
     pub const fn new(faction: FactionId, built: BuildingSet, forbidden: BuildingSet) -> Self {
         Self {
             faction,
             built,
             forbidden,
+            built_today: false,
+        }
+    }
+
+    /// The town with the buildings `built` ever built and the day's mark `built_today`, its
+    /// faction and forbidden set kept (the store's writes, E09 design §26).
+    pub(crate) const fn rebuilt(&self, built: BuildingSet, built_today: bool) -> Self {
+        Self {
+            faction: self.faction,
+            built,
+            forbidden: self.forbidden,
+            built_today,
+        }
+    }
+
+    /// The town with the buildings `built` ever built and `forbidden` forbidden, its faction and
+    /// day's mark kept (a Shipyard without water, [`crate::without_water`], E09 T18a).
+    pub(crate) const fn reset(&self, built: BuildingSet, forbidden: BuildingSet) -> Self {
+        Self {
+            faction: self.faction,
+            built,
+            forbidden,
+            built_today: self.built_today,
         }
     }
 
@@ -50,6 +76,13 @@ impl Town {
     /// The buildings forbidden.
     pub const fn forbidden(&self) -> BuildingSet {
         self.forbidden
+    }
+
+    /// Whether the town was built in today (the original's +0x2 with the values 0 and 1 only, E09
+    /// decision 43): set by a build of its owner's, cleared at each day's start and by a capture
+    /// from a team without a human by one with one, never by a town event (E09 design §26, §30).
+    pub const fn built_today(&self) -> bool {
+        self.built_today
     }
 
     /// The buildings standing: those ever built less every building an ever-built one supersedes
@@ -167,6 +200,15 @@ mod tests {
         let town = Town::new(FactionId::from_raw(2), set(&[0, 1]), set(&[5]));
         assert_eq!(town.faction(), FactionId::from_raw(2));
         assert_eq!((town.built(), town.forbidden()), (set(&[0, 1]), set(&[5])));
+        assert!(!town.built_today());
+        // A rebuilt town keeps its faction and forbidden set.
+        let rebuilt = town.rebuilt(set(&[0, 1, 4]), true);
+        assert_eq!(rebuilt.faction(), FactionId::from_raw(2));
+        assert_eq!(
+            (rebuilt.built(), rebuilt.forbidden()),
+            (set(&[0, 1, 4]), set(&[5]))
+        );
+        assert!(rebuilt.built_today());
     }
 
     #[test]

@@ -661,7 +661,7 @@ async fn a_player_away_beyond_the_grace_forfeits_and_the_replay_holds_the_game_s
     let path = replay_file(&config.server.data, game);
     assert_eq!(replay, std::fs::read_to_string(&path).unwrap());
     assert!(replay.contains("winner = \"none\""), "{replay}");
-    h3_cli::verify_file(&path, &config.content.packs).unwrap();
+    h3_files::verify_file(&path, &config.content.packs).unwrap();
     // Bob takes his seat in the game over; nothing more happens in it.
     let mut bob = player(&running, "bob", 2).await;
     takes(&mut bob, game, bob_seat).await;

@@ -11,7 +11,7 @@ use crate::ruleset::MAX_GAIN;
 use crate::setup::MonsterSetup;
 use crate::testing::{
     BARRENS, GNOLL, HALLOW, MONSTER, PEASANT, PIKEMAN, RANDOM_MONSTER, SAND, SWAMP, WOLF, hero_at,
-    key, movement_rules_edited, world,
+    key, movement_rules_edited, stream, world,
 };
 
 const CART: CreatureTypeId = CreatureTypeId::from_raw(4);
@@ -550,7 +550,7 @@ fn a_step_onto_a_guarded_tile_ends_the_move() {
             path,
         };
         state
-            .apply(&core, &part, &[], RED, &step, &mut events)
+            .apply(&core, &part, &[], (RED, &mut stream()), &step, &mut events)
             .map(|outcome| (outcome, events.len()))
     };
     // Past the guarded tile (2, 1): refused, nothing changed.
@@ -599,7 +599,7 @@ fn a_visit_from_a_guarded_tile_tests_no_guard() {
         };
         let mut events: Vec<AdventureEvent> = Vec::new();
         state
-            .apply(&core, &part, &[], RED, &step, &mut events)
+            .apply(&core, &part, &[], (RED, &mut stream()), &step, &mut events)
             .unwrap()
     };
     // The pile beside it: picked up, and its guard does not visit.

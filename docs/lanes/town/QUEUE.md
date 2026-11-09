@@ -8,25 +8,28 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17 (next), T18a to T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a (done), T18b (next), T18c, T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T17 — `h3-towns`: the day's mark, the store's writes, the rules and `TownCommand`** (design
-§26, §27, §34, §35's round 5; decisions 43, 45, 49; queued 2026-11-07 by T16b; `cross-lane`: the
-game state hash, the adventure lane's): `Town::built_today` and the town state hash v2 (after
-each town's forbidden set, its mark; pinned); `Towns::build`, `start_day` and `captured`, each
-copying only the town it changes (ADR-0028 point 4); the rules `buildable` (the hall's offer, a
-horde offered as its upgrade; TWN-BLD-002 to -004), `possible`, `check_build` (§27's order of the
-refusals), `built_with` (to a fixed point; TWN-BLD-005) and `event_buildings` (TWN-EVT-003);
-`TownCommand::Build` and `TownCommandError` (`#[non_exhaustive]`); `docs/rules/catalog/town.toml`'s
-TWN-BLD-001 to -007 (-006 and -007 sourced from T16b's harvest and survey `E09-construction.md`
-§5, §6) and TWN-EVT-003; `TWN-QUIRK-7` (T-9) where design §34 places it. Checked by `h3-towns`'
-tests on its synthetic part (every refusal, the hall's offer, the automatic builds, the event's
-buildings with and without water, increment 1's reads after a build: a Town Hall's income, a
-Citadel's moat, a Tavern's view level; a fork's write copies one town). The game state hash bumps
-with the store's v2 (v26 unless E08 T105b's lands first, design §34); the adventure replays
-re-hashed (skill `homm3-rerecord-replays`). Cut at its start.
+**E09 T18b — the command, the legal builds, the day's start, the capture's mark, the views**
+(design §29 to §31 but the town events, §34, §35's round 6; queued 2026-11-09 by T18a;
+`cross-lane`: `h3-game`'s `command.rs`, `legal.rs`, `state/day.rs`, the adventure replay format
+and `h3-sim`'s replay are the adventure and AI lanes'; look at the adventure lane's open pull
+requests first, E08 T105b bumps the same versions): `GameCommand::Town(TownCommand)` run as
+`GameCommand::Adventure` (`check_ready`, then `town::command`: the store, the owner, the actor's
+other Capitol, `h3_towns::check_build`, the treasury, then infallibly the price paid, `Towns::build`
+with the mark, the events; TWN-BLD-001's game half, `GameCommandError::Town`); `legal_commands`
+after the boats (each owned town whose mark is clear, each payable building of `buildable`, in
+`TownId` and record order) and `GameState::town_offer`; `Towns::start_day()` at the income's step
+from day 2 (GAM-CAL-002 amended, TWN-BLD-004); the capture's mark (`Towns::captured`, decision 43;
+TWN-CAP-001 amended); the views and events of §31 (`TownView::built_today`, the owner's
+`TownBuildingsView`, `TownBuilt`, `TownChanged`'s public facts; TWN-VEW-001 amended, TWN-VEW-004;
+read the inbox's SRV-Q26 note with it); the adventure replay format bumped (v12 after T105b's v11,
+or v11 if first) with `town build`. A town event's Shipyard reads `StaticMap::town_boat_spot`
+(T18c). Before mapping new commands or events, look at the server lane's E16 M5 T2 (the global
+HANDOFF's trap: the game's types on the wire). The replays re-recorded only if a hash or the
+format moves (skill `homm3-rerecord-replays`).
 **Status:** next.
 
 ## Inbox
@@ -34,6 +37,22 @@ re-hashed (skill `homm3-rerecord-replays`). Cut at its start.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-09 (the adventure lane, E08 T105a1, `adventure/e08-t105a1`; **a signature, for your
+  callers**; increment 11's design note §13, §18): `AdventureState::apply` takes `(player, draws)`
+  in place of `player` (`draws: &mut Rng`, the acting player's stream: a visit's draw, a
+  monolith's exit, comes from it) and `visit_held` takes `draws` before the sink; the game passes
+  them from `GameState::adventure_for(player)` (the adventure state, the store of heroes and that
+  player's stream). Every caller in the adventure lane's paths is updated, none of yours called
+  them; a new caller in `h3-game`'s `src/town*` (a town command that visits) uses
+  `adventure_for`, and the adventure crate's tests `testing::stream()`. Nothing moved in a hash.
+- 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**): **a town's garrison
+  change is told to every player who sees the town.** In `towns-s173-d21` command 205 player 1's
+  battle empties neutral town 4's garrison; player 0 sees the town and its `TownView::garrison`
+  changes, but every event of the command is player 1's alone. A server game keeps a viewer's view
+  current by events only (`docs/epics/E16-design.md` §14), so the change needs an event projected
+  to every player whose view of the town changes (a `TownChanged`'s `seen_by`, or a garrison
+  event). The server's fold test over the golden replays (M5 T3) checks it, a stub there until it
+  lands.
 - 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
   increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
   (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey

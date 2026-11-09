@@ -37,6 +37,25 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-09 (the server lane; informational): `h3_cli::load_ruleset`, which `h3-view`'s
+  `scenario.rs` copies (its comment names it), is `h3_files::load_ruleset` now (the new crate
+  `h3-files`, the user's decision). Depending on it would pull `h3-sim` and the adventure crates
+  into the client; the copy may stay, its comment's name is the one to update.
+
+- 2026-11-09 (the server lane, the inbox's CLT-STUB-3 and CLT-Q20; protocol v38, record format
+  v3, branch `claude/server-lane-continuation-seqai3`): **both done in `h3-protocol`'s session; your
+  readers to adapt.** (1) Every viewer gets its last `Snapshot` (the battle as it ended, as it sees
+  it) right before `GameEnded`: a seat reads its own hero's Eagle Eye picks from that snapshot's
+  `OwnHero::learned` (`results::served`, CLT-STUB-3). (2) When the game starts (every seat held),
+  every viewer watching then gets one `Events` message with the battle's start's events (a tactics
+  phase, the first turn, a freeze, a town's turrets and Catapult acting in round 1), before any
+  `YourTurn` or command's events; a seat re-taken or a spectator joining later never gets it. The
+  join's `Snapshot` is taken after the start, so it already shows these events' effects (the
+  engine has no state before its start). So a record's first `Events` is no longer a command's:
+  `anim::commands` and the readers that count one `Events` per command (`log.rs`,
+  `sequences.rs`, `motion.rs`) see one more message at the start and one more `Snapshot` at the
+  end. The record header's `format` is 3; `RECORD_FORMAT_VERSION` refuses format 2.
+
 - 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
   `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left
   open), with the new actions `hall = true` (a click on the shown hall building, items 10 to 13: the

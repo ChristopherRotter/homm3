@@ -22,7 +22,7 @@ use crate::setup::{Holds, ObjectSetup, Scenery, TileMask};
 use crate::testing::{
     ADMIRAL, FLYING, GNOLL, PEASANT, PIKEMAN, WATER_WALKING, WINDS, WOLF, coasted, hero_at,
     hero_details, hero_skills, key, lying, movement_rules, movement_rules_with, sea_skills,
-    started, world, world_state,
+    started, stream, world, world_state,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -70,7 +70,14 @@ fn walk_of(
         hero: HeroId::new(hero),
         path,
     };
-    let result = state.apply(&rules.0, &rules.1, store, RED, &command, &mut events);
+    let result = state.apply(
+        &rules.0,
+        &rules.1,
+        store,
+        (RED, &mut stream()),
+        &command,
+        &mut events,
+    );
     assert!(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
@@ -298,7 +305,9 @@ fn town_hero_rules(faithful: bool, skills: Vec<SecondarySkillDef>) -> (Ruleset, 
                 name: "Town".into(),
                 visit: Visit::Enter,
                 from_above: false,
-                kind: ObjectKindDef::Town,
+                kind: ObjectKindDef::Town {
+                    boat_offsets: Vec::new(),
+                },
             });
         },
     )

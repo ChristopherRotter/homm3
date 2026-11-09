@@ -32,6 +32,8 @@ h3-map.workspace = true
 h3-pack-adventure.workspace = true
 # The town part (E09 T5a2).
 h3-pack-towns.workspace = true
+# The files the tool reads and writes (packs, scenarios, maps, replays), moved there 2026-11-09.
+h3-files.workspace = true
 serde.workspace = true
 toml.workspace = true
 

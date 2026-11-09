@@ -10,7 +10,7 @@ use crate::command::{AdventureCommand, AdventureEvent};
 use crate::setup::MonsterSetup;
 use crate::testing::{
     ANY_PILE, FIRE, GNOLL, GOLD_PILE, MONSTER, PEASANT, PIKEMAN, hero_at, key,
-    movement_rules_edited, world,
+    movement_rules_edited, stream, world,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -102,7 +102,14 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
         path: vec![TILE],
     };
     let outcome = state
-        .apply(&rules.0, &rules.1, &[], RED, &step, &mut events)
+        .apply(
+            &rules.0,
+            &rules.1,
+            &[],
+            (RED, &mut stream()),
+            &step,
+            &mut events,
+        )
         .unwrap();
     (outcome, events)
 }

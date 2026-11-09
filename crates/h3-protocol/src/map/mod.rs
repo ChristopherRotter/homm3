@@ -3,11 +3,12 @@
 //! take the viewer and call the engine's `observe` and `project`, so no caller can send an
 //! unprojected observation or event (ADR-0018 point 7).
 //!
-//! The matches over the engine's enums are in `from_engine.rs` (exhaustive: a new engine
-//! variant fails the build until it is mapped, ADR-0018 point 5 as amended); everything else is
-//! here.
+//! The matches over the battle's enums are in `from_engine.rs` (exhaustive: a new engine
+//! variant fails the build until it is mapped, ADR-0018 point 5 as amended); the whole game's
+//! mapping is [`game`] (E16 M5); everything else is here.
 
 pub(crate) mod from_engine;
+pub mod game;
 
 use alloc::string::String;
 use alloc::vec::Vec;

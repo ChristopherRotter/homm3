@@ -451,10 +451,13 @@ dependencies = [
 name = "h3-protocol"
 version = "0.1.0"
 dependencies = [
+ "h3-adventure",
  "h3-battle",
  "h3-content",
  "h3-content-battle",
  "h3-contracts",
+ "h3-game",
+ "h3-heroes",
  "h3-kernel",
  "serde",
  "serde_json",

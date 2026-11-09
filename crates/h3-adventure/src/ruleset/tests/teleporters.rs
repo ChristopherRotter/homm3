@@ -1,6 +1,7 @@
 //! Increment 11's kinds in the ruleset part (E08 T103a, increment 11's design note §1): the
 //! monoliths with their channel and way, the Subterranean Gate and the Whirlpool with its divisor,
-//! compiled, entered, without a visit until T105a, and in the hash (part v18).
+//! compiled, entered and in the hash (part v18); the monoliths' and the gates' visit since E08
+//! T105a1 (their jump), the Whirlpool's since T105a2 (its loss and the jump).
 
 use super::*;
 
@@ -43,7 +44,7 @@ fn kinds() -> [ObjectKindDef; 5] {
 
 // covers: ADV-TEL-001
 #[test]
-fn the_teleporters_are_entered_kinds_without_a_visit_yet() {
+fn the_teleporters_are_entered_kinds() {
     assert_eq!(
         teleporter(kinds()[2].clone()).kind,
         ObjectKind::Monolith {
@@ -59,12 +60,23 @@ fn the_teleporters_are_entered_kinds_without_a_visit_yet() {
         teleporter(ObjectKindDef::Whirlpool { divisor: 7 }).kind,
         ObjectKind::Whirlpool { divisor: 7 }
     );
+    // The monoliths' and the gates' visit is their jump (E08 T105a1); the Whirlpool's its loss
+    // and the jump (T105a2).
+    let types = kinds().map(teleporter);
+    assert_eq!(
+        types[2].kind.effect(),
+        Some(Effect::Monolith {
+            channel: 255,
+            way: MonolithWay::TwoWay
+        })
+    );
+    assert_eq!(types[3].kind.effect(), Some(Effect::SubterraneanGate));
+    assert_eq!(types[4].kind.effect(), Some(Effect::Whirlpool(2)));
     for def in kinds() {
         let ty = teleporter(def.clone());
         assert_eq!(ty.visit, Visit::Enter);
-        // Neither ownable nor weekly; no visit until the jump (T105a).
+        // Neither ownable nor weekly.
         assert!(!ty.kind.ownable() && !ty.kind.weekly());
-        assert_eq!(ty.kind.effect(), None);
         assert_eq!(ty.kind.battle_terrain(), None);
         assert_eq!(ty.kind.dwelling_footprint(), None);
         assert_eq!(ty.kind.reveal_terrain(), None);
@@ -111,7 +123,9 @@ fn the_teleporters_parameters_are_in_the_hash() {
             way: MonolithWay::Exit,
         },
         ObjectKindDef::Whirlpool { divisor: 3 },
-        ObjectKindDef::Town,
+        ObjectKindDef::Town {
+            boat_offsets: Vec::new(),
+        },
     ]);
     let hashes = defs.into_iter().map(hash).collect::<BTreeSet<_>>();
     assert_eq!(hashes.len(), 9);

@@ -285,7 +285,7 @@ impl Offer {
         let text = fs::read_to_string(&config.scenario).map_err(|e| at(&e))?;
         let def = h3_pack_battle::parse_scenario(&text).map_err(|e| at(&e))?;
         let profile = config.profile.as_deref().unwrap_or(&def.profile);
-        let ruleset = h3_cli::load_ruleset(packs, &def.packs, profile).map_err(|e| at(&e))?;
+        let ruleset = h3_files::load_ruleset(packs, &def.packs, profile).map_err(|e| at(&e))?;
         let setup = def.resolve(&ruleset).map_err(|e| at(&e))?;
         BattleState::new(&ruleset, &setup, 0).map_err(|e| at(&e))?;
         let seats = config.bots.iter().map(|bot| match bot {
@@ -486,7 +486,7 @@ impl Prepared {
     ) -> Result<Self, String> {
         // The first line's replay holds the seed: its parsers' errors, which may quote it, stay
         // out of the log (E16 M2 T5e: the reviewer's finding); the header's names a field only.
-        let doc = h3_cli::ReplayDoc::parse(&read.start.replay)
+        let doc = h3_files::ReplayDoc::parse(&read.start.replay)
             .map_err(|_| String::from("the journal's replay does not read"))?;
         let scenario = doc.scenario().to_owned();
         let replay = doc.into_replay(&offer.ruleset).map_err(|_| {
@@ -1106,7 +1106,7 @@ fn replay_text(
         final_hash: end.0,
         result: end.1,
     };
-    h3_cli::replay_to_toml(&replay, scenario, ruleset)
+    h3_files::replay_to_toml(&replay, scenario, ruleset)
         .map_err(|e| Error(format!("the replay does not render: {e}")))
 }
 
@@ -1242,13 +1242,13 @@ fn verify(
     let read =
         journal::read(journal).map_err(|e| alike(format!("the journal does not read: {e}")))?;
     // The first line's replay holds the seed: its errors stay out of the log.
-    let unread = |e: h3_cli::CliError| {
+    let unread = |e: h3_files::FileError| {
         (
             format!("the journal's replay does not read: {e}"),
             String::from("the journal's replay does not read"),
         )
     };
-    let doc = h3_cli::ReplayDoc::parse(&read.start.replay).map_err(unread)?;
+    let doc = h3_files::ReplayDoc::parse(&read.start.replay).map_err(unread)?;
     let scenario = doc.scenario().to_owned();
     let mut replay = doc.into_replay(ruleset).map_err(unread)?;
     for entry in read.entries {
@@ -1273,7 +1273,7 @@ fn verify(
     replay
         .verify(ruleset)
         .map_err(|e| (e.to_string(), unhashed(&e)))?;
-    h3_cli::replay_to_toml(&replay, &scenario, ruleset)
+    h3_files::replay_to_toml(&replay, &scenario, ruleset)
         .map_err(|e| alike(format!("the replay does not render: {e}")))
 }
 

@@ -14,6 +14,7 @@ mod events;
 mod exchanges;
 mod heroes;
 mod hiring;
+mod jumps;
 mod legal;
 mod level_ups;
 mod levels;
@@ -39,9 +40,10 @@ use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, BattleTerrainsDef,
-    CalendarParams, ChestDef, FindContentDef, FindDef, GiftDef, Gives, MapSetup, MonsterParamsDef,
-    ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos, PrimarySkill, PyramidDef,
-    SetupError, StandError, StartingResourcesDef, TerrainMovementDef, TileSetup, Visit,
+    CalendarParams, ChestDef, FindContentDef, FindDef, GiftDef, Gives, MapSetup, MonolithWay,
+    MonsterParamsDef, ObjectKindDef, ObjectTypeDef, OnceBonus, Passage, PickupDef, Pos,
+    PrimarySkill, PyramidDef, SetupError, StandError, StartingResourcesDef, TerrainMovementDef,
+    TileSetup, Visit,
 };
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactTypeId, ContentKey, ContentPack,
@@ -637,8 +639,28 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                     ],
                 },
             ),
-            // E09 T8a1: a town.
-            entered("t:town", ObjectKindDef::Town),
+            // E09 T8a1: a town; E09 T18a: its spot by the original's two offsets.
+            entered(
+                "t:town",
+                ObjectKindDef::Town {
+                    boat_offsets: vec![(-1, 2), (1, 2)],
+                },
+            ),
+            // E08 T105a1: a one-way entrance and exit of channel 0 (`jumps.rs`).
+            entered(
+                "t:entrance",
+                ObjectKindDef::Monolith {
+                    channel: 0,
+                    way: MonolithWay::Entrance,
+                },
+            ),
+            entered(
+                "t:exit",
+                ObjectKindDef::Monolith {
+                    channel: 0,
+                    way: MonolithWay::Exit,
+                },
+            ),
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,

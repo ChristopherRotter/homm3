@@ -301,8 +301,15 @@ pub enum ObjectKind {
     /// `TownId` ([`crate::StaticMap::town_id`]). Its step since E09 T8a2 ([`Effect::Town`]): an
     /// ally's town entered, another player's or a neutral one captured when undefended
     /// (TWN-VIS-001); since E09 T8b2a besieged from the tile before when its garrison defends it,
-    /// since T8b2b when a visitor of another team does (TWN-SIE-001, TWN-SIE-002).
-    Town,
+    /// since T8b2b when a visitor of another team does (TWN-SIE-001, TWN-SIE-002). Since E09 T18a
+    /// its spot, a Shipyard's boat tile for the town (TWN-SET-011; [`crate::StaticMap::town_boat_spot`]):
+    /// the first of `boat_offsets` that is free water when the game is built (ADV-SHY-001's
+    /// step), without which its record's Shipyard is forbidden.
+    Town {
+        /// The (column, row) offsets from the entrance, tried in order, on its level (the
+        /// original's two, `town_buildings_setup` 0x5C08C0); none: the town never has a spot.
+        boat_offsets: Vec<(i8, i8)>,
+    },
     /// A monolith (E08 T103a, increment 11's design note §1; ADV-TEL-001, the original's classes
     /// 43 to 45 by subclass): entered, a teleporter. Its exits are its channel's monoliths of the
     /// way it leads to, when the game is built (ADV-TEL-002, T104): an entrance's the channel's
@@ -321,7 +328,7 @@ pub enum ObjectKind {
     /// A Whirlpool (E08 T103a, increment 11's design note §1; ADV-TEL-001, the original's class
     /// 111): entered by a boat, a teleporter; its exits are the other Whirlpools' tiles (ADV-TEL-002,
     /// T104), and before the jump an unprotected visitor's weakest stack keeps its count divided
-    /// by the divisor (ADV-TEL-006, T105a).
+    /// by the divisor (ADV-TEL-006, its visit since T105a2).
     Whirlpool {
         /// What the weakest stack's count is divided by, rounded down, a lone stack keeping at
         /// least one (the original's 2); at least 2.
@@ -412,6 +419,21 @@ pub(crate) enum Effect<'k> {
     /// before when its garrison or a visitor of another team defends it
     /// ([`crate::AdventureOutcome::battle`], E09 T8b2a, T8b2b; a town, TWN-VIS-001, E09 T8a2).
     Town,
+    /// The jump to an exit drawn among this channel's tiles of the way it leads to, or, for a
+    /// one-way exit, that it leads nowhere (a monolith, ADV-TEL-003, ADV-TEL-004, E08 T105a1).
+    Monolith {
+        /// Its channel's number.
+        channel: u8,
+        /// Its way.
+        way: MonolithWay,
+    },
+    /// The jump to its pair, or that it leads nowhere (a Subterranean Gate, ADV-TEL-005, E08
+    /// T105a1).
+    SubterraneanGate,
+    /// An unprotected visitor's weakest stack keeping its count divided by this divisor, then the
+    /// jump to another Whirlpool's tile drawn among them, with the hero's boat (a Whirlpool,
+    /// ADV-TEL-006, E08 T105a2).
+    Whirlpool(u32),
 }
 
 impl ObjectKind {
@@ -424,8 +446,10 @@ impl ObjectKind {
     /// scrolls, gifts, Shrines, Witch Huts, Scholars, Universities and finds; T62b1: Pandora's
     /// Box and the Pyramid; T74a: the sea's finds, which leave, and the message; T84a: the mines
     /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects; T84b2: the
-    /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns. Who reaches a
-    /// kind's visit is the passage's: on water only a boat (ADV-PIK-018, D-46).
+    /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns; E08 T105a1:
+    /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
+    /// whose visit is its loss and the jump. Who reaches a kind's visit is the passage's: on water
+    /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
             Self::Pickup(_) => Some(Effect::Pickup),
@@ -454,7 +478,13 @@ impl ObjectKind {
             Self::Shipyard { price, .. } => Some(Effect::Shipyard(price)),
             Self::Dwelling { creatures, .. } => Some(Effect::Dwelling(creatures)),
             Self::RefugeeCamp { .. } => Some(Effect::Camp),
-            Self::Town => Some(Effect::Town),
+            Self::Town { .. } => Some(Effect::Town),
+            Self::Monolith { channel, way } => Some(Effect::Monolith {
+                channel: *channel,
+                way: *way,
+            }),
+            Self::SubterraneanGate => Some(Effect::SubterraneanGate),
+            Self::Whirlpool { divisor } => Some(Effect::Whirlpool(*divisor)),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -463,16 +493,13 @@ impl ObjectKind {
             // dwelling becomes a dwelling when the game is built (ADV-DWL-005); one its draw
             // found no dwelling for stays random and is never visited. E09 T8a1: the town is
             // typed; its step came with E09 T8a2. E08 T103a: increment 11's three kinds are
-            // typed; their jump comes with T105a (increment 11's design note §7), so a step onto
-            // a teleporter's entrance is refused until then.
+            // typed; the monoliths' and the gates' jump came with T105a1 (increment 11's design
+            // note §7), the Whirlpool's with T105a2 (its loss first, note §8).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling
-            | Self::Monolith { .. }
-            | Self::SubterraneanGate
-            | Self::Whirlpool { .. } => None,
+            | Self::RandomDwelling => None,
         }
     }
 
@@ -497,7 +524,7 @@ impl ObjectKind {
                 | Self::Shipyard { .. }
                 | Self::Dwelling { .. }
                 | Self::RandomDwelling
-                | Self::Town
+                | Self::Town { .. }
         )
     }
 
@@ -773,8 +800,12 @@ pub enum ObjectKindDef {
         /// The levels of its creature.
         levels: [u8; 2],
     },
-    /// [`ObjectKind::Town`] (E09 T8a1): its type entered, as every ownable one's.
-    Town,
+    /// [`ObjectKind::Town`] (E09 T8a1): its type entered, as every ownable one's; since E09 T18a
+    /// its boat offsets distinct, none (0, 0), perhaps none at all (a town with no spot).
+    Town {
+        /// The boat offsets.
+        boat_offsets: Vec<(i8, i8)>,
+    },
     /// [`ObjectKind::Monolith`] (E08 T103a): any channel number; its type entered, as every
     /// teleporter's.
     Monolith {
@@ -1458,7 +1489,18 @@ fn compile_kind(
             compile_dwelling(scope, list, blocked, visitable)
         }
         ObjectKindDef::RandomDwelling => Ok(ObjectKind::RandomDwelling),
-        ObjectKindDef::Town => Ok(ObjectKind::Town),
+        ObjectKindDef::Town { boat_offsets } => {
+            let distinct = boat_offsets.iter().collect::<BTreeSet<_>>().len() == boat_offsets.len();
+            if !distinct {
+                Err("a town names a boat offset twice")
+            } else if boat_offsets.contains(&(0, 0)) {
+                Err("a town's boat offset is its entrance")
+            } else {
+                Ok(ObjectKind::Town {
+                    boat_offsets: boat_offsets.clone(),
+                })
+            }
+        }
         ObjectKindDef::RefugeeCamp { levels } => {
             let [low, high] = *levels;
             if 1 <= low && low <= high && usize::from(high) <= DWELLING_LEVELS {
@@ -1588,7 +1630,7 @@ impl CanonicalHash for ObjectType {
     /// and the classes; a Witch Hut's two skill lists; a University's offers and price; a
     /// message's whether it leaves; a mine's and an abandoned mine's battle terrain as 0 for none,
     /// else 1 and the terrain; a Shipyard's price, boat type and offsets as length and each column
-    /// and row; a Garden's gifts as a price; a dwelling's creatures as length and handles, its
+    /// and row; since part v19 a town's boat offsets as a Shipyard's; a Garden's gifts as a price; a dwelling's creatures as length and handles, its
     /// blocked and visitable masks' bits, its guards as length and each creature and count, its
     /// shift; a Refugee Camp's low and high level; a monolith's channel and way as 0 entrance,
     /// 1 exit, 2 two-way; a Whirlpool's divisor; the others' fields in order).
@@ -1784,7 +1826,14 @@ impl CanonicalHash for ObjectType {
                 h.write_u8(*low);
                 h.write_u8(*high);
             }
-            ObjectKind::Town => h.write_u8(33),
+            ObjectKind::Town { boat_offsets } => {
+                h.write_u8(33);
+                h.write_len(boat_offsets.len());
+                for &(column, row) in boat_offsets {
+                    h.write_i32(i32::from(column));
+                    h.write_i32(i32::from(row));
+                }
+            }
             ObjectKind::Monolith { channel, way } => {
                 h.write_u8(34);
                 h.write_u8(*channel);

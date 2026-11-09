@@ -15,7 +15,7 @@ use crate::army::{ArmyRef, ArmySlot};
 use crate::ruleset::{AdventurePack, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
     FLYING, MAX_STACK, PEASANT, PIKEMAN, WATER_WALKING, draws, hero_at, hero_details, hero_skills,
-    key, movement_rules_with, started, world,
+    key, movement_rules_with, started, stream, world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -48,9 +48,14 @@ const CAVALIER: CreatureTypeId = CreatureTypeId::from_raw(10);
 const HALBERDIER: CreatureTypeId = CreatureTypeId::from_raw(11);
 const MARKSMAN: CreatureTypeId = CreatureTypeId::from_raw(12);
 
-/// [`movement_rules_with`] (faithful, maps up to 32 tiles) with a town `t:town` and a mine
-/// `t:sawmill`, both entered and not from above, and the part's flag radius 1; the skills of
-/// [`hero_skills`] (flying and water walking among them) and the creatures of [`MERGED`].
+/// A town's boat offsets in the base pack (TWN-SET-011): one column left, then right, two rows
+/// below the entrance.
+const BOAT_OFFSETS: [(i8, i8); 2] = [(-1, 2), (1, 2)];
+
+/// [`movement_rules_with`] (faithful, maps up to 32 tiles) with a town `t:town` (the original's
+/// boat offsets, [`BOAT_OFFSETS`]) and a mine `t:sawmill`, both entered and not from above, and
+/// the part's flag radius 1; the skills of [`hero_skills`] (flying and water walking among them)
+/// and the creatures of [`MERGED`].
 fn town_rules() -> Rules {
     movement_rules_with(
         true,
@@ -77,7 +82,12 @@ fn town_rules() -> Rules {
                 kind,
             };
             part.object_types.extend([
-                ty("t:town", ObjectKindDef::Town),
+                ty(
+                    "t:town",
+                    ObjectKindDef::Town {
+                        boat_offsets: BOAT_OFFSETS.to_vec(),
+                    },
+                ),
                 ty(
                     "t:sawmill",
                     ObjectKindDef::Mine {
@@ -203,6 +213,65 @@ fn the_static_map_lists_the_towns_with_their_owners_and_garrisons() {
         state.state_hash()
     );
     assert_ne!(hash_of(&state), 0);
+}
+
+// covers: TWN-SET-011, ADV-SHY-001
+#[test]
+fn a_town_fixes_its_spot_when_the_game_is_built() {
+    let rules = town_rules();
+    // Red's town's entrance (16, 3), the neutral one's (24, 3): their offsets reach row 5.
+    let built = |water: &[usize], more: Vec<ObjectSetup>| {
+        let row5: alloc::string::String = (0..32)
+            .map(|x| if water.contains(&x) { '~' } else { 'g' })
+            .collect();
+        let mut rows = ["gggggggggggggggggggggggggggggggg"; 16];
+        rows[5] = &row5;
+        let mut setup = town_setup(objects(&rules), vec![garrison(), vec![]]);
+        setup.map.tiles = world(&rows, 1, Vec::new()).map.tiles;
+        setup.map.objects.extend(more);
+        started(&rules, &setup).unwrap()
+    };
+    let spots = |state: &AdventureState| {
+        let map = state.map();
+        [0, 1, 2].map(|town| map.town_boat_spot(TownId::new(town)))
+    };
+    // The first offset on free water: red's (15, 5) left, the neutral one's (25, 5) right.
+    let state = built(&[15, 25], vec![]);
+    assert_eq!(spots(&state), [Some(p(15, 5)), Some(p(25, 5)), None]);
+    assert_eq!(
+        state.map().objects()[1].resolved,
+        Resolved::BoatTile(p(15, 5))
+    );
+    // Land under both offsets: none, the object resolving nothing.
+    let land = built(&[], vec![]);
+    assert_eq!(spots(&land), [None; 3]);
+    assert_eq!(land.map().objects()[1].resolved, Resolved::Nothing);
+    // Water an object blocks, then water an object is visited from, is passed over.
+    let water = &[15, 16, 17, 25];
+    let blocker = ObjectSetup {
+        object_type: None,
+        visitable: TileMask::default(),
+        blocked: TileMask::from_bits(1),
+        ..object(&rules, "t:sawmill", (15, 5), None)
+    };
+    let visited = ObjectSetup {
+        object_type: None,
+        blocked: TileMask::default(),
+        ..object(&rules, "t:sawmill", (17, 5), None)
+    };
+    let blocked = built(water, vec![blocker.clone()]);
+    assert_eq!(spots(&blocked)[0], Some(p(17, 5)));
+    assert_eq!(spots(&built(water, vec![blocker, visited]))[0], None);
+    // Every town gets one, owned or neutral; the owner's view keeps it out of the town's object
+    // (the Shipyard's boat tile, ADV-OWN-003, stays the Shipyard's).
+    let seen = state.observe(&rules.0, &rules.1, RED);
+    let town = seen.objects.iter().find(|o| o.town == Some(TownId::new(0)));
+    assert_eq!(
+        town.map(|o| (o.owner, o.boat_tile)),
+        Some((Some(RED), None))
+    );
+    // The static map's hash sees the spot.
+    assert_ne!(state.map().content_hash(), land.map().content_hash());
 }
 
 #[test]
@@ -366,7 +435,14 @@ fn walk(
         path: path.to_vec(),
     };
     let mut events = Vec::new();
-    let outcome = state.apply(&rules.0, &rules.1, heroes, RED, &walk, &mut events)?;
+    let outcome = state.apply(
+        &rules.0,
+        &rules.1,
+        heroes,
+        (RED, &mut stream()),
+        &walk,
+        &mut events,
+    )?;
     Ok((outcome, events))
 }
 

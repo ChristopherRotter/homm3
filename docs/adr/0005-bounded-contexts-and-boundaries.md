@@ -61,6 +61,19 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
   T5a). ADR-0028 holds the decision; this lists the crates only.
 - **Cross-context ids** gain `TownId` (`h3-contracts`, ADR-0028 point 3).
 
+## Amendment — the files crate (2026-11-09, the user, E16 M5 T3)
+
+- **Crate created:** `h3-files` (adapter, not a logic crate): the project's own files on disk,
+  the packs, scenarios and maps read from their folders, the battle's and the adventure's replay
+  files (TOML) and the commands' text form, a replay file's verification. They were `h3-cli`'s
+  library, which `h3-server` used for them since E16 M0 (a provisional edge, kept at the M1
+  review) and which the battle client copies a loader of; `h3-protocol` needed them for a test
+  over the golden adventure replays. The user chose a crate of their own over the edge and over a
+  move into `h3-sim`, which stays the replay models' home and the RL env's. `h3-cli` keeps the
+  tool (random and scripted runs, the benchmarks, the commands) and re-exports the files' API;
+  `h3-server` depends on `h3-files`, no longer on `h3-cli`. Owned as `h3-cli` was: the battle
+  lane's, the adventure's files (`src/adventure/`) the adventure lane's (`lanes.toml`).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
@@ -73,3 +86,4 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
   `h3-heroes`).
 - 2026-11-03: Amended by E09 T4b (the town crates and `TownId`; presentation only, the decision
   is ADR-0028's).
+- 2026-11-09: Amended by the files crate (`h3-files`, out of `h3-cli`'s library; the user).

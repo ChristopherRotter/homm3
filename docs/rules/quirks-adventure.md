@@ -468,6 +468,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
 - Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
 
+### ADV-QUIRK-40 — A Whirlpool's weakest stack ranked below a bound
+- Class: exploit-fix (no flag: state-corrupting, always fixed; E08 decision 266; A-38)
+- Context / rules affected: adventure, ADV-TEL-006 (the Whirlpool's loss)
+- Original behavior: `whirlpool_losses` (0x4ACAA0) seeks the weakest stack from 99 999 999 with an `i32` product of the creature's fight value and the count, strictly less. A stack at that bound or past it is never the weakest (one whose product overflows to a negative is); when no stack is below it the slot stays −1: a lone stack loses nothing (the wiki's 1 776 Azure Dragons, 56 315 × 1 776 = 100 015 440, kept whole; 1 775 keep 887) and with several stacks the seventh slot's type is halved and, at 0, the word before the types (hero +0x8D) set to −1 (survey `E08-teleporters.md` §4.4, §8 A-38; batch E11's E11-12).
+- Intended/expected behavior: no bound: the weakest is the least of the occupied slots by a 64-bit product, the first slot on a tie; a lone 1 776 Azure Dragons keep 888, and several stacks past the original's bound lose from the least of them, the army never corrupted.
+- Impact: armies of very strong stacks (a lone stack of the strongest creatures past about 1 776; several such stacks) lose troops the original would spare, or would corrupt.
+- Community status: documented by the wiki (the Whirlpool page: the 1 776 Azure Dragons' "bug").
+- Sources: code reading (survey §4.4); observation, batch E11's E11-12 (survey §15); the wiki (survey §7).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_whirlpool_takes_the_weakest_stack_by_fight_value_times_count_first_slot_on_a_tie`
+- Decided by / date: the survey's recommendation (§8), no bound (the user 2026-11-06, ADV-Q45, E08 decision 266); built and recorded by E08 T105a2
+
 ### ADV-QUIRK-41 — A monolith subclass past 7 writes past the channels' lists
 - Class: exploit-fix (no flag: an input bound, the map refused at the import; A-39)
 - Context / rules affected: adventure, ADV-TEL-001 (the teleporters' kinds), ADV-OBJ-002 (the import's classes), the import (`h3_map`)
@@ -480,3 +493,55 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: fixed in every profile
 - Regression test: `crates/h3-map/src/tests/import.rs`, `the_typed_classes_import_as_their_object_types`; `crates/h3-map/src/tests/teleporters.rs`, `the_import_types_each_teleporter_class_and_subclass`
 - Decided by / date: the survey's recommendation (§8), the design note §4 as written (the user 2026-11-06, ADV-Q45, E08 decision 267); built and recorded by E08 T103b
+
+### ADV-QUIRK-42 — A computer player's hero loses nothing in a Whirlpool
+- Class: harmless, not reproduced (no flag; E08 decision 267; A-40)
+- Context / rules affected: adventure, ADV-TEL-006 (the Whirlpool's loss)
+- Original behavior: `whirlpool_losses` (0x4ACAA0) runs only when the hero's owner is human (`player_id_is_human` 0x4CE940 at 0x4ACAB3): a computer player's hero keeps its army in a Whirlpool (survey `E08-teleporters.md` §4.4, §8 A-40; players' reports agree, the wiki is silent).
+- Intended/expected behavior: every hero loses as a human's: the engine has no human or computer player (E08 decision 16), as A-27's Ocean Bottle (`ADV-QUIRK-30`, decision 166). Revisited with E10's computer players.
+- Impact: a computer player's armies through Whirlpools; none in hot seat.
+- Community status: players' reports; not on the wiki.
+- Sources: code reading (survey §4.4).
+- Flag: none (not reproduced)
+- Defaults: not reproduced in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_whirlpool_takes_the_weakest_stack_by_fight_value_times_count_first_slot_on_a_tie` (no owner spared: the rule reads no player kind)
+- Decided by / date: the survey's recommendation (§8), not reproduced (the user 2026-11-06, ADV-Q45, E08 decision 267); recorded by E08 T105a2
+
+### ADV-QUIRK-43 — A jump's hidden exit shown to a viewer
+- Class: harmless, not reproduced (no flag; E08 decision 267; A-41)
+- Context / rules affected: adventure, ADV-FOG-004 (what a viewer sees of a hero), ADV-TEL-007 (the arrival), the observation and the events' projections
+- Original behavior: a jump appends a record of the move (the player, the hero, the old tile and the new) to the turn's records (`hero_relocate_inner` 0x49CF50); the other players' Replay Opponent Turn plays it back and its view's corner moves to the exit, even one in the viewer's shroud, though nothing there is drawn or explored (batch E11's E11-18). The wiki: an enemy hero entering a monolith in the open has its exit "shown" in the shroud (survey `E08-teleporters.md` §8 A-41, §10).
+- Intended/expected behavior: a jump is seen as a step's two ends (`HeroTeleported`), each by the players that see the hero there; a viewer that sees one end only is told that one, the other left out, so no viewer learns a hidden exit or where a channel leads.
+- Impact: information only: a display's leak of a channel's exit to the players watching the entrance.
+- Community status: documented by the wiki (the Monolith page).
+- Sources: code reading (survey §10); observation, batch E11's E11-18 (survey §15); the wiki (survey §7).
+- Flag: none (not reproduced)
+- Defaults: not reproduced in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_viewer_is_told_the_ends_of_a_jump_it_sees_never_a_hidden_one`
+- Decided by / date: the survey's recommendation (§8), not reproduced (the user 2026-11-06, ADV-Q45, E08 decision 267); recorded by E08 T105a1
+
+### ADV-QUIRK-44 — A teleporter off its surface
+- Class: exploit-fix (no flag: state-corrupting, always fixed; the map refused when the game is built; A-42)
+- Context / rules affected: adventure, ADV-TEL-001 (the teleporters' kinds), ADV-TEL-002 (the channels), the game's build (`h3_adventure::StaticMap`)
+- Original behavior: unread. A monolith's or a Subterranean Gate's visitable tile on water, or a Whirlpool's on land, would be a jump's exit on the other surface: a hero in a boat put on land or a walker on water. Six monolith templates of `Objects.txt` allow water, none of the 160 shipped maps places one there; every gate stands on land and every Whirlpool tile on water (survey `E08-teleporters.md` §1, §8 A-42).
+- Intended/expected behavior: the game's build refuses a teleporter with a visitable tile of the map off its surface (`SetupError::TeleporterSurface`, the first in object order; the import's validation passes it on): a monolith's or a gate's on water or rock, a Whirlpool's on land or rock (rock, which nothing walks or sails, by the same reason: the agent's call at E08 T104). Not chosen (decision 272): such an exit left out of its channel's candidates, which would load every map at the cost of a test per candidate and a gate's pair to drop.
+- Impact: none on the shipped maps (`h3-map`'s `original_data`: none refused); a crafted map the original may load is refused (the map client's inbox told).
+- Community status: not documented.
+- Sources: the census (survey §1); the design note §5 (the agent's candidate, accepted at ADV-Q46).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_teleporter_off_its_surface_is_refused_when_the_game_is_built`
+- Decided by / date: the design note §5 as written (the user 2026-11-06, ADV-Q46, E08 decision 272); built and recorded by E08 T104
+
+### ADV-QUIRK-45 — A Whirlpool's tile under a map-placed boat is never listed
+- Class: harmless, not reproduced (no flag; E08 decision 280; A-43)
+- Context / rules affected: adventure, ADV-TEL-002 (the Whirlpools' list), ADV-TEL-006 (the Whirlpool, T105a2)
+- Original behavior: the setup's walk (`setup_map_objects` 0x4C0CC0) dispatches on a tile's class, the last object placed there, and a boat (class 8) has no case, so a Whirlpool tile under a boat the map places is never appended to the Whirlpools' list, also once the boat has left: never an exit; a visit from it excludes no word of its own (−1), so its draw takes its own Whirlpool's other five tiles too (survey `E08-teleporters.md` §3.1, §15 E11-17b).
+- Intended/expected behavior: every visitable tile of every Whirlpool is listed (ADV-TEL-002); the setup refuses a boat on a tile an object is visited from (ADV-SEA-001, `SetupError::Boat`), so no map-placed boat lies on one, and a jump's candidates skip a tile while an empty boat stands on it (the design note §7; `jumps.rs`' candidates since E08 T105a1, the Whirlpools' since T105a2).
+- Impact: none on the shipped maps (none holds a boat on a Whirlpool, survey §1); a crafted map's boat there is refused.
+- Community status: not documented.
+- Sources: code reading (survey §3.1); observation, batch E11b's E11-17 and E11-17b (survey §15).
+- Flag: none (not reproduced)
+- Defaults: not reproduced in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `the_whirlpools_list_every_tile_with_its_whirlpool` and (an empty boat's tile no candidate) `a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_in_its_boat`; `crates/h3-map/src/tests/teleporters.rs`, `the_teleporters_import_as_their_types` (the boat on a Whirlpool's tile refused)
+- Decided by / date: the survey's scoring (§15), not reproduced (the user 2026-11-07, ADV-Q47, E08 decision 280); recorded by E08 T104, the candidates' line by T105a2

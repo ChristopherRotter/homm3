@@ -6,19 +6,15 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24; M6 is discovery, ADR-0021, detail in `E16-design.md` §12); the done tasks are in `E16-log.md`, the milestone chronicle in `QUEUE-ARCHIVE.md`. Work under the autonomy contract (`HANDOFF.md`). Wire changes bump `PROTOCOL_VERSION`, journal changes `JOURNAL_FORMAT_VERSION` (current values: `HANDOFF.md`). The inbox after M6 was done 2026-10-19 (`E16-log.md`).
 
-**Next:** what the ecosystem around the server needs, talked through with the user (a refinement; no task is ready until then). M5 waits for E08's increment 3 (refined, not built); mDNS for the client lane's browser.
+**M5 part 1 refined 2026-11-09 (SRV-Q25):** the whole game's wire, a session hosting one game in-process, its per-viewer record, a golden adventure replay as a record (the user's order of 2026-10-31, the inbox below). The scope, the user's decisions and each task's content: the epic's "M5 part 1". In order, each about half a context:
+
+- T0 (#799) and T1 done 2026-11-09 (`E16-log.md`): **events only** (the design note §14); what a client cannot fold yet is in the adventure and town lanes' inboxes (SRV-Q26: foldable events and a query for what a viewer newly sees).
+- **T2** the observation's wire (the snapshot; no diff), in two parts (the user), both done 2026-11-09 in #805 (`E16-log.md`). **T3** the commands, answers, rejections and events, the fold (`h3-protocol`'s) and its test over the golden replays, SRV-Q26's gaps as stubs, in three parts T3a to T3c after the files crate's PR (the user, the epic); **T4** the game's manifest and key tables.
+- **T5** the game session in-process with its journal and records (record format v4), each viewer's newly seen tiles with the events (SRV-Q26); **T6** a golden replay as a record (`h3-server record`), the map client lane's note; **T7** closure and the checkpoint.
+
+Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
 ## Inbox
-
-- 2026-11-06 (the client lane, E17 M6 T5c, `CLT-STUB-3`; **the user's requirement**: a server
-  game behaves exactly as a local one): **a seat's own hero's Eagle Eye picks at the battle's
-  end.** After the result window of a winner played by a human, the battle client names the
-  spells its hero's Eagle Eye picked (`docs/epics/E17-design.md` §12.21, from the outcome's
-  `HeroOutcome::learned` in local play). A seat learns them only from a snapshot
-  (`OwnHero::learned`); no event or end message carries a pick made later, so a seat shows no
-  message. Wanted: the seat's own hero's picks at the end (in the end message, a final own
-  snapshot, or a private event per pick: the battle lane's if it is an `EventKind`), private to
-  the hero's owner as `OwnHero` is. The client reads it then (`results::served`).
 
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero
@@ -59,22 +55,6 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
   days, weeks and months, the decisions opened and answered, the battles with their own battle
   messages, which the battle client's viewer draws). Until then the map client lane works on what
   needs no engine (M4 T1, T2).
-
-- 2026-10-29 (the client lane, E17 M5 T5a, `cross-lane` with the user's consent; **done in your
-  crate, for you to review**): the event `NotCreated { side, creature, count, original }` (a
-  clone or summoned stack without a place, BAT-MAG-037) mapped onto the wire; `PROTOCOL_VERSION`
-  36 (your HANDOFF's "Versions" line still says 35); `tests/mapping.rs` counts 55 kinds.
-
-- 2026-10-23 (the client lane, E17 M4 T2a, CLT-Q20; the user's choice): **record the start's
-  events.** `Session::new` starts a battle with `BattleState::new`, which drops the events of its
-  start (`BattleState::start` reports them): the tactics phase, a bad-morale freeze and, at a
-  town, the turrets' and the Catapult's own acts of round 1 (BAT-SIE-016, BAT-SIE-011). The
-  client lane's M4 T2b needs them in the record, as its first message before any command, to
-  play the opening's automatic shots (`docs/epics/E17-design.md` §10.2). A record format change
-  (the client's reader too: one `Events` message per command today); the client lane's T2b
-  records the commanded shots meanwhile. Update (T2b done, 2026-10-23): the Catapult's own shot
-  was recorded without it (with the defender commanding its turrets the record opens on the
-  keep's turn); the opening's automatic turret shots and the start's other events still wait.
 
 - 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
   M5, when the server hosts whole games): **a level-up holds the game.** While a hero's level-up

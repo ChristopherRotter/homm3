@@ -4,11 +4,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021); the inbox after M6 done 2026-10-19 (`E16-log.md`). **Next:** nothing ready; the ecosystem talk of 2026-10-13 is recorded (E16 "Later", BACKLOG E21 and E22, QUEUE inbox). M5 waits for E08's increment 3. **For the next milestone's review list:** `Query::CreatureCastTargets {}` (a message shape, provisional).
+- **M1–M4 and M6 closed** (checkpoints SRV-Q12 to SRV-Q24; M6 is discovery: ADR-0021). **M5 part 1** (SRV-Q25; the epic's "M5 part 1", the QUEUE's tasks): T0 (#799), T1 (#803; **events only**, the design note §14; the fold's gaps are the adventure and town lanes', SRV-Q26) and T2 (the observation's wire, `wire::game`, `map::game::observe`; in two parts, T2a and T2b, both in #805) done 2026-11-09. **Open pull requests:** [#808](https://github.com/ChristopherRotter/homm3/pull/808) (`cross-lane`): the files crate `h3-files` (the user's decision before T3c: `h3-cli`'s loaders and replay files moved out, ADR-0005's amendment); its local battle-scoped verify was cut by a restart after its tests, CI's full verify is the record. T3 starts after it merges. **Next:** T3 in three parts (the user, 2026-11-09; the epic's T3): T3a, T3b, T3c. **The review list so far:** the epic's "M5 part 1".
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 35 since CLT-Q4/Q6; bumped on every wire change, a field's new meaning too), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 38 since 2026-11-09, CLT-Q20 and CLT-STUB-3; 36 and 37 were the client lane's; bumped on every wire change, a field's new meaning or a message's new order too), `RECORD_FORMAT_VERSION` (`h3-protocol`, 3 since 2026-11-09: the start's `Events`, the last `Snapshot`), `JOURNAL_FORMAT_VERSION` (`h3-server`, 8 since BAT-GEO-002's rear hex; another format's journal is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -24,6 +24,14 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
-### 2026-10-19 — the inbox after M6
+### 2026-11-09 — T3's split; the files crate `h3-files`
 
-The battle lane's inbox entries done (`E16-log.md`): the Windows fixes (the card test's `0.0.0.0` dial; `open_log` reads through its own handle; the "Access is denied" flake unproven: the user's next Windows run), `Query::CreatureCastTargets {}`, `may_retreat` as its viewer knows it (wire 34), a siege's frames, the example's ladder on `strict-fixed` (the user's choice, BAT-QUIRK-4). #281 open, the full local verify for CI.
+Baseline: `master` a14e30f (its code verified). No original data. The user: T3 in three parts (T3a commands and rejections, T3b events, T3c the fold), one PR after T3c; the messages and v39 with T5's session; the fold's golden-replay test needs `h3-cli`'s loaders, which the user had moved into a new crate first (`h3-files`, done on the branch, see Current state). Then the user stopped the session before T3a.
+
+### 2026-11-09 — M5 T2: the game's observation on the wire
+
+Baseline: `master` ae7d260, CI green; the scoped verify's steps up to its tests passed (a VM restart cut its coverage). No original data. The user split T2 (T2a the adventure map, T2b the rest), both in #805. Built: `wire::game` (the planes as `WireU64` words, the tiles as a palette and an index per tile: lossless, 4 to 64 views on the fixture maps; the decisions, heroes' details, towns, the battle), `map::game::observe`, a test-only inverse checked on random games over five fixture maps. No message, no version step.
+
+### 2026-11-09 — M5 T1: the measurement, events only
+
+Baseline: `master` a0d5504 by the sandbox's full verify (CI's last two `master` runs never started: no job). No original data or computer folder: the XL fixtures with eight players stood in for the shipped maps. A scratch `h3-server` example (not kept) measured the diff at 22 times an `apply` on the golden replays and 730 to 860 times on the XL maps: events only (design note §14). The fold's gaps: SRV-Q26 (the user: foldable engine events and a query), the adventure and town lanes' inboxes. PR #803.

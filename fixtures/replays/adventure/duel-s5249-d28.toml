@@ -694,33 +694,33 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xc4abfcb9bf7fe064",
-    "0x1ca9ef891f484487",
-    "0x0b58ab61e759acac",
-    "0x57f7ee32cc714ddf",
-    "0x086bc133d270922b",
-    "0x917f18673a48c8f7",
-    "0x5236c4705483103e",
-    "0x5c3d66e8d2b2fb7e",
-    "0x01db5c35a4f67558",
-    "0x90cfed15a8d9f6a3",
-    "0x6ffb566813eb49e9",
-    "0x13c74731a73495ff",
-    "0x95484f744773c385",
-    "0x9eb51c86ad7e14db",
-    "0x898c28a3b8ff7f41",
-    "0x4bdb43620a04aee9",
-    "0xca5de608d2a86bb3",
-    "0x70dc5f3a793e9834",
-    "0xc342244b38216025",
-    "0xe99bfd63ff763ffe",
-    "0x3b88a30808b579b5",
-    "0x00d3b4c700d0f2cb",
-    "0x8747749da0142c11",
-    "0x26ea73b1aebb9c67",
-    "0x9d1fed12204e1686",
-    "0x4e0ace3ca5a5a017",
-    "0x3b2d8949c21d1388",
+    "0xb8a1b6cf5471856c",
+    "0xdcf0b73236a9f21b",
+    "0x996c297b774859d8",
+    "0xf9a53eec9fc884f3",
+    "0xea120f5257953de3",
+    "0xd17046c48f1001bb",
+    "0x7d56fdc94bf06dea",
+    "0xbbca0cb049ec2306",
+    "0x27354708341bad78",
+    "0xc24ab1108cd4bbeb",
+    "0xfc4251e4afce7eb1",
+    "0xd24421ed6d903dcf",
+    "0x5bacc52f6932cd6d",
+    "0x5ca0dfd1bc23b719",
+    "0x2ae3e0c90903fc13",
+    "0x4e93dd2c0c4bf7a3",
+    "0x3bcfb15a6c3e4e31",
+    "0xff0896c522aca9ee",
+    "0x720428618513b43f",
+    "0x637aa23d312dc1e2",
+    "0xb442d576a766dd39",
+    "0xd54c173072a59afb",
+    "0xc29bf89aa7dd1bfd",
+    "0xb2108b01ee123f33",
+    "0x06f1e7a0441adea6",
+    "0x94bccf49c325a75b",
+    "0xfcaf54fffe231e3e",
 ]
 
 [replay]
@@ -744,13 +744,13 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0xe5ac723212bdce02"
-adventure_ruleset_hash = "0x8295da978eef57d8"
+adventure_ruleset_hash = "0xcd7ea0d574adc88a"
 town_ruleset_hash = "0x8477f2008d862e55"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 25
+game_state_hash_version = 26
 adventure_state_hash_version = 21
 checkpoint_every = 25
 
@@ -761,4 +761,4 @@ import_version = 21
 
 [result]
 day = 29
-final_hash = "0x44ed2861842df21d"
+final_hash = "0xdf2d087e2d6266f7"
