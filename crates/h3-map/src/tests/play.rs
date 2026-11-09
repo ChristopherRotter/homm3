@@ -6129,6 +6129,15 @@ fn check_unowned_battle_end(
     for event in events {
         records((before, after), event, (&mut gains, &mut Vec::new()));
     }
+    // E08 T103d (decision 279): a won battle against the monster guarding the tile the hero
+    // entered is followed by the visit of that tile's entered object, held for after it
+    // (ADV-MON-006, GAM-DEC-007), in the same command when no level-up opened: a weekly object's
+    // resource comes after the battle's own (ADV-WEK-001; found by CI's run on `master` 1e8568d,
+    // 2026-11-09).
+    for i in weekly_emptied(before, after) {
+        let weekly = before.adventure().weekly(i).unwrap();
+        gains.push((weekly.resource, weekly.amount));
+    }
     let mut treasury = before.treasury(owner).unwrap().to_vec();
     let mut gained = Vec::new();
     for event in events {
