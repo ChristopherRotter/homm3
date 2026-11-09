@@ -465,12 +465,12 @@ mod tests {
         assert!(!fork.apply_capitol_limit(TownId::new(0), &part, false));
         assert!(!fork.apply_capitol_limit(TownId::new(2), &part, true));
         assert!(!fork.apply_capitol_limit(TownId::new(3), &part, true));
-        fork.write(TownId::new(3), |t| t.rebuilt(set(&[0]), true));
+        fork.write(TownId::new(3), Town::clone);
         let (old, new) = stores(&store, &fork);
         assert!(Arc::ptr_eq(old, new));
         let mut empty = Towns::default();
         assert!(!empty.apply_capitol_limit(TownId::new(0), &part, true));
-        empty.write(TownId::new(0), |t| t.rebuilt(set(&[0]), true));
+        empty.write(TownId::new(0), Town::clone);
         assert_eq!(empty, Towns::default());
     }
 
