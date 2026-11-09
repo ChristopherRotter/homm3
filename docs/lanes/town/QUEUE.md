@@ -14,7 +14,7 @@ acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E09 T18a — the Shipyard's water** (design §28, §34, §35's round 6; decision 46; queued
 2026-11-09 by T17b; `cross-lane`: the adventure part and the static map are the adventure lane's;
-look at its open pull requests first, #797 E08 T104 among them): the adventure part's kind `Town`
+look at its open pull requests first; E08 T104, #797, merged 2026-11-09): the adventure part's kind `Town`
 gains `boat_offsets` (the base pack's `[[-1, 2], [1, 2]]`, column and row from the entrance;
 adventure ruleset part v19 after T103a's v18, or again after theirs); `fix_boat_tiles` (ADV-SHY-001's
 step) fixes each town's spot as a Shipyard's tile (the town object's `Resolved::BoatTile`,
