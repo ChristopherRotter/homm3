@@ -20,7 +20,7 @@ Shared (own PR, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content
 
 ## Traps for every lane
 
-- **Battle types on the wire** (ADR-0018 point 5): a new `Command`, `EventKind`, `CommandError`, `CastTarget`, `DamageRoll` or `ObstacleKind` variant, or a field of `Observation`'s structs, breaks `h3-protocol`'s build until mapped (same PR, `cross-lane`, or server lane first).
+- **Engine types on the wire** (ADR-0018 point 5): a new `Command`, `EventKind`, `CommandError`, `CastTarget`, `DamageRoll` or `ObstacleKind` variant, or a field of `Observation`'s structs, breaks `h3-protocol`'s build until mapped (same PR, `cross-lane`, or server lane first). From E16 M5 T2 on the same holds for the whole game's: `h3-game`'s, `h3-adventure`'s and `h3-towns`' commands, answers, events and errors, and the fields of `GameObservation`'s structs (SRV-Q25).
 - **Hero-level properties** (a hero's available spells, a spell's mastery) are derived once in `h3-heroes` (ADR-0013 point 2, BAT-Q19): the adventure map calls them, never a copy.
 
 **Where the other traps live** (open the one your task meets, not all):
