@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v8 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v11 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -16,7 +16,10 @@
 //! first|second`, `chest gold|experience`, `arena attack|defense`, `school first|second|leave`,
 //! `university buy <slot>|leave`, and `answer close` for a meeting or an army dialog; v8
 //! `build-boat <type> <x>,<y>,<level>`, a Shipyard's boat without a visit, E08 T84b2: the
-//! Shipyard by its object type's index in the adventure part and its anchor):
+//! Shipyard by its object type's index in the adventure part and its anchor; v9 the town part's
+//! hash, E09 T5a2; v10 a hire dialog's answers, E08 T95b; v11 `town build <town> <building>`, a
+//! town's build without a hero, E09 T18b1: the town by its `TownId` and the building by its index
+//! in the town's faction's record):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -33,11 +36,12 @@
 //!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`: a
 //!                                     #   management command
 //!     "0 build-boat 41 9,16,1",       #   `<player> build-boat <type> <x>,<y>,<level>`
+//!     "0 town build 2 7",             #   `<player> town build <town> <building>` (format 11)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 10
+//! format = 11
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -74,9 +78,9 @@ use h3_adventure::{AdventureCommand, ObjectTypeId, Pos};
 use h3_content::{CreatureTypeId, Formation};
 use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
-    Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position, SchoolChoice,
-    SkillOffer, UniversityAnswer,
+    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
+    ChestChoice, Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position,
+    SchoolChoice, SkillOffer, TownCommand, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -270,7 +274,8 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// command; a battle command (E08 T19b1) as the battle replays write it ([`crate::format_command`])
 /// without the side, which is the actor's in its battle; a management command (E08 T51a) by its
 /// own words ([`format_manage`]); an answer (E08 T63a) by its kind and words ([`format_answer`]);
-/// a `BuildBoat` (E08 T84b2) by its Shipyard's type index and anchor.
+/// a `BuildBoat` (E08 T84b2) by its Shipyard's type index and anchor; a town's build (format v11,
+/// E09 T18b1) by its town and building.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -305,6 +310,10 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
             anchor.level
         ),
         GameCommand::Manage(command) => format!("{player} {}", format_manage(command)),
+        // Format v11 (E09 T18b1).
+        GameCommand::Town(TownCommand::Build { town, building }) => {
+            format!("{player} town build {} {}", town.raw(), building.index())
+        }
     }
 }
 
@@ -562,6 +571,21 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 object_type,
                 anchor,
             })
+        }
+        // Format v11 (E09 T18b1): a town's build, without a hero.
+        Some("town") => {
+            let (Some("build"), Some(town), Some(building)) =
+                (words.next(), words.next(), words.next())
+            else {
+                return Err(bad());
+            };
+            let town = town.parse().map(TownId::new).map_err(|_| bad())?;
+            let building = building
+                .parse()
+                .ok()
+                .and_then(BuildingId::from_index)
+                .ok_or_else(bad)?;
+            GameCommand::Town(TownCommand::Build { town, building })
         }
         // Format v6 (E08 T51a): the management commands.
         Some(

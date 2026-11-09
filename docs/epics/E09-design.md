@@ -1052,7 +1052,7 @@ hot seat, from maps `h3-experiment` writes (`experiments/specs/E09-batch-2a.toml
 | town state hash v2 | the day's mark | T17a |
 | game state hash v26 (E08 T105b's then v27) | the store's v2 folded in | T17a |
 | adventure ruleset part (v19 after E08 T103a's v18) | the kind `Town`'s boat offsets | T18a |
-| adventure replay format (v12 after E08 T105b's v11) | `GameCommand::Town` | T18b |
+| adventure replay format v11 (before E08 T105b, whose bump is then v12) | `GameCommand::Town` | T18b1 |
 | env action encoding (the AI lane's; after E08's v8) | the build entry and head | T19 |
 | map import | none (the import reads the town events and the forbidden sets since T7a1) | — |
 

@@ -615,8 +615,13 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
             hire_entry(hire, *creature)
         }
         GameCommand::Answer(answer) => answer_entry(*answer),
-        // E08 T51a: the management commands have no entry (decision 99: the AI lane's call).
-        GameCommand::Adventure(_) | GameCommand::Battle(_) | GameCommand::Manage(_) => None,
+        // E08 T51a: the management commands have no entry (decision 99: the AI lane's call); a
+        // town's build none until E09 T19's (the AI lane's encoding; `legal_commands` lists none
+        // before E09 T18b2).
+        GameCommand::Adventure(_)
+        | GameCommand::Battle(_)
+        | GameCommand::Manage(_)
+        | GameCommand::Town(_) => None,
     }
 }
 

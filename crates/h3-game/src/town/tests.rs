@@ -3,7 +3,7 @@
 //! [`pool`] (E09 T7b1); the towns' draws, the store of towns and the start's reveal in [`build`]
 //! (E09 T7b2a); the main towns' heroes in [`heroes`] (E09 T7b2b); the step onto a town and its
 //! capture in [`capture`] (E09 T8a2); the towns' income in [`income`] and their views in
-//! [`view`] (E09 T8c1).
+//! [`view`] (E09 T8c1); the town context's commands in [`command`] (E09 T18b1).
 
 use alloc::format;
 use alloc::string::ToString;
@@ -942,6 +942,7 @@ fn a_placed_heros_unknown_type_is_refused_before_any_draw() {
 
 mod build;
 mod capture;
+mod command;
 mod heroes;
 mod income;
 mod pool;

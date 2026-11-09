@@ -80,6 +80,9 @@ pub use h3_heroes::{Movement, movement};
 /// `h3_heroes`' (the map's import equips a map's entries where they are taken, since E08 T49b
 /// with Titan's Thunder's Spell Book; `wearing` places a list).
 pub use h3_heroes::{Position, equip, positions, takes, wearing};
+/// The town context's command and its refusals (E09 T18b1; `h3_towns`' types): what
+/// [`GameCommand::Town`], [`GameCommandError::Town`] and [`GameEvent::TownBuilt`] carry.
+pub use h3_towns::{BuildingId, TownCommand, TownCommandError};
 /// A town's setup as the map gives it (E09 T7a1; `h3_towns`' types): what a [`GameSetup`]'s towns
 /// hold, re-exported so that a map's import builds them through this crate.
 pub use h3_towns::{

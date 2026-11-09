@@ -1,13 +1,13 @@
 //! Tests of the step onto a town through the game and of the capture the game composes (E09 T8a2;
 //! the town epic's design note §9 and §11): an own town entered, an undefended one captured with
 //! its reveal and the Capitol's limit told where the town is seen, a defended one besieged (since
-//! E09 T8b2a), the legal moves.
+//! E09 T8b2a), the legal moves; the capture's rule of the day's mark (since E09 T18b1).
 
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureCommand, AdventureEventKind, Pos, Viewers};
 use h3_contracts::{HeroId, PlayerId, TownId};
-use h3_towns::{BuildingsSetup, SlotSet, TownFaction};
+use h3_towns::{BuildingId, BuildingsSetup, SlotSet, TownFaction};
 
 use super::{
     CAPITOL_SLOT, LOOKOUT_RADIUS, LOOKOUT_SLOT, faction, towns_rules, towns_rules_on, towns_setup,
@@ -262,9 +262,58 @@ fn a_capture_of_a_town_the_store_lacks_changes_nothing() {
     let (mut adventure, mut towns) = (game.adventure().clone(), game.towns().clone());
     let mut events = Vec::new();
     let lacked = (TownId::new(2), RED);
-    crate::town::capture(&mut adventure, &mut towns, &rules, lacked, &mut events);
+    crate::town::capture(
+        &mut adventure,
+        &mut towns,
+        &rules,
+        lacked,
+        |_| true,
+        &mut events,
+    );
     assert!(events.is_empty());
     assert_eq!((&adventure, &towns), (game.adventure(), game.towns()));
+}
+
+// covers: TWN-BLD-004
+#[test]
+fn a_capture_keeps_the_day_s_mark_unless_a_human_takes_it_from_no_human() {
+    // E09 decision 43 (survey `E09-construction.md` §3, `town_change_owner` 0x4C63B8): red takes
+    // town 1, built in today, from blue or from no owner; the mark is cleared only when the old
+    // owner is not human (or none) and red is.
+    let rules = towns_rules();
+    let fort = BuildingId::from_index(4).unwrap();
+    let cases = [
+        // (town 1 neutral, blue human, red human) → the mark kept
+        (false, true, true, true),
+        (false, false, true, false),
+        (true, true, true, false),
+        (false, true, false, true),
+        (false, false, false, true),
+    ];
+    for (neutral, blue_human, red_human, kept) in cases {
+        let mut setup = towns_setup(&rules);
+        if neutral {
+            setup.map.objects[1].owner = None;
+            setup.towns[1] = super::town(TownFaction::Fixed(faction(&rules, "t:town")));
+        }
+        let game = GameState::new(&rules, &setup, 7).unwrap();
+        let (mut adventure, mut towns) = (game.adventure().clone(), game.towns().clone());
+        // Town 1 built in today (its Fort already stands: the build only sets the mark).
+        towns.build(T1, fort, rules.towns(), true).unwrap();
+        let human = |player: PlayerId| if player == RED { red_human } else { blue_human };
+        let mut events = Vec::new();
+        crate::town::capture(
+            &mut adventure,
+            &mut towns,
+            &rules,
+            (T1, RED),
+            human,
+            &mut events,
+        );
+        assert_eq!(adventure.owner(1), Some(RED));
+        let case = (neutral, blue_human, red_human);
+        assert_eq!(towns.get(T1).unwrap().built_today(), kept, "{case:?}");
+    }
 }
 
 // covers: TWN-VIS-001

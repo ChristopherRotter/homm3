@@ -489,7 +489,7 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
     (boarding is a step's), a tile without an object.
   - **The legal set** (`legal_commands`): a `Revisit` of each of the player's heroes on such a tile,
     in hero order after the `BuildBoat`s; `legal_moves` unchanged. Its replay line `revisit
-    <hero>` (**adventure replay format v11**).
+    <hero>` (**adventure replay format v11**; v12 since E09 T18b1 took v11).
   - **Every player alike** (decision 16): the original's key works on a human's turn only and a
     computer never presses it; a computer player's use is E10's.
 - **No new decision kind and no new view:** the jump's battle is a battle (ADR-0017 point 6), a
@@ -508,7 +508,7 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   the reach's tiles, ADR-0017 point 8). The observation the env returns is `GameObservation`
   (decision 187): the kinds' types in the objects' views, nothing else. A revisit at 0 points can
   repeat within a turn (§18).
-- **Replays:** adventure replay format **v11** (`revisit`); every golden replay rehashed (the
+- **Replays:** adventure replay format **v11** (`revisit`; v12 since E09 T18b1 took v11); every golden replay rehashed (the
   versions of §15; no recorded map holds a teleporter: the generators use 118, the lane's
   `TRAPS.md`). New, on **`e08-teleporters-36.h3m`** (`h3-map`'s `src/tests/teleporters_map.rs`,
   `h3_map::writer`), two levels and two players: a one-way channel of one entrance and three
@@ -557,9 +557,9 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 | pack format v51, core ruleset hash v52 (shared) | the effect kind `whirlpool_protection` (note §2) | T102: done |
 | adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a: done |
 | map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b: done |
-| game state hash v27 (E09 T17a took v26) | the held jump `Rest::Jump` (§13) | T105b |
-| adventure replay format v11 | `revisit` (§13) | T105b |
-| env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b (`cross-lane`) |
+| game state hash v27 (E09 T17a took v26) | the held jump `Rest::Jump` (§13) | T105b1: done |
+| adventure replay format v12 (E09 T18b1 took v11) | `revisit` (§13) | T105b2 |
+| env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b2 (`cross-lane`) |
 
 The adventure state hash stays v21 (note §6). The town lane's E09 bumps the same rows: **the second
 to merge bumps again**, each change once (the table's numbers are this increment's if it merges

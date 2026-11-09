@@ -126,6 +126,15 @@ fn commands_round_trip_through_their_text() {
             }),
             "2 build-boat 41 9,16,1",
         ),
+        // Format v11 (E09 T18b1): a town's build, by its town and building.
+        (
+            PlayerId::new(3),
+            GameCommand::Town(TownCommand::Build {
+                town: TownId::new(2),
+                building: BuildingId::from_index(40).unwrap(),
+            }),
+            "3 town build 2 40",
+        ),
         // Format v3 (E08 T19b1): a battle command, the battle replays' text without the side.
         (
             PlayerId::new(1),
@@ -294,6 +303,15 @@ fn commands_round_trip_through_their_text() {
         "0 build-boat 70000 9,16,1",
         "0 build-boat 41 9,16",
         "0 build-boat 41 9,16,1 now",
+        "0 town",
+        "0 town build",
+        "0 town build 2",
+        "0 town raze 2 7",
+        "0 town build x 7",
+        "0 town build 70000 7",
+        "0 town build 2 x",
+        "0 town build 2 64",
+        "0 town build 2 7 now",
         "0 battle",
         "0 battle fly 3",
         "0 battle A wait",

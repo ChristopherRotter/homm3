@@ -232,7 +232,7 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      `AskUserQuestion`; recommended): **T105b1** the battle and the meeting at an occupied exit
      (`ADV-STUB-16` lifted), the held jump `Rest::Jump` after the winner's levels with
      `AdventureState::arrive` (game state hash v27), A-37's entry `ADV-QUIRK-39`; no `cross-lane`
-     path. **T105b2** `Revisit`, `NothingToRevisit` and the legal set (replay format v11), the
+     path. **T105b2** `Revisit`, `NothingToRevisit` and the legal set (replay format v12, E09 T18b1 having taken v11), the
      env's action encoding v8 (`cross-lane`, the AI lane's inbox with the step cap), the town
      lane's inbox (a town's revisit); its env masking `Revisit` in moves every `random-play-*`
      workload's course (re-baselined with the reason written). Not chosen: three parts (the env

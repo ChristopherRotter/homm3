@@ -2869,7 +2869,8 @@ fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
         | GameCommand::EndTurn
         | GameCommand::Answer(_)
         | GameCommand::Battle(_)
-        | GameCommand::Manage(_) => None,
+        | GameCommand::Manage(_)
+        | GameCommand::Town(_) => None,
     }
 }
 

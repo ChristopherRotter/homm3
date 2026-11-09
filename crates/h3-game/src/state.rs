@@ -510,8 +510,10 @@ impl GameState {
         while let Some(outcome) = next.take() {
             // rule: TWN-CAP-001, TWN-CAP-002
             if let Some(captured) = outcome.capture {
-                let (adventure, towns) = (&mut self.adventure, &mut self.towns);
-                town::capture(adventure, towns, rules, (captured, player), sink);
+                let (adventure, towns, players) =
+                    (&mut self.adventure, &mut self.towns, &self.players);
+                let human = |p: PlayerId| players.get(p.index()).is_some_and(|s| s.human);
+                town::capture(adventure, towns, rules, (captured, player), human, sink);
             }
             if let Some(hero) = outcome.visit_after {
                 self.hold(player, hero, Rest::Visit);
@@ -1329,6 +1331,12 @@ impl GameState {
     /// `TownId`, the static map's towns in object order.
     pub fn towns(&self) -> &Towns {
         &self.towns
+    }
+
+    /// The store of towns to write (E09 T18b1): the town context's commands (`town::command`)
+    /// write it through the store's own writes.
+    pub(crate) fn towns_mut(&mut self) -> &mut Towns {
+        &mut self.towns
     }
 
     /// The scenario's level limit (HER-EXP-003; E08 T29): 0 none.
