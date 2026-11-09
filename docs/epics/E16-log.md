@@ -2008,3 +2008,37 @@ The user split T2 in two parts (T2a the adventure map, T2b the rest of the obser
   after every step, round-tripping every observation with a decision or a battle (they meet
   offers, level-ups, meetings, a choice and battles).
 - **Dependencies.** `h3-heroes` too (T0's edge).
+
+### M5 T3a — the game's commands and rejections on the wire (2026-11-09)
+
+The user split T3 in three parts (T3a commands and rejections, T3b events, T3c the fold and its
+test), one pull request after T3c. Baseline: `master` 1e8568d (#808, the files crate `h3-files`,
+merged); the sandbox's full verify passed up to its tests (coverage stopped: CI's run on `master`
+is the record).
+
+- **The types** (`wire::game`, in `wire/game/command.rs`; provisional): `GameCommand` (`EndTurn`,
+  `Adventure { command }` with `AdventureCommand`'s `MoveHero` and `BuildBoat`, `Answer { answer }`,
+  `Battle { command }` holding the battle wire's `Command`, `Manage { manage }`); `Answer`'s eight
+  kinds with `Consent`, `SkillOffer`, `ChestChoice`, `ArenaChoice`, `SchoolChoice`,
+  `UniversityAnswer`, `HireAnswer`; `Manage`'s six with `ArmyCommand`, `ArmySlot`, `ArmyRef`,
+  `ArtifactAt`, `ArtifactPlace`. `GameReject` (`h3_game::GameCommandError`'s 17 kinds, a battle's
+  refusal as the battle wire's `RejectCode`), `AdventureReject` with `StandReject`,
+  `ManageReject` with `ArmyReject`, `MoveReject`, `CombineReject`, and `HireReject`. Every enum
+  with struct variants refuses unknown fields: a client's command is read strictly.
+- **The mapping** (`map::game`, in `map/game/command.rs`): `command` (the engine's to the wire:
+  the legal lists, an applied command's echo), `command_to_engine` (a client's, whatever its
+  values: the engine checks them against the state and the trusted actor, ADR-0008), `reject`
+  (the engine's error to the wire). "Both ways" holds for the commands; a rejection only leaves
+  the server, so its inverse is the tests' (as T2's observation). The engine's `usize` indices
+  are narrowed (an artifact's place and a position to `u16`, a step to `u32`, saturating): each is
+  a client's value echoed or one within the game's bounds, so none saturates in play.
+- **Tests** (`tests/game_command.rs`): a hand-built command of every kind and every part's
+  variant maps to the wire and back unchanged and round-trips (JSON, postcard); 90 hand-built
+  rejections (every variant of every error, the battle's 31 codes) map back through a test-only
+  inverse, distinct on the wire, and round-trip; the JSON is serde's default form, unknown fields
+  refused; three fixture maps (duel, towns, sea; 300 random steps) map back every actor's legal
+  commands (the system actor's too) and every hero's management commands before each step, the
+  played command, and its rejections when every other actor issues it (out of turn, by the
+  system actor, a battle's for the other side or without a battle, an answer without a decision):
+  about 476 000 checks, most of them the sea map's management commands, in 2 s.
+- **No message, no version step** (with T5's session, the user's order): nothing sends these yet.

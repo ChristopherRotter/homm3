@@ -3,6 +3,8 @@
 //! engine's types is named in a pattern, without `..`, and every enum is matched without a
 //! wildcard: a new field or variant fails this crate's build until it is mapped. What leaves is
 //! projected by construction: [`observe`] takes the viewer and calls the engine's `observe`.
+//! The commands both ways and the rejections: [`command`], [`command_to_engine`], [`reject`]
+//! (T3a, `game/command.rs`).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -35,6 +37,10 @@ use crate::wire::game::{
     ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, SkillLevel,
     SlotState, Tile, Town, TownOwnerFacts, UniversityVisit,
 };
+
+mod command;
+
+pub use command::{command, command_to_engine, reject};
 
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {

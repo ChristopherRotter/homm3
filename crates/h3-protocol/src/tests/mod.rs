@@ -1,11 +1,13 @@
 //! Tests of the wire types, the codec and the mapping (E16 M1 T1), the connection and the session
 //! core (M1 T2), the lobby (M2 T1), the decoder under mutated frames (M2 T5d), the ladders' queues
-//! (M4 T2), the server's card (M6 T2), lists of servers (M6 T5), the whole game's wire (M5 T2).
+//! (M4 T2), the server's card (M6 T2), lists of servers (M6 T5), the whole game's wire (M5 T2), its
+//! commands and rejections (M5 T3a).
 
 mod card;
 mod codec;
 mod connection;
 mod game;
+mod game_command;
 mod ladder;
 mod list;
 mod lobby;
