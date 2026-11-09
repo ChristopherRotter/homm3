@@ -26,7 +26,7 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ### 2026-11-09 — M5 T3a and T3b: the game's commands, rejections and events on the wire
 
-Baseline: `master` 1e8568d (#808 merged; CI's run on it in progress at the start); the sandbox's full verify passed up to its tests, its coverage stopped (CI's is the record). No original data. Built T3a and T3b (`E16-log.md`): the wire types, the mapping (the events projected), test-only inverses, hand-built lists of every variant and played fixture games. No message, no version step (T5). The user (SRV-Q27): the game's battle by snapshots, the further gaps as SRV-Q26's, T3c as T3c1 and T3c2. Next: T3c1, in a fresh session.
+Baseline: `master` 1e8568d (#808 merged; CI's run on it in progress at the start); the sandbox's full verify passed up to its tests, its coverage stopped (CI's is the record). No original data. Built T3a and T3b (`E16-log.md`): the wire types, the mapping (the events projected), test-only inverses, hand-built lists of every variant and played fixture games. No message, no version step (T5). The user (SRV-Q27): the game's battle by snapshots, the further gaps as SRV-Q26's, T3c as T3c1 and T3c2. Next: T3c1, in a fresh session. CI on `master` 1e8568d is red, not ours: `h3-map`'s proptest `every_step_keeps_the_commands_invariants` (the adventure lane's inbox, the same day); the pull request waits for its fix.
 
 ### 2026-11-09 — T3's split; the files crate `h3-files`
 

@@ -17,6 +17,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-09 (the server lane, seen in CI; **`master` is red**): **`h3-map`'s proptest
+  `tests::play::every_step_keeps_the_commands_invariants` failed in CI's coverage run on
+  `master` 1e8568d** (run 42711145647; its test step passed, the coverage run drew other cases).
+  `check_unowned_battle_end` (`crates/h3-map/src/tests/play.rs:6159`): `prop_assert_eq!(gained,
+  gains)` with `left: [(#5, 5)]`, `right: []`: a battle without an enemy hero (a guarded object's,
+  ending with an `ObjectMarked` at (8, 1, 0) of type #89) tells `ResourceGained { player 0,
+  resource #5, amount 5 }` that the check does not expect. The persisted case: `cc
+  1cdbcf09cc8245120e020faccea23f2423edbc040c1a09f3d6feec7bd86d21e9` (add it to
+  `crates/h3-map/proptest-regressions/tests/play.txt`; the minimal plan is in the run's log, AB,
+  side 9, one level). `master`'s two runs before (#806, #807) were cancelled, so either may have
+  brought it (#807 touched `play.rs`). Whether the gain or the check is wrong is yours.
+
 - 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **the
   adventure's files moved from `h3-cli`'s `src/adventure/` into `h3-files`' `src/adventure/`**, yours
   (`lanes.toml`; ADR-0005's amendment): `load_rules`, `read_map`, `load_map`, the replay file
