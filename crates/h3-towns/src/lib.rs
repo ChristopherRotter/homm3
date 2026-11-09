@@ -19,8 +19,10 @@
 //! Increment 2 (construction, E09 design Part D): the day's mark ([`Town::built_today`]), what a
 //! build does ([`built_with`]) and the store's writes of a build, a day's start and a capture
 //! ([`Towns::build`], [`Towns::start_day`], [`Towns::captured`]) with the town's public facts
-//! ([`TownFacts`]; E09 T17a). What comes next: the hall's tests and the build command (E09
-//! T17b), the game's command, day and town events (E09 T18).
+//! ([`TownFacts`]; E09 T17a), the hall's offer and tests ([`buildable`], [`possible`],
+//! [`check_build`]), the town command ([`TownCommand`], [`TownCommandError`]) and a town event's
+//! buildings ([`event_buildings`]; E09 T17b). What comes next: the game's command, day and town
+//! events (E09 T18).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -45,6 +47,7 @@ extern crate alloc;
 mod build;
 mod building;
 mod capture;
+mod command;
 mod derive;
 #[cfg(test)]
 mod fixture;
@@ -56,9 +59,10 @@ mod siege;
 mod store;
 mod view;
 
-pub use build::built_with;
+pub use build::{buildable, built_with, check_build, event_buildings, possible};
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 pub use capture::{capitol_limit, reveal};
+pub use command::{TownCommand, TownCommandError};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;
 pub use income::{daily_income, hall_level};

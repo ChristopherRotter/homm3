@@ -407,7 +407,9 @@ fn original_core(texts: &[&str]) -> Ruleset {
 
 #[test]
 fn the_original_packs_compile_with_every_faction() {
-    // E09 T5b2b2: the harvested files compile in every expansion combination.
+    // covers: TWN-BLD-006, TWN-BLD-007
+    // E09 T5b2b2: the harvested files compile in every expansion combination; E09 T16b's
+    // requirements, costs and Shipyards against the construction survey's §5 and §6.
     let roe = compile(&ORIGINAL_PACKS[..1], ORIGINAL).unwrap();
     let ab = compile(&ORIGINAL_PACKS[..2], ORIGINAL).unwrap();
     let sod = compile(&ORIGINAL_PACKS, ORIGINAL).unwrap();
