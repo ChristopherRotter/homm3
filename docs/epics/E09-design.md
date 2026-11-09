@@ -820,20 +820,23 @@ Built by T16b (`E09-log.md`), as increment 1's content (decision 23's route, des
 
 ### 26. The record and the store: the day's mark (`h3-towns`; town state hash v2)
 
-- **`Town`** gains `built_today: bool` (the original's +0x2 with the values 0 and 1 only, decision
-  43; *agent's call*: a flag, not the day of the last build, which would hash two states that play
-  alike apart). `Town::built_today()`.
-- **`Towns`** gains three writes, each copying only the town it changes (a fork's first write
-  copies the list of references and that town, ADR-0028 point 4):
-  - `build(town, building, part, mark) -> Option<TownFacts>`: §27's build, the mark set with
-    `mark`; it returns the town's public facts before (the fort level, the Capitol, the mark), so
-    the game tells their change (§31); `None` for a town or building the store lacks (the game
-    checked both: never in play);
-  - `start_day()`: clears every set mark (only the towns built in the day before are written);
-  - `captured(town, clear_mark)`: the capture's rule of the mark (§30); the Capitol's limit stays
-    `apply_capitol_limit`.
+Built by T17a (`E09-log.md`).
+
+- **`Town::built_today()`** (the original's +0x2 with the values 0 and 1 only, decision 43;
+  *agent's call*: a flag, not the day of the last build, which would hash two states that play
+  alike apart); false from `Town::new`.
+- **`Towns`' writes**, each copying only the town it changes (`write`; a fork's first write copies
+  the list of references and that town, ADR-0028 point 4):
+  - `build(town, building, part, mark) -> Option<TownFacts>`: the ever-built set becomes
+    `built_with`'s (§27), the mark set with `mark` and kept otherwise (a town event's build neither
+    sets nor clears it); it returns the town's public facts before (`TownFacts { fort, capitol,
+    built_today }`; `Towns::facts` the same now), so the game tells their change (§31); `None` for
+    a town the store lacks or a building outside its record (the game checked both: never in play);
+  - `start_day()`: clears every set mark (only the marked towns are written);
+  - `captured(town, clear_mark) -> bool`: the capture's rule of the mark (§30), whether it wrote;
+    the Capitol's limit stays `apply_capitol_limit` (the mark kept).
 - **The hash** (v2): after each town's forbidden set, its mark. The game state hash folds the
-  store in, so it bumps with it (the replays record the game's version, not the store's).
+  store in, so it bumped with it (v26; the replays record the game's version, not the store's).
 
 ### 27. The rules (`h3-towns`; TWN-BLD-002 to -005, TWN-EVT-003)
 
@@ -844,7 +847,7 @@ Pure functions of a town, the part and plain inputs, beside increment 1's deriva
 | `buildable(town, part, holds_capitol)` | the **hall's offer**: every building not ever built, its `requires` in the ever-built set, not forbidden, not of role `grail` (the Grail's path, increment 5), not a hall-4 one while `holds_capitol`; then each horde `h` replaced by the building `u` it would make automatic (`h` in `u.auto_with`, the rest of `u.auto_with` ever built, `u` not); empty while `built_today` | TWN-BLD-002, -003, -004 |
 | `possible(town, part, holds_capitol)` | the hall's "not now" against "never" (§2.2): not forbidden, not a hall 4 while `holds_capitol`, each requirement ever built or still not forbidden; for clients over the owner's view | TWN-BLD-002 |
 | `check_build(town, part, building, holds_capitol)` | the building's cost, or the first refusal of `TownCommandError` in this order: `UnknownBuilding`, `Built`, `Forbidden`, `Grail`, `Requirements`, `Capitol`, `OfferedAs(BuildingId)` (a horde the hall offers as its upgrade), `BuiltToday` | TWN-BLD-001 (the town's part) |
-| `built_with(town, part, building)` | the ever-built set after a build: the building and what it supersedes, then every building whose `auto_with` is all ever built, with what it supersedes, to a fixed point (the hordes' one step; survey §4 steps 1 and 3, `town_build` 0x5BE930) | TWN-BLD-005 |
+| `built_with(town, part, building)` | built by T17a (`build.rs`; `None` outside the record): the ever-built set after a build: the building and what it supersedes, then every building whose `auto_with` is all ever built, with what it supersedes, to a fixed point, with no forbidden test (the hordes' one step; survey §4 steps 1 and 3, `town_build` 0x5BE930) | TWN-BLD-005 |
 | `event_buildings(town, part, event, water)` | an event's buildings in the record's order (the original's id order): its set less the ever-built, less what another of its buildings supersedes, less a `shipyard` without `water` (§8.3); no other test | TWN-EVT-003 |
 
 - **The hall's offer** (*agent's call*): the original's buildable-now set (§2.1) also holds a horde
@@ -1028,8 +1031,8 @@ hot seat, from maps `h3-experiment` writes (`experiments/specs/E09-batch-2a.toml
 | Version | Change | Task |
 |---|---|---|
 | town ruleset part v4 | requirements, costs, the role `shipyard` | T16a |
-| town state hash v2 | the day's mark | T17 |
-| game state hash (v27 if E08 T105b's v26 merges first) | the store's v2 folded in; the town command | T17 (or the first `cross-lane` task after it) |
+| town state hash v2 | the day's mark | T17a |
+| game state hash v26 (E08 T105b's then v27) | the store's v2 folded in | T17a |
 | adventure ruleset part (v19 after E08 T103a's v18) | the kind `Town`'s boat offsets | T18a |
 | adventure replay format (v12 after E08 T105b's v11) | `GameCommand::Town` | T18b |
 | env action encoding (the AI lane's; after E08's v8) | the build entry and head | T19 |
@@ -1076,7 +1079,7 @@ batch TWN-2 runs first, so the ADRs are applied once with its verdicts, as incre
 | 2 | **T14** | Batch TWN-2 (§33): the maps and spec, the harness's steps, the run, the scoring (cut at its start) |
 | 3 | **T15** | `shared/`: the three drafts into `docs/adr/` with TWN-2's verdicts, `docs/03-domain.md`'s terms, `docs/06-security.md`'s words |
 | 4 | **T16a** + **T16b** | T16a: the part's format, compiler, adapter and hash v4 (§24, the synthetic packs). T16b: the harvest (§25; original data) |
-| 5 | **T17** | `h3-towns`: the mark and the store's writes (§26, hash v2), the rules (§27), `TownCommand`, `town.toml`'s TWN-BLD and TWN-EVT-003; the game state hash's bump (`cross-lane`) |
+| 5 | **T17a** + **T17b** | `h3-towns`, cut at its start (the user, 2026-11-09). T17a: the mark and the store's writes with `built_with` (§26, hash v2), the game state hash's bump (`cross-lane`). T17b: the rules (§27), `TownCommand`, `town.toml`'s other TWN-BLD and TWN-EVT-003, `TWN-QUIRK-7` |
 | 6 | **T18a** + **T18b** + **T18c** | T18a: the Shipyard's water (§28; the adventure part's offsets, the census). T18b: the command, the legal builds, the day's start, the capture's mark, the views and events (§29 to §31 but the town events; replay format). T18c: the town events at the turn start (§30, TWN-EVT-001 to -004) |
 | 7 | **T19** | The writer's events, fixtures, replays, properties, benchmarks, the env (§32; `cross-lane`), the census with the original data |
 | 8 | **T20** | The audit against the exit criteria; increment 2 closed; increment 3 refined |
@@ -1111,9 +1114,9 @@ batch TWN-2 runs first, so the ADRs are applied once with its verdicts, as incre
 ### 36. Risks and open points
 
 - **Two lanes in the same crates:** E08's increment 11 (T102 `shared/`, T103a part v18, T105b game
-  state hash v26, replay format v11, action encoding v8) bumps the same versions; whichever merges
-  second rebases, bumps again and re-records. Check the adventure lane's open pull requests at
-  every task's start.
+  state hash v27 since T17a took v26, replay format v11, action encoding v8) bumps the same
+  versions; whichever merges second rebases, bumps again and re-records. Check the adventure
+  lane's open pull requests at every task's start.
 - **`legal_commands`' cost:** every owned town's offer is computed for each list (the env calls it
   every step); measured at T18b's first build (a cached offer per town is the fallback).
 - **The hall's offer** is derived from `auto_with` (§27); batch TWN-2 does not observe it (the

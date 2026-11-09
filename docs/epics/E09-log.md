@@ -2251,3 +2251,52 @@ the clone; the harvest needed `Heroes3.exe` and `H3bitmap.lod`.
 - **Agent's calls (change freely):** the checks in the harvester and not a gap-fill; the Grail
   building without a cost (the original asks none); the rule ids TWN-BLD-006 and -007 with the
   rules (T17), their sources this harvest.
+
+### T17a — the day's mark, what a build does and the store's writes (2026-11-09)
+
+One session, the user present at the start; branch `town/e09-t17a`, `cross-lane` (the game state
+hash's version in `h3-game`'s `lib.rs` and the adventure replays, the adventure lane's).
+Starting point: `master` at 2e5e08f (#794, T16b's, and #795 merged; CI green; the setup's
+baseline found CI's fingerprint, the light gates only). **T17 cut in two at its start** (the
+user, `AskUserQuestion`; recommended, the last session's proposal with `built_with` moved in,
+since the store's build needs it): **T17a** what a build does to a town (the mark, `built_with`,
+the store's three writes, the town state hash v2, the game state hash v26), **T17b** the rules
+that decide a build (`buildable`, `possible`, `check_build`, `event_buildings`), `TownCommand`
+and its errors, TWN-BLD-001 to -003, -006, -007, TWN-EVT-003 and `TWN-QUIRK-7`; T17a this
+session, T17b queued. The user's computer was connected: the original data staged with the file
+tool at the start (the four LODs, the executables, the five DLLs, both `.snd`, the videos, both
+tars, the 40 MP3s), then `cp -rn` into the clone and both tars unpacked; the scoped verify ran
+with them.
+
+- **`h3-towns`** (design §26 and §27's `built_with` as built): `Town::built_today` (a flag,
+  false from `Town::new`; `Town::rebuilt`, crate-private, for the store's writes);
+  `built_with(town, part, building) -> Option<BuildingSet>` (new module `build.rs`, which T17b
+  fills): the building with what it supersedes (setup's `closed`), then the setup's
+  `upgrade_hordes` with no forbidden set, as `town_build` 0x5BE930 tests none (a town event's
+  forbidden horde still upgrades); `None` for a faction without a record or a building the record
+  lacks. `TownFacts { fort, capitol, built_today }` and `Towns::facts`; `Towns::build(town,
+  building, part, mark) -> Option<TownFacts>` (the facts before; the mark set with `mark`, else
+  kept: an event's build neither sets nor clears it), `Towns::start_day()` (writes only the
+  marked towns; a store without one copies nothing), `Towns::captured(town, clear_mark) -> bool`
+  (whether the mark was cleared); the old `set_built` became `write(town, change)`, which
+  `apply_capitol_limit` uses too (the mark kept). The hash v2: each town's mark after its forbidden
+  set (pinned 0x1F7C_E05E_64B8_2246).
+- **Tests** on the synthetic part: `built_with`'s closure (a Capitol over a custom City Hall, the
+  Brotherhood's Tavern), its fixed point both ways (the horde first or the upgraded dwelling first,
+  the fixture's shrine a second step; no forbidden test), its `None`s; the store's build copying
+  one town of a fork and no list twice, an event's build keeping either mark and building a
+  forbidden Fort, the `None`s copying nothing, the day's start writing only the marked towns, the
+  capture's two cases (the Capitol's limit keeps the mark), increment 1's reads at once (a Town
+  Hall's income, a Citadel's moat, a Tavern's view, a silo's resources, the Capitol public), the
+  hash's mark.
+- **Catalog:** TWN-BLD-004 (the mark's writes; the refusal comes with T17b, the game's calls with
+  T18b) and TWN-BLD-005 (what a build does), both `implemented`.
+- **`cross-lane`:** `GAME_STATE_HASH_VERSION` 25 to 26 (the store's v2 folded in; E08 T105b's
+  planned v26 becomes v27: the adventure lane's HANDOFF versions line and an inbox note); the 55
+  adventure replays re-recorded from their own commands (skill `homm3-rerecord-replays`, a scratch
+  script, 3 s in release): only `game_state_hash_version`, the checkpoints and the final hashes
+  moved, in every replay (the empty store's hash moves with its version too). The bot reports
+  record the part hashes only: untouched.
+- **Agent's calls (change freely):** `built_with` in `h3-towns`' new `build.rs` beside setup's
+  helpers made crate-public (not moved); `TownFacts` in the store; `captured` returning whether it
+  wrote, as `apply_capitol_limit`.
