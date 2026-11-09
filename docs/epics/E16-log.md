@@ -1954,3 +1954,57 @@ T1 (SRV-Q25's measurement; the numbers, the method and the gaps in the design no
 - **The baseline.** CI's last two runs on `master` (3c9cff3, a0d5504) never started (no job, an
   outage); the sandbox's full local verify of a0d5504's code passed and stands in
   (`docs/05-testing.md`, "When CI cannot run").
+
+### M5 T2a — the adventure map on the wire (2026-11-09)
+
+The user split T2 in two parts (T2a the adventure map, T2b the rest of the observation), then took both in one pull request (#805).
+
+- **The types** (`wire::game`, provisional): `Adventure` (the viewer, the map's size, the
+  explored and fringe planes as `WireU64` words, the tiles, heroes, objects, the bought
+  Cartographers, the keys, the known objects, the empty boats), `Tile` (`Hidden {}`, `Ground`,
+  `Seen` with the static tile's five flags), `MapHero` and `OwnMapHero`, `Object` (its three masks
+  as `WireU64`), `Monster`, `Guards`, `KnownObject` and `Known` (five variants), `Boat`, and the
+  shared `Pos`, `ObjectRef`, `Amount`, `ArmyStack`, `Formation`.
+- **The tiles as a palette.** A tile's view is three handles and five flags; packed losslessly
+  into one number it needs 57 bits field by field, and even counted exactly (one hidden view, the
+  ground views over a `u16` terrain and two optional `u16` handles, 32 seen views per ground one)
+  the views number 33 × 2^48 and more, beyond the 2^53 a JavaScript client holds. So `palette` holds each
+  distinct view once, in the order the tiles first use it, and `tiles` an index per tile;
+  `Adventure::tile` reads one. The fixture maps of 2 592 tiles hold 4 to 64 views over 28 days of
+  random play.
+- **The mapping** (`map::game`): every field named in a pattern, every enum matched without a
+  wildcard; the palette by a `BTreeMap` from view to index. `map::game::adventure(state, rules,
+  viewer)` takes the viewer and calls the engine's `observe` (ADR-0018 point 7); T2b's `observe`
+  maps the whole observation through the same parts. No message carries it yet (T3), so no
+  protocol version step.
+- **Tests** (`tests/game.rs`): a test-only inverse gives the engine's observation back from the
+  wire; a hand-built observation with every variant maps back and round-trips (JSON, postcard);
+  the JSON is serde's default form with the 64-bit words as strings; random games on five
+  fixture maps (duel, towns, rewards, economy, sea; 28 days, up to 400 steps) map back for every
+  viewer after every step, the palette distinct and in first-use order. The played games show
+  foreign heroes, known objects, boats, mine guards and towns; no `Ground` tile (the faithful
+  profile shows the fringe's objects, ADV-QUIRK-1): the hand-built case covers it.
+- **Dependencies.** `h3-protocol` takes `h3-adventure` and `h3-game` (dev: `h3-map`, the
+  adventure's and the towns' packs), as T0's `arch.toml` edges allow.
+
+### M5 T2b — the rest of the game's observation (2026-11-09)
+
+- **The types** (`wire::game`, provisional): `GameObservation` (the viewer, the day, `Month`, the
+  `Player`s, the turn group, the treasury, today's timed events, the open `Decision`, the
+  `HeroInfo`s, the adventure map, the `Town`s, the battle as the battle wire's `Observation`);
+  `Decision`'s seven kinds as struct variants (`Offer { offer }` with `Offer` and its 13
+  `OfferKind`s, `LevelUp { level_up }`, `Meeting`, `ArmyDialog`, `Choice { choice }` with its two
+  `ChoiceKind`s, `University` with `UniversityVisit` and the `SlotState`s, `Hire { hire }` with
+  `HireTarget` and `HireCreature`), `PrimarySkill`; `HeroDetails` with `OfferLevels`,
+  `SkillLevel`, `Artifact`, `Bonuses`; `Town` with `Garrison`, `GarrisonStack`, `TownOwnerFacts`
+  (a fort level as 0 to 3, as the battle's `Siege`).
+- **The mapping** (`map::game`): `observe(state, rules, viewer)` calls `h3_game::observe` and maps
+  the whole, every field named, every enum without a wildcard; the battle through the battle's
+  own `map::observation`. T2a's `map::game::adventure` is gone: one public entry.
+- **Tests:** the inverse covers the whole observation (the battle compared on the wire); a
+  hand-built observation for each decision kind, each offer's and choice's kind, the four primary
+  skills and slot states, the three months, the four fort levels, details and owner facts present
+  and absent, maps back and round-trips; the played games of T2a check `observe` for every viewer
+  after every step, round-tripping every observation with a decision or a battle (they meet
+  offers, level-ups, meetings, a choice and battles).
+- **Dependencies.** `h3-heroes` too (T0's edge).
