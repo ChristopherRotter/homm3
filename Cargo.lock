@@ -690,12 +690,17 @@ dependencies = [
 name = "h3-protocol"
 version = "0.1.0"
 dependencies = [
+ "h3-adventure",
  "h3-battle",
  "h3-content",
  "h3-content-battle",
  "h3-contracts",
+ "h3-game",
  "h3-kernel",
+ "h3-map",
+ "h3-pack-adventure",
  "h3-pack-battle",
+ "h3-pack-towns",
  "h3-sim",
  "postcard",
  "proptest",

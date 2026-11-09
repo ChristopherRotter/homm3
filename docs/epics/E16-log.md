@@ -1954,3 +1954,35 @@ T1 (SRV-Q25's measurement; the numbers, the method and the gaps in the design no
 - **The baseline.** CI's last two runs on `master` (3c9cff3, a0d5504) never started (no job, an
   outage); the sandbox's full local verify of a0d5504's code passed and stands in
   (`docs/05-testing.md`, "When CI cannot run").
+
+### M5 T2a — the adventure map on the wire (2026-11-09)
+
+The user split T2 in two pull requests (T2a the adventure map, T2b the rest of the observation).
+
+- **The types** (`wire::game`, provisional): `Adventure` (the viewer, the map's size, the
+  explored and fringe planes as `WireU64` words, the tiles, heroes, objects, the bought
+  Cartographers, the keys, the known objects, the empty boats), `Tile` (`Hidden {}`, `Ground`,
+  `Seen` with the static tile's five flags), `MapHero` and `OwnMapHero`, `Object` (its three masks
+  as `WireU64`), `Monster`, `Guards`, `KnownObject` and `Known` (five variants), `Boat`, and the
+  shared `Pos`, `ObjectRef`, `Amount`, `ArmyStack`, `Formation`.
+- **The tiles as a palette.** A tile's view is three handles and five flags; packed losslessly
+  into one number it needs 57 bits field by field, and even counted exactly (one hidden view, the
+  ground views over a `u16` terrain and two optional `u16` handles, 32 seen views per ground one)
+  the views number 33 × 2^48 and more, beyond the 2^53 a JavaScript client holds. So `palette` holds each
+  distinct view once, in the order the tiles first use it, and `tiles` an index per tile;
+  `Adventure::tile` reads one. The fixture maps of 2 592 tiles hold 4 to 64 views over 28 days of
+  random play.
+- **The mapping** (`map::game`): every field named in a pattern, every enum matched without a
+  wildcard; the palette by a `BTreeMap` from view to index. `map::game::adventure(state, rules,
+  viewer)` takes the viewer and calls the engine's `observe` (ADR-0018 point 7); T2b's `observe`
+  maps the whole observation through the same parts. No message carries it yet (T3), so no
+  protocol version step.
+- **Tests** (`tests/game.rs`): a test-only inverse gives the engine's observation back from the
+  wire; a hand-built observation with every variant maps back and round-trips (JSON, postcard);
+  the JSON is serde's default form with the 64-bit words as strings; random games on five
+  fixture maps (duel, towns, rewards, economy, sea; 28 days, up to 400 steps) map back for every
+  viewer after every step, the palette distinct and in first-use order. The played games show
+  foreign heroes, known objects, boats, mine guards and towns; no `Ground` tile (the faithful
+  profile shows the fringe's objects, ADV-QUIRK-1): the hand-built case covers it.
+- **Dependencies.** `h3-protocol` takes `h3-adventure` and `h3-game` (dev: `h3-map`, the
+  adventure's and the towns' packs), as T0's `arch.toml` edges allow.

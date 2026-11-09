@@ -10,7 +10,10 @@
 //! is named by the ruleset's dense handles, whose keys the [`Manifest`] carries. Stacks and
 //! hexes are the engine's indices (hex `x + y × width`, the width in [`Field`]).
 //!
-//! Provisional (E16 M1 review): the message schema inside ADR-0018.
+//! Provisional (E16 M1 review): the message schema inside ADR-0018. The whole game's types are in
+//! [`game`] (E16 M5).
+
+pub mod game;
 
 use alloc::string::String;
 use alloc::vec::Vec;

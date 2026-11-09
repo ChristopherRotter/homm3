@@ -282,11 +282,14 @@ inbox, the same day), mapped when it lands.
   diffing every viewer costs 22 times an `apply` on the golden replays, 730 to 860 times on an XL
   map with eight players); what a fold lacks is the adventure and town lanes' (SRV-Q26: foldable
   events and a query for what a viewer sees on the tiles it explored since a given grid).
-- **T2 the observation's wire** (`wire::game`): the players, the turn group, the kingdom (the
-  treasury, today's timed events), the open decision, the heroes (types, the owner's details), the
-  adventure map (the planes and tiles as packed arrays, heroes, objects, boats, what the viewer
-  knows), the towns, the battle (the existing `Observation`); the mapping names every field. No
-  diff (T1): the observation is the snapshot.
+- **T2 the observation's wire** (`wire::game`), in two pull requests (the user, 2026-11-09):
+  - **T2a done** (2026-11-09; `E16-log.md`): the adventure map (`wire::game::Adventure`: the
+    planes, the tiles as a palette and an index per tile, heroes, objects, boats, what the viewer
+    knows), `map::game::adventure`; no message yet, no version step.
+  - **T2b** the rest: the players, the turn group, the kingdom (the treasury, today's timed
+    events), the open decision, the heroes (types, the owner's details), the towns, the battle
+    (the existing `Observation`), the whole observation and `map::game::observe`; the mapping
+    names every field. No diff (T1): the observation is the snapshot.
 - **T3 the commands, answers, rejections and events**, projected per viewer (`h3_game::project`);
   round trips; the exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records)
   and its test over the golden replays (a snapshot folded with the events equals `observe` after
@@ -305,6 +308,13 @@ inbox, the same day), mapped when it lands.
   lane's inbox note with the record's form.
 - **T7 closure**: mutation tests over the game's messages, the frame and record bounds for large
   observations, `docs/06-security.md`'s game part, a fresh reviewer, the checkpoint.
+
+**Review list so far** (the autonomy contract's queue, for part 1's checkpoint):
+`Query::CreatureCastTargets {}` (a message shape); the last `Snapshot` before `GameEnded` and the
+start's `Events` (v38); T2a's shapes: a map's tiles as a palette of distinct views and an index
+per tile (lossless, a few views a map; one packed number cannot hold every handle below 2^53), the
+planes' words and an object's masks as `WireU64` strings, `map::game::adventure` as a public entry
+of its own (T2b may fold it into `observe`).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08
