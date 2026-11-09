@@ -301,6 +301,16 @@ inbox, the same day), mapped when it lands.
     (`wire::game::{GameCommand, GameReject}`, `map::game::{command, command_to_engine, reject}`).
   - **T3b done** (2026-11-09; `E16-log.md`): the events, projected for their viewer
     (`wire::game::GameEvent`, `map::game::events`).
+  - **T3c in two parts** (the user, SRV-Q27; the pull request after T3c2): the game's battle as
+    a battle seat has it (a snapshot when it opens, the last one when it ends, its events between
+    for the battle client; the test compares it at those points); the gaps beyond SRV-Q26's (the
+    decision views, the values the rules derive) treated as SRV-Q26's. **T3c1** the fold of what
+    the events carry (the calendar, the turns, the treasury, the heroes' tiles and boats, the
+    objects, monsters, guards and towns, the heroes' details by their changes, the armies by
+    slot, the decisions whose events hold their view) and a harness over the 55 golden replays
+    (through `h3-files`) reporting per part where the fold and `observe` differ; **T3c2** each
+    gap a stub (`SRV-STUB-<n>`) with its lane's inbox note, the test made the gate (equality but
+    for the stubbed parts).
 - **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
   the map's identity (its content hash), the key tables of the game's content kinds.
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
