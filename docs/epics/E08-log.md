@@ -13920,6 +13920,9 @@ LODs.
 - **Docs:** ADV-TEL-004 to -007, GAM-BAT-004 (with `ADV-QUIRK-39`), GAM-MET-001 and GAM-DEC-007
   amended (batch E11's E11-6, E11-7, E11-16 as sources); `ADV-QUIRK-39` (A-37) in the ledger;
   design §12, §13's as-built lines; decision 288; T105b2's queue entry.
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism with the rehashed replays, every adventure workload inside its gate,
+  `original-data`); `cargo check --workspace --all-targets`.
 
 **Versions:** game state hash v27. T105b2 next (`Revisit`, the env; replay format v11, action
 encoding v8).

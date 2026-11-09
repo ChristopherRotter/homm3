@@ -244,8 +244,8 @@ impl AdventureState {
     /// exit and the winner's levels are over, the hero arrives on `exit` from the entrance it
     /// still stands on ([`Self::arrival`], with its event). Nothing for a hero the battle took
     /// off the map or another player's, nor when the exit holds a hero or an empty boat
-    /// (unreachable after a won battle, whose defender left the map with its boat, ADV-SEA-006;
-    /// the original tests that the exit is still a teleporter's, 0x4AA4A6): a rest never puts two
+    /// (unreachable after a won battle, whose defender left the map with its boat, ADV-SEA-006,
+    /// as the original's test that the exit is a gate again, 0x4AA4A6): a rest never puts two
     /// heroes, or a hero and an empty boat, on one tile.
     // rule: GAM-DEC-007, ADV-TEL-007
     pub fn arrive<S: Sink>(
