@@ -33,7 +33,8 @@
 //! spell book in a town with a Mage Guild built (the guild's spells at the start, `TWN-STUB-6`),
 //! and on the maps of 36 tiles a side. Since E09 T9c each built town's siege facts (its fort
 //! level, a moat; TWN-SIE-003) and hall level, and the owned towns' day's income (TWN-INC-001,
-//! -002). Since E08 T103b the teleporters (43 to 45, 103, 111) by class, subclass and level, and
+//! -002); since E09 T18a their spots and Shipyards (TWN-SET-011: a town without a spot has its
+//! Shipyard forbidden and unbuilt, checked). Since E08 T103b the teleporters (43 to 45, 103, 111) by class, subclass and level, and
 //! the maps with each class; each checked to import as its class and subclass's type (a monolith
 //! of its class's way with its subclass as the channel: the import's tables against the shipped
 //! maps, increment 11's design note §3 and §4). Since E08 T104 the channels and the gates' pairs
@@ -645,7 +646,7 @@ fn built_towns(
 /// the map): a town without a spot has its faction's Shipyard forbidden and never built, one with
 /// a spot keeps a custom set's.
 fn built_town_water(
-    setup: &h3_towns::TownSetup,
+    setup: &TownSetup,
     town: &h3_towns::Town,
     game: &GameState,
     index: u16,
@@ -834,7 +835,8 @@ const FACTIONS: [&str; 9] = [
 /// E09 T7a1's census of a map that imports (`docs/formats/h3m.md`, "Import"): its towns by kind,
 /// faction and alignment, their custom building sets (with a horde built, a Shipyard built and
 /// that Shipyard without water on either tile two rows below the entrance and one column aside,
-/// TWN-STUB-2's case), custom garrisons (with random stacks), names and events; the players'
+/// by the terrain alone: TWN-SET-011's case, the built game's census in [`built_town_water`]),
+/// custom garrisons (with random stacks), names and events; the players'
 /// starts (main towns, those generating a hero, the random-hero flag, the choices, an RoE map's
 /// players with all eight bits); the random heroes (with a custom experience), the placed heroes
 /// on a town's entrance (moved there, TWN-SET-010: no map places one there itself, survey §1.4)
@@ -976,7 +978,7 @@ fn towns(
             );
             let wet = water(x.wrapping_sub(1), y + 2, level) || water(x + 1, y + 2, level);
             add(
-                "E09 towns: a built Shipyard without water (TWN-STUB-2)",
+                "E09 towns: a built Shipyard without water by the terrain (TWN-SET-011)",
                 usize::from(yard && !wet),
             );
         }
