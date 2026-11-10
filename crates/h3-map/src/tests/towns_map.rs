@@ -97,7 +97,7 @@ fn custom(bits: &[u8]) -> w::TownBuildings {
 }
 
 /// A town on `at` of `faction` (`None`: random), its template from `Objects.txt`.
-fn town(at: (u8, u8), faction: Option<u32>, owner: Option<u8>) -> w::AnyTown {
+pub(super) fn town(at: (u8, u8), faction: Option<u32>, owner: Option<u8>) -> w::AnyTown {
     let (picture, class, subclass) = match faction {
         Some(faction) => (PICTURES[faction as usize], w::TOWN_OBJECT, faction),
         None => (PICTURES[9], w::RANDOM_TOWN_OBJECT, 0),
@@ -113,6 +113,7 @@ fn town(at: (u8, u8), faction: Option<u32>, owner: Option<u8>) -> w::AnyTown {
         garrison: None,
         tight_formation: false,
         buildings: w::TownBuildings::Standard { fort: true },
+        events: Vec::new(),
     }
 }
 
@@ -126,7 +127,7 @@ fn slots(stacks: &[(u16, u16)]) -> [Option<(u16, u16)>; w::ARMY_SLOTS] {
 }
 
 /// A hero of `hero_type` on `at` with `army` (its type's own when empty).
-fn with_army(at: (u8, u8), owner: u8, hero_type: u8, army: &[(u16, u16)]) -> w::Hero {
+pub(super) fn with_army(at: (u8, u8), owner: u8, hero_type: u8, army: &[(u16, u16)]) -> w::Hero {
     let mut hero = hero(at, owner, hero_type);
     if !army.is_empty() {
         hero.army = Some(slots(army));
@@ -256,12 +257,12 @@ fn map() -> w::Map {
     }
 }
 
-fn at((x, y): (u8, u8)) -> Pos {
+pub(super) fn at((x, y): (u8, u8)) -> Pos {
     Pos::new(x.into(), y.into(), 0)
 }
 
 /// A town's entrance: two columns left of its position.
-fn entrance((x, y): (u8, u8)) -> Pos {
+pub(super) fn entrance((x, y): (u8, u8)) -> Pos {
     at((x - 2, y))
 }
 
