@@ -64,6 +64,7 @@ import numpy as np
 import torch
 
 from .. import _ffi
+from . import gpu
 from . import layout as L
 from .evaluate import OPPONENTS, REPORT_V1_ENVS
 from .policy import Policy, build, masked, rows_of
@@ -407,10 +408,12 @@ def described(s: Student) -> dict[str, Any]:
 
 def bench_device(name: str) -> torch.device:
     """The bench's device (`ppo.device_of`), with cuDNN's autotuner on CUDA (E25 T24: the
-    minibatches keep their shape, so each convolution's fastest kernel is found once)."""
+    minibatches keep their shape, so each convolution's fastest kernel is found once) and its
+    memory capped (`gpu.cap`, E25 T28)."""
     device = device_of(name)
     if device.type == "cuda":
         torch.backends.cudnn.benchmark = True
+        gpu.cap(device)
     return device
 
 
