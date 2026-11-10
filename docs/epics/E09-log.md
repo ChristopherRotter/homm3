@@ -2728,8 +2728,16 @@ its start, `master`'s counterexample of the plans' gains fixed first** (the user
   first 256). The hygiene and told-views properties pass with both, unchanged: the events draw
   nothing, and a town the viewer sees has the same events in both games. `h3-map`'s 156 tests pass
   (530 s in debug, one job).
+- **A gap of the hygiene property's** (`master`'s, found by the scoped verify's coverage run on
+  the new draws; the agent's call, as decision 61's): another player's hero declined a monster's
+  offer to join, and the monster fled in one game (removed, which the viewer saw) and asked again
+  in the other, its answer following from the visitor's army and the seed the test changes;
+  `outcome` compares the objects a command removed (`ObjectRemoved`'s kind, beside the guards'
+  hints) now; the seed kept in `proptest-regressions/tests/view.txt`. The three properties of
+  `play.rs` passed three more runs, the hygiene and told-views ones ten.
 - No version moved; no rule, stub or quirk new; no replay, workload or bot report moved.
-- **Agent's calls (change freely):** the events' draw (half the towns, up to three slots, the
+- **Agent's calls (change freely):** the hygiene gap fixed here rather than sent to the adventure
+  lane (its pull request's CI would meet it); the events' draw (half the towns, up to three slots, the
   map's days); the views after a build left out of `check_timed` rather than predicted; the
   standing-building count by the ever-built set before the command; 512 cases rather than another
   draw.

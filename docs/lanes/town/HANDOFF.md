@@ -41,7 +41,8 @@ In `TRAPS.md`.
 Baseline 1769e23 (#827, #828 merged; the setup's full engine verify with the original data
 green). The user's computer was connected only at the start: the original data staged then.
 Kept whole, `master`'s counterexample first (the user, decisions 60, 61): `check_conservation`
-puts a visit's own gains after a guard's treasure (the seed kept). The plans' towns get events
+puts a visit's own gains after a guard's treasure (the seed kept); a hygiene gap the new draws
+found fixed too (`outcome` compares the removed objects). The plans' towns get events
 (`town_events`), `Step::Build` and its runs; `check_timed` compares the town events after the
 map's (the build's views left out), `check_towns` folds an event's builds without the mark. The
 towns' cover test counts builds by command and event and the events fired, gave, took, skipped;

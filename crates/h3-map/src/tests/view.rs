@@ -2113,7 +2113,12 @@ type Outcome = (
 /// a hero leaves at its mine come from its army, which the test may change where the viewer never
 /// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
 /// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
-/// guards of another creature in the other game at a mine the viewer saw). (E09 T9b2b) And the
+/// guards of another creature in the other game at a mine the viewer saw); (E09 T19b) and the
+/// objects it removed (`ObjectRemoved`'s kind): a monster's answer to a declined offer follows
+/// from the visitor's army and the seed, which the test changes, and its flight removes it for
+/// every viewer that sees it (a case of `master`'s that T19b's draws found: another player's hero
+/// declined a monster's offer to join, and the monster fled in one game and asked again in the
+/// other). (E09 T9b2b) And the
 /// Capitols it changed (`TownChanged`'s town and Capitol, since E09 T18b2a those told to `viewer`,
 /// each viewer's: the events tell every viewer's views): a capture takes the town's Capitol away
 /// when its new owner holds another (TWN-CAP-002), which may stand in a town the viewer never
@@ -2187,7 +2192,9 @@ fn outcome(
         .iter()
         .filter_map(|e| match e {
             GameEvent::Adventure(AdventureEvent {
-                kind: kind @ AdventureEventKind::GuardsChanged { .. },
+                kind:
+                    kind @ (AdventureEventKind::GuardsChanged { .. }
+                    | AdventureEventKind::ObjectRemoved { .. }),
                 ..
             }) => Some(*kind),
             _ => None,

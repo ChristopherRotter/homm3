@@ -47,7 +47,10 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   a guarded Mystical Garden's gain after the joining monster's treasure) is fixed at the user's
   word (E09 decision 61): `check_conservation` puts a visit's own gains after what the objects
   that left gave; the seed is kept in `proptest-regressions/tests/play.txt` (T19b's new town
-  field changes the plans' draws, so it replays another case from then on).
+  field changes the plans' draws, so it replays another case from then on). And a gap of the
+  hygiene property that T19b's draws found (`view.rs`' `outcome`): another player's hero declined
+  a monster's offer to join, the monster fled in one game (its removal seen by the viewer) and
+  asked again in the other; `outcome` compares the objects a command removed now.
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
   session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the
