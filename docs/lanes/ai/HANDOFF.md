@@ -52,8 +52,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   `cargo build --release -p h3-ffi` 56 s, `uv sync --group train` about 30 minutes (3 MB/s).
   Built `h3env.train.speed` (tests `tests/test_speed.py`; a CPU smoke of `hexconv` 96 × 6 on 16
   envs): the variants' losses are the baseline's, the trunk's convolutions get channels-last
-  tensors. **In progress:** the user's GPU run of it (the command in `E25-log.md` T31 once
-  written; in the session's chat until then), then the change that pays.
+  tensors. **In progress:** the user's GPU run of it (the command in `E25-log.md` T31), then
+  the change that pays.
 
 ### 2026-11-10 — E25 T28
 
