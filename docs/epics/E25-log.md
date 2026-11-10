@@ -1676,6 +1676,30 @@ an entry only where a task builds on it.
   autotuner, and an aligned shape at today's size. So `[ppo] chunk_align` (each chunk padded to
   a multiple of rows by repeating its first, the pad in no loss; 0 the default; test
   `test_a_padded_update_steps_as_the_unpadded_one_does`) and a second run.
-- **The second run** (about 7 minutes; from `python/`):
+- **The second run** (the same machine and settings, `--no-phases`; the rollout 11.5 s):
 
-      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --no-phases --json runs/t31-speed-2.json
+  | Variant | Chunks' rows | Seconds | µs a sample-pass | Against the baseline | Peak MB |
+  |---|---|---|---:|---:|---:|
+  | baseline (`accumulate` 8) | 508, 509 | 30.55, 30.22 | 928 | 1.000 | 3 189 |
+  | `accumulate` 4 | 1 017, 1 018 | 28.36, 26.79 | 822 | 0.887 | 5 453 |
+  | autotune, `accumulate` 4 | 1 017, 1 018 | 25.74, 25.29 | 776 | 0.837 | 5 285 |
+  | `accumulate` 5 | 814, 815 | 31.46, 32.29 | 991 | 1.069 | 5 040 |
+  | `chunk_align` 32 | 512 | 30.00, 28.63 | 879 | 0.948 | 3 190 |
+  | autotune, `chunk_align` 32 | 512 | 29.36, 30.74 | 944 | 1.017 | 3 190 |
+  | autotune, `accumulate` 4, `chunk_align` 32 | 1 024 | 43.40, 22.36 | **686** | **0.740** | 5 480 |
+  | baseline again | 508, 509 | 31.55, 31.53 | 968 | 1.044 | 3 172 |
+
+  The baseline's repeat lies 0.00106 from its first update (cuDNN's nondeterminism), the
+  variants 0.0009 to 0.0013: rounding's; the losses within 0.5 %.
+- **Its read:** the card drifts +4 % over the minutes, and the same variant measures 692 in one
+  run and 776 in the next (the autotuner times the kernels it picks): about 10 % is noise. The
+  cost is the chunk's **shape**, not its size: 814 rows cost more than 508, 1 017 less, exactly
+  1 024 with the autotuner least (0.74, the bench's 683 µs; its search 21 s, once per shape),
+  while 512 gains nothing either way. A run's chunks are not the tool's: with the league's
+  members a run trains about 25 700 rows an update (T28), about 800 a chunk at `accumulate` 4,
+  so the chunking that pays is chosen on the cost by rows. Hence `--sweep`: one chunk's pass
+  (`Trainer._loss`, the update's own; `Trainer.samples_of` its arrays, split out of `update`) at
+  each of a list of rows, the autotuner off and on.
+- **The sweep** (about 7 minutes; from `python/`):
+
+      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --variants baseline --repeats 1 --no-phases --sweep 256,384,448,512,576,640,768,800,832,896,960,1024,1056,1088,1152,1280 --json runs/t31-sweep.json

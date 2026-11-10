@@ -890,13 +890,12 @@ class Trainer:
             "imitation": ce,
         }
 
-    def update(self, lr: float, entropy_coef: float | None = None) -> dict:
-        """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
-        bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
-        `entropy_bonus`), with the imitation loss at its weight (`imitation_weight`) when the
-        rollout is labelled (E25 T21)."""
+    def samples_of(self) -> tuple[dict[str, np.ndarray], np.ndarray, float]:
+        """The update's arrays by name ([calls, envs, ...]: the rollout's `FIELDS`, the
+        advantages `adv` and `returns`, the kill preview and, while the imitation loss's weight
+        is above 0, the teacher's labels), the samples it trains on (their flat indices) and that
+        weight (`imitation_weight`, 0 for an unlabelled rollout)."""
         c, r = self.config, self.rollout
-        bonus = c.entropy_coef if entropy_coef is None else entropy_coef
         weight = imitation_weight(c, self.samples) if r.labelled else 0.0
         adv, used = gae(
             r.side,
@@ -911,18 +910,27 @@ class Trainer:
             c.gamma,
             c.lam,
         )
-        flat = np.nonzero(used.reshape(-1))[0]
-        returns = adv + r.value
-        for g in self.optimizer.param_groups:
-            g["lr"] = lr
-        start = time.perf_counter()
         arrays = {name: getattr(r, name) for name in FIELDS}
-        arrays["adv"], arrays["returns"] = adv, returns
+        arrays["adv"], arrays["returns"] = adv, adv + r.value
         if r.preview is not None:
             arrays["preview"] = r.preview
         if weight:
             assert r.teacher is not None
             arrays.update({f"teacher_{name}": array for name, array in r.teacher.items()})
+        return arrays, np.nonzero(used.reshape(-1))[0], weight
+
+    def update(self, lr: float, entropy_coef: float | None = None) -> dict:
+        """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
+        bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
+        `entropy_bonus`), with the imitation loss at its weight (`imitation_weight`) when the
+        rollout is labelled (E25 T21)."""
+        c, r = self.config, self.rollout
+        bonus = c.entropy_coef if entropy_coef is None else entropy_coef
+        arrays, flat, weight = self.samples_of()
+        returns = arrays["returns"]
+        for g in self.optimizer.param_groups:
+            g["lr"] = lr
+        start = time.perf_counter()
         stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "kl": 0.0, "clip": 0.0}
         steps = 0
         #: The imitation loss's sum and the minibatches with a label.

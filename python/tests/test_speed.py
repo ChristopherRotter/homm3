@@ -59,11 +59,19 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
             "--repeats",
             "2",
             "--trace",
+            "--sweep",
+            "8,12",
+            "--sweep-repeats",
+            "1",
             "--json",
             str(out),
         ]
     )
     report = json.loads(out.read_text(encoding="utf-8"))
+    # The sweep: each size's pass with the autotuner off and on, the first size again at the end.
+    assert [e["rows"] for e in report["sweep"]] == [8, 12, 8]
+    for e in report["sweep"]:
+        assert e["plain_us_per_row"] > 0 and e["autotune_us_per_row"] > 0, e
     variants = report["variants"]
     assert list(variants) == ["baseline", "nchw", "autotune+accumulate/2", "align32"]
     assert report["epochs"] == 1 and report["rows"] > 0 and report["teacher_rows"] > 0

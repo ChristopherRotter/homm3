@@ -24,7 +24,8 @@ entry head and the value, PPO's heads along the action, the teacher's, the backw
 clipping, the optimizer's step; the rest is the update's own code): each phase's seconds and
 share of that update. `--trace` runs torch's profiler over the baseline's first `--trace-steps`
 optimizer steps and keeps its operators with the most self time on the device (the CPU's off
-CUDA). The report is printed as Markdown and, with `--json`, written whole.
+CUDA). `--sweep` times one chunk's pass at each of a list of row counts (`sweep`), with the
+autotuner off and on. The report is printed as Markdown and, with `--json`, written whole.
 """
 
 from __future__ import annotations
@@ -269,8 +270,11 @@ def profile(
     trace: bool = False,
     trace_steps: int = 1,
     log: Callable[[str], None] = print,
+    sizes: list[int] | None = None,
+    sweep_repeats: int = 3,
 ) -> dict[str, Any]:
-    """The report (module docstring) of `config`'s update from one rollout."""
+    """The report (module docstring) of `config`'s update from one rollout; with `sizes` the
+    chunk sweep's (`sweep`) too."""
     if repeats < 1 or epochs < 1 or trace_steps < 1:
         raise ValueError("the repeats, the epochs and the traced steps are at least 1")
     names = ["baseline"] + [n for n in (variants or DEFAULT_VARIANTS) if n != "baseline"]
@@ -280,7 +284,12 @@ def profile(
     config = resolve(config)
     trainer = Trainer(config)
     try:
-        return _profile(trainer, init_from, names, repeats, epochs, phases, trace, trace_steps, log)
+        report = _profile(
+            trainer, init_from, names, repeats, epochs, phases, trace, trace_steps, log
+        )
+        if sizes:
+            report["sweep"] = sweep(trainer, sizes, sweep_repeats, log)
+        return report
     finally:
         trainer.batch.close()
 
@@ -426,6 +435,73 @@ def _profile(
     return report
 
 
+def sweep(
+    trainer: Trainer, sizes: list[int], repeats: int = 3, log: Callable[[str], None] = print
+) -> list[dict[str, Any]]:
+    """One chunk's pass of the update (`Trainer._loss`: the network's forward, PPO's and the
+    teacher's heads, the backward; no optimizer step, the weights unchanged) on each of `sizes`
+    rows of the trainer's rollout (drawn at random, the same draw for both modes), with cuDNN's
+    autotuner off, then on: the microseconds a row (the median of `repeats` passes after one
+    warm-up), the autotuner's warm-up (its search for the shape), the peak memory. The first size
+    again at the end: the card's drift."""
+    device = trainer.device
+    cuda = device.type == "cuda"
+    sync = torch.cuda.synchronize if cuda else (lambda: None)
+    arrays, flat, weight = trainer.samples_of()
+    bonus = trainer.config.entropy_coef
+    flat_adv = arrays["adv"].reshape(-1).astype(np.float64)
+    flat_labelled = arrays["teacher_labelled"].reshape(-1) if weight else None
+    rng = np.random.default_rng(0)
+    out = []
+    log("\nOne chunk's pass by its rows (the update's forward, heads and backward):\n")
+    log("| rows | µs a row | with the autotuner | its warm-up s | peak MB |")
+    log("|---:|---:|---:|---:|---:|")
+    for size in [*sizes, sizes[0]]:
+        rows = np.sort(rng.choice(flat, min(size, len(flat)), replace=False))
+        norm = (float(flat_adv[rows].mean()), float(flat_adv[rows].std(ddof=1)))
+        labels = None if flat_labelled is None else int(flat_labelled[rows].sum())
+        entry: dict[str, Any] = {"rows": len(rows)}
+
+        def chunk(rows=rows, norm=norm, labels=labels) -> float:
+            m = trainer.staging.gather(arrays, rows)
+            sync()
+            start = time.perf_counter()
+            trainer._loss(m, bonus, weight, norm=norm, labels=labels)
+            sync()
+            seconds = time.perf_counter() - start
+            trainer.policy.zero_grad(set_to_none=True)
+            return seconds
+
+        try:
+            for autotune in (False, True):
+                with torch.backends.cudnn.flags(enabled=True, benchmark=autotune):
+                    if cuda:
+                        torch.cuda.reset_peak_memory_stats(device)
+                    first = chunk()
+                    seconds = float(np.median([chunk() for _ in range(repeats)]))
+                key = "autotune" if autotune else "plain"
+                entry[f"{key}_us_per_row"] = 1e6 * seconds / len(rows)
+                entry[f"{key}_warm_up_s"] = first - seconds
+                if cuda:
+                    entry["peak_mb"] = torch.cuda.max_memory_allocated(device) / 2**20
+        except torch.cuda.OutOfMemoryError:
+            trainer.policy.zero_grad(set_to_none=True)
+            torch.cuda.empty_cache()
+            entry["out_of_memory"] = True
+            line = f"| {len(rows)} | out of memory under the cap | | | |"
+        else:
+            peak = entry.get("peak_mb")
+            line = (
+                f"| {len(rows)} | {entry['plain_us_per_row']:.0f} | "
+                f"{entry['autotune_us_per_row']:.0f} | {entry['autotune_warm_up_s']:.2f} | "
+                + ("-" if peak is None else f"{peak:,.0f}")
+                + " |"
+            )
+        out.append(entry)
+        log(line)
+    return out
+
+
 def traced(
     trainer: Trainer,
     base: Config,
@@ -523,6 +599,13 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--no-phases", action="store_true", help="skip the phases' update")
     parser.add_argument("--trace", action="store_true", help="torch's profiler's operators")
     parser.add_argument("--trace-steps", type=int, default=1)
+    parser.add_argument(
+        "--sweep",
+        default=None,
+        metavar="ROWS,...",
+        help="time one chunk's pass at each of these row counts, the autotuner off and on",
+    )
+    parser.add_argument("--sweep-repeats", type=int, default=3)
     parser.add_argument("--json", type=Path, default=None, metavar="FILE")
     args = parser.parse_args(argv)
     if args.init_from is not None and not args.init_from.exists():
@@ -540,6 +623,8 @@ def main(argv: list[str] | None = None) -> None:
         not args.no_phases,
         args.trace,
         args.trace_steps,
+        sizes=None if args.sweep is None else [int(x) for x in args.sweep.split(",")],
+        sweep_repeats=args.sweep_repeats,
     )
     if args.json is not None:
         args.json.parent.mkdir(parents=True, exist_ok=True)
