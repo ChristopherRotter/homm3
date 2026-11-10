@@ -464,6 +464,7 @@ fn duel() -> Plan {
         events: Vec::new(),
         owners: Vec::new(),
         towns: Vec::new(),
+        teleporters: Vec::new(),
     }
 }
 
@@ -507,6 +508,7 @@ fn xl() -> Plan {
         events: Vec::new(),
         owners: Vec::new(),
         towns: Vec::new(),
+        teleporters: Vec::new(),
     }
 }
 
@@ -544,6 +546,7 @@ fn army() -> Plan {
         events: Vec::new(),
         owners: Vec::new(),
         towns: Vec::new(),
+        teleporters: Vec::new(),
     }
 }
 
