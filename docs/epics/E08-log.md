@@ -13973,8 +13973,13 @@ light gates passed). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the 
   (listed, refused with a decision open and out of the turn, the Cartographer's offer again, no
   points), `h3-sim`'s (the entry, its tile mask, decode and encode, the refusals), `h3-files`'
   round trip and refusals.
+- **On the wire** (`cross-lane`, `h3-protocol`, the global trap): `master` gained E16 M5 T3's
+  mapping of the game's commands while the branch was open (#814, #816), so the merge maps
+  `Revisit { hero }` both ways and `AdventureReject::NothingToRevisit {}`, with the round-trip
+  tests (101 rejections); `PROTOCOL_VERSION` stays 38 (the game's wire is on no message before
+  the server lane's T5).
 - **Bot reports:** regenerated, unchanged. **Inboxes:** the AI lane's (v8 and a step cap), the
-  town lane's (a town's revisit), the server lane's (the variant and the error for T3), the map
+  town lane's (a town's revisit), the server lane's (the mapping, for its review), the map
   client's (the space key).
 - **Docs:** ADV-TEL-008 (verified: the code reading, E11-14, E11-15, E11-17, E11-19's Space, the
   wiki); design §13, §14 as built, §15's rows done; decision 289.
