@@ -21,7 +21,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   inbox), the guild's spells at the start (`TWN-STUB-6`, increment 4), the Grail building's forbid
   (`TWN-STUB-2`, the victory conditions), Visions' reach told (`TWN-STUB-13`, increment 4; the
   server lane's fold test exempts it).
-- **Open pull requests:** T18b2b's (branch `town/e09-t18b2b`, `cross-lane`: `h3-game`'s
+- **Open pull requests:** T18b2b's #817 (branch `town/e09-t18b2b`, `cross-lane`: `h3-game`'s
   `legal.rs` and `lib.rs`, `h3-map`'s properties, `h3-sim`'s rollout); its CI waits for
   `master`'s fix.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, the adapter `h3-pack-towns` and each pack folder's `towns.toml` (T4b), the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and `src/writer/town*` of `h3-map`, `docs/rules/catalog/town.toml`, `docs/rules/quirks-town.md`, E09's epic, surveys and experiments. Everything else in the adventure lane's crates is the adventure lane's: a change there is `cross-lane`, merged in order with the adventure lane's pull requests.
