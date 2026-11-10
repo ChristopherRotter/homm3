@@ -19,26 +19,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M7 T1c — the reads and captures the answers name
-
-T1 was cut in four with the user at its start (2026-11-10): T1a and T1b done, T1c, T1d.
-
-- **Scope:** Q71's capture (hold D, click a stack, release D, close the dialog: the original's
-  profile copies what it shows); Q73's 0x5994B0 (read; the client's kept either way, the record
-  says fix or copy); Q74's sound sequence pressing a speed (T1a built one click); T7b's R2-1
-  still `stats-ability`.
-- **Acceptance:** the new captures as recorded or their differences listed; the records in the
-  answers; `drawn` all the same.
-- **Depends on:** nothing (T1b built Q71's client's profile, `window::release_taken`; the
-  original's left held, as built). **Status:** next.
-
-### E17 M7 T1d — the tools
-
-- **Scope:** T7b's R10-2 leftovers: `Changes::after` and `cast_stop` under test, a presser option
-  closing the result window for an unattended `--run`.
-- **Acceptance:** the tests; the option documented in the runbook; `check.sh` passes.
-- **Depends on:** nothing. **Status:** waiting.
-
 ### E17 M7 T2 — the DEF button's own loop
 
 - **Scope:** CLT-Q72 (a), T7b's R3-4, M6 review item 52: `def_button_message` 0x45641C modelled
@@ -51,7 +31,7 @@ T1 was cut in four with the user at its start (2026-11-10): T1a and T1b done, T1
 - **Acceptance:** unit tests of each case; a sequence or still recorded where the harness can
   hold a button (else listed); `drawn` all the same or recorded.
 - **Depends on:** nothing (T1b's Q71 let-go, `window::release_taken`, touches the same held
-  state). **Status:** waiting.
+  state; T1c's `stats-held` records the original's keeping the pressed frame). **Status:** next.
 
 ### E17 M7 T3 — the battle as a hosted entry
 
@@ -80,7 +60,7 @@ T1 was cut in four with the user at its start (2026-11-10): T1a and T1b done, T1
   refinement after E27); E17 closed (`docs/BACKLOG.md`'s row, and E27's draft, which still names
   E17 M7 for the lobby and the browser, by a `shared/` pull request).
 - **Acceptance:** the review list accepted; every open thread placed; E17 done.
-- **Depends on:** T1b to T1d, T2, T3. **Status:** waiting.
+- **Depends on:** T2, T3 (T1 done). **Status:** waiting.
 
 ## Inbox
 

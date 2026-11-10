@@ -20,7 +20,9 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - No float arithmetic or platform transcendental in the client's drawing and timing, the binary included (`clippy.toml`): f32 behaviour in fixed point (`anim::f32_round`), tangents by series; SDL's floats only at the adapter's edge (coordinates, `audio::gain`).
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
-  acts at the cast's end in both (T7b-1).
+  acts at the cast's end in both (T7b-1). `key-down:`/`key-up:` (E17 M7 T1c) are the stills'
+  only (`spellbook::still`; `pointer::answering` refuses them); a still with `sound` shows the
+  options dialog's effects' bars at the run's volume 5, which the viewer's stills draw at 0.
 - A press's command is `h3_view::mouse::click`'s, by the cursor's kind (E17 M5 T2a): a new kind
   or a changed one needs its press there too; `h3-view`'s `clicks` test checks the presses
   against the engine's legal lists over every scenario's turns (CLT-Q25's walk the one gap).
