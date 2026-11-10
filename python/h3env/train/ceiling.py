@@ -29,8 +29,11 @@ category of draw j's entry (`distill.CATEGORIES`):
   same target (a state without such a draw is not counted for that head).
 
 Each `--network` (a run's network file or a bench's student) is scored on the same states and
-draws: its most likely legal entry against draw j (`agreement`, the bench's measure) and its
-cross-entropy on draw j's entry. The report is printed and, with `--json`, written as a record.
+draws: its most likely legal entry against draw j (`agreement`, the bench's measure), its
+cross-entropy on draw j's entry, and by draw j's category the categories of its most likely entry
+(`confusion`, E25 T30: where a network leaves the teacher, the shares of each row's draws, the
+categories it never chose left out). The report is printed and, with `--json`, written as a
+record.
 """
 
 from __future__ import annotations
@@ -92,6 +95,8 @@ class Sums:
         self.casts = 0
         self.agree = {n: np.zeros(k) for n in networks}
         self.ce = {n: np.zeros(k) for n in networks}
+        #: Per network, [the draw's category, the category of its most likely entry].
+        self.confusion = {n: np.zeros((k, k)) for n in networks}
 
     def state(self, draws: np.ndarray, cats: np.ndarray) -> None:
         """Adds one state's draws (`draws`: the k actions' fields, `cats`: each draw's category)."""
@@ -146,10 +151,27 @@ class Sums:
                 h: {"mode": (s / c if c else None), "draws": c} for h, (s, c) in self.heads.items()
             },
             "networks": {
-                name: {"agreement": split(self.agree[name]), "cross_entropy": split(self.ce[name])}
+                name: {
+                    "agreement": split(self.agree[name]),
+                    "cross_entropy": split(self.ce[name]),
+                    "confusion": confusion(self.confusion[name]),
+                }
                 for name in self.agree
             },
         }
+
+
+def confusion(counts: np.ndarray) -> dict[str, dict[str, float]]:
+    """[teacher's category, network's] counts as each row's shares, by name (the empty rows and
+    cells left out)."""
+    out = {}
+    for i, row in enumerate(counts):
+        n = row.sum()
+        if n:
+            out[CATEGORIES[i]] = {
+                CATEGORIES[j]: float(v / n) for j, v in enumerate(row.tolist()) if v
+            }
+    return out
 
 
 def run(
@@ -254,10 +276,13 @@ def score_networks(sums: Sums, nets: dict[str, Any], states: list[tuple]) -> Non
         for name, net in nets.items():
             logits = net.entry_logits(net.encode(obs, mask))
             logp = torch.log_softmax(masked(logits, mask), dim=1)
-            best = logp.argmax(1).numpy()
+            best = logp.argmax(1)
+            mine = category(obs, best).numpy()
+            best = best.numpy()
             picked = -logp.gather(1, torch.from_numpy(entries)).numpy()
             for j in range(entries.shape[1]):
                 c = cats[:, j]
+                np.add.at(sums.confusion[name], (c, mine), 1)
                 sums.agree[name] += np.bincount(
                     c, weights=(best == entries[:, j]), minlength=len(CATEGORIES)
                 )
@@ -295,6 +320,11 @@ def table(out: dict[str, Any]) -> str:
         if x["mode"] is not None
     )
     lines.append(f"cast heads' mode along the teacher's choice: {heads or 'none'}")
+    for name in names:
+        lines.append(f"{Path(name).parent.name}'s choice by the teacher's category:")
+        for cat, row in c["networks"][name].get("confusion", {}).items():
+            cells = ", ".join(f"{k} {v:.3f}" for k, v in sorted(row.items(), key=lambda x: -x[1]))
+            lines.append(f"  {cat:<12}{cells}")
     return "\n".join(lines)
 
 
