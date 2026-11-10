@@ -232,19 +232,26 @@ pub(super) fn validate_event(event: &TimedEvent, codes: &Codes) -> Result<(), Wr
 pub(super) fn write_events(out: &mut Out, events: &[TimedEvent]) -> Result<(), WriteError> {
     out.u32(super::len32(events.len()));
     for event in events {
-        out.string(&event.name)?;
-        out.string(&event.message)?;
-        for amount in event.resources {
-            out.bytes(&amount.to_le_bytes());
-        }
-        out.u8(event.players);
-        if out.1 == Format::Sod {
-            out.bool(event.human);
-        }
-        out.bool(event.computer);
-        out.u16(event.first_day);
-        out.u16(event.interval);
-        out.bytes(&[0; 16]);
+        write_event(out, event)?;
     }
+    Ok(())
+}
+
+/// A timed event: the map's, and a town's before its buildings and creatures (E09 T19a,
+/// `town::write_rest`).
+pub(super) fn write_event(out: &mut Out, event: &TimedEvent) -> Result<(), WriteError> {
+    out.string(&event.name)?;
+    out.string(&event.message)?;
+    for amount in event.resources {
+        out.bytes(&amount.to_le_bytes());
+    }
+    out.u8(event.players);
+    if out.1 == Format::Sod {
+        out.bool(event.human);
+    }
+    out.bool(event.computer);
+    out.u16(event.first_day);
+    out.u16(event.interval);
+    out.bytes(&[0; 16]);
     Ok(())
 }

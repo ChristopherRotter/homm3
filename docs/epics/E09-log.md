@@ -2626,3 +2626,55 @@ every decision kind now, the seed kept.
   turn skipped rather than told again; the command pays before `Told::before`; day 1's kept in the
   calendar block and out of the hash; `town_events_at_start` by (town, place), not in the
   observation (the server lane's choice).
+
+### T19a — the writer's town events, the builds map and its replays (2026-11-10)
+
+One session, the user present at the start; branch `town/e09-t19a`, `cross-lane` (`h3-map`'s
+`writer.rs`, `writer/economy.rs` and `tests/`, the fixtures, the replays and `h3-cli`'s replay
+test are the adventure lane's). Starting point: `master` at 3f60bf4 (#824, then #825 and #826
+merged during the setup); the setup's baseline lost to a VM restart and run again on 3f60bf4. The
+user's computer was connected at the start only: the original data staged then (57 files). **T19
+cut in three at its start, increment 2's own map** (the user, decisions 58, 59).
+
+- **The writer** (`h3-map` `src/writer/town.rs`, the town lane's): `writer::TownEvent { event:
+  TimedEvent, buildings, creatures }`, `AnyTown::events` (in the town's order); a town's body
+  writes them after its spells (each timed event as the map's, `economy::write_event` factored out
+  of `write_events`, then the six bytes of buildings, the seven counts, four unused bytes). The
+  check refuses an event's building bit past the 41 slots as a custom set's (`TWN-QUIRK-7`: the
+  writer writes none). Tests: an event and an empty one read back as written; the bit refused; an
+  event's text the format cannot hold fails as written.
+- **The builds map** (`fixtures/maps/e09-builds-36.h3m`, `h3-map` `tests/builds_map.rs`; decision
+  59): grass with the sea on rows 31 to 35; red's main Castle "Harbour" by the sea (its boat tile
+  water) with four events (a day-1 Marketplace and Blacksmith, an every-day and a weekly gift,
+  creatures on day 3), red's Castle "Keep" inland (the Capitol's requirements, the Guardhouse, the
+  Barracks and the Upg. Griffin Tower; an empty garrison; blue's every-day gift, red's day-1
+  Shipyard and Resource Silo), blue's main Conflux "Nexus" (a Capitol; the Altar of Water
+  forbidden, so the Altar of Earth is never possible), blue's Tower "Spire" (the Capitol's
+  requirements; blue's day-2 Capitol). Tests: the file as written, the import's sets and events,
+  the build's Shipyards (only the Harbour's boat tile is water; the Keep's and the Nexus' Shipyards
+  forbidden), red's four day-1 events with their builds (the Keep's Shipyard skipped) and gains
+  (treasury 23 wood, 23 ore, 26 000 gold); each refusal kind once on the first turns with the
+  state hash unchanged (blue out of its turn, an unknown town, another's town, a building past
+  the record, ever built, forbidden for want of water, the Grail's, a requirement never built,
+  the horde offered as its upgrade, the mark after the Harbour's Shipyard, the treasury, the
+  Capitol while the Nexus' stands), the Altar of Earth not possible, the Spire's day-2 Capitol
+  beside the Nexus' (T-8); a town built in today and taken keeps its mark (both players human),
+  its Capitol limited to the City Hall, its event of blue's firing for blue on day 2.
+- **Golden replays** (`fixtures/replays/adventure/`, 69 now): `builds-week-s1` (a build a day in
+  the Harbour: the Shipyard, the Lighthouse, the Resource Silo, the guild's first level, the Town
+  Hall, the City Hall, the Citadel), `builds-capture-s1` (the Keep's Capitol, Yog's capture the
+  same day, blue's build there the next), `builds-events-s1` (both end their turns to day 8: every
+  event fires on its days; blue's two Capitols pay 8 000 gold a day from day 3). A replay holds no
+  refused command (`Replay::record_commands` and `verify` stop at one), so the refusals and the
+  Capitol refused while another stands are the map's test, not replays (design §32 listed them as
+  replays). Documented in `adventure_replays.rs` and `fixtures/maps/README.md`.
+- **Other lanes' gates over every replay** (the server lane's files, `cross-lane`): `h3-protocol`'s
+  fold test (`tests/game_fold.rs`: the fold against `observe`, no exemption needed) and game
+  session test (`tests/game_session.rs`: one restore a replay) and `h3-server`'s record test
+  (`tests/record.rs`) pin the replays' count: 66 to 69; both crates' suites pass.
+- **No version moved** (the writer's change writes what the import reads since T7a1); no rule, stub
+  or quirk new. The plans, the env and the census are T19b and T19c.
+- **Agent's calls (change freely):** the map's names and positions; the Keep's dwellings for the
+  horde's refusal (the Griffin Tower's requirements' closure needs the Barracks and the
+  Guardhouse); the checkpoint intervals (a day, a command, a day); Yog's two moves (the reach stops
+  where blue's explored area ends).

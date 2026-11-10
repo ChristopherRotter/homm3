@@ -8,25 +8,32 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c (done), T19 (next), T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c, T19a (done), T19b (next), T19c, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T19 — the writer's events, fixtures, replays, properties, benchmarks, the env, the census**
-(design §32; queued 2026-11-10 by T18c; `cross-lane`: the fixtures, replays, plans and benchmarks
-are the adventure lane's paths, the env and its encoding the AI lane's): the writer's town events
-(`h3-map` `src/writer/town*`: today `0` written); `e09-towns-36.h3m` with a Castle town by water
-and one not, a Conflux town, the town events (a day-1 build, a weekly and an every-day gold, a
-creature event, a Capitol event in a player's second town: T-8) and a custom set forbidding a
-requirement; the golden replays (a week of builds, the Capitol refused, a capture of a town built
-in today, the events' day-1 build and gold; random play with builds); the plans' step `Build`
-and, moved here from T18c (decision 57), `check_towns` and `check_rewards` taught the events'
-builds and gains (and the hygiene and told-views properties with them); the benchmarks
-(`legal_commands` on the town map, the day's marks, a turn start with the fixture's events); the
-env's build entry (the AI lane's encoding version), the rollout's skip dropped (decision 56); the
-census with the original data (the shipped events fired, built, skipped, against survey §10).
-**At its start:** confirm the cut (likely in parts, as T18b).
+**E09 T19b — the plans build** (design §32, decision 58; queued 2026-11-10 by T19a;
+`cross-lane`: `h3-map`'s plans and view properties are the adventure lane's files, the town
+lane's `TRAPS.md`): the step `Build` (a random legal build of the player); the legal builds are
+exactly those `apply` accepts; a refused build changes no state hash; `check_towns` and
+`check_rewards` taught the events' builds and gains (decision 57; the plans' towns given events
+through `writer::TownEvent`, T19a); the told views and the hygiene property with builds (the
+mark public, the buildings the owner's); the day's start clears every mark.
+**At its start:** confirm the cut.
 **Status:** next.
+
+**E09 T19c — the env, random play with builds, the benchmarks, the census** (design §32,
+decision 58; queued 2026-11-10 by T19a; `cross-lane`: the env and its encoding are the AI lane's,
+the benchmarks and replays the adventure lane's): the env's build entry (the tile head the
+town's entrance, a building head of `MAX_BUILDINGS`, masked by `legal_commands`; the AI lane's
+action encoding v9), the rollout's skip dropped (decision 56), a test playing a town map to its
+end of days with builds, random play with builds (random replays on `e09-builds-36.h3m` or the
+town map, decision 59); the benchmarks (`legal_commands` on a town map, `day-start-towns-36` with
+the marks, a turn start with the builds map's events) against `master`; the census with the
+original data (the 160 maps' town events fired, built, skipped, against survey §10); the AI
+lane's and the map client's inboxes told.
+**At its start:** confirm the cut.
+**Status:** after T19b.
 
 ## Inbox
 

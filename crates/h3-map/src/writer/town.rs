@@ -1,14 +1,15 @@
 //! The town lane's objects (E09 T9a, design note `docs/epics/E09-design.md` §18): a town of any
 //! kind ([`AnyTown`]: of a fixed faction (98) or random (77) with its SoD alignment, a player's
-//! main town, a name, a garrison whose stacks may be random, [`random_stack`]) and a random hero
-//! ([`RandomHero`], class 70). Their bodies are what the import reads (`import/town.rs`, design
+//! main town, a name, a garrison whose stacks may be random, [`random_stack`], and since E09 T19a
+//! its events, [`TownEvent`], design note §32) and a random hero ([`RandomHero`], class 70). Their bodies are what the import reads (`import/town.rs`, design
 //! note §7); a main town also goes into its owner's header (the position of its entrance, survey
 //! `docs/rules/surveys/E09-towns.md` finding 3). [`Town`](super::Town), E04c's town of a fixed
 //! faction, is written as an [`AnyTown`] without these.
 
 use super::{
     ARMY_SLOTS, Codes, FACTION_COUNT, MAP_BUILDINGS, Map, MapObject, ObjectTemplate, Out, PLAYERS,
-    TOWN_OBJECT, Town, TownBuildings, WriteError, out_of_range, write_army,
+    TOWN_OBJECT, TimedEvent, Town, TownBuildings, WriteError, economy, len32, out_of_range,
+    write_army,
 };
 
 /// Object class of a random town (subclass 0): its faction is drawn when the game is built, or
@@ -47,9 +48,24 @@ pub struct MainTown {
     pub generates_hero: bool,
 }
 
+/// A town's event (`docs/formats/h3m.md`, classes 77 and 98; E09 T19a): a timed event of the
+/// map's kind (its players, its flags for a human and a computer, its first day and interval, its
+/// resources) and what it adds to the town when it fires (TWN-EVT-001 to -004): buildings by the
+/// map's slots, creatures by dwelling level.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct TownEvent {
+    /// The timed event: its name and message, players, flags, days and resources.
+    pub event: TimedEvent,
+    /// The buildings it builds, a bit per map slot as a custom set's (`8i + j`, below
+    /// [`MAP_BUILDINGS`]; `docs/formats/h3m.md`, "Town buildings").
+    pub buildings: [u8; 6],
+    /// The creatures it adds by dwelling level, levels 1 to 7.
+    pub creatures: [u16; 7],
+}
+
 /// A town of any kind placed on the map (E09 T9a): of a fixed faction or random, perhaps its
-/// owner's main town, with a name and a garrison whose stacks may be random. No required or
-/// banned spells, no events.
+/// owner's main town, with a name, a garrison whose stacks may be random and its events (E09
+/// T19a). No required or banned spells.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AnyTown {
     /// The object's position: the bottom-right tile of its picture; its entrance is the
@@ -75,6 +91,8 @@ pub struct AnyTown {
     pub tight_formation: bool,
     /// Buildings.
     pub buildings: TownBuildings,
+    /// Its events, in the town's order (TWN-EVT-001: each named by its place there).
+    pub events: Vec<TownEvent>,
 }
 
 impl From<&Town> for AnyTown {
@@ -89,6 +107,7 @@ impl From<&Town> for AnyTown {
             garrison: town.garrison,
             tight_formation: town.tight_formation,
             buildings: town.buildings,
+            events: Vec::new(),
         }
     }
 }
@@ -146,7 +165,7 @@ fn entrance(template: &ObjectTemplate) -> Option<(u8, u8)> {
 /// Checks a town of any kind: its class and subclass, a town in a SoD map, a playable owner, an
 /// alignment only for a random town and of a colour that plays, a main town owned with its
 /// entrance on the map, the garrison's codes (a creature the map may name or a random stack's)
-/// and counts, the buildings' bits.
+/// and counts, the buildings' bits and each event's.
 pub(super) fn validate(map: &Map, town: &AnyTown, codes: &Codes) -> Result<(), WriteError> {
     let ObjectTemplate {
         class, subclass, ..
@@ -194,13 +213,22 @@ pub(super) fn validate(map: &Map, town: &AnyTown, codes: &Codes) -> Result<(), W
             }
         }
     }
-    if let TownBuildings::Custom { built, forbidden } = &town.buildings {
-        let last = MAP_BUILDINGS % 8;
-        if built[5] >> last != 0 || forbidden[5] >> last != 0 {
-            return Err(out_of_range("town building (bit)", MAP_BUILDINGS));
-        }
+    if let TownBuildings::Custom { built, forbidden } = &town.buildings
+        && (past_slots(built) || past_slots(forbidden))
+    {
+        return Err(out_of_range("town building (bit)", MAP_BUILDINGS));
+    }
+    if town.events.iter().any(|event| past_slots(&event.buildings)) {
+        return Err(out_of_range("town event building (bit)", MAP_BUILDINGS));
     }
     Ok(())
+}
+
+/// Whether a set of building bits has one past the map's [`MAP_BUILDINGS`] slots (the original's
+/// event loop reads bits 41 to 43 from the next faction's row, TWN-QUIRK-7: the writer writes
+/// none).
+const fn past_slots(bits: &[u8; 6]) -> bool {
+    bits[5] >> (MAP_BUILDINGS % 8) != 0
 }
 
 /// Checks a random hero: a playable owner, its object's position on the map, its army.
@@ -270,7 +298,7 @@ pub(super) fn write_main_town(out: &mut Out, map: &Map, colour: u8) {
 }
 
 /// A town's body (`docs/formats/h3m.md`, classes 77 and 98): the name, the garrison, the
-/// buildings, no required or banned spells, no events, the alignment.
+/// buildings, no required or banned spells, the events, the alignment.
 pub(super) fn write_body(out: &mut Out, town: &AnyTown, identifier: u32) -> Result<(), WriteError> {
     out.u32(identifier);
     out.u8(town.owner.unwrap_or(0xff));
@@ -278,21 +306,39 @@ pub(super) fn write_body(out: &mut Out, town: &AnyTown, identifier: u32) -> Resu
     if let Some(name) = &town.name {
         out.string(name)?;
     }
-    write_rest(out, town);
-    Ok(())
+    write_rest(out, town)
 }
 
-/// A town of a fixed faction's body ([`Town`]): an [`AnyTown`]'s without a name, so nothing
-/// fails.
+/// A town of a fixed faction's body ([`Town`]): an [`AnyTown`]'s without a name or events, so
+/// nothing fails.
 pub(super) fn write_unnamed(out: &mut Out, town: &Town, identifier: u32) {
     out.u32(identifier);
     out.u8(town.owner.unwrap_or(0xff));
     out.bool(false); // no custom name
-    write_rest(out, &AnyTown::from(town));
+    write_settings(out, &AnyTown::from(town));
+    out.u32(0); // no events
+    write_alignment(out, None);
 }
 
-/// A town's body after its name.
-fn write_rest(out: &mut Out, town: &AnyTown) {
+/// A town's body after its name: its settings, its events (E09 T19a: each a timed event, the
+/// buildings' bits, the creatures by level, four unused bytes), the alignment.
+fn write_rest(out: &mut Out, town: &AnyTown) -> Result<(), WriteError> {
+    write_settings(out, town);
+    out.u32(len32(town.events.len()));
+    for event in &town.events {
+        economy::write_event(out, &event.event)?;
+        out.bytes(&event.buildings);
+        for count in event.creatures {
+            out.u16(count);
+        }
+        out.bytes(&[0; 4]);
+    }
+    write_alignment(out, town.alignment);
+    Ok(())
+}
+
+/// A town's garrison, formation, buildings and spells (none required or banned).
+fn write_settings(out: &mut Out, town: &AnyTown) {
     out.bool(town.garrison.is_some());
     if let Some(garrison) = &town.garrison {
         write_army(out, garrison);
@@ -311,8 +357,11 @@ fn write_rest(out: &mut Out, town: &AnyTown) {
     }
     out.bytes(&[0; 9]); // no required spells
     out.bytes(&[0; 9]); // no banned spells
-    out.u32(0); // no events
-    out.u8(town.alignment.unwrap_or(0xff));
+}
+
+/// A town's alignment (SoD's byte, `0xFF` none) and its three unused bytes.
+fn write_alignment(out: &mut Out, alignment: Option<u8>) {
+    out.u8(alignment.unwrap_or(0xff));
     out.bytes(&[0; 3]);
 }
 
@@ -344,7 +393,10 @@ mod tests {
     use super::super::tests::smoke_like_map;
     use super::super::{Format, write, write_in};
     use super::*;
-    use crate::model::{Body, MainTown as ReadMainTown, Pos, Stack, Text};
+    use crate::model::{
+        Body, MainTown as ReadMainTown, Pos, Stack, Text, TimedEvent as ReadTimedEvent,
+        TownEvent as ReadTownEvent,
+    };
     use crate::{Limits, parse};
 
     /// `Objects.txt`'s lines of a Castle (98 0) and a random town (77 0).
@@ -377,6 +429,7 @@ mod tests {
             ]),
             tight_formation: true,
             buildings: TownBuildings::Standard { fort: false },
+            events: Vec::new(),
         }
     }
 
@@ -420,6 +473,7 @@ mod tests {
             garrison: None,
             tight_formation: false,
             buildings: TownBuildings::Standard { fort: true },
+            events: Vec::new(),
         }));
         map.objects.push(MapObject::RandomHero(random_hero()));
         let raw = parse(&write(&map).unwrap(), &Limits::default()).unwrap();
@@ -499,6 +553,73 @@ mod tests {
             }
         }));
         assert_eq!(write(&fixed), write(&any));
+    }
+
+    /// A town event for red and blue's humans from the file's day 2 every week: five wood and
+    /// three ore given, 500 gold taken; the Town Hall, the Fort and the last slot's building;
+    /// creatures of levels 1, 2 and 7.
+    fn harvest() -> TownEvent {
+        TownEvent {
+            event: TimedEvent {
+                name: "Harvest".into(),
+                message: "The fields yield.".into(),
+                resources: [5, 0, 3, 0, 0, 0, -500],
+                players: 0b11,
+                human: true,
+                computer: false,
+                first_day: 2,
+                interval: 7,
+            },
+            buildings: [0b1001, 0, 0, 0, 0, 0x01],
+            creatures: [10, 5, 0, 0, 0, 0, 1],
+        }
+    }
+
+    #[test]
+    fn a_town_s_events_read_back_as_written() {
+        // E09 T19a: each event in the town's order, after the spells and before the alignment.
+        let mut map = smoke_like_map();
+        let mut town = random_town();
+        town.events = vec![harvest(), TownEvent::default()];
+        map.objects.push(MapObject::AnyTown(town));
+        let raw = parse(&write(&map).unwrap(), &Limits::default()).unwrap();
+        let Body::Town(read) = &raw.objects[2].body else {
+            panic!("a town's body");
+        };
+        assert_eq!(
+            read.events,
+            vec![
+                ReadTownEvent {
+                    event: ReadTimedEvent {
+                        name: Text(b"Harvest".to_vec()),
+                        message: Text(b"The fields yield.".to_vec()),
+                        resources: [5, 0, 3, 0, 0, 0, -500],
+                        players: 0b11,
+                        human: true,
+                        computer: false,
+                        first_day: 2,
+                        interval: 7,
+                    },
+                    buildings: [0b1001, 0, 0, 0, 0, 0x01],
+                    creatures: [10, 5, 0, 0, 0, 0, 1],
+                },
+                ReadTownEvent {
+                    event: ReadTimedEvent {
+                        name: Text(Vec::new()),
+                        message: Text(Vec::new()),
+                        resources: [0; 7],
+                        players: 0,
+                        human: false,
+                        computer: false,
+                        first_day: 0,
+                        interval: 0,
+                    },
+                    buildings: [0; 6],
+                    creatures: [0; 7],
+                },
+            ]
+        );
+        assert_eq!(read.alignment, 1);
     }
 
     #[test]
@@ -604,6 +725,16 @@ mod tests {
             "town building (bit)",
         );
         fails(
+            &town(|t| {
+                t.events = vec![TownEvent {
+                    buildings: [0, 0, 0, 0, 0, 0x02],
+                    ..harvest()
+                }];
+            }),
+            sod,
+            "town event building (bit)",
+        );
+        fails(
             &|map: &mut Map| map.objects.push(MapObject::AnyTown(random_town())),
             sod,
             "main towns of a player (more than one)",
@@ -624,9 +755,18 @@ mod tests {
             sod,
             "creature",
         );
-        // A name the format cannot hold fails as it is written.
+        // A name the format cannot hold fails as it is written, a town's or its event's.
         fails(
             &town(|t| t.name = Some("\u{2603}".into())),
+            sod,
+            "character in a map string",
+        );
+        fails(
+            &town(|t| {
+                let mut event = harvest();
+                event.event.message = "\u{2603}".into();
+                t.events = vec![TownEvent::default(), event];
+            }),
             sod,
             "character in a map string",
         );
