@@ -1067,7 +1067,8 @@ impl<'g> Battle<'g> {
     /// press stopped it after the command before was played) waits; so does one whose start
     /// asked the computer for its hero's cast and got none (E17 M6 T5b1). E17 M6 T5b2a: Auto
     /// Combat's question (the retreat test's yes) waits for the human's answer from the action's
-    /// millisecond, its box open (*provisional*: no outline, the turn the computer's). E17 M6
+    /// millisecond, its box open, the stack the computer plays outlined behind it from then (E17
+    /// M6 T7b, R9-2; recorded: `auto-retreat-later`, as the hold's push at the answer). E17 M6
     /// T5b2b (CLT-Q61): so does a turn whose computer's cast for the hero a key or a button
     /// stopped, from the cast's end: the cast put its outline back there (§12.18, as on a turn
     /// the human plays; *provisional*: the outline's first tick and the panel's switch at that
@@ -1093,6 +1094,9 @@ impl<'g> Battle<'g> {
                 growing.outline_waiting();
             }
             end = growing.timeline().end;
+            if asked {
+                growing.outline_asked(end);
+            }
             let tail = Box::new(growing.waiting());
             self.played = Played::Waiting(growing, tail);
         }
@@ -1314,6 +1318,10 @@ impl<'g> Battle<'g> {
         if self.asked_at.is_none() {
             self.asked_at = Some(at);
         }
+        // The panel behind the box with the switch that asked it (E17 M6 T7b, R9-1; §12.19
+        // Recorded 2: dimmed, its button selected): a switch's own turn grows nothing, so no
+        // `follow` makes it again before the answer.
+        self.panels = self.panel()?;
         Ok(true)
     }
 
@@ -3202,11 +3210,9 @@ impl<'g> Battle<'g> {
         self.result_closed
     }
 
-    /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
-    /// unattended run's press).
     /// The result window under Eagle Eye's boxes stands from `at`, its close's millisecond (E17
-    /// M6 T5c, recorded: `eagle-eye-one`; the reviewer), unless a time was set already; the
-    /// stills and sequences without the window's clock take the first box's first draw.
+    /// M6 T5c, recorded: `eagle-eye-one`; the reviewer), unless a time was set already; else (no
+    /// window's clock told it) from the first box's first draw ([`Battle::list_at`]).
     pub fn window_closed_at(&mut self, at: u32) {
         if let Some((_, opened, since @ None)) = self.window_behind.as_mut() {
             *since = Some(at.saturating_sub(*opened));
@@ -3218,6 +3224,8 @@ impl<'g> Battle<'g> {
         self.opened
     }
 
+    /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
+    /// unattended run's press).
     pub fn message_button(&self, id: u16) -> Option<[i32; 2]> {
         let (open, _, _) = self.message.as_ref()?;
         let dialog = &open.message.dialog;
@@ -3953,6 +3961,162 @@ mod tests {
                 })
                 .collect(),
             ..Timeline::default()
+        }
+    }
+
+    /// A situation of `clients/situations/` fought here by the window's computer (the fair
+    /// actor), the sides `humans` human, over the staged installation copy (`$H3_INSTALL`, else
+    /// the repository's `original-data/install`): none without its archives (E17 M6 T7b, R9-1:
+    /// a `Battle`'s text tables are the game's; the test then checks nothing, as on CI).
+    fn staged(situation: &str, humans: [bool; 2]) -> Option<Source> {
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        let install = std::env::var_os("H3_INSTALL")
+            .map_or_else(|| repo.join("original-data/install"), PathBuf::from);
+        if !install.join("Data/H3bitmap.lod").is_file() {
+            eprintln!("skipped: no installation copy at {}", install.display());
+            return None;
+        }
+        Some(Source {
+            input: repo.join("clients/situations").join(situation),
+            seed: 1,
+            speed: Speed::new(0),
+            packs: repo.join("packs"),
+            install,
+            humans,
+            computer: Computer::Original(h3_battle_ai::Sight::Fair),
+            server: None,
+        })
+    }
+
+    #[test]
+    fn the_panel_behind_auto_combat_s_question_at_a_switch_is_the_switch_s() {
+        // E17 M6 T7b (R9-1, design §12.19 Recorded 2): Auto Combat switched on the Champions'
+        // first turn asks the question at once; behind its box the panel is dimmed, its button
+        // selected (built with the switch), not the lit one from before it.
+        let Some(source) = staged("seq-auto-retreat.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.grow(0).unwrap();
+        let before = battle.panels.clone();
+        let at = battle.played.timeline().end;
+        assert!(battle.switch_auto(at).unwrap());
+        assert_eq!(battle.message_asked(), Some(Asked::Question));
+        assert_ne!(battle.panels, before);
+        assert_eq!(battle.panels, battle.panel().unwrap());
+    }
+
+    #[test]
+    fn a_later_turn_s_question_outlines_the_stack_the_computer_plays_behind_its_box() {
+        // E17 M6 T7b (R9-2, design §12.20 Recorded 3, `auto-retreat-later`): W on the Dwarves'
+        // turn, A on the Ballista's (the human's, its box clear), D: the Dwarves' waited turn,
+        // played by the computer, asks the question at once, the Dwarves outlined behind its box
+        // from its opening, as the drawn sequence has them.
+        let Some(source) = staged("seq-auto-retreat-machine.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.settings.auto = [true, false, false, false, false];
+        battle.grow(u32::MAX).unwrap();
+        let dwarves = battle.played.timeline().turns.last().unwrap().1;
+        let at = battle.played.timeline().end;
+        assert!(battle.command(at, Command::Wait {}).unwrap());
+        battle.grow(u32::MAX).unwrap();
+        let at = battle.played.timeline().end;
+        assert!(battle.switch_auto(at).unwrap());
+        assert!(battle.message_asked().is_none());
+        assert!(battle.command(at + 500, Command::Defend {}).unwrap());
+        battle.grow(u32::MAX).unwrap();
+        assert_eq!(battle.message_asked(), Some(Asked::Question));
+        let timeline = battle.played.timeline();
+        assert_eq!(timeline.turns.last().map(|&(_, s)| s), Some(dwarves));
+        let asked = battle.asked_at.unwrap();
+        assert_eq!(timeline.outlines.last(), Some(&(asked, Some(dwarves))));
+    }
+
+    #[test]
+    fn eagle_eye_s_boxes_follow_the_result_window_in_the_window() {
+        // E17 M6 T7b (R10-2, design §12.21): the window's own copy of the flow, the boxes set in
+        // place of a battle won. The result window's OK opens the first box, the window released
+        // behind it, its clip held from its close (`window_closed_at`; else, never told, from the
+        // first box's first draw); each box's OK opens the next, its pickup to play; the last's,
+        // or the window's with no box, ends the battle's screen.
+        use h3_view::message::{OK, Open, Outcome};
+        let Some(source) = staged("seq-auto-retreat.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let ok = crate::spellbook::tests::one_button(OK);
+        for (picks, told) in [(0, false), (1, false), (1, true), (9, true)] {
+            let mut battle = Battle::new(&ground).unwrap();
+            battle.message = Some((Open::new(ok.clone()), 100, Asked::Result));
+            battle.eagle_eye = (0..picks).map(|n| (ok.clone(), n)).collect();
+            for n in 0..picks {
+                assert_eq!(
+                    battle.message_did(|_| Outcome::Closed(OK)),
+                    MessageDid::Changed
+                );
+                assert_eq!(battle.message_asked(), Some(Asked::EagleEye));
+                assert_eq!(
+                    (battle.take_pickup(), battle.take_pickup()),
+                    (Some(n), None)
+                );
+                assert_eq!(battle.boxes_opened(), u32::from(n) + 1);
+                assert!(!battle.result_closed());
+                if n == 0 && told {
+                    battle.window_closed_at(250);
+                    battle.window_closed_at(400);
+                }
+                let _ = battle.list_at(700).unwrap();
+                let since = battle
+                    .window_behind
+                    .as_ref()
+                    .and_then(|(_, _, since)| *since);
+                assert_eq!(since, Some(if told { 150 } else { 600 }));
+            }
+            assert_eq!(
+                battle.message_did(|_| Outcome::Closed(OK)),
+                MessageDid::Ended
+            );
+            assert!(battle.result_closed() && battle.message.is_none());
+            assert!(battle.window_behind.is_none() && battle.take_pickup().is_none());
+        }
+    }
+
+    #[test]
+    fn a_press_during_the_computer_s_cast_stops_auto_combat_at_its_end_in_the_window() {
+        // E17 M6 T7b (R10-2, CLT-Q61, `auto-cast-stop`): A on the Champions' turn, Combat Auto
+        // Spells set; the computer's Bless for the Marksmen holds the battle at its end
+        // (`cast_end`); a press during it stops Auto Combat there, the Marksmen's turn the
+        // human's. Without the press the computer plays it on.
+        let Some(source) = staged("seq-auto-cast.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        for press in [false, true] {
+            let mut battle = Battle::new(&ground).unwrap();
+            battle.grow(0).unwrap();
+            assert!(battle.switch_auto(battle.played.timeline().end).unwrap());
+            let mut grown = 0;
+            while battle.cast_end().is_none() && grown < 20 {
+                assert!(battle.grow_one().unwrap());
+                grown += 1;
+            }
+            let end = battle.cast_end().unwrap();
+            let cast = battle.played.timeline().actions.last().unwrap().clone();
+            assert_eq!((cast.end, cast.cast.is_some()), (end, true));
+            let k = battle.played.timeline().turns.len();
+            if press {
+                assert_eq!(battle.stop_auto(end - 1), Some(k));
+            }
+            battle.grow(end).unwrap();
+            assert_eq!(battle.waiting(), press);
+            assert_eq!(battle.auto_stopped_at(k).is_some(), press);
+            if press {
+                assert_eq!(battle.played.timeline().actions.last().unwrap().end, end);
+            }
         }
     }
 

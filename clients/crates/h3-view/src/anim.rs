@@ -2313,6 +2313,17 @@ impl<'a> Growing<'a> {
         }
     }
 
+    /// The battle redrawn at `at` with the stack whose turn the computer plays next outlined
+    /// (E17 M6 T7b, R9-2): the box of Auto Combat's question at a later command than the
+    /// switch's, open from then, as the hold's push outlines it once answered ([`Growing::push`];
+    /// recorded: `auto-retreat-later`'s Dwarves behind the question). Before the first command
+    /// nothing, as the push's: the opening's outline stays.
+    pub fn outline_asked(&mut self, at: u32) {
+        if self.commands > 0 {
+            self.timeline.outlines.push((at, self.waiting));
+        }
+    }
+
     /// The next command held behind a box from `from` until `until` (E17 M6 T5b2a, design
     /// §12.19: a modal box over a turn the computer plays, Auto Combat's question, answered
     /// then; recorded): the battle idles until the box opens (the opening's step, a human's

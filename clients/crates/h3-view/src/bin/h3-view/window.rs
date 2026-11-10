@@ -2876,6 +2876,15 @@ mod tests {
         let m = Options::parse(&args(&["a/b.jsonl", "--measure", "5"])).unwrap();
         assert_eq!(m.source.computer, Computer::Original(Sight::Fair));
         assert!(Options::parse(&args(&["a", "--sight", "blind"])).is_err());
+        // E17 M6 T7b (R9-3): the unattended answers to Auto Combat's question and offer, Cancel
+        // without `--auto-question`.
+        assert_eq!(m.question, (false, false));
+        let answered =
+            |v: &str| Options::parse(&args(&["a", "--auto-question", v])).map(|o| o.question);
+        assert_eq!(answered("cancel"), Ok((false, false)));
+        assert_eq!(answered("retreat"), Ok((true, false)));
+        assert_eq!(answered("surrender"), Ok((true, true)));
+        assert!(answered("x").is_err());
         // A seat on a server plays against the server's computer.
         let seat = [
             "--server",

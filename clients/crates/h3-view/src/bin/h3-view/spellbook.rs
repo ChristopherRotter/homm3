@@ -1381,7 +1381,7 @@ pub(crate) mod tests {
     }
 
     /// A box of one button `id` at (10, 10), 64 × 30 (its keys the table's).
-    fn one_button(id: u16) -> MessageBox {
+    pub(crate) fn one_button(id: u16) -> MessageBox {
         use h3_ui::ui::{Button, Dialog, Frames, Item, Shown};
         MessageBox {
             dialog: Dialog {
