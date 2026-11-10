@@ -504,6 +504,45 @@ fn the_mouse_over_the_dialog_sets_its_cursor_and_hint() {
 }
 
 #[test]
+fn the_ability_text_and_the_cast_buttons_back_are_nothing_to_the_mouse() {
+    // The reviewer's R2-1: the executable numbers them −1, as no item (0x5F4E57). From the morale
+    // icon (219 at 23, 189) onto the ability text (20, 232, 192 × 41): the cursor's frame 0 and
+    // an empty line, as off the dialog.
+    let mut memory = Memory::new(Bugs::Fixed);
+    let mut m = modal(&mut memory);
+    assert!(m.hover(&mut memory, [100 + 40, 50 + 200]));
+    assert_eq!(m.cursor, Some(1));
+    assert!(m.hover(&mut memory, [100 + 40, 50 + 250]));
+    assert_eq!((m.cursor, m.status()), (Some(0), ""));
+    // From it off the dialog: nothing changes.
+    assert!(!m.hover(&mut memory, [0, 0]));
+    // A dialog opened over it: nothing changes, the pointer stays.
+    let mut again = modal(&mut memory);
+    assert!(!again.hover(&mut memory, [100 + 40, 50 + 250]));
+    assert_eq!(again.cursor, None);
+    // The cast button's back (74, 236, 48 × 34) where the button (75, 237) leaves it, in the
+    // original's profile too.
+    let mut memory = Memory::new(Bugs::Original);
+    let stats = Stats {
+        cast: true,
+        ability: None,
+        ..marksmen()
+    };
+    let window = layout(
+        &stats_layout(),
+        &texts(),
+        &stats,
+        ([0, 0], 0),
+        Bugs::Original,
+    );
+    let mut m = Modal::new(window, hints(), &mut memory);
+    assert!(m.hover(&mut memory, [80, 240]));
+    assert_eq!(m.cursor, Some(1));
+    assert!(m.hover(&mut memory, [74, 236]));
+    assert_eq!((m.cursor, m.status()), (Some(0), ""));
+}
+
+#[test]
 fn the_damages_label_takes_the_mouse_below_its_value_in_the_original() {
     // A row above its label, the value leaves the label's last row to it (CLT-Q37).
     let mut memory = Memory::new(Bugs::Original);
@@ -696,6 +735,60 @@ fn the_creature_stands_while_a_popup_is_held() {
     assert_eq!(Steps::made_around(100, &[[150, u32::MAX]], 900), 1);
     // A popup after the time asked changes nothing.
     assert_eq!(Steps::made_around(100, &[[500, 600]], 300), 3);
+}
+
+/// The steps made by `since` around `holds` as the procedure makes them, a step of the deadline
+/// at a time ([`Steps::made_around`]'s and [`Steps::next_around`]'s reference).
+fn stepped(first: u32, holds: &[[u32; 2]], since: u32) -> (u32, Option<u32>) {
+    let (mut deadline, mut made) = (first, 0_u32);
+    for &[start, end] in holds {
+        if start > since {
+            break;
+        }
+        while deadline <= start {
+            made += 1;
+            deadline = deadline.saturating_add(STEP_MS);
+        }
+        if end > since {
+            return (made, None);
+        }
+        while deadline <= end {
+            made += 1;
+            deadline = end.max(deadline.saturating_add(STEP_MS));
+        }
+    }
+    while deadline <= since {
+        made += 1;
+        deadline = deadline.saturating_add(STEP_MS);
+    }
+    (made, Some(deadline))
+}
+
+#[test]
+fn the_steps_around_the_popups_come_in_closed_form() {
+    // The reviewers' R1-2 and R2-2: the deadline's steps counted at once, as one at a time.
+    let holds: [&[[u32; 2]]; 5] = [
+        &[],
+        &[[150, 180]],
+        &[[150, 450], [460, 470]],
+        &[[0, 99], [100, 100], [1_000, u32::MAX]],
+        &[[250, 260], [900, 1_350]],
+    ];
+    for first in [0, 1, 99, 100, 101, 250] {
+        for holds in holds {
+            for since in (0..2_000).step_by(7) {
+                let (made, next) = stepped(first, holds, since);
+                assert_eq!(Steps::made_around(first, holds, since), made);
+                assert_eq!(Steps::next_around(first, holds, since), next);
+            }
+        }
+    }
+    // Hours open: as many steps, the deadline the next on the grid; near the clock's end the
+    // deadline stays at its end.
+    let day = 86_400_000;
+    assert_eq!(Steps::made_around(100, &[], day), Steps::made(100, day));
+    assert_eq!(Steps::next_around(100, &[], day), Some(day + 100));
+    assert_eq!(Steps::next_around(100, &[], u32::MAX - 50), Some(u32::MAX));
 }
 
 /// A catalogue whose morale and luck descriptions' messages show which line each is.

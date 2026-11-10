@@ -2902,11 +2902,7 @@ impl<'g> Battle<'g> {
     /// Side `index`'s player colour (the record's first snapshot; none named: red for the
     /// attacker, blue for the defender, CLT-Q6).
     fn side_colour(&self, index: usize) -> u8 {
-        self.record
-            .first_snapshot()
-            .and_then(|s| s.sides.get(index))
-            .and_then(|side| side.colour)
-            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+        side_colour(self.record.first_snapshot(), index)
     }
 
     /// The colours of a box opened at `at` (CLT-Q28 (2), answered (c) at E17 M5 T8c;
@@ -2916,22 +2912,7 @@ impl<'g> Battle<'g> {
     /// stack's (E17 M6 T2b2: its turn starts before the record opens, as the panel's
     /// `Panels::new`); the viewing player's without any.
     fn box_player(&self, at: u32, side: Option<Side>) -> u8 {
-        let timeline = self.timeline();
-        let acting = side.or_else(
-            || match timeline.turns.iter().rposition(|&(t, _)| t <= at) {
-                Some(turn) => timeline.controllers.get(turn).copied(),
-                None => {
-                    let opening = self.record.first_snapshot()?;
-                    let id = opening.active?;
-                    opening
-                        .stacks
-                        .iter()
-                        .find(|s| s.id == id)
-                        .map(|s| s.controller)
-                }
-            },
-        );
-        let acting = acting.map(|s| self.side_colour(usize::from(s == Side::Defender)));
+        let acting = acting_colour(self.timeline(), self.record.first_snapshot(), at, side);
         h3_view::message::framed(Bugs::Fixed, self.viewing_player(), acting)
     }
 
@@ -3895,6 +3876,41 @@ fn stop_read(timeline: &Timeline, at: u32) -> (u32, usize) {
     (at, turn_at(turns, at).max(turns.len().saturating_sub(1)))
 }
 
+/// Side `index`'s player colour in the record's `opening` (none named: red for the attacker,
+/// blue for the defender, CLT-Q6).
+fn side_colour(opening: Option<&Observation>, index: usize) -> u8 {
+    opening
+        .and_then(|s| s.sides.get(index))
+        .and_then(|side| side.colour)
+        .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+}
+
+/// The player colour of the side acting at `at` ([`Battle::box_player`]): `side` when given, else
+/// the controller of the turn `at` falls in (`Timeline::controllers`), before the first turn the
+/// timeline holds the `opening`'s active stack's; none without any.
+fn acting_colour(
+    timeline: &Timeline,
+    opening: Option<&Observation>,
+    at: u32,
+    side: Option<Side>,
+) -> Option<u8> {
+    let acting = side.or_else(
+        || match timeline.turns.iter().rposition(|&(t, _)| t <= at) {
+            Some(turn) => timeline.controllers.get(turn).copied(),
+            None => {
+                let opening = opening?;
+                let id = opening.active?;
+                opening
+                    .stacks
+                    .iter()
+                    .find(|s| s.id == id)
+                    .map(|s| s.controller)
+            }
+        },
+    );
+    acting.map(|s| side_colour(opening, usize::from(s == Side::Defender)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3939,6 +3955,44 @@ mod tests {
         assert_eq!(stop_read(&action, 1000), (1000, 1));
         assert_eq!(stop_read(&timeline(&[300, 600], &[]), 100), (100, 1));
         assert_eq!(stop_read(&timeline(&[], &[]), 100), (100, 0));
+    }
+
+    #[test]
+    fn a_box_takes_the_colours_of_the_side_acting_at_its_time() {
+        // The reviewer's R1-3 (CLT-Q28 (2), the client's profile): the turn the box's time falls
+        // in, from its exact start; the tactics phase's side given; before the first turn the
+        // opening's active stack's controller; each side by its own colour.
+        let (_, mut opening, _) = crate::spellbook::tests::opening();
+        opening.sides[0].colour = Some(3);
+        opening.sides[1].colour = Some(5);
+        let id = |side: Side| (opening.stacks.iter()).find(|s| s.side == side).unwrap().id;
+        let (attacker, defender) = (id(Side::Attacker), id(Side::Defender));
+        let timeline = Timeline {
+            turns: vec![(100, attacker), (500, defender)],
+            controllers: vec![Side::Attacker, Side::Defender],
+            ..Timeline::default()
+        };
+        let colour = |opening: Option<&Observation>, at: u32, side: Option<Side>| {
+            acting_colour(&timeline, opening, at, side)
+        };
+        opening.active = Some(attacker);
+        let o = Some(&opening);
+        assert_eq!(colour(o, 100, None), Some(3));
+        assert_eq!(colour(o, 499, None), Some(3));
+        assert_eq!(colour(o, 500, None), Some(5));
+        assert_eq!(colour(o, 900, None), Some(5));
+        assert_eq!(colour(o, 900, Some(Side::Attacker)), Some(3));
+        assert_eq!(colour(o, 50, Some(Side::Defender)), Some(5));
+        assert_eq!(colour(o, 50, None), Some(3));
+        opening.active = Some(defender);
+        assert_eq!(colour(Some(&opening), 50, None), Some(5));
+        // No active stack, or no opening, before the first turn: none (the viewing player's);
+        // without named colours red and blue.
+        opening.active = None;
+        assert_eq!(colour(Some(&opening), 50, None), None);
+        assert_eq!(colour(None, 50, None), None);
+        assert_eq!(colour(None, 500, None), Some(1));
+        assert_eq!(colour(None, 100, None), Some(0));
     }
 
     #[test]

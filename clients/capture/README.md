@@ -306,7 +306,9 @@ python3 capture/h3drive.py sequences [--only walk]
 `cast:<k>[:<hex>]` casts a spell from the hero's book, below; `aim:<k>:<n>` aims one, E17 M5
 T3b; `look:x,y` presses a stack to look at, its stats dialog, and `cast-button:x,y:<n>` clicks the
 dialog's cast button, the spell numbered n aimed, each a click that parks the mouse, E17 M6
-T2a2b1) and
+T2a2b1; the viewer takes `look:` only right before `cast-button:`, whose aim's first `hex:` or
+`click:` it takes as a target the aim accepts, closing the dialog: the dialog's other input is a
+still's) and
 then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
 change of a stack's group, frame or hex, by the original's records: each side's army, then its

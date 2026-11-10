@@ -1877,8 +1877,6 @@ fn book_did(
     }
 }
 
-/// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
-/// while no box is open. A box that gives way to another (the surrender refused) has others.
 /// What a stats dialog's input did (E17 M6 T2a2a): its close hands the mouse back to the battle
 /// (`Input::Looked`); its cast button's (E17 M6 T2a2b1) starts the acting Faerie Dragon's aim
 /// first, the close coming as the aim ends (at once when no aim starts). Whether the screen
@@ -1899,6 +1897,8 @@ fn stats_did(battle: &mut Battle<'_>, inputs: &mut Vec<Input>, at: u32, did: Sta
     did != StatsDid::Nothing
 }
 
+/// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
+/// while no box is open. A box that gives way to another (the surrender refused) has others.
 fn box_shown(battle: &Battle<'_>) -> Option<([Option<[i32; 2]>; 3], u32)> {
     use h3_view::message::{NO, OK, YES};
     // The combat options dialog's opening flushes the input queue too (E17 M6 T4a).

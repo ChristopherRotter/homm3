@@ -968,7 +968,7 @@ fn options_action(
 
 /// One of a situation's actions over an open stats dialog `open` (E17 M6 T2a2a): `move:<x>,<y>`
 /// moves the mouse there (its hint, the OK held following); `click:<x>,<y>` moves it, presses,
-/// releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases it;
+/// releases and parks it (on the cast button an error: its aim is a sequence's); `key:<k>` presses the dialog's key (its OK's) and releases it;
 /// `right:<x>,<y>` (E17 M6 T2a2b1) moves it there and holds the right button down: the item's
 /// description in its popup (laid out by `tell`), held through the frames, so nothing may come
 /// after it. Where the mouse rests once the OK closed the dialog (none: still open; the `mouse`
@@ -1006,10 +1006,20 @@ fn stats_action(
             let at = point(arg)?;
             to(modal, at);
             modal.press(at);
-            if modal.release() == Outcome::Closed(h3_view::stats::OK) {
-                // The battle takes the press's point posted, then the park's move.
-                *mouse = crate::pointer::PARK;
-                return Ok(Some(crate::pointer::PARK));
+            match modal.release() {
+                Outcome::Closed(h3_view::stats::OK) => {
+                    // The battle takes the press's point posted, then the park's move.
+                    *mouse = crate::pointer::PARK;
+                    return Ok(Some(crate::pointer::PARK));
+                }
+                // The cast button's click closes the dialog into the Faerie Dragon's aim, which a
+                // still does not play (the reviewer's R2-5).
+                Outcome::Closed(_) => {
+                    return Err(String::from(
+                        "the cast button's aim: a sequence's `cast-button:`",
+                    ));
+                }
+                _ => {}
             }
             to(modal, crate::pointer::PARK);
             Ok(None)
@@ -1086,6 +1096,62 @@ pub(crate) mod tests {
             (&layout(), &catalogue),
             None,
         )
+    }
+
+    #[test]
+    fn a_still_s_click_on_the_cast_button_is_an_error() {
+        // The reviewer's R2-5: its click closes the dialog into the Faerie Dragons' aim, which a
+        // still does not play (a sequence's `cast-button:`); the OK's click closes it.
+        use crate::stats::tests::{opening, stack_of, tables};
+        let (ruleset, o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = crate::stats::Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let dragons = stack_of(&manifest, &o, "ab:faerie_dragon");
+        let mut memory = StatsMemory::new(h3_render::Bugs::Original);
+        let mut open = || {
+            crate::stats::open(
+                &sources,
+                &o,
+                (dragons, [0, 0], false),
+                (&battle.stats, [300, 300], [[0, 0]; 2]),
+                (std::collections::BTreeMap::new(), 0, 1),
+                &mut memory,
+            )
+            .unwrap()
+        };
+        let mut dialog = open();
+        let message = &dialog.modal.open.message;
+        let at = |id: u16| {
+            message.dialog.items.iter().find_map(|item| match item {
+                h3_ui::ui::Item::Button(b) if b.id == id => Some(b.at),
+                _ => None,
+            })
+        };
+        let point = |id: u16| {
+            at(id).map(|[x, y]| {
+                let [left, top] = message.dialog.place;
+                format!("click:{},{}", left + x + 5, top + y + 5)
+            })
+        };
+        let (cast, ok) = (
+            point(h3_view::stats::CAST).unwrap(),
+            point(h3_view::stats::OK).unwrap(),
+        );
+        let keys = Keys::original();
+        let mut mouse = [0, 0];
+        let mut memory = StatsMemory::new(h3_render::Bugs::Original);
+        let got = stats_action(&mut dialog, &mut memory, (&cast, &keys, None), &mut mouse);
+        assert!(got.unwrap_err().contains("cast-button:"));
+        let mut dialog = open();
+        let got = stats_action(&mut dialog, &mut memory, (&ok, &keys, None), &mut mouse);
+        assert_eq!(got, Ok(Some(crate::pointer::PARK)));
     }
 
     #[test]

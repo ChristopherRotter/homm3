@@ -115,8 +115,13 @@ pub type Answers = Vec<(u32, bool)>;
 /// next draw of a roll and moves nothing (the engine's rolls are its seed's); `aim:<k>:<n>` (E17
 /// M5 T3b) opens the book and clicks its place `k`, whose spell numbered `n` in the original
 /// (`handle` gives its handle) takes a target: the aim starts with the mouse there; `key:Escape`
-/// gives an aim up. E17 M5 T4c1 (design §7.22): Auto Combat's key (`key:a`, the original's
-/// table) switches it on ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
+/// gives an aim up. E17 M6 T2a2b1: `look:<x>,<y>` presses a stack to look at, its stats dialog,
+/// and only `cast-button:<x>,<y>:<n>` may follow it (the dialog's other input is a still's, the
+/// reviewer's R2-4): its aim of the spell numbered `n`, whose first `hex:` or `click:` (or
+/// `key:Escape`) ends it and closes the dialog (*not modelled:* a press the aim does not take,
+/// which the window's aim goes on after; a sequence presses a target it takes). E17 M5 T4c1
+/// (design §7.22): Auto Combat's key (`key:a`, the original's table) switches it on
+/// ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
 /// ([`Input::Stop`]: the click moves the mouse and gives nothing); each in the turn started last
 /// by its time ([`turn_at`]; the switch trusted to come on a human's waiting turn, as the
 /// harness pressed it, T8b2 R5c-8). E17 M5 T4c2b: a battle that
@@ -170,6 +175,9 @@ pub fn answering(
     // The stats dialog's cast button's aim under way (E17 M6 T2a2b1): the dialog's close comes as
     // it ends.
     let mut look_aim = false;
+    // A `look:` just pressed: only its cast button may follow (the reviewer's R2-4: the dialog's
+    // OK and its other input are the stills', `spellbook::still`).
+    let mut looking = false;
     let mut shades = shades;
     let mut out = vec![
         Input::Shades {
@@ -193,6 +201,11 @@ pub fn answering(
     for action in actions {
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
         let after_cast = core::mem::take(&mut cast_pending);
+        if core::mem::take(&mut looking) && kind != "cast-button" {
+            return Err(format!(
+                "`{action}`: after `look:` only `cast-button:` (the dialog's other input: a still's)"
+            ));
+        }
         match kind {
             // Auto Combat's question or offer answered (E17 M6 T5b2a): its OK or its Cancel.
             "key" if matches!(arg, "Return" | "Escape") && open(now) => {
@@ -231,15 +244,18 @@ pub fn answering(
                 out.push(Input::Move { at: now, to: PARK });
             }
             // A press on a stack to look at: its stats dialog, modal, the park's move its own
-            // (E17 M6 T2a2b1).
-            "look" => out.extend([
-                Input::Move {
-                    at: now,
-                    to: point(arg)?,
-                },
-                Input::Look { at: now },
-                Input::Move { at: now, to: PARK },
-            ]),
+            // (E17 M6 T2a2b1); its cast button next.
+            "look" => {
+                looking = true;
+                out.extend([
+                    Input::Move {
+                        at: now,
+                        to: point(arg)?,
+                    },
+                    Input::Look { at: now },
+                    Input::Move { at: now, to: PARK },
+                ]);
+            }
             // The dialog's cast button: the acting Faerie Dragon's aim of its drawn spell (its
             // number given), the mouse parked after the click; the dialog's close as it ends.
             "cast-button" => {
@@ -377,6 +393,9 @@ pub fn answering(
             }
             _ => return Err(format!("`{action}`: an unknown action")),
         }
+    }
+    if looking {
+        return Err(String::from("`look:` without its `cast-button:`"));
     }
     Ok((out, answers))
 }
@@ -1810,6 +1829,16 @@ mod tests {
         // A spell without a handle, or no spell, is an error.
         assert!(run(&["cast-button:30,40:22"]).is_err());
         assert!(run(&["cast-button:30,40"]).is_err());
+        // The reviewer's R2-4: after a look only its cast button (the dialog's OK, moves and
+        // keys are a still's), and a look ends no sequence.
+        for actions in [
+            &["look:10,20", "key:Return"][..],
+            &["look:10,20", "click:30,40"],
+            &["look:10,20", "move:30,40"],
+            &["look:10,20"],
+        ] {
+            assert!(run(actions).is_err(), "{actions:?}");
+        }
     }
 
     #[test]

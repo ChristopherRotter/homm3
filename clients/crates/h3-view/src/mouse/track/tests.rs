@@ -1235,6 +1235,35 @@ fn the_stats_dialog_holds_the_mouse_and_hands_it_back() {
 }
 
 #[test]
+fn the_stats_dialogs_close_settles_the_log_before_the_mouse_was_seen() {
+    // The reviewer's R2-3: the key T with the mouse never over the window; its close settles the
+    // log all the same, and posts no move (no point to post).
+    let (o, legal) = (battle(), legal());
+    let field = Field {
+        observation: &o,
+        legal: &legal,
+        facing: &Facing::Sides,
+        bugs: Bugs::Fixed,
+    };
+    let turns = [Turn { field, human: true }];
+    let inputs = [Input::Look { at: 1 }, Input::Looked { at: 3 }];
+    let shown = run(&[], &[], &turns, &inputs);
+    let settles: Vec<u32> = shown
+        .log
+        .iter()
+        .filter(|(_, l)| *l == Logged::Settle)
+        .map(|&(t, _)| t)
+        .collect();
+    assert_eq!(settles, [3]);
+    assert!(
+        !shown
+            .log
+            .iter()
+            .any(|(t, l)| *t == 3 && matches!(l, Logged::Status { .. }))
+    );
+}
+
+#[test]
 fn the_dialogs_close_after_an_action_settles_the_log_and_posts_no_move() {
     // E17 M6 T2a2b1: the stats dialog's cast button's aim gave an action; the dialog's close
     // after it settles the log, and its posted move waits behind the action: no hint written.
