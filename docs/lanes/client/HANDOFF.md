@@ -7,11 +7,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
   `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
   in QUEUE): T1 the answered slips, **cut in four at its start** (T1a done: the options dialog
-  and F6 to F8; T1b the other slips Q70, Q71, Q77; T1c the reads and captures; T1d the tools);
-  T2 the DEF button's own loop (CLT-Q72); T3 the battle as an entry a host's window runs (the
-  map client's E24 M4 T5 waits on it); T4 the closure, **which closes E17** (ranked play, the
-  pause, the browser and a login: E27 first, then a refinement of their own). **Next:** M7 T1b.
-  **Open pull request:** T1a's (`client/e17-m7-t1a`) until it merges.
+  and F6 to F8; T1b done: the other slips Q70, Q71, Q77; T1c the reads and captures; T1d the
+  tools); T2 the DEF button's own loop (CLT-Q72); T3 the battle as an entry a host's window runs
+  (the map client's E24 M4 T5 waits on it); T4 the closure, **which closes E17** (ranked play,
+  the pause, the browser and a login: E27 first, then a refinement of their own). **Next:** M7
+  T1c (captures: Wine and the staged DLLs). **Open pull request:** T1b's
+  (`client/e17-m7-t1b`) until it merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -46,6 +47,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-10, E17 M7 T1b (done; `client/e17-m7-t1b`).** Kept whole (three small fixes, no
+  cut needed). The original data staged at once (57 files); the baseline's `check.sh` passed on
+  `master`. Each in the client's profile, the original's in the stills: CLT-Q70 (b)
+  `stats::side_player` (a heroless side's own player, a side with none the viewing player's),
+  Q71 (b) `window::release_taken` (the original's held until T1c), Q77 (b) `Rows::places` and
+  `row_xs` in the profile (`message::pictures` takes it). M7 review item 2. Record: `E17-log.md`.
 - **2026-11-10, E17 M7 T1a (done; `client/e17-m7-t1a`).** T1 cut in four with the user (T1a
   only this session). The original data staged at once (57 files); the VM restarted during the
   baseline, CI's Clients run on `master` stood in. The options dialog takes the profile
@@ -60,10 +67,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   ranked play, the pause and the browser) cut short by the user to T1 to T3 and the closure of
   E17. The inbox sorted (14 entries to the archive, M7 T3 taking 6); notes to the battle, server
   and map client lanes. Record: `E17-log.md`.
-- **2026-11-10, E17 M6 T7b (done; `client/e17-m6-t7b`).** The user's direction: "one session,
-  delegated": the session a coordinator, 12 read-only reviewers (two at a time, a worktree of
-  master 3e1026fc), 6 fixers one at a time on the branch, one docs agent. 56 findings (one high,
-  R5-2, a test reproduced it; nine medium): 51 fixed, 2 in the records, 3 left; CLT-Q70 to Q77
-  asked, review items 49 to 62. `master` merged once (ac8ae2ec). `check.sh` passed, `drawn`
-  263 of 263 the same (no capture needed), `h3-view gate` passed.
-  Record: `E17-log.md`.

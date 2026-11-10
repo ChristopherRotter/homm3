@@ -2483,7 +2483,8 @@ impl<'g> Battle<'g> {
             towns: ground.towns(),
         };
         let viewing = self.viewing_player();
-        let info = crate::stats::army_info(&sources, observation, shown.stack, viewing)?;
+        let info =
+            crate::stats::army_info(&sources, observation, shown.stack, (viewing, Bugs::Fixed))?;
         Some(h3_view::army_info::stack_window(
             &ground.layout.army_info,
             &writer.catalogue,

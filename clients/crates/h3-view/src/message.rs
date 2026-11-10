@@ -207,7 +207,7 @@ pub fn layout(
         layout,
         (medium, small),
         text,
-        (style, bugs == Bugs::Fixed),
+        (style, bugs == Bugs::Fixed, bugs),
         &pictures,
         player,
     )
@@ -215,16 +215,16 @@ pub fn layout(
 
 /// Lays out the box `message_box_pictures` 0x4F7690 shows (E17 M6 T5c, design §12.21): an OK
 /// (style 1), `text` and the first [`SLOTS`] of `pictures` in up to two rows (0x4F5D80's
-/// pictures), as [`layout`] otherwise; the text's corner at x 25 (the call's own, in both
-/// profiles: the text centred on the box). Each picture's items take their slot's ids
-/// ([`slot_ids`]).
+/// pictures), as [`layout`] otherwise, the rows in the profile `bugs` (CLT-Q77: [`Rows::places`]);
+/// the text's corner at x 25 (the call's own, in both profiles: the text centred on the box).
+/// Each picture's items take their slot's ids ([`slot_ids`]).
 #[must_use]
 pub fn pictures(
     layout: &MessageLayout,
     (medium, small): (&Font, &Font),
     text: &str,
     pictures: &[Picture],
-    player: u8,
+    (player, bugs): (u8, Bugs),
 ) -> MessageBox {
     let pictures: Vec<(&Picture, [u16; 2])> = pictures
         .iter()
@@ -236,19 +236,20 @@ pub fn pictures(
         layout,
         (medium, small),
         text,
-        (Style::Ok, true),
+        (Style::Ok, true, bugs),
         &pictures,
         player,
     )
 }
 
 /// The box of `style` with `text` and `pictures` (each with its DEF item's and caption's ids), the
-/// text centred on the box (`centred`: x 25) or at x 20 (0x4F5D80, 0x48FF00, 0x4F6990).
+/// text centred on the box (`centred`: x 25) or at x 20 (0x4F5D80, 0x48FF00, 0x4F6990), the
+/// pictures' rows placed in the profile `bugs` ([`Rows::places`]).
 fn build(
     layout: &MessageLayout,
     (medium, small): (&Font, &Font),
     text: &str,
-    (style, centred): (Style, bool),
+    (style, centred, bugs): (Style, bool, Bugs),
     pictures: &[(&Picture, [u16; 2])],
     player: u8,
 ) -> MessageBox {
@@ -333,7 +334,7 @@ fn build(
     texts.insert(TEXT, String::from(text));
     // The pictures in slot order (0x4F7154 to 0x4F7377): each DEF item, then its caption when it
     // has one; the hidden frame around it (a choice's mark) is never drawn.
-    let places = rows.places(&slots, width, height - buttons);
+    let places = rows.places(&slots, width, height - buttons, bugs);
     for (((p, [def, caption]), s), (x, caption_top)) in pictures.iter().zip(&slots).zip(places) {
         items.push(Item::Def(Def {
             id: *def,
@@ -456,46 +457,63 @@ impl Rows {
     }
 
     /// Each slot's picture x and caption top in a box `width` wide whose buttons' room starts at
-    /// `bottom` (0x4F60BB to 0x4F627C): the first row's captions 30 above it, raised by a second
-    /// row's height and caption height and 20; a later row's captions lower by the **second**
-    /// row's heights and 20 (with captions of one height, its picture 20 under the row above).
-    fn places(&self, slots: &[Slot], width: i64, bottom: i64) -> Vec<(i64, i64)> {
+    /// `bottom` (0x4F60BB to 0x4F627C), in the profile `bugs`: the first row's captions 30 above
+    /// it, raised by a second row's height and caption height and 20. A later row's captions:
+    /// the executable's lower by the **second** row's heights and 20 (0x4F626E: with a second
+    /// row's captions higher than the first's they end less than 30 above the room, its pictures
+    /// more than 20 under the captions above); the client's by the row above's own caption height
+    /// (CLT-Q77 (b), answered at E17 M6's closure; the original's for the comparisons only), so
+    /// they end 30 above the room and its pictures start 20 under the captions above. The gaps:
+    /// [`row_xs`].
+    fn places(&self, slots: &[Slot], width: i64, bottom: i64, bugs: Bugs) -> Vec<(i64, i64)> {
         let [first, second] = self.heights;
         let mut caption_top = bottom - first[1] - CAPTION_BOTTOM;
         if self.counts[1] > 0 {
             caption_top -= ROW_GAP + second[1] + second[0];
         }
         let gap = self.overhang + PICTURE_GAP;
+        // The space beside a row's outer pictures (CLT-Q77 (b)): the executable's 40 alone, the
+        // client's the overhang's too, as between the middle two.
+        let outer = match bugs {
+            Bugs::Fixed => gap,
+            Bugs::Original => PICTURE_GAP,
+        };
+        // The caption height the step under a row takes: the executable's the second row's.
+        let above = match bugs {
+            Bugs::Fixed => first[1],
+            Bugs::Original => second[1],
+        };
         let mut out = Vec::new();
         let mut row_slots = slots;
         for &k in self.counts.iter().filter(|&&k| k > 0) {
             let (row, rest) = row_slots.split_at(k.min(row_slots.len()));
             row_slots = rest;
             let widths: Vec<i64> = row.iter().map(|s| s.size[0]).collect();
-            let xs = row_xs(width, &widths, gap);
+            let xs = row_xs(width, &widths, (gap, outer));
             out.extend(xs.into_iter().map(|x| (x, caption_top)));
-            caption_top += second[1] + second[0] + ROW_GAP;
+            caption_top += above + second[0] + ROW_GAP;
         }
         out
     }
 }
 
 /// The pictures' x in a row of the pictures `widths` (one to four) in a box `width` wide, `gap`
-/// the space between the middle two (the overhang's and 40), 40 beside the outer ones (the switch
-/// at 0x4F6129; halves rounded toward zero).
-fn row_xs(width: i64, widths: &[i64], gap: i64) -> Vec<i64> {
+/// the space between the middle two (the overhang's and 40), `outer` the space beside the outer
+/// ones of three or four (the executable's 40, the client's `gap`: CLT-Q77 (b); the switch at
+/// 0x4F6129; halves rounded toward zero).
+fn row_xs(width: i64, widths: &[i64], (gap, outer): (i64, i64)) -> Vec<i64> {
     let w = |i: usize| widths.get(i).copied().unwrap_or(0);
     match widths.len() {
         1 => vec![(width - w(0)) / 2],
         2 => vec![(width - gap) / 2 - w(0), (width + gap) / 2],
         3 => {
             let x1 = (width - w(1)) / 2;
-            vec![x1 - w(0) - PICTURE_GAP, x1, x1 + w(1) + PICTURE_GAP]
+            vec![x1 - w(0) - outer, x1, x1 + w(1) + outer]
         }
         _ => {
             let x1 = (width - gap) / 2 - w(1);
             let x2 = (width + gap) / 2;
-            vec![x1 - w(0) - PICTURE_GAP, x1, x2, x2 + w(2) + PICTURE_GAP]
+            vec![x1 - w(0) - outer, x1, x2, x2 + w(2) + outer]
         }
     }
 }

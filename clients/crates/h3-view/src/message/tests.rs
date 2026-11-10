@@ -555,10 +555,20 @@ fn corners(message: &MessageBox) -> (Vec<[i32; 2]>, [i32; 2]) {
     (defs, message.dialog.shadow.unwrap())
 }
 
-fn with_pictures(pictures: &[Picture]) -> MessageBox {
+/// The box of `pictures` in the profile `bugs`.
+fn in_profile(pictures: &[Picture], bugs: Bugs) -> MessageBox {
     let medium = font(8, 16);
     let small = font(5, 10);
-    super::pictures(&assets(), (&medium, &small), "x", pictures, 2)
+    super::pictures(&assets(), (&medium, &small), "x", pictures, (2, bugs))
+}
+
+/// The box of `pictures`, the same in both profiles (CLT-Q77: they part only where a caption is
+/// wider than its picture in a row of three or four, or a second row's captions are higher than
+/// the first's).
+fn with_pictures(pictures: &[Picture]) -> MessageBox {
+    let original = in_profile(pictures, Bugs::Original);
+    assert_eq!(in_profile(pictures, Bugs::Fixed), original);
+    original
 }
 
 #[test]
@@ -623,45 +633,94 @@ fn five_to_eight_pictures_make_two_rows_the_first_the_larger() {
     assert!(m.shown.players.values().all(|&p| p == 2));
 }
 
-#[test]
-fn wide_captions_spread_the_pictures_by_their_overhang() {
-    // Slots 40 × 20, captions of one word 72 wide: `widest` 72, the overhang 32; the row
-    // 4 × 72 + 3 × 72 + 40 = 544, a box of 576.
-    let pictures: Vec<Picture> = (0..4)
+/// `n` pictures 38 × 18 (slots 40 × 20) with captions of one word 72 wide: `widest` 72, the
+/// overhang 32.
+fn wide_captions(n: u32) -> Vec<Picture> {
+    (0..n)
         .map(|i| Picture {
             def: "spellScr.def".to_string(),
             frame: i,
             size: [38, 18],
             caption: "x".repeat(14),
         })
-        .collect();
-    let m = with_pictures(&pictures);
-    let (xs, size) = corners(&m);
-    assert_eq!(size, [576, 192]);
-    // The middle two the gap with the overhang apart, the outer ones 40 from them.
-    let xs: Vec<i32> = xs.iter().map(|at| at[0]).collect();
-    assert_eq!(xs, [132, 212, 324, 404]);
+        .collect()
+}
+
+/// Each picture's x in `message`.
+fn xs(message: &MessageBox) -> Vec<i32> {
+    corners(message).0.iter().map(|at| at[0]).collect()
+}
+
+#[test]
+fn wide_captions_spread_the_pictures_by_their_overhang() {
+    // Four: the row 4 × 72 + 3 × 72 + 40 = 544, a box of 576 in both profiles.
+    let original = in_profile(&wide_captions(4), Bugs::Original);
+    let fixed = in_profile(&wide_captions(4), Bugs::Fixed);
+    assert_eq!(corners(&original).1, [576, 192]);
+    assert_eq!(corners(&fixed).1, [576, 192]);
+    // The middle two the gap with the overhang apart; the executable's outer ones 40 from them
+    // (the captions 8 apart there), the client's the gap too (CLT-Q77 (b): 40 apart).
+    assert_eq!(xs(&original), [132, 212, 324, 404]);
+    assert_eq!(xs(&fixed), [100, 212, 324, 436]);
     // The captions centred on their pictures, past them by half the overhang.
-    let caption = label(&m, slot_ids(0)[1]);
+    let caption = label(&original, slot_ids(0)[1]);
     assert_eq!((caption.at[0], caption.size), (116, [72, 10]));
+    assert_eq!(label(&fixed, slot_ids(0)[1]).at[0], 84);
+    // Three: 3 × 72 + 2 × 72 + 40 = 400, a box of 448; the middle one centred, the executable's
+    // others 40 from it (0x4F6129: the overhang left out), the client's the gap.
+    let original = in_profile(&wide_captions(3), Bugs::Original);
+    let fixed = in_profile(&wide_captions(3), Bugs::Fixed);
+    assert_eq!(corners(&original).1, [448, 192]);
+    assert_eq!(corners(&fixed).1, [448, 192]);
+    assert_eq!(xs(&original), [124, 204, 284]);
+    assert_eq!(xs(&fixed), [92, 204, 316]);
+    // Two: 2 × 72 + 72 + 40 = 256; the gap between them, the same in both.
+    assert_eq!(xs(&with_pictures(&wide_captions(2))), [52, 164]);
 }
 
 #[test]
 fn a_second_rows_heights_place_the_rows_below_the_first() {
     // Five, the second row's captions two lines high: the rows raised by the second row's
-    // heights, the second row's captions lowered by them (the executable's, 0x4F626E), so its
-    // captions end 20 above the buttons' room, its pictures 30 below the first row's captions.
+    // heights. The executable's second row's captions lowered by them (0x4F626E), so they end 20
+    // above the buttons' room, its pictures 30 below the first row's captions; the client's by
+    // the first row's caption height (CLT-Q77 (b)): 30 above the room, 20 below.
     let mut five = spells(5);
     for p in &mut five[3..] {
         p.caption = "xxxxxxxxxx xxxxxxxxxx".to_string();
     }
-    let m = with_pictures(&five);
-    let (at, size) = corners(&m);
+    let original = in_profile(&five, Bugs::Original);
+    let (at, size) = corners(&original);
     assert_eq!(size, [384, 384]);
     assert_eq!(at[0][1], 191 - 63);
     assert_eq!(at[3][1], 294 - 63);
-    let caption = label(&m, slot_ids(3)[1]);
+    let caption = label(&original, slot_ids(3)[1]);
     assert_eq!((caption.at[1], caption.size), (294, [85, 20]));
+    let fixed = in_profile(&five, Bugs::Fixed);
+    let (at, size) = corners(&fixed);
+    assert_eq!(size, [384, 384]);
+    // The first row where the executable has it, its captions 191 to 201; the second's pictures
+    // from 221, its captions 284 to 304, the room starting at 384 − 50 = 334.
+    assert_eq!(at[0][1], 191 - 63);
+    assert_eq!(at[3][1], 201 + 20);
+    let caption = label(&fixed, slot_ids(3)[1]);
+    assert_eq!((caption.at[1], caption.size), (334 - 30 - 20, [85, 20]));
+    // The first row's captions higher instead: the executable's second row raised by its own
+    // (lower) captions, ending 40 above the room; the client's 30.
+    let mut five = spells(5);
+    for p in &mut five[..3] {
+        p.caption = "xxxxxxxxxx xxxxxxxxxx".to_string();
+    }
+    let bottom = |m: &MessageBox| {
+        let c = label(m, slot_ids(3)[1]);
+        c.at[1] + c.size[1]
+    };
+    let (original, fixed) = (
+        in_profile(&five, Bugs::Original),
+        in_profile(&five, Bugs::Fixed),
+    );
+    assert_eq!(corners(&original).1, corners(&fixed).1);
+    let room = corners(&fixed).1[1] - 50;
+    assert_eq!([bottom(&original), bottom(&fixed)], [room - 40, room - 30]);
 }
 
 #[test]

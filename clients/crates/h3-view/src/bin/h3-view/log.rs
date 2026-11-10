@@ -228,7 +228,8 @@ impl Writer {
 
     /// The box with up to eight pictures `message_box_pictures` shows (E17 M6 T5c, design
     /// §12.21: Eagle Eye's message), `text` and `pictures`, its frame in `player`'s colours, laid
-    /// out in the layout's fonts; none without them.
+    /// out in the layout's fonts in the writer's profile (the rows' places, CLT-Q77); none without
+    /// them.
     pub fn pictures(
         &self,
         layout: &BattleLayout,
@@ -242,7 +243,7 @@ impl Writer {
             (medium, small),
             text,
             pictures,
-            player,
+            (player, self.bugs),
         ))
     }
 
