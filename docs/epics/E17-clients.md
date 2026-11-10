@@ -255,8 +255,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   R4-9 (a stricter shadow chain in `h3cap.redraws`, checked on T7's captures). Cut in three by
   the user (2026-11-09): **T7a** (done 2026-11-09/10) R4-9 and every capture afresh (all 172
   situations and 91 sequences as recorded; the stricter rule moved 1 044 pixels of 16 frames'
-  listed differences from artifacts, recorded; design §7.11); **T7b** the fresh reviewer and its
-  fixes; **T7c** the review list with the user, M7 refined, M6 closed.
+  listed differences from artifacts, recorded; design §7.11); before T7b the inbox's protocol
+  v38 readers (done 2026-11-10: the battle's start no command, CLT-STUB-3 lifted, `drawn` all
+  the same; CLT-Q69 asked; design §12.25); **T7b** the fresh reviewer and its fixes; **T7c** the
+  review list with the user, M7 refined, M6 closed.
 - **Exit:** a played battle shows every dialog and popup of the original's battle screen, each
   passing against the original or with each difference a listed fix or a classified quirk; the
   combat options in effect.

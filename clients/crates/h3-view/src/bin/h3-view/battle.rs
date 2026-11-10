@@ -380,11 +380,7 @@ impl Ground {
 /// creature the record's events create, by its handle (E17 M5 T8b2, R6-1: a summoned stack's,
 /// a clone's, a Pit Lord's Demons'; a created stack's cues name its creature).
 pub fn stack_sounds(record: &Record, tables: &Tables) -> Voices {
-    let made = record.messages.iter().flat_map(|m| match m {
-        ServerMessage::Events { events, .. } => events.as_slice(),
-        _ => &[],
-    });
-    let made = made.filter_map(|e| match *e {
+    let made = record.events().filter_map(|e| match *e {
         h3_protocol::wire::Event::StackCreated { creature, .. }
         | h3_protocol::wire::Event::RoseFromCorpse { creature, .. } => Some(creature),
         _ => None,
@@ -1570,14 +1566,22 @@ impl<'g> Battle<'g> {
                 return Ok(true);
             }
         };
-        for message in &new {
-            if let ServerMessage::Events { events, .. } = message {
+        let first = self.record.messages.len();
+        self.record.messages.extend(new);
+        // Each command's events grow it; the battle's start's, which the opening snapshot shows
+        // already, do not (protocol v38: a seat that waited for the other one hears it then).
+        let opening = record::opening_at(&self.record.messages);
+        let mut pushed = 0;
+        for (i, message) in self.record.messages.iter().enumerate().skip(first) {
+            if let ServerMessage::Events { events, .. } = message
+                && Some(i) != opening
+            {
                 let at = at.map(|at| at.max(growing.timeline().end));
                 growing.push(&anim::Command { at, events }, false);
-                self.commands += 1;
+                pushed += 1;
             }
         }
-        self.record.messages.extend(new);
+        self.commands += pushed;
         let over =
             (self.record.messages.iter()).any(|m| matches!(m, ServerMessage::GameEnded { .. }));
         self.played = if over {
@@ -1629,9 +1633,7 @@ impl<'g> Battle<'g> {
             .collect();
         let legal = legal.to_vec();
         drop(online);
-        let commands = (self.record.messages.iter())
-            .filter(|m| matches!(m, ServerMessage::Events { .. }))
-            .count();
+        let commands = self.record.commands().count();
         if self.served_events == Some(commands) {
             // The same turn served again (the seat dialed again, E17 M5 T6b2; a command the
             // server rejected): the hero's aim under way keeps its spell's (E17 M5 T8b2: else a
@@ -1658,15 +1660,10 @@ impl<'g> Battle<'g> {
         true
     }
 
-    /// Every event of the record, in order.
+    /// Every command's event of the record, in order (the battle's start's, which its snapshot
+    /// shows already, left out: `Record::events`).
     fn events(&self) -> Vec<h3_protocol::wire::Event> {
-        (self.record.messages.iter())
-            .filter_map(|m| match m {
-                ServerMessage::Events { events, .. } => Some(events.iter().cloned()),
-                _ => None,
-            })
-            .flatten()
-            .collect()
+        self.record.events().cloned().collect()
     }
 
     /// The side to act's own observation (E17 M5 T3a: its hero's spell book): the engine's view
@@ -1725,14 +1722,21 @@ impl<'g> Battle<'g> {
     }
 
     /// The outcome of a seat's battle on a server as its record shows it (E17 M5 T6b1): the
-    /// game's end, every stack's count at the start and at the end ([`Battle::end_seen`]).
+    /// game's end, every stack's count at the start and at the end ([`Battle::end_seen`]), its
+    /// own hero's Eagle Eye picks from the battle as it ended (the record's last snapshot,
+    /// protocol v38).
     fn served_outcome(&self) -> Option<h3_contracts::BattleOutcome> {
         let result = self.record.messages.iter().find_map(|m| match m {
             ServerMessage::GameEnded { result, .. } => Some(*result),
             _ => None,
         })?;
         let snapshot = self.record.first_snapshot()?;
-        Some(crate::results::served(snapshot, self.end_seen()?, result))
+        let ended = self.record.ended();
+        Some(crate::results::served(
+            snapshot,
+            (self.end_seen()?, ended),
+            result,
+        ))
     }
 
     /// The battle's end as the record shows it once the battle is decided (E17 M5 T6b1:

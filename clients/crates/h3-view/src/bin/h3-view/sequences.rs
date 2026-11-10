@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Seat, ServerMessage, Side};
+use h3_protocol::wire::{Command, Seat, Side};
 use h3_render::Bugs;
 use h3_view::anim::{self, Playhead, Pose, Speed, Timeline};
 use h3_view::batch::{self, Batch};
@@ -551,13 +551,10 @@ fn sequences(options: &Options) -> Result<usize, String> {
         // command after Auto Combat's question at its answer, the battle held until then (E17
         // M6 T5b2a).
         let holds = holds(&sequence.command).map_err(|e| format!("{}: {e}", sequence.id))?;
+        // Each command's events, the battle's start's left out (protocol v38: the snapshot shows
+        // it already).
         let commands: Vec<anim::Command<'_>> = record
-            .messages
-            .iter()
-            .filter_map(|m| match m {
-                ServerMessage::Events { events, .. } => Some(events),
-                _ => None,
-            })
+            .commands()
             .enumerate()
             .map(|(i, events)| anim::Command {
                 at: match sequence.command.get(i) {
@@ -590,13 +587,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let scenario_path = dir.join(&sequence.scenario);
         // The heroes' casts in order, which the `cast:` actions aim (E17 M3 T7b-1).
         let spells: Vec<u16> = record
-            .messages
-            .iter()
-            .filter_map(|m| match m {
-                ServerMessage::Events { events, .. } => Some(events),
-                _ => None,
-            })
-            .flatten()
+            .events()
             .filter_map(|e| match *e {
                 h3_protocol::wire::Event::SpellCast { spell, .. } => Some(spell),
                 _ => None,

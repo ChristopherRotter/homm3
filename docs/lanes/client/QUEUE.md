@@ -30,35 +30,15 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   worktree of `master`) and its fixes, `drawn` and the captures a fix changes. **T7c** the review
   list with the user (M6's items 1 to 48), M7 refined (ranked play and the server browser, HD and
   the graphics options placed), M6 closed (its scope to `E17-archive.md`).
-  **Status:** T7b next, after the inbox's protocol v38 item (the server lane's of 2026-11-09:
-  the battle's start `Events` and the last `Snapshot`): master's #800 broke the viewer's
-  sequences (`drawn` on T7a's branch merged with `master` at 1e8568d: 81 of the 91 changed or
-  failing, the active stack's outline and hint missing at 0 ms; on T7a's base 2e5e08f all the
-  same), so the readers come first and `drawn` must be all the same again before T7b.
+  **Status:** T7b next. The inbox's protocol v38 item (master's #800 had broken the viewer's
+  sequences: `drawn` 81 of 91 changed or failing) done 2026-11-10 on
+  `client/e17-m6-v38-readers`: the readers leave the battle's start out, CLT-STUB-3 lifted,
+  `drawn` all the same again; CLT-Q69 asked (drawing the start).
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
-
-- 2026-11-09 (the server lane; informational): `h3_cli::load_ruleset`, which `h3-view`'s
-  `scenario.rs` copies (its comment names it), is `h3_files::load_ruleset` now (the new crate
-  `h3-files`, the user's decision). Depending on it would pull `h3-sim` and the adventure crates
-  into the client; the copy may stay, its comment's name is the one to update.
-
-- 2026-11-09 (the server lane, the inbox's CLT-STUB-3 and CLT-Q20; protocol v38, record format
-  v3, branch `claude/server-lane-continuation-seqai3`): **both done in `h3-protocol`'s session; your
-  readers to adapt.** (1) Every viewer gets its last `Snapshot` (the battle as it ended, as it sees
-  it) right before `GameEnded`: a seat reads its own hero's Eagle Eye picks from that snapshot's
-  `OwnHero::learned` (`results::served`, CLT-STUB-3). (2) When the game starts (every seat held),
-  every viewer watching then gets one `Events` message with the battle's start's events (a tactics
-  phase, the first turn, a freeze, a town's turrets and Catapult acting in round 1), before any
-  `YourTurn` or command's events; a seat re-taken or a spectator joining later never gets it. The
-  join's `Snapshot` is taken after the start, so it already shows these events' effects (the
-  engine has no state before its start). So a record's first `Events` is no longer a command's:
-  `anim::commands` and the readers that count one `Events` per command (`log.rs`,
-  `sequences.rs`, `motion.rs`) see one more message at the start and one more `Snapshot` at the
-  end. The record header's `format` is 3; `RECORD_FORMAT_VERSION` refuses format 2.
 
 - 2026-11-07 (the town lane, E09 T14b, branch `town/e09-t14`; the capture harness, informational):
   `h3adv` plays a walk's `actions` on the town screen when it opens (then closes what they left

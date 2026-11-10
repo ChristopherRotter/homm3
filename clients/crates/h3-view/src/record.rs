@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use h3_protocol::codec::{self, DecodeError};
-use h3_protocol::wire::{Observation, RecordHeader, ServerMessage};
+use h3_protocol::wire::{Event, Observation, RecordHeader, ServerMessage};
 use h3_protocol::{PROTOCOL_VERSION, RECORD_FORMAT_VERSION};
 
 /// The most bytes one line may hold (*provisional*): a server bounds a whole record (E16 M2
@@ -31,6 +31,94 @@ impl Record {
             _ => None,
         })
     }
+
+    /// The battle's start's events, if the record holds them ([`opening`]).
+    #[must_use]
+    pub fn opening(&self) -> Option<&[Event]> {
+        opening(&self.messages)
+    }
+
+    /// Each command's events, in order ([`commands`]).
+    pub fn commands(&self) -> impl Iterator<Item = &[Event]> {
+        commands(&self.messages)
+    }
+
+    /// Every command's event, in order: the battle's start's left out ([`commands`]).
+    pub fn events(&self) -> impl Iterator<Item = &Event> {
+        self.commands().flatten()
+    }
+
+    /// The battle as it ended, as the viewer sees it ([`ended`]).
+    #[must_use]
+    pub fn ended(&self) -> Option<&Observation> {
+        ended(&self.messages)
+    }
+}
+
+/// The battle as it ended in `messages`, a record's, as its viewer sees it (protocol v38,
+/// CLT-STUB-3): the `Snapshot` right before `GameEnded`; none before the end, nor in a record
+/// whose `GameEnded` follows something else (an older server's).
+#[must_use]
+pub fn ended(messages: &[ServerMessage]) -> Option<&Observation> {
+    messages.windows(2).find_map(|pair| match pair {
+        [
+            ServerMessage::Snapshot { observation, .. },
+            ServerMessage::GameEnded { .. },
+        ] => Some(observation),
+        _ => None,
+    })
+}
+
+/// Whether `events`, a record's first `Events` message's, are the battle's start's (protocol v38,
+/// record format 3; CLT-Q20, E17 M6, *provisional*): the start opens with the defender's unseen
+/// mines (`ObstaclePlaced`), a tactics phase (`TacticsStarted`) or the first activation
+/// (`TurnStarted`, a war machine's or a turret's acting on its own too), each before anything
+/// else; a command's open with its act (a move, a strike, a wait, a cast…), which none of these
+/// is. The record does not say otherwise: a seat's record holds the start from its first
+/// message, a spectator's only when it watched the start (the session's protocol), and both
+/// open with the same snapshot.
+#[must_use]
+pub fn opens(events: &[Event]) -> bool {
+    matches!(
+        events.first(),
+        Some(
+            Event::ObstaclePlaced { .. } | Event::TacticsStarted { .. } | Event::TurnStarted { .. }
+        )
+    )
+}
+
+/// The index in `messages`, a record's (or the part of one a viewer holds so far), of the
+/// `Events` message that tells the battle's start: its first `Events` message, if it [`opens`].
+#[must_use]
+pub fn opening_at(messages: &[ServerMessage]) -> Option<usize> {
+    start(messages).map(|(i, _)| i)
+}
+
+/// The battle's start's events in `messages` ([`opening_at`]): what the battle's start did, which
+/// the record's first snapshot already shows (the session's engine has no state before its
+/// start), so no reader applies them to it again.
+#[must_use]
+pub fn opening(messages: &[ServerMessage]) -> Option<&[Event]> {
+    start(messages).map(|(_, events)| events)
+}
+
+/// The first `Events` message of `messages` with its index, if it [`opens`].
+fn start(messages: &[ServerMessage]) -> Option<(usize, &[Event])> {
+    let (i, events) = messages.iter().enumerate().find_map(|(i, m)| match m {
+        ServerMessage::Events { events, .. } => Some((i, events.as_slice())),
+        _ => None,
+    })?;
+    opens(events).then_some((i, events))
+}
+
+/// Each command's events in `messages`, in order: their `Events` messages but the battle's
+/// start's ([`opening_at`]; protocol v38: before it every `Events` message was a command's).
+pub fn commands(messages: &[ServerMessage]) -> impl Iterator<Item = &[Event]> {
+    let opening = opening_at(messages);
+    (messages.iter().enumerate()).filter_map(move |(i, m)| match m {
+        ServerMessage::Events { events, .. } if Some(i) != opening => Some(events.as_slice()),
+        _ => None,
+    })
 }
 
 /// Why a record does not read.
@@ -102,7 +190,7 @@ pub(crate) mod tests {
     use alloc::string::{String, ToString};
     use alloc::vec;
     use h3_protocol::wire::{
-        Algorithm, Field, KeyTables, Manifest, Observation, Seat, Side, SideView, WireU64,
+        Algorithm, Field, KeyTables, Manifest, Observation, Outcome, Seat, Side, SideView, WireU64,
     };
 
     /// A manifest with the given key tables.
@@ -209,6 +297,98 @@ pub(crate) mod tests {
         assert_eq!(record.first_snapshot(), Some(&observation()));
         let none = parse(&text(&header(), &[])).unwrap();
         assert_eq!(none.first_snapshot(), None);
+    }
+
+    /// Protocol v38: the battle's start is the first `Events` message's when it opens with the
+    /// mines, the tactics phase or the first activation; every other `Events` message is a
+    /// command's.
+    #[test]
+    fn the_battle_s_start_is_no_command() {
+        let events = |n, events| ServerMessage::Events { n, events };
+        let snapshot = ServerMessage::Snapshot {
+            n: 1,
+            observation: observation(),
+        };
+        let mines = Event::ObstaclePlaced {
+            side: Side::Defender,
+            spell: 11,
+            hexes: vec![40],
+        };
+        let tactics = Event::TacticsStarted {
+            side: Side::Attacker,
+            columns: 3,
+        };
+        let turn = Event::TurnStarted { stack: 2 };
+        let wait = Event::Waited { stack: 2 };
+        for start in [vec![mines, turn.clone()], vec![tactics], vec![turn.clone()]] {
+            let messages = [
+                snapshot.clone(),
+                events(2, start.clone()),
+                events(3, vec![wait.clone(), turn.clone()]),
+                events(4, vec![turn.clone()]),
+            ];
+            assert_eq!(opening_at(&messages), Some(1));
+            assert_eq!(opening(&messages), Some(&start[..]));
+            let commands: Vec<_> = commands(&messages).collect();
+            assert_eq!(
+                commands,
+                [
+                    &[wait.clone(), turn.clone()][..],
+                    core::slice::from_ref(&turn)
+                ]
+            );
+            let record = Record {
+                header: header(),
+                messages: messages.to_vec(),
+            };
+            assert_eq!(record.opening(), Some(&start[..]));
+            assert_eq!(record.commands().count(), 2);
+            assert_eq!(record.events().collect::<Vec<_>>(), [&wait, &turn, &turn]);
+        }
+        // A record whose first `Events` is a command's (a spectator watching from a later turn),
+        // or an empty one's, holds no start; nor does one without any.
+        for first in [vec![wait.clone()], Vec::new()] {
+            let messages = [
+                snapshot.clone(),
+                events(2, first),
+                events(3, vec![turn.clone()]),
+            ];
+            assert_eq!((opening_at(&messages), opening(&messages)), (None, None));
+            assert_eq!(commands(&messages).count(), 2);
+        }
+        assert_eq!(opening(&[snapshot]), None);
+        assert!(!opens(&[]));
+    }
+
+    /// Protocol v38: the battle as it ended is the snapshot right before `GameEnded`.
+    #[test]
+    fn the_battle_as_it_ended_is_the_last_snapshot() {
+        let mut end = observation();
+        end.round = 9;
+        let snapshot = |n, observation| ServerMessage::Snapshot { n, observation };
+        let over = |n| ServerMessage::GameEnded {
+            n,
+            result: Outcome::Draw {},
+        };
+        let wait = ServerMessage::Events {
+            n: 2,
+            events: vec![Event::Waited { stack: 0 }],
+        };
+        let messages = [
+            snapshot(1, observation()),
+            wait.clone(),
+            snapshot(3, end.clone()),
+            over(4),
+        ];
+        let record = Record {
+            header: header(),
+            messages: messages.to_vec(),
+        };
+        assert_eq!(record.ended(), Some(&end));
+        // Before the end, or a `GameEnded` after a command's events or first: none.
+        assert_eq!(ended(&messages[..3]), None);
+        assert_eq!(ended(&[snapshot(1, observation()), wait, over(3)]), None);
+        assert_eq!(ended(&[over(1)]), None);
     }
 
     #[test]
