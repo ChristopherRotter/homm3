@@ -543,6 +543,40 @@
 //!   (9, 15) at 0 points: flagged for red (ADV-OWN-001), its question accepted, its fourteen
 //!   pikemen join free (level 1: ADV-HIR-001, no hire dialog); his revisit at 0 points asks the
 //!   question again, no flag (ADV-DWL-004), accepted: `NoneToRecruit`.
+//!
+//! **Builds** (E09 T19a, the town lane's increment 2: design note `docs/epics/E09-design.md`
+//! §32's), on `fixtures/maps/e09-builds-36.h3m` (written by `h3_map::writer`;
+//! `fixtures/maps/README.md`): red (Castle) and blue (Conflux); red's Orrin (hero 0, ten pikemen) on
+//! (4, 20) and blue's Yog (hero 1, five Gorgons) on (14, 14); four towns by `TownId`: red's main Castle "Harbour" by the
+//! sea (its boat tile water; a Fort and a Tavern; red's events: a day-1 build of the Marketplace
+//! and the Blacksmith, 3 wood, 3 ore and 1 000 gold every day, 5 000 gold every week, creatures on
+//! day 3), red's Castle "Keep" inland (the Capitol's requirements, an upgraded dwelling, an empty
+//! garrison; red's day-1 event of the Shipyard, skipped for want of water, and the Resource Silo;
+//! blue's every-day 500 gold), blue's main Conflux "Nexus" (a Capitol, the Altar of Water
+//! forbidden) and blue's Tower "Spire" (the Capitol's requirements; blue's day-2 event of the
+//! Capitol). Scripted, recorded with `h3 adventure run --map fixtures/maps/e09-builds-36.h3m --seed
+//! 1 --checkpoint-every N --script <script> --record <replay>` (N 3, 1 and 2 in the order below: a
+//! checkpoint a day, a command, a day); a replay holds no refused command, so each refusal of a
+//! build is `h3-map`'s test `each_refused_build_on_the_builds_map_changes_nothing` (the Capitol
+//! refused while another stands among them):
+//!
+//! - `builds-week-s1`: one build a day in the Harbour for a week (TWN-BLD-001, the mark
+//!   TWN-BLD-004): the Shipyard (its water; the day-1 event's Marketplace and Blacksmith left the
+//!   day's build free, TWN-EVT-003), the Lighthouse (the Shipyard's), the Resource Silo (the
+//!   event's Marketplace), the Mage Guild's first level, the Town Hall (the Tavern), the City Hall
+//!   (the Town Hall, the Blacksmith, the guild and the Marketplace), the Citadel (the Fort); each
+//!   day's every-day gift, the weekly one again on day 8.
+//! - `builds-capture-s1`: red builds the Keep's Capitol on day 1 (red holds none); Yog walks to
+//!   (9, 13), where blue's explored area ends, then onto the Keep's entrance (8, 12) and takes it
+//!   undefended (TWN-CAP-001): its mark kept (both players human, TWN-BLD-004), its Capitol limited
+//!   to the City Hall (blue holds the Nexus', TWN-CAP-002). On day 2 the Keep's event of blue's
+//!   fires for its new owner (TWN-EVT-001) and blue builds the Mage Guild's second level there.
+//! - `builds-events-s1`: both players end their turns to day 8: red's day-1 events fire as the
+//!   game is built (the Harbour's Marketplace and Blacksmith, the Keep's Resource Silo without the
+//!   Shipyard; 3 wood, 3 ore and 6 000 gold), the every-day gift each day, the creatures on day 3
+//!   (no dwelling stands; not added until increment 3, `TWN-STUB-10`), the weekly gift on day 8;
+//!   the Spire's Capitol on day 2 beside the Nexus' (T-8, TWN-EVT-003), so that blue's halls pay
+//!   8 000 gold a day from day 3; the Keep's event of blue's never fires (red's town).
 
 use std::path::PathBuf;
 
@@ -557,7 +591,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 66,
+        files.len() >= 69,
         "expected the E08 and E09 replay fixtures in {}",
         dir.display()
     );

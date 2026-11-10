@@ -1474,3 +1474,88 @@ an entry only where a task builds on it.
   minutes): the network loads strictly, the imitation loss and the gate run, the ladder plays.
   The Python suite 243 passed, 1 skipped. No warm-up or weight decay:
   PPO's Adam at 2.5e-4 starts from a network the bench took down to 1e-4.
+
+## T28 — The A/B (2026-11-10)
+
+- **The run** (the user's machine, the GTX 1070, 24 threads; `python/records/e25-structure-1.json`;
+  `configs/e25-imitate-structure.toml` `--init-from` T27's student `hexconv-n-96x6-a.pt`, 16.02 M
+  samples of cloning; C ABI v37, observation v22, action v13, system policy 19, the battle
+  ruleset `c14c573e9d2ee26f` in every segment): 20 022 456 samples in 780 updates, 484 513
+  episodes, 1 676 minutes in 13 segments on four clean commits (`305725f`, `36c9028`, `2e5e08f`,
+  `a14e30f`; between them only towns' and adventure data and tests); four segments ended without
+  a save (4 records dropped). **217 samples a second**, the current best's run 4 400 to 5 100: 22
+  times its 77 minutes.
+- **The GPU's memory:** in segments 3, 5 and 11 single updates took 650 to 1 950 s instead of
+  about 100 (`update_s`; the rollouts unchanged at 16 s), from update 584 (14.98 M samples) on,
+  until a restart; the user saw the card's 8 GB full, about 6 GB after a restart. The trainer's
+  code was the same in every segment. The cause: PyTorch's caching allocator keeps its freed
+  blocks (the tensors change size from call to call) and gives memory back only when an
+  allocation fails, and on Windows the driver's sysmem fallback puts the next allocation into
+  shared system memory instead of failing it. Fixed (the user, 2026-11-10: never past 90 % of the
+  card): `h3env.train.gpu.cap` caps the allocator so that the card stays at 90 %, what it holds
+  outside the run counted against it (the trainer, the benches, `evaluate.load`); the update
+  records and lines show the reserved memory, its peak and the card's share (`TRAPS.md`,
+  Python). Tests `tests/test_gpu.py` (stubbed CUDA) and the update line's in `test_run.py`.
+- **Gates:** at 10 M #1 promoted after 115 pairs (0.541, +29 Elo), at 20 M #2 after 713 (0.517,
+  +12 Elo). The imitation loss's weight 0.5 fell to 0 at 10 M: the policy's entropy held about
+  0.70 while the weight was above 0.25, rose to 1.34 by 12.5 M and fell to 1.00 by 20 M; the
+  sampled agreement with the teacher 0.71 to 0.58 at the loss's end; the value's explained
+  variance 0.75 to 0.80.
+- **The final ladder** (500 per kind; the report set v1, the neutral set v1 attacking the fair
+  actor):
+
+  | Network | Random | Aggressor | Greedy | Fair actor | All-seeing | Neutral set |
+  |---|---:|---:|---:|---:|---:|---:|
+  | `e25-structure-1` #2 | 0.887, +0.343 | 0.707, +0.179 | 0.673, +0.149 | **0.511 ± 0.019, +0.027** | **0.507 ± 0.019, +0.026** | 0.991, **+0.302** |
+  | its #0 (T27's student, 250 a kind) | 0.853, +0.308 | 0.648, +0.117 | 0.615, +0.092 | 0.473, −0.022 | 0.472, −0.021 | 0.995, +0.278 |
+  | `e25-imitate-1` #2 (the current best) | 0.858, +0.305 | 0.651, +0.124 | 0.626, +0.099 | 0.458 ± 0.019, −0.020 | 0.462, −0.022 | 0.983, +0.287 |
+
+  Against the fair actor by kind: hero 0.509, siege hero 0.519, siege garrison 0.505 (the
+  current best's 0.447, 0.462, 0.493); the neutral set's kinds wandering 0.994, guards 0.990,
+  siege_neutral 0.910 (0.986, 0.982, 0.884).
+- **T19's tool after RL** (the sandbox's CPU, the uploaded `best.pt`;
+  `python/records/distill/ceiling/ceiling-4.json`; T19's 25 600 states, 8 draws each, its ceiling
+  reproduced; 66 s):
+
+  | Network | All | Tactics | Wait, defend | Moves | Melee | Shots | Heal | Casts | Other | CE |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | `e25-structure-1` #2 | 0.454 | 0.399 | 0.373 | 0.107 | 0.491 | 0.575 | 0.812 | 0.715 | 0.885 | 3.319 |
+  | T27's student (its #0) | 0.810 | 0.923 | 0.786 | 0.770 | 0.776 | 0.819 | 0.960 | 0.748 | 0.976 | 0.496 |
+
+- **`inspect`** (the sandbox's CPU, 4 threads, 30 minutes; the sampled policy, the CPU's draws;
+  `python/records/inspect/e25-structure-1-report-v1.json`): against the fair actor 0.511 ± 0.019,
+  value +0.027 (2 998 games), Greedy 0.677, +0.151, as on the GPU. **The casts:** the hero casts
+  in 0.918 of the rounds it can (`t7-1` 0.874, `t6d-1` 0.788), 4.0 such rounds a battle, 32.9
+  mana spent (`t7-1` 33.5; the fair actor's hero 31), the spells Magic Arrow, Lightning Bolt, Ice
+  Bolt, then Haste, Cure, Blind, Slow (`t7-1`'s with Haste and Cure moved up). The decisions'
+  mix: melee 0.37, moves 0.19, shots 0.11, hero casts 0.10, tactics 0.10, waits 0.07.
+- **The read:** the structure wins the A/B. From its clone PPO adds +0.030 win rate and +0.047
+  value against the fair actor (0.481, −0.020 at T27 to 0.511, +0.027), as PPO added to the MLP's
+  clone at T22 (+0.047, +0.049), so the structure's lead of T27 carries through RL: +0.053 over
+  the current best against the fair actor (the intervals 0.492 and 0.477 apart), +0.045 against
+  the all-seeing one, every opponent's row and every kind up, the neutral set +0.015. The agent
+  leaves its teacher once the loss ends (agreement 0.810 to 0.454, its moves 0.770 to 0.107)
+  and plays better than it, so the clone's agreement was the start, not the bound. The clone's
+  cast agreement (0.748) is not a casting gap: it casts more often than any earlier network.
+  **Exit criterion 1 on decision 1's point estimates:** against the faithful (all-seeing) actor
+  0.507 and +0.026, the neutral set +0.302 above +0.285, Random, Aggressor and Greedy above 0.5
+  with positive values: every part met, the faithful actor's win rate inside its interval of 0.5
+  (0.488 to 0.526). The cost: 22 times the MLP's wall time (28 hours a 20 M on the GTX 1070).
+- **Not done here:** the head-to-head against `e25-imitate-1` #2 (`h3env.train.gate`; both
+  networks on the user's machine): T29's first step. The checkpoint's question: AI-Q17.
+
+## T29 — Increment 7's checkpoint (2026-11-10)
+
+- **The head-to-head** (the user's machine, `h3env.train.gate --candidate
+  runs/e25-structure-1/best.pt --best runs/e25-imitate-1/best.pt --device cuda`): `e25-structure-1`
+  #2 **promoted after 77 pairs** (2 559 games), score **0.552 (+36 Elo)**, LLR +3.00 in [−2.94,
+  2.94] (elo0 0, elo1 20), 39 s. The lineage's earlier steps: 0.534 (`e25-imitate-1` #2 against
+  `e25-clone-1` #2, T22), 0.564 (`e25-clone-1` #2 against `e25-sharp-1` #2, T17).
+- **The user** (AI-Q17): **`e25-structure-1` #2 the current best**; **one more increment**, but
+  analysis first and probes of architectures, PPO's settings and training regimes before one long
+  run at the end; the probes' budget about 20 hours of the GPU, all four families (the update's
+  speed, architectures, PPO's settings, training regimes). Increment 8's decisions in the epic
+  file.
+- **The read of increment 7:** the structure was the lever increments 5 and 6 pointed to. The
+  clone's agreement 0.576 to 0.809 (T27), its ladder against the fair actor 0.411 to 0.481, PPO's
+  endpoint 0.458 to 0.511 (T28), at 22 times the MLP's wall time.

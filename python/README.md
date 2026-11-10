@@ -170,7 +170,11 @@ as before T5c. Reward v1 and the evaluation (a truncation is no win) are unchang
 Each update prints one line (samples, samples/s, self-play's attacker wins, truncations, the
 league's size, the learner's score against its members, the frozen networks a call passed, the
 losses, and the attacker's wins per encounter kind: E06 T7c). Every training episode's seed is
-checked against the held-out sets' (a hit stops the run).
+checked against the held-out sets' (a hit stops the run). On CUDA a run fills at most 90 % of
+the card (E25 T28, `h3env.train.gpu`: PyTorch's cache capped, what the card holds outside the
+run counted against it; on Windows an uncapped cache spills into shared system memory and the
+updates slow tenfold): the start and segment lines show the cap, each update line the reserved
+memory, its peak and the card's share.
 
 **The neutral share** (E06 T7c, design §12): `env.kinds` (six weights, `H3_ENCOUNTER_*` order)
 draws the neutral kinds the defaults leave at 0 (`configs/e06-t7.toml`: the census's shares,

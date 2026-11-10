@@ -534,11 +534,13 @@ def trained_seed(path) -> int:
 
 def load(path, device: str = "cpu"):
     """The network of a checkpoint (`checkpoint.pt`, `best.pt`), of the kind and size the run's
-    config names (`policy.build`)."""
+    config names (`policy.build`); on CUDA the GPU's memory capped (`gpu.cap`, E25 T28)."""
     import torch
 
+    from .gpu import cap
     from .policy import build
 
+    cap(torch.device(device))
     saved = torch.load(path, map_location=device, weights_only=True)
     probe = BattleBatch(1)
     policy = build(saved["config"], probe)

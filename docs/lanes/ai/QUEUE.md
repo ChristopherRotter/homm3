@@ -7,30 +7,30 @@ Pre-refined tasks of the AI lane, in order, then the inbox of discovered work. T
 **E05** closed 2026-10-20, **E06** closed 2026-10-27 (`t7-1` the battle AI v1 and the baseline); their tasks' history and E06's closing numbers in `QUEUE-ARCHIVE.md`.
 
 **E25** (`docs/epics/E25-battle-ai-v2.md`, AI-Q10; record `E25-log.md`): increments 1
-to 6 closed (`E25-archive.md`); **`e25-imitate-1` #2 the current best** (AI-Q16, T23: 0.458 and
-0.462 against the fair and the all-seeing system actor, the neutral set +0.287). **Increment 7, a
-network that reads the battle's structure** (refined at T23, 2026-11-04, AI-Q16; its decisions in
-the epic file; **T25 done** 2026-11-04, the heads read the geometry; **T26a done** 2026-11-05,
-the benches resume; **T26b done** 2026-11-05, decision 5's first gate passed by `hexconv`
-normalised 96 × 6 at 1e-3, 0.755 at 4 M; **T27 done** 2026-11-06, the second gate passed, 0.809
-at 16 M and 0.481 ± 0.019 against the fair actor; `E25-log.md`):
+to 7 closed (`E25-archive.md`; increment 7, the structured network, 2026-11-10); **`e25-structure-1`
+#2 the current best** (AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system
+actor, the neutral set +0.302, 0.552 head to head against `e25-imitate-1` #2). **Increment 8,
+probes, then one long run** (refined at T29, 2026-11-10, AI-Q17; its decisions in the epic file;
+the probes about 20 hours of the user's GPU):
 
-- **T28 The A/B.** *Scope:* the user's GPU, about 17 hours in parts under 2 hours, from
-  `python/`: the first part `uv run --group train python -m h3env.train --config
-  configs/e25-imitate-structure.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out
-  runs/e25-structure-1`, Ctrl-C before 2 hours, each later part `uv run --group train python -m
-  h3env.train --resume runs/e25-structure-1` until it ends at its budget (20 M samples, seed 1,
-  `e25-imitate.toml`'s settings with T27's network, `[ppo] accumulate` 8 for its memory; the CPU
-  smoke done, `E25-log.md` T27). Uploaded: `record.json`, `metrics.jsonl`, `best.pt` (about 6
-  MB); the head-to-head on the user's machine, `uv run --group train python -m h3env.train.gate
-  --candidate runs/e25-structure-1/best.pt --best runs/e25-imitate-1/best.pt`, its output pasted.
-  *Acceptance:* the final ladder beside `e25-imitate-1` #2's (0.458, −0.020; the neutral set
-  +0.287) and T27's clone's (0.481, −0.020; +0.274), the head-to-head, the samples a second, T19's
-  tool after RL (T27's student 0.810 before), `inspect` on the casts (the clone's 0.748).
-  *Depends on:* T27 (done, its gate passed). *Status:* next.
-- **T29 The checkpoint.** *Scope:* with the user: structure against the MLP (the clone, RL and
-  the cost), the current best, increment 8 (whether the evidence asks for an encoding change).
-  *Depends on:* T28, or the gate that stopped the increment. *Status:* waiting.
+- **T30 The analysis of #2.** *Scope:* the sandbox's CPU, `e25-structure-1` #2's `best.pt`
+  (uploaded at T28; again if the sandbox is new), increment 8's decision 2: (a) its score against
+  the fair actor by kind and side (`records/inspect/e25-structure-1-report-v1.json`'s groups)
+  beside the fair actor's mirror on the same episodes (`records/bots-report-v1.json`'s `system`
+  pairs), so its edge per kind and side; (b) the temperature diagnostic (`h3env.train.ladder
+  --opponents system --temperature 1,0.7,0.5,0`, T9a); (c) where it leaves its teacher: on T19's
+  states, by the category of the fair actor's choice, the category of #2's most likely one (a
+  confusion table; `ceiling`'s states). *Acceptance:* the tables and the read in `E25-log.md`
+  T30, the probes ranked, T32 to T34 refined in the epic file and here. *Depends on:* T29 (done).
+  *Status:* next.
+- **T31 The update's speed.** *Scope:* a profile of one PPO update of #2's network on the user's
+  GPU (the forward and backward passes, the heads, the optimizer's step; cuDNN's autotuner off
+  and on with fixed chunk shapes), a few minutes of the user's machine; then the change that pays,
+  with a test that the update's losses and weights stay those of the same rollout, and a CPU
+  smoke. *Acceptance:* the seconds an update before and after on the user's GPU, in `E25-log.md`
+  T31. *Depends on:* T29 (done); beside T30. *Status:* waiting (after T30's first part).
+- **T32 to T36** (the epic file's table): architecture probes, PPO's settings, training regimes,
+  the probes' checkpoint, the long run; refined at T30's read.
 
 ## Inbox
 

@@ -24,6 +24,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from .gpu import MEMORY_FRACTION
 from .run import Config, ConfigError, ResumeError, RunExistsError, check_new, load_config
 
 
@@ -128,6 +129,14 @@ def line(record: dict) -> str | None:
                 f" system-{name} {row['score']:.2f}"
                 for name, row in record.get("system", {}).items()
             )
+            + (
+                f" gpu {record['gpu_reserved_mb'] / 1024:.1f} GB (peak "
+                f"{record['gpu_peak_mb'] / 1024:.1f}, card {record['gpu_card']:.0%}"
+                + (f", past {MEMORY_FRACTION:.0%}!" if record["gpu_card"] > MEMORY_FRACTION else "")
+                + ")"
+                if "gpu_card" in record
+                else ""
+            )
         )
     if kind == "end":
         return f"end ({record['reason']}): {record['samples']} samples, {record['minutes']:.1f} min"
@@ -143,8 +152,23 @@ def line(record: dict) -> str | None:
             f"samples (batch seed {record['seed']:#x}, {record['dropped']} records dropped"
             f"{changed})"
             + (f", the pending {record['pending']['kind']} first" if record.get("pending") else "")
+            + memory(record)
         )
+    if kind == "start":
+        text = memory(record)
+        return f"start {record['name']}{text}" if text else None
     return None
+
+
+def memory(record: dict) -> str:
+    """The GPU's memory cap of a `start` or `segment` record (`gpu.cap`; "" without one)."""
+    m = record.get("identity", {}).get("gpu_memory")
+    if m is None:
+        return ""
+    return (
+        f", gpu cap {m['cap_mb'] / 1024:.1f} of {m['total_mb'] / 1024:.1f} GB "
+        f"({m['outside_mb'] / 1024:.1f} outside the run)"
+    )
 
 
 def show(record: dict) -> None:
