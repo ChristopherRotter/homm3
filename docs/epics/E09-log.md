@@ -2597,7 +2597,8 @@ every decision kind now, the seed kept.
   owner's alone (`observe.rs`' projection). **The wire** (`h3-protocol`): mapped,
   `wire::game::GameEvent::TownEventFired`, the fold ignores it (what it gave and built comes as
   the events around it), the round-trip test's 36 kinds, the fold test's unknown-town case;
-  **protocol v40**. `h3-map`'s told-events check: the owner's.
+  **protocol v41** (`master` merged in before the pull request: the adventure lane's #819 took
+  v40 for `Revisit`). `h3-map`'s told-events check: the owner's.
 - **Tests** (`h3-game` `town/tests/events.rs`): the order at the turn start (`TurnStarted`, the
   map's event and its gain, the town's gain, `TownEventFired`) and the treasury; the owner alone
   sees it; an event fires once without an interval, every second day with one, never for a player

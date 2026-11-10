@@ -25,6 +25,7 @@ mod moves;
 mod observe;
 mod records;
 mod rests;
+mod revisits;
 mod rewards;
 mod shipyards;
 mod state;

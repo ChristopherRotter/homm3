@@ -983,7 +983,7 @@ town's boat spot, §28).
   the start's events; one thin `Option<Arc>`, shared by forks, none for a map with neither; the
   start's events left out of the hash: no rule reads them, they follow from the setup) and read by
   `GameState::town_events_at_start(player)` (by town and place; not in the observation, the server
-  lane's inbox). The wire: protocol v40,
+  lane's inbox). The wire: protocol v41 (after E08 T105b2's v40),
   the fold ignores the event. The plans' checks of the events' builds and gains move to T19.
 
 ### 31. Information (TWN-VEW-004; `docs/06-security.md`, decision 47)

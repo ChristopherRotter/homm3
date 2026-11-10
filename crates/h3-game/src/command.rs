@@ -813,7 +813,7 @@ fn run<S: Sink>(
                     object_type,
                     anchor,
                 } => Some(state.boat_price(rules, player, *object_type, *anchor)?),
-                AdventureCommand::MoveHero { .. } => None,
+                AdventureCommand::MoveHero { .. } | AdventureCommand::Revisit { .. } => None,
             };
             // The acting player's stream (ADR-0017 point 4; E08 T105a1): a visit's draw, a
             // jump's exit, comes from it, after the whole command is checked.

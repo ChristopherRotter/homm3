@@ -3493,3 +3493,29 @@ numeric  = "integer"
   url        = "https://heroes.shoutwiki.com/wiki/Lith"
   retrieved  = "2026-11-05"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-TEL-008"
+title    = "The revisit of the entered object under a hero"
+context  = "adventure"
+status   = "verified"
+summary  = "A player's hero standing on the visitable tile of an entered object whose visit is built visits it again by `AdventureCommand::Revisit { hero }` (the original's space key, decision 268; increment 11's design note section 13): that visit as a step's last step onto it gives it (the kind's visit at the hero's tile), with its decisions, events and outcome; no movement points spent or required (a revisit at 0 points), the points and the day's maximum unchanged; no step (no step event, no reveal of its own); no guard test (the original tests a guard only at a step's end). So a two-way monolith re-draws its exit from the player's stream, a gate leads back to its pair, a hero in a boat on a Whirlpool's tile takes the loss again and draws again, a one-way exit leads nowhere again, a Cartographer's or a dwelling's offer opens again, an observatory reveals again (told with the tiles new, 0 when none), a Keymaster's tent whose key the player holds tells nothing, a town is visited by its owner's hero again (the town lane's visit), each kind with its own once-per-hero, weekly or knowledge marks as a step's visit. Every kind with a built visit that a step enters (the original's gate: any entered class but 3, the Anchor Point, which the engine does not type). Not: a tile without an object, a neighbour-visited object's (a hero never stands there), a border gate the player crosses with its key, an object whose visit is not built (a ground, an event, a hole, a random dwelling), a boat (boarding is a step's). Checks in order, each typed and leaving the state and the player's stream untouched: the game's (the player's turn, no open decision `DecisionOpen`, no level-up holding the game); the hero the player's and on the map (`NotYourHero`); then `NothingToRevisit` (one error for every case, naming nothing but the player's own tile). Listed by `legal_commands` after the `BuildBoat`s, one per such hero in the order of their ids (`AdventureState::revisitable`), at 0 points too: a turn may revisit without end (the original's unlimited cycling; an env's rollout needs a step cap, the AI lane's call). Every player alike (decision 16): the original's key works on a human's turn only and a computer never presses it; a computer player's use is E10's. E08 T105b2: `revisits.rs`, `AdventureCommandError::NothingToRevisit`, the replay line `revisit <hero>` (adventure replay format v12), the env's entries `22 + s` (action encoding v8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-teleporters.md section 11): adventure_key_down's case 0x408CC4 to 0x408E75 and key_space_visit 0x408E65: a selected hero of a human current player (0x408C77), its tile visited (visit_and_update) when it is an entrance (+0xD 0x10) of any class but 3; no teleporter test, no points tested or spent; after_step_guard_check 0x4800A5 runs only at a step's end"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11b.md E11-14, E11-15 and E11-17, E08-batch-11a.md E11-19's Space (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15): at 0 points Space jumps from one two-way monolith to the other and back, a dwelling's question again with the points unmoved; 60 presses on a two-way channel of four and on three Whirlpools re-draw the exit each time, the points kept, never the object stood on; on a guarded exit Space jumps back without a battle"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the Subterranean Gate page, Trivia (survey E08-teleporters.md section 11): in AB and SoD the space key revisits an object without movement points, for every object with repeatable actions, unlimited cycling through two-way monoliths; not in RoE"
+  url        = "https://heroes.thelazy.net/index.php/Subterranean_Gate"
+  retrieved  = "2026-11-05"
+  confidence = "medium"

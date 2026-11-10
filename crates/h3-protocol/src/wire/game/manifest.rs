@@ -1,11 +1,12 @@
 //! What a whole game is made of (E16 M5 T4; ADR-0018 point 10 for the whole game): the
 //! adventure replay header's fields with every part's hash (ADR-0015 point 2), the map it is
 //! played on, the battlefield's size and the handle-to-key tables of every content kind the
-//! game's messages name. Sent once, before the game's first observation (T5: at join, and as a
-//! game record's header); a client previews with its own ruleset only when the hashes equal its
-//! own.
+//! game's messages name. Sent once, before the game's first observation (part 2: at join; T5b: in
+//! a game record's header, [`GameRecordHeader`]); a client previews with its own ruleset only when
+//! the hashes equal its own.
 //!
-//! Provisional (E16 M5 part 1's review): the shapes, the map named by its file.
+//! Provisional (E16 M5 part 1's review): the shapes, the map named by its file, the record's
+//! header with the game's id.
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -87,4 +88,23 @@ pub struct GameKeyTables {
     /// faction's town record by building index (a town's buildings and a build name them by that
     /// index), empty for a faction without a town.
     pub buildings: Vec<Vec<String>>,
+}
+
+/// The first line of a whole game's record (E16 M5 T5b, record format v4; the battle's is
+/// `crate::wire::RecordHeader`): what the game is made of and whose record it is. Every further
+/// line is one numbered server message the player was sent.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameRecordHeader {
+    /// [`crate::RECORD_FORMAT_VERSION`].
+    pub format: u32,
+    /// The game, as its host numbers it.
+    pub game: u32,
+    /// The player whose messages these are (`h3_contracts::PlayerId`'s number).
+    pub player: u8,
+    /// What the game is made of.
+    pub manifest: GameManifest,
+    /// The number of the record's first message: 1 while the record holds every message, higher
+    /// once its bound let the oldest go; one more than the last number when it holds none.
+    pub first: u32,
 }

@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v11 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v12 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -19,7 +19,8 @@
 //! Shipyard by its object type's index in the adventure part and its anchor; v9 the town part's
 //! hash, E09 T5a2; v10 a hire dialog's answers, E08 T95b; v11 `town build <town> <building>`, a
 //! town's build without a hero, E09 T18b1: the town by its `TownId` and the building by its index
-//! in the town's faction's record):
+//! in the town's faction's record; v12 `revisit <hero>`, the entered object under the hero visited
+//! again, E08 T105b2):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -37,11 +38,12 @@
 //!                                     #   management command
 //!     "0 build-boat 41 9,16,1",       #   `<player> build-boat <type> <x>,<y>,<level>`
 //!     "0 town build 2 7",             #   `<player> town build <town> <building>` (format 11)
+//!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 11
+//! format = 12
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -275,7 +277,7 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// without the side, which is the actor's in its battle; a management command (E08 T51a) by its
 /// own words ([`format_manage`]); an answer (E08 T63a) by its kind and words ([`format_answer`]);
 /// a `BuildBoat` (E08 T84b2) by its Shipyard's type index and anchor; a town's build (format v11,
-/// E09 T18b1) by its town and building.
+/// E09 T18b1) by its town and building; a `Revisit` (format v12, E08 T105b2) by its hero.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -309,6 +311,10 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
             anchor.y,
             anchor.level
         ),
+        // Format v12 (E08 T105b2).
+        GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
+            format!("{player} revisit {}", hero.raw())
+        }
         GameCommand::Manage(command) => format!("{player} {}", format_manage(command)),
         // Format v11 (E09 T18b1).
         GameCommand::Town(TownCommand::Build { town, building }) => {
@@ -571,6 +577,15 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 object_type,
                 anchor,
             })
+        }
+        // Format v12 (E08 T105b2): the entered object under a hero visited again.
+        Some("revisit") => {
+            let hero = words
+                .next()
+                .and_then(|w| w.parse().ok())
+                .map(HeroId::new)
+                .ok_or_else(bad)?;
+            GameCommand::Adventure(AdventureCommand::Revisit { hero })
         }
         // Format v11 (E09 T18b1): a town's build, without a hero.
         Some("town") => {
