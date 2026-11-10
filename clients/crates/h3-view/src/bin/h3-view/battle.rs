@@ -4160,12 +4160,8 @@ mod tests {
         let layout =
             layout::parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
         let catalogue = h3_ui::text::Catalogue::default();
-        let mut open = h3_view::options::Open::new(
-            &layout.options,
-            &catalogue,
-            shown,
-            (0, true, Bugs::Fixed),
-        );
+        let mut open =
+            h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true, Bugs::Fixed));
         assert!(open.window.shown.state(SPEEDS + 2).disabled);
         assert!(!open.window.shown.state(SPEEDS).disabled);
         open.key("Return");

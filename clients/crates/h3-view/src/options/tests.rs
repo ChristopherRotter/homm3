@@ -47,7 +47,12 @@ fn open(settings: Settings, audio: bool) -> Open {
 
 /// [`open`] in the original's profile (the comparisons').
 fn original(settings: Settings, audio: bool) -> Open {
-    Open::new(&layout(), &catalogue(), settings, (3, audio, Bugs::Original))
+    Open::new(
+        &layout(),
+        &catalogue(),
+        settings,
+        (3, audio, Bugs::Original),
+    )
 }
 
 /// Item `id`'s middle on the screen.
@@ -141,11 +146,12 @@ fn a_box_acts_on_its_release_over_it_alone() {
     // does nothing, as a DEF button; back over it, its release clicks it.
     let mut o = open(Settings::FIRST_RUN, true);
     for id in [BOXES, MUSIC + 3] {
-        let point = centre(&o, id);
+        let (point, before) = (centre(&o, id), o.settings);
         o.press(point);
         assert_eq!(o.moved([0, 0]), Did::default());
         assert_eq!(o.release(), Did::default());
-        assert!(!o.clicked);
+        assert_eq!(o.settings, before);
+        assert_eq!(o.clicked, id != BOXES);
         o.press(point);
         o.moved([0, 0]);
         assert_eq!(o.moved(point), Did::default());
@@ -444,7 +450,12 @@ fn an_item_the_procedure_does_not_know_does_nothing() {
             repeat: None,
         })],
     };
-    let mut o = Open::new(&layout, &catalogue(), Settings::FIRST_RUN, (0, true, Bugs::Fixed));
+    let mut o = Open::new(
+        &layout,
+        &catalogue(),
+        Settings::FIRST_RUN,
+        (0, true, Bugs::Fixed),
+    );
     assert_eq!(o.press([5, 5]), Did::default());
     assert_eq!(o.release(), Did::default());
     assert!(!o.clicked);
