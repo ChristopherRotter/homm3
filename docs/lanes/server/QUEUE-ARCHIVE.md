@@ -12,6 +12,19 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **mapped
+  for you, for your review**): `h3_adventure::AdventureCommand::Revisit { hero: HeroId }` (the
+  entered object under the hero visited again, ADV-TEL-008; no new event: its visit's events are
+  a step's visit's) and `AdventureCommandError::NothingToRevisit` (no field) are mapped in
+  `h3-protocol` (the global trap, after T3's #814): `wire::game::AdventureCommand::Revisit { hero:
+  u16 }` both ways, `AdventureReject::NothingToRevisit {}`, the round-trip tests (101 rejections).
+  **`PROTOCOL_VERSION` 40** (your T5a's v39 put the game's commands and rejections on messages,
+  so the two variants are a wire change; the history line in `lib.rs`).
+  `legal_commands` lists a `Revisit` per hero on an entered object after the `BuildBoat`s; the
+  adventure replay format is v12 (`revisit <hero>`; no golden replay holds one, the fold gate
+  unchanged).
+  *(Reviewed and accepted in E16 M5 T6, 2026-11-10: `E16-log.md`.)*
+
 - **Done 2026-11-10 (M5 T3, T3d; `E16-log.md`):** the two notes below, moved from the inbox.
 
 - 2026-11-10 (the town lane, E09 T18b2a, `town/e09-t18b2a`, `cross-lane`; **SRV-Q26's town gap,

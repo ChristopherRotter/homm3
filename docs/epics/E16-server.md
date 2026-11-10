@@ -347,10 +347,12 @@ inbox, the same day), mapped when it lands.
     battle's (`session::Record`).
   - **T5c** each viewer's last explored grid and what it newly sees, once the adventure lane's
     SRV-Q26 query lands (until then `SRV-STUB-1`).
-- **T6 a golden replay as a record**: `h3-server record <replay>` runs an adventure replay through
-  the session and writes each player's record; a test over the golden replays (each re-runs to its
-  hashes through the session; a viewer's bytes depend only on what it may see); the map client
-  lane's inbox note with the record's form.
+- **T6 a golden replay as a record** (done 2026-11-10; `E16-log.md`): `h3-server record
+  <replay>...` runs an adventure replay through the session (checked as `h3 adventure verify`
+  checks it: the header, the map by its hash, every checkpoint, the final hash and day) and
+  writes each player's record (`<stem>.player-<k>.jsonl`; `h3_server::record`); the test over the
+  55 golden replays (one `GameEvents` per command for every player, its own commands echoed, no
+  state hash in any record); the map client lane's inbox note with the record's form.
 - **T7 closure**: mutation tests over the game's messages, the frame and record bounds for large
   observations, `docs/06-security.md`'s game part, a fresh reviewer, the checkpoint.
 
@@ -391,7 +393,12 @@ header, map and difficulty the host's), a restore that tells every player its sn
 afresh (numbers and records begin again, as the battle's after a restart), a game record's header
 its own type (`GameRecordHeader`: format, the game's id, the player's number, the manifest, the
 first number) beside the battle's, one record format version for both (v4), the host's bound per
-record (`GameOptions::record_bytes`), the session's options as a struct (`GameOptions`).
+record (`GameOptions::record_bytes`), the session's options as a struct (`GameOptions`); T6's: the command in the server's binary
+(`h3-server record [--packs-dir] [--root] [--out] [--game] <replay.toml>...`, `h3_server::record`),
+the files' names (`<stem>.player-<k>.jsonl`), the game's id 0 unless given, a player's commands
+numbered by its own counter from 1, the records unbounded (the operator's files of a finished
+replay), the map imported from the very bytes whose hash was checked (`h3-map` a dependency of
+`h3-server`).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

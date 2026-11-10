@@ -20,6 +20,8 @@
 //!   [`rating`], Glicko-2 (E16 M4 T1); `ids`, the game ids unique for the server's life (E16 M4
 //!   T3b);
 //! - [`client`]: a headless client for tests and tools;
+//! - [`record`]: an adventure replay run through the whole game's session, each player's record
+//!   written (`h3-server record`, E16 M5 T6);
 //! - [`bench`]: the session core's workload (`benches/server/`).
 //!
 //! Provisional (E16 M1 review): the module layout, the thread and channel layout, the log lines
@@ -53,6 +55,7 @@ mod net;
 mod peers;
 mod players;
 pub mod rating;
+pub mod record;
 mod registry;
 
 #[cfg(test)]
