@@ -14204,7 +14204,9 @@ step); the original data staged at the start (the two LODs, the executable, `map
   19 ending it; the jump-end oracle met 344 jumps told to their owner and, to other viewers, 248
   with both ends, 70 with the entrance alone, 60 with the exit alone and 194 untold.
   `views_move_as_the_events_say` passed 2 000 cases in 358 s: 3 105 jumps told to their owner;
-  2 732, 633, 623 and 1 821 to other viewers likewise. **No engine leak.**
+  2 732, 633, 623 and 1 821 to other viewers likewise. On the merge with #832 and #833 (T19b's
+  plans build), 600 cases of each passed in 109 s (both at once): 167 added, 134 removed, 280 own
+  visits (3 ending the comparison), 5 hidden jumps compared. **No engine leak.**
 - **Found by the first stress** (1 000 cases): `master`'s gap that the town lane's E09 T19b (#832,
   then open) fixes: another player's hero declined a monster's offer to join, the monster fled in one
   game and asked again in the other (its answer follows the army and the seed the test changes),
