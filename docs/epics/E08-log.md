@@ -13976,8 +13976,10 @@ light gates passed). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the 
 - **On the wire** (`cross-lane`, `h3-protocol`, the global trap): `master` gained E16 M5 T3's
   mapping of the game's commands while the branch was open (#814, #816), so the merge maps
   `Revisit { hero }` both ways and `AdventureReject::NothingToRevisit {}`, with the round-trip
-  tests (101 rejections); `PROTOCOL_VERSION` stays 38 (the game's wire is on no message before
-  the server lane's T5).
+  tests (101 rejections). A second merge brought the server lane's T5a (#820: the game's
+  messages, protocol v39), so the two variants are a wire change: **protocol v40**; and the town
+  lane's T18b2b (#817: the payable builds listed, kept out of the random agent's draw): the legal
+  set is `EndTurn`, the boats, the revisits, then the builds.
 - **Bot reports:** regenerated, unchanged. **Inboxes:** the AI lane's (v8 and a step cap), the
   town lane's (a town's revisit), the server lane's (the mapping, for its review), the map
   client's (the space key).
