@@ -270,3 +270,65 @@ fn the_rollout_draws_the_builds() {
     }
     assert!(drawn > 0);
 }
+
+/// A build's action names its town by the town's entrance and its building by its index in the
+/// town's record (E09 T19c1, encoding v9): red's first listed build on the town map encodes so and
+/// decodes back; a building past the head, a tile that is no town's entrance or off the map, and a
+/// town the map does not have name nothing; after `BUILD` and a tile with no town the building
+/// mask is empty, after `EndTurn` 0 alone at tile 0 and nothing at another tile; a building with
+/// another entry decodes to nothing.
+#[test]
+fn a_build_action_names_its_town_by_the_entrance() {
+    let env = AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 173, 21).unwrap();
+    let (state, rules) = (env.state(), env.rules());
+    let red = PlayerId::new(0);
+    let build = legal_commands(state, rules, Actor::Player(red))
+        .into_iter()
+        .find(|c| matches!(c, GameCommand::Town(_)))
+        .unwrap();
+    let GameCommand::Town(TownCommand::Build { town, building }) = build else {
+        unreachable!()
+    };
+    let gate = town_tile(state, town).unwrap();
+    assert_eq!(
+        tile_pos(state, gate),
+        entrances(state).get(town.index()).copied()
+    );
+    let action = Action::build(gate, building.raw());
+    assert_eq!(action::encode(state, rules, red, &build), Some(action));
+    assert_eq!(action::decode(state, rules, red, action), Some(build));
+    let count = u32::try_from(env.tile_count()).unwrap();
+    let elsewhere = (0..count).find(|&t| town_of(state, t).is_none()).unwrap();
+    for none in [
+        Action::build(gate, u8::try_from(BUILDING_COUNT).unwrap()),
+        Action::build(elsewhere, building.raw()),
+        Action::build(count, building.raw()),
+        Action::Adventure(MapAction {
+            entry: END_TURN,
+            tile: 0,
+            building: 3,
+        }),
+    ] {
+        assert_eq!(action::decode(state, rules, red, none), None, "{none:?}");
+    }
+    let unknown = GameCommand::Town(TownCommand::Build {
+        town: TownId::new(99),
+        building,
+    });
+    assert_eq!(action::encode(state, rules, red, &unknown), None);
+    assert_eq!(town_tile(state, TownId::new(99)), None);
+    let mut mask = [true; BUILDING_COUNT];
+    env.building_mask(red, BUILD, elsewhere, &mut mask);
+    assert_eq!(mask, [false; BUILDING_COUNT]);
+    env.building_mask(red, BUILD, gate, &mut mask);
+    assert!(mask[building.index()]);
+    env.building_mask(red, END_TURN, 0, &mut mask);
+    assert_eq!((mask[0], mask.iter().filter(|&&b| b).count()), (true, 1));
+    env.building_mask(red, END_TURN, 1, &mut mask);
+    assert_eq!(mask, [false; BUILDING_COUNT]);
+}
+
+/// The town whose entrance is the tile at `index`, if one's is.
+fn town_of(state: &GameState, index: u32) -> Option<TownId> {
+    state.adventure().map().town_at(tile_pos(state, index)?)
+}

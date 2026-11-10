@@ -1070,6 +1070,12 @@ The original's views (survey `E09-towns.md` §7.2, §12.3; construction §1.1):
   replay holds no refused command, so every refusal kind and the Capitol refused while another
   stands are the map's test (the state hash unchanged after each), the replays the accepted
   builds: a week of them, a capture of a town built in today, the town events to day 8.
+  T19c cut in two (decision 62): T19c1 the env (action encoding v9: the entry `BUILD`, 30, the
+  town's entrance in the tile head, a building head of 64 masked by the listed builds of that
+  town, 0 alone after every other entry; `h3_sim::adventure::action::building_mask`), the
+  rollout drawing each listed build as a command, the town map's env test on new seeds, random
+  replays with builds on the builds map (`builds-s262-d14`, `-s271-d14`, `-s290-d14`), the town
+  map's three moved workloads re-baselined; T19c2 the new workloads and the census.
 
 ### 33. Batch TWN-2 (decisions 41, 42)
 
