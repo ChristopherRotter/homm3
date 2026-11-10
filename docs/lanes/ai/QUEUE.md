@@ -62,7 +62,20 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
   Visions radius at the top level (TWN-VEW-003). The town part's hash (v3 since T8c2) is in the
   adventure replays' headers only. E09 T9 (the env's town fixtures, design §18) comes next.
 
-**From the adventure lane** (E08 T95b; the adventure agents' action space grows):
+**From the adventure lane** (E08 T95b, T105b2; the adventure agents' action space grows):
+
+- 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane` with the
+  user's consent, E08 decision 268; **the env's action encoding v8, for the adventure agents, and
+  a step cap**): `crates/h3-sim/src/adventure/action.rs` appends eight entries `REVISIT_BASE + s`
+  (22 to 29, one per hero slot; `ENTRY_COUNT` 30): the hero in slot `s` revisits the entered
+  object it stands on (`AdventureCommand::Revisit`, ADV-TEL-008), tile 0 alone as the answers',
+  masked by `legal_commands` (which lists one per such hero after the `BuildBoat`s). A revisit
+  costs no points, so a turn may revisit without end (the original's space key: a two-way
+  monolith re-drawn, a Whirlpool's loss again; increment 11's design note §18): **an agent's
+  rollout needs a step cap per turn**, your call (`random_rollout` ends only when another entry is
+  drawn). Random play changed course on every map with an entered object (the `random-play-*`
+  workloads re-baselined, the town map's env tests on new seeds 36 and 330); a policy trained on
+  v7 sees eight new entries.
 
 - 2026-11-07 (the adventure lane, E08 T103b, `adventure/e08-t103b`; **for when you regenerate
   `census-v1.toml`**): `h3 ai census original-data/install/Maps` counts 1 of the 159 maps on

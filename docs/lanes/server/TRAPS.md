@@ -19,6 +19,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - `PROPTEST_CASES` applies to every proptest of a crate: name the test for a longer mutation run (`cargo test -p h3-protocol mutat`).
 - A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the task subtracts each frame's bytes as it takes it (a frame queued around the count wraps it).
 - Write-ahead order in a game's thread: drain and sync the session's entries before `deliver`; anything a restart must redo needs an `Entry` (`Entry::Resumed`), or the restore diverges.
+- The whole game's session (`session::game`) journals only the accepted commands (`GameEntry`): a later change to a game outside `apply` (part 2's seats, timers, the level-up hold) needs an entry of its own, re-run by `GameSession::restore`, or a restart loses it. Its records restart with the restore (a snapshot at 1), as the battle's.
 - The observations' mappings (`map/mod.rs`, the game's `map/game.rs`) name every field of the engine's types in patterns, without `..` (a field left out: `name: _` with its reason), those read through a method too.
 - The workspace's clippy bans `std::time::Instant` and `SystemTime`: the server uses `tokio::time::Instant`, a file's age `fs::metadata(p)?.modified()?.elapsed()`.
 - A `watch::Receiver` whose sender is gone fails `wait_for` at once, repeatedly: a select arm on it must then never resolve (`net::stopped`).

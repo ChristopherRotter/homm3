@@ -2276,3 +2276,38 @@ b1d2e94; the scoped verify passed).
   player outside the game, the system's end of turn); a setup that starts no game sends nothing.
   The golden replays' loading is shared with the fold's gate (`game_fold::golden`). The wire
   tests round-trip the five messages and pin their JSON form.
+
+### M5 T5b — the game's journal, its restore and each player's record (2026-11-10)
+
+Baseline: `master` 780fbcc (#820, T4 and T5a; CI green; the setup's baseline ran only the light
+gates on CI's fingerprint). No original data.
+
+- **The journal** (`session::game`, provisional): `GameJournal { seed, commands, checkpoint_every,
+  checkpoints }`, the adventure replay in progress (`h3_sim::adventure::replay::Replay`'s body; its
+  header, map and difficulty are the host's), and `GameEntry { Command(Actor, h3_game::GameCommand),
+  Checkpoint(u64) }`, made by every accepted command (a player's or the system actor's) and drained
+  by the host (`drain_entries`) to make durable before it delivers the call's frames; a rejection
+  journals nothing. The session's options are a struct (`GameOptions { game, checkpoint_every,
+  record_bytes }`, a parameter of `start`).
+- **The restore** (`GameSession::restore(rules, setup, seed, manifest, options, entries, out)`):
+  the game built as `start` builds it, the entries' commands re-run through `h3_game::apply` as
+  their actors' (no event told), the re-run's entries compared with the journal's (`Diverged {
+  at }` where they part, `Rejected { at, error }` with the engine's error, `Setup` when the setup
+  starts no game), the checkpoint a crash cut off left to drain, then every player told the
+  restored game afresh as at the start (its snapshot, its turn: numbers and records begin again,
+  as the battle's after a restart).
+- **The records** (record format **v4**): each player's record is every numbered message it was
+  sent, within the host's bound (`GameOptions::record_bytes`, the oldest lines first);
+  `GameSession::record(player)` gives it with its header line `wire::game::GameRecordHeader {
+  format, game, player, manifest, first }` (`None` for a player outside the game). The battle's
+  viewer record moved into `session::Record`, which both sessions use (the battle's behaviour
+  unchanged). The protocol stays v39 (no message changed); a battle's record says format 4 too.
+- **Tests** (`tests/game_session.rs`): the golden replays' run now checks the drained entries
+  after each command (its command, then a checkpoint when due), the journal at the end equal to
+  the replay's commands and checkpoints, each player's record equal to its header and every frame
+  it was sent, and halfway a restore from the entries so far (the state's hash, the journal, every
+  player's snapshot and turn afresh and its record); on the duel: a journal whose hash differs, a
+  checkpoint out of place or extra, a command out of turn, a setup that starts no game restore
+  nothing; a journal cut before its last checkpoint is completed and plays on; a record bounded
+  to one byte holds its newest frame alone, numbered as its last. `tests/game_manifest.rs`: the
+  record header round-trips and its JSON form is pinned.

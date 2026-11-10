@@ -47,6 +47,7 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                     object_type: object_type.raw(),
                     anchor: pos(*anchor),
                 },
+                EngineAdventure::Revisit { hero } => AdventureCommand::Revisit { hero: hero.raw() },
             },
         },
         EngineCommand::Answer(a) => GameCommand::Answer { answer: answer(*a) },
@@ -231,6 +232,9 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
             } => EngineAdventure::BuildBoat {
                 object_type: Handle::from_raw(object_type),
                 anchor: pos_to_engine(anchor),
+            },
+            AdventureCommand::Revisit { hero } => EngineAdventure::Revisit {
+                hero: HeroId::new(hero),
             },
         }),
         GameCommand::Answer { answer } => EngineCommand::Answer(answer_to_engine(answer)),
@@ -459,6 +463,7 @@ fn adventure_reject(error: AdventureCommandError) -> AdventureReject {
         E::NotOwner => AdventureReject::NotOwner {},
         E::NoBoatTile => AdventureReject::NoBoatTile {},
         E::BoatTileTaken => AdventureReject::BoatTileTaken {},
+        E::NothingToRevisit => AdventureReject::NothingToRevisit {},
     }
 }
 

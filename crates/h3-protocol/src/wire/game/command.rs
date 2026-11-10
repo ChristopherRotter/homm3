@@ -80,6 +80,12 @@ pub enum AdventureCommand {
         /// Its anchor.
         anchor: Pos,
     },
+    /// Visits the entered object under a hero of the actor's again, without points (ADV-TEL-008,
+    /// E08 T105b2; the original's space key).
+    Revisit {
+        /// The hero.
+        hero: u16,
+    },
 }
 
 /// An answer to a pending decision, typed by the decision's kind (`h3_game::Answer`).
@@ -463,6 +469,8 @@ pub enum AdventureReject {
     NoBoatTile {},
     /// A boat or a hero is on the Shipyard's boat tile.
     BoatTileTaken {},
+    /// The hero stands on no object to visit again (E08 T105b2).
+    NothingToRevisit {},
 }
 
 /// Why a hero cannot stand on a tile (`h3_adventure::StandError`).
