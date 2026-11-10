@@ -42,7 +42,11 @@
 //! off its surface, A-42): the one-way channels by entrances and exits, the two-way ones by size,
 //! the Whirlpools' tiles, every visitable tile listed once, every gate paired, and the pairs and
 //! the gates not paired with their nearest checked against the survey's census (§1: 301 pairs, 18
-//! gates on 8 maps).
+//! gates on 8 maps). Since E08 T106c the rest of that census checked too (§1): the teleporters by
+//! class, subclass and level, the maps with each class, the one-way channels by entrances and
+//! exits, the two-way ones by size, the Whirlpools' tiles and the maps by their Whirlpools; and
+//! each class's most on one map and the most channels of each way on one map (the teleporters XL
+//! map's numbers, `e08-teleporters-144.h3m`).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -105,11 +109,83 @@ struct ChannelCensus(
 /// against them.
 const SURVEY_GATES: (usize, usize, usize) = (301, 18, 8);
 
+/// The survey's census of the shipped maps' teleporters (§1; E08 T106c): the objects by class and
+/// subclass, on the surface and underground. [`teleporter_differences`] checks the census against
+/// it and the other `SURVEY_*` tables.
+const SURVEY_TELEPORTERS: [((u32, u32), [usize; 2]); 26] = [
+    ((43, 0), [39, 9]),
+    ((43, 1), [25, 19]),
+    ((43, 2), [20, 6]),
+    ((43, 3), [5, 0]),
+    ((43, 4), [34, 0]),
+    ((43, 5), [19, 0]),
+    ((43, 6), [4, 6]),
+    ((43, 7), [7, 0]),
+    ((44, 0), [30, 6]),
+    ((44, 1), [30, 19]),
+    ((44, 2), [17, 7]),
+    ((44, 3), [3, 0]),
+    ((44, 4), [18, 2]),
+    ((44, 5), [13, 0]),
+    ((44, 6), [4, 2]),
+    ((44, 7), [5, 1]),
+    ((45, 0), [128, 44]),
+    ((45, 1), [71, 37]),
+    ((45, 2), [69, 31]),
+    ((45, 3), [18, 2]),
+    ((45, 4), [31, 3]),
+    ((45, 5), [17, 3]),
+    ((45, 6), [20, 6]),
+    ((45, 7), [10, 5]),
+    ((103, 0), [301, 301]),
+    ((111, 0), [215, 9]),
+];
+/// The survey's maps holding each class (§1).
+const SURVEY_MAPS: [(u32, usize); 5] = [(43, 59), (44, 59), (45, 98), (103, 98), (111, 62)];
+/// The survey's one-way channels (a map's entrances and exits of one channel) by their entrances
+/// and exits (§1: 111 channels).
+const SURVEY_ONE_WAY: [((usize, usize), usize); 14] = [
+    ((1, 1), 71),
+    ((1, 2), 1),
+    ((1, 5), 1),
+    ((1, 7), 1),
+    ((2, 1), 8),
+    ((2, 2), 4),
+    ((3, 1), 7),
+    ((3, 2), 2),
+    ((3, 3), 8),
+    ((4, 1), 1),
+    ((4, 4), 3),
+    ((5, 1), 1),
+    ((7, 1), 1),
+    ((8, 3), 2),
+];
+/// The survey's two-way channels by size (§1: 219 channels).
+const SURVEY_TWO_WAY: [(usize, usize); 6] = [(2, 185), (3, 19), (4, 11), (5, 2), (6, 1), (8, 1)];
+/// The survey's Whirlpools' tiles (§1: every Whirlpool's six on water).
+const SURVEY_WHIRLPOOL_TILES: usize = 1_344;
+/// The survey's maps by how many Whirlpools they hold (§1: 62 maps).
+const SURVEY_WHIRLPOOLS_PER_MAP: [(usize, usize); 8] = [
+    (2, 35),
+    (3, 8),
+    (4, 5),
+    (5, 5),
+    (6, 4),
+    (7, 1),
+    (8, 2),
+    (19, 2),
+];
+
 /// The census of the teleporters (E08 T103b, [`teleporters`]; survey
 /// `docs/rules/surveys/E08-teleporters.md` §1): the objects by class and subclass, on the surface
-/// and underground, and the maps holding each class.
+/// and underground, the maps holding each class, and (E08 T106c) the maps by how many Whirlpools
+/// they hold.
 #[derive(Default)]
-struct Teleporters(BTreeMap<(u32, u32), [usize; 2]>, BTreeMap<u32, usize>);
+struct Teleporters(
+    BTreeMap<(u32, u32), [usize; 2]>,
+    BTreeMap<u32, usize>,
+    BTreeMap<usize, usize>,
+);
 
 /// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
 /// counts, and the resolved random dwellings by faction (the core's index) and level.
@@ -279,6 +355,10 @@ fn main() -> ExitCode {
             subclasses.join(", ")
         );
     }
+    let per_map: Vec<String> = (teleporters.2.iter())
+        .map(|(whirlpools, maps)| format!("{whirlpools} on {maps}"))
+        .collect();
+    println!("    maps by their Whirlpools: {}", per_map.join(", "));
     let channels = &peaks.9;
     println!("  the channels and the gates' pairs the game's build gives (checked):");
     for (what, n) in &channels.0 {
@@ -316,6 +396,8 @@ fn main() -> ExitCode {
         );
         failures += 1;
     }
+    // E08 T106c: the rest of the survey's census (§1).
+    failures += teleporter_differences(&peaks);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -452,7 +534,9 @@ fn check(
     built_weeks(&built, rules, name, &mut peaks.7)?;
     // E08 T104: the channels and the gates' pairs it builds (ADV-TEL-002); a map it refuses for
     // a teleporter off its surface (A-42) fails above.
-    built_channels(&built, rules, name, &mut peaks.9)?;
+    let (one_way, two_way) = built_channels(&built, rules, name, &mut peaks.9)?;
+    peaks.note(ONE_WAY_CHANNELS, one_way, name);
+    peaks.note(TWO_WAY_CHANNELS, two_way, name);
     most_dwellings(&map, &setup.map, peaks, name);
     let (visitable, stacked) = stacked(&map, &setup.map);
     peaks.2 += visitable;
@@ -464,7 +548,9 @@ fn check(
         peaks.4.insert(name.to_owned(), twins);
     }
     census(&map, &setup.map, rules, &mut peaks.5);
-    teleporters(&map, &setup.map, rules, &mut peaks.8)?;
+    for (class, n) in teleporters(&map, &setup.map, rules, &mut peaks.8)? {
+        peaks.note(most_of(class), n, name);
+    }
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -1248,14 +1334,15 @@ fn census(
 /// §4) into the census. Checked (an error fails the map): each object of classes 43 to 45, 103 and
 /// 111 imports as its class and subclass's type, a monolith of its class's way (43 an entrance, 44
 /// an exit, 45 two-way) with its subclass as the channel, 103 the Subterranean Gate, 111 the
-/// Whirlpool.
+/// Whirlpool. Returns the map's objects by class (E08 T106c: each class's most on one map, and the
+/// maps by their Whirlpools in the census).
 fn teleporters(
     raw: &RawMap,
     setup: &MapSetup,
     rules: &GameRuleset,
     census: &mut Teleporters,
-) -> Result<(), String> {
-    let mut classes = BTreeSet::new();
+) -> Result<BTreeMap<u32, usize>, String> {
+    let mut classes = BTreeMap::<u32, usize>::new();
     for ((placed, class), object) in placed(raw).zip(&setup.objects) {
         let way = match class {
             43 => Some(MonolithWay::Entrance),
@@ -1287,12 +1374,161 @@ fn teleporters(
             ));
         }
         census.0.entry((class, subclass)).or_default()[usize::from(object.anchor.level > 0)] += 1;
-        classes.insert(class);
+        *classes.entry(class).or_default() += 1;
     }
-    for class in classes {
+    for &class in classes.keys() {
         *census.1.entry(class).or_default() += 1;
     }
-    Ok(())
+    if let Some(&whirlpools) = classes.get(&111) {
+        *census.2.entry(whirlpools).or_default() += 1;
+    }
+    Ok(classes)
+}
+
+/// The census's key for a teleporter class's most on one map (E08 T106c, [`teleporters`]).
+fn most_of(class: u32) -> &'static str {
+    match class {
+        43 => "one-way entrances on one map",
+        44 => "one-way exits on one map",
+        45 => "two-way monoliths on one map",
+        103 => "Subterranean Gates on one map",
+        _ => "Whirlpools on one map",
+    }
+}
+
+/// The census's keys for the most channels of each way on one map (E08 T106c,
+/// [`built_channels`]).
+const ONE_WAY_CHANNELS: &str = "one-way channels on one map";
+const TWO_WAY_CHANNELS: &str = "two-way channels on one map";
+
+/// The survey's most of each teleporter class on one map, and the most channels of each way on one
+/// map (§1 as amended by E08 T106c; the teleporters XL map's numbers): the census's keys
+/// ([`most_of`], [`ONE_WAY_CHANNELS`], [`TWO_WAY_CHANNELS`]) with the counts.
+const SURVEY_MOST: [(&str, usize); 7] = [
+    ("one-way entrances on one map", 8),
+    ("one-way exits on one map", 8),
+    ("two-way monoliths on one map", 17),
+    ("Subterranean Gates on one map", 26),
+    ("Whirlpools on one map", 19),
+    (ONE_WAY_CHANNELS, 4),
+    (TWO_WAY_CHANNELS, 6),
+];
+
+/// The teleporters' census against the survey's (§1; E08 T106c): the objects by class, subclass
+/// and level ([`SURVEY_TELEPORTERS`]), the maps with each class, the one-way channels by entrances
+/// and exits, the two-way ones by size, the Whirlpools' tiles, the maps by their Whirlpools and
+/// each class's and way's most on one map. Prints each difference; returns how many there are.
+fn teleporter_differences(peaks: &Peaks) -> usize {
+    let mut differences = 0;
+    let mut differ = |what: &str, census: String, survey: String| {
+        if census != survey {
+            println!("h3-map: the census's {what} ({census}) are not the survey's ({survey})");
+            differences += 1;
+        }
+    };
+    let (teleporters, channels) = (&peaks.8, &peaks.9);
+    let listed = |pairs: Vec<String>| pairs.join(", ");
+    differ(
+        "teleporters by class and subclass",
+        listed(
+            teleporters
+                .0
+                .iter()
+                .map(|(k, v)| format!("{k:?} {v:?}"))
+                .collect(),
+        ),
+        listed(
+            SURVEY_TELEPORTERS
+                .iter()
+                .map(|(k, v)| format!("{k:?} {v:?}"))
+                .collect(),
+        ),
+    );
+    differ(
+        "maps by class",
+        listed(
+            teleporters
+                .1
+                .iter()
+                .map(|(k, v)| format!("{k} {v}"))
+                .collect(),
+        ),
+        listed(
+            SURVEY_MAPS
+                .iter()
+                .map(|(k, v)| format!("{k} {v}"))
+                .collect(),
+        ),
+    );
+    differ(
+        "one-way channels by entrances and exits",
+        listed(
+            channels
+                .1
+                .iter()
+                .map(|(k, v)| format!("{k:?} {v}"))
+                .collect(),
+        ),
+        listed(
+            SURVEY_ONE_WAY
+                .iter()
+                .map(|(k, v)| format!("{k:?} {v}"))
+                .collect(),
+        ),
+    );
+    differ(
+        "two-way channels by size",
+        listed(channels.2.iter().map(|(k, v)| format!("{k} {v}")).collect()),
+        listed(
+            SURVEY_TWO_WAY
+                .iter()
+                .map(|(k, v)| format!("{k} {v}"))
+                .collect(),
+        ),
+    );
+    differ(
+        "Whirlpools' tiles",
+        channels
+            .0
+            .get("Whirlpools' tiles listed")
+            .copied()
+            .unwrap_or(0)
+            .to_string(),
+        SURVEY_WHIRLPOOL_TILES.to_string(),
+    );
+    differ(
+        "maps by their Whirlpools",
+        listed(
+            teleporters
+                .2
+                .iter()
+                .map(|(k, v)| format!("{k} {v}"))
+                .collect(),
+        ),
+        listed(
+            SURVEY_WHIRLPOOLS_PER_MAP
+                .iter()
+                .map(|(k, v)| format!("{k} {v}"))
+                .collect(),
+        ),
+    );
+    let most = |what: &str| peaks.0.get(what).map_or(0, |(n, _)| *n);
+    differ(
+        "most on one map",
+        listed(
+            SURVEY_MOST
+                .iter()
+                .map(|(k, _)| format!("{k} {}", most(k)))
+                .collect(),
+        ),
+        listed(
+            SURVEY_MOST
+                .iter()
+                .map(|(k, v)| format!("{k} {v}"))
+                .collect(),
+        ),
+    );
+    differences
 }
 
 /// The census's key for the gates' pairs ([`built_channels`]).
@@ -1306,12 +1542,13 @@ const PAIRS: &str = "gates' pairs";
 /// visitable tile of an exit, a two-way monolith, a gate and a Whirlpool is listed once (no
 /// shipped entrance is another object's, none lies off the map: survey §1), every pair is mutual,
 /// and every gate is paired (the shipped maps' gates are as many on each level as on the other).
+/// Returns the map's one-way and two-way channels (E08 T106c: the most of each on one map).
 fn built_channels(
     built: &GameState,
     rules: &GameRuleset,
     name: &str,
     census: &mut ChannelCensus,
-) -> Result<(), String> {
+) -> Result<(usize, usize), String> {
     let map = built.adventure().map();
     let channels = map.channels();
     let mut entrances = BTreeMap::<u8, usize>::new();
@@ -1348,6 +1585,7 @@ fn built_channels(
         .copied()
         .chain(channels.one_way_channels().map(|(channel, _)| channel))
         .collect();
+    let one_way = numbers.len();
     for channel in numbers {
         let ends = (
             entrances.get(&channel).copied().unwrap_or(0),
@@ -1389,7 +1627,7 @@ fn built_channels(
     add("gates' entries listed", gates);
     add(PAIRS, gates / 2);
     add("maps with channels", usize::from(!channels.is_empty()));
-    Ok(())
+    Ok((one_way, channels.two_way_channels().count()))
 }
 
 /// Counts the sea's objects (E08 T72, increment 8's design note §4): the boats and the maps with
