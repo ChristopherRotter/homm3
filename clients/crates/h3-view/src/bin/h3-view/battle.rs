@@ -2303,12 +2303,11 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
-        let changed = open.hover(
+        open.hover(
             &mut self.book_memory,
             (&ground.layout.book, &writer.catalogue),
             point,
-        );
-        changed
+        )
     }
 
     /// Whether a stack's stats dialog is open over the battle (E17 M6 T2a2a).

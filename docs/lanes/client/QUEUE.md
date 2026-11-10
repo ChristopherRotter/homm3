@@ -19,27 +19,37 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M7 T1 — the answered slips
+### E17 M7 T1b — the other answered slips
+
+T1 was cut in four with the user at its start (2026-11-10): T1a (done, the options dialog and
+F6 to F8), T1b, T1c, T1d.
 
 - **Scope:** M6's answers (the lane's `QUESTIONS-ANSWERED.md`, 2026-11-10), each fix in the
-  client's profile and the original's for the comparisons (`h3_render::Bugs`) unless said:
-  CLT-Q43 (2) a checkbox or a volume bar acting only on a release inside it, (3) the battle's
-  mouse posted at the dialog's close; Q44 (c) no volume bar refused without a device (the
-  original's guard for the comparisons, `options-no-sound`); Q70 a heroless side's stats dialog
-  and army info windows in that side's player colour; Q71 a held panel button let go without its
-  click when a dialog or a popup takes its key's release; Q77 (b) the pictures box's rows each by
-  its own caption height, the overhang in every gap. In both profiles: Q74's one click of the
-  speed buttons (design §12.12's oddity 1 and its test corrected); Q75's F6 to F8 on every turn,
-  the acting stack's movement reach drawn after F8 until its action starts (M6 review item 43's
-  *provisional* line amended). The reads and captures: Q71's (hold D, click a stack, release D,
-  close the dialog: the original's profile copies what it shows), Q73's 0x5994B0 (read; the
-  client's kept either way, the record says fix or copy), Q74's sound sequence pressing a speed,
-  T7b's R2-1 still `stats-ability`. T7b's R10-2 leftovers: `Changes::after` and `cast_stop` under
-  test, a presser option closing the result window for an unattended `--run`.
+  client's profile and the original's for the comparisons (`h3_render::Bugs`): Q70 a heroless
+  side's stats dialog and army info windows in that side's player colour; Q71 a held panel
+  button let go without its click when a dialog or a popup takes its key's release (the
+  original's profile as built until T1c's capture says what it copies); Q77 (b) the pictures
+  box's rows each by its own caption height, the overhang in every gap.
 - **Acceptance:** each fix tested in both profiles; `drawn` all the same or each change
-  recorded; the new captures as recorded or their differences listed; `check.sh` passes.
-- **Depends on:** nothing. **Status:** next (likely cut at its start: the fixes, the reads and
-  captures, the tools).
+  recorded; `check.sh` passes.
+- **Depends on:** nothing. **Status:** next.
+
+### E17 M7 T1c — the reads and captures the answers name
+
+- **Scope:** Q71's capture (hold D, click a stack, release D, close the dialog: the original's
+  profile copies what it shows); Q73's 0x5994B0 (read; the client's kept either way, the record
+  says fix or copy); Q74's sound sequence pressing a speed (T1a built one click); T7b's R2-1
+  still `stats-ability`.
+- **Acceptance:** the new captures as recorded or their differences listed; the records in the
+  answers; `drawn` all the same.
+- **Depends on:** T1b for Q71's original's profile. **Status:** waiting.
+
+### E17 M7 T1d — the tools
+
+- **Scope:** T7b's R10-2 leftovers: `Changes::after` and `cast_stop` under test, a presser option
+  closing the result window for an unattended `--run`.
+- **Acceptance:** the tests; the option documented in the runbook; `check.sh` passes.
+- **Depends on:** nothing. **Status:** waiting.
 
 ### E17 M7 T2 — the DEF button's own loop
 
@@ -52,7 +62,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   folded in.
 - **Acceptance:** unit tests of each case; a sequence or still recorded where the harness can
   hold a button (else listed); `drawn` all the same or recorded.
-- **Depends on:** T1 (Q71's let-go touches the same held state). **Status:** waiting.
+- **Depends on:** T1b (Q71's let-go touches the same held state). **Status:** waiting.
 
 ### E17 M7 T3 — the battle as a hosted entry
 
@@ -81,7 +91,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   refinement after E27); E17 closed (`docs/BACKLOG.md`'s row, and E27's draft, which still names
   E17 M7 for the lobby and the browser, by a `shared/` pull request).
 - **Acceptance:** the review list accepted; every open thread placed; E17 done.
-- **Depends on:** T1 to T3. **Status:** waiting.
+- **Depends on:** T1b to T1d, T2, T3. **Status:** waiting.
 
 ## Inbox
 

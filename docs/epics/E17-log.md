@@ -5241,7 +5241,8 @@ lane's `QUESTIONS-ANSWERED.md`); the fixes they ask for are M7 T1 and T2.
     profiles, CLT-Q52 to Q56 fixed through `h3_render::Bugs` (the original's in the comparisons;
     Q56 as put to the user: a wall aim takes the mouse's hex at its start). *Provisional*: the reach
     from the engine's legal moves and strikes' targets; an action's start clears the blocks put
-    back, each keeping one composition; F6 to F8 only while the battle takes keys (CLT-Q75); an
+    back, each keeping one composition; F6 to F8 only while the battle takes keys (CLT-Q75;
+    since M7 T1a on every turn, the acting stack's reach drawn after them, the user's answer); an
     aim's movement shadow off the mouse's follow's alone, the settings and the file unchanged
     (oddity 8 not copied; T7b, R7-2: the window's block that saved it never ran, removed); the
     idle step's move (oddity 10) not modelled; an aim's shade recorded as sequences only (a
@@ -6424,3 +6425,46 @@ staged first from the PC (the four LODs, both executables, the five DLLs, both s
   E17's row.
 - **M6 done.** M6's scope and tasks moved to `E17-archive.md`, its review list into this log
   ("Accepted review lists").
+
+### M7 T1a — the options dialog's slips and F6 to F8 on every turn (2026-11-10)
+
+On `client/e17-m7-t1a`, the user present. The original files staged first from the PC (57
+files, as T7c's) while it was online; the reads of later parts use the staged `Heroes3.exe`
+(capstone), nothing else from the PC.
+
+- **The cut** (asked at the start: T1's 14 items in four parts, T1a recommended): the user,
+  "T1a only". T1a the combat options dialog and the keys F6 to F8; T1b Q70, Q71, Q77; T1c the
+  reads and captures; T1d the tools (the queue).
+- **Starting point:** `master` at dc77313 (#831, docs only); the sandbox's VM restarted while the
+  baseline ran (coverage), so CI's Clients run on 5e0e5811 (the same client code) stood in.
+- **CLT-Q74, both profiles:** `options::Open::press` gives a DEF button's press its own sample
+  alone (`Did::box_sound` the DEF pictures' 225 to 238 only); the test
+  `a_speed_is_chosen_by_its_button_sounding_once` in both profiles; design §12.12's oddity 1
+  struck as no oddity.
+- **The dialog's profile:** `Open::new` takes `(player, audio, bugs)`: the window's battle
+  `Bugs::Fixed`, the stills (`render.rs`'s `options`, `spellbook.rs`' tests) `Bugs::Original`.
+  **CLT-Q43 (2):** `Held::Picture { id, over }`, `moved` noting the mouse over the picture (no
+  redraw), `release` clicking over it, anywhere in the original's (oddity 2); a release over
+  another bar of the column clicks neither. **CLT-Q44 (c):** the bars' refusal only in the
+  original's profile (oddity 7, `options-no-sound` the same); the client's sets the volume
+  without a device, the last effects volume with it.
+- **CLT-Q43 (3), the window:** the battle's `options_arrow` and `mouse_moved` gone (the window
+  being the client's profile; the stills keep the original's arrow, oddity 10); at the close the
+  window posts the mouse after the composition and the level the dialog set (`post_mouse`, the
+  refusal box's `Move` and `Cancel`, renamed from `refusal_closed`), so the cursor, the line at
+  the new level and the cursor shadow are the hex's under the mouse at once.
+- **CLT-Q75 (a), both profiles:** `Battle::takes_keys` (every turn once the last action played,
+  a record's always) for F6 to F8 instead of `takes`; `shades::overlay` (the acting stack's
+  overlay without the side's test) under `shades::reach`; the track's keyed `Input::Shades` on
+  a turn no human plays here, before its action, sets the reach to it (`overlay(turn)`: none in
+  the tactics phase or for a stack whose commands are unknown, `Legal::default()`), cleared by
+  the action's start as on a human's turn. M6 review item 43's line amended; M7 review item 1.
+- **Tests:** `a_box_acts_on_its_release_over_it_alone`, `without_the_audio_device_no_bar_is_refused`
+  (the client's), the two original's oddity tests kept in `Bugs::Original`;
+  `the_movement_shadow_shades_the_acting_stack_s_reach` (the overlay of a stack no human
+  plays); `on_a_turn_no_human_plays_the_keys_draw_the_acting_stack_s_reach_until_its_action`
+  (both profiles: on, off, on, the action's start, a key during the action, the next turn, the
+  commands unknown, the tactics phase).
+- **Gates:** `cargo test -p h3-view` all passed; `drawn` 263 of 263 the same (no capture: the
+  stills' dialog is the original's as before, no sequence opens it or presses F6 to F8 on a turn
+  no human plays); `h3-view gate` passed; `check.sh`: RESULT.
