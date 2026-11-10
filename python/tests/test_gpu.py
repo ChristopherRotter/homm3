@@ -33,14 +33,26 @@ def test_another_device_is_left_alone() -> None:
 def card(monkeypatch):
     """A stubbed 8 GB card: its free bytes, the allocator's reserved and peak bytes, and the calls
     made to torch."""
-    state = {"free": 7_680 * MB, "reserved": 0, "peak": 0, "fraction": None, "resets": 0}
+    state = {
+        "free": 7_680 * MB,
+        "reserved": 0,
+        "peak": 0,
+        "fraction": None,
+        "index": None,
+        "resets": 0,
+    }
     cuda = torch.cuda
+    monkeypatch.setattr(cuda, "current_device", lambda: 0)
     monkeypatch.setattr(cuda, "mem_get_info", lambda device=None: (state["free"], 8_192 * MB))
     monkeypatch.setattr(cuda, "memory_reserved", lambda device=None: state["reserved"])
     monkeypatch.setattr(cuda, "max_memory_reserved", lambda device=None: state["peak"])
 
     def fraction(value, device=None):
-        state["fraction"] = value
+        # torch's own refuses a device without an index (a plain "cuda", which `ppo.device_of`
+        # gives): E25 T31, the first run of the cap on a card.
+        if not isinstance(device, int):
+            raise ValueError(f"Expected a torch.device with a specified index, got {device}")
+        state["fraction"], state["index"] = value, device
 
     def reset(device=None):
         state["resets"] += 1
@@ -54,6 +66,9 @@ def test_the_cap_sets_the_allocators_fraction_and_refuses_a_full_card(card) -> N
     m = gpu.cap(torch.device("cuda"))
     assert m == {"total_mb": 8_192.0, "outside_mb": 512.0, "cap_mb": pytest.approx(6_860.8, 1e-3)}
     assert card["fraction"] == pytest.approx(0.9 - 512 / 8_192, abs=1e-6)
+    assert card["index"] == 0
+    gpu.cap(torch.device("cuda", 1))
+    assert card["index"] == 1
     card["free"] = 512 * MB
     with pytest.raises(gpu.GpuFull, match="7680 of its 8192 MB"):
         gpu.cap(torch.device("cuda"))

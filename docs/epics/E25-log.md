@@ -1636,6 +1636,11 @@ an entry only where a task builds on it.
   the peak memory, the losses and the weights against the baseline's; then the baseline's phases
   timed with the device synchronised around each, and torch's profiler over one optimizer step.
   A CPU smoke (16 envs, 32 calls, 501 rows): the losses equal in every variant, the weights
-  within 7e-7. **The user's run** (about 6 minutes; from `python/`):
+  within 7e-7. **The cap's index** (the user's first run): `gpu.cap` handed torch's
+  `set_per_process_memory_fraction` a plain `cuda` device (what `ppo.device_of` gives for `auto`
+  and `cuda`), which torch refuses (`ValueError`: no index): every CUDA entry point since T28
+  stopped there, never run on a card (`tests/test_gpu.py` stubs CUDA). Fixed: the current card's
+  index; the stub now refuses a device without one, as torch's does. **The user's run** (about
+  6 minutes; from `python/`):
 
       uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --trace --json runs/t31-speed.json

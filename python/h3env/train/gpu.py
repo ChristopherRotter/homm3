@@ -61,7 +61,9 @@ def cap(device: torch.device, fraction: float = MEMORY_FRACTION) -> dict[str, fl
             f"the GPU holds {outside:.0f} of its {total / MB:.0f} MB outside this run, past "
             f"{fraction:.0%}: close what fills it and start again"
         )
-    torch.cuda.set_per_process_memory_fraction(limit / total, device)
+    # torch's call takes the card's index: a plain "cuda" (`ppo.device_of`) is the current card.
+    index = torch.cuda.current_device() if device.index is None else device.index
+    torch.cuda.set_per_process_memory_fraction(limit / total, index)
     return {"total_mb": total / MB, "outside_mb": outside, "cap_mb": limit / MB}
 
 
