@@ -228,9 +228,14 @@ fn the_movement_shadow_shades_the_acting_stack_s_reach() {
     let gone_field = field(&gone, &shooter, Bugs::Fixed);
     assert_eq!(reach(&gone_field), BTreeSet::from([86, 87]));
     o.stacks[0].two_hex = true;
-    // None for a stack no human plays, a dead one or none.
+    // None for a stack no human plays, a dead one or none; the overlay F6 to F8 draw tests no
+    // side (CLT-Q75, E17 M7 T1a).
     o.sides[0].human = false;
     assert!(reach(&field(&o, &legal, Bugs::Fixed)).is_empty());
+    assert_eq!(
+        overlay(&field(&o, &legal, Bugs::Fixed)),
+        BTreeSet::from([70, 71, 86, 87, 88, 89, 90])
+    );
     o.sides[0].human = true;
     o.stacks[0].alive = false;
     assert!(reach(&field(&o, &legal, Bugs::Fixed)).is_empty());
