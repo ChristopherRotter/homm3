@@ -13954,7 +13954,11 @@ light gates passed). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the 
   0.03 %. Re-baselined with the reason: duel +4.65 % against `master` (its Cartographers,
   observatories and tents revisited), dwellings −10.61 % (heroes on dwellings revisit them in place
   of moves), rewards −1.59 %, economy +0.71 % (Shipyards revisited, boats built and sailed);
-  sea +0.02 %, the code alone, kept.
+  sea +0.02 %, the code alone, kept. The reach workloads query the heroes of random games, so
+  they moved too: reach-xl-144 +1.78 % (2 633 steps and 5 656 queries for 2 291 and 4 940),
+  reach-lifted-xl-144 −3.27 %, reach-towns-36 −3.35 % (425 steps for 500), re-baselined; the
+  month start +1.03 % and the day starts within 1 %, kept. The forks measured the same as
+  `master` here (+1.38 % on four of them against their files in both trees: this sandbox's).
 - **Seeds:** the town map's env tests (`towns.rs`) meet their features with seeds 36 and 330
   (a search over 1 to 1 100; the golden replays' 173, 1702 and 3435 lost them); the fork test's
   siege with 330. The masks property: a revisit may tell nothing (a tent whose key is held); its
