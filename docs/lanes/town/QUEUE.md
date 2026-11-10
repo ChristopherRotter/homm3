@@ -8,26 +8,24 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b (done), T18c (next), T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c (done), T19 (next), T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T18c — the town events at the turn start** (design §30's town events and day 1, §31's told
-builds; TWN-EVT-001 to -004; queued 2026-11-10 by T18b2b; `cross-lane`: `h3-game`'s turn start
-`start_group` and `state/day.rs`, `command.rs` for the new event, the versions and replays are the
-adventure lane's; a new `GameEvent` variant breaks `h3-protocol`'s build until mapped, the global
-trap: mapped in the same pull request or by the server lane first): `town::fire_events` right
-after the map's timed events, for each town the player owns in `TownId` order each event of its
-`TownStatic::events` in order that fires for the player today (the timed events' test, one
-function for both, TD-12 the original's day); its resources (the gains, then the losses floored
-at 0, each told), `TownEventFired { player, town, event }`; its buildings by
-`h3_towns::event_buildings` (the spot's water) built without the hall's tests and without the mark
-(T-8's second Capitol stands), each told as `TownBuilt { event: Some(place) }` with the views
-(`Told`); its creatures not placed (`TWN-STUB-10`, increment 3); day 1's events inside the build
-without a sink and `GameState::town_events_at_start(player)`; the plans' `check_towns` and
-`check_rewards` taught the events' builds and gains; the server lane's fold gate (`h3-protocol`'s
-`tests/game_fold.rs`) folds the told views since its #816, so the events' builds are folded there
-too. **At its start:** confirm the cut.
+**E09 T19 — the writer's events, fixtures, replays, properties, benchmarks, the env, the census**
+(design §32; queued 2026-11-10 by T18c; `cross-lane`: the fixtures, replays, plans and benchmarks
+are the adventure lane's paths, the env and its encoding the AI lane's): the writer's town events
+(`h3-map` `src/writer/town*`: today `0` written); `e09-towns-36.h3m` with a Castle town by water
+and one not, a Conflux town, the town events (a day-1 build, a weekly and an every-day gold, a
+creature event, a Capitol event in a player's second town: T-8) and a custom set forbidding a
+requirement; the golden replays (a week of builds, the Capitol refused, a capture of a town built
+in today, the events' day-1 build and gold; random play with builds); the plans' step `Build`
+and, moved here from T18c (decision 57), `check_towns` and `check_rewards` taught the events'
+builds and gains (and the hygiene and told-views properties with them); the benchmarks
+(`legal_commands` on the town map, the day's marks, a turn start with the fixture's events); the
+env's build entry (the AI lane's encoding version), the rollout's skip dropped (decision 56); the
+census with the original data (the shipped events fired, built, skipped, against survey §10).
+**At its start:** confirm the cut (likely in parts, as T18b).
 **Status:** next.
 
 ## Inbox

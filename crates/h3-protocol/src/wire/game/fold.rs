@@ -260,6 +260,9 @@ impl GameObservation {
             // What a building changes in its town's view comes as the owner's `TownChanged`
             // after it; its price came as `ResourcePaid`.
             GameEvent::TownBuilt { .. } => {}
+            // A town event's message is the client's; what it gave came as `ResourceGained` and
+            // `ResourceLost` before it, what it built as `TownBuilt` and `TownChanged` after it.
+            GameEvent::TownEventFired { .. } => {}
         }
     }
 

@@ -652,6 +652,15 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             building: BuildingId::from_index(usize::from(building)).unwrap(),
             event,
         },
+        G::TownEventFired {
+            player,
+            town,
+            event,
+        } => GameEvent::TownEventFired {
+            player: PlayerId::new(player),
+            town: TownId::new(town),
+            event,
+        },
     }
 }
 
@@ -915,6 +924,11 @@ fn every_event() -> Vec<GameEvent> {
             building: BuildingId::from_index(63).unwrap(),
             event: Some(4),
         },
+        GameEvent::TownEventFired {
+            player: P0,
+            town: TownId::new(1),
+            event: 4,
+        },
     ];
     events.extend(
         [
@@ -1132,8 +1146,8 @@ fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 35 kinds of event (the adventure's as one).
-    assert_eq!(distinct.len(), 35, "{distinct:?}");
+    // The game's 36 kinds of event (the adventure's as one).
+    assert_eq!(distinct.len(), 36, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
