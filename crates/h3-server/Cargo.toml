@@ -30,6 +30,9 @@ h3-sim.workspace = true
 # The packs, scenarios and replay files (moved from `h3-cli`, 2026-11-09).
 h3-files.workspace = true
 h3-protocol.workspace = true
+# An adventure replay run through the whole game's session as records (E16 M5 T6).
+h3-game.workspace = true
+h3-map.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true

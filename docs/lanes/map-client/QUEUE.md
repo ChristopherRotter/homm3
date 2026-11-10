@@ -112,6 +112,23 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-10 (the server lane, E16 M5 T6, branch `claude/vigilant-brown-m2nolc`; **for M4 T3
+  and T4: the whole game's record is there**): `h3-server record [--packs-dir packs] [--root .]
+  [--out .] [--game 0] <replay.toml>...`, run from the repository's root, runs an adventure replay
+  through the in-process game session (`h3_protocol::session::game`; checked to its checkpoints
+  and final hash) and writes each player's record to `<out>/<stem>.player-<k>.jsonl`
+  (`h3_server::record`). The form (record format v4): JSON lines; the first a
+  `wire::game::GameRecordHeader { format, game, player, manifest, first }` (the manifest's `map`
+  names the map by its file's content hash, `h3_sim::adventure::replay::map_content_hash`, and
+  import version, not by its path: draw it from the client's own copy when both match; its key
+  tables give each handle's content key), then one `wire::ServerMessage` per line numbered `n`
+  from `first` (1): `GameSnapshot { observation }` first, then after each command
+  `GameAccepted` (the player's own), `GameEvents { events }` (every player, also empty), a
+  battle's own `Snapshot` when one opens for the player (its events inside `GameEvents`) and
+  `GameTurn` while it may act. `wire::game::GameObservation::fold` keeps the view from the
+  events; what it cannot fold yet is stubbed (`SRV-STUB-1` the tiles a reveal shows, `-2` to
+  `-11`, `-14` a battle's last snapshot; the fold's gate, `h3-protocol`'s
+  `tests/game_fold.rs`). The 55 golden replays make 26 MB of records, the largest 1.4 MB.
 - 2026-11-10 (the client lane, E17 M6 T7b, branch `client/e17-m6-t7b`; for you to take or
   leave): `clients/crates/h3-map-view/tests/purity.rs` has two more holes (its reviewer's R11-3),
   besides the two of T6a's entry below: `dependencies` reads only the `[dependencies]` table, so

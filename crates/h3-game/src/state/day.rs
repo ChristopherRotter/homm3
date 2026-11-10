@@ -185,11 +185,15 @@ impl GameState {
     /// sum at 0 in resource order; the gains first, then the losses, end in the same treasury.
     // rule: GAM-CAL-004
     pub(super) fn fire_events<S: Sink>(&mut self, player: PlayerId, sink: &mut S) {
-        let Some(events) = self.events.clone() else {
+        let Some(calendar) = self.calendar.clone() else {
             return;
         };
         let (human, day) = (self.players[player.index()].human, self.day);
-        for event in events.iter().filter(|e| e.fires(player, human, day)) {
+        for event in calendar
+            .events
+            .iter()
+            .filter(|e| e.fires(player, human, day))
+        {
             let changes = |gain: bool| -> Vec<(ResourceId, u32)> {
                 event
                     .resources

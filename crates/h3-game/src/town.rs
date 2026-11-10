@@ -12,7 +12,8 @@
 //! tells each viewer what it sees of the towns ([`view`]); since E09 T18b1 it runs the town
 //! context's commands ([`command`]: the build) and the towns' day ([`day`]); since E09 T18b2a
 //! it tells each viewer the views a change made ([`view::Told`]); since E09 T18b2b it gives the
-//! hall's offer and the legal builds ([`offer`]).
+//! hall's offer and the legal builds ([`offer`]); since E09 T18c it fires the town events at a
+//! player's turn start ([`events`]).
 
 use alloc::vec::Vec;
 
@@ -27,6 +28,7 @@ pub(crate) mod build;
 pub(crate) mod capture;
 pub(crate) mod command;
 pub(crate) mod day;
+pub(crate) mod events;
 pub(crate) mod heroes;
 pub(crate) mod income;
 pub(crate) mod offer;
@@ -38,6 +40,7 @@ pub(crate) use build::{adventure_reveal, build_towns, draw_towns, without_water}
 pub(crate) use capture::{capture, holds_capitol};
 pub(crate) use command::command;
 pub(crate) use day::start_day;
+pub(crate) use events::fire_events;
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use income::add_income;
 pub(crate) use offer::legal_builds;

@@ -178,6 +178,39 @@ impl TimedEventSetup {
     /// multiple of it after the first day.
     // rule: GAM-CAL-004
     pub fn fires(&self, player: PlayerId, human: bool, day: u32) -> bool {
+        Timing {
+            players: &self.players,
+            human: self.human,
+            computer: self.computer,
+            first_day: self.first_day,
+            interval: self.interval,
+        }
+        .fires(player, human, day)
+    }
+}
+
+/// When a timed event fires, the map's and a town's alike (GAM-CAL-004; TWN-EVT-001, E09 T18c:
+/// the original's town events take the map's test, survey `E09-construction.md` §8.2, so the day's
+/// rule is written once): its players, its flags by kind, its first day and its interval.
+pub(crate) struct Timing<'a> {
+    /// The players it fires for.
+    pub(crate) players: &'a [PlayerId],
+    /// Whether it fires for a human player.
+    pub(crate) human: bool,
+    /// Whether it fires for a player that is not human.
+    pub(crate) computer: bool,
+    /// The first day it fires, from 1.
+    pub(crate) first_day: u16,
+    /// It fires again every this many days; 0 once.
+    pub(crate) interval: u16,
+}
+
+impl Timing<'_> {
+    /// Whether it fires on `day` at the turn start of `player`, human or not: `player` is one of
+    /// its players, its flag for the player's kind is set, and `day` is its first day or, with an
+    /// interval, a multiple of it after the first day.
+    // rule: GAM-CAL-004, TWN-EVT-001
+    pub(crate) fn fires(&self, player: PlayerId, human: bool, day: u32) -> bool {
         let first = u32::from(self.first_day);
         // An interval of 0 makes only the first day a multiple (`is_multiple_of(0)` is `== 0`).
         (if human { self.human } else { self.computer })
