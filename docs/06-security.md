@@ -164,10 +164,11 @@ it with builds.
   (increment 4 places its view as a Shipyard's boat tile, the owner's team).
 - **Events:** a build and a town event's buildings (`TownBuilt`) and a town event's firing
   (`TownEventFired`) to the owner alone, its resources in the owner's `ResourceGained` and
-  `ResourceLost`; a change of the town's public facts (fort, Capitol, built today; `TownChanged`)
-  to the players that see the town, its top level's facts (hall, income) only to the viewers at
-  that level. A new Tavern raises its owner's view level of every other town, told by its
-  `TownBuilt`.
+  `ResourceLost`; every change of a viewer's view of a town it sees (a build's, a capture's, a
+  siege's garrison, the day's start's marks, a new Tavern's raised levels) told to that viewer
+  alone as its whole view (`TownChanged`, then the stacks its level shows and its top level's
+  income lines; E09 T18b2a, SRV-Q26), so a viewer learns what its own view shows and nothing of
+  another viewer's level. A change of Visions' reach is not told yet (`TWN-STUB-13`).
 
 ## Denial of service and resource limits
 
