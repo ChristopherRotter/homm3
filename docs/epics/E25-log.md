@@ -1618,3 +1618,155 @@ an entry only where a task builds on it.
   short continuation from #2, then the learning rate and the epochs; T32 the architectures by
   their clone's ladder, `hexconv` 96 × 6 the control; T34 a distillation of #2 and the search at
   play on the hero battles; the outcome's weight a question for T35.
+
+## T31 — The update's speed (2026-11-10)
+
+- **The suspects** (the code, before any profile): the trainer runs cuDNN without its autotuner
+  (`torch.backends.cudnn.benchmark` off), while the benches turn it on (`distill.bench_device`):
+  T27's 683 µs a sample-pass of `hexconv` 96 × 6 was the bench's (minibatch 512), T28's updates
+  of about 100 s over about 25 700 rows and 4 epochs are about 970 µs. And the hex trunk's
+  convolutions get channels-last tensors: the drawing's grid is a transposed view
+  (`HexConv.trunk`) and each `CellNorm`'s permutes keep that layout, so cuDNN runs on NHWC
+  tensors (`tests/test_speed.py` checks the layouts).
+- **The tool** (`h3env.train.speed`, tests `tests/test_speed.py`): the config's trainer plays one
+  rollout (the imitation loss's labels with it), then each variant updates from the same weights,
+  optimizer state and counters (`VARIANTS`: the autotuner, the trunk in NCHW, `accumulate`,
+  `chunk_align`, combinations; the baseline first, again last for the card's drift), twice, over
+  one epoch: the seconds (the first a warm-up: the autotuner's search for the update's chunk
+  shapes, the allocator's growth), µs a sample-pass, the peak memory, the losses and the weights
+  against the baseline's (and the baseline's repeat against it: cuDNN is not deterministic);
+  then the baseline's phases timed with the device synchronised around each, and torch's
+  profiler over one optimizer step. A CPU smoke (16 envs, 32 calls, 501 rows): the losses equal
+  in every variant, the weights within 7e-7.
+- **The cap's index** (the user's first run): `gpu.cap` handed torch's
+  `set_per_process_memory_fraction` a plain `cuda` device (what `ppo.device_of` gives for `auto`
+  and `cuda`), which torch refuses (`ValueError`: no index): every CUDA entry point since T28
+  stopped there, never run on a card (`tests/test_gpu.py` stubs CUDA). Fixed: the current card's
+  index; the stub now refuses a device without one, as torch's does.
+- **The first run** (the user's GTX 1070, torch 2.14.1+cu126; #2's network, `configs/e25-imitate-
+  structure.toml`; the rollout 12.0 s; 32 575 rows an epoch, a fresh trainer's self-play; each
+  update one epoch, twice; `python -m h3env.train.speed --config configs/e25-imitate-structure.toml
+  --init-from runs/e25-structure-1/best.pt --device cuda --trace`):
+
+  | Variant | Chunks' rows | Seconds | µs a sample-pass | Against the baseline | Peak MB |
+  |---|---|---|---:|---:|---:|
+  | baseline (`accumulate` 8) | 508, 509 | 29.56, 28.92 | 888 | 1.000 | 3 189 |
+  | autotune | 508, 509 | 31.15, 31.48 | 967 | 1.089 | 3 189 |
+  | nchw | 508, 509 | 31.53, 31.45 | 966 | 1.087 | 3 144 |
+  | nchw + autotune | 508, 509 | 31.46, 30.60 | 939 | 1.058 | 3 144 |
+  | autotune, `accumulate` 4 | 1 017, 1 018 | 61.66, 22.56 | 692 | 0.780 | 5 448 |
+  | nchw + autotune, `accumulate` 4 | 1 017, 1 018 | 24.49, 22.51 | 691 | 0.778 | 5 358 |
+
+  The losses agree to about 0.5 % (the policy loss 0.1734 to 0.1743, the imitation 3.115 to
+  3.118), the weights within 0.0013 of the baseline's, which an update moved by 0.002 at most
+  (Adam's steps on near-zero gradients; cuDNN's FFT kernels are not deterministic). The
+  baseline's phases (synchronised, 29.38 s): **the backward pass 0.665, the trunk's forward
+  0.277**, the rest of the encoding 0.022, the gather 0.009, the entry head and the value 0.009,
+  PPO's heads 0.006, the teacher's 0.005, the clipping and the step 0.001, the rest 0.007. The
+  profiler (one step, 8 chunks, 3.49 s of the device): the convolutions' backward 45 % (cuDNN's
+  `maxwell_gcgemm_32x32` 19 %, FFT tiles of 32 × 32 over the 11 × 22 grid 17 %, `flip_filter`
+  3 %), their forward 14 % (Winograd 10 %), cuDNN's own NHWC ↔ NCHW conversions 8 %, the
+  LayerNorms 16 % forward and backward, the element-wise products and sums the rest.
+- **Its read:** neither the autotuner nor the layout pays at the run's chunks (the later variants
+  0.94 to 1.09, the card warming up over the minutes); **twice the chunks' rows pays 0.78**, the
+  bench's speed (T27's 683 µs at 512 rows with the autotuner): the chunks' size, or their
+  shapes (508 and 509 against the bench's 512), not the autotuner itself. The first big-chunk
+  variant's 39 s warm-up is mostly the allocator's growth from 3.2 to 5.4 GB (the next one's
+  search for the same rows in NCHW took 2 s). Not separated yet: the size alone, without the
+  autotuner, and an aligned shape at today's size. So `[ppo] chunk_align` (each chunk padded to
+  a multiple of rows by repeating its first, the pad in no loss; 0 the default; test
+  `test_a_padded_update_steps_as_the_unpadded_one_does`) and a second run.
+- **The second run** (the same machine and settings, `--no-phases`; the rollout 11.5 s):
+
+  | Variant | Chunks' rows | Seconds | µs a sample-pass | Against the baseline | Peak MB |
+  |---|---|---|---:|---:|---:|
+  | baseline (`accumulate` 8) | 508, 509 | 30.55, 30.22 | 928 | 1.000 | 3 189 |
+  | `accumulate` 4 | 1 017, 1 018 | 28.36, 26.79 | 822 | 0.887 | 5 453 |
+  | autotune, `accumulate` 4 | 1 017, 1 018 | 25.74, 25.29 | 776 | 0.837 | 5 285 |
+  | `accumulate` 5 | 814, 815 | 31.46, 32.29 | 991 | 1.069 | 5 040 |
+  | `chunk_align` 32 | 512 | 30.00, 28.63 | 879 | 0.948 | 3 190 |
+  | autotune, `chunk_align` 32 | 512 | 29.36, 30.74 | 944 | 1.017 | 3 190 |
+  | autotune, `accumulate` 4, `chunk_align` 32 | 1 024 | 43.40, 22.36 | **686** | **0.740** | 5 480 |
+  | baseline again | 508, 509 | 31.55, 31.53 | 968 | 1.044 | 3 172 |
+
+  The baseline's repeat lies 0.00106 from its first update (cuDNN's nondeterminism), the
+  variants 0.0009 to 0.0013: rounding's; the losses within 0.5 %.
+- **Its read:** the card drifts +4 % over the minutes, and the same variant measures 692 in one
+  run and 776 in the next (the autotuner times the kernels it picks): about 10 % is noise. The
+  cost is the chunk's **shape**, not its size: 814 rows cost more than 508, 1 017 less, exactly
+  1 024 with the autotuner least (0.74, the bench's 683 µs; its search 21 s, once per shape),
+  while 512 gains nothing either way. A run's chunks are not the tool's: with the league's
+  members a run trains about 25 700 rows an update (T28), about 800 a chunk at `accumulate` 4,
+  so the chunking that pays is chosen on the cost by rows. Hence `--sweep`: one chunk's pass
+  (`Trainer._loss`, the update's own; `Trainer.samples_of` its arrays, split out of `update`) at
+  each of a list of rows, the autotuner off and on.
+- **The sweep** (the same machine; `--variants baseline --repeats 1 --no-phases --sweep
+  256,…,1280`; the baseline's update 885 µs a sample-pass): one chunk's pass, µs a row by cuDNN's
+  heuristics (the plain pass, first at each size):
+
+  | Rows | 256 | 384 | 448 | 512 | 576 | 640 | 768 | 800 | 832 | 896 | 960 | 1 024 | 1 056 | 1 088 | 1 152 | 1 280 |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | µs a row | 894 | 896 | 886 | 841 | 957 | 952 | 1 172 | 829 | 811 | 938 | 879 | 765 | **671** | **671** | 737 | out of memory |
+  | Peak MB | 1 609 | 2 382 | 2 775 | 3 180 | 3 559 | 3 953 | 4 737 | 4 300 | 4 467 | 5 520 | 5 139 | 5 292 | 5 227 | 5 386 | 5 431 | |
+
+  256 again at the end: 933 (the drift). **The autotuner's column was void:** its warm-up 0.00 s at
+  every size, the same µs as the plain pass. cuDNN caches a convolution's kernels by its shapes
+  and flags, not by the autotuner's, so the autotuned pass after the plain one reused the plain
+  one's kernels, its search never ran. The same explains the variants: the autotuner acted only
+  where its shape was new (1 017 and 1 018 rows in the first run, 692 µs against the
+  heuristics' 822 in the second; 1 024 in the second, 686 against the sweep's 765): **it pays 10
+  to 16 % there**, the "autotune" rows at the baseline's shapes reused the baseline's kernels.
+  The tool now gives each mode its own cache entries (`speed.cudnn_mode`: the plain passes with
+  TF32 off, which is in the key and changes nothing on a card before Ampere) and the sweep runs
+  the autotuner first at each size.
+- **Its read:** the heuristics' cost by rows is not monotonic; a run's chunks today (about 3 200
+  rows a minibatch over 8: about 400) cost about 890 µs, `accumulate` 3 with `chunk_align` 32
+  (about 1 070 rows, to 1 088) 671: about 0.75 of today's update before the autotuner.
+- **The last sweep** (the autotuner first at each size, `cudnn_mode`; the baseline's update 888
+  µs a sample-pass):
+
+  | Rows | 400 | 512 | 832 | 1 024 | 1 056 | 1 088 | 1 120 | 1 152 | 1 216 | 400 again |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | µs a row, heuristics | 910 | 839 | 964 | 802 | 747 | 747 | 729 | 730 | 786 | 942 |
+  | **with the autotuner** | **684** | **656** | **638** | **615** | **615** | **613** | **614** | 677 | 718 | 688 |
+  | its search s | 0.49 | 0.57 | 0.87 | 18.55 | 19.06 | 19.70 | 20.32 | 24.07 | 25.28 | 0.01 |
+  | Peak MB | 2 491 | 3 180 | 5 133 | 5 475 | 5 647 | 5 819 | 5 994 | 5 711 | 6 020 | 2 480 |
+
+- **The read, the change:** **the autotuner is the lever**: 0.75 of the heuristics' time at a
+  run's chunks today (about 400 rows), 0.66 to 0.82 at every size, its search under a second a
+  shape up to 832 rows and about 20 s from 1 024; larger chunks add a little (about 614 µs from
+  1 024 to 1 120 rows, 638 at 832). So:
+  1. **`[device] cudnn_autotune`** (default on, resumable; `ppo.autotuned` around the update's
+     steps, the flag as it was after; the rollout, the gate and the ladders unchanged, as
+     measured): test `test_the_update_runs_with_cudnns_autotuner_as_its_config_says`.
+  2. **For `hexconv` 96 × 6 on the GTX 1070: `[ppo] accumulate = 4`, `chunk_align = 32`** (a
+     run's about 3 200 rows a minibatch: chunks of about 800, 638 µs, about 0.70 of today's
+     910; the alignment keeps the shapes few, each searched once a segment). Not 3 (1 088 rows,
+     613 µs): a run's start trains every row (no league member yet, about 32 500 rows: chunks of
+     about 1 360), past 1 280 rows, which the cap refused.
+  3. The trunk in NCHW measured no gain: dropped from the tool (the finding above).
+  `Trainer.update` keeps its losses: the autotuner changes kernels only, `chunk_align` is tested
+  against the unpadded update, `accumulate` since T28.
+- **The confirmation** (the code above; `python -m h3env.train.speed --config
+  configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda
+  --no-phases`; the rollout 11.5 s, 32 575 rows an epoch, each update one epoch, twice):
+
+  | Variant | Chunks' rows | Seconds | µs a sample-pass | Against the baseline | Peak MB |
+  |---|---|---|---:|---:|---:|
+  | baseline (the autotuner, `accumulate` 8) | 508, 509 | 26.73, 25.23 | 775 | 1.000 | 3 174 |
+  | heuristics (the update before T31) | 508, 509 | 31.31, 31.20 | 958 | 1.236 | 3 189 |
+  | `accumulate` 4, `chunk_align` 32 | 1 024 | 43.22, 22.54 | 692 | 0.893 | 5 479 |
+  | `accumulate` 5, `chunk_align` 32 | 832 | 21.91, 21.15 | **649** | **0.838** | 5 138 |
+  | baseline again | 508, 509 | 23.54, 23.45 | 720 | 0.930 | 2 557 |
+
+  The baseline's repeat lies 0.00093 from it, the variants 0.0010 to 0.0013; the losses within
+  0.5 %. `accumulate` 5 here gives the chunks `accumulate` 4 gives a run (about 3 200 rows a
+  minibatch), `accumulate` 4 here those of a run's start (every row trains before the league's
+  first member: 1 024 rows, the search's 21 s once).
+- **The acceptance, an update before and after on the user's GPU** (`hexconv` 96 × 6, the
+  GTX 1070; a run's update T28's mean 25 670 rows over 4 epochs): **before T31 958 µs a
+  sample-pass, 98 s an update** (T28 measured about 100); **after it** (the autotuner,
+  `accumulate` 4, `chunk_align` 32) **649 µs, 67 s: 0.68**. A 20 M run like T28's (780
+  updates): about 14 hours of updates instead of 21, about 21 hours in all instead of 28 (its
+  rollouts, gates and ladders unchanged). The autotuner alone, at `accumulate` 8, gives 0.75 to
+  0.81; T33's continuations from #2 run with all three.
