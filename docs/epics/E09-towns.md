@@ -145,6 +145,19 @@ Asked at T13's start, before the drafts were written (T13 kept whole, the user).
     and the benchmarks' builds (T19c) may use either map. Not chosen: the town map extended (eight
     replays re-recorded, the env's seeds searched again, four workloads re-set).
 
+### Decisions at T19b's start (2026-11-10, the user)
+
+60. **T19b whole** (recommended): the plans' towns given events, the step `Build` with runs of
+    builds, `check_timed` and `check_towns` taught the events' gains and builds, the towns' cover
+    test counting them, the hygiene and told-views properties with both, in one session and one
+    `cross-lane` pull request. Not chosen: two parts (the events and their checks; then the step
+    and the views).
+61. **`master`'s counterexample of the plans' gains fixed first** (recommended): the adventure
+    lane's inbox entry of T19a (a guarded Mystical Garden's gain expected before the joining
+    monster's treasure), reproduced on `master`'s strategy and fixed in the same pull request,
+    since T19b's new plan field changes the draws and its seed then replays another case. Not
+    chosen: left to the adventure lane.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Done 2026-11-06 (map import v20; `E09-log.md`).

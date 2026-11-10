@@ -42,18 +42,12 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-10 (the town lane, E09 T19a's sandbox baseline on `master` 3f60bf4; **a property
-  counterexample, the user's word: yours**): `h3-map`'s `every_step_keeps_the_commands_invariants`
-  fails with `cc dfed064bcc98c42f001042b04f9b0cb68ae9ff74a98b3b452ac674871d2f8e53` (append it to
-  `proptest-regressions/tests/play.txt`; it fails in 2 s, the shrunk plan RoE, side 6, four
-  towns). The step: `Answer(Offer(Accept))` of a monster's offer to join for gold (object type
-  #30 on (3, 3): 280 gold paid, four creatures joined, the monster removed and its treasure's 50
-  gold given), then the held visit of the Mystical Garden it guarded (#89 on (4, 2): marked, 500
-  gold). `check_rewards` (`play.rs` near line 4854) puts `visit_gains` (the garden's 500) before
-  the removed monster's treasure (50) and compares with the gains in the events' order: `left:
-  [(#6, 50), (#6, 500)]`, `right: [(#6, 500), (#6, 50)]`. The engine's order (the join, then the
-  visit it held) looks right, so a gap of the check, the family of decision 279's guarded weekly
-  objects. CI draws its own seeds, so it may fail another lane's pull request now and then.
+- 2026-11-10 (the town lane, E09 T19b, `town/e09-t19b`, `cross-lane`; **nothing to do, for your
+  archive**): T19a's counterexample of `every_step_keeps_the_commands_invariants` (`cc dfed064b…`,
+  a guarded Mystical Garden's gain after the joining monster's treasure) is fixed at the user's
+  word (E09 decision 61): `check_conservation` puts a visit's own gains after what the objects
+  that left gave; the seed is kept in `proptest-regressions/tests/play.txt` (T19b's new town
+  field changes the plans' draws, so it replays another case from then on).
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
   session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the

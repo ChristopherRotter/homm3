@@ -4789,7 +4789,11 @@ fn check_conservation(
     } else {
         prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
     }
-    let mut contents = visit_gains(rules, (before, after), command, events);
+    // E09 T19b (`master`'s counterexample of 2026-11-10): a visit's own gains come last, after
+    // what the objects that left gave: a guard's join or battle comes before the visit it held
+    // (E08 decision 279), its treasure before the guarded object's gain.
+    let visit = visit_gains(rules, (before, after), command, events);
+    let mut contents = Vec::new();
     let mut losses = Vec::new();
     for event in events {
         // E08 T64b: a box's record as it leaves, an event's as it fires, in the events' order.
@@ -4832,6 +4836,7 @@ fn check_conservation(
             }
         }
     }
+    contents.extend(visit);
     // E08 T85b: a new day's income comes after its `DayStarted`, apart from the visits' gains,
     // and the turn starts' timed events after the first `TurnStarted` ([`check_timed`]).
     let turn_at = events
