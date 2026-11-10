@@ -911,6 +911,7 @@ mod mines;
 mod monsters;
 mod piles;
 mod records;
+mod revisits;
 mod rewards;
 mod sea;
 mod sea_battles;

@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 60 days on the dwellings map (E08 T96b2 on T96a's map, increment 10's design note §14: the dwellings' flags, guards' questions and battles, hire questions and dialogs, the Refugee Camps, eight week starts a game with the refill and the camps' draws): 3 723 steps, about 823 000 Ir a step, 69 % inside the reachable-tiles search (Reach::search); 16 hire or guards' questions accepted and 4 purchases over the five games (h3 adventure run --seed 1+g --agent-seed g --days 60 replays game g); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply)"
+description = "5 random-vs-random games of 60 days on the dwellings map (E08 T96b2 on T96a's map, increment 10's design note §14: the dwellings' flags, guards' questions and battles, hire questions and dialogs, the Refugee Camps, eight week starts a game with the refill and the camps' draws): 3 723 steps, about 823 000 Ir a step, 69 % inside the reachable-tiles search (Reach::search); 16 hire or guards' questions accepted and 4 purchases over the five games (h3 adventure run --seed 1+g --agent-seed g --days 60 replays game g); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); since E08 T105b2 re-baselined with the revisits in the legal set and the env's action encoding v8 (the random agent draws among them, so the games changed course: heroes on dwellings revisit them in place of moves: fewer reach queries): master's code measured -0.01 % against the old count, the branch -10.61 % against master, the revisit's own code (`revisit_at`, the legal set's chain) under 0.03 %"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 3065623967
+instructions = 2739979543
 threshold_percent = 2

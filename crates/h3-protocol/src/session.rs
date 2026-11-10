@@ -286,18 +286,64 @@ pub enum RestoreError {
     },
 }
 
+/// A viewer's record (E16 M2 T5c; a whole game's players' since M5 T5b, `game`): the latest
+/// numbered messages it was sent, as their frames, the newest last, within a bound of bytes.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Record {
+    /// The frames, those numbered from `n - lines.len() + 1` to `n` (the viewer's last number).
+    lines: VecDeque<String>,
+    /// The bytes of the lines, each with its line break.
+    bytes: usize,
+    /// The most `bytes` may be; the oldest lines go first, the newest stays.
+    limit: usize,
+}
+
+impl Record {
+    /// An empty record that holds at most `limit` bytes.
+    pub(crate) const fn new(limit: usize) -> Self {
+        Self {
+            lines: VecDeque::new(),
+            bytes: 0,
+            limit,
+        }
+    }
+
+    /// Records the frame of the viewer's next message; the oldest lines go while the bound is
+    /// exceeded, the newest stays.
+    pub(crate) fn push(&mut self, frame: String) {
+        self.bytes = self.bytes.saturating_add(frame.len() + 1);
+        self.lines.push_back(frame);
+        while self.bytes > self.limit && self.lines.len() > 1 {
+            let oldest = self.lines.pop_front().unwrap_or_default();
+            self.bytes = self.bytes.saturating_sub(oldest.len() + 1);
+        }
+    }
+
+    /// The number of the first line when the viewer's last message is numbered `n` (one more
+    /// than `n` while the record holds none).
+    pub(crate) fn first(&self, n: u32) -> u32 {
+        let held = u32::try_from(self.lines.len()).unwrap_or(u32::MAX);
+        n.saturating_sub(held).saturating_add(1)
+    }
+
+    /// The record's text: the `header` line, then one line per message it holds.
+    pub(crate) fn text(&self, header: String) -> String {
+        let mut text = header;
+        for line in &self.lines {
+            text.push('\n');
+            text.push_str(line);
+        }
+        text
+    }
+}
+
 /// One viewer: its message numbers and its record.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Viewer {
     /// The number of the last message sent.
     n: u32,
-    /// The latest numbered messages sent, as their frames, the newest last: those numbered from
-    /// `n - record.len() + 1` to `n`.
-    record: VecDeque<String>,
-    /// The bytes of the record's lines, each with its line break (E16 M2 T5c).
-    bytes: usize,
-    /// The most `bytes` may be; the oldest lines go first, the newest stays (E16 M2 T5c).
-    limit: usize,
+    /// The latest numbered messages sent.
+    record: Record,
 }
 
 impl Viewer {
@@ -305,9 +351,7 @@ impl Viewer {
     const fn new(limit: usize) -> Self {
         Self {
             n: 0,
-            record: VecDeque::new(),
-            bytes: 0,
-            limit,
+            record: Record::new(limit),
         }
     }
 
@@ -328,28 +372,17 @@ impl Viewer {
                 close: false,
             });
         }
-        self.bytes = self.bytes.saturating_add(frame.len() + 1);
-        self.record.push_back(frame);
-        while self.bytes > self.limit && self.record.len() > 1 {
-            let oldest = self.record.pop_front().unwrap_or_default();
-            self.bytes = self.bytes.saturating_sub(oldest.len() + 1);
-        }
+        self.record.push(frame);
     }
 
     /// The number of the record's first line (one more than `n` while it holds none).
     fn first(&self) -> u32 {
-        let held = u32::try_from(self.record.len()).unwrap_or(u32::MAX);
-        self.n.saturating_sub(held).saturating_add(1)
+        self.record.first(self.n)
     }
 
     /// Its record: the header line, then one line per numbered message it holds.
     fn record(&self, header: &RecordHeader) -> String {
-        let mut record = codec::encode_text(header);
-        for line in &self.record {
-            record.push('\n');
-            record.push_str(line);
-        }
-        record
+        self.record.text(codec::encode_text(header))
     }
 }
 

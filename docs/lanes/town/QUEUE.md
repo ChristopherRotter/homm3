@@ -35,6 +35,17 @@ too. **At its start:** confirm the cut.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
+  revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
+  (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,
+  no points, no step, no guard test: for a hero standing on its own town's entrance that is
+  `visit_town` with `Visit::Enter` (`town_visit` as it stands), at 0 points too and as often as
+  the player likes. `legal_commands` lists it for every such hero after the `BuildBoat`s (and
+  before a town's builds once T18b2 lists them: `revisitable`'s place is after `buildable_shipyards`
+  in `h3-game`'s `legal.rs`). Whatever a town's visit opens later (its screen, a garrison
+  exchange) opens at a revisit too; nothing moved in your hashes. The replay format is v12
+  (`revisit <hero>`): a town bump of the format is v13.
+
 - 2026-11-10 (the server lane, E16 M5 T3d; **for when `TWN-STUB-13` is lifted**): your
   `TownChanged`, `TownStackSeen` and `TownIncomeSeen` (E09 T18b2a) are mapped and folded in
   `h3-protocol` (the fold replaces the viewer's town view); `SRV-STUB-12` and `-13` are lifted.

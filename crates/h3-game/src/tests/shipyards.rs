@@ -9,7 +9,7 @@ use h3_adventure::{
     ObjectSetup, ObjectTypeId, OfferKind, ShipyardBlock, TileMask, Viewers,
 };
 
-use super::decisions::{ACCEPT, DECLINE, GOLD, after_steps, move_hero, play};
+use super::decisions::{ACCEPT, DECLINE, GOLD, after_steps, move_hero, play, revisit};
 use super::*;
 
 const RED: PlayerId = PlayerId::new(0);
@@ -145,11 +145,11 @@ fn a_shipyard_s_visit_offers_its_boat_which_the_game_builds_for_its_price() {
         let view = observe(&state, &rules, Viewer::Player(player)).adventure;
         assert_eq!(view.boats, [boat]);
     }
-    // The tile taken: no `BuildBoat` listed and the command refused whole; a second visit tells
-    // red why, no offer.
+    // The tile taken: no `BuildBoat` listed (the hero on the Shipyard may visit it again, E08
+    // T105b2) and the command refused whole; a second visit tells red why, no offer.
     assert_eq!(
         legal_commands(&state, &rules, Actor::Player(RED)),
-        [GameCommand::EndTurn]
+        [GameCommand::EndTurn, revisit(0)]
     );
     assert_eq!(
         play(&mut state, &rules, RED, build(ty, anchor)),

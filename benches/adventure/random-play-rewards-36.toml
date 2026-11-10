@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "5 random-vs-random games of 28 days on the rewards map (E08 T64a, increment 7: every reward class, the visits, their decisions and their guards' battles; 1 358 steps, about 862 000 Ir a step, the duel's about 305 000); since E08 T72 -2.22 %, the same games: the static map's tiles grew by the winds' and holes' marks from 14 to 16 bytes, likely copied in fewer instructions; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); E08 T86b2 re-set it at master's count (+1.50 % against T72's count, the same 1 358 steps: the code of increment 9, T83b2a's live reads +0.76 %, T84a's visit arm +0.35 %, T85b's day advance +0.37 %); E08 T103d -4.05 % against master's count (1 163 035 980 in the sandbox): the guard first for every entered object (decision 279) changes the games, 1 287 steps instead of 1 358, every function's share the same (callgrind per function)"
+description = "5 random-vs-random games of 28 days on the rewards map (E08 T64a, increment 7: every reward class, the visits, their decisions and their guards' battles; 1 358 steps, about 862 000 Ir a step, the duel's about 305 000); since E08 T72 -2.22 %, the same games: the static map's tiles grew by the winds' and holes' marks from 14 to 16 bytes, likely copied in fewer instructions; counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); E08 T86b2 re-set it at master's count (+1.50 % against T72's count, the same 1 358 steps: the code of increment 9, T83b2a's live reads +0.76 %, T84a's visit arm +0.35 %, T85b's day advance +0.37 %); E08 T103d -4.05 % against master's count (1 163 035 980 in the sandbox): the guard first for every entered object (decision 279) changes the games, 1 287 steps instead of 1 358, every function's share the same (callgrind per function); since E08 T105b2 re-baselined with the revisits in the legal set and the env's action encoding v8 (the random agent draws among them, so the games changed course: the entered teachers, finds and observatories revisited: fewer reach queries): master's code measured -0.08 % against the old count, the branch -1.59 % against master, the revisit's own code (`revisit_at`, the legal set's chain) under 0.03 %"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*adventure*random_rollout*"
-instructions = 1115925596
+instructions = 1097263238
 threshold_percent = 2

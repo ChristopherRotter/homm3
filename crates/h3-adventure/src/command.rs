@@ -47,6 +47,18 @@ pub enum AdventureCommand {
         /// Its anchor.
         anchor: Pos,
     },
+    /// Visits the entered object under one of the player's heroes again (ADV-TEL-008, E08 T105b2;
+    /// decision 268; the original's space key, survey `E08-teleporters.md` §11): the object whose
+    /// visitable tile the hero stands on, of any kind whose visit is built and that a step enters
+    /// (a teleporter, a Cartographer, an observatory, a Keymaster's tent, a weekly object, a mine,
+    /// a dwelling, a camp, an entered teacher or find, a town), visited as a step's last step onto
+    /// it visits it, with its decisions, events and outcome. No movement points are spent or
+    /// required (a revisit at 0 points), no step is taken (no step event, no reveal of its own) and
+    /// no guard is tested (increment 11's design note §13).
+    Revisit {
+        /// The hero.
+        hero: HeroId,
+    },
 }
 
 /// Why an adventure command was rejected; the state is unchanged. `step` counts a path's steps
@@ -140,6 +152,11 @@ pub enum AdventureCommandError {
     NoBoatTile,
     /// `BuildBoat`'s boat tile holds a boat or a hero (ADV-SHY-003).
     BoatTileTaken,
+    /// `Revisit`'s hero stands on no visitable tile of an entered object whose visit is built
+    /// (ADV-TEL-008, E08 T105b2): a tile without an object, a neighbour-visited object's, a border
+    /// gate the player passes. One error for every case, naming nothing but the player's own tile
+    /// (increment 11's design note §13).
+    NothingToRevisit,
 }
 
 impl fmt::Display for AdventureCommandError {
@@ -170,6 +187,7 @@ impl fmt::Display for AdventureCommandError {
             Self::NotOwner => f.write_str("the Shipyard is neither the player's nor an ally's"),
             Self::NoBoatTile => f.write_str("the Shipyard has no boat tile"),
             Self::BoatTileTaken => f.write_str("a boat or a hero is on the Shipyard's boat tile"),
+            Self::NothingToRevisit => f.write_str("the hero stands on no object to visit again"),
             Self::Coast { step } => {
                 write!(f, "step {step} sails diagonally past the coast")
             }

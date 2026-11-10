@@ -22,14 +22,26 @@
 //!   battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its events are then the battle
 //!   client's, inside `GameEvents`), then every player that may act its `GameTurn`. A rejected
 //!   command changes nothing and is told to its player alone (`GameRejected`).
-//! - **Not here yet:** the journal, the restore and each viewer's record (T5b, record format v4);
-//!   what each viewer newly sees on the tiles it explored (T5c, SRV-Q26; `SRV-STUB-1`); a battle's
-//!   last snapshot when it ends (`SRV-STUB-14`); a hero's moves, which `GameTurn` leaves out as
-//!   `h3_game::legal_commands` does (`h3_game::legal_moves`; a query with part 2's network seats).
+//! - **The journal** (E16 M5 T5b). The accepted commands with their actors and a state hash every
+//!   `checkpoint_every` commands: the adventure replay in progress ([`GameJournal`]; its header,
+//!   map and difficulty are the host's). What a restart must redo comes out as [`GameEntry`]s,
+//!   which the host drains after every call ([`GameSession::drain_entries`]) and makes durable
+//!   before it delivers that call's frames. [`GameSession::restore`] re-runs them: the same game,
+//!   every player then told it afresh as at the start (its numbers and record begin again: they
+//!   are not journaled; a rejection changes nothing and is not journaled either).
+//! - **Records** (E16 M5 T5b, record format v4). Each player's record is the log of every
+//!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]: the
+//!   oldest lines go first): [`GameSession::record`] gives it with its header line
+//!   ([`GameRecordHeader`]: the game's manifest and the player), as a record file holds it.
+//! - **Not here yet:** what each viewer newly sees on the tiles it explored (T5c, SRV-Q26;
+//!   `SRV-STUB-1`); a battle's last snapshot when it ends (`SRV-STUB-14`); a hero's moves, which
+//!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`; a query
+//!   with part 2's network seats); the journal's file and the hosting over the network (part 2).
 //!
-//! Provisional (E16 M5 T5a; the epic's review list): the names, the start as the constructor, the
-//! message order, a `GameTurn` after every accepted command to every player that may act, a
-//! system command told to nobody, a player outside the game told nothing.
+//! Provisional (E16 M5 T5a, T5b; the epic's review list): the names, the start as the constructor,
+//! the message order, a `GameTurn` after every accepted command to every player that may act, a
+//! system command told to nobody, a player outside the game told nothing; the entries, a restore
+//! telling every player its snapshot and turn afresh, the record's header with the game's id.
 
 use alloc::string::String;
 use alloc::vec;
@@ -38,13 +50,16 @@ use alloc::vec::Vec;
 use h3_battle::BattleSide;
 use h3_contracts::PlayerId;
 use h3_game::{
-    Actor, GameRuleset, GameSetup, GameSetupError, GameState, OpenBattle, Viewer as EngineViewer,
+    Actor, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState, OpenBattle,
+    Viewer as EngineViewer,
 };
 
+use super::Record;
+use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::wire::ServerMessage;
-use crate::wire::game::{GameCommand, GameEvent, GameManifest, GameReject};
+use crate::wire::game::{GameCommand, GameEvent, GameManifest, GameRecordHeader, GameReject};
 
 /// A frame for a player: the host delivers it to the player's client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,17 +70,97 @@ pub struct GameOutbound {
     pub frame: String,
 }
 
+/// How the host hosts a game (E16 M5 T5b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct GameOptions {
+    /// The game's id, as its records name it.
+    pub game: u32,
+    /// A state hash after every this many accepted commands (0: none), as an adventure replay's.
+    pub checkpoint_every: u32,
+    /// The most a player's record holds, in bytes of its lines (each with its line break): beyond
+    /// it the oldest go, the newest stays.
+    pub record_bytes: usize,
+}
+
+/// The journal (E16 M5 T5b): the adventure replay in progress but for what the host names (the
+/// header, the map, the difficulty: `h3_sim::adventure::replay::Replay`'s). Private to the host
+/// until the game is over.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameJournal {
+    /// The game's seed.
+    pub seed: u64,
+    /// The accepted commands in order, each with its actor.
+    pub commands: Vec<(Actor, h3_game::GameCommand)>,
+    /// A state hash after every this many commands (0: none).
+    pub checkpoint_every: u32,
+    /// The state hashes after commands `k · checkpoint_every`, k = 1, 2, …
+    pub checkpoints: Vec<u64>,
+}
+
+impl GameJournal {
+    /// Appends an accepted command and, when one is due, the state's hash after it; both as
+    /// entries to `entries` too.
+    fn append(
+        &mut self,
+        actor: Actor,
+        command: h3_game::GameCommand,
+        state: &GameState,
+        entries: &mut Vec<GameEntry>,
+    ) {
+        entries.push(GameEntry::Command(actor, command.clone()));
+        self.commands.push((actor, command));
+        let every = usize::try_from(self.checkpoint_every).unwrap_or(usize::MAX);
+        if self.commands.len().checked_rem(every) == Some(0) {
+            let hash = state.state_hash();
+            self.checkpoints.push(hash);
+            entries.push(GameEntry::Checkpoint(hash));
+        }
+    }
+}
+
+/// One entry of the journal the host keeps durable (E16 M5 T5b), in the order the session made
+/// them: what a restart redoes ([`GameSession::restore`]).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum GameEntry {
+    /// The engine accepted the command from the actor.
+    Command(Actor, h3_game::GameCommand),
+    /// The state's hash after the commands so far, every `checkpoint_every` commands.
+    Checkpoint(u64),
+}
+
+/// Why a journal does not restore its game.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GameRestoreError {
+    /// The setup starts no game.
+    Setup(GameSetupError),
+    /// The engine rejected the command of entry `at`.
+    Rejected {
+        /// The entry's index.
+        at: usize,
+        /// Why.
+        error: GameCommandError,
+    },
+    /// From entry `at` on, the journal is not what its re-run makes: a checkpoint's hash differs,
+    /// or a checkpoint is extra, out of place, or missing before the journal's end.
+    Diverged {
+        /// The entry's index.
+        at: usize,
+    },
+}
+
 /// One viewer of the game: a player.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Viewer {
     /// The number of the last message sent.
     n: u32,
     /// Whether its view holds a battle: one whose snapshot it was sent, its end not told since.
     battle: bool,
+    /// The latest numbered messages sent (E16 M5 T5b).
+    record: Record,
 }
 
 impl Viewer {
-    /// Sends the viewer `to` its next numbered message.
+    /// Sends the viewer `to` its next numbered message and records it.
     fn post(
         &mut self,
         to: PlayerId,
@@ -73,27 +168,34 @@ impl Viewer {
         out: &mut Vec<GameOutbound>,
     ) {
         self.n = self.n.saturating_add(1);
-        out.push(GameOutbound {
-            to,
-            frame: codec::encode_text(&message(self.n)),
-        });
+        let frame = codec::encode_text(&message(self.n));
+        self.record.push(frame.clone());
+        out.push(GameOutbound { to, frame });
     }
 }
 
-/// One whole game hosted in-process: its state, its manifest and its players as viewers.
+/// One whole game hosted in-process: its state, its manifest, its journal and its players as
+/// viewers.
 #[derive(Debug)]
 pub struct GameSession<'r> {
     rules: &'r GameRuleset,
     state: GameState,
     manifest: GameManifest,
+    /// The game's id.
+    game: u32,
+    /// The replay in progress.
+    journal: GameJournal,
+    /// The entries the host has not drained yet.
+    entries: Vec<GameEntry>,
     /// By player index.
     viewers: Vec<Viewer>,
 }
 
 impl<'r> GameSession<'r> {
     /// Starts the game of `setup` with `seed` under `rules` (`h3_game::GameState::new`), made of
-    /// what `manifest` names (the caller's: [`crate::map::game::manifest`]): every player gets its
-    /// `GameSnapshot`, then each that may act its `GameTurn`.
+    /// what `manifest` names (the caller's: [`crate::map::game::manifest`]) and hosted as
+    /// `options` say: every player gets its `GameSnapshot`, then each that may act its
+    /// `GameTurn`.
     ///
     /// # Errors
     ///
@@ -103,18 +205,108 @@ impl<'r> GameSession<'r> {
         setup: &GameSetup,
         seed: u64,
         manifest: GameManifest,
+        options: GameOptions,
         out: &mut Vec<GameOutbound>,
     ) -> Result<Self, GameSetupError> {
+        let mut session = Self::new(rules, setup, seed, manifest, options)?;
+        session.open(out);
+        Ok(session)
+    }
+
+    /// Restores a game from its journal's `entries` after a restart (E16 M5 T5b): builds the game
+    /// as [`GameSession::start`] does, re-runs the entries' commands through the engine, each as
+    /// its actor's, then tells every player the restored game afresh as `start` does (its
+    /// numbers and record begin again). The re-run makes its own entries, which the journal must
+    /// begin: a checkpoint whose hash differs, or one out of place, is a divergence. The first
+    /// drained entries then are what the journal lacks: the checkpoint after its last command if
+    /// a crash cut the journal between the two.
+    ///
+    /// # Errors
+    ///
+    /// Why the journal does not restore its game; nothing was sent then.
+    pub fn restore(
+        rules: &'r GameRuleset,
+        setup: &GameSetup,
+        seed: u64,
+        manifest: GameManifest,
+        options: GameOptions,
+        entries: &[GameEntry],
+        out: &mut Vec<GameOutbound>,
+    ) -> Result<Self, GameRestoreError> {
+        let mut session =
+            Self::new(rules, setup, seed, manifest, options).map_err(GameRestoreError::Setup)?;
+        let mut events = Vec::new();
+        for (at, entry) in entries.iter().enumerate() {
+            match entry {
+                GameEntry::Command(actor, command) => {
+                    events.clear();
+                    h3_game::apply(
+                        &mut session.state,
+                        rules,
+                        *actor,
+                        command.clone(),
+                        &mut events,
+                    )
+                    .map_err(|error| GameRestoreError::Rejected { at, error })?;
+                    session.journal.append(
+                        *actor,
+                        command.clone(),
+                        &session.state,
+                        &mut session.entries,
+                    );
+                }
+                // The re-run's own follows its command; the two are compared below.
+                GameEntry::Checkpoint(_) => {}
+            }
+        }
+        if !session.entries.starts_with(entries) {
+            let same = entries.iter().zip(&session.entries);
+            let at = same
+                .take_while(|(recorded, rerun)| recorded == rerun)
+                .count();
+            return Err(GameRestoreError::Diverged { at });
+        }
+        session.entries.drain(..entries.len());
+        session.open(out);
+        Ok(session)
+    }
+
+    /// The game of `setup`, nothing told yet.
+    fn new(
+        rules: &'r GameRuleset,
+        setup: &GameSetup,
+        seed: u64,
+        manifest: GameManifest,
+        options: GameOptions,
+    ) -> Result<Self, GameSetupError> {
         let state = GameState::new(rules, setup, seed)?;
-        let mut session = Self {
+        let viewer = Viewer {
+            n: 0,
+            battle: false,
+            record: Record::new(options.record_bytes),
+        };
+        Ok(Self {
             rules,
-            viewers: vec![Viewer::default(); state.players()],
+            viewers: vec![viewer; state.players()],
             state,
             manifest,
-        };
-        for (player, viewer) in players().zip(&mut session.viewers) {
+            game: options.game,
+            journal: GameJournal {
+                seed,
+                commands: Vec::new(),
+                checkpoint_every: options.checkpoint_every,
+                checkpoints: Vec::new(),
+            },
+            entries: Vec::new(),
+        })
+    }
+
+    /// Every player gets its `GameSnapshot` of the game as it stands, then each that may act its
+    /// `GameTurn`.
+    fn open(&mut self, out: &mut Vec<GameOutbound>) {
+        for (player, viewer) in players().zip(&mut self.viewers) {
             let observation =
-                map::game::observe(&session.state, rules, EngineViewer::Player(player));
+                map::game::observe(&self.state, self.rules, EngineViewer::Player(player));
             viewer.battle = observation.battle.is_some();
             viewer.post(
                 player,
@@ -122,8 +314,7 @@ impl<'r> GameSession<'r> {
                 out,
             );
         }
-        session.turns(out);
-        Ok(session)
+        self.turns(out);
     }
 
     /// `player`'s command `command`, which the host vouches came from it, numbered `seq` by its
@@ -189,7 +380,7 @@ impl<'r> GameSession<'r> {
             .collect()
     }
 
-    /// The game's state (the host's: the journal, the hashes).
+    /// The game's state (the host's: the hashes, the end).
     pub const fn state(&self) -> &GameState {
         &self.state
     }
@@ -199,8 +390,34 @@ impl<'r> GameSession<'r> {
         &self.manifest
     }
 
-    /// `command` of `actor` mapped to the engine's and applied: the command as applied, on the
-    /// wire, and its events.
+    /// The replay in progress (E16 M5 T5b): the host renders it as the adventure replay.
+    pub const fn journal(&self) -> &GameJournal {
+        &self.journal
+    }
+
+    /// The entries made since the last drain, in order (E16 M5 T5b): the host makes them durable
+    /// before it delivers the frames of the call that made them.
+    pub fn drain_entries(&mut self) -> vec::Drain<'_, GameEntry> {
+        self.entries.drain(..)
+    }
+
+    /// `player`'s record (E16 M5 T5b, record format v4): its header line ([`GameRecordHeader`]),
+    /// then one line per numbered message it holds, the oldest first; `None` for a player outside
+    /// the game.
+    pub fn record(&self, player: PlayerId) -> Option<String> {
+        let viewer = self.viewers.get(player.index())?;
+        let header = GameRecordHeader {
+            format: RECORD_FORMAT_VERSION,
+            game: self.game,
+            player: player.raw(),
+            manifest: self.manifest.clone(),
+            first: viewer.record.first(viewer.n),
+        };
+        Some(viewer.record.text(codec::encode_text(&header)))
+    }
+
+    /// `command` of `actor` mapped to the engine's, applied and journaled: the command as
+    /// applied, on the wire, and its events.
     fn apply(
         &mut self,
         actor: Actor,
@@ -209,8 +426,16 @@ impl<'r> GameSession<'r> {
         let command = map::game::command_to_engine(command)?;
         let echo = map::game::command(&command);
         let mut events = Vec::new();
-        h3_game::apply(&mut self.state, self.rules, actor, command, &mut events)
-            .map_err(map::game::reject)?;
+        h3_game::apply(
+            &mut self.state,
+            self.rules,
+            actor,
+            command.clone(),
+            &mut events,
+        )
+        .map_err(map::game::reject)?;
+        self.journal
+            .append(actor, command, &self.state, &mut self.entries);
         Ok((echo, events))
     }
 

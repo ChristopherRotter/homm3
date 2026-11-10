@@ -53,6 +53,7 @@ fn every_command() -> Vec<GameCommand> {
             object_type: Handle::from_raw(12),
             anchor: at,
         }),
+        GameCommand::Adventure(AdventureCommand::Revisit { hero }),
         GameCommand::Battle(h3_battle::Command::Wait),
         GameCommand::Battle(h3_battle::Command::Move { to: Hex(17) }),
     ];
@@ -178,6 +179,7 @@ fn every_rejection() -> Vec<GameCommandError> {
                     A::NotOwner,
                     A::NoBoatTile,
                     A::BoatTileTaken,
+                    A::NothingToRevisit,
                 ])
                 .map(E::Adventure),
         );
@@ -315,6 +317,7 @@ fn adventure_back(error: w::AdventureReject) -> AdventureCommandError {
         R::NotOwner {} => A::NotOwner,
         R::NoBoatTile {} => A::NoBoatTile,
         R::BoatTileTaken {} => A::BoatTileTaken,
+        R::NothingToRevisit {} => A::NothingToRevisit,
     }
 }
 
@@ -446,9 +449,10 @@ fn a_building_beyond_every_record_is_refused_before_the_engine() {
 #[test]
 fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
-    // 15 of the game's own, 31 of the battle's, 21 of the adventure's, 10 of the army's, 6 of
-    // an artifact's move, 3 of a combination's, 4 of a hire's, 10 of a town's.
-    assert_eq!(errors.len(), 100);
+    // 15 of the game's own, 31 of the battle's, 22 of the adventure's (E08 T105b2:
+    // `NothingToRevisit`), 10 of the army's, 6 of an artifact's move, 3 of a combination's, 4 of a
+    // hire's, 10 of a town's.
+    assert_eq!(errors.len(), 101);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

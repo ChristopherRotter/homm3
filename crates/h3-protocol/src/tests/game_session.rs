@@ -1,8 +1,11 @@
-//! The whole game's session (E16 M5 T5a): the golden adventure replays run through it, each
+//! The whole game's session (E16 M5 T5a, T5b): the golden adventure replays run through it, each
 //! command applied as its actor's, each player's messages checked against an engine run beside
 //! it (the order, the numbers, the events, the battles' snapshots, the turns); a rejected command
-//! changes nothing and is told to its player alone.
+//! changes nothing and is told to its player alone. The journal is the replay's commands and
+//! checkpoints, its entries restore the game at any point, a journal that is not its re-run
+//! restores nothing; each player's record is its header and every frame it was sent.
 
+use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
@@ -11,10 +14,13 @@ use h3_game::{Actor, GameRuleset, GameSetup, GameState, Viewer, apply, legal_com
 
 use super::game::RULES;
 use super::game_fold::golden;
+use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::map::game::{command, events, manifest, observe};
-use crate::session::game::{GameOutbound, GameSession};
+use crate::session::game::{
+    GameEntry, GameJournal, GameOptions, GameOutbound, GameRestoreError, GameSession,
+};
 use crate::wire::game::*;
 use crate::wire::{ServerMessage, WireU64};
 
@@ -23,6 +29,72 @@ const MAP: MapIdentity = MapIdentity {
     content_hash: WireU64(7),
     import_version: 1,
 };
+
+/// The options of a test's game: every record unbounded.
+const fn options(checkpoint_every: u32) -> GameOptions {
+    GameOptions {
+        game: 9,
+        checkpoint_every,
+        record_bytes: usize::MAX,
+    }
+}
+
+/// Each player's frames in `out`, in order, appended to `frames`.
+fn frames(out: &[GameOutbound], frames: &mut [Vec<String>]) {
+    for o in out {
+        frames[o.to.index()].push(o.frame.clone());
+    }
+}
+
+/// The record of a game's `player` that holds `lines` from number `first` on.
+fn record(session: &GameSession<'_>, player: PlayerId, first: u32, lines: &[String]) -> String {
+    let header = GameRecordHeader {
+        format: RECORD_FORMAT_VERSION,
+        game: 9,
+        player: player.raw(),
+        manifest: session.manifest().clone(),
+        first,
+    };
+    let mut record = codec::encode_text(&header);
+    for line in lines {
+        record.push('\n');
+        record.push_str(line);
+    }
+    record
+}
+
+/// Checks what a game's start or restore told each player in `out` against the engine's state
+/// `state`: its snapshot, then its turn if it may act. Returns each player's last number and
+/// whether its view holds a battle.
+fn opened(
+    out: &[GameOutbound],
+    state: &GameState,
+    rules: &GameRuleset,
+    name: &str,
+) -> (Vec<u32>, Vec<bool>) {
+    let players = state.players();
+    let (mut next, mut battle) = (vec![0u32; players], vec![false; players]);
+    for (index, messages) in told(out, players).into_iter().enumerate() {
+        let player = PlayerId::new(u8::try_from(index).unwrap());
+        let observation = observe(state, rules, Viewer::Player(player));
+        battle[index] = observation.battle.is_some();
+        assert_eq!(
+            messages[0],
+            ServerMessage::GameSnapshot { n: 1, observation }
+        );
+        let rest: Vec<ServerMessage> = messages[1..].to_vec();
+        let expected = turn(state, rules, player).map(|(legal, castable)| {
+            vec![ServerMessage::GameTurn {
+                n: 2,
+                legal,
+                castable,
+            }]
+        });
+        assert_eq!(rest, expected.unwrap_or_default(), "{name}");
+        next[index] = u32::try_from(messages.len()).unwrap();
+    }
+    (next, battle)
+}
 
 /// Each player's messages in `out`, decoded, in order.
 fn told(out: &[GameOutbound], players: usize) -> Vec<Vec<ServerMessage>> {
@@ -75,6 +147,7 @@ struct Seen {
     snapshots: usize,
     turns: usize,
     casts: usize,
+    restores: usize,
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
@@ -162,34 +235,32 @@ fn the_golden_replays_run_through_the_session() {
     let mut seen = Seen::default();
     golden(|name, rules, setup, replay| {
         let mut out = Vec::new();
-        let mut session =
-            GameSession::start(rules, setup, replay.seed, manifest(rules, MAP), &mut out).unwrap();
+        let options = options(replay.checkpoint_every);
+        let mut session = GameSession::start(
+            rules,
+            setup,
+            replay.seed,
+            manifest(rules, MAP),
+            options,
+            &mut out,
+        )
+        .unwrap();
         assert_eq!(*session.manifest(), manifest(rules, MAP));
         let mut shadow = GameState::new(rules, setup, replay.seed).unwrap();
         let players = shadow.players();
         let ids: Vec<PlayerId> = (0..=u8::MAX).take(players).map(PlayerId::new).collect();
-        let mut next = vec![0u32; players];
-        let mut battle = vec![false; players];
+        let mut sent = vec![Vec::new(); players];
+        frames(&out, &mut sent);
         // The start: each player's snapshot, then its turn.
-        for (&player, messages) in ids.iter().zip(told(&out, players)) {
-            let observation = observe(&shadow, rules, Viewer::Player(player));
-            battle[player.index()] = observation.battle.is_some();
-            assert_eq!(
-                messages[0],
-                ServerMessage::GameSnapshot { n: 1, observation }
-            );
-            let rest: Vec<ServerMessage> = messages[1..].to_vec();
-            let expected = turn(&shadow, rules, player).map(|(legal, castable)| {
-                vec![ServerMessage::GameTurn {
-                    n: 2,
-                    legal,
-                    castable,
-                }]
-            });
-            assert_eq!(rest, expected.unwrap_or_default(), "{name}");
-            next[player.index()] = u32::try_from(messages.len()).unwrap();
-        }
+        let (mut next, mut battle) = opened(&out, &shadow, rules, name);
         assert!(session.system_legal().is_empty());
+        assert_eq!(
+            session.drain_entries().count(),
+            0,
+            "a start journals nothing"
+        );
+        let mut entries = Vec::new();
+        let middle = replay.commands.len().div_ceil(2);
         for (seq, (actor, engine)) in replay.commands.iter().enumerate() {
             let seq = u32::try_from(seq).unwrap();
             let wire = command(engine);
@@ -206,6 +277,16 @@ fn the_golden_replays_run_through_the_session() {
             }
             .unwrap();
             assert_eq!(session.state().state_hash(), shadow.state_hash());
+            frames(&out, &mut sent);
+            // The journal's entries: the command, then the checkpoint when one is due.
+            let drained: Vec<GameEntry> = session.drain_entries().collect();
+            let mut expected = vec![GameEntry::Command(*actor, engine.clone())];
+            let done = usize::try_from(seq).unwrap() + 1;
+            if done % usize::try_from(replay.checkpoint_every).unwrap() == 0 {
+                expected.push(GameEntry::Checkpoint(shadow.state_hash()));
+            }
+            assert_eq!(drained, expected, "{name} command {seq}");
+            entries.extend(drained);
             for (&player, messages) in ids.iter().zip(told(&out, players)) {
                 let echo = (*actor == Actor::Player(player)).then_some((seq, &wire));
                 check(
@@ -221,8 +302,49 @@ fn the_golden_replays_run_through_the_session() {
                 );
             }
             seen.commands += 1;
+            // Halfway, the entries so far restore the game as it stands, told afresh.
+            if done == middle {
+                let mut told_again = Vec::new();
+                let restored = GameSession::restore(
+                    rules,
+                    setup,
+                    replay.seed,
+                    manifest(rules, MAP),
+                    options,
+                    &entries,
+                    &mut told_again,
+                )
+                .unwrap();
+                assert_eq!(restored.state().state_hash(), shadow.state_hash(), "{name}");
+                assert_eq!(*restored.journal(), *session.journal(), "{name}");
+                opened(&told_again, &shadow, rules, name);
+                let mut again = vec![Vec::new(); players];
+                frames(&told_again, &mut again);
+                for (&player, lines) in ids.iter().zip(&again) {
+                    let expected = record(&restored, player, 1, lines);
+                    assert_eq!(restored.record(player), Some(expected));
+                }
+                seen.restores += 1;
+            }
         }
         assert_eq!(session.state().state_hash(), replay.final_hash, "{name}");
+        // The journal is the replay's.
+        let journal = GameJournal {
+            seed: replay.seed,
+            commands: replay.commands.clone(),
+            checkpoint_every: replay.checkpoint_every,
+            checkpoints: replay.checkpoints.clone(),
+        };
+        assert_eq!(*session.journal(), journal, "{name}");
+        // Each player's record: its header, then every frame it was sent.
+        for (&player, lines) in ids.iter().zip(&sent) {
+            assert_eq!(
+                session.record(player),
+                Some(record(&session, player, 1, lines))
+            );
+        }
+        let outside = PlayerId::new(u8::try_from(players).unwrap());
+        assert_eq!(session.record(outside), None);
     });
     // Every kind of message was seen.
     assert!(seen.commands > 14_000, "{seen:?}");
@@ -230,6 +352,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.snapshots > 0, "{seen:?}");
     assert!(seen.turns >= seen.commands - seen.system, "{seen:?}");
     assert!(seen.casts > 0, "{seen:?}");
+    assert_eq!(seen.restores, 55, "{seen:?}");
 }
 
 /// A game on a fixture map: its rules and setup.
@@ -244,7 +367,8 @@ fn duel() -> (&'static GameRuleset, GameSetup) {
 fn a_rejected_command_changes_nothing_and_is_told_to_its_player_alone() {
     let (rules, setup) = duel();
     let mut out = Vec::new();
-    let mut session = GameSession::start(rules, &setup, 3, manifest(rules, MAP), &mut out).unwrap();
+    let mut session =
+        GameSession::start(rules, &setup, 3, manifest(rules, MAP), options(0), &mut out).unwrap();
     let players = session.state().players();
     let started = told(&out, players);
     let acting = session.state().turn_group()[0];
@@ -327,10 +451,162 @@ fn a_setup_that_starts_no_game_sends_nothing() {
         ..setup
     };
     let mut out = Vec::new();
-    let started = GameSession::start(rules, &setup, 3, manifest(rules, MAP), &mut out);
+    let started = GameSession::start(rules, &setup, 3, manifest(rules, MAP), options(0), &mut out);
     assert_eq!(
         started.map(|_| ()),
         Err(h3_game::GameSetupError::Difficulty(200))
     );
+    let restored = GameSession::restore(
+        rules,
+        &setup,
+        3,
+        manifest(rules, MAP),
+        options(0),
+        &[],
+        &mut out,
+    );
+    assert_eq!(
+        restored.map(|_| ()),
+        Err(GameRestoreError::Setup(
+            h3_game::GameSetupError::Difficulty(200)
+        ))
+    );
     assert_eq!(out, Vec::<GameOutbound>::new());
+}
+
+/// A duel of `commands` accepted commands, a checkpoint after each: its session and journal.
+fn journaled(
+    rules: &'static GameRuleset,
+    setup: &GameSetup,
+    commands: usize,
+) -> (GameSession<'static>, Vec<GameEntry>) {
+    let mut out = Vec::new();
+    let mut session =
+        GameSession::start(rules, setup, 3, manifest(rules, MAP), options(1), &mut out).unwrap();
+    let mut entries = Vec::new();
+    for seq in 0..commands {
+        let (player, legal) = (0..session.state().players())
+            .map(|p| PlayerId::new(u8::try_from(p).unwrap()))
+            .find_map(|p| {
+                let legal = legal_commands(session.state(), rules, Actor::Player(p));
+                (!legal.is_empty()).then_some((p, legal))
+            })
+            .unwrap();
+        let end = legal
+            .iter()
+            .find(|c| matches!(c, h3_game::GameCommand::EndTurn))
+            .unwrap_or(&legal[0]);
+        let seq = u32::try_from(seq).unwrap();
+        session.play(player, seq, command(end), &mut out).unwrap();
+        entries.extend(session.drain_entries());
+    }
+    (session, entries)
+}
+
+/// The restore of `entries` on the duel: its session, or why not.
+fn restored(
+    rules: &'static GameRuleset,
+    setup: &GameSetup,
+    entries: &[GameEntry],
+) -> Result<GameSession<'static>, GameRestoreError> {
+    GameSession::restore(
+        rules,
+        setup,
+        3,
+        manifest(rules, MAP),
+        options(1),
+        entries,
+        &mut Vec::new(),
+    )
+}
+
+#[test]
+fn a_journal_that_is_not_its_rerun_restores_nothing() {
+    let (rules, setup) = duel();
+    let (session, entries) = journaled(rules, &setup, 6);
+    assert_eq!(entries.len(), 12, "a checkpoint after each command");
+    let back = restored(rules, &setup, &entries).unwrap();
+    assert_eq!(back.state().state_hash(), session.state().state_hash());
+    let restore = |entries: &[GameEntry]| restored(rules, &setup, entries).err();
+    // A flipped hash.
+    let mut flipped = entries.clone();
+    flipped[3] = GameEntry::Checkpoint(1);
+    assert_eq!(
+        restore(&flipped),
+        Some(GameRestoreError::Diverged { at: 3 })
+    );
+    // A checkpoint out of place, or one where none is due.
+    let mut early = entries.clone();
+    early.swap(1, 2);
+    assert_eq!(restore(&early), Some(GameRestoreError::Diverged { at: 1 }));
+    let mut extra = entries.clone();
+    extra.push(GameEntry::Checkpoint(0));
+    assert_eq!(
+        restore(&extra),
+        Some(GameRestoreError::Diverged { at: entries.len() })
+    );
+    // A command the engine refuses: its player's, out of its turn.
+    let GameEntry::Command(Actor::Player(acting), _) = entries[2] else {
+        panic!("{entries:?}");
+    };
+    let waiting = PlayerId::new(u8::from(acting.raw() == 0));
+    let mut wrong = entries.clone();
+    wrong[2] = GameEntry::Command(Actor::Player(waiting), h3_game::GameCommand::EndTurn);
+    assert_eq!(
+        restore(&wrong),
+        Some(GameRestoreError::Rejected {
+            at: 2,
+            error: h3_game::GameCommandError::NotYourTurn(waiting),
+        })
+    );
+}
+
+#[test]
+fn a_journal_cut_short_is_completed() {
+    let (rules, setup) = duel();
+    let (session, entries) = journaled(rules, &setup, 4);
+    // A crash between the last command and its checkpoint: the restore makes the checkpoint.
+    let cut = &entries[..entries.len() - 1];
+    let mut back = restored(rules, &setup, cut).unwrap();
+    assert_eq!(
+        back.drain_entries().collect::<Vec<_>>(),
+        [entries[entries.len() - 1].clone()]
+    );
+    assert_eq!(*back.journal(), *session.journal());
+    // The restored game goes on, journaling on.
+    let mut out = Vec::new();
+    let acting = back.state().turn_group()[0];
+    back.play(acting, 0, GameCommand::EndTurn {}, &mut out)
+        .unwrap();
+    let after: Vec<GameEntry> = back.drain_entries().collect();
+    assert!(matches!(
+        after.as_slice(),
+        [GameEntry::Command(..), GameEntry::Checkpoint(_)]
+    ));
+    assert_eq!(back.journal().commands.len(), 5);
+}
+
+#[test]
+fn a_record_keeps_its_newest_lines_within_its_bound() {
+    let (rules, setup) = duel();
+    let mut out = Vec::new();
+    let bounded = GameOptions {
+        record_bytes: 1,
+        ..options(0)
+    };
+    let mut session =
+        GameSession::start(rules, &setup, 3, manifest(rules, MAP), bounded, &mut out).unwrap();
+    let acting = session.state().turn_group()[0];
+    session
+        .play(acting, 0, GameCommand::EndTurn {}, &mut out)
+        .unwrap();
+    // Each player's record holds its newest frame alone, numbered as its last.
+    let mut sent = vec![Vec::new(); session.state().players()];
+    frames(&out, &mut sent);
+    for (index, lines) in sent.iter().enumerate() {
+        let player = PlayerId::new(u8::try_from(index).unwrap());
+        let last = u32::try_from(lines.len()).unwrap();
+        let expected = record(&session, player, last, &lines[lines.len() - 1..]);
+        assert_eq!(session.record(player), Some(expected));
+    }
 }

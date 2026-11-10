@@ -13926,3 +13926,65 @@ LODs.
 
 **Versions:** game state hash v27. T105b2 next (`Revisit`, the env; replay format v11, action
 encoding v8).
+
+### Increment 11, round 7: T105b2, the revisit and the env (2026-11-10, `adventure/e08-t105b2`)
+
+The second part of T105b's cut (decision 288), whole (decision 289, the user at its start; the
+agent had recommended two parts). Baseline: `master` 737d007 (#811; CI's fingerprint, the setup's
+light gates passed). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the two LODs.
+
+- **The command** (design §13; ADV-TEL-008, decision 268): `AdventureCommand::Revisit { hero }`
+  and `AdventureCommandError::NothingToRevisit`. `state/revisits.rs`: `revisit` (the hero the
+  player's and on the map, else `NotYourHero`; then `revisit_at`: the live tile visitable, the
+  object `visit_at` meets there entered and not passed, else `NothingToRevisit`; then `visit` as a
+  step's last step gives it: no points, no step event, no guard test) and the public
+  `revisitable` (the player's heroes in id order). The game's path is `MoveHero`'s (no price).
+- **The legal set:** `legal_commands` lists a `Revisit` per such hero after the `BuildBoat`s.
+  Four `h3-game` tests listed the hero standing on a Cartographer, a dwelling or a Shipyard: their
+  expectations gained its `Revisit`.
+- **The replay line** `revisit <hero>` in `h3-files`: **adventure replay format v12** (E09 T18b1
+  took v11). The 55 replays re-recorded from their own commands: only the `format` line moved.
+- **The env** (`cross-lane`, `h3-sim`; design §14): **action encoding v8**, `REVISIT_BASE` 22 +
+  the hero slot, `ENTRY_COUNT` 30; tile 0 alone, as the answers' (the design's "the tile head
+  ignored" built as fixed); decoded to the slot's hero's `Revisit` (none for an empty slot),
+  encoded back by the hero's slot. The rollout draws revisits as any listed command.
+- **Measured** against `master`'s worktree (the same sandbox): every random-play game on a map
+  with an entered object changed course, the shape of each profile the same (the reach queries of
+  other games); the revisit's own code (`revisit_at`, the legal set's chain) 0.2 to 0.6 M Ir, under
+  0.03 %. Re-baselined with the reason: duel +4.65 % against `master` (its Cartographers,
+  observatories and tents revisited), dwellings −10.61 % (heroes on dwellings revisit them in place
+  of moves), rewards −1.59 %, economy +0.71 % (Shipyards revisited, boats built and sailed);
+  sea +0.02 %, the code alone, kept. The reach workloads query the heroes of random games, so
+  they moved too: reach-xl-144 +1.78 % (2 633 steps and 5 656 queries for 2 291 and 4 940),
+  reach-lifted-xl-144 −3.27 %, reach-towns-36 −3.35 % (425 steps for 500), re-baselined; the
+  month start +1.03 % and the day starts within 1 %, kept. The forks measured the same as
+  `master` here (+1.38 % on four of them against their files in both trees: this sandbox's).
+- **Seeds:** the town map's env tests (`towns.rs`) meet their features with seeds 36 and 330
+  (a search over 1 to 1 100; the golden replays' 173, 1702 and 3435 lost them); the fork test's
+  siege with 330. The masks property: a revisit may tell nothing (a tent whose key is held); its
+  case kept in `proptest-regressions`.
+- **h3-map's plans:** `revisitable`, an oracle of the listing (the last live object visited from
+  the hero's tile, typed, built, entered, not a crossed border gate), and `check_revisits` (each
+  listed one applies, takes no step, keeps the points and the day's maximum, the hero on its tile
+  but for a jump); the visited-object oracle names a revisit's object.
+- **Tests:** `h3-adventure`'s revisits (a gate back and forth at 0 points, a two-way monolith
+  re-drawn from the stream, no guard on a guarded exit, a Whirlpool's loss and draw again in the
+  boat, the errors and the observatory's, the tent's and the crossed gate's cases), `h3-game`'s
+  (listed, refused with a decision open and out of the turn, the Cartographer's offer again, no
+  points), `h3-sim`'s (the entry, its tile mask, decode and encode, the refusals), `h3-files`'
+  round trip and refusals.
+- **On the wire** (`cross-lane`, `h3-protocol`, the global trap): `master` gained E16 M5 T3's
+  mapping of the game's commands while the branch was open (#814, #816), so the merge maps
+  `Revisit { hero }` both ways and `AdventureReject::NothingToRevisit {}`, with the round-trip
+  tests (101 rejections). A second merge brought the server lane's T5a (#820: the game's
+  messages, protocol v39), so the two variants are a wire change: **protocol v40**; and the town
+  lane's T18b2b (#817: the payable builds listed, kept out of the random agent's draw): the legal
+  set is `EndTurn`, the boats, the revisits, then the builds.
+- **Bot reports:** regenerated, unchanged. **Inboxes:** the AI lane's (v8 and a step cap), the
+  town lane's (a town's revisit), the server lane's (the mapping, for its review), the map
+  client's (the space key).
+- **Docs:** ADV-TEL-008 (verified: the code reading, E11-14, E11-15, E11-17, E11-19's Space, the
+  wiki); design §13, §14 as built, §15's rows done; decision 289.
+
+**Versions:** adventure replay format v12; the env's action encoding v8 (the AI lane's). Round 7
+done; round 8 next (T106, T107).

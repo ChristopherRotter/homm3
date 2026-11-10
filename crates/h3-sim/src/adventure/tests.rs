@@ -30,6 +30,7 @@ mod battles;
 mod decisions;
 mod hiring;
 mod monsters;
+mod revisits;
 mod shipyards;
 mod towns;
 
@@ -143,7 +144,8 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         mask,
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false, false, false, false, false
+            false, false, false, false, false, false, false, false, false, false, false, false,
+            false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -177,10 +179,11 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 7);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 22));
+    assert_eq!(ACTION_ENCODING_VERSION, 8);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 30));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
-    assert_eq!((HIRE_BASE, HIRE_SLOTS), (18, 4));
+    assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
+    assert_eq!(Action::revisit(3), Action::map(25, 0));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
     let map = |entry, tile| Action::Adventure(MapAction { entry, tile });
     assert_eq!(Action::move_to(2, 9), map(3, 9));
@@ -258,8 +261,9 @@ fn is_move(entry: usize) -> bool {
 /// 0 alone their tile mask and the only tile they decode with; a move's tiles are the hero's legal
 /// moves but its own tile (since encoding v3 other players' heroes' too, E08 T19b1), each decoding
 /// to the query's path; [`BUILD_BOAT`]'s tiles are the anchors of the listed `BuildBoat`s'
-/// Shipyards ([`check_build_boat`], E08 T85b2b). In the battle phase (the neutral seat's only
-/// phase) every map mask is empty. The battle masks: [`check_battle_masks`].
+/// Shipyards ([`check_build_boat`], E08 T85b2b); a revisit entry decodes to the `Revisit` of the
+/// hero in its slot, none with no hero there (E08 T105b2). In the battle phase (the neutral seat's
+/// only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
 fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCaseError> {
     let seat = seat.into();
     let (state, rules) = (env.state(), env.rules());
@@ -301,9 +305,21 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
         if !is_move(entry) {
             prop_assert_eq!(tiles.iter().filter(|&&t| t).count(), usize::from(legal));
             let command = action::decode(state, rules, player, Action::map(entry, 0));
+            if let Some(slot) = entry.checked_sub(REVISIT_BASE) {
+                let revisit = hero_in_slot(state, player, slot)
+                    .map(|hero| GameCommand::Adventure(AdventureCommand::Revisit { hero }));
+                prop_assert_eq!(&command, &revisit);
+            }
             prop_assert_eq!(
                 legal,
-                commands.contains(&command.unwrap()),
+                command
+                    .as_ref()
+                    .is_some_and(|command| commands.contains(command)),
+                "entry {}",
+                entry
+            );
+            prop_assert!(
+                entry >= REVISIT_BASE || command.is_some(),
                 "entry {}",
                 entry
             );
@@ -627,12 +643,16 @@ proptest! {
                     prop_assert_eq!(env.state(), &expected);
                     prop_assert_eq!(env.steps(), steps + 1);
                     // A command tells something, but a one-step visit that does nothing (a
-                    // border guard's or gate's without the key, E08 T15a, T15b).
+                    // border guard's or gate's without the key, E08 T15a, T15b) and a revisit of
+                    // one (a Keymaster's tent whose key the player holds, E08 T105b2).
                     let silent = matches!(
                         &command,
                         Some(GameCommand::Adventure(AdventureCommand::MoveHero { path, .. }))
                             if path.len() == 1
                                 && expected.adventure().map().tile(path[0]).is_some_and(|t| t.visitable)
+                    ) || matches!(
+                        &command,
+                        Some(GameCommand::Adventure(AdventureCommand::Revisit { .. }))
                     );
                     prop_assert!(!events.is_empty() || silent);
                 }
