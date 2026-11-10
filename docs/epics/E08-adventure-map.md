@@ -248,6 +248,18 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      chosen: two parts (the command and the replay line; then the legal set, the env and the
      re-baselines); three parts.
 
+### Decision at T106's start (2026-11-10, user)
+
+290. **T106 in three, as increment 9's T86 and increment 10's T96** (the user at T106's start,
+     `AskUserQuestion`; recommended, decision 256's cut): **T106a** the map
+     `e08-teleporters-36.h3m` and its golden replays (random play `teleporters-s<seed>-d28`, seeds
+     by a search; the scripted `teleporters-*-s1` grouped by theme); **T106b** the plans'
+     `TELEPORTERS` and their checks (`play.rs`, `view.rs`); **T106c** the map
+     `e08-teleporters-144.h3m`, the workloads `reach-teleporters-xl-144` and
+     `random-play-teleporters-36`, the census rows of `--with-original-data` not yet checked. Not
+     chosen: four parts (T106a split into the map with its random replays, then the scripted
+     ones); two parts (the map, its replays and the plans together).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
