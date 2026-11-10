@@ -30,7 +30,8 @@ use crate::{GameRuleset, GameState};
 ///    `h3_towns::event_buildings` with whether the town has its spot (the Shipyard's water,
 ///    TWN-SET-011), each in index order built without the day's mark and told as a build
 ///    ([`build_told`]: `TownBuilt` with the event's place, then the views it changed); a building
-///    that an earlier one of the same event brought (a horde's upgrade) is not built again. No
+///    standing by its turn (an earlier building of the event or an earlier event of the turn
+///    start brought it) is not built again. No
 ///    requirement, forbidden, Capitol, Grail, cost or mark test (T-8: an event's Capitol beside
 ///    its owner's other one stands; E09 decision 44);
 /// 3. its creatures (TWN-EVT-004): none placed yet.

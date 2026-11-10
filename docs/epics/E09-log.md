@@ -2579,8 +2579,9 @@ every decision kind now, the seed kept.
   skipped before its owner is read; each event by `Timing`), no allocation when none fires; per
   event its gains (`GameState::gain`), its losses (`GameState::lose`, down to 0),
   `TownEventFired { player, town, event }`, then each building of `h3_towns::event_buildings`
-  (water: `StaticMap::town_boat_spot`) not standing by its turn (an earlier building of the same
-  event may have brought it through `auto_with`) built and told by `town::command::build_told`;
+  (water: `StaticMap::town_boat_spot`) not standing by its turn (an earlier building of the event
+  through `auto_with`, or an earlier event of the turn start, may have brought it) built and told
+  by `town::command::build_told`;
   its creatures stubbed (`TWN-STUB-10`).
 - **The build and its tell, shared** (`town/command.rs`): `build_told(state, rules, player, town,
   building, event, sink)`: the Tavern's every-town views (TWN-VEW-002), `Told::before`,
