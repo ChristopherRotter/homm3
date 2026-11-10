@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "5 random-vs-random games of 28 days on the teleporters map (E08 T106c, increment 11's design note §14; T106a's e08-teleporters-36.h3m: one-way channels of three exits and of a lone one, a two-way channel of three, two gate pairs and an unpaired gate, three Whirlpools with boats, twelve heroes); seed 3 by a search of seeds 1 to 3 for the first with a Whirlpool's loss: 2 195 steps, 19 jumps, 12 told LeadsNowhere, 3 Whirlpools' losses, 23 revisits drawn, 7 battles; about 2.74 M Ir a step, 98 % inside Reach::search (the agent's legal moves of each of the twelve heroes at every step, 86 %); counts only inside h3_sim::adventure::random_rollout (the agent, the reachable-tiles queries, apply); baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-teleporters-36.h3m",
+    "--workload",
+    "play",
+    "--games",
+    "5",
+    "--days",
+    "28",
+    "--seed",
+    "3",
+]
+collect = "*adventure*random_rollout*"
+instructions = 6009640722
+threshold_percent = 2
