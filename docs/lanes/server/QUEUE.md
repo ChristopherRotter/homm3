@@ -9,39 +9,12 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 **M5 part 1 refined 2026-11-09 (SRV-Q25):** the whole game's wire, a session hosting one game in-process, its per-viewer record, a golden adventure replay as a record (the user's order of 2026-10-31, the inbox below). The scope, the user's decisions and each task's content: the epic's "M5 part 1". In order, each about half a context:
 
 - T0 (#799) and T1 done 2026-11-09 (`E16-log.md`): **events only** (the design note §14); what a client cannot fold yet is in the adventure and town lanes' inboxes (SRV-Q26: foldable events and a query for what a viewer newly sees).
-- **T2** the observation's wire (the snapshot; no diff), in two parts (the user), both done 2026-11-09 in #805 (`E16-log.md`). **T3** the commands, answers, rejections and events, the fold (`h3-protocol`'s) and its test over the golden replays, SRV-Q26's gaps as stubs, in three parts (the user, the epic; one pull request after T3c): T3a (the commands and rejections) and T3b (the events) done 2026-11-09 (`E16-log.md`), **T3c** the fold and its test in two parts (SRV-Q27: the battle by snapshots, the further gaps as SRV-Q26's): **T3c1** the fold and a harness over the golden replays and **T3c2** the stubs (`SRV-STUB-1` to `-13`), the inbox notes and the gate (both done 2026-11-09, `E16-log.md`); **T4** the game's manifest and key tables.
+- **T2** the observation's wire (the snapshot; no diff), in two parts (the user), both done 2026-11-09 in #805 (`E16-log.md`). **T3** the commands, answers, rejections and events, the fold (`h3-protocol`'s) and its test over the golden replays, SRV-Q26's gaps as stubs, in three parts (the user, the epic; one pull request after T3c): T3a (the commands and rejections) and T3b (the events) done 2026-11-09 (`E16-log.md`), **T3c** the fold and its test in two parts (SRV-Q27: the battle by snapshots, the further gaps as SRV-Q26's): **T3c1** the fold and a harness over the golden replays and **T3c2** the stubs (`SRV-STUB-1` to `-13`), the inbox notes and the gate (both done 2026-11-09, `E16-log.md`); **T3d** the town lane's told views (E09 T18b2a) mapped and folded, `SRV-STUB-12` and `-13` lifted (done 2026-11-10, `E16-log.md`); **T4** the game's manifest and key tables.
 - **T5** the game session in-process with its journal and records (record format v4), each viewer's newly seen tiles with the events (SRV-Q26); **T6** a golden replay as a record (`h3-server record`), the map client lane's note; **T7** closure and the checkpoint.
 
 Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
 ## Inbox
-
-- 2026-11-10 (the town lane, E09 T18b2a, `town/e09-t18b2a`, `cross-lane`; **SRV-Q26's town gap,
-  for T3's mapping and the fold**; the town epic's design note §31 as built, decisions 53, 54):
-  every viewer's changed view of a town is told to it alone, as its whole view: `GameEvent::
-  TownChanged { player, town, owner, fort, capitol, built_today, level, slots, hall, buildings }`
-  (the old `{ town, capitol, seen_by }` is gone), then a `TownStackSeen { player, town, stack:
-  GarrisonStackView, slot: Option<u8> }` per stack the level shows (the slot to the owner's team:
-  the garrison by slot is those stacks) and a `TownIncomeSeen { player, town, resource, amount }`
-  per income line of the top level; the fold replaces the viewer's `TownView` of the town, its
-  anchor, faction and name kept. Told after a build, a capture, a siege's merge, a garrison's
-  battle (the neutral garrison of `towns-s173-d21` command 205) and the day's start, only to a sink
-  that keeps events (`Sink::RECORDS`). Not told, for the fold test to exempt: Visions' reach
-  (`TWN-STUB-13`: a viewer whose hero holds a Visions creature sees another team's town at the top
-  level within its radius, which the hero's step, army or Power changes) and a town that comes
-  into view by exploring (SRV-Q26's query). Also `TownView::built_today` and `buildings:
-  Option<TownBuildingsView { built, forbidden }>`, mapped in this PR (`wire::game::Town`, sets as
-  `WireU64`; no protocol step, as T2's rule).
-- 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **for T3's mapping of
-  the game's commands, rejections and events**): `GameCommand::Town(h3_towns::TownCommand)` (one
-  variant, `Build { town: TownId, building: BuildingId }`, the building by its index in the town's
-  faction's record, below `h3_towns::MAX_BUILDINGS`), `GameCommandError::Town(TownCommandError)`
-  (ten variants, `OfferedAs(BuildingId)` among them) and `GameEvent::TownBuilt { player, town,
-  building, event: Option<u16> }` (the owner's alone; `event` a town event's place, E09 T18c).
-  Both town enums are exhaustive now (no `#[non_exhaustive]`, for SRV-Q25's mapping). E09 T18b2
-  adds the view's fields (`TownView::built_today`, the owner's buildings) and `TownChanged`'s
-  public facts, with their mapping in `h3-protocol`'s `map::game`, and decides SRV-Q26's town
-  garrison change at its start.
 
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero

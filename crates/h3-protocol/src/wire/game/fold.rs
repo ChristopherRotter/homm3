@@ -7,13 +7,14 @@
 //! carries yet stays as it was, each a gap for the adventure and town lanes (SRV-Q26, SRV-Q27):
 //! a reveal's tiles, objects, heroes and towns; a hero's movement points; a hero, object or boat
 //! coming into sight without a reveal; two changes told to nobody who sees them; the views of an
-//! offer, a choice, a University and a hire dialog; and the values the rules derive (where an
-//! added artifact or joined creatures land, a capped gain, what a new owner's team sees). The
+//! offer, a choice, a University and a hire dialog; a town's view moved by a Visions holder's
+//! reach; and the values the rules derive (where an added artifact or joined creatures land, a
+//! capped gain, what a new owner's team sees of an object). The
 //! battle is its snapshots' (SRV-Q27 (1)): its events are the battle client's, and the fold only
 //! ends it.
 //!
-//! Each gap is a stub (`SRV-STUB-1` to `SRV-STUB-13`, `docs/stubs.toml`, marked where its event
-//! is folded), lifted when its lane's events carry it. The gate is `tests/game_fold.rs`: over the
+//! Each gap is a stub (`SRV-STUB-1` to `SRV-STUB-11` and the town lane's `TWN-STUB-13`,
+//! `docs/stubs.toml`, marked where its event is folded), lifted when its lane's events carry it. The gate is `tests/game_fold.rs`: over the
 //! golden replays the fold equals `observe` after every command for every viewer, but for the
 //! parts a stub names.
 //!
@@ -23,9 +24,10 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use super::{
-    Adventure, AdventureEvent, ArmyRef, ArmySlot, ArmyStack, Artifact, ArtifactPlace, Boat,
-    Bonuses, Decision, GameEvent, GameObservation, Guards, HeroChange, HeroDetails, LevelUp,
-    MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos, PrimarySkill, SkillLevel, Tile, Town,
+    Adventure, AdventureEvent, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact, ArtifactPlace, Boat,
+    Bonuses, Decision, GameEvent, GameObservation, Garrison, Guards, HeroChange, HeroDetails,
+    LevelUp, MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos, PrimarySkill, SkillLevel, Tile,
+    Town, TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -193,13 +195,70 @@ impl GameObservation {
             GameEvent::DecisionClosed { player: _ } => self.close_decision(),
             // Told after its dialog closed, with its group.
             GameEvent::GroupLost { .. } => {}
-            GameEvent::TownChanged { town, capitol } => {
-                if let Some(town) = self.town_mut(town) {
-                    town.capitol = capitol;
+            // The viewer's whole view of the town but its anchor, faction and name; its stacks
+            // and its income lines follow (E09 T18b2a). A change of a Visions holder's reach is
+            // not told (stub: TWN-STUB-13).
+            GameEvent::TownChanged {
+                player: _,
+                town,
+                owner,
+                fort,
+                capitol,
+                built_today,
+                level,
+                slots,
+                hall,
+                buildings,
+            } => {
+                if let Some(view) = self.town_mut(town) {
+                    view.owner = owner;
+                    view.fort = fort;
+                    view.capitol = capitol;
+                    view.built_today = built_today;
+                    view.garrison = Garrison {
+                        level,
+                        stacks: Vec::new(),
+                        army: slots.then(Vec::new),
+                    };
+                    view.owner_facts = hall.map(|hall| TownOwnerFacts {
+                        hall,
+                        income: Vec::new(),
+                    });
+                    view.buildings = buildings;
                 }
             }
-            // What a building changes in its town's view (its fort, its hall and income for the
-            // owner's team) is the rules' (SRV-Q27 (2)); its price came as `ResourcePaid`.
+            GameEvent::TownStackSeen {
+                player: _,
+                town,
+                stack,
+                slot,
+            } => {
+                if let Some(view) = self.town_mut(town) {
+                    let garrison = &mut view.garrison;
+                    garrison.stacks.push(stack);
+                    // The garrison by slot: the stacks with their slots and counts.
+                    if let (Some(army), Some(slot)) = (garrison.army.as_mut(), slot) {
+                        army.push(ArmyStack {
+                            slot,
+                            creature: stack.creature,
+                            count: stack.count.unwrap_or_default(),
+                        });
+                    }
+                }
+            }
+            GameEvent::TownIncomeSeen {
+                player: _,
+                town,
+                resource,
+                amount,
+            } => {
+                let view = self.town_mut(town);
+                if let Some(facts) = view.and_then(|view| view.owner_facts.as_mut()) {
+                    facts.income.push(Amount { resource, amount });
+                }
+            }
+            // What a building changes in its town's view comes as the owner's `TownChanged`
+            // after it; its price came as `ResourcePaid`.
             GameEvent::TownBuilt { .. } => {}
         }
     }
@@ -299,9 +358,7 @@ impl GameObservation {
                     object.owner = Some(owner);
                 }
             }
-            // Its garrison's and its owner facts' views after a capture, a siege or a merge are
-            // not carried, nor a neutral town's garrison emptied by another player's battle
-            // (SRV-Q26 (d); stub: SRV-STUB-12; stub: SRV-STUB-13).
+            // Its view after the capture comes as each viewer's `TownChanged` (E09 T18b2a).
             AdventureEvent::TownCaptured {
                 town,
                 anchor: _,

@@ -15,6 +15,7 @@ use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup, GameState, Viewer, apply};
 
 use crate::map::game::{events, observe};
+use crate::wire::WireU64;
 use crate::wire::game::*;
 
 /// A part of a view: its name, the stubs that let the fold differ from `observe` on it (none: the
@@ -70,6 +71,10 @@ fn towns<T: PartialEq>(
 /// The reveal's stub (SRV-Q26 (a)): a part it alone lets differ differs only where the viewer's
 /// explored tiles grew.
 const REVEAL: &str = "SRV-STUB-1";
+
+/// The town lane's stub of a Visions holder's reach (E09 T18b2a): a viewer's level of another
+/// team's town moves with no `TownChanged`, its garrison and its owner facts with it.
+const VISIONS: &str = "TWN-STUB-13";
 
 /// Whether a decision's view is one no event carries (SRV-STUB-5): an offer's, a choice's, a
 /// University's or a hire dialog's.
@@ -319,18 +324,30 @@ const PARTS: &[Part] = &[
         stubs: &[],
         agree: |a, b| {
             towns(a, b, |t| {
-                (t.anchor, t.faction, t.name.clone(), t.fort, t.capitol)
+                (
+                    t.anchor,
+                    t.faction,
+                    t.name.clone(),
+                    t.fort,
+                    t.capitol,
+                    t.built_today,
+                )
             })
         },
     },
     Part {
+        name: "town buildings",
+        stubs: &[],
+        agree: |a, b| towns(a, b, |t| t.buildings),
+    },
+    Part {
         name: "garrisons",
-        stubs: &[REVEAL, "SRV-STUB-12"],
+        stubs: &[REVEAL, VISIONS],
         agree: |a, b| towns(a, b, |t| t.garrison.clone()),
     },
     Part {
         name: "town owner facts",
-        stubs: &[REVEAL, "SRV-STUB-13"],
+        stubs: &[REVEAL, VISIONS],
         agree: |a, b| towns(a, b, |t| t.owner_facts.clone()),
     },
 ];
@@ -471,11 +488,13 @@ fn the_fold_against_observe_over_the_golden_replays() {
         eprintln!("{runs} viewer-commands; the parts that differed:");
         for (part, at) in &differences {
             eprintln!(
-                "- {part}: {} viewer-commands ({} with a reveal) in {} replays; first {}",
+                "- {part}: {} viewer-commands ({} with a reveal) in {} replays; first {}; \
+                 first without a reveal {}",
                 at.count,
                 at.with_reveal,
                 at.replays.len(),
-                at.first.as_deref().unwrap_or_default()
+                at.first.as_deref().unwrap_or_default(),
+                at.first_unrevealed.as_deref().unwrap_or("none")
             );
         }
     }
@@ -759,9 +778,18 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 },
                 stack: None,
             },
-            GameEvent::TownChanged {
+            town_changed(8, Some(1)),
+            GameEvent::TownStackSeen {
+                player: 1,
                 town: 8,
-                capitol: true,
+                stack: shown(3, Some(5)),
+                slot: Some(0),
+            },
+            GameEvent::TownIncomeSeen {
+                player: 1,
+                town: 8,
+                resource: 6,
+                amount: 1000,
             },
             adventure(AdventureEvent::TilesRevealed {
                 object_type: ty,
@@ -1228,16 +1256,126 @@ fn the_fold_keeps_the_own_heroes_armies_and_the_towns() {
             loss(6),
             changed(slot(garrison, 0), None),
             changed(slot(garrison, 3), Some(stack(3, 8))),
-            GameEvent::TownChanged {
-                town: 0,
-                capitol: true,
-            },
         ],
     );
     let own = v.adventure.heroes[0].own.clone().unwrap();
     assert_eq!(own.army, [stack(0, 2), stack(5, 3)]);
     assert_eq!(v.towns[1].garrison.army, Some(vec![stack(3, 8)]));
-    assert!(v.towns[0].capitol);
+}
+
+/// A viewer's whole view of town `town` told (`TownChanged`): its owner's, with a hall, unless
+/// `hall` is none.
+fn town_changed(town: u16, hall: Option<u8>) -> GameEvent {
+    GameEvent::TownChanged {
+        player: 1,
+        town,
+        owner: hall.map(|_| 1),
+        fort: 2,
+        capitol: hall == Some(4),
+        built_today: true,
+        level: if hall.is_some() { 3 } else { 1 },
+        slots: hall.is_some(),
+        hall,
+        buildings: hall.map(|_| TownBuildings {
+            built: WireU64(0b101),
+            forbidden: WireU64(1 << 40),
+        }),
+    }
+}
+
+/// A garrison's stack of creature `creature` as a level shows it.
+fn shown(creature: u16, count: Option<u32>) -> GarrisonStack {
+    GarrisonStack {
+        creature,
+        count_word: count.map(|_| 1),
+        count,
+    }
+}
+
+#[test]
+fn the_fold_replaces_a_towns_view_by_its_told_one() {
+    let mut v = view();
+    let (anchor, faction, name) = (
+        v.towns[0].anchor,
+        v.towns[0].faction,
+        v.towns[0].name.clone(),
+    );
+    let stack_seen = |town, stack, slot| GameEvent::TownStackSeen {
+        player: 1,
+        town,
+        stack,
+        slot,
+    };
+    let income = |town, resource, amount| GameEvent::TownIncomeSeen {
+        player: 1,
+        town,
+        resource,
+        amount,
+    };
+    fold(
+        &mut v,
+        &[
+            // The owner's view: its stacks by slot, its income.
+            town_changed(0, Some(4)),
+            stack_seen(0, shown(30, Some(8)), Some(1)),
+            stack_seen(0, shown(30, Some(2)), Some(6)),
+            income(0, 0, 2),
+            income(0, 6, 4000),
+            // Another's: its stacks in slot order alone, no income.
+            town_changed(1, None),
+            stack_seen(1, shown(9, None), None),
+            income(1, 6, 500),
+        ],
+    );
+    assert_eq!(
+        v.towns[0],
+        Town {
+            town: 0,
+            anchor,
+            owner: Some(1),
+            faction,
+            name,
+            fort: 2,
+            capitol: true,
+            built_today: true,
+            garrison: Garrison {
+                level: 3,
+                stacks: vec![shown(30, Some(8)), shown(30, Some(2))],
+                army: Some(vec![stack(1, 8), stack(6, 2)]),
+            },
+            owner_facts: Some(TownOwnerFacts {
+                hall: 4,
+                income: vec![
+                    Amount {
+                        resource: 0,
+                        amount: 2,
+                    },
+                    Amount {
+                        resource: 6,
+                        amount: 4000,
+                    },
+                ],
+            }),
+            buildings: Some(TownBuildings {
+                built: WireU64(0b101),
+                forbidden: WireU64(1 << 40),
+            }),
+        }
+    );
+    let other = &v.towns[1];
+    assert_eq!(
+        (other.owner, other.capitol, other.buildings),
+        (None, false, None)
+    );
+    assert_eq!(
+        other.garrison,
+        Garrison {
+            level: 1,
+            stacks: vec![shown(9, None)],
+            army: None,
+        }
+    );
+    assert_eq!(other.owner_facts, None);
 }
 
 #[test]

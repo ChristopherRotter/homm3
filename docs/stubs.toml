@@ -143,18 +143,6 @@ where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
 reason = "A Cartographer's type (Adventure::bought, ADV-VIS-001): OfferAnswered does not name the offer's kind, so the fold cannot add the type bought. The adventure lane's inbox (2026-11-09)"
 epic   = "E16"
 
-[[stub]]
-id     = "SRV-STUB-12"
-where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
-reason = "A town's garrison as the viewer sees it after a change no event tells it: a capture, a siege, a merge with a hero's army, the viewer's level moving (a hero's Visions in reach), and a neutral town's garrison emptied by another player's battle (SRV-Q26 (d): towns-s173-d21 command 205, viewer 0). The town lane's inbox (2026-11-09; E09 T18b2's TownChanged)"
-epic   = "E16"
-
-[[stub]]
-id     = "SRV-STUB-13"
-where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
-reason = "A town's owner facts (TownOwnerFacts: its hall and income) for a viewer whose view of them changes: a new owner's team at a capture, a battle's end, the viewer's level moving (a hero's Visions in reach), a build (TownBuilt). The town lane's inbox (2026-11-09; E09 T18b2's TownChanged)"
-epic   = "E16"
-
 # --- client (CLT-STUB-<n>) ---
 
 # CLT-STUB-1 is kept as a comment until `cargo xtask check-stubs` also scans `clients/crates/`

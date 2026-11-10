@@ -319,6 +319,10 @@ inbox, the same day), mapped when it lands.
     lane's 1 to 11, the town lane's 12 and 13, their inbox notes), the harness made the gate: 35
     parts, 16 exact (the hero details and the decision split so that their folded fields are), 5
     that only the reveal's stub names differ only with a reveal, a stubbed part still differs.
+  - **T3d done** (2026-11-10; `E16-log.md`; the town lane's E09 T18b2a, #815): its `TownChanged`,
+    `TownStackSeen` and `TownIncomeSeen` mapped and folded (a viewer's town view replaced), which
+    `master` 700bf95 lacked to build; `SRV-STUB-12` and `-13` lifted, the garrisons and owner
+    facts gated but for the reveal and Visions' reach (`TWN-STUB-13`); 36 parts, 17 exact.
 - **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
   the map's identity (its content hash), the key tables of the game's content kinds.
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
@@ -354,7 +358,9 @@ a method of the wire's observation (`GameObservation::fold`, `no_std`, for clien
 what it takes from an event's documentation (a built boat's facing 2, a creature month's
 monster's one-tile masks, a group's first turn start ending the group before), a Leave Guards
 dialog's group kept on its mine at the close, `command_to_engine` refusing a building beyond any
-record (64 or more) as `UnknownBuilding` before the engine (E09 T18b1's build, mapped in T3c1).
+record (64 or more) as `UnknownBuilding` before the engine (E09 T18b1's build, mapped in T3c1);
+T3d's: a town's told view as the engine's three events one to one (its stacks and income lines
+after it, not inside it), a fort and the buildings as the observation's forms.
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

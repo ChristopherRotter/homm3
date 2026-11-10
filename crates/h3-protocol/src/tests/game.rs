@@ -687,7 +687,7 @@ fn town_back(t: &Town) -> TownView {
 }
 
 /// A set of buildings back from its bits.
-fn set_back(bits: u64) -> BuildingSet {
+pub(super) fn set_back(bits: u64) -> BuildingSet {
     (0..64)
         .filter(|i| bits >> i & 1 == 1)
         .filter_map(BuildingId::from_index)

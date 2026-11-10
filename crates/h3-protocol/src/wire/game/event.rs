@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireTarget, Month};
-use super::{OfferLevels, Pos, PrimarySkill};
+use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings};
 use crate::wire::{Event, Outcome};
 
 /// One game event, projected for its viewer (`h3_game::GameEvent`).
@@ -170,8 +170,28 @@ pub enum GameEvent {
         stack: ArmyStack,
     },
     TownChanged {
+        player: u8,
         town: u16,
+        owner: Option<u8>,
+        fort: u8,
         capitol: bool,
+        built_today: bool,
+        level: u8,
+        slots: bool,
+        hall: Option<u8>,
+        buildings: Option<TownBuildings>,
+    },
+    TownStackSeen {
+        player: u8,
+        town: u16,
+        stack: GarrisonStack,
+        slot: Option<u8>,
+    },
+    TownIncomeSeen {
+        player: u8,
+        town: u16,
+        resource: u16,
+        amount: u32,
     },
     TownBuilt {
         player: u8,
