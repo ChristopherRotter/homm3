@@ -359,8 +359,17 @@ impl Cells {
     /// A turn's start (the movement overlay drawn, 0x478375): `shade` the tactics phase's shade
     /// ([`crate::tactics::shade`], on a human's turn in the phase; else none), which every
     /// composition draws whatever the movement shadow (§7.23) until an action's start; a block
-    /// saved from it keeps it.
+    /// saved from it keeps it. The phase's end by Start Combat (no action, §7.24) changes the shade
+    /// with the list kept: the original's profile keeps it, a block saved in the phase then put
+    /// back with the phase's shade (*provisional*: the first turn's overlay draw, 0x478375, not
+    /// read for the list); the client's forgets it as a composition does (CLT-Q52), so the
+    /// turn's posted move shades the mouse's hex on the new background (E17 M6 T7b, R7-1).
     pub fn phase(&mut self, shade: BTreeSet<u8>) {
+        if self.bugs == Bugs::Fixed && shade != self.composed.phase {
+            self.list.clear();
+            self.last = NONE;
+            self.stale.clear();
+        }
         self.composed.phase = shade;
     }
 

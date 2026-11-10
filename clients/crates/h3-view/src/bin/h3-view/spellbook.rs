@@ -23,7 +23,8 @@ use crate::boxes::{Answered, Asked, Leave};
 /// The forms of a spell's description by mastery (the catalogue's family `spell-text`).
 const MASTERY_FORMS: [&str; 4] = ["none", "basic", "advanced", "expert"];
 
-/// Whether the battle opens the acting hero's book in `observation`: the side to act is the
+/// Whether the battle opens the acting hero's book in `observation`: the side to act (the active
+/// stack's controller, a hypnotized stack's its hypnotist's: design §9, E17 M6 T7b, R8-1) is the
 /// observation's own and the panel's spell book button is enabled (`battle_controls_state`: a human
 /// side whose hero wears a book and has not cast this round, outside the tactics phase; E17 M3
 /// T6a, `h3_view::panel`).
@@ -34,7 +35,7 @@ pub fn takes(observation: &Observation) -> bool {
     let Some(stack) = observation.stacks.iter().find(|s| s.id == active) else {
         return false;
     };
-    let side = stack.side;
+    let side = stack.controller;
     side == observation.viewer
         && !h3_view::panel::shown(
             observation,
@@ -1104,6 +1105,32 @@ pub(crate) mod tests {
             (&layout(), &catalogue),
             None,
         )
+    }
+
+    #[test]
+    fn the_book_opens_on_a_hypnotized_stack_s_turn_for_its_controller() {
+        // R8-1 (E17 M6 T7b): the side to act is the active stack's controller (design §9): the
+        // controller's view takes the book on the enemy stack's turn it controls, the owner's
+        // view does not.
+        let (_, mut o, _) = crate::stats::tests::opening();
+        let viewer = o.viewer;
+        let own = usize::from(viewer == Side::Defender);
+        if let Some(hero) = o.sides[own].hero.as_mut() {
+            hero.spell_book = true;
+        }
+        assert!(takes(&o));
+        let Some(enemy) = o.stacks.iter_mut().find(|s| s.side != viewer && s.alive) else {
+            panic!("an enemy stack");
+        };
+        enemy.controller = viewer;
+        o.active = Some(enemy.id);
+        assert!(takes(&o));
+        o.viewer = if viewer == Side::Attacker {
+            Side::Defender
+        } else {
+            Side::Attacker
+        };
+        assert!(!takes(&o));
     }
 
     #[test]

@@ -1893,6 +1893,82 @@ fn a_block_put_back_in_the_tactics_phase_keeps_its_shade() {
     );
 }
 
+#[test]
+fn the_tactics_phase_s_end_by_its_key_forgets_the_cursor_shadow_s_list_in_the_client_s_profile() {
+    // E17 M6 T7b (R7-1): Start Combat is no action, so the list saved over a zone hex in the
+    // phase outlives the phase's shade. The original's profile puts its block back with the
+    // phase's shade at the next move (as built, *provisional*); the client's forgets it as a
+    // composition does (CLT-Q52): the first turn's posted move shades the hex on the new
+    // background, and the next move leaves no block behind.
+    let mut o = battle();
+    o.sides[0].human = true;
+    let after = o.clone();
+    o.tactics = Some(h3_protocol::wire::Tactics {
+        side: Side::Attacker,
+        columns: 3,
+    });
+    let zone = crate::tactics::shade(&o);
+    let mut hexes = zone.iter().copied().filter(|&h| crate::shades::gridded(h));
+    let Some(first) = hexes.next() else {
+        panic!("a zone hex: {zone:?}");
+    };
+    let next = first + 1;
+    let legal = legal();
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let field = |observation| Field {
+            observation,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [
+            Turn {
+                field: field(&o),
+                human: true,
+            },
+            Turn {
+                field: field(&after),
+                human: true,
+            },
+        ];
+        let off = Options {
+            movement: false,
+            ..shadows(false, false)
+        };
+        let inputs = [
+            shades(0, off, false),
+            Input::Move {
+                at: 5,
+                to: centre(first),
+            },
+            Input::Move {
+                at: 200,
+                to: centre(next),
+            },
+        ];
+        let log = [(100, Logged::Action), (100, Logged::Turn(1))];
+        let ended = Start {
+            ends_tactics: true,
+            ..Start::default()
+        };
+        let shown = run(&log, &[ended], &turns, &inputs);
+        let overlays = |t| shown.shades(t).unwrap().overlays.clone();
+        assert_eq!(overlays(5).cursor, [first], "{bugs:?}");
+        assert_eq!(overlays(100).cursor, [first], "{bugs:?}");
+        assert_eq!(overlays(200).cursor, [next], "{bugs:?}");
+        let stale = if bugs == Bugs::Original {
+            vec![crate::scene::Stale {
+                hex: first,
+                grid: false,
+                shade: zone.clone(),
+            }]
+        } else {
+            vec![]
+        };
+        assert_eq!(overlays(200).stale, stale, "{bugs:?}");
+    }
+}
+
 /// Fire Wall (its handle 11, its original number 13) at Advanced, aimed at hexes 87 and 104, or
 /// Force Field (handle 12, number 12).
 fn wall(fire: bool) -> Aim {

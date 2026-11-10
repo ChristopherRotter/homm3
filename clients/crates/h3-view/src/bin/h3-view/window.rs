@@ -762,11 +762,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         },
     ];
     let mut army_info = battle.settings.army_info;
-    // The options dialog open as the last pass ended, and the spell aimed then with whether its
-    // aim turned the movement shadow off (E17 M6 T4c, design §12.16).
+    // The options dialog open as the last pass ended (E17 M6 T4c, design §12.16).
     let mut options_open = false;
-    let mut aimed: Option<u16> = None;
-    let mut aim_shades = false;
     let mut scrolls: Vec<(u32, i64)> = Vec::new();
     let mut held: Option<Held> = None;
     // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
@@ -903,6 +900,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     Do::Shades(toggle) => {
                         let at = clock.ms(win.ticks_ns()).max(start);
                         toggle_shades(&mut battle, &mut inputs, (at, toggle), &files);
+                    }
+                    // T opens the acting stack's stats dialog there (E17 M6 T7b, R5's question:
+                    // the stop's key reaches the same key switch, 0x475D07).
+                    Do::Stats => {
+                        let at = clock.ms(win.ticks_ns()).max(start);
+                        book_changed |= acting_stats(&mut battle, &mut inputs, at, pointer);
                     }
                     _ => {
                         let at = clock.ms(win.ticks_ns()).max(start);
@@ -1236,15 +1239,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         Do::StatsOk => {
                             book_changed |= battle.stats_key(key.name()) != StatsDid::Nothing;
                         }
-                        // The acting stack's stats dialog (E17 M6 T2a2a), the mouse where it is;
-                        // the army info windows hidden first (0x475D1E; E17 M6 T4b2b1).
+                        // The acting stack's stats dialog (E17 M6 T2a2a).
                         Do::Stats => {
-                            let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
-                            if battle.look(at, point, true) {
-                                inputs.push(Input::Hide { at, key: false });
-                                inputs.push(Input::Look { at });
-                                book_changed = true;
-                            }
+                            book_changed |= acting_stats(&mut battle, &mut inputs, at, pointer);
                         }
                         // The spell book open over the battle (E17 M5 T3a).
                         Do::Book(k) => {
@@ -1589,22 +1586,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             mouse_changed = true;
         }
         options_open = battle.options_open();
-        // An aim with both shadows on turns the movement shadow off as it starts, saved so, and on
-        // again as it ends (E17 M6 T4c, design §12.16: `battle_set_shades` 0x59EFB8, 0x59F077;
-        // oddity 8), as the mouse's follow does (`mouse::track`).
-        let aim = battle.aim_original();
-        if aimed.is_none()
-            && let Some(set) = aim.and_then(|o| Shades::of(&battle.settings).aiming(o))
-        {
-            set.set_in(&mut battle.settings);
-            save_settings(&battle.settings, &files);
-            aim_shades = true;
-        }
-        if aim.is_none() && core::mem::take(&mut aim_shades) {
-            battle.settings.movement_shade = true;
-            save_settings(&battle.settings, &files);
-        }
-        aimed = aim;
+        // An aim with both shadows on turns the movement shadow off as it starts and on again as
+        // it ends in the mouse's follow alone (`mouse::track`, `Options::aiming`; E17 M6 T4c,
+        // design §12.16): the settings and their file keep the player's (E17 M6 T7b, R7-2:
+        // *provisional*, the original's saves the switch each time, oddity 8, which a window
+        // closed inside the aim would leave in the file). The block that copied it never ran: it
+        // read the turn's aims, whose original numbers only `pointer::legal` names.
         // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
         if battle.settings.army_info != army_info {
             army_info = battle.settings.army_info;
@@ -2101,12 +2088,31 @@ fn stop_start(turns: &[(u32, u8)], turn: usize, cast_stop: Option<u32>) -> Optio
 /// The battle's keys that act on the turn Auto Combat's stop comes at when they stopped it, a
 /// human's (0x474625, `battle_buttons`' key switch; E17 M5 T4c1, design §7.22): the log's arrows,
 /// the Faerie Dragon's F and, since E17 M6 T4b2a, F5 (case 63, Creature Info's level), since
-/// E17 M6 T4c F6 to F8 (the grid and the shadows).
+/// E17 M6 T4c F6 to F8 (the grid and the shadows), since E17 M6 T7b T (the switch's index 0,
+/// 0x475D07: the acting stack's stats dialog; R5's question, read by the fixer of R5).
 const fn carried(command: Do) -> bool {
     matches!(
         command,
-        Do::LogUp | Do::LogDown | Do::DragonSpell | Do::ArmyInfo | Do::Shades(_)
+        Do::LogUp | Do::LogDown | Do::DragonSpell | Do::ArmyInfo | Do::Shades(_) | Do::Stats
     )
+}
+
+/// The key T at `at` (E17 M6 T2a2a; `battle_buttons` 0x475D07): the acting stack's stats dialog,
+/// the mouse at `pointer` (the park without one); the army info windows hidden first (0x475D1E;
+/// E17 M6 T4b2b1). Whether it opened.
+fn acting_stats(
+    battle: &mut Battle<'_>,
+    inputs: &mut Vec<Input>,
+    at: u32,
+    pointer: Option<(i32, i32)>,
+) -> bool {
+    let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+    let opened = battle.look(at, point, true);
+    if opened {
+        inputs.push(Input::Hide { at, key: false });
+        inputs.push(Input::Look { at });
+    }
+    opened
 }
 
 /// Creature Info's level cycled by the key F5 at `at` (E17 M6 T4b2a, design §12.14;
@@ -2145,7 +2151,7 @@ fn toggle_shades(
 }
 
 /// Writes `settings` to the settings file (E17 M6 T4a: the options dialog's close after a click;
-/// T4b2a: the key F5; T4c: F6 to F8 and an aim's shadow switch), a failure in the report's lines.
+/// T4b2a: the key F5; T4c: F6 to F8), a failure in the report's lines.
 fn save_settings(settings: &Settings, files: &SettingsFile<'_>) {
     if let Err(e) = write_whole(files.path, &settings.write()) {
         files
@@ -2957,11 +2963,18 @@ mod tests {
     #[test]
     fn the_keys_a_stop_carries_are_the_battle_s_own_handler_s() {
         // E17 M6 T4b2a (the reviewer): F5 stops Auto Combat and cycles the level on the human's
-        // turn the stop comes at, as the arrows and F; a button's hotkey or the stats' T not.
-        for c in [Do::LogUp, Do::LogDown, Do::DragonSpell, Do::ArmyInfo] {
+        // turn the stop comes at, as the arrows and F; a button's hotkey not. Since E17 M6 T7b
+        // (R5's question, 0x475D07) the stats' T too: the stop's key reaches the same switch.
+        for c in [
+            Do::LogUp,
+            Do::LogDown,
+            Do::DragonSpell,
+            Do::ArmyInfo,
+            Do::Stats,
+        ] {
             assert!(carried(c), "{c:?}");
         }
-        for c in [Do::Stats, Do::Button(h3_view::panel::WAIT), Do::StatsOk] {
+        for c in [Do::Button(h3_view::panel::WAIT), Do::StatsOk] {
             assert!(!carried(c), "{c:?}");
         }
     }
