@@ -484,8 +484,9 @@ command = [
 # roll forced (`roll:acid`: its sound, the damage's line, 81, their hit); the Wyvern Monarchs
 # strike back with Poison's roll forced (`roll:poison`: its line, 67 over the Rust Dragon with its
 # hit). `seed`: the strike back's 49 damage, as the original's. Frames: as the original's but the
-# landing's boxes at 2 200 ms (273 pixels, as `luck`'s); each cast outlines the Rust Dragon at its
-# end and the next clears it at its start (`cast_spell`'s tail, design §7.16).
+# landing's boxes at 2 200 ms (274 pixels, as `luck`'s; 273 before E17 M6 T7a's stricter rule,
+# R4-9); each cast outlines the Rust Dragon at its end and the next clears it at its start
+# (`cast_spell`'s tail, design §7.16).
 [[sequence]]
 id = "acid"
 scenario = "seq-acid.toml"
@@ -504,8 +505,8 @@ command = [{ seat = "Attacker", command = { Attack = { target = 1, from = 97 } }
 # Mighty Gorgons defend. Round 2: the Griffins strike them from the left; the Gorgons strike back,
 # one death stare roll forced (`roll:death_stare`: the line, `Deathstr.wav`, 80 over the Griffins,
 # then their reaction). `seed`: the Griffins' 37 damage, the strike back's 72 and its two kills, as
-# the original's. Frames: as the original's but the landing's boxes at 4 620 ms (433 pixels, as
-# `luck`'s).
+# the original's. Frames: as the original's but the landing's boxes at 4 620 ms (448 pixels, as
+# `luck`'s; 433 before E17 M6 T7a's stricter rule, R4-9).
 [[sequence]]
 id = "stare"
 scenario = "seq-stare.toml"
@@ -1101,8 +1102,9 @@ command = [
 # mine gone, animation 57 over them with their reaction (held at its last frame until the
 # iterations left are no more than its frames), the walk going on. The spectator's record: the
 # attacker's screen never shows the mine. Frames: the walk's first frames after the blast
-# show the standing frame under the moving one (252 and 5 pixels, §7.11 (2)); the last, the
-# Goblins' turn, the defender's mines (hot seat's view); the Catapult's outline row (T2b's).
+# show the standing frame under the moving one (269 and 5 pixels, §7.11 (2); 252 and 5 before
+# E17 M6 T7a's stricter rule, R4-9); the last, the Goblins' turn, the defender's mines (hot
+# seat's view); the Catapult's outline row (T2b's).
 [[sequence]]
 id = "mine"
 scenario = "seq-mine.toml"
@@ -2131,8 +2133,8 @@ command = [
 # 19 032. Good and bad morale failed (the Monarchs' +1; the Trolls' −1 beside the undead), and
 # every other poison roll. `seed`: the Monarchs' 136 damage (3 killed), its poison, and the strike
 # back's 83 (1 killed), as the original's. Frames: as the original's but the flight's redraw
-# artifacts (7 032 to 7 532, 169 pixels each) and the landing's boxes at 7 732 (280 pixels, as
-# `luck`'s, design §4.3).
+# artifacts (7 032 to 7 532, 169 pixels each) and the landing's boxes at 7 732 (350 pixels, as
+# `luck`'s, design §4.3; 280 before E17 M6 T7a's stricter rule, R4-9).
 [[sequence]]
 id = "starts"
 scenario = "seq-starts.toml"
@@ -2159,7 +2161,7 @@ command = [
 # `starts-sound`: the same with the original's sounds (`sound`, design §8.3). Each drain waits
 # for `ManaDrai.wav` (2 415 ms) past its animation's 2 000 (the turns at 2 415 and 17 562);
 # `Poison.wav` (1 904) and `Regener.wav` (1 881) end inside theirs. Frames: as `starts`'
-# differences, 315 ms later (7 347 to 7 847, 169 pixels each; 8 047, 280).
+# differences, 315 ms later (7 347 to 7 847, 169 pixels each; 8 047, 350, 280 before T7a).
 [[sequence]]
 id = "starts-sound"
 sound = true

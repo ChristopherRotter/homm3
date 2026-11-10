@@ -23,7 +23,8 @@ use crate::boxes::{Answered, Asked, Leave};
 /// The forms of a spell's description by mastery (the catalogue's family `spell-text`).
 const MASTERY_FORMS: [&str; 4] = ["none", "basic", "advanced", "expert"];
 
-/// Whether the battle opens the acting hero's book in `observation`: the side to act is the
+/// Whether the battle opens the acting hero's book in `observation`: the side to act (the active
+/// stack's controller, a hypnotized stack's its hypnotist's: design §9, E17 M6 T7b, R8-1) is the
 /// observation's own and the panel's spell book button is enabled (`battle_controls_state`: a human
 /// side whose hero wears a book and has not cast this round, outside the tactics phase; E17 M3
 /// T6a, `h3_view::panel`).
@@ -34,7 +35,7 @@ pub fn takes(observation: &Observation) -> bool {
     let Some(stack) = observation.stacks.iter().find(|s| s.id == active) else {
         return false;
     };
-    let side = stack.side;
+    let side = stack.controller;
     side == observation.viewer
         && !h3_view::panel::shown(
             observation,
@@ -408,6 +409,8 @@ pub fn still(
         still.mouse = to;
         if let Some(open) = still.open.as_mut() {
             open.hover(memory, (layout, catalogue), to);
+            // The book's cursor replaces the options dialog's arrow (E17 M6 T7b, R4-4).
+            still.options_arrow = crate::battle::arrow_stays(still.options_arrow, open.cursor);
         }
     };
     // A box laid out and shown.
@@ -624,6 +627,9 @@ pub fn still(
                                     Next::Box(next) => asking = next.map(|a| *a),
                                     Next::Give(command) => {
                                         asking = None;
+                                        // The action's start hides the army info windows
+                                        // (0x478DAC; E17 M6 T7b, R6-1).
+                                        hover.windows.hide();
                                         result = ended(command, &mut eagle_eye);
                                     }
                                 }
@@ -710,6 +716,9 @@ pub fn still(
                             Next::Box(next) => asking = next.map(|a| *a),
                             Next::Give(command) => {
                                 asking = None;
+                                // The action's start hides the army info windows (0x478DAC;
+                                // E17 M6 T7b, R6-1).
+                                hover.windows.hide();
                                 result = ended(command, &mut eagle_eye);
                             }
                         }
@@ -968,7 +977,7 @@ fn options_action(
 
 /// One of a situation's actions over an open stats dialog `open` (E17 M6 T2a2a): `move:<x>,<y>`
 /// moves the mouse there (its hint, the OK held following); `click:<x>,<y>` moves it, presses,
-/// releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases it;
+/// releases and parks it (on the cast button an error: its aim is a sequence's); `key:<k>` presses the dialog's key (its OK's) and releases it;
 /// `right:<x>,<y>` (E17 M6 T2a2b1) moves it there and holds the right button down: the item's
 /// description in its popup (laid out by `tell`), held through the frames, so nothing may come
 /// after it. Where the mouse rests once the OK closed the dialog (none: still open; the `mouse`
@@ -1006,10 +1015,20 @@ fn stats_action(
             let at = point(arg)?;
             to(modal, at);
             modal.press(at);
-            if modal.release() == Outcome::Closed(h3_view::stats::OK) {
-                // The battle takes the press's point posted, then the park's move.
-                *mouse = crate::pointer::PARK;
-                return Ok(Some(crate::pointer::PARK));
+            match modal.release() {
+                Outcome::Closed(h3_view::stats::OK) => {
+                    // The battle takes the press's point posted, then the park's move.
+                    *mouse = crate::pointer::PARK;
+                    return Ok(Some(crate::pointer::PARK));
+                }
+                // The cast button's click closes the dialog into the Faerie Dragon's aim, which a
+                // still does not play (the reviewer's R2-5).
+                Outcome::Closed(_) => {
+                    return Err(String::from(
+                        "the cast button's aim: a sequence's `cast-button:`",
+                    ));
+                }
+                _ => {}
             }
             to(modal, crate::pointer::PARK);
             Ok(None)
@@ -1086,6 +1105,88 @@ pub(crate) mod tests {
             (&layout(), &catalogue),
             None,
         )
+    }
+
+    #[test]
+    fn the_book_opens_on_a_hypnotized_stack_s_turn_for_its_controller() {
+        // R8-1 (E17 M6 T7b): the side to act is the active stack's controller (design §9): the
+        // controller's view takes the book on the enemy stack's turn it controls, the owner's
+        // view does not.
+        let (_, mut o, _) = crate::stats::tests::opening();
+        let viewer = o.viewer;
+        let own = usize::from(viewer == Side::Defender);
+        if let Some(hero) = o.sides[own].hero.as_mut() {
+            hero.spell_book = true;
+        }
+        assert!(takes(&o));
+        let Some(enemy) = o.stacks.iter_mut().find(|s| s.side != viewer && s.alive) else {
+            panic!("an enemy stack");
+        };
+        enemy.controller = viewer;
+        o.active = Some(enemy.id);
+        assert!(takes(&o));
+        o.viewer = if viewer == Side::Attacker {
+            Side::Defender
+        } else {
+            Side::Attacker
+        };
+        assert!(!takes(&o));
+    }
+
+    #[test]
+    fn a_still_s_click_on_the_cast_button_is_an_error() {
+        // The reviewer's R2-5: its click closes the dialog into the Faerie Dragons' aim, which a
+        // still does not play (a sequence's `cast-button:`); the OK's click closes it.
+        use crate::stats::tests::{opening, stack_of, tables};
+        let (ruleset, o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = crate::stats::Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let dragons = stack_of(&manifest, &o, "ab:faerie_dragon");
+        let mut memory = StatsMemory::new(h3_render::Bugs::Original);
+        let mut open = || {
+            crate::stats::open(
+                &sources,
+                &o,
+                (dragons, [0, 0], false),
+                (&battle.stats, [300, 300], [[0, 0]; 2]),
+                (std::collections::BTreeMap::new(), 0, 1),
+                &mut memory,
+            )
+            .unwrap()
+        };
+        let mut dialog = open();
+        let message = &dialog.modal.open.message;
+        let at = |id: u16| {
+            message.dialog.items.iter().find_map(|item| match item {
+                h3_ui::ui::Item::Button(b) if b.id == id => Some(b.at),
+                _ => None,
+            })
+        };
+        let point = |id: u16| {
+            at(id).map(|[x, y]| {
+                let [left, top] = message.dialog.place;
+                format!("click:{},{}", left + x + 5, top + y + 5)
+            })
+        };
+        let (cast, ok) = (
+            point(h3_view::stats::CAST).unwrap(),
+            point(h3_view::stats::OK).unwrap(),
+        );
+        let keys = Keys::original();
+        let mut mouse = [0, 0];
+        let mut memory = StatsMemory::new(h3_render::Bugs::Original);
+        let got = stats_action(&mut dialog, &mut memory, (&cast, &keys, None), &mut mouse);
+        assert!(got.unwrap_err().contains("cast-button:"));
+        let mut dialog = open();
+        let got = stats_action(&mut dialog, &mut memory, (&ok, &keys, None), &mut mouse);
+        assert_eq!(got, Ok(Some(crate::pointer::PARK)));
     }
 
     #[test]
@@ -1280,7 +1381,7 @@ pub(crate) mod tests {
     }
 
     /// A box of one button `id` at (10, 10), 64 × 30 (its keys the table's).
-    fn one_button(id: u16) -> MessageBox {
+    pub(crate) fn one_button(id: u16) -> MessageBox {
         use h3_ui::ui::{Button, Dialog, Frames, Item, Shown};
         MessageBox {
             dialog: Dialog {
@@ -1464,6 +1565,60 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn the_book_s_cursor_replaces_the_options_dialog_s_arrow() {
+        // E17 M6 T7b (R4-4): the arrow the options dialog leaves at its close by a key stays over
+        // the book opened after it until the book sets its own cursor (0x59D712).
+        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let catalogue = Catalogue::default();
+        let options = |_: Option<[i32; 2]>, _: (u8, Shades)| {
+            let settings = h3_view::options::Settings::CAPTURE;
+            Some(h3_view::options::Open::new(
+                &battle.options,
+                &catalogue,
+                settings,
+                (0, false),
+            ))
+        };
+        let tell = |_: &str, _, _: Option<&Picture>| None;
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave::default(),
+            refusal: &|_| None,
+            pictures: (String::new(), [0, 0]),
+            result: &|_| None,
+            opening: None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
+            held: &|_, _| None,
+            turret: &|_, _| None,
+            help: &|_| None,
+            hero_info: &|_| None,
+            options: &options,
+            army: None,
+        };
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                [5, 5],
+                || Some(hero()),
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+            .unwrap()
+        };
+        let closed = played(&["key:o", "key:Return", "key:c"]);
+        assert!(closed.open.is_some() && closed.options_arrow);
+        let hovered = played(&["key:o", "key:Return", "key:c", "move:246,123"]);
+        assert_eq!(hovered.open.map(|o| o.cursor), Some(Some(1)));
+        assert!(!hovered.options_arrow);
+        assert!(crate::battle::arrow_stays(true, None));
+        assert!(
+            !crate::battle::arrow_stays(true, Some(0)) && !crate::battle::arrow_stays(false, None)
+        );
+    }
+
+    #[test]
     fn the_tactics_phase_s_message_is_open_at_the_opening_until_its_ok() {
         // E17 M5 T4c2a: the battle stands before its first turn behind it; its OK by Enter or a
         // click starts the turn, no result follows.
@@ -1635,6 +1790,55 @@ pub(crate) mod tests {
         assert_eq!(ids(&played(0, orrin, &[]).unwrap()), [0; 0]);
         // From the hero to an empty hex: none.
         assert_eq!(ids(&played(1, orrin, &["move:400,300"]).unwrap()), [0; 0]);
+        // E17 M6 T7b (R6-1): Retreat's question kept the window (S and R keep them in the
+        // original's profile, CLT-Q49), but its OK gives the action, whose start hides all six
+        // (`action_dispatcher`'s head, 0x478DAC to 0x478E0F, before the switch that dispatches
+        // Retreat and Surrender too): the result window comes over none, by a key or a click.
+        let asks = |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES));
+        let ends = |_| Some((one_button(h3_view::result::OK), Tune::Retreat, Vec::new()));
+        let retreated = |actions: &[&str]| {
+            let boxes = Boxes {
+                tell: &asks,
+                leave: Leave {
+                    retreat: true,
+                    surrender: None,
+                },
+                refusal: &|_| None,
+                pictures: (String::new(), [0, 0]),
+                result: &ends,
+                opening: None,
+                look: &|_, _| None,
+                acting: &|_, _| None,
+                held: &|_, _| None,
+                turret: &|_, _| None,
+                help: &|_| None,
+                hero_info: &hero_info,
+                options: &options,
+                army: Some(Army {
+                    layout: &battle,
+                    observation,
+                    legal: &none,
+                    level: 1,
+                    window: &window,
+                    shades: Shades::default(),
+                }),
+            };
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                orrin,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+            .unwrap()
+        };
+        let asking = retreated(&["key:r"]);
+        assert!(asking.message.is_some() && ids(&asking) == [1]);
+        for ok in [&["key:r", "key:Return"][..], &["key:r", "click:20,20"][..]] {
+            let still = retreated(ok);
+            assert!(still.result.is_some() && ids(&still).is_empty(), "{ok:?}");
+        }
         // A left press over the enemy's hero (nothing; the click's park leaves the battlefield),
         // then the right press there: its window shown (the move back a new hex shows it by
         // itself) and kept after the release. The press showing again a window a left press hid

@@ -121,7 +121,8 @@ impl Player<'_> {
             let frame = (i < look.frames).then_some(i);
             self.magic_frame((number, &look), &over, frame, tick);
         }
-        live.count += creatures;
+        // Saturated: both numbers are the record's (a hostile one's past `u32::MAX`).
+        live.count = live.count.saturating_add(creatures);
         let now = self.clock.now;
         self.magics.push(MagicKey {
             animation: number,

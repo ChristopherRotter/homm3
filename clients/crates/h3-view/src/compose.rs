@@ -64,6 +64,7 @@ pub fn compose(
 ) -> Result<Screen, ComposeError> {
     let [width, height] = layout.frame;
     let mut screen = Screen::new(width, height, FORMAT).ok_or(ComposeError::Frame(layout.frame))?;
+    let mut within: Option<(&[Draw], Screen)> = None;
     for item in list {
         match item {
             Draw::Background { picture, x, y } => {
@@ -111,9 +112,15 @@ pub fn compose(
                 tiled(&mut screen, batch, def, *frame, *area)?;
             }
             Draw::Within { rect, list } => {
-                // Its own frame, of which the rectangle is copied (E17 M4 T2b).
-                let own = compose(list, batch, layout, bugs)?;
+                // Its own frame, of which the rectangle is copied (E17 M4 T2b); the frame of the
+                // list before kept for the next of the same list (E17 M6 T7b, R7-3: the cursor
+                // shadow's blocks of one composition, up to 19, composed once).
+                let own = match within.take() {
+                    Some((before, own)) if before == list.as_slice() => own,
+                    _ => compose(list, batch, layout, bugs)?,
+                };
                 copy_rect(&mut screen, &own, *rect);
+                within = Some((list, own));
             }
             Draw::Dissolve {
                 step,

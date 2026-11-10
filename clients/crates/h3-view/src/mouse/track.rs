@@ -987,14 +987,18 @@ pub fn follow_on<'l>(
             }
             Input::Looked { at: now } => {
                 h.dialog = false;
-                if let (Some(turn), Some(point)) = (turns.get(at.turn), h.point)
+                if let Some(turn) = turns.get(at.turn)
                     && h.human(turn)
                 {
+                    // The hex forgotten and the log settled whether or not the mouse was seen
+                    // yet (the reviewer's R2-3: the window's mouse unknown until it moves).
                     h.hex = None;
                     h.shown.log.push((now, Logged::Settle));
                     // After the cast button's aim gave an action (E17 M6 T2a2b1) the posted move
                     // waits behind it, dropped as the next turn starts.
-                    if !h.busy {
+                    if let Some(point) = h.point
+                        && !h.busy
+                    {
                         h.take(now, point, Some(&turn.field), name);
                     }
                 }

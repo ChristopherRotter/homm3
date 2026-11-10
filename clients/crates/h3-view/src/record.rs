@@ -121,6 +121,17 @@ pub fn commands(messages: &[ServerMessage]) -> impl Iterator<Item = &[Event]> {
     })
 }
 
+/// The commands' events of `messages` from index `first` on, a record grown from
+/// `messages[..first]` (a served viewer's, whose start may come after its snapshot): [`commands`]'s
+/// past those that part held, so the battle's start is left out wherever it lies (E17 M6 T7b,
+/// R12-4: the window had it computed inline). The first `Events` message of a part that holds one
+/// is the record's, so the part's commands are the record's before `first` (a `first` past the
+/// end: the whole record's, none new).
+pub fn commands_from(messages: &[ServerMessage], first: usize) -> impl Iterator<Item = &[Event]> {
+    let before = commands(messages.get(..first).unwrap_or(messages)).count();
+    commands(messages).skip(before)
+}
+
 /// Why a record does not read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecordError {
@@ -358,6 +369,44 @@ pub(crate) mod tests {
         }
         assert_eq!(opening(&[snapshot]), None);
         assert!(!opens(&[]));
+    }
+
+    /// A served seat's record grows: its snapshot alone, then the start and its turn (a seat that
+    /// waited for the other one hears the start then), then a command's events; each growth's
+    /// commands are the record's new ones, the start never one (E17 M6 T7b, R12-4).
+    #[test]
+    fn a_grown_record_s_new_commands_leave_the_start_out() {
+        let events = |n, events| ServerMessage::Events { n, events };
+        let turn = Event::TurnStarted { stack: 2 };
+        let wait = Event::Waited { stack: 2 };
+        let yours = ServerMessage::YourTurn {
+            n: 3,
+            legal: Vec::new(),
+            castable: Vec::new(),
+        };
+        let mut messages = vec![ServerMessage::Snapshot {
+            n: 1,
+            observation: observation(),
+        }];
+        assert_eq!(commands_from(&messages, 0).count(), 0);
+        messages.extend([events(2, vec![turn.clone()]), yours]);
+        assert_eq!(commands_from(&messages, 1).count(), 0);
+        messages.push(events(4, vec![wait.clone(), turn.clone()]));
+        let new: Vec<_> = commands_from(&messages, 3).collect();
+        assert_eq!(new, [&[wait.clone(), turn.clone()][..]]);
+        // All of it at once, and the whole or a part past the end (none new).
+        assert_eq!(commands_from(&messages, 0).count(), 1);
+        assert_eq!(commands_from(&messages, 1).count(), 1);
+        assert_eq!(commands_from(&messages, 9).count(), 0);
+        assert_eq!(commands_from(&messages, 4).count(), 0);
+        // A spectator from a later turn: its first `Events` is a command's.
+        let late = [
+            messages[0].clone(),
+            events(2, vec![wait.clone()]),
+            events(3, vec![turn.clone()]),
+        ];
+        assert_eq!(commands_from(&late, 1).count(), 2);
+        assert_eq!(commands_from(&late, 2).count(), 1);
     }
 
     /// Protocol v38: the battle as it ended is the snapshot right before `GameEnded`.

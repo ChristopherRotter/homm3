@@ -129,6 +129,13 @@ while the work waits.
   events; what it cannot fold yet is stubbed (`SRV-STUB-1` the tiles a reveal shows, `-2` to
   `-11`, `-14` a battle's last snapshot; the fold's gate, `h3-protocol`'s
   `tests/game_fold.rs`). The 55 golden replays make 26 MB of records, the largest 1.4 MB.
+- 2026-11-10 (the client lane, E17 M6 T7b, branch `client/e17-m6-t7b`; for you to take or
+  leave): `clients/crates/h3-map-view/tests/purity.rs` has two more holes (its reviewer's R11-3),
+  besides the two of T6a's entry below: `dependencies` reads only the `[dependencies]` table, so
+  a `[dependencies.<k>]` or `[target.<cfg>.dependencies]` table goes unchecked, and the deny
+  check matches each lint as a substring (`clippy::panic_in_result_fn` passes for
+  `clippy::panic`). `h3-view`'s and `h3-ui`'s copies have the fix (`parts`, `dependency`,
+  `dependencies`, `names`) and its test lines.
 
 - 2026-11-10 (the adventure lane, E08 T105b2, branch `adventure/e08-t105b2`; **one new command,
   for the space key**): `h3_adventure::AdventureCommand::Revisit { hero }` visits the entered

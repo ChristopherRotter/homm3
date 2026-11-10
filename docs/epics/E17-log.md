@@ -5403,8 +5403,9 @@ the effects, their waits and Bloodlust's glow) and chose T5a (M5's items 5, 9, 8
 - **The review's findings fixed** (a fresh reviewer, then a fixer): the acting side by the stack's
   controller (`Facts::of`), the mouse posted after a refusal box's OK rather than at its opening,
   `Battle`-level tests of the server's facts, §12.17's server behaviour stated once (the entry's
-  box meanwhile, `CLT-STUB-1`), a server of other content's wall aim noted (24, the bare aim),
-  §7.18's quoted text dropped.
+  box meanwhile, `CLT-STUB-1`), a server of other content's wall aim noted (24, the bare aim;
+  corrected at T7b, R8-2: `pointer::legal` names every aim by its key before the mouse sees it,
+  so 182 and Fire Wall's shade), §7.18's quoted text dropped.
 
 ### M6 T5b1 — the computer's casts for the human's hero (2026-11-05)
 
@@ -5960,3 +5961,125 @@ session built against a local patch of that match, never committed, until the se
   spectator's first `Events` a command's, the end's snapshot, a served seat's picks; the rule
   over every viewer of the five synthetic scenarios fought: tactics in `full`, a turret's own
   shot in `siege`'s start); `check.sh` passed; `check-docs`, `check-lane`.
+
+### M6 T7b — the fresh reviewer and its fixes (2026-11-10)
+
+On `client/e17-m6-t7b`, the user present at the start. **The user's cut** (asked at the start:
+four, three or two parts proposed, by task groups of about 5 000 source lines): "One session.
+You delegate everything to sub-agents and only coordinate the work, then you finalize it and
+open the PR." So T7b whole, the session a coordinator: 12 read-only reviewers (two at a time, on
+a detached worktree of master 3e1026fc), 6 fixers one at a time on the branch (each two
+reviewers' findings), one docs agent. M6's size: about 17 400 lines of client source (16 200 in
+`h3-view`) and 8 000 of tests over 33 client pull requests since M5's closure (ecd72ddf); the
+slices 1 000 to 2 100 source lines each. The original data staged by the PC's file tool at once
+(57 files, 341 MB; the PC left about 2.5 hours in). Baseline: `verify-once clients` the full
+`check.sh` (coverage 100 %), CI on 3e1026fc green, `drawn` 263 of 263 the same.
+
+- **R1** (T1, T2a1): R1-1 (medium) the stats dialog's attack overflows on a server's values;
+  R1-2 `Open::at` steps the creature from the opening at every frame; R1-3, R1-4 no tests of the
+  boxes' colours (CLT-Q28 (2)), the attack choice and the cast flag. **Fixed** (F1): saturating;
+  `Steps::due` in closed form and a `Drawn` cache (the same steps); `acting_colour`, the tests.
+- **R2** (T2a2a to T2a2b2): R2-1 (medium) the ability text and the cast button's back items for
+  the mouse, where their id −1 is "no item" (read: 0x5F3A9A, 0x5F39F8, 0x5F4E57); R2-2 as R1-2;
+  R2-3 the close's settle waiting for the mouse's point; R2-4 `look:` modelled only before
+  `cast-button:`; R2-5 a still's click on the cast button left the dialog open; R2-6
+  `stats::account` untested; R2-7 the elementals' town in a map of kind 0; R2-8 a doc. **Fixed**
+  (F1): none for the mouse there, both profiles (the cursor's frame 0); the settle on a human's
+  turn; a `look:` elsewhere refused; the still's click an error; the tests; the doc. **Left:**
+  R2-7 (item 16).
+- **R3** (T2b1 to T3c3): R3-1 a held popup flushes the window's batch; R3-2 `h3-view situation`
+  drops a Grail building outside a siege; R3-3 a doc; R3-4 a panel button the left press holds
+  keeps a stale `over` through the right button's popups. **Fixed** (F2; read: style 4 runs by
+  `popup_run_held` 0x602A40, no `input_flush`): `Asked::empties_input`, `shown_box`,
+  `Flush::drops`; `map_town` refuses the effect outside a siege; the doc. **Left:** R3-4 (read:
+  the original opens no popup there, the button's own loop dropping the right press; CLT-Q72).
+- **R4** (T4a): R4-1 (medium) `--speed` shown wrong in the dialog and lost at its close; R4-2
+  (medium) the help popup taken while the dialog holds a press leaves it stuck; R4-3 no press
+  sample at the OK's hotkey or a re-entered button; R4-4 the dialog's arrow over the book's and
+  the stats dialog's cursors; R4-5 the settings file written in place and read strictly; R4-6 a
+  named file not there refused; R4-7 docs. **Fixed** (F2): `shown_settings`; no help over a
+  button the mouse holds (its loop drops the right press), `Open::let_go` (CLT-Q39's (b)); the
+  sample (0x4565E7, 0x4563A2; R4-3's "second sample" false: the loop passes nothing during the
+  hold); `arrow_stays`; `write_whole`, a tolerant read with notes; a first run's; the docs.
+- **R5** (T4b1, T4b2a): R5-1 (medium) the windows' Ctrl chords stop Auto Combat; **R5-2 (high)**
+  a turn no command waited for (a blind, paralysed, petrified or berserk stack's) pairs with that
+  stack's later battle in `pointer::pair`, every later turn shifting; R5-3 a box's close counted
+  after the pass's whole batch; R5-4 the turn to come's `Turned` built twice; R5-5 the usage's
+  list; R5-6 a Ctrl down the flush drops. **Fixed** (F3): `window::Control` (Control alone stops
+  at its release, a chord never); `pair` takes only the battle at `next` past a hero's cast's
+  (`cast_left`), a test of the reviewer's scenario (`smoke` in hot seat, Blind on the Goblins)
+  failing on the old one; `boxes_closed` before each event (no test: a `Battle` needs the
+  archives); `Live::observation`; the usage against `Command::all()`; `Control::saw` first.
+- **R6** (T4b2b1, T4b2b2): R6-1 a still's box OK that ends the battle leaves the army info
+  windows under the result window; R6-2 `StackInfo::spells`' order; R6-3 the window's hides
+  untested. **Fixed** (F3; read: `action_dispatcher`'s head 0x478DA3 hides all six for every
+  action): the hide before `ended`; the doc (handle order, *provisional*); `key_hides` without
+  the `Battle`, `HIDING_HOTKEYS`, tested. **Left:** the cast order on the wire (item 42).
+- **R7** (T4c): R7-1 (medium) the tactics phase's end by its key keeps the cursor shadow's list,
+  its block put back with the phase's shade, in the client's profile too; R7-2 oddity 8 copied
+  into the window; R7-3 a whole composition a frame for each block put back. **Fixed** (F4):
+  `Cells::phase` forgets the list in `Fixed` (CLT-Q52's answer); R7-2 otherwise: the block never
+  ran (the aims' `original` always 0 there), removed with `Battle::aim_original` (oddity 8 no
+  longer copied); `compose` reuses an equal `Within` list's frame (not measured).
+- **R8** (T5a): R8-1 (medium) the book never opens on a hypnotized stack's turn; R8-2 §12.17's
+  "24 and no shade" for a server's bare wall aim cannot happen; R8-3 the viewer's sequences build
+  no wall aim with no free hex. **Fixed** (F4): `spellbook::takes` by the controller (`open_book`
+  and the presser's cast with it); R8-2 in these records. **Left:** R8-3 (`Turned::of` would need
+  the after-book facts and the spell's number, a threading change through `scenario`,
+  `sequences` and `live`; no sequence reaches it).
+- **R9** (T5b1, T5b2a): R9-1 (medium) the panel behind Auto Combat's question at a switch the one
+  before it; R9-2 no outline behind a later turn's question in the window; R9-3
+  `--auto-question` untested; R9-4 the two tasks' lasting choices not listed. **Fixed** (F5):
+  `open_question` builds the panel again; `Growing::outline_asked`; the test; items 57 and 58.
+- **R10** (T5b2b, T5c): R10-1 docs; R10-2 the window-only paths unchecked; R10-3
+  `sequences::switched` counts every `key:a` before the answer. **Fixed** (F5): the docs; two
+  window tests over the staged installation (Eagle Eye's boxes after the result window, a press
+  during the computer's cast: with R9's two the client's first `cargo test`s that skip and pass
+  without `Data/H3bitmap.lod`, `battle::tests::staged`, item 62); R10-3's doc exact and
+  *provisional* (a fix is circular: the timeline is built with that value). **Left:** R10-2's
+  loop pieces (`Changes::after`, `cast_stop`) and a presser option closing the result window
+  for an unattended `--run`; R10-3's model (item 59).
+- **R11** (T5d1 to T6a, T6b2): R11-1 (medium) the channel's line sums unchecked (a hostile
+  record panics); R11-2 `h3-ui`'s purity test keeps T6a's two holes; R11-3 the purity tests miss
+  dependency tables and match denied lints by substring; R11-4 §12.23's tail outline; R11-5 a
+  Phoenix a hero's Ice Bolt kills reborn after the hero's last frames; R11-6 `mask_inputs`' doc.
+  **Fixed** (F6): saturating folds (Fear, Chain Lightning's kills and a raise found alike); both
+  crates' purity tests (key paths, exact names); §12.23; the rebirth before the tail (read:
+  `phoenix_rebirth_check` 0x469440 in every damage handler; §12.24, *provisional*); the doc.
+- **R12** (T6b1, T6c1, T6c2, T7a, the v38 readers): R12-1 the runbook's redraw rule; R12-2 T7a's
+  counts stale in four sequences' comments and §10.2; R12-3 the v38 rule in no trap; R12-4
+  `take_served`'s start skip inline, untested; R12-5 the README's `h3-bink` row. **Fixed** (F6):
+  the docs (`acid` 274, `stare` 448, `mine` 269, `starts` 350; §10.2's 269 beside 217 and
+  4 790); the TRAPS line; `record::commands_from`; the row; item 61.
+- **R5-Q** (F3 read R5's question: a stop's key down goes straight to `battle_buttons`' key
+  switch, 0x474625, T its index 0): **built** (F4), `carried` holds `Do::Stats`.
+- **Counts:** 56 findings, one high, nine medium; 51 fixed by the fixers (R6-2, R10-2 and R10-3
+  in part, R4-3's second half false), R8-2 and R9-4 in these records, 3 left (R2-7, R3-4, R8-3).
+  Each code fix's new test fails with the fix reverted. No fix changes a recorded frame as far as
+  the fixers found (R2-1, R5-2, R6-1, R11-5 only in cases no capture holds).
+- **Questions:** CLT-Q70 to Q77 asked (a heroless side's colours, a hotkey's held panel button,
+  the DEF button's loop, the music at volume 0, the speeds' one click against CLT-Q43 (1), F6 to
+  F8 on a turn not taken, a wall with no free hex, the pictures' layout). No entry: R4's Enter
+  on the OK over a box (one click: a key's message carries (0, 0), 0x4EC11E), R5's key T (built,
+  R5-Q), R7's tactics end (built as CLT-Q52's answer).
+- **Recorded:** items 49 to 62, items 16, 42 and 43 amended; design §7.22, §12.12, §12.16,
+  §12.17 and T5a's record corrected (F6 did §10.2, §12.23 to §12.25); the map client's inbox.
+- **Master merged** once before the gates (to ac8ae2ec: #819, the adventure's protocol v40, and
+  #821, the server's E16 M5 T5b): clean.
+- **The sub-agents' sizes** (their reported tokens): reviewers 252 000 (R4) to 363 000 (R10),
+  most about 300 000 to 345 000, 11 to 21 minutes each; fixers 180 000 (F4) to 320 000 (F2), 14
+  to 28 minutes. Larger than M5 T8's reviewers' (116 000 to 202 000): bigger slices, and the
+  brief asked for the tasks' records and design sections too.
+- **Gates:** after `master`'s merge, `clients/scripts/check.sh` all gates passed (coverage
+  100 %); `drawn` 263 of 263 the same (no fix changed a frame, so no capture); `h3-view gate`
+  passed; the scoped verify with the original data no failing step (`check-exe-map` first wanted
+  an entry for CLT-Q73's 0x5994B0: `music_volume_tail`, *inferred*, added).
+- **Left** (for T7c's review with the user unless said): R2-7, no map kind in the engine (a
+  *provisional* comment at `account`'s alignments; item 16; a battle-lane inbox note if wanted);
+  R3-4 with the DEF button's loop for the panel, the stats dialog's OK and the options' buttons,
+  a task to queue (CLT-Q72, item 52); R6-2's cast order on the wire, a cross-lane protocol
+  change (item 42); R8-3 until a sequence records the case (CLT-Q76); R10-2's loop pieces and
+  the presser option (tests and a tool); R10-3's model (item 59); R11-5's rebirth unrecorded and
+  a creature's cast's (item 60); R12-3's start marked on the wire (CLT-Q69 (a), item 61); the
+  reads and captures the questions name (CLT-Q71's hold of D, CLT-Q73's 0x5994B0, CLT-Q74's
+  sound sequence) and R2-1's still `stats-ability`.

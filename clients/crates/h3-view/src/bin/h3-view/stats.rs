@@ -79,23 +79,50 @@ pub struct Open {
     /// while the button is held (`popup_run_held` 0x602A40: the cursor hidden, every input but
     /// its ends dropped, no procedure run, so no hint and no step), then closed as the modal one.
     pub held: bool,
+    /// Its creature as last drawn ([`Self::at`]).
+    pub drawn: Drawn,
 }
+
+/// The creature of an open dialog as last drawn (the reviewers' R1-2, R2-2): the steps made by
+/// then and where they left it, so that each frame steps on from the last one rather than from
+/// the opening (the steps are the same whatever the holds: only their count depends on them). A
+/// cache: dialogs are equal whatever theirs hold.
+#[derive(Debug, Clone, Default)]
+pub struct Drawn(core::cell::RefCell<Option<(u32, Steps)>>);
+
+impl PartialEq for Drawn {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+impl Eq for Drawn {}
 
 impl Open {
     /// The dialog `since` ms after it opened, its creature's first step `first` ms after it
     /// (`creature_dialog_proc` 0x5F4CFF: once the clock reaches the frame deadline, then every
-    /// 100 ms; none while a popup is held, E17 M6 T2a2b1).
+    /// 100 ms; none while a popup is held, E17 M6 T2a2b1): stepped on from the frame drawn last,
+    /// from the opening for an earlier one.
     pub fn at(&self, first: u32, since: u32) -> MessageBox {
-        let mut steps = self.steps.clone();
-        for _ in 0..Steps::made_around(first, &self.holds, since) {
+        let made = Steps::made_around(first, &self.holds, since);
+        let mut drawn = self.drawn.0.borrow_mut();
+        let (mut count, mut steps) = match drawn.take() {
+            Some((count, steps)) if count <= made => (count, steps),
+            _ => (0, self.steps.clone()),
+        };
+        while count < made {
             steps.step();
+            count += 1;
         }
+        let (group, frame) = (steps.group, steps.frame);
+        *drawn = Some((made, steps));
+        drop(drawn);
         let mut window = self.modal.open.message.clone();
         for item in &mut window.dialog.items {
             if let h3_ui::ui::Item::Def(d) = item
                 && d.id == h3_view::stats::CREATURE
             {
-                (d.group, d.frame) = (steps.group, steps.frame);
+                (d.group, d.frame) = (group, frame);
             }
         }
         window
@@ -215,9 +242,14 @@ pub fn of(sources: &Sources<'_>, observation: &Observation, id: u8, modal: bool)
         .text(&format!("creature-ability.{key}"), &Args::new());
     // The attack: the ranged one when it can shoot now, the higher of it and the melee one
     // (0x5F345B); the observation's attack holds its timed effects but the melee and ranged
-    // bonuses (Bloodlust, Precision).
-    let melee = stack.attack + i32::from(stack.melee_attack_bonus);
-    let ranged = stack.attack + i32::from(stack.ranged_attack_bonus);
+    // bonuses (Bloodlust, Precision); saturated, a server's attack being any `i32` (the
+    // reviewer's R1-1).
+    let melee = stack
+        .attack
+        .saturating_add(i32::from(stack.melee_attack_bonus));
+    let ranged = stack
+        .attack
+        .saturating_add(i32::from(stack.ranged_attack_bonus));
     let attack = if can_shoot_now(sources, observation, stack, original) {
         ranged.max(melee)
     } else {
@@ -424,6 +456,10 @@ fn account(
         .flatten()
         .map(|&f| usize::from(f))
         .collect();
+    // Each creature by the engine's faction. *Provisional* (the reviewer's R2-7): in a map of
+    // kind 0 (`[game]+0x1F698`, RoE) the executable takes the four elementals (112 to 115) as
+    // neutral here, for Clover Field's line and for the creature's town (design §12.4); the
+    // engine carries no map kind, so the client follows its faction.
     let alignments: std::collections::BTreeSet<Option<usize>> = army(listed)
         .filter_map(|s| core.creature(Handle::from_raw(s.creature)))
         .map(|i| {
@@ -805,5 +841,403 @@ pub fn open(
             Vec::new()
         },
         held,
+        drawn: Drawn::default(),
     })
+}
+
+#[cfg(test)]
+pub(crate) mod tests {
+    use super::*;
+    use h3_protocol::wire::Tactics;
+    use h3_render::Bugs;
+
+    /// `stats-dragon`'s battle at its opening (the Faerie Dragons to act, Red human, beside
+    /// Marksmen; the Wolf Riders and Goblins against them): its ruleset, the attacker's own
+    /// observation and its record's manifest.
+    pub(crate) fn opening() -> (BattleRuleset, Observation, Manifest) {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let (ruleset, setup) = crate::scenario::battle(
+            &dir.join("situations/stats-dragon.toml"),
+            &dir.join("../packs"),
+            1,
+        )
+        .unwrap();
+        let mut live = crate::live::Live::new(
+            &ruleset,
+            setup,
+            1,
+            ([true, false], crate::live::Computer::Greedy),
+        )
+        .unwrap();
+        let observation = live.own_view().unwrap();
+        let record = live.record().unwrap();
+        let manifest = h3_view::record::parse(&record).unwrap().header.manifest;
+        (ruleset, observation, manifest)
+    }
+
+    pub(crate) fn tables() -> Tables {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap()
+    }
+
+    /// The handle of the creature or spell `key` in `keys` (the manifest's).
+    pub(crate) fn handle(keys: &[String], key: &str) -> u16 {
+        let index = keys.iter().position(|k| k == key).unwrap();
+        u16::try_from(index).unwrap()
+    }
+
+    /// The id of the stack whose creature is `key`.
+    pub(crate) fn stack_of(manifest: &Manifest, o: &Observation, key: &str) -> u8 {
+        let creature = handle(&manifest.keys.creatures, key);
+        (o.stacks.iter())
+            .find(|s| s.creature == creature)
+            .unwrap()
+            .id
+    }
+
+    fn stack(o: &mut Observation, id: u8) -> &mut Stack {
+        o.stacks.iter_mut().find(|s| s.id == id).unwrap()
+    }
+
+    /// A timed effect of spell handle `spell` at `mastery` with `value`.
+    fn effect(spell: u16, mastery: u8, value: u16) -> h3_protocol::wire::Effect {
+        h3_protocol::wire::Effect {
+            spell,
+            rounds: Some(2),
+            mastery,
+            value,
+            attack: 0,
+            defense: 0,
+            speed: 0,
+        }
+    }
+
+    #[test]
+    fn the_attack_saturates_on_a_server_s_values() {
+        // The reviewer's R1-1: a server's attack at the `i32`'s top with its bonuses.
+        let (ruleset, mut o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let marksmen = stack_of(&manifest, &o, "base:marksman");
+        let s = stack(&mut o, marksmen);
+        (s.attack, s.melee_attack_bonus, s.ranged_attack_bonus) = (i32::MAX, 200, 200);
+        assert_eq!(
+            of(&sources, &o, marksmen, true).unwrap().attack.now,
+            i32::MAX
+        );
+        let info = army_info(&sources, &o, marksmen, 0).unwrap();
+        assert_eq!(info.attack.now, i32::MAX);
+    }
+
+    #[test]
+    fn the_attack_shown_is_the_ranged_one_while_the_stack_can_shoot() {
+        // The reviewer's R1-4 (`stack_can_shoot_now` 0x4428F0): the higher of the ranged and the
+        // melee attack while it can shoot, else the melee one.
+        let (ruleset, mut o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let marksmen = stack_of(&manifest, &o, "base:marksman");
+        let goblins = stack_of(&manifest, &o, "base:goblin");
+        let forgetfulness = handle(&manifest.keys.spells, "base:forgetfulness");
+        let s = stack(&mut o, marksmen);
+        (s.attack, s.melee_attack_bonus, s.ranged_attack_bonus) = (10, 0, 3);
+        (s.shooter, s.shots, s.shoots_when_adjacent) = (true, 5, false);
+        let hex = s.hex;
+        let attack = |o: &Observation| of(&sources, o, marksmen, true).unwrap().attack.now;
+        // Free to shoot: the ranged one; the melee one when it is higher.
+        assert_eq!(attack(&o), 13);
+        stack(&mut o, marksmen).melee_attack_bonus = 5;
+        assert_eq!(attack(&o), 15);
+        stack(&mut o, marksmen).melee_attack_bonus = 0;
+        // No shots: the melee one.
+        stack(&mut o, marksmen).shots = 0;
+        assert_eq!(attack(&o), 10);
+        stack(&mut o, marksmen).shots = 5;
+        // Forgetful at Advanced or Expert: the melee one; at Basic it shoots.
+        stack(&mut o, marksmen).effects = vec![effect(forgetfulness, 2, 0)];
+        assert_eq!(attack(&o), 10);
+        stack(&mut o, marksmen).effects = vec![effect(forgetfulness, 1, 0)];
+        assert_eq!(attack(&o), 13);
+        stack(&mut o, marksmen).effects.clear();
+        // An enemy beside it: the melee one, unless it shoots then too; a dead one blocks nothing.
+        let near = |h: u8| (0..6).filter_map(move |d| h3_view::mouse::neighbour(h, d));
+        let next = near(hex).next().unwrap();
+        let g = stack(&mut o, goblins);
+        (g.hex, g.two_hex) = (next, false);
+        assert_eq!(attack(&o), 10);
+        stack(&mut o, marksmen).shoots_when_adjacent = true;
+        assert_eq!(attack(&o), 13);
+        stack(&mut o, marksmen).shoots_when_adjacent = false;
+        stack(&mut o, goblins).alive = false;
+        assert_eq!(attack(&o), 13);
+        stack(&mut o, goblins).alive = true;
+        // A two-hex enemy whose other hex (the defender's to the left) is beside it: blocked.
+        let right = near(hex)
+            .find(|&b| {
+                b.checked_add(1)
+                    .is_some_and(|r| r != hex && !beside(hex, r))
+            })
+            .unwrap();
+        let g = stack(&mut o, goblins);
+        (g.hex, g.two_hex) = (right + 1, true);
+        assert_eq!(attack(&o), 10);
+        stack(&mut o, goblins).two_hex = false;
+        assert_eq!(attack(&o), 13);
+        // Its own other hex (the attacker's to the right) beside an enemy: blocked.
+        let far = near(hex + 1)
+            .find(|&h| h != hex && !beside(hex, h))
+            .unwrap();
+        stack(&mut o, goblins).hex = far;
+        assert_eq!(attack(&o), 13);
+        stack(&mut o, marksmen).two_hex = true;
+        assert_eq!(attack(&o), 10);
+        // A Ballista shoots whatever stands beside it: the ranged one.
+        let ballista = handle(&manifest.keys.creatures, "base:ballista");
+        let s = stack(&mut o, marksmen);
+        (s.creature, s.shooter, s.shots) = (ballista, false, 0);
+        assert_eq!(attack(&o), 13);
+    }
+
+    #[test]
+    fn the_cast_button_is_a_faerie_dragon_s_of_the_side_acting() {
+        // The reviewer's R1-4 (0x5F3974): a Faerie Dragon of the side acting now, with casts
+        // left, outside the tactics phase, in the modal dialog; the client's profile only the
+        // acting stack's own (CLT-Q38 (4), `open`).
+        let (ruleset, mut o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let dragons = stack_of(&manifest, &o, "ab:faerie_dragon");
+        let marksmen = stack_of(&manifest, &o, "base:marksman");
+        let goblins = stack_of(&manifest, &o, "base:goblin");
+        o.active = Some(dragons);
+        stack(&mut o, dragons).casts_left = 1;
+        let cast = |o: &Observation, modal: bool| of(&sources, o, dragons, modal).unwrap().cast;
+        assert!(cast(&o, true));
+        assert!(!cast(&o, false));
+        assert!(!of(&sources, &o, marksmen, true).unwrap().cast);
+        // The Marksmen acting: still the side's; the other side's stack: not.
+        o.active = Some(marksmen);
+        assert!(cast(&o, true));
+        o.active = Some(goblins);
+        assert!(!cast(&o, true));
+        o.active = None;
+        assert!(!cast(&o, true));
+        o.active = Some(dragons);
+        stack(&mut o, dragons).casts_left = 0;
+        assert!(!cast(&o, true));
+        stack(&mut o, dragons).casts_left = 1;
+        o.tactics = Some(Tactics {
+            side: Side::Attacker,
+            columns: 3,
+        });
+        assert!(!cast(&o, true));
+        o.tactics = None;
+        // The dialog opened on them while the Marksmen act: the original's shows it, the
+        // client's not.
+        o.active = Some(marksmen);
+        let shown = |bugs: Bugs| {
+            let layout =
+                h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
+                    .unwrap();
+            let mut memory = Memory::new(bugs);
+            let open = open(
+                &sources,
+                &o,
+                (dragons, [0, 0], false),
+                (&layout.stats, [300, 300], [[0, 0]; 2]),
+                (BTreeMap::new(), 0, 1),
+                &mut memory,
+            )
+            .unwrap();
+            let items = &open.modal.open.message.dialog.items;
+            items.iter().any(|i| i.id() == h3_view::stats::CAST)
+        };
+        assert!(shown(Bugs::Original));
+        assert!(!shown(Bugs::Fixed));
+    }
+
+    #[test]
+    fn the_descriptions_list_the_side_by_profile_and_its_army() {
+        // The reviewer's R2-6 (design §12.4, CLT-Q41 (2)): the Goblins hypnotized by the
+        // attacker list its army in the client's profile, their own side's in the original's;
+        // an army its slots' stacks, dead ones kept, war machines and stacks made in the battle
+        // left out; the other army's Devils; the alignments, undead, the minimums, the spells.
+        let (ruleset, mut o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let creature = |key: &str| handle(&manifest.keys.creatures, key);
+        let spell = |key: &str| handle(&manifest.keys.spells, key);
+        let plural = |key: &str| catalogue.text(&format!("creature.{key}"), &Args::new().count(2));
+        let dragons = stack_of(&manifest, &o, "ab:faerie_dragon");
+        let marksmen = stack_of(&manifest, &o, "base:marksman");
+        let wolves = stack_of(&manifest, &o, "base:wolf_rider");
+        let goblins = stack_of(&manifest, &o, "base:goblin");
+        // The attacker's: Arch Devils (dead, kept) for the dragons, Marksmen; an Archangel war
+        // machine and created Angels left out. The defender's: Skeletons, the Goblins.
+        let s = stack(&mut o, dragons);
+        (s.creature, s.alive) = (creature("base:arch_devil"), false);
+        let template = stack(&mut o, marksmen).clone();
+        let next = o.stacks.iter().map(|s| s.id).max().unwrap() + 1;
+        o.stacks.push(Stack {
+            id: next,
+            creature: creature("base:archangel"),
+            slot: 3,
+            war_machine: true,
+            ..template.clone()
+        });
+        o.stacks.push(Stack {
+            id: next + 1,
+            creature: creature("base:angel"),
+            slot: 4,
+            created: true,
+            ..template.clone()
+        });
+        o.stacks.push(Stack {
+            id: next + 2,
+            creature: creature("base:angel"),
+            slot: 7,
+            ..template
+        });
+        stack(&mut o, wolves).creature = creature("base:skeleton");
+        let g = stack(&mut o, goblins);
+        g.controller = Side::Attacker;
+        g.effects = vec![
+            effect(spell("base:mirth"), 1, 3),
+            effect(spell("base:sorrow"), 1, 1),
+            effect(spell("base:misfortune"), 1, 2),
+        ];
+        let goblin = o.stacks.iter().find(|s| s.id == goblins).unwrap().clone();
+        let fixed = account(&sources, &o, &goblin, Bugs::Fixed).unwrap();
+        assert_eq!(fixed.alignments, 2);
+        assert!(!fixed.undead);
+        assert_eq!((fixed.angels, fixed.devils), (None, None));
+        let original = account(&sources, &o, &goblin, Bugs::Original).unwrap();
+        assert_eq!(original.alignments, 2);
+        assert!(original.undead);
+        assert_eq!(original.devils, Some(plural("base:arch_devil")));
+        assert_eq!(original.angels, None);
+        // The stack's own: its town, its spells.
+        assert_eq!((fixed.town, original.town), (Some(6), Some(6)));
+        assert_eq!((fixed.morale_spells, fixed.luck_spells), (2, -2));
+        assert_eq!((fixed.morale_minimum, fixed.luck_minimum), (None, None));
+        // Angels in a slot of the army: listed; Devils beside Arch Devils: the Arch Devils first.
+        stack(&mut o, next + 1).created = false;
+        let marksman = o.stacks.iter().find(|s| s.id == marksmen).unwrap().clone();
+        let listed = account(&sources, &o, &marksman, Bugs::Fixed).unwrap();
+        assert_eq!(listed.angels, Some(plural("base:angel")));
+        assert_eq!(listed.devils, None);
+        assert_eq!(listed.alignments, 2);
+        // Undead in the defender's army, the Goblins its own still though the attacker's to
+        // command.
+        let skeleton = o.stacks.iter().find(|s| s.id == wolves).unwrap().clone();
+        let defending = account(&sources, &o, &skeleton, Bugs::Fixed).unwrap();
+        assert!(defending.undead);
+        assert_eq!(defending.alignments, 2);
+        assert_eq!(defending.devils, Some(plural("base:arch_devil")));
+        // The minimums: the Minotaurs' morale, the Halflings' luck.
+        let s = stack(&mut o, goblins);
+        s.creature = creature("base:minotaur");
+        let minotaur = s.clone();
+        let minimum = account(&sources, &o, &minotaur, Bugs::Fixed).unwrap();
+        assert_eq!(minimum.morale_minimum, Some(plural("base:minotaur")));
+        let s = stack(&mut o, goblins);
+        s.creature = creature("ab:halfling");
+        let halfling = s.clone();
+        let minimum = account(&sources, &o, &halfling, Bugs::Fixed).unwrap();
+        assert_eq!(minimum.luck_minimum, Some(plural("ab:halfling")));
+    }
+
+    #[test]
+    fn the_creature_steps_on_from_the_frame_drawn_last() {
+        // The reviewers' R1-2 and R2-2: each frame steps on from the last one drawn, as from the
+        // opening; an earlier frame, or a popup held later, as from the opening too.
+        let (ruleset, o, manifest) = opening();
+        let (tables, catalogue) = (tables(), Catalogue::default());
+        let sources = Sources {
+            manifest: &manifest,
+            ruleset: &ruleset,
+            tables: &tables,
+            catalogue: &catalogue,
+            towns: None,
+        };
+        let layout =
+            h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
+                .unwrap();
+        let marksmen = stack_of(&manifest, &o, "base:marksman");
+        let frames: BTreeMap<u32, u32> = [(0, 8), (1, 6), (2, 4), (3, 5), (4, 7), (20, 2), (21, 2)]
+            .into_iter()
+            .collect();
+        let mut memory = Memory::new(Bugs::Fixed);
+        let mut open = open(
+            &sources,
+            &o,
+            (marksmen, [0, 0], false),
+            (&layout.stats, [300, 300], [[0, 0]; 2]),
+            (frames, 0, 7),
+            &mut memory,
+        )
+        .unwrap();
+        let creature = |window: &MessageBox| {
+            window.dialog.items.iter().find_map(|item| match item {
+                h3_ui::ui::Item::Def(d) if d.id == h3_view::stats::CREATURE => {
+                    Some((d.group, d.frame))
+                }
+                _ => None,
+            })
+        };
+        let fresh = |open: &Open, since: u32| {
+            let fresh = Open {
+                drawn: Drawn::default(),
+                ..open.clone()
+            };
+            creature(&fresh.at(100, since))
+        };
+        let mut seen = std::collections::BTreeSet::new();
+        for since in [0, 100, 350, 350, 2_000, 900, 60_000, 60_050, 61_000] {
+            let shown = creature(&open.at(100, since));
+            assert_eq!(shown, fresh(&open, since), "{since}");
+            seen.insert(shown);
+        }
+        assert!(seen.len() > 3);
+        open.holds.push([61_500, 70_000]);
+        for since in [61_600, 69_000, 70_000, 75_000, 1_000] {
+            assert_eq!(
+                creature(&open.at(100, since)),
+                fresh(&open, since),
+                "{since}"
+            );
+        }
+        // A cache: equal whatever it holds.
+        assert_eq!(
+            open,
+            Open {
+                drawn: Drawn::default(),
+                ..open.clone()
+            }
+        );
+    }
 }

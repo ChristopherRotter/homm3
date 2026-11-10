@@ -183,9 +183,13 @@ fn asked_spans(
         .collect()
 }
 
-/// When `actions` last switched Auto Combat on (`key:a`) at or before `until` (E17 M6 T5b2b),
-/// by the times their `at:` and `step:` reach from `pre`; `pre` without one. (A `turn:` waits for
-/// a turn's start, which a box's opening takes anyway: [`asked_spans`].)
+/// The time of the last `key:a` of `actions` at or before `until`, the switch of Auto Combat on
+/// that the question came after (E17 M6 T5b2b), by the times their `at:` and `step:` reach from
+/// `pre`; `pre` without one. (A `turn:` waits for a turn's start, which a box's opening takes
+/// anyway: [`asked_spans`].) *Provisional* (E17 M6 T7b, R10-3): any `key:a` counts, a switch off
+/// or a stop too, and one pressed while the box is open (which the box takes) moves its span
+/// and its hold to that key: *not modelled*, a sequence presses none of them before its answer
+/// (`pointer::answering` reads such a key as a stop too).
 fn switched(actions: &[String], pre: u32, until: u32) -> u32 {
     let (mut t, mut last) = (pre, pre);
     for a in actions {
@@ -1572,6 +1576,11 @@ mod tests {
         let earlier = actions(&["step:93", "key:A", "at:1000", "key:a"]);
         assert_eq!(asked_spans(&holds, &timeline, (7, &earlier)), [(450, 900)]);
         assert_eq!(switched(&earlier, 7, 900), 100);
+        // E17 M6 T7b (R10-3): the last `key:a` at or before the answer, also one pressed while
+        // the box is open (from 450 here): the span then starts at it (*not modelled*: a
+        // sequence presses none there).
+        let inside = actions(&["at:100", "key:a", "at:750", "key:a", "at:900", "key:Escape"]);
+        assert_eq!(asked_spans(&holds, &timeline, (7, &inside)), [(750, 900)]);
         assert_eq!(switched(&actions(&["key:x:y", "at:z"]), 7, 900), 7);
         assert_eq!(
             asked_boxes(&spans, &holds, &[100, 600, 900]).unwrap(),

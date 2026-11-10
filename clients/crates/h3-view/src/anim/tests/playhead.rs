@@ -384,6 +384,16 @@ fn a_turn_pushed_as_the_computers_outlines_its_stack_once_a_human_plays_it() {
     let before = fresh.timeline().outlines.clone();
     fresh.outline_waiting();
     assert_eq!(fresh.timeline().outlines, before);
+    // E17 M6 T7b (R9-2): Auto Combat's question at the turn pushed as the computer's, its box
+    // open 100 after the walk's end: the stack the computer plays outlined from then, not
+    // before; before the first command nothing (the opening's outline stays).
+    let mut asked = grown(true);
+    let end = asked.timeline().end + 100;
+    asked.outline_asked(end);
+    assert_eq!(asked.timeline().outlined(end - 1), None);
+    assert_eq!(asked.timeline().outlined(end), Some(1));
+    fresh.outline_asked(0);
+    assert_eq!(fresh.timeline().outlines, before);
 }
 
 #[test]

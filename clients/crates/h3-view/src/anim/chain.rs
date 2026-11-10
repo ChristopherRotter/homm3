@@ -139,7 +139,8 @@ impl Player<'_> {
         let line = Logged::AreaDamage {
             spell,
             damage: value,
-            kills: hits.iter().map(|h| h.2).sum(),
+            // Saturated as an area spell's (the kills are the record's).
+            kills: hits.iter().fold(0_u32, |k, h| k.saturating_add(h.2)),
             target: None,
         };
         self.log.push((self.clock.now, line));

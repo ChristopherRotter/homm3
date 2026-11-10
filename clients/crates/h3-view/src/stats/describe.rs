@@ -140,9 +140,10 @@ impl Building {
 /// it (CLT-Q40's carry): the stack's description writes it first, after the base. Its lines: each
 /// listed artifact the hero's changes name, in the list's order (the Pendant of Courage first),
 /// its change the line's own (+3, the others +1); Leadership's or Luck's line by its level (its
-/// change the level); then the rest, the total less those lines' changes, as temporary (less or
+/// change the level); the owner's Grail building's line after it (`grail`, since T3c2: its +2
+/// out of the rest); then the rest, the total less those lines' changes, as temporary (less or
 /// more) when it is not 0. The original's visits' lines (their once-marks on the wire name no
-/// object type) and its owner's Grail building's (a town record's index, T3c2) are in the rest
+/// object type), its specialty's and the sources the wire does not name are in the rest
 /// meanwhile, as the original's own rest holds what its lines do not name; its cheats' line has no
 /// source.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
