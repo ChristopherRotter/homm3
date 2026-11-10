@@ -2555,3 +2555,72 @@ to a VM restart, and could not have passed (`master` red).
 - **Agent's calls (change freely):** `town_offer` takes the viewer; the listing walks the map's
   town list rather than the store; a marked town skips its Capitol test; the plans' probe covers
   one town and one building past the last; the rollout's skip a named function the test reads.
+
+### T18c — the town events at the turn start (2026-11-10)
+
+One session, the user present at the start; branch `town/e09-t18c`, `cross-lane` (`h3-game`'s
+`state.rs`, `setup.rs`, `command.rs`, `observe.rs` and `h3-map`'s `tests/view.rs` are the
+adventure lane's; `h3-protocol` the server lane's, with its version). Starting point: `master` at
+3e1026f (#817, #820 merged); the setup's baseline, the full engine verify with the original data,
+green. The user's computer was connected at the start: the original data staged then. **Kept
+whole at its start, the plans' checks moved to T19** (the user, decision 57). Before it, at the
+user's word, the inbox's hygiene counterexample (#822, `cross-lane`): CI's seed replayed on the
+code CI ran (780fbcc); another player's hero accepted a monster's offer to join beside a mine the
+viewer saw, its army (varied where the viewer never sees it) full in one game (an army dialog held
+the visit) and not in the other (the mine flagged at once); the property's `outcome` compares
+every decision kind now, the seed kept.
+
+- **The day's test, once** (`h3-game` `setup.rs`): `setup::Timing { players, human, computer,
+  first_day, interval }::fires(player, human, day)`, the map's timed events' test moved there;
+  `TimedEventSetup::fires` builds one.
+- **The firing** (`h3-game` `town/events.rs`, new): `town::fire_events(state, rules, player,
+  sink)`, called by `GameState::start_group` right after `fire_events`: the events that fire are
+  listed first (towns by `TownId` whose adventure owner is the player, a town without events
+  skipped before its owner is read; each event by `Timing`), no allocation when none fires; per
+  event its gains (`GameState::gain`), its losses (`GameState::lose`, down to 0),
+  `TownEventFired { player, town, event }`, then each building of `h3_towns::event_buildings`
+  (water: `StaticMap::town_boat_spot`) not standing by its turn (an earlier building of the same
+  event may have brought it through `auto_with`) built and told by `town::command::build_told`;
+  its creatures stubbed (`TWN-STUB-10`).
+- **The build and its tell, shared** (`town/command.rs`): `build_told(state, rules, player, town,
+  building, event, sink)`: the Tavern's every-town views (TWN-VEW-002), `Told::before`,
+  `Towns::build` with the mark only for the command (`event` none), `TownBuilt { event }`,
+  `Told::tell`. The command pays before it now (the treasury is in no town view, so the told
+  views and the events' order are as before).
+- **Day 1:** `GameState::new` starts the first group's turn with `StartSink`, which keeps only
+  `TownEventFired` (`RECORDS` false: no view computed at the build); kept in the state's calendar
+  block (`Calendar { events, town_events, start_events }` behind the former timed events' field,
+  now `calendar: Option<Arc<Calendar>>`; the start's events not hashed: no rule reads them, they
+  follow from the setup) and `GameState::town_events_at_start(player) -> Vec<(TownId, u16)>`. Not in the observation (the server lane's inbox: a session may tell a seat
+  of them as the observation's `events_today` names the map's).
+- **The event** (`command.rs`): `GameEvent::TownEventFired { player, town, event: u16 }`, the
+  owner's alone (`observe.rs`' projection). **The wire** (`h3-protocol`): mapped,
+  `wire::game::GameEvent::TownEventFired`, the fold ignores it (what it gave and built comes as
+  the events around it), the round-trip test's 36 kinds, the fold test's unknown-town case;
+  **protocol v40**. `h3-map`'s told-events check: the owner's.
+- **Tests** (`h3-game` `town/tests/events.rs`): the order at the turn start (`TurnStarted`, the
+  map's event and its gain, the town's gain, `TownEventFired`) and the treasury; the owner alone
+  sees it; an event fires once without an interval, every second day with one, never for a player
+  it does not name, of the other kind, or in a neutral town, and for its town's owner at the start
+  (a town given to red); the losses down to 0; the buildings without the hall's tests or the mark
+  (the Capitol, the Grail's building, a forbidden silo; a Shipyard without water skipped; each
+  `TownBuilt` with the event's place followed by its views; the day's build still free after),
+  a creatures-only event firing alone; an event's second Capitol beside its owner's other (T-8);
+  day 1's inside the build (gold and building at the start, `town_events_at_start` for red only,
+  blue's day-1 event told at red's end of turn, kept by a fork, none for a later event).
+- **Catalog:** TWN-EVT-001, -002, -004 new; TWN-EVT-003 the game's half; GAM-CAL-004 amended (the
+  towns' events after the map's, one test). **Stub:** `TWN-STUB-10` (the events' creatures,
+  increment 3). No quirk; TD-12 (the original's day) and T-8 as decided.
+- **Measured** (`bench-check`, all 28 workloads against `master` built in the same sandbox, the
+  setup's run): first build, the start's events in a block of their own (`Option<Arc<[..]>>`
+  beside the timed events'): every fork +13 Ir (fork-economy +0.67 %, fork-rewards +0.48 % on
+  `master`, which already stood +1.4 % and +1.9 % over their baselines: +2.05 % and +2.40 %, past
+  the gate). Settled once: the timed events' slice, a town-events flag and the start's events in
+  one `Calendar` block behind a thin `Option<Arc<Calendar>>`: every fork 3 Ir cheaper than
+  `master` (−0.08 % to −0.12 %), `day-start-towns-36` +0.13 % (the flag skips the town loop on maps
+  whose towns have no events), the random-play and reach workloads within 0.01 %; no re-baseline.
+- **Agent's calls (change freely):** `Timing` as a borrowed view of either event; the events listed
+  before any is applied (the store is read while the state is written); a building standing by its
+  turn skipped rather than told again; the command pays before `Told::before`; day 1's kept in the
+  calendar block and out of the hash; `town_events_at_start` by (town, place), not in the
+  observation (the server lane's choice).

@@ -704,6 +704,20 @@ pub enum GameEvent {
         /// events); none for the owner's command.
         event: Option<u16>,
     },
+    /// A town event fired at its town's owner's turn start (TWN-EVT-001, TWN-EVT-002; E09 T18c,
+    /// the town epic's design note §30, §31): after the map's timed events and the changes of the
+    /// owner's treasury it made (its gains as [`Self::ResourceGained`], then its losses as
+    /// [`Self::ResourceLost`]), before its buildings' [`Self::TownBuilt`], so a client shows its
+    /// message. Seen by the owner.
+    TownEventFired {
+        /// The town's owner.
+        player: PlayerId,
+        /// The town.
+        town: TownId,
+        /// The event, by its place in the town's list (`h3_towns::TownStatic`'s events), which
+        /// names its message (the text is the client's).
+        event: u16,
+    },
 }
 
 /// Receiver of the game's events.

@@ -5,7 +5,7 @@
 //! decision: the original's town list opens the hall (survey `E09-construction.md` §1.1).
 
 use h3_contracts::{PlayerId, TownId};
-use h3_towns::{TownCommand, TownCommandError};
+use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::holds_capitol;
 use super::view::Told;
@@ -57,25 +57,47 @@ pub(crate) fn command<S: Sink>(
     if !state.can_pay(player, price) {
         return Err(GameCommandError::CannotPay);
     }
-    // rule: TWN-VEW-002
-    let every: &[PlayerId] = if h3_towns::has_tavern(record, part) {
-        &[]
-    } else {
-        &[player]
-    };
-    let told = Told::before::<S>(state, rules, &[town], every);
     state.pay_price(player, price, sink);
     // The store has the town and its record the building (both checked above).
-    let _before = state.towns_mut().build(town, building, part, true);
+    build_told(state, rules, player, town, building, None, sink);
+    Ok(())
+}
+
+/// Builds `building` in `player`'s `town` and tells it (TWN-BLD-005, TWN-VEW-004; E09 T18b2a,
+/// T18c): the command's build (`event` none) with the day's mark, a town event's (`event` its
+/// place in the town's list, TWN-EVT-003) without it ([`h3_towns::Towns::build`]), then
+/// [`GameEvent::TownBuilt`] to `player`, then each view the build changed told to its viewer
+/// ([`Told`]: the town's by every player that sees it; for a town without a standing Tavern
+/// before, the owner's of every town, whose garrison levels a new Tavern raises, TWN-VEW-002).
+/// The caller checked the store's town and its record's building; the treasury holds nothing a
+/// view shows, so a price paid before changes no view.
+// rule: TWN-BLD-005, TWN-VEW-004
+pub(crate) fn build_told<S: Sink>(
+    state: &mut GameState,
+    rules: &GameRuleset,
+    player: PlayerId,
+    town: TownId,
+    building: BuildingId,
+    event: Option<u16>,
+    sink: &mut S,
+) {
+    let part = rules.towns();
+    // rule: TWN-VEW-002
+    let every: &[PlayerId] = match state.towns().get(town) {
+        Some(record) if !h3_towns::has_tavern(record, part) => &[player],
+        _ => &[],
+    };
+    let told = Told::before::<S>(state, rules, &[town], every);
+    let _before = state
+        .towns_mut()
+        .build(town, building, part, event.is_none());
     sink.emit(GameEvent::TownBuilt {
         player,
         town,
         building,
-        event: None,
+        event,
     });
-    // rule: TWN-VEW-004
     told.tell(state, rules, sink);
-    Ok(())
 }
 
 /// The owner of `town` (the adventure's owner of its object; E09 increment 1's design note §11),

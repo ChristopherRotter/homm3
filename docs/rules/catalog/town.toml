@@ -909,12 +909,55 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-EVT-001"
+title    = "When a town event fires"
+context  = "town"
+status   = "implemented"
+summary  = "A town's events, in the map's order (the town's list, each named by its place there: its message is the client's), fire at a player's turn start right after the map's timed events (GAM-CAL-004), for each town in TownId order whose owner is that player then (the adventure's owner of its object): an event fires when it names the player, its flag for the player's kind (human or computer) is set and the day is its first day or, with an interval, a multiple of the interval after the first day (the map's events' test, one function for both; an every-day event from its first day on, the original's: TD-12). So a neutral town's events never fire, and a town's fire only at its owner's turn, for an owner they name: a captured town's for its new owner when they name it. Day 1's fire for the first group's players as the game is built, with the start's owners, and the game keeps them for a client. E09 T18c (design section 30): `h3_game`'s `town::fire_events`, called by `GameState::start_group` after `fire_events`; the day's test `setup::Timing`, which `TimedEventSetup::fires` takes too; `GameState::town_events_at_start(player)` (what fired inside the build, the first group's, by town and place; not in the state hash, it follows from the setup); `GameEvent::TownEventFired { player, town, event }` to the owner alone (protocol v40)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12b; survey E09-construction.md section 8.2): player_turn_start (0x4CC7D0) calls map_timed_events (0x4CD910) then town_timed_events (0x4CDA10, read whole), which runs over the map's one list of town events (the towns in object order, each town's in its file order) and fires a record when the current player's kind flag is set, its bit is in the players' bits, the day passes the map's events' test and the town's owner (+0x1) is the current player; apply_timed_event (0x4CD710), then town_events_apply (0x5BFEB0)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-construction.md section 9: NewTurnProcessor::handleTownEvents fires a town's events for its owner by the same players and kinds; an every-day event one day early (TD-12, the original's day kept)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-07"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 30 (E09 decision 44): one day's test for the map's and the towns' events; day 1's inside the build, named by town_events_at_start (the agent's call)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-EVT-002"
+title    = "A town event's resources"
+context  = "town"
+status   = "implemented"
+summary  = "A town event that fires (TWN-EVT-001) gives its resources to its town's owner as a map's timed event does (GAM-CAL-004): its gains added, then its losses taken down to 0 at most, each told to the owner alone (ResourceGained, ResourceLost the amount taken), then TownEventFired names it (its town and its place in the town's list), before its buildings (TWN-EVT-003). The original floors each resource's sum at 0 in resource order; the gains first, then the losses, end in the same treasury. E09 T18c (design section 30): `h3_game`'s `town::fire_events` through `GameState::gain` and `GameState::lose`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12b; survey E09-construction.md section 8.2, E08-economy.md section 11): a fired town event runs apply_timed_event (0x4CD710), the map's events' own: each of the seven resources added to the current player's and floored at 0, the message for a human"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 30: the resources as a timed event's, then TownEventFired"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-EVT-003"
 title    = "A town event's buildings"
 context  = "town"
 status   = "implemented"
 quirks   = ["TWN-QUIRK-7"]
-summary  = "A town event that fires (TWN-EVT-001) builds, after its resources, its buildings of the town's faction's record (the map's slots resolved through the faction at the build, a slot without one of the faction's none; the map's bits past its 41 slots none, TWN-QUIRK-7) less those ever built, less what another of its buildings supersedes (an event with the Fort and the Castle builds the Castle), less the Shipyard (role `shipyard`) when the town has no water, in index order (the original's id order), each as a build (TWN-BLD-005) without the day's mark, so the day's build stays free. No other test: not the requirements, the forbidden set, the Capitol (an event's Capitol beside its owner's other one stands: T-8, no quirk, E09 decision 44), the Grail, the cost or the mark. E09 T17b (design section 27): `h3_towns::event_buildings` (the town's water the game's input); the game's firing, builds and events come with E09 T18c (design section 30)."
+summary  = "A town event that fires (TWN-EVT-001) builds, after its resources, its buildings of the town's faction's record (the map's slots resolved through the faction at the build, a slot without one of the faction's none; the map's bits past its 41 slots none, TWN-QUIRK-7) less those ever built, less what another of its buildings supersedes (an event with the Fort and the Castle builds the Castle), less the Shipyard (role `shipyard`) when the town has no water, in index order (the original's id order), each as a build (TWN-BLD-005) without the day's mark, so the day's build stays free. No other test: not the requirements, the forbidden set, the Capitol (an event's Capitol beside its owner's other one stands: T-8, no quirk, E09 decision 44), the Grail, the cost or the mark. E09 T17b (design section 27): `h3_towns::event_buildings` (the town's water the game's input). E09 T18c (design section 30): the game's `town::fire_events` passes whether the town has its spot (`StaticMap::town_boat_spot`) and builds each with `town::command::build_told` (the command's build and tell, without the mark: `Towns::build(..., false)`), each told to the owner as `TownBuilt` with the event's place in the town's list, then the views it changed (TWN-VEW-004); a building an earlier one of the same event brought (a horde's upgrade) is not built again."
 numeric  = "integer"
 
   [[rule.source]]
@@ -939,4 +982,22 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "docs/epics/E09-design.md sections 27 and 30 (E09 decision 44): the event's buildings in h3-towns, the water the game's; T-8 kept"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-EVT-004"
+title    = "A town event's creatures"
+context  = "town"
+status   = "implemented"
+summary  = "A town event that fires (TWN-EVT-001) adds, after its buildings (TWN-EVT-003), each level's count (levels 1 to 7) to the town's recruits of that level's upgraded dwelling when it was ever built, else of its dwelling when it was, else the creatures are lost; no cap, the week's growth not involved. E09 T18c: the event fires and tells its resources and buildings; its creatures are not added (`TWN-STUB-10`): increment 3 brings the towns' recruits."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T12b; survey E09-construction.md section 8.4): town_events_apply (0x5BFEB0) adds each level's count to the town's recruits (+0x16) of the upgraded dwelling (index 7 + level - 1) when building 37 + level - 1 is in the every-built set, else of the dwelling (index level - 1) when building 30 + level - 1 is, else nothing; after the buildings"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 30: the creatures none placed until increment 3 (TWN-STUB-10)"
   confidence = "high"

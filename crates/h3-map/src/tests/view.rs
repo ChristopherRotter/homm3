@@ -1191,6 +1191,9 @@ fn check_told(
             // E09 T18b1: a town's build, its owner's; no plan builds before E09 T18b2, which
             // folds the views it changes (the mark, the owner's buildings, the Tavern's levels).
             GameEvent::TownBuilt { player, .. } => prop_assert_eq!(player, viewer),
+            // E09 T18c: a town event, its owner's; no plan's town has one before E09 T19 (the
+            // writer's events), what it gives and builds told around it as above.
+            GameEvent::TownEventFired { player, .. } => prop_assert_eq!(player, viewer),
             // E08 T63a: a choice and a University open as the viewer's decision.
             GameEvent::ChoiceOpened {
                 player,

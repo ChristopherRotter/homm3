@@ -970,6 +970,21 @@ town's boat spot, §28).
   `events_today` names the timed events) for a client (*agent's call*).
 - **Order in a turn start:** the contexts' start-of-turn steps, `TurnStarted`, the map's timed
   events, the town events. Nothing of increment 2 reads the movement points or the heroes there.
+- **As built (T18c, 2026-11-10; decision 57):** `h3_game`'s `town::fire_events` (`town/events.rs`),
+  called by `start_group` after the map's; the day's test `setup::Timing`, which
+  `TimedEventSetup::fires` takes too; per event its gains, its losses, `TownEventFired { player,
+  town, event }`, then each of `event_buildings`' set (water: `StaticMap::town_boat_spot`) not
+  standing by then (an earlier building of the event may have brought it) through
+  `town::command::build_told` (the command's build and tell, shared: `Told::before`, `Towns::build`
+  with the mark only for the command, `TownBuilt { event }`, `Told::tell`; the command now pays
+  before `Told::before`, the treasury being in no view). Day 1: the build's first `start_group`
+  takes a sink that keeps only `TownEventFired` (`RECORDS` false, so no view is computed), kept in
+  `GameState`'s calendar block (`Calendar`: the map's timed events, whether a town has events,
+  the start's events; one thin `Option<Arc>`, shared by forks, none for a map with neither; the
+  start's events left out of the hash: no rule reads them, they follow from the setup) and read by
+  `GameState::town_events_at_start(player)` (by town and place; not in the observation, the server
+  lane's inbox). The wire: protocol v40,
+  the fold ignores the event. The plans' checks of the events' builds and gains move to T19.
 
 ### 31. Information (TWN-VEW-004; `docs/06-security.md`, decision 47)
 
