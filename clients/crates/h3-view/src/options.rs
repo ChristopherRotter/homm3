@@ -12,13 +12,14 @@
 //! music volume, `settings_first_run` 0x50B4D0) and put into their ranges by `settings_check`
 //! 0x50B260 ([`Settings::check`]).
 //!
-//! **In effect** (E17 M6 T4a): the combat speed (the window's battle takes it for every animation
-//! after the close) and the two volumes ([`sound_volume`], the original's 0x5996C0, on the
-//! window's music and effects at once). **Kept, not in effect yet:** the hex grid, the movement
-//! and the cursor shadows and the spell book's animation (the page-turn videos are not built; the
-//! shades and grid T4c), the five Auto Combat options and the army info level (T4b). The battle's
-//! keys F5 to F8 change four of them outside the dialog: F5 the army info level since T4b2a
-//! ([`Settings::cycle_army_info`]), F6 to F8 not built (T4c).
+//! **In effect:** the combat speed (the window's battle takes it for every animation after the
+//! close) and the two volumes ([`sound_volume`], the original's 0x5996C0, on the window's music
+//! and effects at once; T4a), the five Auto Combat options (T4b1), the army info level (T4b2a),
+//! the hex grid and the movement and the cursor shadows (T4c). **Kept, not in effect yet:** the
+//! spell book's animation (the page-turn videos are not built). The battle's keys F5 to F8
+//! change four of them outside the dialog: F5 the army info level
+//! ([`Settings::cycle_army_info`]), F6 to F8 the grid and the shadows; the window writes the
+//! settings file at each, as at an aim's shadow switch and the dialog's close after a click.
 //!
 //! The original's oddities are built as the original's (design §12.12, "Oddities"): the speed
 //! buttons' sample twice, a box or a bar acting on a left release anywhere, the hidden bars
@@ -29,6 +30,7 @@
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Dialog, Item, Shown, State};
@@ -250,13 +252,16 @@ impl Settings {
     /// The settings a settings file's text holds (`settings_read` 0x50B7B0, *provisional*: its
     /// `[battle]` table, the other tables left to their readers): none, or a table without
     /// `music_volume`, gives a first run's ([`Settings::FIRST_RUN`]); else its values checked
-    /// ([`Settings::check`]).
+    /// ([`Settings::check`]). A name it does not know or a value that is not an integer is left
+    /// out as the registry's missing value (another client version's file, a hand edit; E17 M6
+    /// T7b, R4-5, *provisional*), each told in a line beside the settings.
     ///
     /// # Errors
-    /// Not TOML, `battle` not a table, a value not an integer, an unknown name.
-    pub fn read(text: Option<&str>) -> Result<Self, String> {
+    /// Not TOML, `battle` not a table.
+    pub fn read(text: Option<&str>) -> Result<(Self, Vec<String>), String> {
+        let mut notes = Vec::new();
         let Some(text) = text else {
-            return Ok(Self::FIRST_RUN);
+            return Ok((Self::FIRST_RUN, notes));
         };
         let file: toml::Table = toml::from_str(text).map_err(|e| e.to_string())?;
         let empty = toml::Table::new();
@@ -269,17 +274,20 @@ impl Settings {
         let mut values = BTreeMap::new();
         for (name, value) in table {
             if !NAMES.contains(&name.as_str()) {
-                return Err(format!("battle: no setting `{name}`"));
+                notes.push(format!("battle: no setting `{name}`, left out"));
+                continue;
             }
             let Some(v) = value.as_integer() else {
-                return Err(format!("battle.{name}: not an integer"));
+                notes.push(format!("battle.{name}: not an integer, taken as missing"));
+                continue;
             };
             values.insert(name.as_str(), v);
         }
         if !values.contains_key(NAMES[1]) {
-            return Ok(Self::FIRST_RUN);
+            return Ok((Self::FIRST_RUN, notes));
         }
-        Ok(Self::check(|name| values.get(name).copied().unwrap_or(0)))
+        let settings = Self::check(|name| values.get(name).copied().unwrap_or(0));
+        Ok((settings, notes))
     }
 
     /// The settings file's text (`settings_write` 0x50BE10: every setting; *provisional*): its
@@ -305,7 +313,8 @@ impl Settings {
         ];
         let mut text = String::from(
             "# The battle client's settings (h3-view window; E17 M6 T4a): the original's registry\n\
-             # values, written as the combat options dialog closes after a click.\n[battle]\n",
+             # values, written as the combat options dialog closes after a click, at the keys F5\n\
+             # to F8 and as an aim switches the movement shadow.\n[battle]\n",
         );
         for (name, value) in NAMES.iter().zip(values) {
             text.push_str(&format!("{name} = {value}\n"));
@@ -517,7 +526,9 @@ impl Open {
         }
     }
 
-    /// The mouse moved to `point`: the DEF button it holds follows it on or off.
+    /// The mouse moved to `point`: the DEF button it holds follows it on or off, pressed again
+    /// with its sample as it comes back (`def_button_message`'s loop, 0x4563A2: `button_press`;
+    /// the procedure gets nothing meanwhile, so no second sample; E17 M6 T7b, R4-3).
     pub fn moved(&mut self, point: [i32; 2]) -> Did {
         let Some(Held::Button { id, over }) = self.held else {
             return Did::default();
@@ -530,6 +541,7 @@ impl Open {
         set_pressed(&mut self.window.shown, id, now);
         Did {
             changed: true,
+            button_sound: now,
             ..Did::default()
         }
     }
@@ -550,7 +562,8 @@ impl Open {
         }
     }
 
-    /// The OK's key down (Enter or Escape; `by` the key whose release clicks): the OK goes down.
+    /// The OK's key down (Enter or Escape; `by` the key whose release clicks): the OK goes down
+    /// with its press sample (`button_press` from 0x4565E7; E17 M6 T7b, R4-3).
     pub fn key(&mut self, by: &str) -> Did {
         if self.held.is_some() {
             return Did::default();
@@ -559,6 +572,7 @@ impl Open {
         set_pressed(&mut self.window.shown, OK, true);
         Did {
             changed: true,
+            button_sound: true,
             ..Did::default()
         }
     }
@@ -572,10 +586,38 @@ impl Open {
     }
 
     /// The key of the help the right button pressed at `point` shows ([`help_key`]): over a DEF
-    /// button or a DEF picture, whatever its state.
+    /// button or a DEF picture, whatever its state; none while the mouse holds a DEF button,
+    /// whose own loop drops the right press (`def_button_message` 0x456338 to 0x45641C: only the
+    /// moves and the releases act there; E17 M6 T7b, R4-2).
     #[must_use]
     pub fn help_at(&self, point: [i32; 2]) -> Option<String> {
+        if matches!(self.held, Some(Held::Button { .. })) {
+            return None;
+        }
         help_key(self.item_at(point)?.id())
+    }
+
+    /// Lets what the mouse (`by` none) or the key `by` holds go without its click, a DEF button
+    /// drawn up again: the release the right button's help popup took (`popup_run_held` 0x602A40
+    /// takes a left release as its end and drops a key's). The original keeps the press (a box or
+    /// a bar then clicks at the next left release anywhere, the OK stays drawn pressed); the
+    /// client's profile lets it go, as CLT-Q39's stats dialog (`message::Open::let_go`; E17 M6
+    /// T7b, R4-2). No still chords them, so the original's is not built for the comparisons.
+    pub fn let_go(&mut self, by: Option<&str>) -> Did {
+        let held = self.held.take_if(|h| match h {
+            Held::Key(key) => by == Some(key.as_str()),
+            Held::Button { .. } | Held::Picture(_) => by.is_none(),
+        });
+        let id = match held {
+            Some(Held::Button { id, .. }) => id,
+            Some(Held::Key(_)) => OK,
+            Some(Held::Picture(_)) | None => return Did::default(),
+        };
+        set_pressed(&mut self.window.shown, id, false);
+        Did {
+            changed: true,
+            ..Did::default()
+        }
     }
 
     /// Item `id` clicked (0x200/0xD, the switch at 0x46F88D): the OK closes; Default sets the

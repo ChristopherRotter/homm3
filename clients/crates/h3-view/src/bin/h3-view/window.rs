@@ -366,19 +366,32 @@ fn load_keys(path: Option<&Path>) -> Result<(Keys, String), String> {
 
 /// The combat options' settings (E17 M6 T4a): the user's file (`--settings`, else `settings.toml`
 /// here if there is one; its `[battle]` table, `h3_view::options::Settings::read`), else a first
-/// run's; and the file the dialog writes them to as it closes after a click (the one named, else
-/// `settings.toml` here).
+/// run's, a file named that does not exist yet too (E17 M6 T7b, R4-6); the file the window
+/// writes them to (the one named, else `settings.toml` here); where they came from, with a line
+/// per value the file's reading left out (R4-5).
 fn load_settings(path: Option<&Path>) -> Result<(Settings, PathBuf, String), String> {
     let here = Path::new(SETTINGS_FILE);
     let read = path.or_else(|| here.exists().then_some(here));
     let text = read
-        .map(|p| fs::read_to_string(p).map_err(|e| format!("{}: {e}", p.display())))
-        .transpose()?;
-    let settings = Settings::read(text.as_deref()).map_err(|e| {
+        .map(|p| match fs::read_to_string(p) {
+            Ok(text) => Ok(Some(text)),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(e) => Err(format!("{}: {e}", p.display())),
+        })
+        .transpose()?
+        .flatten();
+    let (settings, notes) = Settings::read(text.as_deref()).map_err(|e| {
         let from = read.map_or(String::new(), |p| p.display().to_string());
         format!("{from}: {e}")
     })?;
-    let from = read.map_or_else(|| "a first run's".to_owned(), |p| p.display().to_string());
+    let from = match (read, text.is_some()) {
+        (Some(p), true) => p.display().to_string(),
+        (Some(p), false) => format!("a first run's ({} not there yet)", p.display()),
+        (None, _) => "a first run's".to_owned(),
+    };
+    let from = notes
+        .iter()
+        .fold(from, |from, note| format!("{from}; {note}"));
     Ok((settings, path.unwrap_or(here).to_path_buf(), from))
 }
 
@@ -912,13 +925,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
         // presses and key-downs that come with the input that opened it, or after the box opened
         // in this pass, are dropped; the key-ups (no key stays held), the moves and Quit go on.
-        let mut last_box = box_before;
-        let mut emptied = false;
+        let mut flush = Flush {
+            last: box_before,
+            emptied: false,
+        };
         for event in win.wait(timeout) {
-            let shown_box = box_shown(&battle);
-            emptied |= shown_box.is_some() && shown_box != last_box;
-            last_box = shown_box;
-            if emptied && matches!(event, Event::Key(_) | Event::Click { down: true, .. }) {
+            if flush.drops(box_shown(&battle), &event) {
                 continue;
             }
             let now = win.ticks_ns();
@@ -960,10 +972,22 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 // (T3b1, §12.8; `popup_run_held` 0x602A40): its ends (the right button's release, a left press or release)
                 // close it; every other input is dropped, the moves too (the battle takes none
                 // meanwhile, nor after: nothing is posted, 0x476BBF).
-                Event::KeyUp(Key::RightButton) | Event::Click { .. } if battle.popup_held() => {
+                Event::KeyUp(Key::RightButton) | Event::Click { down: true, .. }
+                    if battle.popup_held() =>
+                {
                     book_changed |= battle.popup_end();
                 }
-                Event::Key(_) | Event::KeyUp(_) if battle.popup_held() => {}
+                // Over the combat options dialog the release a popup takes lets go of what the
+                // mouse or that key holds there without its click (CLT-Q39's fix in the client's
+                // profile; E17 M6 T7b, R4-2).
+                Event::Click { down: false, .. } if battle.popup_held() => {
+                    book_changed |= battle.options_let_go(None);
+                    book_changed |= battle.popup_end();
+                }
+                Event::KeyUp(key) if battle.popup_held() => {
+                    book_changed |= battle.options_let_go(Some(key.name()));
+                }
+                Event::Key(_) if battle.popup_held() => {}
                 Event::Pointer(p) if battle.popup_held() => pointer = p,
                 // The stats dialog's right button's description (E17 M6 T2a2b1, design §12.3),
                 // held while the button is: the popup's loop (0x602A40) takes only its ends (the
@@ -1899,18 +1923,59 @@ fn stats_did(battle: &mut Battle<'_>, inputs: &mut Vec<Input>, at: u32, did: Sta
 
 /// The open box as the window tells one from another (E17 M5 T8b2): its buttons' places, none
 /// while no box is open. A box that gives way to another (the surrender refused) has others.
-fn box_shown(battle: &Battle<'_>) -> Option<([Option<[i32; 2]>; 3], u32)> {
+fn box_shown(battle: &Battle<'_>) -> BoxShown {
     use h3_view::message::{NO, OK, YES};
+    // What the box asks matters here only as held or not.
+    let asked = if battle.popup_held() {
+        Asked::Held
+    } else {
+        Asked::Told
+    };
+    shown_box(
+        battle
+            .message_open()
+            .then(|| (asked, [OK, YES, NO].map(|id| battle.message_button(id)))),
+        battle.options_open(),
+        battle.boxes_opened(),
+    )
+}
+
+/// The box shown as the window tells one from another ([`box_shown`]).
+type BoxShown = Option<([Option<[i32; 2]>; 3], u32)>;
+
+/// The input queue emptied as a box opens in a pass of the window's loop (the modal loop
+/// 0x602520; design §7.19): the box shown before the pass's next input, and whether one opened.
+struct Flush {
+    last: BoxShown,
+    emptied: bool,
+}
+
+impl Flush {
+    /// Whether `event` is dropped, the box `shown` as it comes: a press or a key down from the
+    /// opening of a box in the pass on (the key-ups, the moves, the releases and Quit go on).
+    fn drops(&mut self, shown: BoxShown, event: &Event) -> bool {
+        self.emptied |= shown.is_some() && shown != self.last;
+        self.last = shown;
+        self.emptied && matches!(event, Event::Key(_) | Event::Click { down: true, .. })
+    }
+}
+
+/// [`box_shown`] of the `message` box open (what it asks, its buttons' places), the options
+/// dialog open or not (`options`) and the boxes `opened` so far. A held popup is not a box here:
+/// what is under it is shown (E17 M6 T7b, R3-1: [`Asked::empties_input`]).
+fn shown_box(
+    message: Option<(Asked, [Option<[i32; 2]>; 3])>,
+    options: bool,
+    opened: u32,
+) -> BoxShown {
     // The combat options dialog's opening flushes the input queue too (E17 M6 T4a).
-    let options = battle
-        .options_open()
-        .then_some([None, None, Some([-1, -1])]);
+    let options = options.then_some([None, None, Some([-1, -1])]);
     // Each opening a box of its own, though alike (E17 M6 T5c, the reviewer: Eagle Eye's).
-    battle
-        .message_open()
-        .then(|| [OK, YES, NO].map(|id| battle.message_button(id)))
+    message
+        .filter(|(asked, _)| asked.empties_input())
+        .map(|(_, buttons)| buttons)
         .or(options)
-        .map(|buttons| (buttons, battle.boxes_opened()))
+        .map(|buttons| (buttons, opened))
 }
 
 /// What the combat options dialog `did` (E17 M6 T4a, design §12.12): its press samples played
@@ -2026,14 +2091,28 @@ fn toggle_shades(
 }
 
 /// Writes `settings` to the settings file (E17 M6 T4a: the options dialog's close after a click;
-/// T4b2a: the key F5), a failure in the report's lines.
+/// T4b2a: the key F5; T4c: F6 to F8 and an aim's shadow switch), a failure in the report's lines.
 fn save_settings(settings: &Settings, files: &SettingsFile<'_>) {
-    if let Err(e) = fs::write(files.path, settings.write()) {
+    if let Err(e) = write_whole(files.path, &settings.write()) {
         files
             .lines
             .borrow_mut()
             .push(format!("settings: {}: {e}", files.path.display()));
     }
+}
+
+/// Writes `text` to `path` whole or not at all (E17 M6 T7b, R4-5): into a sibling file first
+/// (its name and `.tmp`), renamed over `path`, so that a kill, a crash or a full disk in between
+/// leaves the old file; the sibling removed again when either step fails.
+fn write_whole(path: &Path, text: &str) -> std::io::Result<()> {
+    let mut name = path.file_name().unwrap_or_default().to_os_string();
+    name.push(".tmp");
+    let sibling = path.with_file_name(name);
+    fs::write(&sibling, text)
+        .and_then(|()| fs::rename(&sibling, path))
+        .inspect_err(|_| {
+            let _ = fs::remove_file(&sibling);
+        })
 }
 
 /// Where the combat options dialog's settings go (E17 M6 T4a): the file, the sound's library for
@@ -2548,6 +2627,49 @@ mod tests {
     }
 
     #[test]
+    fn a_held_popup_empties_no_input() {
+        // E17 M6 T7b (R3-1): `popup_run_held` 0x602A40 flushes nothing, so a press queued behind
+        // a quick right click reaches the popup (its end) or the battle after it. A box does.
+        let (none, ok) = ([None; 3], [Some([10, 20]), None, None]);
+        let held = shown_box(Some((Asked::Held, none)), false, 3);
+        assert_eq!(held, None);
+        assert!(!Asked::Held.empties_input() && Asked::Turret.empties_input());
+        let press = Event::Click {
+            down: true,
+            at: (5, 5),
+        };
+        // Over the battle: the right press opens the popup, its release closes it, the press
+        // after it goes on.
+        let mut flush = Flush {
+            last: None,
+            emptied: false,
+        };
+        assert!(!flush.drops(None, &Event::Key(Key::RightButton)));
+        assert!(!flush.drops(held, &Event::KeyUp(Key::RightButton)));
+        assert!(!flush.drops(None, &press));
+        // Over the options dialog: its help held, then closed, shows the dialog alike.
+        let options = shown_box(None, true, 3);
+        assert_eq!(shown_box(Some((Asked::Held, none)), true, 3), options);
+        let mut flush = Flush {
+            last: options,
+            emptied: false,
+        };
+        assert!(!flush.drops(options, &Event::Key(Key::RightButton)));
+        assert!(!flush.drops(options, &press));
+        // A box opening in the pass drops the presses and key downs after it, not the key ups.
+        let told = shown_box(Some((Asked::Told, ok)), false, 4);
+        assert_eq!(told, Some((ok, 4)));
+        let mut flush = Flush {
+            last: None,
+            emptied: false,
+        };
+        assert!(!flush.drops(None, &press));
+        assert!(flush.drops(told, &press));
+        assert!(flush.drops(None, &Event::Key(Key::RightButton)));
+        assert!(!flush.drops(None, &Event::KeyUp(Key::RightButton)));
+    }
+
+    #[test]
     fn options_are_parsed() {
         let o = Options::parse(&args(&[
             "scenarios/battle.toml",
@@ -2618,14 +2740,18 @@ mod tests {
     #[test]
     fn the_settings_come_from_the_users_file_or_a_first_run() {
         // E17 M6 T4a: no file here, a first run's, written to settings.toml here; a file named
-        // is read and written back; a missing or a bad one refused.
+        // is read and written back; a bad one refused. E17 M6 T7b (R4-6): one named that is not
+        // there yet a first run's, to be written there.
         let (settings, to, from) = load_settings(None).unwrap();
         assert_eq!(settings, Settings::FIRST_RUN);
         assert_eq!(
             (to.as_path(), from.as_str()),
             (Path::new(SETTINGS_FILE), "a first run's")
         );
-        assert!(load_settings(Some(Path::new("no/such/settings.toml"))).is_err());
+        let missing = Path::new("no/such/settings.toml");
+        let (settings, to, from) = load_settings(Some(missing)).unwrap();
+        assert_eq!((settings, to.as_path()), (Settings::FIRST_RUN, missing));
+        assert!(from.contains("not there yet"), "{from}");
         let dir = std::env::temp_dir().join(format!("h3-view-settings-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("settings.toml");
@@ -2636,8 +2762,22 @@ mod tests {
         fs::write(&path, set.write()).unwrap();
         let (read, to, _) = load_settings(Some(&path)).unwrap();
         assert_eq!((read, to), (set, path.clone()));
+        // A name it does not know is told and left out (R4-5); text that is not TOML refused,
+        // a directory too.
         fs::write(&path, "[battle]\nmusic = 1\n").unwrap();
-        assert!(load_settings(Some(&path)).unwrap_err().contains("music"));
+        let (read, _, from) = load_settings(Some(&path)).unwrap();
+        assert_eq!(read, Settings::FIRST_RUN);
+        assert!(
+            from.ends_with("; battle: no setting `music`, left out"),
+            "{from}"
+        );
+        fs::write(&path, "[battle\n").unwrap();
+        assert!(load_settings(Some(&path)).is_err());
+        assert!(load_settings(Some(&dir)).is_err());
+        // Written whole: through a sibling renamed over it, none left (R4-5).
+        write_whole(&path, "[battle]\nmusic_volume = 2\n").unwrap();
+        assert_eq!(load_settings(Some(&path)).unwrap().0.music, 2);
+        assert!(!dir.join("settings.toml.tmp").exists());
         fs::remove_dir_all(&dir).unwrap();
         // --settings and an explicit --speed.
         let args: Vec<String> = ["a.toml", "--settings", "s.toml", "--speed", "1"]
@@ -2743,6 +2883,10 @@ mod tests {
         save_settings(&settings, &unwritable);
         assert_eq!(lines.borrow().len(), 1);
         assert!(lines.borrow()[0].starts_with("settings: "));
+        // The sibling of a file that cannot be renamed over is gone again (R4-5).
+        let mut sibling = dir.file_name().unwrap().to_os_string();
+        sibling.push(".tmp");
+        assert!(!dir.with_file_name(sibling).exists());
         fs::remove_dir_all(&dir).unwrap();
     }
 

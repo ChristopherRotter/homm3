@@ -641,7 +641,8 @@ pub struct Battle<'g> {
     /// else at the first box's first draw.
     window_behind: Option<(MessageBox, u32, Option<u32>)>,
     /// The boxes opened so far (E17 M6 T5c, the reviewer): two boxes alike in a row (Eagle Eye's
-    /// eight and seven pictures, one size) are two openings, each emptying the input queue.
+    /// eight and seven pictures, one size) are two openings, each emptying the input queue; a
+    /// held popup is not counted (it empties nothing: [`Asked::empties_input`], E17 M6 T7b).
     opened: u32,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
@@ -2311,11 +2312,13 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
-        open.hover(
+        let changed = open.hover(
             &mut self.book_memory,
             (&ground.layout.book, &writer.catalogue),
             point,
-        )
+        );
+        self.options_arrow = arrow_stays(self.options_arrow, open.cursor);
+        changed
     }
 
     /// Whether a stack's stats dialog is open over the battle (E17 M6 T2a2a).
@@ -2448,7 +2451,7 @@ impl<'g> Battle<'g> {
         })?;
         let observation = &self.turned.last()?.observation;
         let window = self.hero_window(observation, side)?;
-        self.opened = self.opened.wrapping_add(1);
+        // Held: its opening empties no input ([`Asked::empties_input`], not counted).
         self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
         Some(side)
     }
@@ -2510,8 +2513,8 @@ impl<'g> Battle<'g> {
     /// 2003 or its key O, `battle_combat_options` 0x4686B0): only while the battle takes a command
     /// (`battle_buttons`' +0x132B4: a battle fought here whose human's turn waits, its last
     /// action played), nothing else open over it; its background in the acting side's player's
-    /// colours ([`Self::box_player`]), its settings the battle's. Whether it opened (not without
-    /// the text tables).
+    /// colours ([`Self::box_player`]), its settings the battle's at the speed it grows at
+    /// ([`shown_settings`]). Whether it opened (not without the text tables).
     pub fn open_options(&mut self, at: u32) -> bool {
         if self.stats.is_some()
             || self.message.is_some()
@@ -2530,7 +2533,7 @@ impl<'g> Battle<'g> {
         let open = h3_view::options::Open::new(
             &self.ground.layout.options,
             &writer.catalogue,
-            self.settings,
+            shown_settings(self.settings, self.speed),
             (player, self.audio),
         );
         self.options = Some((open, at));
@@ -2576,6 +2579,15 @@ impl<'g> Battle<'g> {
         let text = writer.catalogue.text(&key, &h3_ui::text::Args::new());
         let opened = *opened;
         self.tell(opened, &text, (Style::Popup, None), Asked::Held)
+    }
+
+    /// A release the right button's help popup over the options dialog took (`by` the key's, none
+    /// the left button's): what the mouse or that key held there goes without its click (E17 M6
+    /// T7b, R4-2: [`h3_view::options::Open::let_go`]). Whether the dialog changed.
+    pub fn options_let_go(&mut self, by: Option<&str>) -> bool {
+        self.options
+            .as_mut()
+            .is_some_and(|(open, _)| open.let_go(by).changed)
     }
 
     /// The mouse moved over the battle: the options dialog's arrow left at its close goes.
@@ -2731,6 +2743,7 @@ impl<'g> Battle<'g> {
         };
         let hovered = open.modal.hover(&mut self.stats_memory, point);
         let moved = open.modal.moved(point) != h3_view::message::Outcome::Nothing;
+        self.options_arrow = arrow_stays(self.options_arrow, open.modal.cursor);
         hovered || moved
     }
 
@@ -2945,7 +2958,9 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
-        self.opened = self.opened.wrapping_add(1);
+        if asked.empties_input() {
+            self.opened = self.opened.wrapping_add(1);
+        }
         self.message = Some((h3_view::message::Open::new(message), at, asked));
         true
     }
@@ -3876,6 +3891,27 @@ fn stop_read(timeline: &Timeline, at: u32) -> (u32, usize) {
     (at, turn_at(turns, at).max(turns.len().saturating_sub(1)))
 }
 
+/// Whether the options dialog's `arrow` left at its close by a key stays (oddity 10) once the
+/// spell book or the stats dialog opened over the battle set its `cursor` or not: the dialog's
+/// own `SetCursor` (the book's 0x59D712) replaces it at once (E17 M6 T7b, R4-4); the battle's
+/// moves take it off besides ([`Battle::mouse_moved`]).
+pub const fn arrow_stays(arrow: bool, cursor: Option<u32>) -> bool {
+    arrow && cursor.is_none()
+}
+
+/// The settings the combat options dialog opens with: `settings` at the speed the battle grows at
+/// (`speed`: an explicit `--speed`'s for the run, else the file's, then the dialog's), so that
+/// its chosen speed is the one played and a close keeps it (E17 M6 T7b, R4-1).
+fn shown_settings(
+    settings: h3_view::options::Settings,
+    speed: Speed,
+) -> h3_view::options::Settings {
+    h3_view::options::Settings {
+        speed: speed.setting(),
+        ..settings
+    }
+}
+
 /// Side `index`'s player colour in the record's `opening` (none named: red for the attacker,
 /// blue for the defender, CLT-Q6).
 fn side_colour(opening: Option<&Observation>, index: usize) -> u8 {
@@ -3955,6 +3991,30 @@ mod tests {
         assert_eq!(stop_read(&action, 1000), (1000, 1));
         assert_eq!(stop_read(&timeline(&[300, 600], &[]), 100), (100, 1));
         assert_eq!(stop_read(&timeline(&[], &[]), 100), (100, 0));
+    }
+
+    #[test]
+    fn the_options_dialog_opens_at_the_speed_the_battle_plays() {
+        // E17 M6 T7b (R4-1): `--speed 2` over a first run's settings (speed 0): the dialog's
+        // chosen (disabled) speed is 2, and its close by a key keeps it.
+        use h3_view::options::{SPEEDS, Settings};
+        let shown = shown_settings(Settings::FIRST_RUN, Speed::new(2));
+        assert_eq!(
+            shown,
+            Settings {
+                speed: 2,
+                ..Settings::FIRST_RUN
+            }
+        );
+        let layout =
+            layout::parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let catalogue = h3_ui::text::Catalogue::default();
+        let mut open = h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true));
+        assert!(open.window.shown.state(SPEEDS + 2).disabled);
+        assert!(!open.window.shown.state(SPEEDS).disabled);
+        open.key("Return");
+        assert!(open.key_up("Return").closed);
+        assert_eq!(Speed::new(open.settings.speed), Speed::new(2));
     }
 
     #[test]

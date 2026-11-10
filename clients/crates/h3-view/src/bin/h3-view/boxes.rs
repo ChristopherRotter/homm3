@@ -64,6 +64,18 @@ pub enum Asked {
     Offer,
 }
 
+impl Asked {
+    /// Whether the box's opening empties the input queue (the window drops the presses and key
+    /// downs after it): every box's but a held popup's (E17 M6 T7b, R3-1). `message_box_build`
+    /// runs style 4 by `popup_run_held` 0x602A40 (0x4F74EF), not the modal loop 0x602520 whose
+    /// start flushes; neither it, `message_box` nor `popup_run_held` calls `input_flush`
+    /// 0x4EC570, so the press queued behind a quick right click ends the popup, or moves the
+    /// stack after it.
+    pub const fn empties_input(self) -> bool {
+        !matches!(self, Self::Held)
+    }
+}
+
 /// How the side to act may leave the battle by the panel's buttons: whether it may retreat (the
 /// engine lists it), and its surrender's price, its gold and the other side's hero's name when it
 /// may surrender at all (its own view prices it).

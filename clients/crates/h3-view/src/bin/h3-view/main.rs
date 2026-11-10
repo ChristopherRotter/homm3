@@ -128,12 +128,15 @@ commands:
           unbinds one; a key may be the battle's and a dialog's at once, Esc is). The combat
           options' settings (E17 M6 T4a, provisional) come from a settings file (--settings,
           else settings.toml in the working directory when there is one; its [battle] table of
-          the original's registry values: combat_speed, music_volume, sound_volume, ...), else a
-          first run's (speed 0, volumes 5); the dialog writes them there (--settings, else
-          settings.toml here) as it closes after a click. In effect: the combat speed (from the
-          next command; an explicit --speed wins over the file's for the run) and the music and
-          effects volumes (at once); the grid, the shadows, the spell book's animation, the Auto
-          Combat options and the army info level are kept only. --measure runs
+          the original's registry values: combat_speed, music_volume, sound_volume, ...; a name
+          it does not know or a value not an integer left out, told in the report), else a
+          first run's (speed 0, volumes 5), as from a file --settings names that is not there
+          yet; the window writes them there (--settings, else settings.toml here) as the dialog
+          closes after a click, at F5 to F8 and as an aim switches the movement shadow. In
+          effect: the combat speed (from the next command; an explicit --speed wins over the
+          file's for the run, the dialog showing it, its close keeping it), the music and
+          effects volumes (at once), the grid, the shadows, the Auto Combat options and the army
+          info level; the spell book's animation is kept only. --measure runs
           <s> seconds unattended and prints how late each frame showed; --check also reads
           every frame back and compares it with the frame drawn headless (exit 1 on a
           difference); unattended, a human's commands are a fixed bot's choices pressed by the

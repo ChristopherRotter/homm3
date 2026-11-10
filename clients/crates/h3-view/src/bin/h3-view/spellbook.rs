@@ -408,6 +408,8 @@ pub fn still(
         still.mouse = to;
         if let Some(open) = still.open.as_mut() {
             open.hover(memory, (layout, catalogue), to);
+            // The book's cursor replaces the options dialog's arrow (E17 M6 T7b, R4-4).
+            still.options_arrow = crate::battle::arrow_stays(still.options_arrow, open.cursor);
         }
     };
     // A box laid out and shown.
@@ -1527,6 +1529,60 @@ pub(crate) mod tests {
         assert!(helped.message.is_some() && helped.held);
         assert_eq!(helped.over, Some([700, 570]));
         assert!(played(&["click:700,570"]).unwrap().message.is_none());
+    }
+
+    #[test]
+    fn the_book_s_cursor_replaces_the_options_dialog_s_arrow() {
+        // E17 M6 T7b (R4-4): the arrow the options dialog leaves at its close by a key stays over
+        // the book opened after it until the book sets its own cursor (0x59D712).
+        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let catalogue = Catalogue::default();
+        let options = |_: Option<[i32; 2]>, _: (u8, Shades)| {
+            let settings = h3_view::options::Settings::CAPTURE;
+            Some(h3_view::options::Open::new(
+                &battle.options,
+                &catalogue,
+                settings,
+                (0, false),
+            ))
+        };
+        let tell = |_: &str, _, _: Option<&Picture>| None;
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave::default(),
+            refusal: &|_| None,
+            pictures: (String::new(), [0, 0]),
+            result: &|_| None,
+            opening: None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
+            held: &|_, _| None,
+            turret: &|_, _| None,
+            help: &|_| None,
+            hero_info: &|_| None,
+            options: &options,
+            army: None,
+        };
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                [5, 5],
+                || Some(hero()),
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+            .unwrap()
+        };
+        let closed = played(&["key:o", "key:Return", "key:c"]);
+        assert!(closed.open.is_some() && closed.options_arrow);
+        let hovered = played(&["key:o", "key:Return", "key:c", "move:246,123"]);
+        assert_eq!(hovered.open.map(|o| o.cursor), Some(Some(1)));
+        assert!(!hovered.options_arrow);
+        assert!(crate::battle::arrow_stays(true, None));
+        assert!(
+            !crate::battle::arrow_stays(true, Some(0)) && !crate::battle::arrow_stays(false, None)
+        );
     }
 
     #[test]
