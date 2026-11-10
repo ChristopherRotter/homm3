@@ -1700,6 +1700,28 @@ an entry only where a task builds on it.
   so the chunking that pays is chosen on the cost by rows. Hence `--sweep`: one chunk's pass
   (`Trainer._loss`, the update's own; `Trainer.samples_of` its arrays, split out of `update`) at
   each of a list of rows, the autotuner off and on.
-- **The sweep** (about 7 minutes; from `python/`):
+- **The sweep** (the same machine; `--variants baseline --repeats 1 --no-phases --sweep
+  256,…,1280`; the baseline's update 885 µs a sample-pass): one chunk's pass, µs a row by cuDNN's
+  heuristics (the plain pass, first at each size):
 
-      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --variants baseline --repeats 1 --no-phases --sweep 256,384,448,512,576,640,768,800,832,896,960,1024,1056,1088,1152,1280 --json runs/t31-sweep.json
+  | Rows | 256 | 384 | 448 | 512 | 576 | 640 | 768 | 800 | 832 | 896 | 960 | 1 024 | 1 056 | 1 088 | 1 152 | 1 280 |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | µs a row | 894 | 896 | 886 | 841 | 957 | 952 | 1 172 | 829 | 811 | 938 | 879 | 765 | **671** | **671** | 737 | out of memory |
+  | Peak MB | 1 609 | 2 382 | 2 775 | 3 180 | 3 559 | 3 953 | 4 737 | 4 300 | 4 467 | 5 520 | 5 139 | 5 292 | 5 227 | 5 386 | 5 431 | |
+
+  256 again at the end: 933 (the drift). **The autotuner's column was void:** its warm-up 0.00 s at
+  every size, the same µs as the plain pass. cuDNN caches a convolution's kernels by its shapes
+  and flags, not by the autotuner's, so the autotuned pass after the plain one reused the plain
+  one's kernels, its search never ran. The same explains the variants: the autotuner acted only
+  where its shape was new (1 017 and 1 018 rows in the first run, 692 µs against the
+  heuristics' 822 in the second; 1 024 in the second, 686 against the sweep's 765): **it pays 10
+  to 16 % there**, the "autotune" rows at the baseline's shapes reused the baseline's kernels.
+  The tool now gives each mode its own cache entries (`speed.cudnn_mode`: the plain passes with
+  TF32 off, which is in the key and changes nothing on a card before Ampere) and the sweep runs
+  the autotuner first at each size.
+- **Its read:** the heuristics' cost by rows is not monotonic; a run's chunks today (about 3 200
+  rows a minibatch over 8: about 400) cost about 890 µs, `accumulate` 3 with `chunk_align` 32
+  (about 1 070 rows, to 1 088) 671: about 0.75 of today's update before the autotuner.
+- **The last sweep** (about 4 minutes; from `python/`):
+
+      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --variants baseline --repeats 1 --no-phases --sweep 400,512,832,1024,1056,1088,1120,1152,1216 --json runs/t31-sweep-2.json

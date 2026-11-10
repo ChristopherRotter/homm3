@@ -114,6 +114,16 @@ PHASES = (
 )
 
 
+def cudnn_mode(autotune: bool) -> contextlib.AbstractContextManager:
+    """cuDNN's flags for a timing with or without its autotuner. cuDNN caches the kernels it
+    picks for a convolution by its shapes and flags, the autotuner's not among them (E25 T31's
+    sweep: an autotuned pass after a plain one of the same shapes reused the plain one's kernels,
+    its search never ran), so the plain timings run with TF32 off, which is in the key: their
+    entries are their own. A card without TF32 (the GTX 1070, before Ampere) computes the same
+    either way."""
+    return torch.backends.cudnn.flags(enabled=True, benchmark=autotune, allow_tf32=autotune)
+
+
 @contextlib.contextmanager
 def contiguous_trunk() -> Iterator[None]:
     """The hex convolution trunk in the contiguous layout: each residual block's input made
@@ -233,7 +243,7 @@ def variant_of(trainer: Trainer, base: Config, v: Variant) -> Iterator[None]:
     """The trainer under the variant `v` (its config `base` with the variant's settings)."""
     trainer.config = settings_of(base, v.settings)
     with contextlib.ExitStack() as stack:
-        stack.enter_context(torch.backends.cudnn.flags(enabled=True, benchmark=v.autotune))
+        stack.enter_context(cudnn_mode(v.autotune))
         if v.nchw:
             stack.enter_context(contiguous_trunk())
         try:
@@ -441,9 +451,9 @@ def sweep(
     """One chunk's pass of the update (`Trainer._loss`: the network's forward, PPO's and the
     teacher's heads, the backward; no optimizer step, the weights unchanged) on each of `sizes`
     rows of the trainer's rollout (drawn at random, the same draw for both modes), with cuDNN's
-    autotuner off, then on: the microseconds a row (the median of `repeats` passes after one
-    warm-up), the autotuner's warm-up (its search for the shape), the peak memory. The first size
-    again at the end: the card's drift."""
+    autotuner, then without it (`cudnn_mode`): the microseconds a row (the median of `repeats`
+    passes after one warm-up), the autotuner's warm-up (its search for the shape), the peak
+    memory of either. The first size again at the end: the card's drift."""
     device = trainer.device
     cuda = device.type == "cuda"
     sync = torch.cuda.synchronize if cuda else (lambda: None)
@@ -454,7 +464,7 @@ def sweep(
     rng = np.random.default_rng(0)
     out = []
     log("\nOne chunk's pass by its rows (the update's forward, heads and backward):\n")
-    log("| rows | µs a row | with the autotuner | its warm-up s | peak MB |")
+    log("| rows | µs a row (heuristics) | with the autotuner | its warm-up s | peak MB |")
     log("|---:|---:|---:|---:|---:|")
     for size in [*sizes, sizes[0]]:
         rows = np.sort(rng.choice(flat, min(size, len(flat)), replace=False))
@@ -473,8 +483,9 @@ def sweep(
             return seconds
 
         try:
-            for autotune in (False, True):
-                with torch.backends.cudnn.flags(enabled=True, benchmark=autotune):
+            # The autotuner first: its search meets a shape no pass has cached yet.
+            for autotune in (True, False):
+                with cudnn_mode(autotune):
                     if cuda:
                         torch.cuda.reset_peak_memory_stats(device)
                     first = chunk()
@@ -483,7 +494,8 @@ def sweep(
                 entry[f"{key}_us_per_row"] = 1e6 * seconds / len(rows)
                 entry[f"{key}_warm_up_s"] = first - seconds
                 if cuda:
-                    entry["peak_mb"] = torch.cuda.max_memory_allocated(device) / 2**20
+                    peak = torch.cuda.max_memory_allocated(device) / 2**20
+                    entry["peak_mb"] = max(entry.get("peak_mb", 0.0), peak)
         except torch.cuda.OutOfMemoryError:
             trainer.policy.zero_grad(set_to_none=True)
             torch.cuda.empty_cache()
