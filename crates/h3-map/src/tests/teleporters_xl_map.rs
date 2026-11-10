@@ -153,7 +153,7 @@ impl Class {
 
     /// The tiles it blocks or is visited on, and those it is visited on, as (columns, rows) left
     /// of and above its anchor.
-    fn tiles(self) -> (&'static [(u8, u8)], &'static [(u8, u8)]) {
+    fn tiles(self) -> (Offsets, Offsets) {
         match self {
             Self::Entrance(_) | Self::Exit(_) | Self::TwoWay(0..=3) => (&[(0, 0)], &[(0, 0)]),
             Self::TwoWay(_) => (&[(0, 0), (1, 0)], &[(1, 0)]),
@@ -163,7 +163,11 @@ impl Class {
     }
 }
 
-const WHIRLPOOL_TILES: &[(u8, u8)] = &[(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)];
+/// Tiles as (columns, rows) left of and above an anchor.
+type Offsets = &'static [(u8, u8)];
+
+/// A Whirlpool's six tiles, its anchor's row and the row above, three columns.
+const WHIRLPOOL_TILES: Offsets = &[(0, 0), (1, 0), (2, 0), (0, 1), (1, 1), (2, 1)];
 
 /// The tiles `class`'s object anchored on `(x, y, z)` covers (`visited`: those it is visited on).
 fn covered(class: Class, (x, y, z): Spot, visited: bool) -> impl Iterator<Item = Spot> {
@@ -228,14 +232,11 @@ fn monsters(teleporters: &[(Class, Spot)]) -> Vec<Spot> {
             taken[index(tile)] = true;
         }
     }
+    // No hero stands on the map's edge.
     for &((x, y, z), _) in &HEROES {
-        for dy in 0..3 {
-            for dx in 0..3 {
-                if let (Some(tx), Some(ty)) = ((x + dx).checked_sub(1), (y + dy).checked_sub(1)) {
-                    if tx < SIDE && ty < SIDE {
-                        taken[index((tx, ty, z))] = true;
-                    }
-                }
+        for ty in y - 1..=y + 1 {
+            for tx in x - 1..=x + 1 {
+                taken[index((tx, ty, z))] = true;
             }
         }
     }
