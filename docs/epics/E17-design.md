@@ -4551,7 +4551,8 @@ Q21 (the user, 2026-10-23).
   hit roll `wall_hit_draw` 0x445F25 (random(1, 100) up to the target kind's chance), a miss
   between two equally near walls `wall_miss_tie_draw` 0x445F6C (up to 50 the later), the next
   shot's new target at a tie `wall_retarget_tie_draw` 0x445E44, the automatic aim among the
-  weakest walls `catapult_tie_draw` 0x473DA0 (random(1, k), drawn even for k = 1), Earthquake's
+  weakest walls `catapult_tie_draw` 0x473DA0 (random(1, k); no draw for k = 1: `random_between`
+  0x50B230 returns an equal bound before `crt_rand`, 0x50B23A), Earthquake's
   target `quake_target_draw` 0x5A7DD8 (random(1, k): the k-th standing target with hit points
   left). The turrets' damage (random(2, 4) per creature, 0x465D3E) stays free: the engine's seed
   is searched to match the line and the box.

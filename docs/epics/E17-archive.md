@@ -1,6 +1,6 @@
 # E17 — archive: the closed milestones
 
-Moved out of `E17-clients.md` on 2026-10-24, verbatim: the task lists and exit records of the closed milestones M0 to M3; M4 (sieges) added at its closure (2026-10-27), M5 (live play) at its closure (2026-10-31, T8c).
+Moved out of `E17-clients.md` on 2026-10-24, verbatim: the task lists and exit records of the closed milestones M0 to M3; M4 (sieges) added at its closure (2026-10-27), M5 (live play) at its closure (2026-10-31, T8c), M6 (the battle screen complete) at its closure (2026-11-10, T7c).
 
 ### M0 — the workspace
 
@@ -679,6 +679,137 @@ the stacks created mid-battle.
 - **Exit:** a battle played to its end in the window, in hot seat and on a server; the new
   screens (the book, the aim, the dialogs, the created stacks) pass against the original, or each
   difference is a listed fix or a classified quirk.
+
+### M6 — the battle screen complete
+
+Refined at M5's closure (T8c, 2026-10-31) with the user; the tasks in
+`docs/lanes/client/QUEUE.md`, each cut with the user at its start when it outgrows half a
+context. What a played battle shows of the original's battle screen that M5 did not build: a
+stack's and a turret's info, the right button's popups, the combat options dialog with its
+settings in effect; with them M5's gaps (its review list's "not built") and the items that
+waited in the inbox for a free slot. Ranked play and the server browser follow as M7.
+
+- **T1, the answered slips** (done 2026-10-31): CLT-Q26, Q27 (1) and (2), Q28 with the text's
+  centring everywhere (the box's text the readings' only one off its centre), Q33 and Q35 (its
+  tune and clip with its text) fixed in the client's profile, the original's for the comparisons
+  only; `drawn` all the same.
+- **T2, a stack's info** (cut in three by the user, 2026-11-02): **T2a1** (done 2026-11-02) the
+  stats dialog read (0x5F3360, design §12.1) and drawn, four stills exact against the original
+  but the panel's line over a Faerie Dragon (CLT-Q36 to Q38 asked, answered 2026-11-02); T2a2
+  cut in two by the user (2026-11-02): **T2a2a** (done 2026-11-02) the dialog in the window
+  (design §12.2: its OK, keys, hints and cursor, the key T, the battle's mouse at its close; hot
+  seat and a server; CLT-Q37 and Q38 (1) to (3) fixed; six stills exact); T2a2b cut in two by
+  the user (2026-11-02): **T2a2b1** (done 2026-11-02) the right button's descriptions held in a
+  popup but morale's and luck's (design §12.3), the cast button into the dragon's aim (CLT-Q38
+  (4)), CLT-Q39 asked and answered; four stills and a sequence exact; **T2a2b2** (done
+  2026-11-03) morale's and luck's descriptions (design §12.4) as far as the observation tells
+  their sources (CLT-Q40: the rest requested from the battle, server and adventure lanes, public
+  when carried, as VCMI), CLT-Q41 fixed; seven stills exact; T2b cut in two by the user
+  (2026-11-03): **T2b1** (done 2026-11-03) the right button's held dialog over any stack (design
+  §12.5; T2a1's Ballista slip fixed), five stills exact; **T2b2** (done 2026-11-03) a turret's
+  info by either button (design §12.6), four stills exact but 35 pixels of the held popup's
+  shadow (listed); a box before the first turn framed by the opening's side (CLT-Q28 (2)). T2
+  done.
+- **T3, the right button's other popups** (cut in two by the user, 2026-11-03; the battlefield
+  has no other items than T2b1's reading found): **T3a** (done 2026-11-03) the panel's controls'
+  help (0x472A50, design §12.7), a disabled control's too, five stills exact; **T3b** the heroes'
+  info windows (`battle_right_click`'s 0xFC and 0xFD: 0x46C370, 0x46CC10, 0x46CDF0), cut in two by
+  the user (2026-11-03): **T3b1** (done 2026-11-03) the window read and drawn, held by the right
+  button, its counts (design §12.8), two stills exact at their first capture; **T3b2** (done
+  2026-11-03) its morale and luck (`hero_morale`, `hero_luck` read whole: the hero's own, 0 on
+  Cursed Ground; from CLT-Q40's carry), CLT-Q42 asked, three stills exact.
+  **T3c** (from the inbox, 2026-11-03): morale's and luck's descriptions' carried lines (§12.4's
+  *not built*), cut in two by the user (2026-11-03): **T3c1** (done 2026-11-03) the hero's lists
+  read whole (0x4DC320, 0x4DCAC0; design §12.9) and drawn from the carry (the artifacts,
+  Leadership or Luck, the rest as temporary; the visits and the Grail in the rest meanwhile), the
+  header and pictures by the unclamped value, three stills exact; **T3c2** (done 2026-11-03,
+  design §12.10) the Hourglass's and the Spirit of Oppression's lines, the Angelic Alliance's
+  join, a siege town's buildings and the Grail's line (the pack record's index in the asset
+  tables, *provisional*); unit-tested, `stats-morale-siege` added; **T3c3** (done 2026-11-04,
+  design §12.11) the buildings named by the packs' town records (the user's choice), the
+  original's town built by their map slots, the writer's Grail-as-Leadership fixed, three stills
+  exact (`stats-morale-siege`, `-tavern`, `stats-luck-siege`). T3 done.
+- **T4, the combat options dialog:** the panel's Options read, drawn and in effect (the grid, the
+  movement and cursor shadows, the combat speed, the Auto Combat options, the rest as read), kept
+  in the client's settings; recorded. Cut in three by the user (2026-11-04): **T4a** (done 2026-11-04, design §12.12) the dialog
+  read whole (0x46E3B0, 0x46F7B0), drawn and in the window (O and the panel's button), the
+  settings file, the combat speed and both volumes in effect, CLT-Q43 and Q44 asked, six stills
+  exact; **T4b** the Auto Combat options and Creature Info in effect, cut in three by the user
+  (2026-11-04): **T4b1** (done 2026-11-04, design §12.13) the Auto Combat options restricting the window's bot, **T4b2a** (done 2026-11-04, design §12.14) Creature
+  Info's level without new windows (F5, the status line's damage), **T4b2b** the army info
+  windows on the hover, cut in two by the user (2026-11-04): **T4b2b1** (done 2026-11-04, design
+  §12.15) the hover read whole (both kinds of window), the heroes' windows on the hover and kept
+  after their right press, CLT-Q47 to Q50 asked and answered (Q47 copied, Q48 to Q50 fixed),
+  four stills exact (`army-info-hero`, `-hero-enemy`, `-none`, `-kept`); **T4b2b2** (done 2026-11-04, design §12.15) the stacks' four windows built, filled and shown
+  at levels 1 and 2, a still's status line at its level, CLT-Q48 fixed and CLT-Q51 copied, six
+  stills exact (`army-info-stack`, `-stack-enemy`, `-spells`, `-stack-f5`, `-ballista`,
+  `-spells-f5`); T4b done;
+  **T4c** (done 2026-11-05, design §12.16; kept whole by the user) the grid, the movement and cursor
+  shadows and the aims' shades drawn, F6 to F8 saved at once, CLT-Q52 to Q56 asked and answered
+  (all five fixed), 11 stills exact and 5 sequences (their 17 other frames the original's listed
+  redraw artifacts); T4 done.
+- **T5, M5's gaps:** the book's refusal messages, the Auto Combat bot's casts and retreat
+  question, Force Field's and Fire Wall's aim, Eagle Eye's message, Bloodlust's glow, the effects
+  not drawn yet and their sounds' waits (M5's items 5, 9, 24, 42, 45, 79, 84), each as far as read.
+  Cut in four by the user (2026-11-05): **T5a** (done 2026-11-05, design §12.17) the book's
+  refusals, the aim's other messages and Force Field's and Fire Wall's aim (items 5, 9, 84),
+  CLT-Q57 to Q60 asked and answered, six stills and five sequences recorded; **T5b** the bot's
+  casts and retreat question (24), cut in two by the user (2026-11-05): **T5b1** (done
+  2026-11-05, design §12.18) the window's computer the engine's original one (`--sight`, fair by
+  default; the engine's parts by the cross-lane #739), its casts for the human's hero, CLT-Q61
+  and Q62 asked and answered, two sequences recorded; **T5b2** cut in two by the user
+  (2026-11-05): **T5b2a** (done 2026-11-06, design §12.19) Auto Combat's retreat question and the
+  offer (the engine's part by the cross-lane #745), three sequences recorded; **T5b2b** (done
+  2026-11-06, kept whole by the user, design §12.20) CLT-Q61's stop at the cast's end, a question
+  at a later turn and a human's turn right after an answer, three sequences recorded, CLT-Q64
+  asked; **T5c** (done 2026-11-06, kept whole by the user, design §12.21) Eagle Eye's message
+  after the window and the message box with two to eight pictures (the experience after the
+  window shows nothing on the battle screen: its levels come on the map), CLT-Q65 and Q66 asked,
+  two sequences exact; **T5d** the effects, their waits and Bloodlust's glow (42, 45), cut in
+  two by the user (2026-11-06): T5d1 done (the effects of a turn's and a round's start: the
+  Wraiths' mana drain, regeneration, Poison's round damage; design §12.22; `starts`,
+  `starts-sound`), **T5d2** the strikes'
+  and casts', cut in two by the user (2026-11-06): T5d2a done (Death Blow, the Ogre Magi's
+  Bloodlust glow; design §12.23), T5d2b done (Ice Bolt's explosion, the Familiars' channel;
+  design §12.24; `channel`, `channel-sound`); **T5e**
+  (added by the user at T5c) the captured artifacts' message after Eagle Eye's (§12.21),
+  deferred by the user at its start (2026-11-07) to when the battle client runs inside an
+  adventure game ("Later" below): its list is the adventure's outcome (HER-ART-004, `h3-game`'s
+  `heroes_after_battle`), so no artifacts go into the battle's scenario. T5 done.
+- **T6, the inbox's waiting items:** the deck and the two boats as situations (CLT-Q5), `h3-bink`
+  as `BINKW32.DLL`'s float transform (CLT-Q30), the Demons' dissolve, the dialog items through
+  `h3_ui::paint`, the purity test's holes (R2-15), R4-2 and R4-9. Cut in three by the user
+  (2026-11-07): **T6a** (done 2026-11-07) the purity test's three holes closed, the dialog items
+  drawn by `h3_ui::paint` alone (`h3-view`'s copy gone; `drawn` all the same) and `drawn`'s
+  digest of what a sequence's masks depend on (R4-2, recorded from `master`'s viewer first);
+  **T6b** the recordings (CLT-Q5's deck and boats, the Demons' dissolve, R4-9), cut in two by the
+  user (2026-11-07): **T6b1** (done 2026-11-07) the deck and the two boats as capture
+  situations (CLT-Q5 closed: `h3-view situation` writes empty boats, the harness boards them in
+  hot seat and attacks on day 2 by clicks; `deck` and `boats` exact; design §6.2), **T6b2**
+  (done 2026-11-07) the Demons' dissolve (CLT-Q67: the corpse leaves by the same slip as the
+  rock, the cast's first clipped redraw copying the background into the whole back buffer;
+  fixed, the original's for the comparisons; `demons` exact; design §7.25); R4-9 moved into
+  T7 (its check needs every sequence with redraw artifacts captured afresh, about 51 of 91, as
+  T7 captures everything); **T6c** `h3-bink` as `BINKW32.DLL` (CLT-Q30), cut in two by the
+  user (2026-11-07): **T6c1** (done 2026-11-07) the decoder as the DLL's (its x87 DCT and
+  dequantizers in integers; the ten clips and the samples exact against its planes; CLT-Q68
+  asked, answered fix; design §7.27), **T6c2** (done 2026-11-07) the captures' listed DCT
+  pixels captured again (every clip frame exact), `drawn` recorded, CLT-Q30 closed. T6 done.
+- **T7, M6's closure:** a fresh reviewer, every capture afresh, the review list, M7 refined;
+  R4-9 (a stricter shadow chain in `h3cap.redraws`, checked on T7's captures). Cut in three by
+  the user (2026-11-09): **T7a** (done 2026-11-09/10) R4-9 and every capture afresh (all 172
+  situations and 91 sequences as recorded; the stricter rule moved 1 044 pixels of 16 frames'
+  listed differences from artifacts, recorded; design §7.11); before T7b the inbox's protocol
+  v38 readers (done 2026-11-10: the battle's start no command, CLT-STUB-3 lifted, `drawn` all
+  the same; CLT-Q69 asked; design §12.25); **T7b** (done 2026-11-10, the user's "one session,
+  delegated": 12 reviewers and 6 fixers, 56 findings, 51 fixed, 3 left; CLT-Q70 to Q77 asked;
+  review items 49 to 62; PR on `client/e17-m6-t7b`); **T7c** (done 2026-11-10, the user's
+  checkpoint; kept whole by the user): the review list accepted as built (item 62's tests
+  kept), CLT-Q42 to Q44, Q63 to Q66 and Q69 to Q77 answered, T7b's leftovers placed, M7
+  refined (shortened by the user: E17 ends with it). T7 done. **M6 done.**
+- **Exit:** a played battle shows every dialog and popup of the original's battle screen, each
+  passing against the original or with each difference a listed fix or a classified quirk; the
+  combat options in effect.
 
 ## clients/README.md's state history
 
