@@ -2799,9 +2799,17 @@ MP3s in one). **T19c cut in two at its start, the env first** (the user, decisio
   1 584, about 469 000 Ir a query; `Reach::search` 71.6 % in both), re-baselined with the reason;
   `siege-towns-36` the same (its heroes seek the towns). `h3-cli`'s `agent_rollout` (the wall-time
   variant `--masks`) reads the building head too.
+- **CI's counterexample of `master`'s** (the pull request's first full verify, coverage step:
+  `h3-map`'s `every_step_keeps_the_commands_invariants`, reproduced on `master` 4bd174e with its
+  seed): a hero stepped onto another player's town's entrance that a monster guards and its
+  question (an offer to join) opened; the town's visit waits for the answer (decision 279), but
+  `check_invariants` exempted only a hero whose player is in a battle. A gap of the test, not of
+  the engine: it exempts a hero whose player has any open decision (`GameState::has_decision`);
+  the seed kept in `proptest-regressions/tests/play.txt`; the town lane's trap amended.
 - The AI lane's inbox told (v9; it replaces T18b2b's note). No game version moved; no rule, stub
   or quirk new; no bot report moved (they play battles).
 - **Agent's calls (change freely):** the building head a `u8` in `MapAction`; each listed build
   one choice of the random agent (as `BuildBoat`'s), not the entry first; the building head after
   another entry by its tile's legality (a reach query for a move) rather than the entry's alone;
-  14 days and three replays on the builds map.
+  14 days and three replays on the builds map; the invariant's gap fixed here (the adventure
+  lane's test file, already in this `cross-lane` pull request) rather than sent to its inbox.

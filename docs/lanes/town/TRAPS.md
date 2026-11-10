@@ -55,9 +55,10 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 - **A guard's battle comes before the town's visit** (E08 T103d, decision 279): a step onto an
   undefended town's entrance that a guard watches leaves the hero on the entrance while that
-  battle is open; the capture follows it. A check over a town's visitor (the hero on its
-  entrance, TWN-VIS-002) exempts a hero whose player has an open battle (`GameState::battle`),
-  as `check_invariants` does since the server lane's CI found it (2026-11-09).
+  battle is open, or the guard's question (a monster's offer to join); the capture follows the
+  answer. A check over a town's visitor (the hero on its entrance, TWN-VIS-002) exempts a hero
+  whose player has an open decision (`GameState::has_decision`), as `check_invariants` does
+  (the battle since the server lane's CI, 2026-11-09; the question since E09 T19c1's CI).
 
 ## The views (`h3-game` `src/town/view.rs`)
 

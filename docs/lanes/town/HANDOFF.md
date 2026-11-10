@@ -48,7 +48,9 @@ staged then. T19c cut in two, the env first (the user, decision 62). Action enco
 rollout draws every listed build; the town map's env tests on new seeds (142, 244); three random
 replays with builds on the builds map (72 replays); `day-start-`, `fork-` and `reach-towns-36`
 re-baselined (the random games changed course, the same code per function, measured against
-`master` in the sandbox). The AI lane's inbox told.
+`master` in the sandbox). The AI lane's inbox told. CI's first run met a counterexample of
+`master`'s (a guard's question holding a town's visit; `check_invariants` exempted only a
+battle): the test's gap fixed, the seed kept.
 
 ### 2026-11-10 — T19b: the plans build
 
