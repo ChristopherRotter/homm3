@@ -2126,7 +2126,12 @@ type Outcome = (
 /// a hero leaves at its mine come from its army, which the test may change where the viewer never
 /// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
 /// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
-/// guards of another creature in the other game at a mine the viewer saw). (E09 T9b2b) And the
+/// guards of another creature in the other game at a mine the viewer saw); (E09 T19b) and the
+/// objects it removed (`ObjectRemoved`'s kind): a monster's answer to a declined offer follows
+/// from the visitor's army and the seed, which the test changes, and its flight removes it for
+/// every viewer that sees it (a case of `master`'s that T19b's draws found: another player's hero
+/// declined a monster's offer to join, and the monster fled in one game and asked again in the
+/// other). (E09 T9b2b) And the
 /// Capitols it changed (`TownChanged`'s town and Capitol, since E09 T18b2a those told to `viewer`,
 /// each viewer's: the events tell every viewer's views): a capture takes the town's Capitol away
 /// when its new owner holds another (TWN-CAP-002), which may stand in a town the viewer never
@@ -2200,7 +2205,9 @@ fn outcome(
         .iter()
         .filter_map(|e| match e {
             GameEvent::Adventure(AdventureEvent {
-                kind: kind @ AdventureEventKind::GuardsChanged { .. },
+                kind:
+                    kind @ (AdventureEventKind::GuardsChanged { .. }
+                    | AdventureEventKind::ObjectRemoved { .. }),
                 ..
             }) => Some(*kind),
             _ => None,
@@ -2556,6 +2563,12 @@ struct TownsMet {
     merges: usize,
     /// Towns coming into a view.
     new: usize,
+    /// (E09 T19b) A day's mark coming into a view of the town's owner and of another viewer
+    /// (TWN-VEW-004: the mark public), and the owner told its buildings after a build.
+    marks: [usize; 2],
+    buildings: usize,
+    /// (E09 T19b) Town events told to their owner (TWN-EVT-001).
+    fired: usize,
 }
 
 impl TownsMet {
@@ -2578,8 +2591,11 @@ impl TownsMet {
                 }) => self.captures[usize::from(owner != viewer)] += 1,
                 GameEvent::TownChanged {
                     town,
+                    owner,
                     capitol,
                     slots,
+                    built_today,
+                    buildings,
                     ..
                 } => {
                     let was = before.towns.iter().find(|t| t.town == town);
@@ -2587,7 +2603,15 @@ impl TownsMet {
                     self.capitols += usize::from(was.is_some_and(|t| t.capitol != capitol));
                     let garrison = was.zip(now).is_some_and(|(w, n)| w.garrison != n.garrison);
                     self.garrisons += usize::from(garrison && !slots);
+                    if built_today && was.is_some_and(|t| !t.built_today) {
+                        self.marks[usize::from(owner != Some(viewer))] += 1;
+                    }
+                    let built = told
+                        .iter()
+                        .any(|e| matches!(*e, GameEvent::TownBuilt { town: t, .. } if t == town));
+                    self.buildings += usize::from(built && buildings.is_some());
                 }
+                GameEvent::TownEventFired { .. } => self.fired += 1,
                 GameEvent::StackChanged { at, .. } => {
                     self.merges += usize::from(matches!(at.army, ArmyRef::Garrison(_)));
                 }
@@ -2598,12 +2622,15 @@ impl TownsMet {
 }
 
 /// The town views over plans of three to six towns (E09 T9b2a; the draw of `play.rs`'s
-/// `the_plans_capture_and_besiege_towns`): over the first 256 cases of proptest's deterministic
-/// runner, each player's view moves as the events say ([`check_told`]) and shows the towns as they
-/// stand ([`check_town_views`]), and the cases meet each of what those follow ([`TownsMet`]):
+/// `the_plans_capture_and_besiege_towns`): over the first 512 cases of proptest's deterministic
+/// runner (256 before E09 T19b, whose draws met no view at the taverns' second level in them),
+/// each player's view moves as the events say ([`check_told`]) and shows the towns as they stand
+/// ([`check_town_views`]), and the cases meet each of what those follow ([`TownsMet`]):
 /// views at every level, a neutral garrison seen with its stacks, captures told to their captor
 /// and to another viewer, a Capitol's change, a merge's garrison slots and a town coming into
-/// view. (A siege's effects on a garrison a third viewer sees by its taverns, which show untold,
+/// view; since E09 T19b (the plans' towns' events, [`super::play::Step::Build`]'s runs) a day's
+/// mark coming into its owner's view and another viewer's, the owner's buildings told after a
+/// build, and a town event told to its owner. (A siege's effects on a garrison a third viewer sees by its taverns, which show untold,
 /// `docs/06-security.md`, were met in none of these cases: a lost siege at a town such a viewer
 /// sees is rare in random play.)
 #[test]
@@ -2658,6 +2685,8 @@ fn town_views_move_as_the_events_say() {
     assert!(m.captures.iter().all(|&n| n > 0) && m.capitols > 0, "{m:?}");
     assert!(m.garrisons > 0, "{m:?}");
     assert!(m.merges > 0 && m.new > 0, "{m:?}");
+    assert!(m.marks.iter().all(|&n| n > 0), "{m:?}");
+    assert!(m.buildings > 0 && m.fired > 0, "{m:?}");
 }
 
 /// [`vary`] changes what it may and nothing else: with every tile unseen, each kind of change
@@ -2915,6 +2944,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         buildings: 0,
         tight: false,
         visited,
+        events: Vec::new(),
     };
     let plan = super::play::Plan {
         version: crate::model::Version::Sod,
