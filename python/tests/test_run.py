@@ -197,6 +197,31 @@ def test_the_gates_promotions_and_ladders_print_one_line_each() -> None:
     )
 
 
+def test_an_updates_line_shows_the_gpus_memory_and_a_card_past_the_cap() -> None:
+    # E25 T28: on CUDA an update's record holds the GPU's memory (`gpu.usage`); a start or
+    # segment its cap (`gpu.cap`, in the identity).
+    update = {
+        "type": "update",
+        **dict(update=7, minutes=12.5, samples=7_000, samples_per_s=220.0, episodes=90),
+        **dict(attacker_won=0.8, truncated=0.0, league=3, league_score=0.5, frozen_passes=4.0),
+        **dict(policy_loss=-0.02, value_loss=0.002, entropy=1.2, kl=0.01),
+        "explained_variance": 0.8,
+    }
+    assert "gpu" not in line(update)
+    gpu = {"gpu_reserved_mb": 5_120.0, "gpu_peak_mb": 6_144.0, "gpu_card": 0.8}
+    assert line({**update, **gpu}).endswith(" gpu 5.0 GB (peak 6.0, card 80%)")
+    assert line({**update, **gpu, "gpu_card": 0.93}).endswith("card 93%, past 90%!)")
+    cap = {"total_mb": 8_192.0, "outside_mb": 512.0, "cap_mb": 6_860.8}
+    start = {"type": "start", "name": "r", "identity": {"gpu_memory": cap}}
+    assert line(start) == "start r, gpu cap 6.7 of 8.0 GB (0.5 outside the run)"
+    assert line({**start, "identity": {"gpu_memory": None}}) is None
+    segment = {
+        **dict(type="segment", segment=1, update=7, samples=7_000, seed=1, dropped=0, changed={}),
+        "identity": {"gpu_memory": cap},
+    }
+    assert line(segment).endswith(", gpu cap 6.7 of 8.0 GB (0.5 outside the run)")
+
+
 def test_the_learning_rate_follows_samples() -> None:
     c = load_config("samples = 1000\n[ppo]\nlr = 1.0\nlr_floor = 0.1\n")
     assert [learning_rate(c, s) for s in (0, 500, 900, 1000, 5000)] == [1.0, 0.5, 0.1, 0.1, 0.1]

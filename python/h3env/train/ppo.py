@@ -83,6 +83,7 @@ import torch
 from .. import _ffi
 from ..batch import BattleBatch
 from ..seats import Closed, SeatBook
+from . import gpu
 from .evaluate import (
     NEUTRAL_KINDS,
     PLAYER_KINDS,
@@ -344,6 +345,8 @@ class Trainer:
         if c.torch_threads:
             torch.set_num_threads(c.torch_threads)
         self.device = device_of(c.device)
+        #: The GPU's memory cap (`gpu.cap`, E25 T28; None off CUDA).
+        self.memory = gpu.cap(self.device)
         self.segment = segment
         self.batch_seed = segment_seed(c.seed, segment)
         self.batch = BattleBatch(
@@ -1005,6 +1008,7 @@ def identity(trainer: Trainer) -> dict:
         "cuda": torch.version.cuda,
         "device": str(device),
         "gpu": torch.cuda.get_device_name(device) if device.type == "cuda" else None,
+        "gpu_memory": trainer.memory,
         **machine(),
     }
 
@@ -1202,6 +1206,7 @@ def _go(trainer: Trainer, run: Run, stop: Stop | None, opening: dict) -> Trainer
                         / (roll["rollout_s"] + stats["update_s"]),
                         **roll,
                         **stats,
+                        **gpu.usage(trainer.device),
                     }
                 )
                 if trainer.snapshots.due(trainer.samples):
