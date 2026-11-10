@@ -6070,7 +6070,10 @@ slices 1 000 to 2 100 source lines each. The original data staged by the PC's fi
   most about 300 000 to 345 000, 11 to 21 minutes each; fixers 180 000 (F4) to 320 000 (F2), 14
   to 28 minutes. Larger than M5 T8's reviewers' (116 000 to 202 000): bigger slices, and the
   brief asked for the tasks' records and design sections too.
-- **Gates:** GATES_PLACEHOLDER
+- **Gates:** after `master`'s merge, `clients/scripts/check.sh` all gates passed (coverage
+  100 %); `drawn` 263 of 263 the same (no fix changed a frame, so no capture); `h3-view gate`
+  passed; the scoped verify with the original data no failing step (`check-exe-map` first wanted
+  an entry for CLT-Q73's 0x5994B0: `music_volume_tail`, *inferred*, added).
 - **Left** (for T7c's review with the user unless said): R2-7, no map kind in the engine (a
   *provisional* comment at `account`'s alignments; item 16; a battle-lane inbox note if wanted);
   R3-4 with the DEF button's loop for the panel, the stats dialog's OK and the options' buttons,
@@ -6079,6 +6082,4 @@ slices 1 000 to 2 100 source lines each. The original data staged by the PC's fi
   the presser option (tests and a tool); R10-3's model (item 59); R11-5's rebirth unrecorded and
   a creature's cast's (item 60); R12-3's start marked on the wire (CLT-Q69 (a), item 61); the
   reads and captures the questions name (CLT-Q71's hold of D, CLT-Q73's 0x5994B0, CLT-Q74's
-  sound sequence) and R2-1's still `stats-ability`. Stale since R7-2: the docs that say the
-  settings file is written "as an aim switches the movement shadow" (`options.rs`' module doc,
-  `main.rs`' usage, `clients/README.md`).
+  sound sequence) and R2-1's still `stats-ability`.

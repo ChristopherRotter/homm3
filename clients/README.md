@@ -128,8 +128,7 @@ search the parent directories).
   the combat options dialog on a human's turn (E17 M6 T4a, design §12.12); its settings come from
   the user's `settings.toml` (`--settings`, else in the working directory; its `[battle]` table of
   the original's registry values, *provisional*), else a first run's, and are written back there
-  (whole, through a sibling file) as the dialog closes after a click, at F5 to F8 and as an aim
-  switches the movement shadow; every setting is in effect (the combat speed: an explicit
+  (whole, through a sibling file) as the dialog closes after a click and at F5 to F8; every setting is in effect (the combat speed: an explicit
   `--speed` wins for the run) but the spell book's animation, kept only. The mouse is the battle's (E17 M3 T6c-2,
   design §9.10): its cursor, the stack it marks and enters, its hints in the log; a panel button
   shows its click frame while the mouse or its hotkey (S, R, O, A, C, W, D, Space) holds it, the

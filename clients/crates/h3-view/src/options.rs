@@ -19,7 +19,7 @@
 //! spell book's animation (the page-turn videos are not built). The battle's keys F5 to F8
 //! change four of them outside the dialog: F5 the army info level
 //! ([`Settings::cycle_army_info`]), F6 to F8 the grid and the shadows; the window writes the
-//! settings file at each, as at an aim's shadow switch and the dialog's close after a click.
+//! settings file at each and at the dialog's close after a click.
 //!
 //! The original's oddities are built as the original's (design §12.12, "Oddities"): the speed
 //! buttons' sample twice, a box or a bar acting on a left release anywhere, the hidden bars
@@ -314,7 +314,7 @@ impl Settings {
         let mut text = String::from(
             "# The battle client's settings (h3-view window; E17 M6 T4a): the original's registry\n\
              # values, written as the combat options dialog closes after a click, at the keys F5\n\
-             # to F8 and as an aim switches the movement shadow.\n[battle]\n",
+             # to F8.\n[battle]\n",
         );
         for (name, value) in NAMES.iter().zip(values) {
             text.push_str(&format!("{name} = {value}\n"));

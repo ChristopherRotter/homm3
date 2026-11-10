@@ -134,7 +134,7 @@ commands:
           it does not know or a value not an integer left out, told in the report), else a
           first run's (speed 0, volumes 5), as from a file --settings names that is not there
           yet; the window writes them there (--settings, else settings.toml here) as the dialog
-          closes after a click, at F5 to F8 and as an aim switches the movement shadow. In
+          closes after a click and at F5 to F8. In
           effect: the combat speed (from the next command; an explicit --speed wins over the
           file's for the run, the dialog showing it, its close keeping it), the music and
           effects volumes (at once), the grid, the shadows, the Auto Combat options and the army

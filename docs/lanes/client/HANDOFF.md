@@ -59,7 +59,8 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   delegated": the session a coordinator, 12 read-only reviewers (two at a time, a worktree of
   master 3e1026fc), 6 fixers one at a time on the branch, one docs agent. 56 findings (one high,
   R5-2, a test reproduced it; nine medium): 51 fixed, 2 in the records, 3 left; CLT-Q70 to Q77
-  asked, review items 49 to 62. `master` merged once (ac8ae2ec). Gates: GATES_PLACEHOLDER.
+  asked, review items 49 to 62. `master` merged once (ac8ae2ec). `check.sh` passed, `drawn`
+  263 of 263 the same (no capture needed), `h3-view gate` passed.
   Record: `E17-log.md`.
 - **2026-11-10, after E17 M6 T7a: the protocol v38 readers (done; `client/e17-m6-v38-readers`).**
   Kept whole with CLT-STUB-3 and the inbox's comment rename. The original data staged at once
