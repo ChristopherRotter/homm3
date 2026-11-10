@@ -16,6 +16,13 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **for T3's
+  mapping of the game's commands and rejections**): `h3_adventure::AdventureCommand::Revisit {
+  hero: HeroId }` (the entered object under the hero visited again, ADV-TEL-008; no new event:
+  its visit's events are a step's visit's) and `AdventureCommandError::NothingToRevisit` (no
+  field). `legal_commands` lists a `Revisit` per hero on an entered object after the `BuildBoat`s;
+  the adventure replay format is v12 (`revisit <hero>`). Nothing on the wire moved yet.
+
 - 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **for T3's mapping of
   the game's commands, rejections and events**): `GameCommand::Town(h3_towns::TownCommand)` (one
   variant, `Build { town: TownId, building: BuildingId }`, the building by its index in the town's

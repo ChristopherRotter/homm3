@@ -30,6 +30,7 @@ mod battles;
 mod decisions;
 mod hiring;
 mod monsters;
+mod revisits;
 mod shipyards;
 mod towns;
 

@@ -40,6 +40,17 @@ and events on the wire; its inbox has T18b1's note).
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
+  revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
+  (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,
+  no points, no step, no guard test: for a hero standing on its own town's entrance that is
+  `visit_town` with `Visit::Enter` (`town_visit` as it stands), at 0 points too and as often as
+  the player likes. `legal_commands` lists it for every such hero after the `BuildBoat`s (and
+  before a town's builds once T18b2 lists them: `revisitable`'s place is after `buildable_shipyards`
+  in `h3-game`'s `legal.rs`). Whatever a town's visit opens later (its screen, a garrison
+  exchange) opens at a revisit too; nothing moved in your hashes. The replay format is v12
+  (`revisit <hero>`): a town bump of the format is v13.
+
 - 2026-11-09 (the adventure lane, E08 T105a1, `adventure/e08-t105a1`; **a signature, for your
   callers**; increment 11's design note §13, §18): `AdventureState::apply` takes `(player, draws)`
   in place of `player` (`draws: &mut Rng`, the acting player's stream: a visit's draw, a

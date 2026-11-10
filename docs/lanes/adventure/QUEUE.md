@@ -4,36 +4,34 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 in four (decision 282): T103a done (`adventure/e08-t103a`, `cross-lane`: the kinds, the packs and their check, `whirlpool_protection`; part v18; the bot reports' line, decision 283); T103b done (`adventure/e08-t103b`: the import of the five classes, A-39 refused, `ADV-QUIRK-41`; map import v21, with the inbox's class 220 by the mines' table; the census of the shipped maps); T103c done (`adventure/e08-t103c`, `cross-lane` for the experiments README's row, whole: decision 284; batch E11c, E11-20 to E11-23 every row as read, survey §15.1); T103d done (`adventure/e08-t103d`, whole: the guard first for every entered kind, `Rest::Visit`; no version moved); round 5 done. Round 6: T104 done (`adventure/e08-t104`, whole: decision 285; A-42's refusal, the channels and the gates' pairs, `build-gates-xl-144`; the shipped maps' census brought forward, decision 286); round 6 done. Round 7: T105, T105a in two by land and water (decision 287): T105a1 done (`adventure/e08-t105a1`: the stream in `apply`, the monoliths' and the gates' jumps, `ADV-STUB-16` for an occupied exit; no version moved); T105a2 done (`adventure/e08-t105a2`: the Whirlpool's loss and jump with the boat, `WhirlpoolLoss`; no version moved); T105b in two (decision 288): T105b1 done (`adventure/e08-t105b1`: the battle and the meeting at an exit, `Rest::Jump`; game state hash v27), T105b2 below; T106 and T107 queued when it is done. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T97c (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 10 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05; increment 10, dwellings and hiring, by T97's audit). **Increment 11, the teleporters**, refined with the user at T97c (ADV-Q44; decisions 260, 261): round 1, the survey and the ADR amendment drafts first: T98a in two (decision 262), both done (T98a2 with the checkpoint ADV-Q45, decisions 263–269); T98b in two by side (decision 270): T98b1 done (`adventure/e08-t98b1`: design parts A and B, ADR-0016's draft), T98b2 done (whole: decision 271; part C, ADR-0017's draft, the checkpoint ADV-Q46, decisions 272–274: the note, both drafts and the cut accepted). Rounds 2 to 8 (design §17): T99 in two at the code's seam (decision 275): T99a done (`adventure/e08-t99a`, `cross-lane`: the writer's five classes, the spec's `level`, the gates' pairs, the boats on Whirlpools' tiles); T99b in two by land and water (decision 276): T99b1 done (`adventure/e08-t99b1`: 11a's land rows), T99b2 in two by spec (decision 277): T99b2a done (`adventure/e08-t99b2a`: 11a's Whirlpool rows), T99b2b done (`adventure/e08-t99b2b`, `cross-lane`: the spec E11b, the batch's README row); round 2 done. Round 3: T100 in two by spec (decision 278): T100a done (`adventure/e08-t100a`: the harness's replay, branch and box reads, the recipe `E08-batch-11a`, three runs, the template filled), T100b done (`adventure/e08-t100b`: the key repeated, the Whirlpools' list and the tiles' reads, the recipe `E08-batch-11b`, three runs, the template filled); T101 done (`claude/epic-brahmagupta-rp3lje`, whole, docs only: survey §15, every row as read but E11-19; the checkpoint ADV-Q47, decisions 279, 280); round 3 done. Round 4: T102 done (`shared/e08-t102`, `cross-lane`, whole: decision 281; the ADRs, the glossary, the security lines, the effect kind `whirlpool_protection`); round 4 done. Round 5: T103 in four (decision 282): T103a done (`adventure/e08-t103a`, `cross-lane`: the kinds, the packs and their check, `whirlpool_protection`; part v18; the bot reports' line, decision 283); T103b done (`adventure/e08-t103b`: the import of the five classes, A-39 refused, `ADV-QUIRK-41`; map import v21, with the inbox's class 220 by the mines' table; the census of the shipped maps); T103c done (`adventure/e08-t103c`, `cross-lane` for the experiments README's row, whole: decision 284; batch E11c, E11-20 to E11-23 every row as read, survey §15.1); T103d done (`adventure/e08-t103d`, whole: the guard first for every entered kind, `Rest::Visit`; no version moved); round 5 done. Round 6: T104 done (`adventure/e08-t104`, whole: decision 285; A-42's refusal, the channels and the gates' pairs, `build-gates-xl-144`; the shipped maps' census brought forward, decision 286); round 6 done. Round 7: T105, T105a in two by land and water (decision 287): T105a1 done (`adventure/e08-t105a1`: the stream in `apply`, the monoliths' and the gates' jumps, `ADV-STUB-16` for an occupied exit; no version moved); T105a2 done (`adventure/e08-t105a2`: the Whirlpool's loss and jump with the boat, `WhirlpoolLoss`; no version moved); T105b in two (decision 288): T105b1 done (`adventure/e08-t105b1`: the battle and the meeting at an exit, `Rest::Jump`; game state hash v27), T105b2 done (`adventure/e08-t105b2`, `cross-lane`, whole: decision 289; `Revisit`, replay format v12, the env's action encoding v8); round 7 done. Round 8: T106 and T107 below. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T105b2 — `Revisit` and the env** (round 7; design §13, §14; decision 288)
+**E08 T106 — the teleporters' fixtures, replays, properties and benchmarks** (round 8; design §14, §17)
 
-- **Scope:** `AdventureCommand::Revisit { hero }` and `NothingToRevisit` (ADV-TEL-008; design
-  §13's checks, kinds and order: no points, no step, no guard test), the legal set (after the
-  `BuildBoat`s, in hero order), the replay line `revisit <hero>` (**adventure replay format
-  v12**, E09 T18b1 having taken v11; the replay's words in `h3-files`' `src/adventure/` since #808); the env's **action encoding v8** (`cross-lane`, `h3-sim`: `22 + h` for the hero slots),
-  the AI lane's inbox (v8, a step cap for revisits at 0 points, design §18), the town lane's (a
-  revisit of a hero's own town). The env masks `Revisit` in, so every `random-play-*` workload
-  changes course: re-baseline them with the reason written (`homm3-bench-regression`); the golden
-  replays only rehash (the format line), the bot reports regenerate. If the server lane's E16 M5
-  T3 has put the game's commands and errors on the wire first, map `Revisit` and
-  `NothingToRevisit` in `h3-protocol` (`cross-lane`, the global HANDOFF's trap).
-- **Inputs:** design §13 (`Revisit`), §14 (the env), §15, §18; survey §11, §15 (E11-14, E11-15,
-  E11-17, E11-19's Space); decisions 268, 273, 288.
-- **Depends on:** T105b1 (done, PR open until merged). **Status:** ready.
+- **Scope:** the maps `e08-teleporters-36.h3m` (`h3-map`'s `src/tests/teleporters_map.rs`, by
+  `h3_map::writer`: two levels, two players, a one-way channel of one entrance and three exits, a
+  two-way channel of three, a lone one-way exit, two gate pairs and a gate without one, three
+  Whirlpools in a sea with a boat for each player, the Sea Captain's Hat on one hero, a monster
+  beside an entrance, a weekly object and a dwelling to revisit) and `e08-teleporters-144.h3m`
+  (both levels and a sea, `e08-sea-144.h3m`'s generator the model); the golden replays
+  `teleporters-s<seed>-d28` (random play, seeds by the search for jumps, losses and revisits) and
+  the scripted `teleporters-*-s1` (design §14's list); the plans' `TELEPORTERS` and their checks
+  (design §14's properties: the map's invariants, a jump keeps the points, the exit a candidate, a
+  fork's channels, the Whirlpool's weakest slot, a rejected `MoveHero` or `Revisit` leaves the
+  stream untouched, no viewer told a hidden end; the plans bound their commands a turn, design
+  §18); the workloads `reach-teleporters-xl-144` and `random-play-teleporters-36` baselined at
+  their first count; `--with-original-data`'s census rows not yet checked (T104 brought the
+  channels and pairs forward, decision 286).
+- **Inputs:** design §14, §17, §18; survey §1 (the census). **Depends on:** T105b2 (done).
+  **Status:** ready; its cut confirmed at its start.
+
+**E08 T107 — increment 11's audit** (round 8; design §17's exit criteria)
+
+- **Scope:** the audit against the ten exit criteria with a fresh reviewer; increment 11 closed
+  (its scope, decisions 260 to 289 and tasks to `E08-archive.md`); increment 12 refined with the
+  user. **Depends on:** T106. **Status:** queued.
 
 ## Inbox
-
-- 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **a version and a
-  variant, for your bumps and matches**): **adventure replay format v11** is taken (`town build
-  <town> <building>`, `GameCommand::Town(TownCommand)`), so T105b's bump is **v12**; the 55
-  replays were re-recorded, only their `format` line moved. New in `h3-game`: the variant
-  `GameCommand::Town`, `GameCommandError::Town(TownCommandError)`, `GameEvent::TownBuilt`
-  (the owner's), the crate-private `GameState::towns_mut`; `advance_day` clears the towns' marks
-  right before the income (`Towns::start_day`); `town::capture` takes the players' `human` flags.
-  `legal_commands` lists no build before E09 T18b2, so no plan, env or bot report moved; the
-  env's `tileless_entry` gives a build no entry until E09 T19. The words are in `h3-files`'
-  `src/adventure/` since #808. Nothing to act on but the v12.
 
 - 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **the
   adventure's files moved from `h3-cli`'s `src/adventure/` into `h3-files`' `src/adventure/`**, yours
