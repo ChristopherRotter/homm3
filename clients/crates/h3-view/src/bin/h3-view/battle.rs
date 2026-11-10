@@ -616,14 +616,12 @@ pub struct Battle<'g> {
     /// §12.12): the battle stands as it was then (`battle_combat_options`' modal loop runs no
     /// idle step); a box over it (its help, the no-sound box) is `message`.
     options: Option<(h3_view::options::Open, u32)>,
-    /// The options dialog closed and the mouse not moved since: the dialog's arrow stays (nothing
-    /// set or posted at its close, oddity 10).
-    options_arrow: bool,
     /// The options dialog closed after a click (+0x4C): its settings to save (0x46F7A2).
     options_save: bool,
     /// The combat options' settings (the window's settings file's; E17 M6 T4a).
     pub settings: h3_view::options::Settings,
-    /// The window's audio device opened: without it the options' bars at volume 0 tell so.
+    /// The window's audio device opened (the client's profile refuses no options bar without it,
+    /// CLT-Q44 (c)).
     pub audio: bool,
     /// The combat speed the battle grows at: the ground's, then the options dialog's.
     speed: Speed,
@@ -960,7 +958,6 @@ impl<'g> Battle<'g> {
             message: None,
             asked_at: None,
             options: None,
-            options_arrow: false,
             options_save: false,
             settings: h3_view::options::Settings::FIRST_RUN,
             audio: false,
@@ -1951,9 +1948,10 @@ impl<'g> Battle<'g> {
             };
         }
         // A message box sets the default cursor's frame 0 (0x4F74AC; E17 M5 T4a), the combat
-        // options dialog its type 0 frame 0 (E17 M6 T4a), which stays after its close until the
-        // mouse moves (oddity 10).
-        if self.message.is_some() || self.options.is_some() || self.options_arrow {
+        // options dialog its type 0 frame 0 (E17 M6 T4a); after its close the window posts the
+        // mouse (CLT-Q43 (3), the client's profile: the original's arrow stays until the mouse
+        // moves, oddity 10, built in the stills alone).
+        if self.message.is_some() || self.options.is_some() {
             let book = &self.ground.layout.book;
             return CursorLook {
                 def: self.ground.layout.message.cursor.clone(),
@@ -2305,13 +2303,11 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
-        let changed = open.hover(
+        open.hover(
             &mut self.book_memory,
             (&ground.layout.book, &writer.catalogue),
             point,
-        );
-        self.options_arrow = arrow_stays(self.options_arrow, open.cursor);
-        changed
+        )
     }
 
     /// Whether a stack's stats dialog is open over the battle (E17 M6 T2a2a).
@@ -2527,7 +2523,7 @@ impl<'g> Battle<'g> {
             &self.ground.layout.options,
             &writer.catalogue,
             shown_settings(self.settings, self.speed),
-            (player, self.audio),
+            (player, self.audio, Bugs::Fixed),
         );
         self.options = Some((open, at));
         self.boxes_open.get_or_insert(self.settings.auto);
@@ -2583,21 +2579,17 @@ impl<'g> Battle<'g> {
             .is_some_and(|(open, _)| open.let_go(by).changed)
     }
 
-    /// The mouse moved over the battle: the options dialog's arrow left at its close goes.
-    pub fn mouse_moved(&mut self) {
-        self.options_arrow = false;
-    }
-
     /// The settings to save once the options dialog closed after a click (+0x4C; 0x46F7A2),
     /// taken once.
     pub fn options_saved(&mut self) -> Option<h3_view::options::Settings> {
         core::mem::take(&mut self.options_save).then_some(self.settings)
     }
 
-    /// The open options dialog's answer to an input (`combat_options_proc` 0x46F7B0): a bar at
-    /// volume 0 without the audio device opens the no-sound box (GENRLTXT 151, an OK box); the
-    /// OK's click closes it, the battle taking its settings, its speed from the next command on
-    /// (the redraw: the window's), the arrow staying until the mouse moves.
+    /// The open options dialog's answer to an input (`combat_options_proc` 0x46F7B0): the
+    /// no-sound box (GENRLTXT 151, an OK box) when the dialog asks for it (the original's profile
+    /// alone, CLT-Q44 (c): never in the window's); the OK's click closes it, the battle taking
+    /// its settings, its speed from the next command on (the redraw and the mouse posted: the
+    /// window's, CLT-Q43 (3)).
     fn options_did(
         &mut self,
         input: impl FnOnce(&mut h3_view::options::Open) -> h3_view::options::Did,
@@ -2618,7 +2610,6 @@ impl<'g> Battle<'g> {
         }
         if did.closed {
             self.options = None;
-            self.options_arrow = true;
             self.options_save = clicked;
             self.set_speed(Speed::new(settings.speed));
         }
@@ -2736,7 +2727,6 @@ impl<'g> Battle<'g> {
         };
         let hovered = open.modal.hover(&mut self.stats_memory, point);
         let moved = open.modal.moved(point) != h3_view::message::Outcome::Nothing;
-        self.options_arrow = arrow_stays(self.options_arrow, open.modal.cursor);
         hovered || moved
     }
 
@@ -3474,6 +3464,17 @@ impl<'g> Battle<'g> {
         served && self.waiting() && at >= self.played.timeline().end
     }
 
+    /// Whether the battle takes at `at` its keys that give no command (the grid and the shadows,
+    /// F6 to F8: `battle_buttons` tests no turn; CLT-Q75 (a), E17 M7 T1a): on every turn once its
+    /// last action played, a human's here, a seat's opponent's, the computer's before its command
+    /// (none to see there: it acts at once); a record's whenever. A key during an action is
+    /// dropped, as the next turn's start empties the original's queue (design §9.11;
+    /// *provisional*: the original's keeps it for a remote turn, which takes it).
+    pub fn takes_keys(&self, at: u32) -> bool {
+        self.fight.is_none()
+            || (!matches!(self.played, Played::Finished(_)) && at >= self.played.timeline().end)
+    }
+
     /// What `give` gives in the battle of the turn waiting at `at`: none unless the battle
     /// waits for a human's command and its last action played (the timeline's end reached; a
     /// press made before is dropped as the turn starts, design §9.11).
@@ -4158,7 +4159,8 @@ mod tests {
         let layout =
             layout::parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
         let catalogue = h3_ui::text::Catalogue::default();
-        let mut open = h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true));
+        let mut open =
+            h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true, Bugs::Fixed));
         assert!(open.window.shown.state(SPEEDS + 2).disabled);
         assert!(!open.window.shown.state(SPEEDS).disabled);
         open.key("Return");

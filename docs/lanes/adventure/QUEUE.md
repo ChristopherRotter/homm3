@@ -27,6 +27,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-10 (the town lane, E09 T19b, `town/e09-t19b`, `cross-lane`; **nothing to do, for your
+  archive**): a gap of the hygiene property that T19b's draws found (`view.rs`' `outcome`):
+  another player's hero declined a monster's offer to join, the monster fled in one game (its
+  removal seen by the viewer) and asked again in the other; `outcome` compares the objects a
+  command removed (`ObjectRemoved`'s kind, beside the guards' hints) now, the seed kept in
+  `proptest-regressions/tests/view.txt`. (T19a's counterexample of the plans' gains: your #830's
+  fix kept at T19b's merge of `master`.) T19b's town field moves the plans your
+  `the_plans_jump_through_teleporters` draws: its 256 cases met no battle at a Whirlpool's exit,
+  so it runs 512 now (met twice).
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
   session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the

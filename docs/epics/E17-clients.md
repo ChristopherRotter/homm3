@@ -153,14 +153,18 @@ client's battles, and later any front end), then closes the epic. The tasks in
 `docs/lanes/client/QUEUE.md`, each cut with the user at its start when it outgrows half a
 context.
 
-- **T1, the answered slips:** M6's answers built, each fix in the client's profile and the
-  original's for the comparisons unless said: CLT-Q43 (2) and (3), Q44 (c), Q70, Q71, Q77 (b);
-  in both profiles Q74's one click and Q75's F6 to F8 on every turn with the acting stack's
-  reach after F8. With them the reads and captures the answers name: Q71's (hold D, click a
-  stack, release D, close the dialog: what the original's profile copies), Q73's 0x5994B0 (a fix
-  or a copy, recorded), Q74's sound sequence pressing a speed, T7b's R2-1 still `stats-ability`;
-  and T7b's R10-2 leftovers: the window loop's pieces under test (`Changes::after`,
-  `cast_stop`), a presser option closing the result window for an unattended `--run`.
+- **T1, the answered slips** (cut in four with the user at its start, 2026-11-10):
+  - **T1a done 2026-11-10** (the combat options dialog and the keys F6 to F8;
+    [log](E17-log.md#m7-t1a--the-options-dialogs-slips-and-f6-to-f8-on-every-turn-2026-11-10)):
+    CLT-Q43 (2) and (3), Q44 (c) in the client's profile; Q74's one click and Q75's F6 to F8 on
+    every turn with the acting stack's reach in both.
+  - **T1b:** Q70, Q71 (the client's profile; the original's as built until T1c), Q77 (b).
+  - **T1c, the reads and captures:** Q71's (hold D, click a stack, release D, close the dialog:
+    what the original's profile copies), Q73's 0x5994B0 (a fix or a copy, recorded), Q74's
+    sound sequence pressing a speed, T7b's R2-1 still `stats-ability`.
+  - **T1d, the tools:** T7b's R10-2 leftovers: the window loop's pieces under test
+    (`Changes::after`, `cast_stop`), a presser option closing the result window for an
+    unattended `--run`.
 - **T2, the DEF button's own loop** (CLT-Q72 (a), T7b's R3-4, M6 review item 52):
   `def_button_message` 0x45641C for the panel's buttons, the stats dialog's OK and the combat
   options' Default, OK and speeds, in both profiles: keys and the right press dropped while the
@@ -262,4 +266,9 @@ The next milestone's list starts here.
 
 **M7** (for its closure, T4):
 
-(none yet)
+1. F6 to F8 on every turn (T1a, CLT-Q75 (a), *provisional* where marked; design §12.16): taken
+   once the battle's last action played (`Battle::takes_keys`); a key during an action dropped
+   as the original's queue is emptied at the next turn's start (*provisional*: the original's
+   keeps it for a remote turn); the acting stack's reach on a turn no human plays drawn only
+   for a stack whose commands the client knows (*provisional*: none on a seat's opponent's
+   turn, the server sending no commands for it). Not recorded.

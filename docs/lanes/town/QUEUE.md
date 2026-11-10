@@ -8,19 +8,9 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c, T19a (done), T19b (next), T19c, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c, T19a, T19b (done), T19c (next), T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T19b — the plans build** (design §32, decision 58; queued 2026-11-10 by T19a;
-`cross-lane`: `h3-map`'s plans and view properties are the adventure lane's files, the town
-lane's `TRAPS.md`): the step `Build` (a random legal build of the player); the legal builds are
-exactly those `apply` accepts; a refused build changes no state hash; `check_towns` and
-`check_rewards` taught the events' builds and gains (decision 57; the plans' towns given events
-through `writer::TownEvent`, T19a); the told views and the hygiene property with builds (the
-mark public, the buildings the owner's); the day's start clears every mark.
-**At its start:** confirm the cut.
-**Status:** next.
 
 **E09 T19c — the env, random play with builds, the benchmarks, the census** (design §32,
 decision 58; queued 2026-11-10 by T19a; `cross-lane`: the env and its encoding are the AI lane's,
@@ -33,7 +23,7 @@ the marks, a turn start with the builds map's events) against `master`; the cens
 original data (the 160 maps' town events fired, built, skipped, against survey §10); the AI
 lane's and the map client's inboxes told.
 **At its start:** confirm the cut.
-**Status:** after T19b.
+**Status:** next.
 
 ## Inbox
 

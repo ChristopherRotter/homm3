@@ -2681,3 +2681,71 @@ its start, increment 2's own map** (the user, decisions 58, 59).
   horde's refusal (the Griffin Tower's requirements' closure needs the Barracks and the
   Guardhouse); the checkpoint intervals (a day, a command, a day); Yog's two moves (the reach stops
   where blue's explored area ends).
+
+### T19b — the plans build (2026-11-10)
+
+One session, the user present at the start; branch `town/e09-t19b`, `cross-lane` (`h3-map`'s
+property tests `play.rs` and `view.rs` and their regressions file are the adventure lane's).
+Starting point: `master` at 1769e23 (#827, #828 merged); the setup's baseline, the full engine
+verify with the original data, green. The user's computer was connected at the start: the
+original data staged then (each LOD a call, 13 files in one, the 40 MP3s in one). **Kept whole at
+its start, `master`'s counterexample of the plans' gains fixed first** (the user, decisions 60,
+61).
+
+- **The counterexample** (T19a's, in the adventure lane's inbox): reproduced with its seed on
+  `master`'s strategy (6 s). `check_conservation` expected a visit's own gains (`visit_gains`: the
+  guarded Mystical Garden's 500 gold) before what the objects that left gave (the joining
+  monster's 50-gold treasure); the engine's order (the join, then the visit it held, E08 decision
+  279) is right, so the visit's gains came last. The adventure lane's #830 (E08 T106b1) fixed it
+  on its side the same day (a guard's treasure inserted before the visit's gains, the seed kept):
+  at T19b's merge of `master` (the pull request in conflict) its fix was kept and this one
+  dropped, and the inbox note names only the hygiene gap below.
+- **The plans' towns' events** (`play.rs`): `TownPlan::events` (`town_events`: none in half the
+  towns, else one or two, each a timed event as the map's, `timed_event` factored out of `timed`,
+  with none to three of the 41 map slots as buildings and creatures by level), written by
+  `add_town` (before SoD with the human flag set, as the map's events: the reader's).
+- **`Step::Build(n)`**: the acting player's `n`-th listed build, else as `Legal(n)` (`nth_listed`,
+  shared with `Step::BuildBoat`); `steps()` gains runs of builds (one to eight times a `Build` and
+  none to three ends of turn).
+- **`check_timed`** (decision 57's "`check_rewards`": the turn start's gains are compared here, the
+  treasury in `check_conservation`): after the map's events, each owned town's events that fire
+  (the same day test), in `TownId` and list order: their gains (saturating), their losses down to
+  0, `TownEventFired`, then a `TownBuilt` with the event's place for each building of
+  `h3_towns::event_buildings` of the town as the turn starts (with its Shipyard's water) not
+  standing by its turn; the views a build tells after its `TownBuilt` are left out (the told-views
+  property's). `count_timed` leaves the towns' gains and losses out of the map events' counts.
+- **`check_towns`**: a command's build alone with its mark, or a turn start's event builds, any
+  number, in their order, none standing before it, the set the fold of `built_with`, without the
+  mark (cleared if the day started, else as it was).
+- **Kept from T18b2b:** the legal builds are those `apply` accepts and every unlisted probe is
+  refused with the state equal (its hash too) and no event (`check_town_builds`); the day's start
+  clears every mark (`check_towns`).
+- **Cover tests:** `the_plans_capture_and_besiege_towns` counts the builds by command and by event
+  (154, 62 in its 512 cases) and the events fired, giving, taking and naming a building standing
+  (1 224, 752, 902, 1 093), its other counts met. `town_views_move_as_the_events_say` counts a
+  day's mark coming into its owner's view and another viewer's (233, 241: the mark public,
+  TWN-VEW-004), the owner's buildings told after a build (297) and the town events told (1 039);
+  raised from 256 to 512 cases (the new draws met no view at the taverns' second level in the
+  first 256). The hygiene and told-views properties pass with both, unchanged: the events draw
+  nothing, and a town the viewer sees has the same events in both games. `h3-map`'s 156 tests pass
+  (530 s in debug, one job).
+- **A gap of the hygiene property's** (`master`'s, found by the scoped verify's coverage run on
+  the new draws; the agent's call, as decision 61's): another player's hero declined a monster's
+  offer to join, and the monster fled in one game (removed, which the viewer saw) and asked again
+  in the other, its answer following from the visitor's army and the seed the test changes;
+  `outcome` compares the objects a command removed (`ObjectRemoved`'s kind, beside the guards'
+  hints) now; the seed kept in `proptest-regressions/tests/view.txt`. The three properties of
+  `play.rs` passed three more runs, the hygiene and told-views ones ten.
+- **`master` merged in** (#830's teleporters plans: `Step::Jump` and its runs beside
+  `Step::Build`'s, every game's draws moved again; #831; the pull request was in conflict):
+  `Step::Build`'s helper renamed `nth_listed` (#830 has a `listed` of its own); `h3-map`'s 157
+  tests pass on the merged draws but #830's `the_plans_jump_through_teleporters`, whose own plans
+  the town field moved: no battle at a Whirlpool's exit in its 256 cases, raised to 512 (met
+  twice); the towns' cover test there met everything again (builds 177, 51; events 523, 427, 460,
+  300), the town views' too (marks 212, 263).
+- No version moved; no rule, stub or quirk new; no replay, workload or bot report moved.
+- **Agent's calls (change freely):** the hygiene gap fixed here rather than sent to the adventure
+  lane (its pull request's CI would meet it); the events' draw (half the towns, up to three slots, the
+  map's days); the views after a build left out of `check_timed` rather than predicted; the
+  standing-building count by the ever-built set before the command; 512 cases rather than another
+  draw.

@@ -1668,6 +1668,79 @@ fn the_cursor_shadow_follows_the_moves_the_keys_and_the_actions() {
 }
 
 #[test]
+fn on_a_turn_no_human_plays_the_keys_draw_the_acting_stack_s_reach_until_its_action() {
+    // CLT-Q75 (a), both profiles (E17 M7 T1a; design §12.16): F6 to F8 on a turn no human plays
+    // here draw the acting stack's overlay again (0x4937D0 tests no side), shown with the movement
+    // shadow until its action starts; during the action, at the next turn's start, in the
+    // tactics phase or with its commands unknown (a seat's opponent's turn) none.
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        let o = battle();
+        let legal = legal();
+        let field = Field {
+            observation: &o,
+            legal: &legal,
+            facing: &Facing::Sides,
+            bugs,
+        };
+        let turns = [
+            Turn {
+                field,
+                human: false,
+            },
+            Turn {
+                field,
+                human: false,
+            },
+        ];
+        let log = [(30, Logged::Action), (40, Logged::Turn(0))];
+        let on = shadows(false, true);
+        let inputs = [
+            shades(10, on, true),
+            shades(20, shadows(false, false), true),
+            shades(25, on, true),
+            shades(35, on, true),
+        ];
+        let shown = run(&log, &[UNMARKS], &turns, &inputs);
+        let reach = BTreeSet::from([86, 87, 90]);
+        assert_eq!(crate::shades::overlay(&field), reach);
+        assert!(shade_at(&shown, 0).is_empty());
+        assert_eq!(shade_at(&shown, 10), reach);
+        // F8 off hides it, on again shows it.
+        assert!(shade_at(&shown, 20).is_empty());
+        assert_eq!(shade_at(&shown, 25), reach);
+        for t in [30, 35, 40] {
+            assert!(shade_at(&shown, t).is_empty(), "{t}");
+        }
+        // Its commands unknown: nothing to draw.
+        let unknown = Legal::default();
+        let blind = [Turn {
+            field: Field {
+                legal: &unknown,
+                ..field
+            },
+            human: false,
+        }];
+        let shown = run(&[], &[], &blind, &[shades(10, on, true)]);
+        assert!(shade_at(&shown, 10).is_empty());
+        // The tactics phase: the phase's shade alone (none on a computer's turn).
+        let mut tactics = o.clone();
+        tactics.tactics = Some(h3_protocol::wire::Tactics {
+            side: Side::Attacker,
+            columns: 3,
+        });
+        let phase = [Turn {
+            field: Field {
+                observation: &tactics,
+                ..field
+            },
+            human: false,
+        }];
+        let shown = run(&[], &[], &phase, &[shades(10, on, true)]);
+        assert!(shade_at(&shown, 10).is_empty());
+    }
+}
+
+#[test]
 fn an_area_aim_shades_its_area_the_movement_shadow_off_through_it() {
     // E17 M6 T4c (design §12.16): with both shadows on the aim turns the movement shadow off as it
     // starts and on as it ends, its area shaded at the start and each other hex; given up, the
