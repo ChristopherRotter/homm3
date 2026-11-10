@@ -14155,3 +14155,69 @@ the main session; reviewed by a read-only sub-agent.
   included (no cross-lane path): coverage, determinism (the 66 replays unchanged), bench-check
   (no engine code changed), original-data.
 - **Versions:** none.
+
+### Increment 11, round 8: T106b2, the teleporters' view checks (2026-11-10, `adventure/e08-t106b2`)
+
+**The cut** (decision 292, the user at T106b2's start): whole, the hygiene property stopped and
+reported if it found an engine leak. **Baseline:** `master` dc77313 (#831; #830, T106b1, merged
+before it; the setup's full engine verify with the original data passed in the sandbox, every
+step); the original data staged at the start (the two LODs, the executable, `maps.tar`,
+`extracted.tar`). Built by the main session.
+
+- **The jump-end oracle** `check_jump_ends` (ADV-FOG-004 amended, design §10; A-41 not
+  reproduced): every raw `HeroTeleported` of a command is told, by `project`, to its hero's owner
+  with both ends and to another viewer exactly when it sees the entrance or the exit in its
+  observation after the command (`TileView::Seen`: explored, or the fringe under ADV-QUIRK-1), with
+  the ends it sees alone; so no viewer is told an end it does not see, and none misses one it sees.
+  After every command for every player in `views_move_as_the_events_say`, and for the viewer in
+  both games of `a_viewer_learns_nothing_it_cannot_see`.
+- **The teleporters' public view** `check_teleporter_views`: a monolith's, a gate's and a
+  Whirlpool's view is its type and tiles alone (no owner, guards, mark, boat tile or town), so
+  neither a channel's exits nor a gate's pair; at the start and after every command, every player.
+- **`vary` and the teleporters:** the hygienic plans keep T106b1's teleporters (`hygienic()` no
+  longer clears them); one the viewer never sees is removed as a blocker is (none draws at the
+  setup); the tiles every teleporter is visited from keep their surface (a monolith's and a gate's
+  land, a Whirlpool's water: A-42 refuses the build otherwise), removed or not; no blocker is added
+  over a teleporter's tiles; `Unseen::teleporters` (drawn last, up to four) adds teleporters after
+  every other object where the viewer sees none of their tiles, as `teleporters_laid_out` lays a
+  plan's out (on their surface, alone on their tiles, off a seen monster and a Shipyard's offsets),
+  only of a kind whose template the map's table holds (`lay_out` writes the typed objects' up to
+  the last the plan uses, the towns' after them: the first run read `InvalidValue { field: "object
+  template", value: 292 }`).
+- **The hygiene loop:** `outcome` leaves out (none) the move of a hero that jumped where the viewer
+  does not see the exit (a raw `HeroTeleported` whose `seen_to` lacks it), so the comparison goes
+  on past another player's hidden jump whose exit the two games drew differently, the viewer told
+  the entrance alone or nothing in both; one seen land in one game only ends it. The viewer's own
+  visit of a teleporter (`enters_teleporter`: a move whose path ends on one, a revisit on one; the
+  shared `teleporter_at`) ends the comparison when the two games tell it other events (an exit
+  drawn from its stream among hidden members, another pair, none), the events the same up to the
+  visit's (`HeroTeleported`, `LeadsNowhere`, `MeetingOpened`: the walk and a Whirlpool's loss).
+- **The pin test** `vary_changes_the_teleporters_the_viewer_never_sees_only` (an 8 × 8 map, the
+  right half unseen: the seen entrance kept, an unseen two-way monolith removed, the exit's tile
+  grass and the Whirlpool's water under rock, a blocker refused on the exit, three teleporters
+  added and four refused: seen, on rock, on the exit, on a hero; the game builds, the Whirlpools'
+  four tiles listed; nothing unseen changes nothing).
+- **The stress** (the block's cases raised to 2 000 for one run each, counters printed and removed;
+  debug, two CPUs): the hygiene property passed 2 000 cases in 272 s: `vary` added 489 teleporters
+  and removed 415; 776 visits of the viewer's own, 4 of which ended the comparison; 132 hidden jumps
+  of another player compared and passed (5 with the jumper on different tiles in the two games),
+  19 ending it; the jump-end oracle met 344 jumps told to their owner and, to other viewers, 248
+  with both ends, 70 with the entrance alone, 60 with the exit alone and 194 untold.
+  `views_move_as_the_events_say` passed 2 000 cases in 358 s: 3 105 jumps told to their owner;
+  2 732, 633, 623 and 1 821 to other viewers likewise. On the merge with #832 and #833 (T19b's
+  plans build), 600 cases of each passed in 109 s (both at once): 167 added, 134 removed, 280 own
+  visits (3 ending the comparison), 5 hidden jumps compared. **No engine leak.**
+- **Found by the first stress** (1 000 cases): `master`'s gap that the town lane's E09 T19b (#832,
+  then open) fixes: another player's hero declined a monster's offer to join, the monster fled in one
+  game and asked again in the other (its answer follows the army and the seed the test changes),
+  and `outcome` did not compare the removal. T19b's hunk taken verbatim (`ObjectRemoved` beside
+  `GuardsChanged`, its doc lines), so the two merge cleanly; the seed `8512e788…` kept in the
+  middle of `proptest-regressions/tests/view.txt` (T19b appends its own at the end). #832 merged
+  meanwhile (`master` 102b81b, then #833): merged in without a conflict, the tests run again on
+  the merge (below).
+- *Agent's calls (change freely):* up to four teleporters added; a removed teleporter's tiles keep
+  their surface too; the own visit's prefix ends at the first of the three events.
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included (no cross-lane path): coverage, determinism (the 66 replays
+  unchanged), bench-check (no engine code changed), original-data.
+- **Versions:** none.
