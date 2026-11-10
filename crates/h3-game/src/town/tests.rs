@@ -28,7 +28,7 @@ use h3_towns::{
 
 use super::{FactionChoice, FactionSet, MainTown, PlayerStart};
 use crate::tests::{adventure_pack, battle_part_with, core_pack, hero_type, key, manifest, setup};
-use crate::{GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup};
+use crate::{GameEvent, GameRuleset, GameSetup, GameSetupError, GameState, PlayerSetup, TownView};
 
 #[test]
 fn a_faction_set_holds_the_factions_below_its_capacity() {
@@ -938,6 +938,42 @@ fn a_placed_heros_unknown_type_is_refused_before_any_draw() {
         refused(&unknown),
         GameSetupError::NoFreeHero(PlayerId::new(1))
     );
+}
+
+/// The events that tell `viewer` its view `view` of a town (E09 T18b2a, SRV-Q26): its facts, then
+/// each stack its level shows (with its slot to the owner's team), then each line of the top
+/// level's income.
+pub(super) fn telling(viewer: PlayerId, view: &TownView) -> Vec<GameEvent> {
+    let (player, town) = (viewer, view.town);
+    let mut events = vec![GameEvent::TownChanged {
+        player,
+        town,
+        owner: view.owner,
+        fort: view.fort,
+        capitol: view.capitol,
+        built_today: view.built_today,
+        level: view.garrison.level,
+        slots: view.garrison.army.is_some(),
+        hall: view.owner_facts.as_ref().map(|facts| facts.hall),
+        buildings: view.buildings,
+    }];
+    let army = view.garrison.army.as_deref().unwrap_or_default();
+    events.extend(view.garrison.stacks.iter().enumerate().map(|(i, &stack)| {
+        GameEvent::TownStackSeen {
+            player,
+            town,
+            stack,
+            slot: army.get(i).map(|stack| stack.slot),
+        }
+    }));
+    let income = view.owner_facts.iter().flat_map(|facts| &facts.income);
+    events.extend(income.map(|&(resource, amount)| GameEvent::TownIncomeSeen {
+        player,
+        town,
+        resource,
+        amount,
+    }));
+    events
 }
 
 mod build;

@@ -313,7 +313,7 @@ id       = "TWN-VEW-001"
 title    = "What every viewer sees of a town"
 context  = "town"
 status   = "implemented"
-summary  = "Every viewer that has explored a tile of a town (its blocked, visitable or drawn tiles) sees it, named by its `TownId` (ADR-0028 point 3; its object's `ObjectView::town` on the adventure map): its owner (its flag; none for a neutral town), its faction (its picture and hint), its name as the map gives it (the hint; an unnamed town's name is the client's), its fort level (the right-click popup's: none, Fort, Citadel or Castle, a finer fact than the picture's) and whether it has a Capitol (its picture); whether it is defended only as the step and the legal moves tell it (the attack cursor). Never its other buildings, the ever-built set, the defender's bonuses or the Escape Tunnel, nor a draw's values. A town only on the viewer's fringe, which the `faithful` profile shows as an object (ADV-QUIRK-1), gets no view: the popup reads an explored tile only (*agent's call*). Its garrison by the viewer's level: TWN-VEW-002, -003. E09 T8c1 (design §12, §17): `h3_game::TownView`, `GameObservation::towns` in `TownId` order."
+summary  = "Every viewer that has explored a tile of a town (its blocked, visitable or drawn tiles) sees it, named by its `TownId` (ADR-0028 point 3; its object's `ObjectView::town` on the adventure map): its owner (its flag; none for a neutral town), its faction (its picture and hint), its name as the map gives it (the hint; an unnamed town's name is the client's), its fort level (the right-click popup's: none, Fort, Citadel or Castle, a finer fact than the picture's) and whether it has a Capitol (its picture); whether it is defended only as the step and the legal moves tell it (the attack cursor). Never its other buildings, the ever-built set, the defender's bonuses or the Escape Tunnel, nor a draw's values. A town only on the viewer's fringe, which the `faithful` profile shows as an object (ADV-QUIRK-1), gets no view: the popup reads an explored tile only (*agent's call*). Its garrison by the viewer's level: TWN-VEW-002, -003; its day's mark and its owner's buildings: TWN-VEW-004. E09 T8c1 (design §12, §17): `h3_game::TownView`, `GameObservation::towns` in `TownId` order. Since E09 T18b2a (design §31; SRV-Q26: a server keeps a viewer's views by events alone) every change of a viewer's view of a town it sees is told to it: `GameEvent::TownChanged` with the view's facts, then a `TownStackSeen` per stack its level shows and a `TownIncomeSeen` per line of the top level's income, after a build, a capture (its owner, mark, Capitol's limit and empty garrison; the old and the new owner's levels when it has a Tavern), a siege's merge, a garrison's battle and the day's start (the marks cleared), the viewer's alone; not a change of Visions' reach (`TWN-STUB-13`) nor a town that comes into view by exploring (SRV-Q26's query)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -393,6 +393,19 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Visions"
   retrieved  = "2026-11-02"
   confidence = "medium"
+
+[[rule]]
+id       = "TWN-VEW-004"
+title    = "A town's day's mark, public, and its buildings, its owner's"
+context  = "town"
+status   = "implemented"
+summary  = "Every viewer that sees a town (TWN-VEW-001) sees whether it was built in today (TWN-BLD-004's mark): the original's town list and right-click popup frame a town's portrait one up for it at every level. Its owner alone sees its buildings: the ever-built set (the standing one derives from it with the part, E09 decision 29) and the forbidden set, as the original opens the town screen from its owner's town list at any time; not the owner's team (an ally sees the town screen only at a visit, E10's teams, `TWN-STUB-11`) nor Visions' top level (the popup shows no buildings). Never another player's buildings, the boat spot or another player's legal builds. A change of either is told to the viewers it changes (TWN-VEW-001's events): a build's mark and sets after its `TownBuilt`, the day's start's cleared marks, a capture's mark. E09 T18b2a (design §31): `TownView::built_today`, `TownView::buildings` (`TownBuildingsView`), their wire fields in `h3-protocol`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E24 M3 T4a, E09 T1b2a; survey E09-towns.md section 12.3; docs/exe/map.toml): town_list_frame (0x5BD700) gives a town's portrait one frame up when it built today (+0x2), drawn by town_list_slot (0x4037A0) for the owner's town list and by town_quick_view_create (0x530120) in every viewer's right-click popup at every level; the town screen opens from the owner's town list (survey E09-construction.md section 1.1)"
+  confidence = "high"
 
 [[rule]]
 id       = "TWN-SET-001"

@@ -33,7 +33,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **A public draw under the hygiene property** (E09 T9b2a's cut; T9b2b's `hygienic`): the
   hygiene property (`a_viewer_learns_nothing_it_cannot_see`) builds its other game with another
   seed, so a setup draw a viewer sees (a random town's faction, a neutral garrison, a random
-  dwelling's type) must have one outcome in its plans; and the towns' draws come first in the
+  dwelling's type, since E09 T18b2a an owned town's buildings: a standard set with a Fort draws
+  its level-2 dwelling) must have one outcome in its plans; and the towns' draws come first in the
   setup stream (design §14), so an unseen town's change (owner, garrison, removal) moves every
   later draw. A new plan field that draws at the build goes through `hygienic_town`. The told
   views (`views_move_as_the_events_say`) vary nothing and play the plans' towns as drawn.
@@ -48,6 +49,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   battle is open; the capture follows it. A check over a town's visitor (the hero on its
   entrance, TWN-VIS-002) exempts a hero whose player has an open battle (`GameState::battle`),
   as `check_invariants` does since the server lane's CI found it (2026-11-09).
+
+## The views (`h3-game` `src/town/view.rs`)
+
+- **Every change of a viewer's town view is told** (E09 T18b2a, SRV-Q26): a new write of a town's
+  record, garrison or owner, or of what a viewer's level counts (its Taverns), takes
+  `Told::before` of the touched towns (and of every town by the players whose Taverns it may
+  count) before the write and `Told::tell` after it; the plans' told-views property folds the
+  views strictly and fails on an untold change (Visions' reach is `TWN-STUB-13`'s, exempt).
+  `Told` reads nothing for a sink that keeps nothing: test a hook with a `Vec` sink.
 
 ## The import (`h3-map` `src/import/town.rs`)
 

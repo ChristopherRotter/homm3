@@ -16,8 +16,9 @@ use h3_battle::BattleSide;
 use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
-    DecisionView, GameRuleset, GarrisonStackView, GarrisonView, HireView, LevelUpView, MonthKind,
-    PlayerView, SlotState as EngineSlot, TownOwnerView, TownView, Viewer,
+    BuildingId, BuildingSet, DecisionView, GameRuleset, GarrisonStackView, GarrisonView, HireView,
+    LevelUpView, MonthKind, PlayerView, SlotState as EngineSlot, TownBuildingsView, TownOwnerView,
+    TownView, Viewer,
 };
 use h3_heroes::PrimarySkill as EnginePrimary;
 use h3_kernel::handle::Handle;
@@ -659,6 +660,7 @@ fn town_back(t: &Town) -> TownView {
             FortLevel::Castle,
         ][usize::from(t.fort)],
         capitol: t.capitol,
+        built_today: t.built_today,
         garrison: GarrisonView {
             level: t.garrison.level,
             stacks: t
@@ -677,7 +679,19 @@ fn town_back(t: &Town) -> TownView {
             hall: f.hall,
             income: amounts_back(&f.income),
         }),
+        buildings: t.buildings.map(|b| TownBuildingsView {
+            built: set_back(b.built.0),
+            forbidden: set_back(b.forbidden.0),
+        }),
     }
+}
+
+/// A set of buildings back from its bits.
+fn set_back(bits: u64) -> BuildingSet {
+    (0..64)
+        .filter(|i| bits >> i & 1 == 1)
+        .filter_map(BuildingId::from_index)
+        .fold(BuildingSet::EMPTY, BuildingSet::with)
 }
 
 /// The wire's observation back in the engine's types, with `battle` for the battle's part.
@@ -880,6 +894,7 @@ pub(super) fn every_game_part(
         name: top.then(|| std::string::String::from("Arran")),
         fort,
         capitol: top,
+        built_today: !top,
         garrison: GarrisonView {
             level: if top { 3 } else { 1 },
             stacks: vec![GarrisonStackView {
@@ -892,6 +907,10 @@ pub(super) fn every_game_part(
         owner_facts: top.then(|| TownOwnerView {
             hall: 4,
             income: price(),
+        }),
+        buildings: top.then(|| TownBuildingsView {
+            built: set_back(1 << 63 | 0b1011),
+            forbidden: set_back(1 << 5),
         }),
     };
     h3_game::GameObservation {

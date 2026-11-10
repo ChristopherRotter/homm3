@@ -728,8 +728,9 @@ pub struct Bonuses {
     pub marks: u8,
 }
 
-/// A town as a viewer sees it (TWN-VEW-001 to -003): what the original shows another player on
-/// the map, in the hint and in the right-click popup, and its owner's team more.
+/// A town as a viewer sees it (TWN-VEW-001 to -004): what the original shows another player on
+/// the map, in the hint and in the right-click popup, and its owner's team more; since protocol
+/// v39 (E09 T18b2a) its day's mark and its owner's buildings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Town {
@@ -748,11 +749,27 @@ pub struct Town {
     pub fort: u8,
     /// It has a Capitol.
     pub capitol: bool,
+    /// It was built in today (public).
+    pub built_today: bool,
     /// Its garrison as the viewer's level shows it.
     pub garrison: Garrison,
     /// The popup's top level's facts, for the owner's team or a hero's Visions in reach; none
     /// for every other viewer.
     pub owner_facts: Option<TownOwnerFacts>,
+    /// Its buildings, for its owner alone; none for every other viewer.
+    pub buildings: Option<TownBuildings>,
+}
+
+/// A town's buildings as its owner sees them (TWN-VEW-004), each set a bit per building of its
+/// faction's town record (bit `i` the building of index `i`, a decimal string as every 64-bit
+/// value): the standing ones derive from the first with the town part.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownBuildings {
+    /// Every building it has had, the superseded ones too.
+    pub built: WireU64,
+    /// The buildings the map forbids it.
+    pub forbidden: WireU64,
 }
 
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003): by the viewer's level, its stacks

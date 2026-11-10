@@ -10,7 +10,8 @@
 //! composes a town's capture ([`capture`], E09 T8a2) and builds a siege's battle ([`siege`],
 //! E09 T8b1); since E09 T8c1 it pays the towns' income in the day's advance ([`income`]) and
 //! tells each viewer what it sees of the towns ([`view`]); since E09 T18b1 it runs the town
-//! context's commands ([`command`]: the build).
+//! context's commands ([`command`]: the build) and the towns' day ([`day`]); since E09 T18b2a
+//! it tells each viewer the views a change made ([`view::Told`]).
 
 use alloc::vec::Vec;
 
@@ -24,6 +25,7 @@ use crate::{GameRuleset, GameSetup, GameSetupError, PlayerSetup};
 pub(crate) mod build;
 pub(crate) mod capture;
 pub(crate) mod command;
+pub(crate) mod day;
 pub(crate) mod heroes;
 pub(crate) mod income;
 pub(crate) mod pool;
@@ -33,10 +35,12 @@ pub(crate) mod view;
 pub(crate) use build::{adventure_reveal, build_towns, draw_towns, without_water};
 pub(crate) use capture::{capture, holds_capitol};
 pub(crate) use command::command;
+pub(crate) use day::start_day;
 pub(crate) use heroes::main_town_heroes;
 pub(crate) use income::add_income;
 pub(crate) use pool::{HeroPool, draw_heroes};
 pub(crate) use siege::{mana_after, merge, siege_experience, siege_setup};
+pub(crate) use view::Told;
 
 /// A set of the core's factions, a bit per faction below [`FactionSet::CAPACITY`] (the map's
 /// allowed towns, read through the ruleset's factions).

@@ -105,7 +105,14 @@ fn an_owner_builds_in_its_turn_and_pays_the_price() {
         resource: GOLD,
         amount: 1500,
     };
-    assert_eq!(events, [paid, built]);
+    // Then the views it changed, each to its viewer (E09 T18b2a: `town/tests/view.rs`).
+    assert_eq!(events[..2], [paid, built]);
+    assert!(
+        events[2..]
+            .iter()
+            .all(|e| project(e, Viewer::Player(BLUE)).is_some()
+                != project(e, Viewer::Player(RED)).is_some())
+    );
     assert_eq!(gold(&game, RED), 500);
     let town = game.towns().get(T0).unwrap();
     assert!(town.built().contains(building(TOWN_HALL)));
@@ -117,7 +124,7 @@ fn an_owner_builds_in_its_turn_and_pays_the_price() {
     end_turn(&rules, &mut game, RED);
     let events = run(&rules, &mut game, BLUE, build(T1, SILO)).unwrap();
     assert_eq!(
-        events,
+        events[..1],
         [GameEvent::TownBuilt {
             player: BLUE,
             town: T1,

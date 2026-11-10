@@ -61,7 +61,8 @@ impl GameState {
     ///    (`start_month`: its monsters added on free land tiles);
     /// 4. the towns' day (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
     ///    cleared, TWN-BLD-004; the original's `new_day` towns' loop 0x4C8067, before its
-    ///    income), then every player's income ([`Self::pay_income`]);
+    ///    income; since E09 T18b2a the views of the towns built in the day before told to their
+    ///    viewers, `town::start_day`), then every player's income ([`Self::pay_income`]);
     /// 5. every hero's spell points ([`Self::regain_mana`]);
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
@@ -101,7 +102,7 @@ impl GameState {
                 );
             }
         }
-        self.towns.start_day();
+        town::start_day(self, rules, sink);
         self.pay_income(rules, week_start, sink);
         self.regain_mana(rules);
         self.adventure.start_day(core, part, &self.heroes);

@@ -8,6 +8,7 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{TownCommand, TownCommandError};
 
 use super::holds_capitol;
+use super::view::Told;
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -23,9 +24,12 @@ use crate::{GameRuleset, GameState};
 /// 4. the treasury holds the price, else [`GameCommandError::CannotPay`] (GAM-RES-001).
 ///
 /// Then, infallibly: the price paid (`ResourcePaid` per resource, the part's order), the building
-/// built with the day's mark ([`h3_towns::Towns::build`], TWN-BLD-004, -005), and
-/// [`GameEvent::TownBuilt`] told to `player`. No field of the command is trusted but its two ids:
-/// the price is the part's (ADR-0004).
+/// built with the day's mark ([`h3_towns::Towns::build`], TWN-BLD-004, -005),
+/// [`GameEvent::TownBuilt`] told to `player`, then each view the build changed told to its viewer
+/// ([`Told`], E09 T18b2a: the town's by every player that sees it; for a town without a standing
+/// Tavern before, the owner's of every town, whose garrison levels a new Tavern raises,
+/// TWN-VEW-002). No field of the command is trusted but its two ids: the price is the part's
+/// (ADR-0004).
 ///
 /// # Errors
 ///
@@ -53,9 +57,15 @@ pub(crate) fn command<S: Sink>(
     if !state.can_pay(player, price) {
         return Err(GameCommandError::CannotPay);
     }
+    // rule: TWN-VEW-002
+    let every: &[PlayerId] = if h3_towns::has_tavern(record, part) {
+        &[]
+    } else {
+        &[player]
+    };
+    let told = Told::before::<S>(state, rules, &[town], every);
     state.pay_price(player, price, sink);
-    // The facts before the build are for the views' change (E09 T18b2); the store has the town
-    // and its record the building (both checked above).
+    // The store has the town and its record the building (both checked above).
     let _before = state.towns_mut().build(town, building, part, true);
     sink.emit(GameEvent::TownBuilt {
         player,
@@ -63,6 +73,8 @@ pub(crate) fn command<S: Sink>(
         building,
         event: None,
     });
+    // rule: TWN-VEW-004
+    told.tell(state, rules, sink);
     Ok(())
 }
 
