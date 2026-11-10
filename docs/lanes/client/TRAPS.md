@@ -177,6 +177,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   timeline pose's (`scene::living`), never the snapshot's `alive`; the records count every
   snapshot stack, a dead or gone one's too. A battle on a server opens again from a record
   opened afresh (`Battle::afresh`): state kept across it in the window resets there.
+- A record's `Events` are not all commands' (protocol v38, design §12.25): the battle's start is
+  its first `Events` (a seat's from its first message, a spectator's only when it watched the
+  start), which the snapshot already shows. Read the commands through `record::commands`,
+  `record::commands_from` (a growing record), `Record::commands` or `Record::events`, never by
+  filtering `ServerMessage::Events` yourself (81 of 91 sequences paired their commands one off
+  so). The start's rule is `record::opens`, by its first event's kind (*provisional*): an event
+  the engine or server puts before the first activation, or a command opening with one of the
+  three, breaks it silently (only `scenario.rs`' test over its five scenarios would see it). The
+  local fight's loop in `battle.rs` reads `played.messages` and `played.events` itself: safe
+  only because `Live`'s spectator gets the start inside `hosted`, in the initial record.
 - Accounts on a local `h3-server` (E17 M5 T7, design §11.4): an account is a server's (another
   data directory: `--register` again); `anonymous = false` makes every join need `--login`; a
   created game's id is its journal's name in `<data>/games/`; a `battle.toml` game outlasts a
@@ -200,12 +210,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   registry options written (`army_info`, `grid`, `cursor_shadow`, `movement_shadow`), which the
   next run then puts back as found: unset them (`h3drive.set_setting_dword(name, None)`) first. A `turn:` that never comes
   steps 30 000 ms at about 20 a second (25 minutes): probe the turn order with `at:<ms>` first.
-- Sieges: machines acting on their own at the opening act before the record opens (CLT-Q20: the
-  defender commands its turrets); the turrets' counts need `structures = 1`; in hot seat the
-  original shows the side to act's view (runbook, "A siege"). The wire's `Siege::parts` are by
-  wall-shot target (8: the upper tower 0, the lower tower 6, the keep 7), not by the original's
-  18 parts: `siege::TARGET_PARTS` maps them (E17 M6 T2b2). The opening's turn is not in the
-  timeline's `turns` (its start precedes the record): before the first, the opening's active
+- Sieges: machines acting on their own at the opening act in the battle's start, the record's
+  first `Events` (protocol v38; before it they acted before the record opened), which is no
+  command and is not drawn (CLT-Q69; CLT-Q20: the defender commands its turrets); the turrets'
+  counts need `structures = 1`; in hot seat the original shows the side to act's view (runbook,
+  "A siege"). The wire's `Siege::parts` are by wall-shot target (8: the upper tower 0, the lower
+  tower 6, the keep 7), not by the original's 18 parts: `siege::TARGET_PARTS` maps them (E17 M6
+  T2b2). The opening's turn is not in the timeline's `turns` (its start is the battle's start's,
+  no command): before the first, the opening's active
   stack acts (`Battle::box_player`, `Panels::new`). A siege opens on the turrets' turn, then the
   Catapult's, never a creature's: `key:t` finds no creature, and in the Catapult's turn a press on
   a stack opens nothing; a defender stack's dialog needs a Citadel, the keep commanded, hot seat

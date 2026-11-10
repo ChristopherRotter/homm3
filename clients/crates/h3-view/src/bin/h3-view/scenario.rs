@@ -280,7 +280,8 @@ pub fn school_skills(
 /// of 1 to 3 to the own stacks, Luck for a luck change), the skill's number the ruleset's, which
 /// is the original's (`sstraits.txt`'s order). An effect no skill level gives alone, or two of one
 /// skill, the map cannot give the hero: an error. A morale or luck change from a town building (a
-/// Grail's) is the siege town's on the map, not a skill's (E17 M6 T3c3, [`SiegeTown`]). By number.
+/// Grail's) is the siege town's on the map, not a skill's (E17 M6 T3c3, [`SiegeTown`]): only a
+/// siege's defender has one there, `map_town` refuses the others (E17 M6 T7b). By number.
 pub fn effect_skills(
     ruleset: &BattleRuleset,
     effects: &[BattleEffect],
@@ -459,12 +460,45 @@ pub fn sides(scenario: &Path, packs: &Path) -> Result<Sides, String> {
         heroes,
         human: setup.human,
         machines: [machines(0)?, machines(1)?],
-        siege: setup
-            .siege
-            .map(|s| siege_town(&s, &setup.heroes, &towns))
-            .transpose()?,
+        siege: map_town(setup.siege.as_ref(), &setup.heroes, &towns)?,
         retreat: setup.retreat,
     })
+}
+
+/// The town on the original's map: the siege's ([`siege_town`]), none outside a siege, where a
+/// hero's Grail building has no town to stand in: an error (E17 M6 T7b, R3-2), as the attacker's
+/// in a siege.
+fn map_town(
+    siege: Option<&Siege>,
+    heroes: &[Option<BattleHero>; 2],
+    towns: &TownRuleset,
+) -> Result<Option<SiegeTown>, String> {
+    if let Some(siege) = siege {
+        return siege_town(siege, heroes, towns).map(Some);
+    }
+    for (side, hero) in heroes.iter().enumerate() {
+        let effects = hero.as_ref().map_or(&[][..], |h| h.effects.as_slice());
+        let grail = effects.iter().any(|e| {
+            matches!(
+                e,
+                BattleEffect::Morale {
+                    source: EffectSource::Building { .. },
+                    ..
+                } | BattleEffect::Luck {
+                    source: EffectSource::Building { .. },
+                    ..
+                }
+            )
+        });
+        if grail {
+            return Err(format!(
+                "the {} hero's Grail building has no town on the original's map: it needs a \
+                 siege, its defender's town",
+                ["attacker's", "defender's"][side]
+            ));
+        }
+    }
+    Ok(None)
 }
 
 /// The town of the siege `siege` for the original's map (E17 M4 T1b, M6 T3c3; [`SiegeTown`]):
@@ -1297,6 +1331,28 @@ mod tests {
         );
         let attacker = [hero(vec![grail(0, 21)]), None];
         assert!(siege_town(&castle, &attacker, &towns).is_err());
+        // Outside a siege no hero's Grail building has a town on the map (E17 M6 T7b, R3-2).
+        let defender = [None, hero(vec![grail(0, 21)])];
+        let error = map_town(None, &defender, &towns).unwrap_err();
+        assert!(error.contains("defender's hero's Grail"), "{error}");
+        let luck = BattleEffect::Luck {
+            amount: 2,
+            affects: h3_content::Affects::Own,
+            source: EffectSource::Building {
+                faction: h3_content::FactionId::from_raw(1),
+                index: 23,
+            },
+        };
+        assert!(map_town(None, &[hero(vec![luck]), None], &towns).is_err());
+        let temporary = BattleEffect::Luck {
+            amount: 2,
+            affects: h3_content::Affects::Own,
+            source: EffectSource::Temporary,
+        };
+        let skilled = [hero(vec![temporary]), None];
+        assert_eq!(map_town(None, &skilled, &towns), Ok(None));
+        let town = map_town(Some(&castle), &defender, &towns).unwrap().unwrap();
+        assert_eq!(town.built, [17]);
         // A building the record lacks, or one without a map editor slot (the Village Hall).
         let lacking = Siege {
             bonuses: TownBonuses::new(&[TownBonus {

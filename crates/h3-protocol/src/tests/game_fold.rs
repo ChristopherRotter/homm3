@@ -397,7 +397,7 @@ pub(super) fn golden(mut each: impl FnMut(&str, &GameRuleset, &GameSetup, &Repla
         .filter(|path| path.extension().is_some_and(|e| e == "toml"))
         .collect();
     files.sort();
-    assert_eq!(files.len(), 55, "the golden adventure replays");
+    assert_eq!(files.len(), 66, "the golden adventure replays");
     let mut rules: BTreeMap<(Vec<String>, String), GameRuleset> = BTreeMap::new();
     for file in &files {
         let name = file.file_stem().unwrap().to_string_lossy().into_owned();
@@ -732,6 +732,11 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 town: 1,
                 building: 4,
                 event: None,
+            },
+            GameEvent::TownEventFired {
+                player: 1,
+                town: 1,
+                event: 0,
             },
             // Heroes without details or own view, an unknown one, a town not in sight.
             GameEvent::HeroChanged {

@@ -2313,6 +2313,17 @@ impl<'a> Growing<'a> {
         }
     }
 
+    /// The battle redrawn at `at` with the stack whose turn the computer plays next outlined
+    /// (E17 M6 T7b, R9-2): the box of Auto Combat's question at a later command than the
+    /// switch's, open from then, as the hold's push outlines it once answered ([`Growing::push`];
+    /// recorded: `auto-retreat-later`'s Dwarves behind the question). Before the first command
+    /// nothing, as the push's: the opening's outline stays.
+    pub fn outline_asked(&mut self, at: u32) {
+        if self.commands > 0 {
+            self.timeline.outlines.push((at, self.waiting));
+        }
+    }
+
     /// The next command held behind a box from `from` until `until` (E17 M6 T5b2a, design
     /// §12.19: a modal box over a turn the computer plays, Auto Combat's question, answered
     /// then; recorded): the battle idles until the box opens (the opening's step, a human's
@@ -3522,7 +3533,15 @@ impl Player<'_> {
                     }) {
                         i += 1;
                     }
-                    self.cast(side, spell, target, &events[from..i]);
+                    let effects = &events[from..i];
+                    // A Phoenix's rebirth after them (the engine's `rebirths`) is drawn by the
+                    // spell's handler, before the hero's last frames (E17 M6 T7b, R11-5).
+                    let mut reborn = Vec::new();
+                    while let Some(&Event::Reborn { stack, creatures }) = events.get(i) {
+                        reborn.push((stack, creatures));
+                        i += 1;
+                    }
+                    self.cast(side, spell, target, (effects, &reborn));
                 }
                 // A creature's cast as its action (E17 M3 T7c-1): its effects follow it.
                 Event::StackCast {
@@ -3917,7 +3936,8 @@ impl Player<'_> {
                 .filter(|(_, l)| l.frightens && l.side != live.side && l.count > 0);
             let by = frighteners.next().map(|(&id, l)| (id, l.count));
             let (by, first) = by.unwrap_or((stack, 0));
-            let number = first + frighteners.map(|(_, l)| l.count).sum::<u32>();
+            // Saturated: the counts are the record's (a hostile one's past `u32::MAX`).
+            let number = frighteners.fold(first, |n, (_, l)| n.saturating_add(l.count));
             let line = Logged::Fear {
                 stack,
                 count,
@@ -4245,10 +4265,20 @@ impl Player<'_> {
     /// their animation over the struck stack with its reaction and their damage's line
     /// (0x5A098A; player 2); Dispel its animation, then its effect and line (0x5A15E0); Cure its
     /// effect, then its animation and line (0x5A17F5); Disrupting Ray its projectile, its
-    /// animation, then its effect and its own line (0x5A1A84). The common tail (0x5A2058): the
-    /// rest of the casting group at trunc(100 F) each, then the hero stands in a redraw shown at
-    /// once. Other spells play the hero's frames alone and take effect at the cast's end (T7c).
-    fn cast(&mut self, side: Side, spell: u16, target: Target, effects: &[Event]) {
+    /// animation, then its effect and its own line (0x5A1A84). Each damage spell's handler ends
+    /// in the Phoenixes' rebirth check (`phoenix_rebirth_check` 0x469440 from 0x5A0A26, 0x5A0B02,
+    /// 0x5A0B8F, 0x5A0BFF, 0x5A0C1B, 0x5A0E74, 0x5A4B95, 0x5A524B, 0x5A6C61; its sound and
+    /// `raise_stack`, 0x469588 to 0x4695AD): the `reborn` stacks, each with its creatures, are
+    /// raised there (E17 M6 T7b, R11-5; *provisional*: not recorded). The common tail (0x5A2058):
+    /// the rest of the casting group at trunc(100 F) each, then the hero stands in a redraw shown
+    /// at once. Other spells play the hero's frames alone and take effect at the cast's end (T7c).
+    fn cast(
+        &mut self,
+        side: Side,
+        spell: u16,
+        target: Target,
+        (effects, reborn): (&[Event], &[(u8, u32)]),
+    ) {
         let s = u8::from(side == Side::Defender);
         let casts = self.stage.casts;
         let caster = casts.casters[usize::from(s)];
@@ -4407,6 +4437,9 @@ impl Player<'_> {
         }
         if !done {
             self.effects(effects);
+        }
+        for &(stack, creatures) in reborn {
+            self.reborn(stack, creatures);
         }
         if let Some(c) = caster {
             for f in c.before..c.frames {

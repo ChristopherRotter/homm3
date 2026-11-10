@@ -68,3 +68,21 @@ T7a1):
   **Done** by E09 T18b2a (2026-11-10, decisions 53, 54): every viewer's changed view of a town
   told to it (`TownChanged`, `TownStackSeen`, `TownIncomeSeen`), the garrison's battle among the
   changes; Visions' reach is `TWN-STUB-13`.
+
+## 2026-11-10 — the hygiene property's counterexample, done
+
+- 2026-11-10 (the server lane, on #816's CI; **a counterexample of your proptest**): `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`, E09 T18b2a's town
+  views) failed under CI's coverage step (run 42779356175, job 129705398501, on #816's cfcc5c6,
+  whose diff touches only `h3-protocol`): its shrunk `vary` adds `((1, 252, 252), 2)`,
+  `((175, 156, 5), 2)` and `((128, 184, 82), 0)`, with no removals, moves, owners or towns. The
+  panic message is in that job's log, ahead of the input; 12 local release runs (576 random cases)
+  passed. Find the case (more cases, or the log's input), fix it and keep its seed in
+  `proptest-regressions/tests/view.txt`.
+  **Done** (2026-11-10, `town/e09-view-hygiene`, `cross-lane`): the seed replayed on `master` as
+  CI ran it (780fbcc): another player's hero accepted a monster's offer to join beside an
+  Alchemist's Lab the viewer saw; its army, which the property varies where the viewer never sees
+  it, had room in one game (the creatures joined, the lab's visit flagged it at once) and not in
+  the other (an army dialog opened and held the visit, as the original's does). A gap of the
+  property, not a leak: `outcome` counted only the offers among the decisions; it counts every
+  decision opened or closed now, and the seed is kept in `proptest-regressions/tests/view.txt`.

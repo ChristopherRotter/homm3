@@ -641,7 +641,8 @@ pub struct Battle<'g> {
     /// else at the first box's first draw.
     window_behind: Option<(MessageBox, u32, Option<u32>)>,
     /// The boxes opened so far (E17 M6 T5c, the reviewer): two boxes alike in a row (Eagle Eye's
-    /// eight and seven pictures, one size) are two openings, each emptying the input queue.
+    /// eight and seven pictures, one size) are two openings, each emptying the input queue; a
+    /// held popup is not counted (it empties nothing: [`Asked::empties_input`], E17 M6 T7b).
     opened: u32,
     /// The battle behind the result window while it is open (E17 M5 T8a, R3-2).
     behind: h3_view::result::Behind,
@@ -1066,7 +1067,8 @@ impl<'g> Battle<'g> {
     /// press stopped it after the command before was played) waits; so does one whose start
     /// asked the computer for its hero's cast and got none (E17 M6 T5b1). E17 M6 T5b2a: Auto
     /// Combat's question (the retreat test's yes) waits for the human's answer from the action's
-    /// millisecond, its box open (*provisional*: no outline, the turn the computer's). E17 M6
+    /// millisecond, its box open, the stack the computer plays outlined behind it from then (E17
+    /// M6 T7b, R9-2; recorded: `auto-retreat-later`, as the hold's push at the answer). E17 M6
     /// T5b2b (CLT-Q61): so does a turn whose computer's cast for the hero a key or a button
     /// stopped, from the cast's end: the cast put its outline back there (§12.18, as on a turn
     /// the human plays; *provisional*: the outline's first tick and the panel's switch at that
@@ -1092,6 +1094,9 @@ impl<'g> Battle<'g> {
                 growing.outline_waiting();
             }
             end = growing.timeline().end;
+            if asked {
+                growing.outline_asked(end);
+            }
             let tail = Box::new(growing.waiting());
             self.played = Played::Waiting(growing, tail);
         }
@@ -1146,9 +1151,10 @@ impl<'g> Battle<'g> {
         let mut stacks = crate::pointer::stacks(&self.record, timeline, &self.turned, tables);
         if next {
             let manifest = &self.record.header.manifest;
-            let to_come = Fight::here_ref(self.fight.as_ref()).and_then(Live::turn);
-            stacks.push(to_come.map_or(Acting::Itself, |turn| {
-                crate::pointer::stack_of(manifest, tables, &turn.observation)
+            // Its battle alone, not its legal commands and previews (E17 M6 T7b, R5-4).
+            let to_come = Fight::here_ref(self.fight.as_ref()).and_then(Live::observation);
+            stacks.push(to_come.map_or(Acting::Itself, |observation| {
+                crate::pointer::stack_of(manifest, tables, &observation)
             }));
         }
         let first = first_boxes(&self.boxes, self.boxes_open, self.settings.auto);
@@ -1312,6 +1318,10 @@ impl<'g> Battle<'g> {
         if self.asked_at.is_none() {
             self.asked_at = Some(at);
         }
+        // The panel behind the box with the switch that asked it (E17 M6 T7b, R9-1; §12.19
+        // Recorded 2: dimmed, its button selected): a switch's own turn grows nothing, so no
+        // `follow` makes it again before the answer.
+        self.panels = self.panel()?;
         Ok(true)
     }
 
@@ -1569,17 +1579,13 @@ impl<'g> Battle<'g> {
         let first = self.record.messages.len();
         self.record.messages.extend(new);
         // Each command's events grow it; the battle's start's, which the opening snapshot shows
-        // already, do not (protocol v38: a seat that waited for the other one hears it then).
-        let opening = record::opening_at(&self.record.messages);
+        // already, do not (protocol v38: a seat that waited for the other one hears it then;
+        // `record::commands_from` decides, E17 M6 T7b, R12-4).
         let mut pushed = 0;
-        for (i, message) in self.record.messages.iter().enumerate().skip(first) {
-            if let ServerMessage::Events { events, .. } = message
-                && Some(i) != opening
-            {
-                let at = at.map(|at| at.max(growing.timeline().end));
-                growing.push(&anim::Command { at, events }, false);
-                pushed += 1;
-            }
+        for events in record::commands_from(&self.record.messages, first) {
+            let at = at.map(|at| at.max(growing.timeline().end));
+            growing.push(&anim::Command { at, events }, false);
+            pushed += 1;
         }
         self.commands += pushed;
         let over =
@@ -2228,18 +2234,6 @@ impl<'g> Battle<'g> {
         self.aiming.is_some()
     }
 
-    /// The original's number of the spell being aimed (E17 M6 T4c: whether its aim turns the
-    /// movement shadow off, `h3_view::shades::Options::aiming`; 0 for one the tables lack).
-    pub fn aim_original(&self) -> Option<u16> {
-        let (spell, creature) = self.aiming?;
-        let aims = self.turned.last().map(|t| &t.aims);
-        let aim = aims.and_then(|a| {
-            a.iter()
-                .find(|a| a.spell == spell && a.creature == creature)
-        });
-        Some(aim.map_or(0, |a| a.original))
-    }
-
     /// The aim given up (Escape, the right button; E17 M5 T3b).
     pub fn cancel_aim(&mut self) {
         self.aiming = None;
@@ -2311,11 +2305,13 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
-        open.hover(
+        let changed = open.hover(
             &mut self.book_memory,
             (&ground.layout.book, &writer.catalogue),
             point,
-        )
+        );
+        self.options_arrow = arrow_stays(self.options_arrow, open.cursor);
+        changed
     }
 
     /// Whether a stack's stats dialog is open over the battle (E17 M6 T2a2a).
@@ -2448,7 +2444,7 @@ impl<'g> Battle<'g> {
         })?;
         let observation = &self.turned.last()?.observation;
         let window = self.hero_window(observation, side)?;
-        self.opened = self.opened.wrapping_add(1);
+        // Held: its opening empties no input ([`Asked::empties_input`], not counted).
         self.message = Some((h3_view::message::Open::new(window), at, Asked::Held));
         Some(side)
     }
@@ -2510,8 +2506,8 @@ impl<'g> Battle<'g> {
     /// 2003 or its key O, `battle_combat_options` 0x4686B0): only while the battle takes a command
     /// (`battle_buttons`' +0x132B4: a battle fought here whose human's turn waits, its last
     /// action played), nothing else open over it; its background in the acting side's player's
-    /// colours ([`Self::box_player`]), its settings the battle's. Whether it opened (not without
-    /// the text tables).
+    /// colours ([`Self::box_player`]), its settings the battle's at the speed it grows at
+    /// ([`shown_settings`]). Whether it opened (not without the text tables).
     pub fn open_options(&mut self, at: u32) -> bool {
         if self.stats.is_some()
             || self.message.is_some()
@@ -2530,7 +2526,7 @@ impl<'g> Battle<'g> {
         let open = h3_view::options::Open::new(
             &self.ground.layout.options,
             &writer.catalogue,
-            self.settings,
+            shown_settings(self.settings, self.speed),
             (player, self.audio),
         );
         self.options = Some((open, at));
@@ -2576,6 +2572,15 @@ impl<'g> Battle<'g> {
         let text = writer.catalogue.text(&key, &h3_ui::text::Args::new());
         let opened = *opened;
         self.tell(opened, &text, (Style::Popup, None), Asked::Held)
+    }
+
+    /// A release the right button's help popup over the options dialog took (`by` the key's, none
+    /// the left button's): what the mouse or that key held there goes without its click (E17 M6
+    /// T7b, R4-2: [`h3_view::options::Open::let_go`]). Whether the dialog changed.
+    pub fn options_let_go(&mut self, by: Option<&str>) -> bool {
+        self.options
+            .as_mut()
+            .is_some_and(|(open, _)| open.let_go(by).changed)
     }
 
     /// The mouse moved over the battle: the options dialog's arrow left at its close goes.
@@ -2731,6 +2736,7 @@ impl<'g> Battle<'g> {
         };
         let hovered = open.modal.hover(&mut self.stats_memory, point);
         let moved = open.modal.moved(point) != h3_view::message::Outcome::Nothing;
+        self.options_arrow = arrow_stays(self.options_arrow, open.modal.cursor);
         hovered || moved
     }
 
@@ -2902,11 +2908,7 @@ impl<'g> Battle<'g> {
     /// Side `index`'s player colour (the record's first snapshot; none named: red for the
     /// attacker, blue for the defender, CLT-Q6).
     fn side_colour(&self, index: usize) -> u8 {
-        self.record
-            .first_snapshot()
-            .and_then(|s| s.sides.get(index))
-            .and_then(|side| side.colour)
-            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+        side_colour(self.record.first_snapshot(), index)
     }
 
     /// The colours of a box opened at `at` (CLT-Q28 (2), answered (c) at E17 M5 T8c;
@@ -2916,22 +2918,7 @@ impl<'g> Battle<'g> {
     /// stack's (E17 M6 T2b2: its turn starts before the record opens, as the panel's
     /// `Panels::new`); the viewing player's without any.
     fn box_player(&self, at: u32, side: Option<Side>) -> u8 {
-        let timeline = self.timeline();
-        let acting = side.or_else(
-            || match timeline.turns.iter().rposition(|&(t, _)| t <= at) {
-                Some(turn) => timeline.controllers.get(turn).copied(),
-                None => {
-                    let opening = self.record.first_snapshot()?;
-                    let id = opening.active?;
-                    opening
-                        .stacks
-                        .iter()
-                        .find(|s| s.id == id)
-                        .map(|s| s.controller)
-                }
-            },
-        );
-        let acting = acting.map(|s| self.side_colour(usize::from(s == Side::Defender)));
+        let acting = acting_colour(self.timeline(), self.record.first_snapshot(), at, side);
         h3_view::message::framed(Bugs::Fixed, self.viewing_player(), acting)
     }
 
@@ -2964,7 +2951,9 @@ impl<'g> Battle<'g> {
         else {
             return false;
         };
-        self.opened = self.opened.wrapping_add(1);
+        if asked.empties_input() {
+            self.opened = self.opened.wrapping_add(1);
+        }
         self.message = Some((h3_view::message::Open::new(message), at, asked));
         true
     }
@@ -3217,11 +3206,9 @@ impl<'g> Battle<'g> {
         self.result_closed
     }
 
-    /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
-    /// unattended run's press).
     /// The result window under Eagle Eye's boxes stands from `at`, its close's millisecond (E17
-    /// M6 T5c, recorded: `eagle-eye-one`; the reviewer), unless a time was set already; the
-    /// stills and sequences without the window's clock take the first box's first draw.
+    /// M6 T5c, recorded: `eagle-eye-one`; the reviewer), unless a time was set already; else (no
+    /// window's clock told it) from the first box's first draw ([`Battle::list_at`]).
     pub fn window_closed_at(&mut self, at: u32) {
         if let Some((_, opened, since @ None)) = self.window_behind.as_mut() {
             *since = Some(at.saturating_sub(*opened));
@@ -3233,6 +3220,8 @@ impl<'g> Battle<'g> {
         self.opened
     }
 
+    /// The centre of the open box's button `id` on the screen, if it has one (E17 M5 T4a: an
+    /// unattended run's press).
     pub fn message_button(&self, id: u16) -> Option<[i32; 2]> {
         let (open, _, _) = self.message.as_ref()?;
         let dialog = &open.message.dialog;
@@ -3895,6 +3884,62 @@ fn stop_read(timeline: &Timeline, at: u32) -> (u32, usize) {
     (at, turn_at(turns, at).max(turns.len().saturating_sub(1)))
 }
 
+/// Whether the options dialog's `arrow` left at its close by a key stays (oddity 10) once the
+/// spell book or the stats dialog opened over the battle set its `cursor` or not: the dialog's
+/// own `SetCursor` (the book's 0x59D712) replaces it at once (E17 M6 T7b, R4-4); the battle's
+/// moves take it off besides ([`Battle::mouse_moved`]).
+pub const fn arrow_stays(arrow: bool, cursor: Option<u32>) -> bool {
+    arrow && cursor.is_none()
+}
+
+/// The settings the combat options dialog opens with: `settings` at the speed the battle grows at
+/// (`speed`: an explicit `--speed`'s for the run, else the file's, then the dialog's), so that
+/// its chosen speed is the one played and a close keeps it (E17 M6 T7b, R4-1).
+fn shown_settings(
+    settings: h3_view::options::Settings,
+    speed: Speed,
+) -> h3_view::options::Settings {
+    h3_view::options::Settings {
+        speed: speed.setting(),
+        ..settings
+    }
+}
+
+/// Side `index`'s player colour in the record's `opening` (none named: red for the attacker,
+/// blue for the defender, CLT-Q6).
+fn side_colour(opening: Option<&Observation>, index: usize) -> u8 {
+    opening
+        .and_then(|s| s.sides.get(index))
+        .and_then(|side| side.colour)
+        .unwrap_or_else(|| u8::try_from(index).unwrap_or(0))
+}
+
+/// The player colour of the side acting at `at` ([`Battle::box_player`]): `side` when given, else
+/// the controller of the turn `at` falls in (`Timeline::controllers`), before the first turn the
+/// timeline holds the `opening`'s active stack's; none without any.
+fn acting_colour(
+    timeline: &Timeline,
+    opening: Option<&Observation>,
+    at: u32,
+    side: Option<Side>,
+) -> Option<u8> {
+    let acting = side.or_else(
+        || match timeline.turns.iter().rposition(|&(t, _)| t <= at) {
+            Some(turn) => timeline.controllers.get(turn).copied(),
+            None => {
+                let opening = opening?;
+                let id = opening.active?;
+                opening
+                    .stacks
+                    .iter()
+                    .find(|s| s.id == id)
+                    .map(|s| s.controller)
+            }
+        },
+    );
+    acting.map(|s| side_colour(opening, usize::from(s == Side::Defender)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -3912,6 +3957,162 @@ mod tests {
                 })
                 .collect(),
             ..Timeline::default()
+        }
+    }
+
+    /// A situation of `clients/situations/` fought here by the window's computer (the fair
+    /// actor), the sides `humans` human, over the staged installation copy (`$H3_INSTALL`, else
+    /// the repository's `original-data/install`): none without its archives (E17 M6 T7b, R9-1:
+    /// a `Battle`'s text tables are the game's; the test then checks nothing, as on CI).
+    fn staged(situation: &str, humans: [bool; 2]) -> Option<Source> {
+        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        let install = std::env::var_os("H3_INSTALL")
+            .map_or_else(|| repo.join("original-data/install"), PathBuf::from);
+        if !install.join("Data/H3bitmap.lod").is_file() {
+            eprintln!("skipped: no installation copy at {}", install.display());
+            return None;
+        }
+        Some(Source {
+            input: repo.join("clients/situations").join(situation),
+            seed: 1,
+            speed: Speed::new(0),
+            packs: repo.join("packs"),
+            install,
+            humans,
+            computer: Computer::Original(h3_battle_ai::Sight::Fair),
+            server: None,
+        })
+    }
+
+    #[test]
+    fn the_panel_behind_auto_combat_s_question_at_a_switch_is_the_switch_s() {
+        // E17 M6 T7b (R9-1, design §12.19 Recorded 2): Auto Combat switched on the Champions'
+        // first turn asks the question at once; behind its box the panel is dimmed, its button
+        // selected (built with the switch), not the lit one from before it.
+        let Some(source) = staged("seq-auto-retreat.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.grow(0).unwrap();
+        let before = battle.panels.clone();
+        let at = battle.played.timeline().end;
+        assert!(battle.switch_auto(at).unwrap());
+        assert_eq!(battle.message_asked(), Some(Asked::Question));
+        assert_ne!(battle.panels, before);
+        assert_eq!(battle.panels, battle.panel().unwrap());
+    }
+
+    #[test]
+    fn a_later_turn_s_question_outlines_the_stack_the_computer_plays_behind_its_box() {
+        // E17 M6 T7b (R9-2, design §12.20 Recorded 3, `auto-retreat-later`): W on the Dwarves'
+        // turn, A on the Ballista's (the human's, its box clear), D: the Dwarves' waited turn,
+        // played by the computer, asks the question at once, the Dwarves outlined behind its box
+        // from its opening, as the drawn sequence has them.
+        let Some(source) = staged("seq-auto-retreat-machine.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.settings.auto = [true, false, false, false, false];
+        battle.grow(u32::MAX).unwrap();
+        let dwarves = battle.played.timeline().turns.last().unwrap().1;
+        let at = battle.played.timeline().end;
+        assert!(battle.command(at, Command::Wait {}).unwrap());
+        battle.grow(u32::MAX).unwrap();
+        let at = battle.played.timeline().end;
+        assert!(battle.switch_auto(at).unwrap());
+        assert!(battle.message_asked().is_none());
+        assert!(battle.command(at + 500, Command::Defend {}).unwrap());
+        battle.grow(u32::MAX).unwrap();
+        assert_eq!(battle.message_asked(), Some(Asked::Question));
+        let timeline = battle.played.timeline();
+        assert_eq!(timeline.turns.last().map(|&(_, s)| s), Some(dwarves));
+        let asked = battle.asked_at.unwrap();
+        assert_eq!(timeline.outlines.last(), Some(&(asked, Some(dwarves))));
+    }
+
+    #[test]
+    fn eagle_eye_s_boxes_follow_the_result_window_in_the_window() {
+        // E17 M6 T7b (R10-2, design §12.21): the window's own copy of the flow, the boxes set in
+        // place of a battle won. The result window's OK opens the first box, the window released
+        // behind it, its clip held from its close (`window_closed_at`; else, never told, from the
+        // first box's first draw); each box's OK opens the next, its pickup to play; the last's,
+        // or the window's with no box, ends the battle's screen.
+        use h3_view::message::{OK, Open, Outcome};
+        let Some(source) = staged("seq-auto-retreat.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let ok = crate::spellbook::tests::one_button(OK);
+        for (picks, told) in [(0, false), (1, false), (1, true), (9, true)] {
+            let mut battle = Battle::new(&ground).unwrap();
+            battle.message = Some((Open::new(ok.clone()), 100, Asked::Result));
+            battle.eagle_eye = (0..picks).map(|n| (ok.clone(), n)).collect();
+            for n in 0..picks {
+                assert_eq!(
+                    battle.message_did(|_| Outcome::Closed(OK)),
+                    MessageDid::Changed
+                );
+                assert_eq!(battle.message_asked(), Some(Asked::EagleEye));
+                assert_eq!(
+                    (battle.take_pickup(), battle.take_pickup()),
+                    (Some(n), None)
+                );
+                assert_eq!(battle.boxes_opened(), u32::from(n) + 1);
+                assert!(!battle.result_closed());
+                if n == 0 && told {
+                    battle.window_closed_at(250);
+                    battle.window_closed_at(400);
+                }
+                let _ = battle.list_at(700).unwrap();
+                let since = battle
+                    .window_behind
+                    .as_ref()
+                    .and_then(|(_, _, since)| *since);
+                assert_eq!(since, Some(if told { 150 } else { 600 }));
+            }
+            assert_eq!(
+                battle.message_did(|_| Outcome::Closed(OK)),
+                MessageDid::Ended
+            );
+            assert!(battle.result_closed() && battle.message.is_none());
+            assert!(battle.window_behind.is_none() && battle.take_pickup().is_none());
+        }
+    }
+
+    #[test]
+    fn a_press_during_the_computer_s_cast_stops_auto_combat_at_its_end_in_the_window() {
+        // E17 M6 T7b (R10-2, CLT-Q61, `auto-cast-stop`): A on the Champions' turn, Combat Auto
+        // Spells set; the computer's Bless for the Marksmen holds the battle at its end
+        // (`cast_end`); a press during it stops Auto Combat there, the Marksmen's turn the
+        // human's. Without the press the computer plays it on.
+        let Some(source) = staged("seq-auto-cast.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        for press in [false, true] {
+            let mut battle = Battle::new(&ground).unwrap();
+            battle.grow(0).unwrap();
+            assert!(battle.switch_auto(battle.played.timeline().end).unwrap());
+            let mut grown = 0;
+            while battle.cast_end().is_none() && grown < 20 {
+                assert!(battle.grow_one().unwrap());
+                grown += 1;
+            }
+            let end = battle.cast_end().unwrap();
+            let cast = battle.played.timeline().actions.last().unwrap().clone();
+            assert_eq!((cast.end, cast.cast.is_some()), (end, true));
+            let k = battle.played.timeline().turns.len();
+            if press {
+                assert_eq!(battle.stop_auto(end - 1), Some(k));
+            }
+            battle.grow(end).unwrap();
+            assert_eq!(battle.waiting(), press);
+            assert_eq!(battle.auto_stopped_at(k).is_some(), press);
+            if press {
+                assert_eq!(battle.played.timeline().actions.last().unwrap().end, end);
+            }
         }
     }
 
@@ -3939,6 +4140,68 @@ mod tests {
         assert_eq!(stop_read(&action, 1000), (1000, 1));
         assert_eq!(stop_read(&timeline(&[300, 600], &[]), 100), (100, 1));
         assert_eq!(stop_read(&timeline(&[], &[]), 100), (100, 0));
+    }
+
+    #[test]
+    fn the_options_dialog_opens_at_the_speed_the_battle_plays() {
+        // E17 M6 T7b (R4-1): `--speed 2` over a first run's settings (speed 0): the dialog's
+        // chosen (disabled) speed is 2, and its close by a key keeps it.
+        use h3_view::options::{SPEEDS, Settings};
+        let shown = shown_settings(Settings::FIRST_RUN, Speed::new(2));
+        assert_eq!(
+            shown,
+            Settings {
+                speed: 2,
+                ..Settings::FIRST_RUN
+            }
+        );
+        let layout =
+            layout::parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let catalogue = h3_ui::text::Catalogue::default();
+        let mut open = h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true));
+        assert!(open.window.shown.state(SPEEDS + 2).disabled);
+        assert!(!open.window.shown.state(SPEEDS).disabled);
+        open.key("Return");
+        assert!(open.key_up("Return").closed);
+        assert_eq!(Speed::new(open.settings.speed), Speed::new(2));
+    }
+
+    #[test]
+    fn a_box_takes_the_colours_of_the_side_acting_at_its_time() {
+        // The reviewer's R1-3 (CLT-Q28 (2), the client's profile): the turn the box's time falls
+        // in, from its exact start; the tactics phase's side given; before the first turn the
+        // opening's active stack's controller; each side by its own colour.
+        let (_, mut opening, _) = crate::spellbook::tests::opening();
+        opening.sides[0].colour = Some(3);
+        opening.sides[1].colour = Some(5);
+        let id = |side: Side| (opening.stacks.iter()).find(|s| s.side == side).unwrap().id;
+        let (attacker, defender) = (id(Side::Attacker), id(Side::Defender));
+        let timeline = Timeline {
+            turns: vec![(100, attacker), (500, defender)],
+            controllers: vec![Side::Attacker, Side::Defender],
+            ..Timeline::default()
+        };
+        let colour = |opening: Option<&Observation>, at: u32, side: Option<Side>| {
+            acting_colour(&timeline, opening, at, side)
+        };
+        opening.active = Some(attacker);
+        let o = Some(&opening);
+        assert_eq!(colour(o, 100, None), Some(3));
+        assert_eq!(colour(o, 499, None), Some(3));
+        assert_eq!(colour(o, 500, None), Some(5));
+        assert_eq!(colour(o, 900, None), Some(5));
+        assert_eq!(colour(o, 900, Some(Side::Attacker)), Some(3));
+        assert_eq!(colour(o, 50, Some(Side::Defender)), Some(5));
+        assert_eq!(colour(o, 50, None), Some(3));
+        opening.active = Some(defender);
+        assert_eq!(colour(Some(&opening), 50, None), Some(5));
+        // No active stack, or no opening, before the first turn: none (the viewing player's);
+        // without named colours red and blue.
+        opening.active = None;
+        assert_eq!(colour(Some(&opening), 50, None), None);
+        assert_eq!(colour(None, 50, None), None);
+        assert_eq!(colour(None, 500, None), Some(1));
+        assert_eq!(colour(None, 100, None), Some(0));
     }
 
     #[test]

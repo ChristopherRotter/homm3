@@ -306,7 +306,9 @@ python3 capture/h3drive.py sequences [--only walk]
 `cast:<k>[:<hex>]` casts a spell from the hero's book, below; `aim:<k>:<n>` aims one, E17 M5
 T3b; `look:x,y` presses a stack to look at, its stats dialog, and `cast-button:x,y:<n>` clicks the
 dialog's cast button, the spell numbered n aimed, each a click that parks the mouse, E17 M6
-T2a2b1) and
+T2a2b1; the viewer takes `look:` only right before `cast-button:`, whose aim's first `hex:` or
+`click:` it takes as a target the aim accepts, closing the dialog: the dialog's other input is a
+still's) and
 then steps 1 ms at a time, reading the game's state after each step: `<out>/states.jsonl` (every
 state, with `--screen` a digest of the battlefield's pixels) and `<out>/timeline.txt` (one line per
 change of a stack's group, frame or hex, by the original's records: each side's army, then its
@@ -413,9 +415,10 @@ one the original's memory shows (`h3mem`'s `shown`, +0x50, while it is not −1,
 M3 T5b, design §4.3: the engine rolls its own damage) is masked and listed at the end of its
 frame's line, ` n<side>.<record>`. Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
-(`h3cap.redraws`, design §7.11): ours at that moment is a value a shadow leaves (E17 M6 T7a,
-R4-9), and its pixel is ours at that moment with one to five more shadows, or one we drew
-there at an earlier moment of the sequence with at least one more. The
+(`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one more shadow; or,
+where ours is a value a shadow leaves (`SHADOW_VALUES`, E17 M6 T7a, R4-9), ours with two to
+five more, or one we drew there at an earlier moment of the sequence with at least one more
+(E17 M6 T7b, R12-1: the shadow values' test does not hold the one-shadow case). The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
 a new sandbox captures them again (all nine with frames, about 60 minutes: `shots`, `fly` and `machines` about 9 each) before `--reuse` works (a run that stopped, stalled or left a forced draw untaken keeps none since

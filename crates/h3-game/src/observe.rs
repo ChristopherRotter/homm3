@@ -324,6 +324,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::ResourceLost { player: owner, .. }
         | GameEvent::ResourcePaid { player: owner, .. }
         | GameEvent::TownBuilt { player: owner, .. }
+        | GameEvent::TownEventFired { player: owner, .. }
         | GameEvent::TownChanged { player: owner, .. }
         | GameEvent::TownStackSeen { player: owner, .. }
         | GameEvent::TownIncomeSeen { player: owner, .. }

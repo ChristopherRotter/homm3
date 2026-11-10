@@ -26,7 +26,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 use h3_towns::Towns;
 
 use crate::command::{
-    Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, HireAnswer, NoopSink, Sink,
+    Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, HireAnswer, Sink,
     UniversityAnswer,
 };
 use crate::observe::LevelUpView;
@@ -261,11 +261,12 @@ pub struct GameState {
     /// The month's kind (GAM-CAL-003, E08 T85b): drawn on each month's first day after the
     /// first; a normal one until then.
     month: MonthKind,
-    /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b; the setup's): static,
-    /// shared by forks; none for a map without them, so a fork of one counts no reference
+    /// The map's timed events and, since E09 T18c, the towns' events' facts ([`Calendar`]):
+    /// static, shared by forks; none for a map with neither, so a fork of one counts no reference
     /// (`bench-check`, fork-sea-xl-144: the month and this block cost a fork 15 Ir, +0.4 %; an
-    /// `Arc` always, 19 Ir).
-    events: Option<Arc<[TimedEventSetup]>>,
+    /// `Arc` always, 19 Ir; E09 T18c: one block with the towns' events' facts, a thin pointer, 3 Ir
+    /// a fork less than the timed events' slice alone, where a block of its own cost 13 Ir more).
+    calendar: Option<Arc<Calendar>>,
     /// The game's own stream (the day advance; ADR-0017 point 4).
     rng: Rng,
     /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
@@ -385,7 +386,7 @@ impl GameState {
             group: 0,
             day: 1,
             month: MonthKind::Normal,
-            events: (!setup.events.is_empty()).then(|| setup.events.clone().into()),
+            calendar: Calendar::new(setup, &towns),
             rng: Rng::for_stream(seed, StreamId::GAME),
             heroes,
             pool: Arc::new(pool),
@@ -393,8 +394,29 @@ impl GameState {
             progression: Arc::new(progression),
             adventure,
         };
-        state.start_group(rules, &mut NoopSink);
+        let mut start = StartSink(Vec::new());
+        state.start_group(rules, &mut start);
+        // Only a town's events fire into it, so a map with some has a calendar, not shared yet.
+        if let Some(calendar) = state.calendar.as_mut().and_then(Arc::get_mut) {
+            calendar.start_events = start.0;
+        }
         Ok(state)
+    }
+
+    /// The town events that fired at `player`'s turn start inside the build (TWN-EVT-001, E09
+    /// T18c; the town epic's design note §30), as (town, place in the town's list) in the order
+    /// they fired: day 1's of the first group's players, whose turn starts there with no sink, for
+    /// the towns they owned at the start; empty for every other player (its turn starts with a
+    /// sink, which [`GameEvent::TownEventFired`] tells). As [`Self::events_today`] names the map's
+    /// timed events, so a client shows them. The player's own (`docs/06-security.md`).
+    pub fn town_events_at_start(&self, player: PlayerId) -> Vec<(TownId, u16)> {
+        self.calendar
+            .as_deref()
+            .map_or(&[][..], |c| &c.start_events)
+            .iter()
+            .filter(|&&(owner, _, _)| owner == player)
+            .map(|&(_, town, event)| (town, event))
+            .collect()
     }
 
     /// Ends `player`'s turn (`EndTurn`). When every player of the group has ended its turn the
@@ -1181,7 +1203,8 @@ impl GameState {
 
     /// Starts the turn of the current group: each of its players acts, each context runs its
     /// start-of-turn step for it (the adventure's movement points, ADV-MOV-002), and then the
-    /// map's timed events fire for it (GAM-CAL-004, E08 T85b: [`Self::fire_events`]).
+    /// map's timed events fire for it (GAM-CAL-004, E08 T85b: [`Self::fire_events`]), then its
+    /// towns' events (TWN-EVT-001, E09 T18c: `town::fire_events`).
     fn start_group<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let group = self.groups[self.group].clone();
         for player in group {
@@ -1190,6 +1213,7 @@ impl GameState {
                 .start_turn(rules.core(), rules.adventure(), &self.heroes, player);
             sink.emit(GameEvent::TurnStarted { player });
             self.fire_events(player, sink);
+            town::fire_events(self, rules, player, sink);
         }
     }
 
@@ -1205,7 +1229,13 @@ impl GameState {
 
     /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b): the setup's, static.
     pub fn events(&self) -> &[TimedEventSetup] {
-        self.events.as_deref().unwrap_or_default()
+        self.calendar.as_deref().map_or(&[], |c| &c.events)
+    }
+
+    /// Whether a town of the map has events (E09 T18c): a turn start of a map whose towns have
+    /// none reads no town.
+    pub(crate) fn has_town_events(&self) -> bool {
+        self.calendar.as_deref().is_some_and(|c| c.town_events)
     }
 
     /// How many players the game has.
@@ -1629,6 +1659,60 @@ impl CanonicalHash for GameState {
     }
 }
 
+/// What the calendar reads that never changes after the build: the map's timed events (GAM-CAL-004,
+/// E08 T85b) and, since E09 T18c, whether a town has events and the town events that fired inside
+/// the build (TWN-EVT-001).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Calendar {
+    /// The map's timed events in the map's order (the setup's).
+    events: Vec<TimedEventSetup>,
+    /// Whether a town of the map has events.
+    town_events: bool,
+    /// The town events that fired at the first group's turn start on day 1
+    /// ([`GameState::town_events_at_start`]), as (owner, town, place in the town's list) in the
+    /// order they fired. What the build told nobody, kept for a client; no rule reads it, so the
+    /// hash leaves it out (it follows from the setup).
+    start_events: Vec<(PlayerId, TownId, u16)>,
+}
+
+impl Calendar {
+    /// The setup's timed events and whether a town of `towns` has events; none for a map with
+    /// neither.
+    fn new(setup: &GameSetup, towns: &Towns) -> Option<Arc<Self>> {
+        let town_events = (0..=u16::MAX)
+            .map(TownId::new)
+            .map_while(|town| towns.town_static(town))
+            .any(|s| !s.events.is_empty());
+        (town_events || !setup.events.is_empty()).then(|| {
+            Arc::new(Self {
+                events: setup.events.clone(),
+                town_events,
+                start_events: Vec::new(),
+            })
+        })
+    }
+}
+
+/// The build's sink (E09 T18c): keeps the town events that fired at the first group's turn start
+/// ([`GameState::town_events_at_start`]) and nothing else; it keeps no other event, so the told
+/// views are not even computed ([`Sink::RECORDS`]).
+struct StartSink(Vec<(PlayerId, TownId, u16)>);
+
+impl Sink for StartSink {
+    const RECORDS: bool = false;
+
+    fn emit(&mut self, event: GameEvent) {
+        if let GameEvent::TownEventFired {
+            player,
+            town,
+            event,
+        } = event
+        {
+            self.0.push((player, town, event));
+        }
+    }
+}
+
 /// A price in the game state's hash (v18): its length, then each resource and amount.
 /// A timed event (game state hash v22, E08 T85b): its players (length, then each id), whether it
 /// fires for a human and for a computer player, its first day, its interval, its resources
@@ -1732,14 +1816,14 @@ impl GameState {
     }
 
     /// Replaces the schedule (tests of turn groups larger than sequential play) and restarts the
-    /// first group's turn (its players' timed events fire again: such tests have none).
+    /// first group's turn (its players' timed and town events fire again: such tests have none).
     pub(crate) fn set_schedule(&mut self, rules: &GameRuleset, groups: Vec<Vec<PlayerId>>) {
         for player in &mut self.players {
             player.acting = false;
         }
         self.groups = groups;
         self.group = 0;
-        self.start_group(rules, &mut NoopSink);
+        self.start_group(rules, &mut crate::command::NoopSink);
     }
 
     /// The master seed.

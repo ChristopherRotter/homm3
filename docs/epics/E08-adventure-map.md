@@ -248,6 +248,18 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      chosen: two parts (the command and the replay line; then the legal set, the env and the
      re-baselines); three parts.
 
+### Decision at T106's start (2026-11-10, user)
+
+290. **T106 in three, as increment 9's T86 and increment 10's T96** (the user at T106's start,
+     `AskUserQuestion`; recommended, decision 256's cut): **T106a** the map
+     `e08-teleporters-36.h3m` and its golden replays (random play `teleporters-s<seed>-d28`, seeds
+     by a search; the scripted `teleporters-*-s1` grouped by theme); **T106b** the plans'
+     `TELEPORTERS` and their checks (`play.rs`, `view.rs`); **T106c** the map
+     `e08-teleporters-144.h3m`, the workloads `reach-teleporters-xl-144` and
+     `random-play-teleporters-36`, the census rows of `--with-original-data` not yet checked. Not
+     chosen: four parts (T106a split into the map with its random replays, then the scripted
+     ones); two parts (the map, its replays and the plans together).
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
@@ -260,7 +272,8 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
 - **T103 Increment 11's kinds and import, batch E11c, decision 279's order** (round 5), in four (decision 282): **T103a** done (2026-11-07, `adventure/e08-t103a`, `cross-lane`: the three kinds, the 26 types and their check, `whirlpool_protection`; ADV-TEL-001; part v18; decision 283); **T103b** done (2026-11-07, `adventure/e08-t103b`: the five classes typed, A-39 refused, `ADV-QUIRK-41`, 220 by the mines' table; map import v21; the shipped maps' census); **T103c** done (2026-11-07, `adventure/e08-t103c`, whole: decision 284; batch E11c, E11-20 to E11-23, every row as read, survey §15.1; the README row `cross-lane`); **T103d** done (2026-11-07, `adventure/e08-t103d`: decision 279's order for every entered kind, the guard first and the tile's visit held as `Rest::Visit` after it; ADV-MON-006 verified, GAM-DEC-007 and -008 amended; no version moved; two replays). Round 5 done. Records: `E08-log.md`.
 - **T104 The build** (round 6; design §5). Done (2026-11-09, `adventure/e08-t104`, whole: decisions 285, 286): A-42 refused when the game is built (`SetupError::TeleporterSurface`, rock too; `ADV-QUIRK-44`), the channels and the gates' pairs (`StaticMap::channels`; ADV-TEL-002; `ADV-QUIRK-45` recorded), checked against the shipped maps' census; `build-gates-xl-144` (the gates XL map, the workload `build`), the pairing 91.6 % of that build, its lever queued. No version moved. Round 6 done. Records: `E08-log.md`.
 - **T105 The jump and the game** (round 7; design §7 to §10, §12 to §14): T105a in two by land and water (decision 287): **T105a1** done (2026-11-09, `adventure/e08-t105a1`: the visitor's stream in `apply`, the monoliths' and the gates' jumps, `HeroTeleported` and `LeadsNowhere`, ADV-TEL-003 to -005 and -007, `ADV-QUIRK-43`, `ADV-STUB-16` for an occupied exit; the reach within 0.01 % of `master`; no version moved); **T105a2** done (2026-11-09, `adventure/e08-t105a2`: the Whirlpool's loss, unless the Hats, and its jump with the boat, `WhirlpoolLoss`, ADV-TEL-006, `ADV-QUIRK-40` and `-42`; the sea workloads at `master`'s count; no version moved); then **T105b** in two (decision 288): **T105b1** done (2026-11-09, `adventure/e08-t105b1`: the battle and the meeting at an occupied exit, `ADV-STUB-16` lifted, the held jump `Rest::Jump` and `AdventureState::arrive`, `ADV-QUIRK-39`; game state hash v27); **T105b2** done (2026-11-10, `adventure/e08-t105b2`, `cross-lane`, whole: decision 289; `Revisit` and `NothingToRevisit`, the legal set, ADV-TEL-008; replay format v12, the env's action encoding v8, the wire's mapping; four `random-play-*` and three `reach-*` workloads re-baselined: the random games' course). Round 7 done.
-- **T106 and T107** (design §17's round 8): the fixtures and benchmarks (the shipped maps' channels already checked by T104, decision 286), the audit; queued when round 7 is done.
+- **T106 The teleporters' fixtures, replays, properties and benchmarks** (round 8; design §14), in three (decision 290): **T106a** done (2026-11-10, `adventure/e08-t106a`: the map `e08-teleporters-36.h3m` by `h3_map::writer`, its channels, pairs and Whirlpool tiles checked; three random replays of a search over 3 000 seeds and eight scripted ones, A-37's battle at sea among them; 66 golden replays; no version moved); **T106b** the plans' properties; **T106c** the XL, its two workloads, the census's rows. Records: `E08-log.md`.
+- **T107** the audit (design §17's exit criteria); queued after T106.
 
 ## Later increments (sketch)
 

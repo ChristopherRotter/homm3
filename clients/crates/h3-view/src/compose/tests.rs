@@ -1087,6 +1087,36 @@ fn a_list_within_a_rectangle_draws_there_alone() {
 }
 
 #[test]
+fn blocks_of_one_list_draw_its_frame_and_another_list_its_own() {
+    // E17 M6 T7b (R7-3): the frame of a list within kept for the next block of the same list
+    // (the cursor shadow's blocks of one composition), a block of another list composed anew,
+    // the first list's after it again: each block its own list's pixels.
+    let obstacle = || {
+        vec![Draw::AbsoluteObstacle {
+            picture: "abs.pcx".to_string(),
+            x: 1,
+            y: 0,
+        }]
+    };
+    let background = || Draw::Background {
+        picture: "bg.pcx".to_string(),
+        x: 0,
+        y: 0,
+    };
+    let within = |rect, list| Draw::Within { rect, list };
+    let list = [
+        background(),
+        within([1, 0, 3, 1], obstacle()),
+        within([2, 0, 3, 2], obstacle()),
+        within([0, 1, 2, 2], vec![background()]),
+        within([1, 0, 2, 2], obstacle()),
+    ];
+    let screen = compose(&list, &batch(), &small()).unwrap();
+    let [b, g] = [BLUE, GREEN].map(|c| FORMAT.pack(c));
+    assert_eq!(screen.pixels(), [b, 0, g, b, b, b, b, 0, 0, b, b, b]);
+}
+
+#[test]
 fn a_shaken_list_is_copied_at_each_offset_over_the_step_before() {
     // E17 M4 T2c-2 (Earthquake, CLT-Q19 (6)): the saved frame (blue, green at (2, 0)) copied
     // right by one, then left by one and down by one, over the copy before: what an offset

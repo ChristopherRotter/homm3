@@ -762,13 +762,17 @@ impl Modal {
 
     /// The mouse moved to `point` (0x5F4E30): over another item than the last ([`Memory`]), or
     /// off the dialog from one, the cursor's frame and the status line follow it (its item's
-    /// hint, none over an item without one or off the dialog). Whether anything changed.
+    /// hint, none over an item without one or off the dialog). The items the executable numbers
+    /// −1 (the ability text, the cast button's back: [`ABILITY`], [`CAST_BACK`]) take the mouse
+    /// but are nothing to it: `dialog_item_id_at` 0x5FF3B0 answers their id, −1 as for no item,
+    /// which 0x5F4E57 tells by (the reviewer's R2-1). Whether anything changed.
     pub fn hover(&mut self, memory: &mut Memory, point: [i32; 2]) -> bool {
         let message = &self.open.message;
         let item = message
             .dialog
             .item_taking(point, &message.shown)
-            .map(Item::id);
+            .map(Item::id)
+            .filter(|&id| id != ABILITY && id != CAST_BACK);
         if item == memory.hovered {
             return false;
         }
@@ -1005,10 +1009,7 @@ impl Steps {
             if start > since {
                 break;
             }
-            while deadline <= start {
-                made += 1;
-                deadline = deadline.saturating_add(STEP_MS);
-            }
+            (deadline, made) = Self::due(deadline, made, start);
             if end > since {
                 return (made, deadline, true);
             }
@@ -1017,11 +1018,22 @@ impl Steps {
                 deadline = end.max(deadline.saturating_add(STEP_MS));
             }
         }
-        while deadline <= since {
-            made += 1;
-            deadline = deadline.saturating_add(STEP_MS);
-        }
+        let (deadline, made) = Self::due(deadline, made, since);
         (made, deadline, false)
+    }
+
+    /// The steps due every [`STEP_MS`] from `deadline` up to `until`, counted on from `made`,
+    /// and the deadline after them, in closed form (the reviewers' R1-2, R2-2: stepping the
+    /// deadline 100 ms at a time cost a dialog open for hours as much at each frame).
+    fn due(deadline: u32, made: u32, until: u32) -> (u32, u32) {
+        if deadline > until {
+            return (deadline, made);
+        }
+        let steps = (until - deadline) / STEP_MS + 1;
+        (
+            deadline.saturating_add(steps.saturating_mul(STEP_MS)),
+            made + steps,
+        )
     }
 }
 

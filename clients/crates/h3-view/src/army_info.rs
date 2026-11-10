@@ -244,7 +244,10 @@ pub struct StackInfo {
     pub luck: i32,
     /// The count (+0x4C: the windows show only between actions, when +0x50 is −1).
     pub count: u32,
-    /// The spells on the stack, their original ids, in its list's order (+0x420).
+    /// The spells on the stack, their original ids, in the observation's order: by spell handle
+    /// (E17 M6 T7b, R6-2, *provisional*). The original's list (+0x420) is in the order they were
+    /// cast, which the wire does not carry, so with four or more the last three can be others,
+    /// and two can stand in another order (the stats dialog's effects alike, review item 5).
     pub spells: Vec<u32>,
 }
 

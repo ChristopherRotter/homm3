@@ -365,3 +365,74 @@ fn a_channel_without_a_channeller_in_sight_writes_no_line() {
     let heard: Vec<_> = cues(&t).into_iter().map(|c| c.2).collect();
     assert!(heard.contains(&Sound::ChannelDrain) && heard.contains(&Sound::ChannelFill));
 }
+
+#[test]
+fn a_channel_s_line_saturates_on_a_hostile_record_s_counts() {
+    // Two channelling stacks of `u32::MAX` creatures (a served record's counts are not bounded):
+    // the line's number saturates (R11-1; overflow checks are on in release).
+    let mut o = armies();
+    for s in &mut o.stacks {
+        if s.creature == GOBLIN && s.side == Side::Defender {
+            s.count = u32::MAX;
+        }
+    }
+    let events = vec![
+        cast_by(Side::Attacker, 54, 1),
+        applied(1, 54),
+        Event::ManaChanneled {
+            side: Side::Defender,
+            mana: 2,
+        },
+    ];
+    let t = play(&o, &[(Some(0), events)], None, &channel_casts());
+    let line = Logged::Channeled {
+        stack: 2,
+        count: u32::MAX,
+        mana: 2,
+    };
+    assert!(t.log.iter().any(|(_, l)| *l == line), "{:?}", t.log);
+}
+
+#[test]
+fn a_phoenix_killed_by_a_hero_s_spell_is_reborn_before_the_hero_s_last_frames() {
+    // Orrin's Ice Bolt kills the Swordsmen, reborn (the engine's `rebirths` after the effects):
+    // the handler's rebirth check (0x5A0B02) raises them before the common tail's last frames
+    // and standing (0x5A2058), and the channel after those (R11-5).
+    let events = vec![
+        cast_by(Side::Attacker, ICE_BOLT, 1),
+        spell_damage(1, 1000, 40),
+        Event::Reborn {
+            stack: 1,
+            creatures: 5,
+        },
+        Event::ManaChanneled {
+            side: Side::Defender,
+            mana: 2,
+        },
+    ];
+    let t = play(&armies(), &[(Some(0), events)], None, &channel_casts());
+    let raised = Logged::Raised { stack: 1, count: 5 };
+    let at: Vec<u32> = t
+        .log
+        .iter()
+        .filter(|(_, l)| *l == raised)
+        .map(|(at, _)| *at)
+        .collect();
+    let [at] = at[..] else {
+        panic!("{:?}", t.log);
+    };
+    let last = t
+        .hero_keys
+        .iter()
+        .find(|k| k.side == 0 && k.group == 4 && k.frame == 5)
+        .map(|k| k.drawn);
+    assert!(last.is_some_and(|l| l > at), "{last:?} {at}");
+    let channeled = t
+        .log
+        .iter()
+        .find(|(_, l)| matches!(l, Logged::Channeled { .. }))
+        .map(|(at, _)| *at);
+    let stood = t.hero_keys.iter().map(|k| k.drawn).max();
+    assert!(channeled >= stood, "{channeled:?} {stood:?}");
+    assert_eq!(t.counts(t.end)[&1], 5);
+}

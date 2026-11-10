@@ -119,6 +119,16 @@ Asked at T13's start, before the drafts were written (T13 kept whole, the user).
     it would end the turn); nothing in the env moves; T19 drops the skip with the entry. Not
     chosen: kept, a drawn build ending the turn (the town map's random games moved).
 
+### Decisions at T18c's start (2026-11-10, the user)
+
+57. **T18c whole, the plans' checks to T19** (recommended): the game's town events, their wire
+    mapping and day 1's in one session and one `cross-lane` pull request; the plans'
+    `check_towns` and `check_rewards` taught the events' builds and gains in T19, with the writer
+    that first gives the plans' towns events (the writer writes none before T19, so checks taught
+    now would run on nothing). Not chosen: as queued (the checks now, unexercised); two parts (the
+    resources, `TownEventFired` and day 1; then the buildings, the views and the checks). The
+    user also had the hygiene property's CI counterexample fixed first (#822).
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Done 2026-11-06 (map import v20; `E09-log.md`).
@@ -128,8 +138,8 @@ Asked at T13's start, before the drafts were written (T13 kept whole, the user).
 - **T15** `shared/`: the drafts into `docs/adr/` with TWN-2's verdicts, `docs/03`'s terms, `docs/06-security.md`'s words (design §35), kept whole at its start (the user): done 2026-11-07 (ADR-0028 points 2, 5, 6, 9; ADR-0016 points 1, 4, 6; ADR-0017 points 1 to 4, 6 to 10; the drafts deleted; `E09-log.md`).
 - **T16a** the part's requirements, costs and the role `shipyard` (§24, part v4), kept whole at its start: done 2026-11-07 (part v4; the adventure replays' `town_ruleset_hash` line, `cross-lane`; `E09-log.md`). **T16b** their harvest (§25, `cross-lane`, original data), kept whole at its start: done 2026-11-07 (the base and AB packs re-harvested; the adventure replays' `town_ruleset_hash` line, `cross-lane`; `E09-log.md`).
 - **T17** `h3-towns`: the day's mark, the store's writes, the rules, `TownCommand` (§26, §27), cut in two at its start (the user, 2026-11-09): **T17a** the mark, `built_with` and the store's writes: done 2026-11-09 (town state hash v2, game state hash v26, `cross-lane`; TWN-BLD-004, -005; `E09-log.md`). **T17b** the rules that decide a build, `TownCommand` and its errors, the other catalog entries, `TWN-QUIRK-7`: done 2026-11-09 (no version moved; TWN-BLD-001 to -003, -006, -007, TWN-EVT-003; `E09-log.md`).
-- **T18a** the Shipyard's water (§28), kept whole at its start (the user, 2026-11-09): done 2026-11-09 (adventure ruleset part v19, `cross-lane`; TWN-SET-011; `E09-log.md`); **T18b** the command, the legal builds, the day's start, the capture's mark, the views (§29 to §31), cut in two at its start (the user, 2026-11-09): **T18b1** the command, the day's start, the capture's mark: done 2026-11-09 (adventure replay format v11, `cross-lane`; TWN-BLD-001, -004 the game's halves; `E09-log.md`); **T18b2** the legal builds and the views, cut in two at its start (the user, 2026-11-10; decisions 52 to 54): **T18b2a** the views and events with SRV-Q26's town gap: done 2026-11-10 (no version moved, `cross-lane`; TWN-VEW-001 amended, TWN-VEW-004, `TWN-STUB-13`; `E09-log.md`); **T18b2b** the legal builds and `town_offer`, kept whole at its start (the user, decisions 55, 56): done 2026-11-10 (no version moved, `cross-lane`; TWN-BLD-001 amended; `E09-log.md`); **T18c** the town events at the turn start (§30).
-- **T19** the writer's town events, fixtures, replays, properties, benchmarks, the env, the census (§32).
+- **T18a** the Shipyard's water (§28), kept whole at its start (the user, 2026-11-09): done 2026-11-09 (adventure ruleset part v19, `cross-lane`; TWN-SET-011; `E09-log.md`); **T18b** the command, the legal builds, the day's start, the capture's mark, the views (§29 to §31), cut in two at its start (the user, 2026-11-09): **T18b1** the command, the day's start, the capture's mark: done 2026-11-09 (adventure replay format v11, `cross-lane`; TWN-BLD-001, -004 the game's halves; `E09-log.md`); **T18b2** the legal builds and the views, cut in two at its start (the user, 2026-11-10; decisions 52 to 54): **T18b2a** the views and events with SRV-Q26's town gap: done 2026-11-10 (no version moved, `cross-lane`; TWN-VEW-001 amended, TWN-VEW-004, `TWN-STUB-13`; `E09-log.md`); **T18b2b** the legal builds and `town_offer`, kept whole at its start (the user, decisions 55, 56): done 2026-11-10 (no version moved, `cross-lane`; TWN-BLD-001 amended; `E09-log.md`); **T18c** the town events at the turn start (§30), kept whole at its start with the plans' checks moved to T19 (the user, decision 57): done 2026-11-10 (protocol v41, `cross-lane`; TWN-EVT-001, -002, -004, TWN-EVT-003's game half, GAM-CAL-004 amended, `TWN-STUB-10`; `E09-log.md`).
+- **T19** the writer's town events, fixtures, replays, properties (with the plans' `check_towns` and `check_rewards` taught the events' builds and gains, decision 57), benchmarks, the env, the census (§32).
 - **T20** the audit against the exit criteria; increment 2 closed; increment 3 refined.
 
 ### Exit criteria

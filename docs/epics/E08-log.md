@@ -13988,3 +13988,78 @@ light gates passed). Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the 
 
 **Versions:** adventure replay format v12; the env's action encoding v8 (the AI lane's). Round 7
 done; round 8 next (T106, T107).
+
+### Increment 11, round 8: T106a, the teleporters map and its replays (2026-11-10, `adventure/e08-t106a`)
+
+**The cut** (decision 290, the user at T106's start): T106 in three as increment 9's T86 and
+increment 10's T96, the map and its replays first; the plans' properties second (T106b); the XL
+with its two workloads and the census's rows third (T106c). **Baseline:** `master` ac8ae2e (#821
+merged); the sandbox's full verify green on it (`verify-once`: no fingerprint yet, the full run;
+CI's run on 9a12cf5 green). Staged `maps.tar`, `extracted.tar`, the executable and two LODs (the
+computer's link dropped after the staging, as at T96a). Built by two narrow sub-agents after the
+map (the random replays' search; the scripted replays).
+
+- **The teleporters map** (`fixtures/maps/e08-teleporters-36.h3m`; `h3-map`'s
+  `tests/teleporters_map.rs`,
+  `the_teleporters_map_is_committed_as_written_and_builds_its_channels`): SoD, 36 × 36 of grass
+  with the sea on columns 24 to 35, over an underground of subterranean ground, written by
+  `h3_map::writer` with the original's templates (`Objects.txt`'s monoliths 43.0, 43.1, 44.0,
+  44.1, 45.0, the gate, the Whirlpool, the gnolls; `sea_map.rs`' helpers, `dwellings.rs`' Guardhouse,
+  `economy_map.rs`' Windmill). Twelve heroes: red's Orrin (0; ten archangels, 900 experience),
+  Sylvia (1; the Sea Captain's Hat), Sorsha (2; three angels and two stacks of ten pikemen),
+  Edric (3), Lord Haart (4), Christian (5); blue's Rion (6), Adela (7; five angels), Cuthbert (8;
+  one pikeman); underground red's Valeska (9) and Tyris (10), blue's Ingham (11). Channel 0's
+  one-way entrance (10, 4) with three exits (16, 18), (12, 30), (4, 14, 1); channel 1's entrance
+  (20, 5) with a lone exit (5, 28), so its battles, its "no candidate" and its "leads nowhere"
+  need no draw (*agent's call*: design §14's "lone one-way exit" as channel 1's only exit, with an
+  entrance); channel 0's two-way monoliths (10, 9), (16, 12) (four savage gnolls on (17, 12)
+  beside it) and (20, 20, 1); gates on (14, 6) and (8, 21) of both levels, paired by level, and
+  the underground (22, 6) left over (the walk's order: each surface gate takes the one below it);
+  three Whirlpools in the sea; three empty boats (*agent's call*: two by red's coast, one by
+  blue's, where design §14 said one for each player: the Hat's and the losses' heroes sail on
+  the same day); a neutral Guardhouse and a Windmill. The test reads the file back, imports it
+  (the heroes, the boats, nine types by key) and builds it for seed 1: channel 0's exits and
+  two-way members in the walk's order, channel 1's lone exit, the five gate entries with their
+  pairs, the Whirlpools' 18 tiles.
+- **The golden replays** (`adventure_replays.rs` lists what each meets; the test expects 66):
+  random play `teleporters-s1711-d28`, `-s2002-d28`, `-s2647-d28` (`--seed N --agent-seed N
+  --days 28`), the union of three in a scratch search over the seeds 1 to 3 000 that meets 20 of
+  the 25 features counted (each kind's jump, `LeadsNowhere` at a one-way exit and at the unpaired
+  gate, an exit's battle won with the level-up and the held jump, a battle at a gate's pair, the
+  Whirlpool's losses past the first slot, the gnolls before the jump, revisits of every kind and
+  at 0 points); none of the 3 000 has a battle at a Whirlpool's exit (A-37), 5 a monolith without
+  a candidate, 21 a meeting at a gate, 5 a lost exit battle, 65 a lone creature kept, 30 the Hat's
+  jump, none of these in the three chosen. Scripted (`--seed 1 --checkpoint-every 5 --script`):
+  `teleporters-monoliths-s1` (channel 0's draw among three, the exit's `LeadsNowhere` by a
+  revisit, a two-way re-drawn by a revisit), `-gates-s1` (a gate's jump, the meeting on the pair,
+  the unpaired gate at 0 points, a revisit back), `-exit-battle-s1` (the battle at channel 1's
+  exit won, level 2, the held jump; then no candidate), `-exit-lost-s1`, `-guard-s1` (the gnolls
+  first, then the held jump), `-whirlpools-s1` (the tie in slot 1, the weakest of several by a
+  revisit at 0 points, the Hat, the lone pikeman kept), `-whirlpool-battle-s1` (A-37's battle at
+  sea, `ADV-QUIRK-39`: seed 1's first red draw lands on Cuthbert's tile; seeds 17, 20, 21 and 22
+  too) and `-revisits-s1` (the Windmill empty on its revisit; the Guardhouse at 0 points flagged,
+  its pikemen joining free, asked again by the revisit: `NoneToRecruit`). The moves came from a
+  scratch probe walking each hero with `legal_moves`' paths, the battles' commands from E23's
+  `h3_battle_ai::choose` for both sides.
+- *Found on the way* (nothing wrong in the rules): boarding leaves the hero at 0 points, so a
+  Whirlpool is entered the next day; a hero meant to arrive at 0 points steps back and forth first;
+  a monolith without a candidate is never met at channel 0's or the two-way's in random play (all
+  five at channel 1's); the gnolls are fought from their other neighbours in 2 296 games, from the
+  monolith in 284; the Guardhouse's level-1 pikemen join free, so its revisit opens no hire
+  dialog; the Windmill's anchor is passable by its template.
+- *Not scripted:* a hire dialog at a revisit (the map's one dwelling gives its creatures free); the
+  Windmill's revisit at 0 points (at 919; the 0-point revisits are a gate's, a Whirlpool's and the
+  Guardhouse's).
+- *Agent's calls (change freely):* the map's heroes, armies, positions and channels; the boats'
+  count; the seeds; the scripts' paths and grouping.
+- **Gates:** the scoped verify with the original data: every step passed, `check-lane` included (no cross-lane path): coverage, determinism with the 66
+  replays, bench-check (the workloads inside the gate, the sandbox's drift as at T96a: the forks
+  +1.4 to +1.9 %, the rest −0.9 to +1.6 %; T106a changes no engine code), original-data.
+- **On CI** (`cross-lane`, the user's consent): the server lane's fold and session tests
+  (`h3-protocol`'s `tests/game_fold.rs`, `tests/game_session.rs`) counted the golden replays
+  exactly, 55, and failed the first run; both say 66, and the fold and the session pass over all
+  66 (the teleporters' events fold, no new stub). `master` merged in after E16 M5 T6 (its
+  `h3-server record`, a third exact count in `tests/record.rs`) and E09 T18c (#824; a conflict in
+  the server lane's inbox only): that count 66 too, its records over all 66 passing. The server lane's inbox told; the trap in the
+  lane's `TRAPS.md`.
+- **Versions:** none.

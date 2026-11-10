@@ -2708,8 +2708,10 @@ kinds), `ai_battle_action` 0x477EE0's head, `ai_hero_cast_turn` 0x422DA0's head.
   its `key:a` trusted to come on a human's waiting turn). The battle keeps them apart from the
   window's inputs (`Battle::switches`): a seek back or Restart keeps them, and the turns' Auto
   Combat costs the turns only (the mouse's `Follower` too, its mark dropped when a turn before it
-  plays otherwise). Any key down stops it: Control too, and a key no table names (`h3_sdl`'s
-  `Key::Other`). On a server's seat the button is disabled throughout (`Panels::without_switch`,
+  plays otherwise). Any key down stops it, and a key no table names (`h3_sdl`'s `Key::Other`);
+  Control alone stops it at its release, a chord with it (Ctrl+F5 to Ctrl+F8, Control with a
+  press) never (`window::Control`, *provisional*; E17 M6 T7b, R5-1: M5 T8b2's R5c-5 reading of
+  modifier keys stopped it at Control's down, so the windows' own Ctrl keys stopped it). On a server's seat the button is disabled throughout (`Panels::without_switch`,
   `Autoplay::off`), as when both players are human, while the window takes no switch there.
 - **Recorded** (`auto`, the melee's battle): A at the Angels' turn, the flight at 0 ms; the mouse
   moved to (400, 300); A again at 1 500 ms, the stop at the Wolf Riders' turn; the Pikemen's turn
@@ -4671,10 +4673,10 @@ it), `moat` and `mine` (below). Findings:
   frame leaves its standing frame's outline top row (11 pixels, T2b's) with the status line's
   ` log` hint (T2c-2's); in `mine` the walk's first frames after the blast show the Titans'
   standing frame under the moving one where the saved screen comes back under the stack's
-  rectangle (11 431: 252 pixels beside 234 counted as artifacts; 11 507: 5; §7.11 (2), not
+  rectangle (11 431: 269 pixels beside 217 counted as artifacts; 11 507: 5; §7.11 (2), not
   copied), and the last frame (12 799), the Goblins' turn's start, the defender's view in hot
-  seat: its mines on the moat's hexes (4 005 pixels), which a spectator's record lacks (T1b's
-  side to act's view). The rest of each sequence's frames exact.
+  seat: its mines on the moat's hexes (4 790 pixels), which a spectator's record lacks (T1b's
+  side to act's view). (Before E17 M6 T7a's stricter rule, R4-9: 252 beside 234, and 4 005.) The rest of each sequence's frames exact.
 
 **Recorded (M4 T2c-2, 2026-10-26).** Earthquake, the shots through the walls, the town's end and
 the siege's mouse (not cut, the user). The viewer plays and draws the reading:
@@ -5816,7 +5818,11 @@ frames.
   3, 5, 6 and 9 copied without a question, the agent's call: a slider's track, the default
   level, a label's source and ids without items show nothing a player would call a slip):
   1. The speed buttons sound twice: `button_press` plays `button.wav`, then the procedure's press
-     path plays it again, its range 225 to 238 holding 230 to 232.
+     path plays it again, its range 225 to 238 holding 230 to 232. (Doubted at E17 M6 T7b, R4-3:
+     the procedure plays only on a 0x200/0xC whose cursor item is 225 to 238, 0x46F855 →
+     0x46FDB1, and a DEF button's mouse press sends it none, its own loop copying each message
+     over the caller's, 0x45643F, and returning only 0x200/0xD at the release, 0x456496: one
+     click. CLT-Q74.)
   2. A box or a bar acts on the left release anywhere: its press inside is enough
      (`dialog_def_message`'s release tests no box), where a DEF button needs the release inside.
   3. The hidden bars take clicks and right presses (above): the whole track is live, drawn or not.
@@ -6484,7 +6490,8 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
   (`settings_save` 0x50C1B0); the dialog's boxes 235 to 237 write the same three globals.
 - **Oddities** (asked: 2 as CLT-Q52, 3 as CLT-Q53, 4 as CLT-Q54, 5 as CLT-Q55, 6 as CLT-Q56; 1
   and 7 to 10 copied without a question, the agent's call: what the option's name promises, the
-  layers' order, an unseen save, a two-pixel band and a move the idle step meets):
+  layers' order, an unseen save, a two-pixel band and a move the idle step meets; 8 no longer
+  copied since E17 M6 T7b, R7-2):
   1. The cursor shadow shades the mouse's hex whatever the cursor says of it (a forbidden hex, an
      obstacle, the acting stack, an enemy's hex rather than where the attacker would stand, one
      hex of a two-hex stack): the option's name is the mouse's hex.
@@ -6585,12 +6592,21 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     as it starts (the book's arrow stays, `Look::Arrow`, until its first cursor: recorded) and
     takes the follow's `wall_last` (a click before a move casts there), in the
     client's it is aimed as every other aim (the hex under the mouse kept, CLT-Q27 (2)).
+    The tactics phase's end by its key (Start Combat, which skips `Cells::action`; E17 M6 T7b,
+    R7-1): in `Fixed` `Cells::phase` forgets the list as a composition does when the shade
+    changes (CLT-Q52's answer: the empty list, the last key −1, no `stale`), so the turn's
+    posted move shades its hex on the new background; the original's keeps the list, its block
+    put back with the phase's shade (*provisional*: the first turn's overlay draw 0x478375 and
+    0x4751CC to 0x47528D not read for the list).
   - The window: the keys `grid` F6, `cursor-shadow` F7 and `movement-shadow` F8
     (`keys::Command::Shades`, the battle's context; Ctrl+F5 to Ctrl+F8 stay the window's own),
-    taken while the battle takes its keys (*provisional*) and carried by Auto Combat's stop as F5;
-    `toggle_shades` writes the settings file at once; the options dialog's close is a
-    composition; an aim's movement shadow off and on again is saved each time
-    (`Battle::aim_original`, oddity 8); `Battle::list` draws `Shown::shades`.
+    taken while the battle takes its keys (*provisional*; CLT-Q75) and carried by Auto Combat's
+    stop as F5; `toggle_shades` writes the settings file at once; the options dialog's close is
+    a composition; an aim's movement shadow off is the mouse's follow's alone (`Options::aiming`
+    in `track`): neither the settings nor the file change (oddity 8 not copied, *provisional*;
+    E17 M6 T7b, R7-2: the window's block that saved it, `Battle::aim_original`, read the aims'
+    `original`, always 0 there, so it never ran, and is gone); `Battle::list` draws
+    `Shown::shades`.
   - The stills: an entry's `grid`, `cursor_shadow` and `movement_shadow` (0 or 1; the harness
     writes `Show Combat Grid`, `Show Combat Mouse Hex` and `Combat Shade Level` before the run
     and puts the prefix's back, `h3drive.SHADES`; a `key:F6` to `key:F8` without its value runs
@@ -6600,8 +6616,8 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     `sequences.toml` with its `key:F6` to `key:F8` (`pointer::inputs`), drawn from
     `Shown::shades`. A still takes no spell's aim: `shade-area`, `shade-wall` and the witnesses of
     oddities 3 and 5 are sequences (`aim:<k>:<n>`, `move:`, `key:Escape`).
-  - Copied without a question: oddities 1 and 7 to 9; 10 not modelled (the idle step's move:
-    *provisional*); a block put back keeps one composition (a strip of an older one inside it,
+  - Copied without a question: oddities 1, 7 and 9 (8 not copied, above); 10 not modelled (the
+    idle step's move: *provisional*); a block put back keeps one composition (a strip of an older one inside it,
     after two dialogs, not modelled: *provisional*). Not built: the battle's decided and hidden
     tests (the follow takes no move then), a later battle's save picture (a battle a run), the
     deferred composition +0x53B8 (the client composes at once).
@@ -6872,10 +6888,11 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
     on every refused hex; the hexes the engine's targets (`aims` test: §12.17's shape by side,
     mastery and row parity, the side columns, obstacles and living stacks, equal on
     `seq-shade-wall`); in the original's profile the wall's aim neither marks nor unmarks
-    (`track::aim_at`), the client's as every aim (CLT-Q56). The exception: a server's game of
-    other content, whose wall aim with no free hex is the bare one (`aims::nowhere(None, …)`,
-    `original` 0, as `aims::served`'s bare aim): `Aim::refusal` gives 24 there and Fire Wall no
-    shade.
+    (`track::aim_at`), the client's as every aim (CLT-Q56). No exception for a server's game of
+    other content, whose wall aim with no free hex the engine leaves bare (`aims::nowhere(None,
+    …)`, `original` 0): `pointer::legal` names every aim by its key before the mouse sees it
+    (`aims::name`, the lookup `book_did` uses), so it reaches the mouse as 12 or 13, 182 and Fire
+    Wall's shade (corrected at E17 M6 T7b, R8-2: "24 and no shade" never happened).
   - Recorded (M6 T5a's capture): the stills `msg-cursed` (748), `msg-quake` (183), `msg-mine`
     (186), `msg-clone` (186) and `msg-sacrifice` (186) exact; `msg-remove` (a Fort's siege, the
     Catapult's turn) 713 the box exact, 548 pixels at the lower tower: after the book closes the
@@ -7483,9 +7500,10 @@ Bloodlust glow), T5d2b the hero's cast's (Ice Bolt's explosion, the Familiars' c
   Bloodlust case (0x5A11F3) applies the effect to the stack on the hex (`stack_apply_spell`), writes
   the line, and unless hidden glows as a hero's (0x5A122B: 20 redraws at trunc(100 F), the flag
   cleared and a redraw at once, §7.26); no branch on the caster kind. The common tail (0x5A2058)
-  shows every box's count again and, for a creature (kind 1), `outline_turn_stack` (0x5A216B):
-  the caster standing, outlined, a redraw at once; then `creature_cast_action` waits for its shot
-  sound and turns back (0x4486E2).
+  shows every box's count again and, for every caster (no branch on the kind before the call,
+  §7.16; E17 M6 T7b, R11-4), `outline_turn_stack` (0x5A216B): here the caster, a creature,
+  standing, outlined, a redraw at once; then `creature_cast_action` waits for its shot sound and
+  turns back (0x4486E2).
 - **A creature's line** (`battle_log_cast`, caster kind 1, 0x5A8BDD): a switch on the spell gives
   the spells 42, 62, 70 to 75 and 78 rows of their own (Stone Gaze 70, Poison 71 among them);
   every other spell, Bloodlust's 43 among them, the default (0x5A902A): the stack whose turn it is
@@ -7574,6 +7592,15 @@ hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
   on one stream, so at a fast speed the fill cuts the drain (the category's other three handles
   not built, §8.2); a creature's Ice Bolt (a Faerie Dragon's) still takes effect at once, without
   its frames, projectile or explosion (M6 review list item 45).
+- **Built (T7b, R11-5): the rebirth before the tail.** Every damage spell's handler ends in the
+  Phoenixes' rebirth check (`phoenix_rebirth_check` 0x469440 called from 0x5A0A26, 0x5A0B02,
+  0x5A0B8F, 0x5A0BFF, 0x5A0C1B, 0x5A0E74, 0x5A4B95, 0x5A524B and 0x5A6C61; it plays
+  Resurrection's sound and calls `raise_stack` itself, 0x469588 to 0x4695AD) before the jump to
+  the common tail: a reborn stack is raised before the hero's last frames, standing and the
+  channel. `Player::cast` takes the `Reborn` events that follow the cast's effects and raises
+  them after its handler (the main loop had drawn them after the hero stood). *Provisional:* the
+  rebirth itself is not recorded; a creature's cast (a Faerie Dragon's area spell) still raises
+  after its tail and its turn back.
 - **Recorded** in the original, in hot seat (`seq-channel.toml`: Orrin with one Familiar and
   five Royal Griffins, Crag Hack with four Familiars and five Cerberi, both with Ice Bolt and
   10 spell points; nothing rolled, no seed): `channel` and `channel-sound`, 145 frames each,
@@ -7596,7 +7623,8 @@ as it ended, before `GameEnded`. Every reader took each `Events` message for a c
 sequence's commands moved one place (`drawn`: 81 of 91 sequences changed or failing, `walk`'s
 Champions without their outline and hint at 0 ms).
 
-- **The start told is not a command** (`record::opens`, `opening_at`, `opening`, `commands`;
+- **The start told is not a command** (`record::opens`, `opening_at`, `opening`, `commands`,
+  `commands_from` (a growing record's new ones: `Battle::take_served`, E17 M6 T7b, R12-4);
   `Record::opening`, `commands`, `events`; *provisional*): a record's first `Events` message is
   the start's when it opens with `ObstaclePlaced` (the defender's mines), `TacticsStarted` or
   `TurnStarted` (the first activation, a war machine's or turret's acting on its own too); a

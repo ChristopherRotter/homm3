@@ -67,6 +67,12 @@ const CHANGED: Did = Did {
     closed: false,
 };
 
+/// [`CHANGED`] with a DEF button's own press sample.
+const PRESSED: Did = Did {
+    button_sound: true,
+    ..CHANGED
+};
+
 #[test]
 fn the_layout_holds_the_executables_items() {
     // Design §12.12: at (159, 84) with its shadow, the picture, Default, OK, the 20 bars, the
@@ -205,7 +211,8 @@ fn a_button_needs_its_release_over_it() {
     assert_eq!(o.moved(point), Did::default());
     assert_eq!(o.moved([0, 0]), CHANGED);
     assert!(!o.window.shown.state(SPEEDS + 1).pressed);
-    assert_eq!(o.moved(point), CHANGED);
+    // Back over it: pressed again with its own sample alone (0x4563A2; E17 M6 T7b, R4-3).
+    assert_eq!(o.moved(point), PRESSED);
     assert_eq!(o.moved([0, 0]), CHANGED);
     assert_eq!(o.release(), CHANGED);
     assert_eq!(o.settings.speed, 0);
@@ -309,7 +316,8 @@ fn the_oks_click_or_its_key_closes() {
     // Its key: down presses it (nothing else meanwhile), the other key's release does nothing,
     // its own clicks it.
     let mut o = open(Settings::FIRST_RUN, true);
-    assert_eq!(o.key("Escape"), CHANGED);
+    // Its press sample as the key goes down (0x4565E7; E17 M6 T7b, R4-3).
+    assert_eq!(o.key("Escape"), PRESSED);
     assert!(o.window.shown.state(OK).pressed);
     assert_eq!(o.key("Return"), Did::default());
     assert_eq!(o.press(centre(&o, BOXES)), Did::default());
@@ -417,16 +425,17 @@ fn the_key_f5_cycles_the_army_info_level_and_its_file_keeps_it() {
             ..Settings::FIRST_RUN
         }
     );
-    assert_eq!(Settings::read(Some(&s.write())), Ok(s));
+    assert_eq!(Settings::read(Some(&s.write())), Ok((s, Vec::new())));
 }
 
 #[test]
 fn the_settings_file_is_read_as_the_registry() {
     // No file, or no music volume: a first run's.
-    assert_eq!(Settings::read(None), Ok(Settings::FIRST_RUN));
-    assert_eq!(Settings::read(Some("")), Ok(Settings::FIRST_RUN));
+    let first = Ok((Settings::FIRST_RUN, Vec::new()));
+    assert_eq!(Settings::read(None), first);
+    assert_eq!(Settings::read(Some("")), first);
     let other = "[map]\nscroll = 3\n[battle]\ncombat_speed = 2\n";
-    assert_eq!(Settings::read(Some(other)), Ok(Settings::FIRST_RUN));
+    assert_eq!(Settings::read(Some(other)), first);
     // Written and read back.
     let set = Settings {
         speed: 1,
@@ -440,32 +449,99 @@ fn the_settings_file_is_read_as_the_registry() {
         army_info: 2,
         ..Settings::CAPTURE
     };
-    assert_eq!(Settings::read(Some(&set.write())), Ok(set));
+    assert_eq!(Settings::read(Some(&set.write())), Ok((set, Vec::new())));
     // Missing values 0; the flags their low bit, the ranges as `settings_check`'s; the last
     // volumes the volumes.
     let odd = "[battle]\nmusic_volume = 12\nsound_volume = -1\ncombat_speed = 3\n\
                combat_army_info_level = 2\nshow_combat_grid = 3\ncombat_ballista = 2\n\
                last_music_volume = 1\n";
+    let checked = Settings {
+        music: 5,
+        effects: 5,
+        last_music: 5,
+        last_effects: 5,
+        grid: true,
+        army_info: 2,
+        auto: [false; 5],
+        ..Settings::CAPTURE
+    };
+    assert_eq!(Settings::read(Some(odd)), Ok((checked, Vec::new())));
+    // A name it does not know or a value not an integer is missing, told in a line (E17 M6 T7b,
+    // R4-5: another version's file, a hand edit): the rest is read.
+    let later = "[battle]\nmusic_volume = 3\nwalk_speed = 1\nshow_combat_grid = true\n";
+    let (read, mut notes) = Settings::read(Some(later)).unwrap();
     assert_eq!(
-        Settings::read(Some(odd)),
-        Ok(Settings {
-            music: 5,
-            effects: 5,
-            last_music: 5,
-            last_effects: 5,
-            grid: true,
-            army_info: 2,
+        read,
+        Settings {
+            music: 3,
+            last_music: 3,
             auto: [false; 5],
             ..Settings::CAPTURE
-        })
+        }
     );
-    let errors = [
+    notes.sort_unstable();
+    assert_eq!(
+        notes,
+        [
+            "battle.show_combat_grid: not an integer, taken as missing",
+            "battle: no setting `walk_speed`, left out"
+        ]
+    );
+    let (read, notes) = Settings::read(Some("[battle]\nmusic_volume = \"5\"")).unwrap();
+    assert_eq!((read, notes.len()), (Settings::FIRST_RUN, 1));
+    // Not TOML (a file cut in a name), `battle` not a table: refused.
+    for text in [
         "[battle",
         "battle = 1",
-        "[battle]\nmusic_volume = \"5\"",
-        "[battle]\nmusic = 5",
-    ];
-    for text in errors {
+        "[battle]\nmusic_volume = 5\ncombat_army_info_le",
+    ] {
         assert!(Settings::read(Some(text)).is_err(), "{text}");
     }
+}
+
+#[test]
+fn the_help_never_opens_over_a_button_the_mouse_holds() {
+    // E17 M6 T7b (R4-2): a DEF button the mouse holds runs its own loop (0x45641C), which drops
+    // the right press: no help, the chosen (disabled) speed's and a box's held aside.
+    let mut o = open(Settings::FIRST_RUN, true);
+    let default = centre(&o, DEFAULT);
+    o.press(default);
+    assert_eq!(o.help_at(default), None);
+    assert_eq!(o.help_at(centre(&o, OK)), None);
+    o.moved([0, 0]);
+    assert_eq!(o.help_at(centre(&o, OK)), None);
+    assert!(o.release().changed && !o.clicked);
+    assert!(o.help_at(default).is_some());
+    o.press(centre(&o, SPEEDS));
+    assert!(o.help_at(centre(&o, SPEEDS)).is_some());
+    o.press(centre(&o, BOXES));
+    assert!(o.help_at(centre(&o, BOXES)).is_some());
+}
+
+#[test]
+fn what_the_help_s_popup_took_the_release_of_goes_without_its_click() {
+    // E17 M6 T7b (R4-2, CLT-Q39's fix): the popup took the left release or the key's: what was
+    // held goes, nothing clicked, the next press and release the dialog's again.
+    let mut o = open(Settings::FIRST_RUN, true);
+    o.press(centre(&o, BOXES));
+    assert_eq!(o.let_go(Some("Return")), Did::default());
+    assert_eq!(o.let_go(None), Did::default());
+    assert_eq!(o.release(), Did::default());
+    assert!(!o.settings.grid && !o.clicked);
+    // A DEF button by the mouse (the window's loop opens no help over it): drawn up again.
+    o.press(centre(&o, DEFAULT));
+    assert_eq!(o.let_go(Some("Return")), Did::default());
+    assert_eq!(o.let_go(None), CHANGED);
+    assert!(!o.window.shown.state(DEFAULT).pressed);
+    assert_eq!(o.release(), Did::default());
+    // The OK by its key: its other key and the mouse let nothing go; its own key does.
+    o.key("Return");
+    assert_eq!(o.let_go(None), Did::default());
+    assert_eq!(o.let_go(Some("Escape")), Did::default());
+    assert_eq!(o.let_go(Some("Return")), CHANGED);
+    assert!(!o.window.shown.state(OK).pressed);
+    assert_eq!(o.key_up("Return"), Did::default());
+    let (pressed, released) = click(&mut o, BOXES);
+    assert!(pressed.box_sound && released.changed && o.settings.grid && o.clicked);
+    assert_eq!(o.let_go(None), Did::default());
 }

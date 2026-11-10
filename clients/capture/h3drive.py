@@ -1815,8 +1815,10 @@ def mask_inputs(entry, drew, t, stem):
     count is not the original's); without, the poses and the boxes' places (masked where the
     poses show them, `h3cap.boxes_at`, and where the viewer drew them). A change there changes
     what the frame check masks or compares, so the recorded count no longer holds although the
-    pixels are the same. (The rest those masks read is fixed by the entry and `kept/`: the
-    original's counts and log text, the scenario's stacks and obstacles.)"""
+    pixels are the same. (The rest those masks read is fixed by the entry and by the capture
+    `kept/` was taken from, whose `frames.jsonl` holds them and which [`kept_or_not`] keeps only
+    when its counts were as recorded: the original's counts and log text, the scenario's stacks
+    and obstacles; `kept/` itself holds only the times, fidgets and heroes, E17 M6 T7b, R11-6.)"""
     drawn, boxed, texts = drew
     if entry.get("boxes"):
         boxes = boxed.get(t, [])

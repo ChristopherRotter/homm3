@@ -115,8 +115,13 @@ pub type Answers = Vec<(u32, bool)>;
 /// next draw of a roll and moves nothing (the engine's rolls are its seed's); `aim:<k>:<n>` (E17
 /// M5 T3b) opens the book and clicks its place `k`, whose spell numbered `n` in the original
 /// (`handle` gives its handle) takes a target: the aim starts with the mouse there; `key:Escape`
-/// gives an aim up. E17 M5 T4c1 (design §7.22): Auto Combat's key (`key:a`, the original's
-/// table) switches it on ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
+/// gives an aim up. E17 M6 T2a2b1: `look:<x>,<y>` presses a stack to look at, its stats dialog,
+/// and only `cast-button:<x>,<y>:<n>` may follow it (the dialog's other input is a still's, the
+/// reviewer's R2-4): its aim of the spell numbered `n`, whose first `hex:` or `click:` (or
+/// `key:Escape`) ends it and closes the dialog (*not modelled:* a press the aim does not take,
+/// which the window's aim goes on after; a sequence presses a target it takes). E17 M5 T4c1
+/// (design §7.22): Auto Combat's key (`key:a`, the original's table) switches it on
+/// ([`Input::Auto`]); while it plays, a `key:`, `hex:` or `click:` stops it
 /// ([`Input::Stop`]: the click moves the mouse and gives nothing); each in the turn started last
 /// by its time ([`turn_at`]; the switch trusted to come on a human's waiting turn, as the
 /// harness pressed it, T8b2 R5c-8). E17 M5 T4c2b: a battle that
@@ -170,6 +175,9 @@ pub fn answering(
     // The stats dialog's cast button's aim under way (E17 M6 T2a2b1): the dialog's close comes as
     // it ends.
     let mut look_aim = false;
+    // A `look:` just pressed: only its cast button may follow (the reviewer's R2-4: the dialog's
+    // OK and its other input are the stills', `spellbook::still`).
+    let mut looking = false;
     let mut shades = shades;
     let mut out = vec![
         Input::Shades {
@@ -193,6 +201,11 @@ pub fn answering(
     for action in actions {
         let (kind, arg) = action.split_once(':').unwrap_or((action, ""));
         let after_cast = core::mem::take(&mut cast_pending);
+        if core::mem::take(&mut looking) && kind != "cast-button" {
+            return Err(format!(
+                "`{action}`: after `look:` only `cast-button:` (the dialog's other input: a still's)"
+            ));
+        }
         match kind {
             // Auto Combat's question or offer answered (E17 M6 T5b2a): its OK or its Cancel.
             "key" if matches!(arg, "Return" | "Escape") && open(now) => {
@@ -231,15 +244,18 @@ pub fn answering(
                 out.push(Input::Move { at: now, to: PARK });
             }
             // A press on a stack to look at: its stats dialog, modal, the park's move its own
-            // (E17 M6 T2a2b1).
-            "look" => out.extend([
-                Input::Move {
-                    at: now,
-                    to: point(arg)?,
-                },
-                Input::Look { at: now },
-                Input::Move { at: now, to: PARK },
-            ]),
+            // (E17 M6 T2a2b1); its cast button next.
+            "look" => {
+                looking = true;
+                out.extend([
+                    Input::Move {
+                        at: now,
+                        to: point(arg)?,
+                    },
+                    Input::Look { at: now },
+                    Input::Move { at: now, to: PARK },
+                ]);
+            }
             // The dialog's cast button: the acting Faerie Dragon's aim of its drawn spell (its
             // number given), the mouse parked after the click; the dialog's close as it ends.
             "cast-button" => {
@@ -377,6 +393,9 @@ pub fn answering(
             }
             _ => return Err(format!("`{action}`: an unknown action")),
         }
+    }
+    if looking {
+        return Err(String::from("`look:` without its `cast-button:`"));
     }
     Ok((out, answers))
 }
@@ -673,14 +692,38 @@ fn times(record: &Record, timeline: &Timeline) -> Vec<(u32, Option<u8>)> {
     times
 }
 
-/// The engine's battle (of `turned`) the turn whose acting stack is `stack` pairs with: the first
-/// from `next` on with it (`next` then after it).
+/// The engine's battle (of `turned`) the turn whose acting stack is `stack` pairs with: the one at
+/// `next`, past those a hero's cast left ([`cast_left`]), if `stack` acts in it (`next` then after
+/// it). Else none, `next` kept (E17 M6 T7b, R5-2): no command waited for the turn (a stack the
+/// pick passes over, a berserk one's automatic turn, a war machine the engine plays, a seat's
+/// opponent's turn). Before, the first from `next` on with `stack` paired: a passed turn took its
+/// stack's next commanded battle, rounds later, and every turn after it shifted.
 fn pair(turned: &[Turned], next: &mut usize, stack: Option<u8>) -> Option<usize> {
-    let found = (*next..turned.len()).find(|&i| turned[i].observation.active == stack);
-    if let Some(i) = found {
-        *next = i + 1;
+    let at = (*next..turned.len()).find(|&i| !cast_left(turned, i))?;
+    let found = (turned[at].observation.active == stack).then_some(at);
+    if found.is_some() {
+        *next = at + 1;
     }
     found
+}
+
+/// Whether `turned`'s battle `i` is the one a hero's cast left (E17 M6 T5b1: the cast starts no
+/// turn, so no turn of the timeline pairs with it): the battle before it in the same round with
+/// the same acting stack, a hero's casts this round fewer. (A stack's wait and its waited turn,
+/// or its morale's turn, follow one another with the casts the same.)
+fn cast_left(turned: &[Turned], i: usize) -> bool {
+    let casts = |o: &Observation| -> u16 {
+        (o.sides.iter())
+            .filter_map(|s| s.hero.as_ref())
+            .map(|h| u16::from(h.casts))
+            .sum()
+    };
+    let (Some(before), Some(now)) = (i.checked_sub(1).and_then(|b| turned.get(b)), turned.get(i))
+    else {
+        return false;
+    };
+    let (before, now) = (&before.observation, &now.observation);
+    before.active == now.active && before.round == now.round && casts(before) < casts(now)
 }
 
 /// The battle and the legal commands of the turn whose acting stack is `stack`, paired with
@@ -1550,6 +1593,125 @@ mod tests {
     }
 
     #[test]
+    fn a_turn_no_command_waited_for_leaves_the_later_turns_their_own_battles() {
+        // E17 M6 T7b (R5-2): `smoke` in hot seat without its Ballista, Orrin with Blind (power
+        // 3): the Archers' first turn casts it at the Goblins, then every command defends. The
+        // Goblins' turns pass while it lasts (no command waits for them: no battle of the
+        // engine's), and they are commanded again after. Every turn pairs with the battle its own
+        // command was given in (a cast's turn with the one before the cast), a passed one with
+        // none, and the turn waiting with the last.
+        use h3_view::anim::{Casts, Command as Given, Growing, Look, Speed};
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let tables = crate::assets::load(&dir.join("assets"), crate::assets::ALL).unwrap();
+        let layout = layout();
+        let (scenario, packs) = (dir.join("scenarios/smoke.toml"), dir.join("../packs"));
+        let text = std::fs::read_to_string(&scenario)
+            .unwrap()
+            .replace("attacker_war_machines = [\"base:ballista\"]\n", "")
+            .replacen(
+                "power = 1\nknowledge = 1\n",
+                "power = 3\nknowledge = 3\nmana = 30\nmax_mana = 30\n\
+                 spell_book = [\"base:blind\"]\n",
+                1,
+            );
+        let def = h3_pack_battle::parse_scenario(&text).unwrap();
+        let ruleset = crate::scenario::compiled(&def, &packs).unwrap();
+        let blind = (ruleset.spells().iter())
+            .position(|s| s.key.as_str() == "base:blind")
+            .unwrap();
+        let blind = u16::try_from(blind).unwrap();
+        let mut setup = crate::scenario::set_up(&def, &ruleset, 1).unwrap();
+        setup.human = [true, true];
+        let players = ([true, true], crate::live::Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, 1, players).unwrap();
+        let record = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let snapshot = record.first_snapshot().unwrap();
+        let goblins = (snapshot.stacks.iter())
+            .find(|s| s.side == Side::Defender && s.slot == 0)
+            .unwrap()
+            .id;
+        let look = Look {
+            frames: (0..24).map(|g| (g, 4)).collect(),
+            times: [3000, 500, 500, 100],
+            ..Look::default()
+        };
+        let looks = (snapshot.stacks.iter())
+            .map(|s| (s.creature, look.clone()))
+            .collect();
+        let (magic, casts) = (std::collections::BTreeMap::new(), Casts::default());
+        let stage = crate::motion::stage(&record, &tables, &layout, (&magic, &casts, None));
+        let mut growing = Growing::new(snapshot, &looks, stage, Speed::new(2), Some(1)).unwrap();
+        let mut turned: Vec<Turned> = live.turn().into_iter().collect();
+        // The timeline's turn (0 the opening's) each of `turned`'s battles waited in.
+        let mut waited = vec![0];
+        let mut cast = false;
+        for _ in 0..30 {
+            let observation = &turned.last().unwrap().observation;
+            let attacker = (observation.stacks.iter())
+                .find(|s| Some(s.id) == observation.active)
+                .is_some_and(|s| s.side == Side::Attacker);
+            let command = if attacker && !cast {
+                cast = true;
+                Command::Cast {
+                    spell: blind,
+                    target: h3_protocol::wire::Target::Stack { stack: goblins },
+                    second: h3_protocol::wire::Target::None {},
+                }
+            } else {
+                Command::Defend {}
+            };
+            let played = live.play(command).unwrap().unwrap();
+            let (events, seen): (Vec<_>, Vec<_>) = played.events.into_iter().unzip();
+            let given = Given {
+                at: Some(growing.timeline().end),
+                events: &events,
+            };
+            growing.push_seen(&given, false, &seen);
+            turned.push(live.turn().unwrap());
+            waited.push(growing.timeline().turns.len());
+        }
+        let timeline = growing.waiting();
+        let times = times(&record, &timeline);
+        // What each turn pairs with: the first battle waited in it.
+        let own: Vec<Option<usize>> = (0..times.len())
+            .map(|k| waited.iter().position(|&w| w == k))
+            .collect();
+        let passed: Vec<usize> = (0..times.len())
+            .filter(|&k| own[k].is_none() && times[k].1 == Some(goblins))
+            .collect();
+        let again = (passed.first()).is_some_and(|&p| {
+            (p + 1..times.len()).any(|k| times[k].1 == Some(goblins) && own[k].is_some())
+        });
+        assert!(cast && again, "{passed:?} {own:?}");
+        let mut next = 0;
+        let paired: Vec<Option<usize>> = (times.iter())
+            .map(|&(_, stack)| pair(&turned, &mut next, stack))
+            .collect();
+        assert_eq!(paired, own);
+        assert_eq!(paired.last(), Some(&Some(turned.len() - 1)));
+        // The follower's battles: the waiting turn's own.
+        let mut follower = Follower::default();
+        follower.read(&record, (&timeline, &turned), &tables, (0, true));
+        let last = turned.last().map(|t| &t.observation);
+        assert_eq!(follower.observation(times.len() - 1), last);
+        // A wait's battle and its waited turn's, one stack's with the casts the same, are two
+        // turns: a passed turn between them pairs with none, and the waited turn with its own.
+        let battle = |active: u8, round: u16| {
+            let mut turn = turned[0].clone();
+            (turn.observation.active, turn.observation.round) = (Some(active), round);
+            turn
+        };
+        let (d, c) = (goblins + 1, goblins);
+        let battles = [battle(d, 1), battle(d, 1), battle(c, 2)];
+        let mut next = 0;
+        let paired: Vec<Option<usize>> = [d, c, d, c]
+            .into_iter()
+            .map(|stack| pair(&battles, &mut next, Some(stack)))
+            .collect();
+        assert_eq!(paired, [Some(0), None, Some(1), Some(2)]);
+    }
+
+    #[test]
     fn auto_combat_s_question_takes_its_answers_and_stops_nothing() {
         // E17 M6 T5b2a: inside a question's span Return, Escape and a click answer its boxes (the
         // click's moves the box's), Auto Combat staying on; outside it a key stops it.
@@ -1810,6 +1972,16 @@ mod tests {
         // A spell without a handle, or no spell, is an error.
         assert!(run(&["cast-button:30,40:22"]).is_err());
         assert!(run(&["cast-button:30,40"]).is_err());
+        // The reviewer's R2-4: after a look only its cast button (the dialog's OK, moves and
+        // keys are a still's), and a look ends no sequence.
+        for actions in [
+            &["look:10,20", "key:Return"][..],
+            &["look:10,20", "click:30,40"],
+            &["look:10,20", "move:30,40"],
+            &["look:10,20"],
+        ] {
+            assert!(run(actions).is_err(), "{actions:?}");
+        }
     }
 
     #[test]

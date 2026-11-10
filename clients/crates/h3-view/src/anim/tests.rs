@@ -4185,6 +4185,30 @@ fn rolled_effects_without_their_stack_or_a_long_enough_animation() {
     )));
 }
 
+#[test]
+fn fear_s_number_saturates_on_a_hostile_record_s_counts() {
+    // Two frightening stacks of `u32::MAX` creatures (a served record's counts are not
+    // bounded): the line's number saturates (R11-1; overflow checks are on in release).
+    let mut first = at(1, Side::Defender, BLACK_DRAGON, 100, true);
+    first.count = u32::MAX;
+    let mut second = at(2, Side::Defender, BLACK_DRAGON, 151, true);
+    second.count = u32::MAX;
+    let o = snapshot(vec![
+        at(0, Side::Attacker, CHAMPION, 35, true),
+        first,
+        second,
+    ]);
+    let events = vec![Event::Frightened { stack: 0 }];
+    let t = play_rolls(&o, &[(Some(0), events)], &roll_magic(), &[BLACK_DRAGON]);
+    let fear = Logged::Fear {
+        stack: 0,
+        count: 40,
+        by: 1,
+        number: u32::MAX,
+    };
+    assert!(t.log.iter().any(|(_, l)| *l == fear), "{:?}", t.log);
+}
+
 /// The magic animations of the striker's effects and the spells after a strike (E17 M3
 /// T7b-2b-3): the bolt from the sky (one frame, above the creature), 49 (12 frames), Poison's 67
 /// (5), Life Drain's 74 (4, translucent), Death Stare's 80 (3) and the acid's 81 (4).
