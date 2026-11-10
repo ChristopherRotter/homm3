@@ -2232,3 +2232,47 @@ branch (#816) on `master` 4701369.
   resolves to its index; the buildings through each record's `building_by_key`, one list per
   faction, empty exactly where a faction has no town); round trips; the JSON form.
 - **No message, no version step** (T5 sends it).
+
+### M5 T5a — the whole game's messages and the in-process game session (2026-11-10)
+
+T5's split (the user, 2026-11-10): T5a the messages and a sans-I/O session; T5b the journal, the
+restore and each viewer's record (record format v4); T5c each viewer's newly seen tiles once the
+adventure lane's SRV-Q26 query lands. T4 goes into `master` with T5a in one pull request (the
+user). Baseline: T4's branch (`server/e16-m5-t4`) with `master` b1d2e94 merged in (CI green on
+b1d2e94; the scoped verify passed).
+
+- **The messages** (`ServerMessage`, protocol **v39**; provisional): `GameSnapshot { n,
+  observation }` (a player's whole game, when the game starts), `GameEvents { n, events }` (after
+  every accepted command, to every player, also empty), `GameTurn { n, legal, castable }` (the
+  player's legal commands but its moves, as `h3_game::legal_commands` gives them, and while its
+  battle side is to act the spells its hero may cast, as the battle's `YourTurn` lists casts),
+  `GameAccepted { n, seq, command }` and `GameRejected { n, seq, code }`. A game's battle opens
+  with the battle wire's own `Snapshot` (SRV-Q27 (1)); its events stay inside `GameEvents`. No
+  client message yet: in-process the host names the player (part 2's network seats send one).
+- **The session** (`session::game::GameSession`, `h3-protocol`, sans I/O; provisional):
+  `start(rules, setup, seed, manifest, out)` builds the game (`GameState::new`) and sends every
+  player its `GameSnapshot`, then each that may act its `GameTurn`; `play(player, seq, command,
+  out)` applies the wire command as `Actor::Player(player)` (the host's word, ADR-0018 point 6;
+  `command_to_engine` first, so a building beyond any record is refused before the engine), then
+  `GameAccepted` to the player, `GameEvents` to every player, a battle's `Snapshot` to a player
+  whose view gains a battle (one told `BattleStarted`, or one whose view held none), and
+  `GameTurn` to each player that may act; a rejection is told to its player alone and returned,
+  a player outside the game is told nothing. `system(command, out)` is the system actor's (an
+  unowned battle side's), told to nobody but its events; `system_legal()` its legal commands.
+  The frames (`GameOutbound { to, frame }`) are per player; the host delivers them (T5b records
+  them). The manifest is the session's (`manifest()`), for the record's header (T5b) and part
+  2's join.
+- **Gaps:** `SRV-STUB-14`, a game's battle's last snapshot when it ends (SRV-Q27 (1); the battle
+  session's v38 last `Snapshot`): the ending command closes the battle in `h3_game`, so the
+  session cannot observe it as it ended (the adventure lane's inbox). A hero's moves are not in
+  `GameTurn` (`h3_game::legal_moves`, a query with part 2). `SRV-STUB-1` stays (T5c).
+- **Tests** (`tests/game_session.rs`): the 55 golden replays through the session beside the
+  engine (14 264 commands, 4 062 the system actor's): every command accepted, the state hash
+  equal after each and the replay's at the end; each player's messages in order and numbered on
+  (the echo, its projected events, a battle's snapshot equal to `observe`'s battle exactly when
+  one opens for it, 99 of them, its view holding a battle exactly when the engine's does, its turn
+  equal to `legal_commands` and the castable spells, 1 305 turns with spells); a rejection told
+  to its player alone with the state unchanged (out of turn, a building beyond any record, a
+  player outside the game, the system's end of turn); a setup that starts no game sends nothing.
+  The golden replays' loading is shared with the fold's gate (`game_fold::golden`). The wire
+  tests round-trip the five messages and pin their JSON form.

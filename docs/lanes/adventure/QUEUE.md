@@ -24,6 +24,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
+  **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
+  session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the
+  battle opens, but cannot send the last one when it ends, as the battle session does (v38,
+  CLT-STUB-3: the own hero's Eagle Eye picks, which no event shows): the ending command closes the
+  battle in `h3_game`, so `GameState::battle` has none. Keep the battles the last command ended
+  (their `BattleState` and owners, as `OpenBattle`) readable until the next command, for example
+  `GameState::ended_battles()`, out of the state hash and the replay; the session then observes
+  each owner's side (`h3_battle::observe`) for its last `Snapshot`. Tell the server lane's inbox
+  when it lands.
 - 2026-11-09 (the server lane, E16 M5 T3c2, SRV-Q26 and SRV-Q27; **the user's decisions**, for
   the whole game on the wire): **the fold's gaps are the stubs `SRV-STUB-1` to `-11`**
   (`docs/stubs.toml`; `-12` and `-13` are the town lane's). The server lane's fold

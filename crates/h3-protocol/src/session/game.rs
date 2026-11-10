@@ -35,8 +35,11 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_battle::BattleSide;
 use h3_contracts::PlayerId;
-use h3_game::{Actor, GameRuleset, GameSetup, GameSetupError, GameState, Viewer as EngineViewer};
+use h3_game::{
+    Actor, GameRuleset, GameSetup, GameSetupError, GameState, OpenBattle, Viewer as EngineViewer,
+};
 
 use crate::codec;
 use crate::map;
@@ -149,13 +152,12 @@ impl<'r> GameSession<'r> {
                 Err(code)
             }
             Ok((command, events)) => {
-                if let Some(viewer) = self.viewers.get_mut(player.index()) {
-                    viewer.post(
-                        player,
-                        |n| ServerMessage::GameAccepted { n, seq, command },
-                        out,
-                    );
-                }
+                // The engine accepts only a player of the game's command.
+                self.viewers[player.index()].post(
+                    player,
+                    |n| ServerMessage::GameAccepted { n, seq, command },
+                    out,
+                );
                 self.tell(&events, out);
                 Ok(())
             }
@@ -227,10 +229,7 @@ impl<'r> GameSession<'r> {
                     .iter()
                     .any(|e| matches!(e, GameEvent::BattleEnded { .. }));
             viewer.post(player, |n| ServerMessage::GameEvents { n, events }, out);
-            let open = self
-                .state
-                .battle(player)
-                .and_then(|battle| Some((battle, battle.side_of(player)?)));
+            let open = own_battle(&self.state, player);
             if let Some((battle, side)) = open
                 && (started || !held)
             {
@@ -254,14 +253,9 @@ impl<'r> GameSession<'r> {
             if legal.is_empty() {
                 continue;
             }
-            let castable = self
-                .state
-                .battle(player)
-                .and_then(|battle| {
-                    let side = battle.side_of(player)?;
-                    (battle.state().side_to_act() == Some(side))
-                        .then(|| map::castable(battle.state(), self.rules.battle(), side))
-                })
+            let castable = own_battle(&self.state, player)
+                .filter(|(battle, side)| battle.state().side_to_act() == Some(*side))
+                .map(|(battle, side)| map::castable(battle.state(), self.rules.battle(), side))
                 .unwrap_or_default();
             viewer.post(
                 player,
@@ -270,6 +264,14 @@ impl<'r> GameSession<'r> {
             );
         }
     }
+}
+
+/// `player`'s battle, its first open decision's, with the side it owns there (it owns one: the
+/// decision is its own).
+fn own_battle(state: &GameState, player: PlayerId) -> Option<(&OpenBattle, BattleSide)> {
+    state
+        .battle(player)
+        .and_then(|battle| battle.side_of(player).map(|side| (battle, side)))
 }
 
 /// The players by index, as many as the game has (at most 256: `PlayerId`'s range).
