@@ -4551,7 +4551,8 @@ Q21 (the user, 2026-10-23).
   hit roll `wall_hit_draw` 0x445F25 (random(1, 100) up to the target kind's chance), a miss
   between two equally near walls `wall_miss_tie_draw` 0x445F6C (up to 50 the later), the next
   shot's new target at a tie `wall_retarget_tie_draw` 0x445E44, the automatic aim among the
-  weakest walls `catapult_tie_draw` 0x473DA0 (random(1, k), drawn even for k = 1), Earthquake's
+  weakest walls `catapult_tie_draw` 0x473DA0 (random(1, k); no draw for k = 1: `random_between`
+  0x50B230 returns an equal bound before `crt_rand`, 0x50B23A), Earthquake's
   target `quake_target_draw` 0x5A7DD8 (random(1, k): the k-th standing target with hit points
   left). The turrets' damage (random(2, 4) per creature, 0x465D3E) stays free: the engine's seed
   is searched to match the line and the box.
@@ -5817,14 +5818,17 @@ frames.
 - **Oddities** (asked: 1, 2 and 10 as CLT-Q43, 7 and 8 as CLT-Q44; 4 with T4b's army info;
   3, 5, 6 and 9 copied without a question, the agent's call: a slider's track, the default
   level, a label's source and ids without items show nothing a player would call a slip):
-  1. The speed buttons sound twice: `button_press` plays `button.wav`, then the procedure's press
-     path plays it again, its range 225 to 238 holding 230 to 232. (Doubted at E17 M6 T7b, R4-3:
-     the procedure plays only on a 0x200/0xC whose cursor item is 225 to 238, 0x46F855 →
-     0x46FDB1, and a DEF button's mouse press sends it none, its own loop copying each message
-     over the caller's, 0x45643F, and returning only 0x200/0xD at the release, 0x456496: one
-     click. CLT-Q74.)
+  1. ~~The speed buttons sound twice~~ (the first reading: `button_press` plays `button.wav`,
+     then the procedure's press path again, its range 225 to 238 holding 230 to 232). Read again
+     at E17 M6 T7b (R4-3): the procedure plays only on a 0x200/0xC whose cursor item is 225 to
+     238, 0x46F855 → 0x46FDB1, and a DEF button's mouse press sends it none, its own loop copying
+     each message over the caller's, 0x45643F, and returning only 0x200/0xD at the release,
+     0x456496: **one click** (CLT-Q74, the user's answer: built so in both profiles, M7 T1a; a
+     sound sequence pressing a speed to confirm it, M7 T1c). No oddity.
   2. A box or a bar acts on the left release anywhere: its press inside is enough
      (`dialog_def_message`'s release tests no box), where a DEF button needs the release inside.
+     Fixed in the client's profile (CLT-Q43 (2), M7 T1a): the release inside the pressed item
+     alone.
   3. The hidden bars take clicks and right presses (above): the whole track is live, drawn or not.
   4. The level's help rows (425, 426) speak of a right click on a unit; the level's readers are
      the hover's army info windows (0x4755F0; 1 and 2 told apart at 0x4756CC), the heroes' windows
@@ -5835,13 +5839,17 @@ frames.
   6. The Ballista's label is GENRLTXT 152, the creature's name row, the other four labels the
      dialog's block (399 to 402).
   7. The no-sound box tests the volume before the click: at 0 without a driver no bar works (bar
-     0 included); above 0 without a driver every bar does, silently.
+     0 included); above 0 without a driver every bar does, silently. The client's profile never
+     refuses (CLT-Q44 (c), M7 T1a: its settings kept for a device later); the original's guard
+     for the comparisons (`options-no-sound`).
   8. The effects bars also write Last Sound Volume; the music bars leave Last Music Volume
      (0x698768) alone (the system options do the same).
   9. The procedure's ids reach 222 to 224 (nothing; their help rows 414 to 416 name a music
      type choice the dialog lacks).
   10. After the close the cursor stays the dialog's arrow, and the status line and the hovered
-     hex as they were, until the mouse moves (nothing posted).
+     hex as they were, until the mouse moves (nothing posted). Fixed in the client's profile
+     (CLT-Q43 (3), M7 T1a): the window posts the mouse at the close (the hex forgotten, the mouse
+     taken where it rests, after the level the dialog set); the stills keep the original's arrow.
 - **The client's (M6 T4a, *provisional* where marked).** `h3_view::options` holds the dialog
   (the layout's `[options]`; its texts' ids 240 to 256 the client's, the executable's all −1),
   the settings (`Settings`: a first run's, `settings_check`'s ranges, the file's read and write)
@@ -5854,9 +5862,11 @@ frames.
   and both volumes (`sound_volume` on every SDL gain: the music's by its setting, every other
   stream's by the effects'; the first run's 5 makes the client's sound 6/10 of what it was before
   T4a); the press samples are `button.wav` on the creature channels, the DEF buttons' at its
-  loader's 127 (*provisional*: `button_press`' category not read), the procedure's at 0x40. The
-  no-sound guard tests the client's audio device (none with `--mute` or without a device) and
-  each column's own volume. Kept only: the grid, both shadows, the spell book's animation (T4c;
+  loader's 127 (*provisional*: `button_press`' category not read), the procedure's at 0x40 (the
+  boxes' alone since M7 T1a, CLT-Q74). The profile (`Open::new`'s `Bugs`: the window's `Fixed`,
+  the stills' `Original`) decides oddities 2 and 7 (M7 T1a): in the original's the no-sound
+  guard tests the client's audio device (none with `--mute` or without a device) and each
+  column's own volume; the client's never refuses. Kept only: the grid, both shadows, the spell book's animation (T4c;
   the page-turn videos are not built), the Auto Combat options and the army info level (T4b),
   the keys F5 to F8. The stills use the harness's settings (`Settings::CAPTURE`, `setup.sh`'s
   registry) without a sound device, so a capture's volume bars at 0 open GENRLTXT 151's box
@@ -6571,7 +6581,11 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     shade too).
   - The mouse's follow (`mouse::track`, `Shown::shades`, a tenth list): `Input::Shades { options,
     keyed }` (the opening's and the dialog's close compose; F6 to F8 are `battle_set_shades`'
-    effects with the posted move and `Logged::Settle` on a human's turn, else the pointer); every
+    effects with the posted move and `Logged::Settle` on a human's turn, else the pointer and,
+    before the turn's action, the acting stack's `shades::overlay` drawn with the movement
+    shadow until the action starts: CLT-Q75 (a), both profiles, M7 T1a; none in the tactics
+    phase or for a stack whose commands the client does not know, a seat's opponent's,
+    *provisional*); every
     move the battle takes `Cells::mouse` with `screen_hex` before the field's test; an action's
     start `Cells::action` (*provisional*: the blocks put back go there too, the overlay's redraw
     taken for a composition) and no reach; a human turn's start its reach and posted move. The
@@ -6600,8 +6614,10 @@ its hold of the option (0x462A4E to 0x462A59, 0x463005).
     0x4751CC to 0x47528D not read for the list).
   - The window: the keys `grid` F6, `cursor-shadow` F7 and `movement-shadow` F8
     (`keys::Command::Shades`, the battle's context; Ctrl+F5 to Ctrl+F8 stay the window's own),
-    taken while the battle takes its keys (*provisional*; CLT-Q75) and carried by Auto Combat's
-    stop as F5; `toggle_shades` writes the settings file at once; the options dialog's close is
+    taken on every turn once its last action played (`Battle::takes_keys`; CLT-Q75 (a), M7 T1a:
+    a key during an action dropped as the original's queue is emptied at the next turn's start,
+    *provisional* for a remote turn, which the original's would take it in), and carried by
+    Auto Combat's stop as F5; `toggle_shades` writes the settings file at once; the options dialog's close is
     a composition; an aim's movement shadow off is the mouse's follow's alone (`Options::aiming`
     in `track`): neither the settings nor the file change (oddity 8 not copied, *provisional*;
     E17 M6 T7b, R7-2: the window's block that saved it, `Battle::aim_original`, read the aims'

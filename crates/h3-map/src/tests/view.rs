@@ -36,10 +36,14 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// draw in the other game. So made, the towns draw nothing a view shows (an owned standard set's
 /// level-2 dwelling with a Fort, TWN-SET-003, is its owner's to see since E09 T18b2a,
 /// TWN-VEW-004, so no owned town has that set), and no main town generates a hero, so that the
-/// viewer's heroes keep the armies and experience the property gives them.
+/// viewer's heroes keep the armies and experience the property gives them. (E08 T106b1) Without
+/// the teleporters until [`vary`] knows them (T106b2, decision 291): an unseen exit or gate removed
+/// or moved changes another player's jump, so that the viewer may see a hero arrive in one game
+/// alone.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
     plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
+        plan.teleporters.clear();
         plan
     })
 }
@@ -1496,7 +1500,16 @@ fn check_told(
     // since its owner's last step widened at the day's start), or (E09 T9b2a) by a capture's
     // reveal to its new owner, which a siege's last command, another player's or the system's,
     // may bring (TWN-CAP-001, TWN-CAP-003).
-    let captor = captured.iter().any(|&(_, owner)| owner == viewer);
+    // (E08 T106b1) Or by a jump of its own hero held after a battle at the exit, which the
+    // battle's last command gives it, another player's or the system's (GAM-DEC-007 amended,
+    // ADV-TEL-007): the arrival explores around the exit.
+    let jumper = told.iter().any(|e| {
+        matches!(e, GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroTeleported { hero, .. },
+            ..
+        }) if after.adventure.heroes.iter().any(|h| h.id == *hero && h.owner == viewer))
+    });
+    let captor = captured.iter().any(|&(_, owner)| owner == viewer) || jumper;
     let revealing = own || after.day != before.day || captor;
     for hero in &after.adventure.heroes {
         if !heroes.iter().any(|&(id, _)| id == hero.id) {
@@ -2113,7 +2126,12 @@ type Outcome = (
 /// a hero leaves at its mine come from its army, which the test may change where the viewer never
 /// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
 /// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
-/// guards of another creature in the other game at a mine the viewer saw). (E09 T9b2b) And the
+/// guards of another creature in the other game at a mine the viewer saw); (E09 T19b) and the
+/// objects it removed (`ObjectRemoved`'s kind): a monster's answer to a declined offer follows
+/// from the visitor's army and the seed, which the test changes, and its flight removes it for
+/// every viewer that sees it (a case of `master`'s that T19b's draws found: another player's hero
+/// declined a monster's offer to join, and the monster fled in one game and asked again in the
+/// other). (E09 T9b2b) And the
 /// Capitols it changed (`TownChanged`'s town and Capitol, since E09 T18b2a those told to `viewer`,
 /// each viewer's: the events tell every viewer's views): a capture takes the town's Capitol away
 /// when its new owner holds another (TWN-CAP-002), which may stand in a town the viewer never
@@ -2187,7 +2205,9 @@ fn outcome(
         .iter()
         .filter_map(|e| match e {
             GameEvent::Adventure(AdventureEvent {
-                kind: kind @ AdventureEventKind::GuardsChanged { .. },
+                kind:
+                    kind @ (AdventureEventKind::GuardsChanged { .. }
+                    | AdventureEventKind::ObjectRemoved { .. }),
                 ..
             }) => Some(*kind),
             _ => None,
@@ -2543,6 +2563,12 @@ struct TownsMet {
     merges: usize,
     /// Towns coming into a view.
     new: usize,
+    /// (E09 T19b) A day's mark coming into a view of the town's owner and of another viewer
+    /// (TWN-VEW-004: the mark public), and the owner told its buildings after a build.
+    marks: [usize; 2],
+    buildings: usize,
+    /// (E09 T19b) Town events told to their owner (TWN-EVT-001).
+    fired: usize,
 }
 
 impl TownsMet {
@@ -2565,8 +2591,11 @@ impl TownsMet {
                 }) => self.captures[usize::from(owner != viewer)] += 1,
                 GameEvent::TownChanged {
                     town,
+                    owner,
                     capitol,
                     slots,
+                    built_today,
+                    buildings,
                     ..
                 } => {
                     let was = before.towns.iter().find(|t| t.town == town);
@@ -2574,7 +2603,15 @@ impl TownsMet {
                     self.capitols += usize::from(was.is_some_and(|t| t.capitol != capitol));
                     let garrison = was.zip(now).is_some_and(|(w, n)| w.garrison != n.garrison);
                     self.garrisons += usize::from(garrison && !slots);
+                    if built_today && was.is_some_and(|t| !t.built_today) {
+                        self.marks[usize::from(owner != Some(viewer))] += 1;
+                    }
+                    let built = told
+                        .iter()
+                        .any(|e| matches!(*e, GameEvent::TownBuilt { town: t, .. } if t == town));
+                    self.buildings += usize::from(built && buildings.is_some());
                 }
+                GameEvent::TownEventFired { .. } => self.fired += 1,
                 GameEvent::StackChanged { at, .. } => {
                     self.merges += usize::from(matches!(at.army, ArmyRef::Garrison(_)));
                 }
@@ -2585,12 +2622,15 @@ impl TownsMet {
 }
 
 /// The town views over plans of three to six towns (E09 T9b2a; the draw of `play.rs`'s
-/// `the_plans_capture_and_besiege_towns`): over the first 256 cases of proptest's deterministic
-/// runner, each player's view moves as the events say ([`check_told`]) and shows the towns as they
-/// stand ([`check_town_views`]), and the cases meet each of what those follow ([`TownsMet`]):
+/// `the_plans_capture_and_besiege_towns`): over the first 512 cases of proptest's deterministic
+/// runner (256 before E09 T19b, whose draws met no view at the taverns' second level in them),
+/// each player's view moves as the events say ([`check_told`]) and shows the towns as they stand
+/// ([`check_town_views`]), and the cases meet each of what those follow ([`TownsMet`]):
 /// views at every level, a neutral garrison seen with its stacks, captures told to their captor
 /// and to another viewer, a Capitol's change, a merge's garrison slots and a town coming into
-/// view. (A siege's effects on a garrison a third viewer sees by its taverns, which show untold,
+/// view; since E09 T19b (the plans' towns' events, [`super::play::Step::Build`]'s runs) a day's
+/// mark coming into its owner's view and another viewer's, the owner's buildings told after a
+/// build, and a town event told to its owner. (A siege's effects on a garrison a third viewer sees by its taverns, which show untold,
 /// `docs/06-security.md`, were met in none of these cases: a lost siege at a town such a viewer
 /// sees is rare in random play.)
 #[test]
@@ -2609,7 +2649,7 @@ fn town_views_move_as_the_events_say() {
     });
     let strategy = (towns, any::<bool>(), any::<u64>(), steps());
     let mut met = TownsMet::default();
-    for _ in 0..256 {
+    for _ in 0..512 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start_on(&lay_out(&plan), rules, seed);
@@ -2645,6 +2685,8 @@ fn town_views_move_as_the_events_say() {
     assert!(m.captures.iter().all(|&n| n > 0) && m.capitols > 0, "{m:?}");
     assert!(m.garrisons > 0, "{m:?}");
     assert!(m.merges > 0 && m.new > 0, "{m:?}");
+    assert!(m.marks.iter().all(|&n| n > 0), "{m:?}");
+    assert!(m.buildings > 0 && m.fired > 0, "{m:?}");
 }
 
 /// [`vary`] changes what it may and nothing else: with every tile unseen, each kind of change
@@ -2669,6 +2711,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -2766,6 +2809,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         exchange: None,
         events: Vec::new(),
         owners: vec![Some(0)],
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -2838,6 +2882,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -2899,6 +2944,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         buildings: 0,
         tight: false,
         visited,
+        events: Vec::new(),
     };
     let plan = super::play::Plan {
         version: crate::model::Version::Sod,
@@ -2923,6 +2969,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         // Each entrance a row above its hero, the last one on its hero's tile.
         towns: vec![
             town(((2, 0), 0), Some(0), 0, false),
@@ -3063,6 +3110,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -3134,6 +3182,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));

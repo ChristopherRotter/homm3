@@ -1576,7 +1576,7 @@ pub(crate) mod tests {
                 &battle.options,
                 &catalogue,
                 settings,
-                (0, false),
+                (0, false, h3_render::Bugs::Original),
             ))
         };
         let tell = |_: &str, _, _: Option<&Picture>| None;
@@ -1733,7 +1733,12 @@ pub(crate) mod tests {
                     ..h3_view::options::Settings::CAPTURE
                 };
                 shades.set_in(&mut settings);
-                h3_view::options::Open::new(&battle.options, &catalogue, settings, (0, false))
+                h3_view::options::Open::new(
+                    &battle.options,
+                    &catalogue,
+                    settings,
+                    (0, false, h3_render::Bugs::Original),
+                )
             })
         };
         let played_with = |(level, shades): (u8, Shades), mouse: [i32; 2], actions: &[&str]| {

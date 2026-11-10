@@ -5,6 +5,7 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
 use h3_ui::text::Catalogue;
 use h3_ui::text::pack::Pack;
 use h3_ui::ui::{Def, Dialog, Item};
@@ -39,9 +40,19 @@ fn layout() -> OptionsLayout {
     parse_battle(NATIVE).unwrap().options
 }
 
-/// The dialog open with `settings`, the audio device opened or not.
+/// The dialog open with `settings`, the audio device opened or not, in the client's profile.
 fn open(settings: Settings, audio: bool) -> Open {
-    Open::new(&layout(), &catalogue(), settings, (3, audio))
+    Open::new(&layout(), &catalogue(), settings, (3, audio, Bugs::Fixed))
+}
+
+/// [`open`] in the original's profile (the comparisons').
+fn original(settings: Settings, audio: bool) -> Open {
+    Open::new(
+        &layout(),
+        &catalogue(),
+        settings,
+        (3, audio, Bugs::Original),
+    )
 }
 
 /// Item `id`'s middle on the screen.
@@ -130,10 +141,40 @@ fn the_fill_shows_the_settings() {
 }
 
 #[test]
-fn a_box_acts_on_its_release_anywhere_and_sounds_as_pressed() {
-    // Oddity 2: a box's press holds it, unchanged, with the procedure's sample; its release
-    // anywhere toggles it and redraws; the dialog then counts as clicked.
+fn a_box_acts_on_its_release_over_it_alone() {
+    // CLT-Q43 (2), fixed in the client's profile (E17 M7 T1a): a box or a bar released off it
+    // does nothing, as a DEF button; back over it, its release clicks it.
     let mut o = open(Settings::FIRST_RUN, true);
+    for id in [BOXES, MUSIC + 3] {
+        let (point, before) = (centre(&o, id), o.settings);
+        o.press(point);
+        assert_eq!(o.moved([0, 0]), Did::default());
+        assert_eq!(o.release(), Did::default());
+        assert_eq!(o.settings, before);
+        assert_eq!(o.clicked, id != BOXES);
+        o.press(point);
+        o.moved([0, 0]);
+        assert_eq!(o.moved(point), Did::default());
+        assert_eq!(o.release(), CHANGED);
+    }
+    assert!(o.settings.grid && o.clicked);
+    assert_eq!(o.settings.music, 3);
+    // Released over another bar of its column: not that bar's click either.
+    let (from, to) = (centre(&o, MUSIC + 1), centre(&o, MUSIC + 6));
+    o.press(from);
+    o.moved(to);
+    assert_eq!(o.release(), Did::default());
+    assert_eq!(o.settings.music, 3);
+    // A key's hold notes no mouse.
+    o.key("Return");
+    assert_eq!(o.moved([0, 0]), Did::default());
+}
+
+#[test]
+fn a_box_acts_on_its_release_anywhere_and_sounds_as_pressed() {
+    // Oddity 2, the original's profile: a box's press holds it, unchanged, with the procedure's
+    // sample; its release anywhere toggles it and redraws; the dialog then counts as clicked.
+    let mut o = original(Settings::FIRST_RUN, true);
     let pressed = o.press(centre(&o, BOXES));
     assert_eq!(
         pressed,
@@ -178,27 +219,25 @@ fn the_levels_pair_can_be_emptied() {
 }
 
 #[test]
-fn a_speed_is_chosen_by_its_button_sounding_twice() {
-    // Oddity 1: a speed's press plays the button's sample and the procedure's; its release over
-    // it chooses it (the three enabled, the new one disabled); the chosen one takes no press.
-    let mut o = open(Settings::FIRST_RUN, true);
-    let (pressed, released) = click(&mut o, SPEEDS + 2);
-    assert_eq!(
-        pressed,
-        Did {
-            changed: true,
-            button_sound: true,
-            box_sound: true,
-            ..Did::default()
-        }
-    );
-    assert_eq!(released, CHANGED);
-    assert_eq!(o.settings.speed, 2);
-    let shown = &o.window.shown;
-    assert!(shown.state(SPEEDS + 2).disabled && !shown.state(SPEEDS).disabled);
-    assert!(!shown.state(SPEEDS + 2).pressed);
-    assert_eq!(o.press(centre(&o, SPEEDS + 2)), Did::default());
-    assert_eq!(o.release(), Did::default());
+fn a_speed_is_chosen_by_its_button_sounding_once() {
+    // CLT-Q74 (E17 M7 T1a; design §12.12's oddity 1 read again): a speed's press plays the
+    // button's own sample alone, in both profiles (its loop sends the procedure no press); its
+    // release over it chooses it (the three enabled, the new one disabled); the chosen one takes
+    // no press.
+    for mut o in [
+        open(Settings::FIRST_RUN, true),
+        original(Settings::FIRST_RUN, true),
+    ] {
+        let (pressed, released) = click(&mut o, SPEEDS + 2);
+        assert_eq!(pressed, PRESSED);
+        assert_eq!(released, CHANGED);
+        assert_eq!(o.settings.speed, 2);
+        let shown = &o.window.shown;
+        assert!(shown.state(SPEEDS + 2).disabled && !shown.state(SPEEDS).disabled);
+        assert!(!shown.state(SPEEDS + 2).pressed);
+        assert_eq!(o.press(centre(&o, SPEEDS + 2)), Did::default());
+        assert_eq!(o.release(), Did::default());
+    }
 }
 
 #[test]
@@ -284,14 +323,33 @@ fn a_bar_sets_its_columns_volume_hidden_bars_too() {
 }
 
 #[test]
+fn without_the_audio_device_no_bar_is_refused() {
+    // CLT-Q44 (c), the client's profile (E17 M7 T1a): every bar works without the audio device,
+    // a column at volume 0 too, its setting kept for a device later.
+    let settings = Settings {
+        music: 0,
+        effects: 0,
+        ..Settings::FIRST_RUN
+    };
+    let mut o = open(settings, false);
+    let (_, released) = click(&mut o, MUSIC + 4);
+    assert_eq!(released, CHANGED);
+    click(&mut o, EFFECTS + 2);
+    assert_eq!((o.settings.music, o.settings.effects), (4, 2));
+    assert_eq!(o.settings.last_effects, 2);
+    assert!(o.clicked);
+}
+
+#[test]
 fn without_the_audio_device_a_silent_column_tells_so() {
-    // Oddity 7: a column at volume 0 without the audio device opens the no-sound box (GENRLTXT
-    // 151) and changes nothing; a column above 0 works, silently.
+    // Oddity 7, the original's profile (`options-no-sound`): a column at volume 0 without the
+    // audio device opens the no-sound box (GENRLTXT 151) and changes nothing; a column above 0
+    // works, silently.
     let settings = Settings {
         music: 0,
         ..Settings::FIRST_RUN
     };
-    let mut o = open(settings, false);
+    let mut o = original(settings, false);
     let (_, released) = click(&mut o, MUSIC + 4);
     assert_eq!(
         released,
@@ -392,7 +450,12 @@ fn an_item_the_procedure_does_not_know_does_nothing() {
             repeat: None,
         })],
     };
-    let mut o = Open::new(&layout, &catalogue(), Settings::FIRST_RUN, (0, true));
+    let mut o = Open::new(
+        &layout,
+        &catalogue(),
+        Settings::FIRST_RUN,
+        (0, true, Bugs::Fixed),
+    );
     assert_eq!(o.press([5, 5]), Did::default());
     assert_eq!(o.release(), Did::default());
     assert!(!o.clicked);

@@ -1277,7 +1277,7 @@ sequence fails at its end when any forced value was.
 | `wall_hit` | `random(1, 100) <=` the target kind's chance (1, 100) | 0x445F25, its hit; a miss lands on the nearest other wall |
 | `wall_miss_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445F6C, a miss between two walls equally near |
 | `wall_retarget_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445E44, the next shot's target once its own fell |
-| `catapult_tie` | `random(1, k)` (1, 1) | 0x473DA0, the Catapult's own aim: the k-th of the weakest walls |
+| `catapult_tie` | `random(1, k)` (1, 1) | 0x473DA0, the Catapult's own aim: the k-th of the weakest walls (no draw for k = 1: `random_between` 0x50B230 returns an equal bound before drawing; the adventure lane's note of 2026-11-06) |
 | `quake_target` | `random(1, k)` (1, 1) | 0x5A7DD8, Earthquake's target per hit: the k-th standing target with hit points left (E17 M4 T2c-2) |
 
 A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail,

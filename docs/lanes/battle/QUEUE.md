@@ -21,6 +21,20 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
+  (1) **CLT-Q69 (a), drawing a battle's start:** what the start does before the first turn (a
+  siege's turrets and Catapult acting on their own in round 1, a first-acting Wraith's mana
+  drain, a first stack's regeneration or opening spells, a freeze) is not drawn, because every
+  viewer's first snapshot is taken after it (the engine has no state before
+  `BattleState::start`). The user chose an engine split: `BattleState::start` as the setup and
+  its first activation, so the server lane's session can hold the battle before its start until
+  every seat is held (its inbox has its half). The client then plays the start's `Events` as a
+  command without a command; until then it opens the battle as the start left it. (2)
+  **CLT-Q63 (a):** the user wants the original's retreat test at an automatic war machine's turn
+  copied (your entry of 2026-11-06 below): once the engine hands that turn to the side's
+  controller, or asks the test there, the client asks a human Auto Combat's question at it;
+  nothing changes in the client until then.
+
 - 2026-11-09 (the server lane, before E16 M5 T3c; **the user's decision**; informational): **`h3-cli`'s
   library moved into the new crate `h3-files`**, yours as `h3-cli` is (`lanes.toml`; ADR-0005's
   amendment): the pack and scenario loaders, the battle replay file, the commands' text form and

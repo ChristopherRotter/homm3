@@ -208,9 +208,25 @@ pub fn wall_shade(original: u16, hex: u8, (side, mastery): (Side, u8)) -> Vec<u8
 }
 
 /// The movement shadow's hexes on a turn of `field` outside the tactics phase (§12.16's layer
-/// (1): §7.23's overlay 0x4937D0 over the reach map `ai_pathfinder_map` at the stack's speed):
-/// none without a living acting stack or for one no human plays here (+0x54A6); else the stack's
-/// own hexes, every position it may move to with its front hex there by its facing now (+0x4A,
+/// (1): §7.23's overlay 0x4937D0 over the reach map `ai_pathfinder_map` at the stack's speed), as
+/// a turn's start draws them: none for an acting stack no human plays here (+0x54A6); else its
+/// [`overlay`].
+#[must_use]
+pub fn reach(field: &Field<'_>) -> BTreeSet<u8> {
+    let observation = field.observation;
+    let played_here = field
+        .acting()
+        .is_some_and(|m| observation.sides[usize::from(m.controller == Side::Defender)].human);
+    if played_here {
+        overlay(field)
+    } else {
+        BTreeSet::new()
+    }
+}
+
+/// The acting stack's overlay on a turn of `field` outside the tactics phase, whoever plays it
+/// (0x4937D0 tests no side: F6 to F8 draw it on any turn, CLT-Q75): none without a living acting
+/// stack; else the stack's own hexes, every position it may move to with its front hex there by its facing now (+0x4A,
 /// +0x4B), the hexes of every stack it may strike in melee (0x4938F9), and for a stack that may
 /// shoot now the hexes of every living stack of the other side on the field (the map's
 /// `ai_map_shooter_marks` 0x4B2F18: every enemy but the dead and the arrow towers, outside the
@@ -218,15 +234,12 @@ pub fn wall_shade(original: u16, hex: u8, (side, mastery): (Side, u8)) -> Vec<u8
 /// and strikes stand for the original's reach map, the strikes' targets for the stacks of the
 /// other side its search marks, a listed shot for `stack_can_shoot_now` 0x4428F0.
 #[must_use]
-pub fn reach(field: &Field<'_>) -> BTreeSet<u8> {
+pub fn overlay(field: &Field<'_>) -> BTreeSet<u8> {
     let mut shaded = BTreeSet::new();
     let observation = field.observation;
     let Some(mover) = field.acting().filter(|s| s.alive) else {
         return shaded;
     };
-    if !observation.sides[usize::from(mover.controller == Side::Defender)].human {
-        return shaded;
-    }
     let [own, front] = field.hexes(mover);
     shaded.extend([own, front]);
     for &to in field.legal.moves() {

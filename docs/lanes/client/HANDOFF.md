@@ -4,33 +4,24 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E17 M0–M5 done** (M5 closed at T8c on 2026-10-31: the review list accepted; the lane split at M3
-  T9c, CLT-Q18: the battle client here, the adventure map client the map-client lane's E24). **M6
-  (the battle screen complete)**, its tasks in QUEUE and the epic's M6 (each task's cuts, dates and
-  pull requests there): T1 to T6 done (T5e deferred by the user to the battle client inside an
-  adventure game, the epic's "Later"). **T7** (M6's closure) cut in three by the user
-  (2026-11-09): **T7a done** (#812); the inbox's protocol v38 readers done (#818, design §12.25);
-  **T7b done** (2026-11-10, PR on `client/e17-m6-t7b`: check it first; 12 reviewers and 6
-  fixers, 56 findings, 51 fixed, 3 left; review items 49 to 62; CLT-Q70 to Q77).
-  **Next:** T7c (the review list with the user, the new questions and T7b's left items, M7
-  refined, M6 closed); then M7 ranked play and the server browser.
-  M5's record: `E17-archive.md`, `E17-log.md`.
+- **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
+  `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
+  in QUEUE): T1 the answered slips, **cut in four at its start** (T1a done: the options dialog
+  and F6 to F8; T1b the other slips Q70, Q71, Q77; T1c the reads and captures; T1d the tools);
+  T2 the DEF button's own loop (CLT-Q72); T3 the battle as an entry a host's window runs (the
+  map client's E24 M4 T5 waits on it); T4 the closure, **which closes E17** (ranked play, the
+  pause, the browser and a login: E27 first, then a refinement of their own). **Next:** M7 T1b.
+  **Open pull request:** T1a's (`client/e17-m7-t1a`) until it merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
-  recommended, built as the original's), CLT-Q63 (T5b2a: copy recommended, not built), CLT-Q64 (T5b2b: fix recommended, CLT-Q45 (1)'s rule built), CLT-Q65 (T5c: the unlearned
-  picks; fix once a whole game tells what was learned), CLT-Q66 (T5c: the window under the
-  boxes; copy recommended, built so), CLT-Q69 (drawing the battle's start: the battle before it
-  in the record recommended, a server and battle lane change; not drawn meanwhile); from T7b,
-  each built as the original's or as it was: CLT-Q70 (a heroless side's colours: fix), Q71 (a
-  hotkey's held panel button: a capture, then fix), Q72 (the DEF button's loop: copy, a task),
-  Q73 (the music at volume 0: read, then keep the client's), Q74 (the speeds click once, against
-  Q43 (1)), Q75 (F6 to F8 on a turn not taken: keys, no reach), Q76 (a wall with no free hex:
-  fix), Q77 (the pictures' layout: copy).
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** none of the lane's
+  questions. Answered, waiting on other lanes: CLT-Q63 (a) (the automatic war machines' turns,
+  the battle lane), CLT-Q65 (b) (a whole game's learned spells), CLT-Q69 (a) (the start split,
+  the battle and server lanes; their inboxes, 2026-11-10).
   `CLT-STUB-1` (T5a, G1: a server's seat lacks the other hero's Orb and Cloak; the user requires
   parity with local play, asked of the battle and server lanes) is commented in
   `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
@@ -55,6 +46,20 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-10, E17 M7 T1a (done; `client/e17-m7-t1a`).** T1 cut in four with the user (T1a
+  only this session). The original data staged at once (57 files); the VM restarted during the
+  baseline, CI's Clients run on `master` stood in. The options dialog takes the profile
+  (`Open::new`'s `Bugs`): Q43 (2) a box or a bar clicks on a release over it, Q44 (c) no bar
+  refused, Q43 (3) the window posts the mouse at the close (`post_mouse`); Q74 one click and
+  Q75 F6 to F8 on every turn (`Battle::takes_keys`, `shades::overlay`) in both. M7 review item
+  1. Record: `E17-log.md`.
+- **2026-11-10, E17 M6 T7c (done; `client/e17-m6-t7c`, docs only).** Kept whole by the user. The
+  original data staged at once (57 files) for M7. The review list accepted as built (item 62's
+  tests kept; a TRAPS line); the 16 open questions put four at a time (four answers against the
+  recommendation: Q44 (c), Q75 (a), Q76 (a), Q77 (b)); T7b's leftovers placed; M7's draft (to
+  ranked play, the pause and the browser) cut short by the user to T1 to T3 and the closure of
+  E17. The inbox sorted (14 entries to the archive, M7 T3 taking 6); notes to the battle, server
+  and map client lanes. Record: `E17-log.md`.
 - **2026-11-10, E17 M6 T7b (done; `client/e17-m6-t7b`).** The user's direction: "one session,
   delegated": the session a coordinator, 12 read-only reviewers (two at a time, a worktree of
   master 3e1026fc), 6 fixers one at a time on the branch, one docs agent. 56 findings (one high,
@@ -62,16 +67,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   asked, review items 49 to 62. `master` merged once (ac8ae2ec). `check.sh` passed, `drawn`
   263 of 263 the same (no capture needed), `h3-view gate` passed.
   Record: `E17-log.md`.
-- **2026-11-10, after E17 M6 T7a: the protocol v38 readers (done; `client/e17-m6-v38-readers`).**
-  Kept whole with CLT-STUB-3 and the inbox's comment rename. The original data staged at once
-  (the PC's shell and the file tool). `master` was red (#814 against #815 in `h3-protocol`):
-  built against a local patch, never committed, until the server lane's #816 fixed it (the
-  branch rebased on it). The readers leave the start's
-  `Events` out (`record::commands`); `drawn` all 263 the same again; CLT-Q69 asked. Record:
-  `E17-log.md`.
-- **2026-11-09/10, E17 M6 T7a (done; `client/e17-m6-t7a`).** T7 cut in three by the user; T7a
-  kept whole. The original data staged by the file tool at once (the PC left after an hour).
-  Every capture afresh on two instances (172 situations, 91 sequences, all as recorded, about
-  6 hours); R4-9 built (`h3cap.SHADOW_VALUES`), its counts moved only in listed differences'
-  frames (recorded). Merging `master` (#800, protocol v38) broke `drawn` (81 of 91 sequences):
-  the inbox's readers come first. Record: `E17-log.md`.

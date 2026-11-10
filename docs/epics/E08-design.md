@@ -536,6 +536,19 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   rejected `MoveHero` or `Revisit` leaves the state and the player's stream untouched (the stream's
   position compared); no viewer is told an end of a jump it does not see, nor a channel's exits or
   a gate's pair.
+  *As built* (T106b1, `adventure/e08-t106b1`; decision 291, the `play.rs` half): `TELEPORTERS`
+  (the entrances of channels 0 and 1, channel 0's exit, the two-way monoliths of channels 0 and 1,
+  the gate, the Whirlpool; a gate the original's four tiles, a Whirlpool two of a column),
+  `Plan::teleporters` laid out after every other object but the towns and boats, on their surface
+  (A-42 never met) and alone on their tiles; `Step::Jump` (runs of them), `Free::Revisit`; the
+  checks `check_channels` (the lists against the raw map, at the start), `check_jumps` (every jump
+  to one of `candidates`, an oracle of §7; every visit's outcome), `check_whirlpool_losses` (the
+  army at the visit rebuilt from the event), the map's invariants in `check_invariants`, a jump's
+  points in `check_legal`; the stream compared through the state's equality (its accessor is the
+  game's own). *Agent's reading:* an enemy hero on another tile of the entrance's own Whirlpool is
+  a candidate (survey §4.1: the hero's class before the excluded word; the engine's
+  `draw_exit`), so "never one of its own six" holds for a free tile; its battle won, the held jump
+  lands there. The view's half is T106b2's (`hygienic()` lays out no teleporter until then).
 - **Benchmarks** (`benches/adventure/`): **measured first** against `master` right after the first
   build that makes the entrances visits (T105a; `homm3-bench-regression`): `reach-xl-144`,
   `reach-lifted-xl-144`, `reach-sea-xl-144` and the `random-play-*` workloads hold no teleporter

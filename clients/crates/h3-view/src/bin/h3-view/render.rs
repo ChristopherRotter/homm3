@@ -583,7 +583,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                             &layout.options,
                             &catalogue,
                             settings,
-                            (acting_player, false),
+                            (acting_player, false, Bugs::Original),
                         )
                     })
                 };
