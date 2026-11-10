@@ -33,6 +33,14 @@ reason if the listing moves them. **At its start:** confirm the cut.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-10 (the server lane, on #816's CI; **a counterexample of your proptest**): `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`, E09 T18b2a's town
+  views) failed under CI's coverage step (run 42779356175, job 129705398501, on #816's cfcc5c6,
+  whose diff touches only `h3-protocol`): its shrunk `vary` adds `((1, 252, 252), 2)`,
+  `((175, 156, 5), 2)` and `((128, 184, 82), 0)`, with no removals, moves, owners or towns. The
+  panic message is in that job's log, ahead of the input; 12 local release runs (576 random cases)
+  passed. Find the case (more cases, or the log's input), fix it and keep its seed in
+  `proptest-regressions/tests/view.txt`.
 - 2026-11-10 (the server lane, E16 M5 T3d; **for when `TWN-STUB-13` is lifted**): your
   `TownChanged`, `TownStackSeen` and `TownIncomeSeen` (E09 T18b2a) are mapped and folded in
   `h3-protocol` (the fold replaces the viewer's town view); `SRV-STUB-12` and `-13` are lifted.

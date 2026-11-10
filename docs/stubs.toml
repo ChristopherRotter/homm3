@@ -143,6 +143,12 @@ where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
 reason = "A Cartographer's type (Adventure::bought, ADV-VIS-001): OfferAnswered does not name the offer's kind, so the fold cannot add the type bought. The adventure lane's inbox (2026-11-09)"
 epic   = "E16"
 
+[[stub]]
+id     = "SRV-STUB-14"
+where  = "crates/h3-protocol/src/session/game.rs::GameSession::tell"
+reason = "A game's battle's last snapshot when it ends (SRV-Q27 (1); the battle session's last Snapshot, v38, CLT-STUB-3): the command that ends a battle closes it in h3_game, so the session cannot observe the battle as it ended; each owner's view ends at BattleEnded. Lifted once h3-game keeps a battle a command ended readable until the next command (the adventure lane's inbox, 2026-11-10)"
+epic   = "E16"
+
 # --- client (CLT-STUB-<n>) ---
 
 # CLT-STUB-1 is kept as a comment until `cargo xtask check-stubs` also scans `clients/crates/`
