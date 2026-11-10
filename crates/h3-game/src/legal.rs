@@ -40,12 +40,14 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// then since E08 T84b2 a `BuildBoat` for each Shipyard of the player's or an ally's whose boat
 /// tile is free while the treasury can pay its price, in object order (ADV-SHY-003:
 /// `AdventureState::buildable_shipyards`). Empty for a player whose turn is not running or who
-/// is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves are
-/// [`legal_moves`]; a meeting's and an army dialog's management commands [`legal_management`]'s.
-/// A town's build (`GameCommand::Town`, E09 T18b1) is not listed yet: E09 T18b2 lists the
-/// payable builds with the views that tell them.
+/// is not in the game, by `apply`'s own checks (ADR-0017's consequence); then since E09 T18b2b a
+/// town's build (`GameCommand::Town`) for each town the player owns, in `TownId` order, and each
+/// building its hall offers whose price the treasury holds, in the record's order (TWN-BLD-001:
+/// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004). The
+/// moves are [`legal_moves`]; a meeting's and an army dialog's management commands
+/// [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
-// rule: GAM-DEC-008, ADV-SHY-003
+// rule: GAM-DEC-008, ADV-SHY-003, TWN-BLD-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -84,6 +86,7 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
         });
     core::iter::once(GameCommand::EndTurn)
         .chain(boats)
+        .chain(crate::town::legal_builds(state, rules, player))
         .collect()
 }
 

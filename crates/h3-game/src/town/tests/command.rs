@@ -16,24 +16,24 @@ use crate::{
     apply, project,
 };
 
-const RED: PlayerId = PlayerId::new(0);
-const BLUE: PlayerId = PlayerId::new(1);
-const T0: TownId = TownId::new(0);
-const T1: TownId = TownId::new(1);
+pub(super) const RED: PlayerId = PlayerId::new(0);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const T0: TownId = TownId::new(0);
+pub(super) const T1: TownId = TownId::new(1);
 const GOLD: ResourceId = ResourceId::from_raw(0);
 /// [`priced`]'s Town Hall (`b1`, 1 500 gold), its City Hall (`b2`, it requires the Town Hall),
 /// its Capitol (`b3`), its Fort (`b4`, free), its Citadel (`b5`, 2 500 gold, more than a human's
 /// 2 000 at the start) and its silo (`b10`, free; blue's standard town has its Fort).
-const TOWN_HALL: usize = 1;
-const CITY_HALL: usize = 2;
-const CAPITOL: usize = 3;
-const FORT: usize = 4;
-const CITADEL: usize = 5;
-const SILO: usize = 10;
+pub(super) const TOWN_HALL: usize = 1;
+pub(super) const CITY_HALL: usize = 2;
+pub(super) const CAPITOL: usize = 3;
+pub(super) const FORT: usize = 4;
+pub(super) const CITADEL: usize = 5;
+pub(super) const SILO: usize = 10;
 
 /// The game's rules with [`town_pack`]'s record priced and with one requirement (the rest free
 /// and without one).
-fn priced() -> GameRuleset {
+pub(super) fn priced() -> GameRuleset {
     let mut pack = town_pack(false);
     let buildings = &mut pack.towns[0].buildings;
     buildings[TOWN_HALL].cost = [(key("t:gold"), 1500)].to_vec();
@@ -44,7 +44,7 @@ fn priced() -> GameRuleset {
 
 /// [`towns_setup`] with red's town 0 holding its Village Hall alone (a custom set) and blue's
 /// town 1 of `t:town`.
-fn setup(rules: &GameRuleset) -> GameSetup {
+pub(super) fn setup(rules: &GameRuleset) -> GameSetup {
     let mut setup = towns_setup(rules);
     setup.towns[0].buildings = BuildingsSetup::Custom {
         built: SlotSet::EMPTY,
@@ -54,11 +54,11 @@ fn setup(rules: &GameRuleset) -> GameSetup {
     setup
 }
 
-fn building(index: usize) -> BuildingId {
+pub(super) fn building(index: usize) -> BuildingId {
     BuildingId::from_index(index).unwrap()
 }
 
-fn build(town: TownId, index: usize) -> GameCommand {
+pub(super) fn build(town: TownId, index: usize) -> GameCommand {
     GameCommand::Town(TownCommand::Build {
         town,
         building: building(index),
@@ -66,7 +66,7 @@ fn build(town: TownId, index: usize) -> GameCommand {
 }
 
 /// `player`'s `command`: its events, or its error with the state and the events unchanged.
-fn run(
+pub(super) fn run(
     rules: &GameRuleset,
     game: &mut GameState,
     player: PlayerId,
@@ -135,7 +135,7 @@ fn an_owner_builds_in_its_turn_and_pays_the_price() {
     assert_eq!(gold(&game, BLUE), 2000);
 }
 
-fn end_turn(rules: &GameRuleset, game: &mut GameState, player: PlayerId) {
+pub(super) fn end_turn(rules: &GameRuleset, game: &mut GameState, player: PlayerId) {
     apply(
         game,
         rules,
