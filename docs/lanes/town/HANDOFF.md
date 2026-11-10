@@ -44,7 +44,9 @@ T19 cut in three, increment 2's own map (the user, decisions 58, 59). `writer::T
 `AnyTown::events`; `e09-builds-36.h3m` (the Harbour by the sea, the Keep inland, the Conflux
 Nexus forbidding a requirement, the Tower Spire; the town events) and its tests, every refusal
 kind once with the state hash unchanged (a replay holds none); `builds-week-s1`, `-capture-s1`,
-`-events-s1` (69 replays); no version moved.
+`-events-s1` (69 replays; the server lane's counts in `h3-protocol` and `h3-server`); no version
+moved. The setup's baseline on `master` found a property counterexample of the adventure lane's
+`check_rewards` (a monster's join before the garden it guarded): their inbox, at the user's word.
 
 ### 2026-11-10 — the hygiene counterexample (#822), then T18c: the town events
 

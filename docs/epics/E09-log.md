@@ -2632,9 +2632,12 @@ every decision kind now, the seed kept.
 One session, the user present at the start; branch `town/e09-t19a`, `cross-lane` (`h3-map`'s
 `writer.rs`, `writer/economy.rs` and `tests/`, the fixtures, the replays and `h3-cli`'s replay
 test are the adventure lane's). Starting point: `master` at 3f60bf4 (#824, then #825 and #826
-merged during the setup); the setup's baseline lost to a VM restart and run again on 3f60bf4. The
-user's computer was connected at the start only: the original data staged then (57 files). **T19
-cut in three at its start, increment 2's own map** (the user, decisions 58, 59).
+merged during the setup); the setup's baseline lost to a VM restart and run again on 3f60bf4:
+every step green but coverage, where `h3-map`'s `every_step_keeps_the_commands_invariants` found
+a counterexample of `master`'s (`check_rewards` expects a guarded Mystical Garden's gain before
+the joining monster's treasure; the adventure lane's inbox, the user's word). The user's computer
+was connected at the start only: the original data staged then (57 files). **T19 cut in three at
+its start, increment 2's own map** (the user, decisions 58, 59).
 
 - **The writer** (`h3-map` `src/writer/town.rs`, the town lane's): `writer::TownEvent { event:
   TimedEvent, buildings, creatures }`, `AnyTown::events` (in the town's order); a town's body
