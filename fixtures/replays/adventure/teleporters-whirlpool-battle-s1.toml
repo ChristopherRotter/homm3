@@ -1,0 +1,59 @@
+commands = [
+    "0 move 2 24,11,0",
+    "0 end-turn",
+    "1 move 8 24,27,0",
+    "1 end-turn",
+    "0 move 2 24,12,0 25,13,0 26,14,0 27,15,0",
+    "0 end-turn",
+    "1 move 8 25,27,0 26,27,0 27,27,0 28,28,0",
+    "1 end-turn",
+    "0 move 2 28,16,0",
+    "0 battle move 64",
+    "1 battle attack 0 65",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0xdf606da0bb9c3bd3",
+    "0x49b10b25df363ff2",
+]
+
+[replay]
+format = 12
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xe5ac723212bdce02"
+adventure_ruleset_hash = "0xcd7ea0d574adc88a"
+town_ruleset_hash = "0x8477f2008d862e55"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 27
+adventure_state_hash_version = 21
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-teleporters-36.h3m"
+hash = "0x27ac37d3c2d89975"
+import_version = 21
+
+[result]
+day = 4
+final_hash = "0x5f124eb5831a34fc"

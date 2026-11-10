@@ -454,6 +454,95 @@
 //!   red 9 500 gold (Haven's Capitol 4 000 and Grail 5 000, the random town's Village Hall 500),
 //!   1 wood and 1 ore (Haven's Resource Silo, the Castle's; TWN-INC-001, -002), blue 4 500 (its
 //!   Stronghold's Capitol, its Tower's Village Hall).
+//!
+//! **Teleporters** (E08 T106a, increment 11), on `fixtures/maps/e08-teleporters-36.h3m` (written by
+//! `h3_map::writer`; `fixtures/maps/README.md`), on two levels (an underground tile given with its
+//! level): red's Orrin (hero 0, ten archangels, 900 experience), Sylvia (hero 1, the Sea Captain's
+//! Hat), Sorsha (hero 2, three angels and two stacks of ten pikemen), Edric (hero 3), Lord Haart
+//! (hero 4) and Christian (hero 5), blue's Rion (hero 6), Adela (hero 7, five angels) and Cuthbert
+//! (hero 8, one pikeman) on the surface, red's Valeska (hero 9) and Tyris (hero 10) and blue's
+//! Ingham (hero 11) underground; channel 0's one-way entrance (10, 4) and its exits (16, 18),
+//! (12, 30) and (4, 14, 1), channel 1's entrance (20, 5) and its lone exit (5, 28), channel 0's
+//! two-way monoliths (10, 9), (16, 12) (four savage gnolls on (17, 12) guard it) and (20, 20, 1),
+//! the gates' pairs by their entries, (13, 6) and (7, 21) on both levels, and the unpaired
+//! (21, 6, 1), three Whirlpools in the sea (columns 28 to 30 of rows 4 and 5, 16 and 17, 28 and 29)
+//! with empty boats on (24, 7), (24, 11) and (24, 27), a neutral Guardhouse (9, 15) and a Windmill
+//! visited on (12, 16). Random play, recorded with `--map fixtures/maps/e08-teleporters-36.h3m
+//! --seed N --agent-seed N --days 28`: the three of a search over the seeds 1 to 3 000 (a scratch
+//! probe noting each game's jumps by channel and kind, the `LeadsNowhere`, the draws without a
+//! candidate, the meetings and battles at an exit, the Whirlpools' losses, the guarded monolith's
+//! battles and the revisits; not committed: 650 games jump through channel 0's one-way, 562 through
+//! channel 1's, 1 347 through a two-way monolith, 1 573 through a gate; 1 885 are told
+//! `LeadsNowhere` at a one-way exit, 172 at the unpaired gate; 5 find no candidate; 21 meet at a
+//! gate; 8 win an exit's battle and 5 lose one, 2 with the level-up then the jump; 4 fight at a
+//! gate's pair; 80 have a Whirlpool's loss past the first slot, 65 a loss of 0, 30 the Hat's jump,
+//! none a battle at a Whirlpool's exit; 284 fight the gnolls from the guarded monolith, 275 with
+//! the held jump; 846 revisit at 0 points) whose union meets 20 of the 25 features counted (the
+//! scripted ones hold the rest):
+//!
+//! - `teleporters-s1711-d28`: Orrin beats the gnolls beside (16, 12) and jumps to (10, 9), and
+//!   back by a revisit; Adela is told `LeadsNowhere` on channel 1's exit (5, 28); Orrin attacks her
+//!   there from (20, 5), wins, gains his levels (900 experience) and makes the held jump; revisits
+//!   at 0 points of the exits (Orrin on (5, 28), Valeska on (4, 14, 1)), the Guardhouse and the
+//!   Windmill.
+//! - `teleporters-s2002-d28`: Lord Haart through channel 1, told `LeadsNowhere` on its exit; Sylvia
+//!   jumps from (10, 9) to (20, 20, 1) and by a revisit to (16, 12); Lord Haart through the gate
+//!   (7, 21) to (7, 21, 1); Adela beats Edric on (10, 19), then from (7, 21) fights Lord Haart on
+//!   the gate's pair, wins, gains a level and makes the held jump; Christian through channel 0 to
+//!   (4, 14, 1); Adela revisits the Guardhouse.
+//! - `teleporters-s2647-d28`: Edric in a boat through four Whirlpools with losses (slot 1 of his
+//!   two stacks, then slot 0) and Whirlpools revisited; Cuthbert through a gate; Edric fights the
+//!   gnolls from (16, 12), wins and makes the held jump to (10, 9); Valeska fights Cuthbert
+//!   underground at (12, 24, 1); Ingham is told `LeadsNowhere` at the unpaired gate (21, 6, 1) and
+//!   revisits it.
+//!
+//! **Scripted** (E08 T106a: increment 11's design note §14's paths), on the same map, recorded with
+//! `h3 adventure run --map fixtures/maps/e08-teleporters-36.h3m --seed 1 --checkpoint-every 5
+//! --script <script> --record <replay>` (the moves and the battles' commands from a scratch probe,
+//! E23's `h3_battle_ai::choose` for both sides; not committed); each ends with both players' turns.
+//! A move stops where the explored area ends, so a walk may take several; a hero meant to arrive at
+//! 0 points first steps back and forth to spend them (ADV-MOV-006). Each draw comes from the
+//! mover's player's stream, seeded by the game's seed (ADV-TEL-003): on seed 1 red's first
+//! Whirlpool draw lands on Cuthbert's tile, as A-37's case needs.
+//!
+//! - `teleporters-monoliths-s1`: Edric steps onto channel 0's entrance (10, 4): one draw among its
+//!   three exits (ADV-TEL-003, ADV-TEL-004), the jump to (12, 30) (ADV-TEL-007); his revisit there
+//!   is told `LeadsNowhere`, a one-way exit (ADV-TEL-008). Lord Haart onto the two-way (10, 9): one
+//!   draw between the other two, to (20, 20, 1); his revisit draws again, back to (10, 9).
+//! - `teleporters-gates-s1`: Valeska onto the gate's entry (13, 6, 1) jumps to its pair (13, 6)
+//!   (ADV-TEL-005); Tyris onto (13, 6, 1) meets her on the pair and stays (GAM-MET-001), the
+//!   meeting closed; he walks to the unpaired (21, 6, 1), arriving at 0 points: `LeadsNowhere`, and
+//!   again by his revisit at 0 points (ADV-TEL-008). Valeska's revisit of (13, 6) takes her back to
+//!   the free (13, 6, 1).
+//! - `teleporters-exit-battle-s1`: red ends day 1; Rion onto channel 1's lone exit (5, 28):
+//!   `LeadsNowhere` (ADV-TEL-004). On day 2 Orrin onto its entrance (20, 5): the one candidate, no
+//!   draw, holds Rion, so the battle at the exit, Orrin staying on the entrance (GAM-BAT-004); he
+//!   wins, his 670 experience bring level 2, answered with the first offer (GAM-DEC-002), then the
+//!   held jump onto (5, 28) (GAM-DEC-007, ADV-TEL-007). Sylvia onto (20, 5): no candidate (Orrin,
+//!   her team, on the exit), nothing done or told (ADV-TEL-003), nor by her revisit.
+//! - `teleporters-exit-lost-s1`: red ends day 1; Adela onto (5, 28): `LeadsNowhere`. On day 2
+//!   Sylvia onto (20, 5): the battle at the exit (GAM-BAT-004), lost to the five angels; Sylvia
+//!   leaves the map from the entrance (GAM-BAT-003), Adela takes her Hat and stays on the exit.
+//! - `teleporters-guard-s1`: Lord Haart onto the two-way (16, 12), which the four gnolls on
+//!   (17, 12) guard: they fight first (ADV-MON-006, decision 279), played by the system actor; he
+//!   wins, the gnolls are removed, then the held jump to (20, 20, 1) (GAM-DEC-007, ADV-TEL-004).
+//! - `teleporters-whirlpools-s1`: Sorsha and Sylvia board on day 1, Cuthbert too. On day 2 Sorsha
+//!   sails onto the Whirlpool's (28, 16), arriving at 0 points: the loss in slot 1, tied with slot
+//!   2 by fight value × count (five of its ten pikemen; ADV-TEL-006), then the jump to (30, 5), the
+//!   points kept (ADV-TEL-007); her revisit at 0 points: slot 1 again, now the weakest of three
+//!   (three of its five), and a new draw, to (28, 29) (ADV-TEL-008). Sylvia onto (28, 5): no loss
+//!   (the Sea Captain's Hat), the jump to (29, 16). Cuthbert onto (28, 28): his lone pikeman kept,
+//!   a `WhirlpoolLoss` of 0, the jump to (30, 5).
+//! - `teleporters-whirlpool-battle-s1`: A-37's case (`ADV-QUIRK-39`): on day 2 Cuthbert jumps from
+//!   (28, 28) to (30, 5) and stays there in his boat; on day 3 Sorsha onto (28, 16): her loss, then
+//!   red's draw lands on Cuthbert's tile (an enemy's is a candidate, ADV-TEL-003): the battle at
+//!   sea, won (GAM-BAT-004); Cuthbert leaves the map with his boat (ADV-SEA-006) and Sorsha arrives
+//!   on (30, 5) in hers (GAM-DEC-007).
+//! - `teleporters-revisits-s1`: Christian visits the Windmill from (12, 16) (six ore; ADV-WEK-001)
+//!   and revisits it: `ObjectEmpty` (ADV-TEL-008, ADV-VIS-006). He reaches the neutral Guardhouse
+//!   (9, 15) at 0 points: flagged for red (ADV-OWN-001), its question accepted, its fourteen
+//!   pikemen join free (level 1: ADV-HIR-001, no hire dialog); his revisit at 0 points asks the
+//!   question again, no flag (ADV-DWL-004), accepted: `NoneToRecruit`.
 
 use std::path::PathBuf;
 
@@ -468,7 +557,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 55,
+        files.len() >= 66,
         "expected the E08 and E09 replay fixtures in {}",
         dir.display()
     );
