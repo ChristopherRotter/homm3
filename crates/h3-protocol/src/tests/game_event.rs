@@ -649,7 +649,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         } => GameEvent::TownBuilt {
             player: PlayerId::new(player),
             town: TownId::new(town),
-            building: h3_game::BuildingId::from_index(usize::from(building)).unwrap(),
+            building: BuildingId::from_index(usize::from(building)).unwrap(),
             event,
         },
     }
@@ -906,13 +906,13 @@ fn every_event() -> Vec<GameEvent> {
         GameEvent::TownBuilt {
             player: P0,
             town: TownId::new(2),
-            building: h3_game::BuildingId::from_index(12).unwrap(),
+            building: BuildingId::from_index(12).unwrap(),
             event: None,
         },
         GameEvent::TownBuilt {
             player: P0,
             town: TownId::new(1),
-            building: h3_game::BuildingId::from_index(63).unwrap(),
+            building: BuildingId::from_index(63).unwrap(),
             event: Some(4),
         },
     ];

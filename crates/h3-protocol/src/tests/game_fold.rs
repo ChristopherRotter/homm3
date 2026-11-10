@@ -576,9 +576,9 @@ const fn object(object_type: u16, anchor: Pos, blocked: u64, visitable: u64) -> 
     Object {
         object_type,
         anchor,
-        blocked: crate::wire::WireU64(blocked),
-        visitable: crate::wire::WireU64(visitable),
-        drawn: crate::wire::WireU64(0),
+        blocked: WireU64(blocked),
+        visitable: WireU64(visitable),
+        drawn: WireU64(0),
         monster: None,
         owner: None,
         production: None,
