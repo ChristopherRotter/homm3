@@ -33,7 +33,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **A public draw under the hygiene property** (E09 T9b2a's cut; T9b2b's `hygienic`): the
   hygiene property (`a_viewer_learns_nothing_it_cannot_see`) builds its other game with another
   seed, so a setup draw a viewer sees (a random town's faction, a neutral garrison, a random
-  dwelling's type) must have one outcome in its plans; and the towns' draws come first in the
+  dwelling's type, since E09 T18b2a an owned town's buildings: a standard set with a Fort draws
+  its level-2 dwelling) must have one outcome in its plans; and the towns' draws come first in the
   setup stream (design §14), so an unseen town's change (owner, garrison, removal) moves every
   later draw. A new plan field that draws at the build goes through `hygienic_town`. The told
   views (`views_move_as_the_events_say`) vary nothing and play the plans' towns as drawn.

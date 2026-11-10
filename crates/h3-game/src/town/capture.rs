@@ -58,14 +58,11 @@ pub(crate) fn capture<S: Sink>(
         Told::default()
     };
     // rule: TWN-CAP-001
+    // The map has the town: the store and the map hold the same towns (`GameSetupError::
+    // TownCount`), so the capture's viewers (none for a town the map lacks) are not needed.
     let (adventure, _) = state.adventure_with_heroes();
     let events = &mut AdventureSink(&mut *sink);
-    if adventure
-        .capture_town(rules.core(), town, player, reveal, events)
-        .is_none()
-    {
-        return;
-    }
+    let _ = adventure.capture_town(rules.core(), town, player, reveal, events);
     // rule: TWN-BLD-004
     let human = |p: PlayerId| state.human(p) == Some(true);
     let mark = !old_owner.is_some_and(human) && human(player);

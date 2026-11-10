@@ -155,7 +155,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
             }),
         }
     );
-    // rule: TWN-VEW-004: its owner's sets, the Capitol among them.
+    // TWN-VEW-004: its owner's sets, the Capitol among them.
     let capitol = rules
         .towns()
         .town(castle)
@@ -563,6 +563,11 @@ fn a_build_tells_each_viewer_its_changed_view_and_a_new_tavern_its_owners_raised
     };
     // Blue had no Tavern: its view of red's town is read again but did not change.
     assert_eq!(towns(&events), [(RED, T1), (BLUE, T1)]);
+    // A town with a standing Tavern reads its town's views alone: red's silo in its standard set.
+    let silo = record.building_by_key("b10").unwrap();
+    let mut game = GameState::new(&rules, &garrisoned(&rules), 7).unwrap();
+    let events = run(&rules, &mut game, RED, build(T0, silo));
+    assert_eq!(towns(&events), [(RED, T0), (BLUE, T0)]);
 }
 
 /// Ends `player`'s turn.

@@ -14,8 +14,8 @@ use super::{
     towns_setup,
 };
 use crate::{
-    Actor, GameCommand, GameCommandError, GameEvent, GameRuleset, GameSetup, GameState, Viewer,
-    apply, legal_moves, observe, project,
+    Actor, GameCommand, GameCommandError, GameEvent, GameRuleset, GameSetup, GameState, NoopSink,
+    Viewer, apply, legal_moves, observe, project,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -252,6 +252,49 @@ fn a_captured_capitol_stays_when_its_new_owner_holds_no_other() {
             .collect();
         assert_eq!(capitols, [true, true], "{events:?}");
     }
+}
+
+// covers: TWN-CAP-001, TWN-BLD-004
+#[test]
+fn a_sink_that_keeps_nothing_captures_and_starts_a_day_as_one_that_keeps_all() {
+    // E09 T18b2a: the told views are read only for a sink that keeps events; the state is the
+    // same either way, through a capture and the next day's start.
+    let rules = towns_rules();
+    let setup = at(&rules, Pos::new(3, 1, 0), true);
+    let mut told = GameState::new(&rules, &setup, 7).unwrap();
+    let mut quiet = told.clone();
+    let commands = [
+        (
+            RED,
+            GameCommand::Adventure(AdventureCommand::MoveHero {
+                hero: HERO,
+                path: [BLUE_GATE].to_vec(),
+            }),
+        ),
+        (RED, GameCommand::EndTurn),
+        (BLUE, GameCommand::EndTurn),
+    ];
+    for (player, command) in commands {
+        let mut events = Vec::new();
+        apply(
+            &mut told,
+            &rules,
+            Actor::Player(player),
+            command.clone(),
+            &mut events,
+        )
+        .unwrap();
+        apply(
+            &mut quiet,
+            &rules,
+            Actor::Player(player),
+            command,
+            &mut NoopSink,
+        )
+        .unwrap();
+        assert_eq!(quiet.state_hash(), told.state_hash());
+    }
+    assert_eq!(told.adventure().owner(1), Some(RED));
 }
 
 // covers: TWN-CAP-001

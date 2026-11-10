@@ -26,15 +26,16 @@ use super::play::{
     all_objects, army, at_sea, experience, experienced, lay_out, masks, object_index, object_reach,
     options, plan, player_of, resolve, slots, start_on, steps, tile,
 };
-use crate::model::{Body, Object, Pos, RawMap, Stack};
+use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 
 /// The plans whose towns draw nothing a viewer may see, for the hygiene property (E09 T9b2b;
 /// decision 34; [`hygienic_town`]). It builds its other game with another seed, and the towns'
 /// draws come first in the setup stream (the town epic's design note §14: a random town's faction,
 /// a town's buildings and garrison), so that a change of a town the viewer never sees ([`vary`])
 /// moves every later draw: a seen random town's faction or a neutral garrison would show another
-/// draw in the other game. So made, the towns draw only an owned standard set's level-2 dwelling
-/// with a Fort (TWN-SET-003), which no view shows, and no main town generates a hero, so that the
+/// draw in the other game. So made, the towns draw nothing a view shows (an owned standard set's
+/// level-2 dwelling with a Fort, TWN-SET-003, is its owner's to see since E09 T18b2a,
+/// TWN-VEW-004, so no owned town has that set), and no main town generates a hero, so that the
 /// viewer's heroes keep the armies and experience the property gives them.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
     plan().prop_map(|mut plan| {
@@ -45,8 +46,15 @@ fn hygienic() -> impl Strategy<Value = super::play::Plan> {
 
 /// A plan's town that draws nothing a viewer may see ([`hygienic`]): a random town made a town of
 /// a fixed faction (its hero's index as the code; its alignment then unused), a neutral town's
-/// editor garrison (drawn, TWN-SET-004) given as ten of a level-1 creature in its first slot.
+/// editor garrison (drawn, TWN-SET-004) given as ten of a level-1 creature in its first slot, an
+/// owned town's standard set with a Fort (its level-2 dwelling drawn, TWN-SET-003; its buildings
+/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without.
 fn hygienic_town(town: &mut TownPlan) {
+    if town.owner.is_some()
+        && TOWN_BUILDINGS[town.buildings] == (Buildings::Standard { fort: true })
+    {
+        town.buildings = 0;
+    }
     let faction = *town.faction.get_or_insert(town.at.1);
     if town.owner.is_none() && !town.visited && town.garrison.is_none() {
         let mut slots = vec![None; 7];
@@ -2909,12 +2917,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
-    type Town = (
-        Spot,
-        u8,
-        Option<Vec<Option<Stack>>>,
-        crate::model::Buildings,
-    );
+    type Town = (Spot, u8, Option<Vec<Option<Stack>>>, Buildings);
     let towns = |m: &RawMap| -> Vec<Town> {
         m.objects
             .iter()
@@ -2992,7 +2995,9 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
     };
     let other = vary(&m, 0, &unseen(false, added((8, 8, 0))), |_| true, |_| true);
     let mut with = expected.clone();
-    with.push(((8, 8, 0), 1, None, TOWN_BUILDINGS[1].clone()));
+    // Its standard set with a Fort made the one without (`hygienic_town`: an owned town's
+    // level-2 dwelling is drawn, its owner's to see, TWN-VEW-004).
+    with.push(((8, 8, 0), 1, None, TOWN_BUILDINGS[0].clone()));
     assert_eq!(towns(&other), with);
     assert!(matches!(other.objects.last().unwrap().body, Body::Town(_)));
     build(&other);

@@ -2479,7 +2479,10 @@ only at the start: the original data staged then.
   hygiene property compares the viewer's told Capitols, `check_towns` reads every viewer's
   `TownChanged`, the sieges' cover counts the Capitol's limit by the store; the towns' cover
   counts a told change of a garrison the viewer does not own (69 in its run) beside the Capitols
-  (2).
+  (2). The hygiene property found that the owner's sets show an owned standard set's drawn
+  level-2 dwelling (with a Fort, TWN-SET-003), which differs with the other game's seed:
+  `hygienic_town` gives an owned town the standard set without a Fort; the case is kept in
+  `proptest-regressions/tests/view.txt`.
 - **Tests** (`h3-game` `town/tests/view.rs`, `capture.rs`, `command.rs`; the helper `telling` in
   `town/tests.rs`): the new fields of every view; a build told to each viewer, a new Tavern
   telling its owner the raised level of another town, a Tavern-less town's owner's unchanged views
@@ -2490,7 +2493,9 @@ only at the start: the original data staged then.
   them; no bench workload moved (the scoped verify's bench-check).
 - **Catalog:** TWN-VEW-001 amended (the told changes), TWN-VEW-004 new (the mark public, the
   buildings the owner's; the code reading of `town_list_frame` 0x5BD700).
-- **Agent's calls (change freely):** a view's change told whole rather than field by field (the
+- **Agent's calls (change freely):** the capture no longer reads the adventure capture's viewers
+  (the store and the map hold the same towns, so it always captures); a view's change told whole
+  rather than field by field (the
   fold replaces the view); the owner in `TownChanged` though `TownCaptured` tells it too; the day
   start's views told although a fold could clear the marks itself; a build in a town without a
   standing Tavern reads its owner's views of every town (not only when the building is a Tavern);
