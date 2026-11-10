@@ -5733,6 +5733,10 @@ fn check_conservation(
         prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
     }
     let mut contents = visit_gains(rules, (before, after), command, events);
+    // A guarding monster's treasure comes before the visit its answer held (decision 279: the
+    // guard first, GAM-DEC-007), so before [`visit_gains`]' (the town lane's inbox, E09 T19a: a
+    // join for gold before the Mystical Garden it guarded).
+    let mut treasures = 0;
     let mut losses = Vec::new();
     for event in events {
         // E08 T64b: a box's record as it leaves, an event's as it fires, in the events' order.
@@ -5770,7 +5774,10 @@ fn check_conservation(
                 {
                     prop_assert_eq!(creature, monster.creature);
                     prop_assert_eq!(Some(count), before.adventure().monster_count(i));
-                    contents.extend(monster.treasure.iter().copied());
+                    for &gain in &monster.treasure {
+                        contents.insert(treasures, gain);
+                        treasures += 1;
+                    }
                 }
             }
         }

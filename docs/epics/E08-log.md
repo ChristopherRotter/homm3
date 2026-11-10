@@ -14139,6 +14139,14 @@ the main session; reviewed by a read-only sub-agent.
   stack stays; the gates' pairs checked by D-56's reading, not only their symmetry; channel 1's
   entrance without a partner; two doc lines. Left: a Whirlpool's visit held after its guard's
   battle is not checked for its loss's presence (only each loss told is).
+- **The inbox's counterexample** (the town lane, E09 T19a, merged in with #828; the user's word:
+  ours): `every_step_keeps_the_commands_invariants`' seed `dfed064b…` on `master`'s strategy, a
+  monster's join for gold accepted, then the Mystical Garden it guarded visited (decision 279's
+  held visit). `check_conservation` put `visit_gains` (the garden's 500 gold) before the removed
+  monster's treasure (50), the events the other way: a gap of the check, not the engine's. A
+  guarding monster's treasure now goes before the visit's gains; reproduced and passed in a
+  worktree of `master`, the seed appended to `proptest-regressions/tests/play.txt` (on this
+  branch's strategy it draws another case).
 - *Agent's calls (change freely):* the seven kinds and their shapes; the draws' weights, the
   partners, the hats of the jump plans; `Step::Jump`'s preferences; the cover test's 256 plans.
 - **Test time** (`h3-map`'s lib tests, debug, two CPUs): 262 s with the plans and the two raised
