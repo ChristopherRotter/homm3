@@ -2084,7 +2084,8 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
 }
 
 /// Whether a command was accepted, each hero's move (id, columns, rows, levels), the steps told,
-/// the decisions opened (0), refused (1), declined (2) or accepted (3), (E08 T19a) every
+/// the offers opened (0), refused (1), declined (2) or accepted (3) and (E09 T18c's inbox) the
+/// other decisions opened (4 to 10, by kind) or closed (11), (E08 T19a) every
 /// battle event, start and end, and the heroes removed, (E08 T31) whom the game waits for,
 /// (E09 T9b2a) the guards' hints it changed and (E09 T9b2b) the towns' Capitols it changed.
 type Outcome = (
@@ -2101,7 +2102,11 @@ type Outcome = (
 /// What a command of `player` did in a game, as the hygiene test compares it between two games
 /// (E08 T14b's review): whether it was accepted, how far each of the player's heroes moved from
 /// its tile `before` (columns, rows, levels), how many steps the game told, and the decisions it
-/// opened, refused or closed; and whom the game then waits for (E08 T31: a level-up open holds
+/// opened, refused or closed, every kind (a case of `master` found by CI, 2026-11-10: another
+/// player's hero accepted a monster's offer to join beside a mine the viewer saw; its army, which
+/// the test changes where the viewer never sees it, had room in one game, where the creatures
+/// joined and the mine's visit flagged it at once, and not in the other, where an army dialog
+/// opened and held the visit, as the original's does); and whom the game then waits for (E08 T31: a level-up open holds
 /// the game, which every player learns, never the level-up, ADR-0017 point 6). Where the heroes
 /// stand is left out: the test may put them on other tiles in the other game from the start.
 /// (E09 T9b2a) And the guards' hints it changed (`GuardsChanged`'s kind, not who sees it): guards
@@ -2151,6 +2156,14 @@ fn outcome(
             GameEvent::OfferOpened { .. } => Some(0),
             GameEvent::OfferRefused { .. } => Some(1),
             GameEvent::OfferAnswered { accepted, .. } => Some(2 + u8::from(*accepted)),
+            GameEvent::LevelUpOpened { .. } => Some(4),
+            GameEvent::MeetingOpened { .. } => Some(5),
+            GameEvent::ArmyDialogOpened { .. } => Some(6),
+            GameEvent::LeaveGuardsOpened { .. } => Some(7),
+            GameEvent::ChoiceOpened { .. } => Some(8),
+            GameEvent::UniversityOpened { .. } => Some(9),
+            GameEvent::HireOpened { .. } => Some(10),
+            GameEvent::DecisionClosed { .. } => Some(11),
             _ => None,
         })
         .collect();

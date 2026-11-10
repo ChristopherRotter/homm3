@@ -13,6 +13,10 @@
 //! <file> <list.toml>`: prints the signed list of the TOML list of servers, for a server's
 //! `<data>/lists/` (`h3_server::sign_list`). Provisional: the commands.
 //!
+//! `h3-server record [--packs-dir packs] [--root .] [--out .] [--game 0] <replay.toml>...`: runs
+//! each adventure replay through the whole game's session and writes each player's record as
+//! `<out>/<stem>.player-<k>.jsonl` (E16 M5 T6, `h3_server::record`). Provisional: the command.
+//!
 //! Stopping (E16 M2 T5a): the first SIGINT (Ctrl-C) or SIGTERM drains the server: no new game,
 //! the waiting ones end, the running ones play on; once none runs, it stops. A second signal
 //! stops it at once. Stopped, every connection hears `Goodbye { Shutdown }` and the journals
@@ -27,6 +31,7 @@ use h3_server::{Config, start};
 fn main() -> ExitCode {
     let args: Vec<OsString> = std::env::args_os().skip(1).collect();
     match &args[..] {
+        [command, rest @ ..] if command == "record" => record(rest),
         [path] => serve(path),
         [command, path, login, key] if command == "rebind" => rebind(path, login, key),
         [command, path] if command == "card" => card(path),
@@ -39,7 +44,8 @@ fn main() -> ExitCode {
         ),
         _ => {
             eprintln!(
-                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n       h3-server card <config.toml>\n       h3-server list-key <file>\n       h3-server sign-list --key <file> <list.toml>\n{} (protocol {})",
+                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n       h3-server card <config.toml>\n       h3-server list-key <file>\n       h3-server sign-list --key <file> <list.toml>\n       {}\n{} (protocol {})",
+                h3_server::record::RECORD_USAGE,
                 h3_server::server_name(),
                 h3_protocol::PROTOCOL_VERSION
             );
@@ -84,6 +90,28 @@ fn print_or_fail(command: &str, text: Result<String, h3_server::Error>) -> ExitC
         }
         Err(e) => {
             eprintln!("h3-server: {command}: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// The records of adventure replays (E16 M5 T6): one line per replay on standard output.
+fn record(args: &[OsString]) -> ExitCode {
+    let args: Vec<String> = args
+        .iter()
+        .map(|a| a.to_string_lossy().into_owned())
+        .collect();
+    let recorded = h3_server::record::RecordOptions::parse(&args)
+        .and_then(|options| h3_server::record::record(&options));
+    match recorded {
+        Ok(lines) => {
+            for line in lines {
+                println!("{line}");
+            }
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("h3-server: record: {e}");
             ExitCode::FAILURE
         }
     }
