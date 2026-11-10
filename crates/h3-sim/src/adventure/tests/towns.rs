@@ -220,3 +220,20 @@ fn town_map_rollouts_and_forks_are_deterministic() {
     assert_eq!(parent.state(), fork.state());
     assert_eq!(parent.state_hash(), fork.state_hash());
 }
+
+/// A town's build has no action before E09 T19's entry, so the rollout draws from the listed
+/// commands without them (E09 decision 56; T18b2b lists the builds): on red's first turn of the
+/// town map `legal_commands` lists red's builds, and the draw keeps the rest, in order.
+#[test]
+fn the_rollout_draws_no_build_before_its_entry() {
+    let env = AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 173, 21).unwrap();
+    let red = Seat::Player(PlayerId::new(0));
+    let listed = legal_commands(env.state(), env.rules(), red.actor());
+    assert!(listed.iter().any(|c| matches!(c, GameCommand::Town(_))));
+    let kept: Vec<GameCommand> = listed
+        .into_iter()
+        .filter(|c| !matches!(c, GameCommand::Town(_)))
+        .collect();
+    assert_eq!(kept[0], GameCommand::EndTurn);
+    assert_eq!(rollout::drawn_commands(env.state(), env.rules(), red), kept);
+}

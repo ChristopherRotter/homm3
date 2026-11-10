@@ -16,6 +16,12 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-10 (the town lane, E09 T18b2b, `town/e09-t18b2b`, `cross-lane`; **for a seat's town
+  screen, when the game's queries reach the wire**): `GameState::town_offer(rules, player, town)
+  -> Option<h3_game::TownOffer { possible, buildable, payable }>` (`BuildingSet`s over the town's
+  faction's record), the owner's hall, `None` for any other viewer; and `legal_commands` lists the
+  payable builds. No event, command or observation field changed.
+
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero
   forbids casting, its spell level limit; public, as the original's book names the Orb's wearer
