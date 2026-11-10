@@ -492,6 +492,10 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
     <hero>` (**adventure replay format v11**; v12 since E09 T18b1 took v11).
   - **Every player alike** (decision 16): the original's key works on a human's turn only and a
     computer never presses it; a computer player's use is E10's.
+  - *As built* (T105b2): `state/revisits.rs`' `revisit` (the hero, then `revisit_at`: the live
+    tile's `visit_at` when entered and not passed, then `visit`) and `revisitable` (the player's
+    heroes in id order); the game's path as `MoveHero`'s (no price); the replay line `revisit
+    <hero>`, **adventure replay format v12**.
 - **No new decision kind and no new view:** the jump's battle is a battle (ADR-0017 point 6), a
   gate's meeting increment 6's, the rest no decision; the observation shows the hero on the object,
   and a client offers the key where `legal_commands` lists it.
@@ -505,7 +509,9 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   as decisions 138, 203 and 243): **action encoding v8** appends eight entries, `22 + h`, `h < 8`:
   `Revisit` of the hero in slot `h` (the move entries' slots), masked by `legal_commands`, the tile
   head ignored. *Agent's call:* one entry per hero slot; a jump needs none (a destination among
-  the reach's tiles, ADR-0017 point 8). The observation the env returns is `GameObservation`
+  the reach's tiles, ADR-0017 point 8). *As built* (T105b2): `REVISIT_BASE` 22, `ENTRY_COUNT` 30;
+  a revisit entry takes no tile (tile 0 alone, as the answers': the head is not ignored but
+  fixed), decodes to the `Revisit` of the hero in its slot (none for an empty slot). The observation the env returns is `GameObservation`
   (decision 187): the kinds' types in the objects' views, nothing else. A revisit at 0 points can
   repeat within a turn (§18).
 - **Replays:** adventure replay format **v11** (`revisit`; v12 since E09 T18b1 took v11); every golden replay rehashed (the
@@ -558,8 +564,8 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
 | adventure ruleset part v18 | the three kinds, their packs (note §1, §3) | T103a: done |
 | map import v21 (E09 T11 took v20 first) | classes 43 to 45, 103, 111; A-39's refusal (note §4) | T103b: done |
 | game state hash v27 (E09 T17a took v26) | the held jump `Rest::Jump` (§13) | T105b1: done |
-| adventure replay format v12 (E09 T18b1 took v11) | `revisit` (§13) | T105b2 |
-| env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b2 (`cross-lane`) |
+| adventure replay format v12 (E09 T18b1 took v11) | `revisit` (§13) | T105b2: done |
+| env action encoding v8 (the AI lane's) | `Revisit`'s eight entries (§14) | T105b2 (`cross-lane`): done |
 
 The adventure state hash stays v21 (note §6). The town lane's E09 bumps the same rows: **the second
 to merge bumps again**, each change once (the table's numbers are this increment's if it merges

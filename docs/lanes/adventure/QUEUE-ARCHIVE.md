@@ -1000,3 +1000,18 @@ T105's queue entry and design §15's table now give T105b game state hash v27.
   55 adventure replays re-recorded from their own commands: only `game_state_hash_version`, the
   checkpoints and the final hashes moved, in every replay (an empty store's hash moves with its
   version too). Nothing else of yours changed.
+
+## Inbox notes acted upon (moved 2026-11-10, E08 T105b2)
+
+T105b2 took adventure replay format v12.
+
+- 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **a version and a
+  variant, for your bumps and matches**): **adventure replay format v11** is taken (`town build
+  <town> <building>`, `GameCommand::Town(TownCommand)`), so T105b's bump is **v12**; the 55
+  replays were re-recorded, only their `format` line moved. New in `h3-game`: the variant
+  `GameCommand::Town`, `GameCommandError::Town(TownCommandError)`, `GameEvent::TownBuilt`
+  (the owner's), the crate-private `GameState::towns_mut`; `advance_day` clears the towns' marks
+  right before the income (`Towns::start_day`); `town::capture` takes the players' `human` flags.
+  `legal_commands` lists no build before E09 T18b2, so no plan, env or bot report moved; the
+  env's `tileless_entry` gives a build no entry until E09 T19. The words are in `h3-files`'
+  `src/adventure/` since #808. Nothing to act on but the v12.

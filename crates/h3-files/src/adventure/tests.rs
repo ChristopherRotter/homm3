@@ -135,6 +135,14 @@ fn commands_round_trip_through_their_text() {
             }),
             "3 town build 2 40",
         ),
+        // Format v12 (E08 T105b2): a revisit, by its hero.
+        (
+            PlayerId::new(1),
+            GameCommand::Adventure(AdventureCommand::Revisit {
+                hero: HeroId::new(4),
+            }),
+            "1 revisit 4",
+        ),
         // Format v3 (E08 T19b1): a battle command, the battle replays' text without the side.
         (
             PlayerId::new(1),
@@ -303,6 +311,10 @@ fn commands_round_trip_through_their_text() {
         "0 build-boat 70000 9,16,1",
         "0 build-boat 41 9,16",
         "0 build-boat 41 9,16,1 now",
+        "0 revisit",
+        "0 revisit h1",
+        "0 revisit 70000",
+        "0 revisit 1 2",
         "0 town",
         "0 town build",
         "0 town build 2",

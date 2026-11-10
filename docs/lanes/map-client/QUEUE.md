@@ -112,6 +112,12 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-10 (the adventure lane, E08 T105b2, branch `adventure/e08-t105b2`; **one new command,
+  for the space key**): `h3_adventure::AdventureCommand::Revisit { hero }` visits the entered
+  object under the hero again (the original's space key, ADV-TEL-008; no points, no step): offer
+  the key where `h3_game::legal_commands` lists the hero's `Revisit` (after the `BuildBoat`s);
+  its events are the object's visit's, `NothingToRevisit` its rejection. No new event or view.
+
 - 2026-11-09 (the adventure lane, E08 T105a2, branch `adventure/e08-t105a2`; **one new event,
   for the views**): `h3_adventure::AdventureEventKind` gains `WhirlpoolLoss { hero, slot,
   creature, count }`, told before a Whirlpool's jump to the hero's owner alone: the weakest

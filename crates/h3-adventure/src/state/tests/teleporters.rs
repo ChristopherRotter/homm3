@@ -16,10 +16,10 @@ use crate::testing::{
     stream, world,
 };
 
-type Rules = (Ruleset, AdventureRuleset);
+pub(super) type Rules = (Ruleset, AdventureRuleset);
 
-const RED: PlayerId = PlayerId::new(0);
-const HERO: HeroId = HeroId::new(1);
+pub(super) const RED: PlayerId = PlayerId::new(0);
+pub(super) const HERO: HeroId = HeroId::new(1);
 
 /// [`movement_rules_with`] (faithful) with a two-way monolith `t:monolith`, a Subterranean Gate
 /// `t:underground_gate` (the test rules hold a border gate `t:gate`) and a Whirlpool
@@ -29,7 +29,7 @@ const HERO: HeroId = HeroId::new(1);
 /// creatures' fight values (the Pikeman the Pegasus's 407, the Gnoll the Dendroid Guard's 690, the
 /// Peasant 15, the Wolf the Azure Dragon's 56 315: batch E11's E11-10 and E11-12) and a hat
 /// `t:hat` worn on the head, which spares its wearer a Whirlpool's loss.
-fn teleporter_rules() -> Rules {
+pub(super) fn teleporter_rules() -> Rules {
     movement_rules_with(
         true,
         32,
@@ -92,7 +92,7 @@ fn teleporter_rules() -> Rules {
     )
 }
 
-fn p(x: u16, y: u16) -> Pos {
+pub(super) fn p(x: u16, y: u16) -> Pos {
     Pos::new(x, y, 0)
 }
 
@@ -119,7 +119,7 @@ fn built(rules: &Rules, setup: &AdventureSetup) -> Arc<StaticMap> {
     Arc::clone(&started(rules, setup).unwrap().map)
 }
 
-fn at(x: u16, y: u16, level: u8) -> Pos {
+pub(super) fn at(x: u16, y: u16, level: u8) -> Pos {
     Pos::new(x, y, level)
 }
 
@@ -302,7 +302,7 @@ fn a_teleporter_off_its_surface_is_refused_when_the_game_is_built() {
 
 // The jumps (E08 T105a1; ADV-TEL-003 to -005, -007; design note §7, §10).
 
-const BLUE: PlayerId = PlayerId::new(1);
+pub(super) const BLUE: PlayerId = PlayerId::new(1);
 
 /// The width of the jumps' maps: wide enough that an exit's surroundings lie outside the start's
 /// reveal (the scouting radius 5) and the fringe.
@@ -311,7 +311,7 @@ const WIDE: usize = 30;
 /// The started state of a `levels`-level map of [`WIDE`] × 3 grass tiles per level (`rows`
 /// edits a row of the surface: a monster `M`), with Red's hero [`HERO`] (Pikemen) on (0, 1),
 /// `others` besides and `objects`, each of a type by key on its anchor, visited from it.
-fn jump_state(
+pub(super) fn jump_state(
     rules: &Rules,
     (levels, monster): (u8, Option<Pos>),
     others: &[(u16, u8, Pos)],
@@ -338,7 +338,7 @@ fn jump_state(
 
 /// Red's hero [`HERO`] walks `path` with `draws` as its stream: the outcome and the events, or
 /// the error (a rejected move changes neither the state nor the stream and emits nothing).
-fn walk(
+pub(super) fn walk(
     state: &mut AdventureState,
     rules: &Rules,
     path: &[Pos],
@@ -367,10 +367,10 @@ fn walk(
 }
 
 /// The walk onto the entrance on (2, 1).
-const ONTO: [Pos; 2] = [Pos::new(1, 1, 0), Pos::new(2, 1, 0)];
+pub(super) const ONTO: [Pos; 2] = [Pos::new(1, 1, 0), Pos::new(2, 1, 0)];
 
 /// The jumps among `events`: each one's entrance and exit.
-fn jumps(events: &[AdventureEvent]) -> Vec<(Option<Pos>, Option<Pos>)> {
+pub(super) fn jumps(events: &[AdventureEvent]) -> Vec<(Option<Pos>, Option<Pos>)> {
     events
         .iter()
         .filter_map(|e| match e.kind {
@@ -398,7 +398,7 @@ fn fought_at(outcome: &AdventureOutcome, exit: Pos, defender: HeroId) -> &Battle
 }
 
 /// Red's hero's tile, points and day's maximum.
-fn red(state: &AdventureState) -> (Pos, u32, u32) {
+pub(super) fn red(state: &AdventureState) -> (Pos, u32, u32) {
     let hero = state.hero(HERO).unwrap();
     (hero.pos, hero.movement, hero.max_movement)
 }
@@ -761,7 +761,7 @@ fn a_viewer_is_told_the_ends_of_a_jump_it_sees_never_a_hidden_one() {
 }
 
 /// A stack of `count` of `creature` in `slot`.
-const fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
+pub(super) const fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
     ArmyStack {
         slot,
         creature,
@@ -770,14 +770,14 @@ const fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
 }
 
 /// The step from Red's boat on (1, 1) onto the Whirlpool's tile (2, 1).
-const INTO: [Pos; 1] = [Pos::new(2, 1, 0)];
+pub(super) const INTO: [Pos; 1] = [Pos::new(2, 1, 0)];
 
 /// The started state of a sea of [`WIDE`] × 2 tiles above a row of grass, with `whirlpools` (each
 /// of a type by key, its anchor and its tiles' mask; the first's tiles (2, 0) to (3, 1)) and Red's
 /// hero [`HERO`] with `army` aboard boat 0 on (1, 1), 100 points to the step; empty boats 1 to 3
 /// on (12, 1) to (14, 1); Blue's hero 2 and Red's hero 3, each with a Pikeman, on the grass at
 /// (13, 2) and (12, 2).
-fn whirlpool_state(
+pub(super) fn whirlpool_state(
     rules: &Rules,
     army: Vec<ArmyStack>,
     whirlpools: &[(&str, Pos, u64)],
@@ -809,7 +809,7 @@ fn whirlpool_state(
 
 /// Red's hero [`HERO`] steps into the Whirlpool with `store` and `draws`: the outcome and the
 /// events (the boats keep their invariants).
-fn whirl(
+pub(super) fn whirl(
     state: &mut AdventureState,
     rules: &Rules,
     store: &[Arc<HeroDetails>],
@@ -835,7 +835,7 @@ fn whirl(
 }
 
 /// The Whirlpools' losses among `events`, as `(hero, slot, creature, count)`.
-fn losses(events: &[AdventureEvent]) -> Vec<(HeroId, u8, CreatureTypeId, u32)> {
+pub(super) fn losses(events: &[AdventureEvent]) -> Vec<(HeroId, u8, CreatureTypeId, u32)> {
     events
         .iter()
         .filter_map(|e| match e.kind {

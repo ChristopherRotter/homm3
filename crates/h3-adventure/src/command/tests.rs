@@ -369,6 +369,10 @@ fn errors_display() {
             E::BoatTileTaken,
             "a boat or a hero is on the Shipyard's boat tile",
         ),
+        (
+            E::NothingToRevisit,
+            "the hero stands on no object to visit again",
+        ),
     ];
     for (error, text) in shown {
         assert_eq!(error.to_string(), text);

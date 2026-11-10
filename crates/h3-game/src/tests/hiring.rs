@@ -16,7 +16,7 @@ use h3_adventure::{
 };
 use h3_content::ResourceId;
 
-use super::decisions::{ACCEPT, CLOSE, move_hero, play};
+use super::decisions::{ACCEPT, CLOSE, move_hero, play, revisit};
 use super::dwellings::{ANCHOR, BLUE, GOG, RED, RED_HERO, hut_type, rules_edited};
 use super::manage::imp;
 use super::rewards::{guard, reward_at, starts_battle, win};
@@ -383,9 +383,10 @@ fn a_purchase_pays_and_joins_and_a_dialog_of_several_creatures_stays_open() {
         [HIRE_CLOSE]
     );
     play(&mut state, &rules, RED, HIRE_CLOSE).unwrap();
+    // On the dwelling: its revisit listed (E08 T105b2).
     assert_eq!(
         legal_commands(&state, &rules, Actor::Player(RED)),
-        [GameCommand::EndTurn]
+        [GameCommand::EndTurn, revisit(RED_HERO.raw())]
     );
 }
 
