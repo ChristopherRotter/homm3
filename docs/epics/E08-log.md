@@ -14271,5 +14271,9 @@ the baseline ran.
   24 (jumps 0 to 7; seed 1 had none, its queries 8.4 % meeting a teleporter), the 36's seeds 1 to 3
   (the first with a loss). The random agent draws a uniform reachable tile, so on the XL a jump is
   rare; the stop nodes are met in any case.
-- **Gates:** see the session's verify below.
+- **Gates:** the setup's full engine verify with the original data on `master` 4bd174e green; the
+  scoped verify with the original data passed every step it runs (`check-lane` included, no
+  cross-lane path): coverage, determinism (the 66 replays unchanged), bench-check (every other
+  workload at its count, the two new at theirs, reproduced in the main clone within 0.001 %),
+  original-data (the census as above, no difference from the survey).
 - **Versions:** none (no engine code changed).
