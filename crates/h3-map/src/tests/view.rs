@@ -22,9 +22,10 @@ use proptest::test_runner::TestCaseError;
 use super::import::object;
 use super::play::{
     BLOCKERS, DWELLINGS, FAITHFUL, HERO_TEMPLATE, KINDS, LEVEL_1, MONSTER_OBJECTS, SHIPYARD_OBJECT,
-    STRICT, Slots, Spot, Step, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE, TownPlan, add_town,
-    all_objects, army, at_sea, experience, experienced, lay_out, masks, object_index, object_reach,
-    options, plan, player_of, resolve, slots, start_on, steps, tile,
+    STRICT, Slots, Spot, Step, TELEPORTER_OBJECTS, TOWN_BLOCKED, TOWN_BUILDINGS, TOWN_ENTRANCE,
+    TownPlan, WHIRLPOOL_OBJECT, add_town, all_objects, army, at_sea, experience, experienced,
+    lay_out, masks, object_index, object_reach, options, plan, player_of, resolve, slots, start_on,
+    steps, teleporter_at, tile,
 };
 use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 
@@ -36,14 +37,12 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// draw in the other game. So made, the towns draw nothing a view shows (an owned standard set's
 /// level-2 dwelling with a Fort, TWN-SET-003, is its owner's to see since E09 T18b2a,
 /// TWN-VEW-004, so no owned town has that set), and no main town generates a hero, so that the
-/// viewer's heroes keep the armies and experience the property gives them. (E08 T106b1) Without
-/// the teleporters until [`vary`] knows them (T106b2, decision 291): an unseen exit or gate removed
-/// or moved changes another player's jump, so that the viewer may see a hero arrive in one game
-/// alone.
+/// viewer's heroes keep the armies and experience the property gives them. (E08 T106b2) With the
+/// plans' teleporters (T106b1's `TELEPORTERS`), which draw nothing at the setup: [`vary`] removes
+/// and adds those the viewer never sees, so that a jump's draw or a gate's pair may differ.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
     plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
-        plan.teleporters.clear();
         plan
     })
 }
@@ -106,6 +105,10 @@ struct Unseen {
     /// (modulo the map) and town (its faction, owner, garrison, formation and buildings as a
     /// plan's, made [`hygienic_town`]; its owner a playing colour but the viewer's by its index).
     added_towns: Vec<(Spot, TownPlan)>,
+    /// (E08 T106b2) Teleporters added where the viewer never sees them, after every other object:
+    /// anchor (modulo the map) and object ([`TELEPORTER_OBJECTS`] by index), so that a channel the
+    /// viewer sees a member of gains a hidden exit or member, or a gate's pair another gate.
+    teleporters: Vec<(Spot, usize)>,
 }
 
 /// Each kind of change in about half the cases, so that some cases keep the other players'
@@ -149,6 +152,8 @@ fn unseen() -> impl Strategy<Value = Unseen> {
             )
         ],
         vec((any::<Spot>(), super::play::town()), 0..=2),
+        // E08 T106b2, after them for the same reason.
+        vec((any::<Spot>(), 0..TELEPORTER_OBJECTS.len()), 0..=4),
     )
         .prop_map(
             |(
@@ -162,6 +167,7 @@ fn unseen() -> impl Strategy<Value = Unseen> {
                 owners,
                 towns,
                 added_towns,
+                teleporters,
             )| {
                 Unseen {
                     seed,
@@ -174,6 +180,7 @@ fn unseen() -> impl Strategy<Value = Unseen> {
                     owners,
                     towns,
                     added_towns,
+                    teleporters,
                 }
             },
         )
@@ -257,6 +264,28 @@ fn kind(o: &Object) -> Option<u32> {
         .then(|| KINDS[usize::try_from(o.template - 1).unwrap() / BLOCKERS.len()].0)
 }
 
+/// Whether a plan's object is a teleporter (E08 T106b2; `play.rs`'s `TELEPORTERS`: the monoliths'
+/// classes 43 to 45, the Subterranean Gate's 103 and the Whirlpool's 111).
+fn teleporter(o: &Object) -> bool {
+    matches!(kind(o), Some(43..=45 | 103 | 111))
+}
+
+/// The tiles of the map a plan's object other than a hero or a town is visited from (E08 T106b2:
+/// its template's visitable mask at its anchor).
+fn visited_from(o: &Object) -> Vec<Spot> {
+    let (_, visitable) = masks(usize::try_from(o.template - 1).unwrap());
+    visitable
+        .iter()
+        .filter_map(|&(column, row)| {
+            Some((
+                o.pos.x.checked_sub(column)?,
+                o.pos.y.checked_sub(row)?,
+                o.pos.z,
+            ))
+        })
+        .collect()
+}
+
 /// The heroes of `m`, in the map's order: each one's owner (a colour) and army.
 fn heroes(m: &mut RawMap) -> impl Iterator<Item = (u8, &mut Option<Vec<Option<Stack>>>)> {
     m.objects.iter_mut().filter_map(|o| match &mut o.body {
@@ -296,6 +325,14 @@ fn stacks(slots: &[Option<(u16, u16)>]) -> Vec<Option<Stack>> {
 /// viewer sees (a seen town's `TownId` counts the towns before it), and towns are added after
 /// every other object; its tiles take no hero moved and no object added, its entrance stays land.
 /// A Shipyard's offsets where its boat tile may lie (ADV-SHY-001) keep their terrain and objects.
+/// (E08 T106b2) A teleporter the viewer never sees is removed as a blocker is (none draws anything
+/// at the setup); the tiles every teleporter is visited from keep their surface (A-42, the build's
+/// `SetupError::TeleporterSurface`: a monolith's and a gate's land, a Whirlpool's water), and no
+/// blocker is added over its tiles; and teleporters are added after every other object where the
+/// viewer sees none of their tiles, as a plan's are laid out (on their surface, alone on their
+/// tiles, of a kind whose template the map holds), so that a channel it sees a member of may hold
+/// other hidden exits or members and a gate it sees another pair: a hidden jump's exit may differ,
+/// never what the viewer is shown.
 fn vary(
     m: &RawMap,
     colour: u8,
@@ -351,6 +388,18 @@ fn vary(
                 .filter_map(|o| town_entrance((o.pos.x, o.pos.y, o.pos.z))),
         )
         .collect();
+    // E08 T106b2: the tiles a teleporter is visited from, each with whether it must stay water (a
+    // Whirlpool's, as a boat's tile) or land (a monolith's or a gate's, as an entrance): the build
+    // refuses one off its surface (A-42), removed or not.
+    let surfaces: Vec<(Spot, bool)> = m
+        .objects
+        .iter()
+        .filter(|o| teleporter(o))
+        .flat_map(|o| {
+            let water = kind(o) == Some(111);
+            visited_from(o).into_iter().map(move |spot| (spot, water))
+        })
+        .collect();
     // A Shipyard's boat tile is fixed when the game is built: the first of its kind's offsets from
     // its entrance on water that no object blocks or is visited from (ADV-SHY-001), and a boat
     // built there shows it to its builder and to the players that see the tile (ADV-SHY-002), so
@@ -381,14 +430,17 @@ fn vary(
         if let Some((terrain, road, river)) =
             new.filter(|_| ground(spot) && !harbour.contains(&spot))
         {
-            tile.terrain =
-                if terrain >= 8 && (standing.contains(&spot) || entrances.contains(&spot)) {
-                    2
-                } else if afloat.contains(&spot) {
-                    8
-                } else {
-                    terrain
-                };
+            let land = standing.contains(&spot)
+                || entrances.contains(&spot)
+                || surfaces.contains(&(spot, false));
+            let water = afloat.contains(&spot) || surfaces.contains(&(spot, true));
+            tile.terrain = if terrain >= 8 && land {
+                2
+            } else if water {
+                8
+            } else {
+                terrain
+            };
             tile.road = road;
             tile.river = river;
         }
@@ -466,18 +518,20 @@ fn vary(
                 && unseen_blocker((o.pos.x, o.pos.y, o.pos.z), template)
                 && unseen_reach(o))
     });
-    // E09 T9b2b: the towns' tiles, which no blocker added covers.
-    let towns: Vec<Spot> = m
+    // E09 T9b2b: the towns' tiles, which no blocker added covers; (E08 T106b2) nor the
+    // teleporters', each alone on its tiles as a plan lays it out (ADV-TEL-002: the last object
+    // visited from a tile).
+    let apart: Vec<Spot> = m
         .objects
         .iter()
-        .filter(|o| matches!(o.body, Body::Town(_)))
+        .filter(|o| matches!(o.body, Body::Town(_)) || teleporter(o))
         .flat_map(|o| footprint(o, side))
         .collect();
     for &((x, y, z), template) in &unseen.added {
         let anchor = (x % side, y % side, z % levels);
         if unseen_blocker(anchor, template)
             && covers(anchor, template, side).all(|spot| {
-                !standing.contains(&spot) && !afloat.contains(&spot) && !towns.contains(&spot)
+                !standing.contains(&spot) && !afloat.contains(&spot) && !apart.contains(&spot)
             })
         {
             let mut o = object(
@@ -608,6 +662,54 @@ fn vary(
             add_town(&mut m, anchor, &town, owner, None);
         }
     }
+    // E08 T106b2: teleporters added where the viewer never sees them, after every other object, as
+    // a plan's are laid out (`play.rs`'s `teleporters_laid_out`): every tile it is visited from on
+    // its surface, one at least, and alone on its tiles: on no tile of a hero, a boat or another
+    // object (nor one a random dwelling may cover once resolved), nor a monster the viewer sees or
+    // a Shipyard's offsets. Only a kind whose template the map holds: `lay_out` writes the typed
+    // objects' up to the last one the plan uses, the towns' after them.
+    for &((x, y, z), which) in &unseen.teleporters {
+        let template = TELEPORTER_OBJECTS[which];
+        let (class, subclass, _) = KINDS[template / BLOCKERS.len()];
+        let written = (m.templates.get(1 + template))
+            .is_some_and(|t| (t.class, t.subclass) == (class, subclass));
+        let anchor = (x % side, y % side, z % levels);
+        let taken: Vec<Spot> = m
+            .objects
+            .iter()
+            .filter(|o| o.template != HERO_TEMPLATE)
+            .flat_map(|o| footprint(o, side).into_iter().chain(object_reach(o, side)))
+            .collect();
+        let mut o = object(
+            anchor.0,
+            anchor.1,
+            1 + u32::try_from(template).unwrap(),
+            Body::None,
+        );
+        o.pos.z = anchor.2;
+        let visits = visited_from(&o);
+        let surface = |&(tx, ty, tz): &Spot| {
+            let at = (usize::from(tz) * usize::from(side) + usize::from(ty)) * usize::from(side)
+                + usize::from(tx);
+            let terrain = m.terrain.tiles[at].terrain;
+            if template == WHIRLPOOL_OBJECT {
+                terrain == 8
+            } else {
+                terrain < 8
+            }
+        };
+        let free = covers(anchor, template, side).all(|spot| {
+            objects(spot)
+                && !seen_monsters.contains(&spot)
+                && !standing.contains(&spot)
+                && !afloat.contains(&spot)
+                && !taken.contains(&spot)
+                && !harbour.contains(&spot)
+        });
+        if written && !visits.is_empty() && visits.iter().all(surface) && free {
+            m.objects.push(o);
+        }
+    }
     // E08 T96b1: and the tiles a random dwelling may cover once resolved, whatever it draws (the
     // setup refuses a hero there, `SetupError::RandomDwellingTile`).
     let blocked: Vec<Spot> = m
@@ -713,6 +815,99 @@ fn depth(view: &TileView) -> u8 {
         TileView::Ground { .. } => 1,
         TileView::Seen(_) => 2,
     }
+}
+
+/// What `viewer` is told of the jumps among a command's `events` in `game` (E08 T106b2; ADV-FOG-004
+/// amended, increment 11's design note §10; A-41 not reproduced): a jump is told to its hero's
+/// owner with both ends, and to another viewer exactly when it sees the entrance or the exit
+/// (`seen`, its observation after the command: no viewer's sight shrinks, and in a command that
+/// jumps none grows but the jumper's owner's), with the ends it sees alone, so that no viewer is
+/// told an end it does not see.
+fn check_jump_ends(
+    game: &GameState,
+    viewer: PlayerId,
+    seen: &GameObservation,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let alone = Viewers::NONE.with(viewer);
+    for event in events {
+        let GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroTeleported { hero, from, to, .. },
+            ..
+        }) = *event
+        else {
+            continue;
+        };
+        let owner = game.adventure().hero(hero).map(|h| h.owner);
+        prop_assert!(owner.is_some(), "{:?} off the map", event);
+        let end = |tile: Option<TilePos>| tile.filter(|&t| owner == Some(viewer) || sees(seen, t));
+        let (from, to) = (end(from), end(to));
+        let told = (from.is_some() || to.is_some()).then(|| {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroTeleported {
+                    hero,
+                    from,
+                    to,
+                    seen_from: if from.is_some() { alone } else { Viewers::NONE },
+                    seen_to: if to.is_some() { alone } else { Viewers::NONE },
+                },
+                seen_by: alone,
+            })
+        });
+        prop_assert_eq!(project(event, Viewer::Player(viewer)), told, "{:?}", event);
+    }
+    Ok(())
+}
+
+/// What a viewer is shown of the teleporters (E08 T106b2; increment 11's design note §10): each
+/// kind is public where the viewer sees it, so its type (a monolith's channel, the picture's
+/// colour) and its own tiles, and nothing else: no owner, guards, mark or tile of another object,
+/// so neither its channel's exits nor its pair.
+fn check_teleporter_views(
+    rules: &GameRuleset,
+    view: &GameObservation,
+) -> Result<(), TestCaseError> {
+    for o in &view.adventure.objects {
+        let kind = rules
+            .adventure()
+            .object_type(o.object_type)
+            .map(|t| &t.kind);
+        if matches!(
+            kind,
+            Some(
+                ObjectKind::Monolith { .. }
+                    | ObjectKind::SubterraneanGate
+                    | ObjectKind::Whirlpool { .. }
+            )
+        ) {
+            let bare = ObjectView {
+                monster: None,
+                owner: None,
+                production: None,
+                guards: None,
+                visited: false,
+                boat_tile: None,
+                town: None,
+                ..o.clone()
+            };
+            prop_assert_eq!(o, &bare);
+        }
+    }
+    Ok(())
+}
+
+/// Whether `command` visits a teleporter in `game`, before it applies (E08 T106b2): a move whose
+/// path ends on a tile a monolith, a Subterranean Gate or a Whirlpool is visited from, or a revisit
+/// of a hero standing on one (`play.rs`'s `teleporter_at`).
+fn enters_teleporter(game: &GameState, rules: &GameRuleset, command: &GameCommand) -> bool {
+    let tile = match command {
+        GameCommand::Adventure(AdventureCommand::MoveHero { path, .. }) => path.last().copied(),
+        GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
+            game.adventure().hero(*hero).map(|h| h.pos)
+        }
+        _ => None,
+    };
+    tile.is_some_and(|tile| teleporter_at(game, rules, tile).is_some())
 }
 
 /// The observation's consistency with the events: `after` is `before` with what `viewer` was `told`
@@ -2100,10 +2295,11 @@ fn tiles(game: &GameState, player: PlayerId) -> Vec<(HeroId, TilePos)> {
 /// the offers opened (0), refused (1), declined (2) or accepted (3) and (E09 T18c's inbox) the
 /// other decisions opened (4 to 10, by kind) or closed (11), (E08 T19a) every
 /// battle event, start and end, and the heroes removed, (E08 T31) whom the game waits for,
-/// (E09 T9b2a) the guards' hints it changed and (E09 T9b2b) the towns' Capitols it changed.
+/// (E09 T9b2a) the guards' hints it changed and (E09 T9b2b) the towns' Capitols it changed; (E08
+/// T106b2) a move none for a hero that jumped where the viewer does not see the exit.
 type Outcome = (
     bool,
-    Vec<(HeroId, i32, i32, i32)>,
+    Vec<(HeroId, Option<(i32, i32, i32)>)>,
     usize,
     Vec<u8>,
     Vec<GameEvent>,
@@ -2126,29 +2322,46 @@ type Outcome = (
 /// a hero leaves at its mine come from its army, which the test may change where the viewer never
 /// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
 /// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
-/// guards of another creature in the other game at a mine the viewer saw). (E09 T9b2b) And the
+/// guards of another creature in the other game at a mine the viewer saw); (E09 T19b) and the
+/// objects it removed (`ObjectRemoved`'s kind): a monster's answer to a declined offer follows
+/// from the visitor's army and the seed, which the test changes, and its flight removes it for
+/// every viewer that sees it (a case of `master`'s that T19b's draws found: another player's hero
+/// declined a monster's offer to join, and the monster fled in one game and asked again in the
+/// other). (E09 T9b2b) And the
 /// Capitols it changed (`TownChanged`'s town and Capitol, since E09 T18b2a those told to `viewer`,
 /// each viewer's: the events tell every viewer's views): a capture takes the town's Capitol away
 /// when its new owner holds another (TWN-CAP-002), which may stand in a town the viewer never
 /// sees, whose owner and buildings the test may change, and the change is told to every viewer
-/// that sees the town.
+/// that sees the town. (E08 T106b2) A hero that jumped to an exit `viewer` does not see has its
+/// move left out (none): the exit is drawn from its owner's stream among its channel's (ADV-TEL-003)
+/// or is its gate's pair, which the test may change where the viewer never sees them, and the
+/// viewer is told the entrance alone or nothing (A-41 not reproduced), so that the comparison goes
+/// on past another player's hidden jump; one it sees land in one game only ends it.
 fn outcome(
     (player, viewer, accepted): (PlayerId, PlayerId, bool),
     before: &[(HeroId, TilePos)],
     after: &GameState,
     events: &[GameEvent],
 ) -> Outcome {
+    let hidden = |id: HeroId| {
+        events.iter().any(|e| {
+            matches!(*e, GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroTeleported { hero, seen_to, .. },
+                ..
+            }) if hero == id && !seen_to.contains(viewer))
+        })
+    };
     let moved = before
         .iter()
         .zip(tiles(after, player))
         .map(|(&(id, from), (_, to))| {
             let d = |a: u16, b: u16| i32::from(b) - i32::from(a);
-            (
-                id,
+            let moved = (
                 d(from.x, to.x),
                 d(from.y, to.y),
                 i32::from(to.level) - i32::from(from.level),
-            )
+            );
+            (id, (!hidden(id)).then_some(moved))
         })
         .collect();
     let steps = events
@@ -2200,7 +2413,9 @@ fn outcome(
         .iter()
         .filter_map(|e| match e {
             GameEvent::Adventure(AdventureEvent {
-                kind: kind @ AdventureEventKind::GuardsChanged { .. },
+                kind:
+                    kind @ (AdventureEventKind::GuardsChanged { .. }
+                    | AdventureEventKind::ObjectRemoved { .. }),
                 ..
             }) => Some(*kind),
             _ => None,
@@ -2270,7 +2485,12 @@ proptest! {
     /// of the towns the viewer never sees, fewer of them after every town it sees, more after
     /// every other ([`vary`]); a capture's Capitol taken away (TWN-CAP-002) must go alike in both
     /// games ([`outcome`]); and at the start and every step, what the viewer is shown of the towns
-    /// in both games ([`check_town_views`]).
+    /// in both games ([`check_town_views`]). Since E08 T106b2 the plans hold teleporters, and the
+    /// other game may hold fewer or more of those the viewer never sees ([`vary`]): another
+    /// player's jump to an exit the viewer sees in neither game goes on ([`outcome`]), the viewer
+    /// told its entrance alone or nothing in both; the viewer's own visit of a teleporter shows
+    /// it the exit drawn, which ends the comparison when the two games' differ (below); and every
+    /// step checks what it is told of the jumps in both games ([`check_jump_ends`]).
     #[test]
     fn a_viewer_learns_nothing_it_cannot_see(
         plan in hygienic(),
@@ -2341,6 +2561,8 @@ proptest! {
             let player = player_of(&a, actor);
             let (from_a, from_b) = (tiles(&a, player), tiles(&b, player));
             let known_before = (known(&a, viewer), known(&b, viewer));
+            // E08 T106b2: whether the viewer's own command visits a teleporter (below).
+            let entering = actor == Actor::Player(viewer) && enters_teleporter(&a, rules, &command);
             let ra = apply(&mut a, rules, actor, command.clone(), &mut ea);
             let visit = !matches!(command, GameCommand::Manage(_));
             let rb = apply(&mut b, rules, actor, command, &mut eb);
@@ -2354,11 +2576,13 @@ proptest! {
             }
             let (ta, tb) = (told(&ea, viewer), told(&eb, viewer));
             // E08 T96b1: what the viewer is shown of the dwellings and the camps, in both games
-            // (the other's owners at load, armies and seed differ); (E09 T9b2b) and of the towns.
-            for (game, events) in [(&a, &ta), (&b, &tb)] {
+            // (the other's owners at load, armies and seed differ); (E09 T9b2b) and of the towns;
+            // (E08 T106b2) and what it is told of the jumps.
+            for (game, raw, events) in [(&a, &ea, &ta), (&b, &eb, &tb)] {
                 let seen = observe(game, rules, Viewer::Player(viewer));
                 check_hire_sources(game, rules, viewer, &seen, events)?;
                 check_town_views(game, rules, viewer, &seen)?;
+                check_jump_ends(game, viewer, &seen, raw)?;
             }
             // A battle shows its side the other's stacks (survey `E08-battles.md` §9; E08
             // T19a): the comparison ends when the viewer's starts.
@@ -2395,6 +2619,31 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::MonthStarted { .. }))
             };
             if month(&ta) || month(&tb) {
+                break;
+            }
+            // E08 T106b2: a visit of a teleporter of the viewer's own shows it where the jump
+            // went: an exit drawn from its stream (the seed's) among its channel's (ADV-TEL-003) or
+            // its gate's pair (ADV-TEL-005), which may lie where it never saw, or none (a one-way
+            // exit or a gate without a pair leads nowhere, a monolith or a Whirlpool without a
+            // candidate tells nothing), or a meeting at the pair. When the two games tell it other
+            // events, they tell the same up to the visit's (the walk, and a Whirlpool's loss, its
+            // army the same in both) and the comparison ends, as at a pickup's contents.
+            if entering && ta != tb {
+                let visit = |events: &[GameEvent]| {
+                    let at = events.iter().position(|e| {
+                        matches!(
+                            e,
+                            GameEvent::MeetingOpened { .. }
+                                | GameEvent::Adventure(AdventureEvent {
+                                    kind: AdventureEventKind::HeroTeleported { .. }
+                                        | AdventureEventKind::LeadsNowhere { .. },
+                                    ..
+                                })
+                        )
+                    });
+                    at.unwrap_or(events.len())
+                };
+                prop_assert_eq!(&ta[..visit(&ta)], &tb[..visit(&tb)]);
                 break;
             }
             let bought = ta
@@ -2497,7 +2746,9 @@ proptest! {
     /// The observation's consistency with the events, for every player at every step of random
     /// play on imported maps, in both profiles ([`check_told`]); (E08 T96b1) and what each is
     /// shown of the dwellings and the camps ([`check_hire_sources`]), at the start too; (E09
-    /// T9b2a) on the plans' towns, and what each is shown of them ([`check_town_views`]).
+    /// T9b2a) on the plans' towns, and what each is shown of them ([`check_town_views`]); (E08
+    /// T106b2) on the plans' teleporters, what each is told of the jumps ([`check_jump_ends`]) and
+    /// shown of the teleporters ([`check_teleporter_views`]).
     #[test]
     fn views_move_as_the_events_say(
         plan in plan(),
@@ -2516,6 +2767,7 @@ proptest! {
         for (&player, view) in players.iter().zip(&views) {
             check_hire_sources(&state, rules, player, view, &[])?;
             check_town_views(&state, rules, player, view)?;
+            check_teleporter_views(rules, view)?;
         }
         for step in &steps {
             let legal = options(&state, rules);
@@ -2531,6 +2783,9 @@ proptest! {
                 check_hire_sources(&state, rules, player, &after, &told)?;
                 // E09 T9b2a: the towns, to every player.
                 check_town_views(&state, rules, player, &after)?;
+                // E08 T106b2: the jumps' ends and the teleporters, to every player.
+                check_jump_ends(&state, player, &after, &events)?;
+                check_teleporter_views(rules, &after)?;
                 *view = after;
             }
         }
@@ -2697,6 +2952,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         owners: Vec::new(),
         towns: Vec::new(),
         added_towns: Vec::new(),
+        teleporters: Vec::new(),
     };
     let other = vary(&m, 0, &unseen, |_| true, |_| true);
     // Every tile is swamp with a road and a river but the heroes', which stay land as swamp is.
@@ -2816,6 +3072,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         owners: vec![None],
         towns: Vec::new(),
         added_towns: Vec::new(),
+        teleporters: Vec::new(),
     };
     let blue = |removed: bool, objects: &dyn Fn(Spot) -> bool| {
         random(&vary(&m, 1, &unseen(removed), |_| true, objects))
@@ -2868,6 +3125,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         owners: Vec::new(),
         towns: Vec::new(),
         added_towns: Vec::new(),
+        teleporters: Vec::new(),
     };
     let other = vary(&m, 0, &unseen, |_| true, |_| true);
     let dirt: Vec<(usize, usize)> = (0..64)
@@ -2896,6 +3154,111 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
     };
     assert_eq!(blockers(&m), [(2, 3), (7, 0)]);
     assert_eq!(blockers(&other), [(2, 3), (0, 7)]);
+}
+
+/// [`vary`] and the teleporters (E08 T106b2): on an 8 × 8 map of dirt with a column of water,
+/// where Red sees the four left columns, the entrance it sees stays, of those it never sees one is
+/// removed; the tiles they are visited from keep their surface under rock (the exit's grass, the
+/// Whirlpool's water), a blocker is added on another tile but not on the exit; teleporters are
+/// added after every other object on free tiles of their surface where Red sees none of their
+/// tiles, not where it sees one, on rock, on another object or on a hero; the game builds on the
+/// map so changed (A-42 never met), and with nothing unseen nothing changes.
+#[test]
+fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
+    let water = |i: usize| if i % 8 == 7 { (8, 0, 0) } else { (0, 0, 0) };
+    let t = |n: usize| 1 + u32::try_from(TELEPORTER_OBJECTS[n]).unwrap();
+    let plan = super::play::Plan {
+        version: crate::model::Version::Sod,
+        side: 8,
+        two_levels: false,
+        tiles: (0..64).map(water).collect(),
+        players: vec![(0, true), (1, true)],
+        heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
+        hero_types: 0,
+        backpacks: vec![],
+        skills: vec![],
+        kits: vec![],
+        nomads: None,
+        blockers: Vec::new(),
+        difficulty: 1,
+        exchange: None,
+        events: Vec::new(),
+        owners: Vec::new(),
+        // Channel 0's entrance, exit and two-way monolith, and a Whirlpool on the water.
+        teleporters: vec![
+            ((2, 3, 0), TELEPORTER_OBJECTS[0]),
+            ((5, 2, 0), TELEPORTER_OBJECTS[2]),
+            ((5, 5, 0), TELEPORTER_OBJECTS[3]),
+            ((7, 4, 0), WHIRLPOOL_OBJECT),
+        ],
+        towns: Vec::new(),
+    };
+    let m = lay_out(&plan);
+    let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
+        m.objects
+            .iter()
+            .filter(|o| o.template != HERO_TEMPLATE)
+            .map(|o| (o.pos.x, o.pos.y, o.template))
+            .collect()
+    };
+    assert_eq!(
+        objects(&m),
+        [(2, 3, t(0)), (5, 2, t(2)), (5, 5, t(3)), (7, 4, t(6))]
+    );
+    let unseen = Unseen {
+        seed: None,
+        armies: Vec::new(),
+        // Rock on the first four rows.
+        tiles: (0..64).map(|i| (i < 32).then_some((9, 0, 0))).collect(),
+        removed: vec![true, false],
+        added: vec![((5, 2, 0), 0), ((4, 4, 0), 0)],
+        moved: Vec::new(),
+        experience: Vec::new(),
+        owners: Vec::new(),
+        towns: Vec::new(),
+        added_towns: Vec::new(),
+        // Channel 1's two-way monolith, a Whirlpool and a gate on free tiles Red never sees; an
+        // entrance where it sees, one on rock, one on the exit, an exit on Blue's hero.
+        teleporters: vec![
+            ((6, 5, 0), 4),
+            ((2, 6, 0), 0),
+            ((6, 2, 0), 1),
+            ((5, 2, 0), 1),
+            ((7, 6, 0), 6),
+            ((6, 7, 0), 5),
+            ((6, 6, 0), 2),
+        ],
+    };
+    let right = |spot: Spot| spot.0 >= 4;
+    let other = vary(&m, 0, &unseen, right, right);
+    assert_eq!(
+        objects(&other),
+        [
+            (2, 3, t(0)),
+            (5, 2, t(2)),
+            (7, 4, t(6)),
+            (4, 4, 1),
+            (6, 5, t(4)),
+            (7, 6, t(6)),
+            (6, 7, t(5)),
+        ]
+    );
+    let terrain = |x: usize, y: usize| other.terrain.tiles[y * 8 + x].terrain;
+    let not_rock: Vec<(usize, usize, u8)> = (0..4)
+        .flat_map(|y| (4..8).map(move |x| (x, y)))
+        .filter(|&(x, y)| terrain(x, y) != 9)
+        .map(|(x, y)| (x, y, terrain(x, y)))
+        .collect();
+    assert_eq!(not_rock, [(5, 2, 2), (7, 3, 8)]);
+    assert!((0..4).all(|y| (0..4).all(|x| terrain(x, y) == 0)));
+    assert!((32..64).all(|i| other.terrain.tiles[i].terrain == water(i).0));
+    let game = start_on(&other, &FAITHFUL, 1);
+    // The two Whirlpools' two tiles each.
+    assert_eq!(game.adventure().map().channels().whirlpools().len(), 4);
+    // Nothing unseen: nothing changes but the armies (none here).
+    let same = vary(&m, 0, &unseen, |_| false, |_| false);
+    assert_eq!(objects(&same), objects(&m));
+    assert_eq!(same.terrain.tiles, m.terrain.tiles);
 }
 
 /// [`vary`] and the towns (E09 T9b2b): Red's own town at (4, 12) keeps everything; where Red sees
@@ -2986,6 +3349,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         owners: vec![None],
         towns: vec![(Some(Some(pikemen.clone())), Some(2))],
         added_towns,
+        teleporters: Vec::new(),
     };
     let build = |m: &RawMap| assert_eq!(start_on(m, &FAITHFUL, 1).players(), 2);
     // Nothing unseen: every town kept.
