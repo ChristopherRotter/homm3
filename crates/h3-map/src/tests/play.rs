@@ -66,7 +66,8 @@ use super::strategy::version;
 use crate::import::codes;
 use crate::model::{
     Artifacts, Bits, Body, Buildings, EventBody, HeroBody, Message, MonsterBody, MonsterTreasure,
-    RandomDwelling, RawMap, Rewards, Stack, Template, Text, Tile, TimedEvent, TownBody, Version,
+    RandomDwelling, RawMap, Rewards, Stack, Template, Text, Tile, TimedEvent, TownBody, TownEvent,
+    Version,
 };
 use crate::{Limits, import, parse};
 
@@ -780,6 +781,8 @@ pub(super) struct TownPlan {
     /// Its entrance on the hero's tile instead, the town the hero's owner's: the hero its visitor
     /// at load (TWN-VIS-002), so that sieges meet visitors with garrisons to merge (TWN-SIE-002).
     pub(super) visited: bool,
+    /// (E09 T19b) Its town events ([`town_events`]), which fire at its owner's turn starts.
+    pub(super) events: Vec<TownEvent>,
 }
 
 /// The plans' towns' buildings (E09 T9b1; building bits, `docs/formats/h3m.md`, "Town
@@ -1301,19 +1304,46 @@ pub(super) fn town() -> impl Strategy<Value = TownPlan> {
         0..TOWN_BUILDINGS.len(),
         any::<bool>(),
         proptest::option::weighted(0.33, Just(())),
+        town_events(),
     )
         .prop_map(
-            |(at, faction, owner, alignment, garrison, buildings, tight, visited)| TownPlan {
-                at,
-                faction,
-                owner,
-                alignment,
-                garrison,
-                buildings,
-                tight,
-                visited: visited.is_some(),
+            |(at, faction, owner, alignment, garrison, buildings, tight, visited, events)| {
+                TownPlan {
+                    at,
+                    faction,
+                    owner,
+                    alignment,
+                    garrison,
+                    buildings,
+                    tight,
+                    visited: visited.is_some(),
+                    events,
+                }
             },
         )
+}
+
+/// A plan's town's events (E09 T19b; TWN-EVT-001 to -004, the town epic's design note §32): none
+/// in half the towns, else one or two, each a timed event as the map's ([`timed_event`]: its
+/// colours, kinds, days and resources) with none to three of the 41 map slots of a custom set as
+/// its buildings (the hall's tests do not apply: a Capitol, a Grail's building, a Shipyard
+/// without water, a building standing or another of its event's supersedes among them,
+/// TWN-EVT-003, T-8) and creatures by level (none placed, `TWN-STUB-10`).
+fn town_events() -> impl Strategy<Value = Vec<TownEvent>> {
+    let event = (timed_event(), vec(0u8..41, 0..=3), vec(0u16..=20, 7)).prop_map(
+        |(event, slots, creatures)| {
+            let mut buildings = [0u8; 6];
+            for slot in slots {
+                buildings[usize::from(slot / 8)] |= 1 << (slot % 8);
+            }
+            TownEvent {
+                event,
+                buildings,
+                creatures: creatures.try_into().unwrap(),
+            }
+        },
+    );
+    prop_oneof![Just(Vec::new()), vec(event, 1..=2)]
 }
 
 /// A plan's timed events (E08 T85b; GAM-CAL-004): none to three, each for some colours (those
@@ -1321,8 +1351,13 @@ pub(super) fn town() -> impl Strategy<Value = TownPlan> {
 /// 6 (the game's 1 to 7) once or every one to three days, each resource in four given or taken
 /// (up to 3 000), so that takes meet empty treasuries (an impossible game's).
 fn timed() -> impl Strategy<Value = Vec<TimedEvent>> {
+    vec(timed_event(), 0..=3)
+}
+
+/// One of a plan's timed events ([`timed`]; since E09 T19b a town event's too, [`town_events`]).
+fn timed_event() -> impl Strategy<Value = TimedEvent> {
     let amount = prop_oneof![3 => Just(0i32), 1 => -3000i32..=3000];
-    let event = (
+    (
         any::<u8>(),
         any::<(bool, bool)>(),
         0u16..=6,
@@ -1339,8 +1374,7 @@ fn timed() -> impl Strategy<Value = Vec<TimedEvent>> {
                 interval,
                 ..TimedEvent::default()
             },
-        );
-    vec(event, 0..=3)
+        )
 }
 
 /// Increment 7's objects of a plan (E08 T64b): each one's offset from a hero's tile (two
@@ -1840,6 +1874,18 @@ pub(super) fn add_town(
         required_spells: (v != Version::RoE).then(|| Bits(vec![0; 9])),
         banned_spells: Bits(vec![0; 9]),
         alignment,
+        // E09 T19b: before SoD a town event fires for humans too, as the map's ([`lay_out`]).
+        events: town
+            .events
+            .iter()
+            .map(|e| TownEvent {
+                event: TimedEvent {
+                    human: e.event.human || v != Version::Sod,
+                    ..e.event.clone()
+                },
+                ..e.clone()
+            })
+            .collect(),
         ..TownBody::default()
     };
     let template = u32::try_from(m.templates.len()).unwrap();
@@ -2066,6 +2112,9 @@ pub(super) enum Step {
     /// acting player's `n`-th option that enters a town, else one that gets nearer to a town not
     /// its own ([`visit_town`]); as `Hire(n)` on a map without towns.
     Town(u16),
+    /// (E09 T19b; the town epic's design note §32) The acting player's `n`-th listed build of a
+    /// town (TWN-BLD-001; modulo their number), or as `Legal(n)` if it lists none.
+    Build(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -2267,7 +2316,8 @@ pub(super) fn step() -> impl Strategy<Value = Step> {
 /// bring two players' heroes together and play their battle to its end; since E08 T52 runs of
 /// management, a [`Step::Meet`] and then [`Step::Manage`]s, which meet a hero's mate and
 /// exchange with it, and runs of joins, two [`Step::Join`]s (a visit to a monster and the
-/// join's acceptance) and then [`Step::Manage`]s, which manage an army dialog.
+/// join's acceptance) and then [`Step::Manage`]s, which manage an army dialog; since E09 T19b
+/// runs of builds ([`Step::Build`]).
 pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     let run = vec(any::<u16>(), 16..96).prop_map(|ns| ns.into_iter().map(Step::Fight).collect());
     let manage = (any::<u16>(), vec(any::<u16>(), 2..16)).prop_map(|(n, ns)| {
@@ -2306,6 +2356,15 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     // E09 T9b1: runs of towns, `Step::Town`s, which walk heroes to the towns' entrances, enter,
     // capture and besiege them, and play the sieges' battles.
     let town = vec(any::<u16>(), 16..64).prop_map(|ns| ns.into_iter().map(Step::Town).collect());
+    // E09 T19b: runs of builds, a `Step::Build` and none to three ends of turn, one to eight
+    // times, so that the towns' owners build on several days (design §32).
+    let build = vec((any::<u16>(), 0usize..=3), 1..=8).prop_map(|runs| {
+        runs.into_iter()
+            .flat_map(|(n, ends)| {
+                core::iter::once(Step::Build(n)).chain(core::iter::repeat_n(Step::EndTurn, ends))
+            })
+            .collect()
+    });
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -2317,6 +2376,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => days,
             1 => hire,
             1 => town,
+            1 => build,
         ],
         0..40,
     )
@@ -3172,6 +3232,17 @@ pub(super) fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand
     options
 }
 
+/// The `n`-th of the `legal` commands that `kind` picks (modulo their number), or the `n`-th
+/// command if it picks none ([`Step::BuildBoat`], [`Step::Build`]).
+fn listed(legal: &[GameCommand], n: u16, kind: impl Fn(&GameCommand) -> bool) -> GameCommand {
+    let picked: Vec<&GameCommand> = legal.iter().filter(|&c| kind(c)).collect();
+    let command = match picked.len() {
+        0 => &legal[usize::from(n) % legal.len()],
+        len => picked[usize::from(n) % len],
+    };
+    command.clone()
+}
+
 /// A step's actor and command, given the actor's [`options`]: the acting player's, or (E08
 /// T20b3b1) the system actor's in a monster's battle, whose steps but a fight's and a free
 /// command's of a player are refused or its legal commands.
@@ -3221,20 +3292,17 @@ pub(super) fn resolve(
         Step::Hire(n) => (who, hire(state, rules, legal, *n)),
         Step::Town(n) => (who, visit_town(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
-            let boats: Vec<&GameCommand> = legal
-                .iter()
-                .filter(|c| {
-                    matches!(
-                        c,
-                        GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
-                    )
-                })
-                .collect();
-            let command = match boats.len() {
-                0 => &legal[usize::from(*n) % legal.len()],
-                len => boats[usize::from(*n) % len],
+            let boat = |c: &GameCommand| {
+                matches!(
+                    c,
+                    GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+                )
             };
-            (who, command.clone())
+            (who, listed(legal, *n, boat))
+        }
+        Step::Build(n) => {
+            let build = |c: &GameCommand| matches!(c, GameCommand::Town(TownCommand::Build { .. }));
+            (who, listed(legal, *n, build))
         }
         Step::Edited(n, edit) => {
             let moves: Vec<(HeroId, &[TilePos])> = legal.iter().filter_map(as_move).collect();
@@ -4563,12 +4631,24 @@ fn town_id(place: usize) -> TownId {
 /// event that fires for it on `day` does, in the map's order: its gains, its losses down to 0 at
 /// most from the treasury as it stands then (the state's before the command, then the changes told
 /// before), then `TimedEventFired` with its message. The days read on their own: the first day,
-/// or every interval after it.
+/// or every interval after it. Since E09 T19b the town events after them (TWN-EVT-001 to -004;
+/// the town epic's design note §30): of each town the player owns, in `TownId` order, each event
+/// that fires for it today by the same test, in the town's order: its gains, its losses down to
+/// 0, `TownEventFired` with its place, then each building that `h3_towns::event_buildings` gives
+/// of the town as the turn starts (with the Shipyard's water, TWN-SET-011) and that does not
+/// stand by its turn (an earlier building or event brought it), a `TownBuilt` with the event's
+/// place, in index order; its creatures none (`TWN-STUB-10`). The views a build tells after its
+/// `TownBuilt` are the told-views property's (`view.rs`), left out of the comparison.
 fn check_timed(
+    rules: &GameRuleset,
     before: &GameState,
     (events, turn): (&[GameEvent], usize),
     day: u32,
 ) -> Result<(), TestCaseError> {
+    let fires = |(first, every): (u16, u16)| {
+        let (first, every) = (u32::from(first), u32::from(every));
+        day == first || every > 0 && day > first && (day - first).is_multiple_of(every)
+    };
     let players = (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap()));
     let mut treasuries: Vec<Vec<u32>> = players
         .map(|p| before.treasury(p).unwrap().to_vec())
@@ -4602,9 +4682,7 @@ fn check_timed(
         let human = before.human(player).unwrap();
         let treasury = &mut treasuries[player.index()];
         for timed in before.events() {
-            let (first, every) = (u32::from(timed.first_day), u32::from(timed.interval));
-            let today =
-                day == first || every > 0 && day > first && (day - first).is_multiple_of(every);
+            let today = fires((timed.first_day, timed.interval));
             let kind = if human { timed.human } else { timed.computer };
             if !(today && kind && timed.players.contains(&player)) {
                 continue;
@@ -4632,8 +4710,84 @@ fn check_timed(
                 event: timed.message,
             });
         }
+        let (map, part) = (before.adventure().map(), rules.towns());
+        for (place, &index) in map.towns().iter().enumerate() {
+            let town = town_id(place);
+            let (Some(record), Some(statics)) =
+                (before.towns().get(town), before.towns().town_static(town))
+            else {
+                continue;
+            };
+            if before.adventure().owner(index) != Some(player) {
+                continue;
+            }
+            let water = map.town_boat_spot(town).is_some();
+            let mut standing = record.clone();
+            for (event, at) in statics.events.iter().zip(0u16..) {
+                let kind = if human { event.human } else { event.computer };
+                if !(fires((event.first_day, event.interval))
+                    && kind
+                    && event.players.contains(&player))
+                {
+                    continue;
+                }
+                for &(resource, amount) in event.resources.iter().filter(|&&(_, a)| a > 0) {
+                    let amount = amount.unsigned_abs();
+                    let held = &mut treasury[resource.index()];
+                    *held = held.saturating_add(amount);
+                    expected.push(GameEvent::ResourceGained {
+                        player,
+                        resource,
+                        amount,
+                    });
+                }
+                for &(resource, amount) in event.resources.iter().filter(|&&(_, a)| a < 0) {
+                    let amount = amount.unsigned_abs().min(treasury[resource.index()]);
+                    treasury[resource.index()] -= amount;
+                    expected.push(GameEvent::ResourceLost {
+                        player,
+                        resource,
+                        amount,
+                    });
+                }
+                expected.push(GameEvent::TownEventFired {
+                    player,
+                    town,
+                    event: at,
+                });
+                for building in h3_towns::event_buildings(record, part, event, water).iter() {
+                    if standing.built().contains(building) {
+                        continue;
+                    }
+                    let built = h3_towns::built_with(&standing, part, building).unwrap();
+                    standing = h3_towns::Town::new(standing.faction(), built, standing.forbidden());
+                    expected.push(GameEvent::TownBuilt {
+                        player,
+                        town,
+                        building,
+                        event: Some(at),
+                    });
+                }
+            }
+        }
     }
-    prop_assert_eq!(&events[turn..], &expected[..]);
+    // The views a town event's build tells, after its `TownBuilt`.
+    let mut built = false;
+    let told: Vec<GameEvent> = events[turn..]
+        .iter()
+        .filter(|e| {
+            built |= matches!(e, GameEvent::TownBuilt { .. });
+            !(built
+                && matches!(
+                    e,
+                    GameEvent::TownChanged { .. }
+                        | GameEvent::TownStackSeen { .. }
+                        | GameEvent::TownIncomeSeen { .. }
+                ))
+        })
+        .copied()
+        .collect();
+    prop_assert_eq!(&told[..], &expected[..]);
     Ok(())
 }
 
@@ -4858,7 +5012,7 @@ fn check_conservation(
         .collect();
     prop_assert_eq!(&gains, &contents, "{:?} {:?}", command, events);
     check_income(rules, before, &events[day_at..turn_at])?;
-    check_timed(before, (events, turn_at), after.day())?;
+    check_timed(rules, before, (events, turn_at), after.day())?;
     let lost: Vec<(ResourceId, u32)> = events[..day_at]
         .iter()
         .filter_map(|e| match *e {
@@ -5606,8 +5760,9 @@ const CAMP_NOT_RANDOM: [&str; 6] = [
 /// design §11); the store keeps the number of towns and each record's faction, and a record
 /// changes only by the Capitol's limit at a capture (TWN-CAP-002), since E09 T18b2b by a build
 /// (one `TownBuilt` of the town: its building with what it brings and the day's mark, no capture
-/// in the same command; TWN-BLD-004, -005) or by the day's start, which clears every mark, each
-/// told by `TownChanged` (since E09 T18b2a each viewer's, all with the town's Capitol as the store
+/// in the same command; TWN-BLD-004, -005), since E09 T19b by a town event's builds at its
+/// owner's turn start (a `TownBuilt` with the event's place each, in their order, without the
+/// mark; TWN-EVT-003) or by the day's start, which clears every mark, each told by `TownChanged` (since E09 T18b2a each viewer's, all with the town's Capitol as the store
 /// has it after).
 fn check_towns(
     rules: &GameRuleset,
@@ -5664,26 +5819,50 @@ fn check_towns(
             changed
         );
         // E09 T18b2b: a build adds its building and what it brings with the day's mark
-        // (TWN-BLD-004, -005), told as `TownBuilt`; the day's start clears every mark.
-        let built: Vec<BuildingId> = events
+        // (TWN-BLD-004, -005), told as `TownBuilt`; the day's start clears every mark. (E09
+        // T19b) A town event's buildings (TWN-EVT-003), each told as `TownBuilt` with the event's
+        // place at the owner's turn start ([`check_timed`]), add theirs in their order without
+        // the mark; a build or an event's builds alone in a command, none standing before it.
+        let built: Vec<(BuildingId, Option<u16>)> = events
             .iter()
             .filter_map(|e| match *e {
                 GameEvent::TownBuilt {
-                    town: t, building, ..
-                } if t == town => Some(building),
+                    town: t,
+                    building,
+                    event,
+                    ..
+                } if t == town => Some((building, event)),
                 _ => None,
             })
             .collect();
-        prop_assert!(built.len() <= 1, "{:?}: {:?}", town, built);
-        if let Some(&building) = built.first() {
-            prop_assert!(captured.is_empty(), "{:?} built and captured", town);
-            prop_assert!(!old.built_today() && new.built_today(), "{:?}", town);
-            prop_assert_eq!(Some(new.built()), h3_towns::built_with(old, part, building));
-            prop_assert_eq!(new.forbidden(), old.forbidden());
-        }
+        let commanded = built.iter().any(|&(_, event)| event.is_none());
+        prop_assert!(!commanded || built.len() == 1, "{:?}: {:?}", town, built);
         let day_started = events
             .iter()
             .any(|e| matches!(e, GameEvent::DayStarted { .. }));
+        if !built.is_empty() {
+            prop_assert!(captured.is_empty(), "{:?} built and captured", town);
+            let mut standing = old.clone();
+            for &(building, _) in &built {
+                prop_assert!(
+                    !standing.built().contains(building),
+                    "{:?}: {:?} built again",
+                    town,
+                    building
+                );
+                let set = h3_towns::built_with(&standing, part, building);
+                prop_assert!(set.is_some(), "{:?}: {:?}", town, building);
+                standing = h3_towns::Town::new(standing.faction(), set.unwrap(), old.forbidden());
+            }
+            prop_assert_eq!(new.built(), standing.built());
+            prop_assert_eq!(new.forbidden(), old.forbidden());
+            if commanded {
+                prop_assert!(!old.built_today() && new.built_today(), "{:?}", town);
+            } else {
+                let mark = old.built_today() && !day_started;
+                prop_assert_eq!(new.built_today(), mark, "{:?} marked by an event", town);
+            }
+        }
         if day_started {
             prop_assert!(
                 !new.built_today(),
@@ -8404,13 +8583,24 @@ fn the_plans_visit_every_kind_and_answer_every_decision() {
 /// Counts the timed events among a command's events (E08 T85b, [`check_timed`]): those that fired,
 /// their gains, and their losses that took less than the event's amount (the floor at 0).
 fn count_timed(before: &GameState, events: &[GameEvent], timed: &mut [usize; 3]) {
+    // E09 T19b: a town event's gains and losses come before its `TownEventFired`.
+    let town = |at: usize| {
+        let next = events[at..].iter().find(|e| {
+            matches!(
+                e,
+                GameEvent::TimedEventFired { .. } | GameEvent::TownEventFired { .. }
+            )
+        });
+        matches!(next, Some(GameEvent::TownEventFired { .. }))
+    };
     for (at, event) in events.iter().enumerate() {
         match *event {
             GameEvent::TimedEventFired { .. } => timed[0] += 1,
             GameEvent::ResourceGained { .. } | GameEvent::ResourceLost { .. }
-                if !events[..at]
-                    .iter()
-                    .any(|e| matches!(e, GameEvent::TurnStarted { .. })) => {}
+                if town(at)
+                    || !events[..at]
+                        .iter()
+                        .any(|e| matches!(e, GameEvent::TurnStarted { .. })) => {}
             GameEvent::ResourceGained { .. } => timed[1] += 1,
             GameEvent::ResourceLost {
                 resource, amount, ..
@@ -9196,7 +9386,9 @@ fn the_plans_visit_dwellings_from_a_boat() {
 /// against a visitor (TWN-SIE-001, -002), each won (the town captured after, TWN-CAP-003) or not;
 /// the merges that changed a garrison's slots before a siege (TWN-SIE-002); the captures, every
 /// way; and the Capitols the limit took (TWN-CAP-002); since E09 T18b2b the builds (TWN-BLD-001,
-/// through `Step::Legal`) and the days' marks the day's start cleared (TWN-BLD-004).
+/// through `Step::Legal`, since E09 T19b [`Step::Build`]) and the days' marks the day's start
+/// cleared (TWN-BLD-004); since E09 T19b the town events (TWN-EVT-001 to -003): those that fired,
+/// gave, took, and named a building standing (not built again), and the buildings they built.
 #[derive(Debug, Default)]
 struct Besieged {
     towns: usize,
@@ -9208,8 +9400,11 @@ struct Besieged {
     merges: usize,
     captures: usize,
     limited: usize,
-    built: usize,
+    /// Buildings built by a command and by a town event.
+    built: [usize; 2],
     cleared: usize,
+    /// Town events fired, of them those that gave, took, and named a building standing.
+    fired: [usize; 4],
     /// The sieges in progress: the attacking hero, and whether a visitor defends.
     open: Vec<(HeroId, usize)>,
 }
@@ -9267,7 +9462,17 @@ impl Besieged {
                         }
                     }
                 }
-                GameEvent::TownBuilt { .. } => self.built += 1,
+                GameEvent::TownBuilt { event, .. } => self.built[usize::from(event.is_some())] += 1,
+                GameEvent::TownEventFired { town, event, .. } => {
+                    let statics = before.towns().town_static(*town).unwrap();
+                    let fired = &statics.events[usize::from(*event)];
+                    let record = before.towns().get(*town).unwrap();
+                    let standing = fired.buildings.iter().any(|b| record.built().contains(b));
+                    self.fired[0] += 1;
+                    self.fired[1] += usize::from(fired.resources.iter().any(|&(_, a)| a > 0));
+                    self.fired[2] += usize::from(fired.resources.iter().any(|&(_, a)| a < 0));
+                    self.fired[3] += usize::from(standing);
+                }
                 GameEvent::DayStarted { .. } => {
                     self.cleared += (0..map.towns().len())
                         .filter_map(|place| before.towns().get(town_id(place)))
@@ -9315,9 +9520,10 @@ impl Besieged {
 /// ([`steps`], [`Step::Town`]) enters own towns, captures undefended ones (neutral and another
 /// player's), besieges towns defended by their garrison alone and by a visitor with the garrison
 /// merged, and wins and loses both, and the Capitol's limit takes a Capitol, and (E09 T18b2b) its
-/// owners build through `Step::Legal` and the day's start clears the marks, so the properties
-/// above ([`check_towns`], the entrances in [`check_invariants`], the forks' store, the listed
-/// builds of [`check_town_builds`]) see each.
+/// owners build (since E09 T19b by [`Step::Build`]'s runs too) and the day's start clears the
+/// marks, and (E09 T19b) the towns' events fire, give, take, build, and skip a building standing,
+/// so the properties above ([`check_towns`], [`check_timed`], the entrances in
+/// [`check_invariants`], the forks' store, the listed builds of [`check_town_builds`]) see each.
 #[test]
 fn the_plans_capture_and_besiege_towns() {
     use proptest::strategy::ValueTree;
@@ -9353,5 +9559,6 @@ fn the_plans_capture_and_besiege_towns() {
     );
     assert!(b.merges > 0 && b.limited > 0, "{b:?}");
     assert!(b.captures > b.undefended.iter().sum::<usize>(), "{b:?}");
-    assert!(b.built > 0 && b.cleared > 0, "{b:?}");
+    assert!(b.built.iter().all(|&n| n > 0) && b.cleared > 0, "{b:?}");
+    assert!(b.fired.iter().all(|&n| n > 0), "{b:?}");
 }

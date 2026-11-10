@@ -30,6 +30,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   (before its own settling, which declines every question), so that the dwellings' cover test
   keeps its counts; raise a cover test's cases, not its draw (the adventure lane's `TRAPS.md`).
 
+- **The turn start is compared whole** (`check_timed`, E09 T19b): every event after a command's
+  first `TurnStarted` must be what the map's timed events and then the owned towns' events give,
+  in order (a town event's build's views after its `TownBuilt` are left out, the told-views
+  property's). A new event at a turn start (increment 3's creatures, a week's growth told) is
+  taught there, or every property fails at the first such turn.
+
 - **A public draw under the hygiene property** (E09 T9b2a's cut; T9b2b's `hygienic`): the
   hygiene property (`a_viewer_learns_nothing_it_cannot_see`) builds its other game with another
   seed, so a setup draw a viewer sees (a random town's faction, a neutral garrison, a random
