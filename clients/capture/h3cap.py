@@ -246,19 +246,35 @@ def shadowed(cap, base):
     return hit
 
 
+# The 5-6-5 values a shadow leaves, a body's or a border's over any pixel (about a fifth of all
+# values; E17 M6 T7a, R4-9). A shadow drawn again over its own unrestored image compounds where
+# the viewer, drawing it once, shows one of these values: deeper chains count only there. Before,
+# a near-black pixel counted as an artifact over almost anything (five bodies take every pixel
+# whose green is below 32 to black), and pixels of listed differences were taken for artifacts.
+_EVERY = np.arange(1 << 16, dtype=np.uint32).astype(np.uint16)
+SHADOW_VALUES = np.zeros(1 << 16, bool)
+SHADOW_VALUES[shadow_body(_EVERY)] = True
+SHADOW_VALUES[shadow_border(_EVERY)] = True
+
+
 def redraws(cap, ours, differ, earlier=()):
-    """Which of the `differ` pixels are the original's redraw artifacts: its pixel is the viewer's
-    at the same moment with one to MAX_SHADOWS more shadows, or one the viewer drew there at an
-    `earlier` moment of the same sequence with at least one more (a rectangle the original left
-    unrestored; a timing slip of the viewer's shows no more shadows, so it still fails). Any
-    other difference is no artifact."""
+    """Which of the `differ` pixels are the original's redraw artifacts (design §7.11): its pixel
+    is the viewer's at the same moment with one more shadow (also a redrawn item's shadow over one
+    the redraw did not draw again: `lightning`'s count box at 0 ms); or, where the viewer's pixel
+    at that moment is a value a shadow leaves (`SHADOW_VALUES`), the viewer's with two to
+    MAX_SHADOWS more, or one the viewer drew there at an `earlier` moment of the same sequence
+    with at least one more (a rectangle the original left unrestored; a timing slip of the
+    viewer's shows no more shadows, so it still fails). Any other difference is no artifact."""
     ys, xs = np.nonzero(differ)
-    theirs = cap[ys, xs]
-    hit = shadowed(theirs, ours[ys, xs])
+    theirs, mine = cap[ys, xs], ours[ys, xs]
+    hit = (theirs == shadow_body(mine)) | (theirs == shadow_border(mine))
+    deep = np.nonzero(SHADOW_VALUES[mine] & ~hit)[0]
+    found = shadowed(theirs[deep], mine[deep])
     for before in earlier:
-        if hit.all():
+        if found.all():
             break
-        hit |= shadowed(theirs, before[ys, xs])
+        found |= shadowed(theirs[deep], before[ys[deep], xs[deep]])
+    hit[deep] = found
     out = np.zeros(differ.shape, bool)
     out[ys[hit], xs[hit]] = True
     return out
