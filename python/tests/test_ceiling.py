@@ -115,6 +115,8 @@ def test_a_network_is_scored_against_every_draw() -> None:
     x = sums.report()["networks"]["net"]
     assert x["agreement"]["by_category"]["move"] == pytest.approx(2 / 6)
     assert x["cross_entropy"]["all"] > 10.0
+    # E25 T30: by the draw's category, the category of the network's entry (round 0 here: tactics).
+    assert x["confusion"] == {"move": {"tactics": 1.0}}
 
 
 def test_a_ceiling_runs_on_the_fair_actors_episodes(tmp_path: Path) -> None:
@@ -138,6 +140,9 @@ def test_a_ceiling_runs_on_the_fair_actors_episodes(tmp_path: Path) -> None:
         assert 0.0 <= c[key]["all"] <= 1.0
     assert c["entropy"]["all"] <= c["entropy_miller_madow"]["all"]
     assert 0.0 <= c["networks"][str(path)]["agreement"]["all"] <= 1.0
+    for row in c["networks"][str(path)]["confusion"].values():
+        assert sum(row.values()) == pytest.approx(1.0)
+    assert any("'s choice by the teacher's category" in line for line in lines[0].splitlines())
     assert out["teacher"]["system"] == "system" and out["teacher"]["seed"] == 8
     assert "the fair actor's ceiling" in lines[0]
     # The same bench draws the same states: a second run repeats the first.

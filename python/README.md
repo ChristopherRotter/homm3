@@ -344,7 +344,8 @@ second call on the unchanged state draws again) and the last draw played. By the
 each draw: the share where the other draws' most frequent entry is it (`mode`, a clone of the
 most likely entry), the share of the other draws equal to it (`pair`, a clone that samples the
 teacher), the state's entropy (the clone's cross-entropy floor), the cast heads' `mode` along
-its choice; each `--network`'s most likely entry against every draw and its cross-entropy.
+its choice; each `--network`'s most likely entry against every draw and its cross-entropy, and
+by the draw's category the categories of the network's choice (`confusion`, E25 T30).
 
 ## Search (E06 T8, design §14)
 
