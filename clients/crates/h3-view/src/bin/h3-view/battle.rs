@@ -1147,9 +1147,10 @@ impl<'g> Battle<'g> {
         let mut stacks = crate::pointer::stacks(&self.record, timeline, &self.turned, tables);
         if next {
             let manifest = &self.record.header.manifest;
-            let to_come = Fight::here_ref(self.fight.as_ref()).and_then(Live::turn);
-            stacks.push(to_come.map_or(Acting::Itself, |turn| {
-                crate::pointer::stack_of(manifest, tables, &turn.observation)
+            // Its battle alone, not its legal commands and previews (E17 M6 T7b, R5-4).
+            let to_come = Fight::here_ref(self.fight.as_ref()).and_then(Live::observation);
+            stacks.push(to_come.map_or(Acting::Itself, |observation| {
+                crate::pointer::stack_of(manifest, tables, &observation)
             }));
         }
         let first = first_boxes(&self.boxes, self.boxes_open, self.settings.auto);

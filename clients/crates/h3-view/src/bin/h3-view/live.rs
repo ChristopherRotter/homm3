@@ -241,6 +241,14 @@ impl<'r> Live<'r> {
         Some(Turned::of(&self.state, self.ruleset, side, &[]))
     }
 
+    /// The battle at the turn to come, a spectator's view: [`Self::turn`]'s, without its legal
+    /// commands, aims and damage previews (E17 M6 T7b, R5-4: what Auto Combat asks of the turn to
+    /// come, its acting stack); none when the battle is over.
+    pub fn observation(&self) -> Option<Observation> {
+        self.state.side_to_act()?;
+        Some(map::observe(&self.state, self.ruleset, Viewer::Spectator))
+    }
+
     /// The engine's part of the side to act's hero's aim of `spell` now (E17 M5 T3b): none when
     /// the engine casts it without a target or at nothing.
     pub fn hero_aim(&self, spell: u16) -> Option<h3_view::mouse::aim::Aim> {
@@ -642,6 +650,8 @@ mod tests {
         let mut turns = 0;
         assert!(!live.human() && !live.waiting());
         while live.turn().is_some() {
+            // The turn to come's battle alone is its turn's (E17 M6 T7b, R5-4).
+            assert_eq!(live.observation(), live.turn().map(|t| t.observation));
             turns += 1;
             let played = live.next().unwrap().unwrap();
             // Every side's events: the public ones are the spectator's.
@@ -658,6 +668,7 @@ mod tests {
             messages.extend(played.messages);
         }
         assert!(live.over() && turns > 0);
+        assert_eq!(live.observation(), None);
         assert_eq!(live.next().unwrap(), None);
         assert_eq!(live.choice(), None);
         assert!(live.play(Command::Wait {}).is_err());

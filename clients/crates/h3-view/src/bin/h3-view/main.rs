@@ -122,9 +122,11 @@ commands:
           working directory when there is one; its [battle] table, the map window's [map])
           overrides the defaults command by command, e.g. `[battle]` then `pause = [\"P\"]`
           (the commands: music, effects, pause, frame, restart, vsync, cursor, fullscreen, quit,
-          log-up, log-down, dragon-spell, surrender, retreat, options, auto-combat, spell-book,
-          wait, defend, book-close, book-adventure, book-combat, book-previous, book-next,
-          book-tab-up, book-tab-down, box-ok, box-cancel, options-ok, aim-cancel, result-ok; []
+          log-up, log-down, dragon-spell, stats, surrender, retreat, options, auto-combat,
+          spell-book, wait, defend, next-creature, start-combat, book-close, book-adventure,
+          book-combat, book-previous, book-next, book-tab-up, book-tab-down, box-ok, box-cancel,
+          army-info, grid, cursor-shadow, movement-shadow, stats-ok, options-ok, aim-cancel,
+          result-ok; []
           unbinds one; a key may be the battle's and a dialog's at once, Esc is). The combat
           options' settings (E17 M6 T4a, provisional) come from a settings file (--settings,
           else settings.toml in the working directory when there is one; its [battle] table of

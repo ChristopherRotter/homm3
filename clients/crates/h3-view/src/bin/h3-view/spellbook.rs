@@ -626,6 +626,9 @@ pub fn still(
                                     Next::Box(next) => asking = next.map(|a| *a),
                                     Next::Give(command) => {
                                         asking = None;
+                                        // The action's start hides the army info windows
+                                        // (0x478DAC; E17 M6 T7b, R6-1).
+                                        hover.windows.hide();
                                         result = ended(command, &mut eagle_eye);
                                     }
                                 }
@@ -712,6 +715,9 @@ pub fn still(
                             Next::Box(next) => asking = next.map(|a| *a),
                             Next::Give(command) => {
                                 asking = None;
+                                // The action's start hides the army info windows (0x478DAC;
+                                // E17 M6 T7b, R6-1).
+                                hover.windows.hide();
                                 result = ended(command, &mut eagle_eye);
                             }
                         }
@@ -1757,6 +1763,55 @@ pub(crate) mod tests {
         assert_eq!(ids(&played(0, orrin, &[]).unwrap()), [0; 0]);
         // From the hero to an empty hex: none.
         assert_eq!(ids(&played(1, orrin, &["move:400,300"]).unwrap()), [0; 0]);
+        // E17 M6 T7b (R6-1): Retreat's question kept the window (S and R keep them in the
+        // original's profile, CLT-Q49), but its OK gives the action, whose start hides all six
+        // (`action_dispatcher`'s head, 0x478DAC to 0x478E0F, before the switch that dispatches
+        // Retreat and Surrender too): the result window comes over none, by a key or a click.
+        let asks = |_: &str, _, _: Option<&Picture>| Some(one_button(h3_view::message::YES));
+        let ends = |_| Some((one_button(h3_view::result::OK), Tune::Retreat, Vec::new()));
+        let retreated = |actions: &[&str]| {
+            let boxes = Boxes {
+                tell: &asks,
+                leave: Leave {
+                    retreat: true,
+                    surrender: None,
+                },
+                refusal: &|_| None,
+                pictures: (String::new(), [0, 0]),
+                result: &ends,
+                opening: None,
+                look: &|_, _| None,
+                acting: &|_, _| None,
+                held: &|_, _| None,
+                turret: &|_, _| None,
+                help: &|_| None,
+                hero_info: &hero_info,
+                options: &options,
+                army: Some(Army {
+                    layout: &battle,
+                    observation,
+                    legal: &none,
+                    level: 1,
+                    window: &window,
+                    shades: Shades::default(),
+                }),
+            };
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                orrin,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+            .unwrap()
+        };
+        let asking = retreated(&["key:r"]);
+        assert!(asking.message.is_some() && ids(&asking) == [1]);
+        for ok in [&["key:r", "key:Return"][..], &["key:r", "click:20,20"][..]] {
+            let still = retreated(ok);
+            assert!(still.result.is_some() && ids(&still).is_empty(), "{ok:?}");
+        }
         // A left press over the enemy's hero (nothing; the click's park leaves the battlefield),
         // then the right press there: its window shown (the move back a new hex shows it by
         // itself) and kept after the release. The press showing again a window a left press hid

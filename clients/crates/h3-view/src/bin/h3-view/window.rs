@@ -772,8 +772,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
     // its index, T8b2 R5c-4): it acts on that turn if a human's (0x474625).
     let mut stopped_by: Option<(Do, usize)> = None;
-    // Either Control key held (E24 M3 T1b: a chord's Ctrl+).
-    let mut ctrl = [false; 2];
+    // Either Control key held (E24 M3 T1b: a chord's Ctrl+), and whether it was pressed alone
+    // (E17 M6 T7b, R5-1).
+    let mut ctrl = Control::default();
     let mut report = Report::default();
     // An unattended run presses a human's commands itself (E17 M5 T2b).
     let plays = source.humans.contains(&true) || ground.content().is_some();
@@ -907,7 +908,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         let at = clock.ms(win.ticks_ns()).max(start);
                         // F over the battlefield hides the army info windows first (CLT-Q49,
                         // E17 M6 T4b2b1).
-                        if let Some(hide) = key_hides(&battle, at, pointer) {
+                        if let Some(hide) =
+                            key_hides(battle.takes(at), battle.layout(), (at, pointer))
+                        {
                             inputs.push(hide);
                         }
                         if let Some(spell) = battle.dragon_aim(at) {
@@ -930,6 +933,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             emptied: false,
         };
         for event in win.wait(timeout) {
+            // The options dialog's close by the event before counts before this one (E17 M6
+            // T7b, R5-3): an enemy pressed or the dialog opened again in the same pass finds the
+            // boxes changed, and under Auto Combat the turn handed over.
+            grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
+            // The modifier's state is no input to a box: a Control key's down the queue drops
+            // still holds it (E17 M6 T7b, R5-6).
+            ctrl.saw(&event);
             if flush.drops(box_shown(&battle), &event) {
                 continue;
             }
@@ -938,9 +948,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             match event {
                 Event::Quit => break 'run,
                 // Control held with a key makes another chord (E24 M3 T1b). Itself a key down, it
-                // stops Auto Combat as any key does (T8b2, R5c-5; design §7.22).
-                Event::Key(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
-                    ctrl[usize::from(k == Key::RightCtrl)] = true;
+                // stops Auto Combat as any key does (T8b2, R5c-5; design §7.22), but only pressed
+                // alone, at its release: a chord of the window's own (Ctrl+F5 to Ctrl+F8) stays
+                // the window's (E17 M6 T7b, R5-1, *provisional*: a stop by Control alone comes
+                // at its release, not as it goes down).
+                Event::Key(Key::LeftCtrl | Key::RightCtrl) => ctrl.pressed(),
+                Event::KeyUp(Key::LeftCtrl | Key::RightCtrl) => {
                     let context = Context::of(
                         battle.result_open(),
                         battle.message_open(),
@@ -948,20 +961,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         battle.book_open(),
                         battle.aiming(),
                     );
-                    if options.run.is_none()
+                    if ctrl.released()
+                        && options.run.is_none()
                         && context == Context::Battle
                         && battle.stop_auto(at).is_some()
                     {
                         mouse_changed = true;
                     }
                 }
-                Event::KeyUp(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
-                    ctrl[usize::from(k == Key::RightCtrl)] = false;
-                }
                 // Unattended, the keys do nothing but quit, whatever is open (the mouse still
                 // moves the battle's; a human's commands are the presser's).
                 Event::Key(key) if options.run.is_some() => {
-                    let command = keys.command(Context::Battle, ctrl.contains(&true), key.name());
+                    let command = keys.command(Context::Battle, ctrl.held(), key.name());
                     if command == Some(Do::Window(Own::Quit)) {
                         break 'run;
                     }
@@ -1038,7 +1049,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         battle.book_open(),
                         battle.aiming(),
                     );
-                    let ctrl_held = ctrl.contains(&true);
+                    let ctrl_held = ctrl.held();
                     // The tactics phase's panel's keys first, then the battle's (E17 M5 T4c2b).
                     let command = (context == Context::Battle && battle.in_tactics(at))
                         .then(|| keys.command(Context::Tactics, ctrl_held, key.name()))
@@ -1280,7 +1291,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         // over the battlefield the client's profile hides the army info windows
                         // first (CLT-Q49, E17 M6 T4b2b1).
                         Do::DragonSpell => {
-                            if let Some(hide) = key_hides(&battle, at, pointer) {
+                            if let Some(hide) =
+                                key_hides(battle.takes(at), battle.layout(), (at, pointer))
+                            {
                                 inputs.push(hide);
                                 mouse_changed = true;
                             }
@@ -1333,14 +1346,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     if let Some(h) = held.take_if(|h| h.key == Some(key)) {
                         // The keys C, S, R and O over the battlefield hide the army info windows
                         // first in the client's profile (CLT-Q49, E17 M6 T4b2b1).
-                        let keyed = [
-                            h3_view::panel::SPELL_BOOK,
-                            h3_view::panel::SURRENDER,
-                            h3_view::panel::RETREAT,
-                            h3_view::panel::OPTIONS,
-                        ];
-                        if keyed.contains(&h.id)
-                            && let Some(hide) = key_hides(&battle, at, pointer)
+                        if HIDING_HOTKEYS.contains(&h.id)
+                            && let Some(hide) =
+                                key_hides(battle.takes(at), battle.layout(), (at, pointer))
                         {
                             inputs.push(hide);
                         }
@@ -1567,7 +1575,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             break;
         }
         // The options dialog's close changed the Auto Combat boxes (E17 M6 T4b1): the turns to
-        // come, and under Auto Combat the turn waiting, play by them.
+        // come, and under Auto Combat the turn waiting, play by them (a close by the pass's last
+        // event; one before it counted before the next event, above).
         grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
         // The options dialog's close composes the background again with its options, without the
         // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
@@ -1950,6 +1959,51 @@ struct Flush {
     emptied: bool,
 }
 
+/// The Control keys (E24 M3 T1b: a chord's Ctrl+; E17 M6 T7b, R5-1 and R5-6): which are held,
+/// whatever the input queue drops (a modifier's state is no input to a box), and whether one went
+/// down, as the battle read it, with no other key down or press since (Control pressed alone,
+/// which stops Auto Combat at its release).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct Control {
+    held: [bool; 2],
+    alone: bool,
+}
+
+impl Control {
+    /// `event` as it comes, before the queue may drop it: a Control key held or let go, any other
+    /// key down or press ends Control alone.
+    fn saw(&mut self, event: &Event) {
+        match *event {
+            Event::Key(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
+                self.held[usize::from(k == Key::RightCtrl)] = true;
+            }
+            Event::KeyUp(k @ (Key::LeftCtrl | Key::RightCtrl)) => {
+                self.held[usize::from(k == Key::RightCtrl)] = false;
+            }
+            Event::Key(_) | Event::Click { down: true, .. } => self.alone = false,
+            _ => {}
+        }
+    }
+
+    /// Either Control key held.
+    fn held(self) -> bool {
+        self.held.contains(&true)
+    }
+
+    /// A Control key's down the battle read: Control alone from it.
+    fn pressed(&mut self) {
+        self.alone = true;
+    }
+
+    /// A Control key's release the battle read, after [`Self::saw`]: whether it ends Control
+    /// pressed alone (neither held now).
+    fn released(&mut self) -> bool {
+        let alone = self.alone && !self.held();
+        self.alone &= self.held();
+        alone
+    }
+}
+
 impl Flush {
     /// Whether `event` is dropped, the box `shown` as it comes: a press or a key down from the
     /// opening of a box in the pass on (the key-ups, the moves, the releases and Quit go on).
@@ -2123,14 +2177,27 @@ struct SettingsFile<'a> {
     lines: &'a std::cell::RefCell<Vec<String>>,
 }
 
+/// The panel's buttons whose hotkey's release hides the army info windows first ([`key_hides`];
+/// CLT-Q49 fixed in the client's profile, E17 M6 T4b2b1): C, S, R and O (F's is the dragon's
+/// aim, not a button's). A, D and W hide nothing first: their actions' start does.
+const HIDING_HOTKEYS: [u16; 4] = [
+    h3_view::panel::SPELL_BOOK,
+    h3_view::panel::SURRENDER,
+    h3_view::panel::RETREAT,
+    h3_view::panel::OPTIONS,
+];
+
 /// The hide one of the keys C, F, S, R and O gives at `at` with the mouse at `pointer` (E17 M6
 /// T4b2b1, CLT-Q49 fixed in the client's profile, the window's; `h3_view::army_info::Hover::key`
-/// for a still): over the battlefield while the battle takes the key, as a left press there
-/// hides the army info windows (*provisional*: whatever the key then does).
-fn key_hides(battle: &Battle<'_>, at: u32, pointer: Option<(i32, i32)>) -> Option<Input> {
+/// for a still): over the battlefield of `layout` while the battle `takes` the key, as a left
+/// press there hides the army info windows (*provisional*: whatever the key then does).
+fn key_hides(
+    takes: bool,
+    layout: &h3_view::layout::BattleLayout,
+    (at, pointer): (u32, Option<(i32, i32)>),
+) -> Option<Input> {
     let (x, y) = pointer?;
-    (battle.takes(at) && h3_view::army_info::on_field(battle.layout(), [x, y]))
-        .then_some(Input::Hide { at, key: true })
+    (takes && h3_view::army_info::on_field(layout, [x, y])).then_some(Input::Hide { at, key: true })
 }
 
 /// What a message box `did` at `at`, the mouse at `pointer` (E17 M5 T4a): a change to draw, or
@@ -2624,6 +2691,103 @@ mod tests {
         inputs.clear();
         refusal_closed(&mut inputs, 900, None);
         assert_eq!(inputs, [Input::Cancel { at: 900 }]);
+    }
+
+    #[test]
+    fn the_keys_c_f_s_r_and_o_hide_the_army_info_windows_over_the_battlefield_only() {
+        // E17 M6 T7b (R6-3, CLT-Q49's fix): the panel's buttons whose default hotkeys are C, S,
+        // R and O hide first; A, D, W, Space and the tactics phase's not.
+        let hiding: Vec<u16> = (h3_view::keys::BUTTONS.iter())
+            .filter(|(_, _, keys)| keys.iter().any(|k| ["C", "S", "R", "O"].contains(k)))
+            .map(|&(id, _, _)| id)
+            .collect();
+        let mut listed = HIDING_HOTKEYS.to_vec();
+        listed.sort_unstable();
+        let mut hiding = hiding;
+        hiding.sort_unstable();
+        assert_eq!(listed, hiding);
+        for id in [
+            h3_view::panel::AUTO_COMBAT,
+            h3_view::panel::DEFEND,
+            h3_view::panel::WAIT,
+        ] {
+            assert!(!HIDING_HOTKEYS.contains(&id));
+        }
+        // Over the battlefield while the battle takes the key: the hide, a key's; off the
+        // battlefield (the panel), not taking it, or the mouse out of the window: none.
+        let layout =
+            h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
+                .unwrap();
+        let hide = Some(Input::Hide { at: 7, key: true });
+        assert_eq!(key_hides(true, &layout, (7, Some((400, 300)))), hide);
+        assert_eq!(key_hides(true, &layout, (7, Some((400, 590)))), None);
+        assert_eq!(key_hides(false, &layout, (7, Some((400, 300)))), None);
+        assert_eq!(key_hides(true, &layout, (7, None)), None);
+    }
+
+    #[test]
+    fn the_usage_names_every_command_of_the_key_table() {
+        // E17 M6 T7b (R5-5): the usage's list of what a user's `[battle]` table may bind is the
+        // table's, in its order.
+        use h3_ui::keys::Command as _;
+        let (_, list) = crate::USAGE.split_once("(the commands: ").unwrap();
+        let (list, _) = list.split_once("; []").unwrap();
+        let listed: Vec<&str> = list.split(',').map(str::trim).collect();
+        let names: Vec<String> = (h3_view::keys::Command::all().into_iter())
+            .map(h3_view::keys::Command::name)
+            .collect();
+        assert_eq!(listed, names);
+    }
+
+    #[test]
+    fn control_alone_stops_auto_combat_at_its_release_and_a_chord_never() {
+        // E17 M6 T7b (R5-1, R5-6): Control's state as each event comes (`saw`), the battle
+        // reading what the queue does not drop (`pressed`, `released`).
+        let read = |ctrl: &mut Control, event: Event| {
+            ctrl.saw(&event);
+            match event {
+                Event::Key(Key::LeftCtrl | Key::RightCtrl) => {
+                    ctrl.pressed();
+                    false
+                }
+                Event::KeyUp(Key::LeftCtrl | Key::RightCtrl) => ctrl.released(),
+                _ => false,
+            }
+        };
+        // Alone: the stop at its release, once.
+        let mut ctrl = Control::default();
+        assert!(!read(&mut ctrl, Event::Key(Key::LeftCtrl)) && ctrl.held());
+        assert!(read(&mut ctrl, Event::KeyUp(Key::LeftCtrl)) && !ctrl.held());
+        assert!(!read(&mut ctrl, Event::KeyUp(Key::LeftCtrl)));
+        // Ctrl+F5 (the window's pause), and Control with a press: no stop.
+        for other in [
+            Event::Key(Key::F5),
+            Event::Click {
+                down: true,
+                at: (1, 1),
+            },
+        ] {
+            let mut ctrl = Control::default();
+            read(&mut ctrl, Event::Key(Key::RightCtrl));
+            read(&mut ctrl, other);
+            assert!(ctrl.held());
+            read(&mut ctrl, Event::KeyUp(Key::F5));
+            assert!(!read(&mut ctrl, Event::KeyUp(Key::RightCtrl)) && !ctrl.held());
+        }
+        // Both held: alone until the last goes up; a move or another key's release ends nothing.
+        let mut ctrl = Control::default();
+        read(&mut ctrl, Event::Key(Key::LeftCtrl));
+        read(&mut ctrl, Event::Key(Key::RightCtrl));
+        read(&mut ctrl, Event::Pointer(Some((3, 3))));
+        read(&mut ctrl, Event::KeyUp(Key::F5));
+        assert!(!read(&mut ctrl, Event::KeyUp(Key::LeftCtrl)) && ctrl.held());
+        assert!(read(&mut ctrl, Event::KeyUp(Key::RightCtrl)));
+        // A down the queue drops (a box opened in the pass) still holds Control, so a chord after
+        // it is Ctrl's, and is no stop at its release.
+        let mut ctrl = Control::default();
+        ctrl.saw(&Event::Key(Key::LeftCtrl));
+        assert!(ctrl.held());
+        assert!(!read(&mut ctrl, Event::KeyUp(Key::LeftCtrl)));
     }
 
     #[test]
