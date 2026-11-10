@@ -91,7 +91,7 @@ commands:
          [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--settings <file>]
          [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute]
          [--check <s> | --measure <s>] [--leave retreat|surrender] [--auto <n>]
-         [--auto-question cancel|retreat|surrender] [--sight fair|all-seeing]
+         [--auto-question cancel|retreat|surrender] [--close-result] [--sight fair|all-seeing]
           a battle in a window (SDL 3, h3-sdl), as `play` loads it, at the original's frame
           times from --from ms: each frame is shown when it falls due, at the largest integer
           scale that fits the display (--scale), vsync off unless --vsync, the game's cursor as
@@ -148,7 +148,8 @@ commands:
           Auto Combat on at the human's turn of that number (from 1) and stops it by a press
           two commands later; --auto-question answers Auto Combat's question when the computer
           would leave for the human (provisional: cancel by default; retreat: OK, then the
-          offer's Cancel; surrender: OK twice). Instead of a scenario or a record, --server <ws://… | wss://…>
+          offer's Cancel; surrender: OK twice); --close-result presses the result window's OK
+          (and Eagle Eye's boxes after it), ending the run with the battle. Instead of a scenario or a record, --server <ws://… | wss://…>
           with `connect`'s --game or --create, --seat attacker|defender and its other options
           (--token, --name, --pins, --drop, --login, --register, --accounts) plays that seat
           of a game on a server.

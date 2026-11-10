@@ -229,6 +229,8 @@ pub struct Still {
     /// The cursor shadow's list and the background as the actions left them, with the grid's and
     /// the shadows' options (E17 M6 T4c, design §12.16).
     pub cells: Cells,
+    /// The panel's button a `key-down:` holds by its hotkey (E17 M7 T1c, CLT-Q71), drawn pressed.
+    pub pressed: Option<u16>,
 }
 
 impl Still {
@@ -259,6 +261,7 @@ impl Still {
                 },
                 h3_render::Bugs::Original,
             ),
+            pressed: None,
         }
     }
 
@@ -376,7 +379,9 @@ struct Asking {
 /// A box's OK that gives a command (Retreat's, Surrender's) ends the battle in its result window
 /// (E17 M5 T4b1), which a later key or click takes as the box's; its OK opens Eagle Eye's boxes
 /// one after another (E17 M6 T5c), the screen darkened behind them. A move to the park point after
-/// a click is a move as the harness's is. Nothing else may come in a situation's actions.
+/// a click is a move as the harness's is. `key-down:` and `key-up:` hold a panel button by its
+/// hotkey while a dialog opens and takes the release (E17 M7 T1c, CLT-Q71): drawn pressed as
+/// the original's profile leaves it. Nothing else may come in a situation's actions.
 pub fn still(
     actions: &[String],
     mouse: [i32; 2],
@@ -510,11 +515,50 @@ pub fn still(
     if !still.opening {
         take(&mut hover, &mut cells, mouse);
     }
+    // The key a `key-down:` holds (E17 M7 T1c).
+    let mut held_key: Option<String> = None;
     for action in actions {
         if still.held {
             return Err(format!(
                 "`{action}`: the right button is held: nothing comes after `right:`"
             ));
+        }
+        // A panel button held by its hotkey (E17 M7 T1c, CLT-Q71): `key-down:` over the battle,
+        // every dialog closed, draws it pressed; `key-up:` goes to the dialog, box or book open
+        // then, which takes the release: the button stays held, as the window's original's
+        // profile leaves it (`window::release_taken`). A release over the battle would click the
+        // button, a sequence's command, not a still's.
+        if let Some((kind @ ("key-down" | "key-up"), arg)) = action.split_once(':') {
+            let key = if arg.len() == 1 {
+                arg.to_ascii_uppercase()
+            } else {
+                arg.to_owned()
+            };
+            let open = still.stats.is_some()
+                || still.options.is_some()
+                || still.open.is_some()
+                || asking.is_some()
+                || result.is_some();
+            if kind == "key-down" {
+                let button = match keys.command(Context::Battle, false, &key) {
+                    Some(Do::Button(id)) if !open && held_key.is_none() => id,
+                    _ => {
+                        return Err(format!(
+                            "`{action}`: only a panel button's hotkey, every dialog closed, none \
+                             held"
+                        ));
+                    }
+                };
+                still.pressed = Some(button);
+                held_key = Some(key);
+            } else if !open || held_key.as_deref() != Some(key.as_str()) {
+                return Err(format!(
+                    "`{action}`: only the held key's release, a dialog taking it"
+                ));
+            } else {
+                held_key = None;
+            }
+            continue;
         }
         // The stats dialog open (E17 M6 T2a2a): its moves, its OK's click and keys.
         if let Some(open) = still.stats.as_mut() {
@@ -859,11 +903,14 @@ pub fn still(
             }
             _ => {
                 return Err(format!(
-                    "`{action}`: a situation's actions are key:, click:, move:, right: and \
-                     right-click: (over the battle)"
+                    "`{action}`: a situation's actions are key:, key-down:, key-up:, click:, \
+                     move:, right: and right-click: (over the battle)"
                 ));
             }
         }
+    }
+    if held_key.is_some() {
+        return Err("a `key-down:` without its `key-up:`".to_owned());
     }
     if still.opening && asking.is_none() {
         still.opening = false;

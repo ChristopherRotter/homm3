@@ -4051,7 +4051,8 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   D and Space, the scan codes 0x1F, 0x13, 0x18, 0x1E, 0x2E,
   0x11, 0x20, 0x39; the key down presses, the key up releases: 0x4565E7, 0x4564D6; a release a
   dialog, a popup, the book or an aim takes lets the button go without its click in the client's
-  profile, CLT-Q71 (b), M7 T1b: `window::release_taken`); a disabled
+  profile, CLT-Q71 (b), M7 T1b: `window::release_taken`; the original's keeps the pressed frame
+  after the dialog's close, recorded at M7 T1c, `stats-held`); a disabled
   one takes none (0x4562DD). A replay takes no command, but the log's scroll buttons (2006, 2007)
   and the arrow keys (the battle's own, 0x4758FB) scroll it (`Logged::Scroll`). The viewer's own
   keys moved: P pauses, Home restarts, H the cursor's kind (since E24 M3 T1b the map window's
@@ -5826,8 +5827,9 @@ frames.
      at E17 M6 T7b (R4-3): the procedure plays only on a 0x200/0xC whose cursor item is 225 to
      238, 0x46F855 → 0x46FDB1, and a DEF button's mouse press sends it none, its own loop copying
      each message over the caller's, 0x45643F, and returning only 0x200/0xD at the release,
-     0x456496: **one click** (CLT-Q74, the user's answer: built so in both profiles, M7 T1a; a
-     sound sequence pressing a speed to confirm it, M7 T1c). No oddity.
+     0x456496: **one click** (CLT-Q74, the user's answer: built so in both profiles, M7 T1a;
+     recorded at M7 T1c, `options-speed-sound`: speed 2's press one `button.wav` of 151 ms, the
+     key O's press the other). No oddity.
   2. A box or a bar acts on the left release anywhere: its press inside is enough
      (`dialog_def_message`'s release tests no box), where a DEF button needs the release inside.
      Fixed in the client's profile (CLT-Q43 (2), M7 T1a): the release inside the pressed item
@@ -5853,6 +5855,14 @@ frames.
      hex as they were, until the mouse moves (nothing posted). Fixed in the client's profile
      (CLT-Q43 (3), M7 T1a): the window posts the mouse at the close (the hex forgotten, the mouse
      taken where it rests, after the level the dialog set); the stills keep the original's arrow.
+  11. The music raised from 0 (CLT-Q73; `music_volume_tail` 0x5994B0 read at M7 T1c): at 0
+     `play_music` started no tune as the battle began, so no stream is open; a music bar above 0
+     applies the volume (0x59A1B0) and, with no stream, starts `combat%02d` from its start, one
+     of the four drawn by `random_between` 0x50B230 (the game's generator; on the adventure map
+     the terrain's tune). So the original is not silent after the bar rises: it starts a new
+     combat tune there. The client streams the battle's tune at gain 0 from the start and makes
+     it heard as the bar rises, mid-tune (kept, CLT-Q73 (b): a copy in effect, the tune and its
+     position the client's; not recorded, the captures run without music).
 - **The client's (M6 T4a, *provisional* where marked).** `h3_view::options` holds the dialog
   (the layout's `[options]`; its texts' ids 240 to 256 the client's, the executable's all −1),
   the settings (`Settings`: a first run's, `settings_check`'s ranges, the file's read and write)

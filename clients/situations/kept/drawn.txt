@@ -8623,6 +8623,8 @@ set/options-default t00000 7745002417a48be9
 set/options-help t00000 5232a0a58db2f565
 set/options-no-sound t00100 92397b86bcf84249
 set/options-set t00000 e150d4afee15e98b
+set/options-sound t00000 f018f9c919575750
+set/options-speed-sound t00000 3bb2859083389df1
 set/result-retreat t00100 c84ca5952e400ad7
 set/result-retreat t02700 9fafc0a00a3259f4
 set/result-retreat t02733 10cdf63eb20f80a3
@@ -8666,6 +8668,7 @@ set/stats t00000 7f38d162d874e423
 set/stats t00100 10c5d1ef8c9e7f3c
 set/stats t00400 ebd680ff27c94b7b
 set/stats t00700 10c5d1ef8c9e7f3c
+set/stats-ability t00100 272251b55a40dcbb
 set/stats-acting t00000 67b4c8469d6e51b8
 set/stats-acting t00300 c8bc2d1b953adf95
 set/stats-again t00100 f0d1dc85da9b265a
@@ -8677,6 +8680,7 @@ set/stats-describe-ok t00000 f07282b9b0f30396
 set/stats-dragon t00000 4b565a13bb0e7adf
 set/stats-dragon t01100 4b565a13bb0e7adf
 set/stats-escape t00100 af65fc538375264b
+set/stats-held t00100 f8de2535872e5792
 set/stats-hint t00100 bd790074f26ac437
 set/stats-key t00100 b0d0cdcdd86090f0
 set/stats-luck t00000 b3feab18ba872294

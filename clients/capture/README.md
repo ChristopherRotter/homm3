@@ -199,7 +199,10 @@ same (`h3-view render --walls`, *provisional*); the states are checked before th
 **A dialog's still** (E17 M5 T3a, design §7.17): an entry's `actions` (the sequences' `key:`,
 `click:` and `move:`) run after the mouse's move, at the frozen clock, and go into the kept
 `frames.toml`; `h3-view render --frames` plays them into the dialog (the spell book: `key:c` opens
-it, a `click:` presses there and parks the mouse, a `move:` rests it). The book needs the hero's
+it, a `click:` presses there and parks the mouse, a `move:` rests it). Since E17 M7 T1c
+(CLT-Q71) `key-down:<name>` holds a key (the display's key repeat off first) across the actions
+after it and `key-up:<name>` lets it go: in a still a panel button's hotkey held over the battle,
+drawn pressed, and let go while a dialog takes the release (`stats-held`). The book needs the hero's
 spells, so its stills render the attacker's record (`seat = "attacker"`). After a `move:` the
 original's cursor stays where it was until the clock steps (its status line follows at once):
 take such frames from 100 ms. Since E17 M6 T2a2b1 (design §12.3) `right:x,y` moves the mouse
@@ -1237,6 +1240,13 @@ manager's driver; `play_sample` plays nothing at the effects' volume 0). A seque
   the main thread's reads count and `Game.clock` takes the game for idle only once they grow over
   three acknowledgements in a row (with 20 reads of any thread, `machines`' heal was read before
   its first frame was set: a millisecond late).
+
+Since E17 M7 T1c (CLT-Q74) a situation of the set takes `sound = true` too: opened as a sound
+sequence (the adventure map's sounds settled, the opening at the start sound's end), its
+`samples` the samples started from the opening to its last frame, `[ms after the opening, length
+ms, loops]` each, compared as its counts (`ok`, `CHANGED`, `new`); the effects' bar of the
+options dialog then shows the run's volume 5, the viewer's the stills' 0 (`options-sound`,
+`options-speed-sound`).
 
 `machines` with sound records the silent timeline exactly (the heal's sound ends inside its
 animation). The viewer waits only in a sequence with `sound` (`h3-view sequences`: the samples'
