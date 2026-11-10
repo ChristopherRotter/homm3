@@ -21,7 +21,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   inbox), the guild's spells at the start (`TWN-STUB-6`, increment 4), the Grail building's forbid
   (`TWN-STUB-2`, the victory conditions), Visions' reach told (`TWN-STUB-13`, increment 4; the
   server lane's fold test exempts it).
-- **Open pull requests:** T19a's (branch `town/e09-t19a`, `cross-lane`: `h3-map`'s `writer.rs`,
+- **Open pull requests:** T19a's #828 (branch `town/e09-t19a`, `cross-lane`: `h3-map`'s `writer.rs`,
   `writer/economy.rs` and `tests/`, the fixtures and replays, `h3-cli`'s replay test, the replay
   count in `h3-protocol`'s and `h3-server`'s tests). #822 and
   #824 merged.
