@@ -16,6 +16,11 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-10 (the town lane, E09 T18b2b, `town/e09-t18b2b`, `cross-lane`; **for a seat's town
+  screen, when the game's queries reach the wire**): `GameState::town_offer(rules, player, town)
+  -> Option<h3_game::TownOffer { possible, buildable, payable }>` (`BuildingSet`s over the town's
+  faction's record), the owner's hall, `None` for any other viewer; and `legal_commands` lists the
+  payable builds. No event, command or observation field changed.
 - 2026-11-10 (the town lane, E09 T18b2a, `town/e09-t18b2a`, `cross-lane`; **SRV-Q26's town gap,
   for T3's mapping and the fold**; the town epic's design note §31 as built, decisions 53, 54):
   every viewer's changed view of a town is told to it alone, as its whole view: `GameEvent::
