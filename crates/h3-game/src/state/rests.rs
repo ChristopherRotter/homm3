@@ -37,6 +37,11 @@ pub(super) enum Rest {
     /// The event at this tile, after the visit of the monster guarding it, for a hero still on
     /// the tile (ADV-OBJ-007, `ADV-QUIRK-29`: `AdventureState::fire_held_event`).
     Event(Pos),
+    /// The jump to this exit of a teleporter, after the battle against the enemy hero on it and
+    /// the winner's levels (GAM-DEC-007 amended, ADV-TEL-003; E08 T105b1, increment 11's design
+    /// note §13: the original gives the levels, 0x4DA720, then `hero_relocate`): the arrival for
+    /// a mover still on the map (`AdventureState::arrive`). Held at once beside the battle.
+    Jump(Pos),
 }
 
 /// A rest held for `owner`'s `hero`.
@@ -53,7 +58,8 @@ pub(super) struct Held {
 impl CanonicalHash for Held {
     /// The owner, the hero, then the rest's kind: 0 an entered object's visit after its guard's
     /// (before E08 T103d the guard's visit after the object's), 1 an experience (its amount), 2 a
-    /// won battle's reward (its tile), 3 an event (its tile).
+    /// won battle's reward (its tile), 3 an event (its tile), 4 a jump (its exit; E08 T105b1, game
+    /// state hash v27).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.owner.raw());
         h.write_u16(self.hero.raw());
@@ -70,6 +76,10 @@ impl CanonicalHash for Held {
             Rest::Event(tile) => {
                 h.write_u8(3);
                 tile.hash_into(h);
+            }
+            Rest::Jump(exit) => {
+                h.write_u8(4);
+                exit.hash_into(h);
             }
         }
     }
@@ -103,9 +113,10 @@ impl GameState {
     /// ([`Self::give_hero`]), a won battle's reward (`AdventureState::give_won`; nothing when
     /// the object left the map meanwhile; a won siege's capture, TWN-CAP-003), or a held event
     /// (`AdventureState::fire_held_event`: nothing for a hero no longer on its tile), each applied
-    /// as a command's outcome.
+    /// as a command's outcome; or a held jump (`AdventureState::arrive`, E08 T105b1: nothing for a
+    /// mover the battle took off the map), whose arrival opens nothing.
     // rule: ADV-MON-006, ADV-RWD-001, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007
-    // rule: TWN-CAP-003
+    // rule: TWN-CAP-003, ADV-TEL-007
     fn run_rest<S: Sink>(&mut self, rules: &GameRuleset, held: Held, sink: &mut S) {
         let Held { owner, hero, rest } = held;
         match rest {
@@ -138,6 +149,11 @@ impl GameState {
                 let events = &mut AdventureSink(&mut *sink);
                 let outcome = adventure.fire_held_event(context, (owner, hero), tile, events);
                 self.settle_outcome(rules, owner, outcome, sink);
+            }
+            Rest::Jump(exit) => {
+                let (adventure, store) = self.adventure_with_heroes();
+                let context = (rules.core(), rules.adventure(), store);
+                adventure.arrive(context, (owner, hero), exit, &mut AdventureSink(sink));
             }
         }
     }

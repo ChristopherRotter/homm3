@@ -468,6 +468,19 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-map/src/tests/dwellings.rs`, `the_import_refuses_what_the_original_cannot_load`; `crates/h3-adventure/src/state/tests/holds.rs`, `a_random_dwelling_holds_its_factions_and_levels` (`SetupError::Holds`)
 - Decided by / date: the survey's recommendation (§11), the design note §4 as written (the user 2026-11-03, ADV-Q43, E08 decision 241); built and recorded by E08 T93b
 
+### ADV-QUIRK-39 — A Whirlpool lands its visitor on an enemy hero
+- Class: exploit-fix (no flag: state-corrupting, always fixed; E08 decision 265; A-37)
+- Context / rules affected: adventure, ADV-TEL-003 (the exit's candidates), ADV-TEL-006 (the Whirlpool), GAM-BAT-004 (the battle at the exit), GAM-DEC-007 (the held jump)
+- Original behavior: the exit's draw counts a tile under an enemy hero (`teleport_exit_draw` 0x4CDB80), and the Whirlpool's case (0x4A95A5) has no hero test, unlike the monoliths' and the gates' (`visit_hero` from the entrance): `hero_relocate` puts the mover onto the other hero's tile, two heroes on one tile, with no battle, meeting or message. Selecting either hero afterwards writes a stale record back: one of them is not drawn for its own player, and once both left the tile a ghost of the mover (a boat with its flag) stays there and the Whirlpool's record is gone (survey `E08-teleporters.md` §4.4, §8 A-37; batch E11's E11-16, three runs alike, survey §15).
+- Intended/expected behavior: the battle, as at a monolith's or a gate's exit (the original's own pattern): the tiles within 1 of the exit explored by the mover's owner, then the battle at the exit on the two boats (both heroes in boats, the sea's terrain), the mover attacking from the entrance; won, the mover jumps after its levels with its boat, the defender having left the map with its own; lost, retreated, surrendered or drawn, the mover leaves the map and never jumps. No two heroes share a tile.
+- Impact: a hero whose move ends on a Whirlpool another player's hero came out of fights it (the original lands on it, then corrupts the tile's records).
+- Community status: not documented for the Whirlpool (the wiki: a battle at an exit with an enemy, survey §7); VCMI keeps the mover on the entrance, without a battle (survey §8, A-37).
+- Sources: code reading (survey §4.4); observation, batch E11's E11-16 (survey §15); the wiki and VCMI (survey §7, §8).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_in_its_boat` and `the_held_jump_lands_in_the_boat_once_the_defender_left_with_its_own`
+- Decided by / date: the battle (the user 2026-11-06, ADV-Q45, E08 decision 265; not the tile left out of the candidates, not VCMI's stay); E11-16's consequences recorded with it (survey §15, the agent's call); built and recorded by E08 T105b1
+
 ### ADV-QUIRK-40 — A Whirlpool's weakest stack ranked below a bound
 - Class: exploit-fix (no flag: state-corrupting, always fixed; E08 decision 266; A-38)
 - Context / rules affected: adventure, ADV-TEL-006 (the Whirlpool's loss)

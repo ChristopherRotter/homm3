@@ -380,6 +380,23 @@ fn jumps(events: &[AdventureEvent]) -> Vec<(Option<Pos>, Option<Pos>)> {
         .collect()
 }
 
+/// That `outcome` is Red's hero's battle against `defender` at a jump's `exit`, with the jump
+/// held after it and nothing else (GAM-BAT-004, GAM-DEC-007 amended; E08 T105b1, increment 11's
+/// design note §12): fought at the exit, the defender's tile.
+fn fought_at(outcome: &AdventureOutcome, exit: Pos, defender: HeroId) -> &BattleStart {
+    let battle = outcome.battle.as_ref().unwrap();
+    assert_eq!(battle.attacker.hero, HERO);
+    assert!(matches!(&battle.defender, Defender::Hero(c) if c.hero == defender));
+    assert_eq!((battle.tile, battle.attacker_ground.as_ref()), (exit, None));
+    let alone = AdventureOutcome {
+        battle: Some(battle.clone()),
+        jump_after: Some((HERO, exit)),
+        ..AdventureOutcome::default()
+    };
+    assert_eq!(outcome, &alone);
+    battle
+}
+
 /// Red's hero's tile, points and day's maximum.
 fn red(state: &AdventureState) -> (Pos, u32, u32) {
     let hero = state.hero(HERO).unwrap();
@@ -461,17 +478,19 @@ fn a_monoliths_exit_is_drawn_among_its_candidates_from_the_visitors_stream() {
         let (outcome, events) = walk(&mut state, &rules, &ONTO, &mut draws).unwrap();
         // One draw among the three candidates, never Red's own hero's exit.
         assert_eq!(draws, expected, "seed {seed}");
-        assert_eq!(outcome, AdventureOutcome::default());
         let drawn = candidates[place];
         if drawn == exits[1] {
             // Blue's hero on the exit: the tiles within 1 of it explored by Red, the hero still
-            // on the entrance (the battle at an exit comes with T105b, ADV-STUB-16).
+            // on the entrance, the battle at the exit with the jump held after it (E08 T105b1).
             assert_eq!(red(&state).0, p(2, 1));
             assert!(jumps(&events).is_empty());
             for (x, y, explored) in [(15, 0, true), (17, 1, true), (14, 0, false), (16, 2, false)] {
                 assert_eq!(state.is_explored(RED, p(x, y)), explored, "{x}, {y}");
             }
+            let battle = fought_at(&outcome, drawn, HeroId::new(2));
+            assert_eq!(battle.battlefield, None);
         } else {
+            assert_eq!(outcome, AdventureOutcome::default());
             assert_eq!(red(&state).0, drawn);
             assert_eq!(jumps(&events), [(Some(p(2, 1)), Some(drawn))]);
         }
@@ -564,19 +583,30 @@ fn a_gate_leads_to_its_pair_without_a_draw() {
     assert_eq!(draws, stream());
     assert_eq!(jumps(&events), [(Some(gate), Some(pair))]);
     assert!(state.is_explored(RED, at(25, 1, 1)) && !state.is_explored(RED, at(14, 1, 1)));
-    // A hero on the pair, of the team or another (the meeting and the battle come with T105b,
-    // ADV-STUB-16): the tiles within 1 of the pair explored by Red, the mover on the gate.
-    // (Red's own hero there explored its own surroundings at the start.)
+    // A hero on the pair, of the team or another: the tiles within 1 of the pair explored by Red,
+    // the mover on the gate (Red's own hero there explored its own surroundings at the start);
+    // one of the team is met (GAM-MET-001, the two heroes no neighbours), an enemy fought at the
+    // pair with the jump held after it (E08 T105b1).
     for owner in [0, 1] {
         let mut state = jump_state(&rules, (2, None), &[(2, owner, pair)], &gates);
         let (outcome, events) = walk(&mut state, &rules, &ONTO, &mut draws).unwrap();
-        assert_eq!(
-            (red(&state).0, outcome),
-            (gate, AdventureOutcome::default())
-        );
+        assert_eq!(red(&state).0, gate);
         assert!(jumps(&events).is_empty());
         assert!(state.is_explored(RED, at(21, 2, 1)));
         assert_eq!(state.is_explored(RED, at(22, 1, 1)), owner == 0);
+        if owner == 0 {
+            let meeting = Meeting {
+                visitor: HERO,
+                visited: HeroId::new(2),
+            };
+            let met = AdventureOutcome {
+                meeting: Some(meeting),
+                ..AdventureOutcome::default()
+            };
+            assert_eq!(outcome, met);
+        } else {
+            fought_at(&outcome, pair, HeroId::new(2));
+        }
     }
     assert_eq!(draws, stream());
 }
@@ -596,6 +626,79 @@ fn the_arrival_meets_no_guard_and_visits_nothing() {
         events.last().map(|e| e.kind),
         Some(AdventureEventKind::HeroTeleported { .. })
     ));
+}
+
+// covers: GAM-DEC-007, ADV-TEL-007
+#[test]
+fn the_held_jump_arrives_on_a_free_exit_alone() {
+    let rules = teleporter_rules();
+    let store = [Arc::new(hero_details(&[]))];
+    let context = (&rules.0, &rules.1, &store[..]);
+    let (entrance, exit) = (p(2, 1), p(20, 1));
+    let objects = [("t:entrance", entrance), ("t:exit", exit)];
+    // Red's hero on the entrance, as after its battle at the exit; Blue's hero 2 on (5, 0).
+    let on_entrance = || {
+        let mut state = jump_state(&rules, (1, None), &[(2, 1, p(5, 0))], &objects);
+        let at = state.heroes.partition_point(|h| h.id < HERO);
+        state.heroes[at].pos = entrance;
+        state
+    };
+    let untouched = |mut state: AdventureState, player| {
+        let (before, mut events) = (state.clone(), Vec::new());
+        state.arrive(context, (player, HERO), exit, &mut events);
+        assert_eq!((state, events), (before, Vec::new()));
+    };
+    // Nothing for another player's hero, a mover the battle took off the map, or a hero on the
+    // exit.
+    untouched(on_entrance(), PlayerId::new(1));
+    let mut gone = on_entrance();
+    gone.end_battle(&rules.0, &[(HERO, None)], &mut Vec::new());
+    untouched(gone, RED);
+    let mut held = on_entrance();
+    let at = held.heroes.partition_point(|h| h.id < HeroId::new(2));
+    held.heroes[at].pos = exit;
+    untouched(held, RED);
+    // A free exit: the arrival from the entrance, with its event and the points kept.
+    let mut state = on_entrance();
+    let (_, points, max) = red(&state);
+    let mut events = Vec::new();
+    state.arrive(context, (RED, HERO), exit, &mut events);
+    assert_eq!(red(&state), (exit, points, max));
+    assert_eq!(jumps(&events), [(Some(entrance), Some(exit))]);
+}
+
+// covers: GAM-DEC-007, ADV-TEL-006, ADV-TEL-007, ADV-SEA-006
+#[test]
+fn the_held_jump_lands_in_the_boat_once_the_defender_left_with_its_own() {
+    let rules = teleporter_rules();
+    let store = [Arc::new(hero_details(&[]))];
+    let context = (&rules.0, &rules.1, &store[..]);
+    // The entrance's Whirlpool and another of one tile, (20, 1), where Blue's hero 2 stands in
+    // boat 2: the one candidate, so no draw (A-37 fixed by the battle, decision 265).
+    let exit = p(20, 1);
+    let whirlpools = [("t:whirlpool", p(3, 1), 0x0303), ("t:whirlpool", exit, 1)];
+    let mut state = whirlpool_state(&rules, vec![stack(0, PIKEMAN, 4)], &whirlpools);
+    let blue = HeroId::new(2);
+    state.put_aboard(blue, 2);
+    let at = state.heroes.partition_point(|h| h.id < blue);
+    state.heroes[at].pos = exit;
+    let (outcome, events) = whirl(&mut state, &rules, &store, &mut stream());
+    assert!(jumps(&events).is_empty());
+    fought_at(&outcome, exit, blue);
+    // A tile with an empty boat (boat 1 on (12, 1)) takes no arrival.
+    let before = state.clone();
+    let mut events = Vec::new();
+    state.arrive(context, (RED, HERO), p(12, 1), &mut events);
+    assert_eq!((&state, events.len()), (&before, 0));
+    // Won: Blue's hero leaves the map with its boat, and the held jump lands Red's in its own,
+    // whose record keeps the tile it was boarded on.
+    state.end_battle(&rules.0, &[(blue, None)], &mut Vec::new());
+    state.arrive(context, (RED, HERO), exit, &mut events);
+    assert_eq!(red(&state).0, exit);
+    assert_eq!(state.hero(HERO).unwrap().boat, Some(0));
+    assert_eq!(state.boat(0).unwrap().tile, p(1, 1));
+    assert_eq!(jumps(&events), [(Some(INTO[0]), Some(exit))]);
+    assert!(state.check_boats(&rules.1));
 }
 
 // covers: ADV-MON-006, ADV-TEL-004
@@ -913,7 +1016,6 @@ fn a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_
         let (outcome, events) = whirl(&mut state, &rules, &store, &mut draws);
         // One draw for the Whirlpool and its tile among the three candidates.
         assert_eq!(draws, expected, "seed {seed}");
-        assert_eq!(outcome, AdventureOutcome::default());
         // The loss first, whatever follows.
         assert_eq!(losses(&events), [(HERO, 0, PIKEMAN, 2)]);
         assert!(matches!(
@@ -922,12 +1024,16 @@ fn a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_
         ));
         let drawn = candidates[place];
         if drawn == p(20, 1) {
-            // Blue's hero on the exit (A-37 fixed by the battle, T105b; ADV-STUB-16): the tiles
-            // within 1 of it explored by Red, the hero still on the entrance in its boat.
+            // Blue's hero on the exit (A-37 fixed by the battle, decision 265, `ADV-QUIRK-39`):
+            // the tiles within 1 of it explored by Red, the hero still on the entrance in its
+            // boat, the battle at the exit on the two boats with the jump held after it.
             assert_eq!(red(&state), (INTO[0], points, max));
             assert!(jumps(&events).is_empty());
             assert!(state.is_explored(RED, p(21, 0)) && !state.is_explored(RED, p(22, 1)));
+            let battle = fought_at(&outcome, drawn, HeroId::new(2));
+            assert_eq!(battle.battlefield, Some(key("t:boats")));
         } else {
+            assert_eq!(outcome, AdventureOutcome::default());
             // On the exit in its boat, the points and the maximum kept; the boat's record keeps
             // the tile it was boarded on (ADR-0016 point 1).
             assert_eq!(red(&state), (drawn, points, max));

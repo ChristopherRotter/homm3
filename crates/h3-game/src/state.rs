@@ -482,7 +482,9 @@ impl GameState {
     /// (`AdventureOutcome::visit_after`, ADV-MON-006, GAM-DEC-007; E08 T103d), so that it waits
     /// for whatever the guard's visit opens, a won guards' battle's reward
     /// (`AdventureOutcome::reward_after`) and an event on a guarded tile
-    /// (`AdventureOutcome::event_after`, `ADV-QUIRK-29`) held the same way; then the gains
+    /// (`AdventureOutcome::event_after`, `ADV-QUIRK-29`) and the jump after a battle at a
+    /// teleporter's exit (`AdventureOutcome::jump_after`, E08 T105b1) held the same way; then the
+    /// gains
     /// (GAM-RES-001), the losses
     /// ([`Self::lose`], E08 T62b1), the hero's gains ([`Self::give_hero`], E08 T62a; with a group
     /// without room a reward record's experience held as a rest, given after its army dialog
@@ -521,6 +523,9 @@ impl GameState {
             }
             if let Some((hero, tile)) = outcome.event_after {
                 self.hold(player, hero, Rest::Event(tile));
+            }
+            if let Some((hero, exit)) = outcome.jump_after {
+                self.hold(player, hero, Rest::Jump(exit));
             }
             self.gain(player, &outcome.gains, sink);
             self.lose(player, &outcome.losses, sink);
