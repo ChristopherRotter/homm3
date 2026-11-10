@@ -6467,4 +6467,5 @@ files, as T7c's) while it was online; the reads of later parts use the staged `H
   commands unknown, the tactics phase).
 - **Gates:** `cargo test -p h3-view` all passed; `drawn` 263 of 263 the same (no capture: the
   stills' dialog is the original's as before, no sequence opens it or presses F6 to F8 on a turn
-  no human plays); `h3-view gate` passed; `check.sh`: RESULT.
+  no human plays); `h3-view gate` passed; `check.sh` passed (after one clippy fix, a `let` returned); the scoped
+  verify with the original data no failing step.
