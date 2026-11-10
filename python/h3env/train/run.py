@@ -246,6 +246,11 @@ class Config:
     checkpoint_minutes: float = field(default=5.0, metadata=_in("checkpoint"))
     device: str = field(default="auto", metadata=_in("device"))
     torch_threads: int = field(default=0, metadata=_in("device"))
+    #: cuDNN's autotuner during the update (E25 T31; `torch.backends.cudnn.benchmark`): each
+    #: convolution shape's kernels found by timing them, once a shape (`[ppo] chunk_align` keeps
+    #: the shapes few), not by cuDNN's heuristics. On the GTX 1070 `hexconv` 96 x 6's chunk pass
+    #: 0.70 to 0.75 of the heuristics' time; no convolution, no effect. False: as before T31.
+    cudnn_autotune: bool = field(default=True, metadata=_in("device"))
 
 
 #: Each table's keys, in `Config`'s order ("" for the top level).
@@ -257,7 +262,14 @@ _FIELDS = {f.name: f for f in dataclasses.fields(Config)}
 
 #: The keys a resume may change (design §1.3): the budget, the machine's share, the checkpoints'
 #: cadence. Every other key changes the training: that is a new run.
-RESUMABLE = ("samples", "threads", "device", "torch_threads", "checkpoint_minutes")
+RESUMABLE = (
+    "samples",
+    "threads",
+    "device",
+    "torch_threads",
+    "checkpoint_minutes",
+    "cudnn_autotune",
+)
 
 
 def key_path(key: str) -> str:

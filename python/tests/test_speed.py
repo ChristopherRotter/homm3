@@ -1,6 +1,6 @@
 """The update's speed tool (E25 T31, `h3env.train.speed`): its variants update from one rollout as
-the baseline does, the trunk computes the same in either layout, the phases count each call and
-leave nothing patched. They need the group `train` and the release library."""
+the baseline does, the phases count each call, nothing stays patched. They need the group
+`train` and the release library."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from h3env.train import hexnet, speed  # noqa: E402
+from h3env.train import speed  # noqa: E402
 from h3env.train.ppo import Trainer  # noqa: E402
 from h3env.train.run import load_config  # noqa: E402
 
@@ -44,9 +44,10 @@ device = "cpu"
 
 def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> None:
     # Each variant's first update starts from the same weights, optimizer state and counters:
-    # its losses and weights are the baseline's up to rounding (the layout's convolutions, the
-    # chunks' sums), as `test_an_accumulated_update_steps_as_its_whole_minibatches_do` bounds
-    # them; the report holds every part the command line writes.
+    # its losses and weights are the baseline's up to rounding (the chunks' sums and pads), as
+    # `test_an_accumulated_update_steps_as_its_whole_minibatches_do` and
+    # `test_a_padded_update_steps_as_the_unpadded_one_does` bound them; the report holds every
+    # part the command line writes.
     out = tmp_path / "speed.json"
     config = tmp_path / "small.toml"
     config.write_text(SMALL, encoding="utf-8")
@@ -55,7 +56,7 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
             "--config",
             str(config),
             "--variants",
-            "nchw,autotune+accumulate/2,align32",
+            "heuristics,accumulate=3+align32",
             "--repeats",
             "2",
             "--trace",
@@ -68,18 +69,20 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
         ]
     )
     report = json.loads(out.read_text(encoding="utf-8"))
-    # The sweep: each size's pass with the autotuner off and on, the first size again at the end.
+    # The sweep: each size's pass with the autotuner and without, the first size again at the end.
     assert [e["rows"] for e in report["sweep"]] == [8, 12, 8]
     for e in report["sweep"]:
         assert e["plain_us_per_row"] > 0 and e["autotune_us_per_row"] > 0, e
     variants = report["variants"]
-    assert list(variants) == ["baseline", "nchw", "autotune+accumulate/2", "align32"]
+    assert list(variants) == ["baseline", "heuristics", "accumulate=3+align32"]
     assert report["epochs"] == 1 and report["rows"] > 0 and report["teacher_rows"] > 0
-    assert variants["autotune+accumulate/2"]["accumulate"] == 1
+    assert variants["baseline"]["autotune"] and not variants["heuristics"]["autotune"]
+    assert variants["accumulate=3+align32"]["accumulate"] == 3
     assert variants["baseline"]["weights_max_diff"] == 0.0 and report["weights_moved"] > 0
     # The CPU's kernels are deterministic: the baseline's repeat is its first update exactly.
     assert report["weights_noise"] == 0.0
-    assert variants["align32"]["chunk_rows"] == [32] != variants["baseline"]["chunk_rows"]
+    assert variants["accumulate=3+align32"]["chunk_rows"] == [32]
+    assert variants["baseline"]["chunk_rows"] != [32]
     base = variants["baseline"]["losses"]
     assert base["imitation_loss"] > 0
     for name, v in variants.items():
@@ -103,54 +106,26 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
 
 def test_the_phases_and_variants_leave_nothing_patched() -> None:
     backward, clip = torch.Tensor.backward, torch.nn.utils.clip_grad_norm_
-    block, norm = hexnet.ConvBlock.forward, hexnet.CellNorm.forward
     trainer = Trainer(load_config(SMALL))
     try:
         timer = speed.Phases(trainer.device)
         timer.install(trainer)
         assert torch.Tensor.backward is not backward
         timer.remove()
-        with speed.variant_of(trainer, trainer.config, speed.VARIANTS["nchw+autotune"]):
-            assert hexnet.ConvBlock.forward is not block and torch.backends.cudnn.benchmark
-        with pytest.raises(RuntimeError), speed.contiguous_trunk():
-            raise RuntimeError
-        assert not torch.backends.cudnn.benchmark
+        config = trainer.config
+        with pytest.raises(RuntimeError):
+            with speed.variant_of(
+                trainer, config, speed.VARIANTS["heuristics, accumulate=4+align32"]
+            ):
+                assert (trainer.config.accumulate, trainer.config.chunk_align) == (4, 32)
+                assert not torch.backends.cudnn.benchmark and not torch.backends.cudnn.allow_tf32
+                raise RuntimeError
+        assert trainer.config is config and torch.backends.cudnn.allow_tf32
         assert (torch.Tensor.backward, torch.nn.utils.clip_grad_norm_) == (backward, clip)
-        assert (hexnet.ConvBlock.forward, hexnet.CellNorm.forward) == (block, norm)
         for owner in (trainer.policy, trainer.staging, trainer.optimizer):
             assert not {"encode", "trunk", "along", "gather", "step"} & set(vars(owner))
     finally:
         trainer.batch.close()
-
-
-def test_the_trunk_computes_the_same_in_either_layout() -> None:
-    # The drawing hands the trunk a transposed view, channels-last, and the LayerNorm's permutes
-    # keep it so (cuDNN then runs NHWC convolutions); `contiguous_trunk` runs them on NCHW
-    # tensors, the same values up to rounding.
-    torch.manual_seed(0)
-    net = hexnet.HexConv(width=8, layers=2, embed=8, norm="layer")
-    field = torch.randn(5, net.grid.hexes, 8)
-    glob = torch.randn(5, 8)
-    layouts: list[tuple[bool, bool]] = []
-
-    def record(module, args) -> None:
-        x = args[0]
-        layouts.append((x.is_contiguous(), x.is_contiguous(memory_format=torch.channels_last)))
-
-    convs = [m for m in net.modules() if isinstance(m, hexnet.HexConv2d)]
-    hooks = [m.register_forward_pre_hook(record) for m in convs]
-    with torch.no_grad():
-        drawn, drawn_glob = net.trunk(field, glob)
-        drawn_layouts, layouts[:] = list(layouts), []
-        with speed.contiguous_trunk():
-            nchw, nchw_glob = net.trunk(field, glob)
-    for hook in hooks:
-        hook.remove()
-    assert len(drawn_layouts) == len(layouts) == 4
-    assert all(cl and not c for c, cl in drawn_layouts)
-    assert all(c for c, _ in layouts)
-    torch.testing.assert_close(nchw, drawn)
-    torch.testing.assert_close(nchw_glob, drawn_glob)
 
 
 def test_a_variant_names_only_known_variants() -> None:

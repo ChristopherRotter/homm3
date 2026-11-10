@@ -14,9 +14,8 @@ allocator's growth; the median of the others counts), the microseconds a sample-
 seconds over its rows times its epochs), the GPU's peak memory, the losses, and how far the
 weights after the first update lie from the baseline's, beside how far the baseline's update
 moved them and its repeat lies from it (a variant changes the speed, not the update: its
-difference is rounding's, and cuDNN's kernels are not deterministic). A variant is a change of the
-update's code or settings the tool makes for its updates alone (`Variant`): the code of a run is
-the baseline.
+difference is rounding's, and cuDNN's kernels are not deterministic). A variant is a change of
+the config's settings that changes no loss (`Variant`): the config's own is the baseline.
 
 Then (but with `--no-phases`) one more update of the baseline runs with the device synchronised
 around each of its phases (`PHASES`: the minibatches' gather, the encoding with its trunk, the
@@ -24,8 +23,8 @@ entry head and the value, PPO's heads along the action, the teacher's, the backw
 clipping, the optimizer's step; the rest is the update's own code): each phase's seconds and
 share of that update. `--trace` runs torch's profiler over the baseline's first `--trace-steps`
 optimizer steps and keeps its operators with the most self time on the device (the CPU's off
-CUDA). `--sweep` times one chunk's pass at each of a list of row counts (`sweep`), with the
-autotuner off and on. The report is printed as Markdown and, with `--json`, written whole.
+CUDA). `--sweep` times one chunk's pass at each of a list of row counts (`sweep`), with cuDNN's
+autotuner and without it. The report is printed as Markdown and, with `--json`, written whole.
 """
 
 from __future__ import annotations
@@ -44,7 +43,6 @@ from typing import Any
 import numpy as np
 import torch
 
-from . import hexnet
 from .ppo import Trainer, padded
 from .run import Config, load_config, resolve
 
@@ -54,49 +52,36 @@ LOSSES = ("policy_loss", "value_loss", "entropy", "kl", "clip", "imitation_loss"
 
 @dataclass(frozen=True)
 class Variant:
-    """A candidate change of the update: cuDNN's autotuner (`torch.backends.cudnn.benchmark`)
-    during it, the hex convolution trunk's tensors in the contiguous (NCHW) layout instead of the
-    channels-last one its drawing hands it (`nchw`: `contiguous_trunk`), and settings of the
-    config that change no loss (`settings`, e.g. `[ppo] accumulate`)."""
+    """A candidate change of the update: settings of the config that change no loss
+    (`[device] cudnn_autotune`, `[ppo] accumulate`, `chunk_align`; `settings_of`)."""
 
-    autotune: bool = False
-    nchw: bool = False
     settings: dict[str, Any] = field(default_factory=dict)
 
 
-#: The candidates, the baseline first (the run's code: no autotuner, the trunk as drawn). T31's
-#: first run on the GTX 1070 (`E25-log.md` T31): the autotuner and the NCHW trunk gained
-#: nothing, `accumulate` halved (twice the chunks' rows) with the autotuner 0.78 of the time.
+#: The candidates, the baseline first (the config's settings). T31's runs on the GTX 1070
+#: (`E25-log.md` T31) measured more (the trunk in NCHW: no gain); these are the update before T31
+#: (cuDNN's heuristics), T31's code with a config's chunks, and T31's settings for `hexconv`.
 VARIANTS: dict[str, Variant] = {
     "baseline": Variant(),
-    "autotune": Variant(autotune=True),
-    "nchw": Variant(nchw=True),
-    "nchw+autotune": Variant(autotune=True, nchw=True),
-    "accumulate/2": Variant(settings={"accumulate": 0.5}),
-    "autotune+accumulate/2": Variant(autotune=True, settings={"accumulate": 0.5}),
-    "nchw+autotune+accumulate/2": Variant(autotune=True, nchw=True, settings={"accumulate": 0.5}),
-    #: About a run's chunks at `accumulate` 4: its league's members train no rows (T28: 25 700
-    #: an update), the tool's fresh trainer plays itself (about 32 500).
-    "accumulate=5": Variant(settings={"accumulate": 5}),
-    "align32": Variant(settings={"chunk_align": 32}),
-    "autotune+align32": Variant(autotune=True, settings={"chunk_align": 32}),
-    "autotune+accumulate/2+align32": Variant(
-        autotune=True, settings={"accumulate": 0.5, "chunk_align": 32}
+    "heuristics": Variant(settings={"cudnn_autotune": False}),
+    "accumulate=4+align32": Variant(settings={"accumulate": 4, "chunk_align": 32}),
+    #: About a run's chunks at `accumulate` 4 (its league's members train no rows, T28: about
+    #: 25 700 an update; the tool's fresh trainer plays itself, about 32 500).
+    "accumulate=5+align32": Variant(settings={"accumulate": 5, "chunk_align": 32}),
+    "accumulate=3+align32": Variant(settings={"accumulate": 3, "chunk_align": 32}),
+    "heuristics, accumulate=4+align32": Variant(
+        settings={"cudnn_autotune": False, "accumulate": 4, "chunk_align": 32}
     ),
     #: The baseline once more, last: the card's drift over the tool's minutes (its warmth).
     "baseline again": Variant(),
 }
 
-#: The variants run without `--variants` (T31's second run: the chunks' size and alignment,
-#: each with and without the autotuner).
+#: The variants run without `--variants`: before and after T31, the baseline again.
 DEFAULT_VARIANTS = (
     "baseline",
-    "accumulate/2",
-    "autotune+accumulate/2",
-    "accumulate=5",
-    "align32",
-    "autotune+align32",
-    "autotune+accumulate/2+align32",
+    "heuristics",
+    "accumulate=4+align32",
+    "accumulate=5+align32",
     "baseline again",
 )
 
@@ -124,30 +109,9 @@ def cudnn_mode(autotune: bool) -> contextlib.AbstractContextManager:
     return torch.backends.cudnn.flags(enabled=True, benchmark=autotune, allow_tf32=autotune)
 
 
-@contextlib.contextmanager
-def contiguous_trunk() -> Iterator[None]:
-    """The hex convolution trunk in the contiguous layout: each residual block's input made
-    contiguous (the drawing's grid, a transposed view, is channels-last) and each `CellNorm`'s
-    output too (its permutes give a channels-last tensor); the convolutions then run on NCHW
-    tensors."""
-    block, norm = hexnet.ConvBlock.forward, hexnet.CellNorm.forward
-
-    def block_forward(self, x, cells, real):
-        return block(self, x.contiguous(), cells, real)
-
-    def norm_forward(self, x):
-        return norm(self, x).contiguous()
-
-    hexnet.ConvBlock.forward, hexnet.CellNorm.forward = block_forward, norm_forward
-    try:
-        yield
-    finally:
-        hexnet.ConvBlock.forward, hexnet.CellNorm.forward = block, norm
-
-
 def settings_of(config: Config, settings: dict[str, Any]) -> Config:
     """`config` with a variant's settings: a float multiplies the config's integer value (at
-    least 1), anything else replaces it."""
+    least 1), anything else (a bool among them) replaces it."""
     changes = {}
     for key, value in settings.items():
         old = getattr(config, key)
@@ -240,16 +204,14 @@ class Enough(Exception):
 
 @contextlib.contextmanager
 def variant_of(trainer: Trainer, base: Config, v: Variant) -> Iterator[None]:
-    """The trainer under the variant `v` (its config `base` with the variant's settings)."""
-    trainer.config = settings_of(base, v.settings)
-    with contextlib.ExitStack() as stack:
-        stack.enter_context(cudnn_mode(v.autotune))
-        if v.nchw:
-            stack.enter_context(contiguous_trunk())
-        try:
+    """The trainer under the variant `v` (its config `base` with the variant's settings; cuDNN's
+    flags by its `cudnn_autotune`, `cudnn_mode`)."""
+    trainer.config = config = settings_of(base, v.settings)
+    try:
+        with cudnn_mode(config.cudnn_autotune):
             yield
-        finally:
-            trainer.config = base
+    finally:
+        trainer.config = base
 
 
 def weights(trainer: Trainer) -> torch.Tensor:
@@ -401,12 +363,13 @@ def _profile(
         # The first update warms up (the autotuner's search for its shapes, the allocator's
         # growth): the median of the others counts, with one repeat the first.
         seconds = float(np.median([r["seconds"] for r in runs[1:] or runs]))
+        config = settings_of(base, v.settings)
         entry = {
-            "autotune": v.autotune,
-            "nchw": v.nchw,
             "settings": dict(v.settings),
-            "accumulate": settings_of(base, v.settings).accumulate,
-            "chunk_rows": chunk_rows(rows, settings_of(base, v.settings)),
+            "autotune": config.cudnn_autotune,
+            "accumulate": config.accumulate,
+            "chunk_align": config.chunk_align,
+            "chunk_rows": chunk_rows(rows, config),
             "runs": runs,
             "seconds": seconds,
             "warm_up_s": runs[0]["seconds"] - seconds,

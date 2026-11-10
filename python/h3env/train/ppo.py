@@ -70,9 +70,10 @@ asked and the training is the one before T21.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -304,6 +305,17 @@ _SEATS = (
     {"attacker": "system", "defender": "external"},
     {"attacker": "external", "defender": "system"},
 )
+
+
+@contextlib.contextmanager
+def autotuned(on: bool) -> Iterator[None]:
+    """cuDNN's autotuner on inside (`[device] cudnn_autotune`, E25 T31), as it was after."""
+    old = torch.backends.cudnn.benchmark
+    torch.backends.cudnn.benchmark = on or old
+    try:
+        yield
+    finally:
+        torch.backends.cudnn.benchmark = old
 
 
 def padded(rows: np.ndarray, align: int) -> np.ndarray:
@@ -931,6 +943,29 @@ class Trainer:
         for g in self.optimizer.param_groups:
             g["lr"] = lr
         start = time.perf_counter()
+        with autotuned(c.cudnn_autotune):
+            stats = self._steps(arrays, flat, bonus, weight)
+        imitation = stats.pop("imitation")
+        stats["imitation_coef"] = weight
+        if weight:
+            # The cross-entropy on the teacher's labels per labelled row, over the minibatches
+            # with one (None: none had).
+            stats["imitation_loss"] = imitation[0] / imitation[1] if imitation[1] else None
+        y, p = returns.reshape(-1)[flat], r.value.reshape(-1)[flat]
+        var = float(np.var(y))
+        stats["explained_variance"] = float("nan") if var == 0 else 1 - float(np.var(y - p)) / var
+        stats["update_samples"] = len(flat)
+        stats["update_s"] = time.perf_counter() - start
+        self.samples += len(flat)
+        self.updates += 1
+        return stats
+
+    def _steps(
+        self, arrays: dict[str, np.ndarray], flat: np.ndarray, bonus: float, weight: float
+    ) -> dict[str, Any]:
+        """`update`'s epochs of minibatch steps over the samples `flat`: the losses' means over
+        the steps and `imitation`, the imitation loss's sum and the minibatches with a label."""
+        c = self.config
         stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "kl": 0.0, "clip": 0.0}
         steps = 0
         #: The imitation loss's sum and the minibatches with a label.
@@ -983,20 +1018,9 @@ class Trainer:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), c.max_grad_norm)
                 self.optimizer.step()
                 steps += 1
-        stats = {k: v / max(steps, 1) for k, v in stats.items()}
-        stats["imitation_coef"] = weight
-        if weight:
-            # The cross-entropy on the teacher's labels per labelled row, over the minibatches
-            # with one (None: none had).
-            stats["imitation_loss"] = imitation[0] / imitation[1] if imitation[1] else None
-        y, p = returns.reshape(-1)[flat], r.value.reshape(-1)[flat]
-        var = float(np.var(y))
-        stats["explained_variance"] = float("nan") if var == 0 else 1 - float(np.var(y - p)) / var
-        stats["update_samples"] = len(flat)
-        stats["update_s"] = time.perf_counter() - start
-        self.samples += len(flat)
-        self.updates += 1
-        return stats
+        out: dict[str, Any] = {k: v / max(steps, 1) for k, v in stats.items()}
+        out["imitation"] = imitation
+        return out
 
     def network(self, **meta: Any) -> dict[str, Any]:
         """The network alone (`best.pt`, `promoted/<n>.pt`, a snapshot's `league/<id>.pt`): its

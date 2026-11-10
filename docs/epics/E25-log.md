@@ -1722,6 +1722,32 @@ an entry only where a task builds on it.
 - **Its read:** the heuristics' cost by rows is not monotonic; a run's chunks today (about 3 200
   rows a minibatch over 8: about 400) cost about 890 µs, `accumulate` 3 with `chunk_align` 32
   (about 1 070 rows, to 1 088) 671: about 0.75 of today's update before the autotuner.
-- **The last sweep** (about 4 minutes; from `python/`):
+- **The last sweep** (the autotuner first at each size, `cudnn_mode`; the baseline's update 888
+  µs a sample-pass):
 
-      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --variants baseline --repeats 1 --no-phases --sweep 400,512,832,1024,1056,1088,1120,1152,1216 --json runs/t31-sweep-2.json
+  | Rows | 400 | 512 | 832 | 1 024 | 1 056 | 1 088 | 1 120 | 1 152 | 1 216 | 400 again |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+  | µs a row, heuristics | 910 | 839 | 964 | 802 | 747 | 747 | 729 | 730 | 786 | 942 |
+  | **with the autotuner** | **684** | **656** | **638** | **615** | **615** | **613** | **614** | 677 | 718 | 688 |
+  | its search s | 0.49 | 0.57 | 0.87 | 18.55 | 19.06 | 19.70 | 20.32 | 24.07 | 25.28 | 0.01 |
+  | Peak MB | 2 491 | 3 180 | 5 133 | 5 475 | 5 647 | 5 819 | 5 994 | 5 711 | 6 020 | 2 480 |
+
+- **The read, the change:** **the autotuner is the lever**: 0.75 of the heuristics' time at a
+  run's chunks today (about 400 rows), 0.66 to 0.82 at every size, its search under a second a
+  shape up to 832 rows and about 20 s from 1 024; larger chunks add a little (about 614 µs from
+  1 024 to 1 120 rows, 638 at 832). So:
+  1. **`[device] cudnn_autotune`** (default on, resumable; `ppo.autotuned` around the update's
+     steps, the flag as it was after; the rollout, the gate and the ladders unchanged, as
+     measured): test `test_the_update_runs_with_cudnns_autotuner_as_its_config_says`.
+  2. **For `hexconv` 96 × 6 on the GTX 1070: `[ppo] accumulate = 4`, `chunk_align = 32`** (a
+     run's about 3 200 rows a minibatch: chunks of about 800, 638 µs, about 0.70 of today's
+     910; the alignment keeps the shapes few, each searched once a segment). Not 3 (1 088 rows,
+     613 µs): a run's start trains every row (no league member yet, about 32 500 rows: chunks of
+     about 1 360), past 1 280 rows, which the cap refused.
+  3. The trunk in NCHW measured no gain: dropped from the tool (the finding above).
+  `Trainer.update` keeps its losses: the autotuner changes kernels only, `chunk_align` is tested
+  against the unpadded update, `accumulate` since T28.
+- **The confirmation** (about 5 minutes; from `python/`; each variant's update one epoch, a run's
+  four cost four times as much):
+
+      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --no-phases --json runs/t31-after.json

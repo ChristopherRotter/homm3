@@ -329,6 +329,10 @@ def test_a_resume_changes_only_what_leaves_the_training_as_it_is() -> None:
     assert config.lr_horizon == 1000 and resumed(saved) == (saved, {})
     with pytest.raises(ConfigError, match=r"env\.envs, ppo\.lr would change the training"):
         resumed(saved, ["ppo.lr=1e-4", "env.envs=8", "samples=5"])
+    # cuDNN's autotuner (E25 T31) changes the kernels, not the update: a resume may turn it off.
+    assert saved.cudnn_autotune
+    off, changed = resumed(saved, ["device.cudnn_autotune=false"])
+    assert not off.cudnn_autotune and changed == {"cudnn_autotune": [True, False]}
     with pytest.raises(ConfigError, match="unknown key"):
         resumed(saved, ["ppo.speed=2"])
 

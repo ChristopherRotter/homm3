@@ -813,6 +813,29 @@ def test_a_padded_update_steps_as_the_unpadded_one_does() -> None:
     assert padded(rows, 4).tolist() == [5, 6, 7, 8, 9, 5, 5, 5]
 
 
+def test_the_update_runs_with_cudnns_autotuner_as_its_config_says() -> None:
+    # E25 T31 (`[device] cudnn_autotune`, on by default): the update's passes run with cuDNN's
+    # autotuner on, the flag as it was after; off, the update leaves it alone.
+    flags: list[bool] = []
+    for on in (True, False):
+        trainer = Trainer(Config(**SMALL, cudnn_autotune=on))
+        trainer.collect()
+        loss = trainer._loss
+
+        def spy(*args, **kwargs):
+            flags.append(torch.backends.cudnn.benchmark)
+            return loss(*args, **kwargs)
+
+        trainer._loss = spy
+        assert not torch.backends.cudnn.benchmark
+        trainer.update(trainer.config.lr)
+        assert not torch.backends.cudnn.benchmark
+        trainer.batch.close()
+        assert flags and set(flags) == {on}, on
+        flags.clear()
+    assert Config().cudnn_autotune
+
+
 def test_an_imitating_run_records_its_weight_and_labels(tmp_path) -> None:
     # E25 T21: the update records carry the weight falling to 0 over its horizon, the labels'
     # statistics and the cross-entropy while it is above 0; the record's curve their means.
