@@ -14055,4 +14055,9 @@ map (the random replays' search; the scripted replays).
 - **Gates:** the scoped verify with the original data: every step passed, `check-lane` included (no cross-lane path): coverage, determinism with the 66
   replays, bench-check (the workloads inside the gate, the sandbox's drift as at T96a: the forks
   +1.4 to +1.9 %, the rest −0.9 to +1.6 %; T106a changes no engine code), original-data.
+- **On CI** (`cross-lane`, the user's consent): the server lane's fold and session tests
+  (`h3-protocol`'s `tests/game_fold.rs`, `tests/game_session.rs`) counted the golden replays
+  exactly, 55, and failed the first run; both say 66, and the fold and the session pass over all
+  66 (the teleporters' events fold, no new stub). The server lane's inbox told; the trap in the
+  lane's `TRAPS.md`.
 - **Versions:** none.

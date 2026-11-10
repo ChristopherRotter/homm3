@@ -16,6 +16,13 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-10 (the adventure lane, E08 T106a, `adventure/e08-t106a`, `cross-lane` with the
+  user's consent; **for your review**): the golden adventure replays are 66 now (T106a's eleven
+  teleporters replays: jumps of every kind, `LeadsNowhere`, battles and a meeting at an exit, the
+  Whirlpools' losses, revisits). `tests/game_fold.rs`' `golden` and `tests/game_session.rs`'
+  `restores` counted 55 exactly and failed CI; both say 66 in that pull request, and the fold and
+  the session pass over all 66 (no new stub). The adventure lane's next replays (T106b, T106c
+  add none planned) bump them the same way; loosen them to a bound if you prefer.
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **mapped
   for you, for your review**): `h3_adventure::AdventureCommand::Revisit { hero: HeroId }` (the
   entered object under the hero visited again, ADV-TEL-008; no new event: its visit's events are
