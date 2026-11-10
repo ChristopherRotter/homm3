@@ -98,6 +98,7 @@ mod occupancy;
 mod passage;
 mod piles;
 mod records;
+mod revisits;
 mod rewards;
 mod shipyards;
 mod visits;
@@ -1625,6 +1626,9 @@ impl AdventureState {
                 object_type,
                 anchor,
             } => self.build_boat_command((core, part), player, (*object_type, *anchor), sink),
+            AdventureCommand::Revisit { hero } => {
+                self.revisit((core, part, heroes), (player, *hero), draws, sink)
+            }
         }
     }
 

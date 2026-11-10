@@ -38,7 +38,7 @@ use std::sync::{Arc, LazyLock};
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Gift, Holds,
     ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach, Resolved,
-    RewardRecord, Turn, Viewers,
+    RewardRecord, Turn, Viewers, Visit,
 };
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
@@ -2865,7 +2865,9 @@ fn move_hero(hero: HeroId, path: Vec<TilePos>) -> GameCommand {
 fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
     match command {
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => Some((*hero, path)),
-        GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+        GameCommand::Adventure(
+            AdventureCommand::BuildBoat { .. } | AdventureCommand::Revisit { .. },
+        )
         | GameCommand::EndTurn
         | GameCommand::Answer(_)
         | GameCommand::Battle(_)
@@ -3769,9 +3771,11 @@ fn check_legal(
             } else if hiring.is_some() {
                 hire_answers(state, rules, player)
             } else {
-                // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003).
+                // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003); E08 T105b2:
+                // then its heroes' revisits (ADV-TEL-008).
                 core::iter::once(GameCommand::EndTurn)
                     .chain(buildable(state, rules, player))
+                    .chain(revisitable(state, rules, player))
                     .collect()
             };
             prop_assert_eq!(listed, expected);
@@ -3929,10 +3933,13 @@ fn check_legal(
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
     check_build_boat(state, rules, actor, legal)?;
+    check_revisits(state, rules, actor, legal)?;
     for command in &legal[1..] {
         if matches!(
             command,
-            GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+            GameCommand::Adventure(
+                AdventureCommand::BuildBoat { .. } | AdventureCommand::Revisit { .. }
+            )
         ) {
             continue;
         }
@@ -4003,6 +4010,102 @@ fn buildable(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Ga
             )
         })
         .collect()
+}
+
+/// The `Revisit`s `player` may issue now, by an oracle of ADV-TEL-008 (E08 T105b2; increment 11's
+/// design note §13): one for each of its heroes in the order of their ids whose tile the last live
+/// object visited from it is entered from (its type's visit), of a kind whose visit is built (not a
+/// ground, an event, a hole or a random dwelling), and not a border gate whose key the player
+/// holds (crossed, ADV-VIS-005). A hero stands on a town's entrance only as its owner's visitor
+/// (TWN-VIS-001), so a town there is entered.
+fn revisitable(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let entered = |pos: TilePos| {
+        let index = map
+            .visited_from(pos)
+            .iter()
+            .rev()
+            .copied()
+            .find(|&i| !adventure.is_removed(i))?;
+        let ty = rules
+            .adventure()
+            .object_type(map.objects()[index].object_type?)?;
+        let built = !matches!(
+            ty.kind,
+            ObjectKind::Ground { .. }
+                | ObjectKind::Event
+                | ObjectKind::SeaGround
+                | ObjectKind::Hole
+                | ObjectKind::RandomDwelling
+        );
+        let crossed =
+            matches!(ty.kind, ObjectKind::KeyGate { key } if adventure.has_key(player, key));
+        (built && ty.visit == Visit::Enter && !crossed).then_some(())
+    };
+    adventure
+        .heroes()
+        .iter()
+        .filter(|h| h.owner == player && entered(h.pos).is_some())
+        .map(|h| GameCommand::Adventure(AdventureCommand::Revisit { hero: h.id }))
+        .collect()
+}
+
+/// Every listed `Revisit` (E08 T105b2; ADV-TEL-008, increment 11's design note §13) applies, takes
+/// no step and keeps every hero's points and day's maximum; its hero stays on its tile but for a
+/// jump (a `HeroTeleported` of its own).
+fn check_revisits(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: PlayerId,
+    legal: &[GameCommand],
+) -> Result<(), TestCaseError> {
+    for command in legal {
+        let GameCommand::Adventure(AdventureCommand::Revisit { hero }) = *command else {
+            continue;
+        };
+        let mut probe = state.clone();
+        let mut events = Vec::new();
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            command.clone(),
+            &mut events,
+        );
+        prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        let stepped = events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroStepped { .. },
+                    ..
+                })
+            )
+        });
+        prop_assert!(!stepped, "{:?} stepped", command);
+        let jumped = events.iter().any(|e| {
+            matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroTeleported { hero: h, .. },
+                    ..
+                }) if *h == hero
+            )
+        });
+        let (was, is) = (
+            state.adventure().hero(hero).unwrap(),
+            probe.adventure().hero(hero),
+        );
+        if let Some(is) = is {
+            prop_assert!(jumped || is.pos == was.pos, "{:?} moved", command);
+            prop_assert_eq!(
+                (is.movement, is.max_movement),
+                (was.movement, was.max_movement)
+            );
+        }
+    }
+    Ok(())
 }
 
 /// Every `BuildBoat` (E08 T86b1; ADV-SHY-003, increment 9's design note §15): each one the actor
@@ -4878,6 +4981,10 @@ fn visited(before: &GameState, command: &GameCommand, events: &[GameEvent]) -> O
                 return None;
             }
             live(map.visited_from(to))
+        }
+        // E08 T105b2: the entered object under the hero (ADV-TEL-008).
+        GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
+            live(map.visited_from(adventure.hero(*hero)?.pos))
         }
         GameCommand::Answer(_) => {
             let player = acting(before);

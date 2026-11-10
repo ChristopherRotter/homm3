@@ -26,9 +26,16 @@ pub(super) fn move_hero(hero: u16, path: &[Pos]) -> GameCommand {
     })
 }
 
+/// The `Revisit` of hero `hero` (E08 T105b2; ADV-TEL-008).
+pub(super) fn revisit(hero: u16) -> GameCommand {
+    GameCommand::Adventure(AdventureCommand::Revisit {
+        hero: HeroId::new(hero),
+    })
+}
+
 /// [`setup`] at `difficulty` (0: 3 000 gold, 1: 2 000) with charts at (2, 0) and (3, 2), entered
 /// from the side; red's hero stands at (0, 0), blue's at (2, 2).
-fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
+pub(super) fn game(rules: &GameRuleset, difficulty: u8) -> GameState {
     let mut setup = setup();
     setup.difficulty = difficulty;
     for anchor in [Pos::new(2, 0, 0), Pos::new(3, 2, 0)] {
@@ -167,7 +174,11 @@ fn an_open_offer_leaves_its_owner_its_answers_only() {
     assert_ne!(state.state_hash(), open_hash);
     assert_eq!(state.treasury(RED), Some(&[3000][..]));
     assert!(!state.adventure().has_bought(RED, chart));
-    assert_eq!(legal_commands(&state, &rules, red), [GameCommand::EndTurn]);
+    // The hero stands on the Cartographer: it may visit it again (E08 T105b2, ADV-TEL-008).
+    assert_eq!(
+        legal_commands(&state, &rules, red),
+        [GameCommand::EndTurn, revisit(0)]
+    );
     assert_eq!(
         play(&mut state, &rules, RED, DECLINE),
         Err(GameCommandError::NoDecision)
@@ -236,7 +247,7 @@ fn an_offer_its_owner_cannot_pay_does_not_open() {
     assert_eq!(state.treasury(RED), Some(&[2000][..]));
     assert_eq!(
         legal_commands(&state, &rules, Actor::Player(RED)),
-        [GameCommand::EndTurn]
+        [GameCommand::EndTurn, revisit(0)]
     );
     assert_eq!(
         play(&mut state, &rules, RED, ACCEPT),

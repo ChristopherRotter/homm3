@@ -3,9 +3,11 @@
 //! towns of every kind the import reads, red's and blue's main towns, a garrison of random stacks,
 //! a visitor). Towns add no command, so the action encoding is unchanged: a hero enters a town by
 //! a move onto its entrance, which captures an undefended one (TWN-CAP-001) or opens a siege
-//! (TWN-SIE-001, -002) the battle encoding plays. Random play of the golden replays' seeds
-//! (`towns-s173-d21`, `-s1702-d21`, `-s3435-d21`) runs to the day limit with the masks agreeing with
-//! the game at every step and meets the town's features; the main property
+//! (TWN-SIE-001, -002) the battle encoding plays. Random play of two seeds (36 and 330, searched
+//! again at E08 T105b2: the revisits in the legal set changed every random game's course; the
+//! golden replays `towns-s173-d21`, `-s1702-d21` and `-s3435-d21` keep the games of before as
+//! their commands) runs to the day limit with the masks agreeing with the game at every step and
+//! meets the town's features; the main property
 //! `steps_agree_with_the_masks_and_the_game` aims moves at the towns' entrances ([`entrances`]).
 
 use h3_adventure::{AdventureEvent, AdventureEventKind, Pos};
@@ -151,8 +153,9 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
     (env, played)
 }
 
-/// The golden replays' three seeds of random play on the town map (E09 T9a: a search over the
-/// seeds 1 to 5 000 whose union meets the town's features) play through the env to their day limit:
+/// Two seeds of random play on the town map (E08 T105b2: a search over the seeds 1 to 1 100 whose
+/// union meets the town's features; E09 T9a's were the golden replays' three, whose games changed
+/// course with the revisits in the legal set) play through the env to their day limit:
 /// the masks agree with the game before each step ([`play`]), each chosen action is legal by them
 /// and accepted, a captured town is its new owner's in its observation; the union of the three
 /// meets an undefended capture, a siege against a garrison alone and one against a visitor with
@@ -161,7 +164,7 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
 #[test]
 fn the_env_plays_the_town_map_to_its_end_of_days() {
     let mut all = Played::default();
-    for seed in [173, 1702, 3435] {
+    for seed in [36, 330] {
         let (env, played) = play(seed, 21);
         assert!(env.is_done(), "{seed}");
         assert_eq!((env.day(), env.to_move().count()), (22, 0), "{seed}");
@@ -181,18 +184,19 @@ fn the_env_plays_the_town_map_to_its_end_of_days() {
     assert_eq!(all.won + all.lost, all.sieges, "{all:?}");
 }
 
-/// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 3435:
-/// Orrin besieges blue's Tower on day 2) carries it: played on by one agent, the fork and its
-/// parent evolve identically, and another agent's play on a fork leaves the parent as it was.
+/// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 330: a
+/// siege within the first three days; seed 3435's before E08 T105b2) carries it: played on by one
+/// agent, the fork and its parent evolve identically, and another agent's play on a fork leaves
+/// the parent as it was.
 #[test]
 fn town_map_rollouts_and_forks_are_deterministic() {
-    let new = || AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 3435, 3).unwrap();
+    let new = || AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 330, 3).unwrap();
     let (mut a, mut b) = (new(), new());
-    let ra = random_rollout(&mut a, 3435, 0);
-    assert_eq!(ra, random_rollout(&mut b, 3435, 0));
+    let ra = random_rollout(&mut a, 330, 0);
+    assert_eq!(ra, random_rollout(&mut b, 330, 0));
     assert_eq!(a.state_hash(), b.state_hash());
     let mut parent = new();
-    let mut rng = Rng::for_stream(3435, StreamId::AGENT);
+    let mut rng = Rng::for_stream(330, StreamId::AGENT);
     let besieged = |env: &AdventureEnv| {
         let map = env.state().adventure().map();
         (0..env.state().players()).any(|p| {
