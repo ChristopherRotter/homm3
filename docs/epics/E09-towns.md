@@ -129,6 +129,22 @@ Asked at T13's start, before the drafts were written (T13 kept whole, the user).
     resources, `TownEventFired` and day 1; then the buildings, the views and the checks). The
     user also had the hygiene property's CI counterexample fixed first (#822).
 
+### Decisions at T19's start (2026-11-10, the user)
+
+58. **T19 cut in three** (recommended, as increment 1's T9, decision 32): **T19a** the writer's
+    town events, the map and its scripted golden replays; **T19b** the plans (the step `Build`,
+    `check_towns` and `check_rewards` taught the events, decision 57, the legal-builds,
+    refused-build, told-views, hygiene and mark-clearing properties); **T19c** the env's build
+    entry (the AI lane's action encoding), the rollout's skip dropped (decision 56), random play
+    with builds, the benchmarks and the census. Not chosen: the plans folded into T19a (two
+    parts); T19c cut again (the env and random play; the benchmarks and the census).
+59. **Increment 2's own map** (recommended): `fixtures/maps/e09-builds-36.h3m` carries the Castle
+    by water and the one inland, the Conflux, the town events and the custom set forbidding a
+    requirement, so that the town map `e09-towns-36.h3m` and its replays, the env's seeds and the
+    four `towns-36` workloads stay as they are (design §32 had the town map gain them). The env's
+    and the benchmarks' builds (T19c) may use either map. Not chosen: the town map extended (eight
+    replays re-recorded, the env's seeds searched again, four workloads re-set).
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Done 2026-11-06 (map import v20; `E09-log.md`).
@@ -139,7 +155,7 @@ Asked at T13's start, before the drafts were written (T13 kept whole, the user).
 - **T16a** the part's requirements, costs and the role `shipyard` (§24, part v4), kept whole at its start: done 2026-11-07 (part v4; the adventure replays' `town_ruleset_hash` line, `cross-lane`; `E09-log.md`). **T16b** their harvest (§25, `cross-lane`, original data), kept whole at its start: done 2026-11-07 (the base and AB packs re-harvested; the adventure replays' `town_ruleset_hash` line, `cross-lane`; `E09-log.md`).
 - **T17** `h3-towns`: the day's mark, the store's writes, the rules, `TownCommand` (§26, §27), cut in two at its start (the user, 2026-11-09): **T17a** the mark, `built_with` and the store's writes: done 2026-11-09 (town state hash v2, game state hash v26, `cross-lane`; TWN-BLD-004, -005; `E09-log.md`). **T17b** the rules that decide a build, `TownCommand` and its errors, the other catalog entries, `TWN-QUIRK-7`: done 2026-11-09 (no version moved; TWN-BLD-001 to -003, -006, -007, TWN-EVT-003; `E09-log.md`).
 - **T18a** the Shipyard's water (§28), kept whole at its start (the user, 2026-11-09): done 2026-11-09 (adventure ruleset part v19, `cross-lane`; TWN-SET-011; `E09-log.md`); **T18b** the command, the legal builds, the day's start, the capture's mark, the views (§29 to §31), cut in two at its start (the user, 2026-11-09): **T18b1** the command, the day's start, the capture's mark: done 2026-11-09 (adventure replay format v11, `cross-lane`; TWN-BLD-001, -004 the game's halves; `E09-log.md`); **T18b2** the legal builds and the views, cut in two at its start (the user, 2026-11-10; decisions 52 to 54): **T18b2a** the views and events with SRV-Q26's town gap: done 2026-11-10 (no version moved, `cross-lane`; TWN-VEW-001 amended, TWN-VEW-004, `TWN-STUB-13`; `E09-log.md`); **T18b2b** the legal builds and `town_offer`, kept whole at its start (the user, decisions 55, 56): done 2026-11-10 (no version moved, `cross-lane`; TWN-BLD-001 amended; `E09-log.md`); **T18c** the town events at the turn start (§30), kept whole at its start with the plans' checks moved to T19 (the user, decision 57): done 2026-11-10 (protocol v41, `cross-lane`; TWN-EVT-001, -002, -004, TWN-EVT-003's game half, GAM-CAL-004 amended, `TWN-STUB-10`; `E09-log.md`).
-- **T19** the writer's town events, fixtures, replays, properties (with the plans' `check_towns` and `check_rewards` taught the events' builds and gains, decision 57), benchmarks, the env, the census (§32).
+- **T19** the writer's town events, fixtures, replays, properties (with the plans' `check_towns` and `check_rewards` taught the events' builds and gains, decision 57), benchmarks, the env, the census (§32), cut in three at its start (the user, decisions 58, 59): **T19a** the writer's events, the builds map and its scripted replays: done 2026-11-10 (no version moved, `cross-lane`; `writer::TownEvent`, `e09-builds-36.h3m`, `builds-week-s1`, `-capture-s1`, `-events-s1`; `E09-log.md`); **T19b** the plans; **T19c** the env, random play with builds, the benchmarks, the census.
 - **T20** the audit against the exit criteria; increment 2 closed; increment 3 refined.
 
 ### Exit criteria

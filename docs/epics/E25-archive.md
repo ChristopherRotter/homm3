@@ -171,3 +171,46 @@ by cloning the fair actor was the first lever past 0.41 to 0.43 against the syst
 | T22 | The A/B: PPO from T20's student, with and without T21's loss, against `e25-clone-1` | done 2026-11-04 (`E25-log.md` T22: `e25-imitate-1` #2 (the loss, weight 0.5 to 0 at 10 M) 0.458 and 0.462 against the system actors, the neutral set +0.287, 0.534 head to head against `e25-clone-1` #2; `e25-clone-2` #2 (without) 0.451, +0.284, 0.508) |
 | T23 | The checkpoint: T22 read, the current best, increment 7 | done 2026-11-04 (`E25-log.md` T23, AI-Q16: `e25-imitate-1` #2 the current best; increment 7 a structured network) |
 
+## Increment 7 (closed 2026-11-10)
+
+**Increment 7: a network that reads the battle's structure** (the user at T23, 2026-11-04,
+AI-Q16). Increments 5 and 6 found the gap in the network: the 2 × 512 MLP copies the fair actor
+0.576 of the time (T20; the teacher's ceiling 0.972), its moves 0.38 of 0.985 and its melee hexes
+0.40 of 0.941, and samples gain about 0.02 a doubling. Increment 3's structured networks were
+measured in one configuration each (no normalisation, no warm-up, one learning rate) and against
+an MLP teacher (T7c). Increment 7 builds them properly and measures them on the cloning bench
+against the fair actor before any RL run.
+
+*Decisions* (the user, 2026-11-04, AI-Q16; the agent's details, change at a checkpoint):
+
+1. **The bench is T16's cloning bench** (the fair actor, `e25-neutral.toml`'s mix, 4 M samples,
+   the held-out set of seed 8), the 2 × 512 MLP its control in every run. A student is scored by
+   its agreement (overall, moves, melee), its cross-entropy and its value's explained variance;
+   its cost by the GPU's µs a sample-pass.
+2. **The candidates:** `hexconv` with normalisation (64 to 128 channels, 6 to 10 blocks),
+   `hexformer` (96 to 128 wide, 4 to 6 blocks), a wider `entity` (192 to 256, 2 to 4 blocks); each
+   with a warm-up, AdamW and its own learning rate. The grid is the agent's, from T24's costs.
+3. **The cost cap** (the user): a sample-pass on the GTX 1070 at most hexconv 64 × 6's (466 µs,
+   about 10 hours of network time for 20 M samples of PPO); fp32 only; among the candidates within
+   0.02 of the best agreement the cheapest wins. **Raised at T25** (the user, 2026-11-04, on the
+   GPU's grid, `E25-log.md` T24): about 700 µs on `network --time`'s measure (where `hexconv` 64 ×
+   6 is 301), one candidate of each family.
+4. **The heads read the geometry** (the user: the legal mask as an input is no encoding change):
+   a melee entry scores the hex its attack is made from; the legal mask (action encoding v13's,
+   handed with every decision) is an input of every kind, an MLP with it a second control.
+   Observation v22 and action v13 stay.
+5. **Gates:** the long clone runs only if a candidate reaches 0.60 agreement at 4 M within the cap
+   (the MLP: 0.531 at 4 M, 0.576 at 16 M); PPO only if the long clone's ladder beats T20's student
+   (0.411) beyond its interval. A failed gate goes to the checkpoint.
+6. **The RL arm:** `e25-imitate.toml`'s settings with the candidate's network, from its clone,
+   20 M samples, seed 1, against `e25-imitate-1` #2 (the current best).
+
+| Task | Scope | Status |
+|---|---|---|
+| T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | done 2026-11-04 (`hexconv`'s `norm`, `feed_forward`, the bench's `warmup` and `weight_decay`, the cost per student, `network --bench` and the grid's CPU table) |
+| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | done 2026-11-04 (`geometry`'s port checked on 18 823 real attacks; `encode(obs, mask)`; `[network] mask_input`, `order`, `attack_hex`; T26's bench prepared at the user's cap of about 700 µs) |
+| T26a | The resumable bench: the distillation bench and its clone mode resume to their budget (the user, 2026-11-05: every run over 2 hours resumes) | done 2026-11-05 (the shared loop `distill.go`: `checkpoint.pt`, Ctrl-C at a batch boundary, `--resume DIR`, the clone's ladders pending across a stop) |
+| T26b | The structure sweep on the cloning bench, against decision 5's first gate (a first segment stopped at 0.45 M, `E25-log.md` T26) | done 2026-11-05 (the gate passed: `hexconv` normalised 96 × 6 at 1e-3, 0.755 at 4 M, 683 µs; the MLP 0.533; `E25-log.md` T26b) |
+| T27 | The long clone of the best candidate, its ladder against decision 5's second gate | done 2026-11-06 (the gate passed: `hexconv` 0.809 agreement at 16 M against the MLP's 0.574, its ladder 0.481 ± 0.019 against the fair actor against 0.411; `records/distill/clone-3.json`; T19's tool 0.810 on its states, the casts 0.748 the one category below the MLP's) |
+| T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | done 2026-11-10 (the structure wins: `e25-structure-1` #2 0.511 ± 0.019, +0.027 against the fair actor, 0.507 ± 0.019, +0.026 against the all-seeing one, the neutral set +0.302: exit criterion 1 met on its point estimates; 217 samples a second, 22 times the MLP's time; the GPU's memory capped at 90 % of the card; the head-to-head left to T29) |
+| T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | done 2026-11-10 (`E25-log.md` T29, AI-Q17: the head-to-head 0.552 after 77 pairs; `e25-structure-1` #2 the current best; increment 8 probes, then one long run) |

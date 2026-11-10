@@ -42,7 +42,8 @@
 //!
 //! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
 //! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
-//! a name, random garrison stacks) and random heroes ([`RandomHero`]).
+//! a name, random garrison stacks) and random heroes ([`RandomHero`]); since E09 T19a (design
+//! note §32) a town's events ([`TownEvent`]).
 
 mod economy;
 mod extras;
@@ -64,7 +65,7 @@ pub use rewards::{
     WITCH_HUT_OBJECT, WITCH_HUT_SKILLS,
 };
 pub use town::{
-    AnyTown, MainTown, RANDOM_HERO_OBJECT, RANDOM_TOWN_OBJECT, RandomHero, random_stack,
+    AnyTown, MainTown, RANDOM_HERO_OBJECT, RANDOM_TOWN_OBJECT, RandomHero, TownEvent, random_stack,
 };
 
 use crate::gzip::crc32;

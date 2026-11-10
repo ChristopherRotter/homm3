@@ -5,6 +5,7 @@
 //! maps read back and imported in `rewards.rs` (E08 T56); its sea objects in `sea.rs` (E08 T67);
 //! its teleporters in `teleporters.rs` (E08 T99a).
 
+mod builds_map;
 mod dwellings;
 mod dwellings_map;
 mod dwellings_xl_map;

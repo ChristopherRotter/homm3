@@ -115,7 +115,7 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) {
 #[test]
 fn the_golden_replays_record_through_the_session() {
     let files = golden();
-    assert_eq!(files.len(), 66, "the golden adventure replays");
+    assert_eq!(files.len(), 69, "the golden adventure replays");
     let threads = std::thread::available_parallelism().map_or(1, usize::from);
     let chunk = files.len().div_ceil(threads);
     let players: usize = std::thread::scope(|scope| {

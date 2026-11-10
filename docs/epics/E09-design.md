@@ -1063,6 +1063,13 @@ The original's views (survey `E09-towns.md` §7.2, §12.3; construction §1.1):
   Shipyards counted), then each played some days by `EndTurn` alone: the town events fired, built,
   skipped as standing, against survey §10 (57 built, 30 skipped, 27 without a requirement in the
   fixed towns).
+- **As cut and built** (T19a, decisions 58, 59): in three parts, T19a the writer and the fixtures'
+  part, T19b the properties, T19c the env, random play, the benchmarks and the census. The town
+  map stays as it is: the towns and events above are increment 2's own map,
+  `fixtures/maps/e09-builds-36.h3m` (`h3-map`'s `tests/builds_map.rs`), its replays `builds-*`. A
+  replay holds no refused command, so every refusal kind and the Capitol refused while another
+  stands are the map's test (the state hash unchanged after each), the replays the accepted
+  builds: a week of them, a capture of a town built in today, the town events to day 8.
 
 ### 33. Batch TWN-2 (decisions 41, 42)
 

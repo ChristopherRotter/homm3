@@ -86,6 +86,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   one on the user's 8 GB GPU sums each minibatch's gradient over chunks (`[ppo] accumulate`,
   E25 T28: 8, 512 rows, `hexconv` 96 × 6's 3 076 MB at T27) and keeps `minibatches`, which
   would change PPO's steps; the bench uses `minibatch` 512.
+- **The GPU's memory** (E25 T28; the user, 2026-11-10: a run never fills more than 90 % of the
+  card): every CUDA entry point caps PyTorch's caching allocator by `gpu.cap` (the trainer,
+  `distill.bench_device`, `evaluate.load`); a new one does too. Uncapped on Windows, the
+  driver's sysmem fallback puts a growing cache into shared system memory instead of failing an
+  allocation: no error, the update ten times slower (`e25-structure-1` from 14.9 M samples on:
+  100 s to 1 950 s, its rollouts unchanged). The trainer's update records hold
+  `gpu_reserved_mb`, `gpu_peak_mb`, `gpu_card`; an out-of-memory error under the cap means the
+  live tensors need more (`[ppo] accumulate`).
 - The trainer (`h3env.train`, ADR-0026): its tests are in the lane command (`uv run --group
   train pytest`); a run is a TOML config (`python/configs/`, `--set`), its budget and cadences in
   samples; its files go into `python/runs/` (ignored). A piece of training state goes into
