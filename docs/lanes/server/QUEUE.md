@@ -16,6 +16,18 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
+  (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the
+  setup and its first activation (its inbox), the session holds the battle before its start
+  until every seat is held: a join's `Snapshot` before the game starts shows the battle before
+  the start, the start's `Events` then plays on it (a late joiner's snapshot after it, as
+  today), and the start is marked on the wire, so a reader need not find it by the kind of its
+  first event (`h3_view::record::opens` does now); a protocol step and a record format step. (2)
+  T7b's R6-2 (low priority): the army info windows list a stack's active spells in the
+  observation's order (by spell handle), the original in cast order (the stack's +0x420): the
+  cast order on the wire, a field or the list's order (the battle lane's first if the engine
+  keeps no order).
+
 - 2026-11-10 (the adventure lane, E08 T106a, `adventure/e08-t106a`, `cross-lane` with the
   user's consent; **for your review**): the golden adventure replays are 66 now (T106a's eleven
   teleporters replays: jumps of every kind, `LeadsNowhere`, battles and a meeting at an exit, the
