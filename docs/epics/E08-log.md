@@ -14058,6 +14058,8 @@ map (the random replays' search; the scripted replays).
 - **On CI** (`cross-lane`, the user's consent): the server lane's fold and session tests
   (`h3-protocol`'s `tests/game_fold.rs`, `tests/game_session.rs`) counted the golden replays
   exactly, 55, and failed the first run; both say 66, and the fold and the session pass over all
-  66 (the teleporters' events fold, no new stub). The server lane's inbox told; the trap in the
+  66 (the teleporters' events fold, no new stub). `master` merged in after E16 M5 T6 (its
+  `h3-server record`, a third exact count in `tests/record.rs`) and E09 T18c (#824; a conflict in
+  the server lane's inbox only): that count 66 too, its records over all 66 passing. The server lane's inbox told; the trap in the
   lane's `TRAPS.md`.
 - **Versions:** none.

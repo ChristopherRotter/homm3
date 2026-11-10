@@ -27,11 +27,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - A command `legal_commands` newly lists moves every random game's course on the maps where it appears (E08 T105b2's `Revisit`: the random agent draws among the listed commands, encoded or not), before and after the env encodes it: the `random-play-*` workloads (compare per function with `master`'s worktree, re-baseline with the reason), the seed-chosen env tests (`h3-sim`'s `adventure/tests/towns.rs`: search new seeds with a throwaway `#[ignore]` test in release, about 7 seeds a second) and `h3-map`'s plans' listing oracle (`expected` in `check_legal`); the golden replays do not move (they replay their commands).
 - A workload's `collect` pattern counts inside every symbol that matches it: name the counted function so that no other symbol holds its name (E08 T86b2: the counted `day_start_step`, its run-up `play_to_day_start`; a first `*day_start*` would have counted the whole run-up). A new workload's file starts with `instructions = 1` and `cargo xtask bench-check --update --workload <name>` writes its count. A small workload whose count is largely glibc's malloc follows the heap's earlier state, which differs between the sandbox and CI's runner (T86b2's `day-start-xl-144`: +2.7 % on CI with a fork alive during the counted step): drop what the run-up allocated for the step before it, so the step reuses the same freed chunks; test with a longer `--root` under `valgrind --tool=callgrind --toggle-collect=<pattern>`.
 
-- A new golden replay (E08 T106a): the server lane's `h3-protocol` tests count
-  `fixtures/replays/adventure/` exactly (`tests/game_fold.rs`' `golden`, `tests/game_session.rs`'
-  `restores`), and the scoped verify does not run them: bump both in the same pull request
-  (`cross-lane`, the user's consent; their inbox told) and run `cargo test -p h3-protocol --lib
-  -- tests::game_fold tests::game_session`, which folds every replay.
+- A new golden replay (E08 T106a): the server lane's tests count `fixtures/replays/adventure/`
+  exactly (`h3-protocol`'s `tests/game_fold.rs` `golden` and `tests/game_session.rs` `restores`,
+  `h3-server`'s `tests/record.rs`; grep both crates for `the golden adventure replays`), and the
+  scoped verify runs none of them: bump each in the same pull request (`cross-lane`, the user's
+  consent; their inbox told) and run `cargo test -p h3-protocol --lib -- tests::game_fold
+  tests::game_session` and `cargo test -p h3-server --lib -- tests::record`.
 - Counting increment 10's events (E08 T96a): a purchase's joins are `CreaturesJoined`, as the free creatures' are; tell them apart by the answer before (the hire question's accept, or a `Buy`). A refusal cannot stand in a golden replay: `Replay::record_commands` stops at the first command the game rejects, so a script shows a refusal as the legal set without that `Buy` and checks the error on a copy in its probe.
 - The capture harness's hire dialog (E08 T90): the topmost dialog's vtable is 0x640C4C, not the manager's 0x640C70 that `docs/exe/map.toml` names; the manager (the most +0xAC, the amount +0xB8) is 0x80 after the dialog, else found by a scan (`h3mem.recruit_manager`). A settle that does not know a screen returns with it open and the next step's key fails.
 - A computer player's turn is not shown as the current player (E08 T90, batch E10a's Tan): `end_turn` polled Blue then Red, Tan never; read the computer's own state (`treasury:tan`, its hero) before and after instead of `ai_turns`.

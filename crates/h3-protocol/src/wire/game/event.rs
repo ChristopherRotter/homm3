@@ -199,6 +199,11 @@ pub enum GameEvent {
         building: u8,
         event: Option<u16>,
     },
+    TownEventFired {
+        player: u8,
+        town: u16,
+        event: u16,
+    },
 }
 
 /// Something that happened on the adventure map, projected for its viewer
