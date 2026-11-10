@@ -370,30 +370,12 @@ fn town(t: &TownView) -> Town {
         owner: owner.map(h3_contracts::PlayerId::raw),
         faction: faction.raw(),
         name: name.as_deref().map(String::from),
-        fort: match fort {
-            FortLevel::None => 0,
-            FortLevel::Fort => 1,
-            FortLevel::Citadel => 2,
-            FortLevel::Castle => 3,
-        },
+        fort: fort_level(*fort),
         capitol: *capitol,
         built_today: *built_today,
         garrison: Garrison {
             level: *level,
-            stacks: stacks
-                .iter()
-                .map(
-                    |&GarrisonStackView {
-                         creature,
-                         count_word,
-                         count,
-                     }| GarrisonStack {
-                        creature: creature.raw(),
-                        count_word,
-                        count,
-                    },
-                )
-                .collect(),
+            stacks: stacks.iter().copied().map(garrison_stack).collect(),
             army: garrison_army.as_deref().map(army),
         },
         owner_facts: owner_facts
@@ -402,10 +384,42 @@ fn town(t: &TownView) -> Town {
                 hall: *hall,
                 income: amounts(income),
             }),
-        buildings: buildings.map(|TownBuildingsView { built, forbidden }| TownBuildings {
-            built: WireU64(built.bits()),
-            forbidden: WireU64(forbidden.bits()),
-        }),
+        buildings: buildings.map(town_buildings),
+    }
+}
+
+/// A fort level on the wire: 0 none, 1 Fort, 2 Citadel, 3 Castle.
+pub(crate) const fn fort_level(fort: FortLevel) -> u8 {
+    match fort {
+        FortLevel::None => 0,
+        FortLevel::Fort => 1,
+        FortLevel::Citadel => 2,
+        FortLevel::Castle => 3,
+    }
+}
+
+/// A garrison's stack as a viewer's level shows it, on the wire.
+pub(crate) const fn garrison_stack(
+    GarrisonStackView {
+        creature,
+        count_word,
+        count,
+    }: GarrisonStackView,
+) -> GarrisonStack {
+    GarrisonStack {
+        creature: creature.raw(),
+        count_word,
+        count,
+    }
+}
+
+/// A town's buildings as its owner sees them, on the wire.
+pub(crate) const fn town_buildings(
+    TownBuildingsView { built, forbidden }: TownBuildingsView,
+) -> TownBuildings {
+    TownBuildings {
+        built: WireU64(built.bits()),
+        forbidden: WireU64(forbidden.bits()),
     }
 }
 
