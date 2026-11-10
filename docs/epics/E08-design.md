@@ -548,7 +548,17 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   game's own). *Agent's reading:* an enemy hero on another tile of the entrance's own Whirlpool is
   a candidate (survey §4.1: the hero's class before the excluded word; the engine's
   `draw_exit`), so "never one of its own six" holds for a free tile; its battle won, the held jump
-  lands there. The view's half is T106b2's (`hygienic()` lays out no teleporter until then).
+  lands there.
+  *As built* (T106b2, `adventure/e08-t106b2`; decision 292, the `view.rs` half): `check_jump_ends`
+  (every `HeroTeleported` told to its hero's owner with both ends, to another viewer exactly when
+  it sees an end, that end alone) and `check_teleporter_views` (a teleporter's view its type and
+  tiles, nothing else) after every command for every player; in the hygiene property the plans'
+  teleporters, `vary` removing those the viewer never sees and adding others there (on their
+  surface, alone on their tiles; every teleporter's visited tiles keep their surface, A-42),
+  `check_jump_ends` in both games, `outcome` leaving out the move of a hero that jumped where the
+  viewer does not see the exit (the comparison goes on past another player's hidden jump), and the
+  viewer's own visit of a teleporter ending the comparison when the two games tell it other events
+  (the same up to the visit's).
 - **Benchmarks** (`benches/adventure/`): **measured first** against `master` right after the first
   build that makes the entrances visits (T105a; `homm3-bench-regression`): `reach-xl-144`,
   `reach-lifted-xl-144`, `reach-sea-xl-144` and the `random-play-*` workloads hold no teleporter

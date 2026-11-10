@@ -158,7 +158,11 @@ context.
     [log](E17-log.md#m7-t1a--the-options-dialogs-slips-and-f6-to-f8-on-every-turn-2026-11-10)):
     CLT-Q43 (2) and (3), Q44 (c) in the client's profile; Q74's one click and Q75's F6 to F8 on
     every turn with the acting stack's reach in both.
-  - **T1b:** Q70, Q71 (the client's profile; the original's as built until T1c), Q77 (b).
+  - **T1b done 2026-11-10** (the other answered slips;
+    [log](E17-log.md#m7-t1b--the-other-answered-slips-2026-11-10)): CLT-Q70 (b) a heroless
+    side's dialog and army info windows in its own player's colours, Q71 (b) a held panel
+    button let go when a dialog takes its key's release (the original's as built until T1c),
+    Q77 (b) the pictures box's rows; each in the client's profile.
   - **T1c, the reads and captures:** Q71's (hold D, click a stack, release D, close the dialog:
     what the original's profile copies), Q73's 0x5994B0 (a fix or a copy, recorded), Q74's
     sound sequence pressing a speed, T7b's R2-1 still `stats-ability`.
@@ -272,3 +276,10 @@ The next milestone's list starts here.
    keeps it for a remote turn); the acting stack's reach on a turn no human plays drawn only
    for a stack whose commands the client knows (*provisional*: none on a seat's opponent's
    turn, the server sending no commands for it). Not recorded.
+2. The other slips (T1b, CLT-Q70 (b), Q71 (b), Q77 (b), *provisional* where marked): a
+   heroless side's colours its own player's where it has one (a colour, or a human's: CLT-Q6's
+   red or blue), the viewing player's for a side with none (*provisional*: neutral creatures, no
+   player to take); a held button let go on a release the stats dialog, a message box or popup,
+   the combat options, the spell book or an aim takes (*provisional*: the book and the aims
+   beyond the answer's dialogs and popups); the pictures box's size unchanged by its rows'
+   fix. Not recorded (the stills and sequences the original's).

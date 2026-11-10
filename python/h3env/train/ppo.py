@@ -70,9 +70,10 @@ asked and the training is the one before T21.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import time
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import asdict
 from pathlib import Path
 from typing import Any
@@ -304,6 +305,24 @@ _SEATS = (
     {"attacker": "system", "defender": "external"},
     {"attacker": "external", "defender": "system"},
 )
+
+
+@contextlib.contextmanager
+def autotuned(on: bool) -> Iterator[None]:
+    """cuDNN's autotuner on inside (`[device] cudnn_autotune`, E25 T31), as it was after."""
+    old = torch.backends.cudnn.benchmark
+    torch.backends.cudnn.benchmark = on or old
+    try:
+        yield
+    finally:
+        torch.backends.cudnn.benchmark = old
+
+
+def padded(rows: np.ndarray, align: int) -> np.ndarray:
+    """`rows` padded to a multiple of `align` rows by repeating its first (`[ppo] chunk_align`;
+    0 or 1: as they are)."""
+    pad = -len(rows) % align if align > 1 else 0
+    return np.concatenate([rows, np.full(pad, rows[0], rows.dtype)]) if pad else rows
 
 
 def episode_entries(config: Config) -> list[tuple[int, list[int] | None, int]]:
@@ -824,13 +843,15 @@ class Trainer:
         share: float = 1.0,
         norm: tuple[float, float] | None = None,
         labels: int | None = None,
+        real: int | None = None,
     ) -> dict[str, Any]:
         """Backpropagates one minibatch's PPO loss or, accumulating (`[ppo] accumulate`), one
         chunk's part of its minibatch's: scaled by `share` (the chunk's rows over the
         minibatch's), the advantages normalised by `norm` (the minibatch's mean and standard
         deviation; None: the rows' own), the imitation term's mean taken over `labels` rows (the
-        minibatch's labelled ones; None: the rows' own). Returns the parts' values on these rows,
-        `imitation` the term's part (None without a labelled row)."""
+        minibatch's labelled ones; None: the rows' own). Only the first `real` rows count (None:
+        all; the rest pad the passes' shape, `[ppo] chunk_align`). Returns the parts' values on
+        these rows, `imitation` the term's part (None without a labelled row)."""
         c = self.config
         # `Policy.evaluate` in two halves, so that the teacher's labels share the pass.
         h, logits, value = self.policy.entries(m["obs"], m["entry_mask"], m.get("preview"))
@@ -838,21 +859,23 @@ class Trainer:
             h, logits, m["entry"], m["cast"], tuple(m[n] for n in FIELDS[4:10])
         )
         assert ent is not None
-        old = m["logprob"]
-        a = m["adv"]
+        n = logp.shape[0] if real is None else real
+        logp, ent, value = logp[:n], ent[:n], value[:n]
+        old = m["logprob"][:n]
+        a = m["adv"][:n]
         if norm is None:
             a = (a - a.mean()) / (a.std() + 1e-8)
         else:
             a = (a - norm[0]) / (norm[1] + 1e-8)
         ratio = torch.exp(logp - old)
         pg = torch.max(-a * ratio, -a * ratio.clamp(1 - c.clip, 1 + c.clip)).mean()
-        v_loss = 0.5 * ((value - m["returns"]) ** 2).mean()
+        v_loss = 0.5 * ((value - m["returns"][:n]) ** 2).mean()
         loss = pg - bonus * ent.mean() + c.value_coef * v_loss
         if share != 1.0:
             loss = loss * share
         ce = None
         if weight:
-            lab = torch.nonzero(m["teacher_labelled"]).squeeze(1)
+            lab = torch.nonzero(m["teacher_labelled"][:n]).squeeze(1)
             if lab.numel():
                 teacher_logp, _ = self.policy.along(
                     rows_of(h, lab),
@@ -879,13 +902,12 @@ class Trainer:
             "imitation": ce,
         }
 
-    def update(self, lr: float, entropy_coef: float | None = None) -> dict:
-        """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
-        bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
-        `entropy_bonus`), with the imitation loss at its weight (`imitation_weight`) when the
-        rollout is labelled (E25 T21)."""
+    def samples_of(self) -> tuple[dict[str, np.ndarray], np.ndarray, float]:
+        """The update's arrays by name ([calls, envs, ...]: the rollout's `FIELDS`, the
+        advantages `adv` and `returns`, the kill preview and, while the imitation loss's weight
+        is above 0, the teacher's labels), the samples it trains on (their flat indices) and that
+        weight (`imitation_weight`, 0 for an unlabelled rollout)."""
         c, r = self.config, self.rollout
-        bonus = c.entropy_coef if entropy_coef is None else entropy_coef
         weight = imitation_weight(c, self.samples) if r.labelled else 0.0
         adv, used = gae(
             r.side,
@@ -900,18 +922,50 @@ class Trainer:
             c.gamma,
             c.lam,
         )
-        flat = np.nonzero(used.reshape(-1))[0]
-        returns = adv + r.value
-        for g in self.optimizer.param_groups:
-            g["lr"] = lr
-        start = time.perf_counter()
         arrays = {name: getattr(r, name) for name in FIELDS}
-        arrays["adv"], arrays["returns"] = adv, returns
+        arrays["adv"], arrays["returns"] = adv, adv + r.value
         if r.preview is not None:
             arrays["preview"] = r.preview
         if weight:
             assert r.teacher is not None
             arrays.update({f"teacher_{name}": array for name, array in r.teacher.items()})
+        return arrays, np.nonzero(used.reshape(-1))[0], weight
+
+    def update(self, lr: float, entropy_coef: float | None = None) -> dict:
+        """PPO's update over the rollout's samples at the learning rate `lr` and the entropy
+        bonus `entropy_coef` (`[ppo] entropy_coef` when None; the run's schedule,
+        `entropy_bonus`), with the imitation loss at its weight (`imitation_weight`) when the
+        rollout is labelled (E25 T21)."""
+        c, r = self.config, self.rollout
+        bonus = c.entropy_coef if entropy_coef is None else entropy_coef
+        arrays, flat, weight = self.samples_of()
+        returns = arrays["returns"]
+        for g in self.optimizer.param_groups:
+            g["lr"] = lr
+        start = time.perf_counter()
+        with autotuned(c.cudnn_autotune):
+            stats = self._steps(arrays, flat, bonus, weight)
+        imitation = stats.pop("imitation")
+        stats["imitation_coef"] = weight
+        if weight:
+            # The cross-entropy on the teacher's labels per labelled row, over the minibatches
+            # with one (None: none had).
+            stats["imitation_loss"] = imitation[0] / imitation[1] if imitation[1] else None
+        y, p = returns.reshape(-1)[flat], r.value.reshape(-1)[flat]
+        var = float(np.var(y))
+        stats["explained_variance"] = float("nan") if var == 0 else 1 - float(np.var(y - p)) / var
+        stats["update_samples"] = len(flat)
+        stats["update_s"] = time.perf_counter() - start
+        self.samples += len(flat)
+        self.updates += 1
+        return stats
+
+    def _steps(
+        self, arrays: dict[str, np.ndarray], flat: np.ndarray, bonus: float, weight: float
+    ) -> dict[str, Any]:
+        """`update`'s epochs of minibatch steps over the samples `flat`: the losses' means over
+        the steps and `imitation`, the imitation loss's sum and the minibatches with a label."""
+        c = self.config
         stats = {"policy_loss": 0.0, "value_loss": 0.0, "entropy": 0.0, "kl": 0.0, "clip": 0.0}
         steps = 0
         #: The imitation loss's sum and the minibatches with a label.
@@ -928,7 +982,12 @@ class Trainer:
                 rows = np.sort(order[k : k + size])
                 self.optimizer.zero_grad()
                 if chunks <= 1:
-                    parts = self._loss(self.staging.gather(arrays, rows), bonus, weight)
+                    parts = self._loss(
+                        self.staging.gather(arrays, padded(rows, c.chunk_align)),
+                        bonus,
+                        weight,
+                        real=len(rows),
+                    )
                     ce = parts.pop("imitation")
                     for name, value in parts.items():
                         stats[name] += value
@@ -941,12 +1000,13 @@ class Trainer:
                     ce = None
                     for part in np.array_split(rows, chunks):
                         parts = self._loss(
-                            self.staging.gather(arrays, part),
+                            self.staging.gather(arrays, padded(part, c.chunk_align)),
                             bonus,
                             weight,
                             share=len(part) / len(rows),
                             norm=norm,
                             labels=labels,
+                            real=len(part),
                         )
                         if parts["imitation"] is not None:
                             ce = parts["imitation"] + (ce or 0.0)
@@ -958,20 +1018,9 @@ class Trainer:
                 torch.nn.utils.clip_grad_norm_(self.policy.parameters(), c.max_grad_norm)
                 self.optimizer.step()
                 steps += 1
-        stats = {k: v / max(steps, 1) for k, v in stats.items()}
-        stats["imitation_coef"] = weight
-        if weight:
-            # The cross-entropy on the teacher's labels per labelled row, over the minibatches
-            # with one (None: none had).
-            stats["imitation_loss"] = imitation[0] / imitation[1] if imitation[1] else None
-        y, p = returns.reshape(-1)[flat], r.value.reshape(-1)[flat]
-        var = float(np.var(y))
-        stats["explained_variance"] = float("nan") if var == 0 else 1 - float(np.var(y - p)) / var
-        stats["update_samples"] = len(flat)
-        stats["update_s"] = time.perf_counter() - start
-        self.samples += len(flat)
-        self.updates += 1
-        return stats
+        out: dict[str, Any] = {k: v / max(steps, 1) for k, v in stats.items()}
+        out["imitation"] = imitation
+        return out
 
     def network(self, **meta: Any) -> dict[str, Any]:
         """The network alone (`best.pt`, `promoted/<n>.pt`, a snapshot's `league/<id>.pt`): its

@@ -51,7 +51,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   or in the answer to the winner's level-up (its defender gone): that hero moves and its owner's
   explored tiles grow in a command not its own (`check_isolation`'s captors, `view.rs`' `jumper`);
   an empty boat a hero left on a Whirlpool's tile is boarded, no visit; an enemy hero on another
-  tile of the entrance's own Whirlpool is a candidate (survey §4.1). `view.rs`' `hygienic()` lays
-  out no teleporter until `vary` knows them (T106b2).
+  tile of the entrance's own Whirlpool is a candidate (survey §4.1).
+- The hygiene property and the teleporters (E08 T106b2, `view.rs`): an object `vary` adds needs
+  its template in the map's table, which `lay_out` writes for the typed objects up to the last one
+  the plan uses, the towns' after them (else the read fails: `InvalidValue { field: "object
+  template" }`), so a kind is added only where the table holds it; every teleporter's visited
+  tiles keep their surface (A-42 refuses the build), none takes a blocker; `outcome` leaves out
+  the move of a hero whose jump's exit the viewer does not see (a draw or a pair the test changed),
+  and the viewer's own visit ends the comparison when the two games tell it other events.
 
 - **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression` and `homm3-rerecord-replays`; measure right after the first build (`AGENTS.md`, "Measure before you polish").

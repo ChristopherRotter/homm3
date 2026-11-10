@@ -4691,8 +4691,8 @@ fn check_revisits(
 
 /// The teleporter visited from `pos` in `state` (E08 T106b1; increment 11's design note §7): its
 /// object's index and kind, if the object visited from `pos` ([`visited_at`]) is a monolith, a
-/// Subterranean Gate or a Whirlpool.
-fn teleporter_at(
+/// Subterranean Gate or a Whirlpool; (E08 T106b2) the hygiene property's too (`view.rs`).
+pub(super) fn teleporter_at(
     state: &GameState,
     rules: &GameRuleset,
     pos: TilePos,

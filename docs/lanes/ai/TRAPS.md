@@ -86,9 +86,19 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   one on the user's 8 GB GPU sums each minibatch's gradient over chunks (`[ppo] accumulate`,
   E25 T28: 8, 512 rows, `hexconv` 96 × 6's 3 076 MB at T27) and keeps `minibatches`, which
   would change PPO's steps; the bench uses `minibatch` 512.
+- **cuDNN's speed** (E25 T31, `E25-log.md` T31): a convolution's cost depends on its rows'
+  shape, not smoothly (`hexconv` 96 × 6 on the GTX 1070: 814 rows cost more a row than 508);
+  the update runs with cuDNN's autotuner (`[device] cudnn_autotune`), which caches each shape's
+  kernels once a process, so a `hexconv` run keeps the shapes few (`[ppo] chunk_align = 32`,
+  `accumulate = 4`). cuDNN's cache key holds the shapes and some flags (TF32), not the
+  autotuner's: a timing with the autotuner after one without it at the same shapes reuses the
+  heuristics' kernels and measures nothing (`speed.cudnn_mode` separates them). Time with
+  `python -m h3env.train.speed` (its `--sweep` by rows), in one run per question: the card
+  warms by about 4 % over minutes and the autotuner's pick varies by about 10 % between runs.
 - **The GPU's memory** (E25 T28; the user, 2026-11-10: a run never fills more than 90 % of the
   card): every CUDA entry point caps PyTorch's caching allocator by `gpu.cap` (the trainer,
-  `distill.bench_device`, `evaluate.load`); a new one does too. Uncapped on Windows, the
+  `distill.bench_device`, `evaluate.load`); a new one does too (torch's call takes the card's
+  index, which a plain `cuda` lacks: E25 T31). Uncapped on Windows, the
   driver's sysmem fallback puts a growing cache into shared system memory instead of failing an
   allocation: no error, the update ten times slower (`e25-structure-1` from 14.9 M samples on:
   100 s to 1 950 s, its rollouts unchanged). The trainer's update records hold

@@ -359,14 +359,14 @@ fn own_damage(observation: &Observation, stack: &Stack) -> [i32; 2] {
 /// What stack `id`'s army info window shows in `observation` (E17 M6 T4b2b2, design §12.15
 /// "Their fill"; `army_info_stack_set` 0x46DC30): the stats dialog's numbers ([`of`]), so the two
 /// agree, the stack's own damage range for the original's Dmg row (CLT-Q48), the background in
-/// the colours of the stack's side's hero's player (+0xF4's: its owner's, where the dialog takes
-/// its controller's; oddity 8), else the viewing player's `viewing`. None without the stack, its
-/// creature's rules or tables.
+/// the colours of the player of the stack's side (+0xF4's: its owner's, where the dialog takes
+/// its controller's; oddity 8; [`side_player`] in the profile `bugs`, the viewing player
+/// `viewing`). None without the stack, its creature's rules or tables.
 pub fn army_info(
     sources: &Sources<'_>,
     observation: &Observation,
     id: u8,
-    viewing: u8,
+    (viewing, bugs): (u8, h3_render::Bugs),
 ) -> Option<h3_view::army_info::StackInfo> {
     let stats = of(sources, observation, id, false)?;
     let stack = observation.stacks.iter().find(|s| s.id == id)?;
@@ -376,14 +376,7 @@ pub fn army_info(
         .creatures
         .get(usize::from(stack.creature))?;
     let creature = u32::from(sources.tables.creatures.get(key)?.original);
-    let index = usize::from(stack.side == Side::Defender);
-    let side = &observation.sides[index];
-    let player = match side.hero {
-        Some(_) => side
-            .colour
-            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0)),
-        None => viewing,
-    };
+    let player = side_player(observation, stack.side, viewing, bugs);
     let own = own_damage(observation, stack);
     Some(h3_view::army_info::StackInfo::of(
         &stats,
@@ -765,16 +758,35 @@ pub fn field(manifest: &Manifest, observation: &Observation) -> Field {
         })
 }
 
-/// The player whose colours the dialog's background takes (0x5F3550): the owner of the hero who
-/// controls the stack, else the viewing player (`viewing`).
-pub fn player(observation: &Observation, stack: &Stack, viewing: u8) -> u8 {
-    let index = usize::from(stack.controller == Side::Defender);
-    let side = &observation.sides[index];
-    match side.hero {
-        Some(_) => side
-            .colour
-            .unwrap_or_else(|| u8::try_from(index).unwrap_or(0)),
-        None => viewing,
+/// The player whose colours the dialog's background takes (0x5F3550): the player of the side
+/// that controls the stack ([`side_player`] in the profile `bugs`, the viewing player `viewing`).
+pub fn player(observation: &Observation, stack: &Stack, viewing: u8, bugs: h3_render::Bugs) -> u8 {
+    side_player(observation, stack.controller, viewing, bugs)
+}
+
+/// The player whose colours a stack's dialog or army info window takes for side `side` of
+/// `observation`: the owner of the side's hero (its colour; none named, red for the attacker and
+/// blue for the defender: CLT-Q6); without a hero the executable's the viewing player `viewing`
+/// (0x5F3550, +0xF4: in hot seat a heroless human side, a town's garrison, takes the other
+/// human's colours), the client's the side's own player (CLT-Q70, answered (b) at E17 M6's
+/// closure, as the boxes' CLT-Q28 (2); the original's for the comparisons only), the viewing
+/// player's when the side has none (neutral creatures: no colour and no human).
+pub fn side_player(
+    observation: &Observation,
+    side: Side,
+    viewing: u8,
+    bugs: h3_render::Bugs,
+) -> u8 {
+    let index = usize::from(side == Side::Defender);
+    let view = &observation.sides[index];
+    let own = view
+        .colour
+        .unwrap_or_else(|| u8::try_from(index).unwrap_or(0));
+    let has_player = view.colour.is_some() || view.human;
+    match (view.hero, bugs) {
+        (Some(_), _) => own,
+        (None, h3_render::Bugs::Fixed) if has_player => own,
+        (None, _) => viewing,
     }
 }
 
@@ -821,7 +833,7 @@ pub fn open(
         &stats,
         (
             h3_view::stats::place(anchor),
-            player(observation, stack, viewing),
+            player(observation, stack, viewing, bugs),
         ),
         bugs,
     );
@@ -913,6 +925,32 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn a_heroless_side_s_dialog_takes_its_own_player_s_colours_in_the_client_s_profile() {
+        // CLT-Q70 (b): the background (0x5F3550) the controlling side's hero's owner's; without a
+        // hero the original's the viewing player's (5 here), the client's the side's own player:
+        // its colour, a human's without one blue's (CLT-Q6); a side with none (neutral
+        // creatures: no colour, no human) the viewing player's in both.
+        let (_, mut o, manifest) = opening();
+        let goblins = stack_of(&manifest, &o, "base:goblin");
+        let colours = |o: &Observation| {
+            let s = o.stacks.iter().find(|s| s.id == goblins).unwrap();
+            [Bugs::Fixed, Bugs::Original].map(|bugs| player(o, s, 5, bugs))
+        };
+        // Crag Hack's (`stats-dragon`'s defender, the record naming no colour): blue in both.
+        assert_eq!(colours(&o), [1, 1]);
+        o.sides[1].hero = None;
+        (o.sides[1].colour, o.sides[1].human) = (None, false);
+        assert_eq!(colours(&o), [5, 5]);
+        o.sides[1].human = true;
+        assert_eq!(colours(&o), [1, 5]);
+        o.sides[1].colour = Some(3);
+        assert_eq!(colours(&o), [3, 5]);
+        // Hypnotized by Orrin's side: its controller's hero's owner, Red, in both.
+        stack(&mut o, goblins).controller = Side::Attacker;
+        assert_eq!(colours(&o), [0, 0]);
+    }
+
+    #[test]
     fn the_attack_saturates_on_a_server_s_values() {
         // The reviewer's R1-1: a server's attack at the `i32`'s top with its bonuses.
         let (ruleset, mut o, manifest) = opening();
@@ -931,7 +969,7 @@ pub(crate) mod tests {
             of(&sources, &o, marksmen, true).unwrap().attack.now,
             i32::MAX
         );
-        let info = army_info(&sources, &o, marksmen, 0).unwrap();
+        let info = army_info(&sources, &o, marksmen, (0, Bugs::Fixed)).unwrap();
         assert_eq!(info.attack.now, i32::MAX);
     }
 

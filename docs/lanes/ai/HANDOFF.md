@@ -29,10 +29,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user's GPU: the update's speed, architectures, PPO's settings, training regimes; the aim a
   margin beyond the interval). **T30 done** (`E25-log.md` T30): the margin lies in the hero
   battles (#2 keeps more army there but wins as often as the fair actor), sharpening gains
-  +0.011 (temperature 0.5), no encoding change asked. **Next:** T31, the update's speed (a
-  profile tool, then the user's GPU; `QUEUE.md`).
-- **Open pull requests:** the one of `claude/adoring-heisenberg-t5hahk` (T30's analysis, the
-  ceiling tool's confusion table). Merged: #748 (T26b), #765 (T27), #827 (T28, T29).
+  +0.011 (temperature 0.5), no encoding change asked. **T31 done** (`E25-log.md` T31): cuDNN's
+  autotuner in the update (`[device] cudnn_autotune`, on), `[ppo] chunk_align`; a `hexconv` run
+  sets `accumulate = 4`, `chunk_align = 32`: 958 to 649 µs a sample-pass, 98 to 67 s an update
+  on the GTX 1070; `gpu.cap` now passes the card's index (every CUDA entry point since T28
+  stopped there). **Next:** T32 or T33, refined in `QUEUE.md` when next (T30's ranking: T33's
+  entropy bonus at 0 and the imitation loss held, short continuations from #2).
+- **Open pull requests:** the one of `claude/pensive-mendel-2ydhkl` (T31). Merged: #765 (T27),
+  #827 (T28, T29), #829 (T30).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -45,6 +49,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-10 — E25 T31
+
+- #829 merged; the branch started from `master` (the setup's baseline only the light gates);
+  `cargo build --release -p h3-ffi` 56 s, `uv sync --group train` about 30 minutes (3 MB/s).
+  Built `h3env.train.speed`; the user ran it five times (about 6 minutes each): the first
+  stopped at `gpu.cap` (fixed), then the variants, the sweep by rows (its autotuner column void:
+  cuDNN's cache, `TRAPS.md`), the sweep again, the confirmation. The Python suite 254 (2.4
+  minutes).
 
 ### 2026-11-10 — E25 T28
 
@@ -64,13 +77,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   T27's ladder, then its table and `report.json`, then the student (T19's tool, 2 minutes);
   T28's smoke from a CPU clone (72 s, then 2.3 minutes) showed `minibatches` 64 would change
   PPO's steps, so `[ppo] accumulate`; the Python suite 243 (2.6 minutes).
-
-### 2026-11-05 — E25 T26a
-
-- The branch started from `master` with T26's records (`claude/determined-mayer-t1waz5`, no pull
-  request). The setup's baseline ran only the light gates (code verified on `master`); `cargo
-  build --release -p h3-ffi` 56 s, `uv sync --group train` from the cache. The Python suite 241
-  (3.5 minutes); the stop-and-resume smoke of T25's clone by the command line 27 minutes
-  (`E25-log.md` T26a), which showed the held-out file's 156 MB (now compressed).
-- #730 merged; the user ran T26b to its budget in parts and pasted the table; the branch
-  restarted from `master` for its records and T27's config; its `report.json` uploaded after.

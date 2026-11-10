@@ -161,7 +161,7 @@ which aims at a margin beyond the interval.
 | Task | Scope | Status |
 |---|---|---|
 | T30 | The analysis of #2 (decision 2) | done 2026-11-10 (`E25-log.md` T30: the margin lies in the hero battles, where #2 keeps more army but wins as often; temperature 0.5 +0.011; it keeps the teacher's kind of action, not its hex; no encoding change asked) |
-| T31 | The update's speed: a profile on the user's GPU, then the change that pays | next |
+| T31 | The update's speed: a profile on the user's GPU, then the change that pays | done 2026-11-10 (`E25-log.md` T31: cuDNN's autotuner in the update, `[ppo] accumulate` 4 and `chunk_align` 32 for `hexconv`: 958 to 649 µs a sample-pass, 98 to 67 s an update; `gpu.cap`'s card index fixed) |
 | T32 | Architecture probes on the cloning bench with its ladder, `hexconv` 96 × 6 the control | after T31 |
 | T33 | PPO's settings by short continuations from #2: the entropy bonus at 0, the imitation loss held at a small weight, then the learning rate and the epochs | after T31 |
 | T34 | Training regimes: #2 distilled into T32's best, a KL anchor to #2, the search at play on the hero battles | after T32 |

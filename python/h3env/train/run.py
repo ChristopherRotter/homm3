@@ -160,6 +160,10 @@ class Config:
     #: losses (the advantages normalised over the whole minibatch, the imitation term's mean over
     #: its labelled rows). 1: the minibatch in one pass, as before T28.
     accumulate: int = field(default=1, metadata=_in("ppo"))
+    #: Each chunk's rows padded to a multiple of this (E25 T31): the pad repeats a row of the
+    #: chunk and counts in no loss, so the network's passes meet few shapes (cuDNN picks its
+    #: kernels by the rows). 0: no padding, as before T31.
+    chunk_align: int = field(default=0, metadata=_in("ppo"))
     clip: float = field(default=0.2, metadata=_in("ppo"))
     value_coef: float = field(default=0.5, metadata=_in("ppo"))
     entropy_coef: float = field(default=0.01, metadata=_in("ppo"))
@@ -242,6 +246,11 @@ class Config:
     checkpoint_minutes: float = field(default=5.0, metadata=_in("checkpoint"))
     device: str = field(default="auto", metadata=_in("device"))
     torch_threads: int = field(default=0, metadata=_in("device"))
+    #: cuDNN's autotuner during the update (E25 T31; `torch.backends.cudnn.benchmark`): each
+    #: convolution shape's kernels found by timing them, once a shape (`[ppo] chunk_align` keeps
+    #: the shapes few), not by cuDNN's heuristics. On the GTX 1070 `hexconv` 96 x 6's chunk pass
+    #: 0.70 to 0.75 of the heuristics' time; no convolution, no effect. False: as before T31.
+    cudnn_autotune: bool = field(default=True, metadata=_in("device"))
 
 
 #: Each table's keys, in `Config`'s order ("" for the top level).
@@ -253,7 +262,14 @@ _FIELDS = {f.name: f for f in dataclasses.fields(Config)}
 
 #: The keys a resume may change (design §1.3): the budget, the machine's share, the checkpoints'
 #: cadence. Every other key changes the training: that is a new run.
-RESUMABLE = ("samples", "threads", "device", "torch_threads", "checkpoint_minutes")
+RESUMABLE = (
+    "samples",
+    "threads",
+    "device",
+    "torch_threads",
+    "checkpoint_minutes",
+    "cudnn_autotune",
+)
 
 
 def key_path(key: str) -> str:
@@ -422,6 +438,7 @@ def resolve(config: Config) -> Config:
         "ladder_promoted",
         "tactics_rounds",
         "imitation_horizon",
+        "chunk_align",
     ):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")
