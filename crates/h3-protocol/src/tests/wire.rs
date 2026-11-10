@@ -584,6 +584,45 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         ]
         .map(|reason| ServerMessage::Goodbye { reason }),
     );
+    // The whole game's (E16 M5 T5a, v39).
+    let observation = map::game::observation(&super::game::every_game_part(
+        None,
+        h3_game::MonthKind::Normal,
+    ));
+    out.extend([
+        ServerMessage::GameSnapshot { n: 1, observation },
+        ServerMessage::GameEvents {
+            n: 2,
+            events: vec![
+                game::GameEvent::TurnEnded { player: 1 },
+                game::GameEvent::DayStarted { day: 2 },
+            ],
+        },
+        ServerMessage::GameEvents {
+            n: 3,
+            events: vec![],
+        },
+        ServerMessage::GameTurn {
+            n: 4,
+            legal: vec![
+                game::GameCommand::EndTurn {},
+                game::GameCommand::Battle {
+                    command: Command::Wait {},
+                },
+            ],
+            castable: vec![15, 16],
+        },
+        ServerMessage::GameAccepted {
+            n: 5,
+            seq: 9,
+            command: game::GameCommand::EndTurn {},
+        },
+        ServerMessage::GameRejected {
+            n: 6,
+            seq: 10,
+            code: game::GameReject::DecisionOpen {},
+        },
+    ]);
     out
 }
 
@@ -752,6 +791,35 @@ fn the_json_is_serdes_default_enum_form() {
             }
         }),
         r#"{"Rating":{"n":6,"ladder":"arena","before":{"rating":1500,"deviation":350},"after":{"rating":1662,"deviation":290}}}"#
+    );
+    // E16 M5 T5a (v39): the whole game's messages, its commands inside them as `wire::game`'s.
+    assert_eq!(
+        server(&ServerMessage::GameTurn {
+            n: 7,
+            legal: vec![
+                game::GameCommand::EndTurn {},
+                game::GameCommand::Battle {
+                    command: Command::Wait {}
+                }
+            ],
+            castable: vec![15],
+        }),
+        r#"{"GameTurn":{"n":7,"legal":[{"EndTurn":{}},{"Battle":{"command":{"Wait":{}}}}],"castable":[15]}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::GameEvents {
+            n: 8,
+            events: vec![game::GameEvent::DayStarted { day: 2 }]
+        }),
+        r#"{"GameEvents":{"n":8,"events":[{"DayStarted":{"day":2}}]}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::GameRejected {
+            n: 9,
+            seq: 3,
+            code: game::GameReject::DecisionOpen {}
+        }),
+        r#"{"GameRejected":{"n":9,"seq":3,"code":{"DecisionOpen":{}}}}"#
     );
     // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
     assert_eq!(

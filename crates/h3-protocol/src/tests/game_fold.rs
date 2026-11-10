@@ -13,6 +13,7 @@ use std::{eprintln, format, fs};
 
 use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup, GameState, Viewer, apply};
+use h3_sim::adventure::replay::Replay;
 
 use crate::map::game::{events, observe};
 use crate::wire::WireU64;
@@ -385,9 +386,9 @@ fn kind(event: &GameEvent) -> String {
         .to_string()
 }
 
-/// Runs every golden adventure replay and compares each viewer's folded view with `observe`
-/// after every command; returns each part's differences and the viewer-commands run.
-fn run() -> (BTreeMap<&'static str, Differences>, usize) {
+/// Calls `each` with every golden adventure replay, by name: its name, its rules, its map's setup
+/// at its difficulty and the replay (also the game session's test, E16 M5 T5a).
+pub(super) fn golden(mut each: impl FnMut(&str, &GameRuleset, &GameSetup, &Replay)) {
     let root = root();
     let dir = root.join("fixtures/replays/adventure");
     let mut files: Vec<PathBuf> = fs::read_dir(&dir)
@@ -398,8 +399,6 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
     files.sort();
     assert_eq!(files.len(), 55, "the golden adventure replays");
     let mut rules: BTreeMap<(Vec<String>, String), GameRuleset> = BTreeMap::new();
-    let mut differences: BTreeMap<&'static str, Differences> = BTreeMap::new();
-    let mut runs = 0;
     for file in &files {
         let name = file.file_stem().unwrap().to_string_lossy().into_owned();
         let replay = h3_files::adventure::parse_replay(&fs::read_to_string(file).unwrap()).unwrap();
@@ -418,7 +417,18 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
             difficulty: replay.difficulty,
             ..setup
         };
-        let mut state = GameState::new(rules, &setup, replay.seed).unwrap();
+        each(&name, rules, &setup, &replay);
+    }
+}
+
+/// Runs every golden adventure replay and compares each viewer's folded view with `observe`
+/// after every command; returns each part's differences and the viewer-commands run.
+fn run() -> (BTreeMap<&'static str, Differences>, usize) {
+    let mut differences: BTreeMap<&'static str, Differences> = BTreeMap::new();
+    let mut runs = 0;
+    golden(|name, rules, setup, replay| {
+        let name = name.to_string();
+        let mut state = GameState::new(rules, setup, replay.seed).unwrap();
         let viewers: Vec<Viewer> = (0..=u8::MAX)
             .take(state.players())
             .map(|p| Viewer::Player(PlayerId::new(p)))
@@ -475,7 +485,7 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                 runs += 1;
             }
         }
-    }
+    });
     (differences, runs)
 }
 
