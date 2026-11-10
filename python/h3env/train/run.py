@@ -160,6 +160,10 @@ class Config:
     #: losses (the advantages normalised over the whole minibatch, the imitation term's mean over
     #: its labelled rows). 1: the minibatch in one pass, as before T28.
     accumulate: int = field(default=1, metadata=_in("ppo"))
+    #: Each chunk's rows padded to a multiple of this (E25 T31): the pad repeats a row of the
+    #: chunk and counts in no loss, so the network's passes meet few shapes (cuDNN picks its
+    #: kernels by the rows). 0: no padding, as before T31.
+    chunk_align: int = field(default=0, metadata=_in("ppo"))
     clip: float = field(default=0.2, metadata=_in("ppo"))
     value_coef: float = field(default=0.5, metadata=_in("ppo"))
     entropy_coef: float = field(default=0.01, metadata=_in("ppo"))
@@ -422,6 +426,7 @@ def resolve(config: Config) -> Config:
         "ladder_promoted",
         "tactics_rounds",
         "imitation_horizon",
+        "chunk_align",
     ):
         if getattr(c, key) < 0:
             problems.append(f"`{key}` must not be negative")

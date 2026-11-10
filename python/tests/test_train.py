@@ -40,7 +40,7 @@ from h3env.train.evaluate import (  # noqa: E402
 )
 from h3env.train.hexnet import HexConv, HexFormer  # noqa: E402
 from h3env.train.policy import Mlp, build  # noqa: E402
-from h3env.train.ppo import _SEATS, TEACHER, Trainer, episode_entries  # noqa: E402
+from h3env.train.ppo import _SEATS, TEACHER, Trainer, episode_entries, padded  # noqa: E402
 from h3env.train.run import (  # noqa: E402
     ConfigError,
     HeldOutError,
@@ -782,6 +782,35 @@ def test_an_accumulated_update_steps_as_its_whole_minibatches_do() -> None:
     torch.testing.assert_close(chunked, whole, rtol=1e-4, atol=1e-6)
     for name in ("policy_loss", "value_loss", "entropy", "kl", "clip", "imitation_loss"):
         assert chunked_stats[name] == pytest.approx(stats[name], rel=1e-4, abs=1e-7), name
+
+
+def test_a_padded_update_steps_as_the_unpadded_one_does() -> None:
+    # E25 T31 (`[ppo] chunk_align`): each chunk (or the whole minibatch) padded to a multiple of
+    # the alignment by repeating its first row, the pad left out of every loss: the same rollout
+    # from the same weights takes the same steps up to rounding and records the same losses.
+    small = {**SMALL, "envs": 4, "rollout": 16, "minibatches": 2}
+
+    def updated(accumulate: int, align: int) -> tuple[torch.Tensor, dict]:
+        config = Config(**small, imitation_coef=1.0, accumulate=accumulate, chunk_align=align)
+        trainer = Trainer(config)
+        trainer.collect()
+        stats = trainer.update(trainer.config.lr)
+        trainer.batch.close()
+        return torch.cat([p.detach().reshape(-1) for p in trainer.policy.parameters()]), stats
+
+    for accumulate in (1, 3):
+        plain, stats = updated(accumulate, 0)
+        aligned, aligned_stats = updated(accumulate, 16)
+        torch.testing.assert_close(aligned, plain, rtol=1e-4, atol=1e-6)
+        for name in ("policy_loss", "value_loss", "entropy", "kl", "clip", "imitation_loss"):
+            assert aligned_stats[name] == pytest.approx(stats[name], rel=1e-4, abs=1e-7), name
+        assert aligned_stats["update_samples"] == stats["update_samples"]
+        # The minibatch and its chunks were padded (no multiple of 16 rows).
+        size = stats["update_samples"] // 2
+        assert size % 16 and min(len(p) % 16 for p in np.array_split(np.arange(size), 3))
+    rows = np.arange(5, 10)
+    assert padded(rows, 0) is rows and padded(rows, 5) is rows
+    assert padded(rows, 4).tolist() == [5, 6, 7, 8, 9, 5, 5, 5]
 
 
 def test_an_imitating_run_records_its_weight_and_labels(tmp_path) -> None:

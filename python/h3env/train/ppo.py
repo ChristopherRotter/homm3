@@ -306,6 +306,13 @@ _SEATS = (
 )
 
 
+def padded(rows: np.ndarray, align: int) -> np.ndarray:
+    """`rows` padded to a multiple of `align` rows by repeating its first (`[ppo] chunk_align`;
+    0 or 1: as they are)."""
+    pad = -len(rows) % align if align > 1 else 0
+    return np.concatenate([rows, np.full(pad, rows[0], rows.dtype)]) if pad else rows
+
+
 def episode_entries(config: Config) -> list[tuple[int, list[int] | None, int]]:
     """The batch's encounter entries (weight, kind weights, the side the system actor plays in
     their player kinds or -1): one, `[env] kinds` as given, without `system_share`; with it the
@@ -824,13 +831,15 @@ class Trainer:
         share: float = 1.0,
         norm: tuple[float, float] | None = None,
         labels: int | None = None,
+        real: int | None = None,
     ) -> dict[str, Any]:
         """Backpropagates one minibatch's PPO loss or, accumulating (`[ppo] accumulate`), one
         chunk's part of its minibatch's: scaled by `share` (the chunk's rows over the
         minibatch's), the advantages normalised by `norm` (the minibatch's mean and standard
         deviation; None: the rows' own), the imitation term's mean taken over `labels` rows (the
-        minibatch's labelled ones; None: the rows' own). Returns the parts' values on these rows,
-        `imitation` the term's part (None without a labelled row)."""
+        minibatch's labelled ones; None: the rows' own). Only the first `real` rows count (None:
+        all; the rest pad the passes' shape, `[ppo] chunk_align`). Returns the parts' values on
+        these rows, `imitation` the term's part (None without a labelled row)."""
         c = self.config
         # `Policy.evaluate` in two halves, so that the teacher's labels share the pass.
         h, logits, value = self.policy.entries(m["obs"], m["entry_mask"], m.get("preview"))
@@ -838,21 +847,23 @@ class Trainer:
             h, logits, m["entry"], m["cast"], tuple(m[n] for n in FIELDS[4:10])
         )
         assert ent is not None
-        old = m["logprob"]
-        a = m["adv"]
+        n = logp.shape[0] if real is None else real
+        logp, ent, value = logp[:n], ent[:n], value[:n]
+        old = m["logprob"][:n]
+        a = m["adv"][:n]
         if norm is None:
             a = (a - a.mean()) / (a.std() + 1e-8)
         else:
             a = (a - norm[0]) / (norm[1] + 1e-8)
         ratio = torch.exp(logp - old)
         pg = torch.max(-a * ratio, -a * ratio.clamp(1 - c.clip, 1 + c.clip)).mean()
-        v_loss = 0.5 * ((value - m["returns"]) ** 2).mean()
+        v_loss = 0.5 * ((value - m["returns"][:n]) ** 2).mean()
         loss = pg - bonus * ent.mean() + c.value_coef * v_loss
         if share != 1.0:
             loss = loss * share
         ce = None
         if weight:
-            lab = torch.nonzero(m["teacher_labelled"]).squeeze(1)
+            lab = torch.nonzero(m["teacher_labelled"][:n]).squeeze(1)
             if lab.numel():
                 teacher_logp, _ = self.policy.along(
                     rows_of(h, lab),
@@ -928,7 +939,12 @@ class Trainer:
                 rows = np.sort(order[k : k + size])
                 self.optimizer.zero_grad()
                 if chunks <= 1:
-                    parts = self._loss(self.staging.gather(arrays, rows), bonus, weight)
+                    parts = self._loss(
+                        self.staging.gather(arrays, padded(rows, c.chunk_align)),
+                        bonus,
+                        weight,
+                        real=len(rows),
+                    )
                     ce = parts.pop("imitation")
                     for name, value in parts.items():
                         stats[name] += value
@@ -941,12 +957,13 @@ class Trainer:
                     ce = None
                     for part in np.array_split(rows, chunks):
                         parts = self._loss(
-                            self.staging.gather(arrays, part),
+                            self.staging.gather(arrays, padded(part, c.chunk_align)),
                             bonus,
                             weight,
                             share=len(part) / len(rows),
                             norm=norm,
                             labels=labels,
+                            real=len(part),
                         )
                         if parts["imitation"] is not None:
                             ce = parts["imitation"] + (ce or 0.0)

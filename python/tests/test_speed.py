@@ -55,7 +55,7 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
             "--config",
             str(config),
             "--variants",
-            "nchw,autotune+accumulate/2",
+            "nchw,autotune+accumulate/2,align32",
             "--repeats",
             "2",
             "--trace",
@@ -65,10 +65,13 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
     )
     report = json.loads(out.read_text(encoding="utf-8"))
     variants = report["variants"]
-    assert list(variants) == ["baseline", "nchw", "autotune+accumulate/2"]
+    assert list(variants) == ["baseline", "nchw", "autotune+accumulate/2", "align32"]
     assert report["epochs"] == 1 and report["rows"] > 0 and report["teacher_rows"] > 0
     assert variants["autotune+accumulate/2"]["accumulate"] == 1
     assert variants["baseline"]["weights_max_diff"] == 0.0 and report["weights_moved"] > 0
+    # The CPU's kernels are deterministic: the baseline's repeat is its first update exactly.
+    assert report["weights_noise"] == 0.0
+    assert variants["align32"]["chunk_rows"] == [32] != variants["baseline"]["chunk_rows"]
     base = variants["baseline"]["losses"]
     assert base["imitation_loss"] > 0
     for name, v in variants.items():

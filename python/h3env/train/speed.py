@@ -6,14 +6,15 @@ timed by its phases and under candidate changes, on one rollout.
 
 The config's trainer (`--config`, `--set`, as a run's; the learner from `--init-from`) plays one
 rollout, with the imitation loss's labels when the config's weight is above 0 at its start. Each
-variant (`VARIANTS`; `--variants` names a subset, the baseline always first) then updates from
-the same weights, optimizer state and counters, `--repeats` times, over `--epochs` of the
-config's epochs (each epoch costs the same: 1 is a quarter of a run's update at 4): the seconds of
-each update (the first a warm-up: the autotuner's search for its shapes, the allocator's growth;
-the median of the others counts), the microseconds a sample-pass (an update's seconds over its
-rows times its epochs), the GPU's peak memory, the losses, and how far the weights after the
-first update lie from the baseline's, beside how far the baseline's update moved them (a variant
-changes the speed, not the update: its difference is rounding's). A variant is a change of the
+variant (`DEFAULT_VARIANTS` of `VARIANTS`, or those `--variants` names; the baseline always
+first) then updates from the same weights, optimizer state and counters, `--repeats` times, over
+`--epochs` of the config's epochs (each epoch costs the same: 1 is a quarter of a run's update at
+4): the seconds of each update (the first a warm-up: the autotuner's search for its shapes, the
+allocator's growth; the median of the others counts), the microseconds a sample-pass (an update's
+seconds over its rows times its epochs), the GPU's peak memory, the losses, and how far the
+weights after the first update lie from the baseline's, beside how far the baseline's update
+moved them and its repeat lies from it (a variant changes the speed, not the update: its
+difference is rounding's, and cuDNN's kernels are not deterministic). A variant is a change of the
 update's code or settings the tool makes for its updates alone (`Variant`): the code of a run is
 the baseline.
 
@@ -43,7 +44,7 @@ import numpy as np
 import torch
 
 from . import hexnet
-from .ppo import Trainer
+from .ppo import Trainer, padded
 from .run import Config, load_config, resolve
 
 #: The update's losses a variant must reproduce (the update's statistics, `Trainer.update`).
@@ -62,15 +63,41 @@ class Variant:
     settings: dict[str, Any] = field(default_factory=dict)
 
 
-#: The candidates, the baseline first (the run's code: no autotuner, the trunk as drawn).
+#: The candidates, the baseline first (the run's code: no autotuner, the trunk as drawn). T31's
+#: first run on the GTX 1070 (`E25-log.md` T31): the autotuner and the NCHW trunk gained
+#: nothing, `accumulate` halved (twice the chunks' rows) with the autotuner 0.78 of the time.
 VARIANTS: dict[str, Variant] = {
     "baseline": Variant(),
     "autotune": Variant(autotune=True),
     "nchw": Variant(nchw=True),
     "nchw+autotune": Variant(autotune=True, nchw=True),
+    "accumulate/2": Variant(settings={"accumulate": 0.5}),
     "autotune+accumulate/2": Variant(autotune=True, settings={"accumulate": 0.5}),
     "nchw+autotune+accumulate/2": Variant(autotune=True, nchw=True, settings={"accumulate": 0.5}),
+    #: About a run's chunks at `accumulate` 4: its league's members train no rows (T28: 25 700
+    #: an update), the tool's fresh trainer plays itself (about 32 500).
+    "accumulate=5": Variant(settings={"accumulate": 5}),
+    "align32": Variant(settings={"chunk_align": 32}),
+    "autotune+align32": Variant(autotune=True, settings={"chunk_align": 32}),
+    "autotune+accumulate/2+align32": Variant(
+        autotune=True, settings={"accumulate": 0.5, "chunk_align": 32}
+    ),
+    #: The baseline once more, last: the card's drift over the tool's minutes (its warmth).
+    "baseline again": Variant(),
 }
+
+#: The variants run without `--variants` (T31's second run: the chunks' size and alignment,
+#: each with and without the autotuner).
+DEFAULT_VARIANTS = (
+    "baseline",
+    "accumulate/2",
+    "autotune+accumulate/2",
+    "accumulate=5",
+    "align32",
+    "autotune+align32",
+    "autotune+accumulate/2+align32",
+    "baseline again",
+)
 
 #: The phases of the phases' update, by the callable each wraps (`Phases.install`).
 PHASES = (
@@ -122,7 +149,8 @@ def chunk_rows(rows: int, config: Config) -> list[int]:
     their split): the shapes cuDNN's autotuner searches once each."""
     size = max(2, rows // config.minibatches)
     chunks = max(1, min(config.accumulate, size // 2))
-    return sorted({len(part) for part in np.array_split(np.arange(size), chunks)})
+    sizes = {len(part) for part in np.array_split(np.arange(size), chunks)}
+    return sorted({len(padded(np.arange(n), config.chunk_align)) for n in sizes})
 
 
 class Phases:
@@ -245,7 +273,7 @@ def profile(
     """The report (module docstring) of `config`'s update from one rollout."""
     if repeats < 1 or epochs < 1 or trace_steps < 1:
         raise ValueError("the repeats, the epochs and the traced steps are at least 1")
-    names = ["baseline"] + [n for n in (variants or list(VARIANTS)) if n != "baseline"]
+    names = ["baseline"] + [n for n in (variants or DEFAULT_VARIANTS) if n != "baseline"]
     unknown = [n for n in names if n not in VARIANTS]
     if unknown:
         raise ValueError(f"no variant {', '.join(unknown)} (the variants: {', '.join(VARIANTS)})")
@@ -322,6 +350,7 @@ def _profile(
     rows = None
     reference: torch.Tensor | None = None
     moved = None
+    noise = None
     for name in names:
         v = VARIANTS[name]
         runs = []
@@ -333,6 +362,9 @@ def _profile(
                     if i == 0:
                         first = stats
                         w = weights(trainer)
+                    elif i == 1 and name == "baseline":
+                        # The baseline against itself: cuDNN's kernels are not deterministic.
+                        noise = float((weights(trainer) - w).abs().max())
         except torch.cuda.OutOfMemoryError as e:
             if name == "baseline":
                 raise
@@ -368,6 +400,7 @@ def _profile(
         log(f"- {name}: {times} s ({entry['us_per_sample_pass']:.0f} µs a sample-pass)")
     report["rows"] = rows
     report["weights_moved"] = moved
+    report["weights_noise"] = noise
     log("")
     log(table(report))
     if phases:
@@ -431,9 +464,11 @@ def traced(
 
 def table(report: dict[str, Any]) -> str:
     """The variants as a Markdown table."""
+    noise = report.get("weights_noise")
     lines = [
         f"{report['rows']:,} rows an epoch; the baseline's update moved a weight by at most "
-        f"{report['weights_moved']:.3g}.",
+        f"{report['weights_moved']:.3g}"
+        + ("." if noise is None else f", its repeat lies {noise:.3g} from it."),
         "",
         "| variant | accumulate (chunks) | seconds (each) | warm-up s | µs a sample-pass "
         "| against the baseline | peak MB | policy loss | value loss | entropy | imitation "

@@ -1623,24 +1623,59 @@ an entry only where a task builds on it.
 
 - **The suspects** (the code, before any profile): the trainer runs cuDNN without its autotuner
   (`torch.backends.cudnn.benchmark` off), while the benches turn it on (`distill.bench_device`):
-  T27's 683 µs a sample-pass of `hexconv` 96 × 6 was the bench's, T28's updates of about 100 s
-  over about 25 700 rows and 4 epochs are about 970 µs. And the hex trunk's convolutions get
-  channels-last tensors: the drawing's grid is a transposed view (`HexConv.trunk`) and each
-  `CellNorm`'s permutes keep that layout, so cuDNN runs its NHWC kernels, which on the GTX 1070
-  (no tensor cores) may be the slow ones (`tests/test_speed.py` checks the layouts).
+  T27's 683 µs a sample-pass of `hexconv` 96 × 6 was the bench's (minibatch 512), T28's updates
+  of about 100 s over about 25 700 rows and 4 epochs are about 970 µs. And the hex trunk's
+  convolutions get channels-last tensors: the drawing's grid is a transposed view
+  (`HexConv.trunk`) and each `CellNorm`'s permutes keep that layout, so cuDNN runs on NHWC
+  tensors (`tests/test_speed.py` checks the layouts).
 - **The tool** (`h3env.train.speed`, tests `tests/test_speed.py`): the config's trainer plays one
   rollout (the imitation loss's labels with it), then each variant updates from the same weights,
-  optimizer state and counters (`VARIANTS`: the baseline, the autotuner, the trunk in NCHW, both,
-  and both with `accumulate` halved, twice the chunks' rows), twice, over one epoch: the seconds
-  (the first a warm-up: the autotuner's search for the update's chunk shapes), µs a sample-pass,
-  the peak memory, the losses and the weights against the baseline's; then the baseline's phases
-  timed with the device synchronised around each, and torch's profiler over one optimizer step.
-  A CPU smoke (16 envs, 32 calls, 501 rows): the losses equal in every variant, the weights
-  within 7e-7. **The cap's index** (the user's first run): `gpu.cap` handed torch's
+  optimizer state and counters (`VARIANTS`: the autotuner, the trunk in NCHW, `accumulate`,
+  `chunk_align`, combinations; the baseline first, again last for the card's drift), twice, over
+  one epoch: the seconds (the first a warm-up: the autotuner's search for the update's chunk
+  shapes, the allocator's growth), µs a sample-pass, the peak memory, the losses and the weights
+  against the baseline's (and the baseline's repeat against it: cuDNN is not deterministic);
+  then the baseline's phases timed with the device synchronised around each, and torch's
+  profiler over one optimizer step. A CPU smoke (16 envs, 32 calls, 501 rows): the losses equal
+  in every variant, the weights within 7e-7.
+- **The cap's index** (the user's first run): `gpu.cap` handed torch's
   `set_per_process_memory_fraction` a plain `cuda` device (what `ppo.device_of` gives for `auto`
   and `cuda`), which torch refuses (`ValueError`: no index): every CUDA entry point since T28
   stopped there, never run on a card (`tests/test_gpu.py` stubs CUDA). Fixed: the current card's
-  index; the stub now refuses a device without one, as torch's does. **The user's run** (about
-  6 minutes; from `python/`):
+  index; the stub now refuses a device without one, as torch's does.
+- **The first run** (the user's GTX 1070, torch 2.14.1+cu126; #2's network, `configs/e25-imitate-
+  structure.toml`; the rollout 12.0 s; 32 575 rows an epoch, a fresh trainer's self-play; each
+  update one epoch, twice; `python -m h3env.train.speed --config configs/e25-imitate-structure.toml
+  --init-from runs/e25-structure-1/best.pt --device cuda --trace`):
 
-      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --trace --json runs/t31-speed.json
+  | Variant | Chunks' rows | Seconds | µs a sample-pass | Against the baseline | Peak MB |
+  |---|---|---|---:|---:|---:|
+  | baseline (`accumulate` 8) | 508, 509 | 29.56, 28.92 | 888 | 1.000 | 3 189 |
+  | autotune | 508, 509 | 31.15, 31.48 | 967 | 1.089 | 3 189 |
+  | nchw | 508, 509 | 31.53, 31.45 | 966 | 1.087 | 3 144 |
+  | nchw + autotune | 508, 509 | 31.46, 30.60 | 939 | 1.058 | 3 144 |
+  | autotune, `accumulate` 4 | 1 017, 1 018 | 61.66, 22.56 | 692 | 0.780 | 5 448 |
+  | nchw + autotune, `accumulate` 4 | 1 017, 1 018 | 24.49, 22.51 | 691 | 0.778 | 5 358 |
+
+  The losses agree to about 0.5 % (the policy loss 0.1734 to 0.1743, the imitation 3.115 to
+  3.118), the weights within 0.0013 of the baseline's, which an update moved by 0.002 at most
+  (Adam's steps on near-zero gradients; cuDNN's FFT kernels are not deterministic). The
+  baseline's phases (synchronised, 29.38 s): **the backward pass 0.665, the trunk's forward
+  0.277**, the rest of the encoding 0.022, the gather 0.009, the entry head and the value 0.009,
+  PPO's heads 0.006, the teacher's 0.005, the clipping and the step 0.001, the rest 0.007. The
+  profiler (one step, 8 chunks, 3.49 s of the device): the convolutions' backward 45 % (cuDNN's
+  `maxwell_gcgemm_32x32` 19 %, FFT tiles of 32 × 32 over the 11 × 22 grid 17 %, `flip_filter`
+  3 %), their forward 14 % (Winograd 10 %), cuDNN's own NHWC ↔ NCHW conversions 8 %, the
+  LayerNorms 16 % forward and backward, the element-wise products and sums the rest.
+- **Its read:** neither the autotuner nor the layout pays at the run's chunks (the later variants
+  0.94 to 1.09, the card warming up over the minutes); **twice the chunks' rows pays 0.78**, the
+  bench's speed (T27's 683 µs at 512 rows with the autotuner): the chunks' size, or their
+  shapes (508 and 509 against the bench's 512), not the autotuner itself. The first big-chunk
+  variant's 39 s warm-up is mostly the allocator's growth from 3.2 to 5.4 GB (the next one's
+  search for the same rows in NCHW took 2 s). Not separated yet: the size alone, without the
+  autotuner, and an aligned shape at today's size. So `[ppo] chunk_align` (each chunk padded to
+  a multiple of rows by repeating its first, the pad in no loss; 0 the default; test
+  `test_a_padded_update_steps_as_the_unpadded_one_does`) and a second run.
+- **The second run** (about 7 minutes; from `python/`):
+
+      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --no-phases --json runs/t31-speed-2.json
