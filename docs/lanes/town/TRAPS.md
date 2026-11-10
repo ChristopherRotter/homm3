@@ -29,6 +29,9 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   property's and cover test's games. `Step::Town` on a map without towns plays as `Step::Hire`
   (before its own settling, which declines every question), so that the dwellings' cover test
   keeps its counts; raise a cover test's cases, not its draw (the adventure lane's `TRAPS.md`).
+  Either lane's new plan field or step kind moves the other's cover tests too: after merging the
+  adventure lane's plans, run all of `h3-map`'s tests again (E09 T19b's merge of #830 raised its
+  teleporters' cover test to 512 cases).
 
 - **The turn start is compared whole** (`check_timed`, E09 T19b): every event after a command's
   first `TurnStarted` must be what the map's timed events and then the owned towns' events give,
