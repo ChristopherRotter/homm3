@@ -13,24 +13,18 @@ network that reads the battle's structure** (refined at T23, 2026-11-04, AI-Q16;
 the epic file; **T25 done** 2026-11-04, the heads read the geometry; **T26a done** 2026-11-05,
 the benches resume; **T26b done** 2026-11-05, decision 5's first gate passed by `hexconv`
 normalised 96 × 6 at 1e-3, 0.755 at 4 M; **T27 done** 2026-11-06, the second gate passed, 0.809
-at 16 M and 0.481 ± 0.019 against the fair actor; `E25-log.md`):
+at 16 M and 0.481 ± 0.019 against the fair actor; **T28 done** 2026-11-10, the structure wins,
+`e25-structure-1` #2 0.511 ± 0.019, +0.027 against the fair actor and 0.507, +0.026 against the
+all-seeing one, the neutral set +0.302, exit criterion 1 met on its point estimates;
+`E25-log.md`):
 
-- **T28 The A/B.** *Scope:* the user's GPU, about 17 hours in parts under 2 hours, from
-  `python/`: the first part `uv run --group train python -m h3env.train --config
-  configs/e25-imitate-structure.toml --init-from runs/clone-3/students/hexconv-n-96x6-a.pt --out
-  runs/e25-structure-1`, Ctrl-C before 2 hours, each later part `uv run --group train python -m
-  h3env.train --resume runs/e25-structure-1` until it ends at its budget (20 M samples, seed 1,
-  `e25-imitate.toml`'s settings with T27's network, `[ppo] accumulate` 8 for its memory; the CPU
-  smoke done, `E25-log.md` T27). Uploaded: `record.json`, `metrics.jsonl`, `best.pt` (about 6
-  MB); the head-to-head on the user's machine, `uv run --group train python -m h3env.train.gate
-  --candidate runs/e25-structure-1/best.pt --best runs/e25-imitate-1/best.pt`, its output pasted.
-  *Acceptance:* the final ladder beside `e25-imitate-1` #2's (0.458, −0.020; the neutral set
-  +0.287) and T27's clone's (0.481, −0.020; +0.274), the head-to-head, the samples a second, T19's
-  tool after RL (T27's student 0.810 before), `inspect` on the casts (the clone's 0.748).
-  *Depends on:* T27 (done, its gate passed). *Status:* next.
-- **T29 The checkpoint.** *Scope:* with the user: structure against the MLP (the clone, RL and
-  the cost), the current best, increment 8 (whether the evidence asks for an encoding change).
-  *Depends on:* T28, or the gate that stopped the increment. *Status:* waiting.
+- **T29 The checkpoint.** *Scope:* first the head-to-head on the user's machine, from `python/`:
+  `uv run --group train python -m h3env.train.gate --candidate runs/e25-structure-1/best.pt
+  --best runs/e25-imitate-1/best.pt --device cuda`, its output pasted. Then with the user
+  (AI-Q17): structure against the MLP (the clone, RL and the cost), the current best, E25's
+  closure or increment 8 (whether the evidence asks for an encoding change). *Acceptance:* the
+  head-to-head and AI-Q17's answer recorded (`E25-log.md` T29, the epic file). *Depends on:* T28
+  (done). *Status:* next.
 
 ## Inbox
 

@@ -164,8 +164,8 @@ against the fair actor before any RL run.
 | T26a | The resumable bench: the distillation bench and its clone mode resume to their budget (the user, 2026-11-05: every run over 2 hours resumes) | done 2026-11-05 (the shared loop `distill.go`: `checkpoint.pt`, Ctrl-C at a batch boundary, `--resume DIR`, the clone's ladders pending across a stop) |
 | T26b | The structure sweep on the cloning bench, against decision 5's first gate (a first segment stopped at 0.45 M, `E25-log.md` T26) | done 2026-11-05 (the gate passed: `hexconv` normalised 96 × 6 at 1e-3, 0.755 at 4 M, 683 µs; the MLP 0.533; `E25-log.md` T26b) |
 | T27 | The long clone of the best candidate, its ladder against decision 5's second gate | done 2026-11-06 (the gate passed: `hexconv` 0.809 agreement at 16 M against the MLP's 0.574, its ladder 0.481 ± 0.019 against the fair actor against 0.411; `records/distill/clone-3.json`; T19's tool 0.810 on its states, the casts 0.748 the one category below the MLP's) |
-| T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | next (the user's machine: `configs/e25-imitate-structure.toml`, `[ppo] accumulate` for its memory) |
-| T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | after T28 or a failed gate |
+| T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | done 2026-11-10 (the structure wins: `e25-structure-1` #2 0.511 ± 0.019, +0.027 against the fair actor, 0.507 ± 0.019, +0.026 against the all-seeing one, the neutral set +0.302: exit criterion 1 met on its point estimates; 217 samples a second, 22 times the MLP's time; the GPU's memory capped at 90 % of the card; the head-to-head left to T29) |
+| T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | next (AI-Q17; first the head-to-head on the user's machine) |
 
 Scope and acceptance: the AI queue's entries.
 

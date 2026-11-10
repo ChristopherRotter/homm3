@@ -120,7 +120,8 @@ and per category of each draw their `mode` and `pair` shares, the entropy (plug-
 Miller-Madow), the distinct entries, the cast heads' mode, and each scored network's agreement
 and cross-entropy against the draws; the teacher, the states, episodes, lost choices, seconds
 and the identity. `ceiling-1` (T19): the teacher's ceiling and four PPO networks; `ceiling-2`
-(T22): the same states, `e25-clone-1`, `e25-clone-2` and `e25-imitate-1` #2.
+(T22): the same states, `e25-clone-1`, `e25-clone-2` and `e25-imitate-1` #2; `ceiling-3`
+(T27): T27's `hexconv` student; `ceiling-4` (T28): `e25-structure-1` #2.
 
 ## The imitation loss
 
@@ -222,3 +223,10 @@ its `parent`.
   +0.284 and +0.287 (`docs/epics/E25-log.md` T22). **`e25-imitate-1` #2 is the current best**
   (E25 T23, the user, 2026-11-04, AI-Q16; 0.534 head to head against `e25-clone-1` #2, promoted
   by the gate). Their networks are on the user's machine.
+- `e25-structure-1` (E25 T28, 2026-11-10; `configs/e25-imitate-structure.toml`: `e25-imitate-1`'s
+  settings with `hexconv` 96 × 6, `[ppo] accumulate` 8, from T27's student
+  (`distill/clone-3.json`); 20 M samples, 1 676 minutes in 13 segments): the A/B of the
+  structure. Best #2; on the full report set against Random, Aggressor, Greedy, the fair and the
+  all-seeing system actor 0.887, 0.707, 0.673, 0.511, 0.507 (values +0.343, +0.179, +0.149,
+  +0.027, +0.026); the neutral set +0.302 (`docs/epics/E25-log.md` T28). Its behaviour analysis
+  `inspect/e25-structure-1-report-v1.json`. Its network is on the user's machine.

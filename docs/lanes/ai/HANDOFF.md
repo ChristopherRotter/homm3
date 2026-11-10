@@ -33,15 +33,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   MLP 0.574), its value 0.658 (the MLP's 0.626); its ladder **0.481 ± 0.019, value −0.020**
   against the fair actor (the MLP 0.414), 0.473 against the all-seeing one, the neutral set
   +0.274: decision 5's second gate passed, the clone alone at the current best's level.
-  **Next:** T28 on the user's GPU in parts (`configs/e25-imitate-structure.toml`, `[ppo]
-  accumulate` 8; the commands in `QUEUE.md`).
-- **Open pull requests:** the one of `claude/compassionate-ramanujan-wwkngo` (T27's records,
-  T28's config and `[ppo] accumulate`). Merged: #721 (T24), #725 (T25), #730 (T26a), #748 (T26b).
+  **T28 done** (`E25-log.md` T28): `e25-structure-1` #2 (PPO from the clone with the loss) **0.511
+  ± 0.019, +0.027 against the fair actor, 0.507, +0.026 against the all-seeing one, the neutral
+  set +0.302**: exit criterion 1 met on its point estimates; 217 samples a second (28 hours a 20
+  M). The GPU's memory capped at 90 % of the card (`gpu.cap`, `TRAPS.md`). **Next:** T29, the
+  checkpoint (AI-Q17), first the head-to-head on the user's machine (`QUEUE.md`).
+- **Open pull requests:** the one of `claude/adoring-heisenberg-t5hahk` (T28's records, the GPU's
+  cap). Merged: #730 (T26a), #748 (T26b), #765 (T27).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
   (`docs/08-work-process.md`, "Versions"). Next
-  ids: AI-Q17, AI-QUIRK-1, AI-STUB-2.
+  ids: AI-Q18, AI-QUIRK-1, AI-STUB-2.
 - Working agreement: increments with a user checkpoint (Q41's pattern); the user reviews ADRs and seams.
 
 ## Standing traps
@@ -49,6 +52,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-10 — E25 T28
+
+- #765 merged; the branch started from `master`, its code verified (only the light gates);
+  `cargo build --release -p h3-ffi` 52 s, `uv sync --group train` a few minutes. The user ran
+  T28 in 13 segments and uploaded the record, metrics and `best.pt`, with the GPU's slowdown:
+  the cap first (the Python suite 248, 2.8 minutes), then T19's tool (66 s) and `inspect` (30
+  minutes on the CPU). The head-to-head is the user's (T29).
 
 ### 2026-11-06 — E25 T27
 
@@ -67,12 +78,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   (`E25-log.md` T26a), which showed the held-out file's 156 MB (now compressed).
 - #730 merged; the user ran T26b to its budget in parts and pasted the table; the branch
   restarted from `master` for its records and T27's config; its `report.json` uploaded after.
-
-### 2026-11-04 — E25 T25
-
-- #721 merged; the branch started from `master`. The setup's full baseline was stopped (CI is
-  the record); `cargo build --release -p h3-ffi` 78 s, `uv sync --group train` from the cache.
-  The user's GPU grid arrived with the task (in `E25-log.md` T24), the cap raised at the end
-  (AI-Q16's decision 3). Four narrow workers in turn (the port, the mask through `encode`, the
-  structured kinds, the smokes); the VM restarted once during the smokes, the finished PPO runs
-  kept and the rest rerun (the clone smoke 22 minutes).

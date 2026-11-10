@@ -77,7 +77,31 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### AI lane (`AI-Q<n>`)
 
-(no open questions)
+#### AI-Q17 — Increment 7's checkpoint: the current best and E25's exit criterion 1 (E25 T29)
+
+*Context* (`docs/epics/E25-log.md` T28): `e25-structure-1` (PPO from T27's `hexconv` 96 × 6
+clone with the imitation loss, `e25-imitate-1`'s settings, 20 M samples) #2's final ladder:
+against the fair system actor **0.511 ± 0.019, value +0.027**, against the faithful (all-seeing)
+one **0.507 ± 0.019, +0.026**; Random 0.887, Aggressor 0.707, Greedy 0.673, all with positive
+values; the neutral set **+0.302** (target +0.285). The current best `e25-imitate-1` #2: 0.458,
+0.462, −0.020, +0.287. By decision 1 (each point estimate of the latest promoted network) every
+part of exit criterion 1 is met; the faithful actor's win rate is inside its interval of 0.5
+(0.488 to 0.526). The cost: 217 samples a second, 28 hours a 20 M on the GTX 1070 (the MLP's
+run 77 minutes). Before the answer: the head-to-head against `e25-imitate-1` #2 on the user's
+machine (`h3env.train.gate`, the AI queue's T29).
+
+*Options:* (a) `e25-structure-1` #2 the current best (the head-to-head's gate, T11's rule) and
+E25's closing audit next (criteria 2 to 4: the records, CI's verify, the Python tests on
+Windows), the battle AI v2 judged met on decision 1's rule; (b) #2 the current best, then one more
+increment for a margin against the faithful actor beyond its interval before closing (PPO
+continued from #2: the run was still promoted at 20 M, +12 Elo; increment 4's entropy bonus at 0
+gained about 0.01), about 28 hours of the user's GPU a 20 M; (c) keep `e25-imitate-1` #2 and
+revise decision 1 to ask for the interval.
+
+*Recommendation:* (b): the criterion is met as written, but +0.007 against the faithful actor is
+a third of its interval, and the goal is to beat it.
+
+*Blocked:* T29 (the checkpoint) and whatever increment 8 or E25's closure becomes.
 
 ### Client lane (`CLT-Q<n>`)
 
