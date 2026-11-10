@@ -29,10 +29,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user's GPU: the update's speed, architectures, PPO's settings, training regimes; the aim a
   margin beyond the interval). **T30 done** (`E25-log.md` T30): the margin lies in the hero
   battles (#2 keeps more army there but wins as often as the fair actor), sharpening gains
-  +0.011 (temperature 0.5), no encoding change asked. **Next:** T31, the update's speed (a
-  profile tool, then the user's GPU; `QUEUE.md`).
-- **Open pull requests:** the one of `claude/adoring-heisenberg-t5hahk` (T30's analysis, the
-  ceiling tool's confusion table). Merged: #748 (T26b), #765 (T27), #827 (T28, T29).
+  +0.011 (temperature 0.5), no encoding change asked. **T31 in progress** (the update's speed,
+  `claude/pensive-mendel-2ydhkl`): the profile tool `h3env.train.speed` built; next the user's
+  GPU run of it (a few minutes), then the change that pays (`QUEUE.md`).
+- **Open pull requests:** none. Merged: #765 (T27), #827 (T28, T29), #829 (T30).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)

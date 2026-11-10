@@ -19,7 +19,8 @@ the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analys
   and on with fixed chunk shapes), a few minutes of the user's machine; then the change that pays,
   with a test that the update's losses and weights stay those of the same rollout, and a CPU
   smoke. *Acceptance:* the seconds an update before and after on the user's GPU, in `E25-log.md`
-  T31. *Depends on:* T30 (done). *Status:* next.
+  T31. *Depends on:* T30 (done). *Status:* in progress (`claude/pensive-mendel-2ydhkl`: the
+  profile tool `h3env.train.speed` built, the user's GPU run next).
 - **T32 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
   architectures by their clone's ladder (`hexconv` 96 × 6 the control); PPO's settings by short
   continuations from #2 (first the entropy bonus at 0 and the imitation loss held at a small
