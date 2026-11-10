@@ -9,7 +9,7 @@ use std::path::Path;
 use h3_content::{CreatureFlag, CreatureTypeId};
 use h3_content_battle::Ability;
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Event, ServerMessage, Side};
+use h3_protocol::wire::{Event, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
     ACID, ACID_BREATH, BAD_MORALE, BOLT, Body, Burst, CHAIN_LIGHTNING, CHAIN_START, CHANNEL_DRAIN,
@@ -717,12 +717,10 @@ fn start_effect(event: &Event) -> Option<u8> {
     }
 }
 
-/// The record's events, in order.
+/// The record's commands' events, in order (the battle's start's, which the snapshot shows
+/// already, left out: `Record::events`).
 fn events(record: &Record) -> impl Iterator<Item = &Event> {
-    record.messages.iter().flat_map(|m| match m {
-        ServerMessage::Events { events, .. } => events.as_slice(),
-        _ => &[],
-    })
+    record.events()
 }
 
 /// The asset tables' entry of the spell with `handle` (none: a handle or key it does not know).

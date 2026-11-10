@@ -990,7 +990,8 @@ the viewer's own generator cannot reproduce.
 ### 7.8 The viewer's timeline (M2 T4a)
 
 `h3_view::anim` plays a record's commands on the original's clock: each `Events` message is one
-command; its moves, strikes and shots become frames, each drawn at the clock's time and shown at
+command (since protocol v38 but the battle's start's, `record::commands`, §12.25); its moves,
+strikes and shots become frames, each drawn at the clock's time and shown at
 the deadline (§7.1), the deadline then moving on by max(the frame's time, the lateness). Its
 `Timeline::lines` is the harness's format; `h3-view sequences` plays each recorded sequence's
 scenario in-process with its engine commands (`[[sequence.command]]` in `sequences.toml`) and
@@ -7350,9 +7351,10 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   shared); a sequence's box closed by a `key:Return` or a click (trusted to be on the OK; a
   `key:Escape` closes the window alone, style 1's OK taking Enter, the reviewer: `sequences::closes`); after the last box the darkened screen
   alone (the original's adventure map is the map client's); a pick the tables lack left out. A
-  server's seat shows none: `results::served` leaves the heroes' outcomes empty, the wire telling
-  the picks only in a seat's own snapshot (`OwnHero::learned`) and no event a pick (the
-  protocol's gap, not changed here).
+  server's seat shows its own hero's picks since protocol v38 (CLT-STUB-3 lifted after M6 T7a):
+  `results::served` reads them from the record's last snapshot, the battle as it ended
+  (`record::ended`, `OwnHero::learned`, its mana with them); the other hero's stay unknown there,
+  which the window never shows a seat (its winner shown only when a human here plays it).
 - **Recorded (M6 T5c, a capture agent):** `eagle-eye` and `eagle-eye-one` (`sequences.toml`,
   `seq-eagle-eye.toml`, hot seat): Orrin with Expert Eagle Eye, the Bird of Perception, the Stoic
   Watchman and the Emblem of Cognizance (90 %), an empty book, no Wisdom (`h3-view situation`
@@ -7583,4 +7585,34 @@ hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
   channel sound inside its animation, the fill after the drain's end (none cut). The waits'
   timing past an animation is therefore tested by the unit tests only (the harness records at
   speed 0).
+
+### 12.25 The battle's start and end in a record (protocol v38, after M6 T7a)
+
+The server lane's v38 (the inbox's CLT-Q20 and CLT-STUB-3 item, record format 3) tells each viewer
+watching when the game starts one `Events` message with the battle's start's events (a tactics
+phase, the first activation, a frozen first stack, a town's turrets and Catapult in round 1, the
+defender's unseen mines) before any command's, and every viewer its last `Snapshot`, the battle
+as it ended, before `GameEnded`. Every reader took each `Events` message for a command's, so each
+sequence's commands moved one place (`drawn`: 81 of 91 sequences changed or failing, `walk`'s
+Champions without their outline and hint at 0 ms).
+
+- **The start told is not a command** (`record::opens`, `opening_at`, `opening`, `commands`;
+  `Record::opening`, `commands`, `events`; *provisional*): a record's first `Events` message is
+  the start's when it opens with `ObstaclePlaced` (the defender's mines), `TacticsStarted` or
+  `TurnStarted` (the first activation, a war machine's or turret's acting on its own too); a
+  command's events open with its act (a move, a strike, a wait, a cast, the tactics' end), never
+  one of these (the engine's `BattleState::start` and `apply`). The record says no more: a
+  seat's holds the start from its first message, a spectator's only when it watched the start,
+  and a late spectator's first snapshot is the same as an early one's when it joins before the
+  first command. Every reader goes through these: `anim::commands`, the sequences' commands and
+  aimed spells, the log's events and casts, the motions' and sounds' events, the seat's served
+  messages (`Battle::take_served`: a seat waiting for the other hears the start then) and its
+  battle seen (`remote::seen`, which would apply the start's mana drain or regeneration again).
+- **Not drawn:** the start's events, which the record's first snapshot shows already (the
+  session's engine has no state before its start). So a siege's automatic turret shots of round
+  1 and the first activation's drain (§12.22) still show no animation; drawing them needs the
+  battle before its start (CLT-Q69).
+- **The end:** `record::ended` (`Record::ended`), the `Snapshot` right before `GameEnded`;
+  `results::served` reads the seat's own hero's mana and Eagle Eye picks from it (CLT-STUB-3
+  lifted, §12.21). The battle seen at the end (`Battle::end_seen`) is still the record's replay.
 

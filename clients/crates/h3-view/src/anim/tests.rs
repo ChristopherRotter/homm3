@@ -2239,21 +2239,29 @@ fn a_timeline_lists_its_changes() {
         (moment.active, moment.pulse, moment.projectile),
         (t.outlined(600), t.pulse(600), t.projectile(600))
     );
-    // A record's commands: its `Events` messages.
+    // A record's commands: its `Events` messages, the battle's start's left out (protocol v38).
     let events = vec![Event::Waited { stack: 0 }];
     let messages = [
         ServerMessage::Events {
             n: 2,
+            events: vec![Event::TurnStarted { stack: 0 }],
+        },
+        ServerMessage::Events {
+            n: 3,
             events: events.clone(),
         },
         ServerMessage::GameEnded {
-            n: 3,
+            n: 4,
             result: Outcome::Draw {},
         },
     ];
     let commands = commands(&messages);
     assert_eq!(commands.len(), 1);
     assert_eq!((commands[0].at, commands[0].events), (None, &events[..]));
+    // A spectator that watches from a later turn hears no start: its first is a command's.
+    let late = super::commands(&messages[1..]);
+    assert_eq!(late.len(), 1);
+    assert_eq!(late[0].events, &events[..]);
 }
 
 /// The timeline of `snapshot` and `commands` at speed 0 with the viewer's fidgets from `seed`.

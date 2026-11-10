@@ -13,11 +13,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   deck and boats, design §6.2); **T6b2 done** (#789, CLT-Q67, design §7.25). T6c cut in two by the
   user (2026-11-07): **T6c1 done** (#792: `h3-bink`'s DCT as `BINKW32.DLL`'s x87 one in integers;
   CLT-Q68 answered fix; design §7.27), **T6c2 done** (#795). T6 done. **T7** (M6's closure) cut in
-  three by the user (2026-11-09): **T7a done** (R4-9's stricter redraw rule and every capture
-  afresh; PR **#812** on `client/e17-m6-t7a`: check it first); **next: the inbox's protocol v38
-  readers** (master's #800 broke the viewer's sequences: `drawn` 81 of 91 not the same after
-  merging `master`; QUEUE, T7's status), then T7b (the fresh reviewer and its fixes), T7c (the
-  review list, M7 refined, M6 closed); then M7 ranked play and the server browser.
+  three by the user (2026-11-09): **T7a done** (#812, merged). The inbox's protocol v38 readers
+  done (2026-11-10, PR on `client/e17-m6-v38-readers`: check it first; the battle's start no
+  command, CLT-STUB-3 lifted, design §12.25; rebased on #816, which made `master` build again).
+  **Next:** T7b (the fresh reviewer and its fixes),
+  T7c (the review list, M7 refined, M6 closed); then M7 ranked play and the server browser.
   M5's record: `E17-archive.md`, `E17-log.md`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
@@ -28,13 +28,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q42 (T3b2: copy recommended, built so), CLT-Q43 and Q44 (T4a: fixes
   recommended, built as the original's), CLT-Q63 (T5b2a: copy recommended, not built), CLT-Q64 (T5b2b: fix recommended, CLT-Q45 (1)'s rule built), CLT-Q65 (T5c: the unlearned
   picks; fix once a whole game tells what was learned), CLT-Q66 (T5c: the window under the
-  boxes; copy recommended, built so). `CLT-STUB-1` (T5a, G1: a server's seat lacks the other
-  hero's Orb and Cloak; the user requires parity with local play, asked of the battle and server
-  lanes) and `CLT-STUB-3` (T5c: a seat gets no Eagle Eye picks at the end; asked of the server
-  lane) are commented in `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/`
-  change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
+  boxes; copy recommended, built so), CLT-Q69 (drawing the battle's start: the battle before it
+  in the record recommended, a server and battle lane change; not drawn meanwhile).
+  `CLT-STUB-1` (T5a, G1: a server's seat lacks the other hero's Orb and Cloak; the user requires
+  parity with local play, asked of the battle and server lanes) is commented in
+  `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
   (#739 and #745 were). Next ids:
-  CLT-Q69, CLT-STUB-4.
+  CLT-Q70, CLT-STUB-4.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -54,6 +54,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-10, after E17 M6 T7a: the protocol v38 readers (done; `client/e17-m6-v38-readers`).**
+  Kept whole with CLT-STUB-3 and the inbox's comment rename. The original data staged at once
+  (the PC's shell and the file tool). `master` was red (#814 against #815 in `h3-protocol`):
+  built against a local patch, never committed, until the server lane's #816 fixed it (the
+  branch rebased on it). The readers leave the start's
+  `Events` out (`record::commands`); `drawn` all 263 the same again; CLT-Q69 asked. Record:
+  `E17-log.md`.
 - **2026-11-09/10, E17 M6 T7a (done; `client/e17-m6-t7a`).** T7 cut in three by the user; T7a
   kept whole. The original data staged by the file tool at once (the PC left after an hour).
   Every capture afresh on two instances (172 situations, 91 sequences, all as recorded, about
@@ -64,7 +71,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   staged by the file tool (the PC's shell did not start). `drawn` listed the four captures whose
   clips differed; captured, recorded (`defended`'s window only its 122 artifacts, the others
   exact), `drawn` recorded; CLT-Q30 closed. Record: `E17-log.md`.
-- **2026-11-07, E17 M6 T6c1 (done; `client/e17-m6-t6c1`).** T6c cut by the user. The original
-  data staged by the file tool (the PC's shell did not start). Read the DLL's DCT (a symbolic
-  trace of its x87 code), built it in integers, checked against the DLL's planes under Wine
-  (`binkprobe` now at the game's control word); CLT-Q68 asked (fix). Record: `E17-log.md`.
