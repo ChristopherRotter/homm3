@@ -14214,5 +14214,7 @@ step); the original data staged at the start (the two LODs, the executable, `map
   lane's inbox told.
 - *Agent's calls (change freely):* up to four teleporters added; a removed teleporter's tiles keep
   their surface too; the own visit's prefix ends at the first of the three events.
-- **Gates:** the scoped verify with the original data (below).
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included (the town lane's `QUEUE.md` is common): coverage, determinism (the 66 replays
+  unchanged), bench-check (no engine code changed), original-data.
 - **Versions:** none.
