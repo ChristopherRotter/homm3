@@ -1,6 +1,6 @@
 //! The whole game's manifest (E16 M5 T4): it names what an adventure replay's header names, with
 //! the battle part's hash and the map a replay names; its key tables follow the ruleset's
-//! handles; it round-trips.
+//! handles; it round-trips, and so does a game record's header (T5b) holding it.
 
 use std::string::String;
 use std::vec::Vec;
@@ -14,7 +14,7 @@ use super::game::{RULES, round_trips};
 use crate::map;
 use crate::map::game::{key_tables, manifest};
 use crate::wire::WireU64;
-use crate::wire::game::MapIdentity;
+use crate::wire::game::{GameRecordHeader, MapIdentity};
 
 /// A golden adventure replay's map, as the manifest names it.
 fn golden_map() -> MapIdentity {
@@ -138,5 +138,25 @@ fn the_game_manifests_json_is_serdes_default_form() {
     assert_eq!(
         text,
         format!(r#"{{"content_hash":"{}","import_version":3}}"#, u64::MAX)
+    );
+}
+
+#[test]
+fn a_game_records_header_round_trips_in_serdes_default_form() {
+    let rules = &*RULES;
+    let manifest = manifest(rules, golden_map());
+    let header = GameRecordHeader {
+        format: crate::RECORD_FORMAT_VERSION,
+        game: 4,
+        player: 1,
+        manifest: manifest.clone(),
+        first: 3,
+    };
+    round_trips(&header);
+    let text = serde_json::to_string(&header).unwrap();
+    let manifest = serde_json::to_string(&manifest).unwrap();
+    assert_eq!(
+        text,
+        format!(r#"{{"format":4,"game":4,"player":1,"manifest":{manifest},"first":3}}"#)
     );
 }

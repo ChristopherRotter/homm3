@@ -340,8 +340,11 @@ inbox, the same day), mapped when it lands.
     (sans I/O: the host's player as the actor, the system actor's commands from the host, each
     player's numbered messages, a battle's `Snapshot` when it opens); `SRV-STUB-14` a battle's
     last snapshot.
-  - **T5b** the journal, the restore and each viewer's record (record format v4: a game record's
-    header with the `GameManifest` and the player).
+  - **T5b done** (2026-11-10; `E16-log.md`): the journal (`GameJournal`, the adventure replay
+    in progress, and `GameEntry`, drained by the host), `GameSession::restore` (the re-run, then
+    every player told afresh) and each player's record (`GameSession::record`; record format
+    **v4**: `GameRecordHeader`, the game's manifest and the player), the record shared with the
+    battle's (`session::Record`).
   - **T5c** each viewer's last explored grid and what it newly sees, once the adventure lane's
     SRV-Q26 query lands (until then `SRV-STUB-1`).
 - **T6 a golden replay as a record**: `h3-server record <replay>` runs an adventure replay through
@@ -382,7 +385,13 @@ game's messages as `Game*` variants of `ServerMessage` beside the battle's, a ga
 opening with the battle's own `Snapshot`, `GameTurn` after every accepted command to every player
 that may act (without the moves; a battle side's castable spells inside it), a system command
 told to nobody but its events, a player outside the game told nothing, the session started by its
-constructor, no client message until part 2's network seats.
+constructor, no client message until part 2's network seats; T5b's: the journal as entries the
+host drains (`GameEntry::Command` with the engine's command and actor, `Checkpoint`; the replay's
+header, map and difficulty the host's), a restore that tells every player its snapshot and turn
+afresh (numbers and records begin again, as the battle's after a restart), a game record's header
+its own type (`GameRecordHeader`: format, the game's id, the player's number, the manifest, the
+first number) beside the battle's, one record format version for both (v4), the host's bound per
+record (`GameOptions::record_bytes`), the session's options as a struct (`GameOptions`).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08
