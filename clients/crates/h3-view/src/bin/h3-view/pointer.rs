@@ -1502,7 +1502,7 @@ mod tests {
         let ballista = (o.stacks.iter())
             .find(|s| s.side == Side::Attacker && original(s.id) == 146)
             .unwrap();
-        let info = crate::stats::army_info(&sources, o, ballista.id, 5).unwrap();
+        let info = crate::stats::army_info(&sources, o, ballista.id, (5, Bugs::Original)).unwrap();
         let stats = crate::stats::of(&sources, o, ballista.id, false).unwrap();
         assert_eq!((info.creature, info.player), (146, 0));
         assert_eq!((info.damage, info.own_damage), ([4, 6], [2, 3]));
@@ -1512,7 +1512,7 @@ mod tests {
         let wolves = (o.stacks.iter())
             .find(|s| s.side == Side::Defender && !s.war_machine)
             .unwrap();
-        let info = crate::stats::army_info(&sources, o, wolves.id, 5).unwrap();
+        let info = crate::stats::army_info(&sources, o, wolves.id, (5, Bugs::Original)).unwrap();
         assert_eq!(info.player, 1);
         assert_eq!(info.damage, info.own_damage);
         // Hypnotized, the attacker's to command: still its owner's colours, Blue's (§12.15's
@@ -1522,14 +1522,25 @@ mod tests {
             .find(|s| s.id == wolves.id)
             .unwrap();
         stack.controller = Side::Attacker;
-        let info = crate::stats::army_info(&sources, &hypnotized, wolves.id, 5).unwrap();
+        let info =
+            crate::stats::army_info(&sources, &hypnotized, wolves.id, (5, Bugs::Original)).unwrap();
         assert_eq!(info.player, 1);
-        // Without a hero on the stack's side: the viewing player's.
+        // Without a hero on the stack's side: the viewing player's in the original's profile;
+        // the side's own player in the client's (CLT-Q70 (b)), its colour, else (a human's, none
+        // named) blue's; a side with no player (no colour, no human: neutral creatures) the
+        // viewing player's in both.
         let mut alone = o.clone();
         alone.sides[1].hero = None;
-        let info = crate::stats::army_info(&sources, &alone, wolves.id, 5).unwrap();
-        assert_eq!(info.player, 5);
-        assert!(crate::stats::army_info(&sources, o, 200, 5).is_none());
+        let player = |o: &Observation, bugs| {
+            let info = crate::stats::army_info(&sources, o, wolves.id, (5, bugs)).unwrap();
+            info.player
+        };
+        for (colour, human, fixed) in [(Some(3), false, 3), (None, true, 1), (None, false, 5)] {
+            (alone.sides[1].colour, alone.sides[1].human) = (colour, human);
+            assert_eq!(player(&alone, Bugs::Fixed), fixed);
+            assert_eq!(player(&alone, Bugs::Original), 5);
+        }
+        assert!(crate::stats::army_info(&sources, o, 200, (5, Bugs::Original)).is_none());
     }
 
     #[test]

@@ -4049,7 +4049,9 @@ callers), `battle_cursor`'s target (+0x10, +0x14 of the acting stack), `battle_m
   its click frame while the mouse holds it (and is on it) or one of its hotkeys is down (the
   layout's `keys`, since E24 M3 T1b the battle window's table `h3_view::keys`: S, R, O, A, C, W,
   D and Space, the scan codes 0x1F, 0x13, 0x18, 0x1E, 0x2E,
-  0x11, 0x20, 0x39; the key down presses, the key up releases: 0x4565E7, 0x4564D6); a disabled
+  0x11, 0x20, 0x39; the key down presses, the key up releases: 0x4565E7, 0x4564D6; a release a
+  dialog, a popup, the book or an aim takes lets the button go without its click in the client's
+  profile, CLT-Q71 (b), M7 T1b: `window::release_taken`); a disabled
   one takes none (0x4562DD). A replay takes no command, but the log's scroll buttons (2006, 2007)
   and the arrow keys (the battle's own, 0x4758FB) scroll it (`Logged::Scroll`). The viewer's own
   keys moved: P pauses, Home restarts, H the cursor's kind (since E24 M3 T1b the map window's
@@ -5039,7 +5041,8 @@ constructor was read.
 - **Its items, in order** (ids, place and size from the dialog's corner; the fonts' colours and
   alignments as the text items take them, §9.5):
   1. 200 `CrStkPU.pcx` (0, 0, 298 × 311), in the colours of the owner of the hero who controls the
-     stack (`stack_controlling_hero` 0x442690, its +0x22), else the viewing player's;
+     stack (`stack_controlling_hero` 0x442690, its +0x22), else the viewing player's (the
+     client's profile: the controlling side's own player, CLT-Q70 (b), M7 T1b; `stats::side_player`);
   2. 203 the creature's name (20, 21, 258 × 19), `smalfont.fnt` colour 7, alignment 5: the
      singular for exactly one creature, else the plural (an id outside 0..150: empty);
   3. 202 the town's background (21, 48, 100 × 130): `CrBkg*.pcx` by the creature's town +0x74, from
@@ -6244,7 +6247,9 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
   6. At 1 or 2 the right press over a hero whose window is shown refills it without a redraw.
   7. A hero's window alike at levels 1 and 2.
   8. A stack's window by its owner's side, in its side's hero's colours (the stats dialog the
-     controller's); without a hero the viewing player's, as the dialog's.
+     controller's); without a hero the viewing player's, as the dialog's. Fixed in the client's
+     profile at M7 T1b (CLT-Q70 (b)): the side's own player (its colour; a human's without one by
+     CLT-Q6's rule), the viewing player's only for a side with none (neutral creatures).
   9. Att and Def always "%d(%d)", Dmg "%d-%d" (the dialog: "%d" when equal, "%d - %d").
   10. Moving between a two-hex stack's hexes hides and shows its window again.
   11. A hide puts back the screen saved at the show: what the battle drew under the window since (a
@@ -6330,7 +6335,7 @@ of the windows' functions; GENRLTXT 381 to 390, 403, 404, 675; `Help.txt` 425 an
   - The fill: `StackInfo::of` takes the stats dialog's `Stats` (the binary's `stats::of`, so the
     two agree: Att and Def pairs, the range, Health its `now`, morale, luck, the count, the
     spells' original ids) with the creature (TwCrPort's frame + 2), the player (the owner's side's
-    hero's, else the viewing player's: oddity 8) and the stack's own range (`stats::own_damage`:
+    hero's, else the viewing player's: oddity 8, fixed in `Bugs::Fixed` since M7 T1b) and the stack's own range (`stats::own_damage`:
     the wire's war machine's factor divided out); `stack_window` words it (Att and Def
     `battle.army-info.pair`, Dmg `battle.hint.number` or `battle.army-info.range`, Health and the
     count "%d", the last three spells' frames + 1, the rest 0, `battle.army-info.no-spells` with
@@ -7355,7 +7360,12 @@ whole, `eagle_eye_learn` 0x469FE0 whole again, `message_box_pictures` 0x4F7690 w
   w0, x1 = (W + gap) / 2; k = 3: x1 = (W − w1) / 2, x0 = x1 − w0 − 40, x2 = x1 + w1 + 40; k = 4:
   x1 = (W − gap) / 2 − w1, x0 = x1 − w0 − 40, x2 = (W + gap) / 2, x3 = x2 + w2 + 40 (the outer
   gaps without the overhang). Each picture's top is its caption's top − its height; its caption
-  at picture x + (w − caption width) / 2.
+  at picture x + (w − caption width) / 2. **The client's profile** (CLT-Q77 (b), M7 T1b; the
+  executable's for the comparisons only): a later row's caption top is the row above's + that
+  row's **own** caption height + the next row's height + 20, so its captions end 30 above the
+  buttons' room and its pictures start 20 under the captions above; every gap between two
+  pictures of a row is `gap` (k = 3 and k = 4's outer ones too); the box's size unchanged (its
+  least width already counts the overhang in every gap).
 - **The pictures' items** (0x4F6990, after the buttons, in slot order): the DEF item (the slot's
   place and size, the DEF's + 2; id −1, its frame, flags 0x10), its caption (`smalfont.fnt`,
   colour 1, centred, id −1; only a caption that is not empty), then a frame item around it (one

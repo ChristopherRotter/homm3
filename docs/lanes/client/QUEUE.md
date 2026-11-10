@@ -19,22 +19,9 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M7 T1b — the other answered slips
-
-T1 was cut in four with the user at its start (2026-11-10): T1a (done, the options dialog and
-F6 to F8), T1b, T1c, T1d.
-
-- **Scope:** M6's answers (the lane's `QUESTIONS-ANSWERED.md`, 2026-11-10), each fix in the
-  client's profile and the original's for the comparisons (`h3_render::Bugs`): Q70 a heroless
-  side's stats dialog and army info windows in that side's player colour; Q71 a held panel
-  button let go without its click when a dialog or a popup takes its key's release (the
-  original's profile as built until T1c's capture says what it copies); Q77 (b) the pictures
-  box's rows each by its own caption height, the overhang in every gap.
-- **Acceptance:** each fix tested in both profiles; `drawn` all the same or each change
-  recorded; `check.sh` passes.
-- **Depends on:** nothing. **Status:** next.
-
 ### E17 M7 T1c — the reads and captures the answers name
+
+T1 was cut in four with the user at its start (2026-11-10): T1a and T1b done, T1c, T1d.
 
 - **Scope:** Q71's capture (hold D, click a stack, release D, close the dialog: the original's
   profile copies what it shows); Q73's 0x5994B0 (read; the client's kept either way, the record
@@ -42,7 +29,8 @@ F6 to F8), T1b, T1c, T1d.
   still `stats-ability`.
 - **Acceptance:** the new captures as recorded or their differences listed; the records in the
   answers; `drawn` all the same.
-- **Depends on:** T1b for Q71's original's profile. **Status:** waiting.
+- **Depends on:** nothing (T1b built Q71's client's profile, `window::release_taken`; the
+  original's left held, as built). **Status:** next.
 
 ### E17 M7 T1d — the tools
 
@@ -62,7 +50,8 @@ F6 to F8), T1b, T1c, T1d.
   folded in.
 - **Acceptance:** unit tests of each case; a sequence or still recorded where the harness can
   hold a button (else listed); `drawn` all the same or recorded.
-- **Depends on:** T1b (Q71's let-go touches the same held state). **Status:** waiting.
+- **Depends on:** nothing (T1b's Q71 let-go, `window::release_taken`, touches the same held
+  state). **Status:** waiting.
 
 ### E17 M7 T3 — the battle as a hosted entry
 

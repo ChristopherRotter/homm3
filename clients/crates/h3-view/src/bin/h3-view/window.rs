@@ -62,6 +62,7 @@ use std::process::ExitCode;
 
 use h3_battle_ai::Sight;
 use h3_protocol::wire::{Command, Target};
+use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
@@ -948,6 +949,19 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             }
             let now = win.ticks_ns();
             let at = clock.ms(now);
+            // A key's release a dialog, a popup, the spell book or an aim takes (the branches
+            // below) lets go of the panel button that key holds, without its click, in the
+            // client's profile (CLT-Q71 (b); E17 M7 T1b): it is not left drawn pressed after.
+            if let Event::KeyUp(key) = event
+                && (battle.message_open()
+                    || battle.stats_open()
+                    || battle.options_open()
+                    || battle.book_open()
+                    || battle.aiming())
+                && release_taken(&mut held, key, Bugs::Fixed)
+            {
+                mouse_changed = true;
+            }
             match event {
                 Event::Quit => break 'run,
                 // Control held with a key makes another chord (E24 M3 T1b). Itself a key down, it
@@ -2543,6 +2557,17 @@ fn button_centre(panel: &h3_ui::ui::Dialog, id: u16) -> Option<[i32; 2]> {
     })
 }
 
+/// The release of `key` taken by a dialog, a popup, the spell book or an aim over the battle
+/// (CLT-Q71, answered (b) at E17 M6's closure, the original's for the comparisons only): the
+/// client's profile lets go of the panel button `held` that key holds, without its click, as
+/// CLT-Q39's `let_go` does for the stats dialog's OK; the executable's leaves it held, drawn
+/// pressed until another hotkey or press replaces it (*as built*: its hotkey's key down returns
+/// at once, 0x4565E7, so the release never reaches the panel; whether the DEF button keeps its
+/// pressed frame then is M7 T1c's capture's). Whether it let one go.
+fn release_taken(held: &mut Option<Held>, key: Key, bugs: Bugs) -> bool {
+    bugs == Bugs::Fixed && held.take_if(|h| h.key == Some(key)).is_some()
+}
+
 /// A panel button held: by the mouse (`key` none; `over` while the mouse stays on it) or by a
 /// hotkey.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -2683,6 +2708,31 @@ mod tests {
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn a_release_a_dialog_takes_lets_go_of_its_key_s_button_in_the_client_s_profile() {
+        // CLT-Q71 (b): D held (Defend drawn pressed), a press on a stack opens its stats dialog,
+        // which takes D's release: the client's profile lets Defend go without its click, the
+        // original's leaves it held (as built until M7 T1c's capture).
+        let by_d = Held {
+            id: h3_view::panel::DEFEND,
+            key: Some(Key::D),
+            over: true,
+        };
+        let mut held = Some(by_d);
+        assert!(!release_taken(&mut held, Key::D, Bugs::Original));
+        assert_eq!(held, Some(by_d));
+        // Another key's release, or a button the mouse holds: nothing let go.
+        assert!(!release_taken(&mut held, Key::W, Bugs::Fixed));
+        assert_eq!(held, Some(by_d));
+        let by_mouse = Held { key: None, ..by_d };
+        let mut mouse = Some(by_mouse);
+        assert!(!release_taken(&mut mouse, Key::D, Bugs::Fixed));
+        assert_eq!(mouse, Some(by_mouse));
+        assert!(release_taken(&mut held, Key::D, Bugs::Fixed));
+        assert_eq!(held, None);
+        assert!(!release_taken(&mut held, Key::D, Bugs::Fixed));
     }
 
     #[test]

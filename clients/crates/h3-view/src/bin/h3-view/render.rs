@@ -543,8 +543,12 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             let army_window = |drawn: h3_view::army_info::Drawn| match drawn {
                 h3_view::army_info::Drawn::Hero(side, _) => hero_window(side),
                 h3_view::army_info::Drawn::Stack(shown) => {
-                    let info =
-                        crate::stats::army_info(&stats_sources, observation, shown.stack, viewing)?;
+                    let info = crate::stats::army_info(
+                        &stats_sources,
+                        observation,
+                        shown.stack,
+                        (viewing, Bugs::Original),
+                    )?;
                     Some(h3_view::army_info::stack_window(
                         &layout.army_info,
                         &catalogue,

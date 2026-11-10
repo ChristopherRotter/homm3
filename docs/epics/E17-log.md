@@ -6469,3 +6469,44 @@ files, as T7c's) while it was online; the reads of later parts use the staged `H
   stills' dialog is the original's as before, no sequence opens it or presses F6 to F8 on a turn
   no human plays); `h3-view gate` passed; `check.sh` passed (after one clippy fix, a `let` returned); the scoped
   verify with the original data no failing step.
+
+### M7 T1b — the other answered slips (2026-11-10)
+
+On `client/e17-m7-t1b`, the user present at the start. The original files staged first from the
+PC (57 files, as T1a's) while it was online; nothing else needed from it (Q71's capture is T1c's).
+
+- **The cut:** kept whole (three small fixes in the client's profile, one session; no seam
+  needed).
+- **Starting point:** `master` at 49cc2d5 (#833, T1a); the setup's baseline (`check.sh` on that
+  client code) passed; CI's Clients run on 49cc2d54 green.
+- **CLT-Q70 (b):** `stats::side_player` (the binary's), for the dialog's `player` (the controlling
+  side) and `army_info` (the owning side; now `(viewing, bugs)`): a side with a hero its owner's
+  colour as before; without one the executable's the viewing player's, the client's the side's
+  own player, its colour or, a human's without one, CLT-Q6's red or blue; a side with no player
+  (no colour, no human: neutral creatures) the viewing player's in both (*provisional*, the
+  agent's call: no colour to take; M7 review item 2). The window's `stack_window` passes
+  `Bugs::Fixed`, the stills' `render.rs` `Bugs::Original`; the dialog takes its memory's
+  profile. Design §12.1 item 200 and §12.15 oddity 8 amended.
+- **CLT-Q71 (b):** `window::release_taken(held, key, bugs)`: before the window's event match, a
+  key's release that a message box or popup, the stats dialog (its popup too), the combat
+  options, the spell book or an aim takes lets go of the panel button that key holds, without
+  its click, in `Bugs::Fixed` (the window's only profile); `Bugs::Original` leaves it held, as
+  built (the button drawn pressed until another hotkey or press replaces it) until T1c's
+  capture. The book and the aims beyond the answer's "dialog or popup" (*provisional*, M7 review
+  item 2: a key held into an aim, D then the Faerie Dragon's key, left Defend pressed the same
+  way). A button the mouse holds is T2's (the DEF button's loop). Design §9.10's panel line amended.
+- **CLT-Q77 (b):** `message::pictures` takes `(player, bugs)` (the `Writer`'s profile: the window
+  `Fixed`, the stills and sequences `Original`), `build` the profile, `Rows::places` steps under a
+  row by that row's own caption height (the executable's the second row's, 0x4F626E) and
+  `row_xs` takes `(gap, outer)`: the client's the overhang's gap beside a row's outer pictures
+  of three or four too (the executable's 40). The box's size unchanged (its least width already
+  counts the overhang in every gap). Design §12.21 amended.
+- **Tests:** `a_heroless_side_s_dialog_takes_its_own_player_s_colours_in_the_client_s_profile`
+  (`stats`), the army info windows' in `pointer`'s Ballista test (both profiles, three sides);
+  `a_release_a_dialog_takes_lets_go_of_its_key_s_button_in_the_client_s_profile` (`window`);
+  `message`'s `wide_captions_spread_the_pictures_by_their_overhang` (rows of four, three and two)
+  and `a_second_rows_heights_place_the_rows_below_the_first` (each row's captions higher in
+  turn), both profiles; the other pictures tests assert the two profiles alike (`with_pictures`).
+- **Gates:** `check.sh` passed (coverage 100%, the staged-data tests run); `drawn` 263 of 263 the
+  same (no capture: the stills and sequences draw the original's profile, unchanged); `h3-view
+  gate` passed; the scoped verify with the original data no failing step.
