@@ -14206,15 +14206,16 @@ step); the original data staged at the start (the two LODs, the executable, `map
   `views_move_as_the_events_say` passed 2 000 cases in 358 s: 3 105 jumps told to their owner;
   2 732, 633, 623 and 1 821 to other viewers likewise. **No engine leak.**
 - **Found by the first stress** (1 000 cases): `master`'s gap that the town lane's E09 T19b (#832,
-  open) fixes: another player's hero declined a monster's offer to join, the monster fled in one
+  then open) fixes: another player's hero declined a monster's offer to join, the monster fled in one
   game and asked again in the other (its answer follows the army and the seed the test changes),
   and `outcome` did not compare the removal. T19b's hunk taken verbatim (`ObjectRemoved` beside
   `GuardsChanged`, its doc lines), so the two merge cleanly; the seed `8512e788…` kept in the
-  middle of `proptest-regressions/tests/view.txt` (T19b appends its own at the end); the town
-  lane's inbox told.
+  middle of `proptest-regressions/tests/view.txt` (T19b appends its own at the end). #832 merged
+  meanwhile (`master` 102b81b, then #833): merged in without a conflict, the tests run again on
+  the merge (below).
 - *Agent's calls (change freely):* up to four teleporters added; a removed teleporter's tiles keep
   their surface too; the own visit's prefix ends at the first of the three events.
 - **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
-  included (the town lane's `QUEUE.md` is common): coverage, determinism (the 66 replays
+  included (no cross-lane path): coverage, determinism (the 66 replays
   unchanged), bench-check (no engine code changed), original-data.
 - **Versions:** none.
