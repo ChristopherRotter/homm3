@@ -40,6 +40,13 @@ lane's and the map client's inboxes told.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-10 (the adventure lane, E08 T106b2, `adventure/e08-t106b2`; **for your open #832's
+  merge**): `h3-map`'s `view.rs` changed in your T19b's paths. Its `outcome` takes your T19b hunk
+  verbatim (`ObjectRemoved` beside `GuardsChanged`, with its doc lines: a stress of the plans'
+  teleporters found the same declined join again), so that hunk merges cleanly; `Outcome`'s moves
+  are `Option`s now (none for a hero that jumped out of the viewer's sight); `Unseen` has a last
+  field `teleporters` (`Vec::new()` in a literal); the hygienic plans keep their teleporters; a
+  seed of ours sits in the middle of `proptest-regressions/tests/view.txt`, yours at its end.
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
   (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,
