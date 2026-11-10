@@ -3,7 +3,9 @@
 //! popup): every town a tile of which the viewer has explored, linked from its object on the
 //! adventure map ([`h3_adventure::ObjectView::town`]), with its public facts, its garrison by the
 //! viewer's level and, for its owner's team or a viewer whose hero sees it by a Rogue's Visions
-//! (E09 T8c2), the facts of the popup's top level (`docs/06-security.md`, "Towns").
+//! (E09 T8c2), the facts of the popup's top level (`docs/06-security.md`, "Towns"). Since E09
+//! T18b2a the day's mark to every viewer and the buildings to the owner (TWN-VEW-004), and each
+//! viewer's changed views told ([`Told`], SRV-Q26: a server keeps a viewer's views by events).
 
 use alloc::string::String;
 use alloc::vec::Vec;
@@ -11,8 +13,9 @@ use alloc::vec::Vec;
 use h3_adventure::{AdventureObservation, AdventureState, Pos, allied};
 use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
-use h3_towns::{TownRuleset, Towns};
+use h3_towns::{BuildingSet, TownRuleset, Towns};
 
+use crate::command::{GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
 /// The garrison's level of a viewer of the town's owner's team or whose hero sees it by Visions
@@ -30,8 +33,8 @@ const WORDS_LEVEL: u8 = 2;
 /// A town as a viewer sees it (TWN-VEW-001 to -003; E09 T8c1): what the original shows another
 /// player on the map, in the hint and in the right-click popup, and its owner's team more. Named
 /// by its `TownId` (ADR-0028 point 3), the object's [`h3_adventure::ObjectView::town`]. Never its
-/// other buildings, the ever-built set, the defender's bonuses or the Escape Tunnel, nor a draw's
-/// values.
+/// buildings but to its owner (TWN-VEW-004), the defender's bonuses or the Escape Tunnel, nor a
+/// draw's values. A change of it is told to the viewer ([`GameEvent::TownChanged`], E09 T18b2a).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownView {
     /// The town.
@@ -49,11 +52,29 @@ pub struct TownView {
     pub fort: FortLevel,
     /// Whether it has a Capitol (its picture).
     pub capitol: bool,
+    /// Whether it was built in today (TWN-VEW-004; E09 T18b2a): public, as the original's town
+    /// list and popup frame a town's portrait at every level (`town_list_frame` 0x5BD700).
+    pub built_today: bool,
     /// Its garrison as the viewer's level shows it.
     pub garrison: GarrisonView,
     /// The popup's top level's facts, for a viewer at [`OWNER_LEVEL`] (the owner's team, or a
     /// hero's Visions in reach); none for every other viewer.
     pub owner_facts: Option<TownOwnerView>,
+    /// Its buildings, for its owner alone (TWN-VEW-004; E09 T18b2a): the original opens the town
+    /// screen from its owner's town list at any time, an ally's only at a visit (E10's teams,
+    /// `TWN-STUB-11`) and Visions' top level never (the popup shows no buildings).
+    pub buildings: Option<TownBuildingsView>,
+}
+
+/// A town's buildings as its owner sees them (TWN-VEW-004; E09 T18b2a, the town epic's design
+/// note §31), each set over its faction's town record: the standing ones derive from the first
+/// with the part (`h3_towns::Town::standing`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TownBuildingsView {
+    /// Every building it has had, the superseded ones too (`h3_towns::Town::built`).
+    pub built: BuildingSet,
+    /// The buildings the map forbids it (`h3_towns::Town::forbidden`).
+    pub forbidden: BuildingSet,
 }
 
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003; survey `E09-towns.md` §12.3,
@@ -99,68 +120,106 @@ pub struct TownOwnerView {
 }
 
 /// What the viewer of `observation`, the adventure map of `state` as it sees it
-/// ([`AdventureState::observe`]), sees of the towns (TWN-VEW-001 to -003): a view of each town
+/// ([`AdventureState::observe`]), sees of the towns (TWN-VEW-001 to -004): a view of each town
 /// among its objects a tile of which it has explored, in `TownId` order (the objects' order). A
 /// town only on its fringe, which the `faithful` profile shows as an object (ADV-QUIRK-1), has
 /// none: the original's popup reads an explored tile only (survey `E09-towns.md` §12.3; *agent's
-/// call*). Its garrison's level is [`OWNER_LEVEL`] for a town of the viewer's team (a neutral town
-/// is nobody's) or one whose entrance a hero of the viewer's sees by Visions ([`visions`]), else
-/// the number of the viewer's own towns with a standing Tavern (`h3_towns::has_tavern`), at most
-/// [`TAVERN_LEVELS`]. The garrison by slot is the owner's team's only.
-// rule: TWN-VEW-001, TWN-VEW-002, TWN-VEW-003
+/// call*). Each view is [`Seer::view`]'s, as the told changes' ([`Told`]).
+// rule: TWN-VEW-001, TWN-VEW-002, TWN-VEW-003, TWN-VEW-004
 pub(crate) fn town_views(
     state: &GameState,
     rules: &GameRuleset,
     observation: &AdventureObservation,
 ) -> Vec<TownView> {
-    let (adventure, towns) = (state.adventure(), state.towns());
-    let (part, map, viewer) = (rules.towns(), adventure.map(), observation.viewer);
-    let (mut taverns, mut seers) = (None, None);
+    let mut seer = Seer::new(state, rules, observation.viewer);
     observation
         .objects
         .iter()
-        .filter_map(|object| {
-            let town = object.town?;
-            // rule: TWN-VEW-001
-            let (index, record) =
-                map.town_object(town)
-                    .zip(towns.get(town))
-                    .filter(|&(index, _)| {
-                        map.objects()[index]
-                            .tiles(map)
-                            .any(|pos| observation.is_explored(pos))
-                    })?;
-            let ours = object.owner.is_some_and(|owner| allied(owner, viewer));
-            // rule: TWN-VEW-003
-            let top = ours
-                || map.objects()[index].entrance(map).is_some_and(|entrance| {
-                    let seers = seers.get_or_insert_with(|| visions(state, rules, viewer));
-                    in_visions(seers, entrance)
-                });
-            // rule: TWN-VEW-002, TWN-VEW-003
-            let level = if top {
-                OWNER_LEVEL
-            } else {
-                *taverns.get_or_insert_with(|| tavern_level(adventure, towns, part, viewer))
-            };
-            let army = adventure.town_garrison(index).unwrap_or_default();
-            Some(TownView {
-                town,
-                anchor: object.anchor,
-                owner: object.owner,
-                faction: record.faction(),
-                name: towns.town_static(town).and_then(|s| s.name.clone()),
-                fort: h3_towns::fort_level(record, part),
-                capitol: towns.capitol(town, part),
-                garrison: garrison_view(rules, army, level, ours),
-                // rule: TWN-VEW-003
-                owner_facts: top.then(|| TownOwnerView {
-                    hall: h3_towns::hall_level(record, part),
-                    income: h3_towns::daily_income(record, part),
-                }),
-            })
-        })
+        .filter_map(|object| object.town)
+        .filter_map(|town| seer.view(town, |pos| observation.is_explored(pos)))
         .collect()
+}
+
+/// A viewer's views of the towns of a game, what they read of the viewer computed once and only
+/// when a view needs it: its towns' Taverns and its heroes' Visions (TWN-VEW-002, -003).
+struct Seer<'a> {
+    state: &'a GameState,
+    rules: &'a GameRuleset,
+    viewer: PlayerId,
+    taverns: Option<u8>,
+    seers: Option<Vec<(Pos, u64)>>,
+}
+
+impl<'a> Seer<'a> {
+    const fn new(state: &'a GameState, rules: &'a GameRuleset, viewer: PlayerId) -> Self {
+        Self {
+            state,
+            rules,
+            viewer,
+            taverns: None,
+            seers: None,
+        }
+    }
+
+    /// The viewer's view of `town` if it has explored a tile of it (`explored`), else none
+    /// (TWN-VEW-001). Its garrison's level is [`OWNER_LEVEL`] for a town of the viewer's team (a
+    /// neutral town is nobody's) or one whose entrance a hero of the viewer's sees by Visions
+    /// ([`visions`]), else the number of the viewer's own towns with a standing Tavern
+    /// (`h3_towns::has_tavern`), at most [`TAVERN_LEVELS`]; the garrison by slot is the owner's
+    /// team's only; the buildings the owner's alone (TWN-VEW-004).
+    // rule: TWN-VEW-001, TWN-VEW-002, TWN-VEW-003, TWN-VEW-004
+    fn view(&mut self, town: TownId, explored: impl Fn(Pos) -> bool) -> Option<TownView> {
+        let (state, rules, viewer) = (self.state, self.rules, self.viewer);
+        let (adventure, towns) = (state.adventure(), state.towns());
+        let (part, map) = (rules.towns(), adventure.map());
+        // rule: TWN-VEW-001
+        let (index, record) = map
+            .town_object(town)
+            .zip(towns.get(town))
+            .filter(|&(index, _)| map.objects()[index].tiles(map).any(&explored))?;
+        let object = &map.objects()[index];
+        let owner = adventure.owner(index);
+        let ours = owner.is_some_and(|owner| allied(owner, viewer));
+        // rule: TWN-VEW-003
+        let top = ours
+            || object.entrance(map).is_some_and(|entrance| {
+                let seers = self
+                    .seers
+                    .get_or_insert_with(|| visions(state, rules, viewer));
+                in_visions(seers, entrance)
+            });
+        // rule: TWN-VEW-002, TWN-VEW-003
+        let level = if top {
+            OWNER_LEVEL
+        } else {
+            *self
+                .taverns
+                .get_or_insert_with(|| tavern_level(adventure, towns, part, viewer))
+        };
+        let army = adventure.town_garrison(index).unwrap_or_default();
+        Some(TownView {
+            town,
+            anchor: object.anchor,
+            owner,
+            faction: record.faction(),
+            name: towns.town_static(town).and_then(|s| s.name.clone()),
+            fort: h3_towns::fort_level(record, part),
+            capitol: towns.capitol(town, part),
+            // rule: TWN-VEW-004
+            built_today: record.built_today(),
+            garrison: garrison_view(rules, army, level, ours),
+            // rule: TWN-VEW-003
+            owner_facts: top.then(|| TownOwnerView {
+                hall: h3_towns::hall_level(record, part),
+                income: h3_towns::daily_income(record, part),
+            }),
+            // rule: TWN-VEW-004
+            buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
+                built: record.built(),
+                forbidden: record.forbidden(),
+            }),
+        })
+    }
 }
 
 /// The tiles of `viewer`'s heroes that see towns by Visions, each with the square of its radius
@@ -252,5 +311,116 @@ fn garrison_view(rules: &GameRuleset, army: &[ArmyStack], level: u8, ours: bool)
         level,
         stacks,
         army: ours.then(|| army.to_vec()),
+    }
+}
+
+/// Each viewer's views of some towns before a change, kept to tell each viewer the views the
+/// change made (E09 T18b2a; SRV-Q26: a server keeps a viewer's views current by events alone, the
+/// server lane's design note `E16-design.md` §14). A change that may move a town's view (a build,
+/// a capture, a siege's merge, a garrison's battle, the day's start) takes the views before it
+/// ([`Self::before`]) and tells the changed ones after it ([`Self::tell`]). Not told: a view
+/// that Visions' reach changes (`TWN-STUB-13`), and a town the viewer comes to see by exploring
+/// (SRV-Q26's query for newly seen tiles).
+#[derive(Debug, Default)]
+pub(crate) struct Told(Vec<(PlayerId, Vec<Seen>)>);
+
+/// A town and a viewer's view of it before the change (none: it did not see it).
+type Seen = (TownId, Option<TownView>);
+
+impl Told {
+    /// The views of `towns` by every player of the game, and of every town by each player of
+    /// `every` (one whose Taverns the change may count, TWN-VEW-002: a Tavern's build, a capture's
+    /// two owners), in player order, each player's in `TownId` order. Nothing for a sink that
+    /// keeps nothing ([`Sink::RECORDS`]): nobody reads what it would tell.
+    pub(crate) fn before<S: Sink>(
+        state: &GameState,
+        rules: &GameRuleset,
+        towns: &[TownId],
+        every: &[PlayerId],
+    ) -> Self {
+        if !S::RECORDS {
+            return Self::default();
+        }
+        let adventure = state.adventure();
+        let count = adventure.map().towns().len();
+        let viewers = (0..state.players()).filter_map(|p| u8::try_from(p).ok().map(PlayerId::new));
+        Self(
+            viewers
+                .map(|viewer| {
+                    let all = every.contains(&viewer);
+                    let mut seer = Seer::new(state, rules, viewer);
+                    let views = (0..count)
+                        .filter_map(|t| u16::try_from(t).ok().map(TownId::new))
+                        .filter(|town| all || towns.contains(town))
+                        .map(|town| {
+                            let explored = |pos| adventure.is_explored(viewer, pos);
+                            (town, seer.view(town, explored))
+                        })
+                        .collect();
+                    (viewer, views)
+                })
+                .collect(),
+        )
+    }
+
+    /// Tells each viewer of [`Self::before`] its view of a town that the change made, where it
+    /// differs from the one before and the viewer sees the town ([`tell`]), in the same order.
+    pub(crate) fn tell<S: Sink>(self, state: &GameState, rules: &GameRuleset, sink: &mut S) {
+        // stub: TWN-STUB-13 (a change of Visions' reach, a hero's step or army or Power, is not
+        // told: only these changes are)
+        let adventure = state.adventure();
+        for (viewer, views) in self.0 {
+            let mut seer = Seer::new(state, rules, viewer);
+            for (town, before) in views {
+                let explored = |pos| adventure.is_explored(viewer, pos);
+                let after = seer.view(town, explored);
+                if let Some(view) = after.filter(|view| before.as_ref() != Some(view)) {
+                    tell(viewer, &view, sink);
+                }
+            }
+        }
+    }
+}
+
+/// Tells `viewer` its view `view` of a town (TWN-VEW-001 to -004; E09 T18b2a): a
+/// [`GameEvent::TownChanged`] with its facts, then a [`GameEvent::TownStackSeen`] for each stack
+/// its garrison's level shows, in slot order, then a [`GameEvent::TownIncomeSeen`] for each line
+/// of the top level's income, in the core's order (`GameEvent` stays `Copy`, as an army's
+/// `StackChanged`: *agent's call*). The viewer's view after them is the told one, its anchor,
+/// faction and name as they were.
+fn tell<S: Sink>(viewer: PlayerId, view: &TownView, sink: &mut S) {
+    let (player, town) = (viewer, view.town);
+    let army = view.garrison.army.as_deref();
+    sink.emit(GameEvent::TownChanged {
+        player,
+        town,
+        owner: view.owner,
+        fort: view.fort,
+        capitol: view.capitol,
+        built_today: view.built_today,
+        level: view.garrison.level,
+        slots: army.is_some(),
+        hall: view.owner_facts.as_ref().map(|facts| facts.hall),
+        buildings: view.buildings,
+    });
+    for (index, &stack) in view.garrison.stacks.iter().enumerate() {
+        let slot = army
+            .and_then(|army| army.get(index))
+            .map(|stack| stack.slot);
+        sink.emit(GameEvent::TownStackSeen {
+            player,
+            town,
+            stack,
+            slot,
+        });
+    }
+    let income = view.owner_facts.iter().flat_map(|facts| &facts.income);
+    for &(resource, amount) in income {
+        sink.emit(GameEvent::TownIncomeSeen {
+            player,
+            town,
+            resource,
+            amount,
+        });
     }
 }

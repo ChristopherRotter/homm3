@@ -54,3 +54,17 @@ T7a1):
   an untyped blocker (ADV-STUB-13, epic E09: it takes the town's drawn faction once random towns
   are resolved); one whose identifier no town has is refused (`ImportError::DwellingTown`). Both
   bump map import (T93b v16, E09 T7a1 v17).
+
+## 2026-11-10 — E09 T18b2a: SRV-Q26's town gap, done
+
+- 2026-11-09 (the server lane, E16 M5 T1, SRV-Q26; **the user's decision**): **a town's garrison
+  change is told to every player who sees the town.** In `towns-s173-d21` command 205 player 1's
+  battle empties neutral town 4's garrison; player 0 sees the town and its `TownView::garrison`
+  changes, but every event of the command is player 1's alone. A server game keeps a viewer's view
+  current by events only (`docs/epics/E16-design.md` §14), so the change needs an event projected
+  to every player whose view of the town changes (a `TownChanged`'s `seen_by`, or a garrison
+  event). The server's fold test over the golden replays (M5 T3) checks it, a stub there until it
+  lands.
+  **Done** by E09 T18b2a (2026-11-10, decisions 53, 54): every viewer's changed view of a town
+  told to it (`TownChanged`, `TownStackSeen`, `TownIncomeSeen`), the garrison's battle among the
+  changes; Visions' reach is `TWN-STUB-13`.

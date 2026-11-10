@@ -574,6 +574,8 @@ impl GameState {
         if let (Some(visitor), Some(hero), None) = (owners[0], heroes[0], heroes[1]) {
             let won = result.winner() == Some(BattleSide::Attacker);
             let survivors = &outcome.survivors[BattleSide::Defender.index()].stacks;
+            // E09 T18b2a: a garrison's battle (TWN-CAP-003) tells its town's changed views.
+            let told = town::Told::before::<S>(self, rules, town.as_slice(), &[]);
             let (adventure, store) = self.adventure_with_heroes();
             let ended = adventure.end_unowned_battle(
                 (rules.core(), rules.adventure(), store),
@@ -581,6 +583,8 @@ impl GameState {
                 (survivors, won),
                 &mut AdventureSink(&mut *sink),
             );
+            // rule: TWN-VEW-002, TWN-VEW-003
+            told.tell(self, rules, sink);
             self.settle_outcome(rules, visitor, ended, sink);
         }
         // rule: TWN-CAP-003

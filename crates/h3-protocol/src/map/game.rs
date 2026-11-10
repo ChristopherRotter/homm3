@@ -3,6 +3,9 @@
 //! engine's types is named in a pattern, without `..`, and every enum is matched without a
 //! wildcard: a new field or variant fails this crate's build until it is mapped. What leaves is
 //! projected by construction: [`observe`] takes the viewer and calls the engine's `observe`.
+//! The commands both ways and the rejections: [`command`], [`command_to_engine`], [`reject`]
+//! (T3a, `game/command.rs`); the events, projected for their viewer: [`events`] (T3b,
+//! `game/event.rs`).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -19,7 +22,7 @@ use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
     HireCreature as EngineCreature, HireView, LevelUpView, MonthKind, PlayerView,
-    SlotState as EngineSlot, TownOwnerView, TownView, Viewer,
+    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer,
 };
 use h3_heroes::{
     ArtifactInstance, BattleBonuses, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -33,8 +36,14 @@ use crate::wire::game::{
     GameObservation, Garrison, GarrisonStack, Guards, HeroDetails, HeroInfo, Hire, HireCreature,
     HireTarget, Known, KnownObject as WireKnownObject, LevelUp, MapHero, Monster, Month, Object,
     ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, SkillLevel,
-    SlotState, Tile, Town, TownOwnerFacts, UniversityVisit,
+    SlotState, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit,
 };
+
+mod command;
+mod event;
+
+pub use command::{command, command_to_engine, reject};
+pub use event::events;
 
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {
@@ -60,13 +69,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
     GameObservation {
         viewer: viewer.raw(),
         day: *day,
-        month: match month {
-            MonthKind::Normal => Month::Normal {},
-            MonthKind::Creature(creature) => Month::Creature {
-                creature: creature.raw(),
-            },
-            MonthKind::Plague => Month::Plague {},
-        },
+        month: month_kind(*month),
         players: players
             .iter()
             .map(|&PlayerView { colour, acting }| Player { colour, acting })
@@ -79,6 +82,17 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         adventure: adventure_view(adventure),
         towns: towns.iter().map(town).collect(),
         battle: battle.as_ref().map(crate::map::observation),
+    }
+}
+
+/// A month's kind on the wire.
+const fn month_kind(month: MonthKind) -> Month {
+    match month {
+        MonthKind::Normal => Month::Normal {},
+        MonthKind::Creature(creature) => Month::Creature {
+            creature: creature.raw(),
+        },
+        MonthKind::Plague => Month::Plague {},
     }
 }
 
@@ -340,8 +354,10 @@ fn town(t: &TownView) -> Town {
         name,
         fort,
         capitol,
+        built_today,
         garrison,
         owner_facts,
+        buildings,
     } = t;
     let GarrisonView {
         level,
@@ -354,29 +370,12 @@ fn town(t: &TownView) -> Town {
         owner: owner.map(h3_contracts::PlayerId::raw),
         faction: faction.raw(),
         name: name.as_deref().map(String::from),
-        fort: match fort {
-            FortLevel::None => 0,
-            FortLevel::Fort => 1,
-            FortLevel::Citadel => 2,
-            FortLevel::Castle => 3,
-        },
+        fort: fort_level(*fort),
         capitol: *capitol,
+        built_today: *built_today,
         garrison: Garrison {
             level: *level,
-            stacks: stacks
-                .iter()
-                .map(
-                    |&GarrisonStackView {
-                         creature,
-                         count_word,
-                         count,
-                     }| GarrisonStack {
-                        creature: creature.raw(),
-                        count_word,
-                        count,
-                    },
-                )
-                .collect(),
+            stacks: stacks.iter().copied().map(garrison_stack).collect(),
             army: garrison_army.as_deref().map(army),
         },
         owner_facts: owner_facts
@@ -385,6 +384,42 @@ fn town(t: &TownView) -> Town {
                 hall: *hall,
                 income: amounts(income),
             }),
+        buildings: buildings.map(town_buildings),
+    }
+}
+
+/// A fort level on the wire: 0 none, 1 Fort, 2 Citadel, 3 Castle.
+pub(crate) const fn fort_level(fort: FortLevel) -> u8 {
+    match fort {
+        FortLevel::None => 0,
+        FortLevel::Fort => 1,
+        FortLevel::Citadel => 2,
+        FortLevel::Castle => 3,
+    }
+}
+
+/// A garrison's stack as a viewer's level shows it, on the wire.
+pub(crate) const fn garrison_stack(
+    GarrisonStackView {
+        creature,
+        count_word,
+        count,
+    }: GarrisonStackView,
+) -> GarrisonStack {
+    GarrisonStack {
+        creature: creature.raw(),
+        count_word,
+        count,
+    }
+}
+
+/// A town's buildings as its owner sees them, on the wire.
+pub(crate) const fn town_buildings(
+    TownBuildingsView { built, forbidden }: TownBuildingsView,
+) -> TownBuildings {
+    TownBuildings {
+        built: WireU64(built.bits()),
+        forbidden: WireU64(forbidden.bits()),
     }
 }
 
@@ -518,20 +553,21 @@ pub(crate) const fn amount((resource, amount): (ResourceId, u32)) -> Amount {
 
 /// An army's stacks on the wire.
 pub(crate) fn army(stacks: &[EngineStack]) -> Vec<ArmyStack> {
-    stacks
-        .iter()
-        .map(
-            |&EngineStack {
-                 slot,
-                 creature,
-                 count,
-             }| ArmyStack {
-                slot,
-                creature: creature.raw(),
-                count,
-            },
-        )
-        .collect()
+    stacks.iter().copied().map(army_stack).collect()
+}
+
+/// An army's stack on the wire.
+const fn army_stack(s: EngineStack) -> ArmyStack {
+    let EngineStack {
+        slot,
+        creature,
+        count,
+    } = s;
+    ArmyStack {
+        slot,
+        creature: creature.raw(),
+        count,
+    }
 }
 
 /// A tile mask on the wire: its bits.

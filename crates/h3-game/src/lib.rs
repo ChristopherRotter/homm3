@@ -81,8 +81,9 @@ pub use h3_heroes::{Movement, movement};
 /// with Titan's Thunder's Spell Book; `wearing` places a list).
 pub use h3_heroes::{Position, equip, positions, takes, wearing};
 /// The town context's command and its refusals (E09 T18b1; `h3_towns`' types): what
-/// [`GameCommand::Town`], [`GameCommandError::Town`] and [`GameEvent::TownBuilt`] carry.
-pub use h3_towns::{BuildingId, TownCommand, TownCommandError};
+/// [`GameCommand::Town`], [`GameCommandError::Town`] and [`GameEvent::TownBuilt`] carry, and a
+/// [`TownBuildingsView`]'s sets (E09 T18b2a).
+pub use h3_towns::{BuildingId, BuildingSet, TownCommand, TownCommandError};
 /// A town's setup as the map gives it (E09 T7a1; `h3_towns`' types): what a [`GameSetup`]'s towns
 /// hold, re-exported so that a map's import builds them through this crate.
 pub use h3_towns::{
@@ -104,7 +105,8 @@ pub use setup::{
 };
 pub use state::{GameState, MonthKind, OpenBattle};
 pub use town::view::{
-    GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownOwnerView, TownView,
+    GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView,
+    TownView,
 };
 pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 

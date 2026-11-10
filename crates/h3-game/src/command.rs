@@ -14,11 +14,12 @@ use h3_adventure::{
     ObjectTypeId, Pick, Pos, Viewers,
 };
 use h3_content::{CreatureTypeId, Formation, ResourceId, SkillId};
-use h3_contracts::{ArmyStack, BattleResult, HeroId, PlayerId, TownId};
+use h3_contracts::{ArmyStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_heroes::{Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
+use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind};
 
 /// Who issues a command (ADR-0017 point 2).
@@ -626,18 +627,68 @@ pub enum GameEvent {
         /// The lost stack.
         stack: ArmyStack,
     },
-    /// A town's picture changed (TWN-CAP-002, E09 T8a2; the town epic's design note §11): at its
-    /// capture the Capitol's limit took its Capitol away, its City Hall standing instead; told
-    /// after the capture's `TownCaptured` and `TilesRevealed`. Seen where the town is seen
-    /// (design note §12): by `TownCaptured`'s viewers, the players that see the town and its new
-    /// owner.
+    /// A player's view of a town changed (TWN-VEW-001 to -004; E09 T8a2's Capitol, since E09
+    /// T18b2a each viewer's whole view, SRV-Q26): the town's facts as `player` now sees it
+    /// (`TownView`'s), followed by a [`Self::TownStackSeen`] for each stack its garrison's level
+    /// shows and a [`Self::TownIncomeSeen`] for each line of the top level's income; its view
+    /// after them is the told one, its anchor, faction and name as they were. Told after the
+    /// change, to each player that sees the town (an explored tile of it) and whose view of it
+    /// the change made differ: a build (after its `TownBuilt`; a new Tavern raises its owner's
+    /// garrison level of every other town it sees, TWN-VEW-002), a capture (after its
+    /// `TownCaptured` and `TilesRevealed`: the owner, the day's mark, the Capitol's limit, the
+    /// garrison emptied, a Tavern's two owners' levels), a siege's merge (after its
+    /// `StackChanged`), a garrison's battle (after its `BattleEnded`), the day's start (the marks
+    /// cleared). Not told: a change of Visions' reach (`TWN-STUB-13`). Seen by `player`.
     TownChanged {
+        /// The player told: the viewer.
+        player: PlayerId,
         /// The town.
         town: TownId,
-        /// Whether it now has a Capitol (a standing building of role `hall` 4).
+        /// Its owner, none for a neutral town.
+        owner: Option<PlayerId>,
+        /// Its fort level.
+        fort: FortLevel,
+        /// Whether it has a Capitol (a standing building of role `hall` 4).
         capitol: bool,
-        /// The players that see it (the viewer alone in a projection).
-        seen_by: Viewers,
+        /// Whether it was built in today (TWN-VEW-004).
+        built_today: bool,
+        /// The viewer's level of its garrison (`GarrisonView::level`).
+        level: u8,
+        /// Whether the viewer sees its garrison by slot (`GarrisonView::army`, the owner's team):
+        /// then each [`Self::TownStackSeen`] gives its slot, and the garrison by slot is those
+        /// stacks with their slots and counts.
+        slots: bool,
+        /// The hall level of the popup's top level (`TownOwnerView::hall`), for a viewer at
+        /// `OWNER_LEVEL`; none for every other viewer.
+        hall: Option<u8>,
+        /// Its buildings, for its owner alone (`TownView::buildings`).
+        buildings: Option<TownBuildingsView>,
+    },
+    /// A stack of a town's garrison as the viewer's level shows it (TWN-VEW-002, -003; E09
+    /// T18b2a), told after the viewer's [`Self::TownChanged`], one per stack in slot order. Seen
+    /// by `player`.
+    TownStackSeen {
+        /// The player told: the viewer.
+        player: PlayerId,
+        /// The town.
+        town: TownId,
+        /// The stack as the level shows it.
+        stack: GarrisonStackView,
+        /// Its slot, for a viewer that sees the garrison by slot (`TownChanged::slots`).
+        slot: Option<u8>,
+    },
+    /// A line of a town's day's income as the popup's top level shows it (TWN-VEW-003; E09
+    /// T18b2a), told after the viewer's [`Self::TownChanged`] and its stacks, one per resource
+    /// in the core's order (`TownOwnerView::income`). Seen by `player`.
+    TownIncomeSeen {
+        /// The player told: the viewer.
+        player: PlayerId,
+        /// The town.
+        town: TownId,
+        /// The resource.
+        resource: ResourceId,
+        /// Its amount a day.
+        amount: u32,
     },
     /// A building was built in a player's town (TWN-BLD-001, TWN-BLD-005; E09 T18b1, the town
     /// epic's design note §31): by the owner's build command, after its price's `ResourcePaid`

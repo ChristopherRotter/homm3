@@ -1252,6 +1252,24 @@ rectangle and shows only that. Read for the walk-by difference (§7.9); every ad
   `behind`, of which 0.2 % fit it; a misplacement still fails. Since the heroes are drawn (M3
   T3a) the left hero's shadow under a walker's redrawn rectangles shows such artifacts too, five
   shadows deep at most (`turn`, `climb`: black pixels).
+  **Stricter since E17 M6 T7a** (R4-9, *provisional*): five bodies take every pixel whose green
+  is below 32 to black, and a shadow keeps black black, so a near-black pixel fitted over almost
+  anything and over any pixel an earlier moment drew black. A shadow compounds over its own
+  unrestored image, which the viewer draws once: two or more shadows, and any over an earlier
+  moment's pixel, now count only where the viewer's pixel at that moment is a value a shadow
+  leaves (`h3cap.SHADOW_VALUES`, a body's or a border's of any pixel: a fifth of the 5-6-5
+  values). One shadow over the viewer's pixel at that moment counts anywhere: a redrawn item's
+  shadow falls on one the redraw does not draw again (`lightning` at 0 ms: the Swordsmen's over
+  their count box's frame, `mass` too); the deep chains stay real (`melee` at 3 735: the Angels'
+  shadow outside the walker's restored rectangles, four shadows deep at once in the back buffer,
+  shown as the dirty rectangle grows; one shadow at the next frame, restored). Checked on T7a's
+  captures of all 91 sequences (`--reuse` after the change): no frame of artifacts alone lost
+  one; 16 frames of 13 sequences, each a listed difference's, moved 1 044 pixels from artifacts
+  to the difference, all at or beside it (recorded): `mine` at 12 799 the defender's mines (785
+  of its 796), at 11 431 the Titans' standing frame (17); the landing's boxes (`acid` 1,
+  `stare` 15, `stone` 3, `starts` 70, `auto` 4 and their twins); the Dread Knights' box in
+  `blows` (9); `summon-other`'s box (14 a frame). On frames shifted one pixel (`walk`, `shot`)
+  both rules fit the same 0.5 % of the 16 to 19 million differing pixels.
 - **A projectile over the obstacles** (M3 T5b-2a; `behind` run on to the Marksmen's shots, not
   read). In the first shot after the Marksmen's turn the arrow climbs over the rocks (obstacles
   19 and 20): the rectangles its earlier steps leave show the terrain alone, a hole growing in

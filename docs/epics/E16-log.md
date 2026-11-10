@@ -2008,3 +2008,197 @@ The user split T2 in two parts (T2a the adventure map, T2b the rest of the obser
   after every step, round-tripping every observation with a decision or a battle (they meet
   offers, level-ups, meetings, a choice and battles).
 - **Dependencies.** `h3-heroes` too (T0's edge).
+
+### M5 T3a — the game's commands and rejections on the wire (2026-11-09)
+
+The user split T3 in three parts (T3a commands and rejections, T3b events, T3c the fold and its
+test), one pull request after T3c. Baseline: `master` 1e8568d (#808, the files crate `h3-files`,
+merged); the sandbox's full verify passed up to its tests (coverage stopped: CI's run on `master`
+is the record).
+
+- **The types** (`wire::game`, in `wire/game/command.rs`; provisional): `GameCommand` (`EndTurn`,
+  `Adventure { command }` with `AdventureCommand`'s `MoveHero` and `BuildBoat`, `Answer { answer }`,
+  `Battle { command }` holding the battle wire's `Command`, `Manage { manage }`); `Answer`'s eight
+  kinds with `Consent`, `SkillOffer`, `ChestChoice`, `ArenaChoice`, `SchoolChoice`,
+  `UniversityAnswer`, `HireAnswer`; `Manage`'s six with `ArmyCommand`, `ArmySlot`, `ArmyRef`,
+  `ArtifactAt`, `ArtifactPlace`. `GameReject` (`h3_game::GameCommandError`'s 17 kinds, a battle's
+  refusal as the battle wire's `RejectCode`), `AdventureReject` with `StandReject`,
+  `ManageReject` with `ArmyReject`, `MoveReject`, `CombineReject`, and `HireReject`. Every enum
+  with struct variants refuses unknown fields: a client's command is read strictly.
+- **The mapping** (`map::game`, in `map/game/command.rs`): `command` (the engine's to the wire:
+  the legal lists, an applied command's echo), `command_to_engine` (a client's, whatever its
+  values: the engine checks them against the state and the trusted actor, ADR-0008), `reject`
+  (the engine's error to the wire). "Both ways" holds for the commands; a rejection only leaves
+  the server, so its inverse is the tests' (as T2's observation). The engine's `usize` indices
+  are narrowed (an artifact's place and a position to `u16`, a step to `u32`, saturating): each is
+  a client's value echoed or one within the game's bounds, so none saturates in play.
+- **Tests** (`tests/game_command.rs`): a hand-built command of every kind and every part's
+  variant maps to the wire and back unchanged and round-trips (JSON, postcard); 90 hand-built
+  rejections (every variant of every error, the battle's 31 codes) map back through a test-only
+  inverse, distinct on the wire, and round-trip; the JSON is serde's default form, unknown fields
+  refused; three fixture maps (duel, towns, sea; 300 random steps) map back every actor's legal
+  commands (the system actor's too) and every hero's management commands before each step, the
+  played command, and its rejections when every other actor issues it (out of turn, by the
+  system actor, a battle's for the other side or without a battle, an answer without a decision):
+  about 476 000 checks, most of them the sea map's management commands, in 2 s.
+- **No message, no version step** (with T5's session, the user's order): nothing sends these yet.
+
+### M5 T3b — the game's events on the wire, projected (2026-11-09)
+
+- **The types** (`wire::game`, in `wire/game/event.rs`; provisional): `GameEvent`
+  (`h3_game::GameEvent`'s 32 kinds), `AdventureEvent` (`h3_adventure::AdventureEventKind`'s 25),
+  `HeroChange` (`h3_heroes::HeroChange`'s 11, as struct variants), `ShipyardBlock`; a battle's
+  event is the battle wire's `Event`, a battle's result its `Outcome`, a month's kind T2b's
+  `Month`. A projected event is the viewer's alone (`h3_game::project`), so the sets of viewers
+  are not sent: `seen_by`, and a step's or a jump's `seen_from` and `seen_to`, whose end the
+  viewer does not see is already `None`. An owner's event keeps its `player` (the viewer, as the
+  engine's: one to one).
+- **The mapping** (`map::game::events(events, viewer)`, in `map/game/event.rs`): projects with
+  `h3_game::project`, drops what the viewer may not see, maps the rest in order; the viewer sets
+  named `seen_by: _` with the reason. The battle's event through the battle's own
+  `from_engine::event` (the game projects a battle's events by its owners; the battle's own
+  projection only filters, so the event is the battle's as is). T2b's month and stack mappings
+  are shared (`month_kind`, `army_stack`), T3a's slot and artifact place.
+- **Tests** (`tests/game_event.rs`): a test-only inverse gives the engine's projected event back
+  (the viewer sets as the viewer alone, a step's end seen where it is `Some`; a battle's event
+  compared on the wire); a hand-built event of each of the 32 kinds, with every part's variant
+  (the three months, the four results, the 11 hero changes, the 25 adventure kinds, steps and
+  jumps seen at one end only) maps back for both viewers and round-trips; player 1 gets the
+  public and seen kinds only; the JSON is serde's default form, an unknown field refused; five
+  fixture maps (400 random steps) map every viewer's events of every step back (28 kinds met).
+- **No message, no version step** (T5). The fold (T3c) folds these into T2's snapshot.
+
+### M5 T3c1 — the game's fold and its harness over the golden replays (2026-11-09)
+
+The user split T3c in two parts (SRV-Q27): T3c1 the fold of what the events carry and a harness
+reporting where it differs from `observe`, T3c2 the stubs, the inbox notes and the gate; one pull
+request after T3c2. Baseline: the branch's T3a and T3b on `master` 1e8568d; the sandbox's full
+verify passed its tests and coverage (CI's run on `master` is red by `h3-map`'s proptest
+`every_step_keeps_the_commands_invariants`, the adventure lane's; it passed here).
+
+- **The fold** (`wire::game`, in `wire/game/fold.rs`; provisional): `GameObservation::fold(&mut
+  self, &GameEvent)`, a viewer's projected events (`map::game::events`) folded in their order. It
+  applies what an event carries and nothing the rules derive (SRV-Q27 (2)): the day, the month and
+  the turns (a group's first `TurnStarted` ends the group before), the treasury, today's timed
+  events (cleared by a new day), the heroes' tiles and boats (a step out of sight and a removal
+  take the hero off both lists), the empty boats (boarded, landed, built: facing 2, as the event's
+  documentation says), the objects (a removed one with what the viewer knew of it, the seen tiles
+  it covered freed where no other object in sight covers them; a creature month's monster added on
+  its one tile; monsters' count words, owners, guards' hints, visited marks, a captured town's
+  owner), the keys, a hero's details by its `HeroChange`s and `LevelGained`, the armies by slot (a
+  hero's, a dialog's group, a garrison's owner view, a Whirlpool's loss), the formation and the
+  tactics flag, the decisions whose events hold their view (a level-up, a meeting, an army dialog,
+  a Leave Guards dialog, whose group stays on its mine as its guards at the close), and a battle's
+  end; its snapshot is the session's (SRV-Q27 (1)). After an object's change the tiles' palette is
+  packed anew in first-use order, as `map::game::observe` packs it.
+- **The harness** (`tests/game_fold.rs`, the replays through `h3-files`): the 55 golden adventure
+  replays; after every command each viewer's view folded with its events is compared with
+  `observe` part by part (31 parts holding every field; what both views hold, which entries they
+  hold being a part of its own), then made `observe`'s again, so each difference is its command's
+  own; a battle's snapshot is taken when it opens and its presence compared. 28 528
+  viewer-commands in 19 s (debug build). It asserts the 14 parts the events carry whole and
+  reports the others (`cargo test -p h3-protocol fold_against -- --nocapture`). It found one fold
+  error, fixed: guards left by a Leave Guards dialog on a mine that had none (their hint's
+  `GuardsChanged` comes with the close). Seven hand-built tests cover every arm.
+- **Exact after every command, for every viewer:** day and month, turns, treasury, timed events,
+  battle open, hero tiles and boats, formation and tactics, monsters, object owners, mine guards,
+  visited marks, keys, town owners, town pictures.
+- **What differs** (viewer-commands; "with a reveal": the viewer's explored tiles grew in the
+  command; (a) to (d) are SRV-Q26's):
+
+| Part | Viewer-commands (with a reveal) | Replays | Why |
+|---|---|---|---|
+| explored tiles | 1 505 (1 505) | 53 | (a) a reveal's content |
+| tile views | 1 414 (1 414) | 53 | (a) |
+| objects in sight | 429 (429) | 42 | (a) |
+| towns in sight | 21 (21) | 5 | (a) |
+| empty boats | 13 (13) | 9 | (a) |
+| movement | 3 925 (1 499) | 54 | (b) a hero's movement points and its day's maximum |
+| heroes in sight | 226 (39) | 22 | (c) a hero stepping into sight (179 commands with steps alone); (a) |
+| decision | 102 (40) | 28 | SRV-Q27: an offer's, a choice's, a University's and a hire dialog's views; a University's slots and a hire dialog's counts after a purchase |
+| hero details | 175 (3) | 16 | derived: the spell points (188 heroes, most at a new day), where an added artifact lands (12), a `LevelGained`'s offered levels (8; the event has no field) |
+| armies | 44 (0) | 21 | derived: a battle's losses; where joined, bought or raised creatures land |
+| garrisons | 29 (15) | 7 | (a); a garrison's view after a merge, a siege or a capture; (d) a neutral town's garrison emptied (`towns-s173-d21` command 205, viewer 0, told nothing) |
+| town owner facts | 19 (12) | 7 | (a); a new owner's hall and income |
+| mine production | 11 (3) | 4 | derived: a new owner's production |
+| shipyard tiles | 5 (4) | 3 | derived: a new owner's boat tile |
+| known objects | 7 (3) | 4 | what a visit told (no event carries it); (d) the visit to an emptied object (`rewards-s162-d28` command 35, viewer 1) |
+| once-marks | 7 (3) | 4 | a once-per-hero visit's mark (no event) |
+| bought | 2 (2) | 2 | a Cartographer's type (the offer's kind is not carried) |
+
+- **The town lane's build mapped** (E09 T18b1, #809, merged into the branch the same day; its
+  variants broke only this branch, `master` holding T2 alone): `wire::game::{TownCommand,
+  TownReject}` and `GameEvent::TownBuilt`, one to one; the fold leaves a build's effect on its
+  town's view to the rules (SRV-Q27 (2)), no golden replay builds yet. `command_to_engine` now
+  returns a `Result`: a building at an index of 64 or more, which `h3_towns::BuildingId` cannot
+  hold, is refused as `TownReject::UnknownBuilding` before the engine, never substituted. The
+  hand-built lists: 100 rejections, 33 event kinds. The harness's numbers did not move.
+- **For T3c2:** each row a stub (`SRV-STUB-<n>`) with its lane's inbox note: the adventure lane
+  (a) to (c), (d)'s visit, the decision views, the derived values of the heroes, armies, mines and
+  Shipyards, a visit's knowledge and marks, the Cartographer's type; the town lane (d)'s garrison,
+  the garrisons' and owner facts' views after a change. The gate: the harness's equality but for
+  the stubbed parts.
+- **No message, no version step** (T5).
+
+### M5 T3c2 — the fold's gaps as stubs, the gate (2026-11-09)
+
+The second part of T3c (SRV-Q27 (3)): each gap of T3c1's table a stub with its lane's inbox
+note, the harness made the gate. Baseline: the branch's T3c1 on `master` d1b90fb (CI green on it);
+`master` 737d007 (#811, E08 T105b1: no new event, the replays rehashed) merged in, the harness's
+numbers unmoved.
+
+- **The stubs** (`docs/stubs.toml`; provisional): one per gap an event must come to carry, each
+  marked where its event is folded in `wire/game/fold.rs`. The adventure lane's (its inbox): 1 a
+  reveal's content (SRV-Q26 (a), the query), 2 a hero's movement points and maximum ((b)), 3 a
+  hero coming into sight ((c); in the golden replays objects and boats appear with a reveal only),
+  4 what a visit tells (the known objects, the once-marks; (d)'s visit), 5 the views of an offer,
+  a choice, a University and a hire dialog, 6 a new day's spell points, 7 an added artifact's
+  place, 8 `LevelGained`'s offered levels, 9 where joined, hired or raised creatures land and a
+  battle's survivors, 10 an object's new owner's team view (a mine's production, a Shipyard's
+  boat tile), 11 a Cartographer's type. The town lane's (its inbox, for E09 T18b2's
+  `TownChanged`): 12 a garrison's view after a change no event tells the viewer ((d)'s garrison
+  among them), 13 a town's owner facts likewise.
+- **The gate** (`tests/game_fold.rs`): each part names its stubs. The 31 parts became 35: the
+  hero details split into their spell points, artifacts, offered levels and the rest, the
+  decision into the views no event carries (an offer's, a choice's, a University's, a hire
+  dialog's) and the rest, so that what the events carry of them stays gated. Asserted after every
+  command for every viewer: the 16 parts without a stub equal `observe`; the 5 only the reveal's
+  stub names (explored tiles, tile views, objects, towns and empty boats in sight) differ only
+  where the viewer's explored tiles grew; each of the 19 stubbed parts differs somewhere (else
+  its stubs are lifted from it); each stub a part names is registered. A deliberate fold error (a
+  removed object's blocked tiles kept) fails it at "tile views" without a reveal (87
+  viewer-commands), which the part's stub alone would have hidden. 28 528 viewer-commands, 20 s
+  (debug build).
+- **The numbers** (viewer-commands, with a reveal): decision views 102 (40), spell points 155 (1),
+  artifacts 12 (2), offered levels 8 (0), armies 44 (0), movement 3 925 (1 499), heroes in sight
+  226 (39), once-marks 7 (3), known objects 7 (3), mine production 11 (3), shipyard tiles 5 (4),
+  bought 2 (2), garrisons 29 (15), town owner facts 19 (12); the reveal's five as T3c1's table.
+  The town's owner facts and garrison levels also follow a hero's Visions in reach, which a step
+  moves without an event (`towns-s3435-d21` command 107, viewer 0): the town lane's stubs.
+- **No message, no version step** (T5).
+
+### M5 T3d — the town lane's views told, mapped and folded (2026-11-10)
+
+T3's follow-up from the inbox (the town lane's E09 T18b2a, #815, SRV-Q26's town gap). #815 and
+T3's #814 merged within minutes of each other, each green on its own base: `master` 700bf95 did
+not build `h3-protocol` (T3b's mapping matched the old `TownChanged { town, capitol, seen_by }`).
+This task repairs it.
+
+- **The wire** (`wire::game::GameEvent`; provisional, as T3b's shapes): `TownChanged { player,
+  town, owner, fort, capitol, built_today, level, slots, hall, buildings }`, `TownStackSeen {
+  player, town, stack: GarrisonStack, slot }`, `TownIncomeSeen { player, town, resource, amount }`,
+  the engine's one to one; a fort as T2b's 0 to 3, the buildings as T2b's `TownBuildings`. The
+  town's parts shared with the observation's mapping (`map::game::{fort_level, garrison_stack,
+  town_buildings}`). The engine projects them (the viewer's alone, `h3_game::project`).
+- **The fold:** `TownChanged` replaces the viewer's town view but its anchor, faction and name
+  (the garrison emptied at its level, the army by slot when `slots`, the owner facts when
+  `hall`); each `TownStackSeen` appends its stack (and, with a slot, the army's stack); each
+  `TownIncomeSeen` an income line. `TownBuilt` and `TownCaptured` fold no town view any more.
+- **The gate:** 36 parts (a new "town buildings"; `built_today` joins "town pictures"), 17 exact.
+  Garrisons and town owner facts differ in 8 viewer-commands each (5 with a reveal; were 29 (15)
+  and 19 (12)); the 3 without a reveal are each another team's town falling from level 3 to 2,
+  a Visions holder's reach lost (`towns-s173-d21` command 46, a hero removed in a battle;
+  `towns-s3435-d21` command 107; `towns-visitor-s1` command 7): the town lane's `TWN-STUB-13`,
+  which the two parts name now. `SRV-STUB-12` and `-13` lifted (registry, fold). The report also
+  prints each part's first difference without a reveal.
+- **No message, no version step** (T5).

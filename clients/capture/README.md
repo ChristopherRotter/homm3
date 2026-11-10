@@ -42,7 +42,7 @@ Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINK
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`, and `original-data/battle-videos.vid`; one large file per staging
 call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set (82 situations since M5 T4a) takes about 17 minutes.
+and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set takes about 50 minutes (172 situations, 222 frames, E17 M6 T7a).
 
 ## Which captures a change needs
 
@@ -70,7 +70,9 @@ alter (the user, 2026-10-20):
    differs leaves `kept/` as it was; once its new counts are recorded, `frames --only <id>
    --reuse` or `set --only <id>` keeps it). `drawn --record` fails when an item could not be
    drawn, its digests left as they were.
-4. **Everything** (`frames` and `set` without `--only`): at a milestone's closure, and after a
+4. **Everything** (`frames` and `set` without `--only`; E17 M6 T7a: the 91 sequences about 6
+   hours on two instances, 4.6 s a kept frame, one runner per instance popping a shared queue,
+   longest first): at a milestone's closure, and after a
    change to the harness (`capture/*.py`, `xdd.c`, `setup.sh`, `screens.toml`) that can change
    the original's side: how it is driven, captured or read. A change to `drawn` alone (how the
    viewer's frames are digested) cannot: there the digests are recorded again from the last
@@ -411,8 +413,9 @@ one the original's memory shows (`h3mem`'s `shown`, +0x50, while it is not −1,
 M3 T5b, design §4.3: the engine rolls its own damage) is masked and listed at the end of its
 frame's line, ` n<side>.<record>`. Each line is `<ms> <differing> <artifacts>` (M3 T1c): the differing
 pixels outside the masks and how many of them are the original's **redraw artifacts**
-(`h3cap.redraws`, design §7.11): its pixel is ours at that moment with one to five more
-shadows, or one we drew there at an earlier moment of the sequence with at least one more. The
+(`h3cap.redraws`, design §7.11): ours at that moment is a value a shadow leaves (E17 M6 T7a,
+R4-9), and its pixel is ours at that moment with one to five more shadows, or one we drew
+there at an earlier moment of the sequence with at least one more. The
 diff PNG marks those yellow, any other difference red; a change in either count fails. The
 original's frames live only in the sandbox that captured them (`clients/out/`, never in git):
 a new sandbox captures them again (all nine with frames, about 60 minutes: `shots`, `fly` and `machines` about 9 each) before `--reuse` works (a run that stopped, stalled or left a forced draw untaken keeps none since

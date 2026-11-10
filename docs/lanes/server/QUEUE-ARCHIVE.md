@@ -12,6 +12,35 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- **Done 2026-11-10 (M5 T3, T3d; `E16-log.md`):** the two notes below, moved from the inbox.
+
+- 2026-11-10 (the town lane, E09 T18b2a, `town/e09-t18b2a`, `cross-lane`; **SRV-Q26's town gap,
+  for T3's mapping and the fold**; the town epic's design note §31 as built, decisions 53, 54):
+  every viewer's changed view of a town is told to it alone, as its whole view: `GameEvent::
+  TownChanged { player, town, owner, fort, capitol, built_today, level, slots, hall, buildings }`
+  (the old `{ town, capitol, seen_by }` is gone), then a `TownStackSeen { player, town, stack:
+  GarrisonStackView, slot: Option<u8> }` per stack the level shows (the slot to the owner's team:
+  the garrison by slot is those stacks) and a `TownIncomeSeen { player, town, resource, amount }`
+  per income line of the top level; the fold replaces the viewer's `TownView` of the town, its
+  anchor, faction and name kept. Told after a build, a capture, a siege's merge, a garrison's
+  battle (the neutral garrison of `towns-s173-d21` command 205) and the day's start, only to a sink
+  that keeps events (`Sink::RECORDS`). Not told, for the fold test to exempt: Visions' reach
+  (`TWN-STUB-13`: a viewer whose hero holds a Visions creature sees another team's town at the top
+  level within its radius, which the hero's step, army or Power changes) and a town that comes
+  into view by exploring (SRV-Q26's query). Also `TownView::built_today` and `buildings:
+  Option<TownBuildingsView { built, forbidden }>`, mapped in this PR (`wire::game::Town`, sets as
+  `WireU64`; no protocol step, as T2's rule).
+- 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **for T3's mapping of
+  the game's commands, rejections and events**): `GameCommand::Town(h3_towns::TownCommand)` (one
+  variant, `Build { town: TownId, building: BuildingId }`, the building by its index in the town's
+  faction's record, below `h3_towns::MAX_BUILDINGS`), `GameCommandError::Town(TownCommandError)`
+  (ten variants, `OfferedAs(BuildingId)` among them) and `GameEvent::TownBuilt { player, town,
+  building, event: Option<u16> }` (the owner's alone; `event` a town event's place, E09 T18c).
+  Both town enums are exhaustive now (no `#[non_exhaustive]`, for SRV-Q25's mapping). E09 T18b2
+  adds the view's fields (`TownView::built_today`, the owner's buildings) and `TownChanged`'s
+  public facts, with their mapping in `h3-protocol`'s `map::game`, and decides SRV-Q26's town
+  garrison change at its start.
+
 - 2026-11-09 (done in the server lane's PR of the day, protocol v38, record format v3; SRV-Q25): the two
   battle-wire items below. Every viewer hears the start's events when the game starts and its last
   `Snapshot` before `GameEnded`.

@@ -24,10 +24,17 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   (ranked play and the server browser: the ladders, the pause by agreement, the browser;
   `NOTES.md`, "The live client"), HD and graphics options placed.
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
-  M7's tasks in this queue; M6 done. Also R4-9 (moved from T6b by the user, 2026-11-07): a
-  stricter shadow chain in `h3cap.redraws` (a near-black pixel counts as an artifact over almost
-  anything), its counts checked on T7's captures of every sequence. **Depends on:** T1 to T6 (done).
-  **Status:** next; cut with the user at its start.
+  M7's tasks in this queue; M6 done. **Depends on:** T1 to T6 (done).
+- **Cut** in three by the user (2026-11-09): **T7a done** (2026-11-09/10: R4-9 and every capture
+  afresh; the epic's log). **T7b** the fresh reviewer (by area, narrow sub-agents as M5 T8's, a
+  worktree of `master`) and its fixes, `drawn` and the captures a fix changes. **T7c** the review
+  list with the user (M6's items 1 to 48), M7 refined (ranked play and the server browser, HD and
+  the graphics options placed), M6 closed (its scope to `E17-archive.md`).
+  **Status:** T7b next, after the inbox's protocol v38 item (the server lane's of 2026-11-09:
+  the battle's start `Events` and the last `Snapshot`): master's #800 broke the viewer's
+  sequences (`drawn` on T7a's branch merged with `master` at 1e8568d: 81 of the 91 changed or
+  failing, the active stack's outline and hint missing at 0 ms; on T7a's base 2e5e08f all the
+  same), so the readers come first and `drawn` must be all the same again before T7b.
 
 ## Inbox
 

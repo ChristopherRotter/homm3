@@ -988,6 +988,27 @@ The original's views (survey `E09-towns.md` §7.2, §12.3; construction §1.1):
 - **The words for `docs/06-security.md`** (its "Towns" section, the round's `shared/` pull
   request): the day's mark public; a town's buildings its owner's, an ally's at its visit (E10);
   the build and the town events told to the owner; the public facts' changes to the town's viewers.
+- **As built (T18b2a, 2026-11-10; decisions 52 to 54, SRV-Q26):** `TownView::built_today` and
+  `TownView::buildings: Option<TownBuildingsView { built, forbidden }>` (the owner's alone,
+  `BuildingSet`s; `h3-protocol`'s `Town::built_today`, `buildings: Option<TownBuildings>` with
+  the sets as `WireU64`; no protocol step: no message carries the game's observation before E16 M5
+  T3). **Every viewer's changed view told to it** (decision 53, in place of the one `TownChanged`
+  for the seen facts above and decision 51's call): `town::view::Told` takes each viewer's views
+  of the touched towns before a change (`Told::before`, only for a sink that keeps events,
+  `Sink::RECORDS`; the env, the replays and the benches keep none) and tells each changed one
+  after it: `TownChanged { player, town, owner, fort, capitol, built_today, level, slots, hall,
+  buildings }`, then a `TownStackSeen { stack, slot }` per stack the level shows (the slot to the
+  owner's team) and a `TownIncomeSeen { resource, amount }` per income line of the top level, all
+  `player`'s alone (`GameEvent` stays `Copy`, as E08's `StackChanged`). The changes: a build
+  (after `TownBuilt`; a town without a standing Tavern before reads its owner's views of every
+  town, whose levels a new Tavern raises), a capture (after `TownCaptured`, `TilesRevealed`;
+  owner, mark, Capitol's limit, emptied garrison; with a Tavern, the old and the new owner's views
+  of every town), a siege's merge (after its `StackChanged`), a garrison's battle (after its
+  `BattleEnded`, before the outcome's settling), the day's start (`town::start_day`, the marks
+  cleared, before the income). Not told: Visions' reach (`TWN-STUB-13`, decision 54) and a town
+  that comes into view by exploring (SRV-Q26's query). One per-town view (`Seer::view`) serves
+  `observe` and the told changes. The plans' told-views property folds them strictly (every other
+  view as it was, Visions' views but their public facts exempt).
 
 ### 32. The env, fixtures, replays, properties, benchmarks, the census
 

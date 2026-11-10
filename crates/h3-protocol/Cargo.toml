@@ -29,6 +29,8 @@ h3-sim.workspace = true
 h3-map.workspace = true
 h3-pack-adventure.workspace = true
 h3-pack-towns.workspace = true
+# The golden adventure replays for the fold's test (E16 M5 T3c1).
+h3-files.workspace = true
 # Provisional (E16 M1 review): the wire types round-trip in a format that is not self-describing.
 postcard.workspace = true
 

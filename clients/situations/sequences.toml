@@ -2194,9 +2194,9 @@ command = [
 # falls again (73 at their turn's start, 9 696). Seed 10: the engine's Death Blows fall too and
 # its damage is the original's but for the strike's (87 against 81: the log masked from 13 196).
 # Frames: 148, all exact but 1 700 to 2 200 (the Dragon's landing: redraw artifacts only, 234 to
-# 260 pixels) and 2 400, the strike's first (202 artifacts and 188 other pixels: the Dread
+# 260 pixels) and 2 400, the strike's first (193 artifacts and 197 other pixels: the Dread
 # Knights' count box moves behind them, its left part outside the strike's redraw rectangle,
-# §7.11 (3), the screen there as before).
+# §7.11 (3), the screen there as before; 202 and 188 before E17 M6 T7a's stricter rule, R4-9).
 [[sequence]]
 id = "blows"
 scenario = "seq-blows.toml"

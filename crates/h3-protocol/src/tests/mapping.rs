@@ -278,7 +278,7 @@ fn engine_events() -> Vec<K> {
     ]
 }
 
-const ENGINE_ERRORS: [CommandError; 31] = {
+pub(super) const ENGINE_ERRORS: [CommandError; 31] = {
     use CommandError as E;
     [
         E::BattleOver,
