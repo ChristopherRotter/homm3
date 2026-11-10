@@ -1,6 +1,9 @@
 //! The whole game's published language (E16 M5 part 1, SRV-Q25; ADR-0018 points 5 and 7 as
 //! amended): what a player sees of a game ([`GameObservation`]), its adventure map
-//! ([`Adventure`]) and its battle (the battle's [`super::Observation`]).
+//! ([`Adventure`]) and its battle (the battle's [`super::Observation`]); what it commands
+//! ([`GameCommand`]) and why a command was rejected ([`GameReject`], T3a); what happened, as it
+//! sees it ([`GameEvent`], T3b); and how a viewer keeps its observation current by its events
+//! ([`GameObservation::fold`], T3c).
 //!
 //! The same rules as [`super`]'s: the protocol's own types, translated by [`crate::map::game`]
 //! with every engine field named; serde's default enum form with `deny_unknown_fields`; content
@@ -17,6 +20,18 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Serialize};
 
 use super::WireU64;
+
+mod command;
+mod event;
+mod fold;
+
+pub use command::{
+    AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
+    ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
+    GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
+    StandReject, TownCommand, TownReject, UniversityAnswer,
+};
+pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
 
 /// A tile of the adventure map: its column, its row and its level (0 the surface, 1 the
 /// underground).

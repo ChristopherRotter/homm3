@@ -77,6 +77,84 @@ epic   = "E08"
 
 # --- server (SRV-STUB-<n>) ---
 
+[[stub]]
+id     = "SRV-STUB-1"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "A reveal's content (SRV-Q26 (a)): a step's reveal has no event and an object's TilesRevealed only a count, so the fold keeps the viewer's explored tiles, tile views, objects, towns, empty boats, heroes, garrisons and owner facts in sight as they were. Lifted by the adventure lane's query for what a viewer sees on the tiles it explored since a given grid (its inbox, 2026-11-09), which T5's session sends with the events when the viewer's explored count grew; the fold gate (h3-protocol's tests/game_fold.rs) lets the parts this alone names differ only where the explored tiles grew"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-2"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "A hero's movement points left and its day's maximum (SRV-Q26 (b)): no event or HeroChange carries them, after a step, a visit, a boarding or a new day, so the fold keeps the own heroes' movement as it was (3 925 of the golden replays' 28 528 viewer-commands). The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-3"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "A hero coming into the viewer's sight without a reveal (SRV-Q26 (c)): HeroStepped gives its id and tiles, not its owner, type or boat, so the fold cannot add it (179 viewer-commands of the golden replays with steps alone). The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-4"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "What a visit tells the viewer: the objects it knows (Adventure::known, ADV-VIS-006) and a once-per-hero visit's mark (OwnMapHero::marks) come with no event, nor does a visit that changes only those and the hero's points (SRV-Q26 (d): rewards-s162-d28 command 35, viewer 1). The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-5"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
+reason = "The views of an offer (its kind and price), a choice (its options), a University (its skills and slots, after a purchase too) and a hire dialog (its creatures, costs and counts, after a purchase too): their events open them without their view (SRV-Q27 (2)), so the fold leaves the viewer's decision as it was; the decisions whose events hold their view are exact. The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-6"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
+reason = "The spell points a new day restores (SRV-Q27 (2)): no SetSpellPoints is told at the day's start, so the fold keeps the hero's mana as it was (155 viewer-commands of the golden replays). The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-7"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::HeroDetails::fold"
+reason = "Where an added artifact lands (SRV-Q27 (2)): HeroChange::AddArtifact names the artifact, not its place (worn or the backpack's index), so the fold leaves the hero's artifacts as they were: a pickup, a reward, a battle's spoils. The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-8"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
+reason = "A level-up's answer (GameEvent::LevelGained) carries no levels at which Wisdom and a magic school were last offered (HeroDetails::offered, HER-LVL-004), which HeroChange::GainLevel does, so the fold keeps them as they were. The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-9"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
+reason = "Where creatures land and what a battle leaves (SRV-Q27 (2)): CreaturesJoined (a hire's purchase among them) and CreaturesRaised name no slot, and BattleEnded no hero's survivors, so the fold keeps the own heroes' armies as they were there. The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-10"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "What an object's new owner's team sees (ADV-OWN-003): ObjectFlagged gives the owner, not a mine's production or a Shipyard's boat tile, so the fold keeps those as they were. The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-11"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
+reason = "A Cartographer's type (Adventure::bought, ADV-VIS-001): OfferAnswered does not name the offer's kind, so the fold cannot add the type bought. The adventure lane's inbox (2026-11-09)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-12"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "A town's garrison as the viewer sees it after a change no event tells it: a capture, a siege, a merge with a hero's army, the viewer's level moving (a hero's Visions in reach), and a neutral town's garrison emptied by another player's battle (SRV-Q26 (d): towns-s173-d21 command 205, viewer 0). The town lane's inbox (2026-11-09; E09 T18b2's TownChanged)"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-13"
+where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
+reason = "A town's owner facts (TownOwnerFacts: its hall and income) for a viewer whose view of them changes: a new owner's team at a capture, a battle's end, the viewer's level moving (a hero's Visions in reach), a build (TownBuilt). The town lane's inbox (2026-11-09; E09 T18b2's TownChanged)"
+epic   = "E16"
+
 # --- client (CLT-STUB-<n>) ---
 
 # CLT-STUB-1 is kept as a comment until `cargo xtask check-stubs` also scans `clients/crates/`

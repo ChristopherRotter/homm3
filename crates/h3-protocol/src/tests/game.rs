@@ -31,7 +31,7 @@ use crate::map::game::{adventure_view, observation, observe};
 use crate::wire::WireU64;
 use crate::wire::game::*;
 
-static RULES: LazyLock<GameRuleset> = LazyLock::new(|| {
+pub(super) static RULES: LazyLock<GameRuleset> = LazyLock::new(|| {
     let profile = "base:faithful";
     let (core, part) =
         h3_pack_adventure::compile(&h3_pack_adventure::ORIGINAL_PACKS, profile).unwrap();
@@ -54,7 +54,9 @@ static RULES: LazyLock<GameRuleset> = LazyLock::new(|| {
     .unwrap()
 });
 
-fn round_trips<T: Serialize + DeserializeOwned + PartialEq + core::fmt::Debug>(value: &T) {
+pub(super) fn round_trips<T: Serialize + DeserializeOwned + PartialEq + core::fmt::Debug>(
+    value: &T,
+) {
     let json = serde_json::to_vec(value).unwrap();
     assert_eq!(&serde_json::from_slice::<T>(&json).unwrap(), value);
     let binary = postcard::to_allocvec(value).unwrap();
@@ -837,7 +839,10 @@ fn every_decision() -> Vec<DecisionView> {
 }
 
 /// A whole observation with every optional part present, over the hand-built adventure map.
-fn every_game_part(decision: Option<DecisionView>, month: MonthKind) -> h3_game::GameObservation {
+pub(super) fn every_game_part(
+    decision: Option<DecisionView>,
+    month: MonthKind,
+) -> h3_game::GameObservation {
     let p = h3_adventure::Pos::new;
     let (ruleset, state) = super::battle();
     let details = h3_heroes::HeroDetails {
