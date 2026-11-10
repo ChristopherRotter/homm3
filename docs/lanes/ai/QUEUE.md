@@ -11,26 +11,21 @@ to 7 closed (`E25-archive.md`; increment 7, the structured network, 2026-11-10);
 #2 the current best** (AI-Q17, T29: 0.511 and 0.507 against the fair and the all-seeing system
 actor, the neutral set +0.302, 0.552 head to head against `e25-imitate-1` #2). **Increment 8,
 probes, then one long run** (refined at T29, 2026-11-10, AI-Q17; its decisions in the epic file;
-the probes about 20 hours of the user's GPU):
+the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analysis of #2,
+`E25-log.md` T30):
 
-- **T30 The analysis of #2.** *Scope:* the sandbox's CPU, `e25-structure-1` #2's `best.pt`
-  (uploaded at T28; again if the sandbox is new), increment 8's decision 2: (a) its score against
-  the fair actor by kind and side (`records/inspect/e25-structure-1-report-v1.json`'s groups)
-  beside the fair actor's mirror on the same episodes (`records/bots-report-v1.json`'s `system`
-  pairs), so its edge per kind and side; (b) the temperature diagnostic (`h3env.train.ladder
-  --opponents system --temperature 1,0.7,0.5,0`, T9a); (c) where it leaves its teacher: on T19's
-  states, by the category of the fair actor's choice, the category of #2's most likely one (a
-  confusion table; `ceiling`'s states). *Acceptance:* the tables and the read in `E25-log.md`
-  T30, the probes ranked, T32 to T34 refined in the epic file and here. *Depends on:* T29 (done).
-  *Status:* next.
 - **T31 The update's speed.** *Scope:* a profile of one PPO update of #2's network on the user's
   GPU (the forward and backward passes, the heads, the optimizer's step; cuDNN's autotuner off
   and on with fixed chunk shapes), a few minutes of the user's machine; then the change that pays,
   with a test that the update's losses and weights stay those of the same rollout, and a CPU
   smoke. *Acceptance:* the seconds an update before and after on the user's GPU, in `E25-log.md`
-  T31. *Depends on:* T29 (done); beside T30. *Status:* waiting (after T30's first part).
-- **T32 to T36** (the epic file's table): architecture probes, PPO's settings, training regimes,
-  the probes' checkpoint, the long run; refined at T30's read.
+  T31. *Depends on:* T30 (done). *Status:* next.
+- **T32 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
+  architectures by their clone's ladder (`hexconv` 96 × 6 the control); PPO's settings by short
+  continuations from #2 (first the entropy bonus at 0 and the imitation loss held at a small
+  weight); the regimes (#2 distilled, a KL anchor, the search at play on the hero battles); the
+  probes' checkpoint (with the outcome's weight in training as its question); the long run.
+  Each is refined here when it is next.
 
 ## Inbox
 

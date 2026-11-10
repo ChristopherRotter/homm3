@@ -1559,3 +1559,62 @@ an entry only where a task builds on it.
 - **The read of increment 7:** the structure was the lever increments 5 and 6 pointed to. The
   clone's agreement 0.576 to 0.809 (T27), its ladder against the fair actor 0.411 to 0.481, PPO's
   endpoint 0.458 to 0.511 (T28), at 22 times the MLP's wall time.
+
+## T30 — The analysis of #2 (2026-11-10)
+
+- **By kind and side** (the sandbox's CPU; `python/records/inspect/e25-structure-1-report-v1.json`,
+  T28's `inspect` against the fair actor; the near-mirror `python/records/bots-report-v1.json`'s
+  fair and all-seeing actors in both seats, 0.4999 against each other; the battle ruleset
+  `c14c573e9d2ee26f` in both):
+
+  | Kind (weight) | Mirror's attacker | #2 attacking | Edge | #2 defending | Edge | Value edge (attacking, defending) |
+  |---|---:|---:|---:|---:|---:|---:|
+  | hero (100) | 0.694 | 0.707 | +0.013 | 0.306 | +0.000 | +0.022, +0.029 |
+  | siege hero (50) | 0.549 | 0.580 | +0.031 | 0.470 | +0.019 | +0.029, +0.045 |
+  | siege garrison (25) | 0.941 | 0.940 | −0.001 | 0.060 | +0.001 | +0.006, +0.013 |
+
+- **The temperature** (T9a's diagnostic; `python/records/inspect/e25-structure-1-temperature.json`:
+  `h3env.train.ladder --checkpoint runs/e25-structure-1/best.pt --opponents system --temperature
+  1,0.7,0.5,0`, the sandbox's CPU, 76 minutes; the same episodes and draws at each):
+
+  | Temperature | Against the fair actor | Hero | Siege hero | Siege garrison | Value |
+  |---:|---:|---:|---:|---:|---:|
+  | 1 (the policy) | 0.511 ± 0.019 | 0.507 | 0.525 | 0.500 | +0.027 |
+  | 0.7 | 0.513 ± 0.019 | 0.512 | 0.523 | 0.501 | +0.030 |
+  | 0.5 | **0.522 ± 0.018** | **0.525** | 0.526 | 0.501 | +0.030 |
+  | 0 (the most likely) | 0.514 ± 0.018 | 0.515 | 0.519 | 0.504 | +0.031 |
+
+- **Where it leaves the teacher** (`python/records/distill/ceiling/ceiling-5.json`: T28's run of
+  T19's tool again, its agreements unchanged, with the tool's new confusion table: by the
+  category of the fair actor's draw, the categories of #2's most likely entry; `ceiling`'s
+  `confusion`, test in `tests/test_ceiling.py`):
+
+  | The teacher's | #2's: the same category (the same entry) | then |
+  |---|---|---|
+  | wait, defend | 0.410 (0.373) | move 0.328, cast 0.216, melee 0.040 |
+  | move | 0.596 (0.107) | wait, defend 0.254, cast 0.110, melee 0.040 |
+  | melee | 0.814 (0.491) | cast 0.090, move 0.051, wait, defend 0.044 |
+  | shot | 0.897 (0.575) | cast 0.062, move 0.038 |
+  | cast | 0.726 (0.715) | melee 0.179, wait, defend 0.036, move 0.030, shot 0.029 |
+  | tactics, heal, other | 1.000, 1.000, 0.990 | |
+
+- **The read, the probes ranked:**
+  1. **The margin lies in the hero battles**, the report set's largest kind (100 of 175): there
+     #2 keeps more of its army than the fair actor in its seat (+0.022 and +0.029) but wins as
+     often (+0.013 attacking, 0.000 defending); the sieges with a hero carry the edge (+0.031,
+     +0.019), the garrison's is the kind's (0.94 to the attacker either way). Reward v1 prices
+     what each side keeps and loses (E05 T4), the win rate counts the outcome alone: a training
+     signal that weighs the outcome more is a candidate for the checkpoint (decision 6 keeps
+     reward v1 and allows shaping only), not a probe.
+  2. **Sharpening gains +0.011** (temperature 0.5; the hero battles +0.018), as increment 4 found
+     for the MLP (about 0.01; `e25-sharp-1`'s entropy bonus at 0 kept it): the entropy rose from
+     0.70 to 1.34 once the imitation loss ended (T28), so the bonus at 0, or the loss held at a
+     small weight, is T33's first setting.
+  3. **No capability is missing:** #2 keeps the teacher's kind of action and changes its hex or
+     target (the moves 0.596 and 0.107); where the teacher moves it waits 0.254, where the
+     teacher waits it moves or casts; it casts 0.92 of the rounds it can (T28). The analysis asks
+     no encoding change (decision 5).
+  So: T31 (the speed) first, as planned; T33 the entropy bonus at 0 and the loss held, each a
+  short continuation from #2, then the learning rate and the epochs; T32 the architectures by
+  their clone's ladder, `hexconv` 96 × 6 the control; T34 a distillation of #2 and the search at
+  play on the hero battles; the outcome's weight a question for T35.

@@ -27,10 +27,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   20 M on the GTX 1070. The GPU's memory capped at 90 % of the card (`gpu.cap`, `TRAPS.md`).
   **Increment 8: probes, then one long run** (the epic file; the probes about 20 hours of the
   user's GPU: the update's speed, architectures, PPO's settings, training regimes; the aim a
-  margin beyond the interval). **Next:** T30, the analysis of #2 on the sandbox's CPU; T31's
-  profile beside it on the user's GPU (`QUEUE.md`).
-- **Open pull requests:** the one of `claude/adoring-heisenberg-t5hahk` (T28's records, the GPU's
-  cap; T29's checkpoint, increment 8's refinement). Merged: #730 (T26a), #748 (T26b), #765 (T27).
+  margin beyond the interval). **T30 done** (`E25-log.md` T30): the margin lies in the hero
+  battles (#2 keeps more army there but wins as often as the fair actor), sharpening gains
+  +0.011 (temperature 0.5), no encoding change asked. **Next:** T31, the update's speed (a
+  profile tool, then the user's GPU; `QUEUE.md`).
+- **Open pull requests:** the one of `claude/adoring-heisenberg-t5hahk` (T30's analysis, the
+  ceiling tool's confusion table). Merged: #748 (T26b), #765 (T27), #827 (T28, T29).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -51,7 +53,9 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   T28 in 13 segments and uploaded the record, metrics and `best.pt`, with the GPU's slowdown:
   the cap first (the Python suite 248, 2.8 minutes), then T19's tool (66 s) and `inspect` (30
   minutes on the CPU); #827 opened, CI green. The user then pasted the head-to-head and answered
-  AI-Q17 (T29): the current best, increment 8 with its budget and probe families.
+  AI-Q17 (T29): the current best, increment 8 with its budget and probe families. #827 merged;
+  the branch restarted from `master` for T30 (the sandbox's CPU: the temperature ladder 76
+  minutes, the ceiling with its confusion table a few minutes beside it).
 
 ### 2026-11-06 — E25 T27
 

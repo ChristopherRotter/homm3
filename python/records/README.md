@@ -121,7 +121,8 @@ Miller-Madow), the distinct entries, the cast heads' mode, and each scored netwo
 and cross-entropy against the draws; the teacher, the states, episodes, lost choices, seconds
 and the identity. `ceiling-1` (T19): the teacher's ceiling and four PPO networks; `ceiling-2`
 (T22): the same states, `e25-clone-1`, `e25-clone-2` and `e25-imitate-1` #2; `ceiling-3`
-(T27): T27's `hexconv` student; `ceiling-4` (T28): `e25-structure-1` #2.
+(T27): T27's `hexconv` student; `ceiling-4` (T28): `e25-structure-1` #2; `ceiling-5` (T30): the
+same with the confusion table (each network's choice by the category of the teacher's).
 
 ## The imitation loss
 
@@ -231,4 +232,6 @@ its `parent`.
   +0.027, +0.026); the neutral set +0.302 (`docs/epics/E25-log.md` T28). **`e25-structure-1` #2 is
   the current best** (E25 T29, the user, 2026-11-10, AI-Q17; 0.552 head to head against
   `e25-imitate-1` #2, promoted by the gate). Its behaviour analysis
-  `inspect/e25-structure-1-report-v1.json`. Its network is on the user's machine.
+  `inspect/e25-structure-1-report-v1.json`, its temperature diagnostic
+  `inspect/e25-structure-1-temperature.json` (E25 T30, the sandbox's CPU, as
+  `e25-scale-1-temperature.json`). Its network is on the user's machine.
