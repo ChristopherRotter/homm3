@@ -1269,10 +1269,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                             book_changed = true;
                         }
                         // The grid and the shadows (E17 M6 T4c, design §12.16; `battle_buttons`'
-                        // F6 to F8, no test of the turn but only where the battle takes its
-                        // keys): toggled, the frame drawn again (on a human's turn the mouse's
-                        // hex shaded again), the settings written at once.
-                        Do::Shades(_) if !battle.takes(at) => {}
+                        // F6 to F8, no test of the turn: on every turn, CLT-Q75 (a), E17 M7
+                        // T1a): toggled, the frame drawn again (on a human's turn the mouse's
+                        // hex shaded again, on another the acting stack's reach drawn until its
+                        // action), the settings written at once.
+                        Do::Shades(_) if !battle.takes_keys(at) => {}
                         Do::Shades(toggle) => {
                             toggle_shades(&mut battle, &mut inputs, (at, toggle), &files);
                             (book_changed, mouse_changed) = (true, true);
@@ -1482,8 +1483,6 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     pointer = p;
                     redraw |= drawn_cursor;
                     if let Some((x, y)) = p {
-                        // The options dialog's arrow goes (E17 M6 T4a).
-                        battle.mouse_moved();
                         // The battle takes the move now (inputs after a seek back are gone).
                         inputs.retain(|i| i.at() <= at);
                         inputs.push(Input::Move { at, to: [x, y] });
@@ -1577,7 +1576,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
         // The options dialog's close composes the background again with its options, without the
         // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
-        if options_open && !battle.options_open() {
+        let options_closed = options_open && !battle.options_open();
+        if options_closed {
             inputs.push(Input::Shades {
                 at: clock.ms(win.ticks_ns()),
                 options: Shades::of(&battle.settings),
@@ -1600,6 +1600,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 level: army_info,
             });
             mouse_changed = true;
+        }
+        // Then the mouse posted where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a):
+        // the cursor, the line (at the level just set) and the shade those of the hex under it at
+        // once, where the original's leave the dialog's arrow and the old hex's until the mouse
+        // moves (oddity 10, the stills').
+        if options_closed {
+            post_mouse(&mut inputs, clock.ms(win.ticks_ns()), pointer);
         }
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
@@ -1840,7 +1847,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
 
 /// What the spell book button's press at `at` led to (E17 M5 T3a): the book opened (the battle
 /// takes no move until it closes), or a box tells why not (E17 M6 T5a, design §12.17: the mouse
-/// posted after its OK, [`refusal_closed`]). Whether the screen changed.
+/// posted after its OK, [`post_mouse`]). Whether the screen changed.
 fn opened(inputs: &mut Vec<Input>, at: u32, opened: Opened) -> bool {
     match opened {
         Opened::No => false,
@@ -1852,12 +1859,13 @@ fn opened(inputs: &mut Vec<Input>, at: u32, opened: Opened) -> bool {
     }
 }
 
-/// A refusal's box of the spell book button or of the aim's entry closed by its OK at `at`, the
-/// mouse at `pointer` (E17 M6 T5a, design §12.17): the box being modal, the battle saw no move
-/// while it was open; now the button's path forgets the mouse's hex and posts the mouse where it
-/// rests (0x474F72), as after a book closed without a spell, so the cursor and the hint are
-/// those of the hex under it.
-fn refusal_closed(inputs: &mut Vec<Input>, at: u32, pointer: Option<(i32, i32)>) {
+/// A modal box or dialog over the battle closed at `at`, the mouse at `pointer`: the battle saw no
+/// move while it was open; now the mouse's hex is forgotten and the mouse posted where it rests,
+/// so the cursor and the hint are those of the hex under it. A refusal's box of the spell book
+/// button or of the aim's entry (E17 M6 T5a, design §12.17: the button's path, 0x474F72, as
+/// after a book closed without a spell); the combat options dialog in the client's profile
+/// (CLT-Q43 (3), E17 M7 T1a).
+fn post_mouse(inputs: &mut Vec<Input>, at: u32, pointer: Option<(i32, i32)>) {
     if let Some((x, y)) = pointer {
         inputs.push(Input::Move { at, to: [x, y] });
     }
@@ -2020,7 +2028,7 @@ fn shown_box(
 }
 
 /// What the combat options dialog `did` (E17 M6 T4a, design §12.12): its press samples played
-/// (the speeds' twice, oddity 1), its volumes on the sound at once; at its close after a click its
+/// (a speed's once, CLT-Q74), its volumes on the sound at once; at its close after a click its
 /// settings written to the settings file (`files`: the file and the report's lines). Whether it
 /// changed (draw again).
 fn options_did(
@@ -2232,7 +2240,7 @@ fn message_did(
         }
         // A refusal's box closed (E17 M6 T5a): the mouse posted where it rests.
         MessageDid::Refused => {
-            refusal_closed(inputs, at, pointer);
+            post_mouse(inputs, at, pointer);
             Ok(false)
         }
         MessageDid::Nothing | MessageDid::Changed | MessageDid::Ended => Ok(false),
@@ -2427,7 +2435,7 @@ impl Presser {
             // A refusal's box (E17 M6 T5a; the bot's casts are legal, so none comes): the mouse
             // posted where the battle last saw it.
             MessageDid::Refused => {
-                refusal_closed(inputs, now, None);
+                post_mouse(inputs, now, None);
                 Ok(true)
             }
             MessageDid::Changed | MessageDid::Nothing | MessageDid::Ended => Ok(true),
@@ -2688,14 +2696,14 @@ mod tests {
         assert!(opened(&mut inputs, 10, Opened::Book));
         assert_eq!(inputs, [Input::Book { at: 10 }]);
         inputs.clear();
-        refusal_closed(&mut inputs, 900, Some((320, 240)));
+        post_mouse(&mut inputs, 900, Some((320, 240)));
         let moved = Input::Move {
             at: 900,
             to: [320, 240],
         };
         assert_eq!(inputs, [moved, Input::Cancel { at: 900 }]);
         inputs.clear();
-        refusal_closed(&mut inputs, 900, None);
+        post_mouse(&mut inputs, 900, None);
         assert_eq!(inputs, [Input::Cancel { at: 900 }]);
     }
 

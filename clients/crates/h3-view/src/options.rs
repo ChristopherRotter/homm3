@@ -21,17 +21,22 @@
 //! ([`Settings::cycle_army_info`]), F6 to F8 the grid and the shadows; the window writes the
 //! settings file at each and at the dialog's close after a click.
 //!
-//! The original's oddities are built as the original's (design §12.12, "Oddities"): the speed
-//! buttons' sample twice, a box or a bar acting on a left release anywhere, the hidden bars
-//! taking clicks and right presses, the no-sound box (a column at volume 0 without the audio
-//! device), the effects bars writing the last effects volume (the music bars leave the last music
-//! volume), the level's pair that can be emptied.
+//! The original's oddities (design §12.12, "Oddities") are built as the original's but two, which
+//! the client's profile fixes ([`Bugs::Fixed`]; the original's for the comparisons, the stills):
+//! a box or a bar acts on a left release inside it alone, where the original's acts on one
+//! anywhere (CLT-Q43 (2)), and no bar is ever refused, where the original's opens the no-sound
+//! box for a column at volume 0 without the audio device (CLT-Q44 (c): the settings kept for a
+//! device later). In both: the speed buttons' one sample (a DEF button's own; CLT-Q74, E17 M7
+//! T1a), the hidden bars taking clicks and right presses, the effects bars writing the last
+//! effects volume (the music bars leave the last music volume), the level's pair that can be
+//! emptied.
 
 use alloc::collections::BTreeMap;
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
 use h3_ui::ui::{Dialog, Item, Shown, State};
 use serde::Deserialize;
@@ -361,11 +366,12 @@ pub struct Did {
     pub changed: bool,
     /// A DEF button's own press sample (`button_press` 0x456860).
     pub button_sound: bool,
-    /// The procedure's press sample (a press on an item 225 to 238: the boxes and the speeds;
-    /// 0x46FDB1, volume 0x40).
+    /// The procedure's press sample (a press on a DEF picture 225 to 238: the boxes; 0x46FDB1,
+    /// volume 0x40). A speed button's press sends the procedure none: its own loop takes the
+    /// mouse until the release (CLT-Q74).
     pub box_sound: bool,
-    /// A bar clicked at its column's volume 0 without the audio device: GENRLTXT 151 in an OK
-    /// box, nothing changed (0x46FE42).
+    /// A bar clicked at its column's volume 0 without the audio device, in the original's profile:
+    /// GENRLTXT 151 in an OK box, nothing changed (0x46FE42; CLT-Q44 (c): never in the client's).
     pub no_sound: bool,
     /// The OK's click closed the dialog.
     pub closed: bool,
@@ -376,8 +382,9 @@ pub struct Did {
 enum Held {
     /// A DEF button by the mouse, and whether the mouse is over it.
     Button { id: u16, over: bool },
-    /// A DEF picture (a bar or a box) by the mouse: its release anywhere clicks it.
-    Picture(u16),
+    /// A DEF picture (a bar or a box) by the mouse, and whether the mouse is over it: its release
+    /// clicks it over it (the client's profile, CLT-Q43 (2)) or anywhere (the original's).
+    Picture { id: u16, over: bool },
     /// The OK by its key.
     Key(String),
 }
@@ -398,18 +405,20 @@ pub struct Open {
     texts: BTreeMap<u16, String>,
     /// The client's audio device opened (the sound manager's digital driver, +0x3C).
     audio: bool,
+    /// The profile: the client's fixes or the original's oddities 2 and 7.
+    bugs: Bugs,
     held: Option<Held>,
 }
 
 impl Open {
     /// The dialog of `layout` showing `settings`, its background in `player`'s colours, its words
-    /// from `catalogue`; `audio`: the client's audio device opened.
+    /// from `catalogue`; `audio`: the client's audio device opened; `bugs` the profile.
     #[must_use]
     pub fn new(
         layout: &OptionsLayout,
         catalogue: &Catalogue,
         settings: Settings,
-        (player, audio): (u8, bool),
+        (player, audio, bugs): (u8, bool, Bugs),
     ) -> Self {
         let texts = (TEXTS..)
             .zip(TEXT_KEYS)
@@ -425,6 +434,7 @@ impl Open {
             player,
             texts,
             audio,
+            bugs,
             held: None,
         };
         open.fill();
@@ -493,7 +503,8 @@ impl Open {
     }
 
     /// The left button pressed at `point`: a DEF button there goes down (not the chosen speed,
-    /// disabled) with its press sample, the speeds' the procedure's too; a bar or a box is held,
+    /// disabled) with its own press sample alone, a speed's too (CLT-Q74: its loop sends the
+    /// procedure no press; design §12.12's oddity 1 read again); a bar or a box is held,
     /// unchanged, a box's press sounding.
     pub fn press(&mut self, point: [i32; 2]) -> Did {
         if self.held.is_some() {
@@ -505,11 +516,10 @@ impl Open {
         let Some((id, button)) = item else {
             return Did::default();
         };
-        let box_sound = (AUTO..=BOXES + 3).contains(&id);
         if !button {
-            self.held = Some(Held::Picture(id));
+            self.held = Some(Held::Picture { id, over: true });
             return Did {
-                box_sound,
+                box_sound: (AUTO..=BOXES + 3).contains(&id),
                 ..Did::default()
             };
         }
@@ -521,19 +531,29 @@ impl Open {
         Did {
             changed: true,
             button_sound: true,
-            box_sound,
             ..Did::default()
         }
     }
 
     /// The mouse moved to `point`: the DEF button it holds follows it on or off, pressed again
     /// with its sample as it comes back (`def_button_message`'s loop, 0x4563A2: `button_press`;
-    /// the procedure gets nothing meanwhile, so no second sample; E17 M6 T7b, R4-3).
+    /// the procedure gets nothing meanwhile, so no second sample; E17 M6 T7b, R4-3); the bar or
+    /// box it holds notes whether the mouse is over it, nothing drawn (a picture's press changes
+    /// nothing).
     pub fn moved(&mut self, point: [i32; 2]) -> Did {
-        let Some(Held::Button { id, over }) = self.held else {
-            return Did::default();
+        let over_id = |id: u16| self.item_at(point).is_some_and(|i| i.id() == id);
+        let (id, over) = match self.held {
+            Some(Held::Picture { id, .. }) => {
+                self.held = Some(Held::Picture {
+                    id,
+                    over: over_id(id),
+                });
+                return Did::default();
+            }
+            Some(Held::Button { id, over }) => (id, over),
+            Some(Held::Key(_)) | None => return Did::default(),
         };
-        let now = self.item_at(point).is_some_and(|i| i.id() == id);
+        let now = over_id(id);
         if now == over {
             return Did::default();
         }
@@ -547,10 +567,14 @@ impl Open {
     }
 
     /// The left button released: the DEF button held clicks when the mouse is still over it,
-    /// else goes up; the bar or box held clicks wherever the mouse is.
+    /// else goes up; the bar or box held clicks when the mouse is over it, in the original's
+    /// profile wherever the mouse is (oddity 2: `dialog_def_message`'s release tests no box;
+    /// CLT-Q43 (2), fixed in the client's).
     pub fn release(&mut self) -> Did {
+        let anywhere = self.bugs == Bugs::Original;
         match self.held.take_if(|h| !matches!(h, Held::Key(_))) {
-            Some(Held::Button { id, over: true } | Held::Picture(id)) => self.click(id),
+            Some(Held::Button { id, over: true }) => self.click(id),
+            Some(Held::Picture { id, over }) if over || anywhere => self.click(id),
             Some(Held::Button { id, .. }) => {
                 set_pressed(&mut self.window.shown, id, false);
                 Did {
@@ -606,12 +630,12 @@ impl Open {
     pub fn let_go(&mut self, by: Option<&str>) -> Did {
         let held = self.held.take_if(|h| match h {
             Held::Key(key) => by == Some(key.as_str()),
-            Held::Button { .. } | Held::Picture(_) => by.is_none(),
+            Held::Button { .. } | Held::Picture { .. } => by.is_none(),
         });
         let id = match held {
             Some(Held::Button { id, .. }) => id,
             Some(Held::Key(_)) => OK,
-            Some(Held::Picture(_)) | None => return Did::default(),
+            Some(Held::Picture { .. }) | None => return Did::default(),
         };
         set_pressed(&mut self.window.shown, id, false);
         Did {
@@ -621,8 +645,9 @@ impl Open {
     }
 
     /// Item `id` clicked (0x200/0xD, the switch at 0x46F88D): the OK closes; Default sets the
-    /// defaults; a bar its column's volume and its last copy for the effects (or, at the column's
-    /// volume 0 without the audio device, the no-sound box and nothing else); a box toggles its
+    /// defaults; a bar its column's volume and its last copy for the effects (or, in the
+    /// original's profile at the column's volume 0 without the audio device, the no-sound box and
+    /// nothing else: oddity 7; the client's never refuses, CLT-Q44 (c)); a box toggles its
     /// option, a level's box sets its level or 0 when it is the one set; a speed is chosen. Each
     /// handled click marks the dialog clicked and fills it again.
     fn click(&mut self, id: u16) -> Did {
@@ -642,7 +667,7 @@ impl Open {
             MUSIC..=211 | EFFECTS..=221 => {
                 let music = id < EFFECTS;
                 let volume = if music { s.music } else { s.effects };
-                if volume == 0 && !self.audio {
+                if volume == 0 && !self.audio && self.bugs == Bugs::Original {
                     return Did {
                         no_sound: true,
                         ..Did::default()

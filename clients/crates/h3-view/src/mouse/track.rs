@@ -16,7 +16,7 @@ use h3_render::Bugs;
 
 use super::aim::Aim;
 use super::aim::screen_hex;
-use super::{Field, Hint, Kind, Spot, pointer_in, slot, slots_in, spot};
+use super::{Field, Hint, Kind, Legal, Spot, pointer_in, slot, slots_in, spot};
 use crate::army_info::Windows;
 use crate::battle_log::Logged;
 use crate::layout::{BattleLayout, Mouse};
@@ -1035,8 +1035,14 @@ pub fn follow_on<'l>(
                     // F6 to F8 (`battle_set_shades`' effects): the shade off, the options set,
                     // the background composed again; on a human's turn here the mouse's hex
                     // forgotten, the log settled and the mouse posted where it rests (0x4ECC00),
-                    // which shades its hex again; else the combat cursor's pointer.
+                    // which shades its hex again; else the combat cursor's pointer. On a turn
+                    // no human plays here, before its action, the acting stack's overlay drawn
+                    // again (0x4937D0 tests no side; CLT-Q75 (a), both profiles, E17 M7 T1a):
+                    // its reach shown with the movement shadow until its action starts.
                     h.cells.set(options);
+                    if let Some(turn) = turns.get(at.turn).filter(|t| !h.human(t) && !h.busy) {
+                        h.reach = overlay(turn);
+                    }
                     match (turns.get(at.turn), h.point) {
                         (Some(turn), Some(point)) if h.human(turn) && !h.busy && !h.dialog => {
                             h.hex = None;
@@ -1252,6 +1258,19 @@ impl Handler<'_> {
 fn reach(turn: &Turn<'_>) -> BTreeSet<u8> {
     if turn.human && turn.field.observation.tactics.is_none() {
         shades::reach(&turn.field)
+    } else {
+        BTreeSet::new()
+    }
+}
+
+/// The acting stack's overlay on `turn` whoever plays it (CLT-Q75: F6 to F8 draw it on a turn no
+/// human plays here): [`shades::overlay`] outside the tactics phase, for a stack whose legal
+/// commands are known (*provisional*: none on a seat's opponent's turn, whose commands the
+/// server never sends; the opening's battle stands for it there).
+fn overlay(turn: &Turn<'_>) -> BTreeSet<u8> {
+    let known = *turn.field.legal != Legal::default();
+    if known && turn.field.observation.tactics.is_none() {
+        shades::overlay(&turn.field)
     } else {
         BTreeSet::new()
     }
