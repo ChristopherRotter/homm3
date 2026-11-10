@@ -29,10 +29,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   user's GPU: the update's speed, architectures, PPO's settings, training regimes; the aim a
   margin beyond the interval). **T30 done** (`E25-log.md` T30): the margin lies in the hero
   battles (#2 keeps more army there but wins as often as the fair actor), sharpening gains
-  +0.011 (temperature 0.5), no encoding change asked. **T31 in progress** (the update's speed,
-  `claude/pensive-mendel-2ydhkl`): the profile tool `h3env.train.speed` built; next the user's
-  GPU run of it (a few minutes), then the change that pays (`QUEUE.md`).
-- **Open pull requests:** none. Merged: #765 (T27), #827 (T28, T29), #829 (T30).
+  +0.011 (temperature 0.5), no encoding change asked. **T31 done** (`E25-log.md` T31): cuDNN's
+  autotuner in the update (`[device] cudnn_autotune`, on), `[ppo] chunk_align`; a `hexconv` run
+  sets `accumulate = 4`, `chunk_align = 32`: 958 to 649 µs a sample-pass, 98 to 67 s an update
+  on the GTX 1070; `gpu.cap` now passes the card's index (every CUDA entry point since T28
+  stopped there). **Next:** T32 or T33, refined in `QUEUE.md` when next (T30's ranking: T33's
+  entropy bonus at 0 and the imitation loss held, short continuations from #2).
+- **Open pull requests:** the one of `claude/pensive-mendel-2ydhkl` (T31). Merged: #765 (T27),
+  #827 (T28, T29), #829 (T30).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -46,14 +50,14 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-10 — E25 T31 (in progress)
+### 2026-11-10 — E25 T31
 
 - #829 merged; the branch started from `master` (the setup's baseline only the light gates);
   `cargo build --release -p h3-ffi` 56 s, `uv sync --group train` about 30 minutes (3 MB/s).
-  Built `h3env.train.speed` (tests `tests/test_speed.py`; a CPU smoke of `hexconv` 96 × 6 on 16
-  envs): the variants' losses are the baseline's, the trunk's convolutions get channels-last
-  tensors. **In progress:** the user's GPU run of it (the command in `E25-log.md` T31), then
-  the change that pays.
+  Built `h3env.train.speed`; the user ran it five times (about 6 minutes each): the first
+  stopped at `gpu.cap` (fixed), then the variants, the sweep by rows (its autotuner column void:
+  cuDNN's cache, `TRAPS.md`), the sweep again, the confirmation. The Python suite 254 (2.4
+  minutes).
 
 ### 2026-11-10 — E25 T28
 

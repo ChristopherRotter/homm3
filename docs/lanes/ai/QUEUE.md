@@ -12,21 +12,18 @@ to 7 closed (`E25-archive.md`; increment 7, the structured network, 2026-11-10);
 actor, the neutral set +0.302, 0.552 head to head against `e25-imitate-1` #2). **Increment 8,
 probes, then one long run** (refined at T29, 2026-11-10, AI-Q17; its decisions in the epic file;
 the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analysis of #2,
-`E25-log.md` T30):
+`E25-log.md` T30; **T31 done** 2026-11-10, the update's speed, `E25-log.md` T31: 98 to 67 s an
+update):
 
-- **T31 The update's speed.** *Scope:* a profile of one PPO update of #2's network on the user's
-  GPU (the forward and backward passes, the heads, the optimizer's step; cuDNN's autotuner off
-  and on with fixed chunk shapes), a few minutes of the user's machine; then the change that pays,
-  with a test that the update's losses and weights stay those of the same rollout, and a CPU
-  smoke. *Acceptance:* the seconds an update before and after on the user's GPU, in `E25-log.md`
-  T31. *Depends on:* T30 (done). *Status:* in progress (`claude/pensive-mendel-2ydhkl`: the
-  profile tool `h3env.train.speed` built, the user's GPU run next).
 - **T32 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
   architectures by their clone's ladder (`hexconv` 96 × 6 the control); PPO's settings by short
   continuations from #2 (first the entropy bonus at 0 and the imitation loss held at a small
   weight); the regimes (#2 distilled, a KL anchor, the search at play on the hero battles); the
   probes' checkpoint (with the outcome's weight in training as its question); the long run.
-  Each is refined here when it is next.
+  Each is refined here when it is next. **A `hexconv` run on the GTX 1070** sets `[ppo]
+  accumulate = 4` and `chunk_align = 32` (T31; cuDNN's autotuner is on by default): its update
+  0.68 of T28's; another network or card: time it first (`python -m h3env.train.speed`, its
+  `--sweep`).
 
 ## Inbox
 
@@ -180,8 +177,10 @@ information and one choice):
 **For E25's closure** (a `shared/` pull request): `docs/07-simulation-and-ai.md` §1.2, the
 pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound (T4a), the
 hex networks and the MLP's depth (T7a), the distillation bench (T7b), the networks' keys of
-increment 7 (T24's `norm`, `feed_forward`; T25's `mask_input`, `order`, `attack_hex`), PPO's `[ppo] accumulate` (T28); the two system actors (T14:
-`system` the fair one, `system-all-seeing`, C ABI v36).
+increment 7 (T24's `norm`, `feed_forward`; T25's `mask_input`, `order`, `attack_hex`), PPO's
+`[ppo] accumulate` (T28), `chunk_align` and `[device] cudnn_autotune` (T31; the speed tool
+`h3env.train.speed`); the GPU's memory cap (T28); the two system actors (T14: `system` the fair
+one, `system-all-seeing`, C ABI v36).
 
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's
 parts are its tasks above):

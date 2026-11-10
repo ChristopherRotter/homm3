@@ -1619,7 +1619,7 @@ an entry only where a task builds on it.
   their clone's ladder, `hexconv` 96 × 6 the control; T34 a distillation of #2 and the search at
   play on the hero battles; the outcome's weight a question for T35.
 
-## T31 — The update's speed (in progress, 2026-11-10)
+## T31 — The update's speed (2026-11-10)
 
 - **The suspects** (the code, before any profile): the trainer runs cuDNN without its autotuner
   (`torch.backends.cudnn.benchmark` off), while the benches turn it on (`distill.bench_device`):
@@ -1747,7 +1747,26 @@ an entry only where a task builds on it.
   3. The trunk in NCHW measured no gain: dropped from the tool (the finding above).
   `Trainer.update` keeps its losses: the autotuner changes kernels only, `chunk_align` is tested
   against the unpadded update, `accumulate` since T28.
-- **The confirmation** (about 5 minutes; from `python/`; each variant's update one epoch, a run's
-  four cost four times as much):
+- **The confirmation** (the code above; `python -m h3env.train.speed --config
+  configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda
+  --no-phases`; the rollout 11.5 s, 32 575 rows an epoch, each update one epoch, twice):
 
-      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --no-phases --json runs/t31-after.json
+  | Variant | Chunks' rows | Seconds | µs a sample-pass | Against the baseline | Peak MB |
+  |---|---|---|---:|---:|---:|
+  | baseline (the autotuner, `accumulate` 8) | 508, 509 | 26.73, 25.23 | 775 | 1.000 | 3 174 |
+  | heuristics (the update before T31) | 508, 509 | 31.31, 31.20 | 958 | 1.236 | 3 189 |
+  | `accumulate` 4, `chunk_align` 32 | 1 024 | 43.22, 22.54 | 692 | 0.893 | 5 479 |
+  | `accumulate` 5, `chunk_align` 32 | 832 | 21.91, 21.15 | **649** | **0.838** | 5 138 |
+  | baseline again | 508, 509 | 23.54, 23.45 | 720 | 0.930 | 2 557 |
+
+  The baseline's repeat lies 0.00093 from it, the variants 0.0010 to 0.0013; the losses within
+  0.5 %. `accumulate` 5 here gives the chunks `accumulate` 4 gives a run (about 3 200 rows a
+  minibatch), `accumulate` 4 here those of a run's start (every row trains before the league's
+  first member: 1 024 rows, the search's 21 s once).
+- **The acceptance, an update before and after on the user's GPU** (`hexconv` 96 × 6, the
+  GTX 1070; a run's update T28's mean 25 670 rows over 4 epochs): **before T31 958 µs a
+  sample-pass, 98 s an update** (T28 measured about 100); **after it** (the autotuner,
+  `accumulate` 4, `chunk_align` 32) **649 µs, 67 s: 0.68**. A 20 M run like T28's (780
+  updates): about 14 hours of updates instead of 21, about 21 hours in all instead of 28 (its
+  rollouts, gates and ladders unchanged). The autotuner alone, at `accumulate` 8, gives 0.75 to
+  0.81; T33's continuations from #2 run with all three.
