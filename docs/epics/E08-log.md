@@ -14221,3 +14221,55 @@ step); the original data staged at the start (the two LODs, the executable, `map
   included (no cross-lane path): coverage, determinism (the 66 replays
   unchanged), bench-check (no engine code changed), original-data.
 - **Versions:** none.
+
+### Increment 11, round 8: T106c, the teleporters XL, its workloads and the census (2026-11-10, `adventure/e08-t106c`)
+
+**The cut** (decision 293, the user at T106c's start): whole. **Baseline:** `master` 4bd174e
+(#836; #834, T106b2, merged before it; the setup's full engine verify with the original data ran
+in the sandbox, CI had not yet verified that code); the original data staged at the start (the two
+LODs, the executable, `maps.tar`, `extracted.tar`). Built by the main session in a worktree while
+the baseline ran.
+
+- **The census** (`h3-map`'s `original_data`, design §14's `--with-original-data`): the rest of
+  survey §1 compared with the build's census, each a table in the example (`SURVEY_TELEPORTERS`,
+  `SURVEY_MAPS`, `SURVEY_ONE_WAY`, `SURVEY_TWO_WAY`, `SURVEY_WHIRLPOOL_TILES`,
+  `SURVEY_WHIRLPOOLS_PER_MAP`), a difference failing the check (`teleporter_differences`): the
+  1 671 teleporters by class, subclass and level, the maps with each class (59, 59, 98, 98, 62),
+  the 111 one-way channels by entrances and exits, the 219 two-way ones by size, the 1 344
+  Whirlpools' tiles and the 62 maps by their Whirlpools (2 on 35, …, 19 on 2): all as the survey
+  (and T103b, T104) found them. New, recorded and checked (`SURVEY_MOST`; survey §1's new bullet):
+  each class's most on one map, 8 one-way entrances (Back For Revenge - Allied), 8 exits (Jihad),
+  17 two-way monoliths (Serpents Treasure), 26 gates (Islands and Caves), 19 Whirlpools (Thousand
+  Islands (allies)), and the most channels of each way, 4 one-way (Battle of the Sexes Allied) and 6
+  two-way (Hatchet Axe and Saw). `h3m.md`'s census note.
+- **The map** `fixtures/maps/e08-teleporters-144.h3m` (`teleporters_xl_map.rs`, `h3_map::writer`,
+  4.8 KB): SoD, 144 × 144 of grass with the sea on rows 60 to 83, over an underground of
+  subterranean ground; the census's most: 8 one-way entrances and 8 exits over channels 0 to 3 (two
+  of each a channel), 17 two-way monoliths over channels 0 to 5 (4 and 5 the original's two-tile
+  templates, visited left of the anchor), 26 gates (13 a level), 19 Whirlpools, each with the
+  original's template of its class and subclass (`Objects.txt`). Each land teleporter in a 12 × 12
+  cell of its own, the next free one along a stride of 101 through both levels' 264 land cells (on
+  its level for a gate; every one-way channel's exits on both levels, five of six two-way channels
+  span both), anchored 6 right of and below the cell's corner; the Whirlpools in the sea's 24 cells
+  by a stride of 5. Ten walkers of their types' own (types 0, 14, …, 126), red's in the north and
+  underground, blue's in the south and underground, one of each beside a boat; 378 stacks of 1 to
+  12 savage gnolls, one on every hundredth of the 37 790 free land tiles (no teleporter's tile, no
+  hero's tile or neighbour), row by row over both levels. The test
+  `the_teleporters_xl_map_is_committed_as_written_and_builds_its_channels`: the heroes, the boats,
+  every object typed, the build's one-way and two-way channels and their members in the walk's
+  order against the layout's, the 26 gates all paired, the Whirlpools' 114 tiles. The fixtures
+  README's row.
+- **The workloads** (`benches/adventure/`, baselined at their first count; the benches README's
+  rows in `shared/e08-t106c-benches`, #838): `reach-teleporters-xl-144`, the walkers' queries of 2
+  random games of 28 days on the XL, seed 11: 2 777 steps, 9 350 queries, about 127 k Ir each
+  (1 184 099 078 Ir), 885 (9.5 %) reaching a teleporter's tile, a stop node; 7 jumps, 6 revisits
+  drawn, 26 battles; 94 % in `legal_moves`, `Reach::search` 62 % itself. `random-play-teleporters-36`,
+  5 random games of 28 days on T106a's map, seed 3: 2 195 steps, 19 jumps, 12 told `LeadsNowhere`,
+  3 Whirlpools' losses, 23 revisits drawn, 7 battles; about 2.74 M Ir a step (6 009 640 722 Ir), 98 %
+  in `Reach::search`, 86 % the agent's legal moves of the twelve heroes. *Agent's call:* each seed
+  by a short search with a scratch probe (not committed), as T106a's replays: the XL's seeds 1 to
+  24 (jumps 0 to 7; seed 1 had none, its queries 8.4 % meeting a teleporter), the 36's seeds 1 to 3
+  (the first with a loss). The random agent draws a uniform reachable tile, so on the XL a jump is
+  rare; the stop nodes are met in any case.
+- **Gates:** see the session's verify below.
+- **Versions:** none (no engine code changed).

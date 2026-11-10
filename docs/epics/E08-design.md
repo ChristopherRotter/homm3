@@ -573,11 +573,27 @@ lines were added to `0016-increment-11.md` (point 4); both applied by T102.
   map with a gate on every fifth free tile of both levels, about 8 000, the pairing's worst case,
   note §5), each baselined at its first count. If the pairing dominates the build, the lever is a
   nearest search by row bands that keeps the original's walk order and tie (§18).
+  *As built* (T106c, `adventure/e08-t106c`; decision 293): the map's numbers are the census's most
+  on one map (`--with-original-data` below): 8 one-way entrances and 8 exits over channels 0 to 3,
+  17 two-way monoliths over channels 0 to 5, 26 gates, 19 Whirlpools, each with the original's
+  template of its class and subclass (`teleporters_xl_map.rs`); the sea on the surface's rows 60 to
+  83; each land teleporter in a 12 × 12 cell of its own, the cells drawn by a stride of 101
+  through both levels' 264 land cells (a one-way channel's exits on both levels), the Whirlpools'
+  by a stride of 5 through the sea's 24; ten walkers (two beside boats), 378 gnoll stacks.
+  *Agent's call:* each workload's seed by a short search, as T106a's replays (the XL's seed 11 of
+  1 to 24 for the most jumps: 7; the 36's seed 3 of 1 to 3 for the first with a Whirlpool's loss).
+  `reach-teleporters-xl-144` 1 184 099 078 Ir (9 350 walkers' queries, 885 reaching a
+  teleporter's tile), `random-play-teleporters-36` 6 009 640 722 Ir (2 195 steps, 19 jumps, 3
+  losses, 23 revisits drawn); no engine code changed, so no other workload moved.
 - **`--with-original-data`** (`crates/h3-map/examples/original_data.rs`): every shipped map's
   static layer with the five classes typed (the census's 1 671 objects: 602 gates, 845 monoliths
   by way and channel, 224 Whirlpools; §1), the channels, the gates' 301 pairs as the census found
   them (the 18 gates not with their nearest), no shipped map refused by A-39 or A-42; the harvest's
   check (note §3).
+  *As built* (T104, T106c): the channels and the pairs since T104 (decision 286); since T106c the
+  rest of survey §1 checked too (the counts by class, subclass and level, the maps with each class,
+  the channels by ends and size, the Whirlpools' tiles and the maps by their Whirlpools) and each
+  class's and way's most on one map recorded and checked (`SURVEY_MOST`).
 
 ###### 15. Versions, rule ids, quirks
 
