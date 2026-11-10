@@ -134,8 +134,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// ([`ECONOMY`]): the seven mines, the abandoned mine, the Lighthouse, the Shipyard, the three
 /// weekly objects and gremlins that never grow. Then (E08 T96b1, increment 10's design note §14)
 /// increment 10's kinds ([`DWELLINGS`]): six dwellings, the three random dwellings and the Refugee
-/// Camp.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 96] = [
+/// Camp. Then (E08 T106b1, increment 11's design note §14) increment 11's kinds ([`TELEPORTERS`]):
+/// the monoliths of two channels, the Subterranean Gate and the Whirlpool.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 103] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -232,6 +233,13 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 96] = [
     (217, 1, None),
     (218, 6, None),
     (78, 0, None),
+    (43, 0, None),
+    (43, 1, None),
+    (44, 0, None),
+    (45, 0, None),
+    (45, 1, None),
+    (103, 0, None),
+    (111, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -333,6 +341,37 @@ pub(super) static DWELLING_OBJECTS: LazyLock<Vec<usize>> = LazyLock::new(|| {
         .collect()
 });
 
+/// Increment 11's kinds in [`KINDS`] (E08 T106b1, increment 11's design note §14): the first of
+/// them, and how many. In order: the one-way entrances of channels 0 and 1 (class 43; ADV-TEL-004:
+/// channel 1 has no exit, so its entrance never has a candidate), the one-way exit of channel 0
+/// (44: it leads nowhere), the two-way monoliths of channels 0 and 1 (45), the Subterranean Gate
+/// (103; ADV-TEL-005, paired across the levels, ADV-TEL-002) and the Whirlpool (111; ADV-TEL-006).
+/// None has a body (ADV-TEL-001).
+pub(super) const TELEPORTERS: (usize, usize) = (96, 7);
+/// The teleporters' objects, by kind (one shape each: [`masks`] gives a monolith its one tile,
+/// blocked and visited, a gate the original's four tiles visited from the middle of its row, a
+/// Whirlpool two tiles of a column, both visited).
+pub(super) const TELEPORTER_OBJECTS: [usize; 7] = [
+    BLOCKERS.len() * TELEPORTERS.0,
+    BLOCKERS.len() * (TELEPORTERS.0 + 1),
+    BLOCKERS.len() * (TELEPORTERS.0 + 2),
+    BLOCKERS.len() * (TELEPORTERS.0 + 3),
+    BLOCKERS.len() * (TELEPORTERS.0 + 4),
+    BLOCKERS.len() * (TELEPORTERS.0 + 5),
+    BLOCKERS.len() * (TELEPORTERS.0 + 6),
+];
+/// The teleporters' objects on land ([`TELEPORTER_OBJECTS`] but the Whirlpool's).
+const LAND_TELEPORTERS: [usize; 6] = [
+    TELEPORTER_OBJECTS[0],
+    TELEPORTER_OBJECTS[1],
+    TELEPORTER_OBJECTS[2],
+    TELEPORTER_OBJECTS[3],
+    TELEPORTER_OBJECTS[4],
+    TELEPORTER_OBJECTS[5],
+];
+/// The Whirlpool's object, the last of [`TELEPORTER_OBJECTS`].
+pub(super) const WHIRLPOOL_OBJECT: usize = TELEPORTER_OBJECTS[6];
+
 /// Whether an object of kind `kind` is ownable, its owner at load from the plan's
 /// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
 /// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
@@ -411,10 +450,16 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// ([`BLOCKERS`]), but a monster's one tile, blocked and visited, and nothing of a special
 /// ground's, which neither blocks nor is visited (E08 T20b3b1); an event's one tile too (E08
 /// T64b: as the shipped maps' events, which the import keeps apart from the movement's masks);
-/// (E08 T75b) a boat's and a sea pickup's one tile, and nothing of Favorable Winds'.
+/// (E08 T75b) a boat's and a sea pickup's one tile, and nothing of Favorable Winds'; (E08 T106b1) a
+/// monolith's one tile, a Subterranean Gate's anchor, the two tiles left of it and the one above
+/// the middle one, visited on the middle one (the original's template, `teleporters_map.rs`), and
+/// a Whirlpool's anchor and the tile above it, both visited (the original's covers three columns
+/// of two rows: one column fits the plans' narrowest strait).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     match KINDS[object / BLOCKERS.len()].0 {
-        54 | 26 | 8 | 29 | 82 | 86 | 59 => (&[(0, 0)], &[(0, 0)]),
+        54 | 26 | 8 | 29 | 82 | 86 | 59 | 43 | 44 | 45 => (&[(0, 0)], &[(0, 0)]),
+        103 => (&[(0, 0), (1, 0), (2, 0), (1, 1)], &[(1, 0)]),
+        111 => (&[(0, 0), (0, 1)], &[(0, 0), (0, 1)]),
         21 | 46 | 225 => (&[], &[]),
         _ => BLOCKERS[object % BLOCKERS.len()],
     }
@@ -753,6 +798,10 @@ pub(super) struct Plan {
     /// (E09 T9b1; the town epic's design note §18) The towns ([`TownPlan`], [`towns`]), laid
     /// out after every other object.
     pub(super) towns: Vec<TownPlan>,
+    /// (E08 T106b1; increment 11's design note §14) The teleporters ([`teleporters`]): each one's
+    /// anchor (modulo the map) and object ([`TELEPORTER_OBJECTS`]), laid out after every other
+    /// object but the towns and the boats ([`teleporters_laid_out`]).
+    pub(super) teleporters: Vec<(Spot, usize)>,
 }
 
 /// A plan's town (E09 T9b1; the town epic's design note §18), laid out as the import's tests
@@ -1021,6 +1070,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 dwellings(),
                 // E09 T9b1, drawn last for the same reason.
                 towns(),
+                // E08 T106b1, drawn last for the same reason.
+                teleporters(),
             ),
         ),
     )
@@ -1053,6 +1104,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         economy,
                         dwellings,
                         towns,
+                        teleporters,
                     ),
                 ),
             )| {
@@ -1150,6 +1202,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
                     blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
                 }
+                // E08 T106b1: the Whirlpools on the strait ([`Teleporters::whirlpools`]).
+                let mut whirlpools = Vec::new();
                 // E08 T75b: a strait beside a hero, its boats, pickups, winds and monster, and
                 // the hero's sources of sea points ([`Sea`]).
                 if let Some(sea) = sea {
@@ -1168,6 +1222,9 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     }
                     for &((c, r), object) in sea.boats.iter().chain(&sea.objects) {
                         blockers.push(((column(c), row(r), z), object));
+                    }
+                    for &(c, r) in &teleporters.whirlpools {
+                        whirlpools.push(((column(c), row(r), z), WHIRLPOOL_OBJECT));
                     }
                     // E08 T86b1: a Shipyard on the strait's coast, its entrance two columns west
                     // of the strait ([`SHIPYARD_OBJECT`]), so that it has a boat tile.
@@ -1198,6 +1255,31 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
                     blockers.push(((at(hx, dx), at(hy, dy), hz % levels), object));
                 }
+                // E08 T106b1: increment 11's teleporters ([`Teleporters`]): the Whirlpools on the
+                // strait, those within two tiles of a hero, then those anywhere.
+                let mut teleported = whirlpools;
+                for &((dx, dy), hero, object, partner) in &teleporters.near {
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                    teleported.push(((at(hx, dx), at(hy, dy), hz % levels), object));
+                    // Its partner near the next hero (mostly another player's: the owners go
+                    // round the players), so that the jumps bring players' heroes together: an
+                    // entrance's exit, an exit's entrance, a two-way monolith of its channel, a
+                    // gate on the other level; none for channel 1's entrance.
+                    if let Some((px, py)) = partner.filter(|_| object != TELEPORTER_OBJECTS[1]) {
+                        let next = usize::from(hero).wrapping_add(1) % heroes.len();
+                        let ((nx, ny, nz), _) = heroes[next];
+                        let (kind, z) = match object {
+                            o if o == TELEPORTER_OBJECTS[0] => (TELEPORTER_OBJECTS[2], nz),
+                            o if o == TELEPORTER_OBJECTS[2] => (TELEPORTER_OBJECTS[0], nz),
+                            o if o == TELEPORTER_OBJECTS[5] => (o, nz % levels + 1),
+                            o => (o, nz),
+                        };
+                        teleported.push(((at(nx, px), at(ny, py), z % levels), kind));
+                    }
+                }
+                teleported.extend(teleporters.far.iter().copied());
                 Plan {
                     version,
                     side,
@@ -1216,9 +1298,69 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     events,
                     owners: economy.owners,
                     towns,
+                    teleporters: teleported,
                 }
             },
         )
+}
+
+/// A teleporter near a hero ([`Teleporters::near`]): its offset from the hero's tile, the hero, the
+/// object and its partner's offset from the next hero's tile.
+type Near = ((u8, u8), u8, usize, Option<(u8, u8)>);
+
+/// Increment 11's teleporters of a plan (E08 T106b1, increment 11's design note §14), drawn as
+/// [`teleporters`] draws them; [`Plan::teleporters`] places them.
+#[derive(Debug, Clone, Default)]
+pub(super) struct Teleporters {
+    /// Teleporters on land ([`LAND_TELEPORTERS`]), each at an offset from a hero's tile (two
+    /// columns and rows left of it to two right) and the hero (modulo the plan's), on its level,
+    /// so that random play enters them; in two cases of three with a partner at an offset from the
+    /// next hero's tile (mostly another player's): an entrance's exit, an exit's entrance, a
+    /// two-way monolith of its channel, a gate on the other level (none for channel 1's entrance).
+    near: Vec<Near>,
+    /// Teleporters on land anywhere: an anchor (modulo the map) and the object; mostly exits, other
+    /// members of a two-way channel and gates, so that the jumps cross the map and the levels.
+    far: Vec<(Spot, usize)>,
+    /// On a plan with a strait ([`Sea`]): Whirlpools ([`WHIRLPOOL_OBJECT`]), each at a column of the
+    /// strait (modulo its width) and a row from two above the strait's hero's to thirteen below.
+    whirlpools: Vec<(u8, u8)>,
+}
+
+/// A plan's teleporters (E08 T106b1): in three plans of four, one to four near the heroes, up to
+/// six anywhere and (with a strait) up to four Whirlpools. The near ones are drawn among every
+/// kind on land (an entrance of channel 0 or 1, the exit, a two-way monolith of channel 0 or 1, a
+/// gate), the far ones mostly among the exit, the two-way monoliths and the gate, so that the
+/// channels have candidates; the channel 1 entrance has none ever (no channel 1 exit).
+fn teleporters() -> impl Strategy<Value = Teleporters> {
+    let near = proptest::sample::select(&LAND_TELEPORTERS[..]);
+    let far = prop_oneof![
+        1 => Just(TELEPORTER_OBJECTS[0]),
+        3 => Just(TELEPORTER_OBJECTS[2]),
+        3 => Just(TELEPORTER_OBJECTS[3]),
+        2 => Just(TELEPORTER_OBJECTS[4]),
+        3 => Just(TELEPORTER_OBJECTS[5]),
+    ];
+    prop_oneof![
+        1 => Just(Teleporters::default()),
+        3 => (
+            vec(
+                (
+                    (0u8..5, 0u8..5),
+                    any::<u8>(),
+                    near,
+                    proptest::option::weighted(0.67, (0u8..5, 0u8..5)),
+                ),
+                1..=4,
+            ),
+            vec((any::<(u8, u8, u8)>(), far), 0..=6),
+            vec((any::<u8>(), 0u8..16), 0..=4),
+        )
+            .prop_map(|(near, far, whirlpools)| Teleporters {
+                near,
+                far,
+                whirlpools,
+            }),
+    ]
 }
 
 /// Increment 9's objects of a plan (E08 T86b1, increment 9's design note §15), drawn as
@@ -1505,6 +1647,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         .and_then(|e| e.full.as_ref())
         .map(|_| MONSTER_OBJECTS[0]);
     let used = plan.blockers.iter().map(|&(_, o)| o).chain(goblins);
+    // E08 T106b1: the teleporters' too.
+    let used = used.chain(plan.teleporters.iter().map(|&(_, o)| o));
     let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
@@ -1669,6 +1813,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
             );
         }
     }
+    teleporters_laid_out(&mut m, plan, &heroes, &mut covered);
     // E09 T9b1: each hero's owner, as the heroes are laid out below.
     let owners: Vec<u8> = (0..heroes.len())
         .map(|i| colours[if Some(i) == mate { 0 } else { i } % colours.len()])
@@ -1773,6 +1918,54 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         m.objects.push(o);
     }
     m
+}
+
+/// The plan's teleporters laid out after its other objects but the towns and the boats (E08
+/// T106b1; increment 11's design note §14), each where the game's build takes it: every visitable
+/// tile of it on the map on its surface (A-42, `SetupError::TeleporterSurface`: a monolith's and a
+/// gate's on land, a Whirlpool's on water; rock is neither), one at least; and no tile of it on a
+/// hero's tile or on one an object laid out before blocks or is visited on (`covered`), so that
+/// each of its visitable tiles is listed for it (ADV-TEL-002: the last object visited from a tile)
+/// and no two of a type share an anchor. A teleporter anywhere else is left out; plans without
+/// teleporters keep their maps.
+fn teleporters_laid_out(
+    m: &mut RawMap,
+    plan: &Plan,
+    heroes: &[(Spot, &Slots)],
+    covered: &mut Vec<Spot>,
+) {
+    let (side, levels) = (plan.side, 1 + u8::from(plan.two_levels));
+    for &((x, y, z), teleporter) in &plan.teleporters {
+        let (ax, ay, az) = (x % side, y % side, z % levels);
+        let (blocked, visitable) = masks(teleporter);
+        let tiles = |mask: Mask| -> Vec<Spot> {
+            mask.iter()
+                .filter_map(|&(column, row)| {
+                    Some((ax.checked_sub(column)?, ay.checked_sub(row)?, az))
+                })
+                .collect()
+        };
+        let (blocks, visits) = (tiles(blocked), tiles(visitable));
+        let water = teleporter == WHIRLPOOL_OBJECT;
+        let surface = |&(tx, ty, tz): &Spot| {
+            let index = (usize::from(tz) * usize::from(side) + usize::from(ty)) * usize::from(side)
+                + usize::from(tx);
+            let terrain = m.terrain.tiles[index].terrain;
+            if water { terrain == 8 } else { terrain < 8 }
+        };
+        let taken = |t: &Spot| covered.contains(t) || heroes.iter().any(|&(at, _)| at == *t);
+        if visits.is_empty()
+            || !visits.iter().all(surface)
+            || blocks.iter().chain(&visits).any(taken)
+        {
+            continue;
+        }
+        let template = 1 + u32::try_from(teleporter).unwrap();
+        let mut o = object(ax, ay, template, Body::None);
+        o.pos.z = az;
+        m.objects.push(o);
+        covered.extend(blocks.into_iter().chain(visits));
+    }
 }
 
 /// The tiles a town blocks (its entrance among them), as `(column, row)` left of and above its
@@ -2040,6 +2233,119 @@ fn check_resolved(
     Ok(resolved)
 }
 
+/// The channels of the map `m` as the game `state` built on it lists them (E08 T106b1;
+/// ADV-TEL-002, increment 11's design note §5, §14), read apart from the build: a plan lays out
+/// each teleporter alone on its tiles ([`teleporters_laid_out`]), so the one-way exits' and the
+/// two-way monoliths' visitable tiles on the map by channel, and every Whirlpool's with its
+/// anchor, in the walk's order (level, row, column); the gates' entries likewise, each paired with
+/// one on the other level both ways or with none, the unpaired ones all on one level (the pairing
+/// pairs while both levels hold an unpaired gate), each pair as D-56 reads the original's: over the
+/// entries in the walk's order, each one still unpaired with the unpaired entry after it on
+/// another level at the least truncated distance, the first on a tie. The number of teleporters
+/// laid out.
+fn check_channels(m: &RawMap, state: &GameState) -> Result<usize, TestCaseError> {
+    let side = u16::try_from(m.terrain.size).unwrap();
+    let walk = |p: &TilePos| (p.level, p.y, p.x);
+    let (mut exits, mut two_way, mut gates, mut whirlpools, mut count) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new(), 0);
+    for o in &m.objects {
+        let Some(object) = usize::try_from(o.template)
+            .ok()
+            .and_then(|t| t.checked_sub(1))
+            .filter(|&object| object < KINDS.len() * BLOCKERS.len())
+            .filter(|_| o.template != HERO_TEMPLATE && !matches!(o.body, Body::Town(_)))
+        else {
+            continue;
+        };
+        let (class, subclass, _) = KINDS[object / BLOCKERS.len()];
+        if ![43, 44, 45, 103, 111].contains(&class) {
+            continue;
+        }
+        count += 1;
+        let anchor = TilePos::new(o.pos.x.into(), o.pos.y.into(), o.pos.z);
+        let tiles = masks(object).1.iter().filter_map(|&(column, row)| {
+            let (x, y) = (
+                u16::from(o.pos.x).checked_sub(column.into())?,
+                u16::from(o.pos.y).checked_sub(row.into())?,
+            );
+            (x < side && y < side).then(|| TilePos::new(x, y, o.pos.z))
+        });
+        for tile in tiles {
+            let channel = u8::try_from(subclass).unwrap();
+            match class {
+                44 => exits.push((channel, tile)),
+                45 => two_way.push((channel, tile)),
+                103 => gates.push(tile),
+                111 => whirlpools.push((tile, anchor)),
+                _ => {}
+            }
+        }
+    }
+    let channels = state.adventure().map().channels();
+    let objects = state.adventure().map().objects();
+    for (channel, listed) in [(0u8, channels.exits(0)), (1, channels.exits(1))] {
+        let mut tiles: Vec<TilePos> = (exits.iter())
+            .filter(|e| e.0 == channel)
+            .map(|e| e.1)
+            .collect();
+        tiles.sort_by_key(walk);
+        prop_assert_eq!(listed, &tiles[..]);
+    }
+    for (channel, listed) in [(0u8, channels.two_way(0)), (1, channels.two_way(1))] {
+        let mut tiles: Vec<TilePos> = (two_way.iter())
+            .filter(|e| e.0 == channel)
+            .map(|e| e.1)
+            .collect();
+        tiles.sort_by_key(walk);
+        prop_assert_eq!(listed, &tiles[..]);
+    }
+    whirlpools.sort_by_key(|(tile, _)| walk(tile));
+    let listed: Vec<(TilePos, TilePos)> = (channels.whirlpools().iter())
+        .map(|w| (w.tile, objects[w.object].anchor))
+        .collect();
+    prop_assert_eq!(listed, whirlpools);
+    gates.sort_by_key(walk);
+    let entries: Vec<TilePos> = channels.gates().iter().map(|g| g.tile).collect();
+    prop_assert_eq!(&entries, &gates);
+    let mut unpaired = Vec::new();
+    for g in channels.gates() {
+        match g.pair {
+            Some(pair) => {
+                prop_assert_ne!(pair.level, g.tile.level);
+                prop_assert_eq!(channels.gate_pair(pair), Some(g.tile));
+            }
+            None => unpaired.push(g.tile.level),
+        }
+    }
+    prop_assert!(
+        unpaired.windows(2).all(|w| w[0] == w[1]),
+        "{:?}",
+        channels.gates()
+    );
+    let mut pairs: Vec<Option<TilePos>> = vec![None; gates.len()];
+    for i in 0..gates.len() {
+        if pairs[i].is_some() {
+            continue;
+        }
+        let distance = |j: usize| {
+            let (dx, dy) = (
+                gates[i].x.abs_diff(gates[j].x),
+                gates[i].y.abs_diff(gates[j].y),
+            );
+            (u64::from(dx) * u64::from(dx) + u64::from(dy) * u64::from(dy)).isqrt()
+        };
+        let nearest = (i + 1..gates.len())
+            .filter(|&j| pairs[j].is_none() && gates[j].level != gates[i].level)
+            .min_by_key(|&j| (distance(j), j));
+        if let Some(j) = nearest {
+            (pairs[i], pairs[j]) = (Some(gates[j]), Some(gates[i]));
+        }
+    }
+    let built: Vec<Option<TilePos>> = channels.gates().iter().map(|g| g.pair).collect();
+    prop_assert_eq!(built, pairs);
+    Ok(count)
+}
+
 /// The eight directions, as column and row offsets.
 const DIRECTIONS: [(i16, i16); 8] = [
     (0, -1),
@@ -2112,6 +2418,12 @@ pub(super) enum Step {
     /// acting player's `n`-th option that enters a town, else one that gets nearer to a town not
     /// its own ([`visit_town`]); as `Hire(n)` on a map without towns.
     Town(u16),
+    /// (E08 T106b1; increment 11's design note §14, §18) In a battle as `Fight(n)`; on the map the
+    /// acting player's `n`-th listed `Revisit` in one step of two, else its `n`-th option that
+    /// enters a teleporter, else one that gets nearer to one ([`teleport`]); as `Hire(n)` on a map
+    /// without teleporters. A run's length bounds the revisits at 0 points, which repeat (the
+    /// original's "unlimited cycling", decision 268).
+    Jump(u16),
     /// (E09 T19b; the town epic's design note §32) The acting player's `n`-th listed build of a
     /// town (TWN-BLD-001; modulo their number), or as `Legal(n)` if it lists none.
     Build(u16),
@@ -2155,6 +2467,9 @@ pub(super) enum Free {
     Answer(Answer),
     /// (E08 T52) A management command of arbitrary heroes, slots, places and counts.
     Manage(Arbitrary),
+    /// (E08 T106b1) A `Revisit` of an arbitrary hero (ADV-TEL-008): mostly refused, another
+    /// player's hero or one on no object to visit again.
+    Revisit(Who),
 }
 
 /// An arbitrary management command (E08 T52; GAM-MAN-001): its kind (modulo 9: a move, a split
@@ -2300,6 +2615,7 @@ pub(super) fn step() -> impl Strategy<Value = Step> {
             .prop_map(|(hero, to)| Free::Line { hero, to }),
         (0..ANY_ANSWERS.len()).prop_map(|i| Free::Answer(ANY_ANSWERS[i])),
         arbitrary().prop_map(Free::Manage),
+        who().prop_map(Free::Revisit),
     ];
     prop_oneof![
         6 => any::<u16>().prop_map(Step::Legal),
@@ -2365,6 +2681,9 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             })
             .collect()
     });
+    // E08 T106b1: runs of jumps, `Step::Jump`s, which walk and sail heroes to the teleporters,
+    // enter and revisit them, and play the battles at their exits.
+    let jump = vec(any::<u16>(), 8..48).prop_map(|ns| ns.into_iter().map(Step::Jump).collect());
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -2376,6 +2695,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => days,
             1 => hire,
             1 => town,
+            1 => jump,
             1 => build,
         ],
         0..40,
@@ -2814,6 +3134,142 @@ fn visit_town(
         .map_or(GameCommand::EndTurn, |&command| command.clone())
 }
 
+/// [`Step::Jump`] (E08 T106b1; increment 11's design note §14): in a battle as [`fight`] (a battle
+/// at an exit's too, either side's); an open decision settled as [`seek`] settles it; on the map
+/// its `n`-th listed `Revisit` in one step of two if it lists one (a hero on a teleporter jumps
+/// again, at 0 points too); else the `n`-th of its options that end on a teleporter's visitable
+/// tile (a monolith, a gate, a Whirlpool's tile; a walk's or a boat's), in one step of two among
+/// those whose [`candidates`] hold another hero if any do; with Whirlpools, in one step of two a
+/// walker's that boards an empty boat; else the `n`-th of those
+/// that end nearer to a teleporter's tile on the hero's level than the hero stands, but its own;
+/// else `EndTurn`. On a map without teleporters, as [`hire`].
+fn teleport(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let adventure = state.adventure();
+    let channels = adventure.map().channels();
+    // The teleporters on the map, the one-way entrances (in no list) among them.
+    let map = adventure.map();
+    let teleporters: Vec<&h3_adventure::MapObject> = (map.objects().iter().enumerate())
+        .filter(|&(i, o)| {
+            let kind = o
+                .object_type
+                .and_then(|ty| rules.adventure().object_type(ty));
+            !adventure.is_removed(i)
+                && kind.is_some_and(|ty| {
+                    matches!(
+                        ty.kind,
+                        ObjectKind::Monolith { .. }
+                            | ObjectKind::SubterraneanGate
+                            | ObjectKind::Whirlpool { .. }
+                    )
+                })
+        })
+        .map(|(_, o)| o)
+        .collect();
+    if teleporters.is_empty() {
+        return hire(state, rules, legal, n);
+    }
+    if battle_of(state, actor(state)).is_some() {
+        return fight(state, rules, legal, n);
+    }
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
+    }
+    let revisits: Vec<&GameCommand> = legal
+        .iter()
+        .filter(|c| matches!(c, GameCommand::Adventure(AdventureCommand::Revisit { .. })))
+        .collect();
+    if n.is_multiple_of(2) && !revisits.is_empty() {
+        return revisits[usize::from(n / 2) % revisits.len()].clone();
+    }
+    // Their visitable tiles, in the walk's order.
+    let mut tiles: Vec<TilePos> = Vec::new();
+    for z in 0..map.levels() {
+        for y in 0..map.height() {
+            for x in 0..map.width() {
+                let pos = TilePos::new(x, y, z);
+                if teleporters.iter().any(|o| o.covers(pos).1) {
+                    tiles.push(pos);
+                }
+            }
+        }
+    }
+    let moves: Vec<(&GameCommand, HeroId, &[TilePos])> = legal
+        .iter()
+        .filter_map(|c| as_move(c).map(|(hero, path)| (c, hero, path)))
+        .collect();
+    let entering: Vec<&GameCommand> = moves
+        .iter()
+        .filter(|(_, _, path)| path.last().is_some_and(|to| tiles.contains(to)))
+        .map(|&(c, _, _)| c)
+        .collect();
+    // In one step of two, one whose exits hold another hero (another player's on a monolith's or a
+    // Whirlpool's candidate, any on a gate's pair), so that battles at an exit are fought and gates'
+    // meetings held (a hero stays on an exit it arrived at or that led nowhere).
+    let player = acting(state);
+    let fights: Vec<&GameCommand> = (entering.iter().copied())
+        .filter(|c| {
+            let Some((hero, &[.., to])) = as_move(c) else {
+                return false;
+            };
+            let Some((object, kind)) = teleporter_at(state, rules, to) else {
+                return false;
+            };
+            let exits = candidates(state, (player, hero), (to, object, &kind));
+            let heroes = adventure.heroes().iter();
+            exits
+                .iter()
+                .any(|&t| heroes.clone().any(|h| h.pos == t && h.id != hero))
+        })
+        .collect();
+    if n % 4 < 2 && !fights.is_empty() {
+        return fights[usize::from(n) % fights.len()].clone();
+    }
+    if !entering.is_empty() {
+        return entering[usize::from(n) % entering.len()].clone();
+    }
+    // With Whirlpools, in one step of two a walker boards an empty boat, so that heroes sail to
+    // them.
+    let whirlpools = !channels.whirlpools().is_empty();
+    let boarding: Vec<&GameCommand> = (moves.iter())
+        .filter(|(_, hero, path)| {
+            let walker = adventure.hero(*hero).is_some_and(|h| h.boat.is_none());
+            walker && path.last().is_some_and(|&to| adventure.is_empty_boat(to))
+        })
+        .map(|&(c, _, _)| c)
+        .collect();
+    if whirlpools && n % 4 >= 2 && !boarding.is_empty() {
+        return boarding[usize::from(n) % boarding.len()].clone();
+    }
+    let distance = |from: TilePos, pos: TilePos| {
+        tiles
+            .iter()
+            .filter(|&&t| t != from && t.level == pos.level)
+            .map(|t| t.x.abs_diff(pos.x).max(t.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for &(command, hero, path) in &moves {
+        let Some(at) = adventure.hero(hero).map(|h| h.pos) else {
+            continue;
+        };
+        let here = distance(at, at);
+        let there = path.last().and_then(|&to| distance(at, to));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
 /// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
 /// taken, its meeting or army dialog managed (the `n`-th of [`managing`], `Close` if none), its
 /// choice or University answered as [`settle`] does (E08 T63a);
@@ -3017,8 +3473,17 @@ fn landing(
             AdventureEventKind::TilesRevealed { .. }
         ]
     );
+    // (E08 T106b1) A Whirlpool's loss comes before its jump (ADV-TEL-006): the jump's event
+    // follows ([`check_jumps`]; the jump's exit, [`jumped_to`]).
+    let whirled = matches!(
+        visit,
+        [
+            AdventureEventKind::WhirlpoolLoss { .. },
+            AdventureEventKind::HeroTeleported { .. }
+        ]
+    );
     prop_assert!(
-        kinds.len() <= steps + 1 || leaves || flagged || marked || captured,
+        kinds.len() <= steps + 1 || leaves || flagged || marked || captured || whirled,
         "{:?}",
         kinds
     );
@@ -3061,6 +3526,32 @@ fn landing(
     }
     let walked = &path[..steps];
     Ok((walked.last().copied().unwrap_or(start), stays))
+}
+
+/// Where `hero` arrived by a jump `events` tell (E08 T106b1; ADV-TEL-007): the exit of its
+/// `HeroTeleported`, if it jumped (its walk ended on the entrance, [`landing`]).
+fn jumped_to(events: &[GameEvent], hero: HeroId) -> Option<TilePos> {
+    events.iter().find_map(|e| match *e {
+        GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroTeleported { hero: h, to, .. },
+            ..
+        }) if h == hero => to,
+        _ => None,
+    })
+}
+
+/// Whether `events` tell a boarding or a landing (ADV-SEA-002, -003), which convert the hero's
+/// points and its day's maximum.
+fn converted(events: &[GameEvent]) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::Boarded { .. } | AdventureEventKind::Landed { .. },
+                ..
+            })
+        )
+    })
 }
 
 /// The tile of the event that `events` tell fired, if one did (E08 T64b; ADV-OBJ-007).
@@ -3234,7 +3725,7 @@ pub(super) fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand
 
 /// The `n`-th of the `legal` commands that `kind` picks (modulo their number), or the `n`-th
 /// command if it picks none ([`Step::BuildBoat`], [`Step::Build`]).
-fn listed(legal: &[GameCommand], n: u16, kind: impl Fn(&GameCommand) -> bool) -> GameCommand {
+fn nth_listed(legal: &[GameCommand], n: u16, kind: impl Fn(&GameCommand) -> bool) -> GameCommand {
     let picked: Vec<&GameCommand> = legal.iter().filter(|&c| kind(c)).collect();
     let command = match picked.len() {
         0 => &legal[usize::from(n) % legal.len()],
@@ -3291,6 +3782,7 @@ pub(super) fn resolve(
         Step::Garrison(n) => (who, garrison(state, rules, legal, *n)),
         Step::Hire(n) => (who, hire(state, rules, legal, *n)),
         Step::Town(n) => (who, visit_town(state, rules, legal, *n)),
+        Step::Jump(n) => (who, teleport(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -3298,11 +3790,11 @@ pub(super) fn resolve(
                     GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
                 )
             };
-            (who, listed(legal, *n, boat))
+            (who, nth_listed(legal, *n, boat))
         }
         Step::Build(n) => {
             let build = |c: &GameCommand| matches!(c, GameCommand::Town(TownCommand::Build { .. }));
-            (who, listed(legal, *n, build))
+            (who, nth_listed(legal, *n, build))
         }
         Step::Edited(n, edit) => {
             let moves: Vec<(HeroId, &[TilePos])> = legal.iter().filter_map(as_move).collect();
@@ -3347,6 +3839,13 @@ pub(super) fn resolve(
                 Free::Answer(answer) => (who, GameCommand::Answer(*answer)),
                 Free::Manage(arbitrary) => {
                     (who, GameCommand::Manage(arbitrary.command(state, actor)))
+                }
+                Free::Revisit(hero) => {
+                    let hero = hero.hero(state, actor);
+                    (
+                        who,
+                        GameCommand::Adventure(AdventureCommand::Revisit { hero }),
+                    )
                 }
                 Free::Move {
                     hero,
@@ -4046,7 +4545,17 @@ fn check_legal(
         );
         let moved = probe.adventure().hero(hero).unwrap();
         let points = reach_of(reaches, hero).points_left(end);
-        prop_assert_eq!((moved.pos, Some(moved.movement)), (at, points));
+        // E08 T106b1: a jump from the walk's end, the entrance, keeps the points the query reports
+        // there and the day's maximum (ADV-TEL-007, increment 11's design note §14).
+        let jumped = jumped_to(&events, hero);
+        prop_assert_eq!(
+            (moved.pos, Some(moved.movement)),
+            (jumped.unwrap_or(at), points)
+        );
+        if jumped.is_some() && !converted(&events) {
+            let was = state.adventure().hero(hero).unwrap();
+            prop_assert_eq!(moved.max_movement, was.max_movement);
+        }
     }
     Ok(())
 }
@@ -4175,6 +4684,440 @@ fn check_revisits(
                 (is.movement, is.max_movement),
                 (was.movement, was.max_movement)
             );
+        }
+    }
+    Ok(())
+}
+
+/// The teleporter visited from `pos` in `state` (E08 T106b1; increment 11's design note §7): its
+/// object's index and kind, if the object visited from `pos` ([`visited_at`]) is a monolith, a
+/// Subterranean Gate or a Whirlpool.
+fn teleporter_at(
+    state: &GameState,
+    rules: &GameRuleset,
+    pos: TilePos,
+) -> Option<(usize, ObjectKind)> {
+    let index = visited_at(state, pos)?;
+    let ty = state.adventure().object(index)?.object_type?;
+    let kind = rules.adventure().object_type(ty)?.kind.clone();
+    matches!(
+        kind,
+        ObjectKind::Monolith { .. } | ObjectKind::SubterraneanGate | ObjectKind::Whirlpool { .. }
+    )
+    .then_some((index, kind))
+}
+
+/// The exits a jump from the teleporter `object` of kind `kind` on `entrance` may take, by an
+/// oracle of ADV-TEL-003 to -006 read on `state` with `player`'s hero `mover` on `entrance`
+/// (E08 T106b1; increment 11's design note §7): a gate's pair, whatever stands on it (none without
+/// one); else, over its list of the static map's channels (an entrance's the channel's one-way
+/// exits, a two-way monolith's the channel's members, a Whirlpool's every Whirlpool's tiles, an
+/// exit's none), the tiles a hero of another player stands on, whatever their object (survey
+/// §4.1: the hero's class is tested before the excluded word, so an enemy on another tile of the
+/// entrance's own Whirlpool is one), and those where no hero and no empty boat stand that the
+/// visit does not exclude (the entrance, a Whirlpool's own tiles).
+fn candidates(
+    state: &GameState,
+    (player, mover): (PlayerId, HeroId),
+    (entrance, object, kind): (TilePos, usize, &ObjectKind),
+) -> Vec<TilePos> {
+    let adventure = state.adventure();
+    let tiles = listed(state, (entrance, object, kind)).into_iter();
+    if matches!(kind, ObjectKind::SubterraneanGate) {
+        return tiles.map(|(tile, _)| tile).collect();
+    }
+    tiles
+        .filter(|&(tile, own)| {
+            let on = (adventure.heroes().iter()).find(|h| h.id != mover && h.pos == tile);
+            match on {
+                Some(other) => other.owner != player,
+                None => tile != entrance && !own && !adventure.is_empty_boat(tile),
+            }
+        })
+        .map(|(tile, _)| tile)
+        .collect()
+}
+
+/// The tiles of the static map's channels a jump from the teleporter `object` of kind `kind` on
+/// `entrance` takes its exit among (E08 T106b1; ADV-TEL-002), each with whether it is one of the
+/// entrance's own Whirlpool's: an entrance's its channel's one-way exits, a two-way monolith's its
+/// channel's members, a gate's its pair, a Whirlpool's every Whirlpool's tiles, an exit's none.
+fn listed(
+    state: &GameState,
+    (entrance, object, kind): (TilePos, usize, &ObjectKind),
+) -> Vec<(TilePos, bool)> {
+    let channels = state.adventure().map().channels();
+    let free = |tiles: &[TilePos]| tiles.iter().map(|&t| (t, false)).collect();
+    match *kind {
+        ObjectKind::Monolith {
+            channel,
+            way: h3_adventure::MonolithWay::Entrance,
+        } => free(channels.exits(channel)),
+        ObjectKind::Monolith {
+            channel,
+            way: h3_adventure::MonolithWay::TwoWay,
+        } => free(channels.two_way(channel)),
+        ObjectKind::SubterraneanGate => free(channels.gate_pair(entrance).as_slice()),
+        ObjectKind::Whirlpool { .. } => (channels.whirlpools().iter())
+            .map(|w| (w.tile, w.object == object))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// The teleporters' jumps and visits a command made from `before` to `after` (E08 T106b1;
+/// ADV-TEL-003 to -008, increment 11's design note §7, §14), `player` acting:
+///
+/// - **every jump** told (`HeroTeleported`; a move's, a revisit's, or held after a battle at the
+///   exit or a guard's) leaves from a teleporter that is no one-way exit, on which its hero stood,
+///   for a move or a revisit to one of that teleporter's [`candidates`] there (so never the
+///   entrance, a Whirlpool's never one of its own tiles but one an enemy holds), for a jump held
+///   after a battle to a tile of its list ([`listed`]); never onto another hero of its team; its
+///   hero stands on the exit after the command; a command that takes no step (a revisit, an answer, a battle's) keeps its
+///   points and the day's maximum (a move's: [`check_legal`], by the query's points at the
+///   entrance);
+/// - **every visit** of a teleporter by a move whose walk ended on it or by a `Revisit`, with no
+///   guard's question or battle before it (decision 279: the guard first, the visit held), went as
+///   ADV-TEL-004 to -006 say: a one-way exit and a gate without a pair lead nowhere, the hero
+///   staying; a gate's pair held by a hero of the team is met, by an enemy fought, else jumped to;
+///   a monolith or a Whirlpool without a candidate does nothing (a Whirlpool's loss but for a
+///   protected hero, [`check_whirlpool_losses`]: one loss for an unprotected hero, none for a
+///   protected one), with candidates jumps to a free one or fights the enemy on one;
+/// - the channels stay those of the static map's build (a fork's are a fresh build's: `channels`,
+///   the build's on a new game).
+///
+/// The visit's teleporter's kind and what it did, if the command made one (the cover test's).
+fn check_jumps(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    (player, command): (PlayerId, &GameCommand),
+    events: &[GameEvent],
+    channels: &h3_adventure::Channels,
+) -> Result<Option<(ObjectKind, Jumped)>, TestCaseError> {
+    prop_assert_eq!(after.adventure().map().channels(), channels);
+    let stepped = as_move(command).is_some();
+    let revisit = matches!(
+        command,
+        GameCommand::Adventure(AdventureCommand::Revisit { .. })
+    );
+    let jumps: Vec<(HeroId, Option<TilePos>, Option<TilePos>)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroTeleported { hero, from, to, .. },
+                ..
+            }) => Some((hero, from, to)),
+            _ => None,
+        })
+        .collect();
+    for &(hero, from, to) in &jumps {
+        let (Some(from), Some(to)) = (from, to) else {
+            return Err(fail(format!("{hero:?} jumped from {from:?} to {to:?}")));
+        };
+        let was = before.adventure().hero(hero).unwrap();
+        let (object, kind) = teleporter_at(before, rules, from)
+            .ok_or_else(|| fail(format!("{hero:?} jumped from {from:?}, no teleporter")))?;
+        prop_assert!(
+            !matches!(
+                kind,
+                ObjectKind::Monolith {
+                    way: h3_adventure::MonolithWay::Exit,
+                    ..
+                }
+            ),
+            "{:?} jumped from an exit",
+            hero
+        );
+        prop_assert_ne!(from, to);
+        // A move's or a revisit's jump draws now; one held after a battle at the exit (in a
+        // command of the battle, or in the answer to the winner's level-up that the jump waited
+        // for, its defender gone) goes to the exit its visit drew: one of the kind's list.
+        let exits: Vec<TilePos> = if stepped || revisit {
+            candidates(before, (was.owner, hero), (from, object, &kind))
+        } else {
+            let tiles = listed(before, (from, object, &kind)).into_iter();
+            tiles.map(|(tile, _)| tile).collect()
+        };
+        prop_assert!(
+            exits.contains(&to),
+            "{:?} jumped from {:?} to {:?}, not among {:?}",
+            hero,
+            from,
+            to,
+            exits
+        );
+        let team = before.adventure().heroes().iter();
+        prop_assert!(
+            !team
+                .clone()
+                .any(|h| h.id != hero && h.owner == was.owner && h.pos == to),
+            "{:?} jumped onto its team's hero",
+            hero
+        );
+        if matches!(kind, ObjectKind::Whirlpool { .. }) && (stepped || revisit) {
+            let held = team.clone().any(|h| h.id != hero && h.pos == to);
+            prop_assert!(held || visited_at(before, to) != Some(object));
+        }
+        let is = after.adventure().hero(hero).unwrap();
+        prop_assert_eq!(is.pos, to);
+        if !stepped {
+            prop_assert!(
+                was.pos == from,
+                "{:?} jumped from {:?}, on {:?}",
+                hero,
+                from,
+                was.pos
+            );
+            prop_assert_eq!(
+                (is.movement, is.max_movement),
+                (was.movement, was.max_movement)
+            );
+        }
+    }
+    // The visit's hero and tile: a move's walk's end, a revisit's hero's tile.
+    let visit = match *command {
+        GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
+            before.adventure().hero(hero).map(|h| (hero, h.pos))
+        }
+        _ => as_move(command).and_then(|(hero, path)| {
+            let last = events.iter().rev().find_map(|e| match *e {
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroStepped { hero: h, to, .. },
+                    ..
+                }) if h == hero => to,
+                _ => None,
+            })?;
+            (path.last() == Some(&last)).then_some((hero, last))
+        }),
+    };
+    // A guard's question or battle comes first (decision 279), the visit held; an empty boat on
+    // the walk's end (one a hero left on a Whirlpool's tile) is boarded, no visit (ADV-SEA-002).
+    let guarded = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::OfferOpened { .. }
+                | GameEvent::BattleStarted {
+                    heroes: [_, None],
+                    ..
+                }
+                | GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::Boarded { .. },
+                    ..
+                })
+        )
+    });
+    let Some((hero, entrance)) = visit.filter(|_| !guarded) else {
+        return Ok(None);
+    };
+    let Some((object, kind)) = teleporter_at(before, rules, entrance) else {
+        return Ok(None);
+    };
+    let nowhere = events.iter().any(|e| {
+        matches!(e, GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::LeadsNowhere { hero: h, .. }, ..
+        }) if *h == hero)
+    });
+    let fought = events.iter().find_map(|e| match *e {
+        GameEvent::BattleStarted {
+            heroes: [Some(h), Some(other)],
+            ..
+        } if h == hero => Some(other),
+        _ => None,
+    });
+    let jumped: Vec<TilePos> = (jumps.iter())
+        .filter(|&&(h, _, _)| h == hero)
+        .filter_map(|&(_, _, to)| to)
+        .collect();
+    let stays = after.adventure().hero(hero).map(|h| h.pos) == Some(entrance);
+    let others = before.adventure().heroes().iter();
+    let on = |tile: TilePos| others.clone().find(|h| h.id != hero && h.pos == tile);
+    let exits = candidates(before, (player, hero), (entrance, object, &kind));
+    let outcome = match kind {
+        ObjectKind::Monolith {
+            way: h3_adventure::MonolithWay::Exit,
+            ..
+        } => {
+            prop_assert!(nowhere && jumped.is_empty() && fought.is_none() && stays);
+            Jumped::Nowhere
+        }
+        ObjectKind::SubterraneanGate => match exits.first().map(|&pair| (pair, on(pair))) {
+            None => {
+                prop_assert!(nowhere && jumped.is_empty() && fought.is_none() && stays);
+                Jumped::Nowhere
+            }
+            Some((_, Some(other))) if other.owner == player => {
+                let met = after.meeting(player);
+                prop_assert!(
+                    met.is_some_and(|m| m.contains(&hero) && m.contains(&other.id)),
+                    "{:?} met {:?}",
+                    hero,
+                    met
+                );
+                prop_assert!(!nowhere && jumped.is_empty() && fought.is_none() && stays);
+                Jumped::Met
+            }
+            Some((_, Some(other))) => {
+                prop_assert_eq!(fought, Some(other.id));
+                prop_assert!(!nowhere && jumped.is_empty() && stays);
+                Jumped::Fought
+            }
+            Some((pair, None)) => {
+                prop_assert_eq!(&jumped, &vec![pair]);
+                prop_assert!(!nowhere && fought.is_none());
+                Jumped::Arrived
+            }
+        },
+        _ => {
+            prop_assert!(!nowhere, "{:?} led nowhere", hero);
+            if matches!(kind, ObjectKind::Whirlpool { .. }) {
+                let details = before.hero(hero).unwrap();
+                let protected = h3_heroes::whirlpool_protection(details, rules.core());
+                let lost = events.iter().filter(|e| {
+                    matches!(e, GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::WhirlpoolLoss { hero: h, .. }, ..
+                    }) if *h == hero)
+                });
+                prop_assert_eq!(lost.count(), usize::from(!protected), "{:?}", hero);
+            }
+            if exits.is_empty() {
+                prop_assert!(jumped.is_empty() && fought.is_none() && stays);
+                Jumped::Nothing
+            } else if let Some(other) = fought {
+                let tile = before.adventure().hero(other).unwrap().pos;
+                prop_assert!(
+                    exits.contains(&tile),
+                    "{:?} fought {:?} on {:?} off the candidates {:?} of {:?} {:?} by {:?}: {:?}",
+                    hero,
+                    other,
+                    tile,
+                    exits,
+                    entrance,
+                    kind,
+                    command,
+                    events
+                );
+                prop_assert!(jumped.is_empty() && stays);
+                Jumped::Fought
+            } else {
+                prop_assert_eq!(
+                    jumped.len(),
+                    1,
+                    "{:?} of {:?} on {:?} {:?} by {:?}: {:?}",
+                    hero,
+                    exits,
+                    entrance,
+                    kind,
+                    command,
+                    events
+                );
+                prop_assert!(on(jumped[0]).is_none());
+                Jumped::Arrived
+            }
+        }
+    };
+    Ok(Some((kind, outcome)))
+}
+
+/// What a teleporter's visit did ([`check_jumps`]; E08 T106b1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Jumped {
+    /// Nothing at all: no candidate (ADV-TEL-004, ADV-TEL-006).
+    Nothing,
+    /// It led nowhere: a one-way exit, a gate without a pair.
+    Nowhere,
+    /// The hero arrived on the exit (ADV-TEL-007).
+    Arrived,
+    /// The hero met one of its team on a gate's pair (GAM-MET-001 amended).
+    Met,
+    /// The hero fought an enemy on the exit (GAM-BAT-004 amended), the jump held.
+    Fought,
+}
+
+/// Every Whirlpool's loss a command made (E08 T106b1; ADV-TEL-006, increment 11's design note §8,
+/// §14), read apart from the engine: the hero has no protection (HER-ADV-009); its army at the
+/// visit (the army after the command with the loss given back: nothing after the loss changes it,
+/// the jump or a battle's start at the exit; a move's or a revisit's before's army) loses in its
+/// weakest stack, the least fight value × count, the first slot on a tie, all but `count /
+/// divisor` (a lone stack keeping one at least), and the army is never empty.
+fn check_whirlpool_losses(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    command: &GameCommand,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let core = rules.core();
+    let divisor = |state: &GameState, pos: TilePos| match teleporter_at(state, rules, pos) {
+        Some((_, ObjectKind::Whirlpool { divisor })) => Some(divisor),
+        _ => None,
+    };
+    let losses: Vec<(HeroId, u8, CreatureTypeId, u32)> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::WhirlpoolLoss {
+                        hero,
+                        slot,
+                        creature,
+                        count,
+                    },
+                ..
+            }) => Some((hero, slot, creature, count)),
+            _ => None,
+        })
+        .collect();
+    let took_no_step = matches!(
+        command,
+        GameCommand::Adventure(AdventureCommand::Revisit { .. })
+    );
+    for &(hero, slot, creature, count) in &losses {
+        let details = after.hero(hero).unwrap();
+        prop_assert!(
+            !h3_heroes::whirlpool_protection(details, core),
+            "{:?}",
+            hero
+        );
+        // The Whirlpool: the one the hero jumped from, else the one it stays on.
+        let from = events.iter().find_map(|e| match *e {
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroTeleported { hero: h, from, .. },
+                ..
+            }) if h == hero => from,
+            _ => None,
+        });
+        let is = after.adventure().hero(hero).unwrap();
+        let divisor = divisor(before, from.unwrap_or(is.pos))
+            .ok_or_else(|| fail(format!("{hero:?}'s loss off a Whirlpool")))?;
+        prop_assert!(!is.army.is_empty(), "{:?}", is);
+        let mut was = is.army.clone();
+        match was.iter_mut().find(|s| s.slot == slot) {
+            Some(stack) => {
+                prop_assert_eq!(stack.creature, creature);
+                stack.count += count;
+            }
+            None => {
+                let at = was.partition_point(|s| s.slot < slot);
+                was.insert(
+                    at,
+                    h3_contracts::ArmyStack {
+                        slot,
+                        creature,
+                        count,
+                    },
+                );
+            }
+        }
+        let value = |s: &h3_contracts::ArmyStack| {
+            let fight = core.creature(s.creature).map_or(0, |c| c.fight_value);
+            (u64::from(fight) * u64::from(s.count), s.slot)
+        };
+        let weakest = was.iter().min_by_key(|s| value(s)).unwrap();
+        prop_assert_eq!(weakest.slot, slot, "{:?}", was);
+        let kept = weakest.count / divisor;
+        let kept = if was.len() == 1 { kept.max(1) } else { kept };
+        prop_assert_eq!(count, weakest.count - kept, "{:?}", was);
+        if took_no_step || as_move(command).is_some() {
+            prop_assert_eq!(&was, &before.adventure().hero(hero).unwrap().army);
         }
     }
     Ok(())
@@ -4943,11 +5886,11 @@ fn check_conservation(
     } else {
         prop_assert!(joined.len() + held.len() <= 1, "{:?} {:?}", joined, held);
     }
-    // E09 T19b (`master`'s counterexample of 2026-11-10): a visit's own gains come last, after
-    // what the objects that left gave: a guard's join or battle comes before the visit it held
-    // (E08 decision 279), its treasure before the guarded object's gain.
-    let visit = visit_gains(rules, (before, after), command, events);
-    let mut contents = Vec::new();
+    let mut contents = visit_gains(rules, (before, after), command, events);
+    // A guarding monster's treasure comes before the visit its answer held (decision 279: the
+    // guard first, GAM-DEC-007), so before [`visit_gains`]' (the town lane's inbox, E09 T19a: a
+    // join for gold before the Mystical Garden it guarded).
+    let mut treasures = 0;
     let mut losses = Vec::new();
     for event in events {
         // E08 T64b: a box's record as it leaves, an event's as it fires, in the events' order.
@@ -4985,12 +5928,14 @@ fn check_conservation(
                 {
                     prop_assert_eq!(creature, monster.creature);
                     prop_assert_eq!(Some(count), before.adventure().monster_count(i));
-                    contents.extend(monster.treasure.iter().copied());
+                    for &gain in &monster.treasure {
+                        contents.insert(treasures, gain);
+                        treasures += 1;
+                    }
                 }
             }
         }
     }
-    contents.extend(visit);
     // E08 T85b: a new day's income comes after its `DayStarted`, apart from the visits' gains,
     // and the turn starts' timed events after the first `TurnStarted` ([`check_timed`]).
     let turn_at = events
@@ -5171,6 +6116,34 @@ fn check_conservation(
                     count,
                 },
             );
+        }
+    }
+    // E08 T106b1: a Whirlpool's loss (ADV-TEL-006), as `WhirlpoolLoss` tells it: its slot's count
+    // less the count lost, the slot emptied at 0 ([`check_whirlpool_losses`] checks the stack).
+    for event in events {
+        if let GameEvent::Adventure(AdventureEvent {
+            kind:
+                AdventureEventKind::WhirlpoolLoss {
+                    hero,
+                    slot,
+                    creature,
+                    count,
+                },
+            ..
+        }) = *event
+        {
+            let (_, army) = expected
+                .iter_mut()
+                .find(|(id, _)| *id == hero)
+                .ok_or_else(|| fail(format!("{event:?} of a hero off the map")))?;
+            let stack = army
+                .iter_mut()
+                .find(|s| s.slot == slot)
+                .ok_or_else(|| fail(format!("{event:?} of an empty slot")))?;
+            prop_assert_eq!(stack.creature, creature);
+            prop_assert!(stack.count >= count, "{:?}", event);
+            stack.count -= count;
+            army.retain(|s| s.count > 0);
         }
     }
     // E08 T52: a full army: the group held (the army as it was), none of its creature's stacks
@@ -6172,6 +7145,37 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
     // town's capture follows that battle (E08 T103d, decision 279; found by the server lane's CI
     // of #800, the town lane's inbox, 2026-11-09).
     let map = adventure.map();
+    // E08 T106b1: the map's invariants (increment 11's design note §14; a jump keeps them, ADV-TEL-003,
+    // -007, A-37 fixed by the battle): one hero a tile, a hero in a boat on water, a walker on land,
+    // an empty boat on water.
+    let surface = |pos: TilePos| {
+        let tile = map.tile(pos);
+        tile.and_then(|t| rules.adventure().passage(t.terrain))
+    };
+    let heroes = adventure.heroes();
+    for (i, hero) in heroes.iter().enumerate() {
+        prop_assert!(
+            heroes[i + 1..].iter().all(|other| other.pos != hero.pos),
+            "two heroes on {:?}",
+            hero.pos
+        );
+        match (hero.boat.is_some(), surface(hero.pos)) {
+            (true, Some(Passage::Water(_))) | (false, Some(Passage::Land(_))) => {}
+            other => {
+                return Err(fail(format!(
+                    "{:?} on {:?}: {:?}",
+                    hero.id, hero.pos, other
+                )));
+            }
+        }
+    }
+    for (_, boat) in adventure.boats().filter(|(_, b)| !b.aboard && !b.gone) {
+        prop_assert!(
+            matches!(surface(boat.tile), Some(Passage::Water(_))),
+            "{:?}",
+            boat
+        );
+    }
     for &i in map.towns() {
         let entrance = map.objects()[i].entrance(map);
         for hero in adventure
@@ -6203,8 +7207,13 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         }
         if let Some([a, b]) = state.meeting(player) {
             let (a, b) = (own(a).unwrap(), own(b).unwrap());
-            prop_assert_eq!(a.level, b.level);
-            prop_assert_eq!(a.x.abs_diff(b.x).max(a.y.abs_diff(b.y)), 1);
+            // E08 T106b1: or a gate's meeting (GAM-MET-001 amended, ADV-TEL-005), the visitor on
+            // a gate whose pair the other stands on, no neighbours.
+            let gate = |from: TilePos, to: TilePos| map.channels().gate_pair(from) == Some(to);
+            if !gate(a, b) && !gate(b, a) {
+                prop_assert_eq!(a.level, b.level);
+                prop_assert_eq!(a.x.abs_diff(b.x).max(a.y.abs_diff(b.y)), 1);
+            }
         }
     }
     Ok(())
@@ -7829,6 +8838,8 @@ fn check_isolation(
     // E09 T9b1: a town captured after a siege the command ended reveals around it to its new
     // owner (TWN-CAP-003), also when the town's owner, playing its garrison's side, ended the
     // battle by its own command.
+    // E08 T106b1: so does a jump held after a battle at its exit, which the battle's last command
+    // gives the winner, another player's or the system's (GAM-DEC-007 amended, ADV-TEL-007).
     let captors: Vec<PlayerId> = events
         .iter()
         .filter_map(|e| match e {
@@ -7836,6 +8847,10 @@ fn check_isolation(
                 kind: AdventureEventKind::TownCaptured { owner, .. },
                 ..
             }) => Some(*owner),
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::HeroTeleported { hero, .. },
+                ..
+            }) => after.adventure().hero(*hero).map(|h| h.owner),
             _ => None,
         })
         .collect();
@@ -7914,6 +8929,9 @@ proptest! {
         let mut state = start_on(&m, rules, seed);
         // E08 T96b1: the random dwellings as the build resolved them.
         check_resolved(rules, &m, &state)?;
+        // E08 T106b1: the channels as the plan laid the teleporters out, the build's for the game.
+        check_channels(&m, &state)?;
+        let channels = state.adventure().map().channels().clone();
         for step in &steps {
             check_progression(rules, &state)?;
             check_invariants(rules, &state)?;
@@ -7942,6 +8960,8 @@ proptest! {
             if let Some((hero, path)) = as_move(&command) {
                 let start = before.adventure().hero(hero).unwrap().pos;
                 let (at, _) = landing(&before, start, path, &events)?;
+                // E08 T106b1: a jump from the walk's end ([`check_jumps`]).
+                let at = jumped_to(&events, hero).unwrap_or(at);
                 prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
                 // E08 T42 (increment 5's exit criterion 3): a flight or a water walk passes over
                 // water and blocked tiles but ends where a hero may stop, as a walk does; (E08
@@ -7963,6 +8983,9 @@ proptest! {
             check_mine_guards(rules, (&before, &state))?;
             check_week(rules, (&before, &state), &events)?;
             check_towns(rules, (&before, &state), &events)?;
+            // E08 T106b1: the teleporters' jumps and visits, the Whirlpools' losses.
+            check_jumps(rules, (&before, &state), (player, &command), &events, &channels)?;
+            check_whirlpool_losses(rules, (&before, &state), &command, &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -7997,6 +9020,9 @@ proptest! {
         prop_assert_eq!(state.towns(), &towns);
         prop_assert_eq!(&state, &play(&plan, rules, seed, prefix).0);
         let mut fork = state.clone();
+        // E08 T106b1: a fork's channels are a fresh build's (increment 11's design note §14).
+        let fresh = start(&plan, rules, seed);
+        prop_assert_eq!(fork.adventure().map().channels(), fresh.adventure().map().channels());
         for step in rest {
             let (mut a, mut b) = (Vec::new(), Vec::new());
             let ra = advance(&mut state, rules, step, &mut a);
@@ -8006,6 +9032,7 @@ proptest! {
             prop_assert_eq!(&state, &fork);
             prop_assert_eq!(state.state_hash(), fork.state_hash());
         }
+        prop_assert_eq!(fork.adventure().map().channels(), fresh.adventure().map().channels());
     }
 
     /// Determinism: the same map file, seed and commands give the same states, events and hashes,
@@ -8692,6 +9719,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         events: Vec::new(),
         owners: Vec::new(),
         towns: Vec::new(),
+        teleporters: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -9203,7 +10231,7 @@ fn the_plans_visit_dwellings_and_hire() {
     let mut runner = proptest::test_runner::TestRunner::deterministic();
     let strategy = (plan(), any::<bool>(), any::<u64>(), steps());
     let mut hired = Hired::default();
-    for _ in 0..256 {
+    for _ in 0..512 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let m = lay_out(&plan);
@@ -9561,4 +10589,217 @@ fn the_plans_capture_and_besiege_towns() {
     assert!(b.captures > b.undefended.iter().sum::<usize>(), "{b:?}");
     assert!(b.built.iter().all(|&n| n > 0) && b.cleared > 0, "{b:?}");
     assert!(b.fired.iter().all(|&n| n > 0), "{b:?}");
+}
+
+/// What the plans' games did at the teleporters (E08 T106b1; increment 11's design note §14): the
+/// teleporters laid out; the visits by kind (a one-way entrance, a one-way exit, a two-way
+/// monolith, a Subterranean Gate, a Whirlpool) and by what they did ([`Jumped`]: nothing, led
+/// nowhere, arrived, met, fought); those of a `Revisit` and of a revisit at 0 points; the jumps
+/// held after a battle (a battle at the exit won, or a guard's); the battles at an exit lost by
+/// the mover; the Whirlpools' losses of a lone stack, of a slot emptied, and the visits of a
+/// protected hero.
+#[derive(Debug, Default)]
+struct Teleported {
+    laid: usize,
+    visits: [[usize; 5]; 5],
+    revisits: usize,
+    revisits_at_zero: usize,
+    held: usize,
+    exit_battles_lost: usize,
+    lone_losses: usize,
+    emptied: usize,
+    protected: usize,
+    /// The movers of the battles at an exit in progress.
+    at_exits: Vec<HeroId>,
+}
+
+impl Teleported {
+    /// Counts what `command` did on its way from `before` to `after`, `visit` its teleporter's
+    /// visit as [`check_jumps`] found it.
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        (command, events): (&GameCommand, &[GameEvent]),
+        visit: Option<(ObjectKind, Jumped)>,
+    ) {
+        if let Some((kind, outcome)) = visit {
+            let kind = match kind {
+                ObjectKind::Monolith {
+                    way: h3_adventure::MonolithWay::Entrance,
+                    ..
+                } => 0,
+                ObjectKind::Monolith {
+                    way: h3_adventure::MonolithWay::Exit,
+                    ..
+                } => 1,
+                ObjectKind::Monolith { .. } => 2,
+                ObjectKind::SubterraneanGate => 3,
+                _ => 4,
+            };
+            self.visits[kind][outcome as usize] += 1;
+            if let GameCommand::Adventure(AdventureCommand::Revisit { hero }) = *command {
+                self.revisits += 1;
+                let points = before.adventure().hero(hero).map(|h| h.movement);
+                self.revisits_at_zero += usize::from(points == Some(0));
+            }
+            if kind == 4 {
+                let hero = match *command {
+                    GameCommand::Adventure(AdventureCommand::Revisit { hero }) => Some(hero),
+                    _ => as_move(command).map(|(hero, _)| hero),
+                };
+                let details = hero.and_then(|hero| before.hero(hero));
+                let protected =
+                    details.is_some_and(|d| h3_heroes::whirlpool_protection(d, rules.core()));
+                self.protected += usize::from(protected);
+            }
+            if outcome == Jumped::Fought {
+                self.at_exits.extend(as_move(command).map(|(hero, _)| hero));
+                if let GameCommand::Adventure(AdventureCommand::Revisit { hero }) = *command {
+                    self.at_exits.push(hero);
+                }
+            }
+        }
+        for event in events {
+            match *event {
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroTeleported { hero, .. },
+                    ..
+                }) if as_move(command).is_none()
+                    && !matches!(
+                        command,
+                        GameCommand::Adventure(AdventureCommand::Revisit { .. })
+                    ) =>
+                {
+                    self.held += 1;
+                    self.at_exits.retain(|&h| h != hero);
+                }
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::WhirlpoolLoss { hero, slot, .. },
+                    ..
+                }) => {
+                    // A lone stack keeps one at least: its slot stays, alone.
+                    let army = after.adventure().hero(hero).map(|h| &h.army);
+                    let lone = |a: &Vec<h3_contracts::ArmyStack>| {
+                        a.len() == 1 && a.iter().any(|s| s.slot == slot)
+                    };
+                    self.lone_losses += usize::from(army.is_some_and(lone));
+                    self.emptied +=
+                        usize::from(army.is_some_and(|a| a.iter().all(|s| s.slot != slot)));
+                }
+                GameEvent::BattleEnded { heroes, .. } => {
+                    for hero in heroes.into_iter().flatten() {
+                        let lost =
+                            self.at_exits.contains(&hero) && after.adventure().hero(hero).is_none();
+                        self.exit_battles_lost += usize::from(lost);
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The jump plans (E08 T106b1): a plan with teleporters, in half of them every other hero wearing
+/// the Sea Captain's Hat (HER-ADV-009: no Whirlpool takes its troops), the profile (strict or not),
+/// the seed and up to 199 steps, mostly [`Step::Jump`]s with ends of turn among them (so that a
+/// hero stays on an exit while the other players play) and [`Step::Legal`]s; what
+/// [`the_plans_jump_through_teleporters`] counts, over proptest's deterministic runner.
+fn jump_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
+    let steps = vec(
+        prop_oneof![
+            8 => any::<u16>().prop_map(Step::Jump),
+            1 => any::<u16>().prop_map(Step::Legal),
+            1 => Just(Step::EndTurn),
+        ],
+        0..200,
+    );
+    let plan = plan().prop_filter("teleporters", |plan| !plan.teleporters.is_empty());
+    let plan = (plan, any::<bool>()).prop_map(|(mut plan, hats)| {
+        if hats {
+            let heroes = plan.heroes.len();
+            plan.kits
+                .resize_with(plan.kits.len().max(heroes), Kit::default);
+            for kit in plan.kits.iter_mut().step_by(2) {
+                kit.worn.push(SEAFARERS[1].0);
+            }
+        }
+        plan
+    });
+    (plan, any::<bool>(), any::<u64>(), steps)
+}
+
+/// The plans jump (E08 T106b1; increment 11's design note §14, exit criteria): over a fixed set of
+/// cases (proptest's deterministic runner), random play with the jumps' steps ([`jump_plans`],
+/// [`Step::Jump`]) visits every kind of teleporter and meets each of its outcomes (a one-way and a
+/// two-way monolith's and a Whirlpool's jump, nothing without a candidate; an exit's and an
+/// unpaired gate's "leads nowhere"; a gate's jump, meeting and battle; a battle at a monolith's
+/// exit), revisits them, at 0 points too, wins battles at an exit (the jump held) and loses some,
+/// and takes the Whirlpools' losses (a lone stack's, a slot emptied) and spares a protected hero,
+/// so that the properties' checks ([`check_jumps`], [`check_whirlpool_losses`], [`check_channels`],
+/// the map's invariants in [`check_invariants`], the jumps in [`check_legal`]) see each.
+// covers: ADV-TEL-003, ADV-TEL-004, ADV-TEL-005, ADV-TEL-006, ADV-TEL-007, ADV-TEL-008
+#[test]
+fn the_plans_jump_through_teleporters() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = jump_plans();
+    let mut teleported = Teleported::default();
+    // 512 cases since E09 T19b (256 before), whose plans' town events moved the draws: the first
+    // 256 met no battle at a Whirlpool's exit.
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let m = lay_out(&plan);
+        let mut state = start_on(&m, rules, seed);
+        teleported.laid += check_channels(&m, &state).unwrap();
+        teleported.at_exits.clear();
+        let channels = state.adventure().map().channels().clone();
+        for step in &steps {
+            let legal = options(&state, rules);
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
+                let player = player_of(&before, actor);
+                let visit = check_jumps(
+                    rules,
+                    (&before, &state),
+                    (player, &command),
+                    &events,
+                    &channels,
+                )
+                .unwrap();
+                teleported.count(rules, (&before, &state), (&command, &events), visit);
+            }
+        }
+    }
+    let t = &teleported;
+    eprintln!("{t:?}");
+    let [nothing, nowhere, arrived, met, fought] = [0, 1, 2, 3, 4];
+    let [entrance, exit, two_way, gate, whirlpool] = t.visits;
+    assert!(t.laid > 0, "{t:?}");
+    assert!(
+        [nothing, arrived, fought].iter().all(|&o| entrance[o] > 0),
+        "{t:?}"
+    );
+    assert!(exit[nowhere] > 0, "{t:?}");
+    assert!(
+        [nothing, arrived, fought].iter().all(|&o| two_way[o] > 0),
+        "{t:?}"
+    );
+    assert!(
+        [nowhere, arrived, met, fought].iter().all(|&o| gate[o] > 0),
+        "{t:?}"
+    );
+    assert!(
+        [nothing, arrived, fought].iter().all(|&o| whirlpool[o] > 0),
+        "{t:?}"
+    );
+    assert!(t.revisits > 0 && t.revisits_at_zero > 0, "{t:?}");
+    assert!(t.held > 0 && t.exit_battles_lost > 0, "{t:?}");
+    assert!(
+        t.lone_losses > 0 && t.emptied > 0 && t.protected > 0,
+        "{t:?}"
+    );
 }

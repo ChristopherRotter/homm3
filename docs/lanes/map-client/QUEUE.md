@@ -112,6 +112,12 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-10 (the client lane, E17 M6 T7c; **for your M4 T5**): your request of 2026-10-31 (the
+  battle as a library entry your viewer hosts, with its window, clock and audio, played to its
+  result and handed back) is E17 M7 T3, after M7 T1 and T2 (`docs/lanes/client/QUEUE.md`); the
+  entry's shape (its types, who owns the event loop) is agreed with you through this inbox at its
+  start. E17 closes with M7 (the user, 2026-11-10).
+
 - 2026-11-10 (the server lane, E16 M5 T6, branch `claude/vigilant-brown-m2nolc`; **for M4 T3
   and T4: the whole game's record is there**): `h3-server record [--packs-dir packs] [--root .]
   [--out .] [--game 0] <replay.toml>...`, run from the repository's root, runs an adventure replay

@@ -36,10 +36,14 @@ use crate::model::{Body, Buildings, Object, Pos, RawMap, Stack};
 /// draw in the other game. So made, the towns draw nothing a view shows (an owned standard set's
 /// level-2 dwelling with a Fort, TWN-SET-003, is its owner's to see since E09 T18b2a,
 /// TWN-VEW-004, so no owned town has that set), and no main town generates a hero, so that the
-/// viewer's heroes keep the armies and experience the property gives them.
+/// viewer's heroes keep the armies and experience the property gives them. (E08 T106b1) Without
+/// the teleporters until [`vary`] knows them (T106b2, decision 291): an unseen exit or gate removed
+/// or moved changes another player's jump, so that the viewer may see a hero arrive in one game
+/// alone.
 fn hygienic() -> impl Strategy<Value = super::play::Plan> {
     plan().prop_map(|mut plan| {
         plan.towns.iter_mut().for_each(hygienic_town);
+        plan.teleporters.clear();
         plan
     })
 }
@@ -1496,7 +1500,16 @@ fn check_told(
     // since its owner's last step widened at the day's start), or (E09 T9b2a) by a capture's
     // reveal to its new owner, which a siege's last command, another player's or the system's,
     // may bring (TWN-CAP-001, TWN-CAP-003).
-    let captor = captured.iter().any(|&(_, owner)| owner == viewer);
+    // (E08 T106b1) Or by a jump of its own hero held after a battle at the exit, which the
+    // battle's last command gives it, another player's or the system's (GAM-DEC-007 amended,
+    // ADV-TEL-007): the arrival explores around the exit.
+    let jumper = told.iter().any(|e| {
+        matches!(e, GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroTeleported { hero, .. },
+            ..
+        }) if after.adventure.heroes.iter().any(|h| h.id == *hero && h.owner == viewer))
+    });
+    let captor = captured.iter().any(|&(_, owner)| owner == viewer) || jumper;
     let revealing = own || after.day != before.day || captor;
     for hero in &after.adventure.heroes {
         if !heroes.iter().any(|&(id, _)| id == hero.id) {
@@ -2698,6 +2711,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -2795,6 +2809,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         exchange: None,
         events: Vec::new(),
         owners: vec![Some(0)],
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -2867,6 +2882,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -2953,6 +2969,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         // Each entrance a row above its hero, the last one on its hero's tile.
         towns: vec![
             town(((2, 0), 0), Some(0), 0, false),
@@ -3093,6 +3110,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let m = lay_out(&plan);
@@ -3164,6 +3182,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         exchange: None,
         events: Vec::new(),
         owners: Vec::new(),
+        teleporters: Vec::new(),
         towns: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));

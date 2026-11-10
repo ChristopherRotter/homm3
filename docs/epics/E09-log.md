@@ -2696,14 +2696,15 @@ its start, `master`'s counterexample of the plans' gains fixed first** (the user
   `master`'s strategy (6 s). `check_conservation` expected a visit's own gains (`visit_gains`: the
   guarded Mystical Garden's 500 gold) before what the objects that left gave (the joining
   monster's 50-gold treasure); the engine's order (the join, then the visit it held, E08 decision
-  279) is right, so the visit's gains come last now. The seed stays in
-  `proptest-regressions/tests/play.txt` (it replays another case once the town field draws); the
-  adventure lane's inbox entry replaced by a note for its archive.
+  279) is right, so the visit's gains came last. The adventure lane's #830 (E08 T106b1) fixed it
+  on its side the same day (a guard's treasure inserted before the visit's gains, the seed kept):
+  at T19b's merge of `master` (the pull request in conflict) its fix was kept and this one
+  dropped, and the inbox note names only the hygiene gap below.
 - **The plans' towns' events** (`play.rs`): `TownPlan::events` (`town_events`: none in half the
   towns, else one or two, each a timed event as the map's, `timed_event` factored out of `timed`,
   with none to three of the 41 map slots as buildings and creatures by level), written by
   `add_town` (before SoD with the human flag set, as the map's events: the reader's).
-- **`Step::Build(n)`**: the acting player's `n`-th listed build, else as `Legal(n)` (`listed`,
+- **`Step::Build(n)`**: the acting player's `n`-th listed build, else as `Legal(n)` (`nth_listed`,
   shared with `Step::BuildBoat`); `steps()` gains runs of builds (one to eight times a `Build` and
   none to three ends of turn).
 - **`check_timed`** (decision 57's "`check_rewards`": the turn start's gains are compared here, the
@@ -2735,6 +2736,13 @@ its start, `master`'s counterexample of the plans' gains fixed first** (the user
   `outcome` compares the objects a command removed (`ObjectRemoved`'s kind, beside the guards'
   hints) now; the seed kept in `proptest-regressions/tests/view.txt`. The three properties of
   `play.rs` passed three more runs, the hygiene and told-views ones ten.
+- **`master` merged in** (#830's teleporters plans: `Step::Jump` and its runs beside
+  `Step::Build`'s, every game's draws moved again; #831; the pull request was in conflict):
+  `Step::Build`'s helper renamed `nth_listed` (#830 has a `listed` of its own); `h3-map`'s 157
+  tests pass on the merged draws but #830's `the_plans_jump_through_teleporters`, whose own plans
+  the town field moved: no battle at a Whirlpool's exit in its 256 cases, raised to 512 (met
+  twice); the towns' cover test there met everything again (builds 177, 51; events 523, 427, 460,
+  300), the town views' too (marks 212, 263).
 - No version moved; no rule, stub or quirk new; no replay, workload or bot report moved.
 - **Agent's calls (change freely):** the hygiene gap fixed here rather than sent to the adventure
   lane (its pull request's CI would meet it); the events' draw (half the towns, up to three slots, the
