@@ -2215,7 +2215,8 @@ impl AdventureState {
     /// before). Since E08 T105a1 a monolith ([`Self::visit_monolith`]) and a Subterranean Gate
     /// ([`Self::visit_gate`]), whose visit is the jump; `draws` is the visitor's stream, from
     /// which a monolith's exit is drawn (ADV-TEL-003). Since T105a2 a Whirlpool
-    /// ([`Self::visit_whirlpool`]): its loss, then the jump with the hero's boat.
+    /// ([`Self::visit_whirlpool`]): its loss, then the jump with the hero's boat. Since T105b1 a
+    /// jump's exit under a hero gives the meeting or the battle with the held jump.
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
     fn visit<S: Sink>(
@@ -2301,11 +2302,15 @@ impl AdventureState {
                 outcome = self.visit_town(rules.1, (player, hero), (visit.object, visit.mode));
             }
             Effect::Monolith { channel, way } => {
-                self.visit_monolith(rules, (player, hero), (visit, (channel, way)), draws, sink);
+                let visit = (visit, (channel, way));
+                outcome = self.visit_monolith(rules, (player, hero), visit, draws, sink);
             }
-            Effect::SubterraneanGate => self.visit_gate(rules, (player, hero), visit, sink),
+            Effect::SubterraneanGate => {
+                outcome = self.visit_gate(rules, (player, hero), visit, sink);
+            }
             Effect::Whirlpool(divisor) => {
-                self.visit_whirlpool(rules, (player, hero), (visit, divisor), draws, sink);
+                let visit = (visit, divisor);
+                outcome = self.visit_whirlpool(rules, (player, hero), visit, draws, sink);
             }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),

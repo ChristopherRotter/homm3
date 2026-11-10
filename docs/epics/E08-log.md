@@ -13881,3 +13881,48 @@ setup's light gates on its verified fingerprint). Staged: `maps.tar`, `extracted
   --workspace --all-targets`.
 
 **Versions:** none moved (no replay holds a Whirlpool; the event is in no hash). T105b next.
+
+### Increment 11, round 7: T105b1, the battle and the meeting at an occupied exit (2026-11-09, `adventure/e08-t105b1`)
+
+The first part of T105b's cut (decision 288, the user at its start). Baseline: `master` 31e0ea3
+(#806; the setup's full run in the sandbox, every step passed); `master` then moved to 1e8568d
+(#808), whose first CI run failed in `h3-map`'s play property on a random plan (an oracle's, not
+the engine's): fixed first in its own pull request (#810, `adventure/e08-play-held-weekly`: the
+battle's oracle counts the weekly object the visit held after its guard empties; the seed kept),
+on which this branch is stacked. Staged: `maps.tar`, `extracted.tar`, `Heroes3.exe` and the two
+LODs.
+
+- **The exit's visit** (design §12): `jumps.rs`' `jump` returns the outcome and the three visits
+  pass it on. A hero on the exit: the radius-1 reveal as before, the mover staying on the entrance;
+  one of the player's own (only a gate's pair: the candidates leave them out) is met (`meeting`,
+  the two heroes no neighbours; the game's `meet` reads no distance), an enemy fought
+  (`battle_start` at the exit, the defender's tile, so a Whirlpool's two boats and the attacker's
+  ground under the entrance need nothing new) with `AdventureOutcome::jump_after`. `ADV-STUB-16`
+  lifted.
+- **The held jump** (design §13): `Rest::Jump(exit)`, held in `settle_outcome` beside the battle
+  it waits for, so the winner's level-ups come first; given by the new public
+  `AdventureState::arrive(context, (player, hero), exit, sink)` (the owner beside the hero as
+  `visit_held`; the entrance is the hero's tile): nothing for a hero off the map or another
+  player's, or onto an exit holding a hero or an empty boat; else the arrival (renamed
+  `arrival`), its outcome nothing. Hashed as tag 4 with the exit: **game state hash v27**.
+- **Measured** against `master`'s counts of this sandbox's baseline: the five `random-play-*`
+  workloads within 0.001 % (duel 1 021 265 530 against 1 021 268 951 Ir), `build-gates-xl-144`
+  equal; no re-baseline.
+- **Tests:** `h3-adventure`'s teleporters: the monolith's exit under Blue's hero (the battle at
+  the exit, `jump_after`, nothing else), the gate's pair under Red's own hero (the meeting) and
+  under Blue's (the battle), the Whirlpool's drawn tile under Blue's (on the two boats), the held
+  jump's refusals (another player's hero, the mover off the map, a hero on the exit, an empty
+  boat) and its arrival on land and, after Blue left the map with its boat, at sea. `h3-game`'s
+  jumps: a won battle at a monolith's exit, the mover on the entrance while its level-up is open
+  and on the exit after its answer; a lost one, the mover off the map and nothing held.
+- **Replays:** the 55 re-recorded from their own commands: only the version, the checkpoints and
+  the final hashes moved. The bot reports record no game state hash: unchanged.
+- **Docs:** ADV-TEL-004 to -007, GAM-BAT-004 (with `ADV-QUIRK-39`), GAM-MET-001 and GAM-DEC-007
+  amended (batch E11's E11-6, E11-7, E11-16 as sources); `ADV-QUIRK-39` (A-37) in the ledger;
+  design §12, §13's as-built lines; decision 288; T105b2's queue entry.
+- **Gates:** the scoped verify with the original data: every step passed (coverage 100 %,
+  determinism with the rehashed replays, every adventure workload inside its gate,
+  `original-data`); `cargo check --workspace --all-targets`.
+
+**Versions:** game state hash v27. T105b2 next (`Revisit`, the env; replay format v11, action
+encoding v8).
