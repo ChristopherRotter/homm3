@@ -260,6 +260,16 @@ Refined with the user on 2026-11-05 (T97c; ADV-Q44, asked after T97b2 merged). B
      chosen: four parts (T106a split into the map with its random replays, then the scripted
      ones); two parts (the map, its replays and the plans together).
 
+### Decision at T106b's start (2026-11-10, user)
+
+291. **T106b in two, at the seam of `play.rs` and `view.rs`** (the user at T106b's start,
+     `AskUserQuestion`; recommended, before T106c, since the properties may find engine faults whose
+     fixes would move T106c's new baselines): **T106b1** the plans' `TELEPORTERS` laid out and
+     played (the jumps and `Revisit`), every check of design §14 in `play.rs` and a cover test;
+     **T106b2** `view.rs`'s checks (no viewer told a hidden end of a jump, a channel's exits or a
+     gate's pair) and the hygiene property's variation of the teleporters. Not chosen: T106b whole
+     (as T96b1); T106c first.
+
 ### Tasks (queue entries in `docs/lanes/adventure/QUEUE.md`; one or two per round, the cut confirmed at each checkpoint)
 
 - **T97c Increment 11 refined** (with increment 10's closure). Done (2026-11-05, `adventure/e08-t97c`; decisions 260, 261): the teleporters; the first round queued (T98a, T98b).
