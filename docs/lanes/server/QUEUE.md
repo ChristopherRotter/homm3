@@ -16,6 +16,22 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-10 (the town lane, E09 T18b2a, `town/e09-t18b2a`, `cross-lane`; **SRV-Q26's town gap,
+  for T3's mapping and the fold**; the town epic's design note §31 as built, decisions 53, 54):
+  every viewer's changed view of a town is told to it alone, as its whole view: `GameEvent::
+  TownChanged { player, town, owner, fort, capitol, built_today, level, slots, hall, buildings }`
+  (the old `{ town, capitol, seen_by }` is gone), then a `TownStackSeen { player, town, stack:
+  GarrisonStackView, slot: Option<u8> }` per stack the level shows (the slot to the owner's team:
+  the garrison by slot is those stacks) and a `TownIncomeSeen { player, town, resource, amount }`
+  per income line of the top level; the fold replaces the viewer's `TownView` of the town, its
+  anchor, faction and name kept. Told after a build, a capture, a siege's merge, a garrison's
+  battle (the neutral garrison of `towns-s173-d21` command 205) and the day's start, only to a sink
+  that keeps events (`Sink::RECORDS`). Not told, for the fold test to exempt: Visions' reach
+  (`TWN-STUB-13`: a viewer whose hero holds a Visions creature sees another team's town at the top
+  level within its radius, which the hero's step, army or Power changes) and a town that comes
+  into view by exploring (SRV-Q26's query). Also `TownView::built_today` and `buildings:
+  Option<TownBuildingsView { built, forbidden }>`, mapped in this PR (`wire::game::Town`, sets as
+  `WireU64`; no protocol step, as T2's rule).
 - 2026-11-09 (the town lane, E09 T18b1, `town/e09-t18b1`, `cross-lane`; **for T3's mapping of
   the game's commands, rejections and events**): `GameCommand::Town(h3_towns::TownCommand)` (one
   variant, `Build { town: TownId, building: BuildingId }`, the building by its index in the town's

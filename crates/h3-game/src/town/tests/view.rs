@@ -1,7 +1,9 @@
 //! Tests of what a viewer sees of the towns (E09 T8c1, the town epic's design note §12, §17):
 //! the towns it sees a tile of, linked from their objects, with their public facts (TWN-VEW-001),
 //! the garrison by the viewer's level (TWN-VEW-002: its towns with a Tavern, at most two) and the
-//! owner's team's facts (TWN-VEW-003), which a hero's Visions also shows (E09 T8c2).
+//! owner's team's facts (TWN-VEW-003), which a hero's Visions also shows (E09 T8c2); since E09
+//! T18b2a the day's mark and the owner's buildings (TWN-VEW-004), and each viewer's changed views
+//! told (SRV-Q26).
 
 use alloc::string::ToString;
 use alloc::vec;
@@ -11,19 +13,20 @@ use h3_adventure::{Pos, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
-    BuildingDef, BuildingRoles, BuildingsSetup, GarrisonCreature, GarrisonStack, SlotSet,
-    TownFaction,
+    BuildingDef, BuildingId, BuildingRoles, BuildingsSetup, GarrisonCreature, GarrisonStack,
+    SlotSet, TownCommand, TownFaction,
 };
 
 use super::{
-    CAPITOL_SLOT, SILO_SLOT, faction, rules_of, town_object, town_pack, towns_core,
+    CAPITOL_SLOT, SILO_SLOT, faction, rules_of, telling, town_object, town_pack, towns_core,
     towns_core_pack, towns_rules, towns_setup,
 };
 use crate::tests::key;
 use crate::town::view::in_visions;
 use crate::{
-    GameRuleset, GameSetup, GameState, GarrisonStackView, GarrisonView, HeroArmy, OWNER_LEVEL,
-    TownOwnerView, TownView, Viewer, observe,
+    Actor, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, GarrisonStackView,
+    GarrisonView, HeroArmy, NoopSink, OWNER_LEVEL, TownBuildingsView, TownOwnerView, TownView,
+    Viewer, apply, observe, project,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -108,7 +111,7 @@ fn shown(level: u8) -> GarrisonView {
     }
 }
 
-// covers: TWN-VEW-001, TWN-VEW-003
+// covers: TWN-VEW-001, TWN-VEW-003, TWN-VEW-004
 #[test]
 fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
     let rules = towns_rules();
@@ -120,6 +123,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
     };
     let castle = faction(&rules, "t:town");
     let game = GameState::new(&rules, &setup, 7).unwrap();
+    let record = game.towns().get(T0).unwrap();
     let red = observe(&game, &rules, Viewer::Player(RED));
     // The 4 × 4 map is all explored: both towns, linked from their objects, in `TownId` order.
     let linked: Vec<_> = red.adventure.objects.iter().map(|o| o.town).collect();
@@ -135,6 +139,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
             name: Some("Steadwick".into()),
             fort: FortLevel::None,
             capitol: true,
+            built_today: false,
             garrison: GarrisonView {
                 level: OWNER_LEVEL,
                 stacks: vec![],
@@ -144,8 +149,20 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
                 hall: 4,
                 income: vec![(GOLD, 4001)],
             }),
+            buildings: Some(TownBuildingsView {
+                built: record.built(),
+                forbidden: record.forbidden(),
+            }),
         }
     );
+    // rule: TWN-VEW-004: its owner's sets, the Capitol among them.
+    let capitol = rules
+        .towns()
+        .town(castle)
+        .unwrap()
+        .building_by_key("b3")
+        .unwrap();
+    assert!(record.built().contains(capitol));
     // Blue's: the standard set with its Fort, unnamed; red has no Tavern, so no garrison.
     assert_eq!(
         red.towns[1],
@@ -157,8 +174,10 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
             name: None,
             fort: FortLevel::Fort,
             capitol: false,
+            built_today: false,
             garrison: shown(0),
             owner_facts: None,
+            buildings: None,
         }
     );
     // Blue sees its own garrison by slot with its counts and words, and red's town's public
@@ -202,6 +221,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
             army: None,
         },
         owner_facts: None,
+        buildings: None,
         ..red.towns[0].clone()
     };
     assert_eq!(blue.towns[0], public);
@@ -466,4 +486,175 @@ fn visions_reach_a_tile_on_the_heros_level_below_the_radius() {
     assert!(!reaches(5, 8, 0) && !reaches(2, 5, 0));
     assert!(!reaches(5, 5, 1));
     assert!(!in_visions(&[], Pos::new(5, 5, 0)));
+}
+
+fn build(town: TownId, building: BuildingId) -> GameCommand {
+    GameCommand::Town(TownCommand::Build { town, building })
+}
+
+/// `player`'s `command`, applied; its events.
+fn run(
+    rules: &GameRuleset,
+    game: &mut GameState,
+    player: PlayerId,
+    command: GameCommand,
+) -> Vec<GameEvent> {
+    let mut events = Vec::new();
+    apply(game, rules, Actor::Player(player), command, &mut events).unwrap();
+    events
+}
+
+// covers: TWN-VEW-002, TWN-VEW-004
+#[test]
+fn a_build_tells_each_viewer_its_changed_view_and_a_new_tavern_its_owners_raised_levels() {
+    let rules = tavern_rules();
+    let mut setup = garrisoned(&rules);
+    setup.towns[0].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let record = rules.towns().town(faction(&rules, "t:town")).unwrap();
+    let tavern = record.building_by_key("tavern").unwrap();
+    let before = towns_seen(&rules, &setup, RED);
+    assert_eq!(before[1].garrison, shown(0));
+    let events = run(&rules, &mut game, RED, build(T0, tavern));
+    // After the build's `TownBuilt` (free: nothing paid): red's view of its town (the mark, its
+    // buildings), then of blue's (red's first Tavern: the creatures, TWN-VEW-002), then blue's
+    // view of red's town (the mark, public).
+    let seen = |viewer| observe(&game, &rules, Viewer::Player(viewer)).towns;
+    let (red, blue) = (seen(RED), seen(BLUE));
+    assert!(red[0].built_today && blue[0].built_today);
+    assert_eq!(red[1].garrison, shown(1));
+    let mut told = vec![GameEvent::TownBuilt {
+        player: RED,
+        town: T0,
+        building: tavern,
+        event: None,
+    }];
+    told.extend(telling(RED, &red[0]));
+    told.extend(telling(RED, &red[1]));
+    told.extend(telling(BLUE, &blue[0]));
+    assert_eq!(events, told);
+    // Each to its viewer alone.
+    for event in &events[1..] {
+        let to = |viewer| project(event, Viewer::Player(viewer)).is_some();
+        assert_ne!(to(RED), to(BLUE), "{event:?}");
+    }
+    // A town without a Tavern reads its owner's views of every town, and tells only the changed:
+    // blue's Fort in its town without one, blue still without a Tavern.
+    let fort = record.building_by_key("b4").unwrap();
+    let mut setup = garrisoned(&rules);
+    setup.towns[1].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut other = GameState::new(&rules, &setup, 7).unwrap();
+    end_turn(&rules, &mut other, RED);
+    let events = run(&rules, &mut other, BLUE, build(T1, fort));
+    let towns = |events: &[GameEvent]| {
+        events
+            .iter()
+            .filter_map(|e| match *e {
+                GameEvent::TownChanged { player, town, .. } => Some((player, town)),
+                _ => None,
+            })
+            .collect::<Vec<_>>()
+    };
+    // Blue had no Tavern: its view of red's town is read again but did not change.
+    assert_eq!(towns(&events), [(RED, T1), (BLUE, T1)]);
+}
+
+/// Ends `player`'s turn.
+fn end_turn(rules: &GameRuleset, game: &mut GameState, player: PlayerId) -> Vec<GameEvent> {
+    run(rules, game, player, GameCommand::EndTurn)
+}
+
+// covers: TWN-VEW-004
+#[test]
+fn the_days_start_tells_each_viewer_the_marks_it_cleared() {
+    let rules = tavern_rules();
+    let mut setup = garrisoned(&rules);
+    setup.towns[0].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let record = rules.towns().town(faction(&rules, "t:town")).unwrap();
+    run(
+        &rules,
+        &mut game,
+        RED,
+        build(T0, record.building_by_key("b1").unwrap()),
+    );
+    end_turn(&rules, &mut game, RED);
+    let events = end_turn(&rules, &mut game, BLUE);
+    let seen = |viewer| observe(&game, &rules, Viewer::Player(viewer)).towns;
+    let (red, blue) = (seen(RED), seen(BLUE));
+    assert!(!red[0].built_today && !blue[0].built_today);
+    // After the day's start, before the income: each viewer's view of the town built in
+    // yesterday, the only one told.
+    let day = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::DayStarted { .. }))
+        .unwrap();
+    let mut told = telling(RED, &red[0]);
+    told.extend(telling(BLUE, &blue[0]));
+    assert_eq!(events[day + 1..day + 1 + told.len()], told);
+    assert!(
+        !events[day + 1 + told.len()..]
+            .iter()
+            .any(|e| matches!(e, GameEvent::TownChanged { .. }))
+    );
+}
+
+// covers: TWN-VEW-001, TWN-VEW-004
+#[test]
+fn a_viewer_that_does_not_see_the_town_is_told_nothing_and_a_sink_that_keeps_nothing_reads_no_view()
+{
+    let rules = fringe_rules();
+    let far = Pos::new(14, 14, 0);
+    let mut setup = wide(&rules, far);
+    setup.towns[1].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let mut quiet = game.clone();
+    end_turn(&rules, &mut game, RED);
+    let fort = rules
+        .towns()
+        .town(faction(&rules, "t:town"))
+        .unwrap()
+        .building_by_key("b4")
+        .unwrap();
+    let events = run(&rules, &mut game, BLUE, build(T1, fort));
+    // Red has not explored blue's town: blue alone is told its view.
+    let viewers: Vec<PlayerId> = events
+        .iter()
+        .filter_map(|e| match *e {
+            GameEvent::TownChanged { player, .. } => Some(player),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(viewers, [BLUE]);
+    // The same game with a sink that keeps nothing: the same state.
+    let actor = |player| Actor::Player(player);
+    apply(
+        &mut quiet,
+        &rules,
+        actor(RED),
+        GameCommand::EndTurn,
+        &mut NoopSink,
+    )
+    .unwrap();
+    apply(
+        &mut quiet,
+        &rules,
+        actor(BLUE),
+        build(T1, fort),
+        &mut NoopSink,
+    )
+    .unwrap();
+    assert_eq!(quiet.state_hash(), game.state_hash());
 }

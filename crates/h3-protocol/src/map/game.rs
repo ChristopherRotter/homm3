@@ -19,7 +19,7 @@ use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
     HireCreature as EngineCreature, HireView, LevelUpView, MonthKind, PlayerView,
-    SlotState as EngineSlot, TownOwnerView, TownView, Viewer,
+    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer,
 };
 use h3_heroes::{
     ArtifactInstance, BattleBonuses, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -33,7 +33,7 @@ use crate::wire::game::{
     GameObservation, Garrison, GarrisonStack, Guards, HeroDetails, HeroInfo, Hire, HireCreature,
     HireTarget, Known, KnownObject as WireKnownObject, LevelUp, MapHero, Monster, Month, Object,
     ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, SkillLevel,
-    SlotState, Tile, Town, TownOwnerFacts, UniversityVisit,
+    SlotState, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit,
 };
 
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).
@@ -340,8 +340,10 @@ fn town(t: &TownView) -> Town {
         name,
         fort,
         capitol,
+        built_today,
         garrison,
         owner_facts,
+        buildings,
     } = t;
     let GarrisonView {
         level,
@@ -361,6 +363,7 @@ fn town(t: &TownView) -> Town {
             FortLevel::Castle => 3,
         },
         capitol: *capitol,
+        built_today: *built_today,
         garrison: Garrison {
             level: *level,
             stacks: stacks
@@ -385,6 +388,10 @@ fn town(t: &TownView) -> Town {
                 hall: *hall,
                 income: amounts(income),
             }),
+        buildings: buildings.map(|TownBuildingsView { built, forbidden }| TownBuildings {
+            built: WireU64(built.bits()),
+            forbidden: WireU64(forbidden.bits()),
+        }),
     }
 }
 

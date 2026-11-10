@@ -2444,3 +2444,54 @@ verify).
 - **Agent's calls (change freely):** the capture's `human` a closure over the game's players; the
   build's facts before (`Towns::build`'s return) kept for T18b2's `TownChanged`; `TownBuilt`'s
   `event` field now, so T18c moves no event shape.
+
+### T18b2a — the views and events, every viewer's changed view told (2026-11-10)
+
+One session, the user present at the start; branch `town/e09-t18b2a`, `cross-lane` (`h3-game`'s
+`command.rs`, `lib.rs`, `observe.rs`, `state.rs`, `state/battle.rs`, `state/day.rs`, `h3-map`'s
+property tests `play.rs` and `view.rs` are the adventure lane's; `h3-protocol`'s `map::game`,
+`wire::game` and their tests the server lane's). Starting point: `master` at d1b90fb (#809, #810
+merged; the setup's full engine baseline green, CI's run on `master` green). **T18b2 cut in two at
+its start** (the user, decision 52): T18b2a this session, T18b2b (the legal builds) queued.
+SRV-Q26's town gap decided at the start (decisions 53, 54). The user's computer was connected
+only at the start: the original data staged then.
+
+- **The views** (design §31 as built): `TownView::built_today` (public), `TownView::buildings`
+  (`TownBuildingsView { built, forbidden }`, the owner's alone; `BuildingSet` re-exported by
+  `h3-game`). One per-town view, `Seer::view` (the viewer's Taverns and Visions read once, when a
+  view needs them), serves `town_views` (`observe`) and the told changes alike.
+- **The events** (decision 53): `TownChanged` per viewer (`player`, `town`, `owner`, `fort`,
+  `capitol`, `built_today`, `level`, `slots`, `hall`, `buildings`), then `TownStackSeen` per shown
+  stack (with its slot for the owner's team, so the garrison by slot folds) and `TownIncomeSeen`
+  per income line; `project` gives each to its `player`. `town::view::Told::before` takes every
+  viewer's views of the touched towns (and the views of every town by the players whose Taverns
+  the change may count), `Told::tell` tells the changed ones, both nothing for a sink that keeps
+  nothing (`Sink::RECORDS`). Hooked at the build (`town/command.rs`), the capture (`town/capture.rs`,
+  now taking the game state; the old `TownChanged { capitol, seen_by }` gone), the siege's merge
+  (`settle_outcome`), the garrison's battle (`end_battle`, around `end_unowned_battle`) and the
+  day's start (`town/day.rs`, `town::start_day` in `advance_day`; the marks listed only when the
+  sink records). `TWN-STUB-13` for Visions' reach (decision 54).
+- **The wire:** `h3-protocol`'s `Town::built_today` and `buildings: Option<TownBuildings { built,
+  forbidden }>` (`WireU64`s), mapped and mapped back; no `PROTOCOL_VERSION` step (E16 M5 T2's
+  rule: no message carries the game's observation before T3). The events are T3's to map.
+- **The plans** (`h3-map`): the told-views property folds the told views strictly (each told town
+  shows the folded view; every other view as it was, a Visions view's public facts only), the
+  hygiene property compares the viewer's told Capitols, `check_towns` reads every viewer's
+  `TownChanged`, the sieges' cover counts the Capitol's limit by the store; the towns' cover
+  counts a told change of a garrison the viewer does not own (69 in its run) beside the Capitols
+  (2).
+- **Tests** (`h3-game` `town/tests/view.rs`, `capture.rs`, `command.rs`; the helper `telling` in
+  `town/tests.rs`): the new fields of every view; a build told to each viewer, a new Tavern
+  telling its owner the raised level of another town, a Tavern-less town's owner's unchanged views
+  not told; the day's start telling the cleared marks before the income; a viewer that does not
+  see the town told nothing; a sink that keeps nothing reaching the same state; the captures told
+  per viewer, the mark included.
+- **Measured:** the benches' and the env's sinks keep nothing (`NoopSink`), so nothing is read for
+  them; no bench workload moved (the scoped verify's bench-check).
+- **Catalog:** TWN-VEW-001 amended (the told changes), TWN-VEW-004 new (the mark public, the
+  buildings the owner's; the code reading of `town_list_frame` 0x5BD700).
+- **Agent's calls (change freely):** a view's change told whole rather than field by field (the
+  fold replaces the view); the owner in `TownChanged` though `TownCaptured` tells it too; the day
+  start's views told although a fold could clear the marks itself; a build in a town without a
+  standing Tavern reads its owner's views of every town (not only when the building is a Tavern);
+  the told events after the change's own events.

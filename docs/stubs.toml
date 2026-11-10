@@ -123,6 +123,12 @@ where  = "crates/h3-game/src/town/siege.rs::siege_setup"
 reason = "A walled town whose faction's record draws natural obstacles in a siege (TWN-SIE-005, h3_towns::siege_obstacles: the base pack's Stronghold with a Citadel or a Castle, as RoE and AB play it; the SoD pack's override clears it, so the full pack set never meets it) gets none (E09 T8b1): the battle's generator (generate_setup_obstacles) places none at a town with a fort, and generate_battlefield_obstacles knows no walls, while the original's placement (0x466010) keeps every obstacle hex off a blocked hex (the walls) and takes a branch for a siege of town type 6 on the game's version that is not read (0x466147 to 0x466194; docs/formats/installation.md section 7.26). Lifted by a siege-aware draw in h3-battle (the battle lane's inbox) after that branch is read"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-13"
+where  = "crates/h3-game/src/town/view.rs::Told"
+reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 4 casts Visions on the map; the server lane's fold test exempts it until then)"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

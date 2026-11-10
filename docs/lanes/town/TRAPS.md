@@ -49,6 +49,15 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   entrance, TWN-VIS-002) exempts a hero whose player has an open battle (`GameState::battle`),
   as `check_invariants` does since the server lane's CI found it (2026-11-09).
 
+## The views (`h3-game` `src/town/view.rs`)
+
+- **Every change of a viewer's town view is told** (E09 T18b2a, SRV-Q26): a new write of a town's
+  record, garrison or owner, or of what a viewer's level counts (its Taverns), takes
+  `Told::before` of the touched towns (and of every town by the players whose Taverns it may
+  count) before the write and `Told::tell` after it; the plans' told-views property folds the
+  views strictly and fails on an untold change (Visions' reach is `TWN-STUB-13`'s, exempt).
+  `Told` reads nothing for a sink that keeps nothing: test a hook with a `Vec` sink.
+
 ## The import (`h3-map` `src/import/town.rs`)
 
 - **A town's entrance is blocked and visitable** in the shipped maps' templates: a test "does a town block this tile" also hits the entrance, where a moved hero (TWN-SET-010) and a town's visitor stand. Use `town::in_town` (a blocked tile that is not an entrance), not `blocks` (E09 T7a1, found by the census).

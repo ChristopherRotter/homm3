@@ -16,7 +16,7 @@ use h3_adventure::{
     UniversityVisit,
 };
 use h3_content::{HeroTypeId, ResourceId, SkillId};
-use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
 use h3_heroes::{
     ArtifactInstance, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, SlotState,
     meeting_spells, university_slot,
@@ -508,10 +508,7 @@ impl GameState {
         while let Some(outcome) = next.take() {
             // rule: TWN-CAP-001, TWN-CAP-002
             if let Some(captured) = outcome.capture {
-                let (adventure, towns, players) =
-                    (&mut self.adventure, &mut self.towns, &self.players);
-                let human = |p: PlayerId| players.get(p.index()).is_some_and(|s| s.human);
-                town::capture(adventure, towns, rules, (captured, player), human, sink);
+                town::capture(self, rules, (captured, player), sink);
             }
             if let Some(hero) = outcome.visit_after {
                 self.hold(player, hero, Rest::Visit);
@@ -537,6 +534,8 @@ impl GameState {
                 .and_then(|offer| self.open(rules, player, offer, sink));
             if let Some(mut battle) = outcome.battle {
                 // rule: TWN-SIE-002
+                let siege: &[TownId] = battle.town.as_slice();
+                let told = town::Told::before::<S>(self, rules, siege, &[]);
                 for (owner, at) in town::merge(&mut self.adventure, rules, &mut battle) {
                     let stack = self.stack_at(owner, at);
                     sink.emit(GameEvent::StackChanged {
@@ -545,6 +544,8 @@ impl GameState {
                         stack,
                     });
                 }
+                // rule: TWN-VEW-002, TWN-VEW-003
+                told.tell(self, rules, sink);
                 self.start_battle(rules, player, battle, sink);
             }
             if let Some(meeting) = outcome.meeting {

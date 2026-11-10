@@ -10,11 +10,12 @@ use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_towns::{BuildingId, BuildingsSetup, SlotSet, TownFaction};
 
 use super::{
-    CAPITOL_SLOT, LOOKOUT_RADIUS, LOOKOUT_SLOT, faction, towns_rules, towns_rules_on, towns_setup,
+    CAPITOL_SLOT, LOOKOUT_RADIUS, LOOKOUT_SLOT, faction, telling, towns_rules, towns_rules_on,
+    towns_setup,
 };
 use crate::{
     Actor, GameCommand, GameCommandError, GameEvent, GameRuleset, GameSetup, GameState, Viewer,
-    apply, legal_moves, project,
+    apply, legal_moves, observe, project,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -86,8 +87,12 @@ fn an_undefended_town_of_another_player_or_none_is_captured_by_the_step() {
         assert_eq!(game.adventure().owner(1), owner);
         let events = step(&rules, &mut game, BLUE_GATE).unwrap();
         // The step's, then the capture's: the owner, then its reveal (the 4 × 4 map was all
-        // explored at the start); no change of its picture.
-        assert_eq!(events.len(), 3, "{events:?}");
+        // explored at the start); no change of its picture; then each viewer's view of the town
+        // (E09 T18b2a): red's, its new owner's, and blue's.
+        let seen = |player| observe(&game, &rules, Viewer::Player(player)).towns[1].clone();
+        let mut told = telling(RED, &seen(RED));
+        told.extend(telling(BLUE, &seen(BLUE)));
+        assert_eq!(events[3..], told, "{events:?}");
         assert!(matches!(
             kind(&events[0]),
             Some(AdventureEventKind::HeroStepped { hero: HERO, .. })
@@ -129,20 +134,18 @@ fn a_captured_capitol_is_demoted_when_its_new_owner_holds_another() {
         assert!(game.towns().capitol(town, rules.towns()));
     }
     let events = step(&rules, &mut game, BLUE_GATE).unwrap();
-    assert_eq!(events.len(), 4, "{events:?}");
     assert!(matches!(
         kind(&events[1]),
         Some(AdventureEventKind::TownCaptured { town: T1, .. })
     ));
-    // Told to the capture's viewers: red, its new owner, and blue, which sees it.
-    assert_eq!(
-        events[3],
-        GameEvent::TownChanged {
-            town: T1,
-            capitol: false,
-            seen_by: Viewers::NONE.with(RED).with(BLUE),
-        }
-    );
+    // Told to each viewer whose view it changed (E09 T18b2a): red, its new owner, and blue, which
+    // sees it, its Capitol gone.
+    let seen = |player| observe(&game, &rules, Viewer::Player(player)).towns[1].clone();
+    let (red, blue) = (seen(RED), seen(BLUE));
+    assert!(!red.capitol && !blue.capitol);
+    let mut told = telling(RED, &red);
+    told.extend(telling(BLUE, &blue));
+    assert_eq!(events[3..], told);
     // Its Capitol out of the ever-built set, its City Hall in; red's own keeps its Capitol.
     let towns = game.towns();
     let built = towns.get(T1).unwrap().built();
@@ -150,15 +153,9 @@ fn a_captured_capitol_is_demoted_when_its_new_owner_holds_another() {
     assert!(!towns.capitol(T1, rules.towns()));
     assert!(towns.capitol(T0, rules.towns()));
     // Each viewer told alone.
-    for player in [RED, BLUE] {
-        assert_eq!(
-            project(&events[3], Viewer::Player(player)),
-            Some(GameEvent::TownChanged {
-                town: T1,
-                capitol: false,
-                seen_by: Viewers::NONE.with(player),
-            })
-        );
+    for event in &events[3..] {
+        let to = |player| project(event, Viewer::Player(player)) == Some(*event);
+        assert_ne!(to(RED), to(BLUE), "{event:?}");
     }
 }
 
@@ -196,7 +193,6 @@ fn a_capture_reveals_the_towns_radius_and_tells_its_change_where_it_is_seen() {
     let before = explored(&game);
     assert!(!game.adventure().is_explored(BLUE, FAR_GATE));
     let events = step(&rules, &mut game, FAR_GATE).unwrap();
-    assert_eq!(events.len(), 4, "{events:?}");
     // The town's reveal, `h3_towns::reveal`: the Lookout's radius, past the step's own (the
     // hero's scouting radius 5, no Scouting) and the part's 5.
     let radius = u32::from(LOOKOUT_RADIUS);
@@ -218,15 +214,11 @@ fn a_capture_reveals_the_towns_radius_and_tells_its_change_where_it_is_seen() {
         panic!("{events:?}");
     };
     assert_eq!(captured.seen_by, alone);
-    assert_eq!(
-        events[3],
-        GameEvent::TownChanged {
-            town: T1,
-            capitol: false,
-            seen_by: alone,
-        }
-    );
-    for event in [&events[1], &events[3]] {
+    let red = &observe(&game, &rules, Viewer::Player(RED)).towns;
+    let town = red.iter().find(|t| t.town == T1).unwrap();
+    assert!(!town.capitol);
+    assert_eq!(events[3..], telling(RED, town));
+    for event in [&events[1]].into_iter().chain(&events[3..]) {
         assert_eq!(project(event, Viewer::Player(RED)), Some(*event));
         assert_eq!(project(event, Viewer::Player(BLUE)), None);
     }
@@ -247,10 +239,18 @@ fn a_captured_capitol_stays_when_its_new_owner_holds_no_other() {
     for setup in [plain, lost] {
         let mut game = GameState::new(&rules, &setup, 7).unwrap();
         let events = step(&rules, &mut game, BLUE_GATE).unwrap();
-        // The step's, `TownCaptured`, `TilesRevealed`: no `TownChanged`.
-        assert_eq!(events.len(), 3, "{events:?}");
+        // The step's, `TownCaptured`, `TilesRevealed`, then each viewer's view (E09 T18b2a), its
+        // Capitol kept.
         assert_eq!(game.adventure().owner(1), Some(RED));
         assert!(game.towns().capitol(T1, rules.towns()));
+        let capitols: Vec<bool> = events[3..]
+            .iter()
+            .filter_map(|e| match *e {
+                GameEvent::TownChanged { capitol, .. } => Some(capitol),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(capitols, [true, true], "{events:?}");
     }
 }
 
@@ -258,20 +258,17 @@ fn a_captured_capitol_stays_when_its_new_owner_holds_no_other() {
 #[test]
 fn a_capture_of_a_town_the_store_lacks_changes_nothing() {
     let rules = towns_rules();
-    let game = GameState::new(&rules, &towns_setup(&rules), 7).unwrap();
-    let (mut adventure, mut towns) = (game.adventure().clone(), game.towns().clone());
+    let mut game = GameState::new(&rules, &towns_setup(&rules), 7).unwrap();
+    let before = game.clone();
     let mut events = Vec::new();
     let lacked = (TownId::new(2), RED);
-    crate::town::capture(
-        &mut adventure,
-        &mut towns,
-        &rules,
-        lacked,
-        |_| true,
-        &mut events,
-    );
+    crate::town::capture(&mut game, &rules, lacked, &mut events);
     assert!(events.is_empty());
-    assert_eq!((&adventure, &towns), (game.adventure(), game.towns()));
+    assert_eq!(game.state_hash(), before.state_hash());
+    assert_eq!(
+        (game.adventure(), game.towns()),
+        (before.adventure(), before.towns())
+    );
 }
 
 // covers: TWN-BLD-004
@@ -296,23 +293,31 @@ fn a_capture_keeps_the_day_s_mark_unless_a_human_takes_it_from_no_human() {
             setup.map.objects[1].owner = None;
             setup.towns[1] = super::town(TownFaction::Fixed(faction(&rules, "t:town")));
         }
-        let game = GameState::new(&rules, &setup, 7).unwrap();
-        let (mut adventure, mut towns) = (game.adventure().clone(), game.towns().clone());
+        setup.players[0].human = red_human;
+        setup.players[1].human = blue_human;
+        let mut game = GameState::new(&rules, &setup, 7).unwrap();
         // Town 1 built in today (its Fort already stands: the build only sets the mark).
-        towns.build(T1, fort, rules.towns(), true).unwrap();
-        let human = |player: PlayerId| if player == RED { red_human } else { blue_human };
+        game.towns_mut()
+            .build(T1, fort, rules.towns(), true)
+            .unwrap();
         let mut events = Vec::new();
-        crate::town::capture(
-            &mut adventure,
-            &mut towns,
-            &rules,
-            (T1, RED),
-            human,
-            &mut events,
-        );
-        assert_eq!(adventure.owner(1), Some(RED));
+        crate::town::capture(&mut game, &rules, (T1, RED), &mut events);
+        assert_eq!(game.adventure().owner(1), Some(RED));
         let case = (neutral, blue_human, red_human);
-        assert_eq!(towns.get(T1).unwrap().built_today(), kept, "{case:?}");
+        assert_eq!(
+            game.towns().get(T1).unwrap().built_today(),
+            kept,
+            "{case:?}"
+        );
+        // The mark is public: each viewer is told it as it stands (E09 T18b2a, TWN-VEW-004).
+        let marks: Vec<bool> = events
+            .iter()
+            .filter_map(|e| match *e {
+                GameEvent::TownChanged { built_today, .. } => Some(built_today),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(marks, [kept, kept], "{case:?}");
     }
 }
 

@@ -5357,8 +5357,8 @@ const CAMP_NOT_RANDOM: [&str; 6] = [
 /// none; it changes only by the town's capture, told by one `TownCaptured` naming the new owner
 /// (TWN-CAP-001, -003), and a captured town's garrison is empty (its leftovers lost with it,
 /// design §11); the store keeps the number of towns and each record's faction, and a record's
-/// buildings change only by the Capitol's limit at a capture, told by `TownChanged` with the
-/// town's Capitol as the store has it after (TWN-CAP-002).
+/// buildings change only by the Capitol's limit at a capture, told by `TownChanged` (since E09
+/// T18b2a each viewer's, all with the town's Capitol as the store has it after; TWN-CAP-002).
 fn check_towns(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -5406,11 +5406,16 @@ fn check_towns(
                 _ => None,
             })
             .collect();
-        if old == new {
-            prop_assert!(changed.is_empty(), "{:?}: {:?}", town, changed);
-        } else {
+        let capitol = after.towns().capitol(town, part);
+        prop_assert!(
+            changed.iter().all(|&c| c == capitol),
+            "{:?}: {:?}",
+            town,
+            changed
+        );
+        if old != new {
             prop_assert!(!captured.is_empty(), "{:?} rebuilt without a capture", town);
-            prop_assert_eq!(&changed, &[after.towns().capitol(town, part)], "{:?}", town);
+            prop_assert!(!changed.is_empty(), "{:?} rebuilt untold", town);
         }
     }
     Ok(())
@@ -8924,9 +8929,11 @@ struct Besieged {
 }
 
 impl Besieged {
-    /// Counts what `command` did on its way from `before` to `after`.
+    /// Counts what `command` did on its way from `before` to `after` (the Capitols the limit took
+    /// by the store: since E09 T18b2a `TownChanged` tells every view's change).
     fn count(
         &mut self,
+        rules: &GameRuleset,
         (before, after): (&GameState, &GameState),
         command: &GameCommand,
         events: &[GameEvent],
@@ -8974,7 +8981,6 @@ impl Besieged {
                         }
                     }
                 }
-                GameEvent::TownChanged { capitol: false, .. } => self.limited += 1,
                 _ => {}
             }
         }
@@ -8991,6 +8997,11 @@ impl Besieged {
             )
         });
         self.merges += usize::from(merged);
+        let part = rules.towns();
+        self.limited += (0..map.towns().len())
+            .map(town_id)
+            .filter(|&t| before.towns().capitol(t, part) && !after.towns().capitol(t, part))
+            .count();
         if let Some((hero, _)) = as_move(command)
             && !captured
             && let Some(h) = after.adventure().hero(hero)
@@ -9032,7 +9043,7 @@ fn the_plans_capture_and_besiege_towns() {
             let before = state.clone();
             let mut events = Vec::new();
             if apply(&mut state, rules, actor, command.clone(), &mut events).is_ok() {
-                besieged.count((&before, &state), &command, &events);
+                besieged.count(rules, (&before, &state), &command, &events);
             }
         }
     }

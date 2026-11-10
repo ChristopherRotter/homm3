@@ -11,7 +11,8 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
     GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, OWNER_LEVEL, TAVERN_LEVELS,
-    TownOwnerView, TownView, Viewer, apply, legal_commands, legal_moves, observe, project,
+    TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands, legal_moves,
+    observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -813,7 +814,9 @@ fn check_told(
     // TWN-VEW-003) as the merge's slots it is told change them (TWN-SIE-002); whether a battle of
     // its own ended, whose sides' armies, a siege's garrison among them, it changes.
     let mut captured: Vec<(TownId, PlayerId)> = Vec::new();
-    let mut capitols: Vec<(TownId, bool)> = Vec::new();
+    // E09 T18b2a (SRV-Q26): the views of the towns it is told, each the last `TownChanged` of its
+    // town with the stacks and income lines that follow it.
+    let mut views: Vec<TownView> = Vec::new();
     let mut garrisons: Vec<(TownId, Vec<ArmyStack>)> = before
         .towns
         .iter()
@@ -1028,20 +1031,87 @@ fn check_told(
                 flagged.extend(seen.map(|o| (o.object_type, o.anchor)));
                 captured.push((town, owner));
             }
-            // E09 T8a2: a captured town's Capitol taken by the limit (TWN-CAP-002), told to the
-            // capture's viewers after its capture.
+            // E09 T18b2a (SRV-Q26): the viewer's view of a town it sees, told whole by its facts,
+            // then a stack its level shows each, then an income line of the top level each.
             GameEvent::TownChanged {
+                player,
                 town,
+                owner,
+                fort,
                 capitol,
-                seen_by,
+                built_today,
+                level,
+                slots,
+                hall,
+                buildings,
             } => {
-                prop_assert_eq!(seen_by, alone);
+                prop_assert_eq!(player, viewer);
+                let seen = before
+                    .towns
+                    .iter()
+                    .chain(&after.towns)
+                    .find(|t| t.town == town);
                 prop_assert!(
-                    captured.iter().any(|&(t, _)| t == town),
-                    "{:?} without the town's capture",
+                    seen.is_some(),
+                    "{:?} of a town the viewer does not see",
                     event
                 );
-                capitols.push((town, capitol));
+                let seen = seen.unwrap();
+                views.retain(|t| t.town != town);
+                views.push(TownView {
+                    town,
+                    anchor: seen.anchor,
+                    owner,
+                    faction: seen.faction,
+                    name: seen.name.clone(),
+                    fort,
+                    capitol,
+                    built_today,
+                    garrison: GarrisonView {
+                        level,
+                        stacks: Vec::new(),
+                        army: slots.then(Vec::new),
+                    },
+                    owner_facts: hall.map(|hall| TownOwnerView {
+                        hall,
+                        income: Vec::new(),
+                    }),
+                    buildings,
+                });
+            }
+            GameEvent::TownStackSeen {
+                player,
+                town,
+                stack,
+                slot,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let view = views.last_mut().filter(|t| t.town == town);
+                prop_assert!(view.is_some(), "{:?} without its town's change", event);
+                let garrison = &mut view.unwrap().garrison;
+                garrison.stacks.push(stack);
+                prop_assert_eq!(slot.is_some(), garrison.army.is_some(), "{:?}", event);
+                if let (Some(army), Some(slot), Some(count)) =
+                    (&mut garrison.army, slot, stack.count)
+                {
+                    army.push(ArmyStack {
+                        slot,
+                        creature: stack.creature,
+                        count,
+                    });
+                }
+            }
+            GameEvent::TownIncomeSeen {
+                player,
+                town,
+                resource,
+                amount,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let view = views.last_mut().filter(|t| t.town == town);
+                let facts = view.and_then(|t| t.owner_facts.as_mut());
+                prop_assert!(facts.is_some(), "{:?} without its town's top level", event);
+                facts.unwrap().income.push((resource, amount));
             }
             // E08 T84b1: a weekly object found empty, told to its visitor's owner alone; nothing
             // it sees changes. E08 T84b2: a Shipyard that makes no boat offer likewise.
@@ -1460,32 +1530,42 @@ fn check_told(
     let ones = |planes: &[u64]| planes.iter().map(|w| w.count_ones()).sum::<u32>();
     prop_assert!(ones(&after.adventure.explored) >= ones(&before.adventure.explored) + revealed);
     // E09 T9b2a: the towns it sees (TWN-VEW-001; design note §12, §17). A view stays (an explored
-    // tile stays explored), its anchor, faction, name and fort as they were (nothing builds in
-    // increment 1), its owner as the captures it is told say, its Capitol as the changes it is
-    // told say (a capture the limit does not touch keeps it), its garrison by slot as the merge's
-    // slots say unless a battle of its own ended or the town was captured; a town shows only
-    // where the viewer's explored tiles grew. What its level shows of the garrison and the top
-    // level's facts are [`check_town_views`]' (the state's: a siege's effects show untold to those
-    // that see the town, `docs/06-security.md`).
+    // tile stays explored); since E09 T18b2a (SRV-Q26) a town it is told of shows the told view,
+    // and every other town's view is as it was: its owner's capture, its Capitol's limit, its
+    // garrison's merge and battle and its mark are told. Visions' reach is not (`TWN-STUB-13`):
+    // a view at the top level by Visions (no garrison by slot) before or after keeps its public
+    // facts and the owner's buildings only. Its garrison by slot is as the merge's slots it is
+    // told say too. What its level shows of the garrison and the top level's facts are
+    // [`check_town_views`]' (the state's).
+    let visions = |t: &TownView| t.garrison.level == OWNER_LEVEL && t.garrison.army.is_none();
     for was in &before.towns {
         let now = after.towns.iter().find(|t| t.town == was.town);
         prop_assert!(now.is_some(), "{:?} left the view", was);
         let now = now.unwrap();
-        prop_assert_eq!(
-            (now.anchor, now.faction, &now.name, now.fort),
-            (was.anchor, was.faction, &was.name, was.fort)
-        );
+        if let Some(told) = views.iter().find(|t| t.town == was.town) {
+            prop_assert_eq!(now, told, "{:?}'s view is not the told one", was.town);
+        } else if visions(was) || visions(now) {
+            let public = |t: &TownView| {
+                let (owner, fort, capitol, today) = (t.owner, t.fort, t.capitol, t.built_today);
+                (
+                    t.anchor,
+                    t.faction,
+                    t.name.clone(),
+                    owner,
+                    fort,
+                    capitol,
+                    today,
+                    t.buildings,
+                )
+            };
+            prop_assert_eq!(public(now), public(was), "{:?} changed untold", was.town);
+        } else {
+            prop_assert_eq!(now, was, "{:?} changed untold", was.town);
+        }
         let owner = captured.iter().rev().find(|&&(t, _)| t == was.town);
         prop_assert_eq!(
             now.owner,
             owner.map_or(was.owner, |&(_, o)| Some(o)),
-            "{:?}",
-            was
-        );
-        let capitol = capitols.iter().rev().find(|&&(t, _)| t == was.town);
-        prop_assert_eq!(
-            now.capitol,
-            capitol.map_or(was.capitol, |&(_, c)| c),
             "{:?}",
             was
         );
@@ -1496,6 +1576,10 @@ fn check_told(
         {
             prop_assert_eq!(army, told, "{:?}'s garrison changed untold", was);
         }
+    }
+    for told in &views {
+        let now = after.towns.iter().find(|t| t.town == told.town);
+        prop_assert_eq!(now, Some(told), "{:?} told but not seen so", told.town);
     }
     let grew = ones(&after.adventure.explored) > ones(&before.adventure.explored);
     for now in &after.towns {
@@ -1841,7 +1925,8 @@ fn check_hire_sources(
 /// explored tile, or under ADV-QUIRK-1 its fringe), shows its type, anchor, footprint, owner and
 /// `TownId` and nothing else (no monster, production, guards, visited mark or boat tile); and each
 /// town a tile of which it has explored has a view, in `TownId` order, with the town's anchor,
-/// owner, faction, name, fort level and Capitol as they stand and its garrison by the viewer's
+/// owner, faction, name, fort level, Capitol and day's mark as they stand (E09 T18b2a: the mark
+/// public, the record's sets to the owner alone, TWN-VEW-004) and its garrison by the viewer's
 /// level. The level is the top one ([`OWNER_LEVEL`]) for a town of the viewer's team, or whose
 /// entrance one of its own heroes with a Visions creature in its army sees (on the entrance's
 /// level, nearer than the part's factor times the hero's Power, at least the part's least
@@ -1958,6 +2043,7 @@ fn check_town_views(
             name: towns.town_static(town).and_then(|s| s.name.clone()),
             fort: h3_towns::fort_level(record, part),
             capitol: towns.capitol(town, part),
+            built_today: record.built_today(),
             garrison: GarrisonView {
                 level,
                 stacks,
@@ -1966,6 +2052,10 @@ fn check_town_views(
             owner_facts: top.then(|| TownOwnerView {
                 hall: h3_towns::hall_level(record, part),
                 income: h3_towns::daily_income(record, part),
+            }),
+            buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
+                built: record.built(),
+                forbidden: record.forbidden(),
             }),
         });
     }
@@ -2008,12 +2098,13 @@ type Outcome = (
 /// sees it, and their hint is every viewer's that sees the mine (ADV-OWN-003), as a battle shows
 /// its side the other's stacks (a case of `master` before T9b2a: another player's hero left
 /// guards of another creature in the other game at a mine the viewer saw). (E09 T9b2b) And the
-/// Capitols it changed (`TownChanged`'s town and Capitol, not who sees it): a capture takes the
-/// town's Capitol away when its new owner holds another (TWN-CAP-002), which may stand in a town
-/// the viewer never sees, whose owner and buildings the test may change, and the change is told
-/// to every viewer that sees the town.
+/// Capitols it changed (`TownChanged`'s town and Capitol, since E09 T18b2a those told to `viewer`,
+/// each viewer's: the events tell every viewer's views): a capture takes the town's Capitol away
+/// when its new owner holds another (TWN-CAP-002), which may stand in a town the viewer never
+/// sees, whose owner and buildings the test may change, and the change is told to every viewer
+/// that sees the town.
 fn outcome(
-    (player, accepted): (PlayerId, bool),
+    (player, viewer, accepted): (PlayerId, PlayerId, bool),
     before: &[(HeroId, TilePos)],
     after: &GameState,
     events: &[GameEvent],
@@ -2081,7 +2172,12 @@ fn outcome(
     let capitols = events
         .iter()
         .filter_map(|e| match *e {
-            GameEvent::TownChanged { town, capitol, .. } => Some((town, capitol)),
+            GameEvent::TownChanged {
+                player,
+                town,
+                capitol,
+                ..
+            } if player == viewer => Some((town, capitol)),
             _ => None,
         })
         .collect();
@@ -2213,8 +2309,8 @@ proptest! {
             let rb = apply(&mut b, rules, actor, command, &mut eb);
             if actor == Actor::Player(viewer) {
                 prop_assert_eq!(ra, rb);
-            } else if outcome((player, ra.is_ok()), &from_a, &a, &ea)
-                != outcome((player, rb.is_ok()), &from_b, &b, &eb)
+            } else if outcome((player, viewer, ra.is_ok()), &from_a, &a, &ea)
+                != outcome((player, viewer, rb.is_ok()), &from_b, &b, &eb)
             {
                 // The other player's command did not do the same in both games.
                 break;
@@ -2416,6 +2512,9 @@ struct TownsMet {
     captures: [usize; 2],
     /// Capitols' changes told (TWN-CAP-002).
     capitols: usize,
+    /// Changes of another team's or a neutral town's garrison told (E09 T18b2a, SRV-Q26: a
+    /// siege's merge or battle the viewer does not fight).
+    garrisons: usize,
     /// A merge's garrison slots told to the garrison's owner (TWN-SIE-002).
     merges: usize,
     /// Towns coming into a view.
@@ -2440,7 +2539,18 @@ impl TownsMet {
                     kind: AdventureEventKind::TownCaptured { owner, .. },
                     ..
                 }) => self.captures[usize::from(owner != viewer)] += 1,
-                GameEvent::TownChanged { .. } => self.capitols += 1,
+                GameEvent::TownChanged {
+                    town,
+                    capitol,
+                    slots,
+                    ..
+                } => {
+                    let was = before.towns.iter().find(|t| t.town == town);
+                    let now = after.towns.iter().find(|t| t.town == town);
+                    self.capitols += usize::from(was.is_some_and(|t| t.capitol != capitol));
+                    let garrison = was.zip(now).is_some_and(|(w, n)| w.garrison != n.garrison);
+                    self.garrisons += usize::from(garrison && !slots);
+                }
                 GameEvent::StackChanged { at, .. } => {
                     self.merges += usize::from(matches!(at.army, ArmyRef::Garrison(_)));
                 }
@@ -2509,6 +2619,7 @@ fn town_views_move_as_the_events_say() {
     let m = &met;
     assert!(m.levels.iter().all(|&n| n > 0) && m.neutral > 0, "{m:?}");
     assert!(m.captures.iter().all(|&n| n > 0) && m.capitols > 0, "{m:?}");
+    assert!(m.garrisons > 0, "{m:?}");
     assert!(m.merges > 0 && m.new > 0, "{m:?}");
 }
 
