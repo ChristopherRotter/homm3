@@ -9,8 +9,8 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 **M5 part 1 refined 2026-11-09 (SRV-Q25):** the whole game's wire, a session hosting one game in-process, its per-viewer record, a golden adventure replay as a record (the user's order of 2026-10-31, the inbox below). The scope, the user's decisions and each task's content: the epic's "M5 part 1". In order, each about half a context:
 
 - T0 (#799) and T1 done 2026-11-09 (`E16-log.md`): **events only** (the design note §14); what a client cannot fold yet is in the adventure and town lanes' inboxes (SRV-Q26: foldable events and a query for what a viewer newly sees).
-- **T2** the observation's wire (the snapshot; no diff), in two parts (the user), both done 2026-11-09 in #805 (`E16-log.md`). **T3** the commands, answers, rejections and events, the fold (`h3-protocol`'s) and its test over the golden replays, SRV-Q26's gaps as stubs, in three parts (the user, the epic; one pull request after T3c): T3a (the commands and rejections) and T3b (the events) done 2026-11-09 (`E16-log.md`), **T3c** the fold and its test in two parts (SRV-Q27: the battle by snapshots, the further gaps as SRV-Q26's): **T3c1** the fold and a harness over the golden replays and **T3c2** the stubs (`SRV-STUB-1` to `-13`), the inbox notes and the gate (both done 2026-11-09, `E16-log.md`); **T3d** the town lane's told views (E09 T18b2a) mapped and folded, `SRV-STUB-12` and `-13` lifted (done 2026-11-10, `E16-log.md`); **T4** the game's manifest and key tables.
-- **T5** the game session in-process with its journal and records (record format v4), each viewer's newly seen tiles with the events (SRV-Q26); **T6** a golden replay as a record (`h3-server record`), the map client lane's note; **T7** closure and the checkpoint.
+- **T2** the observation's wire (the snapshot; no diff), in two parts (the user), both done 2026-11-09 in #805 (`E16-log.md`). **T3** the commands, answers, rejections and events, the fold (`h3-protocol`'s) and its test over the golden replays, SRV-Q26's gaps as stubs, in three parts (the user, the epic; one pull request after T3c): T3a (the commands and rejections) and T3b (the events) done 2026-11-09 (`E16-log.md`), **T3c** the fold and its test in two parts (SRV-Q27: the battle by snapshots, the further gaps as SRV-Q26's): **T3c1** the fold and a harness over the golden replays and **T3c2** the stubs (`SRV-STUB-1` to `-13`), the inbox notes and the gate (both done 2026-11-09, `E16-log.md`); **T3d** the town lane's told views (E09 T18b2a) mapped and folded, `SRV-STUB-12` and `-13` lifted (done 2026-11-10, `E16-log.md`); **T4** the game's manifest and key tables (done 2026-11-10, `E16-log.md`: `GameManifest`, the map by its file's hash and import version).
+- **T5** the game session in-process with its journal and records (record format v4), each viewer's newly seen tiles with the events (SRV-Q26), in three parts (the user, 2026-11-10): **T5a** the messages (protocol v39) and the sans-I/O session (done 2026-11-10, `E16-log.md`; one pull request with T4), **T5b** the journal, the restore and each viewer's record (record format v4), **T5c** the newly seen tiles once the adventure lane's SRV-Q26 query lands (`SRV-STUB-1` until then); **T6** a golden replay as a record (`h3-server record`), the map client lane's note; **T7** closure and the checkpoint.
 
 Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
@@ -22,10 +22,17 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
   a step's visit's) and `AdventureCommandError::NothingToRevisit` (no field) are mapped in
   `h3-protocol` (the global trap, after T3's #814): `wire::game::AdventureCommand::Revisit { hero:
   u16 }` both ways, `AdventureReject::NothingToRevisit {}`, the round-trip tests (101 rejections).
-  `PROTOCOL_VERSION` left at 38, as T3 left it for the game's wire (on no message before T5).
+  **`PROTOCOL_VERSION` 40** (your T5a's v39 put the game's commands and rejections on messages,
+  so the two variants are a wire change; the history line in `lib.rs`).
   `legal_commands` lists a `Revisit` per hero on an entered object after the `BuildBoat`s; the
   adventure replay format is v12 (`revisit <hero>`; no golden replay holds one, the fold gate
   unchanged).
+
+- 2026-11-10 (the town lane, E09 T18b2b, `town/e09-t18b2b`, `cross-lane`; **for a seat's town
+  screen, when the game's queries reach the wire**): `GameState::town_offer(rules, player, town)
+  -> Option<h3_game::TownOffer { possible, buildable, payable }>` (`BuildingSet`s over the town's
+  faction's record), the owner's hall, `None` for any other viewer; and `legal_commands` lists the
+  payable builds. No event, command or observation field changed.
 
 - 2026-11-05 (the client lane, E17 M6 T5a, gap G1; **the user's requirement**: a server game
   behaves exactly as a local one; after the battle lane's `SideView` fields): **carry each side's casting limits on the wire** (whether its hero

@@ -82,8 +82,12 @@ pub mod wire;
 /// (the server lane's inbox, CLT-Q20, CLT-STUB-3): the messages are unchanged, their order is
 /// new: every viewer hears the battle's start's events in an `Events` message when the game
 /// starts, before any command, and its last `Snapshot`, the battle as it ended, before
-/// `GameEnded` (a seat's own hero's Eagle Eye picks, which no event shows).
-pub const PROTOCOL_VERSION: u32 = 38;
+/// `GameEnded` (a seat's own hero's Eagle Eye picks, which no event shows). v39 (E16 M5 T5a): the
+/// whole game's messages `GameSnapshot`, `GameEvents`, `GameTurn`, `GameAccepted` and
+/// `GameRejected`, which an in-process game session sends its players (`session::game`). v40
+/// (E08 T105b2, ADV-TEL-008): the game's adventure command `Revisit` (the entered object under a
+/// hero visited again) and its rejection `NothingToRevisit`.
+pub const PROTOCOL_VERSION: u32 = 40;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

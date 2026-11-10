@@ -1968,6 +1968,57 @@ pub enum ServerMessage {
         /// The lists that hold, in the server's order.
         lists: Vec<SignedList>,
     },
+    /// The whole game as the viewer sees it (E16 M5 T5a, v39): when the game starts. A battle
+    /// inside the game comes as the battle's own `Snapshot` when it opens for the viewer
+    /// (SRV-Q27 (1)), after the `GameEvents` that open it.
+    GameSnapshot {
+        /// The viewer's message number.
+        n: u32,
+        /// The observation.
+        observation: game::GameObservation,
+    },
+    /// What happened in the whole game, as the viewer may see it (E16 M5 T5a, v39): after every
+    /// accepted command, to every player, also an empty list, so that what a viewer receives does
+    /// not depend on what it may not see. The viewer keeps its observation current by them
+    /// ([`game::GameObservation::fold`]; the design note §14: events only).
+    GameEvents {
+        /// The viewer's message number.
+        n: u32,
+        /// The events, in order.
+        events: Vec<game::GameEvent>,
+    },
+    /// The player may act in the whole game (E16 M5 T5a, v39): its legal commands but its moves
+    /// (`h3_game::legal_commands`: in its turn, an open decision's answers, its battle side's
+    /// commands while that side is to act, also outside its turn). Sent when the game starts and
+    /// after every accepted command to each player that may act then.
+    GameTurn {
+        /// The viewer's message number.
+        n: u32,
+        /// The legal commands (a battle's casts are listed by spell in `castable`, as in
+        /// `YourTurn`).
+        legal: Vec<game::GameCommand>,
+        /// The handles of the spells the player's hero may cast now in its battle: none unless
+        /// its side is to act.
+        castable: Vec<u16>,
+    },
+    /// The player's command to the whole game was applied, as echoed (E16 M5 T5a, v39).
+    GameAccepted {
+        /// The viewer's message number.
+        n: u32,
+        /// The client's sequence number.
+        seq: u32,
+        /// The command applied.
+        command: game::GameCommand,
+    },
+    /// The player's command to the whole game was rejected; nothing changed (E16 M5 T5a, v39).
+    GameRejected {
+        /// The viewer's message number.
+        n: u32,
+        /// The client's sequence number.
+        seq: u32,
+        /// Why.
+        code: game::GameReject,
+    },
 }
 
 /// A card a server relays (E16 M6 T3; `E16-design.md` §12): as its key signed it, with the keys

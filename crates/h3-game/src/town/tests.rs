@@ -981,6 +981,7 @@ mod capture;
 mod command;
 mod heroes;
 mod income;
+mod offer;
 mod pool;
 mod siege;
 mod view;

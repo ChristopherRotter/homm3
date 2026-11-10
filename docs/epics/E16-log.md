@@ -2202,3 +2202,77 @@ This task repairs it.
   which the two parts name now. `SRV-STUB-12` and `-13` lifted (registry, fold). The report also
   prints each part's first difference without a reveal.
 - **No message, no version step** (T5).
+
+### M5 T4 — the game's manifest and key tables (2026-11-10)
+
+What a whole game is made of (ADR-0018 point 10 for the whole game), for T5's session to send
+before a game's first observation and to write into a game record's header. Baseline: T3d's
+branch (#816) on `master` 4701369.
+
+- **The wire** (`wire::game::{GameManifest, MapIdentity, GameKeyTables}`, `wire/game/manifest.rs`;
+  provisional): the protocol and engine versions, the packs, the profile, every part's content
+  hash (core, battle, adventure, towns; ADR-0015 point 2: the adventure replay header names three,
+  the game's battles need the fourth), the RNG and hash algorithms, the battle, adventure and
+  game state hash versions, the map, the battlefield's size, the battle's `KeyTables` and the
+  game's own: object types, resources, roads, rivers, and each faction's town buildings by the
+  faction's handle (the keys within its town record by building index, as a build and a town's
+  buildings name them; empty for a faction without a town).
+- **The map** (`MapIdentity`): as an adventure replay names it (`MapRef`, ADV-Q2) without its
+  path, which is the server's: the map file's content hash and `h3_map`'s import version, given
+  by the caller (the protocol reads no files and does not depend on `h3-map` or `h3-sim`). A
+  client draws the map from its own copy only when both match (the design note §3); the map
+  never travels. A client holding the map file knows the map's start, as every player of the
+  original does; the per-viewer projection of the game's state is unchanged.
+- **The mapping** (`map::game::{manifest, key_tables}`, `map/game/manifest.rs`): from the game's
+  ruleset, the battle's tables and field through the battle's own functions.
+- **Tests** (`tests/game_manifest.rs`): the manifest names what the adventure replay header
+  names (`h3_sim::adventure::replay::ReplayHeader::current`) and the battle part's hash, state
+  hash version, field and keys as the battle's manifest does; a golden replay's map identity
+  (`towns-capitol-s1`, its file's hash checked); the game's tables follow the handles (each key
+  resolves to its index; the buildings through each record's `building_by_key`, one list per
+  faction, empty exactly where a faction has no town); round trips; the JSON form.
+- **No message, no version step** (T5 sends it).
+
+### M5 T5a — the whole game's messages and the in-process game session (2026-11-10)
+
+T5's split (the user, 2026-11-10): T5a the messages and a sans-I/O session; T5b the journal, the
+restore and each viewer's record (record format v4); T5c each viewer's newly seen tiles once the
+adventure lane's SRV-Q26 query lands. T4 goes into `master` with T5a in one pull request (the
+user). Baseline: T4's branch (`server/e16-m5-t4`) with `master` b1d2e94 merged in (CI green on
+b1d2e94; the scoped verify passed).
+
+- **The messages** (`ServerMessage`, protocol **v39**; provisional): `GameSnapshot { n,
+  observation }` (a player's whole game, when the game starts), `GameEvents { n, events }` (after
+  every accepted command, to every player, also empty), `GameTurn { n, legal, castable }` (the
+  player's legal commands but its moves, as `h3_game::legal_commands` gives them, and while its
+  battle side is to act the spells its hero may cast, as the battle's `YourTurn` lists casts),
+  `GameAccepted { n, seq, command }` and `GameRejected { n, seq, code }`. A game's battle opens
+  with the battle wire's own `Snapshot` (SRV-Q27 (1)); its events stay inside `GameEvents`. No
+  client message yet: in-process the host names the player (part 2's network seats send one).
+- **The session** (`session::game::GameSession`, `h3-protocol`, sans I/O; provisional):
+  `start(rules, setup, seed, manifest, out)` builds the game (`GameState::new`) and sends every
+  player its `GameSnapshot`, then each that may act its `GameTurn`; `play(player, seq, command,
+  out)` applies the wire command as `Actor::Player(player)` (the host's word, ADR-0018 point 6;
+  `command_to_engine` first, so a building beyond any record is refused before the engine), then
+  `GameAccepted` to the player, `GameEvents` to every player, a battle's `Snapshot` to a player
+  whose view gains a battle (one told `BattleStarted`, or one whose view held none), and
+  `GameTurn` to each player that may act; a rejection is told to its player alone and returned,
+  a player outside the game is told nothing. `system(command, out)` is the system actor's (an
+  unowned battle side's), told to nobody but its events; `system_legal()` its legal commands.
+  The frames (`GameOutbound { to, frame }`) are per player; the host delivers them (T5b records
+  them). The manifest is the session's (`manifest()`), for the record's header (T5b) and part
+  2's join.
+- **Gaps:** `SRV-STUB-14`, a game's battle's last snapshot when it ends (SRV-Q27 (1); the battle
+  session's v38 last `Snapshot`): the ending command closes the battle in `h3_game`, so the
+  session cannot observe it as it ended (the adventure lane's inbox). A hero's moves are not in
+  `GameTurn` (`h3_game::legal_moves`, a query with part 2). `SRV-STUB-1` stays (T5c).
+- **Tests** (`tests/game_session.rs`): the 55 golden replays through the session beside the
+  engine (14 264 commands, 4 062 the system actor's): every command accepted, the state hash
+  equal after each and the replay's at the end; each player's messages in order and numbered on
+  (the echo, its projected events, a battle's snapshot equal to `observe`'s battle exactly when
+  one opens for it, 99 of them, its view holding a battle exactly when the engine's does, its turn
+  equal to `legal_commands` and the castable spells, 1 305 turns with spells); a rejection told
+  to its player alone with the state unchanged (out of turn, a building beyond any record, a
+  player outside the game, the system's end of turn); a setup that starts no game sends nothing.
+  The golden replays' loading is shared with the fold's gate (`game_fold::golden`). The wire
+  tests round-trip the five messages and pin their JSON form.

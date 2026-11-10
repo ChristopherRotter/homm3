@@ -323,14 +323,27 @@ inbox, the same day), mapped when it lands.
     `TownStackSeen` and `TownIncomeSeen` mapped and folded (a viewer's town view replaced), which
     `master` 700bf95 lacked to build; `SRV-STUB-12` and `-13` lifted, the garrisons and owner
     facts gated but for the reveal and Visions' reach (`TWN-STUB-13`); 36 parts, 17 exact.
-- **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
-  the map's identity (its content hash), the key tables of the game's content kinds.
+- **T4 the game's manifest and key tables** (done 2026-11-10; `E16-log.md`):
+  `wire::game::GameManifest` and `map::game::manifest(rules, map)`: the adventure replay header's
+  fields with every part's hash (core, battle, adventure, towns) and the three state hash
+  versions, the map by its file's content hash and import version (`MapIdentity`, the caller's),
+  the battlefield, the battle's key tables and the game's (`GameKeyTables`).
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
   `h3_game::apply` with the trusted actor, the legal commands to whoever must act (decisions, a
   battle's side outside the turn), the system actor's commands from its caller (computer seats are
   part 2's), the journal (the adventure replay's commands with their actors), each viewer's record
   (a game record's header: record format v4); each viewer's last explored grid, and the engine's
-  answer for what it newly sees sent with the events when its count grew (SRV-Q26).
+  answer for what it newly sees sent with the events when its count grew (SRV-Q26). In three
+  parts (the user, 2026-11-10):
+  - **T5a done** (2026-11-10; `E16-log.md`): the messages (`GameSnapshot`, `GameEvents`,
+    `GameTurn`, `GameAccepted`, `GameRejected`; protocol v39) and `session::game::GameSession`
+    (sans I/O: the host's player as the actor, the system actor's commands from the host, each
+    player's numbered messages, a battle's `Snapshot` when it opens); `SRV-STUB-14` a battle's
+    last snapshot.
+  - **T5b** the journal, the restore and each viewer's record (record format v4: a game record's
+    header with the `GameManifest` and the player).
+  - **T5c** each viewer's last explored grid and what it newly sees, once the adventure lane's
+    SRV-Q26 query lands (until then `SRV-STUB-1`).
 - **T6 a golden replay as a record**: `h3-server record <replay>` runs an adventure replay through
   the session and writes each player's record; a test over the golden replays (each re-runs to its
   hashes through the session; a viewer's bytes depend only on what it may see); the map client
@@ -360,7 +373,16 @@ monster's one-tile masks, a group's first turn start ending the group before), a
 dialog's group kept on its mine at the close, `command_to_engine` refusing a building beyond any
 record (64 or more) as `UnknownBuilding` before the engine (E09 T18b1's build, mapped in T3c1);
 T3d's: a town's told view as the engine's three events one to one (its stacks and income lines
-after it, not inside it), a fort and the buildings as the observation's forms.
+after it, not inside it), a fort and the buildings as the observation's forms; T4's: the game's
+manifest its own message part beside the battle's (`GameManifest`, the battle's `KeyTables` inside
+it and the game's kinds in `GameKeyTables`), the map named by its file's hash and import version
+without its path (the caller computes them; a client draws its own copy only when both match),
+the buildings' keys by faction handle (an empty list for a faction without a town); T5a's: the
+game's messages as `Game*` variants of `ServerMessage` beside the battle's, a game's battle
+opening with the battle's own `Snapshot`, `GameTurn` after every accepted command to every player
+that may act (without the moves; a battle side's castable spells inside it), a system command
+told to nobody but its events, a player outside the game told nothing, the session started by its
+constructor, no client message until part 2's network seats.
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

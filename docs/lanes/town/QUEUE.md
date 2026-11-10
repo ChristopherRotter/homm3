@@ -8,24 +8,26 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a (done), T18b2b (next), T18c, T19, T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b (done), T18c (next), T19, T20 the audit; each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T18b2b — the legal builds and the hall's offer** (design §29's `legal_commands` and
-`town_offer`, §32's plans, §35's round 6; queued 2026-11-10 by T18b2a, the cut of T18b2 by the
-user, decision 52; `cross-lane`: `h3-game`'s `legal.rs` and `lib.rs`, `h3-map`'s property plans,
-`h3-sim`'s rollout and possibly the bench workloads are other lanes'): `legal_commands` after the
-boats (each owned town whose mark is clear, each payable building of `buildable` with
-`town::holds_capitol`, in `TownId` and record order) and `GameState::town_offer` (the owner's
-hall: `buildable`, `possible`, the payable ones), measured right after the first build (design
-§36: the env calls `legal_commands` every step; skill `homm3-bench-regression`); the plans then
-build through `Step::Legal` (the told-views property folds T18b2a's events already; the hygiene
-property with builds: the mark public, the buildings the owner's; a refused build changes no
-hash; the day's start clears every mark); the rollout's draw of a build, which has no action
-before T19's encoding (today it would end the turn and move the bot reports): skipped or kept,
-decided with the AI lane's encoding in view; the `random-play-*` workloads re-baselined with the
-reason if the listing moves them. **At its start:** confirm the cut.
+**E09 T18c — the town events at the turn start** (design §30's town events and day 1, §31's told
+builds; TWN-EVT-001 to -004; queued 2026-11-10 by T18b2b; `cross-lane`: `h3-game`'s turn start
+`start_group` and `state/day.rs`, `command.rs` for the new event, the versions and replays are the
+adventure lane's; a new `GameEvent` variant breaks `h3-protocol`'s build until mapped, the global
+trap: mapped in the same pull request or by the server lane first): `town::fire_events` right
+after the map's timed events, for each town the player owns in `TownId` order each event of its
+`TownStatic::events` in order that fires for the player today (the timed events' test, one
+function for both, TD-12 the original's day); its resources (the gains, then the losses floored
+at 0, each told), `TownEventFired { player, town, event }`; its buildings by
+`h3_towns::event_buildings` (the spot's water) built without the hall's tests and without the mark
+(T-8's second Capitol stands), each told as `TownBuilt { event: Some(place) }` with the views
+(`Told`); its creatures not placed (`TWN-STUB-10`, increment 3); day 1's events inside the build
+without a sink and `GameState::town_events_at_start(player)`; the plans' `check_towns` and
+`check_rewards` taught the events' builds and gains; the server lane's fold gate (`h3-protocol`'s
+`tests/game_fold.rs`) folds the told views since its #816, so the events' builds are folded there
+too. **At its start:** confirm the cut.
 **Status:** next.
 
 ## Inbox
@@ -44,6 +46,14 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   exchange) opens at a revisit too; nothing moved in your hashes. The replay format is v12
   (`revisit <hero>`): a town bump of the format is v13.
 
+- 2026-11-10 (the server lane, on #816's CI; **a counterexample of your proptest**): `h3-map`'s
+  `tests::view::a_viewer_learns_nothing_it_cannot_see` (`src/tests/view.rs`, E09 T18b2a's town
+  views) failed under CI's coverage step (run 42779356175, job 129705398501, on #816's cfcc5c6,
+  whose diff touches only `h3-protocol`): its shrunk `vary` adds `((1, 252, 252), 2)`,
+  `((175, 156, 5), 2)` and `((128, 184, 82), 0)`, with no removals, moves, owners or towns. The
+  panic message is in that job's log, ahead of the input; 12 local release runs (576 random cases)
+  passed. Find the case (more cases, or the log's input), fix it and keep its seed in
+  `proptest-regressions/tests/view.txt`.
 - 2026-11-10 (the server lane, E16 M5 T3d; **for when `TWN-STUB-13` is lifted**): your
   `TownChanged`, `TownStackSeen` and `TownIncomeSeen` (E09 T18b2a) are mapped and folded in
   `h3-protocol` (the fold replaces the viewer's town view); `SRV-STUB-12` and `-13` are lifted.

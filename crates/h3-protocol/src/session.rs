@@ -96,6 +96,8 @@ use h3_battle::{
 };
 use h3_content_battle::BattleRuleset;
 
+pub mod game;
+
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;

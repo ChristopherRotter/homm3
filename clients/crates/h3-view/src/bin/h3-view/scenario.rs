@@ -30,7 +30,7 @@ fn read(path: &Path) -> Result<String, String> {
 }
 
 /// The texts of the packs `ids`: `<packs>/<id>/core.toml` and, where it exists, the context's
-/// file `part` (`battle.toml`, `towns.toml`; empty where it does not), as `h3_cli::load_ruleset`
+/// file `part` (`battle.toml`, `towns.toml`; empty where it does not), as `h3_files::load_ruleset`
 /// reads them.
 fn pack_texts(packs: &Path, ids: &[String], part: &str) -> Result<Vec<(String, String)>, String> {
     let mut texts = Vec::new();
@@ -1063,6 +1063,43 @@ mod tests {
 
     fn repo() -> PathBuf {
         Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..")
+    }
+
+    /// Protocol v38 (design §12.25): in every viewer's record of each synthetic scenario fought
+    /// to its end (a tactics phase in `full`, a town's turrets in `siege`) the battle's start is
+    /// the first `Events` message and `h3_view::record::opens` it; no command's events do, so the
+    /// reading rule holds over the engine's events.
+    #[test]
+    fn the_start_alone_opens_a_record_s_events() {
+        let packs = repo().join("packs");
+        for name in ["duel", "field", "full", "siege", "skirmish"] {
+            let scenario = packs.join(format!("synthetic/scenarios/{name}.toml"));
+            for seed in 1..=3 {
+                let (_, commands) = fought(&scenario, &packs, seed).unwrap();
+                for seat in [Seat::Spectator, Seat::Attacker, Seat::Defender] {
+                    let text = played_as(&scenario, &packs, seed, &commands, seat).unwrap();
+                    let record = h3_view::record::parse(&text).unwrap();
+                    let told: Vec<(usize, &[h3_protocol::wire::Event])> = (record.messages.iter())
+                        .enumerate()
+                        .filter_map(|(i, m)| match m {
+                            ServerMessage::Events { events, .. } => Some((i, events.as_slice())),
+                            _ => None,
+                        })
+                        .collect();
+                    let at = format!("{name} {seed} {seat:?}");
+                    assert_eq!(
+                        h3_view::record::opening_at(&record.messages),
+                        told.first().map(|&(i, _)| i),
+                        "{at}"
+                    );
+                    assert!(
+                        told[1..].iter().all(|(_, e)| !h3_view::record::opens(e)),
+                        "{at}"
+                    );
+                    assert_eq!(record.commands().count(), commands.len(), "{at}");
+                }
+            }
+        }
     }
 
     #[test]

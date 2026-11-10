@@ -9,7 +9,7 @@ use h3_formats::lod::LodArchive;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
-use h3_protocol::wire::{Event, ServerMessage, Side};
+use h3_protocol::wire::{Event, Side};
 use h3_render::Bugs;
 use h3_ui::text::pack::Pack;
 use h3_ui::text::{Catalogue, encode_1252};
@@ -41,17 +41,10 @@ pub fn catalogue(
     }
 }
 
-/// The record's events, in order.
+/// The record's commands' events, in order (the battle's start's, which the snapshot shows
+/// already, left out: `Record::events`).
 pub fn events(record: &Record) -> Vec<Event> {
-    record
-        .messages
-        .iter()
-        .filter_map(|m| match m {
-            ServerMessage::Events { events, .. } => Some(events.iter().cloned()),
-            _ => None,
-        })
-        .flatten()
-        .collect()
+    record.events().cloned().collect()
 }
 
 /// The text the log's item shows from each time on through the record's battle as its timeline's
@@ -277,10 +270,7 @@ impl Writer {
             .iter()
             .filter(|(_, l)| matches!(l, battle_log::Logged::Action))
             .map(|(at, _)| *at);
-        let commands = record.messages.iter().filter_map(|m| match m {
-            ServerMessage::Events { events, .. } => Some(events),
-            _ => None,
-        });
+        let commands = record.commands();
         let casts = starts
             .zip(commands)
             .filter_map(|(at, events)| {

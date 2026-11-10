@@ -104,6 +104,7 @@ pub use setup::{
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
+pub use town::offer::TownOffer;
 pub use town::view::{
     GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView,
     TownView,

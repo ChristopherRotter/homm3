@@ -42,14 +42,15 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// `AdventureState::buildable_shipyards`), then since E08 T105b2 a `Revisit` for each of the
 /// player's heroes on the visitable tile of an entered object whose visit is built, in the order
 /// of their ids (ADV-TEL-008: `AdventureState::revisitable`; at 0 points too, so a turn may
-/// revisit without end, increment 11's design note §18). Empty for a player whose turn is not
-/// running or who is not in the game, by `apply`'s own checks (ADR-0017's consequence). The moves
-/// are [`legal_moves`]; a meeting's and an army dialog's management commands
-/// [`legal_management`]'s.
-/// A town's build (`GameCommand::Town`, E09 T18b1) is not listed yet: E09 T18b2 lists the
-/// payable builds with the views that tell them.
+/// revisit without end, increment 11's design note §18), then since E09 T18b2b a town's build
+/// (`GameCommand::Town`) for each town the player owns, in `TownId` order, and each building its
+/// hall offers whose price the treasury holds, in the record's order (TWN-BLD-001:
+/// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004). Empty for
+/// a player whose turn is not running or who is not in the game, by `apply`'s own checks
+/// (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's and an army dialog's
+/// management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
-// rule: GAM-DEC-008, ADV-SHY-003, ADV-TEL-008
+// rule: GAM-DEC-008, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -93,6 +94,7 @@ pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> V
     core::iter::once(GameCommand::EndTurn)
         .chain(boats)
         .chain(revisits)
+        .chain(crate::town::legal_builds(state, rules, player))
         .collect()
 }
 
