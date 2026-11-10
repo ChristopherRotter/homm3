@@ -58,7 +58,7 @@ use h3_kernel::{Rng, StreamId};
 use h3_sim::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 use h3_sim::adventure::action::{self, hero_in_slot, tile_index};
 use h3_sim::adventure::rollout::choose;
-use h3_sim::adventure::{Action, ENTRY_COUNT, HERO_SLOTS, Phase, Seat};
+use h3_sim::adventure::{Action, BUILDING_COUNT, ENTRY_COUNT, HERO_SLOTS, Phase, Seat};
 use h3_sim::adventure::{AdventureEnv, random_rollout};
 
 use super::{DEFAULT_PACKS, Result, load_map, load_rules};
@@ -899,12 +899,13 @@ pub fn fork_workload(env: &AdventureEnv, forks: u32) -> u64 {
     last
 }
 
-/// Random play with what an agent reads before each step: the observation and the masks (in a
-/// battle the battle's heads, E08 T19b1).
+/// Random play with what an agent reads before each step: the observation and the masks (since
+/// E09 T19c1 the building head's too; in a battle the battle's heads, E08 T19b1).
 fn agent_rollout(env: &mut AdventureEnv, agent_seed: u64, observe: bool, masks: bool) -> u64 {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let mut entries = [false; ENTRY_COUNT];
     let mut tiles = Vec::new();
+    let mut buildings = [false; BUILDING_COUNT];
     let mut legal = LegalCommands::new();
     let mut battle_entries = [false; ACTION_COUNT];
     let mut spells = [false; SPELL_COUNT];
@@ -929,7 +930,8 @@ fn agent_rollout(env: &mut AdventureEnv, agent_seed: u64, observe: bool, masks: 
             Action::Adventure(action) if masks => {
                 env.legal_mask(seat, &mut entries);
                 env.tile_mask(seat, action.entry, &mut tiles);
-                black_box((&entries, &tiles));
+                env.building_mask(seat, action.entry, action.tile, &mut buildings);
+                black_box((&entries, &tiles, &buildings));
             }
             Action::Battle(action) if masks => {
                 let (entry, spell) = (action.entry as usize, action.spell);

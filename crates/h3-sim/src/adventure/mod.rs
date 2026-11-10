@@ -8,11 +8,11 @@
 //!   the system actor, E08 T20b3a), step, masks, fork, state hash, a player's observation
 //!   (`h3_game`'s view as it is: a flat encoding waits for E13's macro-actions) and the neutral
 //!   seat's (its battle).
-//! * [`action`]: the factorized action in two phases (encoding v8: v3 E08 T19b1, v4 T30's
-//!   level-up answers, v7 T95b's hire dialog, v8 T105b2's revisits): on the map an entry and a
-//!   destination tile, with masks built from the reachable-tiles query and the open decision's
-//!   answers (provisional until E13's macro-actions); in a battle the battle lane's encoding for
-//!   the side the player owns.
+//! * [`action`]: the factorized action in two phases (encoding v9: v3 E08 T19b1, v4 T30's
+//!   level-up answers, v7 T95b's hire dialog, v8 T105b2's revisits, v9 E09 T19c1's town builds):
+//!   on the map an entry, a destination tile and a building, with masks built from the
+//!   reachable-tiles query, the legal builds and the open decision's answers (provisional until
+//!   E13's macro-actions); in a battle the battle lane's encoding for the side the player owns.
 //! * [`rollout`]: the uniformly random legal agent, the battle's random agent in its battles and
 //!   the neutral seat's.
 //! * [`replay`]: the adventure replay model (T9b): the rules' identity, the map by content hash,
@@ -25,9 +25,10 @@ pub mod replay;
 pub mod rollout;
 
 pub use action::{
-    ACCEPT, ACTION_ENCODING_VERSION, Action, BUILD_BOAT, BUY_BASE, DECLINE, END_TURN, ENTRY_COUNT,
-    EntryMask, FIRST, HERO_SLOTS, HIRE_BASE, HIRE_SLOTS, MOVE_BASE, MapAction, Phase, REVISIT_BASE,
-    SECOND, Seat, UNIVERSITY_SLOTS, answer_entry,
+    ACCEPT, ACTION_ENCODING_VERSION, Action, BUILD, BUILD_BOAT, BUILDING_COUNT, BUY_BASE,
+    BuildingMask, DECLINE, END_TURN, ENTRY_COUNT, EntryMask, FIRST, HERO_SLOTS, HIRE_BASE,
+    HIRE_SLOTS, MOVE_BASE, MapAction, Phase, REVISIT_BASE, SECOND, Seat, UNIVERSITY_SLOTS,
+    answer_entry,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
 pub use rollout::{RolloutResult, random_rollout};

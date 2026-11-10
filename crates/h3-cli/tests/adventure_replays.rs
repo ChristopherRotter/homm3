@@ -577,6 +577,25 @@
 //!   (no dwelling stands; not added until increment 3, `TWN-STUB-10`), the weekly gift on day 8;
 //!   the Spire's Capitol on day 2 beside the Nexus' (T-8, TWN-EVT-003), so that blue's halls pay
 //!   8 000 gold a day from day 3; the Keep's event of blue's never fires (red's town).
+//!
+//! Random play with builds (E09 T19c1, the env's action encoding v9: the random agent draws each
+//! listed build), recorded with `--map fixtures/maps/e09-builds-36.h3m --seed N --agent-seed N
+//! --days 14 --checkpoint-every 10`: three of a search over the seeds 1 to 399 (a scratch probe
+//! counting each game's builds by command and by event, Capitols, town events fired, captures,
+//! boats and sieges; not committed: every game builds in all four towns, 25 to 34 times, the
+//! Spire's day-2 Capitol by its event; 7 capture a town, none builds a boat or opens a siege),
+//! each with red's Keep's Capitol by command and blue's capture of the Keep undefended
+//! (TWN-CAP-001, its Capitol limited, TWN-CAP-002), every town building on most days (one build a
+//! town a day, TWN-BLD-004), the town events' gifts each day:
+//!
+//! - `builds-s262-d14` (32 builds): the Harbour's Shipyard on day 2 and its Lighthouse on day 5;
+//!   the Keep's Capitol on day 2; on day 5 red builds in the Keep and blue takes it the same day (a
+//!   town built in today, its mark kept), then builds there from day 6; red, holding no Capitol
+//!   then, builds the Harbour's on day 10.
+//! - `builds-s271-d14` (26 builds): the Keep's Capitol on day 3; on day 9 red builds in the Keep
+//!   and blue takes it the same day; blue builds there on day 14; the Harbour's Shipyard on day 7.
+//! - `builds-s290-d14` (29 builds): the Keep's Capitol on day 6, blue takes the Keep on day 10, the
+//!   Harbour's Shipyard on day 11 and red's second Capitol, the Harbour's, on day 13.
 
 use std::path::PathBuf;
 

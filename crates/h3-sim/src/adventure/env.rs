@@ -12,7 +12,7 @@ use h3_game::{
     GameState, Sink, Viewer, apply, observe,
 };
 
-use super::action::{self, Action, EntryMask, Phase, Seat};
+use super::action::{self, Action, BuildingMask, EntryMask, Phase, Seat};
 
 /// Result of one environment step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -182,6 +182,22 @@ impl AdventureEnv {
     /// ([`action::tile_mask`]); none in the battle phase or once the episode is over.
     pub fn tile_mask(&self, seat: impl Into<Seat>, entry: usize, mask: &mut Vec<bool>) {
         action::tile_mask(&self.state, &self.rules, seat, entry, mask);
+        if self.is_done() {
+            mask.fill(false);
+        }
+    }
+
+    /// Fills `mask` with the legal buildings of `seat` after choosing `entry` and `tile`
+    /// ([`action::building_mask`], E09 T19c1); none in the battle phase or once the episode is
+    /// over.
+    pub fn building_mask(
+        &self,
+        seat: impl Into<Seat>,
+        entry: usize,
+        tile: u32,
+        mask: &mut BuildingMask,
+    ) {
+        action::building_mask(&self.state, &self.rules, seat, entry, tile, mask);
         if self.is_done() {
             mask.fill(false);
         }

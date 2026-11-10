@@ -158,6 +158,17 @@ Asked at T13's start, before the drafts were written (T13 kept whole, the user).
     since T19b's new plan field changes the draws and its seed then replays another case. Not
     chosen: left to the adventure lane.
 
+### Decisions at T19c's start (2026-11-10, the user)
+
+62. **T19c cut in two, the env first** (recommended): **T19c1** the env's build entry and
+    building head (the AI lane's action encoding v9), the rollout's skip dropped (decision 56), a
+    test playing the town map to its end of days with builds, random replays with builds, the
+    town map's workloads re-baselined where their random games moved, the AI lane's inbox told;
+    **T19c2** the new benchmark workloads against `master` and the census of the 160 shipped maps
+    with the original data, the map client's inbox told. Not chosen: the census and the new
+    workloads first (the env's random games would then move the workloads a second time); T19c
+    whole (one long session, one pull request over the AI, adventure and server lanes' paths).
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Done 2026-11-06 (map import v20; `E09-log.md`).
