@@ -1618,3 +1618,24 @@ an entry only where a task builds on it.
   short continuation from #2, then the learning rate and the epochs; T32 the architectures by
   their clone's ladder, `hexconv` 96 × 6 the control; T34 a distillation of #2 and the search at
   play on the hero battles; the outcome's weight a question for T35.
+
+## T31 — The update's speed (in progress, 2026-11-10)
+
+- **The suspects** (the code, before any profile): the trainer runs cuDNN without its autotuner
+  (`torch.backends.cudnn.benchmark` off), while the benches turn it on (`distill.bench_device`):
+  T27's 683 µs a sample-pass of `hexconv` 96 × 6 was the bench's, T28's updates of about 100 s
+  over about 25 700 rows and 4 epochs are about 970 µs. And the hex trunk's convolutions get
+  channels-last tensors: the drawing's grid is a transposed view (`HexConv.trunk`) and each
+  `CellNorm`'s permutes keep that layout, so cuDNN runs its NHWC kernels, which on the GTX 1070
+  (no tensor cores) may be the slow ones (`tests/test_speed.py` checks the layouts).
+- **The tool** (`h3env.train.speed`, tests `tests/test_speed.py`): the config's trainer plays one
+  rollout (the imitation loss's labels with it), then each variant updates from the same weights,
+  optimizer state and counters (`VARIANTS`: the baseline, the autotuner, the trunk in NCHW, both,
+  and both with `accumulate` halved, twice the chunks' rows), twice, over one epoch: the seconds
+  (the first a warm-up: the autotuner's search for the update's chunk shapes), µs a sample-pass,
+  the peak memory, the losses and the weights against the baseline's; then the baseline's phases
+  timed with the device synchronised around each, and torch's profiler over one optimizer step.
+  A CPU smoke (16 envs, 32 calls, 501 rows): the losses equal in every variant, the weights
+  within 7e-7. **The user's run** (about 6 minutes; from `python/`):
+
+      uv run --group train python -m h3env.train.speed --config configs/e25-imitate-structure.toml --init-from runs/e25-structure-1/best.pt --device cuda --trace --json runs/t31-speed.json

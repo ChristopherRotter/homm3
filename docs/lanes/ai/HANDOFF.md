@@ -46,6 +46,15 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
+### 2026-11-10 — E25 T31 (in progress)
+
+- #829 merged; the branch started from `master` (the setup's baseline only the light gates);
+  `cargo build --release -p h3-ffi` 56 s, `uv sync --group train` about 30 minutes (3 MB/s).
+  Built `h3env.train.speed` (tests `tests/test_speed.py`; a CPU smoke of `hexconv` 96 × 6 on 16
+  envs): the variants' losses are the baseline's, the trunk's convolutions get channels-last
+  tensors. **In progress:** the user's GPU run of it (the command in `E25-log.md` T31 once
+  written; in the session's chat until then), then the change that pays.
+
 ### 2026-11-10 — E25 T28
 
 - #765 merged; the branch started from `master`, its code verified (only the light gates);
@@ -64,13 +73,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   T27's ladder, then its table and `report.json`, then the student (T19's tool, 2 minutes);
   T28's smoke from a CPU clone (72 s, then 2.3 minutes) showed `minibatches` 64 would change
   PPO's steps, so `[ppo] accumulate`; the Python suite 243 (2.6 minutes).
-
-### 2026-11-05 — E25 T26a
-
-- The branch started from `master` with T26's records (`claude/determined-mayer-t1waz5`, no pull
-  request). The setup's baseline ran only the light gates (code verified on `master`); `cargo
-  build --release -p h3-ffi` 56 s, `uv sync --group train` from the cache. The Python suite 241
-  (3.5 minutes); the stop-and-resume smoke of T25's clone by the command line 27 minutes
-  (`E25-log.md` T26a), which showed the held-out file's 156 MB (now compressed).
-- #730 merged; the user ran T26b to its budget in parts and pasted the table; the branch
-  restarted from `master` for its records and T27's config; its `report.json` uploaded after.
