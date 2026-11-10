@@ -125,6 +125,14 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 **Recommendation.** (a): harmless, and the boxes read as the window's report continued (the spoils beside the casualties). **Built:** as the original's in both profiles (`results::released`, the sequences' and stills' `window`, `Battle::window_behind`).
 
+#### CLT-Q69 — Drawing the battle's start: the record holds no battle before it (after E17 M6 T7a; for the server and battle lanes)
+
+**Context.** Protocol v38 (CLT-Q20's answer (a)) tells every viewer watching the start one `Events` message with the start's events: a siege's turrets and Catapult acting on their own in round 1 (no Artillery, no Ballistics: the common case), a first-acting Wraith's mana drain, a first stack's regeneration or opening spells, a frozen first stack. The original draws these in its first frames. But each viewer's first snapshot is taken after them (the session's engine has no state before `BattleState::start`), so the record's opening already shows their effects: the client can tell them (and since the readers' fix leaves them out of the commands, `docs/epics/E17-design.md` §12.25), not draw them from a state where they have not happened yet. The `automatic` siege capture (§10's T2b) and the drain's arm of §12.22 wait on this.
+
+**Options.** (a) The session holds the battle before its start until every seat is held (an engine split of `BattleState::start` into the setup and its first activation, the battle lane's; the session's, the server lane's): a join's `Snapshot` before the game starts shows the battle before the start, the start's `Events` then plays on it, a late joiner's snapshot after it as today (a protocol step and record format 4; the client then plays the start as a command without a command). (b) The client winds the start's events back over the opening snapshot (each kind's inverse: counts, hit points, mana, wall states, effects; error-prone, every new kind needing its own). (c) Not drawn: the battle opens as the start left it.
+
+**Recommendation.** (a): the record stays the only truth and the client plays the start as it plays any command; (b) duplicates the engine's rules in the client. **Built:** (c) meanwhile (the start's events left out of every reader).
+
 ### Map client lane (`MCL-Q<n>`)
 
 (no open questions)

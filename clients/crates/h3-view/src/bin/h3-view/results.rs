@@ -7,9 +7,11 @@
 
 use std::collections::BTreeMap;
 
-use h3_content::{CreatureTypeId, Ruleset};
+use h3_content::{CreatureTypeId, Ruleset, SpellId};
 use h3_content_battle::BattleRuleset;
-use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, StackOrigin, StackRecord};
+use h3_contracts::{
+    Army, BattleOutcome, BattleResult, BattleSide, HeroOutcome, StackOrigin, StackRecord,
+};
 use h3_protocol::wire::{Manifest, Observation};
 use h3_render::Bugs;
 use h3_ui::text::{Args, Catalogue};
@@ -206,8 +208,9 @@ pub fn released(window: &MessageBox) -> MessageBox {
 /// its handle through the manifest's keys to its table entry, its original number and its name;
 /// a spell the tables lack is left out), their pictures from the spells' DEF `pictures` (its name
 /// and size). A hero whose type the manifest does not name is named empty, as in the window. A
-/// server's seat's outcome ([`served`]) has no heroes' outcomes, so no box (the wire carries the
-/// picks only in a seat's own snapshots, `OwnHero::learned`, and no event tells a pick).
+/// server's seat's outcome ([`served`]) holds its own hero's picks only (the record's last
+/// snapshot's `OwnHero::learned`, protocol v38): the window shows the winner only when its
+/// player is a human here, the seat's side.
 pub fn eagle_eye(
     sources: &Sources<'_>,
     opening: &Observation,
@@ -382,11 +385,14 @@ pub fn survivors(stacks: &[Vec<StackRecord>; 2]) -> [bool; 2] {
 
 /// The outcome of a battle on a server as a seat's record shows it (E17 M5 T6b1; no engine runs
 /// here): the game's end `result` (a forfeit the other side's victory; a void game a draw), and
-/// each side's records ([`records`]). What the result window reads only (*provisional*: the
-/// survivors, the heroes' outcomes and the surrender's cost are left empty).
+/// each side's records ([`records`]); the seat's own hero's mana and Eagle Eye picks from the
+/// battle as it `ended` (the record's last snapshot, protocol v38: `OwnHero`, a seat's own; none
+/// for a spectator's, nor for a record without it), the other hero's unknown there. What the
+/// result window reads only (*provisional*: the survivors, the other hero's outcome and the
+/// surrender's cost are left empty).
 pub fn served(
     opening: &Observation,
-    end: &Observation,
+    (end, ended): (&Observation, Option<&Observation>),
     result: h3_protocol::wire::Outcome,
 ) -> BattleOutcome {
     use h3_protocol::wire::{Outcome, Side as Wire};
@@ -401,15 +407,25 @@ pub fn served(
         Outcome::Forfeit { side: s } => BattleResult::Victory(side(s).opponent()),
         Outcome::Draw {} | Outcome::NoShow {} | Outcome::Unverified {} => BattleResult::Draw,
     };
+    let mut heroes = [None, None];
+    if let Some(ended) = ended.filter(|o| !o.spectator)
+        && let Some(own) = &ended.own_hero
+    {
+        let side = usize::from(ended.viewer == Wire::Defender);
+        heroes[side] = Some(HeroOutcome {
+            mana: (ended.sides.get(side))
+                .and_then(|s| s.hero)
+                .map_or(0, |h| h.mana),
+            learned: own.learned.iter().map(|&s| SpellId::from_raw(s)).collect(),
+        });
+    }
     BattleOutcome {
         result,
         survivors: [Army::default(), Army::default()],
         war_machines: [Vec::new(), Vec::new()],
         stacks: records(opening, end),
         surrender_cost: None,
-        // stub: CLT-STUB-3 (a seat's own hero's Eagle Eye picks: no event or end message carries
-        // them, so a seat shows no Eagle Eye message; the server lane's inbox, 2026-11-06).
-        heroes: [None, None],
+        heroes,
         rounds: end.round,
     }
 }
@@ -887,7 +903,7 @@ times = [9000, 575, 500, 115]
         end.stacks = stacks;
         let read = served(
             &opening,
-            &end,
+            (&end, None),
             Outcome::Victory {
                 side: Wire::Attacker,
             },
@@ -935,7 +951,8 @@ times = [9000, 575, 500, 115]
         assert_eq!(read.rounds, 4);
         assert_eq!(survivors(&read.stacks), [true, true]);
         assert_eq!(read.result, BattleResult::Victory(BattleSide::Attacker));
-        let result = |outcome| served(&opening, &end, outcome).result;
+        assert_eq!(read.heroes, [None, None]);
+        let result = |outcome| served(&opening, (&end, None), outcome).result;
         assert_eq!(
             result(Outcome::Forfeit {
                 side: Wire::Attacker
@@ -956,6 +973,34 @@ times = [9000, 575, 500, 115]
         );
         for drawn in [Outcome::Draw {}, Outcome::NoShow {}, Outcome::Unverified {}] {
             assert_eq!(result(drawn), BattleResult::Draw);
+        }
+        // CLT-STUB-3 lifted (protocol v38): the seat's own hero's mana and Eagle Eye picks from
+        // the battle as it ended, its last snapshot; the other hero's unknown.
+        let (_, mut ended, _) = crate::spellbook::tests::opening();
+        assert!(!ended.spectator);
+        ended.own_hero.as_mut().unwrap().learned = vec![3, 7];
+        let side = usize::from(ended.viewer == Wire::Defender);
+        ended.sides[side].hero.as_mut().unwrap().mana = 5;
+        let won = Outcome::Victory { side: ended.viewer };
+        let heroes = served(&opening, (&end, Some(&ended)), won).heroes;
+        let picks = [3, 7].map(SpellId::from_raw).to_vec();
+        assert_eq!(
+            heroes[side],
+            Some(HeroOutcome {
+                mana: 5,
+                learned: picks
+            })
+        );
+        assert_eq!(heroes[1 - side], None);
+        // A spectator's end, or one without the hero's part, names no picks.
+        let mut watched = ended.clone();
+        watched.spectator = true;
+        ended.own_hero = None;
+        for ended in [&watched, &ended] {
+            assert_eq!(
+                served(&opening, (&end, Some(ended)), won).heroes,
+                [None, None]
+            );
         }
     }
 

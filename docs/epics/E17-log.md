@@ -5928,3 +5928,35 @@ T7c the review list and M7); T7a taken whole. The original data staged by the fi
   outline and their "Move" hint gone): master's #800 (protocol v38, the battle's start
   `Events` before the first command's) is the inbox's item for the client's readers, not
   T7a's; the situations all the same. T7a's records stand on its base; the readers first.
+
+### After M6 T7a: the protocol v38 readers (2026-11-10)
+
+The inbox's two server-lane entries of 2026-11-09, before T7b (QUEUE's T7 status), taken whole
+with CLT-STUB-3. The original data staged by the PC's shell and the file tool at the start (all
+calls succeeded). **`master` red at the start** (4701369): `h3-protocol` did not compile, its
+`map/game/event.rs` (the server lane's #814) matching the `TownChanged` the town lane's #815
+changed (no `seen_by`; `TownStackSeen`, `TownIncomeSeen` unmapped); CI's `CI` and `Clients` failed
+on 700bf95 and 4701369. Told the user (the server lane's fix; no cross-lane change here); the
+session built against a local patch of that match, never committed, until the server lane's
+#816 fixed `master` (the branch rebased on it; the clients workspace builds on it, CI ran the gates).
+
+- **Cause** (design §12.25): every reader took each `Events` message for a command's; v38's start
+  message moved each sequence's commands one place (`sequences.rs` pairs them with
+  `sequences.toml`'s commands by index).
+- **Built:** `record::opens`, `opening_at`, `opening`, `commands`, `ended`; `Record::opening`,
+  `commands`, `events`, `ended`. The start is the first `Events` message when it opens with
+  `ObstaclePlaced`, `TacticsStarted` or `TurnStarted` (*provisional*: the record does not say
+  whether its viewer watched the start; a command's events open with its act). Through them:
+  `anim::commands`, the sequences' commands and aimed spells, `log::events` and the log's casts,
+  `motion::events`, `battle::stack_sounds`, `Battle::take_served` (a seat that waits hears the
+  start after its opening), `serve_turn`'s count and `Battle::events` (`remote::seen`).
+  `results::served` takes the battle as it ended (`record::ended`): the seat's own hero's mana and
+  picks (CLT-STUB-3 lifted; its commented entry left `docs/stubs.toml`, the marker gone; design
+  §12.21). The inbox's other entry: `scenario.rs`'s comment names `h3_files::load_ruleset`.
+- **Not drawn:** the start's events (the snapshot shows them already): CLT-Q69 asked (the battle
+  before its start in the record, recommended; the client winding back; not drawn, built).
+- **Gates** (all with the local `h3-protocol` patch): `drawn` all the same again (91 sequences,
+  172 situations) with the release viewer; the unit tests (the start no command, a late
+  spectator's first `Events` a command's, the end's snapshot, a served seat's picks; the rule
+  over every viewer of the five synthetic scenarios fought: tactics in `full`, a turret's own
+  shot in `siege`'s start); `check.sh` passed; `check-docs`, `check-lane`.

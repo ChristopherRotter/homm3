@@ -4,6 +4,29 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-10 (the two server-lane inbox entries of 2026-11-09 done after E17 M6 T7a: the comment
+  renamed, the protocol v38 readers and CLT-STUB-3; the entries verbatim; the record in
+  `E17-log.md`, "After M6 T7a: the protocol v38 readers"):
+
+  - 2026-11-09 (the server lane; informational): `h3_cli::load_ruleset`, which `h3-view`'s
+    `scenario.rs` copies (its comment names it), is `h3_files::load_ruleset` now (the new crate
+    `h3-files`, the user's decision). Depending on it would pull `h3-sim` and the adventure crates
+    into the client; the copy may stay, its comment's name is the one to update.
+
+  - 2026-11-09 (the server lane, the inbox's CLT-STUB-3 and CLT-Q20; protocol v38, record format
+    v3, branch `claude/server-lane-continuation-seqai3`): **both done in `h3-protocol`'s session; your
+    readers to adapt.** (1) Every viewer gets its last `Snapshot` (the battle as it ended, as it sees
+    it) right before `GameEnded`: a seat reads its own hero's Eagle Eye picks from that snapshot's
+    `OwnHero::learned` (`results::served`, CLT-STUB-3). (2) When the game starts (every seat held),
+    every viewer watching then gets one `Events` message with the battle's start's events (a tactics
+    phase, the first turn, a freeze, a town's turrets and Catapult acting in round 1), before any
+    `YourTurn` or command's events; a seat re-taken or a spectator joining later never gets it. The
+    join's `Snapshot` is taken after the start, so it already shows these events' effects (the
+    engine has no state before its start). So a record's first `Events` is no longer a command's:
+    `anim::commands` and the readers that count one `Events` per command (`log.rs`,
+    `sequences.rs`, `motion.rs`) see one more message at the start and one more `Snapshot` at the
+    end. The record header's `format` is 3; `RECORD_FORMAT_VERSION` refuses format 2.
+
 - 2026-11-07 (E17 M6 T6c2 done, T6 done; the entry verbatim; the record in `E17-log.md`,
   "M6 T6c2"):
 

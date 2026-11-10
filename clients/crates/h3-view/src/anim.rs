@@ -951,15 +951,13 @@ pub struct Command<'a> {
     pub events: &'a [Event],
 }
 
-/// The commands of a record's messages: each `Events` message one command, without a time (the
-/// first given at the snapshot's moment, each later one when the previous one ended, [`timeline`]).
+/// The commands of a record's messages: each `Events` message but the battle's start's one
+/// command (`crate::record::commands`: the start's the snapshot already shows), without a time
+/// (the first given at the snapshot's moment, each later one when the previous one ended,
+/// [`timeline`]).
 pub fn commands(messages: &[ServerMessage]) -> Vec<Command<'_>> {
-    messages
-        .iter()
-        .filter_map(|m| match m {
-            ServerMessage::Events { events, .. } => Some(Command { at: None, events }),
-            _ => None,
-        })
+    crate::record::commands(messages)
+        .map(|events| Command { at: None, events })
         .collect()
 }
 
