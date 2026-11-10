@@ -46,11 +46,12 @@ use h3_battle::{
 use h3_content::{ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId};
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, ChestChoice,
-    ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError, GameEvent, GameRuleset,
-    GameState, HeroChange, HireAnswer, HireTarget, HireView, Manage, OpenBattle, Position,
-    SchoolChoice, Sink, SkillOffer, SlotState, UniversityAnswer, Viewer, apply, hire_range,
-    legal_commands, legal_management, legal_moves, observe, split_range,
+    Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
+    BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
+    GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireTarget, HireView, Manage,
+    NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
+    UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management, legal_moves,
+    observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -3769,9 +3770,11 @@ fn check_legal(
             } else if hiring.is_some() {
                 hire_answers(state, rules, player)
             } else {
-                // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003).
+                // E08 T86b1: then the Shipyards' boats it may build (ADV-SHY-003); E09
+                // T18b2b: then its towns' builds `apply` accepts (TWN-BLD-001).
                 core::iter::once(GameCommand::EndTurn)
                     .chain(buildable(state, rules, player))
+                    .chain(accepted_builds(state, rules, player))
                     .collect()
             };
             prop_assert_eq!(listed, expected);
@@ -3929,10 +3932,11 @@ fn check_legal(
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
     check_build_boat(state, rules, actor, legal)?;
+    check_town_builds(state, rules, actor, legal)?;
     for command in &legal[1..] {
         if matches!(
             command,
-            GameCommand::Adventure(AdventureCommand::BuildBoat { .. })
+            GameCommand::Adventure(AdventureCommand::BuildBoat { .. }) | GameCommand::Town(_)
         ) {
             continue;
         }
@@ -4059,6 +4063,125 @@ fn check_build_boat(
             treasury[r.index()] -= amount;
         }
         prop_assert_eq!(probe.treasury(actor).unwrap(), &treasury[..]);
+    }
+    Ok(())
+}
+
+/// Every town build to probe in `state` (E09 T18b2b): for each town of the store and one past it,
+/// in `TownId` order, each building of its faction's record and one past it, in index order.
+fn town_builds<'a>(
+    state: &'a GameState,
+    rules: &'a GameRuleset,
+) -> impl Iterator<Item = (TownId, GameCommand)> + 'a {
+    (0..=state.towns().len()).flat_map(move |place| {
+        let town = town_id(place);
+        let buildings = state
+            .towns()
+            .get(town)
+            .and_then(|record| rules.towns().town(record.faction()))
+            .map_or(0, |record| record.buildings.len());
+        (0..=buildings)
+            .filter_map(BuildingId::from_index)
+            .map(move |building| {
+                (
+                    town,
+                    GameCommand::Town(TownCommand::Build { town, building }),
+                )
+            })
+    })
+}
+
+/// The builds `player` may give in `state` by `apply`'s checks alone (E09 T18b2b; TWN-BLD-001): of
+/// [`town_builds`], those a probe accepts, in that order, as `legal_commands` must list them.
+fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    town_builds(state, rules)
+        .map(|(_, command)| command)
+        .filter(|command| {
+            let mut probe = state.clone();
+            let actor = Actor::Player(player);
+            apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
+        })
+        .collect()
+}
+
+/// Every town build (E09 T18b2b; TWN-BLD-001, the town epic's design note §29, §32): each one the
+/// actor lists applies, builds its building with what it brings and the day's mark (TWN-BLD-004,
+/// -005), told as `TownBuilt`, and pays its price (TWN-BLD-006), and the owner's hall
+/// (`GameState::town_offer`) offers it as payable; a build of any other town or building
+/// ([`town_builds`]) is rejected with the state unchanged; the offer is the owner's alone and
+/// its payable set the town's listed builds.
+fn check_town_builds(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: PlayerId,
+    legal: &[GameCommand],
+) -> Result<(), TestCaseError> {
+    let part = rules.towns();
+    for (town, command) in town_builds(state, rules) {
+        let mut probe = state.clone();
+        let mut events = Vec::new();
+        let result = apply(
+            &mut probe,
+            rules,
+            Actor::Player(actor),
+            command.clone(),
+            &mut events,
+        );
+        if !legal.contains(&command) {
+            prop_assert!(result.is_err(), "unlisted {:?} accepted", command);
+            prop_assert_eq!(&probe, state);
+            prop_assert!(events.is_empty());
+            continue;
+        }
+        prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
+        let GameCommand::Town(TownCommand::Build { building, .. }) = command else {
+            return Err(fail(format!("{command:?}")));
+        };
+        let (old, new) = (
+            state.towns().get(town).unwrap(),
+            probe.towns().get(town).unwrap(),
+        );
+        prop_assert_eq!(Some(new.built()), h3_towns::built_with(old, part, building));
+        prop_assert!(new.built_today());
+        let told = GameEvent::TownBuilt {
+            player: actor,
+            town,
+            building,
+            event: None,
+        };
+        prop_assert!(events.contains(&told), "{:?}", events);
+        let cost = &part
+            .town(old.faction())
+            .unwrap()
+            .building(building)
+            .unwrap()
+            .cost;
+        let mut treasury = state.treasury(actor).unwrap().to_vec();
+        for &(r, amount) in cost {
+            treasury[r.index()] -= amount;
+        }
+        prop_assert_eq!(probe.treasury(actor).unwrap(), &treasury[..]);
+        let offer = state.town_offer(rules, actor, town).unwrap();
+        prop_assert!(
+            offer.payable.contains(building),
+            "{:?}: {:?}",
+            command,
+            offer
+        );
+    }
+    for place in 0..state.towns().len() {
+        let town = town_id(place);
+        let index = state.adventure().map().towns()[place];
+        let offer = state.town_offer(rules, actor, town);
+        prop_assert_eq!(
+            offer.is_some(),
+            state.adventure().owner(index) == Some(actor)
+        );
+        let listed = legal.iter().filter(|command| {
+            matches!(command, GameCommand::Town(TownCommand::Build { town: t, .. }) if *t == town)
+        });
+        let payable = offer.map_or(BuildingSet::EMPTY, |offer| offer.payable);
+        prop_assert_eq!(listed.count(), payable.iter().count(), "{:?}", town);
     }
     Ok(())
 }
@@ -4674,6 +4797,16 @@ fn check_conservation(
         }
         _ => None,
     };
+    // E09 T18b2b: a town's build pays its building's price (TWN-BLD-006).
+    let build = match *command {
+        GameCommand::Town(TownCommand::Build { town, building }) => before
+            .towns()
+            .get(town)
+            .and_then(|town| rules.towns().town(town.faction()))
+            .and_then(|record| record.building(building))
+            .map(|building| &building.cost),
+        _ => None,
+    };
     let accepted = events.iter().find_map(|e| match *e {
         GameEvent::OfferAnswered {
             player,
@@ -4709,7 +4842,7 @@ fn check_conservation(
                             || before.university(owner).is_some()
                             || hiring(before, owner));
                     prop_assert!(
-                        accepted == Some(owner) || answered || boat.is_some(),
+                        accepted == Some(owner) || answered || boat.is_some() || build.is_some(),
                         "{:?} without an offer",
                         event
                     );
@@ -4730,6 +4863,8 @@ fn check_conservation(
         if accepted == Some(player) {
             prop_assert_eq!(&paid[..], before.decision(player).unwrap().price());
         } else if let Some(price) = boat.filter(|_| !paid.is_empty()) {
+            prop_assert_eq!(&paid[..], &price[..]);
+        } else if let Some(price) = build.filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], &price[..]);
         } else if let Some(choice) = before.choice(player).filter(|_| !paid.is_empty()) {
             prop_assert_eq!(&paid[..], choice.price());
@@ -5356,9 +5491,12 @@ const CAMP_NOT_RANDOM: [&str; 6] = [
 /// owner, the adventure's (the store of towns holds none, ADR-0028), a player of the game or
 /// none; it changes only by the town's capture, told by one `TownCaptured` naming the new owner
 /// (TWN-CAP-001, -003), and a captured town's garrison is empty (its leftovers lost with it,
-/// design §11); the store keeps the number of towns and each record's faction, and a record's
-/// buildings change only by the Capitol's limit at a capture, told by `TownChanged` (since E09
-/// T18b2a each viewer's, all with the town's Capitol as the store has it after; TWN-CAP-002).
+/// design §11); the store keeps the number of towns and each record's faction, and a record
+/// changes only by the Capitol's limit at a capture (TWN-CAP-002), since E09 T18b2b by a build
+/// (one `TownBuilt` of the town: its building with what it brings and the day's mark, no capture
+/// in the same command; TWN-BLD-004, -005) or by the day's start, which clears every mark, each
+/// told by `TownChanged` (since E09 T18b2a each viewer's, all with the town's Capitol as the store
+/// has it after).
 fn check_towns(
     rules: &GameRuleset,
     (before, after): (&GameState, &GameState),
@@ -5413,8 +5551,41 @@ fn check_towns(
             town,
             changed
         );
+        // E09 T18b2b: a build adds its building and what it brings with the day's mark
+        // (TWN-BLD-004, -005), told as `TownBuilt`; the day's start clears every mark.
+        let built: Vec<BuildingId> = events
+            .iter()
+            .filter_map(|e| match *e {
+                GameEvent::TownBuilt {
+                    town: t, building, ..
+                } if t == town => Some(building),
+                _ => None,
+            })
+            .collect();
+        prop_assert!(built.len() <= 1, "{:?}: {:?}", town, built);
+        if let Some(&building) = built.first() {
+            prop_assert!(captured.is_empty(), "{:?} built and captured", town);
+            prop_assert!(!old.built_today() && new.built_today(), "{:?}", town);
+            prop_assert_eq!(Some(new.built()), h3_towns::built_with(old, part, building));
+            prop_assert_eq!(new.forbidden(), old.forbidden());
+        }
+        let day_started = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::DayStarted { .. }));
+        if day_started {
+            prop_assert!(
+                !new.built_today(),
+                "{:?} marked after the day's start",
+                town
+            );
+        }
         if old != new {
-            prop_assert!(!captured.is_empty(), "{:?} rebuilt without a capture", town);
+            let cleared = day_started && old.built_today();
+            prop_assert!(
+                !captured.is_empty() || !built.is_empty() || cleared,
+                "{:?} rebuilt without a capture, a build or the day's start",
+                town
+            );
             prop_assert!(!changed.is_empty(), "{:?} rebuilt untold", town);
         }
     }
@@ -8912,7 +9083,8 @@ fn the_plans_visit_dwellings_from_a_boat() {
 /// step, neutral and another player's (TWN-CAP-001); the sieges against a garrison alone and
 /// against a visitor (TWN-SIE-001, -002), each won (the town captured after, TWN-CAP-003) or not;
 /// the merges that changed a garrison's slots before a siege (TWN-SIE-002); the captures, every
-/// way; and the Capitols the limit took (TWN-CAP-002).
+/// way; and the Capitols the limit took (TWN-CAP-002); since E09 T18b2b the builds (TWN-BLD-001,
+/// through `Step::Legal`) and the days' marks the day's start cleared (TWN-BLD-004).
 #[derive(Debug, Default)]
 struct Besieged {
     towns: usize,
@@ -8924,6 +9096,8 @@ struct Besieged {
     merges: usize,
     captures: usize,
     limited: usize,
+    built: usize,
+    cleared: usize,
     /// The sieges in progress: the attacking hero, and whether a visitor defends.
     open: Vec<(HeroId, usize)>,
 }
@@ -8981,6 +9155,13 @@ impl Besieged {
                         }
                     }
                 }
+                GameEvent::TownBuilt { .. } => self.built += 1,
+                GameEvent::DayStarted { .. } => {
+                    self.cleared += (0..map.towns().len())
+                        .filter_map(|place| before.towns().get(town_id(place)))
+                        .filter(|town| town.built_today())
+                        .count();
+                }
                 _ => {}
             }
         }
@@ -9021,8 +9202,10 @@ impl Besieged {
 /// fixed set of cases (proptest's deterministic runner), random play with the towns' runs
 /// ([`steps`], [`Step::Town`]) enters own towns, captures undefended ones (neutral and another
 /// player's), besieges towns defended by their garrison alone and by a visitor with the garrison
-/// merged, and wins and loses both, and the Capitol's limit takes a Capitol, so the properties
-/// above ([`check_towns`], the entrances in [`check_invariants`], the forks' store) see each.
+/// merged, and wins and loses both, and the Capitol's limit takes a Capitol, and (E09 T18b2b) its
+/// owners build through `Step::Legal` and the day's start clears the marks, so the properties
+/// above ([`check_towns`], the entrances in [`check_invariants`], the forks' store, the listed
+/// builds of [`check_town_builds`]) see each.
 #[test]
 fn the_plans_capture_and_besiege_towns() {
     use proptest::strategy::ValueTree;
@@ -9058,4 +9241,5 @@ fn the_plans_capture_and_besiege_towns() {
     );
     assert!(b.merges > 0 && b.limited > 0, "{b:?}");
     assert!(b.captures > b.undefended.iter().sum::<usize>(), "{b:?}");
+    assert!(b.built > 0 && b.cleared > 0, "{b:?}");
 }

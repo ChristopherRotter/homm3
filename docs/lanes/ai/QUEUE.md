@@ -40,7 +40,17 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
-**From the town lane** (E09 T8c1, T8c2; for your information, no encoding of yours moved):
+**From the town lane** (E09 T8c1, T8c2, T18b2b; for your information, no encoding of yours moved):
+
+- 2026-11-10 (the town lane, E09 T18b2b, `town/e09-t18b2b`, `cross-lane`; **for E09 T19's build
+  entry**, decision 56): `h3_game::legal_commands` lists a town's builds
+  (`GameCommand::Town(TownCommand::Build { town, building })`, after the boats: each owned town in
+  `TownId` order, each payable building of its hall in record order). The env's mask gives them
+  no entry (as before), and `adventure::rollout::choose` now draws from `drawn_commands`, the
+  listed commands but the builds, so no random game, replay or bot report moved. E09 T19 adds the
+  build entry (design §32: the town's entrance as the tile, a building head over
+  `h3_towns::MAX_BUILDINGS`) in an encoding version after E08's v8, with your layout, and drops
+  the skip; its random games then move.
 
 - 2026-11-06 (the town lane, E09 T8c1 `town/e09-t8c1` (#750, merged) and T8c2 `town/e09-t8c2`,
   `cross-lane`): `h3_game::GameObservation` gains `towns: Vec<TownView>` (each seen town's public

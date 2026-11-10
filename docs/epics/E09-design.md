@@ -929,6 +929,16 @@ town's boat spot, §28).
 - **No hero**, no visit, no decision: the original's town list opens the hall (§1.1).
 - **Atomic and validated** (ADR-0004): no field of the command is trusted but the two ids; the
   price is the part's.
+- **As built (T18b2b; kept whole, the user, decisions 55, 56):** `h3_game`'s `town::offer`:
+  `legal_builds` (chained after the boats by `legal_commands`: the owned towns by the map's town
+  list, a marked town skipped before its Capitol test, the payable set of `buildable`) and
+  `GameState::town_offer(rules, player, town) -> Option<TownOffer { possible, buildable, payable
+  }>`, `None` unless `player` owns the town (the trusted viewer: the owner's buildings are its own,
+  TWN-VEW-004), in its turn or not. The env's rollout draws from the listed commands but the
+  builds (`drawn_commands`) until T19's entry; its mask never had an entry for them. Measured:
+  the five `random-play-*` workloads (no towns) within 0.5 % of their baselines; on the town map
+  (three games of 21 days) `legal_commands` is 0.65 % of the rollout's instructions, `buildable`
+  0.34 %, `Reach::search` 97 %: no cached offer (§36).
 
 ### 30. The day and the turn (`h3-game` `state/day.rs` `cross-lane`, `src/town*`; TWN-BLD-004, TWN-EVT-001 to -004)
 
@@ -1157,7 +1167,8 @@ batch TWN-2 runs first, so the ADRs are applied once with its verdicts, as incre
   versions; whichever merges second rebases, bumps again and re-records. Check the adventure
   lane's open pull requests at every task's start.
 - **`legal_commands`' cost:** every owned town's offer is computed for each list (the env calls it
-  every step); measured at T18b's first build (a cached offer per town is the fallback).
+  every step); measured at T18b2b (§29's as built: 0.65 % of random play on the town map), so no
+  cached offer.
 - **The hall's offer** is derived from `auto_with` (§27); batch TWN-2 does not observe it (the
   same cost and end state in every faction).
 - **Not read:** the Shipyard's spot against the random dwellings' resolution (§28); the town

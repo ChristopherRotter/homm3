@@ -1,10 +1,10 @@
 //! The uniformly random legal agent of the adventure (E08 T9a; T9b's benchmark workload and
 //! golden replays play it; it answers an open decision since T14b, plays its battles since T19b1
-//! and the neutral seat's since T20b3a).
+//! and the neutral seat's since T20b3a; a town's build it skips until its entry, E09 T18b2b).
 
 use h3_adventure::Reach;
 use h3_battle::LegalCommands;
-use h3_game::legal_commands;
+use h3_game::{GameCommand, GameRuleset, GameState, legal_commands};
 use h3_kernel::{Rng, StreamId};
 
 use super::action::{self, Action, HERO_SLOTS, Seat, tile_index};
@@ -52,9 +52,10 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
 /// The agent's choice for `seat`. In the map phase: a uniform legal entry, then for a move a
 /// uniform tile of the hero's tile mask (its reachable tiles, other players' heroes' included:
 /// such a move starts a battle, E08 T19b1), as an agent samples the factorized action head by
-/// head. The other choices are the commands [`legal_commands`] lists: `EndTurn` and each
-/// Shipyard's `BuildBoat` (by its anchor, E08 T85b2b; before encoding v6 a drawn `BuildBoat` had
-/// no action and ended the turn), or with an open decision its answers alone (`Decline`, and
+/// head. The other choices are the commands [`legal_commands`] lists but a town's build
+/// ([`drawn_commands`]): `EndTurn` and each Shipyard's `BuildBoat` (by its anchor, E08 T85b2b;
+/// before encoding v6 a drawn `BuildBoat` had no action and ended the turn), or with an open
+/// decision its answers alone (`Decline`, and
 /// `Accept` while the offer stands; a level-up's `First` and `Second`, E08 T30), each at even odds
 /// with each hero's move (GAM-DEC-001, GAM-DEC-002; E08 T14b, T15a). `EndTurn` when the seat has
 /// no legal entry (the neutral seat while no battle waits for it). In the battle phase: the
@@ -72,7 +73,7 @@ pub fn choose(env: &AdventureEnv, seat: impl Into<Seat>, rng: &mut Rng) -> Actio
         return crate::action::encode(battle, rules.battle(), command)
             .map_or_else(Action::end_turn, Action::Battle);
     }
-    let commands = legal_commands(state, rules, seat.actor());
+    let commands = drawn_commands(state, rules, seat);
     let moves: Vec<(usize, Reach)> = (0..HERO_SLOTS)
         .filter_map(|slot| action::moves(state, rules, seat, slot).map(|reach| (slot, reach)))
         .collect();
@@ -91,4 +92,18 @@ pub fn choose(env: &AdventureEnv, seat: impl Into<Seat>, rng: &mut Rng) -> Actio
         .nth(k)
         .and_then(|(pos, _)| tile_index(state, pos))
         .map_or_else(Action::end_turn, |tile| Action::move_to(*slot, tile))
+}
+
+/// The commands [`choose`] draws from in the map phase: those [`legal_commands`] lists for `seat`
+/// but a town's build (`GameCommand::Town`, listed since E09 T18b2b), which has no action before
+/// the build entry of E09 T19's encoding: drawn, it would end the turn and move every random game
+/// on a map with towns (E09 decision 56; T19 drops the skip with the entry).
+pub(super) fn drawn_commands(
+    state: &GameState,
+    rules: &GameRuleset,
+    seat: Seat,
+) -> Vec<GameCommand> {
+    let mut commands = legal_commands(state, rules, seat.actor());
+    commands.retain(|command| !matches!(command, GameCommand::Town(_)));
+    commands
 }

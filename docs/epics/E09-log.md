@@ -2500,3 +2500,58 @@ only at the start: the original data staged then.
   start's views told although a fold could clear the marks itself; a build in a town without a
   standing Tavern reads its owner's views of every town (not only when the building is a Tavern);
   the told events after the change's own events.
+
+### T18b2b — the legal builds and the hall's offer (2026-11-10)
+
+One session, the user present at the start; branch `town/e09-t18b2b`, `cross-lane` (`h3-game`'s
+`legal.rs` and `lib.rs`, `h3-map`'s property tests `play.rs` are the adventure lane's; `h3-sim`'s
+`adventure/rollout.rs` and its town tests the AI lane's). Starting point: `master` at 4701369
+(#812, #814, #815 merged). **`master` does not build:** the server lane's #814 maps T18b1's
+`TownChanged { town, capitol, seen_by }` onto the wire and #815 (T18b2a) merged after it with the
+event reshaped and `TownStackSeen`, `TownIncomeSeen` new, no CI run having seen both; `h3-protocol`
+fails, CI's full verify and the clients job on `master` with it. Left to the server lane (the
+user; its inbox has T18b2a's note); nothing here touches the wire. Fixed by its #816 (E16 M5 T3d:
+T18b2a's events mapped and folded, `SRV-STUB-12` and `-13` lifted), merged into the branch after
+the pull request #817 opened (a conflict in the server lane's inbox only). **Kept whole at its start**
+(the user, decision 55); the rollout's builds skipped (decision 56). The user's computer was
+connected at the start: the original data staged then (the staging folder given to the setup with
+`extracted.tar` unpacked, so its baseline would run with the data); the setup's baseline was lost
+to a VM restart, and could not have passed (`master` red).
+
+- **The listing** (design §29 as built): `h3_game`'s `town::offer::legal_builds`, chained after
+  the boats by `legal_commands`: each town the player owns, by the map's town list (`TownId`
+  order), a town built in today skipped before its Capitol test, each building of
+  `h3_towns::buildable` (with `holds_capitol`) whose price the treasury holds, in the record's
+  order. `legal_commands`' doc and rule line (TWN-BLD-001) updated.
+- **The offer:** `GameState::town_offer(rules, player, town) -> Option<TownOffer>` with
+  `possible`, `buildable` and `payable` (each holding the next), `None` unless `player` owns the
+  town (the trusted viewer rather than the design's `town_offer(town)`: the buildings are the
+  owner's, TWN-VEW-004), in its turn or not; `TownOffer` exported by `h3-game`.
+- **The rollout** (decision 56): `h3_sim::adventure::rollout::drawn_commands`, the listed commands
+  but `GameCommand::Town`, which `choose` draws from; the mask's `command_entry` already gave the
+  builds no entry. No random game, replay or bot report moved.
+- **The plans** (`h3-map` `play.rs`): the consistency property expects, after the boats, the
+  builds `apply` accepts (`accepted_builds`: a probe of every building of every town of the store
+  and one past each); `check_town_builds`: each listed build applies, adds `built_with`'s set with
+  the mark, is told as `TownBuilt` and pays its building's cost, and the owner's offer has it
+  payable; every unlisted probe is refused with the state unchanged and no event; the offer is
+  the owner's alone and its payable set the town's listed builds. The move loop skips the builds;
+  `check_rewards` explains a build's `ResourcePaid` by its cost; `check_towns` lets a record
+  change by one `TownBuilt` (its set and the mark, no capture) or the day's start (every mark
+  cleared after a `DayStarted`), each told. The plans build through `Step::Legal`: the towns' cover
+  test counts 70 builds and 61 marks cleared in its 512 cases, its other counts all still met.
+- **Tests** (`h3-game` `town/tests/offer.rs`, T18b1's fixtures shared from `command.rs`): the
+  listing is the payable part of the hall (the Citadel's price refused), each listed build
+  accepted; the offer's three sets on the priced record; the offer none for a non-owner, another
+  player's town and an unknown town; a town built in today lists none until the day's start; two
+  owned towns' builds in town order with one Capitol. `h3-sim`: the rollout draws no build on red's
+  first turn of the town map (where `legal_commands` lists some).
+- **Measured** (design §36): `bench-check` of the five `random-play-*` workloads (maps without
+  towns): duel +0.44 %, dwellings −0.00 %, economy −0.46 %, rewards −0.07 %, sea +0.13 % (gate
+  2 %; no re-baseline). Callgrind of random play on the town map (three games of 21 days, seed 173,
+  469 steps): `legal_commands` 0.65 % of the rollout, `buildable` 0.34 %, `holds_capitol` 0.06 %,
+  `Reach::search` 97 %: no cached offer.
+- **Catalog:** TWN-BLD-001 amended (the listing and the offer).
+- **Agent's calls (change freely):** `town_offer` takes the viewer; the listing walks the map's
+  town list rather than the store; a marked town skips its Capitol test; the plans' probe covers
+  one town and one building past the last; the rollout's skip a named function the test reads.
