@@ -2687,7 +2687,7 @@ its start, increment 2's own map** (the user, decisions 58, 59).
 One session, the user present at the start; branch `town/e09-t19b`, `cross-lane` (`h3-map`'s
 property tests `play.rs` and `view.rs` and their regressions file are the adventure lane's).
 Starting point: `master` at 1769e23 (#827, #828 merged); the setup's baseline, the full engine
-verify with the original data, BASELINE. The user's computer was connected at the start: the
+verify with the original data, green. The user's computer was connected at the start: the
 original data staged then (each LOD a call, 13 files in one, the 40 MP3s in one). **Kept whole at
 its start, `master`'s counterexample of the plans' gains fixed first** (the user, decisions 60,
 61).
