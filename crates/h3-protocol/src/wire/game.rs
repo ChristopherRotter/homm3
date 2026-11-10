@@ -2,8 +2,8 @@
 //! amended): what a player sees of a game ([`GameObservation`]), its adventure map
 //! ([`Adventure`]) and its battle (the battle's [`super::Observation`]); what it commands
 //! ([`GameCommand`]) and why a command was rejected ([`GameReject`], T3a); what happened, as it
-//! sees it ([`GameEvent`], T3b); and how a viewer keeps its observation current by its events
-//! ([`GameObservation::fold`], T3c).
+//! sees it ([`GameEvent`], T3b); how a viewer keeps its observation current by its events
+//! ([`GameObservation::fold`], T3c); and what the game is made of ([`GameManifest`], T4).
 //!
 //! The same rules as [`super`]'s: the protocol's own types, translated by [`crate::map::game`]
 //! with every engine field named; serde's default enum form with `deny_unknown_fields`; content
@@ -24,6 +24,7 @@ use super::WireU64;
 mod command;
 mod event;
 mod fold;
+mod manifest;
 
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
@@ -32,6 +33,7 @@ pub use command::{
     StandReject, TownCommand, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
+pub use manifest::{GameKeyTables, GameManifest, MapIdentity};
 
 /// A tile of the adventure map: its column, its row and its level (0 the surface, 1 the
 /// underground).

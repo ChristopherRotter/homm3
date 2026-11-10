@@ -323,8 +323,11 @@ inbox, the same day), mapped when it lands.
     `TownStackSeen` and `TownIncomeSeen` mapped and folded (a viewer's town view replaced), which
     `master` 700bf95 lacked to build; `SRV-STUB-12` and `-13` lifted, the garrisons and owner
     facts gated but for the reveal and Visions' reach (`TWN-STUB-13`); 36 parts, 17 exact.
-- **T4 the game's manifest and key tables**: the parts' hashes (core, battle, adventure, towns),
-  the map's identity (its content hash), the key tables of the game's content kinds.
+- **T4 the game's manifest and key tables** (done 2026-11-10; `E16-log.md`):
+  `wire::game::GameManifest` and `map::game::manifest(rules, map)`: the adventure replay header's
+  fields with every part's hash (core, battle, adventure, towns) and the three state hash
+  versions, the map by its file's content hash and import version (`MapIdentity`, the caller's),
+  the battlefield, the battle's key tables and the game's (`GameKeyTables`).
 - **T5 the game session in-process**: the players as seats and viewers, the loop over
   `h3_game::apply` with the trusted actor, the legal commands to whoever must act (decisions, a
   battle's side outside the turn), the system actor's commands from its caller (computer seats are
@@ -360,7 +363,11 @@ monster's one-tile masks, a group's first turn start ending the group before), a
 dialog's group kept on its mine at the close, `command_to_engine` refusing a building beyond any
 record (64 or more) as `UnknownBuilding` before the engine (E09 T18b1's build, mapped in T3c1);
 T3d's: a town's told view as the engine's three events one to one (its stacks and income lines
-after it, not inside it), a fort and the buildings as the observation's forms.
+after it, not inside it), a fort and the buildings as the observation's forms; T4's: the game's
+manifest its own message part beside the battle's (`GameManifest`, the battle's `KeyTables` inside
+it and the game's kinds in `GameKeyTables`), the map named by its file's hash and import version
+without its path (the caller computes them; a client draws its own copy only when both match),
+the buildings' keys by faction handle (an empty list for a faction without a town).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

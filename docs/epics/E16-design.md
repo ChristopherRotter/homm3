@@ -88,6 +88,15 @@ R01's content split, protocol v21): both equal means local previews are safe; di
 absent means server queries only and a visible note. The server never reads anything from this
 check.
 
+**A whole game** (E16 M5 T4, `wire::game::GameManifest`, sent before its first observation from
+T5 on): the same check over its four parts' hashes (`ruleset_hash`, `battle_ruleset_hash`,
+`adventure_ruleset_hash`, `town_ruleset_hash`), and the map by its identity (`MapIdentity`: the
+map file's content hash, `h3_sim::adventure::replay::map_content_hash`, and `h3_map`'s import
+version, as an adventure replay names its map without the path): a client draws the map from
+its own copy only when both are equal; the map never travels. The battle's key tables come with
+the game's own (`GameKeyTables`: object types, resources, roads, rivers, and each faction's town
+buildings by building index, empty for a faction without a town).
+
 ## 7. Journals: restore, pause, resume, upgrades (M2)
 
 - **Content, write-ahead, restore at start** are code since M2 T2 (`h3-server/src/journal.rs`,

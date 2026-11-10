@@ -10,6 +10,7 @@ mod game;
 mod game_command;
 mod game_event;
 mod game_fold;
+mod game_manifest;
 mod ladder;
 mod list;
 mod lobby;

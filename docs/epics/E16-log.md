@@ -2202,3 +2202,33 @@ This task repairs it.
   which the two parts name now. `SRV-STUB-12` and `-13` lifted (registry, fold). The report also
   prints each part's first difference without a reveal.
 - **No message, no version step** (T5).
+
+### M5 T4 — the game's manifest and key tables (2026-11-10)
+
+What a whole game is made of (ADR-0018 point 10 for the whole game), for T5's session to send
+before a game's first observation and to write into a game record's header. Baseline: T3d's
+branch (#816) on `master` 4701369.
+
+- **The wire** (`wire::game::{GameManifest, MapIdentity, GameKeyTables}`, `wire/game/manifest.rs`;
+  provisional): the protocol and engine versions, the packs, the profile, every part's content
+  hash (core, battle, adventure, towns; ADR-0015 point 2: the adventure replay header names three,
+  the game's battles need the fourth), the RNG and hash algorithms, the battle, adventure and
+  game state hash versions, the map, the battlefield's size, the battle's `KeyTables` and the
+  game's own: object types, resources, roads, rivers, and each faction's town buildings by the
+  faction's handle (the keys within its town record by building index, as a build and a town's
+  buildings name them; empty for a faction without a town).
+- **The map** (`MapIdentity`): as an adventure replay names it (`MapRef`, ADV-Q2) without its
+  path, which is the server's: the map file's content hash and `h3_map`'s import version, given
+  by the caller (the protocol reads no files and does not depend on `h3-map` or `h3-sim`). A
+  client draws the map from its own copy only when both match (the design note §3); the map
+  never travels. A client holding the map file knows the map's start, as every player of the
+  original does; the per-viewer projection of the game's state is unchanged.
+- **The mapping** (`map::game::{manifest, key_tables}`, `map/game/manifest.rs`): from the game's
+  ruleset, the battle's tables and field through the battle's own functions.
+- **Tests** (`tests/game_manifest.rs`): the manifest names what the adventure replay header
+  names (`h3_sim::adventure::replay::ReplayHeader::current`) and the battle part's hash, state
+  hash version, field and keys as the battle's manifest does; a golden replay's map identity
+  (`towns-capitol-s1`, its file's hash checked); the game's tables follow the handles (each key
+  resolves to its index; the buildings through each record's `building_by_key`, one list per
+  faction, empty exactly where a faction has no town); round trips; the JSON form.
+- **No message, no version step** (T5 sends it).
