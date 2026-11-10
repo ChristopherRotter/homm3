@@ -45,4 +45,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   the hero (`hero[E11-22]:experience`) or read a record (`mine:x,y`). A `key` step that shows a
   message needs `expect = { dialogs = true }`, or `oddities` stops at the walk's missing target.
 
+- The plans' oracles and the teleporters (E08 T106b1, `play.rs`' `check_jumps`): a move's walk
+  ends on the entrance while its hero stands on the exit (`jumped_to`); a jump held after a battle
+  at its exit arrives in the battle's last command, which may be another player's or the system's,
+  or in the answer to the winner's level-up (its defender gone): that hero moves and its owner's
+  explored tiles grow in a command not its own (`check_isolation`'s captors, `view.rs`' `jumper`);
+  an empty boat a hero left on a Whirlpool's tile is boarded, no visit; an enemy hero on another
+  tile of the entrance's own Whirlpool is a candidate (survey §4.1). `view.rs`' `hygienic()` lays
+  out no teleporter until `vary` knows them (T106b2).
+
 - **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression` and `homm3-rerecord-replays`; measure right after the first build (`AGENTS.md`, "Measure before you polish").

@@ -14063,3 +14063,95 @@ map (the random replays' search; the scripted replays).
   the server lane's inbox only): that count 66 too, its records over all 66 passing. The server lane's inbox told; the trap in the
   lane's `TRAPS.md`.
 - **Versions:** none.
+
+### Increment 11, round 8: T106b1, the teleporters plans and their checks (2026-11-10, `adventure/e08-t106b1`)
+
+**The cut** (decision 291, the user at T106b's start): T106b in two at the seam of `play.rs` and
+`view.rs`, this half first, before T106c (the properties may find engine faults whose fixes would
+move T106c's new baselines). **Baseline:** `master` 3f60bf4 (#826; the setup's `verify-once` found
+the engine code verified on 9681253, light gates only, passed; CI green on `master`); the original
+data staged at the start (the two LODs, the executable, `maps.tar`, `extracted.tar`). Built by
+the main session; reviewed by a read-only sub-agent.
+
+- **The plans' teleporters** (`h3-map`'s `play.rs`; `KINDS` 96 to 102, `TELEPORTERS`, appended):
+  the one-way entrances of channels 0 and 1 (class 43; channel 1 has no exit, so its entrance never
+  has a candidate), channel 0's one-way exit (44), the two-way monoliths of channels 0 and 1 (45),
+  the Subterranean Gate (103) and the Whirlpool (111); a monolith's one tile, a gate the original's
+  four tiles visited from the middle of its row, a Whirlpool its anchor and the tile above (one
+  column fits the narrowest strait). Drawn last (`teleporters()`, in three plans of four): one to
+  four within two tiles of a hero, each in two cases of three with a partner near the next hero (an
+  entrance's exit, an exit's entrance, a two-way of its channel, a gate on the other level), up to
+  six anywhere (mostly exits, two-way monoliths and gates), up to four Whirlpools on a plan's
+  strait. `Plan::teleporters`, laid out by `teleporters_laid_out` after every other object but the
+  towns and the boats: every visitable tile on the map on its surface (A-42 never met), none on a
+  hero's tile or a tile an earlier object covers (so each tile is listed for its teleporter), else
+  left out. Plans without teleporters lay out as before (the fixtures unchanged).
+- **The steps:** `Step::Jump` (runs of 8 to 47 in `steps()`): in a battle as `Fight`, a decision
+  settled, a listed `Revisit` in one step of two, else a move onto a teleporter (in one step of two
+  one whose candidates hold another hero: battles at an exit and gates' meetings), with Whirlpools a
+  walker's boarding in one step of two, else a move nearer to one, else `EndTurn`; `hire` on a map
+  without teleporters. `Free::Revisit` of an arbitrary hero (mostly refused). A run's length bounds
+  the revisits at 0 points (design §18).
+- **The checks** (design §14), after every command of `every_step_keeps_the_commands_invariants`:
+  `check_channels` at the start (the exits', two-way members' and Whirlpools' tiles by channel in
+  the walk's order against the raw map, the gates' entries and pairs by an independent reading of
+  D-56's greedy pairing); the channels unchanged after every command and a fork's a fresh build's
+  (`forks_evolve_as_their_parent`); `check_jumps` (every `HeroTeleported` from a teleporter that is
+  no exit to one of `candidates`, an oracle of §7 read on `before` with the mover on the entrance:
+  never onto a hero of the team, never the entrance, a Whirlpool's own tiles only when an enemy
+  holds one; a jump held after a battle to a tile of its list; a command that takes no step keeps
+  the points and the day's maximum; every visit of a move's walk's end or a `Revisit`, no guard
+  first and no boarding, goes as ADV-TEL-004 to -006 say: an exit and an unpaired gate lead
+  nowhere, a gate's pair met, fought or jumped to, a monolith or a Whirlpool without a candidate
+  does nothing, with candidates jumps to a free one or fights the enemy on one, a Whirlpool's loss
+  once for an unprotected hero and none for a protected one); `check_whirlpool_losses` (the army at
+  the visit rebuilt from the event: the weakest slot by fight value × count, the first on a tie, the
+  count kept `count / divisor`, a lone stack one at least, the army never empty, no protection);
+  the map's invariants in `check_invariants` (one hero a tile, a hero in a boat on water, a walker
+  on land, an empty boat on water) and the meeting's (a gate's two heroes are no neighbours); a
+  listed move's jump keeps the query's points at the entrance and the day's maximum
+  (`check_legal`); a rejected `MoveHero` or `Revisit` leaves the state, the players' streams
+  included (`GameState`'s equality; the stream's accessor is the game's own), untouched.
+- **The oracles met:** `landing` takes a Whirlpool's loss before its jump, and the move's hero stands
+  on the exit (`jumped_to`); `check_conservation` subtracts a `WhirlpoolLoss`; `check_isolation`
+  and `view.rs`' `check_told` let a jump held after a battle at its exit reveal around the exit in
+  the battle's last command, another player's or the system's (`jumper`); `hygienic()` lays out no
+  teleporter until T106b2 teaches `vary` them.
+- **Found on the way** (no engine fault): an empty boat a hero left on a Whirlpool's tile is
+  boarded, no visit; an enemy hero on another tile of the entrance's own Whirlpool is a candidate
+  (survey §4.1: the hero's class before the excluded word, the engine's `draw_exit`), so §14's
+  "never one of its own six" holds for a free tile and the held jump after that battle lands there
+  (*agent's reading*, design §14's as-built note); a held jump may wait for the winner's level-up,
+  its defender gone by then (the review).
+- **The cover test** `the_plans_jump_through_teleporters` (256 jump plans, `jump_plans()`: a plan
+  with teleporters, every other hero wearing the Sea Captain's Hat in half of them, up to 199
+  steps, mostly `Step::Jump` with ends of turn): visits by kind and outcome (nothing, nowhere,
+  arrived, met, fought): entrances 595, 0, 129, 0, 33; exits 0, 1 563, 0, 0, 0; two-way 1 734, 0,
+  1 283, 0, 51; gates 0, 579, 42, 3, 3; Whirlpools 179, 0, 295, 0, 2; 3 490 revisits, 182 at 0
+  points; 41 jumps held after a battle, 37 exit battles lost; Whirlpools' losses 228 of a lone
+  stack, 31 slots emptied, 109 visits of a protected hero; every count asserted (the thinnest: a
+  gate's meeting and battle 3, a battle at sea 2). `the_plans_visit_dwellings_and_hire` lost its
+  deserted camps and `town_views_move_as_the_events_say` its Capitols with the new draws: both
+  raised from 256 to 512 cases (TRAPS: raise the cases, not the draw).
+- **The review** (a read-only sub-agent; no determinism or `lay_out` finding), fixed: a held jump's
+  exit read as one of the list, not a candidate (the level-up's wait); `Step::Jump`'s fallback on
+  a map whose only teleporters are one-way entrances; the lone losses counted only where the lone
+  stack stays; the gates' pairs checked by D-56's reading, not only their symmetry; channel 1's
+  entrance without a partner; two doc lines. Left: a Whirlpool's visit held after its guard's
+  battle is not checked for its loss's presence (only each loss told is).
+- **The inbox's counterexample** (the town lane, E09 T19a, merged in with #828; the user's word:
+  ours): `every_step_keeps_the_commands_invariants`' seed `dfed064b…` on `master`'s strategy, a
+  monster's join for gold accepted, then the Mystical Garden it guarded visited (decision 279's
+  held visit). `check_conservation` put `visit_gains` (the garden's 500 gold) before the removed
+  monster's treasure (50), the events the other way: a gap of the check, not the engine's. A
+  guarding monster's treasure now goes before the visit's gains; reproduced and passed in a
+  worktree of `master`, the seed appended to `proptest-regressions/tests/play.txt` (on this
+  branch's strategy it draws another case).
+- *Agent's calls (change freely):* the seven kinds and their shapes; the draws' weights, the
+  partners, the hats of the jump plans; `Step::Jump`'s preferences; the cover test's 256 plans.
+- **Test time** (`h3-map`'s lib tests, debug, two CPUs): 262 s with the plans and the two raised
+  cover tests.
+- **Gates:** the scoped verify with the original data passed every step it runs, `check-lane`
+  included (no cross-lane path): coverage, determinism (the 66 replays unchanged), bench-check
+  (no engine code changed), original-data.
+- **Versions:** none.
