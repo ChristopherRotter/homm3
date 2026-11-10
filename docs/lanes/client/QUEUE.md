@@ -26,14 +26,11 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** the review list accepted; every capture as recorded or its difference listed;
   M7's tasks in this queue; M6 done. **Depends on:** T1 to T6 (done).
 - **Cut** in three by the user (2026-11-09): **T7a done** (2026-11-09/10: R4-9 and every capture
-  afresh; the epic's log). **T7b** the fresh reviewer (by area, narrow sub-agents as M5 T8's, a
-  worktree of `master`) and its fixes, `drawn` and the captures a fix changes. **T7c** the review
-  list with the user (M6's items 1 to 48), M7 refined (ranked play and the server browser, HD and
-  the graphics options placed), M6 closed (its scope to `E17-archive.md`).
-  **Status:** T7b next. The inbox's protocol v38 item (master's #800 had broken the viewer's
-  sequences: `drawn` 81 of 91 changed or failing) done 2026-11-10 on
-  `client/e17-m6-v38-readers`: the readers leave the battle's start out, CLT-STUB-3 lifted,
-  `drawn` all the same again; CLT-Q69 asked (drawing the start).
+  afresh; the epic's log); the protocol v38 readers done (2026-11-10, #818). **T7b done**
+  (2026-11-10: 12 reviewers, 6 fixers; the epic's log). **T7c** the review list with the user
+  (M6's items 1 to 62), the new questions (CLT-Q70 to Q77) and T7b's left items (the log), M7
+  refined (ranked play and the server browser, HD and the graphics options placed), M6 closed
+  (its scope to `E17-archive.md`). **Status:** T7c next.
 
 ## Inbox
 

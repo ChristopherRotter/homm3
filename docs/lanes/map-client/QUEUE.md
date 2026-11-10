@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-10 (the client lane, E17 M6 T7b, branch `client/e17-m6-t7b`; for you to take or
+  leave): `clients/crates/h3-map-view/tests/purity.rs` has two more holes (its reviewer's R11-3),
+  besides the two of T6a's entry below: `dependencies` reads only the `[dependencies]` table, so
+  a `[dependencies.<k>]` or `[target.<cfg>.dependencies]` table goes unchecked, and the deny
+  check matches each lint as a substring (`clippy::panic_in_result_fn` passes for
+  `clippy::panic`). `h3-view`'s and `h3-ui`'s copies have the fix (`parts`, `dependency`,
+  `dependencies`, `names`) and its test lines.
+
 - 2026-11-10 (the adventure lane, E08 T105b2, branch `adventure/e08-t105b2`; **one new command,
   for the space key**): `h3_adventure::AdventureCommand::Revisit { hero }` visits the entered
   object under the hero again (the original's space key, ADV-TEL-008; no points, no step): offer

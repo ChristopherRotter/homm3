@@ -257,8 +257,10 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   situations and 91 sequences as recorded; the stricter rule moved 1 044 pixels of 16 frames'
   listed differences from artifacts, recorded; design §7.11); before T7b the inbox's protocol
   v38 readers (done 2026-11-10: the battle's start no command, CLT-STUB-3 lifted, `drawn` all
-  the same; CLT-Q69 asked; design §12.25); **T7b** the fresh reviewer and its fixes; **T7c** the
-  review list with the user, M7 refined, M6 closed.
+  the same; CLT-Q69 asked; design §12.25); **T7b** (done 2026-11-10, the user's "one session,
+  delegated": 12 reviewers and 6 fixers, 56 findings, 51 fixed, 3 left; CLT-Q70 to Q77 asked;
+  review items 49 to 62; PR on `client/e17-m6-t7b`); **T7c** next: the review list with the
+  user, M7 refined, M6 closed.
 - **Exit:** a played battle shows every dialog and popup of the original's battle screen, each
   passing against the original or with each difference a listed fix or a classified quirk; the
   combat options in effect.
@@ -393,7 +395,10 @@ The next milestone's list starts here.
     neutral); a side's army the wire's stacks of slots 0 to 6 not made in the battle; a field by
     its key's name; a creature's plural its catalogue form for 2 (*provisional*); the spells'
     line the change the lines the client has leave (design §12.4). ARRAYTXT read from
-    H3bitmap.lod's file (H3ab_bmp.lod's older one numbers a record lower after 82).
+    H3bitmap.lod's file (H3ab_bmp.lod's older one numbers a record lower after 82). The four
+    elementals in a map of kind 0 (RoE) take the engine's faction where the executable takes
+    them as neutral (the alignments, Clover Field's line, the town frame): *provisional* until
+    the engine carries a map kind (T7b, R2-7; a comment at `stats::account`'s alignments).
 17. CLT-Q41's fixes (T2a2b2): the Halflings' line on its own row, the descriptions of a
     hypnotized stack from its controller's side, in the client's profile; the original's for the
     comparisons.
@@ -490,7 +495,10 @@ The next milestone's list starts here.
     `-spells`, `-stack-f5`, `-ballista`, `-spells-f5`); their layout a new `[army_info]` section of
     `layouts/battle.toml` in the heroes' window's form (`HeroInfoLayout` reused); kind 2's item ids
     kind 1's (read from the running original's memory); filled every frame from the turn's
-    observation (no cache). A still's status line at levels 1 and 2 words the damage from the
+    observation (no cache). Their spells, as the stats dialog's effects (item 5), in the
+    observation's order (by spell handle), not the original's cast order (+0x420):
+    *provisional* until the wire carries the cast order, a cross-lane protocol change (T7b,
+    R6-2). A still's status line at levels 1 and 2 words the damage from the
     opening's previews (`scenario::opening_previews`), at the level of the last new hex or slot.
     No still shows a stack's active spells (a still's battle stays at its opening; the unit tests
     cover the icons and GENRLTXT 675). CLT-Q48 fixed (the client's Ballista Dmg the dialog's),
@@ -499,9 +507,11 @@ The next milestone's list starts here.
     profiles, CLT-Q52 to Q56 fixed through `h3_render::Bugs` (the original's in the comparisons;
     Q56 as put to the user: a wall aim takes the mouse's hex at its start). *Provisional*: the reach
     from the engine's legal moves and strikes' targets; an action's start clears the blocks put
-    back, each keeping one composition; F6 to F8 only while the battle takes keys; the idle step's
-    move (oddity 10) not modelled; an aim's shade recorded as sequences only (a still takes no
-    aim); creature casts' and a server seat's aims know no immune stacks. Recorded: 11 stills
+    back, each keeping one composition; F6 to F8 only while the battle takes keys (CLT-Q75); an
+    aim's movement shadow off the mouse's follow's alone, the settings and the file unchanged
+    (oddity 8 not copied; T7b, R7-2: the window's block that saved it never ran, removed); the
+    idle step's move (oddity 10) not modelled; an aim's shade recorded as sequences only (a
+    still takes no aim); creature casts' and a server seat's aims know no immune stacks. Recorded: 11 stills
     exact, 5 sequences whose 17 other frames are the original's redraw artifacts (the book's
     closing, a given-up area aim's outline until the next idle step, a whole redraw's pose a
     deadline early), listed, not copied. Not built: the battle's decided and hidden tests, a later
@@ -552,3 +562,61 @@ The next milestone's list starts here.
     pixel is a value a shadow leaves; one shadow over the viewer's pixel at that moment anywhere.
     On every sequence captured afresh no frame of artifacts alone lost one; 16 frames with listed
     differences moved 1 044 pixels from artifacts to those differences (recorded).
+49. The sequences' look (T2a2b1, T7b's R2-4, *provisional*): `look:` only right before
+    `cast-button:` (`pointer::answering` refuses it elsewhere); the cast button's aim takes its
+    first `hex:` or `click:` as a target it accepts; a press the aim refuses not modelled.
+50. The combat options dialog's speed (T4a, T7b's R4-1): the dialog opens at the speed the battle
+    plays (an explicit `--speed`); after its first close the run's speed is in the settings and
+    any later write saves it; before that a write (F5 to F8) keeps the file's speed.
+51. The settings file read tolerantly (T4a, T7b's R4-5 and R4-6, *provisional* with the file's
+    format): written whole (a sibling `<name>.tmp` renamed over it); an unknown name or a
+    non-integer value left out as missing, with a note on the report's `settings:` line; text
+    that is not TOML and a `battle` that is not a table still refused; a named file not there
+    yet a first run's, written there.
+52. Not modelled: a DEF button's mouse hold as its own loop (T2b1, T4a; T7b's reading for R3-4
+    and R4-2, `def_button_message` 0x45641C): the loop drops keys and the right press and ends at
+    the right button's release, clicking when pressed. The client models none of it for the
+    panel (its right-button popups open over a held panel button: R3-4 left), the stats dialog's
+    OK or the options' Default, OK and speeds (only the right press there, R4-2 (a)); CLT-Q39's
+    mouse case cannot happen in the original (the client's let-go there harmless). CLT-Q72.
+53. Auto Combat's stop by Control (T4b2a, T7b's R5-1, *provisional* as M5 T8b2's R5c-5 reading
+    of modifier keys; design §7.22): Control alone stops it at its release, not at its key down;
+    a chord with it (Ctrl+F5 to Ctrl+F8, Control with a press) never; a Control down a box's
+    flush drops still holds Control (`window::Control`).
+54. The turns' battles (T4b1's `pointer::stacks`, `pair`; T7b's R5-2, *provisional*): `pair`
+    assumes one `turned` entry per command and takes the only extra entries as a hero's cast's
+    (`casts` rising within the round, `cast_left`); a turn no command waited for (a passed or a
+    berserk one) pairs with none. A seat's `turned` holds only the turns served to it.
+55. The cursor shadow at the tactics phase's end by Start Combat (T4c, T7b's R7-1; design
+    §12.16): in the client's profile `Cells::phase` forgets the list as a composition does
+    (CLT-Q52's answer); the original's keeps it, its block put back with the phase's shade
+    (*provisional*: 0x478375 and 0x4751CC to 0x47528D not read for the list).
+56. A cost choice (T4c, T7b's R7-3): `compose` reuses the frame of the last `Draw::Within` list
+    for an equal list (the same pixels by construction; not measured).
+57. T5b1's lasting choices (T7b's R9-4; design §12.18): `--sight` a window flag only, not in the
+    settings file (*provisional*); the unattended presser keeps the fixed bot (`Live::choice`:
+    no stream, never leaves); the sequences' parser takes a key after `key:a` as the human's own
+    when Creatures is cleared (`pointer::answering`, *provisional*); `h3-battle-ai` in the
+    client's build, so the battle lane's API changes reach it (as the town crates', item 29).
+58. T5b2a's lasting choices (T7b's R9-4; design §12.19): `--auto-question` answers Cancel by
+    default; `h3-view situation` writes the Tavern towns but no artifacts' worth or `wanted`; the
+    question and the offer name the hero type, not the hero's own name (+0x23: a hero renamed on
+    a map is named wrong; the wire carries no name; as the Surrender box's).
+59. Auto Combat's question in the sequences (T5b2b, T7b's R10-3, *provisional*): any `key:a`
+    before the box counts as the switch on (`sequences::switched` takes the last); a switch off,
+    a stop, a key pressed while the box is open, and any key but Return or Escape inside the box
+    not modelled (`pointer::answering` reads such a key as a stop). No recorded sequence does so.
+60. A Phoenix reborn by a hero's damage spell (T5d2b, T7b's R11-5, *provisional*; design §12.24):
+    raised before the hero's last frames, built from the reading (every damage handler's
+    `phoenix_rebirth_check` 0x469440), not recorded; a creature's cast (a Faerie Dragon's area
+    spell) still raises after its tail and its turn back, where the handler checks before both.
+61. The v38 readers (after T7a, T7b's R12-3, *provisional*; design §12.25): the start found by the
+    kind of its first event (`record::opens`); the start not drawn (CLT-Q69); the served outcome
+    picks only the seat's own hero. The server lane could mark the start on the wire (with
+    CLT-Q69 (a)).
+62. Tests over the staged installation (T7b's fixes of R9-1, R9-2 and R10-2): four `cargo test`s
+    in `battle::tests` build a `Source` over `$H3_INSTALL` or `original-data/install`
+    (`battle::tests::staged`); without `Data/H3bitmap.lod` they print "skipped" and pass, so CI
+    checks nothing there (the client's first such tests: the original-data checks were scripts).
+    Keep them so, or move them to a script or `examples/original_data.rs` run by
+    `--with-original-data`?
