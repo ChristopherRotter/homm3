@@ -2311,3 +2311,43 @@ gates on CI's fingerprint). No original data.
   nothing; a journal cut before its last checkpoint is completed and plays on; a record bounded
   to one byte holds its newest frame alone, numbered as its last. `tests/game_manifest.rs`: the
   record header round-trips and its JSON form is pinned.
+
+### M5 T6 — a golden replay as a record (2026-11-10)
+
+Baseline: `master` ac8ae2e (#821, T5b; its CI run in progress at the start, `master`'s previous
+run green on 9a12cf5, #819). No original data. The adventure lane's `Revisit` mapping (#819,
+protocol v40) reviewed from the inbox: one to one both ways, its round trips; accepted.
+
+- **The command** (`h3_server::record`, provisional): `h3-server record [--packs-dir packs]
+  [--root .] [--out .] [--game 0] <replay.toml>...` runs each adventure replay through
+  `session::game::GameSession` in-process and writes each player's record to
+  `<out>/<stem>.player-<k>.jsonl`, one line per replay on standard output (its map, commands,
+  day, final hash and files). `record_replay(path, packs_dir, root, game)` checks the replay as
+  `h3 adventure verify` does (the header against the rules before the map is read, the map by
+  its content hash and import version before it is parsed, the checkpoints' count), imports the
+  map from the very bytes it hashed (`h3_map::read`, `import`; `h3-map` and `h3-game` are now
+  `h3-server` dependencies, which `arch.toml` allowed since T0), builds the manifest with the map's
+  identity, plays each command as its actor's (a player's through `play`, numbered by its own
+  counter from 1 as a client numbers its commands; the system actor's through `system`), checks
+  each `Checkpoint` entry the session drains against the replay's, then the final hash and day,
+  and gives every player's `GameSession::record` (unbounded: the operator's own files of a
+  finished replay). Any failure names the replay's file and gives no record.
+- **The record's form** (record format v4, T5b): the `GameRecordHeader` line (the game's id, the
+  player, the manifest with the map's identity, `first` 1), then every numbered message the
+  player was sent: its `GameSnapshot`, and after each command its own `GameAccepted`, every
+  player's `GameEvents` (also empty), a battle's `Snapshot` when one opens for it and each `GameTurn`
+  while it may act. The 55 golden replays make 26 MB of records in 36 s (debug, one thread);
+  the largest 1.4 MB (`duel-s3560-d28`, player 1).
+- **Tests** (`h3-server`'s `tests/record.rs`): the 55 golden replays record, spread over the
+  machine's threads (21 s on two): the map, commands, day and final hash the replay's, each
+  player's record its header (format 4, the game's id, the player, the replay's map identity,
+  `first` 1) and messages numbered on from the snapshot, exactly one `GameEvents` per command for
+  every player (how many it gets does not depend on what it may see), its own commands echoed
+  with its seq 1, 2, …, no checkpoint or final hash in any form (decimal, hex) in any record;
+  what each message holds is projected by construction and gated by `h3-protocol`'s
+  `game_session` test. A record is the same on every run, each player's its own, the game's id in
+  the header alone. A replay that is not its re-run records nothing (a checkpoint, the final hash,
+  the day, the map's hash and import version, a rules hash, the checkpoints' count, a command out
+  of turn), nor a missing or malformed file, packs or map that are not there; the options parse;
+  each player's file is written, a missing directory refused.
+- **The map client lane's inbox** holds the record's form and the command (E24 M4 T3, T4).

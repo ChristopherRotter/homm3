@@ -26,6 +26,7 @@ mod ladders;
 mod lists;
 mod peers;
 mod proxy;
+mod record;
 mod seats;
 
 fn root() -> PathBuf {
