@@ -1,6 +1,6 @@
 # E25 — Battle AI v2
 
-Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 6 closed 2026-10-28, 29, 11-02, 11-03 and 11-04, increment 7 (a structured network) refined 2026-11-04 (AI-Q16) · Lane: **ai** ·
+Status: **in progress**, refined 2026-10-27 (AI-Q10); increments 1 to 7 closed 2026-10-28, 29, 11-02, 11-03, 11-04 and 11-10, increment 8 (probes, then one long run) refined 2026-11-10 (AI-Q17) · Lane: **ai** ·
 Follows E06 (closed 2026-10-27: `t7-1` the battle AI v1, record `E06-log.md`)
 
 ## Goal
@@ -109,6 +109,7 @@ evidence asks for one (then a `cross-lane` change with the battle lane, after th
 | 4 | 2026-11-02 | T9a, T9b, T10a, T10b, T11 | the policy's sharpness: a temperature diagnostic (sharpening gains about 0.01) and the entropy bonus to 0 in training (`e25-sharp-1`: the same 0.01, no more) (AI-Q13) |
 | 5 | 2026-11-03 | T12–T18 | the fair system actor: `system` the fair one everywhere (C ABI v36), the cloning bench (C ABI v37), the neutral kinds back and PPO from the clone (`e25-clone-1` #2: 0.454 against both system actors, the neutral set +0.282) (AI-Q14, AI-Q15) |
 | 6 | 2026-11-04 | T19–T23 | better imitation: the teacher's ceiling (0.972: the gap is the network's), a 16 M clone (0.576), the imitation loss; PPO from the clone with the loss (`e25-imitate-1` #2: 0.458 and 0.462 against the system actors, the neutral set +0.287) (AI-Q15, AI-Q16) |
+| 7 | 2026-11-10 | T24–T29 | a network that reads the battle's structure: `hexconv` 96 × 6 with the legal mask, its clone 0.809 (the MLP's 0.574), PPO from it with the imitation loss (`e25-structure-1` #2: 0.511 and 0.507 against the system actors, the neutral set +0.302; 0.552 head to head against `e25-imitate-1` #2) at 22 times the MLP's time (AI-Q16, AI-Q17) |
 
 **At increment 1's checkpoint** (the user, 2026-10-28, T3): increment 2 is shaping, bounded,
 then scale; `e25-shaping-1` (#2, 20 M) was the lineage's current best; `t7-1` stays the battle
@@ -123,49 +124,49 @@ against #3 0.523 (T12). **At increment 5's checkpoint** (the user, 2026-11-03, T
 head-to-head against `e25-sharp-1` #2 0.564; increment 6 is better imitation. **At increment 6's
 checkpoint** (the user, 2026-11-04, T23, AI-Q16): **`e25-imitate-1` #2** (20 M of PPO from T20's
 clone with the imitation loss) the current best, its head-to-head against `e25-clone-1` #2 0.534;
-increment 7 is a network that reads the battle's structure.
+increment 7 is a network that reads the battle's structure. **At increment 7's checkpoint** (the
+user, 2026-11-10, T29, AI-Q17): **`e25-structure-1` #2** (20 M of PPO from T27's `hexconv`
+clone with the imitation loss) the current best, its head-to-head against `e25-imitate-1` #2
+0.552; increment 8 is probes, then one long run.
 
-**Increment 7: a network that reads the battle's structure** (the user at T23, 2026-11-04,
-AI-Q16). Increments 5 and 6 found the gap in the network: the 2 × 512 MLP copies the fair actor
-0.576 of the time (T20; the teacher's ceiling 0.972), its moves 0.38 of 0.985 and its melee hexes
-0.40 of 0.941, and samples gain about 0.02 a doubling. Increment 3's structured networks were
-measured in one configuration each (no normalisation, no warm-up, one learning rate) and against
-an MLP teacher (T7c). Increment 7 builds them properly and measures them on the cloning bench
-against the fair actor before any RL run.
+**Increment 8: probes, then one long run** (the user at T29, 2026-11-10, AI-Q17).
+`e25-structure-1` #2 meets exit criterion 1 on its point estimates, but its lead over the
+faithful actor (0.507 ± 0.019) lies inside its interval. Increment 8 analyses #2 and probes
+architectures, PPO's settings and training regimes at a small cost each before one long run,
+which aims at a margin beyond the interval.
 
-*Decisions* (the user, 2026-11-04, AI-Q16; the agent's details, change at a checkpoint):
+*Decisions* (the user, 2026-11-10, AI-Q17; the agent's details, change at a checkpoint):
 
-1. **The bench is T16's cloning bench** (the fair actor, `e25-neutral.toml`'s mix, 4 M samples,
-   the held-out set of seed 8), the 2 × 512 MLP its control in every run. A student is scored by
-   its agreement (overall, moves, melee), its cross-entropy and its value's explained variance;
-   its cost by the GPU's µs a sample-pass.
-2. **The candidates:** `hexconv` with normalisation (64 to 128 channels, 6 to 10 blocks),
-   `hexformer` (96 to 128 wide, 4 to 6 blocks), a wider `entity` (192 to 256, 2 to 4 blocks); each
-   with a warm-up, AdamW and its own learning rate. The grid is the agent's, from T24's costs.
-3. **The cost cap** (the user): a sample-pass on the GTX 1070 at most hexconv 64 × 6's (466 µs,
-   about 10 hours of network time for 20 M samples of PPO); fp32 only; among the candidates within
-   0.02 of the best agreement the cheapest wins. **Raised at T25** (the user, 2026-11-04, on the
-   GPU's grid, `E25-log.md` T24): about 700 µs on `network --time`'s measure (where `hexconv` 64 ×
-   6 is 301), one candidate of each family.
-4. **The heads read the geometry** (the user: the legal mask as an input is no encoding change):
-   a melee entry scores the hex its attack is made from; the legal mask (action encoding v13's,
-   handed with every decision) is an input of every kind, an MLP with it a second control.
-   Observation v22 and action v13 stay.
-5. **Gates:** the long clone runs only if a candidate reaches 0.60 agreement at 4 M within the cap
-   (the MLP: 0.531 at 4 M, 0.576 at 16 M); PPO only if the long clone's ladder beats T20's student
-   (0.411) beyond its interval. A failed gate goes to the checkpoint.
-6. **The RL arm:** `e25-imitate.toml`'s settings with the candidate's network, from its clone,
-   20 M samples, seed 1, against `e25-imitate-1` #2 (the current best).
+1. **The aim:** the long run's promoted network beats the faithful actor on the report set v1
+   beyond its interval (the final ladder, 500 a kind), decision 1's other parts kept. E25 stays
+   open until then, or until a checkpoint decides otherwise.
+2. **Analysis first** (the sandbox's CPU): where #2 wins and loses against the fair actor by kind
+   and side, beside the fair actor's own mirror on the same episodes; the temperature diagnostic
+   (T9a); where it leaves its teacher (T19's states by category). Its read ranks the probes.
+3. **The probes** (the user's GPU, about 20 hours in all, parts under 2 hours): **the update's
+   speed first** (a profile of PPO's passes, cuDNN's autotuner on fixed chunk shapes, the
+   epochs), then **architectures** on the cloning bench with its ladder (the clone's ladder
+   predicted PPO's endpoint at T22 and T28, +0.03 to +0.05 above it), **PPO's settings** by short
+   continuations from #2 (a few M samples each, judged by the gate against #2 and a ladder against
+   the fair actor), **training regimes** (#2 distilled into another network, a KL anchor to #2, a
+   search at play or expert iteration on ADR-0025 point 12a's worlds). Each probe's measure and
+   budget is stated before it runs; the agent's split about 1, 8, 8 and 3 hours, rebalanced at
+   T30's read.
+4. **The long run** follows the probes' checkpoint (T35): its start (#2 or a new clone), network,
+   settings and length are agreed there.
+5. **Unchanged:** decision 1's evaluation; the fair actor the only teacher, the faithful one
+   training no agent (decision 2); observation v22 and action v13 (an encoding change only at a
+   checkpoint, on the analysis's evidence); fp32; the GPU's memory cap (T28).
 
 | Task | Scope | Status |
 |---|---|---|
-| T24 | The kinds and the bench built properly: normalisation, warm-up, AdamW, the cost in the bench's report | done 2026-11-04 (`hexconv`'s `norm`, `feed_forward`, the bench's `warmup` and `weight_decay`, the cost per student, `network --bench` and the grid's CPU table) |
-| T25 | The heads read the geometry: a melee entry's attack hex, the legal mask as an input, `order` for the structured kinds | done 2026-11-04 (`geometry`'s port checked on 18 823 real attacks; `encode(obs, mask)`; `[network] mask_input`, `order`, `attack_hex`; T26's bench prepared at the user's cap of about 700 µs) |
-| T26a | The resumable bench: the distillation bench and its clone mode resume to their budget (the user, 2026-11-05: every run over 2 hours resumes) | done 2026-11-05 (the shared loop `distill.go`: `checkpoint.pt`, Ctrl-C at a batch boundary, `--resume DIR`, the clone's ladders pending across a stop) |
-| T26b | The structure sweep on the cloning bench, against decision 5's first gate (a first segment stopped at 0.45 M, `E25-log.md` T26) | done 2026-11-05 (the gate passed: `hexconv` normalised 96 × 6 at 1e-3, 0.755 at 4 M, 683 µs; the MLP 0.533; `E25-log.md` T26b) |
-| T27 | The long clone of the best candidate, its ladder against decision 5's second gate | done 2026-11-06 (the gate passed: `hexconv` 0.809 agreement at 16 M against the MLP's 0.574, its ladder 0.481 ± 0.019 against the fair actor against 0.411; `records/distill/clone-3.json`; T19's tool 0.810 on its states, the casts 0.748 the one category below the MLP's) |
-| T28 | The A/B: PPO from T27's student with the imitation loss, against `e25-imitate-1` #2 | done 2026-11-10 (the structure wins: `e25-structure-1` #2 0.511 ± 0.019, +0.027 against the fair actor, 0.507 ± 0.019, +0.026 against the all-seeing one, the neutral set +0.302: exit criterion 1 met on its point estimates; 217 samples a second, 22 times the MLP's time; the GPU's memory capped at 90 % of the card; the head-to-head left to T29) |
-| T29 | The checkpoint: structure against the MLP (clone, RL, cost), the current best, increment 8 | next (AI-Q17; first the head-to-head on the user's machine) |
+| T30 | The analysis of #2 (decision 2) | next (the sandbox's CPU) |
+| T31 | The update's speed: a profile on the user's GPU, then the change that pays | beside T30 |
+| T32 | Architecture probes on the cloning bench with its ladder | refined at T30's read |
+| T33 | PPO's settings by short continuations from #2 | refined at T30's read |
+| T34 | Training regimes: distillation, a KL anchor to #2, search | refined at T30's read |
+| T35 | The probes' checkpoint: the long run's start, network, settings and length | after T31 to T34 |
+| T36 | The long run and its checkpoint | after T35 |
 
 Scope and acceptance: the AI queue's entries.
 

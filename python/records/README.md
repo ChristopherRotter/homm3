@@ -220,13 +220,15 @@ its `parent`.
   20 M samples, 72 and 77 minutes): the A/B of the loss. Best #2 each; on the full report set
   against Random, Aggressor, Greedy, the fair and the all-seeing system actor 0.858, 0.650, 0.623,
   0.451, 0.450 without the loss, 0.858, 0.651, 0.626, 0.458, 0.462 with it; the neutral set
-  +0.284 and +0.287 (`docs/epics/E25-log.md` T22). **`e25-imitate-1` #2 is the current best**
-  (E25 T23, the user, 2026-11-04, AI-Q16; 0.534 head to head against `e25-clone-1` #2, promoted
-  by the gate). Their networks are on the user's machine.
+  +0.284 and +0.287 (`docs/epics/E25-log.md` T22). **`e25-imitate-1` #2 the current best**
+  from E25 T23 (the user, 2026-11-04, AI-Q16; 0.534 head to head against `e25-clone-1` #2, promoted
+  by the gate) to T29 (2026-11-10). Their networks are on the user's machine.
 - `e25-structure-1` (E25 T28, 2026-11-10; `configs/e25-imitate-structure.toml`: `e25-imitate-1`'s
   settings with `hexconv` 96 × 6, `[ppo] accumulate` 8, from T27's student
   (`distill/clone-3.json`); 20 M samples, 1 676 minutes in 13 segments): the A/B of the
   structure. Best #2; on the full report set against Random, Aggressor, Greedy, the fair and the
   all-seeing system actor 0.887, 0.707, 0.673, 0.511, 0.507 (values +0.343, +0.179, +0.149,
-  +0.027, +0.026); the neutral set +0.302 (`docs/epics/E25-log.md` T28). Its behaviour analysis
+  +0.027, +0.026); the neutral set +0.302 (`docs/epics/E25-log.md` T28). **`e25-structure-1` #2 is
+  the current best** (E25 T29, the user, 2026-11-10, AI-Q17; 0.552 head to head against
+  `e25-imitate-1` #2, promoted by the gate). Its behaviour analysis
   `inspect/e25-structure-1-report-v1.json`. Its network is on the user's machine.

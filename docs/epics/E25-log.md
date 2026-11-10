@@ -1543,3 +1543,19 @@ an entry only where a task builds on it.
   (0.488 to 0.526). The cost: 22 times the MLP's wall time (28 hours a 20 M on the GTX 1070).
 - **Not done here:** the head-to-head against `e25-imitate-1` #2 (`h3env.train.gate`; both
   networks on the user's machine): T29's first step. The checkpoint's question: AI-Q17.
+
+## T29 — Increment 7's checkpoint (2026-11-10)
+
+- **The head-to-head** (the user's machine, `h3env.train.gate --candidate
+  runs/e25-structure-1/best.pt --best runs/e25-imitate-1/best.pt --device cuda`): `e25-structure-1`
+  #2 **promoted after 77 pairs** (2 559 games), score **0.552 (+36 Elo)**, LLR +3.00 in [−2.94,
+  2.94] (elo0 0, elo1 20), 39 s. The lineage's earlier steps: 0.534 (`e25-imitate-1` #2 against
+  `e25-clone-1` #2, T22), 0.564 (`e25-clone-1` #2 against `e25-sharp-1` #2, T17).
+- **The user** (AI-Q17): **`e25-structure-1` #2 the current best**; **one more increment**, but
+  analysis first and probes of architectures, PPO's settings and training regimes before one long
+  run at the end; the probes' budget about 20 hours of the GPU, all four families (the update's
+  speed, architectures, PPO's settings, training regimes). Increment 8's decisions in the epic
+  file.
+- **The read of increment 7:** the structure was the lever increments 5 and 6 pointed to. The
+  clone's agreement 0.576 to 0.809 (T27), its ladder against the fair actor 0.411 to 0.481, PPO's
+  endpoint 0.458 to 0.511 (T28), at 22 times the MLP's wall time.
