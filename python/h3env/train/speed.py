@@ -21,9 +21,9 @@ Then (but with `--no-phases`) one more update of the baseline runs with the devi
 around each of its phases (`PHASES`: the minibatches' gather, the encoding with its trunk, the
 entry head and the value, PPO's heads along the action, the teacher's, the backward pass, the
 clipping, the optimizer's step; the rest is the update's own code): each phase's seconds and
-share of that update. `--trace` runs torch's profiler over the baseline's first `--trace-steps` optimizer steps
-and keeps its operators with the most self time on the device (the CPU's off CUDA). The report is
-printed as Markdown and, with `--json`, written whole.
+share of that update. `--trace` runs torch's profiler over the baseline's first `--trace-steps`
+optimizer steps and keeps its operators with the most self time on the device (the CPU's off
+CUDA). The report is printed as Markdown and, with `--json`, written whole.
 """
 
 from __future__ import annotations
@@ -68,11 +68,11 @@ VARIANTS: dict[str, Variant] = {
     "autotune": Variant(autotune=True),
     "nchw": Variant(nchw=True),
     "nchw+autotune": Variant(autotune=True, nchw=True),
-    "autotune, chunks x2": Variant(autotune=True, settings={"accumulate": 0.5}),
-    "nchw+autotune, chunks x2": Variant(autotune=True, nchw=True, settings={"accumulate": 0.5}),
+    "autotune+accumulate/2": Variant(autotune=True, settings={"accumulate": 0.5}),
+    "nchw+autotune+accumulate/2": Variant(autotune=True, nchw=True, settings={"accumulate": 0.5}),
 }
 
-#: The phases `--phases` times, by the callable each wraps (`Phases.install`).
+#: The phases of the phases' update, by the callable each wraps (`Phases.install`).
 PHASES = (
     "gather",
     "encode",
@@ -252,9 +252,7 @@ def profile(
     config = resolve(config)
     trainer = Trainer(config)
     try:
-        return _profile(
-            trainer, init_from, names, repeats, epochs, phases, trace, trace_steps, log
-        )
+        return _profile(trainer, init_from, names, repeats, epochs, phases, trace, trace_steps, log)
     finally:
         trainer.batch.close()
 

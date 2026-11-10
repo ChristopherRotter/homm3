@@ -55,7 +55,7 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
             "--config",
             str(config),
             "--variants",
-            "nchw,autotune, chunks x2",
+            "nchw,autotune+accumulate/2",
             "--repeats",
             "2",
             "--trace",
@@ -65,9 +65,9 @@ def test_the_variants_update_from_one_rollout_as_the_baseline_does(tmp_path) -> 
     )
     report = json.loads(out.read_text(encoding="utf-8"))
     variants = report["variants"]
-    assert list(variants) == ["baseline", "nchw", "autotune, chunks x2"]
+    assert list(variants) == ["baseline", "nchw", "autotune+accumulate/2"]
     assert report["epochs"] == 1 and report["rows"] > 0 and report["teacher_rows"] > 0
-    assert variants["autotune, chunks x2"]["accumulate"] == 1
+    assert variants["autotune+accumulate/2"]["accumulate"] == 1
     assert variants["baseline"]["weights_max_diff"] == 0.0 and report["weights_moved"] > 0
     base = variants["baseline"]["losses"]
     assert base["imitation_loss"] > 0
@@ -140,7 +140,6 @@ def test_the_trunk_computes_the_same_in_either_layout() -> None:
     assert all(c for c, _ in layouts)
     torch.testing.assert_close(nchw, drawn)
     torch.testing.assert_close(nchw_glob, drawn_glob)
-
 
 
 def test_a_variant_names_only_known_variants() -> None:
