@@ -2176,3 +2176,29 @@ numbers unmoved.
   The town's owner facts and garrison levels also follow a hero's Visions in reach, which a step
   moves without an event (`towns-s3435-d21` command 107, viewer 0): the town lane's stubs.
 - **No message, no version step** (T5).
+
+### M5 T3d — the town lane's views told, mapped and folded (2026-11-10)
+
+T3's follow-up from the inbox (the town lane's E09 T18b2a, #815, SRV-Q26's town gap). #815 and
+T3's #814 merged within minutes of each other, each green on its own base: `master` 700bf95 did
+not build `h3-protocol` (T3b's mapping matched the old `TownChanged { town, capitol, seen_by }`).
+This task repairs it.
+
+- **The wire** (`wire::game::GameEvent`; provisional, as T3b's shapes): `TownChanged { player,
+  town, owner, fort, capitol, built_today, level, slots, hall, buildings }`, `TownStackSeen {
+  player, town, stack: GarrisonStack, slot }`, `TownIncomeSeen { player, town, resource, amount }`,
+  the engine's one to one; a fort as T2b's 0 to 3, the buildings as T2b's `TownBuildings`. The
+  town's parts shared with the observation's mapping (`map::game::{fort_level, garrison_stack,
+  town_buildings}`). The engine projects them (the viewer's alone, `h3_game::project`).
+- **The fold:** `TownChanged` replaces the viewer's town view but its anchor, faction and name
+  (the garrison emptied at its level, the army by slot when `slots`, the owner facts when
+  `hall`); each `TownStackSeen` appends its stack (and, with a slot, the army's stack); each
+  `TownIncomeSeen` an income line. `TownBuilt` and `TownCaptured` fold no town view any more.
+- **The gate:** 36 parts (a new "town buildings"; `built_today` joins "town pictures"), 17 exact.
+  Garrisons and town owner facts differ in 8 viewer-commands each (5 with a reveal; were 29 (15)
+  and 19 (12)); the 3 without a reveal are each another team's town falling from level 3 to 2,
+  a Visions holder's reach lost (`towns-s173-d21` command 46, a hero removed in a battle;
+  `towns-s3435-d21` command 107; `towns-visitor-s1` command 7): the town lane's `TWN-STUB-13`,
+  which the two parts name now. `SRV-STUB-12` and `-13` lifted (registry, fold). The report also
+  prints each part's first difference without a reveal.
+- **No message, no version step** (T5).

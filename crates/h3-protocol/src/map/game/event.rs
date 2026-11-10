@@ -12,7 +12,8 @@ use h3_heroes::OfferLevels as EngineLevels;
 use h3_kernel::handle::Handle;
 
 use super::command::{artifact_place, slot};
-use super::{army_stack, artifact, month_kind, pos, primary_skill};
+use super::town_buildings;
+use super::{army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill};
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
     AdventureEvent, Formation, GameEvent, HeroChange, HireTarget, OfferLevels, ShipyardBlock,
@@ -273,12 +274,49 @@ fn event(e: &EngineEvent) -> GameEvent {
             stack: army_stack(stack),
         },
         EngineEvent::TownChanged {
+            player,
             town,
+            owner,
+            fort,
             capitol,
-            seen_by: _,
+            built_today,
+            level,
+            slots,
+            hall,
+            buildings,
         } => GameEvent::TownChanged {
+            player: player.raw(),
             town: town.raw(),
+            owner: owner.map(h3_contracts::PlayerId::raw),
+            fort: fort_level(fort),
             capitol,
+            built_today,
+            level,
+            slots,
+            hall,
+            buildings: buildings.map(town_buildings),
+        },
+        EngineEvent::TownStackSeen {
+            player,
+            town,
+            stack,
+            slot,
+        } => GameEvent::TownStackSeen {
+            player: player.raw(),
+            town: town.raw(),
+            stack: garrison_stack(stack),
+            slot,
+        },
+        EngineEvent::TownIncomeSeen {
+            player,
+            town,
+            resource,
+            amount,
+        } => GameEvent::TownIncomeSeen {
+            player: player.raw(),
+            town: town.raw(),
+            resource: resource.raw(),
+            amount,
         },
         EngineEvent::TownBuilt {
             player,

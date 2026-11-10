@@ -2510,7 +2510,9 @@ One session, the user present at the start; branch `town/e09-t18b2b`, `cross-lan
 `TownChanged { town, capitol, seen_by }` onto the wire and #815 (T18b2a) merged after it with the
 event reshaped and `TownStackSeen`, `TownIncomeSeen` new, no CI run having seen both; `h3-protocol`
 fails, CI's full verify and the clients job on `master` with it. Left to the server lane (the
-user; its inbox has T18b2a's note); nothing here touches the wire. **Kept whole at its start**
+user; its inbox has T18b2a's note); nothing here touches the wire. Fixed by its #816 (E16 M5 T3d:
+T18b2a's events mapped and folded, `SRV-STUB-12` and `-13` lifted), merged into the branch after
+the pull request #817 opened (a conflict in the server lane's inbox only). **Kept whole at its start**
 (the user, decision 55); the rollout's builds skipped (decision 56). The user's computer was
 connected at the start: the original data staged then (the staging folder given to the setup with
 `extracted.tar` unpacked, so its baseline would run with the data); the setup's baseline was lost

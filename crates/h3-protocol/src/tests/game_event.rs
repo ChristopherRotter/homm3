@@ -11,10 +11,10 @@ use std::vec::Vec;
 use h3_adventure::{AdventureEvent, AdventureEventKind as K, ShipyardBlock, Viewers};
 use h3_battle::BattleSide;
 use h3_content::Formation as EngineFormation;
-use h3_contracts::{ArmyStack as EngineStack, BattleResult, HeroId, PlayerId, TownId};
+use h3_contracts::{ArmyStack as EngineStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
-    ArmyRef, ArmySlot, ArtifactPlace, GameEvent, HeroChange, HireTarget, MonthKind, Position,
-    Viewer,
+    ArmyRef, ArmySlot, ArtifactPlace, BuildingId, BuildingSet, GameEvent, GarrisonStackView,
+    HeroChange, HireTarget, MonthKind, Position, TownBuildingsView, Viewer,
 };
 use h3_heroes::{ArtifactInstance, OfferLevels, PrimarySkill as EnginePrimary};
 use h3_kernel::handle::Handle;
@@ -22,7 +22,7 @@ use h3_kernel::rng::{Rng, StreamId};
 use h3_sim::adventure::AdventureEnv;
 use h3_sim::adventure::rollout::choose;
 
-use super::game::{RULES, round_trips};
+use super::game::{RULES, round_trips, set_back};
 use crate::map::from_engine;
 use crate::map::game::events;
 use crate::wire::game as w;
@@ -584,10 +584,62 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             hero: id(hero),
             stack: stack_back(stack),
         },
-        G::TownChanged { town, capitol } => GameEvent::TownChanged {
-            town: TownId::new(town),
+        G::TownChanged {
+            player,
+            town,
+            owner,
+            fort,
             capitol,
-            seen_by: alone,
+            built_today,
+            level,
+            slots,
+            hall,
+            buildings,
+        } => GameEvent::TownChanged {
+            player: p(player),
+            town: TownId::new(town),
+            owner: owner.map(p),
+            fort: [
+                FortLevel::None,
+                FortLevel::Fort,
+                FortLevel::Citadel,
+                FortLevel::Castle,
+            ][usize::from(fort)],
+            capitol,
+            built_today,
+            level,
+            slots,
+            hall,
+            buildings: buildings.map(|b| TownBuildingsView {
+                built: set_back(b.built.0),
+                forbidden: set_back(b.forbidden.0),
+            }),
+        },
+        G::TownStackSeen {
+            player,
+            town,
+            stack,
+            slot,
+        } => GameEvent::TownStackSeen {
+            player: p(player),
+            town: TownId::new(town),
+            stack: GarrisonStackView {
+                creature: Handle::from_raw(stack.creature),
+                count_word: stack.count_word,
+                count: stack.count,
+            },
+            slot,
+        },
+        G::TownIncomeSeen {
+            player,
+            town,
+            resource,
+            amount,
+        } => GameEvent::TownIncomeSeen {
+            player: p(player),
+            town: TownId::new(town),
+            resource: Handle::from_raw(resource),
+            amount,
         },
         G::TownBuilt {
             player,
@@ -597,7 +649,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         } => GameEvent::TownBuilt {
             player: PlayerId::new(player),
             town: TownId::new(town),
-            building: h3_game::BuildingId::from_index(usize::from(building)).unwrap(),
+            building: BuildingId::from_index(usize::from(building)).unwrap(),
             event,
         },
     }
@@ -795,21 +847,72 @@ fn every_event() -> Vec<GameEvent> {
             hero,
             stack,
         },
+        // A town's whole view for its owner (its stacks by slot, its income), then another's.
         GameEvent::TownChanged {
+            player: P0,
             town: TownId::new(2),
+            owner: Some(P0),
+            fort: FortLevel::Citadel,
+            capitol: true,
+            built_today: true,
+            level: 3,
+            slots: true,
+            hall: Some(4),
+            buildings: Some(TownBuildingsView {
+                built: BuildingSet::EMPTY
+                    .with(BuildingId::from_index(0).unwrap())
+                    .with(BuildingId::from_index(63).unwrap()),
+                forbidden: BuildingSet::EMPTY.with(BuildingId::from_index(12).unwrap()),
+            }),
+        },
+        GameEvent::TownStackSeen {
+            player: P0,
+            town: TownId::new(2),
+            stack: GarrisonStackView {
+                creature,
+                count_word: Some(2),
+                count: Some(11),
+            },
+            slot: Some(4),
+        },
+        GameEvent::TownIncomeSeen {
+            player: P0,
+            town: TownId::new(2),
+            resource: Handle::from_raw(6),
+            amount: 4000,
+        },
+        GameEvent::TownChanged {
+            player: P0,
+            town: TownId::new(1),
+            owner: None,
+            fort: FortLevel::None,
             capitol: false,
-            seen_by,
+            built_today: false,
+            level: 1,
+            slots: false,
+            hall: None,
+            buildings: None,
+        },
+        GameEvent::TownStackSeen {
+            player: P0,
+            town: TownId::new(1),
+            stack: GarrisonStackView {
+                creature,
+                count_word: None,
+                count: None,
+            },
+            slot: None,
         },
         GameEvent::TownBuilt {
             player: P0,
             town: TownId::new(2),
-            building: h3_game::BuildingId::from_index(12).unwrap(),
+            building: BuildingId::from_index(12).unwrap(),
             event: None,
         },
         GameEvent::TownBuilt {
             player: P0,
             town: TownId::new(1),
-            building: h3_game::BuildingId::from_index(63).unwrap(),
+            building: BuildingId::from_index(63).unwrap(),
             event: Some(4),
         },
     ];
@@ -1029,8 +1132,8 @@ fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 33 kinds of event (the adventure's as one).
-    assert_eq!(distinct.len(), 33, "{distinct:?}");
+    // The game's 35 kinds of event (the adventure's as one).
+    assert_eq!(distinct.len(), 35, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
@@ -1052,7 +1155,6 @@ fn every_event_maps_back_for_its_viewers_and_round_trips() {
         "BattleStarted",
         "Battle",
         "BattleEnded",
-        "TownChanged",
     ]
     .map(String::from)
     .into();
