@@ -497,6 +497,37 @@ fn chain_lightnings_reactions_start_together() {
 }
 
 #[test]
+fn a_chain_and_a_raise_saturate_on_a_hostile_record_s_numbers() {
+    // A served record's numbers are not bounded (overflow checks are on in release): Chain
+    // Lightning's kills summed, and a raise on a stack of `u32::MAX`, saturate (R11-1's class).
+    let o = snapshot(vec![
+        counted(at(0, Side::Attacker, PIKEMAN, 86, false), u32::MAX),
+        at(1, Side::Defender, SWORDSMAN, 100, false),
+        at(2, Side::Defender, SWORDSMAN, 83, false),
+    ]);
+    let hurt = |target| Event::SpellDamage {
+        target,
+        value: WireU64(10),
+        caster: WireU64(10),
+        damage: WireU64(10),
+        kills: u32::MAX,
+    };
+    let commands = [
+        (Some(0), vec![cast(CHAIN_LIGHTNING, 2), hurt(2), hurt(1)]),
+        (Some(0), vec![cast(RESURRECTION, 0), raised(0, 1)]),
+    ];
+    let t = play_raised(&o, &commands, &raise_casts());
+    let line = Logged::AreaDamage {
+        spell: CHAIN_LIGHTNING,
+        damage: 10,
+        kills: u32::MAX,
+        target: None,
+    };
+    assert!(t.log.iter().any(|(_, l)| *l == line), "{:?}", t.log);
+    assert_eq!(t.counts(t.end)[&0], u32::MAX);
+}
+
+#[test]
 fn rays_take_the_kept_draws_first() {
     // The same chain from the original's draws: they turn the rays (E17 M3 T7c-3).
     let o = snapshot(vec![

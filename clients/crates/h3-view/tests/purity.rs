@@ -163,19 +163,66 @@ fn deny_block(lines: &[&str]) -> String {
         .unwrap_or_default()
 }
 
-/// The keys of the manifest's `[dependencies]` table.
+/// A TOML key path's parts (`target.'cfg(unix)'.dependencies` gives `target`, `cfg(unix)`,
+/// `dependencies`): split at the dots outside quotes, the quotes and spaces left out.
+fn parts(path: &str) -> Vec<String> {
+    let mut out = vec![String::new()];
+    let mut quote = None;
+    for c in path.chars() {
+        match (quote, c) {
+            (None, '\'' | '"') => quote = Some(c),
+            (Some(q), _) if c == q => quote = None,
+            (None, '.') => out.push(String::new()),
+            (None, c) if c.is_whitespace() => {}
+            _ => {
+                if let Some(part) = out.last_mut() {
+                    part.push(c);
+                }
+            }
+        }
+    }
+    out
+}
+
+/// The dependency a full key path names: `dependencies.<key>` or
+/// `target.<cfg>.dependencies.<key>`, and anything under either.
+fn dependency(path: &[String]) -> Option<&str> {
+    match path {
+        [table, key, ..] if table == "dependencies" => Some(key),
+        [target, _, table, key, ..] if target == "target" && table == "dependencies" => Some(key),
+        _ => None,
+    }
+}
+
+/// The keys of the manifest's dependencies: the `[dependencies]` table's, a
+/// `[dependencies.<key>]` table's and a `[target.<cfg>.dependencies]` table's (E17 M6 T7b, R11-3:
+/// only the first was read).
 fn dependencies(manifest: &str) -> Vec<String> {
-    let mut keys = Vec::new();
-    let mut inside = false;
+    let mut keys: Vec<String> = Vec::new();
+    let mut table = Vec::new();
     for line in manifest.lines().map(str::trim) {
-        if line.starts_with('[') {
-            inside = line == "[dependencies]";
-        } else if inside && !line.is_empty() && !line.starts_with('#') {
-            let key = line.split(['=', '.']).next().unwrap_or_default().trim();
+        let path = if let Some(header) = line.strip_prefix('[') {
+            let header = header.trim_start_matches('[');
+            table = parts(header.split_once(']').map_or(header, |(h, _)| h));
+            table.clone()
+        } else if let Some((key, _)) = line.split_once('=').filter(|_| !line.starts_with('#')) {
+            table.iter().cloned().chain(parts(key)).collect()
+        } else {
+            continue;
+        };
+        if let Some(key) = dependency(&path)
+            && !keys.iter().any(|k| k == key)
+        {
             keys.push(key.to_owned());
         }
     }
     keys
+}
+
+/// The lints a deny block names, each exactly (E17 M6 T7b, R11-3: `clippy::panic_in_result_fn`
+/// passed for `clippy::panic`).
+fn names(block: &str) -> Vec<&str> {
+    block.split(',').map(str::trim).collect()
 }
 
 /// What is wrong with one source file of a pure crate.
@@ -190,8 +237,9 @@ fn violations(source: &str, root: bool) -> Vec<String> {
             }
         }
         let block = deny_block(&lines);
+        let denied = names(&block);
         for lint in DENIED {
-            if !block.contains(lint) {
+            if !denied.contains(&lint) {
                 found.push(format!("`{lint}` is not denied"));
             }
         }
@@ -336,6 +384,26 @@ fn the_checks_catch_what_they_should() {
     assert!(violations("#[cfg(test)]\nextern crate std;", false).is_empty());
     let manifest = "[package]\nname = \"x\"\n[dependencies]\n# c\na.workspace = true\nb = \"1\"\n\n[dev-dependencies]\nc = \"1\"\n";
     assert_eq!(dependencies(manifest), ["a", "b"]);
+    // A dependency's own table, a target's, a dotted key at the root; not a dev-dependency or
+    // the workspace's (E17 M6 T7b, R11-3).
+    let tables = "dotted.dependencies = 1\ndependencies.h = \"1\"\n[package]\nname = \"x\"\n\
+        [dependencies.d] # c\nversion = \"1\"\nfeatures = [\"x\"]\n\
+        [target.'cfg(unix)'.dependencies]\ne = { version = \"1\" }\n\
+        [target.\"cfg(any(unix, windows))\".dependencies.\"f\"]\nversion = \"1\"\n\
+        [target.x.dev-dependencies]\ng = \"1\"\n[dev-dependencies.i]\nversion = \"1\"\n\
+        [workspace.dependencies]\nj = \"1\"\n[[bin]]\nname = \"k\"\n# dependencies.l = 1\n";
+    assert_eq!(dependencies(tables), ["h", "d", "e", "f"]);
+    // The denied lints named exactly: a longer one with the same start is another.
+    let lookalike = "#![no_std]\n#![forbid(unsafe_code)]\n#![deny(clippy::panic_in_result_fn)]\n";
+    assert!(
+        violations(lookalike, true)
+            .iter()
+            .any(|v| v == "`clippy::panic` is not denied")
+    );
+    assert_eq!(
+        names(&deny_block(&["#![deny(", "a,", "b", ")]"])),
+        ["a", "b"]
+    );
     assert_eq!(
         names_binary_only("use h3_x;\nh3_y::f();\nh3_z", &["h3-x", "h3-y", "h3-z"]).len(),
         2

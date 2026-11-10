@@ -39,7 +39,8 @@ impl Player<'_> {
         let first = channellers.next().map(|(&stack, l)| (stack, l.count));
         let line = first.map(|(stack, count)| Logged::Channeled {
             stack,
-            count: count + channellers.map(|(_, l)| l.count).sum::<u32>(),
+            // Saturated: the counts are the record's (a hostile one's past `u32::MAX`).
+            count: channellers.fold(count, |n, (_, l)| n.saturating_add(l.count)),
             mana,
         });
         if let Some(line) = line {

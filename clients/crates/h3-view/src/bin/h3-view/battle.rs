@@ -1579,17 +1579,13 @@ impl<'g> Battle<'g> {
         let first = self.record.messages.len();
         self.record.messages.extend(new);
         // Each command's events grow it; the battle's start's, which the opening snapshot shows
-        // already, do not (protocol v38: a seat that waited for the other one hears it then).
-        let opening = record::opening_at(&self.record.messages);
+        // already, do not (protocol v38: a seat that waited for the other one hears it then;
+        // `record::commands_from` decides, E17 M6 T7b, R12-4).
         let mut pushed = 0;
-        for (i, message) in self.record.messages.iter().enumerate().skip(first) {
-            if let ServerMessage::Events { events, .. } = message
-                && Some(i) != opening
-            {
-                let at = at.map(|at| at.max(growing.timeline().end));
-                growing.push(&anim::Command { at, events }, false);
-                pushed += 1;
-            }
+        for events in record::commands_from(&self.record.messages, first) {
+            let at = at.map(|at| at.max(growing.timeline().end));
+            growing.push(&anim::Command { at, events }, false);
+            pushed += 1;
         }
         self.commands += pushed;
         let over =

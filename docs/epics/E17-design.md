@@ -4671,10 +4671,10 @@ it), `moat` and `mine` (below). Findings:
   frame leaves its standing frame's outline top row (11 pixels, T2b's) with the status line's
   ` log` hint (T2c-2's); in `mine` the walk's first frames after the blast show the Titans'
   standing frame under the moving one where the saved screen comes back under the stack's
-  rectangle (11 431: 252 pixels beside 234 counted as artifacts; 11 507: 5; §7.11 (2), not
+  rectangle (11 431: 269 pixels beside 217 counted as artifacts; 11 507: 5; §7.11 (2), not
   copied), and the last frame (12 799), the Goblins' turn's start, the defender's view in hot
-  seat: its mines on the moat's hexes (4 005 pixels), which a spectator's record lacks (T1b's
-  side to act's view). The rest of each sequence's frames exact.
+  seat: its mines on the moat's hexes (4 790 pixels), which a spectator's record lacks (T1b's
+  side to act's view). (Before E17 M6 T7a's stricter rule, R4-9: 252 beside 234, and 4 005.) The rest of each sequence's frames exact.
 
 **Recorded (M4 T2c-2, 2026-10-26).** Earthquake, the shots through the walls, the town's end and
 the siege's mouse (not cut, the user). The viewer plays and draws the reading:
@@ -7483,9 +7483,10 @@ Bloodlust glow), T5d2b the hero's cast's (Ice Bolt's explosion, the Familiars' c
   Bloodlust case (0x5A11F3) applies the effect to the stack on the hex (`stack_apply_spell`), writes
   the line, and unless hidden glows as a hero's (0x5A122B: 20 redraws at trunc(100 F), the flag
   cleared and a redraw at once, §7.26); no branch on the caster kind. The common tail (0x5A2058)
-  shows every box's count again and, for a creature (kind 1), `outline_turn_stack` (0x5A216B):
-  the caster standing, outlined, a redraw at once; then `creature_cast_action` waits for its shot
-  sound and turns back (0x4486E2).
+  shows every box's count again and, for every caster (no branch on the kind before the call,
+  §7.16; E17 M6 T7b, R11-4), `outline_turn_stack` (0x5A216B): here the caster, a creature,
+  standing, outlined, a redraw at once; then `creature_cast_action` waits for its shot sound and
+  turns back (0x4486E2).
 - **A creature's line** (`battle_log_cast`, caster kind 1, 0x5A8BDD): a switch on the spell gives
   the spells 42, 62, 70 to 75 and 78 rows of their own (Stone Gaze 70, Poison 71 among them);
   every other spell, Bloodlust's 43 among them, the default (0x5A902A): the stack whose turn it is
@@ -7574,6 +7575,15 @@ hero's last frames to its end (0x5A20B8 to 0x5A279A: the channel 0x5A2170 on).
   on one stream, so at a fast speed the fill cuts the drain (the category's other three handles
   not built, §8.2); a creature's Ice Bolt (a Faerie Dragon's) still takes effect at once, without
   its frames, projectile or explosion (M6 review list item 45).
+- **Built (T7b, R11-5): the rebirth before the tail.** Every damage spell's handler ends in the
+  Phoenixes' rebirth check (`phoenix_rebirth_check` 0x469440 called from 0x5A0A26, 0x5A0B02,
+  0x5A0B8F, 0x5A0BFF, 0x5A0C1B, 0x5A0E74, 0x5A4B95, 0x5A524B and 0x5A6C61; it plays
+  Resurrection's sound and calls `raise_stack` itself, 0x469588 to 0x4695AD) before the jump to
+  the common tail: a reborn stack is raised before the hero's last frames, standing and the
+  channel. `Player::cast` takes the `Reborn` events that follow the cast's effects and raises
+  them after its handler (the main loop had drawn them after the hero stood). *Provisional:* the
+  rebirth itself is not recorded; a creature's cast (a Faerie Dragon's area spell) still raises
+  after its tail and its turn back.
 - **Recorded** in the original, in hot seat (`seq-channel.toml`: Orrin with one Familiar and
   five Royal Griffins, Crag Hack with four Familiars and five Cerberi, both with Ice Bolt and
   10 spell points; nothing rolled, no seed): `channel` and `channel-sound`, 145 frames each,
@@ -7596,7 +7606,8 @@ as it ended, before `GameEnded`. Every reader took each `Events` message for a c
 sequence's commands moved one place (`drawn`: 81 of 91 sequences changed or failing, `walk`'s
 Champions without their outline and hint at 0 ms).
 
-- **The start told is not a command** (`record::opens`, `opening_at`, `opening`, `commands`;
+- **The start told is not a command** (`record::opens`, `opening_at`, `opening`, `commands`,
+  `commands_from` (a growing record's new ones: `Battle::take_served`, E17 M6 T7b, R12-4);
   `Record::opening`, `commands`, `events`; *provisional*): a record's first `Events` message is
   the start's when it opens with `ObstaclePlaced` (the defender's mines), `TacticsStarted` or
   `TurnStarted` (the first activation, a war machine's or turret's acting on its own too); a
