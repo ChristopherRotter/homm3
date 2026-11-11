@@ -203,7 +203,7 @@ fn the_writer_s_reward_objects_read_back_and_import() {
         ),
         monster((23, 5), 0, Some(7)),
     ];
-    for (i, class) in [22, 63, 100, 101, 104, 105, 108].into_iter().enumerate() {
+    for (i, class) in [22, 63, 100, 101, 104, 105, 108, 107].into_iter().enumerate() {
         objects.push(w::MapObject::Plain(w::Plain {
             tile: (2 + 3 * u8::try_from(i).unwrap(), 12),
             template: template(class, 0),
@@ -268,7 +268,7 @@ fn the_writer_s_reward_objects_read_back_and_import() {
         .iter()
         .map(|o| m.templates[usize::try_from(o.template).unwrap()].class)
         .collect();
-    assert_eq!(classes, [22, 63, 100, 101, 104, 105, 108]);
+    assert_eq!(classes, [22, 63, 100, 101, 104, 105, 108, 107]);
     // The static layer imports and validates; since E08 T61a the whole map too, the monster's
     // artifact with it, each object typed with what it holds (increment 7's design note §7).
     static_layer_validates(&m, &SOD);
@@ -389,6 +389,8 @@ fn the_writer_s_reward_objects_read_back_and_import() {
         "university",
         "wagon",
         "warriors_tomb",
+        // E08 T109b (batch E12's E12-17).
+        "school_of_war",
     ];
     for (i, id) in (10..).zip(plain) {
         assert_eq!(key(i), Some(format!("base:{id}").as_str()));

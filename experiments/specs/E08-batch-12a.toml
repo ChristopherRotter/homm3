@@ -1,0 +1,419 @@
+# Experiment batch E12a (E08 T109b; decisions 299, 303, 309, 312 to 314): rows E12-1 to E12-6 of
+# increment 12's plan, the garrisons (survey docs/rules/surveys/E08-garrisons-bonuses.md §12;
+# docs/epics/E08-design.md §18), in SoD on Easy, hot seat, day 1 (Red's turn, then Blue's). Batch
+# E12b (`E08-batch-12b`) is the bonus visitables. Build: docs/experiments/README.md. Predictions are
+# for the agent who evaluates the results; the template never shows them.
+#
+# | row   | settles                                    | the reading (faithful)                        | the other source(s)                     |
+# | E12-1 | §7, D-59: a move through its own garrison  | the path through, no dialog on the way; the   | VCMI: the path through, but the move    |
+# |       | (a vertical one, 219 loaded as 33)         | exchange only at a move's end there           | stops at it, the dialog mid-move        |
+# | E12-2 | §3, §7, D-59: an empty neutral garrison on | no path beyond it; the path to it ends there, | VCMI: an empty garrison crossed (the    |
+# |       | the way                                    | the visit flags it Red's, the exchange opens  | path beyond, flagged on the way)        |
+# | E12-3 | §6, D-61: an own garrison not removable    | a move into an empty slot only; the merge and | VCMI and the wiki the same (added, not  |
+# |       |                                            | the takes refused                             | removed)                                |
+# | E12-4 | §4, D-60, design §14: a hero standing in   | attacked there: no cast for either side;      | VCMI: casts allowed (BLOCK_ALL_MAGIC on |
+# |       | an anti-magic garrison                     | attacking out of it: casts allowed            | the garrison's own army only)           |
+# | E12-5 | §2, §5: the flag's reveal, radius 3        | the disk dx² + dy² ≤ 12 around the entrance   | VCMI the same (sight radius 3)          |
+# | E12-6 | §3 to §5: a neutral garrison won           | no question, its army unsplit; then Red's,    | VCMI the same                           |
+# |       |                                            | empty, the hero on the entrance, the exchange |                                         |
+#
+# **E12-5's read** (decision 314, the user at T109b's start): the capture's reveal (radius 3 around
+# the entrance, `garrison_set_owner` 0x4C6960) lies inside the capturing hero's own (radius 5 from
+# the entrance it stands on), so no capture shows it. The same call (`reveal_disk` 0x49D160, radius
+# 3) reveals an owned garrison's surroundings for its owner at the game's start (`reveal_owned`
+# 0x4C7C50, survey §2): E12-5 reads that, around a Red garrison far from every Red hero.
+#
+# **The pictures** (docs/experiments/README.md, "Increment 12's objects"): the horizontal garrisons
+# `AVCgar10` and `AVCgar20` (anti-magic) block `at` and the two tiles west of it, entered at the
+# middle one from the three tiles above it or the three below; the vertical `AVCvgr` blocks `at`
+# and the two tiles above it, entered at the middle one from the column left of it or the column
+# right (the original loads AB's 219 as 33; survey §2).
+#
+# **The heroes.** Red has five, Blue three (Blue's third far from everything, so that Blue is not
+# defeated when the other two fall). A step costs 100 on grass, 141 diagonally (priced by hand: the
+# garrisons import as blockers until T113b, so no reach query prices a step onto one); ten
+# Archangels give 2 000 land points a day, an army whose slowest is a Pikeman or an Archer 1 560
+# (packs/base/adventure.toml `land_points`); a hero's scouting radius is 5 (ADV-FOG-002: dx² + dy² ≤
+# 30), so every target is explored at its click. No hero has a skill or an artifact but the spell
+# books of E12-4.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact or a resource; an artifact on a moving hero goes under "anything odd".
+
+[map]
+name = "E08 batch E12a"
+description = "Engine-generated experiment map (E08, batch E12a): garrisons: a move through an own garrison, an empty neutral garrison on the way, an own garrison not removable, a hero attacked in an anti-magic garrison and attacking out of it, an owned garrison's reveal, a neutral garrison won. Hot seat, Red and Blue human; difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-12a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of Blue's turn (save 2).",
+    "Most records are the game's memory: a hero's tile, its movement points (hero +0x4D) and army, the path's marks shown after one click, the dialogs and messages shown (the exchange: its two bars), a garrison's record (the game's vector at +0x4E3AC, 0x40 bytes each: the owner +0x0, the seven stacks +0x4, removable +0x3C, the entrance +0x3D), Red's explored tiles, and as a battle opens its anti-magic flag (+0x53C4) and each side's stacks. The capture harness reads them (`clients/capture/batches/E08-batch-12a.toml`, E08 T110). Played by hand, read the screens instead and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes).",
+    "**The exchange** (a garrison's dialog: the garrison's army in the upper bar, the hero's in the lower; slots 0 to 6 from the left): a move is a click on a stack (it is selected), then a click on the target slot. Close it with its OK button.",
+    "A battle against the neutral garrison by auto combat. **A battle between the two heroes** (E12-4; both sides human, so no auto combat): at each side's first stack's turn, click the hero's spell book button: note whether the book opens or a message shows (its text); if it opens, cast Bless on that stack (note whether the cast is made); then press Defend. Afterwards play the battle out (attack with every stack) to its end. A level-up's dialog: take the left skill.",
+    "Order: day 1, Red's turn: the first reads (E12-5), E12-1, E12-2, E12-3, E12-6, E12-4's Red part; end the turn. Blue's turn: E12-4's Blue part. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- E12-1: a rock wall in column 8 but for the vertical garrison V1 (Red's) --------------------------
+
+[[map.patch]]
+terrain = "rock"
+from = [8, 0]
+to = [8, 1]
+
+[[map.patch]]
+terrain = "rock"
+from = [8, 5]
+to = [8, 13]
+
+[[map.ownable]]
+picture = "AVCvgr"
+at = [8, 4]
+owner = "red"
+army = [["Pikeman", 2]]
+
+# --- E12-2: a rock box (columns 15 to 23, rows 6 to 10) closed but for the empty neutral garrison G2 ---
+
+[[map.patch]]
+terrain = "rock"
+from = [15, 6]
+to = [17, 6]
+
+[[map.patch]]
+terrain = "rock"
+from = [21, 6]
+to = [23, 6]
+
+[[map.patch]]
+terrain = "rock"
+from = [15, 7]
+to = [15, 9]
+
+[[map.patch]]
+terrain = "rock"
+from = [23, 7]
+to = [23, 9]
+
+[[map.patch]]
+terrain = "rock"
+from = [15, 10]
+to = [23, 10]
+
+[[map.ownable]]
+picture = "AVCgar10"
+at = [20, 6]
+
+# --- E12-3: Red's garrison G3, not removable, with five Pikemen ---------------------------------------
+
+[[map.ownable]]
+picture = "AVCgar10"
+at = [30, 6]
+owner = "red"
+army = [["Pikeman", 5]]
+removable = false
+
+# --- E12-4: Red's anti-magic garrison G4 with three Pikemen; Blue's heroes above and below it ----------
+
+[[map.ownable]]
+picture = "AVCgar20"
+at = [10, 22]
+owner = "red"
+army = [["Pikeman", 3]]
+
+# --- E12-5: Red's empty garrison G5, far from every Red hero -------------------------------------------
+
+[[map.ownable]]
+picture = "AVCgar10"
+at = [31, 31]
+owner = "red"
+
+# --- E12-6: the neutral garrison G6 with twenty Pikemen ------------------------------------------------
+
+[[map.ownable]]
+picture = "AVCgar10"
+at = [24, 22]
+army = [["Pikeman", 20]]
+
+# --- E12-5 and E12-6 ------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-6"
+title = "An owned garrison's reveal for its owner at the start (E12-5); a neutral garrison of twenty Pikemen won (E12-6)"
+questions = ["ADV-GAR-002", "ADV-OWN-001", "ADV-FOG-002", "GAM-BAT-001"]
+procedure = [
+    "**E12-5.** Day 1, Red's turn, first, before any hero moves: Red's garrison G5 covers (29, 31) to (31, 31), its entrance the middle tile (30, 31), empty; no Red hero is near it. Read Red's explored bits of the tiles (30, 28), (30, 27), (33, 31), (34, 31), (32, 33) and (33, 33).",
+    "Also read every garrison's record now (G5, and V1, G2, G3, G4, G6 of the other rows): owner, stacks, removable, entrance.",
+    "**E12-6.** Day 1, Red's turn, after E12-3: the neutral garrison G6 covers (22, 22) to (24, 22), its entrance the middle tile (23, 22), with twenty Pikemen. E12-6 stands at (23, 19), north of it, with ten Archangels. Read its points, experience and army and G6's record.",
+    "Click G6's entrance (23, 22) twice: E12-6 walks onto it. Note every question, dialog and message in order, and **as the battle opens** each side's stacks (the defender's: how many stacks, their counts) and the battle's anti-magic flag. The battle by auto combat. Then note every dialog after it (the exchange: its two bars; close it with OK), G6's record and E12-6's tile, points, experience and army.",
+]
+record = [
+    { field = "E12-5: Red's explored bits: (30, 28); (30, 27); (33, 31); (34, 31); (32, 33); (33, 33)" },
+    { table = ["garrison", "entrance", "owner", "stacks", "removable"], rows = 6 },
+    { field = "E12-6 before: points; experience; army; G6's record (owner, stacks)" },
+    { field = "E12-6, the walk: questions, dialogs and messages before the battle (in order)" },
+    { field = "E12-6, as the battle opens: the defender's stacks (creature, count each); the attacker's; anti-magic flag (+0x53C4)" },
+    { field = "E12-6: the battle's result" },
+    { field = "E12-6 after it: dialogs (the exchange's bars)" },
+    { field = "E12-6 after OK: G6's record (owner, stacks); E12-6's tile; points; experience; army" },
+    { field = "anything odd" },
+]
+predictions = """
+E12-5:
+
+- **The reveal** (survey §2: `setup_map_objects` 0x4C0CC0's case 33 and `reveal_owned` 0x4C7C50
+  call `reveal_disk` 0x49D160 with radius 3 around an owned garrison's entrance for its owner, the
+  call `garrison_set_owner` makes at a capture, §5; ADV-OWN-001's `flag_radius` 3): a tile is
+  revealed when √(dx² + dy²) ≤ 3.5, that is dx² + dy² ≤ 12 (ADV-FOG-002's test, `fog.rs`). Around
+  (30, 31): **(30, 28) explored** (9), **(33, 31) explored** (9), **(32, 33) explored** (8); **(30,
+  27) not** (16), **(34, 31) not** (16), **(33, 33) not** (13). No Red hero sees them: the nearest,
+  E12-6 at (23, 19), is at 130 or more from each (> 30). VCMI: an owned object's sight radius 3,
+  round(√(dx² + dy²)) ≤ 3: the same tiles.
+- **The records** (survey §2, the loader 0x502A00; T109a's writer): V1 (8, 3) Red, Pikeman 2,
+  removable; G2 (19, 6) neutral (-1), empty, removable; G3 (29, 6) Red, Pikeman 5, **not
+  removable** (0); G4 (9, 22) Red, Pikeman 3, removable; G5 (30, 31) Red, empty, removable; G6 (23,
+  22) neutral, Pikeman 20, removable. The empty slots' creature -1.
+- **The capture's reveal** (E12-2, E12-6) is the same call, radius 3 around the entrance the
+  capturing hero stands on, inside that hero's radius 5: nothing to read there (decision 314).
+
+E12-6:
+
+- **The walk:** (23, 20), (23, 21), (23, 22), 300; G6 is nobody's team and holds a creature:
+  `adventure_battle` 0x4AD470 **at once, no question** (survey §3, step 2; a mine asks first,
+  a garrison does not).
+- **The battle** (survey §4): the defender G6's army **as it stands: one stack of 20 Pikemen**
+  (case 33 calls `adventure_battle` directly; a wandering monster's or a neutral mine's guards are
+  split through `monster_battle`, D-47), unowned, no hero; the field the entrance's grass, the
+  anti-magic flag **clear** (subclass 0); won by auto combat (the Archangels strike first, 500 or
+  more damage against 200 hit points: likely no loss).
+- **After it** (§3, step 3; §5): the record's army emptied (its survivors the battle's: none),
+  `garrison_set_owner` with Red: **G6 Red's, empty**; `hero_level_up` (nothing new: 200 experience,
+  the slain Pikemen's hit points, level 1 kept); then **the exchange**: the upper bar empty, the
+  lower E12-6's Archangel 10. E12-6 **on the entrance (23, 22)** with its ten Archangels (a loss
+  only if the auto combat let the Pikemen strike: then the survivors), points **1 700** (the
+  walk's 300), experience **200**. VCMI the same (`battleFinished` visits again: flagged,
+  then the dialog).
+"""
+[encounter.hero]
+type = "Ingham"
+specialty = "creature Monk"
+at = [23, 19]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E12-1 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-1"
+title = "A move through Red's own vertical garrison to a tile beyond it; then the garrison as the move's end"
+questions = ["D-59", "ADV-GAR-004", "ADV-GAR-003", "GAM-DEC-004"]
+procedure = [
+    "Day 1, Red's turn, after E12-5's reads: Red's vertical garrison V1 covers (8, 2) to (8, 4), its entrance the middle tile (8, 3), with two Pikemen; rock fills column 8 above it (rows 0 and 1) and below it (rows 5 to 13). E12-1 stands at (6, 3), west of it, with ten Archangels. Read its points and V1's record.",
+    "Click D1 (10, 3), east of V1, once: note the path shown (its tiles, or that none shows). If none shows, go on with the next step. **If a path shows**, click D1 again: E12-1 walks it. Note every dialog or message on the way and where the walk stops (if a dialog opens, note its bars and close it with OK; if E12-1 then stands short of D1, click D1 twice more), then E12-1's tile and points and V1's record.",
+    "Click V1's entrance (8, 3) twice: E12-1 steps onto it. Note every dialog and message (the exchange: its two bars), then E12-1's tile and points.",
+    "In the exchange: click V1's two Pikemen (upper bar, slot 0), then E12-1's empty slot 1 (lower bar). Note both bars after it, then close it with OK. Note V1's record and E12-1's army.",
+]
+record = [
+    { field = "E12-1 before: points; V1's record (owner, stacks)" },
+    { field = "the path to D1 (10, 3) (its tiles, or none)" },
+    { field = "the walk to D1: dialogs and messages on the way; where it stopped; E12-1's tile; points; V1's record" },
+    { field = "the step onto V1's entrance (8, 3): dialogs and messages (the exchange's bars); E12-1's tile; points" },
+    { field = "the take of V1's Pikemen into slot 1: both bars after" },
+    { field = "after OK: V1's record (owner, stacks); E12-1's army" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The path** (survey §7, D-59; `pathfinder_pass_through` 0x56AB40's case 33): a stop node on a
+  garrison's entrance goes on when the record's owner and the hero's are of one team, in every
+  mode: V1 is Red's, so the path crosses it: **(7, 3), (8, 3), (9, 3), (10, 3)** (400). The way
+  round the wall (by row 14) is longer and lies unexplored. Class 219 is loaded as 33 (survey §2),
+  so the vertical garrison is passed as a horizontal one.
+- **The walk** (`hero_move_step` 0x4805E0's case 33): the step onto (8, 3) is not the planned
+  destination, the player is human and the garrison its team's: the step's visit is cleared, **no
+  exchange on the way**; E12-1 on **(10, 3)** with **1 600**; V1 unchanged (Pikeman 2). **VCMI
+  1.7.5:** the same path (`CGGarrison::passableFor`: the owner's), but its client ends each
+  movement batch at a garrison and the server visits it on the way (`moveHero` with `VISIT_DEST`):
+  the walk **stops on (8, 3)** with the exchange open. The wiki: owner and allies pass.
+- **The step onto the entrance** (survey §3, step 1; the planned destination's garrison is visited):
+  (9, 3), (8, 3), 200: E12-1 on **(8, 3)** with **1 400**; **the exchange** opens at once: the upper
+  bar V1's Pikeman 2 (slot 0), the lower E12-1's Archangel 10 (slot 0).
+- **The take** (survey §6: an own, removable garrison, both bars the current player's, the army
+  dialog's rules, GAM-DEC-004): **moved**: the upper bar empty, the lower Archangel 10, Pikeman 2
+  (slots 0, 1). After OK: V1 Red's, empty; E12-1's army Archangel 10, Pikeman 2. (The control of
+  E12-3's refusals: the same dialog with an owner.)
+"""
+[encounter.hero]
+type = "Edric"
+specialty = "creature Griffin"
+at = [6, 3]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E12-2 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-2"
+title = "An empty neutral garrison on the way: a path beyond it, the path to it, its visit"
+questions = ["D-59", "ADV-GAR-002", "ADV-GAR-004", "ADV-MOV-008"]
+procedure = [
+    "Day 1, Red's turn, after E12-1: the empty neutral garrison G2 covers (18, 6) to (20, 6), its entrance the middle tile (19, 6); rock closes the box below it (columns 15 to 23, rows 6 to 10: inside, columns 16 to 22, rows 7 to 9), so the box's only way in is through G2. E12-2 stands at (19, 4), north of G2, with ten Archangels. Read its points and G2's record.",
+    "Click D2 (19, 8), inside the box, once: note the path shown (its tiles, or that none shows). If none shows, go on with the next step. **If a path shows**, click D2 again: E12-2 walks it. Note every dialog or message on the way (an exchange: its bars, then OK) and where the walk stops, E12-2's tile and points and G2's record; then skip the next step.",
+    "Click G2's entrance (19, 6) once: note the path shown. Click it again: E12-2 steps onto it. Note every battle, dialog and message in order (the exchange: its two bars), then close the exchange with OK. Note G2's record, E12-2's tile and points.",
+]
+record = [
+    { field = "E12-2 before: points; G2's record (owner, stacks)" },
+    { field = "the path to D2 (19, 8) (its tiles, or none); if one showed, the walk: dialogs and messages, where it stopped" },
+    { field = "the path to G2's entrance (19, 6) (its tiles)" },
+    { field = "the step onto (19, 6): battles, dialogs and messages in order (the exchange's bars)" },
+    { field = "after OK: G2's record (owner, stacks); E12-2's tile; points" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The path beyond** (survey §7, D-59): G2 is nobody's team (neutral, owner -1), so its entrance is
+  a stop node the search goes no further from: the box has no other way in, so **no path to D2**
+  (no marks). D2 is explored (from (19, 4): 16 ≤ 30). **VCMI 1.7.5:** an empty garrison is crossed
+  (`passableFor`: "transit via unguarded garrisons"): the path **(19, 5), (19, 6), (19, 7), (19,
+  8)**, G2 flagged on the way (the dialog mid-move).
+- **The path to G2:** (19, 5), (19, 6), ending on the entrance.
+- **The visit** (survey §3: not the team's, `army_has_creatures` finds none; step 3): no battle,
+  `garrison_set_owner` with Red: **G2 Red's** (its flag; the reveal of radius 3 inside E12-2's
+  own), then **the exchange** at once: the upper bar empty, the lower E12-2's Archangel 10. After
+  OK: G2 Red's, empty, removable; E12-2 on **(19, 6)** with **1 800**. VCMI the same (`setOwner`,
+  then the dialog).
+"""
+[encounter.hero]
+type = "Christian"
+specialty = "creature Ballista"
+at = [19, 4]
+primary = [10, 10, 1, 1]
+army = [["Archangel", 10]]
+
+# --- E12-3 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-3"
+title = "Red's own garrison not removable: a move into an empty slot, a merge onto its stack, two takes"
+questions = ["D-61", "ADV-GAR-003", "GAM-DEC-004"]
+procedure = [
+    "Day 1, Red's turn, after E12-2: Red's garrison G3 covers (28, 6) to (30, 6), its entrance the middle tile (29, 6), with five Pikemen; it is **not removable** (the map's flag). E12-3 stands at (29, 4), north of it, with ten Pikemen, five Archers and two Griffins (slots 0, 1, 2). Read its points and G3's record.",
+    "Click G3's entrance (29, 6) twice: E12-3 steps onto it. Note every dialog and message (the exchange: its two bars), then E12-3's tile and points.",
+    "In the exchange, four tries, noting both bars after each (and any message): (a) **a move**: click E12-3's Archers (lower bar, slot 1), then G3's empty slot 1 (upper bar); (b) **a merge**: click E12-3's Pikemen (lower slot 0), then G3's Pikemen (upper slot 0); (c) **a take**: click G3's Pikemen (upper slot 0), then E12-3's empty slot 1 (lower bar); (d) **a take back**: click the Archers in G3's slot 1 (if they are there), then E12-3's empty slot 1. Close it with OK; note G3's record and E12-3's army.",
+]
+record = [
+    { field = "E12-3 before: points; G3's record (owner, stacks, removable)" },
+    { field = "the step onto (29, 6): dialogs and messages (the exchange's bars); E12-3's tile; points" },
+    { table = ["try", "the upper bar after", "the lower bar after", "messages"], rows = 4 },
+    { field = "after OK: G3's record (stacks); E12-3's army" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The step:** (29, 5), (29, 6), 200: E12-3 on **(29, 6)** with **1 360** (1 560: the slowest
+  are Pikemen and Archers, speed 4). G3 is Red's: **the exchange** at once (survey §3, step 1).
+- **The dialog** (survey §6, `garrison_exchange_dialog` 0x5D1130): the record not removable, the
+  dialog's owner passed for the upper bar is **-1**, so the garrison's stacks are not the current
+  player's.
+- **(a) the move: made** (0x5C7609: a move or split into an empty slot of a bar of another owner
+  tests no owner): upper Pikeman 5, Archer 5; lower Pikeman 10, —, Griffin 2.
+- **(b) the merge: refused** (0x5C7532, 0x5C7700 test the target bar's owner: a target holding a
+  stack, of the same creature too): both bars unchanged (the click selects or shows G3's stack).
+- **(c) the take: refused** (the selected stack's bar is not the current player's: the hover only
+  selects or shows, 0x5C8080); **(d) the take back: refused**, the same (troops given stay).
+- After OK: G3 Red's, Pikeman 5, Archer 5, not removable; E12-3's army Pikeman 10, Griffin 2.
+  **VCMI 1.7.5:** (a) made, (b) refused (its non-removable case, as the original; D-61 differs only
+  for an ally's garrison), (c), (d) refused. The wiki (Garrison): troops may be added but not
+  removed.
+"""
+[encounter.hero]
+type = "Rion"
+specialty = "skill First Aid"
+at = [29, 4]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 10], ["Archer", 5], ["Griffin", 2]]
+
+# --- E12-4 -----------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-4"
+title = "A hero in Red's anti-magic garrison: attacking out of it (Red's turn), attacked in it (Blue's turn)"
+questions = ["D-60", "ADV-GAR-005", "BAT-TER-002", "GAM-BAT-004"]
+procedure = [
+    "Day 1, Red's turn, after E12-6: Red's anti-magic garrison G4 covers (8, 22) to (10, 22), its entrance the middle tile (9, 22), with three Pikemen. Blue's hero E12-4b stands at (9, 21), north of the entrance, Blue's E12-4a at (9, 23), south of it; each has one Pikeman, a spell book with Bless and 10 spell points. E12-4 stands at (8, 20) with ten Archangels, a spell book with Bless and 20 spell points. Read E12-4's points and spell points and G4's record.",
+    "Click G4's entrance (9, 22) twice: E12-4 steps onto it. Note every dialog and message (the exchange: its bars), close the exchange with OK without a move; note E12-4's tile and points.",
+    "**Battle 2 (attacking out of it):** click E12-4b (9, 21) twice: E12-4 attacks it. As the battle opens note its anti-magic flag and each side's stacks. At each side's first stack's turn: the spell book (opens, or the message's text; if it opens, cast Bless on that stack: made or not), then Defend; then play it out. Note the result, then E12-4's tile, points and spell points. End Red's turn.",
+    "**Battle 1 (attacked in it), Blue's turn:** if E12-4 stands on (9, 22), click it with E12-4a (from (9, 23)) twice: E12-4a attacks it. As the battle opens note its anti-magic flag and each side's stacks (Red's: whether G4's Pikemen are among them). At each side's first stack's turn: the spell book as in battle 2, then Defend; then play it out. Note the result and G4's record after.",
+]
+record = [
+    { field = "E12-4 before: points; spell points; G4's record (owner, stacks)" },
+    { field = "the step onto (9, 22): dialogs and messages (the exchange's bars); E12-4's tile; points" },
+    { field = "battle 2 as it opens: the anti-magic flag (+0x53C4); Red's stacks; Blue's stacks" },
+    { field = "battle 2, Red's first turn: the spell book (opened, or the message); Bless cast?" },
+    { field = "battle 2, Blue's first turn: the spell book (opened, or the message); Bless cast?" },
+    { field = "battle 2: the result; then E12-4's tile; points; spell points" },
+    { field = "battle 1 as it opens: the anti-magic flag (+0x53C4); Red's stacks (G4's Pikemen among them?); Blue's stacks" },
+    { field = "battle 1, Red's first turn: the spell book (opened, or the message); Bless cast?" },
+    { field = "battle 1, Blue's first turn: the spell book (opened, or the message); Bless cast?" },
+    { field = "battle 1: the result; G4's record after (owner, stacks)" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The step:** (8, 21), (9, 22), 241: E12-4 on **(9, 22)** with **1 759**; G4 is Red's: the
+  exchange (upper Pikeman 3, lower Archangel 10); closed unchanged.
+- **Battle 2, attacking out of the garrison** (design §14; survey §4: `battle_setup_battlefield`
+  0x4643B0 takes the battle's position, the defender's tile; `tile_special_ground` 0x4FCE20 answers
+  33 only on an anti-magic garrison's entrance or for a hero standing on one): the position is
+  E12-4b's (9, 21), plain grass: the flag **clear**, **casts allowed for both**: each book opens,
+  Bless is cast (5 points; E12-4 then 15). Red's side E12-4's Archangel 10, Blue's E12-4b's Pikeman
+  1; won by Red (the Pikeman dies in round 2). E12-4 **stays on (9, 22)** (the attacker keeps its
+  tile; GAM-BAT-004). VCMI the same (no anti-magic on that tile).
+- **Battle 1, attacked in it** (survey §4, D-60; §7: a hero standing in a garrison is fought as any
+  hero, the garrison's army not joining): the position is E12-4's (9, 22), a hero standing on an
+  anti-magic garrison's entrance (class 34 there, its stood-on class 33, the tile's subclass 1): the
+  battle's +0x53C4 **set**, and `side_may_use_magic` 0x41F890 refuses every cast of either side:
+  **no book (or a refusal) for Red, none for Blue, no Bless cast**. Red's side **E12-4's Archangel
+  10 alone** (G4's Pikeman 3 not in it), Blue's E12-4a's Pikeman 1; won by Red. G4 unchanged (Red,
+  Pikeman 3). **VCMI 1.7.5:** `BLOCK_ALL_MAGIC` sits on the garrison object, so only a battle
+  against its own army is without magic: **casts allowed** here. **The wiki** (Garrison): no cast
+  for a hero attacked on the tile (the original's).
+"""
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+at = [8, 20]
+primary = [5, 5, 1, 2]
+army = [["Archangel", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Bless"]
+
+[[encounter.also]]
+type = "Ryland"
+specialty = "creature Dendroid Guard"
+owner = "blue"
+name = "E12-4b"
+at = [9, 21]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Bless"]
+
+[[encounter.also]]
+type = "Ufretin"
+specialty = "creature Dwarf"
+owner = "blue"
+name = "E12-4a"
+at = [9, 23]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Bless"]
+
+[[encounter.also]]
+type = "Ivor"
+specialty = "creature Wood Elf"
+owner = "blue"
+name = "E12-4c"
+at = [33, 2]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
