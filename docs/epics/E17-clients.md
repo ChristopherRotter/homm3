@@ -204,10 +204,13 @@ context.
     (`game_seat::GameSeat`, `battle::Remote`, `Ground::load_game`; a test host's real game,
     `clients.yml`'s paths by #851); the hero's battle picture by the map's sex in the client's
     profile (CLT-Q78 (b): the original draws the type's).
-  - **T3c:** the sound on the host's device and the music through the common `h3_ui::music` (the
-    end's tune after the combat music's 900 ms fade; the focus lost and regained: the map client
-    lane's notes of 2026-10-27 and 2026-10-30); the frame widened by
-    `h3_render::screen::Widening` if measured faster (2026-10-28).
+  - **T3c done 2026-11-11** (kept whole with the user;
+    [log](E17-log.md#m7-t3c--the-battles-sound-on-the-hosts-2026-11-11); design §13.6): the
+    sound on the host's (`audio::HostSound`, lent by `Setup::sound` and handed back by
+    `Hosted::take_sound`), the music through the common `h3_ui::music` (a track played once: the
+    end's tune after the combat music's 900 ms fade-out), the focus lost and regained
+    (`Hosted::focus`), the frame widened by `h3_render::screen::Widening` (0.33 ms a frame
+    against 3.5).
 - **T4, M7's and E17's closure:** a fresh reviewer, the captures where the battle screen changed,
   the review list with the user; the epic's open threads placed ("Later": E27, E24 or the
   backlog); E17 closed (the backlog's row by a `shared/` pull request).
@@ -351,3 +354,13 @@ The next milestone's list starts here.
    its own fields at load; written from the executable and by `h3-view harvest`);
    `Tables::hero_art`, `scene::battle_as` (the profile beside `battle_at`), `motion::casts`'s
    profile. Not recorded (no situation gives a hero a sex).
+9. The battle's sound on the host's (T3c; design §13.6, *provisional* where marked): the shape
+   (`audio::HostSound`: `open`, `audio`, `add_track`, `request`, `focus`, `service`, `reset`;
+   `Setup::sound` in place of `mute`, `Hosted::take_sound`, `Hosted::focus`), the battle's tracks
+   left added to the host's for a later battle, `h3_sdl::Audio::remove_stream` (an index reused);
+   `h3_ui::music::Music::request_once` and `Queue::request_once` (a tune ending in its own
+   fade-out closes then); the music's setting as the stream's gain; Home after the end following
+   the tune's fade-out; a request at the music's setting 0 still taken (the original's
+   `play_music` drops it); an unreadable archive no longer fails the battle (no sound, noted);
+   the focus followed by `h3-view window` (before: played on). Not recorded (no capture has the
+   sound's timing; the `disk` driver's mix measured instead).

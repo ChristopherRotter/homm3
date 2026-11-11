@@ -6753,3 +6753,55 @@ Design §13.4, §13.5.
   rebased on it).
 - *Provisional:* the names, the queries the host answers, the seat's numbers, the battle followed
   the first to open, the Auto Combat switch off (CLT-STUB-4). M7 review items 7 and 8.
+
+### M7 T3c — the battle's sound on the host's (2026-11-11)
+
+Branch `client/e17-m7-t3c`. Kept whole with the user (the agent proposed two parts: the music
+and the focus, then the host's device). The original data staged at once (57 files;
+`H3sprite.lod` failed once, staged again); the baseline found `master`'s client code verified by
+T3b2's run (light gates only). Design §13.6; the map client lane's notes of 2026-10-27, -28 and
+-30 (in `QUEUE-ARCHIVE.md`).
+
+- **The common music** (`h3_ui::music`, the foundation; additive): `Music::request_once` and
+  `Queue::request_once`, a track played once (`play_music`'s loop count 1): filtered as any
+  request, opened from its start at the whole volume with no fade-in (the lock free at once),
+  closed at its end; the pending request's and the opened track's once-ness kept beside their
+  names; a held track played once keeps no place. Six tests (after a fade-out, within a fade-in,
+  asked for again, faded out by a looping request, ending in its own fade-out, without the focus,
+  through the queue); coverage 100 %.
+- **The platform** (`h3_sdl::Audio`; additive): `remove_stream` (destroyed, its slot nulled),
+  `add_stream` taking the first freed slot, the drop and the report skipping freed ones.
+- **The host's sound** (`h3_battle_client::audio::HostSound`): the device, the music stream
+  (`MUSIC_RATE` × `MUSIC_CHANNELS`, 44.1 kHz stereo) and its `Queue`, the tracks by name
+  (`add_track`, one of another format kept as missing; a name not added waits as being decoded),
+  `request(name, once)`, `focus`, `service(volume)` (the setting's whole volume as the stream's
+  gain, the fades in the samples by `run_samples`, as the map's window), `reset`, `playing`,
+  `audio`. `Library` keeps the combat music's name and its tracks (the combat music, the end's
+  tunes) until `Player::open` adds them to the host's sound, the report's music part made at the
+  decoding (`music_note`). `Player` plays on the host's sound: `open(sound, library, lines)` adds
+  its nine streams (removed again on an error, the sound handed back in a box), `close` hands it
+  back (effects stopped, its streams removed, the device running), `start_music` and `end(tune)`
+  ask the music, `pause(on)` the device alone, `focus(on)` holds the streams playing and fades the
+  music (a stream cleared is let go first), `service(library)`.
+- **The element** (`window.rs`): `Setup::sound: Option<HostSound>` in place of `mute`; the
+  library decoded only with a sound (an archive that cannot be read noted, no sound, the host's
+  kept to hand back: `Hosted`'s `spare`); `Hosted::take_sound` (in place of `close_sound`),
+  `Hosted::focus`; `h3-view window` opens the sound unless `--mute` and follows
+  `Window::focus_changes` in order.
+- **The widening:** `Battle::widening` (a `Widening` of `compose::FORMAT`, made once a battle) and
+  `Battle::widen`; `frame_at` and `next_frame` widen by it; `show` with a drawn cursor widens only
+  `Cursor::rect` over a copy of the frame's pixels. Measured in the sandbox's release build over
+  an 800 × 600 frame of random pixels: `Screen::xrgb` 3.5 ms, `Widening::widen` 0.23 ms into a
+  kept vector and 0.33 ms into a new one (the pixels equal); taken.
+- **Tests:** the music's six; the adapter's `run_samples`, `track_state` and `music_note`.
+- **Checked:** `clients/scripts/check.sh` with the data staged (every gate; coverage 100 %);
+  `window --check 45` on `scenarios/smoke.toml` under Xvfb with SDL's `disk` audio (release
+  build): 497 of 497 frames read back exact; in the mix COMBAT04 from the opening's end (6 177
+  ms), at the battle's end (40 450 ms) its gain falling by 100 ms through 68, 60, 52, 45, 37,
+  30, 23, 15, 7 of its whole 76 (114/127 to 12/127 of the first run's setting), and `Win
+  Battle` (correlation 1.000 with ffmpeg's decoding) at 41 349 ms, 899 ms after the fade began.
+  Not checked live: the focus (Xvfb sends no focus events), Home after the end.
+- Agent decisions, *provisional* (change freely): the names (`HostSound`, `take_sound`,
+  `request_once`, `remove_stream`), the battle's tracks left with the host's sound, the setting
+  as the stream's gain, a tune ending in its own fade-out closing then, Home after the end
+  following the tune's fade-out, an unreadable archive costing the sound alone. M7 review item 9.

@@ -6,16 +6,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
   `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
-  in QUEUE): **T1 done**, **T2 done**; **T3** the battle as an element a host's window runs (the
-  map client's E24 M4 T5 waits on it): **T3a1, T3a2, T3b1 done** (#849, #850 merged), **T3b2
-  done** (a whole game's battle played live through the host's game, `game_seat::GameSeat`;
-  the hero's battle picture by the map's sex, CLT-Q78 (b); design §13.4, §13.5; branch
-  `client/e17-m7-t3b2` after #851, the `shared/` PR of `clients.yml`'s paths, merged);
-  **T3c** the sound on the host's device; T4 the closure, **which closes E17**. **Next:** T3c.
-  Watch T3b2's pull request **#854** until it merges: its Clients job failed three times
-  (2026-11-11) in "SDL's build dependencies", the runner unable to resolve the Ubuntu mirror,
-  before any check ran; the local record (`verify-once.sh clients`, in its description) passed.
-  If it is still red, re-run it (`rerun-failed-jobs`).
+  in QUEUE): **T1, T2, T3 done** (T3: the battle as an element a host's window runs, for the map
+  client's E24 M4 T5; T3c, the last, kept whole with the user: the sound on the host's,
+  `audio::HostSound`, the music through `h3_ui::music` with a track played once, the focus, the
+  frame widened by `Widening`; design §13.6; branch `client/e17-m7-t3c`, its pull request below).
+  **Next:** **T4**, M7's and E17's closure, **which closes E17** (a fresh reviewer, the captures
+  where M7 changed the battle screen, the review list's items 1 to 9 with the user, the epic's
+  open threads placed, the backlog's row by a `shared/` PR). Watch T3c's pull request until it
+  merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -51,6 +49,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-11, E17 M7 T3c (done; `client/e17-m7-t3c`).** Kept whole with the user (the agent
+  proposed a cut in two). The original data staged at once (57 files; `H3sprite.lod` failed once,
+  then staged); the baseline found `master`'s client code verified (light gates only). The sound
+  on the host's, one music for host and battle, the end's tune 900 ms after the end (measured with
+  SDL's `disk` driver: nine fade steps, then the tune), the focus, `Widening` (3.5 → 0.33 ms a
+  frame). The map client lane's inbox told the API. M7 review item 9. Record: `E17-log.md`.
 - **2026-11-11, E17 M7 T3b2 (done; #854, #851 merged).** Kept whole with the
   user, who agreed the `shared/` PR of `clients.yml`'s paths (#851) and answered CLT-Q78 (b)
   (the original draws a hero by its type's sex, never a map's). The original data staged at
@@ -64,11 +68,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   gate, `window --check` here and on a record, `drawn`) all passed: #849. T3b cut in two with
   the user; T3b1 checked on two golden replays' game records (`h3-server record`), every frame
   exact. M7 review item 6. Record: `E17-log.md`.
-- **2026-11-11, E17 M7 T3a1 and T3a2 (done, T3a2 unverified; `claude/ecstatic-thompson-cjowg2`,
-  no pull request).** T3 cut in four with the user, who agreed the entry's shape for the map
-  client lane (the host owns the window and the frame, the battle an element drawn natively)
-  and the adapter crate. The baseline's `check.sh` passed on `master`; no original data (no
-  computer linked): the user chose T3a2 unverified. T3a1 the move (build, clippy, 1 326 tests);
-  T3a2 the loop as `Hosted` (token-diffed against the old loop; 159 tests, the new staged-data
-  test skipped). The map client lane's inbox told the shape. M7 review item 5. Record:
-  `E17-log.md`.
