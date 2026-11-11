@@ -808,6 +808,37 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
     let none = siege(DUEL, 1);
     assert_eq!((none.operations, none.visitors), (0, 0), "{none:?}");
     assert!(none.steps >= 4, "{none:?}");
+    // E09 T19c2: `legal` counts a listing before each step of a player's seat in the map's
+    // phase (`legal-towns-36`): on the town map the owned towns' builds are listed (the hall's
+    // offer within the treasury); the duel has no towns, so its listings hold none.
+    let legal = |map: &str| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: map.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
+                workload: bench::Workload::Legal,
+                games: 2,
+                days: 2,
+                seed: 1,
+                forks: 0,
+                observe: false,
+                masks: false,
+                battle: false,
+                meeting: false,
+                dwelling: false,
+                queries: 0,
+            },
+        )
+        .unwrap()
+    };
+    let listed = legal(TOWNS);
+    assert!(listed.operations > 0 && listed.builds > 0, "{listed:?}");
+    assert!(listed.operations <= listed.steps, "{listed:?}");
+    let none = legal(DUEL);
+    assert!(none.operations > 0 && none.builds == 0, "{none:?}");
     // E08 T104: `build` counts the game's builds, without play (`build-gates-xl-144` on the gates
     // XL map).
     let built = bench::run(
@@ -844,6 +875,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         ("day-start", "1"),
         ("siege", "1"),
         ("build", "1"),
+        ("legal", "1"),
     ] {
         cli::main(&args(&[
             "bench",

@@ -46,7 +46,14 @@
 //! class, subclass and level, the maps with each class, the one-way channels by entrances and
 //! exits, the two-way ones by size, the Whirlpools' tiles and the maps by their Whirlpools; and
 //! each class's most on one map and the most channels of each way on one map (the teleporters XL
-//! map's numbers, `e08-teleporters-144.h3m`).
+//! map's numbers, `e08-teleporters-144.h3m`). Since E09 T19c2 every game that builds is played by
+//! `EndTurn` alone (exit criterion 6 of the town epic's increment 2, design §32): a week, or on to
+//! the last first day of its owned towns' events that fire for their owner (a repeating one to its
+//! second firing); the town events fired, by day, town and place, and the buildings they built
+//! checked against the census's own walk of TWN-EVT-001 and -003 from the towns' records before
+//! their events, the events counted by why they fire or not and their buildings by what became of
+//! each; and the fixed towns' events in the survey's order (`E09-construction.md` §10) checked
+//! against its census (57 built, 30 skipped as standing, 27 without a requirement).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -63,9 +70,11 @@ use h3_adventure::{
     land_table_points,
 };
 use h3_content::{CreatureTypeId, Formation};
+use h3_contracts::TownId;
 use h3_game::{
-    BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameRuleset, GameSetup, GameSetupError,
-    GameState, GarrisonCreature, PlayerSetup, TownFaction, TownSetup,
+    Actor, BuildingsSetup, DEFAULT_DIFFICULTY, FactionChoice, GameCommand, GameEvent, GameRuleset,
+    GameSetup, GameSetupError, GameState, GarrisonCreature, PlayerSetup, TimedEventSetup,
+    TownFaction, TownSetup,
 };
 use h3_map::model::{Artifacts, Body, Object, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
@@ -90,6 +99,7 @@ struct Peaks(
     Weeks,
     Teleporters,
     ChannelCensus,
+    TownEvents,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -398,6 +408,7 @@ fn main() -> ExitCode {
     }
     // E08 T106c: the rest of the survey's census (§1).
     failures += teleporter_differences(&peaks);
+    failures += town_event_differences(&peaks.10);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -592,6 +603,9 @@ fn check(
             if name.eq_ignore_ascii_case("Tutorial.tut") {
                 tutorial(&game, rules)?;
             }
+            // E09 T19c2: the town events played by `EndTurn` alone (exit criterion 6).
+            played_town_events(&setup, game, rules, &mut peaks.10)
+                .map_err(|e| format!("played: {e}"))?;
             IMPORTED.to_owned()
         }
         Err(ImportError::Unsupported(what)) => format!("not supported: {}", what.reason()),
@@ -693,13 +707,13 @@ fn built_towns(
                 usize::from(empty),
             );
         }
-        if let Some(stored) = game.towns().get(h3_contracts::TownId::new(index)) {
+        if let Some(stored) = game.towns().get(TownId::new(index)) {
             built_town_facts(stored, owner.is_some(), rules.towns(), &mut add);
             built_town_water(town, stored, game, index, rules, &mut add)?;
         }
         let built = game
             .towns()
-            .get(h3_contracts::TownId::new(index))
+            .get(TownId::new(index))
             .and_then(|t| rules.towns().town(t.faction()).map(|r| (t.built(), r)));
         if let (Some(_), Some((built, record))) = (owner, built) {
             let grails: Vec<bool> = built
@@ -739,7 +753,7 @@ fn built_town_water(
     rules: &GameRuleset,
     add: &mut impl FnMut(&'static str, usize),
 ) -> Result<(), String> {
-    let id = h3_contracts::TownId::new(index);
+    let id = TownId::new(index);
     let spot = game.adventure().map().town_boat_spot(id);
     add("E09 built: towns with a spot", usize::from(spot.is_some()));
     let Some(record) = rules.towns().town(town.faction()) else {
@@ -2498,5 +2512,423 @@ const fn kind(body: &Body) -> &'static str {
         Body::Grail { .. } => "grail",
         Body::QuestGuard(_) => "quest guard",
         Body::HeroPlaceholder { .. } => "hero placeholder",
+    }
+}
+
+/// The census of the town events played (E09 T19c2, [`played_town_events`]; exit criterion 6,
+/// design §32): its counts, the maps by the days played, and the survey's order's counts
+/// ([`survey_order`]).
+#[derive(Default)]
+struct TownEvents(
+    BTreeMap<&'static str, usize>,
+    BTreeMap<u32, usize>,
+    BTreeMap<&'static str, usize>,
+);
+
+/// The survey's census of the town events' buildings in the fixed towns (survey
+/// `E09-construction.md` §10: the reading's rules, the events in day order, no build of the
+/// owner's between): built, skipped as standing, built without a requirement. [`main`] checks
+/// [`survey_order`]'s against it.
+const SURVEY_TOWN_EVENTS: (usize, usize, usize) = (57, 30, 27);
+
+/// The days every map is played by `EndTurn` alone (E09 T19c2, [`played_town_events`]): its first
+/// week and the week's step; a map whose owned towns' events fire later plays on to their last
+/// first day, a repeating one's to its second firing.
+const PLAYED_DAYS: u32 = 8;
+
+/// What one firing of a town event does to its town's record (E09 T19c2, [`fire`]): the
+/// event's buildings of the faction's record, each counted once by what became of it.
+#[derive(Default)]
+struct Fired {
+    /// Its buildings built, in index order, each with whether a requirement was not ever built.
+    built: Vec<(h3_towns::BuildingId, bool)>,
+    /// Its buildings ever built before it fired, or built by an earlier one of its own.
+    standing: usize,
+    /// Its buildings another of its own supersedes (the Fort beside the Castle).
+    superseded: usize,
+    /// Its Shipyards in a town without water (TWN-SET-011).
+    shipyards: usize,
+}
+
+/// Fires `event` on `town` as the game's turn start does (TWN-EVT-003: `h3_towns::event_buildings`
+/// with the town's water, each building built through `h3_towns::built_with` unless standing by
+/// its turn), the census's own walk of the rule, and returns the town after it with what each of
+/// the event's buildings came to.
+fn fire(
+    town: &h3_towns::Town,
+    part: &h3_towns::TownRuleset,
+    event: &h3_towns::TownEvent,
+    water: bool,
+) -> Result<(h3_towns::Town, Fired), String> {
+    let record = part
+        .town(town.faction())
+        .ok_or("a town of a faction without a record")?;
+    let builds = h3_towns::event_buildings(town, part, event, water);
+    let mut fired = Fired::default();
+    let mut now = town.clone();
+    for id in event.buildings.iter() {
+        let building = record
+            .building(id)
+            .ok_or("an event's building off its record")?;
+        if town.built().contains(id) {
+            fired.standing += 1;
+        } else if !builds.contains(id) {
+            if building.roles.shipyard && !water {
+                fired.shipyards += 1;
+            } else {
+                fired.superseded += 1;
+            }
+        } else if now.built().contains(id) {
+            fired.standing += 1;
+        } else {
+            let missing = !building.requires.difference(now.built()).is_empty();
+            let built = h3_towns::built_with(&now, part, id).ok_or("a build off the record")?;
+            now = h3_towns::Town::new(now.faction(), built, now.forbidden());
+            fired.built.push((id, missing));
+        }
+    }
+    Ok((now, fired))
+}
+
+/// Adds a firing's counts to the census under `keys` (built, standing, superseded, Shipyards
+/// without water, built without a requirement).
+fn count_fired(fired: &Fired, keys: [&'static str; 5], add: &mut impl FnMut(&'static str, usize)) {
+    add(keys[0], fired.built.len());
+    add(keys[1], fired.standing);
+    add(keys[2], fired.superseded);
+    add(keys[3], fired.shipyards);
+    add(
+        keys[4],
+        fired.built.iter().filter(|&&(_, missing)| missing).count(),
+    );
+}
+
+/// The survey's order (survey `E09-construction.md` §10, T12b's census): every event of every
+/// fixed town (a town of a fixed faction), owned or not and for whatever player, once each in day
+/// order (its first day, then the town's list), from the town's record at the start, no build of
+/// the owner's between; each of its buildings of the faction's record in index order (the
+/// original's id order, `town_events_apply` 0x5BFEB0) built one by one unless ever built by its
+/// turn, a building another of its own supersedes too (the Fort before the Castle), and counted
+/// built without a requirement when one of its direct requirements is not ever built then (the
+/// executable's lists: the part's closed `requires` less what those requirements require). The
+/// counts that [`main`] checks against [`SURVEY_TOWN_EVENTS`]. Checked (an error fails the map):
+/// after each event the town's ever-built set is the game's walk's ([`fire`], which builds the
+/// superseding building alone and tests the closed requirements).
+fn survey_order(
+    town: &h3_towns::Town,
+    events: &[h3_towns::TownEvent],
+    part: &h3_towns::TownRuleset,
+    water: bool,
+    counts: &mut BTreeMap<&'static str, usize>,
+) -> Result<(), String> {
+    let record = part
+        .town(town.faction())
+        .ok_or("a town of a faction without a record")?;
+    // A building's direct requirements: its closed ones less what those require.
+    let direct = |building: &h3_towns::Building| {
+        let implied = (building.requires.iter())
+            .filter_map(|id| record.building(id))
+            .fold(h3_towns::BuildingSet::EMPTY, |set, r| set.union(r.requires));
+        building.requires.difference(implied)
+    };
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    let mut order: Vec<(u16, usize)> = (events.iter().enumerate())
+        .map(|(place, event)| (event.first_day, place))
+        .collect();
+    order.sort_unstable();
+    let mut now = town.clone();
+    for (_, place) in order {
+        let event = &events[place];
+        let (walked, _) = fire(&now, part, event, water)?;
+        for id in event.buildings.iter() {
+            let building = record
+                .building(id)
+                .ok_or("an event's building off its record")?;
+            if now.built().contains(id) {
+                add("skipped as standing", 1);
+                continue;
+            }
+            add("built", 1);
+            let missing = !direct(building).difference(now.built()).is_empty();
+            add("built without a requirement", usize::from(missing));
+            let built = h3_towns::built_with(&now, part, id).ok_or("a build off the record")?;
+            now = h3_towns::Town::new(now.faction(), built, now.forbidden());
+        }
+        if now.built() != walked.built() {
+            return Err(format!(
+                "a town event's buildings one by one differ from the game's walk: {:?}, {:?}",
+                now.built(),
+                walked.built()
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// The town events a game fired by `EndTurn` alone (E09 T19c2; TWN-EVT-001 to -004, exit
+/// criterion 6, design §32): the map played to [`PLAYED_DAYS`], or on to the last first day of
+/// the events of its owned towns that name their owner and its kind (a repeating one to its
+/// second firing); checked (an error fails the map) against the census's own walk of the rules
+/// ([`fire`]) from the towns' records before their events (the game built again without them):
+/// the events fired by day, town and place (day 1's of the first group inside the build,
+/// `GameState::town_events_at_start`), the buildings built after the build by day, town, event
+/// and building (`TownBuilt`), and the first group's towns' records after the build. Counts the
+/// events by why they fire or not, the firings by what they carry, and their buildings by what
+/// became of each; with [`survey_order`]'s counts of the fixed towns.
+fn played_town_events(
+    setup: &GameSetup,
+    mut game: GameState,
+    rules: &GameRuleset,
+    census: &mut TownEvents,
+) -> Result<(), String> {
+    let part = rules.towns();
+    let first = game.turn_group().to_vec();
+    let towns = u16::try_from(game.towns().len()).map_err(|_| "too many towns")?;
+    let has_events = setup.towns.iter().any(|town| !town.events.is_empty());
+    // The towns before their day-1 events: the same game built without the towns' events (the
+    // events move no draw, so every town takes the same faction; checked).
+    let quiet = if has_events {
+        let mut quiet = setup.clone();
+        for town in &mut quiet.towns {
+            town.events.clear();
+        }
+        Some(GameState::new(rules, &quiet, SEED).map_err(|e| format!("without events: {e:?}"))?)
+    } else {
+        None
+    };
+    // Each town with events: its record before them, its water, its owner and kind at the start.
+    let mut starts = Vec::new();
+    for (town, place) in (0..towns).map(TownId::new).zip(&setup.towns) {
+        let (Some(quiet), Some(statics)) = (&quiet, game.towns().town_static(town)) else {
+            continue;
+        };
+        if statics.events.is_empty() {
+            continue;
+        }
+        let before = (quiet.towns().get(town).cloned()).ok_or("a town without a record")?;
+        if Some(before.faction()) != game.towns().get(town).map(h3_towns::Town::faction) {
+            return Err(format!(
+                "town {}: another faction without events",
+                town.raw()
+            ));
+        }
+        let map = game.adventure().map();
+        let water = map.town_boat_spot(town).is_some();
+        let owner = map
+            .town_object(town)
+            .and_then(|o| game.adventure().owner(o));
+        let fixed = matches!(place.faction, TownFaction::Fixed(_));
+        if fixed {
+            survey_order(&before, &statics.events, part, water, &mut census.2)?;
+        }
+        starts.push((town, before, statics.events.clone(), water, owner, fixed));
+    }
+    // The days played: the week, or on to the last first day of an event that fires.
+    let mut days = PLAYED_DAYS;
+    let counts = &mut census.0;
+    let mut add = |what, n: usize| *counts.entry(what).or_default() += n;
+    for (_, _, events, _, owner, _) in &starts {
+        for event in events {
+            add("town events", 1);
+            let Some(owner) = *owner else {
+                add(
+                    "town events of a neutral town (none fires without a capture)",
+                    1,
+                );
+                continue;
+            };
+            let human = game.human(owner).ok_or("an owner not in the game")?;
+            let timing = timing(event);
+            if !event.players.contains(&owner) {
+                add("town events not naming their town's owner", 1);
+            } else if !timing.fires(owner, human, u32::from(event.first_day)) {
+                add("town events naming the owner, not its kind", 1);
+            } else {
+                add("town events that fire", 1);
+                days = days.max(u32::from(event.first_day) + u32::from(event.interval));
+            }
+        }
+    }
+    // The census's walk of the rules over those days.
+    let mut expected_fired = Vec::new();
+    let mut expected_built = Vec::new();
+    for (town, before, events, water, owner, fixed) in starts {
+        let Some(owner) = owner else { continue };
+        let human = game.human(owner).ok_or("an owner not in the game")?;
+        let mut now = before;
+        for day in 1..=days {
+            for (event, place) in events.iter().zip(0u16..) {
+                if !timing(event).fires(owner, human, day) {
+                    continue;
+                }
+                expected_fired.push((day, town, place));
+                add("firings", 1);
+                add(
+                    "firings giving or taking resources",
+                    usize::from(!event.resources.is_empty()),
+                );
+                add(
+                    "firings with buildings",
+                    usize::from(!event.buildings.is_empty()),
+                );
+                let creatures = event.creatures.iter().any(|&n| n > 0);
+                add(
+                    "firings with creatures (not added, TWN-STUB-10)",
+                    usize::from(creatures),
+                );
+                add(
+                    "firings with a message alone",
+                    usize::from(
+                        event.resources.is_empty() && event.buildings.is_empty() && !creatures,
+                    ),
+                );
+                let (after, fired) = fire(&now, part, event, water)?;
+                let keys = if fixed {
+                    [
+                        "fixed towns: built",
+                        "fixed towns: skipped as standing",
+                        "fixed towns: superseded by another of the event's",
+                        "fixed towns: Shipyards without water",
+                        "fixed towns: built without a requirement",
+                    ]
+                } else {
+                    [
+                        "random towns: built",
+                        "random towns: skipped as standing",
+                        "random towns: superseded by another of the event's",
+                        "random towns: Shipyards without water",
+                        "random towns: built without a requirement",
+                    ]
+                };
+                count_fired(&fired, keys, &mut add);
+                let inside = day == 1 && first.contains(&owner);
+                add(
+                    "built inside the build (day 1, the first group)",
+                    fired.built.len() * usize::from(inside),
+                );
+                if !inside {
+                    let built = fired.built.iter().map(|&(id, _)| (day, town, place, id));
+                    expected_built.extend(built);
+                }
+                now = after;
+            }
+            if day == 1 && first.contains(&owner) {
+                let built = game.towns().get(town).map(h3_towns::Town::built);
+                if built != Some(now.built()) {
+                    return Err(format!(
+                        "town {}: the build's day-1 events built otherwise",
+                        town.raw()
+                    ));
+                }
+            }
+        }
+    }
+    // The play: `EndTurn` alone until the day after the last, the first group's events inside
+    // the build, every other's told.
+    let mut fired: Vec<(u32, TownId, u16)> = (first.iter())
+        .flat_map(|&player| game.town_events_at_start(player))
+        .map(|(town, place)| (1, town, place))
+        .collect();
+    let mut built = Vec::new();
+    let mut sink = Vec::new();
+    while game.day() <= days {
+        let day = game.day();
+        let player = (game.turn_group().iter().copied())
+            .find(|&player| game.is_acting(player))
+            .ok_or_else(|| format!("day {day}: no player acting"))?;
+        let end = h3_game::apply(
+            &mut game,
+            rules,
+            Actor::Player(player),
+            GameCommand::EndTurn,
+            &mut sink,
+        );
+        end.map_err(|e| format!("day {day}: EndTurn refused: {e:?}"))?;
+        let day = game.day();
+        for event in sink.drain(..) {
+            match event {
+                GameEvent::TownEventFired { town, event, .. } if day <= days => {
+                    fired.push((day, town, event));
+                }
+                GameEvent::TownBuilt {
+                    town,
+                    building,
+                    event: Some(place),
+                    ..
+                } if day <= days => {
+                    built.push((day, town, place, building));
+                }
+                _ => {}
+            }
+        }
+    }
+    fired.sort_unstable();
+    expected_fired.sort_unstable();
+    built.sort_unstable();
+    expected_built.sort_unstable();
+    if fired != expected_fired {
+        return Err(format!(
+            "the town events fired {fired:?}, the rules' walk {expected_fired:?}"
+        ));
+    }
+    if built != expected_built {
+        return Err(format!(
+            "the town events built {built:?}, the rules' walk {expected_built:?}"
+        ));
+    }
+    add("maps played", 1);
+    add("maps played with town events", usize::from(has_events));
+    *census.1.entry(days).or_default() += 1;
+    Ok(())
+}
+
+/// A town event's day test, the map's timed events' (GAM-CAL-004, TWN-EVT-001): the game's own
+/// [`TimedEventSetup::fires`].
+fn timing(event: &h3_towns::TownEvent) -> TimedEventSetup {
+    TimedEventSetup {
+        players: event.players.clone(),
+        human: event.human,
+        computer: event.computer,
+        first_day: event.first_day,
+        interval: event.interval,
+        resources: Vec::new(),
+        message: 0,
+    }
+}
+
+/// Prints the census of the town events played (E09 T19c2, [`played_town_events`]) and checks
+/// [`survey_order`]'s counts against the survey's ([`SURVEY_TOWN_EVENTS`]): the differences.
+fn town_event_differences(census: &TownEvents) -> usize {
+    println!(
+        "  the town events played by EndTurn alone (seed {SEED}), checked against the rules' walk:"
+    );
+    for (what, n) in &census.0 {
+        println!("    {what}: {n}");
+    }
+    let days: Vec<String> = (census.1.iter())
+        .map(|(days, maps)| format!("{days} days {maps}"))
+        .collect();
+    println!("    maps by the days played: {}", days.join(", "));
+    println!(
+        "  the fixed towns' town events in the survey's order (every event once, day order, each \
+         building one by one), checked:"
+    );
+    for (what, n) in &census.2 {
+        println!("    {what}: {n}");
+    }
+    let get = |what| census.2.get(what).copied().unwrap_or(0);
+    let order = (
+        get("built"),
+        get("skipped as standing"),
+        get("built without a requirement"),
+    );
+    if order == SURVEY_TOWN_EVENTS {
+        0
+    } else {
+        println!(
+            "h3-map: the town events in the survey's order (built, skipped as standing, without a \
+             requirement: {order:?}) are not the survey's census {SURVEY_TOWN_EVENTS:?}"
+        );
+        1
     }
 }
