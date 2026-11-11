@@ -37,6 +37,9 @@ on:
       - "crates/h3-game/**"
       - "crates/h3-towns/**"
       - "crates/h3-pack-towns/**"
+      - "crates/h3-pack-adventure/**"
+      - "crates/h3-files/**"
+      - "crates/h3-sim/**"
       - "!**.md"
   pull_request:
     types: [opened, synchronize, reopened]
@@ -64,6 +67,9 @@ on:
       - "crates/h3-game/**"
       - "crates/h3-towns/**"
       - "crates/h3-pack-towns/**"
+      - "crates/h3-pack-adventure/**"
+      - "crates/h3-files/**"
+      - "crates/h3-sim/**"
       - "!**.md"
   workflow_dispatch:
   schedule:
