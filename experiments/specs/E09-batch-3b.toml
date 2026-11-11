@@ -1,0 +1,136 @@
+# Experiment batch TWN-3, part b (E09 T23; decision 74; design note §55): row TWN-3-6 of increment
+# 3's survey (docs/rules/surveys/E09-growth.md §8, §9, §14), recruitment with a garrison hero and
+# the visitor's move into the garrison, in SoD on Easy, hot seat. Part a
+# (`E09-batch-3a.toml`) holds growth's five rows. Build: docs/experiments/README.md. Predictions are
+# for the agent who evaluates the results; the template never shows them. "The reading" is the
+# survey's code reading of Heroes3.exe (the engine follows it, faithful); VCMI's is VCMI 1.7.5 as
+# the survey summarises it (§11).
+#
+# | row     | settles                 | the reading                          | otherwise                   |
+# | TWN-3-6 | §8, §9; design §53, §55 | the purchase into the garrison       | the wiki and the manual:    |
+# |         | (TWN-REC-001, TWN-ROW-  | hero's army, one count for both      | recruits to the garrison;   |
+# |         | 002 to -005)            | creatures of an upgraded dwelling;   | VCMI: as the reading (the   |
+# |         |                         | the visitor's move refused when the  | army test `canBeMergedWith`)|
+# |         |                         | two armies' creatures exceed seven;  |                             |
+# |         |                         | the garrison hero's points full at   |                             |
+# |         |                         | its owner's next turn                |                             |
+#
+# **The towns** (`[[map.town]]`, custom sets by name; the game's ids below): T (7, 7), Red's Castle
+# with the Fort and the upgraded Guardhouse (the Barracks' predecessor: the dwelling of level 1
+# and its upgrade), its garrison empty; U (15, 7), Red's Castle with the Fort and the Guardhouse,
+# its garrison four stacks of four creatures (Archers, Griffins, Monks, Cavaliers). Red's heroes:
+# TWN-3-6 (G, Halberdiers) south of T, TWN-3-6v (V, four other creatures) south of U, TWN-3-6z (Z,
+# Halberdiers, the twin whose points stand for the maximum) far off. Blue's hero far off (a player
+# without a hero is offered no Artifact as its starting bonus: the harness's Gold stays in place).
+#
+# **The building ids** (the game's): 7 Fort, 10 Village Hall, 30 Guardhouse (index 0, Pikemen),
+# 37 the upgraded Guardhouse (index 7, Halberdiers). The setup builds each in id order (survey
+# §6): 30 sets index 0 to the Pikeman's growth (14), 37 moves it to index 7 and zeroes index 0.
+# The town screen's buildings are its items, each id a building id (batch TWN-2).
+
+[map]
+name = "E09 batch TWN-3b"
+description = "Engine-generated experiment map (E09, batch TWN-3, part b): recruitment at a town with a garrison hero and the visitor's move into the garrison. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 36
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-3b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's memory: a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml`): its garrison hero +0xC, its visitor +0x10, its available creatures +0x16 (i16 by the faction's index: 0 Pikemen, 7 Halberdiers), its garrison +0xE0; a hero's army and movement points (E08's). The capture harness reads them (`clients/capture/batches/E09-batch-3b.toml`, E09 T23). Played by hand they show in the town screen, the hire dialog and the hero's screen.",
+    "Tiles are (column, row) from 0 at the top left; a town's entrance is the tile its gate stands on. A step: click the target once (the path's marks show), then again (the hero goes). On the town screen the lower portrait is the visitor, the upper the garrison's (the town's flag without a garrison hero): click the lower, then the upper, to move the visitor into the garrison. A dwelling's building opens its hire dialog.",
+    "Order: day 1, Red's turn: G's visit to T, then V's to U; then end Red's and Blue's turns and read the heroes' points on Red's day 2.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns --------------------------------------------------------------------------------
+
+[[map.town]]  # T: the upgraded Guardhouse, the garrison empty
+entrance = [7, 7]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "dwelling 1", "upgraded dwelling 1"]
+garrison = []
+
+[[map.town]]  # U: the Guardhouse, four stacks of four creatures
+entrance = [15, 7]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "dwelling 1"]
+garrison = [["Archer", 1], ["Griffin", 1], ["Monk", 1], ["Cavalier", 1]]
+
+# --- TWN-3-6: the garrison hero's purchase, the refused move, the points ---------------------------
+
+[[encounter]]
+id = "TWN-3-6"
+title = "Recruitment with a garrison hero (T's upgraded Guardhouse); a visitor whose army does not fit the garrison (U); the garrison hero's points at Red's next turn"
+questions = ["TWN-REC-001", "TWN-ROW-002", "TWN-ROW-003", "TWN-ROW-004"]
+procedure = [
+    "Red's turn, day 1, before any hero moves. Read T's (entrance (7, 7)) and U's (15, 7) garrison hero, visitor, available creatures and garrison; G's (TWN-3-6) and V's (TWN-3-6v) armies and points; Red's resources.",
+    "G stands south of T at (7, 8). Step north onto the entrance (the town screen opens). Click G's portrait (the lower bar), then the upper portrait (the town's flag): G moves into the garrison. Read T's garrison hero, visitor, garrison and G's army. Click the upgraded Guardhouse's building: the hire dialog opens; note its creatures and counts. Recruit 2 Halberdiers (the creature selected first); note the dialog's counts after. Close the dialog and the town screen. Read T's available creatures, its garrison, G's army and points, Red's resources.",
+    "V stands south of U at (15, 8). Step north onto the entrance (the town screen opens). Click V's portrait, then the upper portrait: note the message that shows and its OK. Read U's garrison hero, visitor and garrison, and V's army. Click the Guardhouse's building: recruit 1 Pikeman; read U's garrison and V's army. Close the dialog and the town screen.",
+    "End Red's turn, then Blue's. On Red's day 2 read G's points (the garrison hero) and Z's (TWN-3-6z, who never moved, with the same army's speed: the maximum), and T's garrison hero.",
+]
+record = [
+    { field = "before: T's garrison hero, visitor, available creatures, garrison; U's the same" },
+    { field = "before: G's army and points; V's army and points; Red's resources" },
+    { field = "G into T's garrison: the messages; T's garrison hero, visitor, garrison; G's army" },
+    { field = "T's upgraded Guardhouse: the hire dialog as it opened (creatures, counts)" },
+    { field = "2 Halberdiers recruited: the dialog after (counts)" },
+    { field = "after G's visit: T's available creatures and garrison; G's army and points; Red's resources" },
+    { field = "V into U's garrison: the messages; U's garrison hero, visitor, garrison; V's army" },
+    { field = "1 Pikeman recruited at U: U's garrison; V's army; U's available creatures" },
+    { field = "Red's day 2: G's points; Z's points; T's garrison hero; G's army" },
+    { field = "anything odd" },
+]
+predictions = """
+Before: T no garrison hero, no visitor, available creatures index 7 (Halberdiers) 14 and index 0
+(Pikemen) 0 (survey §6: the upgrade moves the base count), its garrison empty; U index 0 14, its
+garrison Archers, Griffins, Monks, Cavaliers (one each).
+- **The reading** (survey §9, move 7; §8): **G into T's garrison**: no message; T's garrison hero
+  G, the visitor none; G's army Halberdier 1 (T's empty garrison merged into it: nothing). **The
+  hire dialog** (`recruit_dialog_init_town`): two creatures, the Halberdier (selected) and the
+  Pikeman, **each with the count 14** (one count for both); after 2 Halberdiers: **both 12**.
+  **After**: T's index 7 12 (index 0 0), T's own garrison still empty, **G's army Halberdier 3**
+  (the purchase into `town_garrison_army`, the garrison hero's army), Red's gold 150 less (the
+  Halberdier 75, ADV-HIR-002). **V into U's garrison**: refused, the message GENRLTXT 276; U's
+  garrison hero none, the visitor V, both armies unchanged (V's 4 creatures and U's 4 others: 8
+  creatures over seven slots). **1 Pikeman at U**: into **U's own garrison** (the first empty slot,
+  slot 4), V's army unchanged (the visitor never receives); U's index 0 13. **Day 2**: G's points
+  **equal Z's** (design §53: the towns' garrison heroes' points refilled at their owner's turn,
+  `next_player_turn`); T's garrison hero still G.
+- **VCMI** (`CGarrisonDialogQuery`, `canBeMergedWith`; survey §11): the same purchase and refusal;
+  VCMI refills every hero's points at a new day, the garrison hero's too.
+- **The wiki and the manual** (recruits go to the town's garrison): the purchase into T's own
+  garrison, not G's army (the reading names that army `town_garrison_army`: the garrison hero's
+  when there is one).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [7, 8]
+primary = [1, 1, 1, 1]
+army = [["Halberdier", 1]]
+[[encounter.also]]
+type = "Octavia"
+specialty = "resource gold"
+name = "TWN-3-6v"
+at = [15, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1], ["Halberdier", 1], ["Swordsman", 1], ["Crusader", 1]]
+[[encounter.also]]
+type = "Jenova"
+specialty = "resource gold"
+name = "TWN-3-6z"
+at = [7, 25]
+primary = [1, 1, 1, 1]
+army = [["Halberdier", 1]]
+[[encounter.also]]
+type = "Aine"
+specialty = "resource gold"
+owner = "blue"
+name = "TWN-3-6b"
+at = [27, 30]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
