@@ -54,7 +54,8 @@ episode's start and end (`Trainer.shape`), so an episode's shaped return is its 
 a cut's `-truncation_penalty`).
 
 The imitation loss (E25 T21, increment 6, decision 3's second form; `[ppo] imitation_coef`): while
-its weight (`run.imitation_weight`, falling linearly to 0 over `imitation_horizon`) is above 0, each
+its weight (`run.imitation_weight`, falling linearly over `imitation_horizon` to its floor, 0 unless
+`imitation_floor` holds it, E25 T33) is above 0, each
 call of a rollout first asks the fair system actor (`TEACHER`, never the all-seeing one) for its
 choice for every env's side to move (`BattleBatch.choice`, C ABI v37), and the learning rows keep
 it as a label (`Trainer.label`): its entry and cast heads, with the heads' masks along its

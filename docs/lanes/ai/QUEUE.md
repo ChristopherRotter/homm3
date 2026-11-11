@@ -15,15 +15,51 @@ the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analys
 `E25-log.md` T30; **T31 done** 2026-11-10, the update's speed, `E25-log.md` T31: 98 to 67 s an
 update):
 
-- **T32 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
-  architectures by their clone's ladder (`hexconv` 96 × 6 the control); PPO's settings by short
-  continuations from #2 (first the entropy bonus at 0 and the imitation loss held at a small
-  weight); the regimes (#2 distilled, a KL anchor, the search at play on the hero battles); the
-  probes' checkpoint (with the outcome's weight in training as its question); the long run.
-  Each is refined here when it is next. **A `hexconv` run on the GTX 1070** sets `[ppo]
-  accumulate = 4` and `chunk_align = 32` (T31; cuDNN's autotuner is on by default): its update
-  0.68 of T28's; another network or card: time it first (`python -m h3env.train.speed`, its
-  `--sweep`).
+- **T33 — PPO's settings by short continuations from #2** (refined 2026-11-11, decision 3,
+  T30's ranking; **in progress: round 1 prepared, the user's GPU next**). Each arm is **the first
+  2 M samples of a 20 M run from #2** (`--init-from runs/e25-structure-1/best.pt`; #2's run's
+  config `e25-imitate-structure.toml`, seed 1, at T31's update speed; `lr_horizon` 20 M, so the
+  arm T35 picks resumes into the long run with `--set samples=N`, no sample lost; the run's own
+  ladders cut to 1 episode a kind, no final one: the learner is measured after it).
+  - **Round 1** (three arms; test `test_increment_8s_continuations_are_structure_1s_run_with_
+    their_settings`): (1) `e25-continue-1` (`configs/e25-continue.toml`): the entropy bonus at 0,
+    no imitation loss; (2) `e25-continue-imitate-1` (`e25-continue-imitate.toml`): (1) with the
+    imitation loss held at 0.05 (`[ppo] imitation_floor = 1`, new; at #2's cross-entropy to the
+    fair actor, 3.3 nats, the term about the policy loss's size); (3) `e25-continue-lr-1`
+    (`e25-continue-lr.toml`): (1) at a quarter of the learning rate (6.25e-5, #2's own at 15 M).
+    **Round 2** (one arm, refined on round 1's read): the epochs (2 against 4: the update's 67 s
+    about halved) or the bonus's control (#2's 0.01).
+  - **The measures, stated before it runs:** (a) a head-to-head of fixed size, the learner at
+    2 M (`checkpoint.pt`) against #2 on all 4 000 pairs of the gate set (`h3env.train.gate
+    --fixed`, new): the score and its standard error (about 0.005); (b) its ladder against the
+    fair and the all-seeing actor (the report set v1, 500 a kind, ± 0.019) and on the neutral set
+    (500 a kind); (c) the update records: entropy, KL, clip, the teacher's agreement (arm 2). The
+    run's own end gate (the SPRT) is recorded beside. An arm **gains** when (a) lies above 0.5
+    by two standard errors and (b) against the fair actor stays within its interval of #2's
+    0.511; the arms are ranked by (a).
+  - **Budget:** about 2 hours an arm (about 78 updates of 83 s, T31; the head-to-head about 2
+    minutes, the ladders a few): round 1 about 6 hours, round 2 about 2 (decision 3's 8 for
+    PPO's settings). Parts under 2 hours: Ctrl-C, then `--resume`.
+  - **The user's commands** (from `python/`; for each arm its `<config>` and `<run>`, the three
+    pairs above; `--device cuda` on the user's card):
+
+        uv run --group train python -m h3env.train --config configs/<config>.toml --init-from runs/e25-structure-1/best.pt --out runs/<run>
+        uv run --group train python -m h3env.train --resume runs/<run>
+        uv run --group train python -m h3env.train.gate --candidate runs/<run>/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/<run>/head-to-head.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/<run>/checkpoint.pt --opponents system,system-all-seeing --device cuda --json runs/<run>/ladder.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/<run>/checkpoint.pt --set neutral-v1 --device cuda --json runs/<run>/neutral.json
+
+    The upload: each run's `record.json`, `metrics.jsonl`, `head-to-head.json`, `ladder.json`,
+    `neutral.json` (no network). **Acceptance:** the records committed (`python/records/
+    <run>.json`, the measures under `python/records/continue/`), the read in `E25-log.md` T33,
+    the arms ranked for T35.
+- **T32, T34 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
+  architectures by their clone's ladder (`hexconv` 96 × 6 the control); the regimes (#2
+  distilled, a KL anchor, the search at play on the hero battles); the probes' checkpoint (with
+  the outcome's weight in training as its question); the long run. Each is refined here when it
+  is next. **A `hexconv` run on the GTX 1070** sets `[ppo] accumulate = 4` and `chunk_align = 32`
+  (T31; cuDNN's autotuner is on by default): its update 0.68 of T28's; another network or card:
+  time it first (`python -m h3env.train.speed`, its `--sweep`).
 
 ## Inbox
 
@@ -183,7 +219,8 @@ pipeline as built, gains E25's training levers: shaping (T2a), the tactics bound
 hex networks and the MLP's depth (T7a), the distillation bench (T7b), the networks' keys of
 increment 7 (T24's `norm`, `feed_forward`; T25's `mask_input`, `order`, `attack_hex`), PPO's
 `[ppo] accumulate` (T28), `chunk_align` and `[device] cudnn_autotune` (T31; the speed tool
-`h3env.train.speed`); the GPU's memory cap (T28); the two system actors (T14: `system` the fair
+`h3env.train.speed`), `imitation_floor` and the gate's `--fixed` head-to-head (T33); the GPU's
+memory cap (T28); the two system actors (T14: `system` the fair
 one, `system-all-seeing`, C ABI v36).
 
 **For E25's later increments** (the epic's candidates; E06's leftovers, T9a; increment 1's

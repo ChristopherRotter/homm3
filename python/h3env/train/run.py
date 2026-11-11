@@ -173,12 +173,17 @@ class Config:
     entropy_floor: float = field(default=1.0, metadata=_in("ppo"))
     #: The imitation loss (E25 T21, increment 6, decision 3's second form; `ppo`'s
     #: documentation): the weight of an auxiliary cross-entropy to the fair system actor's
-    #: choice on the learner's own decisions, falling linearly to 0 over `imitation_horizon`
-    #: (`imitation_weight`). 0 (the default): no teacher is asked, the training as before T21.
+    #: choice on the learner's own decisions, falling linearly to its floor over
+    #: `imitation_horizon` (`imitation_weight`). 0 (the default): no teacher is asked, the
+    #: training as before T21.
     imitation_coef: float = field(default=0.0, metadata=_in("ppo"))
-    #: The samples over which `imitation_coef` falls to 0 (0: `lr_horizon`'s, the budget at the
-    #: run's start by default).
+    #: The samples over which `imitation_coef` falls to its floor (0: `lr_horizon`'s, the budget
+    #: at the run's start by default).
     imitation_horizon: int = field(default=0, metadata=_in("ppo"))
+    #: The imitation loss's floor (E25 T33): its weight falls to `imitation_coef *
+    #: imitation_floor`, then stays; 1 holds it at `imitation_coef` throughout. 0 (the default):
+    #: to 0, as before T33.
+    imitation_floor: float = field(default=0.0, metadata=_in("ppo"))
     max_grad_norm: float = field(default=0.5, metadata=_in("ppo"))
     #: What a battle cut at `max_steps` costs each learning side (E06 T5c, the user's amendment
     #: of decision 10): its last transition gets `-truncation_penalty` and ends there, instead of
@@ -449,11 +454,11 @@ def resolve(config: Config) -> Config:
         )
     if c.lr_schedule not in ("linear", "constant"):
         problems.append("`lr_schedule` is linear or constant")
-    if not all(0.0 <= x <= 1.0 for x in (c.lr_floor, c.entropy_floor, c.self_play)) or not (
-        0.0 < c.decay <= 1.0
-    ):
+    floors = (c.lr_floor, c.entropy_floor, c.imitation_floor, c.self_play)
+    if not all(0.0 <= x <= 1.0 for x in floors) or not 0.0 < c.decay <= 1.0:
         problems.append(
-            "`lr_floor`, `entropy_floor` and `self_play` lie in [0, 1], `decay` in (0, 1]"
+            "`lr_floor`, `entropy_floor`, `imitation_floor` and `self_play` lie in [0, 1], "
+            "`decay` in (0, 1]"
         )
     if not 0.0 <= c.system_share <= 1.0:
         problems.append("`system_share` lies in [0, 1]")
@@ -539,11 +544,14 @@ def entropy_bonus(config: Config, samples: int) -> float:
 
 def imitation_weight(config: Config, samples: int) -> float:
     """The imitation loss's weight after `samples` (E25 T21): `imitation_coef` falling linearly
-    to 0 over `imitation_horizon` (0: `lr_horizon`), then 0; 0 throughout by default."""
+    over `imitation_horizon` (0: `lr_horizon`) to `imitation_coef * imitation_floor` (E25 T33;
+    0 by default), then flat; constant at the floor 1; 0 throughout by default."""
     if not config.imitation_coef:
         return 0.0
+    if config.imitation_floor == 1.0:
+        return config.imitation_coef
     progress = samples / max(config.imitation_horizon or config.lr_horizon, 1)
-    return config.imitation_coef * max(1.0 - progress, 0.0)
+    return config.imitation_coef * max(1.0 - progress, config.imitation_floor)
 
 
 class Cadence:

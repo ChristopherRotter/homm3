@@ -125,7 +125,8 @@ lr_schedule = "constant"
         ("", ["env.kinds=[1, 2]"], "six weights"),
         ("", ['network.kind="entity"', "network.preview=true"], "`preview` is the MLP's"),
         ("", ["league.system_share=1.5"], "`system_share` lies in"),
-        ("", ["ppo.entropy_floor=1.5"], "`entropy_floor` and `self_play` lie in"),
+        ("", ["ppo.entropy_floor=1.5"], "`entropy_floor`, `imitation_floor` and `self_play`"),
+        ("", ["ppo.imitation_floor=-0.5"], "`imitation_floor` and `self_play` lie in"),
         ("", ["league.system_share=0.25"], "needs `\\[env\\] kinds`"),
         ("", ["league.system_share=0.25", "env.kinds=[1, 0, 0, 0, 0, 1]"], "needs a player kind"),
         ("", ["ppo.shaping=true", "ppo.truncation_penalty=0"], "`shaping` needs"),
@@ -257,6 +258,16 @@ def test_the_imitation_weight_falls_to_0_over_its_horizon() -> None:
     c = load_config("samples = 1000\n[ppo]\nimitation_coef = 2.0\nimitation_horizon = 250\n")
     assert [imitation_weight(c, s) for s in (0, 125, 250, 1000)] == [2.0, 1.0, 0.0, 0.0]
     assert key_path("imitation_horizon") == "ppo.imitation_horizon"
+    # E25 T33: `imitation_floor` stops the fall at `imitation_coef * imitation_floor`; at 1 the
+    # weight holds throughout; 0 (the default) as above.
+    assert Config().imitation_floor == 0.0
+    f = load_config("samples = 1000\n[ppo]\nimitation_coef = 2.0\nimitation_floor = 0.25\n")
+    assert [imitation_weight(f, s) for s in (0, 500, 750, 1000, 5000)] == [2.0, 1.0, 0.5, 0.5, 0.5]
+    f = load_config("samples = 1000\n[ppo]\nimitation_coef = 0.05\nimitation_floor = 1.0\n")
+    assert {imitation_weight(f, s) for s in (0, 500, 1000, 10**9)} == {0.05}
+    f = load_config("samples = 1000\n[ppo]\nimitation_floor = 1.0\n")
+    assert imitation_weight(f, 0) == 0.0
+    assert key_path("imitation_floor") == "ppo.imitation_floor"
     # Not resumable: a changed weight or horizon changes the training.
     with pytest.raises(ConfigError, match="ppo.imitation_coef would change the training"):
         resumed(c, ["ppo.imitation_coef=0.5"])
@@ -838,6 +849,42 @@ def test_increment_6s_imitation_arm_is_the_control_with_the_loss() -> None:
     assert (neutral.imitation_coef, neutral.imitation_horizon) == (0.0, 0)
     assert 0 < imitate.imitation_coef and 0 < imitate.imitation_horizon <= imitate.samples
     assert dataclasses.replace(imitate, imitation_coef=0.0, imitation_horizon=0) == neutral
+
+
+def test_increment_8s_continuations_are_structure_1s_run_with_their_settings() -> None:
+    # E25 T33 (AI-Q17 decision 3): each arm is the first 2 M samples of a 20 M run from
+    # `e25-structure-1` #2: its run's config (`e25-imitate-structure.toml`) at T31's update speed,
+    # the entropy bonus at 0, no imitation loss falling, the ladders cut (measured after the run);
+    # the second arm holds the imitation loss at 0.05, the third runs at a quarter of the rate.
+    configs = PYTHON / "configs"
+    names = ("e25-imitate-structure", "e25-continue", "e25-continue-imitate", "e25-continue-lr")
+    structure, plain, imitate, low = (
+        load_config((configs / f"{n}.toml").read_text()) for n in names
+    )
+    for arm in (plain, imitate, low):
+        trainable(arm)
+        assert (arm.samples, arm.lr_horizon, arm.gate_every) == (2_000_000, 20_000_000, 10_000_000)
+    assert (
+        dataclasses.replace(
+            plain,
+            samples=structure.samples,
+            lr_horizon=structure.lr_horizon,
+            accumulate=structure.accumulate,
+            chunk_align=structure.chunk_align,
+            entropy_coef=Config().entropy_coef,
+            entropy_floor=structure.entropy_floor,
+            imitation_coef=structure.imitation_coef,
+            imitation_horizon=structure.imitation_horizon,
+            ladder_episodes=structure.ladder_episodes,
+            ladder_final_episodes=structure.ladder_final_episodes,
+        )
+        == structure
+    )
+    assert (plain.accumulate, plain.chunk_align, plain.entropy_coef) == (4, 32, 0.0)
+    assert (plain.imitation_coef, plain.ladder_episodes, plain.ladder_final_episodes) == (0, 1, 0)
+    assert dataclasses.replace(imitate, imitation_coef=0.0, imitation_floor=0.0) == plain
+    assert {imitation_weight(imitate, s) for s in (0, 2_000_000, 20_000_000)} == {0.05}
+    assert dataclasses.replace(low, lr=plain.lr) == plain and low.lr == plain.lr / 4
 
 
 def test_the_league_draws_scores_and_retires() -> None:

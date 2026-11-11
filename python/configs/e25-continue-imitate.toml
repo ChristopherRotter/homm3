@@ -1,0 +1,52 @@
+# E25 T33's second arm: `e25-continue.toml` (the first 2 M samples of a 20 M run from
+# `e25-structure-1` #2, the entropy bonus at 0) with the imitation loss held at a small weight
+# throughout (`imitation_coef` 0.05, `imitation_floor` 1: a tenth of T28's starting weight; at #2's
+# cross-entropy to the fair actor, 3.3 nats, T28, the term about the policy loss's size, its
+# gradient about a twentieth of PPO's per labelled row). T30's read: #2's entropy rose once its
+# loss ended at 10 M; the loss held is the other way to keep the policy sharp. Every rollout asks
+# the fair actor for its choices (the labels). About 2 hours on the GTX 1070. From python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-continue-imitate.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-continue-imitate-1
+#
+# Ctrl-C stops it at the next update boundary, checkpointed; each later part:
+#
+#   uv run --group train python -m h3env.train --resume runs/e25-continue-imitate-1
+
+seed = 1
+samples = 2_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+tactics_rounds = 3
+
+[ppo]
+lr_horizon = 20_000_000
+accumulate = 4
+chunk_align = 32
+shaping = true
+entropy_coef = 0.0
+imitation_coef = 0.05
+imitation_floor = 1.0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 1
+ladder_final_episodes = 0
