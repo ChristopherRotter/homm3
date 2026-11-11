@@ -19,34 +19,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M7 T3 — the battle as a hosted entry
-
-- **Scope:** the map client lane's request for E24 M4 T5 (the inbox of 2026-10-31, now in
-  `QUEUE-ARCHIVE.md`): the battle as an element a host's window runs (the shape agreed with the
-  user for both lanes, 2026-11-11: the host owns the window, its loop and the frame, the battle
-  drawn natively as any element of it; design §13.2), started from a whole game's battle
-  messages and handed back with its outcome. **Cut in four** with the user (2026-11-11):
-  - **T3a1 done**, **T3a2 done** (2026-11-11, branch `claude/ecstatic-thompson-cjowg2`; T3a2
-    checked with the data staged by the next session): the crate `h3-battle-client` (h3-view's
-    binary until then), the element `window::Hosted` with `h3-view window` its host.
-  - **T3b**, cut in two with the user (2026-11-11):
-    - **T3b1 done** (2026-11-11, branch `client/e17-m7-t3b1`; design §13.3): a whole game's
-      record's battle played and handed back with its outcome; the wire's picture variant and
-      colours read.
-    - **T3b2 done** (2026-11-11, branch `client/e17-m7-t3b2` after #851; design §13.4,
-      §13.5): the same battle played live through the host's game (`game_seat::GameSeat`,
-      `Ground::load_game`; a test host's real game to its result and outcome); the hero's battle
-      picture by the map's sex in the client's profile (CLT-Q78 (b)).
-  - **T3c:** the sound on the host's device, the music through the common `h3_ui::music` (the
-    end's tune after the combat music's 900 ms fade-out, the map client lane's note of
-    2026-10-27; the focus lost and regained, its note of 2026-10-30); the frame widened by
-    `h3_render::screen::Widening` if it measures faster (its note of 2026-10-28).
-- **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
-  same; a test host plays a whole game's battle to its result and gets the outcome back; the map
-  client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3c next (T3a and
-  T3b done 2026-11-11).
-
 ### E17 M7 T4 — M7's and E17's closure
 
 - **Scope:** a fresh reviewer; the captures where M7 changed the battle screen; the review list
@@ -55,7 +27,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
   refinement after E27); E17 closed (`docs/BACKLOG.md`'s row, and E27's draft, which still names
   E17 M7 for the lobby and the browser, by a `shared/` pull request).
 - **Acceptance:** the review list accepted; every open thread placed; E17 done.
-- **Depends on:** T3 (T1, T2 done). **Status:** waiting.
+- **Depends on:** T1 to T3 (done 2026-11-11). **Status:** next.
 
 ## Inbox
 

@@ -1063,7 +1063,10 @@ impl std::fmt::Debug for Audio {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Audio")
             .field("device", &self.device.0)
-            .field("streams", &self.streams.len())
+            .field(
+                "streams",
+                &self.streams.iter().filter(|s| !s.is_null()).count(),
+            )
             .finish()
     }
 }
@@ -1101,14 +1104,15 @@ impl Audio {
         }
     }
 
-    /// Adds a stream for 16-bit samples of `channels` × `rate`, bound to the device; its index.
+    /// Adds a stream for 16-bit samples of `channels` × `rate`, bound to the device; its index
+    /// (a removed stream's, the first free one, since E17 M7 T3c).
     ///
     /// # Errors
     /// SDL's error when the stream cannot be made or bound.
     pub fn add_stream(&mut self, rate: u32, channels: u16) -> Result<usize, String> {
         let spec = spec(rate, channels);
         // SAFETY: plain SDL calls; the stream is checked and owned by `Audio`.
-        unsafe {
+        let stream = unsafe {
             let stream = SDL_CreateAudioStream(&raw const spec, null());
             if stream.is_null() {
                 return Err(failed("SDL_CreateAudioStream"));
@@ -1118,9 +1122,29 @@ impl Audio {
                 SDL_DestroyAudioStream(stream);
                 return Err(e);
             }
-            self.streams.push(stream);
+            stream
+        };
+        if let Some(free) = self.streams.iter().position(|s| s.is_null()) {
+            if let Some(slot) = self.streams.get_mut(free) {
+                *slot = stream;
+            }
+            return Ok(free);
         }
+        self.streams.push(stream);
         Ok(self.streams.len() - 1)
+    }
+
+    /// Removes the stream at `index` (E17 M7 T3c: a battle's own streams on its host's device,
+    /// removed when the host takes the device back): what it queued is dropped, and its index is
+    /// the next [`Audio::add_stream`]'s. An index that is none is left as it is.
+    pub fn remove_stream(&mut self, index: usize) {
+        if let Some(slot) = self.streams.get_mut(index)
+            && !slot.is_null()
+        {
+            // SAFETY: a stream of ours, freed once: its slot is nulled.
+            unsafe { SDL_DestroyAudioStream(*slot) };
+            *slot = null_mut();
+        }
     }
 
     /// The stream at `index` (null for an index that is none: SDL then fails the call).
@@ -1234,7 +1258,7 @@ impl Drop for Audio {
         // SAFETY: each stream and the device were made by SDL and are freed once, the streams
         // first; `quit` balances SDL_InitSubSystem.
         unsafe {
-            for &stream in &self.streams {
+            for &stream in self.streams.iter().filter(|s| !s.is_null()) {
                 SDL_DestroyAudioStream(stream);
             }
             SDL_CloseAudioDevice(self.device);

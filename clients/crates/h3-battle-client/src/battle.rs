@@ -22,7 +22,7 @@ use h3_content_battle::BattleRuleset;
 use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Observation, Outcome, Seat, ServerMessage, Side};
 use h3_render::Bugs;
-use h3_render::screen::Screen;
+use h3_render::screen::{Screen, Widening};
 use h3_towns::TownRuleset;
 use h3_ui::sprite::Sprite;
 use h3_view::anim::Timeline;
@@ -773,6 +773,9 @@ pub struct Battle<'g> {
     turned: Vec<crate::scenario::Turned>,
     /// The assets the frames drew so far.
     batch: Batch,
+    /// Every pixel of the frames' format widened once (E17 M7 T3c: `Screen::xrgb`'s per-pixel
+    /// unpacking took 3.5 ms of an 800 × 600 frame in the sandbox's release build, the table 0.3).
+    widening: Widening,
     /// The mouse over the battle: its moves and what they showed.
     pub shown: Shown,
     /// The mouse followed on as the battle grows (E17 M5 T8a, R3-1): its mark's lists are the
@@ -1152,6 +1155,7 @@ impl<'g> Battle<'g> {
             panels: Panels::new(snapshot, &[], Vec::new()),
             turned,
             batch: Batch::default(),
+            widening: Widening::new(h3_view::compose::FORMAT),
             shown: Shown::default(),
             follower: crate::pointer::Follower::default(),
             inputs: Vec::new(),
@@ -3961,6 +3965,19 @@ impl<'g> Battle<'g> {
         self.load_names(missing)?;
         compose(list, &self.batch, &self.ground.layout, Bugs::Fixed)
             .map_err(|e| format!("{t} ms: {e}"))
+    }
+
+    /// The frames' pixels widened by a table (E17 M7 T3c, the map client lane's note of
+    /// 2026-10-28): what the window presents, as `Screen::xrgb` gives it.
+    pub fn widening(&self) -> &Widening {
+        &self.widening
+    }
+
+    /// `screen` widened to `0x00RRGGBB` ([`Battle::widening`]).
+    pub fn widen(&self, screen: &Screen) -> Vec<u32> {
+        let mut out = Vec::new();
+        self.widening.widen(screen, &mut out);
+        out
     }
 
     /// A DEF of the batch.

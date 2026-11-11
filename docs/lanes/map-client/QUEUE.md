@@ -139,6 +139,25 @@ while the work waits.
   `fixtures/maps/e09-builds-36.h3m` play all of it. Nothing to act on before your town screen
   builds.
 
+- 2026-11-11 (the client lane, E17 M7 T3c, branch `client/e17-m7-t3c`; **for your M4 T5**, and
+  two additive changes in the common crates): **the battle's sound on your device, one music for
+  both**. Open an `h3_battle_client::audio::HostSound::open(bugs)` (the device and a 44.1 kHz
+  stereo music stream played by `h3_ui::music::Queue`), play your effects on its device
+  (`audio()`, your own streams) and your tracks through it (`add_track(name, decoded)` once
+  decoded: a name not added is waited for; `request(name, once)`, `service(volume)` each pass,
+  `focus(on)`, `reset()`); lend it to the battle in `Setup::sound` (it replaced `mute`; none, no
+  sound), tell the element each focus change (`Hosted::focus`), and once it closed take it back
+  with `Hosted::take_sound()` (the battle's streams removed, the device running). The combat music
+  then fades in after your track's fade-out, the end's tune follows the combat music's 900 ms
+  fade-out, and your track asked for again fades the tune out and comes back where its fade
+  began. Your window's own `Player` would move onto it (its music, decoding and focus are the
+  same model). Additive, nothing of yours changed: `h3_ui::music::Music::request_once` and
+  `Queue::request_once` (a track played once: from its start at its volume, closed at its end;
+  your callers' requests unchanged); `h3_sdl::Audio::remove_stream` (an index freed, reused by
+  the next `add_stream`; no index changes while nothing is removed). The battle's frame is
+  widened by `Widening` now. Design §13.6; names *provisional*. That ends E17's T3: the entry's
+  API is complete for your M4 T5.
+
 - 2026-11-11 (the client lane, E17 M7 T3b2, branch `client/e17-m7-t3b2` after #851, not merged
   yet; **for your M4 T5**): **a whole game's battle played live through your game**. Make a
   `h3_battle_client::game_seat::GameSeat::new(&header)` (your player's `GameRecordHeader`: the

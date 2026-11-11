@@ -4,6 +4,37 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-11 (E17 M7 T3c done, T3 done; the entry verbatim; the record in `E17-log.md`,
+  "M7 T3c"):
+
+### E17 M7 T3 — the battle as a hosted entry
+
+- **Scope:** the map client lane's request for E24 M4 T5 (the inbox of 2026-10-31, now in
+  `QUEUE-ARCHIVE.md`): the battle as an element a host's window runs (the shape agreed with the
+  user for both lanes, 2026-11-11: the host owns the window, its loop and the frame, the battle
+  drawn natively as any element of it; design §13.2), started from a whole game's battle
+  messages and handed back with its outcome. **Cut in four** with the user (2026-11-11):
+  - **T3a1 done**, **T3a2 done** (2026-11-11, branch `claude/ecstatic-thompson-cjowg2`; T3a2
+    checked with the data staged by the next session): the crate `h3-battle-client` (h3-view's
+    binary until then), the element `window::Hosted` with `h3-view window` its host.
+  - **T3b**, cut in two with the user (2026-11-11):
+    - **T3b1 done** (2026-11-11, branch `client/e17-m7-t3b1`; design §13.3): a whole game's
+      record's battle played and handed back with its outcome; the wire's picture variant and
+      colours read.
+    - **T3b2 done** (2026-11-11, branch `client/e17-m7-t3b2` after #851; design §13.4,
+      §13.5): the same battle played live through the host's game (`game_seat::GameSeat`,
+      `Ground::load_game`; a test host's real game to its result and outcome); the hero's battle
+      picture by the map's sex in the client's profile (CLT-Q78 (b)).
+  - **T3c done** (2026-11-11, kept whole with the user, branch `client/e17-m7-t3c`; design
+    §13.6): the sound on the host's (`audio::HostSound`), the music through the common
+    `h3_ui::music` (the end's tune after the combat music's 900 ms fade-out), the focus lost and
+    regained, the frame widened by `h3_render::screen::Widening` (0.33 ms a frame against 3.5).
+- **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
+  same; a test host plays a whole game's battle to its result and gets the outcome back; the map
+  client lane's inbox told the entry's API.
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** done 2026-11-11 (T3a,
+  T3b and T3c).
+
 - 2026-11-10 (E17 M6 T7c, M6's closure: the inbox's informational entries, the done ones and
   those M7 T3 takes, verbatim; the adventure lane's `random_between` note done in
   `E17-design.md` §10.2 and the runbook's `catapult_tie` row; the record in `E17-log.md`,
