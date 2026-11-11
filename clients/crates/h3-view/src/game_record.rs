@@ -14,15 +14,23 @@
 //! each of the player's turns (`YourTurn`, the turn's battle commands), acceptances and refusals;
 //! each message's battle events (`Events`; a message without any adds none); a later snapshot of
 //! the battle; and `GameEnded` with the result. What a seat's record of the battle holds and this
-//! one cannot: the battle as it ended (`SRV-STUB-14`: the game sends no last snapshot yet), so the
-//! seat's own hero's Eagle Eye picks.
+//! one cannot yet: the battle as it ended (`SRV-STUB-14`: the game sends no last snapshot yet), so
+//! the seat's own hero's Eagle Eye picks. Once it does, a `Snapshot` right after the message that
+//! ended a battle, with no start pending, is that battle's last: it goes before the battle's
+//! `GameEnded`, as a seat's record holds it (protocol v38; E17 M7 T4, R3-6).
+//!
+//! A battle open when the player's messages begin comes in their `GameSnapshot` instead
+//! (`GameObservation::battle`: a game started or restored mid-battle, whose `GameSession` then
+//! holds the battle's own `Snapshot` back until it ends): it opens there, its start unknown, as a
+//! `Snapshot` with no start before it does (E17 M7 T4, R3-1).
 //!
 //! [`Battles`] reads the messages one at a time (E17 M7 T3b2): a host's game played live hands the
 //! battle client its player's messages as they come.
 //!
 //! *Provisional* (E17 M7 T3b1): the names, the battles in the order they open, the numbers
 //! afresh, the record's seat the snapshot's viewer, a `BattleStarted` while a battle is open
-//! ending that one unended (the engine opens one battle at a time).
+//! ending that one unended (the engine opens one battle at a time); (E17 M7 T4, agent decisions)
+//! the last snapshot's place, a `GameSnapshot`'s battle as a later snapshot of one open.
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -161,6 +169,9 @@ pub struct Battles {
     open: Option<GameBattle>,
     /// The start a `GameEvents` told: the snapshot right after it opens its battle.
     pending: Option<Start>,
+    /// The last message read ended the battle open (E17 M7 T4, R3-6): a snapshot right after it
+    /// is that battle's last.
+    ended: bool,
 }
 
 impl Battles {
@@ -173,6 +184,7 @@ impl Battles {
             done: Vec::new(),
             open: None,
             pending: None,
+            ended: false,
         }
     }
 
@@ -208,27 +220,25 @@ impl Battles {
     /// What the player's next `message` adds to its battles.
     pub fn read(&mut self, message: &ServerMessage) {
         let start = self.pending.take();
+        let after_end = core::mem::take(&mut self.ended);
         match message {
             ServerMessage::GameEvents { n, events } => self.events(*n, events),
-            ServerMessage::Snapshot { n, observation } => match &mut self.open {
-                Some(battle) => battle.push(|n| ServerMessage::Snapshot {
-                    n,
-                    observation: observation.clone(),
-                }),
-                None => {
-                    let start = start.unwrap_or_default();
-                    let mut battle =
-                        GameBattle::open(self.game, &self.manifest, observation, &start, *n);
-                    battle.tell(start.events);
-                    match start.ended {
-                        Some((n, result)) => {
-                            battle.end(n, result);
-                            self.done.push(battle);
-                        }
-                        None => self.open = Some(battle),
-                    }
+            // The battle's last snapshot, once the game sends it (SRV-STUB-14; E17 M7 T4, R3-6,
+            // *provisional*): right after the message that ended the battle, no start pending.
+            ServerMessage::Snapshot { observation, .. }
+                if after_end && start.is_none() && self.open.is_none() =>
+            {
+                // The battle that message ended is the last done.
+                (self.done.last_mut().into_iter()).for_each(|battle| battle.last(observation));
+            }
+            ServerMessage::Snapshot { n, observation } => self.snapshot(*n, observation, start),
+            // A battle open when the messages begin (E17 M7 T4, R3-1): the game's snapshot holds
+            // it, the battle's own snapshot held back until it ends.
+            ServerMessage::GameSnapshot { n, observation } => {
+                if let Some(battle) = &observation.battle {
+                    self.snapshot(*n, battle, start);
                 }
-            },
+            }
             ServerMessage::GameTurn {
                 legal, castable, ..
             } => {
@@ -276,6 +286,28 @@ impl Battles {
         }
     }
 
+    /// The battle's `observation` in the game's message `n`, the `start` told right before it if
+    /// any: a later snapshot of the battle open, else the battle it opens.
+    fn snapshot(&mut self, n: u32, observation: &Observation, start: Option<Start>) {
+        if let Some(battle) = &mut self.open {
+            battle.push(|n| ServerMessage::Snapshot {
+                n,
+                observation: observation.clone(),
+            });
+            return;
+        }
+        let start = start.unwrap_or_default();
+        let mut battle = GameBattle::open(self.game, &self.manifest, observation, &start, n);
+        battle.tell(start.events);
+        match start.ended {
+            Some((n, result)) => {
+                battle.end(n, result);
+                self.done.push(battle);
+            }
+            None => self.open = Some(battle),
+        }
+    }
+
     /// The game's message `n`'s `events`: a battle's start, its events, its end.
     fn events(&mut self, n: u32, events: &[GameEvent]) {
         let mut told = Vec::new();
@@ -301,6 +333,7 @@ impl Battles {
                         battle.tell(core::mem::take(&mut told));
                         battle.end(n, *result);
                         self.done.push(battle);
+                        self.ended = true;
                     } else if let Some(start) = &mut self.pending {
                         start.ended = Some((n, *result));
                     }
@@ -371,6 +404,20 @@ impl GameBattle {
     fn end(&mut self, at: u32, result: Outcome) {
         self.push(|n| ServerMessage::GameEnded { n, result });
         self.at.ended = Some((at, result));
+    }
+
+    /// The battle as it ended, `observation`, its last snapshot (E17 M7 T4, R3-6): before its
+    /// `GameEnded`, as a seat's record of the battle holds it (protocol v38).
+    fn last(&mut self, observation: &Observation) {
+        // Its `GameEnded`, the record's last message ([`GameBattle::end`]), comes after it.
+        self.record.messages.pop();
+        self.push(|n| ServerMessage::Snapshot {
+            n,
+            observation: observation.clone(),
+        });
+        let ended = self.at.ended;
+        (ended.into_iter())
+            .for_each(|(_, result)| self.push(|n| ServerMessage::GameEnded { n, result }));
     }
 }
 

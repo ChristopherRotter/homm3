@@ -420,6 +420,174 @@ fn a_start_while_a_battle_is_open_ends_that_one_unended() {
     );
 }
 
+/// The whole game as the player sees it (`GameSnapshot`), its battle `battle`.
+fn game_snapshot(n: u32, battle: Option<Observation>) -> ServerMessage {
+    use h3_protocol::wire::game::{Adventure, GameObservation, Month};
+    let adventure = Adventure {
+        viewer: 0,
+        width: 0,
+        height: 0,
+        levels: 1,
+        stride: 0,
+        explored: Vec::new(),
+        fringe: Vec::new(),
+        palette: Vec::new(),
+        tiles: Vec::new(),
+        heroes: Vec::new(),
+        objects: Vec::new(),
+        bought: Vec::new(),
+        keys: 0,
+        known: Vec::new(),
+        boats: Vec::new(),
+    };
+    ServerMessage::GameSnapshot {
+        n,
+        observation: GameObservation {
+            viewer: 0,
+            day: 1,
+            month: Month::Normal {},
+            players: Vec::new(),
+            turn_group: vec![0],
+            treasury: Vec::new(),
+            events_today: Vec::new(),
+            decision: None,
+            heroes: Vec::new(),
+            adventure,
+            towns: Vec::new(),
+            battle,
+        },
+    }
+}
+
+#[test]
+fn a_battle_open_when_the_messages_begin_opens_at_the_game_s_snapshot() {
+    // E17 M7 T4 (R3-1): a game restored mid-battle (`GameSession::restore`, its record begun
+    // again): the game's snapshot holds the player's battle, whose own snapshot the game holds
+    // back until it ends; then its turn, its events, its end. The battle opens at the game's
+    // snapshot, its start unknown. A game's snapshot without a battle opens none.
+    let wait = Command::Wait {};
+    let waited = Event::Waited { stack: 0 };
+    let end = Event::BattleEnded { result: WON };
+    let messages = vec![
+        game_snapshot(1, Some(attacker())),
+        ServerMessage::GameTurn {
+            n: 2,
+            legal: vec![GameCommand::Battle { command: wait }],
+            castable: Vec::new(),
+        },
+        events(
+            3,
+            vec![
+                battle(waited.clone()),
+                battle(end.clone()),
+                GameEvent::BattleEnded {
+                    heroes: [Some(0), None],
+                    result: WON,
+                },
+            ],
+        ),
+        game_snapshot(4, None),
+    ];
+    let battles = game(messages).battles();
+    assert_eq!(battles.len(), 1);
+    assert_eq!(
+        battles[0].at,
+        InGame {
+            heroes: [None, None],
+            tile: None,
+            opened: 1,
+            ended: Some((3, WON)),
+        }
+    );
+    assert_eq!(
+        battles[0].record.messages,
+        vec![
+            snapshot(1, attacker()),
+            ServerMessage::YourTurn {
+                n: 2,
+                legal: vec![wait],
+                castable: Vec::new(),
+            },
+            ServerMessage::Events {
+                n: 3,
+                events: vec![waited, end],
+            },
+            ServerMessage::GameEnded { n: 4, result: WON },
+        ]
+    );
+    // A game's snapshot while a battle is open is a later snapshot of it.
+    let mut later = attacker();
+    later.round = 2;
+    let battles = game(vec![
+        game_snapshot(1, Some(attacker())),
+        game_snapshot(2, Some(later.clone())),
+    ])
+    .battles();
+    assert_eq!(battles.len(), 1);
+    assert_eq!(
+        battles[0].record.messages,
+        vec![snapshot(1, attacker()), snapshot(2, later)]
+    );
+}
+
+#[test]
+fn a_snapshot_right_after_a_battle_s_end_is_that_battle_s_last() {
+    // E17 M7 T4 (R3-6; once SRV-STUB-14 lifts, the game sends the battle as it ended after the
+    // message that ended it): it goes before the battle's `GameEnded`, as a seat's record holds
+    // it, so the record's end shows it (Eagle Eye's picks). A snapshot after another start, or
+    // later than right after the end, opens a battle as before.
+    let started = |hero| GameEvent::BattleStarted {
+        heroes: [Some(hero), None],
+        tile: TILE,
+    };
+    let ended = GameEvent::BattleEnded {
+        heroes: [Some(0), None],
+        result: WON,
+    };
+    let end = Event::BattleEnded { result: WON };
+    let mut last = attacker();
+    last.round = 3;
+    let battles = game(vec![
+        events(1, vec![started(0)]),
+        snapshot(2, attacker()),
+        events(3, vec![battle(end.clone()), ended.clone()]),
+        snapshot(4, last.clone()),
+        events(5, vec![started(1)]),
+        snapshot(6, attacker()),
+        // An end and another start in one message: the snapshot is the next battle's opening.
+        events(7, vec![ended.clone(), started(2)]),
+        snapshot(8, attacker()),
+        events(9, vec![ended]),
+        events(10, Vec::new()),
+        snapshot(11, last.clone()),
+    ])
+    .battles();
+    assert_eq!(battles.len(), 4);
+    assert_eq!(
+        battles[0].record.messages,
+        vec![
+            snapshot(1, attacker()),
+            ServerMessage::Events {
+                n: 2,
+                events: vec![end],
+            },
+            snapshot(3, last.clone()),
+            ServerMessage::GameEnded { n: 4, result: WON },
+        ]
+    );
+    assert_eq!(battles[0].at.ended, Some((3, WON)));
+    assert_eq!(battles[0].record.ended(), Some(&last));
+    assert_eq!(battles[1].record.messages.len(), 2);
+    assert_eq!(
+        (battles[2].at.heroes, battles[2].at.opened),
+        ([Some(2), None], 8)
+    );
+    assert_eq!(
+        (battles[3].at.heroes, battles[3].at.opened),
+        ([None, None], 11)
+    );
+}
+
 #[test]
 fn the_battles_read_one_message_at_a_time_as_a_record_s_all() {
     // E17 M7 T3b2: a host's game hands its player's messages over as they come; the battle
