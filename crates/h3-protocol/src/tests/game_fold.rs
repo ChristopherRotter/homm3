@@ -893,6 +893,12 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
                 creature: 3,
                 count: 1,
             }),
+            // A hero the view does not hold as its own (SRV-Q26 (b)).
+            adventure(AdventureEvent::MovementChanged {
+                hero: 9,
+                movement: 100,
+                max_movement: 1_500,
+            }),
             adventure(AdventureEvent::WhirlpoolLoss {
                 hero: 4,
                 slot: 7,

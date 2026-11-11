@@ -114,13 +114,11 @@ impl Planes {
 struct Boxes(Vec<Option<(Pos, Pos)>>);
 
 impl Boxes {
-    /// Adds `pos` to its level's box.
+    /// Adds `pos`, a tile of the map, to its level's box.
     fn add(&mut self, pos: Pos) {
-        if let Some(entry) = self.0.get_mut(usize::from(pos.level)) {
-            let (low, high) = entry.get_or_insert((pos, pos));
-            (low.x, low.y) = (low.x.min(pos.x), low.y.min(pos.y));
-            (high.x, high.y) = (high.x.max(pos.x), high.y.max(pos.y));
-        }
+        let (low, high) = self.0[usize::from(pos.level)].get_or_insert((pos, pos));
+        (low.x, low.y) = (low.x.min(pos.x), low.y.min(pos.y));
+        (high.x, high.y) = (high.x.max(pos.x), high.y.max(pos.y));
     }
 
     /// Whether an object anchored at `anchor` may cover a tile of its level's box: its masks
@@ -191,7 +189,7 @@ impl AdventureState {
                 let x = at((word % stride) * 64 + usize::try_from(bit).unwrap_or(usize::MAX));
                 let pos = Pos::new(x, y, level.unwrap_or(u8::MAX));
                 // Bits past the width are clear in both sights: every changed bit is a tile.
-                let Some(tile) = map.tile(pos) else { continue };
+                let tile = &map.tiles()[row * usize::from(width) + usize::from(x)];
                 let (explored, fringe) = (explored >> bit & 1 == 1, fringe >> bit & 1 == 1);
                 changed_box.add(pos);
                 tiles.push(RevealedTile {

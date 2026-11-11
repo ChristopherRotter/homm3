@@ -15436,4 +15436,14 @@ against the viewer's observation after the command; the tests of other events dr
 **Versions:** protocol v42 (the server lane's, mapped here); none of the adventure lane's moved
 (the ended battles are out of the state hash; an event is in no hash or replay).
 
-**Verify:** see the lane HANDOFF's session entry.
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary` passed every step but
+`check-lane` (by design on a `cross-lane` branch; `cargo xtask check-lane --cross-lane` ok; deny
+and ffi-smoke skipped by the scope); its coverage step, after two regions of `reveal.rs` made
+total (a level's box indexed, a changed bit's tile read by its index), rerun alone: ok. Its
+`bench-check` inside every gate: the fork workloads' +1.3 to +1.8 % and `month-start-xl-144`'s
++1.6 % are `master`'s own (measured on `master` e085069 at the branch's counts); the random plays
++0.01 %. `cargo xtask verify-step coverage --scope server` ok (a `MovementChanged` of a hero the
+view does not hold added to the fold's unchanged-view test); `h3-protocol`'s, `h3-server`'s and
+`h3-sim`'s tests, the golden replays (`h3-cli`), `cargo check --workspace --all-targets`, clippy
+with `-D warnings` on the touched crates. The first scoped run met a hygiene property case that
+fails on `master` too (`b99004…`, the town lane's inbox; not committed as a regression line).
