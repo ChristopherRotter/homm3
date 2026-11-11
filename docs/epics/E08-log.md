@@ -14389,7 +14389,13 @@ ADV-Q48 recorded in `QUESTIONS-ANSWERED.md`.
 **Verify:** the scoped verify with the original data: every step passed (coverage 100 %, determinism
 with the golden replays unchanged, bench-check with every adventure workload at its count,
 `original-data`); `check-docs`, `check-rules`, `check-stubs`, `check-lane` and `doc-drift` on the
-final tree.
+final tree. **CI on the pull request** (#844) found a counterexample of `master`'s `check_towns`
+(`h3-map`'s `tests/play.rs`, the town lane's check): a siege won by a player holding another
+Capitol tells the old owner `TownChanged` with its Capitol after the garrison's battle, then the
+capture's Capitol limit (TWN-CAP-002) demotes it and both viewers are told so. The engine is
+consistent; the check compared every `TownChanged` of the command with the final Capitol and now
+compares each viewer's last one; the seed kept in `proptest-regressions/tests/play.txt`, the
+town lane's inbox told.
 **Versions:** none (tests and docs only; no engine behaviour changed).
 
 #### Increment 11's design note at its closure (moved by T107)
