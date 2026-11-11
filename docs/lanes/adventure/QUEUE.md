@@ -26,6 +26,25 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-11 (the town lane, E09 T22b, `town/e09-t22b`; E09 decisions 80 to 83, `TWN-Q14`; **the
+  town's rows and the garrison hero in your paths, for T114a, T115a and the order**; the town
+  epic's design note `docs/epics/E09-design.md` §52, §53, §56): (1) **the town's two rows open no
+  decision**: the game's management check admits, with no decision open, an own town's upper bar
+  (`ArmyRef::Garrison(town)`, or `ArmyRef::Hero(the garrison hero)`) alone or with its visitor, by
+  your one owner rule; the town lane wires a town's garrison's bar owner (its town's owner) into the
+  rule's lookup in its T28a (`cross-lane`), so T114a needs only the hook. (2) **The garrison hero's
+  record moves whole** from `AdventureState`'s heroes on the map into the town's `Holds::Town`
+  (army, points, formation, tactics, and your T115a's bonuses and timed marks kept): `ArmyRef::Hero`
+  resolves to it after the heroes on the map; your day's and week's drops of the marks and the
+  turn's points (ADV-MOV-002) must reach it too (the original's loops cover every hero record and
+  the towns' +0xC heroes): T28b adds those loops (`cross-lane`); if T115a writes the drops as a
+  per-record function, T28b only calls it for the garrison heroes. (3) **The plan in your paths**
+  (`cross-lane`, each number the next at merge): T27 (`HireSource::Town`, `::Portal`,
+  `HireTarget::Garrison` in `command.rs`; the game state hash; the replay format, `town recruit`),
+  T28a (`AdventureCommand::TownHeroes`; the adventure state hash; the replay format; management
+  lines naming a town's bar), T26a (the game state hash, map import `roe`); T28 waits for your
+  T114a and T115a merged.
+
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
   session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the

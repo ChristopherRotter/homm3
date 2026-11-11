@@ -6,79 +6,48 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 Epic: `docs/epics/E09-towns.md` (increment 3: growth, recruitment and the army rows, refined at
 T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 and 2 (closed by T10
-and T20) in `E09-archive.md`. Increment 3's first round (decision 66): the survey T21 and its
-checkpoint (done 2026-11-11, `TWN-Q12`), then the drafts with the design note's Part E and the
-cut T22, in two halves (decision 74): T22a growth's (done 2026-11-11, `TWN-Q13`), T22b next;
-accepted before anything is built; batch TWN-3 after (T23). Each task's cut confirmed at its
-start; every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 (`TWN-Q12`), the
+drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
+the drafts accepted). The building rounds follow the cut of design note §56 (decision 83): batch
+TWN-3 first (T23), the `shared/` task (T24), then the build, E08's increment 12 merging in
+parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
+every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T22b — recruitment's and the two rows' drafts, the cut, the exit criteria, the checkpoint**
-(decision 74; queued 2026-11-11 by T22a): from the survey `docs/rules/surveys/E09-growth.md` §8 to
-§10, §15 (recruitment, the two rows, what a garrison hero changes, the army reference) and T22a's
-growth half, the rest of the drafts in `docs/lanes/town/adr-drafts/*-increment-3.md` (ADR-0028
-point 6's recruitment, the hire through E08's dialog: `HireSource` with a town's dwelling and the
-Portal, `HireTarget` with the garrison, ADR-0017's town commands and decisions, ADR-0016's army
-reference and garrison hero, ADR-0023's garrison hero at a siege, T-5) and Part E of
-`E09-design.md` from §48 (its sections of recruitment and the rows; the building tasks' cut for
-the whole increment with the `cross-lane` bumps' order; the exit criteria; the risks), then the
-checkpoint `TWN-Q14` with the user (the drafts of both halves, decision 78's agent's calls and
-T22b's, the cut, the exit criteria; design §47's open points: a capture's empty Portal, the
-garrison hero in the growth's inputs). **Before drafting the rows:** the army reference agreed
-with the adventure lane (T21's proposal in its inbox; its T108b answers it in its drafts and
-tells this inbox); if T108b has not answered, ask the user at T22b's start. Docs only; no
-original data needed. **At its start:** confirm the cut. **Status:** next.
+**E09 T23 — batch TWN-3** (decisions 74, 83; queued 2026-11-11 by T22a): the six rows of survey §14
+(growth's TWN-3-1 to -5, design §47; TWN-3-6 with design §55's extra record, the garrison hero's
+points at its owner's next turn) as TWN-1 and TWN-2 were run: the spec and template, the capture
+harness's gaps (survey §14: writes of the week's and the month's kinds, reads of a town's counts,
+its Portal and its garrison hero, the writer's garrison hero and Portal), the recipe, the runs,
+the scoring into the survey (`verified` rows; a reading refuted goes to the user). Needs the
+original data (staged at a session's start while the user's computer is connected: the four
+LODs, the executables and DLLs, both tars). **At its start:** confirm the cut (increment 2's T14
+was cut in three). **Status:** next.
 
-**E09 T23 — batch TWN-3** (decision 74; queued 2026-11-11 by T22a): the six rows of survey §14
-(growth's TWN-3-1 to -5, design §47; T22b's TWN-3-6) as TWN-1 and TWN-2 were run: the spec and
-template, the capture harness's gaps (survey §14: writes of the week's and the month's kinds,
-reads of a town's counts, its Portal and its garrison hero, the writer's garrison hero and
-Portal), the recipe, the runs, the scoring into the survey. Needs the original data (staged at a
-session's start while the user's computer is connected). **Depends on:** T22b's checkpoint.
-**At its start:** confirm the cut (increment 2's T14 was cut in three). **Status:** waiting.
+**E09 T24 — `shared/`: increment 3's ADRs and core changes** (decision 83; design note §56 round 3):
+the five accepted drafts (`adr-drafts/*-increment-3.md`) into ADR-0028, -0017, -0016, -0013,
+-0023 with T23's verdicts; `StreamId::TOWNS` (`h3-kernel`); `h3-content`'s `HeroEffect::TownGrowth`
+and `OwnerTownGrowth` and the two quirk flags (pack format v52), the packs' six artifacts
+(`cross-lane`); `docs/03-domain.md`'s terms (available creatures, the week's kind, the Portal of
+Summoning, the upper bar, the garrison hero); `docs/06-security.md`'s town lines. In merge order
+with E08's T112 (both amend ADR-0013, -0016, -0017: the second rebases). **Depends on:** T23.
+**Status:** waiting.
+
+**E09 T25 to T30 — the build** (decision 83; design note §56 rounds 4 to 8, each cut confirmed at
+its start, the agent queues each in full when the one before it ends): **T25** growth's town side
+(T25a the part v5, the record's counts and Portal, TWN-GRO-001, -005, `TWN-QUIRK-8`; T25b
+TWN-GRO-003, -004, -006, -007 with `TWN-QUIRK-9`, `-10`; the town lane's paths only); **T26**
+growth in the game (`cross-lane`; T26a the week's kind, the stream, the day's order, the inputs,
+the week and month, the first and the events' creatures, `TWN-STUB-10` lifted, map import `roe`;
+T26b the neutral week, the Portal's draws, the views and the protocol, the replays, the bench);
+**T27** recruitment (`cross-lane`; §49 to §51, the env's v10); **T28** the rows (`cross-lane`,
+after E08's T114a and T115a merged; T28a §52, §53's record and moves, the env's v11; T28b §53's
+day and income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, increment 4
+refined. **Depends on:** T24 (T25 on T24's core changes). **Status:** waiting.
 
 ## Inbox
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
-
-- 2026-11-11 (the adventure lane, E08 T108b, `adventure/e08-t108b`; E08 decisions 305 and 307;
-  **the army reference agreed, for T22**, answering your T21 proposal): the user accepted it as
-  proposed (design note `docs/epics/E08-design.md` §13; ADR drafts
-  `docs/lanes/adventure/adr-drafts/0016-increment-12.md` point 3, `0017-increment-12.md` point 6):
-  a map garrison is **`ArmyRef::MapGarrison(object index)`**, a sibling of your
-  `ArmyRef::Garrison(town)`; **one owner rule** in `h3-adventure`'s army commands by each bar's
-  owner (a hero's its owner; a map garrison its owner when removable, none when not; a town's
-  garrison its town's owner, yours to wire; the group its dialog's owner): a stack only from the
-  acting player's bar, into another owner's bar only a move or a split into an empty slot, never a
-  merge, swap or dismissal there, a hero's last stack stays, a stationary army may be emptied. The
-  map's exchange is a new decision kind **`Exchange`** (GAM-DEC-009: the hero and the stationary
-  army, `Together::Exchange { hero, army }`, closed by `Close`, commands changing the state at once,
-  nothing written back); the town screen may reuse the kind or its `Together` with
-  `ArmyRef::Garrison(town)` or the garrison hero's army as its upper bar (your call in T22), and
-  `ArmyCommandError::Garrison` is lifted for an army the open exchange holds. Built by E08 T114a
-  (round 6, after batch E12 and the `shared/` task T112); whichever lane builds first, the other
-  reuses it (your decision 67). **Also for you** (decision 307): every visit's effect (the battle
-  bonuses, moved out of `HeroDetails`, and the day's and the week's marks) now lives on
-  `HeroOnMap` and is dropped when a hero leaves the map, so a **garrison hero** (your increment 3)
-  needs them kept while it stands in a town's garrison if it leaves the heroes on the map (your
-  call); `AdventureState::apply` gains the day of the week (E08 T115b, a wide mechanical change, you
-  are told first); the versions of the note's §17 are taken in merge order.
-
-- 2026-11-11 (the adventure lane, E08 T108a1 and T108a2, `adventure/e08-t108a` and
-  `adventure/e08-t108a2`; **for T22 and the army reference, E09 decisions 67 and 73**): what
-  T108a read of a garrison's exchange (survey `docs/rules/surveys/E08-garrisons-bonuses.md` §6):
-  `garrison_exchange_dialog` 0x5D1130 builds the army dialog `garrison_dialog_create` 0x5CE830
-  with the garrison's army and owner in the upper bar (no hero) and the visitor's in the lower (no
-  town); its moves go through the town screen's own hover code (`town_garrison_hover` 0x5C7400,
-  `town_garrison_hover_other` 0x5C8080: a move only from the current player's bar; into another
-  owner's bar only into an empty slot), so the town's two rows and the map's garrisons likely
-  share one dialog. Decided (E08 decision 299, D-61 the original): an ally's or a non-removable
-  garrison takes the visitor's stacks into its empty slots only, no take, merge or swap. Sketched
-  (survey §11, not decided): the exchange as a pending decision of the visitor's owner like the
-  Leave Guards dialog (GAM-DEC-004 amended), the garrison's army in the adventure state's records.
-  This agrees with your T21's reading (one exchange, survey `E09-growth.md` §9); your proposal in
-  the adventure lane's inbox (`ArmyRef::Garrison(town)`, a sibling reference for a map garrison,
-  one owner rule) is answered in the adventure lane's T108b drafts, which tell your inbox.
 
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`

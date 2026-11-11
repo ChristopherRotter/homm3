@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts accepted (T22a, T22b; TWN-Q13, TWN-Q14), batch TWN-3 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -60,16 +60,58 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
 77. **The week's kind in the game state** (`TWN-Q13`; recommended): beside the month's kind, `WeekStarted` carrying it and the observation showing it as the month's (`cross-lane`, with the protocol's mapping). Not chosen: the town store with a town event.
 78. *Agent's calls of T22a (change freely; listed for `TWN-Q14`):* a horde's growth the core's `horde_growth` (the executable's horde table holds the same figures); `h3_towns::WeekKind` the town crate's type, its value the game's; the eligible week's creatures the town records' levels, an RoE map's only the records with `roe` (a setup flag from the import, map import v22); a `week_of` week drawn then overwritten, the month after it the level's base creature's without the creature's draw (`new_month` 0x4C8F63); the counts bounded at 32 767 (T-10); the external dwellings derived from the owners at each step, by a dwelling's first creature; the Portal drawn at a command's build from the builder's stream, at an event's from the towns' stream, at the setup from the setup stream, at a flagged dwelling from the visitor's, never at a capture (an open point); the week's, the garrisons' and the Portals' loops in `TownId` order; the owner's view showing the counts and the Portal; the quirks planned as `TWN-QUIRK-8` (T-10, fixed), `-9` (T-12), `-10` (T-13). Design note §37 to §47.
 
+79. **T22b whole** (the user at T22b's start, `AskUserQuestion`; the agent recommended the design first,
+    then the cut, the exit criteria and the checkpoint as T22b2): recruitment's and the rows' drafts,
+    Part E from §48, the cut, the exit criteria and `TWN-Q14` in one session. The army reference was
+    settled by the adventure lane's T108b before it (E08 decision 305, T21's proposal as written;
+    the user at T22b's start: "decided by the other lane and merged"). Not chosen: the design, then
+    the plan; recruitment, then the rest.
+80. **The town's two rows open no decision** (`TWN-Q14` (1), recommended; design note §52): in its
+    turn with no decision open, the owner's army commands name an own town's upper bar alone or
+    with its visitor, by E08's one owner rule, as the original's town screen opens at will. Not
+    chosen: E08's `Exchange` decision reused, opened by a town command and closed.
+81. **The garrison hero's record moves whole into the town's** (`TWN-Q14` (2), recommended; §53):
+    `Holds::Town`'s garrison hero, its army, points, marks and bonuses kept; the turn's, the day's
+    and the week's steps, the income and the Legion's share reach it explicitly; not on the map.
+    Not chosen: kept among the heroes on the map with a placement flag; leaving the map and
+    dropping its on-map state.
+82. **A capture's empty Portal is drawn** (`TWN-Q14` (3), recommended; §45, §51): at a capture that
+    finds a standing Portal empty, from the capturer's stream after the capture's own draws (a
+    human's capture opens the town screen, which draws at once). Not chosen: no draw at a capture.
+83. **The cut, the exit criteria and the agent's calls as written** (`TWN-Q14` (4), recommended):
+    the building tasks T23 to T30 in rounds 2 to 8, the rows after E08's T114a and T115a (§56); the
+    eleven exit criteria below (§57); decision 78's calls and T22b's (§49 to §56): recruitment by
+    building (`TownCommand::Recruit { town, building }`), the dialog opened at a count of 0 too, a
+    Portal with nothing summoned refused, the town's refusals given as `HireError`'s, the hire's
+    target the town's upper bar and never the visitor, `HireSeen` in the view and the event, the
+    hero moves as `AdventureCommand::TownHeroes` (`Enter`, `Leave`, `Swap`), `GarrisonHeroChanged`,
+    the own hero view's place, each env entry with its command's task (v10, v11), batch TWN-3's
+    row 6 with the garrison hero's points, `TWN-QUIRK-11` for T-5.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T20** the audit of increment 2's exit criteria, its closure, this refinement. Done 2026-11-11 (decisions 64–67; `E09-log.md`).
 - **T21** the survey (decision 66), kept whole (decision 68). Done 2026-11-11: `docs/rules/surveys/E09-growth.md`, the checkpoint `TWN-Q12` (decisions 69–73; `E09-log.md`).
-- **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66), in two halves (decision 74): **T22a** growth's: done 2026-11-11 (`TWN-Q13`, decisions 74–78; the drafts `adr-drafts/0028-`, `0017-`, `0016-`, `0013-increment-3.md`, growth's half; Part E §37 to §47; no version moved; `E09-log.md`). **T22b** recruitment's and the rows', the cut, the exit criteria, the checkpoint `TWN-Q14`; next.
-- **T23** batch TWN-3 (survey §14; decision 74), after `TWN-Q14`; cut at its start.
+- **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66), in two halves (decision 74): **T22a** growth's: done 2026-11-11 (`TWN-Q13`, decisions 74–78). **T22b** recruitment's and the rows', the cut, the exit criteria: done 2026-11-11 (whole, decision 79; `TWN-Q14`, decisions 80–83; the five drafts `adr-drafts/*-increment-3.md` accepted; Part E §48 to §58; no version moved; `E09-log.md`).
+- **T23** batch TWN-3 (survey §14, row 6 with design §55's record; decision 74); next, cut at its start; needs the original data.
+- **T24** `shared/` (`cross-lane`): the five drafts applied with T23's verdicts, `StreamId::TOWNS`, pack format v52, the glossary, `docs/06-security.md`; in merge order with E08's T112.
+- **T25** growth's town side (T25a, T25b); **T26** growth in the game (T26a, T26b; `cross-lane`); **T27** recruitment (`cross-lane`); **T28** the rows (T28a, T28b; `cross-lane`; after E08's T114a and T115a); **T29** the gates; **T30** the audit and the closure (design note §56).
 
 ### Exit criteria
 
-Proposed with the drafts at T22's checkpoint.
+Accepted at `TWN-Q14` (decision 83; the detail in design note §57):
+
+1. The part's roles `horde`, `portal`, `week_of`, `roe` and the growth parameters compile; each town holds its fourteen counts (at most 32 767, `TWN-QUIRK-8`) and its Portal; a built dwelling gives its first creatures (TWN-GRO-005).
+2. A dwelling's growth is the reading's sum; each week adds it with the week's bonus, halved in a neutral town (TWN-GRO-001, -003).
+3. The week's kind from the towns' stream, public; the month after a `week_of` week; a creature's month (`TWN-QUIRK-10`) and the Plague (`TWN-QUIRK-9`) (TWN-GRO-002, -004; GAM-CAL-002, -003).
+4. A neutral garrison's week; the Portal each week, at its build, a flagged dwelling and a capture; a town event's creatures (TWN-GRO-006, -007, TWN-EVT-004; `TWN-STUB-10` lifted).
+5. Recruitment at a standing dwelling, horde or Portal through the hire dialog into the upper bar's army, an upgraded index's two creatures from one count; refusals change nothing (TWN-REC-001, -002; GAM-DEC-008).
+6. Stacks within an own town's upper bar and between it and the visitor, by the one owner rule (TWN-ROW-001; GAM-MAN-001, -002).
+7. The visitor enters the garrison all or nothing, the garrison hero leaves within the most heroes on the map, the two swap; a garrison hero keeps its record, its points at the turn's start, its spell points and marks' drops, its income and weekly resources (TWN-ROW-002 to -005; ADV-MOV-002, GAM-RES-003, -005).
+8. A garrison hero alone defends the siege, a visitor beside one fights outside and the town stays, an empty one yields the town (`TWN-QUIRK-11`); level 3 sees it (TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001).
+9. Counts, Portal and hire dialog the owner's, the week's kind everyone's; every changed view told (TWN-VEW-004).
+10. The env plays recruitment and the hero moves (v10, v11); the replays record them.
+11. Every rule with id, source and tests; `TWN-QUIRK-8` to `-11`; the gates (coverage, the re-recorded replays, the census to day 29, the benchmarks); batch TWN-3 run and scored.
 
 ## Risks
 

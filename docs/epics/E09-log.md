@@ -3069,3 +3069,52 @@ Ids: questions next 14, decisions next 79.
 **Verify:** docs only: `scripts/verify-once.sh engine --base origin/master` ran the light gates
 (no fingerprinted path changed: `check-rules`, `check-stubs`, `check-docs`, `check-exe-map`, all
 passing), `cargo xtask check-lane` ok; CI on the pull request is the record.
+
+### T22b — recruitment's and the rows' drafts, the cut, the exit criteria (2026-11-11)
+
+Decision 74's second half, kept whole at its start (the user, decision 79; the agent recommended
+the design first, then the cut and the checkpoint). The army reference it waited on was settled
+by the adventure lane's T108b while T22b started (#856, E08 decision 305: T21's proposal as
+written, `ArmyRef::MapGarrison` its sibling, one owner rule, the `Exchange` decision; its note in
+this lane's inbox). Branch `town/e09-t22b`, docs only (the drafts, the design note, the epic, the
+log, the answered questions, the lane's queue and HANDOFF, the adventure lane's inbox). Starting
+point: `master` at 73e5e91 (#855, #856 merged; CI green on `master`'s last code); the light gates
+passed before any change. The user's computer was connected at the start only: the executable,
+`maps.tar` and `extracted.tar` staged then (for the code reading below).
+
+**Read for it** (the address map's entries and two slices): `next_player_turn` 0x4C73AA to
+0x4C74AE sets the points of the player's heroes, its two tavern heroes, then each of its towns'
+garrison heroes (+0xC); `new_day` and the week's Stables loop reach every hero record, so a
+garrison hero's marks drop and its spell points return as any hero's; `town_visitor_to_garrison`
+takes the hero off its owner's list (the economy survey's §14 open point: nothing counts twice).
+
+**Written:**
+- **The drafts**, now whole and accepted: `0028-increment-3.md` (recruitment's rules: the source,
+  the stock, the purchase; the seam across the store, the adventure and the treasury;
+  `TownCommand::Recruit`), `0017-increment-3.md` (the commands, the garrison heroes at the turn's
+  start and in the income, the hire dialog's town sources, the rows without a decision, the env's
+  two entries' groups, the versions, the purchase's application, the battles beside and of a
+  garrison hero; the Portal at a capture), `0016-increment-3.md` (the garrison hero's record in
+  the town, its moves, the references and the owner rule, the hire's sources and target, the visit
+  of a town with a garrison hero, T-5, the views), `0013-increment-3.md` (status only), the new
+  `0023-increment-3.md` (the battle beside a garrison hero not a siege; the garrison hero's town
+  bonuses).
+- **The design note** Part E §48 to §58: scope and sources (§48), the command and the dialog (§49),
+  the purchase (§50), the Portal's hire and a capture's empty Portal (§51), the town's two bars
+  (§52), the garrison hero (§53), what it changes (§54), the views, versions, ids (TWN-REC-001,
+  -002, TWN-ROW-001 to -005; amended TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001, TWN-VIS-002,
+  GAM-DEC-008, GAM-MAN-001, -002, GAM-BAT-001, GAM-RES-003, -005, ADV-MOV-002), `TWN-QUIRK-11`
+  (T-5) and gates (§55), the building tasks T23 to T30 with the order against E08's increment 12
+  (§56), the exit criteria (§57), the risks (§58).
+- **The checkpoint** `TWN-Q14` (four questions; decisions 80–83, each as recommended): the rows
+  without a decision, the garrison hero's record in the town, a capture's empty Portal drawn, the
+  cut, the exit criteria and the agent's calls as written.
+
+**The queue:** T22b out; T23 next, T24 to T30 queued. The adventure lane's inbox told the rows'
+and the garrison hero's plan in its paths (for its T114a and T115a). No version moved. Ids:
+questions next 15, decisions next 84, quirks planned `TWN-QUIRK-8` to `-11`, rules planned
+TWN-GRO-001 to -007, TWN-REC-001, -002, TWN-ROW-001 to -005.
+
+**Verify:** docs only: `scripts/verify-once.sh engine --base origin/master` ran the light gates
+(`check-rules`, `check-stubs`, `check-docs`, `check-exe-map`), `cargo xtask check-lane` ok; CI on
+the pull request is the record.
