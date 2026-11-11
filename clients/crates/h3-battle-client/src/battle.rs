@@ -241,8 +241,8 @@ fn from_game(battle: GameBattle, packs: &Path) -> (Record, FromGame) {
 /// ([`Ground::load_battle`]).
 enum Given {
     Source,
-    Seat(GameSeat),
-    Battle(GameBattle),
+    Seat(Box<GameSeat>),
+    Battle(Box<GameBattle>),
 }
 
 /// Where a press gives a command (E17 M5 T2b).
@@ -429,7 +429,7 @@ impl Ground {
     /// # Errors
     /// A human's side asked for (a record's battle is watched), or as [`Ground::load`].
     pub fn load_battle(source: &Source, battle: GameBattle) -> Result<Self, String> {
-        Self::load_from(source, Given::Battle(battle))
+        Self::load_from(source, Given::Battle(Box::new(battle)))
     }
 
     /// Reads what the battle `seat` follows is drawn from (E17 M7 T3b2): a whole game's battle
@@ -443,7 +443,7 @@ impl Ground {
     /// # Errors
     /// The battle not open, the game's packs absent here, or as [`Ground::load`].
     pub fn load_game(source: &Source, seat: GameSeat) -> Result<Self, String> {
-        Self::load_from(source, Given::Seat(seat))
+        Self::load_from(source, Given::Seat(Box::new(seat)))
     }
 
     /// [`Ground::load`], [`Ground::load_game`] or [`Ground::load_battle`], by what is `given`.
@@ -458,7 +458,7 @@ impl Ground {
             // A whole game's battle played live (E17 M7 T3b2): as a server's seat, its record's
             // opening, its player the one human here (the other side's is the host's game's).
             // The seat stays on that battle (E17 M7 T4, R3-3).
-            let record = seat_opening(&seat).map_err(|_| "the game's battle has not opened")?;
+            let record = seat_opening(&*seat).map_err(|_| "the game's battle has not opened")?;
             seat.follow();
             let index = usize::from(seat.seat() == Seat::Defender);
             // stub: CLT-STUB-5 (a hot-seat battle between two of the host's humans: one side
@@ -475,14 +475,14 @@ impl Ground {
                 ));
             }
             let fought = Fought::Game(Box::new(GameServed {
-                seat: RefCell::new(seat),
+                seat: RefCell::new(*seat),
                 content,
                 ruleset,
             }));
             (record, Some(fought))
         } else if let Given::Battle(battle) = given {
             // A whole game's battle a host holds (E17 M7 T4, R3-4): played as a record.
-            let (record, from) = from_game(battle, &source.packs);
+            let (record, from) = from_game(*battle, &source.packs);
             game = Some(Box::new(from));
             (record, None)
         } else if let Some(server) = &source.server {
@@ -4290,7 +4290,7 @@ pub(crate) mod tests {
     /// the repository's `original-data/install`): none without its archives (E17 M6 T7b, R9-1:
     /// a `Battle`'s text tables are the game's; the test then checks nothing, as on CI).
     pub(crate) fn staged(situation: &str, humans: [bool; 2]) -> Option<Source> {
-        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let install = std::env::var_os("H3_INSTALL")
             .map_or_else(|| repo.join("original-data/install"), PathBuf::from);
         if !install.join("Data/H3bitmap.lod").is_file() {
