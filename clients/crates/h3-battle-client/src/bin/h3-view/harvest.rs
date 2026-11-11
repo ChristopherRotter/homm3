@@ -314,6 +314,10 @@ struct Harvest {
     /// +0xC), and `hotraits.txt`'s names, by hero type.
     hero_defs: Vec<String>,
     hero_casts: Vec<([i32; 2], u32)>,
+    /// The 18 records of `hero_battle_defs` 0x63BD40 (E17 M7 T3b2): the DEF, the cast point, the
+    /// cast frames, by town × 2 + female; and each hero type's record.
+    hero_pictures: Vec<(String, [i32; 2], u32)>,
+    hero_records: Vec<usize>,
     /// The heroes' large portraits (the static hero table's +0x34; E17 M5 T4b1), by hero type.
     hero_portraits: Vec<String>,
     /// Whether each hero type is female (the static hero table's +0; E17 M6 T5a: the Summons'
@@ -539,6 +543,7 @@ fn read_harvest(
     let mut hero_casts = Vec::new();
     let mut hero_portraits = Vec::new();
     let mut hero_female = Vec::new();
+    let mut hero_records = Vec::new();
     for id in 0..HERO_INFO.1 {
         let info = bytes(
             &image,
@@ -561,11 +566,13 @@ fn read_harvest(
             )?,
             0,
         ) as usize;
+        let record = town * 2 + female as usize;
         let (def, point, frames) = battle_defs
-            .get(town * 2 + female as usize)
+            .get(record)
             .ok_or(format!("hero {id}: class {class}'s town {town}"))?;
         hero_defs.push(def.clone());
         hero_casts.push((*point, *frames));
+        hero_records.push(record);
     }
     let mut magic = Vec::new();
     for k in 0..MAGIC.1 {
@@ -714,6 +721,8 @@ fn read_harvest(
         names: creature_names(crtraits)?,
         hero_defs,
         hero_casts,
+        hero_pictures: battle_defs,
+        hero_records,
         hero_portraits,
         hero_female,
         hero_names: hero_names(hotraits),
@@ -952,6 +961,17 @@ fn write_table(
             "\n[battle]\n{GROUPS}\n{HERO_GROUPS}\nflags = [{}]",
             list(&h.flags)
         );
+        // The heroes' battle pictures by town × 2 + female (E17 M7 T3b2), one a line.
+        let _ = writeln!(t, "hero_pictures = [");
+        for (n, (def, point, frames)) in h.hero_pictures.iter().enumerate() {
+            let _ = writeln!(
+                t,
+                "    {{ def = \"{}\", cast = [{}], cast_frames = {frames} }},  # {n}",
+                plain(def)?,
+                numbers(point)
+            );
+        }
+        let _ = writeln!(t, "]");
         // The magic animations by number (E17 M3 T3b), one a line.
         let _ = writeln!(t, "magic = [");
         for (n, (def, place, translucent)) in h.magic.iter().enumerate() {
@@ -1101,6 +1121,10 @@ fn write_table(
         // Only a female hero type says so (E17 M6 T5a).
         if h.hero_female.get(n) == Some(&true) {
             let _ = writeln!(t, "female = true");
+        }
+        // Its record of the 18 (E17 M7 T3b2): its picture by another sex.
+        if let Some(record) = h.hero_records.get(n) {
+            let _ = writeln!(t, "picture = {record}");
         }
     }
     // The spells (E17 M3 T7b-1): by `sptraits.txt`'s name, as the packs' harvester numbers them.

@@ -529,7 +529,7 @@ fn sequences(options: &Options) -> Result<usize, String> {
         let looks = motion::looks(&record, &tables, &archives)?;
         let magic = motion::magic(&record, &tables, &archives, false)?;
         let siege = motion::siege(&record, &tables, &archives)?;
-        let mut casts = motion::casts(&record, &tables, &archives, &options.packs, false)?;
+        let mut casts = motion::casts(&record, &tables, &archives, &options.packs, (false, Bugs::Original))?;
         // The frame check draws Chain Lightning's rays from the original's draws (E17 M3 T7c-3).
         if let Some(dir) = &options.frames {
             casts.rays = kept_rays(&dir.join(&sequence.id))?;
@@ -1081,7 +1081,7 @@ pub(crate) fn draw_frames(
             }
         }
 
-        let mut list = scene::battle_at(snapshot, &moment, manifest, tables, layout)
+        let mut list = scene::battle_as(snapshot, &moment, manifest, tables, layout, Bugs::Original)
             .map_err(|e| e.to_string())?;
         // The moment, then the count boxes drawn (` box<x>,<y>n<count>@<side>.<record>`, their
         // top-left corners: a sequence that does not compare them masks them where they show,

@@ -543,7 +543,7 @@ impl Ground {
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed, every)?;
         let siege = motion::siege(&record, &tables, &parsed)?;
-        let casts = motion::casts(&record, &tables, &parsed, &source.packs, every)?;
+        let casts = motion::casts(&record, &tables, &parsed, &source.packs, (every, Bugs::Fixed))?;
         // A battle fought as it is played may create any creature a spell or a raiser makes.
         let mut looks = looks;
         let made: Vec<u16> = casts.bodies.keys().copied().collect();
@@ -2095,6 +2095,9 @@ impl<'g> Battle<'g> {
         if let Some(snapshot) = self.record.first_snapshot() {
             panels = panels.with_auto(snapshot, self.auto(), Bugs::Fixed);
         }
+        // A whole game's battle played live (E17 M7 T3b2) the same: the computer's choices for
+        // the human's side need the battle's state, which only the host's game holds.
+        // stub: CLT-STUB-4
         if matches!(self.fight, Some(Fight::Server(_))) {
             panels = panels.without_switch();
         }

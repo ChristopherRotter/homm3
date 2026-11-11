@@ -7790,10 +7790,10 @@ host's loop stands in for.
   alone (`h3-view window`) presents as it is.
 - **The outcome** (T3b1): once `closed`, `Hosted::outcome` hands the host how the battle ended
   (the wire's `Outcome`: a battle fought here's by the engine, else its record's `GameEnded`).
-- **Not yet** (*provisional*): a whole game's battle played live through the host's game (T3b2;
-  T3b1 plays one from its record, §13.3); the sound on the host's device and the music through
+- **Not yet** (*provisional*): the sound on the host's device and the music through
   `h3_ui::music` (T3c; until then the element opens a device of its own and a host must not play
-  beside it).
+  beside it). A whole game's battle: from its record (T3b1, §13.3), played live through the
+  host's game (T3b2, §13.4).
 
 ### 13.3 A whole game's battle from its record (M7 T3b1)
 
@@ -7828,11 +7828,81 @@ switch from the adventure screen and back is the host's (the original's combat s
   (`Observation.background`, CLT-Q4: 0x41ADB0's pick by the surroundings, the third without it),
   each side's colour for the heroes' flags and the panel (`SideView.colour`, CLT-Q6, through
   `scene::players`: red and blue without it; a neutral side's not read). The hero's battle
-  picture by a sex the map gave (`Hero.sex`) is not drawn yet: the picture is the record 0x63BD40
-  holds at town × 2 + female, of which the asset tables keep each hero type's own only (T3b2).
+  picture by a sex the map gave (`Hero.sex`): T3b2, §13.5.
 - **Checked:** two golden replays' records (`sea-deck-monster-s1`, a monster's battle;
   `teleporters-exit-battle-s1`, both players' views of a heroes' battle) played unattended to
   their closed result windows, every frame read back exact; a test host's game around a battle
   fought here, windowless.
 - *Provisional*: the names, the numbers afresh, the battle's choice by its number, a record's
   result window only for a whole game's battle (a battle's own record still opens none).
+
+### 13.4 A whole game's battle played live through its host's game (M7 T3b2)
+
+The battle of §13.3 played as it happens: the host (the map client's) runs the whole game itself
+(an in-process `h3_protocol::session::game::GameSession`), and the element plays its player's
+side of the battle through it, as a seat plays its side through a server (§11.2). Not a reading:
+the original's battle is its combat screen's modal loop over the game's own state.
+
+- **The seat** (`h3_battle_client::game_seat::GameSeat`): made from the player's record's header
+  (`GameRecordHeader`: the game's manifest, its id, the player), it takes the player's messages
+  as the host delivers them (`receive`, from the game's start or from the `GameEvents` whose
+  `BattleStarted` begins the battle) and follows the first battle that opens in them
+  (`opened`), its record growing as `h3_view::game_record::Battles` reads them one at a time
+  (T3b1's `GameRecord::battles` reads a record's all through it). What goes out waits for the
+  host (`take_outgoing`, `ToHost`): the player's turn's command as `GameCommand::Battle`
+  numbered by the seat, which the host plays as that player's (`GameSession::play`, whose
+  `GameAccepted` or `GameRejected` echoes the number and frees the turn, a refusal by a code the
+  battle's record holds nothing of too); the turn's queries of its casts' targets (each castable
+  spell's and the active stack's own cast's), which the host answers (`answer`: an in-process
+  host from its battle's state, `GameState::battle(player)` and `h3_protocol::map::query`; the
+  whole game's protocol has no query yet). A turn is given once every query it asked was
+  answered and no command waits, as a server's seat's (`h3_view::remote::turn`, the rule both
+  share).
+- **The battle** (`battle::Remote`): what the battle needs of a seat whose other side is
+  elsewhere (`poll`, `record`, `turn`, `targets`, `send`, `seat`, `over`), implemented by the
+  server's connection (`Online`) and the game's seat; the battle's seat on a server and the
+  game's battle are the same fight (`Fight::Server`) from there: the record grows at each pass,
+  the turn comes to the mouse and the book, a press sends, the panel's Auto Combat disabled, the
+  result window at its end (`GameEnded` in the record), `Hosted::outcome` the game's result.
+- **Loading** (`Ground::load_game(&source, seat)`, once `opened`): the seat's record's opening
+  with its side the one human here, the game's packs compiled from `source.packs` with the
+  content check (absent: refused, as a server's), the archives from `source.install`;
+  `Ground::game_seat` gives the host the seat back (a `RefCell`) for its pass, `in_game` where
+  the battle stands as the seat read it.
+- **A host's pass:** the element's pass (§13.2), then the seat's outgoing commands played and
+  its queries answered, the other side's turns played (another player's, or the system actor's
+  for a monster: `GameSession::system`), and the player's new messages handed to the seat; the
+  element takes them at its next pass (`before`).
+- **Checked:** a test host's real game (`sea-deck-monster-s1`'s, its adventure commands played up
+  to its first battle command; the monster's side the plain choice): the seat alone, each turn
+  the plain choice, its record equal message for message to the battle `h3_view::game_record`
+  reads in the game's record of the player, its end the game's `BattleEnded`; the element over
+  the staged installation, its side pressed by the unattended presses, to its closed result
+  window and the game's outcome. The test needs the adventure's crates in the client workspace
+  (dev-dependencies; `clients.yml`'s paths, #851).
+- *Provisional*: the names; the host answering the queries; the seat's own numbers (its commands'
+  and queries' one sequence from 1); the battle followed the first to open in what the host
+  hands over.
+
+### 13.5 A hero's battle picture by the sex a map gave (M7 T3b2, CLT-Q78)
+
+Read (`battle_load_heroes` 0x463370): the record of `hero_battle_defs` 0x63BD40 is picked by the
+hero's type (the hero's +0x1A) through the static hero table's sex (0x679DD0, +0) and its class's
+town; nothing writes that table at a map's load. A sex a map gives a hero (SoD) is the hero's own
+(+0x3D5), which only the Summons' box's pronoun reads (§12.17). So the original draws a hero a
+map made female with its type's male picture, and its cast point. The user (CLT-Q78 (b)): the
+client draws the picture by the map's sex; the original's profile keeps the type's, for the
+comparisons with its captures.
+
+- **The tables** (a format change, the review list): `[battle]`'s `hero_pictures`, the 18 records
+  (DEF, cast point, cast frames) by town × 2 + female, and each `[[hero]]`'s `picture`, its own
+  record (checked at load: the same DEF and cast, of its own sex); `h3-view harvest` writes both,
+  and the committed tables were given them from the executable.
+- **Drawn** (`Tables::hero_art(key, sex, bugs)`): in the client's profile (`Bugs::Fixed`) a sex
+  the wire gives (`Hero.sex`) picks the record of the hero's town by it; the original's
+  (`Bugs::Original`), no sex or a type without its record, the type's own. The scene draws it
+  (`scene::battle_as` takes the profile, `battle_at` is the client's; the harness's sequences
+  draw the original's), the casts take its point and frames (`motion::casts`'s profile); the
+  hero's group frames are the same for all 18 DEFs (§4.5).
+- **Checked:** the tables' and the scene's tests; no situation gives a hero a sex, so nothing
+  recorded changes (`drawn` all the same).

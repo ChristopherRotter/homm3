@@ -20,11 +20,13 @@ hero_groups = { standing = 0, idle = 1, defeat = 2, victory = 3, cast = 4 }
 flags = ["CmFlagL.def", "CmFlagR.def"]
 magic = [{ def = "Heal.def", place = 1, translucent = true }]
 heal_sound = "Regener"
+hero_pictures = [{ def = "CH00.DEF" }, { def = "CH01.DEF" }]
 
 [[hero]]
 key = "orrin"
 original = 0
 def = "CH00.DEF"
+picture = 0
 
 [[hero]]
 key = "crag_hack"
@@ -1039,6 +1041,30 @@ fn led(hero_type: u16) -> Option<h3_protocol::wire::Hero> {
         spell_book: false,
         sex: None,
     })
+}
+
+#[test]
+fn a_hero_a_map_made_female_is_drawn_so_in_the_client_s_profile() {
+    // E17 M7 T3b2, CLT-Q78: the client's profile draws a hero by the sex the map gave it (its
+    // class's town's record of `hero_battle_defs` 0x63BD40), the original's by its type's
+    // (`battle_load_heroes` 0x463370), for the comparisons with its captures.
+    let (tables, layout) = (tables(), layout());
+    let mut o = battle_view();
+    o.sides[0].hero = led(0).map(|h| h3_protocol::wire::Hero {
+        sex: Some(h3_protocol::wire::Sex::Female),
+        ..h
+    });
+    let hero_def = |list: &[Draw]| {
+        list.iter().find_map(|d| match d {
+            Draw::Hero { def, .. } => Some(def.clone()),
+            _ => None,
+        })
+    };
+    let moment = Moment::default();
+    let fixed = battle_at(&o, &moment, &keys(), &tables, &layout).unwrap();
+    assert_eq!(hero_def(&fixed).as_deref(), Some("CH01.DEF"));
+    let original = battle_as(&o, &moment, &keys(), &tables, &layout, Bugs::Original).unwrap();
+    assert_eq!(hero_def(&original).as_deref(), Some("CH00.DEF"));
 }
 
 #[test]

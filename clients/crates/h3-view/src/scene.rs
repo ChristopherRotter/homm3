@@ -1004,6 +1004,23 @@ pub fn battle_at(
     tables: &Tables,
     layout: &BattleLayout,
 ) -> Result<Vec<Draw>, SceneError> {
+    battle_as(observation, moment, manifest, tables, layout, Bugs::Fixed)
+}
+
+/// [`battle_at`] in the profile `bugs` (E17 M7 T3b2): the original's ([`Bugs::Original`], the
+/// comparisons with its captures) draws each hero by its type's sex, the client's by the one a
+/// map gave it ([`Tables::hero_art`], CLT-Q78).
+///
+/// # Errors
+/// As [`battle`].
+pub fn battle_as(
+    observation: &Observation,
+    moment: &Moment,
+    manifest: &Manifest,
+    tables: &Tables,
+    layout: &BattleLayout,
+    bugs: Bugs,
+) -> Result<Vec<Draw>, SceneError> {
     // A dissolve (E17 M5 T5a, §7.25): the battle as the screen showed it at its start, the
     // moment's blended into it over the area by the step's eighths.
     if let Some(d) = &moment.dissolve {
@@ -1012,7 +1029,7 @@ pub fn battle_at(
             ..moment.clone()
         });
         let [list, drawn] =
-            [d.before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
+            [d.before.as_ref(), &now].map(|m| battle_as(observation, m, manifest, tables, layout, bugs));
         let (rect, measured) = match &d.area {
             DissolveArea::Battlefield => (Some(BATTLEFIELD), Vec::new()),
             DissolveArea::Stacks(ids) => {
@@ -1061,7 +1078,7 @@ pub fn battle_at(
             ..moment.clone()
         };
         let [shown, drawn] =
-            [before.as_ref(), &now].map(|m| battle_at(observation, m, manifest, tables, layout));
+            [before.as_ref(), &now].map(|m| battle_as(observation, m, manifest, tables, layout, bugs));
         return shown.and_then(|mut list| {
             drawn.map(|inner| {
                 list.push(Draw::Within {
@@ -1078,7 +1095,7 @@ pub fn battle_at(
             created: BTreeMap::new(),
             ..moment.clone()
         };
-        return battle_at(&with, &now, manifest, tables, layout);
+        return battle_as(&with, &now, manifest, tables, layout, bugs);
     }
     // A wall shot's explosion (E17 M4 T2b, design §10.2): in its rectangle each frame drawn over a
     // redraw of the battle with its walls' states, without the background restored after the
@@ -1097,7 +1114,7 @@ pub fn battle_at(
             blast: None,
             ..moment.clone()
         };
-        let (background, mut drawn) = drawn(observation, &layer, manifest, tables, layout)?;
+        let (background, mut drawn) = drawn(observation, &layer, manifest, tables, (layout, bugs))?;
         let Some((frame, blast)) = frame.zip(moment.blast.as_ref()) else {
             list = drawn;
             continue;
@@ -1146,7 +1163,7 @@ pub fn shaken(list: Vec<Draw>, steps: u32, layout: &BattleLayout) -> Draw {
     }
 }
 
-/// [`battle_at`] without a wall shot's explosion, and how many of its first draws are the
+/// [`battle_as`] without a wall shot's explosion, and how many of its first draws are the
 /// background buffer's (§4.4: the battlefield's picture and the absolute obstacle; a siege's
 /// background, moat and lip).
 fn drawn(
@@ -1154,7 +1171,7 @@ fn drawn(
     moment: &Moment,
     manifest: &Manifest,
     tables: &Tables,
-    layout: &BattleLayout,
+    (layout, bugs): (&BattleLayout, Bugs),
 ) -> Result<(usize, Vec<Draw>), SceneError> {
     let keys = &manifest.keys;
     let (width, height) = (manifest.field.width, manifest.field.height);
@@ -1336,9 +1353,8 @@ fn drawn(
             continue;
         };
         let key = key(&keys.hero_types, "hero types", hero.hero_type)?;
-        let def = tables
-            .heroes
-            .get(key)
+        let art = tables
+            .hero_art(key, hero.sex, bugs)
             .ok_or_else(|| SceneError::Key(key.to_string()))?;
         let pose = moment.heroes[side].unwrap_or(HeroPose {
             group: standing,
@@ -1355,7 +1371,7 @@ fn drawn(
             player: players(observation)[side],
         });
         list.push(Draw::Hero {
-            def: def.def.clone(),
+            def: art.def.to_string(),
             group: pose.group,
             frame: pose.frame,
             x: hx,

@@ -261,13 +261,14 @@ pub fn heroes(
         let key = keys
             .get(usize::from(hero.hero_type))
             .ok_or_else(|| format!("no hero type handle {}", hero.hero_type))?;
-        let def = tables
-            .heroes
-            .get(key)
+        // The picture by the map's sex (E17 M7 T3b2): every one of the 18 has the same groups
+        // (design §4.5), so its frames are the same in either profile.
+        let art = tables
+            .hero_art(key, hero.sex, Bugs::Fixed)
             .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
         let flag = groups(&tables.battle.flags[side])?;
         looks[side] = Some(HeroLook {
-            frames: groups(&def.def)?,
+            frames: groups(art.def)?,
             flag_frames: flag.get(&0).copied().unwrap_or(0),
         });
     }
@@ -458,13 +459,14 @@ pub fn magic(
 /// *provisional*); with a stack frightened, the record's creatures that frighten (the ruleset's
 /// `fear`, E17 M3 T7b-2b-2b: Fear's line names them). With `every` (E17 M5 T1b: a battle fought
 /// as it is played), every spell's, as if each were cast and a stack frightened and a shield
-/// returned.
+/// returned. A hero's cast point is its battle picture's in the profile `bugs` (E17 M7 T3b2,
+/// [`Tables::hero_art`]: by the sex a map gave it in the client's).
 pub fn casts(
     record: &Record,
     tables: &Tables,
     archives: &[(&str, LodArchive<'_>)],
     packs: &Path,
-    every: bool,
+    (every, bugs): (bool, Bugs),
 ) -> Result<Casts, String> {
     let groups = tables.battle.hero_groups;
     let mut casts = Casts {
@@ -671,15 +673,14 @@ pub fn casts(
             .get(usize::from(hero.hero_type))
             .ok_or_else(|| format!("no hero type handle {}", hero.hero_type))?;
         let art = tables
-            .heroes
-            .get(key)
+            .hero_art(key, hero.sex, bugs)
             .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
         let mut batch = Batch::default();
         batch
-            .add(&art.def, &lookup(archives, &art.def)?)
+            .add(art.def, &lookup(archives, art.def)?)
             .map_err(|e| e.to_string())?;
         let sprite = batch
-            .sprite(&art.def)
+            .sprite(art.def)
             .ok_or_else(|| format!("{}: not a DEF", art.def))?;
         let frames = sprite
             .def
