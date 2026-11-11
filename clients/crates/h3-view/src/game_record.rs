@@ -172,6 +172,8 @@ pub struct Battles {
     /// The last message read ended the battle open (E17 M7 T4, R3-6): a snapshot right after it
     /// is that battle's last.
     ended: bool,
+    /// How many battles opened before those kept (E17 M7 T4, R3-3: [`Battles::keep_last`]).
+    dropped: usize,
 }
 
 impl Battles {
@@ -185,18 +187,21 @@ impl Battles {
             open: None,
             pending: None,
             ended: false,
+            dropped: 0,
         }
     }
 
-    /// How many battles opened so far: those done and the one open.
+    /// How many battles opened so far: those done and the one open (those dropped too).
     #[must_use]
     pub fn opened(&self) -> usize {
-        self.done.len() + usize::from(self.open.is_some())
+        self.dropped + self.done.len() + usize::from(self.open.is_some())
     }
 
-    /// The battle opened `index`-th (from 0, in the order they open), done or open.
+    /// The battle opened `index`-th (from 0, in the order they open), done or open; none for
+    /// one dropped ([`Battles::keep_last`]).
     #[must_use]
     pub fn get(&self, index: usize) -> Option<&GameBattle> {
+        let index = index.checked_sub(self.dropped)?;
         self.done
             .get(index)
             .or_else(|| self.open.as_ref().filter(|_| index == self.done.len()))
@@ -208,8 +213,23 @@ impl Battles {
         self.open.as_ref()
     }
 
-    /// Every battle read, in the order they opened; the last one still open where the messages
-    /// end.
+    /// The battle opened last, open or done (E17 M7 T4, R3-3).
+    #[must_use]
+    pub fn last(&self) -> Option<&GameBattle> {
+        self.open.as_ref().or_else(|| self.done.last())
+    }
+
+    /// Drops every battle done but the one opened last (E17 M7 T4, R3-3: a live seat follows
+    /// that battle alone, `h3_battle_client::game_seat`); [`Battles::opened`] still counts them.
+    pub fn keep_last(&mut self) {
+        let keep = usize::from(self.open.is_none());
+        let drop = self.done.len().saturating_sub(keep);
+        self.done.drain(..drop);
+        self.dropped += drop;
+    }
+
+    /// Every battle read and kept, in the order they opened; the last one still open where the
+    /// messages end.
     #[must_use]
     pub fn finish(self) -> Vec<GameBattle> {
         let mut done = self.done;

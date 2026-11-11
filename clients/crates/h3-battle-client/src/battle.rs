@@ -408,7 +408,8 @@ impl Ground {
     /// played live through its host's game, once it opened ([`GameSeat::opened`]); its player
     /// the one human here, its packs compiled from `source.packs`, the archives read from
     /// `source.install` (its other fields as a record's: the speed, the seed of the viewer's own
-    /// fidgets).
+    /// fidgets). The seat stays on that battle (E17 M7 T4, R3-3): a host makes one for each
+    /// battle it shows.
     ///
     /// # Errors
     /// The battle not open, the game's packs absent here, or as [`Ground::load`].
@@ -423,10 +424,12 @@ impl Ground {
             return Err("a human plays a scenario's battle, not a record's".into());
         }
         let mut game = None;
-        let (record, fight) = if let Some(seat) = seat {
+        let (record, fight) = if let Some(mut seat) = seat {
             // A whole game's battle played live (E17 M7 T3b2): as a server's seat, its record's
             // opening, its player the one human here (the other side's is the host's game's).
+            // The seat stays on that battle (E17 M7 T4, R3-3).
             let record = seat_opening(&seat).map_err(|_| "the game's battle has not opened")?;
+            seat.follow();
             let index = usize::from(seat.seat() == Seat::Defender);
             humans = [index == 0, index == 1];
             let manifest = &record.header.manifest;

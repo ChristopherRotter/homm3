@@ -589,6 +589,55 @@ fn a_snapshot_right_after_a_battle_s_end_is_that_battle_s_last() {
 }
 
 #[test]
+fn the_battles_done_before_the_one_opened_last_may_be_dropped() {
+    // E17 M7 T4 (R3-3): a live seat follows the battle opened last alone; the battles done before
+    // it go, their count kept.
+    let started = GameEvent::BattleStarted {
+        heroes: [Some(2), None],
+        tile: TILE,
+    };
+    let ended = GameEvent::BattleEnded {
+        heroes: [Some(2), None],
+        result: WON,
+    };
+    let mut battles = Battles::new(&header());
+    battles.keep_last();
+    assert_eq!((battles.opened(), battles.last()), (0, None));
+    // A battle opened from the game's message `n`, ended in `n + 2` if `end`.
+    let battle = |battles: &mut Battles, n: u32, end: bool| {
+        let mut messages = vec![
+            events(n, vec![started.clone()]),
+            snapshot(n + 1, attacker()),
+        ];
+        if end {
+            messages.push(events(n + 2, vec![ended.clone()]));
+        }
+        for message in &messages {
+            battles.read(message);
+        }
+    };
+    // One done, the last opened: kept.
+    battle(&mut battles, 1, true);
+    battles.keep_last();
+    assert_eq!(battles.opened(), 1);
+    assert_eq!(battles.last().map(|b| b.at.opened), Some(2));
+    // One open: the one done goes.
+    battle(&mut battles, 4, false);
+    assert_eq!(battles.last(), battles.open());
+    battles.keep_last();
+    assert_eq!(battles.opened(), 2);
+    assert_eq!(battles.get(0), None);
+    assert_eq!(battles.get(1).map(|b| b.at.opened), Some(5));
+    // Two done: the earlier goes.
+    battles.read(&events(6, vec![ended.clone()]));
+    battle(&mut battles, 7, true);
+    battles.keep_last();
+    assert_eq!((battles.opened(), battles.get(1)), (3, None));
+    assert_eq!(battles.last().map(|b| b.at.opened), Some(8));
+    assert_eq!(battles.finish().len(), 1);
+}
+
+#[test]
 fn the_battles_read_one_message_at_a_time_as_a_record_s_all() {
     // E17 M7 T3b2: a host's game hands its player's messages over as they come; the battle
     // opened `k`-th is the one the record's battles give, open until it ends.
