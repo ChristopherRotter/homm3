@@ -333,6 +333,16 @@ fn a_host_s_window_plays_its_game_s_battle_live_and_gets_its_outcome() {
             .contains("not opened")
     );
     host.serve(&mut seat);
+    // E17 M7 T4 (R3-7): the game's packs absent here are refused, as a server's game's.
+    let empty = std::env::temp_dir().join(format!("h3-view-no-packs-{}", std::process::id()));
+    std::fs::create_dir_all(&empty).unwrap();
+    let absent = crate::battle::Source {
+        packs: empty.clone(),
+        ..source.clone()
+    };
+    let refused = crate::battle::Ground::load_game(&absent, seat.clone()).unwrap_err();
+    assert!(refused.contains("packs do not compile"), "{refused}");
+    std::fs::remove_dir(&empty).unwrap();
     let ground = crate::battle::Ground::load_game(&source, seat).unwrap();
     assert_eq!(ground.content(), Some(h3_view::remote::Content::Same));
     assert!(ground.game_seat().is_some() && ground.online().is_none());

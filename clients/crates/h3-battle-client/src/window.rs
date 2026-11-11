@@ -4400,4 +4400,45 @@ pub(crate) mod tests {
         assert!(refused.contains("no battle 2"), "{refused}");
         fs::remove_file(&path).unwrap();
     }
+
+    #[test]
+    fn a_host_plays_a_whole_game_s_battle_it_holds_in_memory() {
+        // E17 M7 T4 (R3-4): the battle a host read itself from a game's record
+        // (`GameRecord::battles`; `a_host_gets_a_whole_game_s_battle_back_with_its_outcome`'s),
+        // loaded with `Ground::load_battle`, plays as the record file's: where it stands, its
+        // result window, the outcome. A human's side is refused: a record's battle is watched.
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let (ruleset, setup) =
+            crate::scenario::battle(&source.input, &source.packs, source.seed).unwrap();
+        let players = ([false, false], Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, source.seed, players).unwrap();
+        while live.next().unwrap().is_some() {}
+        let fought = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let tile = h3_protocol::wire::game::Pos {
+            x: 4,
+            y: 7,
+            level: 0,
+        };
+        let (text, result, ended) = game_record(&fought, ([Some(3), None], tile));
+        let battle = h3_view::game_record::parse(&text)
+            .unwrap()
+            .battles()
+            .remove(0);
+        let at = battle.at;
+        assert_eq!(at.ended, Some((ended, result)));
+        let human = Source {
+            humans: [true, false],
+            ..source.clone()
+        };
+        let refused = Ground::load_battle(&human, battle.clone()).unwrap_err();
+        assert!(refused.contains("not a record's"), "{refused}");
+        let ground = Ground::load_battle(&source, battle).unwrap();
+        assert_eq!(ground.in_game(), Some(at));
+        assert_eq!(ground.content(), Some(h3_view::remote::Content::Same));
+        let (hosted, shown) = hosted_to_close(&ground, &source);
+        assert!(shown > 1);
+        assert_eq!(hosted.outcome(), Some(result));
+    }
 }
