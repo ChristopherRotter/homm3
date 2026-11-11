@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the hero's battle picture by the map's sex, CLT-Q78 (b); design §13.4, §13.5; branch
   `client/e17-m7-t3b2` after #851, the `shared/` PR of `clients.yml`'s paths, merged);
   **T3c** the sound on the host's device; T4 the closure, **which closes E17**. **Next:** T3c.
-  Watch T3b2's pull request until it merges.
+  Watch T3b2's pull request **#854** until it merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -48,7 +48,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-11, E17 M7 T3b2 (done; `client/e17-m7-t3b2`, #851 merged).** Kept whole with the
+- **2026-11-11, E17 M7 T3b2 (done; #854, #851 merged).** Kept whole with the
   user, who agreed the `shared/` PR of `clients.yml`'s paths (#851) and answered CLT-Q78 (b)
   (the original draws a hero by its type's sex, never a map's). The original data staged at
   once (57 files); the baseline's `check.sh` on `master` lost to a VM restart in coverage and
