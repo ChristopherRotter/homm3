@@ -3021,3 +3021,50 @@ survey §15), to agree before T22 and T108b draft.
 **Verify:** docs only (the survey, the epic, the log, the lane's docs, the address map, the
 adventure lane's `QUEUE.md`). `cargo xtask verify --scope town --summary --with-original-data`
 with no failing step; CI on the pull request is the record.
+
+### T22a — growth's drafts and the design note's Part E (2026-11-11)
+
+Decision 66's second task, cut in two at its start (the user, `TWN-Q13`'s first round, decision 74:
+growth now, recruitment and the rows next, batch TWN-3 its own task T23; recommended over T22
+whole without the batch and over the batch first). Branch `town/e09-t22a`, docs only (the drafts,
+the design note, the epic, the answered questions, the lane's queue and HANDOFF, the adventure
+lane's inbox). Starting point: `master` at ea6d390 (#852, #853 merged); the setup's full baseline
+lost to a VM restart about 25 minutes in, CI's green run on `master` standing for it. The
+user's computer was connected at the start only: the original data staged then (57 files, all
+first time).
+
+**The ADR-level choices** (`TWN-Q13`'s second round, one of three; decisions 75–77, each as
+recommended): one towns' stream for every weekly town draw; the Legion's growth as two hero
+effects in the core; the week's kind in the game state beside the month's.
+
+**Read for it** (the code, besides the survey): `new_month` 0x4C8F40's head (the month's kind is
+drawn first; after the week of the Imp it is the Imp's month, 0x4C8F63 to 0x4C8F82, with no
+second draw, so the map spawns Imps and the towns' doubling is skipped); `town_change_owner`
+0x4C62B5 (the external dwellings count by the dwelling record's first creature, +4); the base and
+AB packs (the core's `horde_growth` equals the executable's horde table for all twenty-two
+creatures with a horde; 112 creatures with a faction in the base pack, 126 with AB: the week's
+eligible sets).
+
+**Written:**
+- **The drafts**, growth's half (T22b adds the rest): `docs/lanes/town/adr-drafts/0028-increment-3.md`
+  (the record's counts and Portal, the seven rules, the part's roles `horde`, `portal`,
+  `week_of`, a record's `roe`, the parameters, the seams, the versions), `0017-increment-3.md` (the
+  week's kind and the towns' stream in the state, the day's order, the draws, the viewers, the
+  versions, the garrison week's outcome), `0016-increment-3.md` (a neutral town's garrison written
+  by the game; the dwellings read), `0013-increment-3.md` (point 16.4: a hero's town growth).
+- **The design note** Part E, §37 to §47: scope and the halves (§37), the part (§38), the core's
+  effects, flags and stream (§39), the record and the store (§40), a dwelling's growth and its
+  inputs (§41), the week (§42), the month (§43), a neutral garrison's week (§44), the Portal
+  (§45), first creatures and the events' creatures (§46), the day's order, views, versions, ids
+  (TWN-GRO-001 to -007; TWN-EVT-004, TWN-VEW-004, GAM-CAL-002, -003 amended), quirks
+  (`TWN-QUIRK-8` to `-10` planned), gates, batch TWN-3's growth rows and the open points for T22b
+  (§47).
+- **The agent's calls** (decision 78), for `TWN-Q14`.
+
+**The queue:** T22 out, T22b and T23 in. The adventure lane's inbox told the growth's planned
+`cross-lane` changes in its paths (the week's kind, GAM-CAL-002 and -003, the setup's `roe`,
+`h3-heroes`' derivations, the hashes and the pack format), for T108b's versions. No version moved.
+Ids: questions next 14, decisions next 79.
+
+**Verify:** docs only. `cargo xtask verify --scope town --summary --with-original-data` with no
+failing step; CI on the pull request is the record.
