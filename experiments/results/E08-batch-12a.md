@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `1b13d955`.** The map's description in the scenario list starts with "Stamp 1b13d955.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `d2c37714`.** The map's description in the scenario list starts with "Stamp d2c37714.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
@@ -88,19 +88,19 @@ Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an a
 
 1. Day 1, Red's turn, after E12-2: Red's garrison G3 covers (28, 6) to (30, 6), its entrance the middle tile (29, 6), with five Pikemen; it is **not removable** (the map's flag). E12-3 stands at (29, 4), north of it, with ten Pikemen, five Archers and two Griffins (slots 0, 1, 2). Read its points and G3's record.
 2. Click G3's entrance (29, 6) twice: E12-3 steps onto it. Note every dialog and message (the exchange: its two bars), then E12-3's tile and points.
-3. In the exchange, four tries, noting both bars after each (and any message): (a) **a move**: click E12-3's Archers (lower bar, slot 1), then G3's empty slot 1 (upper bar); (b) **a merge**: click E12-3's Pikemen (lower slot 0), then G3's Pikemen (upper slot 0); (c) **a take**: click G3's Pikemen (upper slot 0), then E12-3's empty slot 1 (lower bar); (d) **a take back**: click the Archers in G3's slot 1 (if they are there), then E12-3's empty slot 1. Close it with OK; note G3's record and E12-3's army.
+3. In the exchange, four tries in this order, noting before each which stack is highlighted and after each both bars (and any message; if a creature's window opens, note it, close it and go on): (a) **a move**: click E12-3's Archers (lower bar, slot 1), then G3's empty slot 1 (upper bar); (c) **a take**: click G3's Pikemen (upper slot 0), then E12-3's empty slot 3 (lower bar); (d) **a take back**: click the Archers in G3's slot 1 (if they are there), then E12-3's empty slot 4; (b) **a merge**: click E12-3's Pikemen (lower slot 0), then G3's Pikemen (upper slot 0). Close it with OK; note G3's record and E12-3's army.
 
 **Record**
 
 - E12-3 before: points; G3's record (owner, stacks, removable): 
 - the step onto (29, 6): dialogs and messages (the exchange's bars); E12-3's tile; points: 
 
-| try | the upper bar after | the lower bar after | messages |
-|---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+| try (a, c, d, b) | highlighted before | the upper bar after | the lower bar after | messages |
+|---|---|---|---|---|
+|   |   |   |   |   |
+|   |   |   |   |   |
+|   |   |   |   |   |
+|   |   |   |   |   |
 
 - after OK: G3's record (stacks); E12-3's army: 
 - anything odd: 

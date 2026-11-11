@@ -2,7 +2,7 @@
 
 Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
-**Stamp `c3f5d659`.** The map's description in the scenario list starts with "Stamp c3f5d659.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
+**Stamp `216b91af`.** The map's description in the scenario list starts with "Stamp 216b91af.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
 
 **Difficulty: Easy.** Choose it in the scenario list before you start.
 
@@ -15,7 +15,7 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 7. **A cast:** open the hero's spell book on the adventure map, cast View Earth, close its view.
 8. **The exchange between two heroes** (a click on a hero of one's own beside the hero): a move is a click on a stack, then a click on an empty slot of the other hero's bar (slots 0 to 6 from the left); close it with OK.
 9. Each battle by auto combat. A level-up's dialog: take the left skill.
-10. Order, Red's turns (Blue ends each of its turns at once): **day 1**: E12-12's reads, E12-17, E12-14, E12-9, E12-10, E12-11, E12-13, E12-7; **day 2**: E12-12, E12-14, E12-10, E12-11, E12-13 (E12-16's land part); **days 3 to 5**: E12-12; **day 6**: E12-12, E12-11; **day 7**: E12-12, E12-11; **day 8**: E12-12, E12-9; then end the turns to **day 15** and **day 22**: E12-12 on each. Then the map is done.
+10. Order, Red's turns (Blue ends each of its turns at once): **day 1**: E12-12's reads, E12-17, E12-14, E12-9, E12-10, E12-11, E12-13, E12-7; **day 2**: E12-12, E12-14, E12-10, E12-11, E12-13 (E12-16's land part); **days 3 to 5**: E12-12; **day 6**: E12-12, E12-11; **day 7**: E12-12, E12-11; **day 8**: E12-12, E12-9, E12-10's reads; then end the turns to **day 15** and **day 22**: E12-12 on each. Then the map is done.
 11. Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.
 
 ## E12-17 — Two Fountains of Fortune through the weeks (E12-12); a School of War visited without gold: refused, the kind mark set before the gold test, the hint over a second School (E12-17) (ADV-BON-003, GAM-CAL-002, ADV-TCH-002, ADV-BON-009, ADV-VIS-006)
@@ -26,7 +26,7 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 2. **E12-17.** Day 1, Red's turn, after E12-12's reads (Red's treasury: 0 gold after the day's message): the Schools of War S1 (entered at (51, 22)) and S2 (entered at (51, 26)). E12-17 stands at (54, 24) with one Archangel. Read Red's gold, E12-17's points and its School of War bits (hero +0x7B).
 3. With E12-17 selected, the hint over S2's entrance (51, 26); note its text.
 4. Click S1's entrance (51, 22) twice: E12-17 steps onto it. Note every message and dialog (their texts; answer a question with its leave or cancel button), then E12-17's tile, points, attack, defense, +0x7B, and Red's gold.
-5. With E12-17 selected, the hints over S2's entrance (51, 26) and S1's (51, 22); note each text.
+5. Click (52, 23) twice: E12-17 steps off S1, south-east (a hero on an entrance hides its object from the hint). With E12-17 selected, the hints over S2's entrance (51, 26) and S1's (51, 22); note each text and E12-17's points.
 
 **Record**
 
@@ -47,7 +47,7 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 - the hint over S2 (51, 26) before: 
 - the step onto S1 (51, 22): messages and dialogs (texts): 
 - after it: E12-17's tile; points; attack; defense; +0x7B; Red's gold: 
-- the hints after: over S2 (51, 26); over S1 (51, 22): 
+- the hints after (E12-17 on (52, 23)): over S2 (51, 26); over S1 (51, 22); E12-17's points: 
 - anything odd: 
 
 ## E12-14 — Two Magic Wells: a full hero, a refill after a cast, another Well the same day, the next day (ADV-BON-006, HER-MAN-001, HER-MAN-002)
@@ -77,8 +77,8 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 1. Day 1, Red's turn, after E12-14: the Magic Spring's entrances L (17, 5) and R (18, 5). E12-9 stands at (16, 6) with one Archangel, a spell book with View Earth, knowledge 2 (its maximum 20, full). Read its spell points and the words of L and R (bit 6).
 2. Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word.
 3. Cast View Earth; read the spell points. Click R (18, 5) twice: E12-9 steps onto it. Note every message, the spell points and L's word.
-4. Cast View Earth; read the spell points. Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word.
-5. Day 8, Red's turn (the second week's first day): read E12-9's tile, spell points and R's word. Cast View Earth; read the spell points. Click R (18, 5) twice: note every message, the spell points and L's word. Cast View Earth; read the spell points. Click L (17, 5) twice: note every message, the spell points and R's word.
+4. Cast View Earth; read the spell points. Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word. Then click (17, 6) twice (E12-9 steps off, south) and read L's and R's words.
+5. Day 8, Red's turn (the second week's first day): read E12-9's tile, spell points and the words of L and R. Cast View Earth; read the spell points. Click R (18, 5) twice: note every message, the spell points and L's word. Cast View Earth; read the spell points. Click L (17, 5) twice: note every message, the spell points and R's word.
 
 **Record**
 
@@ -86,7 +86,8 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 - onto L: messages; spell points; R's bit 6: 
 - the cast: spell points; onto R: messages; spell points; L's bit 6: 
 - the cast: spell points; onto L again: messages; spell points; R's bit 6: 
-- day 8 before: E12-9's tile; spell points; R's bit 6: 
+- off to (17, 6): L's bit 6; R's bit 6: 
+- day 8 before: E12-9's tile; spell points; L's bit 6; R's bit 6: 
 - day 8, the cast: spell points; onto R: messages; spell points; L's bit 6: 
 - day 8, the cast: spell points; onto L: messages; spell points; R's bit 6: 
 - anything odd: 
@@ -104,6 +105,7 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 6. Click E12-10 (39, 6) with E12-10b twice: the exchange opens. Move E12-10's Cavaliers of slot 2 into E12-10b's empty slot 0; close it. Note both armies.
 7. Click ST's entrance (38, 5) with E12-10 twice: note every message, its points, day's maximum and army. Then click (39, 5) with E12-10 twice (it steps off, east).
 8. Click ST's entrance (38, 5) with E12-10b twice: note every message, its points, day's maximum and army.
+9. Day 8, Red's turn (the second week's first day): read both heroes' day's maximum, points, bit 1 and armies.
 
 **Record**
 
@@ -115,6 +117,7 @@ Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an a
 - the exchange back: both armies after: 
 - E12-10 onto ST again: messages; points; maximum; army: 
 - E12-10b onto ST again: messages; points; maximum; army: 
+- day 8: E12-10's maximum, points, bit 1, army; E12-10b's the same: 
 - anything odd: 
 
 ## E12-11 — The Idol of Fortune on days 1, 2 and 7, the Temple on days 6 and 7, a battle between (the marks cleared) (ADV-BON-002, GAM-BAT-014, HER-ADV-008)

@@ -87,7 +87,7 @@ instructions = [
     "**A cast:** open the hero's spell book on the adventure map, cast View Earth, close its view.",
     "**The exchange between two heroes** (a click on a hero of one's own beside the hero): a move is a click on a stack, then a click on an empty slot of the other hero's bar (slots 0 to 6 from the left); close it with OK.",
     "Each battle by auto combat. A level-up's dialog: take the left skill.",
-    "Order, Red's turns (Blue ends each of its turns at once): **day 1**: E12-12's reads, E12-17, E12-14, E12-9, E12-10, E12-11, E12-13, E12-7; **day 2**: E12-12, E12-14, E12-10, E12-11, E12-13 (E12-16's land part); **days 3 to 5**: E12-12; **day 6**: E12-12, E12-11; **day 7**: E12-12, E12-11; **day 8**: E12-12, E12-9; then end the turns to **day 15** and **day 22**: E12-12 on each. Then the map is done.",
+    "Order, Red's turns (Blue ends each of its turns at once): **day 1**: E12-12's reads, E12-17, E12-14, E12-9, E12-10, E12-11, E12-13, E12-7; **day 2**: E12-12, E12-14, E12-10, E12-11, E12-13 (E12-16's land part); **days 3 to 5**: E12-12; **day 6**: E12-12, E12-11; **day 7**: E12-12, E12-11; **day 8**: E12-12, E12-9, E12-10's reads; then end the turns to **day 15** and **day 22**: E12-12 on each. Then the map is done.",
     "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
 ]
 
@@ -273,7 +273,7 @@ procedure = [
     "**E12-17.** Day 1, Red's turn, after E12-12's reads (Red's treasury: 0 gold after the day's message): the Schools of War S1 (entered at (51, 22)) and S2 (entered at (51, 26)). E12-17 stands at (54, 24) with one Archangel. Read Red's gold, E12-17's points and its School of War bits (hero +0x7B).",
     "With E12-17 selected, the hint over S2's entrance (51, 26); note its text.",
     "Click S1's entrance (51, 22) twice: E12-17 steps onto it. Note every message and dialog (their texts; answer a question with its leave or cancel button), then E12-17's tile, points, attack, defense, +0x7B, and Red's gold.",
-    "With E12-17 selected, the hints over S2's entrance (51, 26) and S1's (51, 22); note each text.",
+    "Click (52, 23) twice: E12-17 steps off S1, south-east (a hero on an entrance hides its object from the hint). With E12-17 selected, the hints over S2's entrance (51, 26) and S1's (51, 22); note each text and E12-17's points.",
 ]
 record = [
     { table = ["day", "F1 (26, 4): value; team bits", "F2 (30, 4): value; team bits"], rows = 10 },
@@ -281,7 +281,7 @@ record = [
     { field = "the hint over S2 (51, 26) before" },
     { field = "the step onto S1 (51, 22): messages and dialogs (texts)" },
     { field = "after it: E12-17's tile; points; attack; defense; +0x7B; Red's gold" },
-    { field = "the hints after: over S2 (51, 26); over S1 (51, 22)" },
+    { field = "the hints after (E12-17 on (52, 23)): over S2 (51, 26); over S1 (51, 22); E12-17's points" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -290,7 +290,8 @@ E12-12:
 - **The value** (survey §10.6; 0x4C1479 at a new game, 0x4C8C9F at each new week): the tile word's
   bits 13 to 16, drawn by `random_between(0, 3)`, 0 giving **−1** and 1 to 3 themselves: each of
   −1, +1, +2, +3 one in four, for each fountain apart (in the map walk's order among the weekly
-  classes; this map holds no other). **Unchanged on days 2 to 7**; drawn again on **days 8, 15
+  classes: here also the four Peasants, class 54, all beaten by day 6). **Unchanged on days 2 to
+  7**; drawn again on **days 8, 15
   and 22** (each new week). Never 0 (no fountain has a body to set it). The team bits **0**
   throughout (cleared at the new game, kept at a week; nobody visits). VCMI: four rewards of 25 %,
   reset every 7 days (the same law); the wiki: −1 to +3, changed on a week's first day.
@@ -309,8 +310,9 @@ E12-17:
   Red's team), then Red's gold below 1 000: **refused with a message** (its text; no question, no
   choice), **no hero mark**, nothing paid; E12-17 on **(51, 22)** with **1 618** (382: (53, 23),
   (52, 23), (51, 22)), attack and defense 1, +0x7B 0, gold 0.
-- **The hints after:** over S2 **the name, the bonus line (XtraInfo record 10), "not visited"**;
-  over S1 the same (its own bit clear too: the refusal set none). So a refused visit counts as
+- **The hints after** (E12-17 stepped off to (52, 23), 141: 1 477; a hero standing on an entrance
+  makes the tile read as the hero's, survey §7): over S2 **the name, the bonus line (XtraInfo
+  record 10), "not visited"**; over S1 the same (its own bit clear too: the refusal set none). So a refused visit counts as
   seen for the hint (the reading's point; decision 302 builds the kind marks so).
 """
 [encounter.hero]
@@ -374,15 +376,16 @@ procedure = [
     "Day 1, Red's turn, after E12-14: the Magic Spring's entrances L (17, 5) and R (18, 5). E12-9 stands at (16, 6) with one Archangel, a spell book with View Earth, knowledge 2 (its maximum 20, full). Read its spell points and the words of L and R (bit 6).",
     "Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word.",
     "Cast View Earth; read the spell points. Click R (18, 5) twice: E12-9 steps onto it. Note every message, the spell points and L's word.",
-    "Cast View Earth; read the spell points. Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word.",
-    "Day 8, Red's turn (the second week's first day): read E12-9's tile, spell points and R's word. Cast View Earth; read the spell points. Click R (18, 5) twice: note every message, the spell points and L's word. Cast View Earth; read the spell points. Click L (17, 5) twice: note every message, the spell points and R's word.",
+    "Cast View Earth; read the spell points. Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word. Then click (17, 6) twice (E12-9 steps off, south) and read L's and R's words.",
+    "Day 8, Red's turn (the second week's first day): read E12-9's tile, spell points and the words of L and R. Cast View Earth; read the spell points. Click R (18, 5) twice: note every message, the spell points and L's word. Cast View Earth; read the spell points. Click L (17, 5) twice: note every message, the spell points and R's word.",
 ]
 record = [
     { field = "day 1 before: spell points; L's word (bit 6); R's word (bit 6)" },
     { field = "onto L: messages; spell points; R's bit 6" },
     { field = "the cast: spell points; onto R: messages; spell points; L's bit 6" },
     { field = "the cast: spell points; onto L again: messages; spell points; R's bit 6" },
-    { field = "day 8 before: E12-9's tile; spell points; R's bit 6" },
+    { field = "off to (17, 6): L's bit 6; R's bit 6" },
+    { field = "day 8 before: E12-9's tile; spell points; L's bit 6; R's bit 6" },
     { field = "day 8, the cast: spell points; onto R: messages; spell points; L's bit 6" },
     { field = "day 8, the cast: spell points; onto L: messages; spell points; R's bit 6" },
     { field = "anything odd" },
@@ -395,11 +398,12 @@ predictions = """
   clear: ADVEVENT 75, nothing; at or above 40: 76, nothing (the entrance stays full).
 - **Day 1:** before 20, L and R full. **Onto L: 40, 74**; R still full. The cast: 38. **Onto R:
   40, 74** (its own word: D-62's point), L emptied (bit 6 clear). The cast: 38. **Onto L again:
-  75, nothing**, 38; R emptied. **VCMI 1.7.5:** one object visited once a week (`visitMode:
+  75, nothing**, 38; R emptied. Off to (17, 6): **both emptied**. **VCMI 1.7.5:** one object visited once a week (`visitMode:
   once`): the step onto R **refused** (38 kept). The wiki: two independent tiles.
 - **Days 2 to 7:** 38 stays (above the maximum: HER-MAN-002 never lowers, no regain past 20).
-- **Day 8** (0x4C8B9C sets bit 6 on every entrance at a new week): E12-9 on L with 38; R full.
-  The cast: 36. **Onto R: 40, 74**; L full. The cast: 38. **Onto L: 40, 74**; R emptied. VCMI: the
+- **Day 8** (0x4C8B9C sets bit 6 on every entrance at a new week): E12-9 on (17, 6) with 38; **L
+  and R full**. The cast: 36. **Onto R** ((18, 5), from below-left, 141): **40, 74**; L full. The
+  cast: 38. **Onto L** (100): **40, 74**; R emptied. VCMI: the
   first refill, the second refused.
 """
 [encounter.hero]
@@ -426,6 +430,7 @@ procedure = [
     "Click E12-10 (39, 6) with E12-10b twice: the exchange opens. Move E12-10's Cavaliers of slot 2 into E12-10b's empty slot 0; close it. Note both armies.",
     "Click ST's entrance (38, 5) with E12-10 twice: note every message, its points, day's maximum and army. Then click (39, 5) with E12-10 twice (it steps off, east).",
     "Click ST's entrance (38, 5) with E12-10b twice: note every message, its points, day's maximum and army.",
+    "Day 8, Red's turn (the second week's first day): read both heroes' day's maximum, points, bit 1 and armies.",
 ]
 record = [
     { field = "day 1 before: E12-10's points, maximum, +0x105, army; E12-10b's the same" },
@@ -436,6 +441,7 @@ record = [
     { field = "the exchange back: both armies after" },
     { field = "E12-10 onto ST again: messages; points; maximum; army" },
     { field = "E12-10b onto ST again: messages; points; maximum; army" },
+    { field = "day 8: E12-10's maximum, points, bit 1, army; E12-10b's the same" },
     { field = "anything odd" },
 ]
 predictions = """
@@ -447,7 +453,8 @@ predictions = """
   new week, 0x4C8D2A); while it holds, `hero_max_land_movement` adds 400 to the day's land points.
 - **Day 1:** both 1 560 / 1 560 (the slowest speed 4, Pikemen). **E12-10 onto ST** ((39, 6), (38,
   5) or (38, 6), (38, 5): 241): **137**, 1 319 + 400 = **1 719**, maximum **1 960**, bit 1, army
-  unchanged. The exchange (one diagonal step to (39, 6), 141: 1 578): E12-10 Pikeman 5, Cavalier 3,
+  unchanged. The exchange (one diagonal step to (39, 6), 141: **1 578**, or **1 437** if the
+  meeting's step is paid as a neighbour's visit's, ADV-OBJ-003): E12-10 Pikeman 5, Cavalier 3,
   Cavalier 3; E12-10b —, —, Pikeman 5. **E12-10b onto ST** ((39, 7), (38, 6), (38, 5): 341;
   E12-10's visit does not count for it): **137**, 1 219 + 400 = **1 619**, maximum **1 960**, bit
   1; no Cavaliers, so no upgrade. Off to (37, 6): 1 478.
@@ -459,6 +466,8 @@ predictions = """
   addition). **VCMI 1.7.5:** while its `ONE_WEEK` bonus holds nothing at all: both keep their
   Cavaliers, no message of an upgrade; day 2's points the same (+400 to the week's end). The wiki:
   +400 a day for the rest of the week; Cavaliers upgraded free.
+- **Day 8** (the new week clears bit 1 for every hero, 0x4C8D2A): both **bit 1 clear, 1 560 /
+  1 560** (the slowest still the Pikemen; Champions are speed 9).
 """
 [encounter.hero]
 type = "Thorgrim"
@@ -646,9 +655,10 @@ E12-16, water:
 
 - **The hints before** (from (47, 36), both explored): **B2: the name, "not visited"; M2: the
   name, "not visited"** (no kind mark: k 0 and 16 clear; E12-7's bits 2 and 15 clear).
-- **B1** (to (50, 34): (48, 34), (49, 34), (50, 34), 341): ADVEVENT 21, +1 morale (bit 2; k 0).
-  **M1** ((51, 34), (52, 34), (53, 33): 341): 83, +1 luck (bit 15; k 16). Points left positive
-  either way (a neighbour's visit priced or not).
+- **B1** (to (50, 34): (48, 34), (49, 34), (50, 34), 341, and the visit's step to B1 paid, 141, as
+  any neighbour's visit, ADV-OBJ-003: 1 071 − 482 = **589**): ADVEVENT 21, +1 morale (bit 2; k 0):
+  **+0x11A 1** (the Oasis's morale went with M8's battle). **M1** ((51, 34), (52, 34), (53, 33):
+  341): **248**; 83, +1 luck (bit 15; k 16): **+0x11B 1**.
 - **The hints after:** E12-7 selected: **the name, the bonus line (XtraInfo 0, 16), "visited"**;
   E12-17 selected: **the name, the bonus line, "not visited"**.
 """

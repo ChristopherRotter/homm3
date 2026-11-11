@@ -203,7 +203,10 @@ fn the_writer_s_reward_objects_read_back_and_import() {
         ),
         monster((23, 5), 0, Some(7)),
     ];
-    for (i, class) in [22, 63, 100, 101, 104, 105, 108, 107].into_iter().enumerate() {
+    for (i, class) in [22, 63, 100, 101, 104, 105, 108, 107]
+        .into_iter()
+        .enumerate()
+    {
         objects.push(w::MapObject::Plain(w::Plain {
             tile: (2 + 3 * u8::try_from(i).unwrap(), 12),
             template: template(class, 0),

@@ -170,7 +170,7 @@ E12-5:
   revealed when √(dx² + dy²) ≤ 3.5, that is dx² + dy² ≤ 12 (ADV-FOG-002's test, `fog.rs`). Around
   (30, 31): **(30, 28) explored** (9), **(33, 31) explored** (9), **(32, 33) explored** (8); **(30,
   27) not** (16), **(34, 31) not** (16), **(33, 33) not** (13). No Red hero sees them: the nearest,
-  E12-6 at (23, 19), is at 130 or more from each (> 30). VCMI: an owned object's sight radius 3,
+  E12-6 at (23, 19), is at 113 or more from each (> 30). VCMI: an owned object's sight radius 3,
   round(√(dx² + dy²)) ≤ 3: the same tiles.
 - **The records** (survey §2, the loader 0x502A00; T109a's writer): V1 (8, 3) Red, Pikeman 2,
   removable; G2 (19, 6) neutral (-1), empty, removable; G3 (29, 6) Red, Pikeman 5, **not
@@ -230,7 +230,8 @@ predictions = """
   garrison's entrance goes on when the record's owner and the hero's are of one team, in every
   mode: V1 is Red's, so the path crosses it: **(7, 3), (8, 3), (9, 3), (10, 3)** (400). The way
   round the wall (by row 14) is longer and lies unexplored. Class 219 is loaded as 33 (survey §2),
-  so the vertical garrison is passed as a horizontal one.
+  so the vertical garrison is passed by class 33's rules (still entered from the column left of it
+  or right of it).
 - **The walk** (`hero_move_step` 0x4805E0's case 33): the step onto (8, 3) is not the planned
   destination, the player is human and the garrison its team's: the step's visit is cleared, **no
   exchange on the way**; E12-1 on **(10, 3)** with **1 600**; V1 unchanged (Pikeman 2). **VCMI
@@ -300,12 +301,12 @@ questions = ["D-61", "ADV-GAR-003", "GAM-DEC-004"]
 procedure = [
     "Day 1, Red's turn, after E12-2: Red's garrison G3 covers (28, 6) to (30, 6), its entrance the middle tile (29, 6), with five Pikemen; it is **not removable** (the map's flag). E12-3 stands at (29, 4), north of it, with ten Pikemen, five Archers and two Griffins (slots 0, 1, 2). Read its points and G3's record.",
     "Click G3's entrance (29, 6) twice: E12-3 steps onto it. Note every dialog and message (the exchange: its two bars), then E12-3's tile and points.",
-    "In the exchange, four tries, noting both bars after each (and any message): (a) **a move**: click E12-3's Archers (lower bar, slot 1), then G3's empty slot 1 (upper bar); (b) **a merge**: click E12-3's Pikemen (lower slot 0), then G3's Pikemen (upper slot 0); (c) **a take**: click G3's Pikemen (upper slot 0), then E12-3's empty slot 1 (lower bar); (d) **a take back**: click the Archers in G3's slot 1 (if they are there), then E12-3's empty slot 1. Close it with OK; note G3's record and E12-3's army.",
+    "In the exchange, four tries in this order, noting before each which stack is highlighted and after each both bars (and any message; if a creature's window opens, note it, close it and go on): (a) **a move**: click E12-3's Archers (lower bar, slot 1), then G3's empty slot 1 (upper bar); (c) **a take**: click G3's Pikemen (upper slot 0), then E12-3's empty slot 3 (lower bar); (d) **a take back**: click the Archers in G3's slot 1 (if they are there), then E12-3's empty slot 4; (b) **a merge**: click E12-3's Pikemen (lower slot 0), then G3's Pikemen (upper slot 0). Close it with OK; note G3's record and E12-3's army.",
 ]
 record = [
     { field = "E12-3 before: points; G3's record (owner, stacks, removable)" },
     { field = "the step onto (29, 6): dialogs and messages (the exchange's bars); E12-3's tile; points" },
-    { table = ["try", "the upper bar after", "the lower bar after", "messages"], rows = 4 },
+    { table = ["try (a, c, d, b)", "highlighted before", "the upper bar after", "the lower bar after", "messages"], rows = 4 },
     { field = "after OK: G3's record (stacks); E12-3's army" },
     { field = "anything odd" },
 ]
@@ -317,10 +318,12 @@ predictions = """
   player's.
 - **(a) the move: made** (0x5C7609: a move or split into an empty slot of a bar of another owner
   tests no owner): upper Pikeman 5, Archer 5; lower Pikeman 10, —, Griffin 2.
-- **(b) the merge: refused** (0x5C7532, 0x5C7700 test the target bar's owner: a target holding a
-  stack, of the same creature too): both bars unchanged (the click selects or shows G3's stack).
 - **(c) the take: refused** (the selected stack's bar is not the current player's: the hover only
   selects or shows, 0x5C8080); **(d) the take back: refused**, the same (troops given stay).
+- **(b) the merge: refused** (0x5C7532, 0x5C7700 test the target bar's owner: a target holding a
+  stack, of the same creature too): both bars unchanged (the click selects or shows G3's stack).
+  (The order a, c, d, b keeps each try's first click off the stack the one before left highlighted,
+  where a second click opens the creature's window.)
 - After OK: G3 Red's, Pikeman 5, Archer 5, not removable; E12-3's army Pikeman 10, Griffin 2.
   **VCMI 1.7.5:** (a) made, (b) refused (its non-removable case, as the original; D-61 differs only
   for an ally's garrison), (c), (d) refused. The wiki (Garrison): troops may be added but not
@@ -367,7 +370,8 @@ predictions = """
   E12-4b's (9, 21), plain grass: the flag **clear**, **casts allowed for both**: each book opens,
   Bless is cast (5 points; E12-4 then 15). Red's side E12-4's Archangel 10, Blue's E12-4b's Pikeman
   1; won by Red (the Pikeman dies in round 2). E12-4 **stays on (9, 22)** (the attacker keeps its
-  tile; GAM-BAT-004). VCMI the same (no anti-magic on that tile).
+  tile; GAM-BAT-004) with **1 759**, or **1 659** if the attack's step is paid (as a visit from a
+  neighbouring tile's, ADV-OBJ-003). VCMI the same (no anti-magic on that tile).
 - **Battle 1, attacked in it** (survey §4, D-60; §7: a hero standing in a garrison is fought as any
   hero, the garrison's army not joining): the position is E12-4's (9, 22), a hero standing on an
   anti-magic garrison's entrance (class 34 there, its stood-on class 33, the tile's subclass 1): the
