@@ -59,8 +59,9 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 - #843 merged. The session linked to the user's computer: round 1's outcomes read in place
   (`python/runs/`, `device_bash`), the twelve measure files staged to the sandbox and committed;
-  the user chose round 2's arm. The setup's engine baseline in the background; `uv sync`, then
-  `--group train`; the scoped verify and the Python suite.
+  the user chose round 2's arm. The VM restarted early (the setup's baseline lost, CI's green
+  `master` stood for it); `cargo build --release -p h3-ffi` 2 minutes, `uv sync --group train`
+  about 10; the scoped verify 11 minutes, the Python suite 259 (2.9 minutes).
 
 ### 2026-11-11 — E25 T33 (prepared)
 
