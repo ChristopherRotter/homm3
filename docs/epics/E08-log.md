@@ -15562,7 +15562,8 @@ active until the result window: the third E12a run). The harness check passed (2
 **The recipes** `clients/capture/batches/E08-batch-12a.toml` (17 steps) and `-12b.toml` (84
 steps, days 1 to 8, 15 and 22) and **three runs of each**: E12a's second and third agree in all 74
 records; E12b's second and third in all but the Fountains' first-week values (a new game's draws)
-and two reads fixed before the third. The templates filled from the third runs
+and two reads fixed before the third. A fourth run of each after merging `master` (the town lane's
+T23 harness, xdd.dll rebuilt) agrees with the third in every record (74, 144), the harness check too. The templates filled from the third runs
 (`experiments/results/E08-batch-12a.md`, `-12b.md`), with the agent's lines in E12-14's, E12-11's
 and E12-7's last lines.
 
@@ -15588,7 +15589,7 @@ refused with GENRLTXT 685** (no cast, the points kept), won by Red; G4 unchanged
 
 **Raw observations, E12b:** **E12-12:** the Fountains' words through the weeks: week 1 one value
 each, unchanged days 1 to 7 (+2 and +2 in the third run); day 8 +3 and +3, day 15 +2 and +2, day
-22 +1 and +3 (the same in all three runs); the team bits none throughout. **E12-17:** gold 0,
+22 +1 and +3 (the same in all four runs); the team bits none throughout. **E12-17:** gold 0,
 +0x7B 0; the hint over S2 before: the name, "not visited", no bonus line; onto S1 ADVEVENT 160, no
 question, on (51, 22) with 1 618, attack and defense 1, +0x7B 0, gold 0; after (on (52, 23),
 1 477) over S2 and S1: the name, **the bonus line (XTRAINFO 10)**, "not visited". **E12-14:**

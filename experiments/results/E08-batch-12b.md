@@ -2,7 +2,7 @@
 
 > Played by the capture harness on 2026-11-12 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-12b.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
 
-> E08 T110: three runs of the map; the second and the third (this one) agree in every filled record but the Fountains' first-week values, a new game's draws (F1 and F2: run 1 +3 and +1, run 2 +2 and +3, run 3 +2 and +2), and two reads the harness fixed before the third (the hint over S2 before, read only since; the Mermaids' entrance before, unexplored: the bar kept the Buoy's text); the values of weeks 2 to 4 the same in all three runs. The first run's labels differ (the recipe's since).
+> E08 T110: four runs of the map; the fourth (the harness merged with `master`'s) agrees with the third (this one) in all 144 filled records; the second and the third agree in every filled record but the Fountains' first-week values, a new game's draws (F1 and F2: run 1 +3 and +1, run 2 +2 and +3, run 3 +2 and +2), and two reads the harness fixed before the third (the hint over S2 before, read only since; the Mermaids' entrance before, unexplored: the bar kept the Buoy's text); the values of weeks 2 to 4 the same in all four runs. The first run's labels differ (the recipe's since).
 
 Map file: `E08-batch-12b.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 

@@ -2,7 +2,7 @@
 
 > Played by the capture harness on 2026-11-12 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-12a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
 
-> E08 T110: three runs of the map; the second and the third (this one) agree in all 74 filled records, the first only in one label (the recipe's since).
+> E08 T110: four runs of the map; the second, the third (this one) and the fourth (the harness merged with `master`'s) agree in all 74 filled records, the first only in one label (the recipe's since).
 
 Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
