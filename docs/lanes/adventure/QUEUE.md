@@ -70,24 +70,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   lines naming a town's bar), T26a (the game state hash, map import `roe`); T28 waits for your
   T114a and T115a merged.
 
-- 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
-  **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
-  session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the
-  battle opens, but cannot send the last one when it ends, as the battle session does (v38,
-  CLT-STUB-3: the own hero's Eagle Eye picks, which no event shows): the ending command closes the
-  battle in `h3_game`, so `GameState::battle` has none. Keep the battles the last command ended
-  (their `BattleState` and owners, as `OpenBattle`) readable until the next command, for example
-  `GameState::ended_battles()`, out of the state hash and the replay; the session then observes
-  each owner's side (`h3_battle::observe`) for its last `Snapshot`. Tell the server lane's inbox
-  when it lands.
-
 - 2026-11-09 (the server lane, E16 M5 T3c2, SRV-Q26 and SRV-Q27; **the user's decisions**, for
   the whole game on the wire): **the fold's gaps are the stubs `SRV-STUB-1` to `-11`**
   (`docs/stubs.toml`; `-12` and `-13` are the town lane's). The server lane's fold
   (`h3-protocol`'s `wire/game/fold.rs`) keeps a viewer's view current by its projected events; its
   gate (`tests/game_fold.rs`, the 55 golden replays) asserts it equals `observe` after every
   command for every viewer but for the parts a stub names. The SRV-Q26 note below: its (1) is
-  `SRV-STUB-1` (the query), (2) `-2`, (3) `-3` (its heroes; in the golden replays objects and boats
+  `SRV-STUB-1` (the query; landed 2026-11-11, `h3_game::reveal`, the server lane's T5c lifts the
+  stub), ~~(2) `-2`~~ (lifted 2026-11-11: `MovementChanged`, protocol v42), (3) `-3` (its heroes; in the golden replays objects and boats
   appear with a reveal only), (4) `-4`. Beyond it (SRV-Q27 (2): what the rules derive):
   `-4` also what any visit tells (`AdventureObservation::known`, ADV-VIS-006, and
   `OwnHeroView::marks`: no event carries them); `-5` the views of an offer, a choice, a University
@@ -110,12 +100,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   observation costs 730 to 860 times a command's `apply` on an XL map with eight players), so a
   client must fold its snapshot with its projected events into what `h3_game::observe` gives after
   every command. What it cannot fold today (the golden replays and two eight-player XL games):
-  (1) **a query for what a viewer sees on the tiles it explored since a given explored grid** (a
+  ~~(1) **a query for what a viewer sees on the tiles it explored since a given explored grid** (a
   `BitGrid` the server keeps per viewer): their `TileView`s, explored and fringe, and the objects,
   heroes and towns it now sees there as `observe` shows them; the server asks when the viewer's
-  `explored(..).count()` grew (a step's reveal has no event, `TilesRevealed` only a count);
-  (2) **a hero's movement points left** after a step or a visit (no event or `HeroChange` carries
-  them; `OwnHeroView::movement` changes with every move); (3) **what comes into view without a
+  `explored(..).count()` grew (a step's reveal has no event, `TilesRevealed` only a count)~~ (done
+  2026-11-11, `adventure/srv-q26-reveal`: `h3_game::reveal`, the server lane's inbox told);
+  ~~(2) **a hero's movement points left** after a step or a visit (no event or `HeroChange` carries
+  them; `OwnHeroView::movement` changes with every move)~~ (done 2026-11-11: `MovementChanged`,
+  told last to the owner for every hero a command changed, mapped at protocol v42); (3) **what comes into view without a
   reveal, with its public view**: another player's hero stepping into sight (`HeroStepped` gives
   its id and tiles, not its owner, type or boat), an object or a boat that appears (63 objects and
   9 boats in the golden replays); (4) **a visit that changes only the hero's points and the

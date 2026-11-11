@@ -61,4 +61,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   the move of a hero whose jump's exit the viewer does not see (a draw or a pair the test changed),
   and the viewer's own visit ends the comparison when the two games tell it other events.
 
+- A command's exact events (2026-11-11, SRV-Q26 (b)): `h3_game::apply` tells a recording sink
+  `MovementChanged` last, for every hero whose points or day's maximum the command changed (a move,
+  a visit, a boarding, a new day). A test of a command's other events drops them
+  (`h3-game`'s `tests::moved`; `after_steps` and `capture.rs`' `step` do already; `h3-map`'s
+  `landing` reads none, `check_told` checks each against the observation), and a new kind of
+  change to a hero's points needs nothing more: the diff tells it.
+- A new part of what a viewer sees (2026-11-11, SRV-Q26 (a)): `AdventureState::reveal` answers
+  what `observe` shows through the grid now and not through an older one; a part `observe` adds
+  whose visibility the tiles decide goes into `reveal` too (its tests' oracle observes the same
+  state through the older grid, so a missing part shows there), and the server lane's fold gate
+  (`SRV-STUB-1`'s parts) relies on it.
+
 - **Procedures as skills:** for a speed or replay question use the skills `homm3-bench-regression` and `homm3-rerecord-replays`; measure right after the first build (`AGENTS.md`, "Measure before you polish").

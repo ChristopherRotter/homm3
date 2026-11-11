@@ -461,10 +461,13 @@ impl GameState {
                 // A siege's town (E09 T8b1): a battle at a town, fought at its entrance.
                 let town = h3_battle::computer::siege(&battle.state)
                     .and_then(|_| self.adventure.map().town_at(battle.tile));
-                battle.state.outcome().map(|outcome| (sides, town, outcome))
+                let outcome = battle.state.outcome()?;
+                Some((sides, town, outcome, Arc::clone(battle)))
             });
-        if let Some((sides, town, outcome)) = ended {
+        if let Some((sides, town, outcome, battle)) = ended {
             self.close(at);
+            // The battle as it ended, to the sink, before its outcome (SRV-Q27 (1)).
+            sink.battle_ended(&battle);
             self.end_battle(rules, sides, town, &outcome, sink);
         }
     }

@@ -66,6 +66,24 @@ use h3_towns::{
 use super::*;
 use crate::treasury::Treasuries;
 
+/// A command's events but the heroes' movement changes it tells last (SRV-Q26 (b), [`apply`]),
+/// which `tests::moves` checks: for a test of the command's other events. They come after every
+/// other event of each command in `events`.
+pub(crate) fn moved(events: Vec<GameEvent>) -> Vec<GameEvent> {
+    events
+        .into_iter()
+        .filter(|e| {
+            !matches!(
+                e,
+                GameEvent::Adventure(h3_adventure::AdventureEvent {
+                    kind: h3_adventure::AdventureEventKind::MovementChanged { .. },
+                    ..
+                })
+            )
+        })
+        .collect()
+}
+
 pub(crate) fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
 }

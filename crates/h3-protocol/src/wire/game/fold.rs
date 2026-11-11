@@ -5,16 +5,17 @@
 //!
 //! A fold applies what an event carries and nothing the rules derive (SRV-Q27 (2)). What no event
 //! carries yet stays as it was, each a gap for the adventure and town lanes (SRV-Q26, SRV-Q27):
-//! a reveal's tiles, objects, heroes and towns; a hero's movement points; a hero, object or boat
-//! coming into sight without a reveal; two changes told to nobody who sees them; the views of an
+//! a reveal's tiles, objects, heroes and towns; a hero, object or boat coming into sight without a
+//! reveal; two changes told to nobody who sees them; the views of an
 //! offer, a choice, a University and a hire dialog; a town's view moved by a Visions holder's
 //! reach; and the values the rules derive (where an added artifact or joined creatures land, a
 //! capped gain, what a new owner's team sees of an object). The
 //! battle is its snapshots' (SRV-Q27 (1)): its events are the battle client's, and the fold only
 //! ends it.
 //!
-//! Each gap is a stub (`SRV-STUB-1` to `SRV-STUB-11` and the town lane's `TWN-STUB-13`,
-//! `docs/stubs.toml`, marked where its event is folded), lifted when its lane's events carry it. The gate is `tests/game_fold.rs`: over the
+//! Each gap is a stub (`SRV-STUB-1`, `SRV-STUB-3` to `SRV-STUB-11` and the town lane's
+//! `TWN-STUB-13`, `docs/stubs.toml`, marked where its event is folded), lifted when its lane's
+//! events carry it (`SRV-STUB-2`, a hero's movement points, by `MovementChanged`). The gate is `tests/game_fold.rs`: over the
 //! golden replays the fold equals `observe` after every command for every viewer, but for the
 //! parts a stub names.
 //!
@@ -270,7 +271,7 @@ impl GameObservation {
     fn fold_adventure(&mut self, event: AdventureEvent) {
         match event {
             // A hero coming into sight is not carried (SRV-Q26 (c)): its owner, type and boat
-            // (stub: SRV-STUB-3); nor the mover's movement points (SRV-Q26 (b); stub: SRV-STUB-2).
+            // (stub: SRV-STUB-3); the mover's movement points come as `MovementChanged`.
             AdventureEvent::HeroStepped { hero, from: _, to }
             | AdventureEvent::HeroTeleported { hero, from: _, to } => match to {
                 Some(to) => {
@@ -428,6 +429,17 @@ impl GameObservation {
                     count_word,
                 },
             ),
+            // The command's last events (SRV-Q26 (b)): the owner's hero's points and maximum.
+            AdventureEvent::MovementChanged {
+                hero,
+                movement,
+                max_movement,
+            } => {
+                if let Some(own) = self.own_mut(hero) {
+                    own.movement = movement;
+                    own.max_movement = max_movement;
+                }
+            }
             AdventureEvent::WhirlpoolLoss {
                 hero,
                 slot,

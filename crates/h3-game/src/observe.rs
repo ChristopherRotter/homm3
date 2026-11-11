@@ -12,14 +12,15 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, Choice, HireTarget, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
+    AdventureObservation, AdventureReveal, BitGrid, Choice, HeroView, HireTarget, ObjectTypeId,
+    Offer, Pos, UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
-use crate::town::view::{TownView, town_views};
+use crate::town::view::{TownView, town_views, views_of};
 use crate::{GameRuleset, GameState, MonthKind};
 
 /// Who an observation or an event's projection is for (ADR-0017 point 2). The spectator, who
@@ -258,25 +259,72 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                 let dialog = state.hire_dialog(player)?;
                 Some(DecisionView::Hire(state.hire_view(rules, dialog)))
             }),
-        heroes: adventure
-            .heroes
-            .iter()
-            .flat_map(|view| {
-                // Every hero on the map has its details in the store, at its id.
-                let details = state.heroes().get(usize::from(view.id.raw()));
-                details.map(|details| HeroInfo {
-                    id: view.id,
-                    hero_type: details.hero_type,
-                    details: view.own.as_ref().map(|_| Arc::clone(details)),
-                })
-            })
-            .collect(),
+        heroes: hero_infos(state, &adventure.heroes),
         adventure,
         towns,
         battle: state.battle(player).and_then(|open| {
             open.side_of(player)
                 .map(|side| h3_battle::observe(open.state(), rules.battle(), side))
         }),
+    }
+}
+
+/// The heroes of `views` with their types and, for the viewer's own, their details
+/// ([`GameObservation::heroes`], GAM-HER-001), in their order.
+fn hero_infos(state: &GameState, views: &[HeroView]) -> Vec<HeroInfo> {
+    views
+        .iter()
+        .flat_map(|view| {
+            // Every hero on the map has its details in the store, at its id.
+            let details = state.heroes().get(usize::from(view.id.raw()));
+            details.map(|details| HeroInfo {
+                id: view.id,
+                hero_type: details.hero_type,
+                details: view.own.as_ref().map(|_| Arc::clone(details)),
+            })
+        })
+        .collect()
+}
+
+/// What a viewer sees now that it did not see through an earlier explored grid of its own
+/// ([`reveal`]; SRV-Q26 (a), the server lane's E16 M5 T5c): [`GameObservation`]'s parts that the
+/// grids' difference decides, each as [`observe`] shows it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GameReveal {
+    /// The adventure map's: the tiles whose sight changed, the heroes, objects and empty boats
+    /// the viewer sees now and did not, the towns it newly explored.
+    pub adventure: AdventureReveal,
+    /// The heroes of [`AdventureReveal::heroes`] with their types, in their order, as
+    /// [`GameObservation::heroes`] holds them (none is the viewer's own, so none has details).
+    pub heroes: Vec<HeroInfo>,
+    /// The viewer's views of [`AdventureReveal::towns`], in their order, as
+    /// [`GameObservation::towns`] holds them (TWN-VEW-001 to -004).
+    pub towns: Vec<TownView>,
+}
+
+/// What `viewer` sees now that it did not see through `since`, an earlier explored grid of its
+/// own (SRV-Q26 (a); `h3_adventure::AdventureState::reveal`): the tiles whose sight changed with
+/// their views, the heroes (with their types), typed objects and empty boats it sees now and did
+/// not, and its views of the towns a tile of which it explored since, each as [`observe`] shows
+/// it. A server keeps each viewer's grid (`state.adventure().explored(player)`, cheap to keep:
+/// its copies share their blocks) and asks when the viewer's explored count grew; the viewer's
+/// view folded with its events and this answer is its observation again. What it saw through
+/// `since` stays the events' to keep current.
+// rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-008, TWN-VEW-001
+pub fn reveal(
+    state: &GameState,
+    rules: &GameRuleset,
+    viewer: Viewer,
+    since: &BitGrid,
+) -> GameReveal {
+    let Viewer::Player(player) = viewer;
+    let adventure = state
+        .adventure()
+        .reveal(rules.core(), rules.adventure(), player, since);
+    GameReveal {
+        heroes: hero_infos(state, &adventure.heroes),
+        towns: views_of(state, rules, player, &adventure.towns),
+        adventure,
     }
 }
 

@@ -15,7 +15,9 @@
 //! objects a viewer sees ([`ObjectView`], T12b), visits from a neighbour and entered (T13b, T14a),
 //! the Cartographer's offer ([`Offer`]) and its acceptance (T14b), the observatories, the
 //! Keymaster's tents with the keys and the border guards with their offer (T15a), the wandering
-//! monsters (T20), the guarded piles ([`Guards`], T21a).
+//! monsters (T20), the guarded piles ([`Guards`], T21a); what a viewer newly sees since an
+//! explored grid of its own ([`AdventureState::reveal`], SRV-Q26 (a)) and the heroes' movement
+//! changes a command told ([`Movements`], SRV-Q26 (b)).
 //! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
 //! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
@@ -60,13 +62,13 @@ pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Garrison, HeroGains, HireDialog,
-    HireError, HireSource, HireTarget, Meeting, NoRoom, Offer, OfferKind, Pick, ShipyardBlock,
-    Sink, UniversityVisit, Viewers,
+    HireError, HireSource, HireTarget, Meeting, Movements, NoRoom, Offer, OfferKind, Pick,
+    ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
-    AdventureObservation, BoatView, GuardsView, HeroView, Known, KnownObject, MonsterView,
-    ObjectView, OwnHeroView, TileView,
+    AdventureObservation, AdventureReveal, BoatView, GuardsView, HeroView, Known, KnownObject,
+    MonsterView, ObjectView, OwnHeroView, RevealedTile, TileView,
 };
 pub use persistent::BitGrid;
 pub use reach::Reach;

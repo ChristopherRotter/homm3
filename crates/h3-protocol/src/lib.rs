@@ -87,8 +87,10 @@ pub mod wire;
 /// `GameRejected`, which an in-process game session sends its players (`session::game`). v40
 /// (E08 T105b2, ADV-TEL-008): the game's adventure command `Revisit` (the entered object under a
 /// hero visited again) and its rejection `NothingToRevisit`. v41 (E09 T18c, TWN-EVT-001): the
-/// game's event `TownEventFired`, a town event fired at its owner's turn start.
-pub const PROTOCOL_VERSION: u32 = 41;
+/// game's event `TownEventFired`, a town event fired at its owner's turn start. v42 (SRV-Q26 (b),
+/// the adventure lane's inbox): the game's adventure event `MovementChanged`, a hero's movement
+/// points left and day's maximum after a command that changed them, its owner's alone.
+pub const PROTOCOL_VERSION: u32 = 42;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

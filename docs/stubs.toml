@@ -80,13 +80,7 @@ epic   = "E08"
 [[stub]]
 id     = "SRV-STUB-1"
 where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
-reason = "A reveal's content (SRV-Q26 (a)): a step's reveal has no event and an object's TilesRevealed only a count, so the fold keeps the viewer's explored tiles, tile views, objects, towns, empty boats, heroes, garrisons and owner facts in sight as they were. Lifted by the adventure lane's query for what a viewer sees on the tiles it explored since a given grid (its inbox, 2026-11-09), which T5's session sends with the events when the viewer's explored count grew; the fold gate (h3-protocol's tests/game_fold.rs) lets the parts this alone names differ only where the explored tiles grew"
-epic   = "E16"
-
-[[stub]]
-id     = "SRV-STUB-2"
-where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
-reason = "A hero's movement points left and its day's maximum (SRV-Q26 (b)): no event or HeroChange carries them, after a step, a visit, a boarding or a new day, so the fold keeps the own heroes' movement as it was (3 925 of the golden replays' 28 528 viewer-commands). The adventure lane's inbox (2026-11-09)"
+reason = "A reveal's content (SRV-Q26 (a)): a step's reveal has no event and an object's TilesRevealed only a count, so the fold keeps the viewer's explored tiles, tile views, objects, towns, empty boats, heroes, garrisons and owner facts in sight as they were. The adventure lane's query has landed (2026-11-11: h3_game::reveal(state, rules, viewer, since) -> GameReveal, what the viewer sees through its grid now and did not through since); lifted by T5c, whose session keeps each viewer's last grid and sends the answer with the events when the viewer's explored count grew; the fold gate (h3-protocol's tests/game_fold.rs) lets the parts this alone names differ only where the explored tiles grew"
 epic   = "E16"
 
 [[stub]]
@@ -146,7 +140,7 @@ epic   = "E16"
 [[stub]]
 id     = "SRV-STUB-14"
 where  = "crates/h3-protocol/src/session/game.rs::GameSession::tell"
-reason = "A game's battle's last snapshot when it ends (SRV-Q27 (1); the battle session's last Snapshot, v38, CLT-STUB-3): the command that ends a battle closes it in h3_game, so the session cannot observe the battle as it ended; each owner's view ends at BattleEnded. Lifted once h3-game keeps a battle a command ended readable until the next command (the adventure lane's inbox, 2026-11-10)"
+reason = "A game's battle's last snapshot when it ends (SRV-Q27 (1); the battle session's last Snapshot, v38, CLT-STUB-3): the command that ends a battle closes it in h3_game, so the session does not yet observe the battle as it ended; each owner's view ends at BattleEnded. Since 2026-11-11 h3-game gives the sink each battle as it ended, when the command closes it (h3_game::Sink::battle_ended, the adventure lane); lifted when the session's sink keeps it and the session sends each owner its side's last Snapshot from it"
 epic   = "E16"
 
 # --- client (CLT-STUB-<n>) ---
