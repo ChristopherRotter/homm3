@@ -451,7 +451,7 @@ impl HostSound {
     }
 
     /// The frames the music's stream still holds.
-    fn queued(&self) -> u64 {
+    pub(crate) fn queued(&self) -> u64 {
         let frames = self.out.queued(self.music_stream) / usize::from(MUSIC_CHANNELS);
         u64::try_from(frames).unwrap_or(u64::MAX)
     }
@@ -484,6 +484,16 @@ impl HostSound {
             self.out.clear(self.music_stream);
         }
         request
+    }
+
+    /// The music falls silent (E17 M7 T4, R4-3, the user, *provisional*: a battle lent the sound
+    /// that plays none on it, silent as without sound): the track playing fades out once its
+    /// fade-in is done, as for a combat track missing, and nothing follows, a regained focus's
+    /// request included; a track asked for afterwards comes back where its fade began.
+    pub(crate) fn fall_silent(&mut self) {
+        // A name no track has, kept as missing: the thread opens it and finds nothing.
+        self.tracks.entry(String::new()).or_insert(None);
+        let _ = self.request("", false);
     }
 
     /// The game's focus lost or regained: the music faded out, or asked for again ([`Queue::focus`]).

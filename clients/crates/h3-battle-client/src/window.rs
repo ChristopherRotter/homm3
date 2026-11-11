@@ -91,7 +91,7 @@ use h3_view::mouse::track::Input;
 use h3_view::options::Settings;
 use h3_view::scene::Draw;
 use h3_view::shades::{Options as Shades, Toggle};
-use h3_view::sound::Tune;
+use h3_view::sound::{MUSIC_VOLUME, Tune};
 
 use crate::assets;
 use crate::audio::{HostSound, Library, Player};
@@ -763,8 +763,9 @@ impl<'g> Prepared<'g> {
 
     /// The battle started by `setup`, the clock at `ticks_ns`' time (the host's, in ns), the
     /// sound's report in `lines`: the sound decoded and played on the host's (none without it;
-    /// an archive that cannot be read costs the sound, noted, the host's handed back all the
-    /// same), the battle waiting for its samples when it plays them, the settings set, the
+    /// an archive that cannot be read costs the sound, noted, the host's music then falling
+    /// silent and its sound kept serviced and told the focus until it is handed back all the
+    /// same, E17 M7 T4), the battle waiting for its samples when it plays them, the settings set, the
     /// opening's start sound playing while the clock waits (from the battle's start only).
     ///
     /// # Errors
@@ -843,6 +844,10 @@ impl<'g> Prepared<'g> {
         let settings = battle.settings;
         if let Some(p) = player.as_mut() {
             p.set_volumes(settings.music, settings.effects);
+        }
+        // A battle that plays no sound on the host's falls silent (E17 M7 T4, R4-3, the user).
+        if let Some(s) = spare.as_mut() {
+            s.fall_silent();
         }
         let mut clock = Clock::new(ticks_ns(), start);
         // The opening: the clock waits while the start sound plays (from the battle's start only).
@@ -2144,15 +2149,25 @@ impl<'g> Hosted<'g> {
             }
             p.service(lib);
         }
+        // The host's sound the battle plays none on (E17 M7 T4, R4-3): its music, falling silent,
+        // kept queued at the music's setting.
+        if let Some(s) = self.spare.as_mut() {
+            let volume = h3_view::options::sound_volume(MUSIC_VOLUME, self.battle.settings.music);
+            s.service(volume);
+        }
         battle_ms
     }
 
     /// The host's window lost or regained the focus (E17 M7 T3c; the original's WM_ACTIVATEAPP,
     /// E24 design §4.15): every effect playing held where it is and the music faded out, or
-    /// played on and faded in. A host tells each change in order.
+    /// played on and faded in. A host tells each change in order; a battle that plays no sound on
+    /// the host's passes it on to it (E17 M7 T4, R4-3), so that it stands right at the hand-back.
     pub fn focus(&mut self, on: bool) {
         if let Some(p) = self.player.as_mut() {
             p.focus(on);
+        }
+        if let Some(s) = self.spare.as_mut() {
+            s.focus(on);
         }
     }
 
@@ -4116,6 +4131,52 @@ pub(crate) mod tests {
             })),
             "e"
         );
+        drop(sound);
+        fs::remove_dir_all(&install).unwrap();
+    }
+
+    #[test]
+    fn a_battle_without_its_own_sound_silences_the_host_s_and_passes_the_focus_on() {
+        // E17 M7 T4 (R4-3, the user): the host's sound lent, the battle's sound archive
+        // unreadable: the battle plays none on it. The host's track fades out (asked for at once,
+        // after its fade-in) and nothing follows; the host's sound is serviced meanwhile and gets
+        // the focus's changes, so that it stands as its window does at the hand-back.
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let Some((_lock, mut sound)) = crate::audio::tests::dummy(Bugs::Fixed) else {
+            return;
+        };
+        sound.add_track("HOST", Some(crate::audio::tests::track(5)));
+        let _ = sound.request("HOST", false);
+        sound.service(127);
+        assert_eq!(sound.playing(), Some("HOST"));
+        let install = crate::audio::tests::bare_install("spare-sound");
+        fs::create_dir_all(install.join("Data")).unwrap();
+        fs::write(install.join("Data/Heroes3.snd"), b"no archive").unwrap();
+        let ground = Ground::load(&source).unwrap();
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-spare-sound-settings.toml"),
+            from: 0,
+            sound: Some(sound),
+            install: install.clone(),
+            seed: source.seed,
+            unattended: true,
+            presses: None,
+        };
+        let mut lines = Vec::new();
+        let prepared = Prepared::new(&ground).unwrap();
+        let mut hosted = prepared.start(setup, &|| 0, &mut lines).unwrap();
+        assert!(lines.iter().any(|l| l.ends_with("; no sound")), "{lines:?}");
+        assert!(hosted.player.is_none());
+        hosted.focus(false);
+        let _ = hosted.sound(0);
+        let sound = hosted.take_sound().unwrap();
+        let music = sound.queue().heard();
+        assert_eq!((music.pending(), music.active()), (Some(""), false));
+        assert!(sound.queued() > 0);
         drop(sound);
         fs::remove_dir_all(&install).unwrap();
     }
