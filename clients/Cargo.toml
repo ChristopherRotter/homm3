@@ -61,6 +61,12 @@ h3-map = { path = "../crates/h3-map" }
 # the original's map. Never in a pure crate.
 h3-pack-towns = { path = "../crates/h3-pack-towns" }
 h3-towns = { path = "../crates/h3-towns" }
+# A real game in the battle client's tests (E17 M7 T3b2, dev-dependencies only): a test host plays
+# an adventure replay fixture's battle through `h3_protocol::session::game` (the fixture and its
+# rules read by `h3-files`, the adventure part from `h3-pack-adventure`, the game's setup type).
+h3-files = { path = "../crates/h3-files" }
+h3-game = { path = "../crates/h3-game" }
+h3-pack-adventure = { path = "../crates/h3-pack-adventure" }
 # Light dependencies (the engine's versions and features).
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 # The asset tables' parser (E17 M1 T4): serde is the engine's (without std); toml is the engine's

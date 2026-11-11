@@ -198,8 +198,12 @@ context.
     (`h3_view::game_record`), which the element plays to its result window and hands back
     (`Hosted::outcome`, `Ground::in_game`); `--battle <k>`; the battlefield picture's variant and
     each side's colour from the wire (CLT-Q4, CLT-Q6); the map client lane told the API.
-    **T3b2** the same battle played live through the host's game session (the element giving
-    its commands to the host), with the hero's battle picture by the map's sex, before T3c.
+    **T3b2 done 2026-11-11** (kept whole with the user;
+    [log](E17-log.md#m7-t3b2--a-whole-games-battle-played-live-and-the-picture-by-sex-2026-11-11);
+    design §13.4, §13.5): the same battle played live through the host's game
+    (`game_seat::GameSeat`, `battle::Remote`, `Ground::load_game`; a test host's real game,
+    `clients.yml`'s paths by #851); the hero's battle picture by the map's sex in the client's
+    profile (CLT-Q78 (b): the original draws the type's).
   - **T3c:** the sound on the host's device and the music through the common `h3_ui::music` (the
     end's tune after the combat music's 900 ms fade; the focus lost and regained: the map client
     lane's notes of 2026-10-27 and 2026-10-30); the frame widened by
@@ -334,3 +338,16 @@ The next milestone's list starts here.
    blue as before); the test host's game built around a battle fought here (a real game in the
    client's tests needs the adventure's packs and `clients.yml`'s paths: a `shared/` change).
    The variants 0 and 1 and the colours not recorded (no situation names them).
+7. A whole game's battle played live (T3b2; design §13.4, *provisional* where marked): the seat's
+   shape (`GameSeat`: `receive`, `opened`, `take_outgoing` and `ToHost`, `answer`, `in_game`;
+   `Ground::load_game`, `Ground::game_seat`), the host answering the turn's target queries (the
+   whole game's protocol has none), the seat's own numbers for its commands and queries, the
+   first battle to open followed; `battle::Remote` over the server's seat and the game's;
+   `Ground::in_game` now by value; no Auto Combat switch there (`CLT-STUB-4`: the computer's
+   choices for the human's side need the host's state); the client workspace's dev-dependencies
+   on `h3-files`, `h3-game`, `h3-pack-adventure` (and `h3-sim` through them). Not recorded.
+8. The hero's battle picture by the map's sex (T3b2, CLT-Q78 (b); design §13.5): the asset
+   tables' format change (`[battle]`'s `hero_pictures`, each hero's `picture`, checked against
+   its own fields at load; written from the executable and by `h3-view harvest`);
+   `Tables::hero_art`, `scene::battle_as` (the profile beside `battle_at`), `motion::casts`'s
+   profile. Not recorded (no situation gives a hero a sex).
