@@ -561,6 +561,10 @@ fn after(
 
 /// The frame of the change at `t`.
 fn frame_at(battle: &mut Battle<'_>, t: u32) -> Result<Frame, String> {
+    #[cfg(test)]
+    if tests::NO_FRAMES.with(core::cell::Cell::get) {
+        return Err("no frame made (a test's)".into());
+    }
     let list = battle.list_at(t)?;
     let screen = battle.compose(t, &list)?;
     let xrgb = battle.widen(&screen);
@@ -762,15 +766,19 @@ impl<'g> Prepared<'g> {
     /// an archive that cannot be read costs the sound, noted, the host's handed back all the
     /// same), the battle waiting for its samples when it plays them, the settings set, the
     /// opening's start sound playing while the clock waits (from the battle's start only).
+    ///
+    /// # Errors
+    /// The battle remade or its first frame failing ([`NotStarted`], E17 M7 T4, R4-1): with the
+    /// host's sound handed back, its battle's streams removed and nothing asked of its music.
     pub fn start(
         self,
         setup: Setup,
         ticks_ns: &dyn Fn() -> u64,
         lines: &mut Vec<String>,
-    ) -> Result<Hosted<'g>, String> {
+    ) -> Result<Hosted<'g>, Box<NotStarted>> {
         let Self {
             ground,
-            mut battle,
+            battle,
             cursors,
         } = self;
         // The sound: decoded now, played on the host's; none without it.
@@ -812,30 +820,30 @@ impl<'g> Prepared<'g> {
                 None
             }
         };
-        // With its sound playing, the battle waits for its samples as the original does on a
-        // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
-        if let (Some(_), Some(lib)) = (player.as_ref(), library.as_ref()) {
-            ground.play_sounds(lib.lengths());
-            battle = Battle::new(ground)?;
-            load_cursors(&mut battle)?;
-        }
-        // The settings the combat options dialog shows, against the audio device opened or not (its
-        // no-sound box; E17 M6 T4a); its volumes on the sound.
-        let settings = setup.settings;
-        battle.settings = settings;
-        battle.audio = player.is_some();
+        // Every step that may fail runs before the host's sound is played on: one failing hands it
+        // back with its error (E17 M7 T4, R4-1), the battle's streams removed, nothing asked of
+        // its music.
+        let lengths = (player.as_ref().and(library.as_ref())).map(Library::lengths);
+        let audio = player.is_some();
+        let begun = begin(ground, battle, lengths, (setup.settings, audio, setup.from));
+        let Begun {
+            battle,
+            start,
+            cue,
+            changes,
+            next,
+        } = match begun {
+            Ok(begun) => begun,
+            Err(error) => {
+                let sound = player.map(Player::close).or(spare);
+                return Err(Box::new(NotStarted { error, sound }));
+            }
+        };
+        // The settings' volumes on the sound.
+        let settings = battle.settings;
         if let Some(p) = player.as_mut() {
             p.set_volumes(settings.music, settings.effects);
         }
-        // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
-        // before the window joined is not played again.
-        let start = if ground.online().is_some() {
-            setup.from.max(battle.timeline().end)
-        } else {
-            setup.from
-        };
-        let cue = battle.timeline().cue_from(start);
-        let mut changes = Changes::new(&battle);
         let mut clock = Clock::new(ticks_ns(), start);
         // The opening: the clock waits while the start sound plays (from the battle's start only).
         let mut opening_until = None;
@@ -849,8 +857,7 @@ impl<'g> Prepared<'g> {
                 p.start_music();
             }
         }
-        let from = changes.latest(&mut battle, start)?;
-        let next = Some(frame_at(&mut battle, from)?);
+        let next = Some(next);
         // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2). Creature Info's
         // level from the settings at the opening (E17 M6 T4b2a), kept by every Restart, and the
         // level the hints read now: a change (F5, the options dialog) is an input at its time.
@@ -919,6 +926,73 @@ impl<'g> Prepared<'g> {
             moved: false,
         })
     }
+}
+
+/// A battle that did not start ([`Prepared::start`]; E17 M7 T4, R4-1): why, and the host's sound
+/// handed back (its battle's streams removed, nothing asked of its music); none if it lent none.
+#[derive(Debug)]
+pub struct NotStarted {
+    /// Why.
+    pub error: String,
+    /// The host's sound lent.
+    pub sound: Option<HostSound>,
+}
+
+impl From<Box<NotStarted>> for String {
+    fn from(not: Box<NotStarted>) -> Self {
+        not.error
+    }
+}
+
+/// The battle as [`Prepared::start`] begins it before its sound plays (E17 M7 T4, R4-1): every
+/// step of the start that may fail.
+struct Begun<'g> {
+    battle: Battle<'g>,
+    /// The battle's time the clock starts at.
+    start: u32,
+    /// The timeline's first cue from there.
+    cue: usize,
+    changes: Changes,
+    /// The first frame.
+    next: Frame,
+}
+
+/// `battle` begun over `ground`: made again to wait for its samples' `lengths` when its sound
+/// plays (E17 M5 T5b2, design §8.3: as the original on a computer with sound), the `settings`
+/// the combat options dialog shows set, against the `audio` device opened or not (its no-sound
+/// box; E17 M6 T4a), its first frame at the time `from` (a seat on a server's at its record's
+/// end at the latest).
+fn begin<'g>(
+    ground: &'g Ground,
+    mut battle: Battle<'g>,
+    lengths: Option<h3_view::sound::Lengths>,
+    (settings, audio, from): (Settings, bool, u32),
+) -> Result<Begun<'g>, String> {
+    if let Some(lengths) = lengths {
+        ground.play_sounds(lengths);
+        battle = Battle::new(ground)?;
+        load_cursors(&mut battle)?;
+    }
+    battle.settings = settings;
+    battle.audio = audio;
+    // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
+    // before the window joined is not played again.
+    let start = if ground.online().is_some() {
+        from.max(battle.timeline().end)
+    } else {
+        from
+    };
+    let cue = battle.timeline().cue_from(start);
+    let mut changes = Changes::new(&battle);
+    let latest = changes.latest(&mut battle, start)?;
+    let next = frame_at(&mut battle, latest)?;
+    Ok(Begun {
+        battle,
+        start,
+        cue,
+        changes,
+        next,
+    })
 }
 
 /// A pass of the host's loop as the battle reads it (E17 M7 T3a2: the loop's locals until then):
@@ -3995,6 +4069,57 @@ pub(crate) mod tests {
             "median 5.0, p95 9.5, max 10.0 (100 frames)"
         );
     }
+    thread_local! {
+        /// A test's frames that cannot be made (E17 M7 T4, R4-1: a battle whose start fails once
+        /// the host's sound was taken).
+        pub(super) static NO_FRAMES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    #[test]
+    fn a_battle_that_fails_to_start_hands_the_host_s_sound_back() {
+        // E17 M7 T4 (R4-1): a step of the start that fails once the battle took the host's sound
+        // (here its first frame) hands the sound back with its error: the battle's streams
+        // removed, the host's music as it left it (no combat music asked for).
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let Some((_lock, mut sound)) = crate::audio::tests::dummy(Bugs::Fixed) else {
+            return;
+        };
+        sound.add_track("HOST", Some(crate::audio::tests::track(2)));
+        let _ = sound.request("HOST", false);
+        let install = crate::audio::tests::bare_install("not-started");
+        let ground = Ground::load(&source).unwrap();
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-not-started-settings.toml"),
+            from: 0,
+            sound: Some(sound),
+            install: install.clone(),
+            seed: source.seed,
+            unattended: true,
+            presses: None,
+        };
+        let prepared = Prepared::new(&ground).unwrap();
+        NO_FRAMES.with(|no| no.set(true));
+        let failed = prepared.start(setup, &|| 0, &mut Vec::new()).unwrap_err();
+        NO_FRAMES.with(|no| no.set(false));
+        assert!(failed.error.contains("no frame made"), "{}", failed.error);
+        let sound = failed.sound.unwrap();
+        assert!(format!("{sound:?}").contains("streams: 1"), "{sound:?}");
+        assert_eq!(sound.queue().heard().pending(), Some("HOST"));
+        assert_eq!(
+            String::from(Box::new(NotStarted {
+                error: "e".into(),
+                sound: None
+            })),
+            "e"
+        );
+        drop(sound);
+        fs::remove_dir_all(&install).unwrap();
+    }
+
     /// A host without a window (E17 M7 T3a2): the element alone, its host a loop of its own: a
     /// clock it moves by each pass's timeout as a wait with no input would, no window, no sound;
     /// the unattended presses' OK closing the result window. The element after its close (or

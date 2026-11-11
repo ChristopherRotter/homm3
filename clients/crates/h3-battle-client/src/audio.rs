@@ -539,6 +539,12 @@ impl HostSound {
     pub fn describe(&self) -> String {
         self.out.describe()
     }
+
+    /// The music's model (a test's look at it).
+    #[cfg(test)]
+    pub(crate) fn queue(&self) -> &Queue {
+        &self.music
+    }
 }
 
 /// What the music knows of a track: its frames once added (a name not added is being decoded).
