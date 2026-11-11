@@ -49,6 +49,8 @@ refined. **Depends on:** T24 (T25 on T24's core changes). **Status:** waiting.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".
+
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
   (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,

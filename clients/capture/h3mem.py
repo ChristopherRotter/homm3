@@ -131,6 +131,14 @@ WHIRLPOOLS = 0x4E780
 # keeps the class and word of the object under it (i32 +0xC, +0x14; hero_hide).
 MINES, MINE_RECORD, MINE_GUARDS, MINE_ENTRANCE, LIGHTHOUSE = 0x4E38C, 0x40, 0x4, 0x3C, 100
 HERO_UNDER_CLASS, HERO_UNDER_WORD = 0xC, 0x14
+# The garrisons' records (E08 T110, batch E12a; survey E08-garrisons-bonuses §2, structs.toml
+# "garrison_record", `read`): a vector at game +0x4E3AC (begin, end as the mines'), 0x40 bytes
+# each: the owner (i8 +0x0, -1 none), the army (creature types i32 +0x4 to +0x1F, counts i32
+# +0x20 to +0x3B), removable (u8 +0x3C), the entrance's column, row and level (u8 +0x3D to +0x3F,
+# the level's low 4 bits). A garrison's entrance tile's word is its index (class 33; AB's 219
+# loaded as 33).
+GARRISONS, GARRISON_RECORD, GARRISON_ARMY, GARRISON_REMOVABLE, GARRISON_ENTRANCE = (
+    0x4E3AC, 0x40, 0x4, 0x3C, 0x3D)
 # The dwellings' records (E08 T90, batches E10a and E10b; survey E08-dwellings §2.1, structs.toml
 # "dwelling_record", all `read`): a vector at game +0x4E39C (begin, end as the mines'), 0x5C bytes
 # each: the class (u8 +0x0, 17 or 20), the subclass (u8 +0x1), four creature types (i32 +0x4, -1
@@ -342,6 +350,13 @@ SIDE_COUNTS, STACKS, SIDE_STRIDE, STACK_SIZE, STEP_COUNTER = 0x54BC, 0x54CC, 0x6
 # 0x4643B0) and the special field (i32 +0x53C0, -1 none); since E08 T68a the ship flag (u8
 # +0x53C6: a hero in a boat, a Shipwreck or a Derelict Ship; the deck picture).
 BATTLE_TERRAIN, SPECIAL_FIELD, ON_SHIP = 0x5394, 0x53C0, 0x53C6
+# Since E08 T110 (batch E12a's E12-4) the anti-magic garrison's flag (u8 +0x53C4: set by
+# battle_setup_battlefield 0x4643B0 for a battle on an anti-magic garrison's entrance; every cast
+# of either side refused, side_may_use_magic 0x41F890, hero_book_button 0x59E900).
+ANTI_MAGIC = 0x53C4
+# A stack's spells (structs.toml battle_stack, `read`): the rounds left per spell id (i32[81]
+# +0x198, active while above 0; E08 T110: Bless, 41).
+SPELL_DURATIONS, SPELL_IDS = 0x198, 81
 # The hex records (structs.toml, hex_record; H3API's H3CombatSquare): 187 from +0x1C4, 0x70 bytes
 # each: the flags (u8 +0x10, 0x2 blocked), the stack on it (+0x18: side, record; -1 none), the
 # pathfinder's attack mark for the active stack (u8 +0x4A).
@@ -601,6 +616,9 @@ class Mem:
                 stack = {"side": side, "record": record}
                 stack.update({k: struct.unpack_from("<i", raw, o)[0] for k, o in FIELDS.items()})
                 stack["magic"] = raw[MAGIC_SHOWN]
+                # E08 T110 (batch E12a's E12-4): the spells on it, {id: rounds left}.
+                rounds = struct.unpack_from(f"<{SPELL_IDS}i", raw, SPELL_DURATIONS)
+                stack["spells"] = {k: r for k, r in enumerate(rounds) if r > 0}
                 result.append(stack)
         return result
 
@@ -646,7 +664,9 @@ class Mem:
         return {"terrain": TERRAINS[terrain] if 0 <= terrain < len(TERRAINS) else str(terrain),
                 "special": (SPECIAL_FIELDS[special] if 0 <= special < len(SPECIAL_FIELDS)
                             else None if special < 0 else str(special)),
-                "ship": self.read(manager + ON_SHIP, 1)[0]}
+                "ship": self.read(manager + ON_SHIP, 1)[0],
+                # E08 T110 (batch E12a's E12-4): the anti-magic garrison's flag (0 or 1).
+                "anti_magic": self.read(manager + ANTI_MAGIC, 1)[0]}
 
     def battle_sides(self):
         """Each side's owner (a colour, -1 none) and whether it is a human player's and a human's
@@ -1946,6 +1966,30 @@ class Mem:
                         "abandoned": raw[i + 2], "guards": [[t, c] for t, c in zip(types, counts)],
                         "entrance": list(raw[i + MINE_ENTRANCE:i + MINE_ENTRANCE + 3])})
         return out
+
+    def garrisons(self):
+        """The garrisons' records in the game's order (E08 T110, batch E12a; game +0x4E3AC):
+        [{index, owner, army: [[creature, count]] by slot (an empty slot [-1, 0]), removable,
+        entrance: [x, y, level]}]."""
+        begin, end = struct.unpack("<II", self.read(self.game() + GARRISONS, 8))
+        raw = self.read(begin, end - begin) if end > begin else b""
+        out = []
+        for i in range(0, len(raw) - GARRISON_RECORD + 1, GARRISON_RECORD):
+            types = struct.unpack_from("<7i", raw, i + GARRISON_ARMY)
+            counts = struct.unpack_from("<7i", raw, i + GARRISON_ARMY + 28)
+            x, y, z = raw[i + GARRISON_ENTRANCE:i + GARRISON_ENTRANCE + 3]
+            out.append({"index": i // GARRISON_RECORD, "owner": struct.unpack_from("<b", raw, i)[0],
+                        "army": [[t, c] for t, c in zip(types, counts)],
+                        "removable": raw[i + GARRISON_REMOVABLE], "entrance": [x, y, z & 0xF]})
+        return out
+
+    def battle_hero(self, side):
+        """A battle side's hero (E08 T110): its index in the game's heroes, None for none."""
+        manager = self.manager()
+        pointer = self.u32(manager + HERO_POINTERS + 4 * side) if manager else 0
+        if not pointer:
+            return None
+        return (pointer - self.game() - HEROES) // HERO_SIZE
 
     def dwellings(self):
         """The dwellings' records in the game's order (E08 T90, batches E10a, E10b; game +0x4E39C):
