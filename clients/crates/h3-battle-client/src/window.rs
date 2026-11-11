@@ -582,7 +582,10 @@ fn next_frame(
     // While the mouse holds a panel button the battle stands still too (E17 M7 T2, CLT-Q72 (a),
     // *provisional*): the button's own loop runs no idle step of the battle (`def_button_message`
     // 0x45641C, as read for the adventure map's, E24 design §4.13); only an input changes it.
-    if holding {
+    // Only its idle steps, past its timeline's end (E17 M7 T4, R2-1, *provisional*): a record
+    // plays on under the hold, and a replay from a Restart during it, as before T2 (the
+    // original's battle under the loop waits for its human).
+    if holding && shown.t >= battle.timeline().end {
         return Ok(None);
     }
     // Behind the open spell book, a message box or the combat options dialog the battle stands
@@ -616,8 +619,12 @@ fn next_frame(
                 held,
             }));
         }
-        // Past the end of a still battle only the idle steps come, each drawing the same.
-        if !battle.playing() && next > battle.timeline().end && battle.timeline().still() {
+        // Past the end of a still battle only the idle steps come, each drawing the same; under
+        // the mouse's hold none (above).
+        if !battle.playing()
+            && next > battle.timeline().end
+            && (holding || battle.timeline().still())
+        {
             return Ok(None);
         }
         let list = battle.list_at(next)?;
@@ -1173,6 +1180,21 @@ impl<'g> Hosted<'g> {
                 }
                 self.pass.mouse_changed = true;
             }
+        }
+        // A box or dialog that opened over the battle as the pass started (the result window, a
+        // notice, a server's question) ends the mouse's hold of a panel button, without its
+        // click (E17 M7 T4, R2-2, *provisional*: the original's loop blocks its battle, so no box
+        // opens under it; the client's record plays on under a hold, R2-1). The box takes the
+        // left release, its keys and the right button's, the result window's clip plays, and
+        // the button is drawn up behind it. No hold starts while one is open.
+        if (self.battle.message_open()
+            || self.battle.stats_open()
+            || self.battle.options_open()
+            || self.battle.book_open()
+            || self.battle.aiming())
+            && self.held.take_if(|h| h.key.is_none()).is_some()
+        {
+            self.pass.mouse_changed = true;
         }
         // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
         // presses and key-downs that come with the input that opened it, or after the box opened
@@ -4041,6 +4063,209 @@ pub(crate) mod tests {
         assert!(shown > 1 && hosted.shown().is_some());
         assert!(hosted.outcome().is_some());
         assert_eq!(ground.in_game(), None);
+    }
+
+    /// A host without a window whose human plays (E17 M7 T4, R2-3): the element started at the
+    /// battle's opening over `ground`, no sound, no unattended presses, at the host's time
+    /// `ticks`.
+    fn attended<'g>(ground: &'g Ground, source: &Source, ticks: &dyn Fn() -> u64) -> Hosted<'g> {
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-attended-test-settings.toml"),
+            from: 0,
+            sound: None,
+            install: source.install.clone(),
+            seed: source.seed,
+            unattended: false,
+            presses: None,
+        };
+        let mut lines = Vec::new();
+        let prepared = Prepared::new(ground).unwrap();
+        prepared.start(setup, ticks, &mut lines).unwrap()
+    }
+
+    /// One pass of the host's loop at its time `ticks` with the inputs `events` (as
+    /// [`hosted_to_close`]'s): what the element answered to each, and whether a frame was
+    /// presented.
+    fn pass(
+        hosted: &mut Hosted<'_>,
+        ticks: &dyn Fn() -> u64,
+        events: &[Event],
+    ) -> (Vec<Took>, bool) {
+        let mut lines = Vec::new();
+        assert_eq!(hosted.before(ticks, &mut lines), Ok(Flow::On));
+        let took = (events.iter())
+            .map(|&e| hosted.event(e, ticks).unwrap())
+            .collect();
+        hosted.after(ticks).unwrap();
+        let ms = hosted.sound(ticks());
+        let frame = hosted.due(ms).unwrap();
+        let shown = frame.is_some();
+        if let Some(frame) = frame {
+            hosted.showed(frame).unwrap();
+        }
+        (took, shown)
+    }
+
+    /// [`pass`]es without input `step` ms apart while `go_on` holds (at most 2 000): the
+    /// frames presented.
+    fn passes(
+        hosted: &mut Hosted<'_>,
+        clock: &std::cell::Cell<u64>,
+        step: u64,
+        mut go_on: impl FnMut(&Hosted<'_>) -> bool,
+    ) -> usize {
+        let ticks = || clock.get();
+        let (mut shown, mut n) = (0, 0);
+        while go_on(hosted) {
+            assert!(n < 2_000, "{n} passes");
+            shown += usize::from(pass(hosted, &ticks, &[]).1);
+            clock.set(clock.get() + step * 1_000_000);
+            n += 1;
+        }
+        shown
+    }
+
+    #[test]
+    fn a_panel_button_the_mouse_holds_drops_the_keys_and_the_right_press_and_stands_the_battle() {
+        // E17 M7 T4 (R2-3, the window's routing of T2 through the element's `event`): on the
+        // human's turn (the Wolf Riders', after the Angels' action) the mouse holds Defend; the
+        // right press opens no help, T no stats dialog, and the waiting battle runs no idle step,
+        // which it does without the hold; the right button's release gives Defend's command.
+        // R2-1: a Restart during the hold replays the opening's action under it, standing again
+        // at its end.
+        let Some(source) = crate::battle::tests::staged("seq-melee.toml", [false, true]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let clock = std::cell::Cell::new(0_u64);
+        let ticks = || clock.get();
+        let mut hosted = attended(&ground, &source, &ticks);
+        passes(&mut hosted, &clock, 50, |h| {
+            !h.battle().takes(h.ms(clock.get()))
+        });
+        let end = hosted.battle().timeline().end;
+        assert!(end > 0 && hosted.battle().waiting());
+        // Unheld, the waiting battle idles (the outline's pulse, the flags).
+        let at = hosted.ms(clock.get());
+        assert!(passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) < at + 1_000) > 0);
+        let at = hosted.ms(clock.get());
+        let defend = h3_view::panel::DEFEND;
+        assert!(hosted.battle().enabled(at, defend));
+        let [x, y] = button_centre(hosted.battle().panel_at(at), defend).unwrap();
+        let press = [
+            Event::Pointer(Some((x, y))),
+            Event::Click {
+                down: true,
+                at: (x, y),
+            },
+        ];
+        pass(&mut hosted, &ticks, &press);
+        assert!(mouse_holds(hosted.held));
+        assert_eq!(hosted.battle().pressed, Some(defend));
+        let (took, _) = pass(&mut hosted, &ticks, &[Event::Key(Key::RightButton)]);
+        assert_eq!(took, [Took::Nothing]);
+        assert!(!hosted.battle().popup_held());
+        pass(
+            &mut hosted,
+            &ticks,
+            &[Event::Key(Key::T), Event::KeyUp(Key::T)],
+        );
+        assert!(!hosted.battle().stats_open() && mouse_holds(hosted.held));
+        let at = hosted.ms(clock.get());
+        assert_eq!(
+            passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) < at + 1_000),
+            0
+        );
+        // Restart under the hold: the opening's action plays again, the button still held.
+        let restart = [
+            Event::Key(Key::LeftCtrl),
+            Event::Key(Key::F7),
+            Event::KeyUp(Key::F7),
+            Event::KeyUp(Key::LeftCtrl),
+        ];
+        pass(&mut hosted, &ticks, &restart);
+        assert!(hosted.ms(clock.get()) < end && mouse_holds(hosted.held));
+        let replayed = passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) <= end + 200);
+        assert!(replayed > 10, "{replayed} frames replayed");
+        let at = hosted.ms(clock.get());
+        assert_eq!(
+            passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) < at + 1_000),
+            0
+        );
+        assert_eq!(hosted.battle().pressed, Some(defend));
+        pass(&mut hosted, &ticks, &[Event::KeyUp(Key::RightButton)]);
+        assert!(hosted.held.is_none() && hosted.battle().pressed.is_none());
+        assert!(hosted.inputs.iter().any(|i| matches!(i, Input::Act { .. })));
+    }
+
+    #[test]
+    fn a_record_plays_on_under_a_hold_and_its_result_window_ends_the_hold() {
+        // E17 M7 T4 (R2-1, R2-2): a whole game's battle from its record (`seq-end`'s, as
+        // `a_host_gets_a_whole_game_s_battle_back_with_its_outcome`'s), the mouse holding Defend
+        // from the Archangel's strike: the strike plays on under the hold; the result window
+        // opens at the battle's end and ends the hold without its click, so that the left
+        // release does nothing and its key closes it.
+        let Some(mut source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let (ruleset, setup) =
+            crate::scenario::battle(&source.input, &source.packs, source.seed).unwrap();
+        let players = ([false, false], Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, source.seed, players).unwrap();
+        while live.next().unwrap().is_some() {}
+        let fought = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let tile = h3_protocol::wire::game::Pos {
+            x: 4,
+            y: 7,
+            level: 0,
+        };
+        let (text, _, _) = game_record(&fought, ([Some(3), None], tile));
+        let path =
+            std::env::temp_dir().join(format!("h3-view-held-record-{}.jsonl", std::process::id()));
+        fs::write(&path, text).unwrap();
+        source.input = path.clone();
+        let ground = Ground::load(&source).unwrap();
+        let clock = std::cell::Cell::new(0_u64);
+        let ticks = || clock.get();
+        let mut hosted = attended(&ground, &source, &ticks);
+        passes(&mut hosted, &clock, 20, |h| h.ms(clock.get()) < 100);
+        let end = hosted.battle().timeline().end;
+        let at = hosted.ms(clock.get());
+        let defend = h3_view::panel::DEFEND;
+        eprintln!(
+            "DEBUG end {end} at {at} enabled {}",
+            hosted.battle().enabled(at, defend)
+        );
+        assert!(at < end && hosted.battle().enabled(at, defend));
+        let [x, y] = button_centre(hosted.battle().panel_at(at), defend).unwrap();
+        let press = [
+            Event::Pointer(Some((x, y))),
+            Event::Click {
+                down: true,
+                at: (x, y),
+            },
+        ];
+        pass(&mut hosted, &ticks, &press);
+        assert!(mouse_holds(hosted.held));
+        let played = passes(&mut hosted, &clock, 20, |h| h.ms(clock.get()) <= end);
+        assert!(played > 10, "{played} frames played under the hold");
+        passes(&mut hosted, &clock, 20, |h| !h.battle().result_open());
+        assert!(hosted.held.is_none() && hosted.battle().pressed.is_none());
+        let release = Event::Click {
+            down: false,
+            at: (x, y),
+        };
+        pass(&mut hosted, &ticks, &[release]);
+        assert!(!hosted.closed());
+        pass(
+            &mut hosted,
+            &ticks,
+            &[Event::Key(Key::Return), Event::KeyUp(Key::Return)],
+        );
+        assert!(hosted.closed());
+        fs::remove_file(&path).unwrap();
     }
 
     /// The whole game's record of a test host's game whose battle is `fought` (a spectator's

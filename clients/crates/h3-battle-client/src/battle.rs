@@ -4306,13 +4306,13 @@ pub(crate) mod tests {
         assert!(end > 0 && !battle.takes_keys(end) && !battle.takes_keys(end + 1000));
         let path =
             std::env::temp_dir().join(format!("h3-view-takes-keys-{}.jsonl", std::process::id()));
-        std::fs::write(&path, battle.record_text().unwrap().unwrap()).unwrap();
+        fs::write(&path, battle.record_text().unwrap().unwrap()).unwrap();
         source.input = path.clone();
         let recorded = Ground::load(&source).unwrap();
         let record = Battle::new(&recorded).unwrap();
         assert!(record.fight.is_none());
         assert!(record.takes_keys(0) && record.takes_keys(end - 1) && record.takes_keys(end));
-        std::fs::remove_file(&path).unwrap();
+        fs::remove_file(&path).unwrap();
     }
 
     #[test]
