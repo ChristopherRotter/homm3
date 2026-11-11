@@ -12,7 +12,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the hero's battle picture by the map's sex, CLT-Q78 (b); design §13.4, §13.5; branch
   `client/e17-m7-t3b2` after #851, the `shared/` PR of `clients.yml`'s paths, merged);
   **T3c** the sound on the host's device; T4 the closure, **which closes E17**. **Next:** T3c.
-  Watch T3b2's pull request **#854** until it merges.
+  Watch T3b2's pull request **#854** until it merges: its Clients job failed three times
+  (2026-11-11) in "SDL's build dependencies", the runner unable to resolve the Ubuntu mirror,
+  before any check ran; the local record (`verify-once.sh clients`, in its description) passed.
+  If it is still red, re-run it (`rerun-failed-jobs`).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
