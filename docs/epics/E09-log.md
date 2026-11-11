@@ -2977,6 +2977,9 @@ garrisons, decision 295): one army reference agreed before either lane drafts. T
 2026-11-11 note (the intermediate `TownChanged` at a capture under the Capitol's limit) kept as
 built and archived. The queue holds T21 (the survey) and T22 (the drafts).
 
-**Verify:** the engine's code is `master`'s but for four comments; the scoped verify with the
-original data and `check-lane` (the town lane's paths, the common `docs/stubs.toml` and the
-adventure lane's `QUEUE.md`) on the branch; CI on the pull request is the record.
+**Verify:** the engine's code is `master`'s but for four comments. `cargo xtask verify --scope
+town --summary --with-original-data` with no failing step (coverage 8.5 minutes, determinism 8,
+bench-check 6, original-data 0.6; `deny` and `ffi-smoke` skipped by the scope); `check-lane`
+passed (the town lane's paths, the common `docs/stubs.toml` and the adventure lane's
+`QUEUE.md`); `shared/e09-t20-increments` (#846) `check-lane` and `check-docs`. CI on the pull
+requests is the record.
