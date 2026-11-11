@@ -15155,3 +15155,65 @@ kind (ADV-MON-006, GAM-DEC-007), both before T105a; their ids and cut at round 5
 - **Not in increment 11** (decision 260): garrisons and the other visitables, the adventure spells
   (Dimension Door, Fly, Town Portal), creature banks, quests, simultaneous play, towns (E09), a
   computer player's routes and revisits (E10).
+
+### Increment 12, round 1: T108a1, the census and the garrisons survey (2026-11-11, `adventure/e08-t108a`)
+
+Baseline: `master` 1e54a50 (#845; T107's #844 merged before the start); the setup's baseline ran
+only the light gates (CI had verified the same engine code on d23f1d2; `master`'s latest run green).
+The original data staged at the start (the executable, `maps.tar`, `extracted.tar`; no LOD: a
+docs-only task). The reading was measured first (the garrisons about 1.5 to 2 KB of new code: case
+33 234 bytes, the capture 201, the exchange's call 150, the popup 461, the pathfinder's case 68,
+the battle's parts read before; the fifteen bonus handlers about 4.8 KB with three small callees);
+the user cut T108a in two by family (decision 297, `AskUserQuestion`; recommended had been three
+parts, the bonus visitables in two).
+
+**The survey** `docs/rules/surveys/E08-garrisons-bonuses.md` §0 to §9 (§10 to §14 are T108a2's,
+headed):
+
+- **The census** (§1) with a throwaway example over `h3_map::read` (deleted): all seventeen
+  classes on the 160 maps. Garrisons: 238 on 61 maps (33: 168 on 53; 219: 70 on 25, AB and SoD
+  maps only); 45 anti-magic (subclass 1) on 21 maps, 9 on 6 RoE-format maps; 199 neutral (82
+  empty), 39 owned, every owner a played colour; 11 not removable; no random stack, no count of 0
+  or above 200; both sides of every passage open; no hero placed in one. The bonus visitables:
+  4 085 on 159 maps, by class with versions, templates (48, 56 and 110 with several entrances; 31
+  and 56 with one picture under two masks), terrains and levels (§1.2).
+- **A correction of decision 295:** 219 is the vertical garrison (`object_class_values` loads it
+  as 33); the anti-magic garrison is subclass 1 of both; its battle without spells is the battle
+  lane's BAT-TER-002, already built (`BattleSetup.anti_magic`).
+- **The file and the load** (§2): `load_garrison_body` 0x502A00 (counts signed 16 bits as
+  ADV-QUIRK-19; RoE always removable; the record `garrison_record`, H3API's `H3Garrison`);
+  `setup_map_objects`' case 33 (the start's reveal).
+- **The visit** (§3, case 33 0x4A9061): the team's garrison the exchange; another armed one fought
+  at once, no question, unsplit, the owner's side without a hero; won or empty: taken
+  (`garrison_set_owner` 0x4C6960: radius 3 revealed), then the exchange
+  (`garrison_exchange_dialog` 0x5D1130: owner -1 when not removable).
+- **The exchange** (§6, `town_garrison_hover` 0x5C7400 and `town_garrison_hover_other` 0x5C8080's
+  owner tests): an ally's or a non-removable garrison takes stacks into empty slots only.
+- **The passage** (§7): a human's path crosses its team's garrison (`pathfinder_pass_through`'s
+  case 33) without a visit (`hero_move_step` 0x48154B: not the planned destination); any other
+  garrison ends the path.
+- **What a viewer sees** (§8, `garrison_popup` 0x416F80 read whole): the town's levels, which the
+  engine's `GarrisonView` (TWN-VEW-002, -003) already projects.
+- **Disputes** D-59 (the passage: VCMI crosses empty and allied garrisons and visits them on the
+  way), D-60 (VCMI's anti-magic only against the garrison's army, not for a hero standing in it),
+  D-61 (VCMI merges into an ally's garrison stack); no quirk candidate; open points (the packs:
+  the anti-magic kind in the base pack; the import: random stacks unsupported); a gap: GAM-BAT-011's
+  ownable classes lack 219 (the background picture only). The garrisons' proposed rules (§9.3,
+  ADV-GAR-001 to -006 with amendments) and batch E12's rows (§9.4) for T108a2.
+
+**The address map:** 23 new entries (19 functions: `army_has_creatures` (H3API's
+`H3Army::HasCreatures`), `garrison_owner_message`, `garrison_set_owner`, `load_garrison_body`,
+`garrison_quick_view_create`, `garrison_exchange_create`, `garrison_exchange_dialog`,
+`ai_garrison_visit` inferred, and the eleven bonus handlers named from the switch, inferred, for
+T108a2; 4 sites: `visit_garrison`, `step_garrison_pass`, `setup_garrison`,
+`pathfinder_garrison_case`); `garrison_popup` and `town_garrison_hover_other` read whole;
+`town_garrison_hover`, `visit_object`, `pathfinder_pass_through`, `hero_move_step`,
+`setup_map_objects` and `tile_special_ground` extended; `structs.toml`: `garrison_record`, the
+hero's planned destination, the game's garrisons vector. `scripts/exe.py check` agrees with the
+executable.
+
+**The queue:** the T108a entry moved verbatim to `QUEUE-ARCHIVE.md`; T108a2 queued in its place;
+T108b after it.
+
+**Verify:** docs and the address map only: the docs gates and `scripts/exe.py check`. No code,
+version or replay moved; CI's run on the pull request is the record.
