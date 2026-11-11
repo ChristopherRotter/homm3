@@ -665,33 +665,61 @@ fn the_right_button_describes_an_item() {
 
 #[test]
 fn the_popup_takes_its_ends_and_lets_a_held_ok_go_in_the_clients_profile() {
-    let ok = [100 + 220, 50 + 250];
     let popup = || modal(&mut Memory::new(Bugs::Fixed)).open.message;
     // A key's release while it is held: the client's lets the OK its key holds go, unclicked.
     let mut memory = Memory::new(Bugs::Fixed);
     let mut m = modal(&mut memory);
     assert_eq!(m.key("Return"), Outcome::Changed);
     m.popup = Some(popup());
-    assert!(m.held_input(false, Some("Return"), false));
+    assert!(m.held_input(false, Some("Return")));
     assert!(m.popup.is_some());
     // Another key's release, nothing held: nothing changes.
-    assert!(!m.held_input(false, Some("Escape"), false));
+    assert!(!m.held_input(false, Some("Escape")));
     assert_eq!(m.key_up("Return"), Outcome::Nothing);
-    // The left release that ends it lets the OK the mouse holds go.
-    assert_eq!(m.press(ok), Outcome::Changed);
-    assert!(m.held_input(true, None, true));
+    // Its end closes it.
+    assert!(m.held_input(true, None));
     assert!(m.popup.is_none());
-    assert_eq!(m.release(), Outcome::Nothing);
-    // The original keeps it held: its next release clicks.
+    // The original keeps the OK its key holds: the key's release clicks it after the popup.
     let mut memory = Memory::new(Bugs::Original);
     let mut m = modal(&mut memory);
-    assert_eq!(m.press(ok), Outcome::Changed);
+    assert_eq!(m.key("Return"), Outcome::Changed);
     m.popup = Some(popup());
-    assert!(!m.held_input(false, Some("Return"), false));
-    assert!(m.held_input(true, None, true));
-    assert_eq!(m.release(), Outcome::Closed(OK));
+    assert!(!m.held_input(false, Some("Return")));
+    assert!(m.held_input(true, None));
+    assert_eq!(m.key_up("Return"), Outcome::Closed(OK));
     // Nothing held, nothing shown: no change.
-    assert!(!m.held_input(true, None, false));
+    assert!(!m.held_input(true, None));
+}
+
+#[test]
+fn the_ok_the_mouse_holds_runs_its_own_loop() {
+    // E17 M7 T2 (CLT-Q72 (a); `def_button_message` 0x45641C): while the mouse holds the OK the
+    // right press shows no description, the moves reach only the OK (no hint, no cursor), and
+    // the right button's release ends the hold as the left's, clicking it over it.
+    let ok = [100 + 220, 50 + 250];
+    let name = [100 + 160, 50 + 50];
+    let mut memory = Memory::new(Bugs::Fixed);
+    let mut m = modal(&mut memory);
+    assert!(m.describe(name).is_some());
+    assert!(m.hover(&mut memory, ok));
+    let status = String::from(m.status());
+    assert_eq!(m.press(ok), Outcome::Changed);
+    assert!(m.open.holds_mouse());
+    assert_eq!(m.describe(name), None);
+    assert!(!m.hover(&mut memory, name));
+    assert_eq!(m.status(), status);
+    assert_eq!(m.moved(name), Outcome::Changed);
+    assert_eq!(m.release(), Outcome::Changed);
+    assert!(!m.open.holds_mouse());
+    // Back over it, the right release (the same release) closes the dialog.
+    assert_eq!(m.press(ok), Outcome::Changed);
+    assert_eq!(m.release(), Outcome::Closed(OK));
+    // The OK its key holds runs no loop: the right press describes, the moves give hints.
+    let mut m = modal(&mut memory);
+    assert_eq!(m.key("Return"), Outcome::Changed);
+    assert!(!m.open.holds_mouse());
+    assert!(m.describe(name).is_some());
+    assert!(m.hover(&mut memory, name));
 }
 
 #[test]

@@ -591,12 +591,14 @@ fn what_the_help_s_popup_took_the_release_of_goes_without_its_click() {
     assert_eq!(o.let_go(None), Did::default());
     assert_eq!(o.release(), Did::default());
     assert!(!o.settings.grid && !o.clicked);
-    // A DEF button by the mouse (the window's loop opens no help over it): drawn up again.
+    // A DEF button by the mouse: its own loop opens no help over it, so nothing lets it go
+    // (E17 M7 T2): its release clicks.
     o.press(centre(&o, DEFAULT));
     assert_eq!(o.let_go(Some("Return")), Did::default());
-    assert_eq!(o.let_go(None), CHANGED);
-    assert!(!o.window.shown.state(DEFAULT).pressed);
-    assert_eq!(o.release(), Did::default());
+    assert_eq!(o.let_go(None), Did::default());
+    assert!(o.window.shown.state(DEFAULT).pressed);
+    assert!(o.release().changed && o.clicked);
+    o.clicked = false;
     // The OK by its key: its other key and the mouse let nothing go; its own key does.
     o.key("Return");
     assert_eq!(o.let_go(None), Did::default());
@@ -607,4 +609,39 @@ fn what_the_help_s_popup_took_the_release_of_goes_without_its_click() {
     let (pressed, released) = click(&mut o, BOXES);
     assert!(pressed.box_sound && released.changed && o.settings.grid && o.clicked);
     assert_eq!(o.let_go(None), Did::default());
+}
+
+#[test]
+fn the_right_release_ends_a_def_button_s_hold_with_its_click() {
+    // E17 M7 T2 (CLT-Q72 (a); `def_button_message` 0x456338): the right button's release ends
+    // the loop of the DEF button the mouse holds as the left's does, clicking it over it; the
+    // left release after it finds nothing held.
+    let mut o = open(Settings::FIRST_RUN, true);
+    let speed = centre(&o, SPEEDS + 2);
+    o.press(speed);
+    let did = o.right_release();
+    assert!(did.changed && o.clicked && o.settings.speed == 2);
+    assert_eq!(o.release(), Did::default());
+    // Off the button: it goes up, nothing clicked.
+    let mut o = open(Settings::FIRST_RUN, true);
+    o.press(centre(&o, DEFAULT));
+    o.moved([0, 0]);
+    let did = o.right_release();
+    assert!(did.changed && !did.closed && !o.clicked);
+    assert!(!o.window.shown.state(DEFAULT).pressed);
+    // The OK over it closes the dialog.
+    let mut o = open(Settings::FIRST_RUN, true);
+    o.press(centre(&o, OK));
+    assert!(o.right_release().closed);
+    // A box the mouse holds (a DEF picture, no loop of its own) and the OK its key holds stay
+    // held; nothing held, nothing.
+    let mut o = open(Settings::FIRST_RUN, true);
+    o.press(centre(&o, BOXES));
+    assert_eq!(o.right_release(), Did::default());
+    assert!(o.release().changed && o.settings.grid);
+    o.key("Return");
+    assert_eq!(o.right_release(), Did::default());
+    assert!(o.key_up("Return").closed);
+    let mut o = open(Settings::FIRST_RUN, true);
+    assert_eq!(o.right_release(), Did::default());
 }

@@ -555,8 +555,14 @@ fn frame_at(battle: &mut Battle<'_>, t: u32) -> Result<Frame, String> {
 fn next_frame(
     battle: &mut Battle<'_>,
     changes: &mut Changes,
-    shown: &Frame,
+    (shown, holding): (&Frame, bool),
 ) -> Result<Option<Frame>, String> {
+    // While the mouse holds a panel button the battle stands still too (E17 M7 T2, CLT-Q72 (a),
+    // *provisional*): the button's own loop runs no idle step of the battle (`def_button_message`
+    // 0x45641C, as read for the adventure map's, E24 design §4.13); only an input changes it.
+    if holding {
+        return Ok(None);
+    }
     // Behind the open spell book, a message box or the combat options dialog the battle stands
     // still (E17 M5 T3a, T4a; M6 T4a):
     // only an input changes it; the result window's clip plays on, a frame at each of its
@@ -1004,6 +1010,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     }
                 }
                 Event::KeyUp(_) if options.run.is_some() => {}
+                // The right button's release ends the own loop of the panel button the mouse
+                // holds as the left's does, clicking it over it (E17 M7 T2, CLT-Q72 (a);
+                // `def_button_message` 0x456338).
+                Event::KeyUp(Key::RightButton) if mouse_holds(held) => {
+                    if let Some(h) = held.take() {
+                        let lists = (&mut inputs, &mut scrolls);
+                        let (g, b) = let_go_held(&mut battle, lists, at, h)?;
+                        (grew, book_changed, mouse_changed) = (grew | g, book_changed | b, true);
+                    }
+                }
                 // A turret's info held by the right button over the battle (E17 M6 T2b2, design
                 // §12.6), a control's help over the panel (T3a, §12.7) or a hero's info window
                 // (T3b1, §12.8; `popup_run_held` 0x602A40): its ends (the right button's release, a left press or release)
@@ -1033,16 +1049,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 // battle keeps where the mouse is.
                 // The right button's stats dialog over the battle (E17 M6 T2b1) the same: its
                 // end closes it, the battle taking the mouse again (`Input::Looked`).
-                Event::KeyUp(Key::RightButton) if battle.stats_popup() => {
-                    let did = battle.stats_held(at, true, None, false);
-                    book_changed |= stats_did(&mut battle, &mut inputs, at, did);
-                }
-                Event::Click { down, .. } if battle.stats_popup() => {
-                    let did = battle.stats_held(at, true, None, !down);
+                Event::KeyUp(Key::RightButton) | Event::Click { .. } if battle.stats_popup() => {
+                    let did = battle.stats_held(at, true, None);
                     book_changed |= stats_did(&mut battle, &mut inputs, at, did);
                 }
                 Event::KeyUp(key) if battle.stats_popup() => {
-                    let did = battle.stats_held(at, false, Some(key.name()), false);
+                    let did = battle.stats_held(at, false, Some(key.name()));
                     book_changed |= stats_did(&mut battle, &mut inputs, at, did);
                 }
                 Event::Key(_) if battle.stats_popup() => {}
@@ -1081,6 +1093,12 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         .then(|| keys.command(Context::Tactics, ctrl_held, key.name()))
                         .flatten()
                         .or_else(|| keys.command(context, ctrl_held, key.name()));
+                    // While the mouse holds a panel button its own loop runs (E17 M7 T2, CLT-Q72
+                    // (a); `def_button_message` 0x456338 to 0x45641C): every key and the right
+                    // press are dropped, no popup opens; the viewer's own keys stay its own.
+                    if mouse_holds(held) && !matches!(command, Some(Do::Window(_))) {
+                        continue;
+                    }
                     // A key while Auto Combat plays stops it as the next turn starts and does
                     // nothing else (E17 M5 T4c1, 0x4741F9); the window's own keys stay its own.
                     if context == Context::Battle
@@ -1340,6 +1358,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         }
                     }
                 }
+                // The right button's release ends the hold of the box's button the mouse holds as
+                // the left's does (its own loop; E17 M7 T2, CLT-Q72 (a)); nothing else.
+                Event::KeyUp(Key::RightButton) if battle.message_open() => {
+                    let did = battle.message_release();
+                    grew |= message_did(
+                        &mut battle,
+                        &mut inputs,
+                        (at, pointer),
+                        did,
+                        &mut book_changed,
+                    )?;
+                }
                 Event::KeyUp(key) if battle.message_open() => {
                     let did = battle.message_key_up(key.name());
                     grew |= message_did(
@@ -1350,9 +1380,25 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                         &mut book_changed,
                     )?;
                 }
+                // The right button's release ends the hold of the OK or the cast button the mouse
+                // holds as the left's does (E17 M7 T2, CLT-Q72 (a)); nothing else.
+                Event::KeyUp(Key::RightButton) if battle.stats_open() => {
+                    let did = battle.stats_release();
+                    let changed = stats_did(&mut battle, &mut inputs, at, did);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
+                }
                 Event::KeyUp(key) if battle.stats_open() => {
                     let did = battle.stats_key_up(key.name());
                     let changed = stats_did(&mut battle, &mut inputs, at, did);
+                    (book_changed, mouse_changed) =
+                        (book_changed | changed, mouse_changed | changed);
+                }
+                // The right button's release ends a DEF button's hold by the mouse as the left's
+                // does (E17 M7 T2, CLT-Q72 (a)); a bar or a box held, nothing.
+                Event::KeyUp(Key::RightButton) if battle.options_open() => {
+                    let did = battle.options_right_release();
+                    let changed = options_did(&mut battle, &mut player, did, &files);
                     (book_changed, mouse_changed) =
                         (book_changed | changed, mouse_changed | changed);
                 }
@@ -1506,12 +1552,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     pointer = p;
                     redraw |= drawn_cursor;
                     if let Some((x, y)) = p {
-                        // The battle takes the move now (inputs after a seek back are gone).
-                        inputs.retain(|i| i.at() <= at);
-                        inputs.push(Input::Move { at, to: [x, y] });
-                        // The mouse's button follows it on or off the button it holds.
                         if let Some(h) = held.as_mut().filter(|h| h.key.is_none()) {
+                            // The mouse's button follows it on or off the button it holds, whose
+                            // own loop takes the move: the battle takes none until the release
+                            // (E17 M7 T2, CLT-Q72 (a), *provisional*: its status line and cursor
+                            // as the press left them, as read for the adventure map's).
                             h.over = battle.panel_at(at).button_at([x, y]) == Some(h.id);
+                        } else {
+                            // The battle takes the move now (inputs after a seek back are gone).
+                            inputs.retain(|i| i.at() <= at);
+                            inputs.push(Input::Move { at, to: [x, y] });
                         }
                         mouse_changed = true;
                     }
@@ -1528,13 +1578,18 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     down: true,
                     at: (x, y),
                 } => {
+                    // An enabled panel button goes down and runs its own loop while the mouse
+                    // holds it (E17 M7 T2, CLT-Q72 (a)); a disabled one takes no press
+                    // (`def_button_message` 0x4562DD), its help the right button's still.
                     if let Some(id) = battle.panel_at(at).button_at([x, y]) {
-                        held = Some(Held {
-                            id,
-                            key: None,
-                            over: true,
-                        });
-                        mouse_changed = true;
+                        if battle.enabled(at, id) {
+                            held = Some(Held {
+                                id,
+                                key: None,
+                                over: true,
+                            });
+                            mouse_changed = true;
+                        }
                         continue;
                     }
                     // Any left press over the battlefield hides the army info windows first, the
@@ -1560,30 +1615,9 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 }
                 Event::Click { down: false, .. } => {
                     if let Some(h) = held.take_if(|h| h.key.is_none()) {
-                        // A disabled button takes none (0x4562DD; E17 M3 T9b, the reviewer).
-                        if let Some(by) = scroll_by(h.id).filter(|_| h.over && battle.scrolls(at)) {
-                            scrolls.push((at, by));
-                        }
-                        // Wait and Defend give theirs as the button is released over them.
-                        if let Some(command) = battle.button(at, h.id).filter(|_| h.over) {
-                            grew |= give(&mut battle, &mut inputs, at, command)?;
-                        }
-                        // Auto Combat switches on (E17 M5 T4c1).
-                        if h.over && h.id == h3_view::panel::AUTO_COMBAT {
-                            grew |= battle.switch_auto(at)?;
-                        }
-                        // The spell book opens as its button is released over it (E17 M5 T3a),
-                        // or its refusal's box (E17 M6 T5a).
-                        if h.over && h.id == h3_view::panel::SPELL_BOOK {
-                            book_changed |= opened(&mut inputs, at, battle.open_book(at));
-                        }
-                        // The combat options dialog opens as its button is released over it (E17
-                        // M6 T4a).
-                        book_changed |=
-                            h.over && h.id == h3_view::panel::OPTIONS && battle.open_options(at);
-                        // Surrender and Retreat ask first (E17 M5 T4a).
-                        book_changed |= h.over && battle.ask_leave(at, h.id);
-                        mouse_changed = true;
+                        let lists = (&mut inputs, &mut scrolls);
+                        let (g, b) = let_go_held(&mut battle, lists, at, h)?;
+                        (grew, book_changed, mouse_changed) = (grew | g, book_changed | b, true);
                     }
                 }
                 Event::Redraw => redraw = true,
@@ -1739,7 +1773,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     match shown.as_mut().filter(|s| s.list == late.list) {
                         Some(s) => {
                             s.t = latest;
-                            next = next_frame(&mut battle, &mut changes, s)?;
+                            next = next_frame(&mut battle, &mut changes, (s, mouse_holds(held)))?;
                             None
                         }
                         None => Some(late),
@@ -1763,7 +1797,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             if let Some((back, presented)) = back {
                 compare(&back, &due, &presented, &mut report);
             }
-            next = next_frame(&mut battle, &mut changes, &due)?;
+            next = next_frame(&mut battle, &mut changes, (&due, mouse_holds(held)))?;
             shown = Some(due);
         } else if redraw && let Some(f) = &shown {
             show(
@@ -2580,13 +2614,55 @@ fn release_taken(held: &mut Option<Held>, key: Key, bugs: Bugs) -> bool {
     bugs == Bugs::Fixed && held.take_if(|h| h.key == Some(key)).is_some()
 }
 
-/// A panel button held: by the mouse (`key` none; `over` while the mouse stays on it) or by a
-/// hotkey.
+/// A panel button held: by the mouse (`key` none; `over` while the mouse stays on it; only an
+/// enabled one, [`Battle::enabled`]) or by a hotkey.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Held {
     id: u16,
     key: Option<Key>,
     over: bool,
+}
+
+/// Whether the mouse holds a panel button down (E17 M7 T2, CLT-Q72 (a)): its own loop runs
+/// (`def_button_message` 0x45641C) until the left button's release or the right's, every key
+/// (but the viewer's own) and the right press dropped, the moves only its own, the battle
+/// standing still meanwhile. A button its hotkey holds runs none (0x4565E7 returns at once).
+fn mouse_holds(held: Option<Held>) -> bool {
+    held.is_some_and(|h| h.key.is_none())
+}
+
+/// The panel button `h` the mouse held let go at `at` (E17 M3 T6c-2), by the left button's
+/// release or the right's (its own loop's ends, `def_button_message` 0x456451 and 0x456338; E17
+/// M7 T2, CLT-Q72 (a)): released over it, a log's scroll button scrolls it (`lists`' scrolls),
+/// Wait and Defend give theirs, Auto Combat switches on (E17 M5 T4c1), the spell book opens or
+/// its refusal's box (E17 M5 T3a, M6 T5a), the combat options dialog opens (E17 M6 T4a),
+/// Surrender and Retreat ask first (E17 M5 T4a); released off it, nothing. Whether the battle
+/// grew, and whether a dialog opened.
+fn let_go_held(
+    battle: &mut Battle<'_>,
+    (inputs, scrolls): (&mut Vec<Input>, &mut Vec<(u32, i64)>),
+    at: u32,
+    h: Held,
+) -> Result<(bool, bool), String> {
+    let (mut grew, mut opened_one) = (false, false);
+    if !h.over {
+        return Ok((grew, opened_one));
+    }
+    if let Some(by) = scroll_by(h.id).filter(|_| battle.scrolls(at)) {
+        scrolls.push((at, by));
+    }
+    if let Some(command) = battle.button(at, h.id) {
+        grew |= give(battle, inputs, at, command)?;
+    }
+    if h.id == h3_view::panel::AUTO_COMBAT {
+        grew |= battle.switch_auto(at)?;
+    }
+    if h.id == h3_view::panel::SPELL_BOOK {
+        opened_one |= opened(inputs, at, battle.open_book(at));
+    }
+    opened_one |= h.id == h3_view::panel::OPTIONS && battle.open_options(at);
+    opened_one |= battle.ask_leave(at, h.id);
+    Ok((grew, opened_one))
 }
 
 /// How far the log's scroll button `id` scrolls it (`battle_log_up` 0x472DF0, `battle_log_down`
@@ -2745,6 +2821,48 @@ mod tests {
         assert!(release_taken(&mut held, Key::D, Bugs::Fixed));
         assert_eq!(held, None);
         assert!(!release_taken(&mut held, Key::D, Bugs::Fixed));
+    }
+
+    #[test]
+    fn a_panel_button_the_mouse_holds_runs_its_own_loop_to_either_release() {
+        // E17 M7 T2 (CLT-Q72 (a)): only the mouse's hold runs the loop (a hotkey's returns at
+        // once); let go off the button nothing happens, over it Defend's command is given, and
+        // only once: the release that ends the loop, left or right, takes the hold.
+        let by_mouse = Held {
+            id: h3_view::panel::DEFEND,
+            key: None,
+            over: true,
+        };
+        assert!(mouse_holds(Some(by_mouse)));
+        assert!(!mouse_holds(Some(Held {
+            key: Some(Key::D),
+            ..by_mouse
+        })));
+        assert!(!mouse_holds(None));
+        let Some(source) = crate::battle::tests::staged("seq-auto-retreat.toml", [true, false])
+        else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.grow(0).unwrap();
+        let at = battle.timeline().end;
+        assert!(battle.waiting() && battle.enabled(at, by_mouse.id));
+        let (mut inputs, mut scrolls) = (Vec::new(), Vec::new());
+        let off = Held {
+            over: false,
+            ..by_mouse
+        };
+        let lists = (&mut inputs, &mut scrolls);
+        assert_eq!(let_go_held(&mut battle, lists, at, off), Ok((false, false)));
+        assert!(battle.waiting() && inputs.is_empty());
+        let lists = (&mut inputs, &mut scrolls);
+        assert_eq!(
+            let_go_held(&mut battle, lists, at, by_mouse),
+            Ok((true, false))
+        );
+        assert_eq!(inputs, [Input::Act { at }]);
+        assert!(scrolls.is_empty());
     }
 
     #[test]

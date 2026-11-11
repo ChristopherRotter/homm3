@@ -765,8 +765,13 @@ impl Modal {
     /// hint, none over an item without one or off the dialog). The items the executable numbers
     /// −1 (the ability text, the cast button's back: [`ABILITY`], [`CAST_BACK`]) take the mouse
     /// but are nothing to it: `dialog_item_id_at` 0x5FF3B0 answers their id, −1 as for no item,
-    /// which 0x5F4E57 tells by (the reviewer's R2-1). Whether anything changed.
+    /// which 0x5F4E57 tells by (the reviewer's R2-1). Nothing while the mouse holds the OK or the
+    /// cast button: its own loop takes the moves, the dialog's procedure none (E17 M7 T2,
+    /// CLT-Q72 (a); `def_button_message` 0x45641C). Whether anything changed.
     pub fn hover(&mut self, memory: &mut Memory, point: [i32; 2]) -> bool {
+        if self.open.holds_mouse() {
+            return false;
+        }
         let message = &self.open.message;
         let item = message
             .dialog
@@ -797,30 +802,33 @@ impl Modal {
     /// The description a right press at `point` shows (`creature_dialog_proc` 0x5F48AD: the item
     /// under the mouse that takes it, as a move's, `dialog_area_message` 0x44FF60 and its kin
     /// turning the press into 0x200/0xE with the right button's flag): none off the dialog or over
-    /// an item without one ([`Hints::described`]); with its picture (morale's and luck's).
+    /// an item without one ([`Hints::described`]); with its picture (morale's and luck's). None
+    /// while the mouse holds the OK or the cast button, whose own loop drops the right press (E17
+    /// M7 T2, CLT-Q72 (a); `def_button_message` 0x456338 to 0x45641C).
     #[must_use]
     pub fn describe(&self, point: [i32; 2]) -> Option<(String, Option<message::Picture>)> {
+        if self.open.holds_mouse() {
+            return None;
+        }
         let message = &self.open.message;
         let id = message.dialog.item_taking(point, &message.shown)?.id();
         self.hints.described(id, self.bugs)
     }
 
     /// An input while the popup is held (`popup_run_held` 0x602A40's loop, E17 M6 T2a2b1): the
-    /// right button's release (`right`), a left press or a left release ends it (`ends`) and is
-    /// taken; every other one is dropped. A left release that ends it while the mouse holds the
-    /// OK, or a key up (`key_up`) of the key holding it, leaves the OK held down in the
-    /// original; the client's profile lets it go without its click (CLT-Q39, answered (b) at E17
-    /// M6 T2a2b1's start, as the map's MCL-Q24), [`Bugs::Original`] for the comparisons. Whether
-    /// anything shown changed.
-    pub fn held_input(&mut self, ends: bool, key_up: Option<&str>, left_release: bool) -> bool {
+    /// right button's release, a left press or a left release ends it (`ends`) and is taken;
+    /// every other one is dropped. A key up (`key_up`) of the key holding the OK leaves it held
+    /// down in the original; the client's profile lets it go without its click (CLT-Q39, answered
+    /// (b) at E17 M6 T2a2b1's start, as the map's MCL-Q24), [`Bugs::Original`] for the
+    /// comparisons. The mouse never holds a button here: its own loop drops the right press that
+    /// would open the popup ([`Self::describe`]), and a left press ends the popup (E17 M7 T2:
+    /// CLT-Q39's mouse case cannot happen). Whether anything shown changed.
+    pub fn held_input(&mut self, ends: bool, key_up: Option<&str>) -> bool {
         let mut changed = false;
-        if self.bugs == Bugs::Fixed {
-            if let Some(key) = key_up {
-                changed |= self.open.let_go(Some(key)) != Outcome::Nothing;
-            }
-            if left_release {
-                changed |= self.open.let_go(None) != Outcome::Nothing;
-            }
+        if self.bugs == Bugs::Fixed
+            && let Some(key) = key_up
+        {
+            changed |= self.open.let_go(Some(key)) != Outcome::Nothing;
         }
         if ends && self.popup.take().is_some() {
             changed = true;
@@ -833,8 +841,9 @@ impl Modal {
         self.open.moved(point)
     }
 
-    /// The left button released: the OK held clicks when the mouse is still over it, closing
-    /// the dialog (0x5F4DFB: its result 0x7802).
+    /// The left button released, or the right one while the mouse holds a button (its own loop's
+    /// end, E17 M7 T2, CLT-Q72 (a)): the OK held clicks when the mouse is still over it, closing
+    /// the dialog (0x5F4DFB: its result 0x7802), the cast button its aim.
     pub fn release(&mut self) -> Outcome {
         self.open.release()
     }
