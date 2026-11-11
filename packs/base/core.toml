@@ -5373,39 +5373,44 @@ slot = "misc"
 effects = [{ kind = "daily_resource", resource = "gold", amount = 500 }]
 
 [[artifact]]
-id = "legs_of_legion"  # original id 118; pending: E08-E10
+id = "legs_of_legion"  # original id 118
 name = "Legs of Legion"
 class = "treasure"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "town_growth", amount = 5, level = 2 }]
 
 [[artifact]]
-id = "loins_of_legion"  # original id 119; pending: E08-E10
+id = "loins_of_legion"  # original id 119
 name = "Loins of Legion"
 class = "minor"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "town_growth", amount = 4, level = 3 }]
 
 [[artifact]]
-id = "torso_of_legion"  # original id 120; pending: E08-E10
+id = "torso_of_legion"  # original id 120
 name = "Torso of Legion"
 class = "minor"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "town_growth", amount = 3, level = 4 }]
 
 [[artifact]]
-id = "arms_of_legion"  # original id 121; pending: E08-E10
+id = "arms_of_legion"  # original id 121
 name = "Arms of Legion"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "town_growth", amount = 2, level = 5 }]
 
 [[artifact]]
-id = "head_of_legion"  # original id 122; pending: E08-E10
+id = "head_of_legion"  # original id 122
 name = "Head of Legion"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "misc"
+effects = [{ kind = "town_growth", amount = 1, level = 6 }]
 
 [[artifact]]
 id = "sea_captains_hat"  # original id 123
@@ -5456,8 +5461,8 @@ regain_specialist_bonus = 1
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true, "quirk.battle.clone_on_its_original" = true, "quirk.battle.periodic_first_stack" = true, "quirk.battle.no_defender_ballista_at_fort" = true, "quirk.battle.berserk_walks_to_position_hex" = true, "quirk.battle.original_ai_slips" = true, "quirk.battle.computer_morale_let_off" = true, "quirk.battle.breath_skips_side_columns" = true, "quirk.battle.retaliation_at_a_dead_striker" = true, "quirk.battle.raise_by_rear_hex" = true, "quirk.content.roland_crusader_specialty" = true, "quirk.content.elemental_levels" = true, "quirk.content.elementalist_offer_intervals" = true, "quirk.adventure.diagonal_check_ignores_roads" = true, "quirk.adventure.diagonal_check_ignores_native" = true, "quirk.adventure.native_skips_leading_neutrals" = true, "quirk.adventure.fringe_shows_objects" = true, "quirk.adventure.obstacles_from_tile" = true, "quirk.adventure.split_from_tile" = true, "quirk.adventure.level_up_from_seed" = true, "quirk.adventure.drop_ignores_artifacts" = true, "quirk.adventure.radius_waits_for_a_step" = true, "quirk.adventure.roe_witch_hut_mask" = true, "quirk.adventure.full_backpack_refuses" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true, "quirk.battle.clone_on_its_original" = true, "quirk.battle.periodic_first_stack" = true, "quirk.battle.no_defender_ballista_at_fort" = true, "quirk.battle.berserk_walks_to_position_hex" = true, "quirk.battle.original_ai_slips" = true, "quirk.battle.computer_morale_let_off" = true, "quirk.battle.breath_skips_side_columns" = true, "quirk.battle.retaliation_at_a_dead_striker" = true, "quirk.battle.raise_by_rear_hex" = true, "quirk.content.roland_crusader_specialty" = true, "quirk.content.elemental_levels" = true, "quirk.content.elementalist_offer_intervals" = true, "quirk.adventure.diagonal_check_ignores_roads" = true, "quirk.adventure.diagonal_check_ignores_native" = true, "quirk.adventure.native_skips_leading_neutrals" = true, "quirk.adventure.fringe_shows_objects" = true, "quirk.adventure.obstacles_from_tile" = true, "quirk.adventure.split_from_tile" = true, "quirk.adventure.level_up_from_seed" = true, "quirk.adventure.drop_ignores_artifacts" = true, "quirk.adventure.radius_waits_for_a_step" = true, "quirk.adventure.roe_witch_hut_mask" = true, "quirk.adventure.full_backpack_refuses" = true, "quirk.town.creature_month_exact" = true, "quirk.town.neutral_plague_full_growth" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, TWN-QUIRK-9, TWN-QUIRK-10 (planned)
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false, "quirk.battle.clone_on_its_original" = false, "quirk.battle.periodic_first_stack" = false, "quirk.battle.no_defender_ballista_at_fort" = false, "quirk.battle.berserk_walks_to_position_hex" = false, "quirk.battle.original_ai_slips" = false, "quirk.battle.computer_morale_let_off" = false, "quirk.battle.breath_skips_side_columns" = false, "quirk.battle.retaliation_at_a_dead_striker" = false, "quirk.battle.raise_by_rear_hex" = false, "quirk.content.roland_crusader_specialty" = false, "quirk.content.elemental_levels" = false, "quirk.content.elementalist_offer_intervals" = false, "quirk.adventure.diagonal_check_ignores_roads" = false, "quirk.adventure.diagonal_check_ignores_native" = false, "quirk.adventure.native_skips_leading_neutrals" = false, "quirk.adventure.fringe_shows_objects" = false, "quirk.adventure.obstacles_from_tile" = false, "quirk.adventure.split_from_tile" = false, "quirk.adventure.level_up_from_seed" = false, "quirk.adventure.drop_ignores_artifacts" = false, "quirk.adventure.radius_waits_for_a_step" = false, "quirk.adventure.roe_witch_hut_mask" = false, "quirk.adventure.full_backpack_refuses" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false, "quirk.battle.clone_on_its_original" = false, "quirk.battle.periodic_first_stack" = false, "quirk.battle.no_defender_ballista_at_fort" = false, "quirk.battle.berserk_walks_to_position_hex" = false, "quirk.battle.original_ai_slips" = false, "quirk.battle.computer_morale_let_off" = false, "quirk.battle.breath_skips_side_columns" = false, "quirk.battle.retaliation_at_a_dead_striker" = false, "quirk.battle.raise_by_rear_hex" = false, "quirk.content.roland_crusader_specialty" = false, "quirk.content.elemental_levels" = false, "quirk.content.elementalist_offer_intervals" = false, "quirk.adventure.diagonal_check_ignores_roads" = false, "quirk.adventure.diagonal_check_ignores_native" = false, "quirk.adventure.native_skips_leading_neutrals" = false, "quirk.adventure.fringe_shows_objects" = false, "quirk.adventure.obstacles_from_tile" = false, "quirk.adventure.split_from_tile" = false, "quirk.adventure.level_up_from_seed" = false, "quirk.adventure.drop_ignores_artifacts" = false, "quirk.adventure.radius_waits_for_a_step" = false, "quirk.adventure.roe_witch_hut_mask" = false, "quirk.adventure.full_backpack_refuses" = false, "quirk.town.creature_month_exact" = false, "quirk.town.neutral_plague_full_growth" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, TWN-QUIRK-9, TWN-QUIRK-10 (planned)

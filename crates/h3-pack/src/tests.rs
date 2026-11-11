@@ -543,6 +543,107 @@ fn the_whirlpool_protection_parses_and_is_harvested() {
     }
 }
 
+/// E09 T24 (pack format v52, increment 3): the Legion's two kinds parse with their parameters and
+/// are harvested onto the five pieces (by level, every expansion) and the SoD Statue of Legion
+/// alone (its own share; the pieces' amounts come through its parts; ADR-0013 point 16.4,
+/// TWN-GRO-001).
+#[test]
+fn the_legion_growth_parses_and_is_harvested() {
+    let manifest = "[pack]\nid = \"x\"\nversion = \"1\"\n";
+    let artifact = |effect: &str| {
+        format!(
+            "{manifest}[[artifact]]\nid = \"a\"\nname = \"A\"\nclass = \"relic\"\n\
+             effects = [{{ {effect} }}]\n"
+        )
+    };
+    let pack = parse_pack(&artifact("kind = \"town_growth\", level = 2, amount = 5")).unwrap();
+    assert_eq!(
+        pack.artifacts[0].effects,
+        [HeroEffect::TownGrowth {
+            level: 2,
+            amount: 5
+        }]
+    );
+    let pack = parse_pack(&artifact("kind = \"owner_town_growth\", bp = 5000")).unwrap();
+    assert_eq!(
+        pack.artifacts[0].effects,
+        [HeroEffect::OwnerTownGrowth { bp: 5000 }]
+    );
+    for bad in [
+        "kind = \"town_growth\", level = 2",
+        "kind = \"town_growth\", level = 2, amount = 5, bp = 1",
+        "kind = \"owner_town_growth\", bp = -1",
+    ] {
+        assert!(
+            matches!(parse_pack(&artifact(bad)), Err(PackError::Syntax(_))),
+            "{bad}"
+        );
+    }
+    for (effect, message) in [
+        (
+            "kind = \"town_growth\", level = 8, amount = 1",
+            "town_growth level must be 1..=7",
+        ),
+        (
+            "kind = \"town_growth\", level = 1, amount = 0",
+            "town_growth amount must be at least 1",
+        ),
+        (
+            "kind = \"owner_town_growth\", bp = 10001",
+            "owner_town_growth bp must be 1..=10000",
+        ),
+    ] {
+        let bad = format!("{manifest}[[secondary_skill]]\nid = \"s\"\nbasic = [{{ {effect} }}]\n");
+        let error = compile(&[bad.as_str(), SYNTHETIC_CORE], "synthetic:faithful").unwrap_err();
+        assert!(error.to_string().contains(message), "{error}");
+    }
+    let pieces = [
+        ("base:legs_of_legion", 2, 5),
+        ("base:loins_of_legion", 3, 4),
+        ("base:torso_of_legion", 4, 3),
+        ("base:arms_of_legion", 5, 2),
+        ("base:head_of_legion", 6, 1),
+    ];
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        let r = compile(packs, "base:faithful").unwrap();
+        for (key, level, amount) in pieces {
+            let piece = r.artifact(r.artifact_by_key(key).unwrap()).unwrap();
+            assert_eq!(
+                piece.effects,
+                [HeroEffect::TownGrowth { level, amount }],
+                "{key}"
+            );
+        }
+        let growing = r
+            .artifacts()
+            .iter()
+            .filter(|a| {
+                a.effects.iter().any(|e| {
+                    matches!(
+                        e,
+                        HeroEffect::TownGrowth { .. } | HeroEffect::OwnerTownGrowth { .. }
+                    )
+                })
+            })
+            .count();
+        assert_eq!(
+            growing,
+            5 + usize::from(packs.len() == 3),
+            "the Legion only"
+        );
+    }
+    let r = compile(&[SOD_CORE, AB_CORE, BASE_CORE], "base:faithful").unwrap();
+    let statue = r
+        .artifact(r.artifact_by_key("sod:statue_of_legion").unwrap())
+        .unwrap();
+    assert_eq!(statue.effects, [HeroEffect::OwnerTownGrowth { bp: 5000 }]);
+    assert_eq!(statue.parts.len(), 5);
+}
+
 /// E08 T81b (pack format v50): the day's income and spell points from the gap-fill in every
 /// expansion (ADR-0013 points 3 and 16; GAM-RES-004, -005, HER-MAN-002).
 #[test]
