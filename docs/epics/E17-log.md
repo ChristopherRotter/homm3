@@ -4201,10 +4201,10 @@ Oppression's lines, the Angelic Alliance's join and a siege town's buildings).
   verify with the original data; `scripts/exe.py check` and `cited` (the map's two entries read,
   `town_building_name` and `fountain_of_fortune_luck_texts` added).
 
-## Accepted review lists (M1 to M6)
+## Accepted review lists (M1 to M7)
 
 M1 and M2 moved from the epic file on 2026-10-20 (less start-up reading), unchanged; M3 at its
-review (T9b, 2026-10-23); M4 at its review (T3c, 2026-10-27); M5 at its review (T8c, 2026-10-31); M6 at its review (T7c, 2026-11-10).
+review (T9b, 2026-10-23); M4 at its review (T3c, 2026-10-27); M5 at its review (T8c, 2026-10-31); M6 at its review (T7c, 2026-11-10); M7 at its review (T4, 2026-11-12).
 
 ### M1 review list
 
@@ -5355,6 +5355,108 @@ lane's `QUESTIONS-ANSWERED.md`); the fixes they ask for are M7 T1 and T2.
     checks nothing there (the client's first such tests: the original-data checks were scripts).
     Keep them so, or move them to a script or `examples/original_data.rs` run by
     `--with-original-data`?
+
+### M7 review list
+
+**Accepted by the user, 2026-11-12 (T4), every item as built** (1 to 9 asked first, 10 to 15
+after the review's fixes; R2-4, R3-5, R4-2 and R4-3 decided by the user before they were
+built); the *provisional* marks stay where an item names them.
+
+1. F6 to F8 on every turn (T1a, CLT-Q75 (a), *provisional* where marked; design §12.16): taken
+   once the battle's last action played (`Battle::takes_keys`); a key during an action dropped
+   as the original's queue is emptied at the next turn's start (*provisional*: the original's
+   keeps it for a remote turn); the acting stack's reach on a turn no human plays drawn only
+   for a stack whose commands the client knows (*provisional*: none on a seat's opponent's
+   turn, the server sending no commands for it). Not recorded.
+2. The other slips (T1b, CLT-Q70 (b), Q71 (b), Q77 (b), *provisional* where marked): a
+   heroless side's colours its own player's where it has one (a colour, or a human's: CLT-Q6's
+   red or blue), the viewing player's for a side with none (*provisional*: neutral creatures, no
+   player to take); a held button let go on a release the stats dialog, a message box or popup,
+   the combat options, the spell book or an aim takes (*provisional*: the book and the aims
+   beyond the answer's dialogs and popups); the pictures box's size unchanged by its rows'
+   fix. Not recorded (the stills and sequences the original's).
+3. The reads, captures and tools (T1c, T1d; *provisional* where marked): the harness's sound
+   stills and `samples` (the set's runner, `set` only: a sequence's sounds still unrecorded) and
+   `key-down:`/`key-up:` (in a still only a panel button's hotkey held into a dialog; a release
+   over the battle refused); the effects' bars of a sound still recorded as differing (578
+   pixels) rather than drawn at the run's volume; `--close-result` pressing Eagle Eye's boxes
+   after the result window too.
+4. The DEF button's own loop (T2, CLT-Q72 (a), design §13.1; *provisional* where marked): in
+   both profiles; nothing posted at the release (the battle and the stats dialog take the mouse
+   at its next move: the map's recorded release gives the point's hint); the boxes' and the
+   result window's buttons ended by the right release too (no still); a disabled panel button
+   takes no press (before, held unpressed); the viewer's own keys still act during the hold; a
+   hotkey's button let go by the mouse's press in both profiles (the original's keeps it drawn
+   pressed); the panel's press samples not built. Recorded: `hold-right`, `stats-hold-right`,
+   `options-hold-right` (exact, the battle's and the creature's standing found by them).
+5. The battle's library and the hosted element (T3a1, T3a2; design §13.2, *provisional* where
+   marked): the crate `h3-battle-client` (the user's choice, not reviewed again) with the
+   binary's modules all public and the `h3-view` binary in it; the element's shape (`Prepared`,
+   `Setup`, `Presses`, `Hosted` and its pass: `timeout`, `before`, `event`, `closed`, `after`,
+   the cursor, `sound`, `due`/`showed`; `Flow`, `Took`), *provisional*: the host's tick source
+   handed to each call (`&dyn Fn() -> u64`), the platform's `Event` and cursor image in its API,
+   the window's own keys split (the battle's clock and sound its own, fullscreen, vsync and the
+   cursor the host's), its sound still on a device of its own until T3c. Not recorded (nothing
+   the original draws changed); checked with the data staged by the next session.
+6. A whole game's battle from its record (T3b1; design §13.3, *provisional* where marked):
+   `h3_view::game_record` (the battle's record numbered afresh, its seat the snapshot's viewer, a
+   start the snapshot's only right before it, a `BattleStarted` while a battle is open ending
+   that one), `--battle <k>` by the order the battles open, the result window opened for a whole
+   game's battle only (a battle's own record still opens none), `Hosted::outcome` the wire's
+   `Outcome`; the colours from the wire for the flags and the panel (a neutral side's not read:
+   blue as before); the test host's game built around a battle fought here (a real game in the
+   client's tests needs the adventure's packs and `clients.yml`'s paths: a `shared/` change).
+   The variants 0 and 1 and the colours not recorded (no situation names them).
+7. A whole game's battle played live (T3b2; design §13.4, *provisional* where marked): the seat's
+   shape (`GameSeat`: `receive`, `opened`, `take_outgoing` and `ToHost`, `answer`, `in_game`;
+   `Ground::load_game`, `Ground::game_seat`), the host answering the turn's target queries (the
+   whole game's protocol has none), the seat's own numbers for its commands and queries, the
+   first battle to open followed; `battle::Remote` over the server's seat and the game's;
+   `Ground::in_game` now by value; no Auto Combat switch there (`CLT-STUB-4`: the computer's
+   choices for the human's side need the host's state); the client workspace's dev-dependencies
+   on `h3-files`, `h3-game`, `h3-pack-adventure` (and `h3-sim` through them). Not recorded.
+8. The hero's battle picture by the map's sex (T3b2, CLT-Q78 (b); design §13.5): the asset
+   tables' format change (`[battle]`'s `hero_pictures`, each hero's `picture`, checked against
+   its own fields at load; written from the executable and by `h3-view harvest`);
+   `Tables::hero_art`, `scene::battle_as` (the profile beside `battle_at`), `motion::casts`'s
+   profile. Not recorded (no situation gives a hero a sex).
+9. The battle's sound on the host's (T3c; design §13.6, *provisional* where marked): the shape
+   (`audio::HostSound`: `open`, `audio`, `add_track`, `request`, `focus`, `service`, `reset`;
+   `Setup::sound` in place of `mute`, `Hosted::take_sound`, `Hosted::focus`), the battle's tracks
+   left added to the host's for a later battle, `h3_sdl::Audio::remove_stream` (an index reused);
+   `h3_ui::music::Music::request_once` and `Queue::request_once` (a tune ending in its own
+   fade-out closes then); the music's setting as the stream's gain; Home after the end following
+   the tune's fade-out; a request at the music's setting 0 still taken (the original's
+   `play_music` drops it); an unreadable archive no longer fails the battle (no sound, noted);
+   the focus followed by `h3-view window` (before: played on). Not recorded (no capture has the
+   sound's timing; the `disk` driver's mix measured instead).
+10. The review's window fixes (T4, R2-1, R2-2, R1-1, R1-2; design §13.1, *provisional*): a
+    mouse's hold stands the battle only at its timeline's end (a record and a Restart's replay
+    play on under it, the button drawn pressed); a box or dialog opening under the hold ends it
+    without its click; a still refuses another hotkey's `key:` or a panel `click:` while a
+    `key-down:` holds a button; the harness lets go of the keys and buttons a failed or killed
+    run held (`capture/test_h3drive.py`, outside `check.sh`: it needs numpy). Not recorded (the
+    stills unchanged; the window's alone).
+11. The element's borrow and its start (T4, R2-4 the user's, R4-1; design §13.2): `Prepared<'g>`
+    and `Hosted<'g>` keep borrowing their `Ground` and the host's game (a host runs a battle in a
+    scope that owns them); `Prepared::start` returns `Box<NotStarted>` with the lent sound handed
+    back, every fallible step before the sound is taken, the clock started after the first frame.
+12. A whole game's record (T4, R3-1, R3-6, R3-4; design §13.3, *provisional*): a battle opens at
+    a `GameSnapshot` that holds it (its start unknown); a `Snapshot` right after a battle's end,
+    with no start pending, is that battle's last (the server lane told, for SRV-STUB-14's lift);
+    `Ground::load_battle` plays a `GameBattle` held in memory.
+13. The game's seat (T4, R3-3, R3-5 the user's; design §13.4): one `GameSeat` per battle (it
+    follows the battle opened last until loaded, then stays on it; the earlier ones not kept);
+    `CLT-STUB-5`, a hot-seat battle between two of the host's humans, with E24 M5.
+14. The sound after the review (T4, R4-2 and R4-3 the user's, R4-4 *provisional*; design §13.6):
+    a Restart after the end asks for the combat music by the client's rule in both profiles
+    (`h3_ui::music`'s `request_again`, additive); a battle without its own sound silences the
+    host's (a request for the missing track `""`), services it and passes the focus on; the
+    tracks the host's sound has are reused, not decoded again (item 9's tracks "left added");
+    the sound tests on SDL's dummy driver (`h3_sdl::Audio::open_driver`, additive).
+15. `render --frames` takes the hero's casts from the picture it draws, the original's (T4, R3-2;
+    design §13.5): a fix of the comparisons' path; nothing recorded changes (no situation gives a
+    hero a sex).
 
 ### M6 T3c2 — the overrides, the Alliance's join, a siege town's buildings and the Grail (2026-11-03)
 
@@ -6807,3 +6909,89 @@ T3b2's run (light gates only). Design §13.6; the map client lane's notes of 202
   `request_once`, `remove_stream`), the battle's tracks left with the host's sound, the setting
   as the stream's gain, a tune ending in its own fade-out closing then, Home after the end
   following the tune's fade-out, an unreadable archive costing the sound alone. M7 review item 9.
+
+### M7 T4 — M7's and E17's closure (2026-11-12)
+
+On `client/e17-m7-t4` and `shared/e17-closure`, the user present (2026-11-11 evening to
+2026-11-12). Its scope: QUEUE-ARCHIVE, "E17 M7 — the queue's tasks section at E17's end".
+
+- **The cut** (asked at the start: two parts recommended, three or the whole proposed): the user,
+  "No cut. Use agents to review and fix, so that you only need to coordinate and close it out."
+  The session a coordinator: four read-only reviewers (two at a time, on a detached worktree of
+  `master` e085069, no builds), two fixers one after the other on the branch.
+- **Starting point:** `master` at e085069 (#859 merged). The original data staged from the PC at
+  once (57 files, 341 MB, every call ok); the capture setup (`setup.sh`) run beside the baseline.
+  The baseline (`verify-once clients`, the full `check.sh`) was lost to a VM restart in coverage;
+  CI's Clients runs on `master` (86796041, 7349ed4a) green stood for it.
+- **The review** (M7's range dc77313..e085069: about 6 300 inserted lines over eight pull
+  requests): R1 (T1a to T1d: #833, #836, #839) three low; R2 (T2 #845, T3a #849: the move checked
+  by a token diff of the old loop against the element, nothing lost) two medium, three low; R3
+  (T3b1 #850, T3b2 #854) one medium, seven low; R4 (T3c #859) two medium, three low. **21
+  findings, none high, five medium.**
+- **R1 (fixed, F1):** R1-1 a still's `key-down:` kept its button pressed under another hotkey's
+  `key:` or a panel `click:` (the window replaces it) → refused, an error; R1-2 the harness left a
+  key down on the shared display after a failed or killed run → `h3drive.Game.stop` and `start`
+  let go of the keys and buttons (`capture/test_h3drive.py`, three tests; it needs numpy, so
+  `check.sh` does not run it); R1-3 `Battle::takes_keys` and the options dialog's close order
+  untested → tests, the close as `options_closing`.
+- **R2 (fixed, F1):** R2-1 (medium) a mouse's hold froze a playing record and a Restart's replay
+  (the clock and sounds on, the frame jumping at the release) → it stands only at the timeline's
+  end; R2-2 (medium) a box opening under a hold left it stuck (the box's keys dropped, the result
+  window's clip stopped, a right release clicking the stale button) → the hold ended without
+  its click in `Hosted::before`; R2-3 `Hosted::event` untested → two tests over the staged
+  installation through it (a windowless host where a human plays; also failing with T2's key
+  drop removed); R2-4 the element's borrow → kept (the user), design §13.2; R2-5 the README's
+  "only" three → the eight.
+- **R3 (fixed, F2):** R3-1 (medium) a battle open when a player's messages begin (a game started
+  or restored mid-battle: `GameSnapshot.observation.battle`) never opened → it opens at that
+  message; R3-2 `render --frames`' casts in the client's profile → the original's; R3-3 a seat
+  followed the first battle forever → the last opened until loaded, one seat per battle; R3-4 a
+  whole game's record only from a file → `Ground::load_battle`; R3-5 a hot-seat battle between two
+  humans → `CLT-STUB-5` (the user: with E24 M5); R3-6 a phantom battle once SRV-STUB-14 lifts →
+  a `Snapshot` right after a battle's end is its last, the server lane told; R3-7 the packs'
+  refusal untested → tested (the `Online` one still needs a server); R3-8 the README's row →
+  `game_seat`, the dev-dependencies and four dependencies it lacked.
+- **R4 (fixed, F2):** R4-1 (medium) a failed `Prepared::start` lost the host's sound →
+  `Box<NotStarted>` hands it back, every fallible step first, the clock after the first frame;
+  R4-2 (medium) Home after the end under the original's music filter kept the end's tune →
+  `request_again` (additive in `h3_ui::music`), the client's rule in both profiles (the user);
+  R4-3 a battle without its own sound neither serviced the host's nor passed the focus → it
+  silences it (a request for the missing track `""`), services it, passes the focus (the user:
+  fade out); R4-4 the kept tracks decoded again → reused (`has_track`); R4-5 two comments. The
+  sound tests open SDL's dummy driver (`h3_sdl::Audio::open_driver`, additive) under one lock.
+- **Each code fix's test fails with the fix reverted** (the fixers reverted each once). F2
+  removed F1's leftover debug print; its first commit (573fbf9) was pushed with a clippy error,
+  fixed in 18573ec. No fix changes a frame of the original's profile (the stills and sequences
+  never run the window's routing; R3-2 only for a hero a map gave a sex, which no situation does).
+- **Master merged** before the gates (cbb69fe: #860, the town lane's harness change: xdd.dll's
+  twelve adventure-map sites; `xdd.dll` rebuilt here; #861, #862) and once more before the pull
+  request (#863, protocol v42).
+- **Gates:** `clients/scripts/check.sh` all passed (coverage 100 %, the staged-data tests run);
+  `h3drive.py drawn` 270 of 270 the same (release build); `h3-view gate` passed; the scoped verify
+  with the original data no failing step. **Captured afresh** (the captures where M7 changed the
+  battle screen: its seven stills and `stats-ok`, which T1c captured again): `set --only` each,
+  every one as recorded (`options-sound` and `options-speed-sound` 578 as recorded, the others
+  0); `kept/` unchanged.
+- **The review list:** items 1 to 9 accepted as built (asked while the reviewers ran), 10 to 15
+  (the review's lasting choices) after the fixes; moved to "Accepted review lists".
+- **The threads placed** (the user: ranked play and HD/graphics options each a backlog row of
+  its own, the rest as proposed): E28 ranked play in the native client (refined after E27, the
+  website first), E29 HD layouts and graphics options (both clients); E27 the client's options,
+  video and CLT-Q2's switch (its draft); with E24 M4 T5 M6 T5e, CLT-Q4's recording and
+  `CLT-STUB-4`; with E24 M5 `CLT-STUB-5`; the queue's inbox CLT-Q63, Q65, Q69, `CLT-STUB-1` and the
+  battle screen's unbuilt gaps; the adventure lane's inbox the harness check's growth; the
+  archive the encoding-3 note and the town lane's harness note (acted on). The epic's "Placed at
+  the closure".
+- **Notes to other lanes:** the map client lane (the element after the review, its threads), the
+  server lane (SRV-STUB-14's last snapshot and the reader's rule), the adventure lane (the
+  harness check).
+- **The `shared/` pull request** (`shared/e17-closure`): `docs/BACKLOG.md` (E17 done, E27's row,
+  the rows E28 and E29, a dated note in the ordering rationale), E27's draft (E28 and E29 for
+  E17 M7's and "Later"'s mentions; the options, video and start-up loading from E17),
+  `lanes.toml` (the client lane owns `docs/epics/E27*`), the global HANDOFF's lane row.
+- **Moved:** M7's scope and tasks, the harness's H1 and H2 and the epic's "Later" to
+  `E17-archive.md`; the review list to "Accepted review lists"; the queue's tasks and seven
+  inbox entries to `QUEUE-ARCHIVE.md`.
+- **The sub-agents' sizes** (their reported tokens): reviewers 203 000 (R4) to 297 000 (R2), 8
+  to 17 minutes; fixers 289 000 (F1, 22 minutes) and 420 000 (F2, 42 minutes).
+- **M7 done; E17 done.**

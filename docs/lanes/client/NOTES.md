@@ -5,6 +5,11 @@ reading) unchanged. Read a section when a task touches its topic: the inbox and 
 here. New entries still arrive in the inbox; the client lane moves their detail here and keeps
 a line there while the work waits.
 
+Since E17's closure (M7 T4, 2026-11-12) the sections feed: "The live client" E28 (ranked play in
+the client); "Options and layouts" E27 (the options) and E29 (HD, graphics options); "Assets and
+archives" E27 (CLT-Q2's switch); "Battlefields and boats" E24 M4 T5 (CLT-Q4); "The battle screen"
+the queue's inbox (E17's leftovers); "The adventure lane's harness" the adventure lane's inbox.
+
 ## The live client: what the server lane asks of it
 
 - 2026-10-09 (server lane, SRV-Q3, the user): the server's first client is its own headless test client (M1); the client lane's viewer comes next. Proposal for the client refinement: the viewer reads `h3-protocol` messages live over the WebSocket or from a *record* file (one viewer's message log, JSON lines) with the same code, so the record format is the viewer's file format and one code path plays a live game and a recorded one. Open for the client ADR: whether the client workspace depends on `crates/h3-protocol` by path. Context: `docs/epics/E16-server.md`, `docs/epics/E16-design.md`.

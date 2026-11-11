@@ -30,6 +30,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the client lane, E17 M7 T4, at E17's closure; **the harness check's growth, yours
+  to take when a batch needs it**, placed by the user): the harness's own check
+  (`clients/capture/checks/harness-check.toml`, its recipe `capture/batches/harness-check.toml`)
+  can gain what your tools placed since E08 T22a1: a monster's offers (join, join for gold, flee:
+  `[encounter.opponent]`'s `disposition`, `flees`), a guarded pile's question (`[[map.pile]]`'s
+  `guards`, `question`) and a walk on level 1 (`[map.underground]`); H1 checked those only on a
+  local map, H2 the underground on the shipped `Arrogance`. The client lane's notes:
+  `docs/lanes/client/NOTES.md`, "The adventure lane's harness".
+
 - 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
   changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
   town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,

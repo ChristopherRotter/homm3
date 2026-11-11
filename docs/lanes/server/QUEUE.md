@@ -16,6 +16,16 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for SRV-STUB-14's lift**,
+  nothing to do before it): the battle client's reader of a whole game's record
+  (`h3_view::game_record`, design §13.3) now takes a battle `Snapshot` that comes right after
+  the message ending a battle (the `GameEvents` holding `BattleEnded`), with no start pending,
+  as that battle's last, put before its `GameEnded`, as a seat's v38 record holds it. When the
+  lift sends the last snapshot, send it as the player's very next message after that
+  `GameEvents`; if that same message also opens another battle for the player, the reader cannot
+  tell a last snapshot from the new battle's opening, so send none there (or tell the client
+  lane, which then changes the rule).
+
 - 2026-11-11 (the adventure lane, E08 T107; **a flaky test, for you**): CI's full verify on `master`
   5613da6 (run 42976907057, the coverage step) failed once in `h3-server`'s
   `tests::ladders::a_decline_an_expiry_or_a_departure_puts_the_other_back`: at line 463 Dee's

@@ -7745,6 +7745,15 @@ buttons), applied to the battle's DEF buttons and confirmed by three stills.
   keeps one `held`: the mouse's press lets the hotkey's go unclicked in both profiles; the
   original keeps it drawn pressed, its key's release dropped by the loop, as CLT-Q71's case,
   whose (b) is the client's profile).
+- **Changed at M7 T4's review** (R2-1, R2-2, R1-1; *provisional*): in the window a mouse's
+  hold stands the battle only once the shown time is at its timeline's end (the idle steps of a
+  battle waiting for its human, as `hold-right` recorded); a record and a Restart's replay play
+  on under the hold, the button drawn pressed. A box or dialog opening over the battle while the
+  mouse holds a panel button (the result window, a notice, at the pass's start in `before`) ends
+  the hold without its click, as CLT-Q71 (b) ends a hotkey's. A still refuses another hotkey's
+  `key:` or a `click:` on an enabled panel button while a `key-down:` holds one (an error, as
+  T1c's record says of anything else). The element's `event` tested over the staged
+  installation (the key drop, the right press, the standing, the right release's click).
 
 ### 13.2 The battle as a hosted element (M7 T3a)
 
@@ -7794,6 +7803,13 @@ host's loop stands in for.
 - **Since** (*provisional*): the sound on the host's and the music through `h3_ui::music`
   (T3c, §13.6: `Setup::sound`, `Hosted::take_sound`, `Hosted::focus`). A whole game's battle:
   from its record (T3b1, §13.3), played live through the host's game (T3b2, §13.4).
+- **The element borrows** (M7 T4, R2-4; the user: kept, 2026-11-11): `Prepared<'g>` and
+  `Hosted<'g>` borrow their `Ground` (and, since T3b2, the host's game), so a host runs each
+  battle in a scope that owns its `Ground` and game (a loop of its own, holding them while the
+  battle runs; never a state value holding both and the element); an element that owns its `Ground` only if E24 M4 T5's
+  host needs it. `Prepared::start` hands the lent sound back with its error (`NotStarted`, R4-1):
+  every step that can fail runs before the sound is taken; the battle's clock starts after its
+  first frame.
 
 ### 13.3 A whole game's battle from its record (M7 T3b1)
 
@@ -7835,6 +7851,13 @@ switch from the adventure screen and back is the host's (the original's combat s
   fought here, windowless.
 - *Provisional*: the names, the numbers afresh, the battle's choice by its number, a record's
   result window only for a whole game's battle (a battle's own record still opens none).
+- **Changed at M7 T4's review** (R3-1, R3-6, R3-4; *provisional*): a battle open when a
+  player's messages begin (a game started or restored mid-battle: `GameSession::open` sends it
+  inside `GameSnapshot.observation.battle`, and the battle's `Snapshot` is held back until it
+  ends) opens at that `GameSnapshot`, its start unknown. A `Snapshot` right after the message
+  that ended a battle, with no start pending, is that battle's last: it goes before the battle's
+  `GameEnded` (SRV-STUB-14's lift, the server lane told). `Ground::load_battle(source, battle)`
+  plays a `GameBattle` a host holds in memory; `Ground::load`'s file path goes through it.
 
 ### 13.4 A whole game's battle played live through its host's game (M7 T3b2)
 
@@ -7883,6 +7906,12 @@ the original's battle is its combat screen's modal loop over the game's own stat
 - *Provisional*: the names; the host answering the queries; the seat's own numbers (its commands'
   and queries' one sequence from 1); the battle followed the first to open in what the host
   hands over.
+- **Changed at M7 T4's review** (R3-3, R3-5, R3-7; *provisional*): a `GameSeat` follows the
+  battle opened last until `Ground::load_game` loads it, then stays on that one and reads nothing
+  past the message after its end: one seat per battle, the battles before it not kept. A hot-seat
+  battle between two of the host's humans is not built (`CLT-STUB-5`, the user: with E24 M5's
+  hot seat): the seat's side alone is human. The refusal of packs that do not compile here is
+  tested (an empty packs directory).
 
 ### 13.5 A hero's battle picture by the sex a map gave (M7 T3b2, CLT-Q78)
 
@@ -7906,6 +7935,9 @@ comparisons with its captures.
   hero's group frames are the same for all 18 DEFs (§4.5).
 - **Checked:** the tables' and the scene's tests; no situation gives a hero a sex, so nothing
   recorded changes (`drawn` all the same).
+- **Changed at M7 T4's review** (R3-2): `render --frames` takes the hero's casts from the
+  picture it draws (the original's profile, as the frame check's sequences); `--at`'s still, the
+  client's, as before.
 
 ### 13.6 The battle's sound on the host's, its music through the common model (M7 T3c)
 
@@ -7957,3 +7989,14 @@ with the user (2026-11-11).
   15, 7 of its whole 76 (the first run's setting) by 100 ms, and `Win Battle` (correlation 1.000)
   899 ms after the fade began. Not checked live: the focus (Xvfb sends no focus events), Home
   after the end.
+- **Changed at M7 T4's review** (R4-1 to R4-5; R4-2 and R4-3 the user's, 2026-11-11;
+  *provisional* otherwise): the tracks the host's sound already has are not decoded again
+  (`Library::load` asks `has_track`), so a later battle reuses them; a Restart after the end asks
+  for the combat music again by the client's rule in both profiles (`Music::request_again`,
+  `Queue::request_again`, additive: the pending name replaced whatever the profile's filter says;
+  `Player::restart_music`), Home being the viewer's own; a battle without its own sound (the lent
+  sound kept as `spare`) silences the host's music (`HostSound::fall_silent`: a request for the
+  missing track `""`, its fade-out), services it each pass and passes the focus on, so the host
+  takes it back in the state its window is in. `music.rs`' comments on a held track's place
+  corrected (a track played once keeps none). The sound tests open SDL's dummy driver
+  (`h3_sdl::Audio::open_driver`, additive; `HostSound::dummy`, the tests' one lock).

@@ -1,6 +1,6 @@
 # E17 — archive: the closed milestones
 
-Moved out of `E17-clients.md` on 2026-10-24, verbatim: the task lists and exit records of the closed milestones M0 to M3; M4 (sieges) added at its closure (2026-10-27), M5 (live play) at its closure (2026-10-31, T8c), M6 (the battle screen complete) at its closure (2026-11-10, T7c).
+Moved out of `E17-clients.md` on 2026-10-24, verbatim: the task lists and exit records of the closed milestones M0 to M3; M4 (sieges) added at its closure (2026-10-27), M5 (live play) at its closure (2026-10-31, T8c), M6 (the battle screen complete) at its closure (2026-11-10, T7c), M7 (the battle client's last steps) and the adventure lane's harness H1 and H2 at E17's closure (2026-11-12, M7 T4).
 
 ### M0 — the workspace
 
@@ -811,6 +811,102 @@ waited in the inbox for a free slot. Ranked play and the server browser follow a
   passing against the original or with each difference a listed fix or a classified quirk; the
   combat options in effect.
 
+### M7 — the battle client's last steps
+
+Refined at M6's closure (T7c, 2026-11-10) with the user, **shorter than first planned**: ranked
+play, the pause by agreement and the server browser are not built in E17 ("Decisions", "Later").
+M7 builds M6's answers and makes the battle a library entry a host's window runs (the map
+client's battles, and later any front end), then closes the epic. The tasks in
+`docs/lanes/client/QUEUE.md`, each cut with the user at its start when it outgrows half a
+context.
+
+- **T1, the answered slips** (cut in four with the user at its start, 2026-11-10):
+  - **T1a done 2026-11-10** (the combat options dialog and the keys F6 to F8;
+    [log](E17-log.md#m7-t1a--the-options-dialogs-slips-and-f6-to-f8-on-every-turn-2026-11-10)):
+    CLT-Q43 (2) and (3), Q44 (c) in the client's profile; Q74's one click and Q75's F6 to F8 on
+    every turn with the acting stack's reach in both.
+  - **T1b done 2026-11-10** (the other answered slips;
+    [log](E17-log.md#m7-t1b--the-other-answered-slips-2026-11-10)): CLT-Q70 (b) a heroless
+    side's dialog and army info windows in its own player's colours, Q71 (b) a held panel
+    button let go when a dialog takes its key's release (the original's as built until T1c),
+    Q77 (b) the pictures box's rows; each in the client's profile.
+  - **T1c done 2026-11-10** (the reads and captures;
+    [log](E17-log.md#m7-t1c--the-reads-and-captures-the-answers-name-2026-11-10)): Q73's
+    0x5994B0 read (the original starts a combat tune as the bar rises: the client's a copy in
+    effect), the stills `stats-ability` (R2-1), `stats-held` (Q71: the pressed frame kept, the
+    original's profile as built) and, with sound, `options-sound` and `options-speed-sound` (Q74:
+    one click); the harness's `key-down:`/`key-up:` and sound stills.
+  - **T1d done 2026-11-10** (the tools;
+    [log](E17-log.md#m7-t1d--the-tools-2026-11-10)): `--close-result`; `Changes::after` and the
+    cast's stop under test.
+- **T2 done 2026-11-11** (the DEF button's own loop, CLT-Q72 (a), T7b's R3-4, M6 review item
+  52; kept whole with the user; [log](E17-log.md#m7-t2--the-def-buttons-own-loop-2026-11-11),
+  design §13.1): in both profiles, while the mouse holds an enabled DEF button (the panel's, the
+  stats dialog's OK and cast button, the options dialog's, a box's) keys and the right press are
+  dropped, the right release ends the hold with its click, the moves reach the button alone and
+  the battle and the stats dialog's creature stand; a disabled panel button takes no press. The
+  harness's `down:`; the stills `hold-right`, `stats-hold-right`, `options-hold-right`, exact.
+- **T3, the battle as a hosted entry** (the map client lane's request for E24 M4 T5, the inbox of
+  2026-10-31; cut in four with the user at its start, 2026-11-11, who agreed the entry's shape for
+  the map client lane: the host owns the window, its loop and the frame, the battle drawn
+  natively as any element of it, so that a later layout, HD's, shows it as a dialog over the
+  adventure screen; design §13.2):
+  - **T3a1 done 2026-11-11** ([log](E17-log.md#m7-t3a1-and-t3a2--the-battle-clients-library-and-the-hosted-element-2026-11-11)):
+    `h3-view`'s binary became the library crate `h3-battle-client` (the user: an adapter crate,
+    left out of the coverage gate as the binaries are), the `h3-view` command line its binary,
+    `h3-view` the pure library alone; nothing changed in behaviour.
+  - **T3a2 done 2026-11-11** (same log entry): the window's loop as the element
+    `window::Hosted` (with `Prepared` and `Setup`), `h3-view window` its first host. Built
+    without the original data (the user's choice); checked by the next session with the data
+    staged (the windowless host test, `window --check`, `drawn`, the gate, `check.sh`).
+  - **T3b**, cut in two with the user (2026-11-11): **T3b1 done 2026-11-11**
+    ([log](E17-log.md#m7-t3b1--a-whole-games-battle-from-its-record-2026-11-11); design §13.3):
+    a whole game's record gives each battle its player saw as a record of its own
+    (`h3_view::game_record`), which the element plays to its result window and hands back
+    (`Hosted::outcome`, `Ground::in_game`); `--battle <k>`; the battlefield picture's variant and
+    each side's colour from the wire (CLT-Q4, CLT-Q6); the map client lane told the API.
+    **T3b2 done 2026-11-11** (kept whole with the user;
+    [log](E17-log.md#m7-t3b2--a-whole-games-battle-played-live-and-the-picture-by-sex-2026-11-11);
+    design §13.4, §13.5): the same battle played live through the host's game
+    (`game_seat::GameSeat`, `battle::Remote`, `Ground::load_game`; a test host's real game,
+    `clients.yml`'s paths by #851); the hero's battle picture by the map's sex in the client's
+    profile (CLT-Q78 (b): the original draws the type's).
+  - **T3c done 2026-11-11** (kept whole with the user;
+    [log](E17-log.md#m7-t3c--the-battles-sound-on-the-hosts-2026-11-11); design §13.6): the
+    sound on the host's (`audio::HostSound`, lent by `Setup::sound` and handed back by
+    `Hosted::take_sound`), the music through the common `h3_ui::music` (a track played once: the
+    end's tune after the combat music's 900 ms fade-out), the focus lost and regained
+    (`Hosted::focus`), the frame widened by `h3_render::screen::Widening` (0.33 ms a frame
+    against 3.5).
+- **T4 done 2026-11-12** (M7's and E17's closure; kept whole by the user, the session a
+  coordinator of sub-agents; [log](E17-log.md#m7-t4--m7s-and-e17s-closure-closedate)): four fresh
+  reviewers (21 findings, five medium, none high) and two fixers (every finding fixed, four by the
+  user's decision); the captures where M7 changed the battle screen afresh, as recorded; the
+  review list accepted (items 1 to 9 as built, 10 to REVLAST the review's); the open threads
+  placed (E27, E24 M4 T5 and M5, the new backlog rows E28 and E29, the lane's inbox, the
+  adventure lane's inbox); E17 closed (`docs/BACKLOG.md`, E27's draft, `lanes.toml`: a
+  `shared/` pull request). **M7 done; E17 done.**
+- **Exit:** M6's answers built and recorded; a battle runs inside a host's window to its result
+  and hands back; every open thread of E17 placed in another epic or the backlog.
+
+### The adventure lane's harness (H1, H2: its batch E3)
+
+Taken ahead of M3's remainder on 2026-10-19 (the user): the adventure lane's E08 T22a waits on
+it (`docs/rules/surveys/E08-battles.md` §13; the requests in the queue's inbox since 2026-10-13).
+
+- **H1 done 2026-10-19** ([log](E17-log.md#h1--questions-the-difficulty-battles-from-the-map-2026-10-19),
+  [design §6.3](E17-design.md)): `h3adv.py` answers a visit's questions by the record their text
+  was written from (`h3lod.py`, the topmost dialog's text in memory), starts a game at a chosen
+  difficulty, plays the battles a step opens (auto combat, a retreat or a surrender by side) with
+  their stacks read at the start and the end, and records heroes' details, the players' resources
+  before and after and a tile's monster from memory; `setup.sh` turns on the auto combat of
+  creatures. The check recipe (`capture/batches/harness-check.toml`) plays each; batch 2 still
+  reproduces.
+- **H2 done 2026-10-19** ([log](E17-log.md#h2--the-underground-more-heroes-the-starts-reads-a-second-day-2026-10-19)):
+  a `walk` onto either level (the view switched by the panel's button; shown on a shipped map),
+  the hero list scrolled beyond five heroes, a level-up's skill chosen, the heroes off the map's
+  experience, the date; the check recipe plays a second day.
+
 ## clients/README.md's state history
 
 Moved out of `clients/README.md` on 2026-10-24, verbatim: its "State" paragraph, last written at M3 T3b.
@@ -849,3 +945,21 @@ created by the first task that has detail to record; done tasks in full:
 are there). Next: M4 T2c-2 (sieges: Earthquake, the shots and the mouse recorded), M5 live play after M4
 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
+
+## The epic's "Later" at its closure
+
+Moved out of `E17-clients.md` at E17's closure (2026-11-12, M7 T4), verbatim; replaced there by "Placed at the closure".
+
+**Not in E17** (the user, 2026-11-10; "Decisions"): **ranked play** (the ladders, the queue
+and the accept step, the ratings, the leaderboards), the pause by agreement, the server browser
+and a login dialog in the window: after E27, by a refinement of their own; first through the
+website (E21). The server lane's notes on what a live client must do stay in `NOTES.md`, "The
+live client". Placed at M7's closure (T4): HD layouts, graphics options beyond `faithful`, the
+client's options (volumes; a two-hex stack's step one hex back by the mouse as a gameplay
+option, off by default: CLT-Q25), video. The adventure map and the full game viewer: E24, the
+map-client lane. When the battle client runs inside an adventure game (M7 T3's entry, E24 M4
+T5): **M6 T5e**, the captured artifacts' message after Eagle Eye's (deferred by the user, 2026-11-07;
+`captured_artifacts_message` 0x4772B0, design §12.21: GENRLTXT 31, eight artifact pictures a
+box through `h3_view::message::pictures`, a pickup sound each), its list the adventure's capture
+(HER-ART-004) told to the winner's owner; its reading of 0x4772B0 and of the artifact picture
+(type 8) to finish then, a server's seat with it.
