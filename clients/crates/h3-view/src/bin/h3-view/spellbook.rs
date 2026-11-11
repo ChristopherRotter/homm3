@@ -229,8 +229,13 @@ pub struct Still {
     /// The cursor shadow's list and the background as the actions left them, with the grid's and
     /// the shadows' options (E17 M6 T4c, design §12.16).
     pub cells: Cells,
-    /// The panel's button a `key-down:` holds by its hotkey (E17 M7 T1c, CLT-Q71), drawn pressed.
+    /// The panel's button a `key-down:` holds by its hotkey (E17 M7 T1c, CLT-Q71), drawn pressed;
+    /// or a `down:` by the mouse (E17 M7 T2), while the mouse is over it.
     pub pressed: Option<u16>,
+    /// A `down:` holds a panel button (E17 M7 T2, CLT-Q72 (a)): its own loop runs no idle step of
+    /// the battle, which stands as it was then (recorded, `hold-right`: the outline's pulse and
+    /// the flags).
+    pub holding: bool,
 }
 
 impl Still {
@@ -262,7 +267,14 @@ impl Still {
                 h3_render::Bugs::Original,
             ),
             pressed: None,
+            holding: false,
         }
+    }
+
+    /// Whether the battle stands as it was when the actions were made: a dialog is open over it,
+    /// or the mouse holds a panel button (E17 M7 T2).
+    pub const fn stands(&self) -> bool {
+        self.dialog() || self.holding
     }
 
     /// Whether a dialog (the book, a box) is open over the battle.
@@ -318,6 +330,9 @@ pub struct Boxes<'a> {
     /// The help of the panel's control the right button held at a point shows (E17 M6 T3a; none:
     /// no control there).
     pub help: &'a dyn Fn([i32; 2]) -> Option<String>,
+    /// The panel's enabled button at a point, which a left press holds down (E17 M7 T2, the
+    /// harness's `down:`; none: no button there, or a disabled one).
+    pub button: &'a dyn Fn([i32; 2]) -> Option<u16>,
     /// The hero's info window the right button held at a point shows (E17 M6 T3b1; none: no
     /// side's hero there).
     pub hero_info: &'a dyn Fn([i32; 2]) -> Option<MessageBox>,
@@ -381,7 +396,12 @@ struct Asking {
 /// one after another (E17 M6 T5c), the screen darkened behind them. A move to the park point after
 /// a click is a move as the harness's is. `key-down:` and `key-up:` hold a panel button by its
 /// hotkey while a dialog opens and takes the release (E17 M7 T1c, CLT-Q71): drawn pressed as
-/// the original's profile leaves it. Nothing else may come in a situation's actions.
+/// the original's profile leaves it. `down:<x>,<y>` (E17 M7 T2, CLT-Q72 (a)) moves the mouse
+/// there and holds the left button down over an enabled panel button (the battle taking that
+/// move), the stats dialog's OK or cast button, or a DEF button of the combat options dialog:
+/// its own loop runs, so only `move:` (the button's alone: it follows the mouse on and off, the
+/// battle and the dialog's hints take none) and `right:` (dropped: no popup; the entry's last
+/// action) come after it. Nothing else may come in a situation's actions.
 pub fn still(
     actions: &[String],
     mouse: [i32; 2],
@@ -517,11 +537,34 @@ pub fn still(
     }
     // The key a `key-down:` holds (E17 M7 T1c).
     let mut held_key: Option<String> = None;
+    // A `down:` holds the left button (E17 M7 T2): the panel's button it holds over the battle,
+    // whether it holds one at all, and whether a `right:` came after it.
+    let mut panel_down: Option<u16> = None;
+    let (mut left_down, mut right_after) = (false, false);
     for action in actions {
-        if still.held {
+        if still.held || right_after {
             return Err(format!(
                 "`{action}`: the right button is held: nothing comes after `right:`"
             ));
+        }
+        let kind = action.split_once(':').map_or(action.as_str(), |(k, _)| k);
+        if left_down && !matches!(kind, "move" | "right") {
+            return Err(format!(
+                "`{action}`: the left button is held (`down:`): only `move:` and `right:` come \
+                 after it"
+            ));
+        }
+        right_after = left_down && kind == "right";
+        left_down |= kind == "down";
+        // The panel's button the mouse holds runs its own loop (E17 M7 T2, CLT-Q72 (a)): a move
+        // is its alone (drawn pressed over it, up off it; the battle takes none), the right
+        // press dropped (no help, no popup).
+        if let Some(id) = panel_down {
+            let to = point(action.split_once(':').map_or("", |(_, a)| a))?;
+            still.mouse = to;
+            let over = boxes.and_then(|b| (b.button)(to)) == Some(id);
+            still.pressed = over.then_some(id);
+            continue;
         }
         // A panel button held by its hotkey (E17 M7 T1c, CLT-Q71): `key-down:` over the battle,
         // every dialog closed, draws it pressed; `key-up:` goes to the dialog, box or book open
@@ -824,6 +867,22 @@ pub fn still(
                     }
                 }
             }
+            // The left button held over the panel's enabled button (E17 M7 T2, CLT-Q72 (a)): the
+            // battle takes the move there (the press none: the button takes it), the button
+            // drawn pressed, its own loop running.
+            "down" if asking.is_none() && result.is_none() && still.open.is_none() => {
+                let to = point(arg)?;
+                moved(&mut still, &mut memory, to);
+                still.over = Some(to);
+                still.arrow = false;
+                take(&mut hover, &mut cells, to);
+                let id = boxes
+                    .and_then(|b| (b.button)(to))
+                    .ok_or_else(|| format!("`{action}`: only over an enabled panel button"))?;
+                still.pressed = Some(id);
+                still.holding = true;
+                panel_down = Some(id);
+            }
             // The right button held over the battle (E17 M6 T2b1, design §12.5): the stack on
             // the hex there shows its stats dialog while held, through the frames; a turret its
             // info (T2b2), a panel's control its help (T3a, §12.7), a hero its info window
@@ -904,7 +963,7 @@ pub fn still(
             _ => {
                 return Err(format!(
                     "`{action}`: a situation's actions are key:, key-down:, key-up:, click:, \
-                     move:, right: and right-click: (over the battle)"
+                     down:, move:, right: and right-click: (over the battle)"
                 ));
             }
         }
@@ -955,7 +1014,9 @@ enum OptionsAction {
 /// §12.12): `move:<x>,<y>` moves the mouse there (a button held following); `click:<x>,<y>` moves
 /// it, presses, releases and parks it; `key:<k>` presses the dialog's key (its OK's) and releases
 /// it; `right:<x>,<y>` moves it there and holds the right button down over a control: its help,
-/// held through the frames. The mouse is `mouse`.
+/// held through the frames (none while the mouse holds a DEF button: its own loop drops the
+/// press); `down:<x>,<y>` (E17 M7 T2) moves it there and holds the left button down over a DEF
+/// button. The mouse is `mouse`.
 fn options_action(
     open: &mut h3_view::options::Open,
     (action, keys): (&str, &Keys),
@@ -986,6 +1047,15 @@ fn options_action(
             }
             did
         }
+        "down" => {
+            *mouse = point(arg)?;
+            open.moved(*mouse);
+            let did = open.press(*mouse);
+            if !did.button_sound {
+                return Err(String::from("`down:` only over an enabled DEF button"));
+            }
+            did
+        }
         "right" => {
             *mouse = point(arg)?;
             open.moved(*mouse);
@@ -1011,7 +1081,7 @@ fn options_action(
         }
         _ => {
             return Err(String::from(
-                "over the combat options dialog only key:, click:, move: and right:",
+                "over the combat options dialog only key:, click:, down:, move: and right:",
             ));
         }
     };
@@ -1027,8 +1097,10 @@ fn options_action(
 /// releases and parks it (on the cast button an error: its aim is a sequence's); `key:<k>` presses the dialog's key (its OK's) and releases it;
 /// `right:<x>,<y>` (E17 M6 T2a2b1) moves it there and holds the right button down: the item's
 /// description in its popup (laid out by `tell`), held through the frames, so nothing may come
-/// after it. Where the mouse rests once the OK closed the dialog (none: still open; the `mouse`
-/// kept).
+/// after it (none while the mouse holds the OK or the cast button: its own loop drops the
+/// press). `down:<x>,<y>` (E17 M7 T2) moves it there and holds the left button down over the OK
+/// or the cast button, whose loop takes the moves after it (the hints none). Where the mouse
+/// rests once the OK closed the dialog (none: still open; the `mouse` kept).
 fn stats_action(
     open: &mut crate::stats::Open,
     memory: &mut StatsMemory,
@@ -1080,6 +1152,17 @@ fn stats_action(
             to(modal, crate::pointer::PARK);
             Ok(None)
         }
+        "down" => {
+            let at = point(arg)?;
+            to(modal, at);
+            if modal.press(at) == Outcome::Nothing {
+                return Err(String::from("`down:` only over the OK or the cast button"));
+            }
+            // Its own loop runs no step of the creature (recorded, `stats-hold-right`): held
+            // from the opening's frozen time through the frames, as under a popup.
+            open.holds.push([0, u32::MAX]);
+            Ok(None)
+        }
         "right" => {
             let at = point(arg)?;
             to(modal, at);
@@ -1106,7 +1189,7 @@ fn stats_action(
             }
         }
         _ => Err(String::from(
-            "over the stats dialog only key:, click:, move: and right:",
+            "over the stats dialog only key:, click:, down:, move: and right:",
         )),
     }
 }
@@ -1234,6 +1317,34 @@ pub(crate) mod tests {
         let mut dialog = open();
         let got = stats_action(&mut dialog, &mut memory, (&ok, &keys, None), &mut mouse);
         assert_eq!(got, Ok(Some(crate::pointer::PARK)));
+        // E17 M7 T2 (CLT-Q72 (a)): `down:` over the OK holds it, its own loop running: the right
+        // press over the cast button then describes nothing (without the hold it does), the OK
+        // drawn up off it, the hint the one the move onto the OK gave; off the buttons refused.
+        let (down, right) = (
+            ok.replace("click:", "down:"),
+            cast.replace("click:", "right:"),
+        );
+        let mut dialog = open();
+        let got = stats_action(&mut dialog, &mut memory, (&right, &keys, None), &mut mouse);
+        assert_eq!((got, dialog.holds.len()), (Ok(None), 1));
+        let mut dialog = open();
+        let got = stats_action(&mut dialog, &mut memory, (&down, &keys, None), &mut mouse);
+        assert!(got == Ok(None) && dialog.modal.open.holds_mouse());
+        assert_eq!(dialog.holds, [[0, u32::MAX]]);
+        let status = String::from(dialog.modal.status());
+        let got = stats_action(&mut dialog, &mut memory, (&right, &keys, None), &mut mouse);
+        assert_eq!((got, dialog.holds.len()), (Ok(None), 1));
+        assert_eq!(dialog.modal.status(), status);
+        let shown = &dialog.modal.open.message.shown;
+        assert!(!shown.state(h3_view::stats::OK).pressed);
+        let mut dialog = open();
+        let got = stats_action(
+            &mut dialog,
+            &mut memory,
+            ("down:0,0", &keys, None),
+            &mut mouse,
+        );
+        assert!(got.unwrap_err().contains("down:"));
     }
 
     #[test]
@@ -1476,6 +1587,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &|_, _| None,
             help: &|_| None,
+            button: &|_| None,
             hero_info: &|_| None,
             options: &|_, _| None,
             army: None,
@@ -1571,6 +1683,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &turret,
             help: &help,
+            button: &|_| None,
             hero_info: &|_| None,
             options: &|_, _| None,
             army: None,
@@ -1612,6 +1725,107 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn the_left_button_held_over_an_options_button_drops_the_right_press() {
+        // E17 M7 T2 (CLT-Q72 (a); R4-2 (a)): `down:` over Default holds it down; `right:` over it
+        // then shows no help (without the hold it does); over a box `down:` is refused (a DEF
+        // picture runs no loop of its own).
+        use h3_view::options::{BOXES, DEFAULT, Open, Settings};
+        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let catalogue = Catalogue::default();
+        let new = || {
+            let profile = (0, false, h3_render::Bugs::Original);
+            Open::new(&battle.options, &catalogue, Settings::CAPTURE, profile)
+        };
+        let centre = |open: &Open, id: u16| {
+            let ([x, y], [w, h]) = open.window.dialog.item(id).unwrap().area().unwrap();
+            let [px, py] = open.window.dialog.place;
+            format!("{},{}", px + x + w / 2, py + y + h / 2)
+        };
+        let keys = Keys::original();
+        let mut mouse = [0, 0];
+        let mut open = new();
+        let (down, right) = (
+            format!("down:{}", centre(&open, DEFAULT)),
+            format!("right:{}", centre(&open, DEFAULT)),
+        );
+        let got = options_action(&mut open, (&right, &keys), &mut mouse);
+        assert!(matches!(got, Ok(OptionsAction::Tell(_, Style::Popup))));
+        let mut open = new();
+        assert_eq!(
+            options_action(&mut open, (&down, &keys), &mut mouse),
+            Ok(OptionsAction::Open)
+        );
+        assert!(open.window.shown.state(DEFAULT).pressed);
+        assert_eq!(
+            options_action(&mut open, (&right, &keys), &mut mouse),
+            Ok(OptionsAction::Open)
+        );
+        let mut open = new();
+        let on_box = format!("down:{}", centre(&open, BOXES));
+        assert!(options_action(&mut open, (&on_box, &keys), &mut mouse).is_err());
+    }
+
+    #[test]
+    fn the_left_button_held_over_a_panel_button_runs_its_own_loop() {
+        // E17 M7 T2 (CLT-Q72 (a)): `down:` over an enabled panel button holds it down, the
+        // battle taking the move there; the moves after it are the button's alone (up off it,
+        // down again over it), the right press dropped (no help), the entry's last action; only
+        // `move:` and `right:` come after it, and only over an enabled button.
+        let tell = |_: &str, _, _: Option<&Picture>| Some(one_button(0));
+        let help = |point: [i32; 2]| (point == [700, 570]).then(|| String::from("help"));
+        let button = |point: [i32; 2]| (point == [700, 570]).then_some(h3_view::panel::DEFEND);
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave::default(),
+            refusal: &|_| None,
+            pictures: (String::new(), [0, 0]),
+            result: &|_| None,
+            opening: None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
+            held: &|_, _| None,
+            turret: &|_, _| None,
+            help: &help,
+            button: &button,
+            hero_info: &|_| None,
+            options: &|_, _| None,
+            army: None,
+        };
+        let catalogue = Catalogue::default();
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                crate::pointer::PARK,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+        };
+        let down = played(&["down:700,570"]).unwrap();
+        assert_eq!(down.pressed, Some(h3_view::panel::DEFEND));
+        assert_eq!((down.over, down.mouse), (Some([700, 570]), [700, 570]));
+        assert!(down.holding && down.stands() && !down.dialog());
+        assert!(!played(&["move:5,5"]).unwrap().stands());
+        let held = played(&["down:700,570", "right:700,570"]).unwrap();
+        assert!(held.message.is_none() && !held.held);
+        assert_eq!(held.pressed, Some(h3_view::panel::DEFEND));
+        assert!(played(&["down:700,570", "right:700,570", "move:5,5"]).is_err());
+        let off = played(&["down:700,570", "move:5,5"]).unwrap();
+        assert_eq!(
+            (off.pressed, off.mouse, off.over),
+            (None, [5, 5], Some([700, 570]))
+        );
+        let back = played(&["down:700,570", "move:5,5", "move:700,570"]).unwrap();
+        assert_eq!(back.pressed, Some(h3_view::panel::DEFEND));
+        assert!(played(&["down:700,570", "click:5,5"]).is_err());
+        assert!(played(&["down:700,570", "key:d"]).is_err());
+        assert!(played(&["down:5,5"]).is_err());
+        // Without the hold the right button holds the help.
+        assert!(played(&["right:700,570"]).unwrap().held);
+    }
+
+    #[test]
     fn the_book_s_cursor_replaces_the_options_dialog_s_arrow() {
         // E17 M6 T7b (R4-4): the arrow the options dialog leaves at its close by a key stays over
         // the book opened after it until the book sets its own cursor (0x59D712).
@@ -1639,6 +1853,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &|_, _| None,
             help: &|_| None,
+            button: &|_| None,
             hero_info: &|_| None,
             options: &options,
             army: None,
@@ -1682,6 +1897,7 @@ pub(crate) mod tests {
             held: &|_, _| None,
             turret: &|_, _| None,
             help: &|_| None,
+            button: &|_| None,
             hero_info: &|_| None,
             options: &|_, _| None,
             army: None,
@@ -1804,6 +2020,7 @@ pub(crate) mod tests {
                 held: &|_, _| None,
                 turret: &|_, _| None,
                 help: &|_| None,
+                button: &|_| None,
                 hero_info: &hero_info,
                 options: &options,
                 army: Some(Army {
@@ -1864,6 +2081,7 @@ pub(crate) mod tests {
                 held: &|_, _| None,
                 turret: &|_, _| None,
                 help: &|_| None,
+                button: &|_| None,
                 hero_info: &hero_info,
                 options: &options,
                 army: Some(Army {

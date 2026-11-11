@@ -973,10 +973,14 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
         if game.ack(need=True)[9]:
             raise RuntimeError("xdd.dll could not follow a sample call (a file not read as a WAV, "
                                f"a handle past its table; the frames: {out})")
-    # The right button an action held (E17 M6 T2a2b1) let go.
+    # The right button an action held (E17 M6 T2a2b1) let go, then the left one a `down:` held
+    # (E17 M7 T2: the right's release ends a DEF button's own loop first, clicking it over it).
     if getattr(game, "right_held", False):
         run("xdotool", "mouseup", "3")
         game.right_held = False
+    if getattr(game, "left_held", False):
+        run("xdotool", "mouseup", "1")
+        game.left_held = False
     # A result window reached played its clip (E17 M5 T8b1, R7-2; read with the stacks: every
     # `set` run).
     if mem is not None and at_result(mem):
@@ -1100,7 +1104,8 @@ def act(game, action):
     right:x,y (E17 M6 T2a2b1: the right button held down there through the frames),
     right-click:x,y (E17 M6 T4b2b1: the right button pressed there and released), look:x,y and
     cast-button:x,y:<n> (clicks: a stack's stats dialog, its cast button), key-down:<name> and
-    key-up:<name> (E17 M7 T1c: a key held across the actions between them),
+    key-up:<name> (E17 M7 T1c: a key held across the actions between them), down:x,y (E17 M7
+    T2: the left button held down there across the actions after it, let go after the frames),
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
     hex if the spell takes one), aim:<k>:<n> (E17 M5 T3b: the book's place k, the aim of its
     spell, numbered n in the original, left under way), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
@@ -1173,6 +1178,16 @@ def act(game, action):
         time.sleep(0.3)
         run("xdotool", "mousedown", "3")
         game.right_held = True
+        time.sleep(0.5)
+    elif kind == "down":
+        # E17 M7 T2 (CLT-Q72): the mouse moved there, then the left button held down across the
+        # actions after it (a DEF button there runs its own loop while it is held); `capture`
+        # lets it go after the last frame, after the right button.
+        x, y = map(int, arg.split(","))
+        game.move(x, y)
+        time.sleep(0.3)
+        run("xdotool", "mousedown", "1")
+        game.left_held = True
         time.sleep(0.5)
     elif kind == "right-click":
         # E17 M6 T4b2b1 (design §12.15): the mouse moved there, the right button pressed (a hero's

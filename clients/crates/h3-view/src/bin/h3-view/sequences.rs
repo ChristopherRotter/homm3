@@ -952,10 +952,11 @@ pub(crate) fn draw_frames(
     for frame in &kept.frame {
         // While the spell book is open the battle behind it stands as it was when the book opened
         // (E17 M5 T3a: the dialog's modal loop runs no idle step; the original's frames are the
-        // same 100 ms and a second after).
+        // same 100 ms and a second after); while the mouse holds a panel button too (E17 M7 T2:
+        // the button's own loop runs none either).
         let at = interface
             .book
-            .filter(|b| b.dialog())
+            .filter(|b| b.stands())
             .map_or(frame.t, |b| b.at.min(frame.t));
         // Behind the result window the battle stands as it ended, its flags as last shown (E17 M5
         // T4b1, `h3_view::result::behind`).

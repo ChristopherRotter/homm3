@@ -2737,14 +2737,29 @@ impl<'g> Battle<'g> {
         hovered || moved
     }
 
-    /// A left press at `point` while the stats dialog is open: its OK goes down.
-    pub fn stats_press(&mut self, point: [i32; 2]) -> StatsDid {
-        self.stats_did(|m| m.press(point))
+    /// A left press at `point` at `at` while the stats dialog is open: its OK or cast button goes
+    /// down, running its own loop while the mouse holds it (E17 M7 T2, CLT-Q72 (a)): the
+    /// creature steps no more until the release (recorded, `stats-hold-right`), as under a popup.
+    pub fn stats_press(&mut self, at: u32, point: [i32; 2]) -> StatsDid {
+        let did = self.stats_did(|m| m.press(point));
+        if did == StatsDid::Changed
+            && let Some((open, opened)) = self.stats.as_mut()
+        {
+            open.holds.push([at.saturating_sub(*opened), u32::MAX]);
+        }
+        did
     }
 
-    /// The left button released while the stats dialog is open, or the right one while the mouse
-    /// holds its OK or its cast button (E17 M7 T2, CLT-Q72 (a)): the button held clicks.
-    pub fn stats_release(&mut self) -> StatsDid {
+    /// The left button released at `at` while the stats dialog is open, or the right one while
+    /// the mouse holds its OK or its cast button (E17 M7 T2, CLT-Q72 (a)): the button held
+    /// clicks, the creature stepping again.
+    pub fn stats_release(&mut self, at: u32) -> StatsDid {
+        if let Some((open, opened)) = self.stats.as_mut()
+            && open.modal.open.holds_mouse()
+            && let Some(hold) = open.holds.last_mut()
+        {
+            hold[1] = at.saturating_sub(*opened);
+        }
         self.stats_did(h3_view::stats::Modal::release)
     }
 
@@ -4167,6 +4182,37 @@ pub(crate) mod tests {
             assert_eq!(battle.enabled(at, AUTO_COMBAT), humans == [true, false]);
             assert!(!battle.enabled(at, 1));
         }
+    }
+
+    #[test]
+    fn the_stats_dialog_s_ok_the_mouse_holds_runs_its_own_loop() {
+        // E17 M7 T2 (CLT-Q72 (a); recorded, `stats-hold-right`): the press on the OK holds it and
+        // the creature's steps until the release, left or right; the right press describes
+        // nothing meanwhile; the release over the OK closes the dialog.
+        let Some(source) = staged("book.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.grow(0).unwrap();
+        let at = battle.played.timeline().end;
+        assert!(battle.look(at, [102, 448], false));
+        let ok = [248, 528];
+        assert_eq!(battle.stats_press(at + 50, ok), StatsDid::Changed);
+        assert_eq!(battle.stats_press(at + 60, ok), StatsDid::Nothing);
+        let holds = |b: &Battle<'_>| b.stats.as_ref().map(|(open, _)| open.holds.clone());
+        assert_eq!(holds(&battle), Some(vec![[50, u32::MAX]]));
+        assert_eq!(battle.stats_step_after(at + 60), None);
+        assert!(!battle.stats_right(at + 70, [200, 330]));
+        assert!(battle.stats_moved([20, 20]));
+        assert_eq!(battle.stats_release(at + 400), StatsDid::Changed);
+        assert_eq!(holds(&battle), Some(vec![[50, 400]]));
+        assert!(battle.stats_step_after(at + 400).is_some());
+        assert!(battle.stats_right(at + 500, [200, 330]));
+        let _ = battle.stats_held(at + 600, true, None);
+        assert_eq!(battle.stats_press(at + 700, ok), StatsDid::Changed);
+        assert_eq!(battle.stats_release(at + 800), StatsDid::Closed);
+        assert!(!battle.stats_open());
     }
 
     #[test]

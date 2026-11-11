@@ -1383,7 +1383,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                 // The right button's release ends the hold of the OK or the cast button the mouse
                 // holds as the left's does (E17 M7 T2, CLT-Q72 (a)); nothing else.
                 Event::KeyUp(Key::RightButton) if battle.stats_open() => {
-                    let did = battle.stats_release();
+                    let did = battle.stats_release(at);
                     let changed = stats_did(&mut battle, &mut inputs, at, did);
                     (book_changed, mouse_changed) =
                         (book_changed | changed, mouse_changed | changed);
@@ -1483,10 +1483,10 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     down: true,
                     at: (x, y),
                 } if battle.stats_open() => {
-                    book_changed |= battle.stats_press([x, y]) != StatsDid::Nothing;
+                    book_changed |= battle.stats_press(at, [x, y]) != StatsDid::Nothing;
                 }
                 Event::Click { down: false, .. } if battle.stats_open() => {
-                    let did = battle.stats_release();
+                    let did = battle.stats_release(at);
                     let changed = stats_did(&mut battle, &mut inputs, at, did);
                     (book_changed, mouse_changed) =
                         (book_changed | changed, mouse_changed | changed);
