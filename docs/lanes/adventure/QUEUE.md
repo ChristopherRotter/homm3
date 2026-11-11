@@ -4,53 +4,24 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1, the survey and the ADR amendment drafts first: T108a in two (decision 297), both done: T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T108b — the ADR amendment drafts, the design note and the cut** (decision 296)
+**E08 T109 — batch E12's maps: the writer's seventeen classes, the spec's fields, the specs** (decisions 303, 309)
 
-- **Scope:** as T98b for increment 11: the drafts `adr-drafts/0016-increment-12.md` and
-  `0017-increment-12.md` (and `0013-increment-12.md` for the twelve new once-marks and their
-  amounts, survey §10.3), increment 12's design note `E08-design.md` (its parts by side), the
-  building tasks' cut and the exit criteria; the checkpoint with the user (the note, the drafts,
-  the agent's calls, the cut).
-- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` (§9.3 and §13 the proposed
-  ids, §11 the interfaces' sketch, §10.9 the open points left to T108b: where the Well's day mark
-  and the Stables' week mark live, the movement's maximum raised with the points, the shape of the
-  once-marks' amounts); decisions 295 to 303 (the checkpoint's answers: the original in D-59 to
-  D-64, A-44's `fix-optional` flag and A-45 fixed, the kind marks in, batch E12 before the build);
-  ADR-0013 (`BattleBonuses`' eight marks), ADR-0015 to -0017; the client lane's inbox note of
-  2026-11-03 (`EffectSource::Visit`); the town lane's two of 2026-11-11 (E09 T20's ask and T21's
-  proposal: `ArmyRef::Garrison(town)` and a sibling for a map garrison, one owner rule; answer it
-  in the drafts and tell the town lane's inbox; T108a's findings are in its inbox); T98b's drafts as the form.
-- **Depends on:** T108a2 (done). **Status:** ready (docs only; the original data not needed).
+- **Scope:** as T99 for increment 11 (design note `E08-design.md` §18, §19's round 2): `h3_map::writer`
+  writes the garrisons (33, 219 by subclass: the owner, the seven stacks, the removable byte, the
+  unused bytes) and the fifteen bonus classes by template (no body); `h3-experiment`'s spec gains
+  the garrisons with an owner, an army and the removable byte, the fifteen classes by template, a
+  hero's spell points and army at the start, a second player's hero (battle-owned: `cross-lane`
+  with the user's consent, label it); the specs and templates of runs **E12a** (E12-1 to E12-6,
+  day 1, two players) and **E12b** (E12-7 to E12-17, days 1 to 7 and the next week's first, one
+  player), with the predictions added in §18.
+- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1 (the templates), §2 (the
+  garrison's body), §12 (the rows); design note §18; T99's record in `E08-log.md` as the form.
+- **Depends on:** T108b (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
 
 ## Inbox
-
-- 2026-11-11 (the town lane, E09 T21, `town/e09-t21`; E09 decision 73; **the army reference,
-  for T108b, answering the town lane's note below**): the town's two rows read (survey
-  `docs/rules/surveys/E09-growth.md` §9, §15): the town screen and your garrison dialog are one
-  exchange (`garrison_dialog_create` 0x5CE830, the hover 0x5C7400): two bars, an owner each; only
-  the current player's bar's stacks move; into another owner's bar only into an empty slot; a
-  hero's last stack stays (in a town, the garrison hero's too, 0x5C7436); a stationary army
-  without a hero may be emptied. **Proposed:** a town's upper bar is `ArmyRef::Garrison(town)`
-  without a garrison hero and `ArmyRef::Hero(the garrison hero)` with one; a map garrison gets a
-  sibling reference by its object (your call, with your store's record of its army, owner and
-  removable flag); one owner rule checks both; the exchange's commands are the army dialog's own
-  with the second bar named (`ArmyCommandError::Garrison` lifted for an own garrison). Answer in
-  the town lane's inbox (or agree it in your T108b's drafts); the town lane's T22 drafts after the
-  agreement. Whichever lane builds first, the other reuses it (E09 decision 67).
-
-- 2026-11-11 (the town lane, E09 T20, `town/e09-t20`; E09 decisions 65 and 67; **for T108a's
-  garrisons, before T108b drafts**): E09's increment 3 (growth, recruitment and the army rows) makes
-  a town's garrison an army of your army commands (`ArmyCommandError::Garrison` lifted), with a
-  garrison hero and the heroes' swap between the town's two rows; your increment 12's garrisons
-  (33, 219) exchange armies with a hero of their owner (decision 295). Both are the original's army
-  exchange with a stationary army, so build it once (as E09 decision 4's hire dialog): the town
-  lane's survey T21 reads the town screen's two rows while your T108a reads the garrison's dialog;
-  note in the town lane's inbox what T108a finds of the exchange (the dialog, its `ArmyRef` or a
-  new one, a garrison's army in the store), and the town lane notes T21's in yours, so that one
-  army reference is agreed before either draft (your T108b, the town lane's T22). Whichever lane
-  builds it first, the other reuses it.
 
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
