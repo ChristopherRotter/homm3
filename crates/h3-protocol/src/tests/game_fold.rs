@@ -397,7 +397,7 @@ pub(super) fn golden(mut each: impl FnMut(&str, &GameRuleset, &GameSetup, &Repla
         .filter(|path| path.extension().is_some_and(|e| e == "toml"))
         .collect();
     files.sort();
-    assert_eq!(files.len(), 69, "the golden adventure replays");
+    assert_eq!(files.len(), 72, "the golden adventure replays");
     let mut rules: BTreeMap<(Vec<String>, String), GameRuleset> = BTreeMap::new();
     for file in &files {
         let name = file.file_stem().unwrap().to_string_lossy().into_owned();

@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "100 000 forks of the env after 7 days of random play on the town map (E09 T9c, the town epic's design note §18: the forks carry the game state's store of towns, eight records behind one reference count, ADR-0028 point 4; 66 steps): 3 548 Ir a fork (fork-xl-144's 3 755 on its map without towns, the store empty); counts only inside h3_cli::adventure::bench::fork_workload"
+description = "100 000 forks of the env after 7 days of random play on the town map (E09 T9c, the town epic's design note §18: the forks carry the game state's store of towns, eight records behind one reference count, ADR-0028 point 4; 66 steps): 3 548 Ir a fork (fork-xl-144's 3 755 on its map without towns, the store empty); counts only inside h3_cli::adventure::bench::fork_workload; since E09 T19c1 re-baselined with the builds in the random agent's draw (encoding v9: the week's random games changed course, so the forked state differs; fork_workload the same code): 3 328 Ir a fork, the branch -6.12 % against master"
 args = [
     "adventure",
     "bench",
@@ -26,5 +26,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 354800055
+instructions = 332800024
 threshold_percent = 2

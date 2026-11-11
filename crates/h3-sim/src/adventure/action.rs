@@ -18,6 +18,7 @@
 //! | 17 | Build a boat at the player's or an ally's Shipyard anchored on the tile in the tile head (E08 T85b2b) |
 //! | 18 + c, c < 4 | Buy the most of the creature in place `c` of the player's open hire dialog (E08 T95b) |
 //! | 22 + s, s < 8 | The hero in slot `s` revisits the entered object it stands on (E08 T105b2) |
+//! | 30 | Build the building in the building head in the town whose entrance is the tile in the tile head (E09 T19c1) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -27,11 +28,18 @@
 //! an entry that takes no tile (`EndTurn`, the answers, the hire dialog's purchases, a revisit) the
 //! tile head allows exactly 0, as the
 //! battle's heads after a non-cast entry (a policy that always samples the head never meets an
-//! empty mask on a legal entry). After [`BUILD_BOAT`] it allows the anchors of the Shipyards
+//! empty mask on a legal entry). The *building head* (E09 T19c1) is an index of a town's faction's
+//! record of buildings, [`BUILDING_COUNT`] (`h3_towns::MAX_BUILDINGS`, 64) wide: after [`BUILD`]
+//! and a town's entrance it allows the buildings of the builds [`legal_commands`] lists for that
+//! town ([`building_mask`]: the hall's offer the owner's treasury pays, one build a town a day,
+//! TWN-BLD-001 to -004), after another entry and a tile its masks allow exactly 0, and a building
+//! other than 0 decodes to no command with any other entry. After [`BUILD_BOAT`] it allows the anchors of the Shipyards
 //! whose `BuildBoat` [`legal_commands`] lists (ADV-SHY-003: the player's or an ally's, its boat
 //! tile free, the price in the treasury; the Shipyard as the observation names it, by its
 //! anchor; the setup refuses two typed objects of one type on one anchor, and the original's
-//! packs have one Shipyard type). A move's destination is a tile the hero's reachable-tiles query
+//! packs have one Shipyard type). After [`BUILD`] it allows the entrances of the towns of the
+//! listed builds (E09 T19c1: the player's own towns, the entrance its hero enters by, TWN-VIS-001;
+//! one town an entrance). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -78,21 +86,27 @@
 //! the entered object under the hero visited again, legal where [`legal_commands`] lists it, at 0
 //! points too, so a turn may revisit without end: an env's rollout needs a step cap, the AI
 //! lane's call, design note §18). A jump needs no entry: a teleporter is a destination among the
-//! reachable tiles (ADR-0017 point 8).
+//! reachable tiles (ADR-0017 point 8). Version 9 (E09 T19c1, the town lane's `cross-lane` change
+//! with the user's consent, E09 decisions 7, 58, 62; the town epic's design note §32; ADR-0017
+//! point 8) appended [`BUILD`] and the building head ([`MapAction::building`]): a town's build
+//! (`TownCommand::Build`, TWN-BLD-001) by its town's entrance and its building's index in the
+//! town's record, one action per listed build; no hero, no visit, as the command.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
 use h3_content::CreatureTypeId;
+use h3_contracts::TownId;
 use h3_contracts::{BattleSide, HeroId, PlayerId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
     HireAnswer, SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
 };
+use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 8;
+pub const ACTION_ENCODING_VERSION: u32 = 9;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -142,11 +156,22 @@ pub const HIRE_BASE: usize = BUILD_BOAT + 1;
 /// `REVISIT_BASE + s` (E08 T105b2; ADV-TEL-008).
 pub const REVISIT_BASE: usize = HIRE_BASE + HIRE_SLOTS;
 
+/// The entry that builds the building in the building head in the town whose entrance is the
+/// tile in the tile head (E09 T19c1; TWN-BLD-001).
+pub const BUILD: usize = REVISIT_BASE + HERO_SLOTS;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = REVISIT_BASE + HERO_SLOTS;
+pub const ENTRY_COUNT: usize = BUILD + 1;
+
+/// The building head's size (E09 T19c1): the most buildings of a town's record
+/// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
+pub const BUILDING_COUNT: usize = MAX_BUILDINGS;
 
 /// Which entries are legal.
 pub type EntryMask = [bool; ENTRY_COUNT];
+
+/// Which buildings of the building head are legal (E09 T19c1).
+pub type BuildingMask = [bool; BUILDING_COUNT];
 
 /// Who acts (ADR-0017 point 8): a player, or the neutral seat, which plays a battle's unowned side
 /// (a wandering monster's) as the system actor (E08 T20b3a).
@@ -192,13 +217,17 @@ pub enum Phase {
     Battle,
 }
 
-/// An action of the map phase: an entry and its tile head (0 for an entry that takes no tile).
+/// An action of the map phase: an entry, its tile head (0 for an entry that takes no tile) and
+/// its building head (0 but for [`BUILD`], E09 T19c1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct MapAction {
     /// The entry.
     pub entry: usize,
-    /// The destination tile of a move, `(level × height + row) × width + column`; 0 otherwise.
+    /// The destination tile of a move, `(level × height + row) × width + column`, a Shipyard's
+    /// anchor or a town's entrance; 0 otherwise.
     pub tile: u32,
+    /// The building of a build: its index in the town's faction's record; 0 otherwise.
+    pub building: u8,
 }
 
 /// An action of either phase.
@@ -261,9 +290,23 @@ impl Action {
         Self::map(REVISIT_BASE + slot, 0)
     }
 
-    /// The map phase's action of `entry` with `tile`.
+    /// Builds the building at `building` of the town's record in the town whose entrance is
+    /// `tile` (E09 T19c1).
+    pub const fn build(tile: u32, building: u8) -> Self {
+        Self::Adventure(MapAction {
+            entry: BUILD,
+            tile,
+            building,
+        })
+    }
+
+    /// The map phase's action of `entry` with `tile` (building 0).
     pub const fn map(entry: usize, tile: u32) -> Self {
-        Self::Adventure(MapAction { entry, tile })
+        Self::Adventure(MapAction {
+            entry,
+            tile,
+            building: 0,
+        })
     }
 }
 
@@ -290,6 +333,20 @@ pub fn tile_pos(state: &GameState, index: u32) -> Option<Pos> {
     let x = u16::try_from(rest % width).ok()?;
     let y = u16::try_from(rest / width).ok()?;
     (level < map.levels()).then(|| Pos::new(x, y, level))
+}
+
+/// The tile head's index of `town`'s entrance (E09 T19c1): the first tile its object is visited
+/// from, where its visitor stands (TWN-VIS-001); none for a town the map does not have.
+pub fn town_tile(state: &GameState, town: TownId) -> Option<u32> {
+    let map = state.adventure().map();
+    map.town_object(town)
+        .and_then(|index| map.objects()[index].entrance(map))
+        .and_then(|pos| tile_index(state, pos))
+}
+
+/// The town whose entrance is the tile at the tile head's `index` (E09 T19c1), if one's is.
+fn town_of_tile(state: &GameState, index: u32) -> Option<TownId> {
+    state.adventure().map().town_at(tile_pos(state, index)?)
 }
 
 /// The hero in `slot` of `player`: its heroes in the order of their ids.
@@ -347,7 +404,8 @@ pub fn moves(
 
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b; a
-/// hero's revisit entry when it lists the hero's `Revisit`, E08 T105b2;
+/// hero's revisit entry when it lists the hero's `Revisit`, E08 T105b2; [`BUILD`] when it lists a
+/// town's build, E09 T19c1;
 /// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), and each hero slot with a tile to move to ([`legal_moves`]: none
@@ -376,7 +434,8 @@ pub fn legal_mask(
 /// Fills `mask` (resized to the tile count) with the legal tiles of `seat` after choosing
 /// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer, a revisit), the
 /// reachable tiles of a hero's legal move but its own, the anchors of the Shipyards of the listed
-/// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b); none after an illegal entry or in the battle
+/// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b), the entrances of the towns of the listed builds
+/// after [`BUILD`] (E09 T19c1, [`town_tile`]); none after an illegal entry or in the battle
 /// phase (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
@@ -402,6 +461,14 @@ pub fn tile_mask(
                 mask[index as usize] = true;
             }
         }
+    } else if entry == BUILD {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::Build { town, .. }) = command
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
     } else if let Some(reach) = entry
         .checked_sub(MOVE_BASE)
         .and_then(|slot| moves(state, rules, seat, slot))
@@ -411,6 +478,39 @@ pub fn tile_mask(
                 mask[index as usize] = true;
             }
         }
+    }
+}
+
+/// Fills `mask` with the legal buildings of `seat` after choosing `entry` and `tile` (E09 T19c1):
+/// after [`BUILD`] the buildings of the builds [`legal_commands`] lists for the town whose
+/// entrance is `tile`, by their indices in its record (none for a tile with no such town); after
+/// another entry 0 alone when `tile` is in its tile mask ([`tile_mask`]); none otherwise, in the
+/// battle phase or for the neutral seat.
+pub fn building_mask(
+    state: &GameState,
+    rules: &GameRuleset,
+    seat: impl Into<Seat>,
+    entry: usize,
+    tile: u32,
+    mask: &mut BuildingMask,
+) {
+    let seat = seat.into();
+    mask.fill(false);
+    if entry == BUILD {
+        let Some(at) = town_of_tile(state, tile) else {
+            return;
+        };
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::Build { town, building }) = command
+                && town == at
+            {
+                mask[building.index()] = true;
+            }
+        }
+    } else {
+        let mut tiles = Vec::new();
+        tile_mask(state, rules, seat, entry, &mut tiles);
+        mask[0] = tiles.get(tile as usize).copied().unwrap_or(false);
     }
 }
 
@@ -483,7 +583,7 @@ pub fn second_mask(
 const fn tileless(entry: usize) -> bool {
     entry == END_TURN
         || (entry >= ACCEPT && entry < BUILD_BOAT)
-        || (entry >= HIRE_BASE && entry < ENTRY_COUNT)
+        || (entry >= HIRE_BASE && entry < BUILD)
 }
 
 /// The entry of `answer` by its role (E08 T63a; the module's table): an offer's acceptance; a
@@ -634,8 +734,7 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
         }
         GameCommand::Answer(answer) => answer_entry(*answer),
         // E08 T51a: the management commands have no entry (decision 99: the AI lane's call); a
-        // town's build none until E09 T19's (the AI lane's encoding; `legal_commands` lists none
-        // before E09 T18b2).
+        // town's build takes a tile ([`command_entry`]'s, E09 T19c1).
         GameCommand::Adventure(_)
         | GameCommand::Battle(_)
         | GameCommand::Manage(_)
@@ -645,7 +744,8 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 
 /// The entry of a command [`legal_commands`] lists outside a battle for `seat`:
 /// [`tileless_entry`]'s (with `hire`, the open hire dialog's creatures), [`BUILD_BOAT`] for a
-/// `BuildBoat` (E08 T85b2b), or a `Revisit`'s by its hero's slot ([`revisit_entry`], E08 T105b2).
+/// `BuildBoat` (E08 T85b2b), a `Revisit`'s by its hero's slot ([`revisit_entry`], E08 T105b2), or
+/// [`BUILD`] for a town's build (E09 T19c1).
 fn command_entry(
     state: &GameState,
     seat: Seat,
@@ -657,6 +757,7 @@ fn command_entry(
         GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
             revisit_entry(state, seat.player()?, *hero)
         }
+        GameCommand::Town(TownCommand::Build { .. }) => Some(BUILD),
         other => tileless_entry(other, hire),
     }
 }
@@ -700,9 +801,11 @@ fn build_boat(
 /// The command `seat` issues with `action`, if the action names one. In the map phase:
 /// `EndTurn` or an answer with tile 0 (a hire entry's: [`hire_answer`], E08 T95b), a `Revisit` of
 /// the hero in its entry's slot with tile 0 (E08 T105b2), a move of one of its player's heroes to
-/// a tile its reachable-tiles query lists (not its own) along the query's path, or a `BuildBoat`
-/// at a Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b); none for
-/// the neutral seat. In the battle phase: the battle command the battle's encoding decodes the
+/// a tile its reachable-tiles query lists (not its own) along the query's path, a `BuildBoat`
+/// at a Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b), or a
+/// town's build of the building at the building head's index in the town whose entrance is the
+/// tile (E09 T19c1; a building other than 0 with another entry names none); none for the neutral
+/// seat. In the battle phase: the battle command the battle's encoding decodes the
 /// action to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may
 /// be issued now (whose turn it is, an open decision, the price, the side to act) is `apply`'s.
 pub fn decode(
@@ -720,6 +823,14 @@ pub fn decode(
         }
     };
     let player = seat.player()?;
+    if action.entry == BUILD {
+        let town = town_of_tile(state, action.tile)?;
+        let building = BuildingId::from_index(usize::from(action.building))?;
+        return Some(GameCommand::Town(TownCommand::Build { town, building }));
+    }
+    if action.building != 0 {
+        return None;
+    }
     if tileless(action.entry) {
         if action.tile != 0 {
             return None;
@@ -752,8 +863,9 @@ pub fn decode(
 /// entries (tile 0; a hire dialog's purchase by its creature's place when it is the `Buy`
 /// [`legal_commands`] lists for it, of the most: an entry buys no other amount, E08 T95b), a move
 /// of one of its player's heroes by the hero's slot and the path's last tile, a `BuildBoat` by
-/// its Shipyard's anchor (E08 T85b2b), a `Revisit` by its hero's slot (tile 0, E08 T105b2; none of
-/// these for the neutral seat), a battle command by the
+/// its Shipyard's anchor (E08 T85b2b), a `Revisit` by its hero's slot (tile 0, E08 T105b2), a
+/// town's build by its town's entrance and its building's index (E09 T19c1; none of these for the
+/// neutral seat), a battle command by the
 /// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
 /// when a move's path is the one the hero's query chose (a move along another path decodes to the
 /// query's path to the same tile) and a `BuildBoat`'s Shipyard is one the player may use.
@@ -776,6 +888,9 @@ pub fn encode(
         }
         GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
             return revisit_entry(state, player, *hero).map(|entry| Action::map(entry, 0));
+        }
+        GameCommand::Town(TownCommand::Build { town, building }) => {
+            return town_tile(state, *town).map(|tile| Action::build(tile, building.raw()));
         }
         GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
             let listed = legal_commands(state, rules, seat.actor());

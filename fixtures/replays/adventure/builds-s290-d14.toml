@@ -1,0 +1,139 @@
+commands = [
+    "0 town build 1 19",
+    "0 town build 0 10",
+    "0 move 0 4,21,0 4,22,0",
+    "0 move 0 4,21,0 4,20,0 4,19,0 4,18,0 4,17,0 4,16,0 4,15,0 4,14,0 3,13,0",
+    "0 move 0 3,14,0 4,15,0 5,16,0",
+    "0 end-turn",
+    "1 town build 2 15",
+    "1 town build 3 1",
+    "1 move 1 15,14,0 16,14,0 17,14,0 18,14,0 19,15,0",
+    "1 end-turn",
+    "0 town build 1 29",
+    "0 town build 0 14",
+    "0 move 0 5,15,0 4,14,0 3,13,0 2,12,0 1,11,0",
+    "0 end-turn",
+    "1 town build 3 2",
+    "1 end-turn",
+    "0 town build 1 32",
+    "0 town build 0 7",
+    "0 move 0 2,11,0 3,12,0 4,13,0 5,14,0 6,15,0 7,16,0",
+    "0 move 0 6,17,0 5,18,0 4,19,0 3,20,0 2,21,0",
+    "0 end-turn",
+    "1 move 1 18,15,0 17,16,0 16,17,0 15,18,0 14,19,0",
+    "1 town build 3 21",
+    "1 move 1 13,19,0 12,18,0 11,17,0 10,16,0",
+    "1 town build 2 17",
+    "1 end-turn",
+    "0 town build 1 23",
+    "0 move 0 3,21,0 4,21,0",
+    "0 town build 0 8",
+    "0 move 0 4,20,0 4,19,0 4,18,0 4,17,0 4,16,0 4,15,0 4,14,0 4,13,0 4,12,0 4,11,0 4,10,0 4,9,0 5,8,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 town build 1 1",
+    "0 move 0 5,9,0 5,10,0 5,11,0 5,12,0 6,13,0 7,13,0 8,13,0 9,13,0 10,14,0 11,15,0 12,16,0",
+    "0 end-turn",
+    "1 move 1 11,16,0 12,15,0 13,14,0 14,13,0 15,12,0 16,11,0 17,10,0 18,9,0",
+    "1 town build 3 19",
+    "1 town build 2 29",
+    "1 end-turn",
+    "0 town build 1 12",
+    "0 move 0 12,15,0 12,14,0 12,13,0 12,12,0 12,11,0 13,10,0",
+    "0 town build 0 20",
+    "0 end-turn",
+    "1 end-turn",
+    "0 town build 0 22",
+    "0 town build 1 20",
+    "0 move 0 12,11,0 11,12,0 10,13,0 9,13,0 8,13,0 7,13,0 6,13,0",
+    "0 end-turn",
+    "1 town build 3 16",
+    "1 end-turn",
+    "0 town build 0 0",
+    "0 town build 1 18",
+    "0 move 0 6,14,0 6,15,0 6,16,0 7,17,0 8,18,0 9,19,0 10,20,0 11,21,0",
+    "0 end-turn",
+    "1 town build 2 19",
+    "1 end-turn",
+    "0 town build 1 30",
+    "0 move 0 11,20,0 11,19,0 11,18,0 11,17,0 11,16,0 10,15,0 9,14,0 8,13,0",
+    "0 town build 0 11",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 move 1 18,10,0 18,11,0 18,12,0 18,13,0 18,14,0",
+    "1 move 1 17,14,0 16,14,0 15,14,0 14,14,0 13,14,0 12,14,0 11,14,0 10,14,0 9,13,0 8,12,0",
+    "1 revisit 1",
+    "1 end-turn",
+    "0 town build 0 5",
+    "0 move 0 9,13,0 10,13,0 11,13,0 12,13,0 13,13,0 14,13,0",
+    "0 end-turn",
+    "1 move 1 8,13,0 8,14,0 8,15,0 8,16,0 8,17,0 8,18,0 8,19,0 9,20,0 10,21,0",
+    "1 move 1 10,22,0 10,23,0 10,24,0 9,25,0",
+    "1 move 1 8,24,0",
+    "1 end-turn",
+    "0 town build 0 23",
+    "0 move 0 14,14,0 14,15,0 14,16,0 14,17,0 14,18,0 14,19,0 14,20,0 14,21,0 14,22,0 14,23,0 14,24,0 13,25,0 12,26,0 11,27,0",
+    "0 end-turn",
+    "1 move 1 9,24,0 10,25,0 11,26,0 12,27,0",
+    "1 end-turn",
+    "0 town build 0 12",
+    "0 move 0 10,26,0",
+    "0 end-turn",
+    "1 move 1 12,26,0 12,25,0 12,24,0 12,23,0 12,22,0 12,21,0 12,20,0 13,19,0 14,18,0 15,17,0",
+    "1 move 1 16,16,0",
+    "1 end-turn",
+    "0 end-turn",
+    "1 move 1 15,16,0 14,16,0 13,16,0",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x90ea65af6c964968",
+    "0x8ac024bf4bb3236c",
+    "0xc88f1359c299619d",
+    "0xbe166098ad7082cb",
+    "0x53dfc8c8365ca083",
+    "0xe67579cfd3089b1b",
+    "0x741e63224457c472",
+    "0xebf85e07ab3d8eea",
+]
+
+[replay]
+format = 12
+engine = "0.1.0"
+seed = "290"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xe5ac723212bdce02"
+adventure_ruleset_hash = "0xcd7ea0d574adc88a"
+town_ruleset_hash = "0x8477f2008d862e55"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 27
+adventure_state_hash_version = 21
+checkpoint_every = 10
+
+[map]
+path = "fixtures/maps/e09-builds-36.h3m"
+hash = "0x147b89367ea763a3"
+import_version = 21
+
+[result]
+day = 15
+final_hash = "0x6ff963fd9631b6ae"

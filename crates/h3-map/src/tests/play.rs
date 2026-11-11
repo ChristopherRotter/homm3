@@ -7176,12 +7176,15 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
             boat
         );
     }
+    // A hero on a town's entrance is its visitor (TWN-VIS-002) but while its player has an open
+    // decision: a guard's battle (E08 T103d, decision 279) or its question (a monster's offer to
+    // join, E09 T19c1's CI counterexample) holds the town's visit, which follows the answer.
     for &i in map.towns() {
         let entrance = map.objects()[i].entrance(map);
         for hero in adventure
             .heroes()
             .iter()
-            .filter(|h| Some(h.pos) == entrance && state.battle(h.owner).is_none())
+            .filter(|h| Some(h.pos) == entrance && !state.has_decision(h.owner))
         {
             let owner = adventure.owner(i);
             prop_assert!(

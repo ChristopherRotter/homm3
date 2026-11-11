@@ -6,7 +6,8 @@
 //! with blue's hero two steps from red's, the battles (E08 T19b1, [`battles`]); with a monster
 //! beside red's hero, its battle and the neutral seat (E08 T20b3a, [`monsters`]); with a
 //! Shipyard of each player's beside its hero, `BuildBoat` (E08 T85b2b, [`shipyards`]). On the
-//! committed town map `fixtures/maps/e09-towns-36.h3m`, the towns (E09 T9c, [`towns`]).
+//! committed town map `fixtures/maps/e09-towns-36.h3m`, the towns (E09 T9c, [`towns`]) and their
+//! builds (E09 T19c1, encoding v9).
 
 use std::sync::{Arc, LazyLock};
 
@@ -19,9 +20,10 @@ use h3_game::{
     legal_moves, observe,
 };
 use h3_kernel::{Rng, StreamId};
+use h3_towns::TownCommand;
 use proptest::prelude::*;
 
-use super::action::{self, hero_in_slot, tile_index, tile_pos};
+use super::action::{self, hero_in_slot, tile_index, tile_pos, town_tile};
 use super::rollout::choose;
 use super::*;
 use crate::action as battle;
@@ -145,7 +147,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false
+            false, false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -179,13 +181,35 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 8);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 30));
+    assert_eq!(ACTION_ENCODING_VERSION, 9);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 31));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
+    assert_eq!((BUILD, BUILDING_COUNT), (30, 64));
     assert_eq!(Action::revisit(3), Action::map(25, 0));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
-    let map = |entry, tile| Action::Adventure(MapAction { entry, tile });
+    assert_eq!(
+        Action::build(40, 5),
+        Action::Adventure(MapAction {
+            entry: 30,
+            tile: 40,
+            building: 5
+        })
+    );
+    // The duel has no town: no entrance, no build decodes.
+    assert_eq!(town_tile(state, h3_contracts::TownId::new(0)), None);
+    let red = PlayerId::new(0);
+    assert_eq!(
+        action::decode(state, env.rules(), red, Action::build(0, 0)),
+        None
+    );
+    let map = |entry, tile| {
+        Action::Adventure(MapAction {
+            entry,
+            tile,
+            building: 0,
+        })
+    };
     assert_eq!(Action::move_to(2, 9), map(3, 9));
     assert_eq!(Action::accept(), map(9, 0));
     assert_eq!(Action::decline(), map(10, 0));
@@ -222,11 +246,13 @@ enum Pick {
     /// battle, E08 T19b1); else as `Legal(0)`.
     Attack,
     /// An arbitrary map action of the acting seat (`None`) or of a player of the game, the one
-    /// after the last or the neutral seat: the entry and tile modulo one more than their counts.
+    /// after the last or the neutral seat: the entry, tile and building modulo one more than their
+    /// counts.
     Free {
         player: Option<u8>,
         entry: u8,
         tile: u32,
+        building: u8,
     },
     /// An arbitrary battle action of a seat as `Free`'s, the entry and heads modulo one more than
     /// their counts.
@@ -242,8 +268,8 @@ fn pick() -> impl Strategy<Value = Pick> {
         6 => any::<u64>().prop_map(Pick::Legal),
         1 => Just(Pick::Chart),
         1 => Just(Pick::Attack),
-        1 => (proptest::option::of(any::<u8>()), any::<u8>(), any::<u32>())
-            .prop_map(|(player, entry, tile)| Pick::Free { player, entry, tile }),
+        1 => (proptest::option::of(any::<u8>()), any::<u8>(), any::<u32>(), any::<u8>())
+            .prop_map(|(player, entry, tile, building)| Pick::Free { player, entry, tile, building }),
         1 => (proptest::option::of(any::<u8>()), any::<u16>(), any::<(u16, u16, u16)>())
             .prop_map(|(player, entry, heads)| Pick::FreeBattle { player, entry, heads }),
     ]
@@ -262,8 +288,11 @@ fn is_move(entry: usize) -> bool {
 /// moves but its own tile (since encoding v3 other players' heroes' too, E08 T19b1), each decoding
 /// to the query's path; [`BUILD_BOAT`]'s tiles are the anchors of the listed `BuildBoat`s'
 /// Shipyards ([`check_build_boat`], E08 T85b2b); a revisit entry decodes to the `Revisit` of the
-/// hero in its slot, none with no hero there (E08 T105b2). In the battle phase (the neutral seat's
-/// only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
+/// hero in its slot, none with no hero there (E08 T105b2); [`BUILD`]'s tiles are the entrances of
+/// the towns of the listed builds and its buildings theirs ([`check_build`], E09 T19c1); after
+/// another entry the building head allows 0 alone at its first legal tile, nothing after an
+/// illegal entry, and a building other than 0 decodes to nothing. In the battle phase (the neutral
+/// seat's only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
 fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCaseError> {
     let seat = seat.into();
     let (state, rules) = (env.state(), env.rules());
@@ -271,12 +300,15 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
     let mut entries = [true; ENTRY_COUNT];
     env.legal_mask(seat, &mut entries);
     let mut tiles = Vec::new();
+    let mut buildings = [true; BUILDING_COUNT];
     if env.phase(seat) == Phase::Battle {
         prop_assert_eq!(entries, [false; ENTRY_COUNT]);
         for entry in 0..=ENTRY_COUNT {
             env.tile_mask(seat, entry, &mut tiles);
             prop_assert!(!tiles.contains(&true), "entry {}", entry);
         }
+        env.building_mask(seat, BUILD, 0, &mut buildings);
+        prop_assert_eq!(buildings, [false; BUILDING_COUNT]);
         return Ok(());
     }
     let player = seat.player().unwrap();
@@ -298,6 +330,30 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
         env.tile_mask(player, entry, &mut tiles);
         prop_assert_eq!(tiles.len(), env.tile_count());
         prop_assert_eq!(legal, tiles.iter().any(|&t| t), "entry {}", entry);
+        if entry == BUILD {
+            check_build(env, player, &commands, &tiles)?;
+            continue;
+        }
+        // The building head after another entry (E09 T19c1): 0 alone at its first legal tile;
+        // a building there names no command.
+        let first = tiles
+            .iter()
+            .position(|&t| t)
+            .map_or(0, |t| u32::try_from(t).unwrap());
+        env.building_mask(player, entry, first, &mut buildings);
+        let allowed: Vec<usize> = (0..BUILDING_COUNT).filter(|&b| buildings[b]).collect();
+        prop_assert_eq!(
+            allowed,
+            if legal { vec![0] } else { vec![] },
+            "entry {}",
+            entry
+        );
+        let built = Action::Adventure(MapAction {
+            entry,
+            tile: first,
+            building: 1,
+        });
+        prop_assert_eq!(action::decode(state, rules, player, built), None);
         if entry == BUILD_BOAT {
             check_build_boat(env, player, &commands, &tiles)?;
             continue;
@@ -396,6 +452,60 @@ fn check_build_boat(
     Ok(())
 }
 
+/// [`BUILD`]'s `tiles` for `player` agree with the listed `commands` (E09 T19c1): the entrances
+/// of the towns of their builds; at each the building mask is the buildings of that town's listed
+/// builds, each build decoding to its command, which encodes back to the action; at a tile with no
+/// such town the building mask is empty.
+fn check_build(
+    env: &AdventureEnv,
+    player: PlayerId,
+    commands: &[GameCommand],
+    tiles: &[bool],
+) -> Result<(), TestCaseError> {
+    let (state, rules) = (env.state(), env.rules());
+    let listed: Vec<(u32, usize, &GameCommand)> = commands
+        .iter()
+        .filter_map(|command| match command {
+            GameCommand::Town(TownCommand::Build { town, building }) => {
+                Some((town_tile(state, *town).unwrap(), building.index(), command))
+            }
+            _ => None,
+        })
+        .collect();
+    let mut gates: Vec<u32> = listed.iter().map(|&(tile, ..)| tile).collect();
+    gates.sort_unstable();
+    gates.dedup();
+    let masked: Vec<u32> = (0u32..)
+        .zip(tiles)
+        .filter(|&(_, &t)| t)
+        .map(|(i, _)| i)
+        .collect();
+    prop_assert_eq!(&masked, &gates);
+    let mut buildings = [true; BUILDING_COUNT];
+    for &gate in &gates {
+        env.building_mask(player, BUILD, gate, &mut buildings);
+        let allowed: Vec<usize> = (0..BUILDING_COUNT).filter(|&b| buildings[b]).collect();
+        let mut want: Vec<usize> = listed
+            .iter()
+            .filter(|&&(tile, ..)| tile == gate)
+            .map(|&(_, building, _)| building)
+            .collect();
+        want.sort_unstable();
+        prop_assert_eq!(allowed, want, "gate {}", gate);
+    }
+    for (tile, building, command) in listed {
+        let action = Action::build(tile, u8::try_from(building).unwrap());
+        let decoded = action::decode(state, rules, player, action);
+        prop_assert_eq!(decoded.as_ref(), Some(command));
+        prop_assert_eq!(action::encode(state, rules, player, command), Some(action));
+    }
+    if let Some(other) = (0u32..).find(|tile| !gates.contains(tile)) {
+        env.building_mask(player, BUILD, other, &mut buildings);
+        prop_assert_eq!(buildings, [false; BUILDING_COUNT]);
+    }
+    Ok(())
+}
+
 /// The battle masks of `seat` agree with its battle (E08 T19b1): outside a battle they are
 /// empty and a battle action decodes to nothing, a battle command encodes to nothing; in one they
 /// are the battle encoding's for the side it owns (empty while the other side is to act; the
@@ -466,8 +576,8 @@ fn check_battle_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), T
     Ok(())
 }
 
-/// Whether `action` is legal for `seat` by its masks: a map action's entry and tile, a battle
-/// action's entry and three heads.
+/// Whether `action` is legal for `seat` by its masks: a map action's entry, tile and building
+/// (E09 T19c1), a battle action's entry and three heads.
 fn legal_by_masks(env: &AdventureEnv, seat: Seat, action: Action) -> bool {
     match action {
         Action::Adventure(action) => {
@@ -475,8 +585,11 @@ fn legal_by_masks(env: &AdventureEnv, seat: Seat, action: Action) -> bool {
             env.legal_mask(seat, &mut entries);
             let mut tiles = Vec::new();
             env.tile_mask(seat, action.entry, &mut tiles);
+            let mut buildings = [false; BUILDING_COUNT];
+            env.building_mask(seat, action.entry, action.tile, &mut buildings);
             entries.get(action.entry) == Some(&true)
                 && tiles.get(action.tile as usize) == Some(&true)
+                && buildings.get(usize::from(action.building)) == Some(&true)
         }
         Action::Battle(action) => {
             let mut legal = LegalCommands::new();
@@ -607,11 +720,12 @@ proptest! {
                     };
                     (actor, aimed.unwrap_or_else(|| choose(&env, actor, &mut rng)))
                 }
-                Pick::Free { player, entry, tile } => {
+                Pick::Free { player, entry, tile, building } => {
                     let seat = player.map_or(actor, seat_of);
                     let entry = usize::from(entry) % (ENTRY_COUNT + 1);
                     let tile = tile % (u32::try_from(env.tile_count()).unwrap() + 1);
-                    (seat, Action::map(entry, tile))
+                    let building = building % (u8::try_from(BUILDING_COUNT).unwrap() + 1);
+                    (seat, Action::Adventure(MapAction { entry, tile, building }))
                 }
                 Pick::FreeBattle { player, entry, heads: (spell, target, second) } => {
                     let seat = player.map_or(actor, seat_of);

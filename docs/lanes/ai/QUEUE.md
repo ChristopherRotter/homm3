@@ -33,17 +33,21 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
-**From the town lane** (E09 T8c1, T8c2, T18b2b; for your information, no encoding of yours moved):
+**From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
 
-- 2026-11-10 (the town lane, E09 T18b2b, `town/e09-t18b2b`, `cross-lane`; **for E09 T19's build
-  entry**, decision 56): `h3_game::legal_commands` lists a town's builds
-  (`GameCommand::Town(TownCommand::Build { town, building })`, after the boats: each owned town in
-  `TownId` order, each payable building of its hall in record order). The env's mask gives them
-  no entry (as before), and `adventure::rollout::choose` now draws from `drawn_commands`, the
-  listed commands but the builds, so no random game, replay or bot report moved. E09 T19 adds the
-  build entry (design §32: the town's entrance as the tile, a building head over
-  `h3_towns::MAX_BUILDINGS`) in an encoding version after E08's v8, with your layout, and drops
-  the skip; its random games then move.
+- 2026-11-10 (the town lane, E09 T19c1, `town/e09-t19c1`, `cross-lane` with the user's consent,
+  E09 decisions 7, 58, 62; **the env's action encoding v9, for the adventure agents**; it replaces
+  the town lane's note of T18b2b): `crates/h3-sim/src/adventure/action.rs` appends the entry
+  `BUILD` (30; `ENTRY_COUNT` 31) and a third map head, the **building head**
+  (`MapAction::building`, `BUILDING_COUNT` 64 = `h3_towns::MAX_BUILDINGS`, a building's index in
+  its town's record): `BUILD` with a town's entrance in the tile head (`action::town_tile`) and a
+  building builds it (`TownCommand::Build`, TWN-BLD-001), masked by `legal_commands`' builds
+  (`building_mask`, also on `AdventureEnv`: after `BUILD` the town's listed buildings, after
+  another entry 0 alone at a legal tile; with another entry a building other than 0 decodes to
+  nothing). `rollout::choose` draws every listed build (each one choice, as `BuildBoat`'s;
+  `drawn_commands` gone), so random play changed course on every map with an owned town (the
+  town map's env tests on new seeds 142 and 244; three `towns-36` workloads re-baselined); a
+  policy trained on v8 sees one new entry and a new head. Nothing else of yours moved.
 
 - 2026-11-06 (the town lane, E09 T8c1 `town/e09-t8c1` (#750, merged) and T8c2 `town/e09-t8c2`,
   `cross-lane`): `h3_game::GameObservation` gains `towns: Vec<TownView>` (each seen town's public

@@ -2749,3 +2749,67 @@ its start, `master`'s counterexample of the plans' gains fixed first** (the user
   map's days); the views after a build left out of `check_timed` rather than predicted; the
   standing-building count by the ever-built set before the command; 512 cases rather than another
   draw.
+
+### T19c1 — the env's build entry, random play with builds (2026-11-10)
+
+One session, the user present at the start; branch `town/e09-t19c1`, `cross-lane` (`h3-sim`'s
+`src/adventure/` is the AI lane's; `h3-cli`'s `src/adventure/`, its replay test, the replays and
+the workloads the adventure lane's; the replay counts in `h3-protocol` and `h3-server` the server
+lane's). Starting point: `master` at 49cc2d5 (#832, #833 merged); the setup's baseline only the
+light gates (CI's full verify green on 102b81b, the same engine code). The user's computer was
+connected at the start: the original data staged then (each LOD a call, 13 files in one, the 40
+MP3s in one). **T19c cut in two at its start, the env first** (the user, decision 62).
+
+- **Action encoding v9** (`h3-sim` `src/adventure/action.rs`): the entry `BUILD` (30, appended;
+  `ENTRY_COUNT` 31) and the building head (`MapAction::building`, a `u8`; `BUILDING_COUNT`, 64,
+  `h3_towns::MAX_BUILDINGS`). `legal_mask` sets `BUILD` when `legal_commands` lists a town's
+  build; `tile_mask` after `BUILD` allows the entrances of the listed builds' towns (`town_tile`:
+  the town object's entrance, its visitor's tile); `building_mask` (new, also on `AdventureEnv`)
+  after `BUILD` allows the listed builds' buildings of the town whose entrance is the tile (by
+  their record index), after another entry 0 alone at a tile its tile mask allows, else nothing
+  (the battle encoding's "0 for another legal prefix"). `decode` of `BUILD` gives
+  `TownCommand::Build` of the town at the entrance (`StaticMap::town_at`) and the building at the
+  index (the owner, the price and the mark `apply`'s); with another entry a building other than 0
+  decodes to nothing; `encode` gives a build back by its town's entrance and its building's raw
+  index. ADR-0017 point 8 already said it (T15).
+- **The rollout** (`rollout.rs`): `choose` draws from every listed command, each build one choice
+  as each Shipyard's `BuildBoat` (decision 56's `drawn_commands` gone).
+- **Tests** (`tests.rs`, `tests/towns.rs`): `check_masks` checks `BUILD` (`check_build`: the tile
+  mask the listed builds' entrances, at each the building mask those builds' buildings, each
+  decoding to its command and encoding back, an entrance-less tile's mask empty) and the building
+  head after every other entry; `legal_by_masks` reads the building head; the main property's free
+  picks draw a building. The town map's env test plays seeds 142 and 244 (a release scratch search
+  over 1 to 299, the shortest pair whose union meets its features: 425 steps, 66 builds; 36 and
+  330 had changed course), counts the builds and checks after each that its town leaves `BUILD`'s
+  tiles for the day (TWN-BLD-004); the fork test's siege seed is 244 (a siege on day 2);
+  `the_rollout_draws_the_builds` replaces T18b2b's skip test.
+- **Random replays with builds** on `e09-builds-36.h3m` (decision 59), 14 days, recorded with the
+  rollout: `builds-s262-d14`, `-s271-d14`, `-s290-d14` (a search over 1 to 399: every game builds
+  in all four towns 25 to 34 times; 7 capture a town; none builds a boat or opens a siege; the
+  three each with the Keep's Capitol by command and blue's capture of the Keep, two of them on a
+  day red built there, two with red's second Capitol in the Harbour after the loss); 72 replays
+  (the counts in `h3-protocol`'s fold and session tests and `h3-server`'s record test). The town
+  map's `towns-s*-d21` keep their games of before as their commands (a replay is its commands).
+- **The benchmarks** (master built in `target/wt-master`, both measured in this sandbox): the
+  maps without towns the same within ±0.01 % (the draw's filter gone); the town map's random games
+  changed course, every counted function the same code (`callgrind_annotate` per function):
+  `day-start-towns-36` +3.29 % (the week's builds: more halls' and silos' income,
+  `h3_towns::daily_income` 25 000 to 35 400 Ir, and the marks cleared), `fork-towns-36` -6.12 %
+  (another state forked), `reach-towns-36` +24.84 % (473 steps and 1 850 queries for 425 and
+  1 584, about 469 000 Ir a query; `Reach::search` 71.6 % in both), re-baselined with the reason;
+  `siege-towns-36` the same (its heroes seek the towns). `h3-cli`'s `agent_rollout` (the wall-time
+  variant `--masks`) reads the building head too.
+- **CI's counterexample of `master`'s** (the pull request's first full verify, coverage step:
+  `h3-map`'s `every_step_keeps_the_commands_invariants`, reproduced on `master` 4bd174e with its
+  seed): a hero stepped onto another player's town's entrance that a monster guards and its
+  question (an offer to join) opened; the town's visit waits for the answer (decision 279), but
+  `check_invariants` exempted only a hero whose player is in a battle. A gap of the test, not of
+  the engine: it exempts a hero whose player has any open decision (`GameState::has_decision`);
+  the seed kept in `proptest-regressions/tests/play.txt`; the town lane's trap amended.
+- The AI lane's inbox told (v9; it replaces T18b2b's note). No game version moved; no rule, stub
+  or quirk new; no bot report moved (they play battles).
+- **Agent's calls (change freely):** the building head a `u8` in `MapAction`; each listed build
+  one choice of the random agent (as `BuildBoat`'s), not the entry first; the building head after
+  another entry by its tile's legality (a reach query for a move) rather than the entry's alone;
+  14 days and three replays on the builds map; the invariant's gap fixed here (the adventure
+  lane's test file, already in this `cross-lane` pull request) rather than sent to its inbox.

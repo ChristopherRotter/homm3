@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the reachable-tiles query of every walking hero of the acting player at each step of 2 random games of 28 days on the town map (E09 T9c, the town epic's design note §18: the entrance test, a town's entrance a stop, another owner's a capture's or a siege's; e09-towns-36.h3m, 36 x 36, eight towns): 1 840 queries, about 391 000 Ir each (reach-xl-144's about 148 000: the town map's heroes, with archangels and Gorgons, reach most of its 1 296 tiles, Reach::search itself 71 %; the towns' entrance test, AdventureState::town_visit, under 0.3 %); counts only inside h3_cli::adventure::bench::reach_queries; since E08 T105b2 re-baselined with the revisits in the legal set (the random games that place the heroes changed course: 425 steps and 1 584 queries for 500 and 1 840; each query's search the same code): master's code measured +0.01 % against the old count, the branch -3.35 % against master"
+description = "the reachable-tiles query of every walking hero of the acting player at each step of 2 random games of 28 days on the town map (E09 T9c, the town epic's design note §18: the entrance test, a town's entrance a stop, another owner's a capture's or a siege's; e09-towns-36.h3m, 36 x 36, eight towns): 1 840 queries, about 391 000 Ir each (reach-xl-144's about 148 000: the town map's heroes, with archangels and Gorgons, reach most of its 1 296 tiles, Reach::search itself 71 %; the towns' entrance test, AdventureState::town_visit, under 0.3 %); counts only inside h3_cli::adventure::bench::reach_queries; since E08 T105b2 re-baselined with the revisits in the legal set (the random games that place the heroes changed course: 425 steps and 1 584 queries for 500 and 1 840; each query's search the same code): master's code measured +0.01 % against the old count, the branch -3.35 % against master; since E09 T19c1 re-baselined again with the builds in the random agent's draw (encoding v9: 473 steps and 1 850 queries for 425 and 1 584, about 469 000 Ir each; Reach::search 71.6 % as before, the same code): the branch +24.84 % against master"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*reach_queries*"
-instructions = 695412336
+instructions = 868186716
 threshold_percent = 2

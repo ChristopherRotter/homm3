@@ -41,3 +41,4 @@ cc 0c623cf1f70ef0a201d116792b25eb2edf28f96243c2ab2c8cddfcb0cdbae1e5 # shrinks to
 cc e663c03d407272cf82960aa4edf2492dcbec39f73811da59da67c47f238f4f46 # a hero on an undefended enemy town's entrance while its guard's battle is open (TWN-VIS-002's check; E08 decision 279; the server lane's CI of #800, run 42665928151)
 cc 1cdbcf09cc8245120e020faccea23f2423edbc040c1a09f3d6feec7bd86d21e9 # a weekly object visited after its guard's won battle gives its resource in the battle's last command (E08 decision 279; CI's run on master 1e8568d, run 42711145647)
 cc dfed064bcc98c42f001042b04f9b0cb68ae9ff74a98b3b452ac674871d2f8e53 # the town lane's inbox (E09 T19a, on master 3f60bf4's strategy): a guarding monster's treasure before the visit its answer held
+cc 29819842789eb50b957486f52b0b30e3f58fbb4f390a7e470438dab8900f3990 # E09 T19c1's CI (on master 4bd174e): a hero on another player's town's entrance, a guard's question open
