@@ -58,7 +58,8 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 - #835 merged; the branch started from `master`. `cargo build --release -p h3-ffi` 64 s, `uv sync
   --group train` a few minutes; the setup's engine baseline in the background, so the edits in a
   worktree, its tests on the main clone's venv (`H3_LIBRARY`). Built `[ppo] imitation_floor`, the
-  gate's `--fixed` and `--json`, round 1's configs; a CPU smoke of the imitation arm.
+  gate's `--fixed` and `--json`, round 1's configs; a CPU smoke of the imitation arm (stopped by
+  a timeout, resumed, its end gate); the scoped verify, the Python suite 258 (2.6 minutes).
 
 ### 2026-11-10 — E25 T31
 
