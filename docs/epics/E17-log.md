@@ -6608,3 +6608,98 @@ CLT-Q39's mouse case and R4-2 (a); design §13.1.
   `h3-view gate` passed; the scoped verify with the original data no failing step; `check-docs`,
   `check-lane` ok.
 
+
+### M7 T3a1 and T3a2 — the battle client's library and the hosted element (2026-11-11)
+
+Branch `claude/ecstatic-thompson-cjowg2` (the session's). T3 cut in four with the user at its
+start (T3a1 the move, T3a2 the element, T3b a whole game's battle, T3c the sound); the entry's
+shape agreed with the user for the map client lane, whose session was not running: the host owns
+the window, its loop and the frame, the battle drawn natively as any element of it ("later
+additions, like the HD adaption, will require the battle to be hosted inside a dialog-like window,
+rendered over the adventure screen"); the crate an adapter crate outside the coverage gate (the
+user). No original data in the session (no computer linked); the user chose to build T3a2
+unverified, its checks before its pull request opens. The baseline's `check.sh` passed on
+`master` (the sandbox's setup).
+
+- **T3a1, the move:** every module of `h3-view`'s binary became the library crate
+  `clients/crates/h3-battle-client` (`git mv`, `crate::` paths kept), the `h3-view` command line
+  its binary (`src/bin/h3-view/`: `main`, and `harvest`, `play`, `situation`, which only it
+  uses), the binary's name kept for the harness (`target/release/h3-view`); `h3-view` is its
+  pure library alone (its manifest the pure crates' allowlist, `tests/purity.rs` without a
+  binary-only list); `check.sh` leaves the crate out of the coverage gate. With the move: four
+  exported structs of borrowed sources got a `Debug` of their own, `gate::timed` and
+  `sequences::describe` became public, `Live::next` an `expect` of `should_implement_trait`, the
+  usage's key-table test went with `USAGE` into the binary, two `include_str!` paths one level
+  shorter. `cargo run -p h3-view` is `-p h3-battle-client` in the live docs. Agent decisions,
+  *provisional* (change freely): the crate's name, every module public.
+- **T3a2, the element** (`window.rs`; design §13.2): `Prepared` (the battle loaded before the
+  host's window opens: its frame's size, its first cursor), `Setup` and `Presses` (what the host
+  gives it), `Hosted` (the loop's locals as its fields, the pass's flags as `Pass`) with the pass
+  `timeout`, `before` (`Flow::Again` for a restarted server's record), `event` (`Took`: quit,
+  redraw, fullscreen, vsync, the cursor), `take_moved`, `closed`, `after`, `cursor_at` and
+  `cursor_image`, `sound`, `due` and `showed`, and the report's `summary`. `window()` is its
+  first host. The loop's blocks moved by a script and checked by a token diff against the old
+  loop: only the locals as fields, the loop's `continue` and `break` as returns, the window's own
+  keys and the drawn cursor's redraw handed to the host. The unattended run's summary still comes
+  after the sound and the window closed. Agent decisions, *provisional*: the names, the tick
+  source handed to each call, the platform's types in the API, the sound on a device of its own
+  until T3c. M7 review item 5.
+- **Tests:** `a_host_without_a_window_runs_the_battle_to_its_result_and_its_close` (window; over
+  the staged installation, skipped here: a host loop with its own clock, the unattended presses
+  playing `seq-end`'s human side to the result window and its OK). The workspace's 1 326 tests
+  (T3a1) and the crate's 159 (T3a2) passed without the data; fmt and clippy clean.
+- **Checked** (the next session, 2026-11-11, the original data staged: 57 files): `check.sh` on
+  the branch all gates passed (coverage 100 %; the setup's run was lost to a VM restart in
+  coverage, run again), the crate's 159 tests over the installation (the windowless host test
+  ran, 28 s); `h3-view gate` passed; under Xvfb with SDL's `disk` audio, `window
+  scenarios/battle.toml --human attacker --check 40 --close-result`: 452 of 452 frames read back
+  exact, the battle the bot's at once, and `window record.jsonl --check 90` on `play`'s record of
+  the same battle (24 commands): 1 085 of 1 085 exact; `drawn` (its binary built from the new
+  package) 270 of 270 the same. Nothing recorded: nothing the original draws changed.
+
+### M7 T3b1 — a whole game's battle from its record (2026-11-11)
+
+Branch `client/e17-m7-t3b1`, stacked on T3a's (#849). T3b cut in two with the user at its start
+(T3b1 a whole game's record's battle and its outcome, what the map client's E24 M4 T5 needs to
+show golden replays' battles; T3b2 the same played live through the host's game session). The
+original data staged at once (57 files). Design §13.3.
+
+- **The battle's record** (`h3_view::game_record`, pure): `parse` and `is_game` (a format 4
+  record whose header is a `GameRecordHeader`), `manifest` (the game's battle part as a battle
+  `Manifest`), `GameRecord::battles`: each battle the player saw as a seat's record of it would
+  hold it (the snapshot, the start's events, `YourTurn`, `Accepted`, `Rejected`, a command's
+  `Events`, a later snapshot, `GameEnded`), numbered afresh from 1, with `InGame` (its heroes,
+  its tile, the game record's numbers of its snapshot and of its end, the result). Read from
+  `h3-server record`'s files first: a battle's start events follow `BattleStarted` in the
+  command's `GameEvents`, its snapshot right after; its end's `GameEvents` holds the battle's
+  last events, `BattleEnded` and the adventure's after it.
+- **Played** (`battle.rs`): `Source::battle` (`--battle <k>` for `window` and `play`, from 1);
+  `Ground::load` reads a whole game's record as the battle it names, with the battle part its
+  packs compile to here and the content check (`FromGame`; `rules`, `previews`, `content`,
+  `towns` take it, `Ground::in_game` gives where it stands); its result window opens at its end
+  as a server's game's (`served_outcome`), framed in the record's player's colours
+  (`viewing_player`); `Battle::result` and `Hosted::outcome` hand back the wire's `Outcome`. The
+  unattended run's report names where the battle stands instead of the re-fight check (a record
+  is not fought again).
+- **From the wire** (protocol v35): the battlefield picture's variant (`Observation.background`,
+  CLT-Q4) and each side's colour for the heroes' flags and the panel (`scene::players`, CLT-Q6:
+  red and blue without one; the stats dialog, the boxes and the result window read it already).
+  Not built: the hero's battle picture by a sex the map gave (the record 0x63BD40 holds at town ×
+  2 + female; the asset tables keep each hero type's own DEF only), placed in T3b2.
+- **Tests:** `h3_view::game_record`'s six (the golden replay's shape, a start not right before its
+  snapshot, an end in the start's message, a start while a battle is open, the reads and the
+  refusals); the scene's variant and colours; `a_host_gets_a_whole_game_s_battle_back_with_its_outcome`
+  (window, over the staged installation: a test host's game around `seq-end`'s battle the
+  computer fought here on both sides, its record as `h3_protocol::session::game` sends it, played
+  windowless to the closed result window, the outcome and `InGame` the game's, the content check
+  `Same`, a battle the record does not hold refused); the windowless host test also checks the
+  outcome. A real game in the client's tests needs `h3-pack-adventure` and `h3-files` in the
+  client workspace and `clients.yml`'s paths (a `shared/` change): not taken (*provisional*).
+- **Checked:** `h3-server record` on `sea-deck-monster-s1` (a hero against a monster) and
+  `teleporters-exit-battle-s1` (two heroes, both players' records), each played by `window
+  --check --close-result` under Xvfb with SDL's `disk` audio: 136 of 136 and 59 of 59 (each
+  player's) frames exact, each closed at its result window, opened and ended at the numbers the
+  game record holds; the content check `Same`.
+- Agent decisions, *provisional* (change freely): the names (`game_record`, `GameBattle`,
+  `InGame`, `FromGame`, `--battle`), the numbers afresh, a battle by its number, the result window
+  for a whole game's battle only, the report's line. M7 review item 6.

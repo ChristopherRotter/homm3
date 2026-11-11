@@ -86,3 +86,16 @@ T7a1):
   the other (an army dialog opened and held the visit, as the original's does). A gap of the
   property, not a leak: `outcome` counted only the offers among the decisions; it counts every
   decision opened or closed now, and the seed is kept in `proptest-regressions/tests/view.txt`.
+
+## 2026-11-11 — E09 T20: kept as built (decision 67)
+
+- 2026-11-11 (the adventure lane, E08 T107, `adventure/e08-t107`, #844; **for your town checks,
+  nothing to do unless you prefer one event**): CI's random plans found a counterexample of
+  `master`'s `check_towns` (`h3-map`'s `tests/play.rs`): a siege won by a player who holds another
+  Capitol tells the old owner `TownChanged` with `capitol: true` after the garrison's battle, then
+  the capture's Capitol limit (TWN-CAP-002) demotes the town and both viewers are told `capitol:
+  false`. The engine is consistent (each event tells the town as it stood); the check assumed
+  every `TownChanged` of a command carries the final Capitol, so it now compares each viewer's
+  last one. The seed is kept in `proptest-regressions/tests/play.txt`. If you would rather not
+  tell the old owner the intermediate town (the capture follows in the same command), the check
+  holds either way.

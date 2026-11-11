@@ -15,29 +15,41 @@ user at its start when it outgrows half a context. The original files: stage the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
-check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
+check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
 ### E17 M7 T3 — the battle as a hosted entry
 
 - **Scope:** the map client lane's request for E24 M4 T5 (the inbox of 2026-10-31, now in
-  `QUEUE-ARCHIVE.md`): an entry of `h3-view`'s library that a host's window runs: a battle
-  started from a whole game's battle messages (the protocol's battle types as E16 M5 carries
-  them; record format 4), drawn in the host's window with a clock and an audio output the host
-  owns, played to its result window and handed back with its outcome; `h3-view window` becomes
-  one host of it. With it: the wire's battlefield picture, colours and sex read (protocol v35:
-  `Observation.background`, `SideView.colour`, `Hero.sex`; CLT-Q4, CLT-Q6; the battle lane's
-  note of 2026-10-24); the music through the common `h3_ui::music` (the end's tune after the
-  combat music's 900 ms fade-out, the map client lane's note of 2026-10-27; the focus lost and
-  regained, its note of 2026-10-30); the frame widened by `h3_render::screen::Widening` if it
-  measures faster (its note of 2026-10-28). The entry's shape (its types, who owns the event
-  loop) agreed with the map client lane at the task's start (its inbox).
+  `QUEUE-ARCHIVE.md`): the battle as an element a host's window runs (the shape agreed with the
+  user for both lanes, 2026-11-11: the host owns the window, its loop and the frame, the battle
+  drawn natively as any element of it; design §13.2), started from a whole game's battle
+  messages and handed back with its outcome. **Cut in four** with the user (2026-11-11):
+  - **T3a1 done**, **T3a2 done** (2026-11-11, branch `claude/ecstatic-thompson-cjowg2`; T3a2
+    checked with the data staged by the next session): the crate `h3-battle-client` (h3-view's
+    binary until then), the element `window::Hosted` with `h3-view window` its host.
+  - **T3b**, cut in two with the user (2026-11-11):
+    - **T3b1 done** (2026-11-11, branch `client/e17-m7-t3b1`; design §13.3): a whole game's
+      record's battle played and handed back with its outcome; the wire's picture variant and
+      colours read.
+    - **T3b2:** the same battle played live through the host's game session (the element giving
+      its human side's commands to the host, the game's messages back: `GameTurn`,
+      `GameAccepted`, `GameEvents` as `h3_view::game_record` reads them); a test host plays a
+      whole game's battle to its result and gets the outcome back (a real game in the client's
+      tests needs `h3-pack-adventure` and `h3-files` in the client workspace, so `clients.yml`'s
+      paths: a `shared/` pull request first, the user asked); the hero's battle picture by a sex
+      the map gave (`Hero.sex`: the 18 battle DEFs of 0x63BD40 by town × 2 + female in the
+      asset tables, a format change for the review list).
+  - **T3c:** the sound on the host's device, the music through the common `h3_ui::music` (the
+    end's tune after the combat music's 900 ms fade-out, the map client lane's note of
+    2026-10-27; the focus lost and regained, its note of 2026-10-30); the frame widened by
+    `h3_render::screen::Widening` if it measures faster (its note of 2026-10-28).
 - **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
   same; a test host plays a whole game's battle to its result and gets the outcome back; the map
   client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** next (T2 done
-  2026-11-11).
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3b2 next (T3a and
+  T3b1 done 2026-11-11).
 
 ### E17 M7 T4 — M7's and E17's closure
 
@@ -69,7 +81,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
 
-- CLT-Q4: the background variants 0 and 1. NOTES, "Battlefields and boats".
+- CLT-Q4: the background variants 0 and 1 (read from the wire since E17 M7 T3b1; not recorded:
+  a situation needs trees, mountains or dead vegetation around the battle). NOTES,
+  "Battlefields and boats".
 
 - Later (placed at E17 M7 T4): graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to

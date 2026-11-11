@@ -1,5 +1,5 @@
 # E17 M1 T7's first still: one-hex stacks on both sides, the grass battlefield, obstacles
-# generated from the seed (BAT-GEO-004). `cargo run --release -p h3-view -- render
+# generated from the seed (BAT-GEO-004). `cargo run --release -p h3-battle-client -- render
 # scenarios/one-hex.toml` from clients/.
 
 [scenario]

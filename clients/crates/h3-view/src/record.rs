@@ -190,7 +190,11 @@ pub fn parse(text: &str) -> Result<Record, RecordError> {
     Ok(Record { header, messages })
 }
 
-fn decode<T: serde::de::DeserializeOwned>(n: usize, line: &str) -> Result<T, RecordError> {
+/// Decodes line `n` (from 1) of a record.
+pub(crate) fn decode<T: serde::de::DeserializeOwned>(
+    n: usize,
+    line: &str,
+) -> Result<T, RecordError> {
     codec::decode(line.as_bytes(), MAX_LINE).map_err(|e| RecordError::Line(n, e))
 }
 

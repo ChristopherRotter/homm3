@@ -41,6 +41,14 @@ pub struct Sources<'a> {
     pub bugs: Bugs,
 }
 
+// A bundle of borrowed sources (and closures) handed to one call: nothing to print (the struct is
+// public since E17 M7 T3a1, when the binary became `h3-battle-client`'s library).
+impl core::fmt::Debug for Sources<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Sources").finish_non_exhaustive()
+    }
+}
+
 /// The result window of the battle that opened as `opening` (the record's first snapshot) and
 /// ended as `outcome`, shown as `battle_end` 0x477470 shows it: the winner's side when its player
 /// is a human here (`opening`'s sides' `human`), else the other one; its background in the

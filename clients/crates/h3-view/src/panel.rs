@@ -223,7 +223,8 @@ pub struct Autoplay {
 /// What the panel shows when the stacks of `side` (the active stack's controller; none before a
 /// turn starts) begin their turn in the battle `observation` shows, with what it `kept` from the
 /// turns before (the picture's colours, the scroll buttons), Auto Combat as `auto` says, its log
-/// showing `log`; each side's player's colour is `players`' entry (the record names none: CLT-Q6).
+/// showing `log`; each side's player's colour is `players`' entry ([`crate::scene::players`]:
+/// the battle's, CLT-Q6).
 #[must_use]
 pub fn shown(
     observation: &Observation,

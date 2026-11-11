@@ -2,7 +2,8 @@
 
 Increment 1's note (closed 2026-11-06 by T10; Parts A to C, §1 to §22, kept here as the code cites
 them: the epic's decision 40). Increment 2's note (construction, decision 37) is Part D, §23 to
-§36, written by T13 (2026-11-07): the open part of this file.
+§36, written by T13 (2026-11-07), kept at increment 2's closure (T20, 2026-11-11) as Parts A to C
+were. Increment 3's note joins as Part E, its sections numbered from §37 (decision 67).
 
 Increment 1's note: towns on the map (the epic's decision 5). A handover, not binding
 (`docs/adr/README.md`): the working detail behind ADR-0028 and E09's amendments of ADR-0015,

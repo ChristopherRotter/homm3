@@ -17,7 +17,7 @@ cd "$(dirname "$0")/.."
 
 out=out/video
 samples=(--sample 1 --sample 2 --sample 3 --sample 4 --sample 5 --sample 6 --sample 7 --sample 8)
-cargo build --release --locked --quiet -p h3-view
+cargo build --release --locked --quiet -p h3-battle-client
 view=target/release/h3-view
 rm -rf "$out"
 "$view" video --original --out "$out" "$@" > /dev/null

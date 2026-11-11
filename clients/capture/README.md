@@ -35,14 +35,14 @@ adventure).
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
-| `h3-view situation` | Writes the original's map for a scenario's battle (`cargo run --release -p h3-view -- help`). |
+| `h3-view situation` | Writes the original's map for a scenario's battle (`cargo run --release -p h3-battle-client -- help`). |
 | `../situations/kept/` | What the last capture of each sequence (`sequences/<id>.toml`) and situation (`set/<id>.toml`) kept: its frames' times and the fidgets and heroes the original's memory showed (numbers only), written by `frames` and `set`; and `drawn.txt`, the digests of the viewer's frames at those times and of what their masks depend on (`drawn --record`). |
 
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
 `H3ab_ahd.snd`, `H3ab_ahd.vid`, and `original-data/battle-videos.vid`; one large file per staging
 call), run `clients/capture/setup.sh`,
-and build `cargo build --release -p h3-view` in `clients/`. A run of the whole set takes about 50 minutes (172 situations, 222 frames, E17 M6 T7a).
+and build `cargo build --release -p h3-battle-client` in `clients/`. A run of the whole set takes about 50 minutes (172 situations, 222 frames, E17 M6 T7a).
 
 ## Which captures a change needs
 
@@ -51,7 +51,7 @@ one: the 31 sequences about 3½ hours, 2 to 18 minutes each, in batches (Traps);
 situations about 15 minutes, M4 T1b), so a task captures only what its change can
 alter (the user, 2026-10-20):
 
-1. **Always, without the original:** from `clients/`, after `cargo build --release -p h3-view`,
+1. **Always, without the original:** from `clients/`, after `cargo build --release -p h3-battle-client`,
    `python3 capture/h3drive.py drawn` (about 3 minutes; no Wine, only the user's original files
    for the assets). The viewer draws every sequence and situation at the times `kept/` holds and
    compares each frame's digest with `kept/drawn.txt`; its timeline check (`h3-view sequences`)

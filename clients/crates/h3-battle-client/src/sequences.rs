@@ -1392,7 +1392,7 @@ pub(crate) fn draw_frames(
 /// A moment as one line: `<t> pulse <n> outline <id|-> [projectile <def> f<frame> <x>,<y>]`, then
 /// each stack's `<id>:g<group>f<frame>h<hex>[m][+<x>,<y>]`, `m` when it faces left (the harness
 /// places a count box by the facing, M3 T1a).
-pub(crate) fn describe(t: u32, moment: &scene::Moment) -> String {
+pub fn describe(t: u32, moment: &scene::Moment) -> String {
     let mut line = format!("{t} pulse {} outline ", moment.pulse);
     match moment.active {
         Some(id) => line.push_str(&id.to_string()),

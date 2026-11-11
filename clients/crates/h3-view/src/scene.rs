@@ -548,7 +548,7 @@ fn pressed_panel(
     layout: &BattleLayout,
     pressed: Option<u16>,
 ) -> Vec<Draw> {
-    let mut shown = crate::panel::shown(observation, side, kept, log, PLAYERS);
+    let mut shown = crate::panel::shown(observation, side, kept, log, players(observation));
     if let Some(id) = pressed {
         let state = shown.states.entry(id).or_default();
         state.pressed = !state.disabled;
@@ -806,7 +806,7 @@ impl Panels {
             self.controller_at(started, t),
             (kept, autoplay),
             text,
-            PLAYERS,
+            players(&now),
         )
     }
 
@@ -948,12 +948,20 @@ struct Placed {
     y: i32,
 }
 
-/// The players' colours of the attacker's and the defender's flags: red and blue, as the capture
-/// set's maps give them (*provisional*: a battle's record names no player colours, CLT-Q6).
+/// The players' colours of the attacker's and the defender's flags where the battle names none:
+/// red and blue, as the capture set's maps give them (CLT-Q6).
 const PLAYERS: [u8; 2] = [0, 1];
 
+/// Each side's player colour, attacker first, as the battle `observation` names it (protocol v35,
+/// CLT-Q6: `SideView::colour`; E17 M7 T3b1), else [`PLAYERS`]' (no player, or not known: a
+/// neutral side's is not read, *provisional*).
+#[must_use]
+pub fn players(observation: &Observation) -> [u8; 2] {
+    [0, 1].map(|i| observation.sides[i].colour.unwrap_or(PLAYERS[i]))
+}
+
 /// The background variant 0x41ADB0 returns when no tree, mountain or dead vegetation stands
-/// around the battle (§4.4).
+/// around the battle (§4.4): a viewer's where the battle names none (protocol v35, CLT-Q4).
 const EMPTY_SURROUNDINGS: usize = 2;
 
 /// The draw list of the battle `observation` shows, at time 0: the background with the absolute
@@ -1187,7 +1195,10 @@ fn drawn(
             .battlefields
             .get(key)
             .ok_or_else(|| SceneError::Key(key.to_string()))?;
-        let variant = EMPTY_SURROUNDINGS.min(field.backgrounds.len().saturating_sub(1));
+        // The battle's picture by its surroundings (protocol v35, CLT-Q4; E17 M7 T3b1), at most
+        // the battlefield's last.
+        let variant = (observation.background).map_or(EMPTY_SURROUNDINGS, usize::from);
+        let variant = variant.min(field.backgrounds.len().saturating_sub(1));
         list.push(Draw::Background {
             picture: field.backgrounds[variant].clone(),
             x: 0,
@@ -1341,7 +1352,7 @@ fn drawn(
             x: fx,
             y: fy,
             palette: layout.player_palette.clone(),
-            player: PLAYERS[side],
+            player: players(observation)[side],
         });
         list.push(Draw::Hero {
             def: def.def.clone(),

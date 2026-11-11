@@ -344,6 +344,14 @@ pub struct Boxes<'a> {
     pub army: Option<Army<'a>>,
 }
 
+// A bundle of borrowed sources (and closures) handed to one call: nothing to print (the struct is
+// public since E17 M7 T3a1, when the binary became `h3-battle-client`'s library).
+impl core::fmt::Debug for Boxes<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Boxes").finish_non_exhaustive()
+    }
+}
+
 /// What a still's army info windows need (E17 M6 T4b2b1, design §12.15): where the mouse finds
 /// the heroes' rectangles, the battle at the opening, the level and each side's hero's window.
 pub struct Army<'a> {
@@ -364,6 +372,14 @@ pub struct Army<'a> {
     /// `grid`, `cursor_shadow` and `movement_shadow`, *provisional*: the harness's registry
     /// values; off without them); the keys F6 to F8 toggle them.
     pub shades: Shades,
+}
+
+// A bundle of borrowed sources (and closures) handed to one call: nothing to print (the struct is
+// public since E17 M7 T3a1, when the binary became `h3-battle-client`'s library).
+impl core::fmt::Debug for Army<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Army").finish_non_exhaustive()
+    }
 }
 
 /// What a box's click leads to in a still: another box (or none), or a command given.
@@ -1201,7 +1217,7 @@ pub(crate) mod tests {
     use h3_view::layout::parse_battle;
 
     fn layout() -> BookLayout {
-        parse_battle(include_str!("../../../../../layouts/battle.toml"))
+        parse_battle(include_str!("../../../layouts/battle.toml"))
             .unwrap()
             .book
     }
@@ -1277,7 +1293,7 @@ pub(crate) mod tests {
             catalogue: &catalogue,
             towns: None,
         };
-        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let battle = parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let dragons = stack_of(&manifest, &o, "ab:faerie_dragon");
         let mut memory = StatsMemory::new(h3_render::Bugs::Original);
         let mut open = || {
@@ -1730,7 +1746,7 @@ pub(crate) mod tests {
         // then shows no help (without the hold it does); over a box `down:` is refused (a DEF
         // picture runs no loop of its own).
         use h3_view::options::{BOXES, DEFAULT, Open, Settings};
-        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let battle = parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let catalogue = Catalogue::default();
         let new = || {
             let profile = (0, false, h3_render::Bugs::Original);
@@ -1829,7 +1845,7 @@ pub(crate) mod tests {
     fn the_book_s_cursor_replaces_the_options_dialog_s_arrow() {
         // E17 M6 T7b (R4-4): the arrow the options dialog leaves at its close by a key stays over
         // the book opened after it until the book sets its own cursor (0x59D712).
-        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let battle = parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let catalogue = Catalogue::default();
         let options = |_: Option<[i32; 2]>, _: (u8, Shades)| {
             let settings = h3_view::options::Settings::CAPTURE;
@@ -1966,7 +1982,7 @@ pub(crate) mod tests {
         .unwrap();
         let record = h3_view::record::parse(&text).unwrap();
         let observation = record.first_snapshot().unwrap();
-        let battle = parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let battle = parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         // A stack's window (E17 M6 T4b2b2) by its id and kind: 100 + the id, 200 + it for kind 2.
         let stack_id = |id: u8, kind: WindowKind| {
             u16::from(id) + if kind == WindowKind::All { 100 } else { 200 }

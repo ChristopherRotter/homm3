@@ -156,7 +156,7 @@ epic   = "E16"
 # its marker `// stub: CLT-STUB-1` is in the code already. Uncomment it with that change.
 # [[stub]]
 # id     = "CLT-STUB-1"
-# where  = "clients/crates/h3-view/src/bin/h3-view/boxes.rs::seat_magic"
+# where  = "clients/crates/h3-battle-client/src/boxes.rs::seat_magic"
 # reason = "On a server a seat knows only its own hero's casting limits (OwnHero is private, ADR-0013 point 9): the other side's Orb of Inhibition (GENRLTXT 684) and Recanter's Cloak (537) show no box there, where local play shows them; the entry's box (e.g. 186, 713) or a wall's aim with every hex refused comes instead (gap G1, E17-design.md section 12.17). The user (2026-11-05) requires a server's game to behave exactly as a local one: G1's answer (a), each side's two facts (forbids casting, spell level limit) public on the wire, requested from the battle and server lanes; read here once they are"
 # epic   = "E17"
 
@@ -173,7 +173,7 @@ epic   = "E09"
 [[stub]]
 id     = "TWN-STUB-6"
 where  = "crates/h3-game/src/town/heroes.rs::main_town_heroes"
-reason = "A main town's hero learns none of the town's guild spells at the start (TWN-SET-009; E09 T7b2b): the original's main_town_heroes calls town_heroes_learn_spells 0x5BE030 at 0x4CA1A2 after placing the hero, which teaches the town's visitor and garrison hero the spells of the town's Mage Guild when that hero has a spell book and the town has its Mage Guild ever built (building 0); VCMI 1.7.5 teaches them nothing at the start: a dispute for increment 4, when the guild's spells are drawn (they are not yet). The census (h3-map's example original_data, seed 0): 33 of the 523 main towns' heroes of the 156 shipped maps that build start with a spell book in a main town with a Mage Guild built"
+reason = "A main town's hero learns none of the town's guild spells at the start (TWN-SET-009; E09 T7b2b): the original's main_town_heroes calls town_heroes_learn_spells 0x5BE030 at 0x4CA1A2 after placing the hero, which teaches the town's visitor and garrison hero the spells of the town's Mage Guild when that hero has a spell book and the town has its Mage Guild ever built (building 0); VCMI 1.7.5 teaches them nothing at the start: a dispute for increment 5, when the guild's spells are drawn (they are not yet). The census (h3-map's example original_data, seed 0): 33 of the 523 main towns' heroes of the 156 shipped maps that build start with a spell book in a main town with a Mage Guild built"
 epic   = "E09"
 
 [[stub]]
@@ -191,7 +191,7 @@ epic   = "E09"
 [[stub]]
 id     = "TWN-STUB-13"
 where  = "crates/h3-game/src/town/view.rs::Told"
-reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 4 casts Visions on the map; the server lane's fold test exempts it until then)"
+reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 5 casts Visions on the map; the server lane's fold test exempts it until then)"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

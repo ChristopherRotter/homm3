@@ -21,7 +21,7 @@ an XWD dump of the 16-bit X display (raw 5-6-5), a render is h3-view's PNG, whos
       types are the field's, as the original's generator takes them.
 
 Needs numpy, ImageMagick's `convert` and a release build of h3-view (`cargo build --release -p
-h3-view` in clients/). Captures and renders of the original stay local (ADR-0009): never commit
+h3-battle-client` in clients/). Captures and renders of the original stay local (ADR-0009): never commit
 them.
 """
 

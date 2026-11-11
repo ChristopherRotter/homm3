@@ -17,7 +17,7 @@ use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use serde::Deserialize;
 
-use crate::gate::find_ci;
+use h3_battle_client::gate::find_ci;
 
 /// The tables, one per pack, dependencies first.
 const PACKS: [&str; 3] = ["base", "ab", "sod"];

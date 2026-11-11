@@ -315,6 +315,10 @@ impl<'r> Live<'r> {
     /// turn is the human's, and while a question waits for its answer). One too many of the
     /// computer's in a row ([`FOUGHT_LIMIT`] since a human's) is an error that changes nothing;
     /// for the others, [`Live::play`]'s.
+    #[expect(
+        clippy::should_implement_trait,
+        reason = "a fallible step, not an iterator's; public since E17 M7 T3a1"
+    )]
     pub fn next(&mut self) -> Result<Option<Played>, String> {
         let Some(side) =
             (self.state.side_to_act()).filter(|_| !self.waiting() && self.question.is_none())

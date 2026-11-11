@@ -1,7 +1,7 @@
 # E17 M2 T4b-2a: a whole battle for `h3-view play` (M2's headless exit): walkers, two-hex stacks,
 # fliers and shooters on both sides, the obstacles generated from the seed, fought to its end by
 # the play command's bot in both seats.
-# `cargo run --release -p h3-view -- play scenarios/battle.toml [--png]` from clients/.
+# `cargo run --release -p h3-battle-client -- play scenarios/battle.toml [--png]` from clients/.
 
 [scenario]
 id = "client-battle"

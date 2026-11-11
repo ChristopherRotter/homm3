@@ -31,7 +31,7 @@ search the parent directories).
   coverage of the pure crates and the CI path filter's check; the CI job runs the same script, and
   it is the full local check while CI cannot run (`docs/05-testing.md`, "CI"). It needs
   `cargo-deny`, `cargo-llvm-cov` and the LLVM tools.
-- **The real-asset gate:** `cargo run --release -p h3-view -- gate [--install <dir>] [--out <dir>]`
+- **The real-asset gate:** `cargo run --release -p h3-battle-client -- gate [--install <dir>] [--out <dir>]`
   (from `clients/`) opens the four LODs of the installation copy (default: `$H3_INSTALL`, then the
   repository's `original-data/install`), decodes every PCX, PAL, DEF and MSK (it fails if one does
   not), prints the entries by extension and the times, and writes every entry with its verdict to
@@ -44,7 +44,7 @@ search the parent directories).
   `clients/text/keys.toml`): every key's original forms are read from the text tables where the
   game searches them, each row's `%s` and `%d` as the key names them, and the battle log's
   sample lines compose from them. A debug build takes about ten times as long.
-- **The Bink clips** (E17 M5 T4b2a): `cargo run --release -p h3-view -- video [<name>...]
+- **The Bink clips** (E17 M5 T4b2a): `cargo run --release -p h3-battle-client -- video [<name>...]
   [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]... [--original]` (from
   `clients/`) decodes a video archive's Bink clips (default the repository's
   `original-data/battle-videos.vid`, the result window's ten; the game's `Data/VIDEO.VID` holds
@@ -54,11 +54,11 @@ search the parent directories).
   (CLT-Q68). `clients/scripts/bink-check.sh` runs it against the game's own `BINKW32.DLL` under
   Wine (E17 M6 T6c1: `bink-dll.py`, the capture harness's setup first) on the clips and eight
   synthetic samples: all byte for byte.
-- **A look at the drawers:** `cargo run --release -p h3-view -- sprite CPKMAN.DEF --group 2
+- **A look at the drawers:** `cargo run --release -p h3-battle-client -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched
   first, as the game does).
-- **A battle still:** `cargo run --release -p h3-view -- render scenarios/one-hex.toml [--seed
+- **A battle still:** `cargo run --release -p h3-battle-client -- render scenarios/one-hex.toml [--seed
   <n>] [--list]` (from `clients/`) runs the scenario file (as `h3 run` reads it, packs from the
   repository's `packs/`) in-process in `h3-protocol`'s session, joins it as a spectator and writes
   that record (`clients/out/render/<stem>-s<seed>.jsonl`); a record file (`.jsonl`) is read
@@ -91,7 +91,7 @@ search the parent directories).
   stack is drawn in its pose then (`h3_view::anim`, E17 M2 T4a); `--frames <dir>` draws so each
   time a capture's `frames.toml` lists, with the original's fidgets (the capture set, M3 T1b-2)
   and its drawing bugs (M3 T4a: the client draws them fixed, the comparisons as the original).
-- **The timing check:** `cargo run --release -p h3-view -- sequences [<id>]` (from `clients/`)
+- **The timing check:** `cargo run --release -p h3-battle-client -- sequences [<id>]` (from `clients/`)
   plays each recorded sequence of `situations/sequences.toml` with its engine commands, times it
   with `h3_view::anim` (the original's drawing bugs in the timeline too, M3 T7d:
   `anim::Stage::bugs`; the window, `render` and `play` draw them fixed) and compares the timeline with the one the harness recorded in the
@@ -99,7 +99,7 @@ search the parent directories).
   and timelines to `clients/out/sequences/`. The unit tests replay the same sequences from their
   numbers, without the original files. A sequence may be a battle in progress, both sides played
   in hot seat (`situation --hot-seat`; E17 M3 T1a, the runbook's "A battle in progress").
-- **A whole battle, frame by frame** (E17 M2 T4b-2a, design §7.10): `cargo run --release -p h3-view
+- **A whole battle, frame by frame** (E17 M2 T4b-2a, design §7.10): `cargo run --release -p h3-battle-client
   -- play scenarios/battle.toml [--seed <n>] [--png] [--from <ms>] [--to <ms>]` (from `clients/`)
   has a simple bot fight the scenario to its end in-process (or reads a record file), as it is
   played since E17 M5 T1b (each command asked for when the frames reach the timeline's end, sent
@@ -111,7 +111,7 @@ search the parent directories).
   each quarter of the frames: `anim::Playhead`'s, which reads the timeline forward and draws
   `play`'s, `window`'s and `sequences`' frames, against `scene::Moment::at`'s, the reference read
   from the battle's start.
-- **A battle in a window** (E17 M2 T5a, ADR-0024, design §8.1): `cargo run --release -p h3-view
+- **A battle in a window** (E17 M2 T5a, ADR-0024, design §8.1): `cargo run --release -p h3-battle-client
   -- window scenarios/battle.toml [--seed <n>] [--scale <n>] [--vsync] [--drawn-cursor]
   [--fullscreen] [--sight fair|all-seeing]` (from `clients/`) loads the battle as `play` does
   and shows each frame when it
@@ -149,10 +149,10 @@ search the parent directories).
   every frame back and compares it with the frame drawn headless (exit 1 on a difference; in a
   sandbox under Xvfb); `--leave retreat|surrender` makes an unattended run's human side leave at
   its first turn it may, through the question, the battle checked against the bot's up to it;
-  `--auto <n>` switches Auto Combat on at the human's n-th turn and stops it two commands later, `--auto-question cancel|retreat|surrender` answers its question when the computer would leave for the human (E17 M6 T5b2a, *provisional*: cancel by default), `--close-result` presses the result window's OK once it has shown 400 ms (and Eagle Eye's boxes after it), so the run ends with the battle instead of at its seconds (E17 M7 T1d) (an unattended run presses a fixed bot's choices, the battle checked against the same battle fought again at once, the computer's choices asked again in order). Building it builds SDL 3 from its sources: CMake, a C compiler and, on
+  `--auto <n>` switches Auto Combat on at the human's n-th turn and stops it two commands later, `--auto-question cancel|retreat|surrender` answers its question when the computer would leave for the human (E17 M6 T5b2a, *provisional*: cancel by default), `--close-result` presses the result window's OK once it has shown 400 ms (and Eagle Eye's boxes after it), so the run ends with the battle instead of at its seconds (E17 M7 T1d) (an unattended run presses a fixed bot's choices, the battle checked against the same battle fought again at once, the computer's choices asked again in order). A whole game's record (`h3-server record`'s, format 4) plays its battle `--battle <k>` (from 1, the first by default) as a record, ending in its result window, whose OK hands the outcome back (E17 M7 T3b1; design §13.3). Building it builds SDL 3 from its sources: CMake, a C compiler and, on
   Linux, the X11 headers (`.github/workflows/clients.yml` lists them; ALSA's and Pulse's for the
   sound). A Windows build cross-compiles (`rustup target add x86_64-pc-windows-gnu`, `mingw-w64`,
-  `cargo build --release -p h3-view --target x86_64-pc-windows-gnu`); copied anywhere inside a
+  `cargo build --release -p h3-battle-client --target x86_64-pc-windows-gnu`); copied anywhere inside a
   checkout's `clients/`, it finds the tables, layouts and packs from its own place.
 - **The frame check** (E17 M2 T4b-1, design §7.9): `python3 capture/h3drive.py frames` (from
   `clients/`, in a sandbox with the harness) keeps every distinct battlefield the original shows
@@ -217,7 +217,8 @@ search the parent directories).
 | `clients/crates/h3-assets` | decoders: palettes, PCX, DEF, MSK, the bitmap fonts (`fnt`, M3 T4a), the sound archives and their IMA ADPCM WAVs (done), the video archives' directories (`vid`, E17 M5 T4b2a); encoders for synthetic test assets (`build`); the gate's checks (`check`, `survey`); reads LOD archives through `crates/h3-formats` (a path dependency into the engine workspace) |
 | `clients/crates/h3-bink` | the Bink video decoder (E17 M5 T4b2a, CLT-Q29), pure and `no_std`: a port of FFmpeg 6.1.1's demuxer (`Clip`: the header, the frame index, a frame's video packet) and its video decoder of revision `b`, the game's clips' (`Decoder`: YUV 4:2:0 frames decoded in place, `Frame`, `Plane`), under the GPL-2.0-or-later with FFmpeg's copyright lines; its inverse DCT and dequantizers are `BINKW32.DLL`'s instead, the DLL's x87 arithmetic emulated in integers (`x87`, E17 M6 T6c1, CLT-Q30), and `Reading` reads as the format means (`Fixed`, the client's) or as the DLL misreads it (`Original`, for the comparisons: a residue whose first bit plane is 128, CLT-Q68); `build` writes synthetic clips of every block type (`sample`), `check` decodes and hashes a clip's frames. No dependency |
 | `clients/crates/h3-render` | the software compositor: the screen in a 16-bit pixel format, palettes truncated into it, the executable's frame drawers (shadows, outline and flag colours, mirroring, clipping), opaque images, text in the bitmap fonts (`text`: the executable's text drawer), its tint of a rectangle (`tint`) and a battle stack's palette effects (`recolour`: the glows, the petrified look, a clone's colours; E17 M5 T5b1), PNG bytes |
-| `clients/crates/h3-view` | the scene model (the library: `record` reads a record, `anim` plays its commands at the original's timing, `scene` makes the draw list of a snapshot at a moment, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts, of `h3-ui`'s dialog items, and `panel` is the battle's panel of them: M3 T6a; `mouse`, the battle's mouse as a still and over time, `mouse::track`: M3 T6c; `keys`, the battle window's commands by what is open over the battle, their names and the original's keys, through `h3-ui`'s table: E24 M3 T1b); its adapters (the binary, `src/bin/h3-view/`): the real-asset gate, the tables' harvester, `sprite`, the headless renderer `render` with its scenario adapter, the timing check `sequences`, `play` (a battle fought by its bot and drawn frame by frame), `situation` (a scenario's battle as a map for the original), `window` (the battle in a window, through `h3-sdl`; with `play` it loads the battle through `battle.rs`), `connect` (a game on a server, headless, through `net`, the connection's I/O thread: E17 M5 T6a), `account` (an account's key derived and kept: E17 M5 T7). The library also has `sound` (the opening's start sound and music, the end's tune) and `clip` (the result window's clip: which, which frame when, its pixels as `BINKW32.DLL` converts them: E17 M5 T4b2b) and `remote` (the client's side of a game on a server without its I/O: the welcome's checks, the pins, the join, the record it grows, the content check: E17 M5 T6a; the login, the re-key and the accounts file: E17 M5 T7); its clock, cursor, dialog items and string catalogue are `h3-ui`'s (E24 M3 T1a). Its package depends on `h3-protocol`, `h3-ui` and `h3-bink` (the library; `h3-bink` for `clip` and the binary's `video`) and, for the adapters only, on `h3-pack-battle`, `h3-battle`, `h3-battle-ai` (the window's computer, E17 M6 T5b1), `h3-content-battle`, `h3-kernel`, `h3-map`, `h3-sdl`, `nanomp3` (the music) and the connection's `tungstenite`, `rustls`, `rustls-graviola`, `rustls-native-certs`, `ed25519-dalek` and `getrandom` (E17 M5 T6a) and `argon2` (the account's key, E17 M5 T7), which `tests/purity.rs` keeps out of the library |
+| `clients/crates/h3-view` | the scene model (the library: `record` reads a record (`game_record` a whole game's, each battle its player saw as a record of its own: E17 M7 T3b1), `anim` plays its commands at the original's timing, `scene` makes the draw list of a snapshot at a moment, `batch` holds a checkpoint's decoded assets, `compose` draws the list into a frame; `tables` and `layout` load the asset tables and the layouts, of `h3-ui`'s dialog items, and `panel` is the battle's panel of them: M3 T6a; `mouse`, the battle's mouse as a still and over time, `mouse::track`: M3 T6c; `keys`, the battle window's commands by what is open over the battle, their names and the original's keys, through `h3-ui`'s table: E24 M3 T1b). The library also has `sound` (the opening's start sound and music, the end's tune) and `clip` (the result window's clip: which, which frame when, its pixels as `BINKW32.DLL` converts them: E17 M5 T4b2b) and `remote` (the client's side of a game on a server without its I/O: the welcome's checks, the pins, the join, the record it grows, the content check: E17 M5 T6a; the login, the re-key and the accounts file: E17 M5 T7); its clock, cursor, dialog items and string catalogue are `h3-ui`'s (E24 M3 T1a). Its package depends on `h3-protocol`, `h3-ui` and `h3-bink` (`clip`) only, the pure crates' allowlist in `tests/purity.rs`; its adapters are `h3-battle-client`'s since E17 M7 T3a1 |
+| `clients/crates/h3-battle-client` | the battle client (E17 M7 T3a1: `h3-view`'s binary until then, a library since so that another host runs the battle; the `h3-view` command line is its binary, `src/bin/h3-view/`, with `harvest`, `play` and `situation`): the real-asset gate, the tables' harvester (the binary's), `sprite`, the headless renderer `render` with its scenario adapter, the timing check `sequences`, `play` (a battle fought by its bot and drawn frame by frame; the binary's), `situation` (a scenario's battle as a map for the original; the binary's), `window` (the battle in a window, through `h3-sdl`; with `play` it loads the battle through `battle.rs`; since E17 M7 T3a2 the battle is an element a host's window runs, `window::Hosted`, this command's window its first host: E17 design §13.2), `connect` (a game on a server, headless, through `net`, the connection's I/O thread: E17 M5 T6a), `account` (an account's key derived and kept: E17 M5 T7). It depends on `h3-view` and the other client crates and, as an adapter, on `h3-pack-battle`, `h3-battle`, `h3-battle-ai` (the window's computer, E17 M6 T5b1), `h3-content-battle`, `h3-kernel`, `h3-map`, `h3-sdl`, `nanomp3` (the music) and the connection's `tungstenite`, `rustls`, `rustls-graviola`, `rustls-native-certs`, `ed25519-dalek` and `getrandom` (E17 M5 T6a) and `argon2` (the account's key, E17 M5 T7); left out of the coverage gate as the binaries are |
 | `clients/crates/h3-ui` | what both viewers share (E24 M3 T1a, the user's decision at its T0; common to both client lanes as the foundation is), pure and `no_std`: `clock` (a viewer's clock in the window), `cursor` (the game's mouse cursor) with `sprite` (the decoded DEF it draws), `ui` (the dialog items screens are made of, E17 M3 T6a, and their own draw items, which a viewer's scene takes), `paint` (their drawers, from any batch's assets: E24 M3 T2a; the rectangle each can change, `reach`: E24 M3 T4c), `text` (the string catalogue and its language packs), `keys` (the table of what each key does, generic over a viewer's commands and the contexts a dialog over its screen makes, with both windows' own commands and the user's file of `[map]` and `[battle]` tables: E24 M3 T1b) and `music` (the original's music thread for a window's music stream, E24 M2 T6a2). Its package depends on `h3-assets`, `h3-render`, `serde`, `serde_json` and `toml` (its own `tests/purity.rs`) |
 | `clients/crates/h3-sdl` | the platform adapter (ADR-0024): every SDL 3 call and all of the client's `unsafe` code; `sdl3-sys` with SDL built from its sources and linked statically; the window (integer scale, nearest sampling, centred), its events, the hardware cursor, the read-back; the audio device and its streams; SDL's own WAV loader for the gate. Left out of the coverage gate as an adapter |
 | `clients/assets/{base,ab,sod}.toml` | the asset tables per expansion (below): content keys to archive entry names and the drawing's numbers, asset fixes; identifiers and numbers only |
@@ -241,7 +242,7 @@ viewer on the real assets; a full game record/replay viewer follows.
 ## The asset tables
 
 One table per rule pack, `clients/assets/<pack>.toml` (ADR-0020 point 5), generated once by
-`cargo run --release -p h3-view -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
+`cargo run --release -p h3-battle-client -- harvest [--install <dir>] [--packs <dir>] [--out <dir>]` from
 the installation copy's `Heroes3.exe` and `H3bitmap.lod` (`cranim.txt`, `crtraits.txt`,
 `hotraits.txt`, `sptraits.txt`), keyed by
 the committed packs (its default `--out` is `clients/out/harvest`, so a fresh harvest is diffed

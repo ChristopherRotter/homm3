@@ -19,7 +19,7 @@ use std::time::Duration;
 use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
 use h3_formats::lod::LodArchive;
-use h3_protocol::wire::{Command, Observation, Seat, ServerMessage, Side};
+use h3_protocol::wire::{Command, Observation, Outcome, Seat, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_render::screen::Screen;
 use h3_towns::TownRuleset;
@@ -33,6 +33,7 @@ use h3_view::auto::{Acting, Auto, turn_at};
 use h3_view::batch::{self, Batch};
 use h3_view::battle_log::Logged;
 use h3_view::compose::compose;
+use h3_view::game_record::{GameBattle, InGame};
 use h3_view::hero::Heroes;
 use h3_view::layout::{self, BattleLayout};
 use h3_view::message::{MessageBox, Picture, Style};
@@ -77,6 +78,9 @@ pub struct Source {
     pub computer: Computer,
     /// The seat played on a server instead (E17 M5 T6b1): the input is none then.
     pub server: Option<Server>,
+    /// Which battle of a whole game's record the input is (E17 M7 T3b1): from 1, in the order
+    /// they open for the record's player; unread for any other input.
+    pub battle: usize,
 }
 
 impl Source {
@@ -112,6 +116,47 @@ struct Served {
     online: RefCell<Online>,
     content: h3_view::remote::Content,
     ruleset: Option<BattleRuleset>,
+}
+
+/// A whole game's battle read from its record (E17 M7 T3b1): a record played as any, its result
+/// window opening at its end (the game's switch back to the adventure map), its outcome the
+/// host's (`window::Hosted::outcome`); the battle part its game's packs compile to here, with
+/// the content check, as a server's game's.
+#[derive(Debug)]
+struct FromGame {
+    at: InGame,
+    content: h3_view::remote::Content,
+    ruleset: Option<BattleRuleset>,
+}
+
+/// The battle `source.battle` of the whole game's record `text` (E17 M7 T3b1) as a record of its
+/// own ([`h3_view::game_record`]), with the battle part the game's packs compile to here.
+fn game_battle(text: &str, source: &Source) -> Result<(Record, FromGame), String> {
+    let game = h3_view::game_record::parse(text)
+        .map_err(|e| format!("{}: {e}", source.input.display()))?;
+    let mut battles = game.battles();
+    let count = battles.len();
+    let index = (source.battle.checked_sub(1))
+        .filter(|&i| i < count)
+        .ok_or_else(|| {
+            format!(
+                "{}: no battle {} in the game's record, which shows its player {count}",
+                source.input.display(),
+                source.battle
+            )
+        })?;
+    let GameBattle { record, at } = battles.swap_remove(index);
+    let ruleset = crate::scenario::ruleset(&source.packs, &record.header.manifest).ok();
+    let own = ruleset.as_ref().map(h3_protocol::map::manifest);
+    let content = h3_view::remote::content(&record.header.manifest, own.as_ref());
+    Ok((
+        record,
+        FromGame {
+            at,
+            content,
+            ruleset,
+        },
+    ))
 }
 
 /// Where a press gives a command (E17 M5 T2b).
@@ -152,6 +197,8 @@ pub struct Ground {
     speed: Speed,
     /// A battle fought as it is played (none: a record file's).
     fight: Option<Fought>,
+    /// A whole game's battle (E17 M7 T3b1; none: any other input).
+    game: Option<Box<FromGame>>,
     /// The town part its packs compile to here (E17 M6 T3c3: the stats dialog's building lines),
     /// beside the fight's ruleset; none: a record file's, or a server's game whose packs do not
     /// compile here.
@@ -200,9 +247,11 @@ impl Ground {
     /// (E17 M5 T6b1: the spell book and the result window draw from it); none for a record file's
     /// or a server's game whose packs are absent here.
     fn rules(&self) -> Option<&BattleRuleset> {
-        match self.fight.as_ref()? {
-            Fought::Here(here) => Some(&here.0),
-            Fought::Server(served) => served.ruleset.as_ref(),
+        match self.fight.as_ref() {
+            Some(Fought::Here(here)) => Some(&here.0),
+            Some(Fought::Server(served)) => served.ruleset.as_ref(),
+            // A whole game's battle (E17 M7 T3b1): the one its game's packs compile to here.
+            None => self.game.as_ref()?.ruleset.as_ref(),
         }
     }
 
@@ -210,12 +259,16 @@ impl Ground {
     /// window's creatures' values (E17 M5 T8b2, R5b-2: hit points, AI values): a battle fought
     /// here's, or a server's game's when the content check finds it the same.
     fn previews(&self) -> Option<&BattleRuleset> {
-        match self.fight.as_ref()? {
-            Fought::Here(here) => Some(&here.0),
-            Fought::Server(served) => served
-                .ruleset
-                .as_ref()
-                .filter(|_| served.content == h3_view::remote::Content::Same),
+        let same = |content| content == h3_view::remote::Content::Same;
+        match self.fight.as_ref() {
+            Some(Fought::Here(here)) => Some(&here.0),
+            Some(Fought::Server(served)) => {
+                served.ruleset.as_ref().filter(|_| same(served.content))
+            }
+            None => {
+                let game = self.game.as_ref()?;
+                game.ruleset.as_ref().filter(|_| same(game.content))
+            }
         }
     }
 
@@ -225,12 +278,20 @@ impl Ground {
         self.towns.as_ref()
     }
 
-    /// The content check of a server's game (E17 M5 T6b1; none: a battle here or a record).
+    /// The content check of a server's game (E17 M5 T6b1) or a whole game's battle (E17 M7
+    /// T3b1); none: a battle here or a battle's own record.
     pub fn content(&self) -> Option<h3_view::remote::Content> {
-        match self.fight.as_ref()? {
-            Fought::Server(served) => Some(served.content),
-            Fought::Here(..) => None,
+        match self.fight.as_ref() {
+            Some(Fought::Server(served)) => Some(served.content),
+            Some(Fought::Here(..)) => None,
+            None => self.game.as_ref().map(|game| game.content),
         }
+    }
+
+    /// Where a whole game's battle stands in its game (E17 M7 T3b1: its heroes, its tile, the
+    /// game record's numbers where it opened and ended; none: any other input).
+    pub fn in_game(&self) -> Option<&InGame> {
+        self.game.as_ref().map(|game| &game.at)
     }
 
     /// The seat's connection on a server (E17 M5 T6b1; none: a battle here or a record).
@@ -256,6 +317,7 @@ impl Ground {
         if humans.contains(&true) && !source.scenario() {
             return Err("a human plays a scenario's battle, not a record's".into());
         }
+        let mut game = None;
         let (record, fight) = if let Some(server) = &source.server {
             // A seat on a server (E17 M5 T6b1): its record's opening, its player the one human
             // here (`remote_turn`: the other seat's player is the network's).
@@ -306,15 +368,25 @@ impl Ground {
         } else {
             let text = fs::read_to_string(&source.input)
                 .map_err(|e| format!("{}: {e}", source.input.display()))?;
-            (record::parse(&text).map_err(|e| e.to_string())?, None)
+            // A whole game's record (E17 M7 T3b1): the battle it names, played as a record.
+            if h3_view::game_record::is_game(&text) {
+                let (record, from) = game_battle(&text, source)?;
+                game = Some(Box::new(from));
+                (record, None)
+            } else {
+                (record::parse(&text).map_err(|e| e.to_string())?, None)
+            }
         };
         record
             .first_snapshot()
             .ok_or("the record holds no snapshot")?;
         let manifest = &record.header.manifest;
-        let towns = match &fight {
-            Some(Fought::Here(_)) => Some(crate::scenario::towns(&source.packs, manifest)?),
-            Some(Fought::Server(served)) if served.ruleset.is_some() => {
+        let towns = match (&fight, &game) {
+            (Some(Fought::Here(_)), _) => Some(crate::scenario::towns(&source.packs, manifest)?),
+            (Some(Fought::Server(served)), _) if served.ruleset.is_some() => {
+                crate::scenario::towns(&source.packs, manifest).ok()
+            }
+            (None, Some(from)) if from.ruleset.is_some() => {
                 crate::scenario::towns(&source.packs, manifest).ok()
             }
             _ => None,
@@ -367,6 +439,7 @@ impl Ground {
             seed,
             speed: source.speed,
             fight,
+            game,
             towns,
             humans,
             computer: source.computer,
@@ -1724,8 +1797,8 @@ impl<'g> Battle<'g> {
         }
     }
 
-    /// The outcome of a seat's battle on a server as its record shows it (E17 M5 T6b1): the
-    /// game's end, every stack's count at the start and at the end ([`Battle::end_seen`]), its
+    /// The outcome of a seat's battle on a server (E17 M5 T6b1) or of a whole game's battle (E17
+    /// M7 T3b1) as its record shows it: the game's end, every stack's count at the start and at the end ([`Battle::end_seen`]), its
     /// own hero's Eagle Eye picks from the battle as it ended (the record's last snapshot,
     /// protocol v38).
     fn served_outcome(&self) -> Option<h3_contracts::BattleOutcome> {
@@ -2908,6 +2981,10 @@ impl<'g> Battle<'g> {
         match self.ground.humans {
             [true, _] => self.side_colour(0),
             [false, true] => self.side_colour(1),
+            // A whole game's battle (E17 M7 T3b1): its record's player's side.
+            [false, false] if self.ground.game.is_some() => {
+                self.side_colour(usize::from(self.record.header.seat == Seat::Defender))
+            }
             [false, false] => 0,
         }
     }
@@ -3090,25 +3167,25 @@ impl<'g> Battle<'g> {
         let Some((ended, _)) = self.timeline().ended.filter(|&(t, _)| t <= at) else {
             return false;
         };
-        let (Some(fight), Some(writer), Some(opening)) = (
-            self.fight.as_ref(),
-            self.ground.writer.as_ref(),
-            self.record.first_snapshot(),
-        ) else {
+        let (Some(writer), Some(opening)) =
+            (self.ground.writer.as_ref(), self.record.first_snapshot())
+        else {
             return false;
         };
-        let (outcome, ruleset) = match fight {
-            Fight::Here(live) => match live.outcome() {
+        let (outcome, ruleset) = match (self.fight.as_ref(), self.ground.game.is_some()) {
+            (Some(Fight::Here(live)), _) => match live.outcome() {
                 Some((outcome, ruleset)) => (outcome, Some(ruleset)),
                 None => return false,
             },
             // A seat on a server: the outcome as its record shows it (E17 M5 T6b1), the
             // creatures' values by the ruleset compiled here only when the content check finds it
-            // the game's (E17 M5 T8b2, R5b-2; else none, `crate::results::window`).
-            Fight::Server(_) => match self.served_outcome() {
+            // the game's (E17 M5 T8b2, R5b-2; else none, `crate::results::window`); a whole
+            // game's battle the same (E17 M7 T3b1).
+            (Some(Fight::Server(_)), _) | (None, true) => match self.served_outcome() {
                 Some(outcome) => (outcome, self.ground.previews()),
                 None => return false,
             },
+            (None, false) => return false,
         };
         let sources = crate::results::Sources {
             manifest: &self.record.header.manifest,
@@ -3212,6 +3289,21 @@ impl<'g> Battle<'g> {
     /// Whether the result window was closed (E17 M5 T4b1): the battle's screen is done.
     pub const fn result_closed(&self) -> bool {
         self.result_closed
+    }
+
+    /// How the battle ended (E17 M7 T3b1: what `window::Hosted::outcome` hands the host): the
+    /// engine's result of a battle fought here, else its record's (`GameEnded`: a server's game's,
+    /// a whole game's battle's, a battle's own record's); none before its end.
+    pub fn result(&self) -> Option<Outcome> {
+        if let Some(live) = Fight::here_ref(self.fight.as_ref()) {
+            return live
+                .outcome()
+                .map(|(outcome, _)| h3_protocol::map::outcome(outcome.result));
+        }
+        self.record.messages.iter().find_map(|m| match m {
+            ServerMessage::GameEnded { result, .. } => Some(*result),
+            _ => None,
+        })
     }
 
     /// The result window under Eagle Eye's boxes stands from `at`, its close's millisecond (E17
@@ -4016,6 +4108,7 @@ pub(crate) mod tests {
             humans,
             computer: Computer::Original(h3_battle_ai::Sight::Fair),
             server: None,
+            battle: 1,
         })
     }
 
@@ -4254,8 +4347,7 @@ pub(crate) mod tests {
                 ..Settings::FIRST_RUN
             }
         );
-        let layout =
-            layout::parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let layout = layout::parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let catalogue = h3_ui::text::Catalogue::default();
         let mut open =
             h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true, Bugs::Fixed));
