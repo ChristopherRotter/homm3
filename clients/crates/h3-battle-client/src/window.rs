@@ -1473,9 +1473,10 @@ impl<'g> Hosted<'g> {
                                 self.cue = self.battle.timeline().cue_from(self.from);
                                 if let Some(p) = self.player.as_mut() {
                                     p.silence();
-                                    // The end's tune gives way to the battle's music again.
+                                    // The end's tune gives way to the battle's music again,
+                                    // in both profiles (E17 M7 T4, R4-2).
                                     if self.ended {
-                                        p.start_music();
+                                        p.restart_music();
                                     }
                                 }
                                 self.ended = false;

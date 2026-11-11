@@ -379,7 +379,18 @@ impl HostSound {
     /// # Errors
     /// SDL's error when the device or the stream cannot be opened (no sound device, say).
     pub fn open(bugs: Bugs) -> Result<Self, String> {
-        let mut out = Audio::open()?;
+        Self::on(Audio::open()?, bugs)
+    }
+
+    /// The host's sound on SDL's `dummy` driver (E17 M7 T4: the tests' device, which plays
+    /// nothing; [`Audio::open_driver`]).
+    #[cfg(test)]
+    pub(crate) fn dummy(bugs: Bugs) -> Result<Self, String> {
+        Self::on(Audio::open_driver("dummy")?, bugs)
+    }
+
+    /// The music's stream added to the device `out`.
+    fn on(mut out: Audio, bugs: Bugs) -> Result<Self, String> {
         let music_stream = out.add_stream(MUSIC_RATE, MUSIC_CHANNELS)?;
         Ok(Self {
             out,
@@ -428,6 +439,19 @@ impl HostSound {
         } else {
             music.request(name, queued, &state)
         };
+        if request.changed() {
+            self.out.clear(self.music_stream);
+        }
+        request
+    }
+
+    /// `name` (looping) asked for through the client's filter whatever the profile's
+    /// ([`Queue::request_again`]: E17 M7 T4, R4-2, the battle's music at a Restart after its end,
+    /// a viewer's own request); when it changes the music to come, what is queued is taken back.
+    pub(crate) fn request_again(&mut self, name: &str) -> Request {
+        let queued = self.queued();
+        let Self { music, tracks, .. } = self;
+        let request = music.request_again(name, queued, &|n: &str| track_state(tracks, n));
         if request.changed() {
             self.out.clear(self.music_stream);
         }
@@ -706,13 +730,22 @@ impl Player {
     }
 
     /// The combat music asked for (`play_music`, loop count 0, the creature sounds still
-    /// playing stopped first: 0x59ADAC): it fades in after the host's track's fade-out. Asked for
-    /// again after the end's tune (the battle shown again from earlier), it follows the tune's
-    /// fade-out where its own fade began (*provisional*: the viewer's Restart).
+    /// playing stopped first: 0x59ADAC): it fades in after the host's track's fade-out.
     pub fn start_music(&mut self) {
         self.silence();
         let combat = self.combat.clone();
         let _ = self.sound.request(&combat, false);
+    }
+
+    /// The combat music asked for again after the end's tune was (the viewer's Restart, the
+    /// battle shown again from earlier; *provisional*): through the client's filter in both
+    /// profiles (E17 M7 T4, R4-2, the user: a Restart is the viewer's own, not the original's),
+    /// so it always comes back: during its fade-out for the tune where its fade began, during its
+    /// fade-in it plays on, after the tune opened it follows the tune's fade-out.
+    pub fn restart_music(&mut self) {
+        self.silence();
+        let combat = self.combat.clone();
+        let _ = self.sound.request_again(&combat);
     }
 
     /// The battle's end (E17 M3 T8, design §8.2): every effect ends, the start sound's stream
@@ -923,8 +956,76 @@ fn ahead(rate: u32, channels: u16) -> usize {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
+
+    /// The tests' sound devices one at a time: each opens SDL's audio and closes it.
+    static DEVICE: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
+    /// The host's sound on SDL's dummy driver (E17 M7 T4), the devices' lock held for the test
+    /// (bind it first, so that it is let go after the sound closed); none, noted, where SDL
+    /// cannot open it.
+    pub(crate) fn dummy(bugs: Bugs) -> Option<(std::sync::MutexGuard<'static, ()>, HostSound)> {
+        let lock = DEVICE
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        match HostSound::dummy(bugs) {
+            Ok(sound) => Some((lock, sound)),
+            Err(e) => {
+                eprintln!("skipped: no dummy audio device ({e})");
+                None
+            }
+        }
+    }
+
+    /// An installation copy of nothing (`name` its folder's): no sound archive, no music.
+    pub(crate) fn bare_install(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("h3-view-{name}-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// `seconds` of a 44.1 kHz stereo track's silence.
+    pub(crate) fn track(seconds: usize) -> Music {
+        (MUSIC_RATE, MUSIC_CHANNELS, vec![0; 2 * 44_100 * seconds])
+    }
+
+    /// The battle's library of an installation copy of nothing.
+    fn bare_library(install: &Path) -> (Library, Vec<String>) {
+        let mut lines = Vec::new();
+        let opening = h3_view::sound::opening(1);
+        let sounds = (Voices::default(), BTreeMap::new());
+        let tunes = [Tune::Win, Tune::Lose];
+        let library =
+            Library::load(install, (opening, "BUTTON"), sounds, &tunes, &mut lines).unwrap();
+        (library, lines)
+    }
+
+    #[test]
+    fn a_restart_after_the_end_brings_the_combat_music_back_in_both_profiles() {
+        // E17 M7 T4 (R4-2, the user): the end's tune asked for during the combat music's fade-in
+        // (a battle ended within 900 ms of it), then a Restart: the combat music plays on and the
+        // tune is dropped, under the original's filter too (a Restart is the viewer's own).
+        let Some((_lock, sound)) = dummy(Bugs::Original) else {
+            return;
+        };
+        let install = bare_install("restart-music");
+        let (mut library, mut lines) = bare_library(&install);
+        let mut player = Player::open(sound, &mut library, &mut lines).unwrap();
+        let combat = library.combat.clone();
+        player.sound.add_track(&combat, Some(track(5)));
+        player.sound.add_track(Tune::Win.file(), Some(track(2)));
+        player.start_music();
+        player.service(&library);
+        assert_eq!(player.sound.playing(), Some(combat.as_str()));
+        player.end(Tune::Win);
+        assert_eq!(player.sound.music.heard().pending(), Some(Tune::Win.file()));
+        player.restart_music();
+        assert_eq!(player.sound.music.heard().pending(), None);
+        assert_eq!(player.sound.playing(), Some(combat.as_str()));
+        drop(player.close());
+        fs::remove_dir_all(&install).unwrap();
+    }
 
     #[test]
     fn a_runs_samples_are_scaled_by_its_volume() {
