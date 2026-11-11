@@ -7767,8 +7767,8 @@ host's loop stands in for.
   its window it reads the frame's size (`frame_size`) and the first cursor (`cursor_at`,
   `cursor_image`: drawn, and as the hardware cursor's image). `Prepared::start(setup, ticks_ns,
   lines)` starts it once the window is open (the platform up): `Setup` holds the keys, the combat
-  options' settings and their file, the battle's time the clock starts at, the sound (mute, the
-  installation, the opening's seed) and an unattended run's `Presses`.
+  options' settings and their file, the battle's time the clock starts at, the sound (the host's
+  since T3c, §13.6; the installation, the opening's seed) and an unattended run's `Presses`.
 - **A pass** of the host's loop, in this order (`h3-view window`'s, the battle's frame alone):
   `timeout(now)` (how long to wait for input: the next frame's time, the opening's end, at most
   250 ms, 10 ms for a server's seat); `before` (the result window and a notice opened at their
@@ -7777,7 +7777,8 @@ host's loop stands in for.
   `event`, which answers a `Took` (nothing, quit, redraw, or one of the window's own keys the
   host does: fullscreen, vsync, the cursor drawn or the hardware's; the battle does its clock's,
   its sound's and Quit's itself), then `take_moved` (the mouse moved where a drawn cursor shows);
-  `closed` (the result window's OK closed the battle's screen: the host takes over); `after`
+  `closed` (the result window's OK closed the battle's screen: the host takes over, and takes its
+  sound back, §13.6); `after`
   (the boxes' and the options dialog's close, the mouse followed, the frame now made again); the
   cursor (`cursor_at` its look and whether it shows, `cursor_image`); `sound(now)` (the opening's
   end, the cues, the end's tune: the battle's time then); `due(battle_ms)` the frame to present
@@ -7790,10 +7791,9 @@ host's loop stands in for.
   alone (`h3-view window`) presents as it is.
 - **The outcome** (T3b1): once `closed`, `Hosted::outcome` hands the host how the battle ended
   (the wire's `Outcome`: a battle fought here's by the engine, else its record's `GameEnded`).
-- **Not yet** (*provisional*): the sound on the host's device and the music through
-  `h3_ui::music` (T3c; until then the element opens a device of its own and a host must not play
-  beside it). A whole game's battle: from its record (T3b1, §13.3), played live through the
-  host's game (T3b2, §13.4).
+- **Since** (*provisional*): the sound on the host's and the music through `h3_ui::music`
+  (T3c, §13.6: `Setup::sound`, `Hosted::take_sound`, `Hosted::focus`). A whole game's battle:
+  from its record (T3b1, §13.3), played live through the host's game (T3b2, §13.4).
 
 ### 13.3 A whole game's battle from its record (M7 T3b1)
 
@@ -7906,3 +7906,54 @@ comparisons with its captures.
   hero's group frames are the same for all 18 DEFs (§4.5).
 - **Checked:** the tables' and the scene's tests; no situation gives a hero a sex, so nothing
   recorded changes (`drawn` all the same).
+
+### 13.6 The battle's sound on the host's, its music through the common model (M7 T3c)
+
+The battle's sound as the original's one sound manager plays it beside the adventure map's: the
+map client lane's notes of 2026-10-27 (the music's thread read, E24 design §3.11), 2026-10-28 (the
+widening by a table) and 2026-10-30 (the sound without the focus, E24 design §4.15). Kept whole
+with the user (2026-11-11).
+
+- **The host's sound** (`audio::HostSound`, *provisional*): the device (`h3_sdl::Audio`) and the
+  music on one 44.1 kHz stereo stream of it, played by `h3_ui::music::Queue` on the frames the
+  device has played (the fades follow the device's time and hold with its pause), its tracks
+  decoded by name (`add_track`; a name not added is being decoded: the music waits). A host opens
+  it, plays its own sounds on its device (`audio`) and its tracks through it (`request`), and
+  lends it to the battle (`Setup::sound`, which replaced `mute`: none, no sound); once the
+  battle closed, `Hosted::take_sound` hands it back with the battle's own streams removed
+  (`Audio::remove_stream`, its index the next `add_stream`'s) and the device running. The
+  battle's tracks (its combat music, the end's six tunes) stay added for a later battle. An
+  archive that cannot be read costs the sound (noted), the host's sound handed back all the
+  same.
+- **The music** (`play_music` 0x59ACB0 and its thread, §8.2): the combat music asked for at the
+  opening's end (looping, the effects ended first: 0x59ADAC) fades in after the host's track's
+  fade-out (none in `h3-view window`); the end's tune is asked for to be played once
+  (`Music::request_once`, the loop count 1, 0x477905): the thread fades the combat music out
+  first (its place kept, 9 steps of 100 ms from the whole), after the fade-in's end when the
+  battle ends within 900 ms of the music's start, then opens the tune from its start at its
+  volume (no fade-in: the lock is free at once); at its end the stream closes and nothing
+  follows. A track the host asks for afterwards fades a tune still playing out and comes back
+  where its own fade began. Until T3c the client cut the music and started the tune at once.
+  The settings' music volume is the stream's gain (`sound_volume(127, setting)`), the fades in
+  the samples (before: `sound_volume` of each fade step; the same to a unit of rounding).
+  *Provisional*: a tune that ends during its own fade-out closes then (the original's thread
+  sleeps out the 900 ms first); Home after the end asks for the combat music again, which
+  follows the tune's fade-out where its own fade began (before: from its start at once); a
+  request while the music's setting is 0 is taken (the original's `play_music` does nothing
+  then: unchanged from before T3c, not read further).
+- **The focus** (`Hosted::focus`, the host telling each change in order; `h3-view window`
+  follows `Window::focus_changes`): lost, every effect playing is held where it is
+  (`Audio::hold`) and the music fades out (`sound_focus_lost` 0x599C40, the stub thread once the
+  lock is free); regained, the effects held play on and the music fades in where its fade began
+  (0x599B90, `music_resume` 0x59AC00). A sound started meanwhile plays (its stream let go), as
+  the original starts a sample anew. Before T3c the battle played on without the focus.
+- **The widening** (`h3_render::screen::Widening`, the frames' format widened once per battle,
+  `Battle::widening`): a frame's `xrgb` by the table, 0.33 ms an 800 × 600 frame against
+  `Screen::xrgb`'s 3.5 in the sandbox's release build (the same pixels); with a drawn cursor only
+  its rectangle (`Cursor::rect`) is widened again over a copy of the frame's.
+- **Checked:** `h3_ui::music`'s tests (six for the tracks played once); `window --check 45` on
+  `smoke.toml` under Xvfb with SDL's `disk` audio, 497 of 497 frames read back exact: COMBAT04
+  from the opening's end, then at the battle's end its gain falling 68, 60, 52, 45, 37, 30, 23,
+  15, 7 of its whole 76 (the first run's setting) by 100 ms, and `Win Battle` (correlation 1.000)
+  899 ms after the fade began. Not checked live: the focus (Xvfb sends no focus events), Home
+  after the end.
