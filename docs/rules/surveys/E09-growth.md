@@ -424,6 +424,8 @@ what reads +0x33; whether a capture or a loss of the Portal (none: buildings sta
 
 ## 14. Batch TWN-3's rows (for T22's cut; run as TWN-1 and TWN-2, on the capture harness)
 
+**Run and scored by T23** (§17): every row as the reading; the kinds forced as draws, not written.
+
 | Row | Settles | Setup | Record | The reading predicts |
 |---|---|---|---|---|
 | TWN-3-1 | TD-13 | a Castle with the upgraded Griffin Tower and one with the base, a month of the Griffin forced (the month's kind written before the month: 0x698834, 0x697748) | both towns' counts on the month's first day | only the base Griffin Tower doubles |
@@ -475,3 +477,80 @@ decisions 69 to 73:
 - **The agent's calls** (decision 73, change freely): TD-16 and TD-17 as read; T-10 fixed by
   proposal (a count saturates); the army reference of §15 proposed in the adventure lane's
   inbox; batch TWN-3's rows (§14) for T22's cut.
+
+## 17. Batch TWN-3 scored (T23, 2026-11-11)
+
+Two runs of each part (the capture harness under Wine, the Complete 4.0 executable in SoD on Easy,
+hot seat, Red and Blue human; `experiments/results/E09-batch-3a.md` and `E09-batch-3b.md`, the main
+records, and their `-run2.md`). The predictions are the specs' (`experiments/specs/E09-batch-3a.toml`,
+`-3b.toml`). The week's and the month's kinds are drawn into their globals when the week or month
+starts and read straight after, so §14's plan to write them before was void: the harness forces
+the draws instead (xdd.dll's sites at 0x4C87CE, 0x4C883E, 0x4C8F5E, 0x4C8FA5), every week normal,
+the second month the Griffin's, the third the Plague, and writes the date to each week's last day
+(eight weeks in a pair of end turns each); it logs the neutral garrisons' and the Portal's draws
+unforced (`clients/capture/README.md`, "Forced rolls"). **Every row as the reading, in every read
+of both runs; no reading refuted; three points not predicted, none a rule.**
+
+- **TWN-3-1 (TD-13, T-13, §3).** The Statue of Legion worn by a hero of Red's elsewhere (row 2's)
+  adds (7 + 0) ÷ 2 = 3 in every town of Red's (§1: any hero of the owner), so a week's growth was 10
+  at K1's Royal Griffins (index 9) and K2's Griffins (index 2): 7 on day 1, 37 at month 1 week 4.
+  The Griffin's month (the kinds read: month 1, the Griffin): **K1 47** (37 + 10, not doubled),
+  **K2 94** ((37 + 10) × 2): the exact creature doubles, after the week's growth. **The reading
+  confirmed**; VCMI's level rule (K1 94) and its doubled growth (K2 57) refuted. Decision 69's
+  `fix-optional` T-13 stands.
+- **TWN-3-2 (§1).** G1 (the Castle, the Guardhouse, the Archers' Tower, the Griffin Tower, the
+  Griffin Bastion 18, the Grail 26; the every-built set 7, 8, 9, 10, 18, 26, 30, 31, 32) on day 1
+  **14, 9, 7** (each dwelling's base growth alone, §6); after the two Guardhouses flagged its
+  external counts index 0 **2** and index 7 **2**. At week 2 (the Statue elsewhere, Legs of Legion
+  on the visitor): **80, 57, 43**, the upgraded indexes 0: the growths 66 ((14 + 14 + 14 + 2) ×
+  1.5), 48 ((9 + 9 + 9 + 5) × 1.5), 36 ((7 + 7 + 7 + 3) × 1.5) exactly as §1 sums (the Statue on
+  base + castle, Legs at level 2, the horde at index 2, the Grail on the whole, the external count
+  at index 7 not added without the upgraded dwelling). **Confirmed**; VCMI's Statue on the base
+  only refuted (index 0 would grow 55, not 66). A probe run whose map lacked the horde (the spec's
+  "horde 1" is the level-1 dwelling's horde, no Castle building: `town_hordes` is per dwelling
+  level, the map's bits too) grew 38 at index 2, as §1 without it.
+- **TWN-3-3 (TD-14, T-12, §3).** Before the Plague (month 2 week 4) O1 106, 61 and N1 (neutral,
+  its garrison's week a no-op: seven stacks above any new one) 42, 25; on the Plague's first day
+  **O1 53, 30** (half of before the week) and **N1 17, 10** (max(0, 42 + 7 − 14) ÷ 2, max(0, 25 + 4 −
+  9) ÷ 2: ⌈g ÷ 2⌉ lost). **The reading confirmed**; VCMI's and the wiki's (halved after the week:
+  O1 63, 37; N1 24, 14) refuted. Decision 70's `fix-optional` T-12 stands.
+- **TWN-3-4 (TD-15, §4).** Eight weeks (n 1, 2, 3, 4, 8, 8, 8, 8), six towns read and N1's, every
+  draw logged: a throwaway replay of §4 over the logged draws (not committed) predicted **all 48
+  garrisons and 8 counts of F1 in each run** (56 of 56, twice): each chance draw below 80 (a Fort or
+  the Citadel standing) or 40 (none) and no other called the week (run 1: 25 of 32 and 12 of 24;
+  run 2: 24 of 32 and 7 of 24); the three sums within 0 to n + 1 and the level by the weights; the
+  faction's base creature (its upgrade when held) with its growth; the room rule (FF's Gremlin,
+  Imp, Gnoll, Troglodyte cleared in that order, the least AI value × count first; N1 nothing at all,
+  no draw after the sums); the merge; the counts lowered at the level's indexes (F1's Archers and
+  Pikemen, the Plague after them); the upgrade draw for a base creature only, at most 5 turning
+  every stack (run 1: F1's Monks at 2, W2's Mages at 4). Level 7 came at n 8 (an Angel). **The
+  reading confirmed**; VCMI's (no neutral growth) refuted. Decision 72 stands. Not reached: the
+  tie of two least stacks (the Skeleton's and the Goblin's 60).
+- **TWN-3-5 (TD-16, T-11, §5).** D1's Portal: day 1 **creature −1** (the count +0x40 a stale
+  value, 21 936 in a probe and 21 872 in both runs: `town_init` sets the creature only); after the
+  three flags still none; **D1's town screen drew it** (the draws logged at the visit: the
+  dwelling of three, then the creature): Pikemen 14 (run 1), Harpies 8 (run 2). Each week one
+  draw, **the count the creature's growth, set, never accumulated** (run 1: 8, 14, 8, 14, 14, 8,
+  14, 14 as each week drew a Guardhouse or the Harpy Loft; run 2 the Harpy Loft every time, 8 every
+  week); the Plague's first day **not halved** (14, 8: the week's fresh draw). **The reading confirmed** (T-11's draw at
+  the screen, TD-16's set count and no Plague); VCMI's (accumulating, halved, the first creature at
+  week 2) refuted. Decision 71 (the engine draws at the build and the flag, not at a screen)
+  stands.
+- **TWN-3-6 (§8, §9; design §53, §55).** T: G's portrait then the garrison's moved G into the
+  garrison (+0xC G, the visitor none, no message). The upgraded Guardhouse's hire: **two creatures,
+  14 Halberdiers and 14 Pikemen** (one count); 2 Halberdiers bought: **into G's army** (3
+  Halberdiers), T's own garrison still empty, index 7 12, 150 gold paid. U: V's move into the
+  garrison **refused, GENRLTXT 276**, nothing changed (V's 4 creatures and U's 4 others); 1 Pikeman
+  bought there went **into U's own garrison** (slot 4), V's army unchanged, index 0 13. Red's day 2:
+  **G's points 1 630, Z's 1 630** (G had 1 530 left on day 1 and on Blue's turn): the garrison hero
+  refilled at its owner's turn; G still T's garrison hero. A probe run whose two clicks were lost
+  (the hover not yet run) bought into T's own garrison with no garrison hero, as §8's control.
+  **The reading confirmed**; the manual's "recruits go to the garrison" holds only without a
+  garrison hero.
+
+**Not predicted** (none a rule the engine models): the Portal's count holds a stale value while
+its creature is −1 (no hire is possible then; the engine keeps 0); the town's hire dialog closes
+after a Recruit even with two creatures offered (§8 said it stays open: the dialog's, the engine
+has a command per purchase); run 2's Portal drew the Harpy Loft at all nine draws (each draw
+`random(0, 2)` as logged, the generator's; nothing read rests on it). **For T24:** the five
+drafts stand as accepted (decisions 74 to 83); the verdicts above are their batch rows.

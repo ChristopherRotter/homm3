@@ -82,6 +82,12 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   22), the pieces in the standing set from the first time a town screen opens and in the
   every-built set after the town's next build. Drop them before comparing a record with the
   engine's sets or predicting a set; a prediction from the reading names them.
+- **A spec's hordes are by dwelling level, and a batch that plays weeks needs every player a town**
+  (E09 T23): `h3-experiment`'s "horde n" is the horde of the level-n dwelling (the Castle's Griffin
+  Bastion 18 is "horde 3"; "horde 1" builds nothing there): read a town's every-built set on day 1.
+  A player without a town is out of the game after seven days of play, and the game ends when no
+  enemy is left. The week's and the month's kinds cannot be written before they start (the draw
+  writes them): force the draws (`clients/capture/README.md`, "Forced rolls").
 
 ## The game's setup (`h3-game` `src/town*`, `setup.rs`)
 

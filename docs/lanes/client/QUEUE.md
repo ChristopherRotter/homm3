@@ -62,6 +62,18 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
+  changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
+  town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
+  `week_creature`, `month_kind`, `month_creature`; eight logged: the neutral garrisons' and the
+  Portal's draws), so `h3drive.ROLLS` and `LOGGED` hold 30 calls: a battle sequence checks that
+  xdd.dll redirected all 30, and a stale `xdd.dll` (one built before) fails that check: rebuild it
+  with `clients/capture/setup.sh`. `h3adv` gains a recipe's and a step's `rolls`, `roll` and
+  `date`, the reads `draws`, `turn_draws`, `kinds`, the town parts `counts`, `count:<i>`,
+  `dwellings`, `portal`, `garrison_hero`, `hire:creatures`, the town screen actions `hero_in` and
+  `building`; `h3mem`'s town record gains `recruits`, `portal`, `dwellings`. Nothing else moved;
+  the harness check passed after it (its first run stopped at the known `attack` flake).
+
 - 2026-10-27 (the map client lane, E24 M2 T3b; for you when a translucent DEF of encoding 3
   appears): `draw_frame_blend` 0x47D4F0 is read (`docs/exe/map.toml`; E24 design §3.8): it blends
   encoding 3's literal pixels half and half with the screen as 0x47EF60 blends encoding 1's, and
