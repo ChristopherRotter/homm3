@@ -6800,7 +6800,9 @@ T3b2's run (light gates only). Design §13.6; the map client lane's notes of 202
   ms), at the battle's end (40 450 ms) its gain falling by 100 ms through 68, 60, 52, 45, 37,
   30, 23, 15, 7 of its whole 76 (114/127 to 12/127 of the first run's setting), and `Win
   Battle` (correlation 1.000 with ffmpeg's decoding) at 41 349 ms, 899 ms after the fade began.
-  Not checked live: the focus (Xvfb sends no focus events), Home after the end.
+  `h3drive.py drawn` (270 sequences and situations, none not the same); the scoped verify with
+  the original data (no failing step). Not checked live: the focus (Xvfb sends no focus events),
+  Home after the end.
 - Agent decisions, *provisional* (change freely): the names (`HostSound`, `take_sound`,
   `request_once`, `remove_stream`), the battle's tracks left with the host's sound, the setting
   as the stream's gain, a tune ending in its own fade-out closing then, Home after the end

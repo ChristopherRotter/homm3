@@ -9,11 +9,11 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   in QUEUE): **T1, T2, T3 done** (T3: the battle as an element a host's window runs, for the map
   client's E24 M4 T5; T3c, the last, kept whole with the user: the sound on the host's,
   `audio::HostSound`, the music through `h3_ui::music` with a track played once, the focus, the
-  frame widened by `Widening`; design §13.6; branch `client/e17-m7-t3c`, its pull request below).
+  frame widened by `Widening`; design §13.6; branch `client/e17-m7-t3c`, its pull request open).
   **Next:** **T4**, M7's and E17's closure, **which closes E17** (a fresh reviewer, the captures
   where M7 changed the battle screen, the review list's items 1 to 9 with the user, the epic's
-  open threads placed, the backlog's row by a `shared/` PR). Watch T3c's pull request until it
-  merges.
+  open threads placed, the backlog's row by a `shared/` PR). Watch T3c's pull request (its
+  branch's) until it merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
