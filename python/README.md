@@ -147,7 +147,8 @@ and computes what it did before.
 **The imitation loss** (E25 T21, increment 6, decision 3's second form): `[ppo] imitation_coef`
 (0, off, by default) weighs an auxiliary cross-entropy to the fair system actor's choice on the
 learner's own decisions, falling linearly to 0 over `imitation_horizon` samples (0: the learning
-rate's horizon, the budget). While the weight is above 0 each rollout call first asks the fair
+rate's horizon, the budget), or to its floor `imitation_coef * imitation_floor` (E25 T33; 1 holds
+it throughout). While the weight is above 0 each rollout call first asks the fair
 actor for every env's choice (`BattleBatch.choice`, the cloning bench's teacher; never the
 all-seeing one) and keeps it as the label of the learner's rows (not a league member's, nor the
 internal defender's): its entry and cast heads; a choice the encoding cannot express, or an entry
@@ -206,7 +207,9 @@ v1's first `ladder_episodes` (250) per kind, and with `ladder_neutral` (true) as
 neutral set v1's, attacking the system actor (E06 T7c); at the end the final best's ladder plays
 all `ladder_final_episodes` (500). Each gate, promotion and ladder prints one line;
 `python -m h3env.train.gate --candidate b.pt --best a.pt` plays the same gate between any two saved
-networks. `--init-from <file>` starts a new run (fresh optimizer, counters and league) from a saved
+networks; with `--fixed` (E25 T33) it plays all `--max-pairs` (a head-to-head of a fixed size,
+the score with its standard error; the SPRT's decision at the end), and `--json` writes its
+result. `--init-from <file>` starts a new run (fresh optimizer, counters and league) from a saved
 network (a `best.pt`, `promoted/<n>.pt` or `checkpoint.pt` of the same kind and size), its parent.
 
 The run's directory (`runs/` is git-ignored) gets `config.toml` (the file as given),

@@ -13,15 +13,25 @@ normal approximation): `H0: elo = elo0`, `H1: elo = elo1`, the score `s = 1 / (1
 five outcomes' counts with half a pair added to each. The first n with `LLR ≥ ln((1 − β) / α)`
 promotes, `LLR ≤ ln(β / (1 − α))` rejects, `max_pairs` without either rejects as inconclusive; the
 pairs after the deciding one are not counted. The test's arithmetic is free of torch (`Sprt`).
+
+A head-to-head of a fixed size (E25 T33, `--fixed`): all `max_pairs` pairs counted whatever the
+test says on the way, the decision the test's at the last pair, the mean pair score with its
+standard error (`standard_error`): a probe's measure, where the sequential test's early stop
+would leave each score's precision to chance.
+
+    uv run --group train python -m h3env.train.gate --candidate runs/b/checkpoint.pt \
+        --best runs/a/best.pt --fixed --json gate.json
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import math
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -60,6 +70,17 @@ def score_elo(score: float) -> float | None:
     if not 0.0 < score < 1.0:
         return None
     return -400.0 * math.log10(1.0 / score - 1.0)
+
+
+def standard_error(counts: list[int]) -> float | None:
+    """The standard error of the mean pair score over `counts` (the pairs per outcome, `OUTCOMES`'
+    order), the sample variance's; None below two pairs."""
+    n = sum(counts)
+    if n < 2:
+        return None
+    mean = sum(c * x for c, x in zip(counts, OUTCOMES, strict=True)) / n
+    variance = sum(c * (x - mean) ** 2 for c, x in zip(counts, OUTCOMES, strict=True)) / (n - 1)
+    return math.sqrt(variance / n)
 
 
 def game_score(result: int, side: int) -> float:
@@ -132,9 +153,11 @@ def play_gate(
     max_steps: int = 2000,
     rng_seed: int = 0,
     stop=None,
+    fixed: bool = False,
 ) -> dict:
     """Plays the gate set's pairs in order until the test decides (see the module's
-    documentation): `candidate` and `best` are networks (`Policy`). Returns the decision
+    documentation): `candidate` and `best` are networks (`Policy`); with `fixed` all
+    `bounds.max_pairs`, the decision the test's at the last (E25 T33). Returns the decision
     (`result`), `Sprt.summary`'s numbers, the games played and the seconds; it reads the games'
     results, never their rewards. Raises `Stopped` when `stop` was requested before one of its
     batch calls (the gate has no result)."""
@@ -185,7 +208,8 @@ def play_gate(
                 if np.isnan(pair).any():
                     break
                 sprt.add(float(pair.mean()))
-                decision = sprt.decision()
+                if not fixed or sprt.pairs >= bounds.max_pairs:
+                    decision = sprt.decision()
     finally:
         for batch in batches:
             batch.close()
@@ -226,11 +250,33 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--threads", type=int, default=os.cpu_count() or 1)
     parser.add_argument("--max-steps", type=int, default=2000)
     parser.add_argument("--device", default="cpu")
+    parser.add_argument(
+        "--fixed",
+        action="store_true",
+        help="play all --max-pairs (a head-to-head of a fixed size; E25 T33)",
+    )
+    parser.add_argument("--json", type=Path, default=None, help="write the result to this file")
     args = parser.parse_args(argv)
     bounds = Bounds(args.elo0, args.elo1, args.alpha, args.beta, args.max_pairs)
     candidate, best = load(args.candidate, args.device), load(args.best, args.device)
-    r = gate(candidate, best, bounds, threads=args.threads, max_steps=args.max_steps)
-    print(line(r, bounds), flush=True)
+    r = gate(
+        candidate, best, bounds, threads=args.threads, max_steps=args.max_steps, fixed=args.fixed
+    )
+    r["stderr"] = standard_error(r["counts"])
+    text = line(r, bounds)
+    if args.fixed and r["stderr"] is not None:
+        text += f"; fixed at {r['pairs']} pairs, the score's standard error {r['stderr']:.4f}"
+    print(text, flush=True)
+    if args.json is not None:
+        record = {
+            "candidate": args.candidate,
+            "best": args.best,
+            "test": asdict(bounds),
+            "fixed": args.fixed,
+            "max_steps": args.max_steps,
+            **r,
+        }
+        args.json.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
 
 
 def line(r: dict, bounds: Bounds) -> str:

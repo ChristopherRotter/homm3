@@ -33,10 +33,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   autotuner in the update (`[device] cudnn_autotune`, on), `[ppo] chunk_align`; a `hexconv` run
   sets `accumulate = 4`, `chunk_align = 32`: 958 to 649 µs a sample-pass, 98 to 67 s an update
   on the GTX 1070; `gpu.cap` now passes the card's index (every CUDA entry point since T28
-  stopped there). **Next:** T32 or T33, refined in `QUEUE.md` when next (T30's ranking: T33's
-  entropy bonus at 0 and the imitation loss held, short continuations from #2).
-- **Open pull requests:** the one of `claude/pensive-mendel-2ydhkl` (T31). Merged: #765 (T27),
-  #827 (T28, T29), #829 (T30).
+  stopped there). **T33 in progress** (refined in `QUEUE.md`): round 1's three arms, each the
+  first 2 M samples of a 20 M run from #2 (the entropy bonus at 0; with the imitation loss held at
+  0.05, `[ppo] imitation_floor`; at a quarter of the rate), measured by a fixed head-to-head
+  against #2 (`h3env.train.gate --fixed`) and the ladders; prepared, **next: the user runs them**
+  (about 6 hours of the GPU; the commands in `QUEUE.md`), then round 2 and T32.
+- **Open pull requests:** the one of `claude/gallant-brown-w3cnht` (T33's preparation). Merged:
+  #827 (T28, T29), #829 (T30), #835 (T31).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -49,6 +52,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-11 — E25 T33 (prepared)
+
+- #835 merged; the branch started from `master`. `cargo build --release -p h3-ffi` 64 s, `uv sync
+  --group train` a few minutes; the setup's engine baseline in the background, so the edits in a
+  worktree, its tests on the main clone's venv (`H3_LIBRARY`). Built `[ppo] imitation_floor`, the
+  gate's `--fixed` and `--json`, round 1's configs; a CPU smoke of the imitation arm (stopped by
+  a timeout, resumed, its end gate); the scoped verify, the Python suite 258 (2.6 minutes).
 
 ### 2026-11-10 — E25 T31
 
@@ -69,11 +80,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   AI-Q17 (T29): the current best, increment 8 with its budget and probe families. #827 merged;
   the branch restarted from `master` for T30 (the sandbox's CPU: the temperature ladder 76
   minutes, the ceiling with its confusion table a few minutes beside it).
-
-### 2026-11-06 — E25 T27
-
-- #748 merged; the branch started from `master`. The setup's baseline ran only the light gates;
-  `cargo build --release -p h3-ffi` 65 s, `uv sync --group train` a few minutes. The user pasted
-  T27's ladder, then its table and `report.json`, then the student (T19's tool, 2 minutes);
-  T28's smoke from a CPU clone (72 s, then 2.3 minutes) showed `minibatches` 64 would change
-  PPO's steps, so `[ppo] accumulate`; the Python suite 243 (2.6 minutes).

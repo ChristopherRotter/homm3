@@ -1,0 +1,54 @@
+# E25 T33's first arm (increment 8, AI-Q17, decision 3: PPO's settings by short continuations from
+# `e25-structure-1` #2, the current best). Each arm is the first 2 M samples of a 20 M run from #2
+# (`lr_horizon` 20 M: the learning rate 2.5e-4 to 2.26e-4 over the arm), so the arm that wins can
+# be resumed into the long run (`--resume ... --set samples=N`) without a sample lost. #2's run's
+# settings (`e25-imitate-structure.toml`: the mix, the league, seed 1, shaping, the network) with
+# the entropy bonus at 0 throughout (T30's read: sharpening gains +0.011; #2's entropy rose from
+# 0.70 to 1.34 once its imitation loss ended, T28) and no imitation loss; T31's update speed
+# (`accumulate` 4, `chunk_align` 32, cuDNN's autotuner on by default). The run's own ladders are
+# cut to one episode a kind and the final one to none: each arm's learner is measured after the
+# run, as the queue's T33 says (a fixed head-to-head against #2, the ladders against both system
+# actors and on the neutral set). About 2 hours on the GTX 1070. From python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-continue.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-continue-1
+#
+# Ctrl-C stops it at the next update boundary, checkpointed; each later part:
+#
+#   uv run --group train python -m h3env.train --resume runs/e25-continue-1
+
+seed = 1
+samples = 2_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+tactics_rounds = 3
+
+[ppo]
+lr_horizon = 20_000_000
+accumulate = 4
+chunk_align = 32
+shaping = true
+entropy_coef = 0.0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 1
+ladder_final_episodes = 0

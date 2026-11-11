@@ -3,13 +3,23 @@ rates without torch, then the head-to-head of two networks on the gate set v1 (w
 
 from __future__ import annotations
 
+import json
 import math
+from dataclasses import asdict
 
 import numpy as np
 import pytest
 
 from h3env import _ffi
-from h3env.train.gate import OUTCOMES, Bounds, Sprt, elo_score, game_score, score_elo
+from h3env.train.gate import (
+    OUTCOMES,
+    Bounds,
+    Sprt,
+    elo_score,
+    game_score,
+    score_elo,
+    standard_error,
+)
 
 
 def test_the_scores_and_the_elo_differences() -> None:
@@ -49,6 +59,15 @@ def test_the_sprt_has_its_bounds_and_decides_in_pair_order() -> None:
     for _ in range(3):
         capped.add(0.5)
     assert capped.decision() == "inconclusive"
+
+
+def test_the_score_has_its_standard_error() -> None:
+    # E25 T33: the sample variance's standard error of the mean pair score; none below 2 pairs.
+    assert standard_error([0, 0, 0, 0, 0]) is None and standard_error([0, 0, 1, 0, 0]) is None
+    assert standard_error([0, 0, 7, 0, 0]) == 0.0
+    counts = [10, 20, 40, 20, 10]
+    x = np.repeat(np.array(OUTCOMES), counts)
+    assert standard_error(counts) == pytest.approx(x.std(ddof=1) / math.sqrt(len(x)))
 
 
 def _simulate(elo: float, rng: np.random.Generator, draws: float = 0.3) -> tuple[str, int]:
@@ -102,3 +121,36 @@ def test_a_network_against_itself_is_not_promoted() -> None:
     assert "gate: " in line(first, bounds) and math.isfinite(first["llr"])
     with pytest.raises(ValueError, match="max_pairs"):
         gate(net, twin, Bounds(max_pairs=4001))
+    # E25 T33: a fixed gate counts all its pairs, the early stop's first among them; its
+    # decision is the test's at the last pair.
+    early = gate(net, twin, Bounds(elo1=400, max_pairs=24), threads=2, max_steps=300)
+    full = gate(net, twin, Bounds(elo1=400, max_pairs=24), threads=2, max_steps=300, fixed=True)
+    assert early["pairs"] < 24 and full["pairs"] == 24 and full["games"] >= 48
+    assert all(a <= b for a, b in zip(early["counts"], full["counts"], strict=True))
+    assert full["result"] in ("promoted", "rejected", "inconclusive")
+
+
+def test_the_command_line_plays_a_fixed_head_to_head(tmp_path, capsys) -> None:
+    # E25 T33: `--fixed` plays all `--max-pairs`, `--json` writes the result with its test and
+    # the score's standard error.
+    torch = pytest.importorskip("torch")
+    from h3env import BattleBatch
+    from h3env.train.gate import main
+    from h3env.train.policy import build
+    from h3env.train.run import Config
+
+    config = asdict(Config(hidden=16, embed=4))
+    probe = BattleBatch(1)
+    torch.manual_seed(0)
+    net = build(config, probe)
+    probe.close()
+    path = tmp_path / "best.pt"
+    torch.save({"config": config, "policy": net.state_dict()}, path)
+    out = tmp_path / "gate.json"
+    pair = ["--candidate", str(path), "--best", str(path), "--threads", "2", "--max-steps", "300"]
+    main([*pair, "--max-pairs", "6", "--fixed", "--json", str(out)])
+    text = capsys.readouterr().out
+    assert "after 6 pairs" in text and "standard error" in text
+    record = json.loads(out.read_text())
+    assert record["fixed"] and record["pairs"] == 6 and record["test"]["max_pairs"] == 6
+    assert record["stderr"] == standard_error(record["counts"]) and sum(record["counts"]) == 6
