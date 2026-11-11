@@ -9,7 +9,7 @@ text). Refined 2026-10-12 (E17a, the asset notes, done the same day). Decisions:
 [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint, point 7 rewritten there).
 Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`; done tasks in
 full: [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset
-notes are there). Next: M7 T1 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
+notes are there). Next: M7 T2 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
 ## Goal
@@ -163,12 +163,15 @@ context.
     side's dialog and army info windows in its own player's colours, Q71 (b) a held panel
     button let go when a dialog takes its key's release (the original's as built until T1c),
     Q77 (b) the pictures box's rows; each in the client's profile.
-  - **T1c, the reads and captures:** Q71's (hold D, click a stack, release D, close the dialog:
-    what the original's profile copies), Q73's 0x5994B0 (a fix or a copy, recorded), Q74's
-    sound sequence pressing a speed, T7b's R2-1 still `stats-ability`.
-  - **T1d, the tools:** T7b's R10-2 leftovers: the window loop's pieces under test
-    (`Changes::after`, `cast_stop`), a presser option closing the result window for an
-    unattended `--run`.
+  - **T1c done 2026-11-10** (the reads and captures;
+    [log](E17-log.md#m7-t1c--the-reads-and-captures-the-answers-name-2026-11-10)): Q73's
+    0x5994B0 read (the original starts a combat tune as the bar rises: the client's a copy in
+    effect), the stills `stats-ability` (R2-1), `stats-held` (Q71: the pressed frame kept, the
+    original's profile as built) and, with sound, `options-sound` and `options-speed-sound` (Q74:
+    one click); the harness's `key-down:`/`key-up:` and sound stills.
+  - **T1d done 2026-11-10** (the tools;
+    [log](E17-log.md#m7-t1d--the-tools-2026-11-10)): `--close-result`; `Changes::after` and the
+    cast's stop under test.
 - **T2, the DEF button's own loop** (CLT-Q72 (a), T7b's R3-4, M6 review item 52):
   `def_button_message` 0x45641C for the panel's buttons, the stats dialog's OK and the combat
   options' Default, OK and speeds, in both profiles: keys and the right press dropped while the
@@ -283,3 +286,9 @@ The next milestone's list starts here.
    the combat options, the spell book or an aim takes (*provisional*: the book and the aims
    beyond the answer's dialogs and popups); the pictures box's size unchanged by its rows'
    fix. Not recorded (the stills and sequences the original's).
+3. The reads, captures and tools (T1c, T1d; *provisional* where marked): the harness's sound
+   stills and `samples` (the set's runner, `set` only: a sequence's sounds still unrecorded) and
+   `key-down:`/`key-up:` (in a still only a panel button's hotkey held into a dialog; a release
+   over the battle refused); the effects' bars of a sound still recorded as differing (578
+   pixels) rather than drawn at the run's volume; `--close-result` pressing Eagle Eye's boxes
+   after the result window too.

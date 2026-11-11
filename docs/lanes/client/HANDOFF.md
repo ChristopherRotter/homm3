@@ -6,13 +6,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
   `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
-  in QUEUE): T1 the answered slips, **cut in four at its start** (T1a done: the options dialog
-  and F6 to F8; T1b done: the other slips Q70, Q71, Q77; T1c the reads and captures; T1d the
-  tools); T2 the DEF button's own loop (CLT-Q72); T3 the battle as an entry a host's window runs
-  (the map client's E24 M4 T5 waits on it); T4 the closure, **which closes E17** (ranked play,
-  the pause, the browser and a login: E27 first, then a refinement of their own). **Next:** M7
-  T1c (captures: Wine and the staged DLLs). **Open pull request:** T1b's
-  (`client/e17-m7-t1b`) until it merges.
+  in QUEUE): **T1 done** (the answered slips, cut in four: T1a the options dialog and F6 to F8;
+  T1b the slips Q70, Q71, Q77; T1c the reads and captures; T1d the tools); T2 the DEF button's
+  own loop (CLT-Q72); T3 the battle as an entry a host's window runs (the map client's E24 M4 T5
+  waits on it); T4 the closure, **which closes E17** (ranked play, the pause, the browser and a
+  login: E27 first, then a refinement of their own). **Next:** M7 T2. **Open pull request:**
+  T1c and T1d's (`client/e17-m7-t1c`) until it merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -47,6 +46,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-10, E17 M7 T1c and T1d (done; `client/e17-m7-t1c`).** The rest of T1 in one session
+  (the user). The original data staged at once (57 files); the baseline's `check.sh` passed on
+  `master`. T1c: 0x5994B0 read (CLT-Q73: the original starts a combat tune as the bar rises);
+  the stills `stats-ability` (R2-1), `stats-held` (Q71: Defend keeps its pressed frame, the
+  original's profile as built), `options-sound` and `options-speed-sound` (Q74: one click), with
+  the harness's `key-down:`/`key-up:` and sound stills (`samples`). T1d: `--close-result`;
+  `Changes::after` and the cast's stop under test. M7 review item 3. Record: `E17-log.md`.
 - **2026-11-10, E17 M7 T1b (done; `client/e17-m7-t1b`).** Kept whole (three small fixes, no
   cut needed). The original data staged at once (57 files); the baseline's `check.sh` passed on
   `master`. Each in the client's profile, the original's in the stills: CLT-Q70 (b)
@@ -60,10 +66,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   refused, Q43 (3) the window posts the mouse at the close (`post_mouse`); Q74 one click and
   Q75 F6 to F8 on every turn (`Battle::takes_keys`, `shades::overlay`) in both. M7 review item
   1. Record: `E17-log.md`.
-- **2026-11-10, E17 M6 T7c (done; `client/e17-m6-t7c`, docs only).** Kept whole by the user. The
-  original data staged at once (57 files) for M7. The review list accepted as built (item 62's
-  tests kept; a TRAPS line); the 16 open questions put four at a time (four answers against the
-  recommendation: Q44 (c), Q75 (a), Q76 (a), Q77 (b)); T7b's leftovers placed; M7's draft (to
-  ranked play, the pause and the browser) cut short by the user to T1 to T3 and the closure of
-  E17. The inbox sorted (14 entries to the archive, M7 T3 taking 6); notes to the battle, server
-  and map client lanes. Record: `E17-log.md`.

@@ -147,6 +147,10 @@ pub struct Options {
     /// `--auto-question cancel|retreat|surrender`, *provisional*: Cancel by default): the
     /// question's OK, then the offer's.
     question: (bool, bool),
+    /// Unattended, the result window's OK pressed once it shows (E17 M7 T1d, T7b's R10-2:
+    /// `--close-result`), Eagle Eye's boxes after it too, so the run ends with the battle's
+    /// screen; without it the window stays until the run's seconds end.
+    close_result: bool,
     /// The user's file of keys (E24 M3 T1b).
     keys: Option<PathBuf>,
     /// The user's settings file (E17 M6 T4a; none: `settings.toml` here).
@@ -173,7 +177,7 @@ impl Options {
     /// [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--scale <n>] [--vsync]
     /// [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute] [--check <s> | --measure <s>]
     /// [--leave retreat|surrender] [--auto <turn>] [--auto-question cancel|retreat|surrender]
-    /// [--sight fair|all-seeing]`.
+    /// [--close-result] [--sight fair|all-seeing]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
@@ -182,6 +186,7 @@ impl Options {
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let (mut leave, mut keys, mut auto) = (None, None, None);
         let (mut settings, mut speed_set, mut question) = (None, false, (false, false));
+        let mut close_result = false;
         // The computer's sight (E17 M6 T5b1, *provisional*): the fair actor's by default.
         let mut sight = None;
         // A seat on a server (E17 M5 T6b1): `connect`'s options.
@@ -247,6 +252,7 @@ impl Options {
                         }
                     };
                 }
+                "--close-result" => close_result = true,
                 "--sight" => {
                     sight = Some(match value()?.as_str() {
                         "fair" => Sight::Fair,
@@ -306,6 +312,7 @@ impl Options {
             leave,
             auto,
             question,
+            close_result,
             keys,
             settings,
             speed_set,
@@ -781,6 +788,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         leave: options.leave,
         auto: options.auto,
         question: options.question,
+        close_result: options.close_result,
         ..Presser::default()
     });
     let started = win.ticks_ns();
@@ -862,6 +870,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
                     leave: options.leave,
                     auto: options.auto,
                     question: options.question,
+                    close_result: options.close_result,
                     ..Presser::default()
                 };
             }
@@ -2304,6 +2313,8 @@ struct Presser {
     switched: Option<(usize, Option<usize>)>,
     /// The answers to Auto Combat's question and offer (E17 M6 T5b2a: `--auto-question`).
     question: (bool, bool),
+    /// The result window's OK pressed as a box's (E17 M7 T1d: `--close-result`).
+    close_result: bool,
 }
 
 impl Presser {
@@ -2317,8 +2328,9 @@ impl Presser {
         now: u32,
         wall: u64,
     ) -> Result<bool, String> {
-        // The result window stays until the run's end (E17 M5 T4b1: its frames read back too).
-        if battle.result_open() {
+        // The result window stays until the run's end (E17 M5 T4b1: its frames read back too),
+        // unless `--close-result` presses its OK as a box's (E17 M7 T1d), which ends the run.
+        if battle.result_open() && !self.close_result {
             return Ok(false);
         }
         if battle.message_open() {
@@ -2561,9 +2573,9 @@ fn button_centre(panel: &h3_ui::ui::Dialog, id: u16) -> Option<[i32; 2]> {
 /// (CLT-Q71, answered (b) at E17 M6's closure, the original's for the comparisons only): the
 /// client's profile lets go of the panel button `held` that key holds, without its click, as
 /// CLT-Q39's `let_go` does for the stats dialog's OK; the executable's leaves it held, drawn
-/// pressed until another hotkey or press replaces it (*as built*: its hotkey's key down returns
-/// at once, 0x4565E7, so the release never reaches the panel; whether the DEF button keeps its
-/// pressed frame then is M7 T1c's capture's). Whether it let one go.
+/// pressed until another hotkey or press replaces it (its hotkey's key down returns at once,
+/// 0x4565E7, so the release never reaches the panel; recorded at E17 M7 T1c, `stats-held`: the
+/// DEF button keeps its pressed frame after the stats dialog's close). Whether it let one go.
 fn release_taken(held: &mut Option<Held>, key: Key, bugs: Bugs) -> bool {
     bugs == Bugs::Fixed && held.take_if(|h| h.key == Some(key)).is_some()
 }
@@ -2714,7 +2726,7 @@ mod tests {
     fn a_release_a_dialog_takes_lets_go_of_its_key_s_button_in_the_client_s_profile() {
         // CLT-Q71 (b): D held (Defend drawn pressed), a press on a stack opens its stats dialog,
         // which takes D's release: the client's profile lets Defend go without its click, the
-        // original's leaves it held (as built until M7 T1c's capture).
+        // original's leaves it held (recorded at M7 T1c, `stats-held`).
         let by_d = Held {
             id: h3_view::panel::DEFEND,
             key: Some(Key::D),
@@ -2943,6 +2955,13 @@ mod tests {
         assert_eq!(answered("retreat"), Ok((true, false)));
         assert_eq!(answered("surrender"), Ok((true, true)));
         assert!(answered("x").is_err());
+        // E17 M7 T1d: the result window left open without `--close-result`.
+        assert!(!m.close_result);
+        assert!(
+            Options::parse(&args(&["a", "--close-result"]))
+                .unwrap()
+                .close_result
+        );
         // A seat on a server plays against the server's computer.
         let seat = [
             "--server",
@@ -3101,6 +3120,78 @@ mod tests {
             after(None, 900, (false, 900), || unreachable!()),
             After::Further
         );
+    }
+
+    #[test]
+    fn the_window_holds_at_the_computer_s_cast_and_its_stop_acts_at_the_cast_s_end() {
+        // E17 M7 T1d (T7b's R10-2, CLT-Q61, `auto-cast-stop`): the loop's pieces over a battle.
+        // A on the Champions' turn, Combat Auto Spells set: `Changes::after` walks the changes,
+        // the battle played on, until the computer's Bless for the Marksmen holds it at the
+        // cast's end, given held from any time before it with nothing played on; a press during
+        // the cast stops Auto Combat there, and the loop's stop start (`cast_stop`) is that end,
+        // no turn's start to drop the key.
+        let Some(source) = crate::battle::tests::staged("seq-auto-cast.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        battle.grow(0).unwrap();
+        assert!(battle.switch_auto(battle.timeline().end).unwrap());
+        let mut changes = Changes::new(&battle);
+        let (mut t, mut walked) = (0, 0);
+        let end = loop {
+            match changes.after(&mut battle, t).unwrap() {
+                Some((next, true)) => break next,
+                Some((next, false)) if walked < 100_000 => (t, walked) = (next, walked + 1),
+                other => panic!("no held cast's end after {t} ({walked} changes): {other:?}"),
+            }
+        };
+        assert_eq!(battle.cast_end(), Some(end));
+        let commands = battle.commands();
+        assert_eq!(
+            changes.after(&mut battle, end - 1).unwrap(),
+            Some((end, true))
+        );
+        assert_eq!(battle.commands(), commands);
+        let k = battle.stop_auto(end - 1).unwrap();
+        battle.grow(end).unwrap();
+        let cast_stop = battle.auto_stopped_at(k);
+        assert_eq!(
+            stop_start(&battle.timeline().turns, k, cast_stop),
+            Some((end, false))
+        );
+    }
+
+    #[test]
+    fn an_unattended_run_closes_the_result_window_only_when_told() {
+        // E17 M7 T1d (T7b's R10-2): the presser leaves the result window open, or with
+        // `--close-result` presses its OK as a box's once it has shown for PRESS_AFTER_MS of
+        // the window's clock, which closes the battle's screen.
+        let Some(source) = crate::battle::tests::staged("seq-auto-retreat.toml", [true, false])
+        else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let ok = crate::spellbook::tests::one_button(h3_view::message::OK);
+        for close in [false, true] {
+            let mut battle = Battle::new(&ground).unwrap();
+            crate::battle::tests::open_result(&mut battle, ok.clone());
+            let mut presser = Presser {
+                close_result: close,
+                ..Presser::default()
+            };
+            let mut inputs = Vec::new();
+            let wall = u64::from(PRESS_AFTER_MS);
+            assert!(!presser.press(&mut battle, &mut inputs, 0, 0).unwrap());
+            assert!(
+                !presser
+                    .press(&mut battle, &mut inputs, 0, wall - 1)
+                    .unwrap()
+            );
+            let pressed = presser.press(&mut battle, &mut inputs, 0, wall).unwrap();
+            assert_eq!((pressed, battle.result_closed()), (close, close));
+            assert_eq!(battle.result_open(), !close);
+        }
     }
 
     #[test]

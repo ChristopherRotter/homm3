@@ -1108,7 +1108,9 @@ pub(crate) fn draw_frames(
         if opening {
             list.extend(panels.before(snapshot, layout));
         } else {
-            list.extend(panels.at_showing(snapshot, &timeline.turns, at, layout, text));
+            // A situation's panel button its hotkey holds (E17 M7 T1c), drawn pressed.
+            let pressed = interface.book.and_then(|b| b.pressed);
+            list.extend(panels.at_pressed(snapshot, &timeline.turns, at, layout, text, pressed));
         }
         // The army info windows a situation's battle mouse left shown (E17 M6 T4b2b1, design
         // §12.15): the battle's redraw ends with them, under every dialog.

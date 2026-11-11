@@ -6510,3 +6510,61 @@ PC (57 files, as T1a's) while it was online; nothing else needed from it (Q71's 
 - **Gates:** `check.sh` passed (coverage 100%, the staged-data tests run); `drawn` 263 of 263 the
   same (no capture: the stills and sequences draw the original's profile, unchanged); `h3-view
   gate` passed; the scoped verify with the original data no failing step.
+
+### M7 T1c — the reads and captures the answers name (2026-11-10)
+
+On `client/e17-m7-t1c`, the user present at the start ("finish the remainder of T1 in one
+session"). The original files staged first from the PC (57 files, as T1b's) while it was online;
+nothing else needed from it.
+
+- **Starting point:** `master` at 4bd174e (#836, T1b, merged as the session began); the setup's
+  baseline (`check.sh` on that client code, not verified before) passed whole.
+- **CLT-Q73 (read):** `music_volume_tail` 0x5994B0 read whole (`docs/exe/map.toml`, *read*):
+  above 0 with no stream open (the music's setting 0 at the battle's start) it starts
+  `combat%02d` from its start, one of the four drawn by `random_between` 0x50B230 (on the
+  adventure map the terrain's tune); with a stream it sets its volume or restarts the tune by
+  name. So the original is not silent after the bar rises: the client's (its tune heard from its
+  position) is a copy in effect, kept as answered. Design §12.12 oddity 11.
+- **T7b's R2-1 (`stats-ability`):** the Marksmen's dialog, the mouse from the attack line over
+  the ability text: exact (the cursor's frame 0, the line empty).
+- **CLT-Q71 (`stats-held`):** the harness's `key-down:<name>` and `key-up:<name>` (`act`: the
+  display's key repeat off, `xdotool keydown`/`keyup`) and the viewer's still model
+  (`spellbook::still`: a hotkey's panel button held over the battle, drawn pressed, a release a
+  dialog takes leaving it, `Still::pressed`, `Panels::at_pressed` in `draw_frames`; anything else
+  an error). D held, a press on the Marksmen, D let go into their dialog, its OK: exact, the
+  original keeps Defend's pressed frame (against `stats-ok`, re-captured as recorded, only
+  Defend's 1 634 pixels differ, in the original's dumps and in ours alike): the original's
+  profile as built.
+- **CLT-Q74 (`options-sound`, `options-speed-sound`):** `set` takes `sound = true` (opened as a
+  sound sequence: the map's sounds settled, the opening at the start sound's end) and `samples`
+  (the samples started from the opening, `[ms, length, loops]`, compared as the counts; a sample
+  call the hooks could not follow fails the run). The key O starts one `button.wav` (151 ms, the
+  hotkey's press); speed 2's click one more: one click, as T1a built. Their frames differ by the
+  effects' bars alone (578 pixels: the run's volume 5, the stills' 0). A sequence could not hold
+  it: the viewer's sequences take no options dialog (`pointer::answering`).
+- **The harness's change** adds actions and keys no earlier entry uses, so no earlier capture's
+  driving changes: no whole run (runbook, "Which captures a change needs", point 4) and no
+  harness check (`h3adv.py batch`).
+- **Gates:** below, with T1d's.
+
+### M7 T1d — the tools (2026-11-10)
+
+The same session and branch as T1c (`client/e17-m7-t1c`, one pull request for the rest of T1).
+
+- **`--close-result`** (T7b's R10-2): the window's option, the presser's `close_result`: an
+  unattended run presses the result window's OK as a box's (`Presser::answer`, 400 ms of the
+  window's clock after it showed; Eagle Eye's boxes after it the same), so the run ends with the
+  battle's screen; without it the window stays until the run's seconds end, as before. In the
+  usage, `clients/README.md` and the parse test.
+- **The loop's pieces under test** (R10-2), over the staged installation as T7b's (the battle
+  tests' `staged` and a test hook `open_result` now `pub(crate)`):
+  `the_window_holds_at_the_computer_s_cast_and_its_stop_acts_at_the_cast_s_end` (`Changes::after`
+  walks `seq-auto-cast`'s changes, the battle played on, to the held end of the computer's
+  Bless; asked again before it, held there with nothing played; a press during the cast stops
+  Auto Combat there and the loop's stop start, `stop_start` with `cast_stop`, is that end) and
+  `an_unattended_run_closes_the_result_window_only_when_told` (both ways).
+- **Gates** (T1c and T1d): `drawn` 263 of 263 the same and T1c's 4 new recorded (`drawn
+  --record --only` each); the four stills captured twice (the second as recorded); `stats-ok`
+  captured again as recorded; `clients/scripts/check.sh` all gates passed (coverage 100 %, the
+  staged-data tests run, the two new ones among them); `h3-view gate` passed; the scoped
+  verify with the original data no failing step.

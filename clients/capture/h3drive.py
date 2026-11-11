@@ -936,7 +936,12 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
     else:
         to_scenario(game, gold=True)
     target = None if boarding is None else board(game, boarding)
+    if game.sound:  # E17 M7 T1c: a still with sound, opened as a sequence's (runbook, "Sound")
+        sounds_settled(game)
+        heard = len(sounds(game))
     t0 = into_battle(game, key, walls, click=target)
+    if game.sound:
+        t0 = after_start_sound(game, t0, heard)
     if mouse is not None:
         game.move(*mouse)
         time.sleep(0.3)
@@ -960,6 +965,14 @@ def capture(game, map_path, out, frames, key="Right", stacks=None, hot_seat=Fals
         paths.append(path)
         if mem is not None:
             stacks.append(mem.stacks())
+    # The samples started from the opening to the last frame (E17 M7 T1c): `[ms after the
+    # opening, length ms, loops]` each, numbers only.
+    if game.sound:
+        game.samples = [[t - t0, length, loops] for t, _, length, loops in sounds(game)[heard:]
+                        if t >= t0]
+        if game.ack(need=True)[9]:
+            raise RuntimeError("xdd.dll could not follow a sample call (a file not read as a WAV, "
+                               f"a handle past its table; the frames: {out})")
     # The right button an action held (E17 M6 T2a2b1) let go.
     if getattr(game, "right_held", False):
         run("xdotool", "mouseup", "3")
@@ -1003,7 +1016,7 @@ def run_set(rest):
         walled = walls_args(sit)  # checked before the game starts (E17 M4 T3a)
         level = army_info_level(sit)
         shades = shade_values(sit)
-        game, stacks = Game(here, army_info=level, shades=shades), []
+        game, stacks = Game(here, sit.get("sound", False), army_info=level, shades=shades), []
         try:
             # The step into the battle (E17 M4 T1b): a siege's attacker stands south of the
             # town's entrance (`key = "Up"`), any other west of the defender.
@@ -1040,6 +1053,13 @@ def run_set(rest):
             failed += verdict != "ok"
             changed |= verdict == "CHANGED"
             print(f"{sid} t={at}: {n} differing (recorded {expected}) {verdict}", flush=True)
+        if sit.get("sound"):
+            # E17 M7 T1c: the samples a sound still's actions started, against the entry's.
+            heard, expected = game.samples, sit.get("samples")
+            verdict = "ok" if heard == expected else "CHANGED" if expected is not None else "new"
+            failed += verdict != "ok"
+            changed |= verdict == "CHANGED"
+            print(f"{sid} samples: {heard} (recorded {expected}) {verdict}", flush=True)
         kept_or_not(set_path, "set", sid, here / "frames.toml", changed)
     (out / "frames.sha1").write_text("\n".join(digests) + "\n")
     print(f"set: {len(situations)} situations, {failed} not as recorded; digests {out / 'frames.sha1'}")
@@ -1079,7 +1099,8 @@ def act(game, action):
     """One action at the frozen clock: hex:<n>, click:x,y, move:x,y, key:<name>, step:<ms>,
     right:x,y (E17 M6 T2a2b1: the right button held down there through the frames),
     right-click:x,y (E17 M6 T4b2b1: the right button pressed there and released), look:x,y and
-    cast-button:x,y:<n> (clicks: a stack's stats dialog, its cast button),
+    cast-button:x,y:<n> (clicks: a stack's stats dialog, its cast button), key-down:<name> and
+    key-up:<name> (E17 M7 T1c: a key held across the actions between them),
     cast:<k>[:<hex>] (M3 T7a-2a: the hero's spell book by its key C, its place k, then the target
     hex if the spell takes one), aim:<k>:<n> (E17 M5 T3b: the book's place k, the aim of its
     spell, numbered n in the original, left under way), roll:<name>[:fail|:<n>][:<count>] (M3 T7b-2b-1: the roll's
@@ -1165,6 +1186,13 @@ def act(game, action):
         time.sleep(0.5)
     elif kind == "key":
         game.key(arg, 0.3)
+    elif kind in ("key-down", "key-up"):
+        # E17 M7 T1c (CLT-Q71): a key held down across the actions after it, then let go (the
+        # display's key repeat off first, so the game sees one key down).
+        if kind == "key-down":
+            run("xset", "r", "off")
+        run("xdotool", "keydown" if kind == "key-down" else "keyup", arg)
+        time.sleep(0.3)
     elif kind == "step":
         game.clock(f"step {int(arg)}")
     else:

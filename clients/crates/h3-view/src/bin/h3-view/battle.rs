@@ -3943,7 +3943,7 @@ fn acting_colour(
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     /// A timeline whose turns start at `turns` (each the stack 0's) with the actions `actions`
@@ -3966,7 +3966,7 @@ mod tests {
     /// actor), the sides `humans` human, over the staged installation copy (`$H3_INSTALL`, else
     /// the repository's `original-data/install`): none without its archives (E17 M6 T7b, R9-1:
     /// a `Battle`'s text tables are the game's; the test then checks nothing, as on CI).
-    fn staged(situation: &str, humans: [bool; 2]) -> Option<Source> {
+    pub(crate) fn staged(situation: &str, humans: [bool; 2]) -> Option<Source> {
         let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let install = std::env::var_os("H3_INSTALL")
             .map_or_else(|| repo.join("original-data/install"), PathBuf::from);
@@ -3984,6 +3984,11 @@ mod tests {
             computer: Computer::Original(h3_battle_ai::Sight::Fair),
             server: None,
         })
+    }
+
+    /// The result window `window` opened over `battle` (E17 M7 T1d: the window's presser).
+    pub(crate) fn open_result(battle: &mut Battle<'_>, window: MessageBox) {
+        battle.message = Some((h3_view::message::Open::new(window), 0, Asked::Result));
     }
 
     #[test]

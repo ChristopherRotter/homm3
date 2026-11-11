@@ -1405,6 +1405,20 @@ at = 100
 differing = 0
 why = "exact: off the dialog the cursor's frame 0, an empty line, the battle behind still (E17 M6 T2a2a)"
 
+# E17 M7 T1c: T7b's R2-1, the Marksmen's ability text (dialog item at (20, 232), 192 x 41), which
+# the executable numbers -1 as for no item (0x5F4E57): from the attack line's hint the mouse moved
+# over it, the cursor's frame 0 and the line emptied as off the dialog.
+[[situation]]
+id = "stats-ability"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "move:200,330", "move:110,527"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: over the ability text the cursor's frame 0 and an empty line, as off the dialog (T7b's R2-1; E17 M7 T1c)"
+
 [[situation]]
 id = "stats-ok"
 scenario = "book.toml"
@@ -1415,6 +1429,20 @@ actions = ["click:102,448", "click:248,528"]
 at = 100
 differing = 0
 why = "exact: the OK clicked, the dialog closed, the battle's mouse at the park point (E17 M6 T2a2a)"
+
+# E17 M7 T1c: CLT-Q71's capture: D held (Defend pressed by its hotkey), a press on the Marksmen
+# opening their dialog, D let go into it, the dialog closed by its OK: whether the original's
+# Defend is still drawn pressed (the window's original's profile, `window::release_taken`).
+[[situation]]
+id = "stats-held"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["key-down:d", "click:102,448", "key-up:d", "click:248,528"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: the dialog closed, Defend still drawn pressed (its pressed frame kept after the dialog took D's release: CLT-Q71, the original's profile as built; against stats-ok only Defend's 1 634 pixels differ) (E17 M7 T1c)"
 
 [[situation]]
 id = "stats-escape"
@@ -2217,6 +2245,36 @@ why = "exact: the battle redrawn whole, the dialog's arrow left at the mouse (od
 at = 100
 differing = 0
 why = "exact: as at 0, the mouse not moved: the arrow stays (oddity 10) (E17 M6 T4a)"
+
+# E17 M7 T1c: CLT-Q74's sound still (runbook, "Sound"): with sound the effects' volume is 5 (its
+# bar so drawn), the opening at the start sound's end; `samples` are what xdd.dll saw start from
+# the opening, `[ms, length ms, loops]`. `options-sound`: the key O alone; `options-speed-sound`:
+# then speed 2 clicked.
+[[situation]]
+id = "options-sound"
+scenario = "hero-info.toml"
+seat = "attacker"
+sound = true
+actions = ["key:o"]
+samples = [[0, 151, 1]]
+
+[[situation.frame]]
+at = 0
+differing = 578
+why = "the effects' bars only (188 to 300, 453 to 488): the run's volume 5, the viewer's the stills' 0; the key O's press sample (`button.wav`, 151 ms) its one sample (E17 M7 T1c)"
+
+[[situation]]
+id = "options-speed-sound"
+scenario = "hero-info.toml"
+seat = "attacker"
+sound = true
+actions = ["key:o", "click:346,325"]
+samples = [[0, 151, 1], [0, 151, 1]]
+
+[[situation.frame]]
+at = 0
+differing = 578
+why = "as options-sound's; speed 2's press one more `button.wav`: the speed clicks once (CLT-Q74 (a)) (E17 M7 T1c)"
 
 # E17 M6 T4c: the grid and the shadows (design §12.16; `draw_hex_overlays` 0x493930's grid,
 # `battle_shade_hexes` 0x493EA0, `shade_mouse_hex` 0x494390): each entry's `grid`,
