@@ -205,7 +205,7 @@ const PARTS: &[Part] = &[
     },
     Part {
         name: "movement",
-        stubs: &["SRV-STUB-2"],
+        stubs: &[],
         agree: |a, b| own(a, b, |o| (o.movement, o.max_movement)),
     },
     Part {

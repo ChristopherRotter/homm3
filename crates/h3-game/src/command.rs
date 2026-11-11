@@ -762,6 +762,10 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 /// unowned side's battle commands ([`Actor::System`], E08 T20b2). While a level-up is open the
 /// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002).
 /// After the command the rests whose owners have no open decision run (GAM-DEC-007, E08 T63b).
+/// The battles an accepted command ends stay readable until the next accepted command
+/// ([`GameState::ended_battles`]; SRV-Q27 (1)). Last, a sink that keeps events
+/// ([`Sink::RECORDS`]) is told each hero's movement points and day's maximum that the command
+/// changed (`AdventureEventKind::MovementChanged`, to its owner; SRV-Q26 (b)).
 // rule: GAM-DEC-002, GAM-DEC-007
 ///
 /// # Errors
@@ -775,8 +779,18 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     state.check_held(actor)?;
-    run(state, rules, actor, command, sink)?;
+    // What the command changes of the heroes' movement is told after it (SRV-Q26 (b)).
+    let movements = S::RECORDS.then(|| state.adventure().movements());
+    // The battles the last command ended are readable until this one is accepted (SRV-Q27 (1)).
+    let ended = state.forget_ended();
+    if let Err(error) = run(state, rules, actor, command, sink) {
+        state.keep_ended(ended);
+        return Err(error);
+    }
     state.run_rests(rules, sink);
+    if let Some(movements) = movements {
+        movements.tell(state.adventure(), &mut AdventureSink(sink));
+    }
     Ok(())
 }
 

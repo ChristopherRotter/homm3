@@ -140,6 +140,23 @@ pub(crate) fn town_views(
         .collect()
 }
 
+/// `viewer`'s views of `towns`, in their order, each a town a tile of which it has explored
+/// (TWN-VEW-001 to -004; the others are left out): [`town_views`]'s for those towns alone, for
+/// what a viewer newly sees (SRV-Q26 (a), `crate::reveal`; the adventure lane, `cross-lane`).
+pub(crate) fn views_of(
+    state: &GameState,
+    rules: &GameRuleset,
+    viewer: PlayerId,
+    towns: &[TownId],
+) -> Vec<TownView> {
+    let adventure = state.adventure();
+    let mut seer = Seer::new(state, rules, viewer);
+    towns
+        .iter()
+        .filter_map(|&town| seer.view(town, |pos| adventure.is_explored(viewer, pos)))
+        .collect()
+}
+
 /// A viewer's views of the towns of a game, what they read of the viewer computed once and only
 /// when a view needs it: its towns' Taverns and its heroes' Visions (TWN-VEW-002, -003).
 struct Seer<'a> {

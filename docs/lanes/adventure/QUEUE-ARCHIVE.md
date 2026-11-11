@@ -1226,3 +1226,16 @@ T105b2 took adventure replay format v12.
   opening (else the run raises), loops counted (`sounds_settled` too); a paused sample answers
   Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
   (runbook, "Sound", "The clips", "Traps"). *Moved by E08 T107: for information; the harness's runbook (`clients/capture/README.md`) holds it for batch E12.*
+
+## Inbox notes acted upon (moved 2026-11-11, `adventure/srv-q26-reveal`: `GameState::ended_battles`, the server lane's inbox told)
+
+- 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
+  **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
+  session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the
+  battle opens, but cannot send the last one when it ends, as the battle session does (v38,
+  CLT-STUB-3: the own hero's Eagle Eye picks, which no event shows): the ending command closes the
+  battle in `h3_game`, so `GameState::battle` has none. Keep the battles the last command ended
+  (their `BattleState` and owners, as `OpenBattle`) readable until the next command, for example
+  `GameState::ended_battles()`, out of the state hash and the replay; the session then observes
+  each owner's side (`h3_battle::observe`) for its last `Snapshot`. Tell the server lane's inbox
+  when it lands.

@@ -49,6 +49,16 @@ refined. **Depends on:** T24 (T25 on T24's core changes). **Status:** waiting.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
+  **in your paths, for information**): SRV-Q26 (a)'s query `h3_game::reveal` names the towns a
+  viewer newly explored with their views through `town::view::views_of(state, rules, viewer,
+  towns)`, a new `pub(crate)` function beside `town_views` (the `Seer`'s view of each, in order;
+  the viewer's explored tiles read from the state). Your `Told`'s "a town the viewer comes to see
+  by exploring" is that query's now. Tested in `town/tests/view.rs`
+  (`a_town_explored_since_a_grid_is_revealed_with_its_view`); `town/tests/capture.rs`' `step`
+  drops the `MovementChanged` events a command now tells last (SRV-Q26 (b)). Keep `views_of` in
+  step with `town_views` when the views change.
+
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
   (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,

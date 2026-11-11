@@ -158,6 +158,33 @@ impl GameState {
             .map(|battle| &**battle)
     }
 
+    /// The battles the last accepted command ended, in the order they ended, each as it ended:
+    /// its state, owners, heroes and tile (SRV-Q27 (1); the server lane's `SRV-STUB-14`). Readable
+    /// until the next accepted command ([`crate::apply`]; a rejected one keeps them), so a server
+    /// sends each owner the battle as its side saw it last (`h3_battle::observe` of its side; the
+    /// own hero's Eagle Eye picks, which no event shows), as a battle session's last snapshot.
+    /// Server-only as [`Self::battle`]'s state is: never in an observation, the state hash or a
+    /// replay.
+    pub fn ended_battles(&self) -> impl Iterator<Item = &OpenBattle> {
+        self.ended
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|b| &**b)
+    }
+
+    /// Forgets the battles the last command ended, at an accepted command's start
+    /// ([`crate::apply`]): what it returns goes back with [`Self::keep_ended`] if the command is
+    /// rejected, which leaves the state untouched.
+    pub(crate) const fn forget_ended(&mut self) -> Option<Arc<[Arc<OpenBattle>]>> {
+        self.ended.take()
+    }
+
+    /// Puts back what [`Self::forget_ended`] took: the command was rejected.
+    pub(crate) fn keep_ended(&mut self, ended: Option<Arc<[Arc<OpenBattle>]>>) {
+        self.ended = ended;
+    }
+
     /// A hero's battle hero (`BattleSetup.heroes`): the hero model's translation of its details
     /// (ADR-0013 point 2) with its maximum spell points (HER-MAN-001).
     fn battle_hero(&self, core: &Ruleset, hero: HeroId) -> Option<BattleHero> {
@@ -461,10 +488,14 @@ impl GameState {
                 // A siege's town (E09 T8b1): a battle at a town, fought at its entrance.
                 let town = h3_battle::computer::siege(&battle.state)
                     .and_then(|_| self.adventure.map().town_at(battle.tile));
-                battle.state.outcome().map(|outcome| (sides, town, outcome))
+                let outcome = battle.state.outcome()?;
+                Some((sides, town, outcome, Arc::clone(battle)))
             });
-        if let Some((sides, town, outcome)) = ended {
+        if let Some((sides, town, outcome, battle)) = ended {
             self.close(at);
+            // Kept as it ended until the next accepted command (SRV-Q27 (1)).
+            let before = self.ended.as_deref().unwrap_or_default().iter().cloned();
+            self.ended = Some(before.chain([battle]).collect());
             self.end_battle(rules, sides, town, &outcome, sink);
         }
     }

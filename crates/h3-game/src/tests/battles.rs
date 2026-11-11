@@ -109,7 +109,7 @@ fn attacked(rules: &GameRuleset, seed: u64) -> (GameState, Vec<GameEvent>, GameS
     let before = game.clone();
     let mut events = Vec::new();
     apply(&mut game, rules, Actor::Player(RED), attack(), &mut events).unwrap();
-    (game, events, before)
+    (game, moved(events), before)
 }
 
 /// The battle's legal commands for `side`.
@@ -412,6 +412,59 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
     }
 }
 
+// covers: GAM-BAT-001
+#[test]
+fn a_battle_a_command_ended_stays_readable_until_the_next_accepted_command() {
+    // SRV-Q27 (1), the server lane's SRV-STUB-14: the session sends each owner its battle as it
+    // ended, which the command that ended it closed.
+    let rules = rules();
+    let (mut game, _, _) = attacked(&rules, 5);
+    assert_eq!(game.ended_battles().count(), 0);
+    let (_, outcome) = play_out(&mut game, &rules);
+    assert_eq!(game.battle(RED), None);
+    let ended: Vec<&OpenBattle> = game.ended_battles().collect();
+    assert_eq!(ended.len(), 1);
+    let battle = ended[0];
+    assert_eq!(battle.state().outcome(), Some(outcome));
+    assert_eq!(battle.owners(), [Some(RED), Some(BLUE)]);
+    assert_eq!(battle.heroes(), [Some(RED_HERO), Some(BLUE_HERO)]);
+    // Each owner's side as it ended, as a battle session's last snapshot.
+    for (player, side) in [(RED, BattleSide::Attacker), (BLUE, BattleSide::Defender)] {
+        assert_eq!(battle.side_of(player), Some(side));
+        let last: Observation = h3_battle::observe(battle.state(), rules.battle(), side);
+        assert_eq!(last.viewer, side);
+    }
+    // Out of the state hash: the state without it hashes the same.
+    let mut forgotten = game.clone();
+    forgotten.forget_ended();
+    assert_ne!(forgotten, game);
+    assert_eq!(forgotten.state_hash(), game.state_hash());
+    // A rejected command keeps it, the state untouched; the next accepted one forgets it.
+    let before = game.clone();
+    let mut end = |player| {
+        let command = GameCommand::EndTurn;
+        apply(
+            &mut game,
+            &rules,
+            Actor::Player(player),
+            command,
+            &mut Vec::new(),
+        )
+    };
+    assert_eq!(end(BLUE), Err(GameCommandError::NotYourTurn(BLUE)));
+    assert_eq!(game, before);
+    assert_eq!(game.ended_battles().count(), 1);
+    apply(
+        &mut game,
+        &rules,
+        Actor::Player(RED),
+        GameCommand::EndTurn,
+        &mut Vec::new(),
+    )
+    .unwrap();
+    assert_eq!(game.ended_battles().count(), 0);
+}
+
 /// A sink that keeps its events but says it does not record (`Sink::RECORDS`).
 struct Quiet(Vec<GameEvent>);
 
@@ -706,6 +759,7 @@ fn a_battle_its_part_refuses_does_not_open() {
     let mut game = GameState::new(&rules, &setup, 5).unwrap();
     let mut events = Vec::new();
     apply(&mut game, &rules, Actor::Player(RED), attack(), &mut events).unwrap();
+    let events = moved(events);
     assert_eq!(game.battle(RED), None);
     assert_eq!(events.len(), 1);
     assert_eq!(

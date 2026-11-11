@@ -73,9 +73,10 @@ pub(super) fn play(
     result.map(|()| events)
 }
 
-/// The events after a move's steps.
+/// The events after a move's steps, but its movement points' change, told last
+/// ([`moved`]; `tests::moves` checks them).
 pub(super) fn after_steps(events: Vec<GameEvent>) -> Vec<GameEvent> {
-    events
+    moved(events)
         .into_iter()
         .filter(|e| {
             !matches!(
