@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "E09 T19c2 (the town epic's design note §32): the legal commands but the moves (h3_game::legal_commands: EndTurn, the Shipyards' boats, the revisits and, in the player's turn without a decision, each owned town's builds, the hall's offer h3_towns::buildable within the treasury, TWN-BLD-001; or a decision's answers) before each step of a player's seat in the map's phase, over 16 random games of 7 days on the town map (e09-towns-36.h3m, 36 x 36, eight towns, four owned at load and those captured in the week; the env's random agent builds since encoding v9): 1 389 steps, 1 172 listings holding 3 467 builds, about 6 900 Ir a listing, 52 % the hall's offer (h3_towns::buildable 27 %, offered_as 18 %), 7 % the treasury's test (payable), 6 % holds_capitol, 7 % the Shipyards' and the revisits' listings; counts only inside h3_cli::adventure::bench::legal_queries (new in T19c2: no master count)"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e09-towns-36.h3m",
+    "--workload",
+    "legal",
+    "--games",
+    "16",
+    "--days",
+    "7",
+    "--seed",
+    "1",
+]
+collect = "*legal_queries*"
+instructions = 8129621
+threshold_percent = 2
