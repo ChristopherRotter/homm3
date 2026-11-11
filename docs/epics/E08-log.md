@@ -15378,3 +15378,90 @@ and clippy with `-D warnings` on `h3-map` and `h3-experiment` clean. The writer'
 variant, constants and a longer `PLAIN_OBJECTS`; `OwnedBody` is matched only in `h3-map` and
 `h3-experiment` (the clients build `MapObject`s, none matches `OwnedBody`). CI's full verify on the
 pull request is the record.
+
+### Increment 12, round 2: T109b, batch E12's specs and templates (2026-11-11, `adventure/e08-t109b`, `cross-lane`)
+
+Baseline: `master` 5b2e761 (#857, T109a, and the town lane's #858 merged; CI green on ecb0d90, the
+same code, standing in for the sandbox's baseline, stopped in its coverage step to free the CPUs);
+`master` then took the client lane's #859, merged in. Staged: the executable, `H3bitmap.lod`,
+`H3ab_bmp.lod`, `maps.tar`, `extracted.tar`. **The cut** (decision 312): whole. **E12-17's School
+of War** (decision 313) and **E12-5's read** (decision 314) asked at the start.
+
+**The writer** (`h3_map::writer`): `PLAIN_OBJECTS` takes increment 7's School of War (107, no body);
+`h3-map`'s `rewards.rs` writes it among increment 7's plain objects and imports it as
+`base:school_of_war`. `h3-experiment`'s docs and the experiments README name its picture `AVSwar20`
+(`cross-lane`, the user's consent).
+
+**The spec `E08-batch-12a`** (36 × 36 grass, Red's and Blue's turns of day 1, hot seat; stamp
+d2c37714): E12-5 reads Red's explored tiles at the start around Red's empty garrison G5 (entrance
+(30, 31)), three inside the disk dx² + dy² ≤ 12 and three outside, and every garrison's record;
+E12-1 Red's vertical garrison V1 (entrance (8, 3)) in a rock column, the path to (10, 3) beyond it
+(through, no dialog; VCMI stops), then V1 as the move's end and a take into the hero's empty slot
+(the control of E12-3); E12-2 an empty neutral G2 (19, 6) the only way into a rock box: no path to
+(19, 8) beyond it (VCMI's through), then the visit flags it and opens the exchange; E12-3 Red's G3
+(29, 6) not removable: a move into an empty slot made, two takes and a merge refused, tried in the
+order a, c, d, b; E12-6 a neutral G6 (23, 22) of twenty Pikemen won: no question, one stack at the
+opening, then Red's, empty, the exchange; E12-4 Red's anti-magic G4 (9, 22) with E12-4 attacking
+Blue's E12-4b beside it on Red's turn (the flag clear, Bless cast by both) and attacked in it by
+E12-4a on Blue's (the flag set, no cast; G4's Pikemen not in the battle). Red five heroes, Blue
+three (the third far, so Blue is not defeated).
+
+**The spec `E08-batch-12b`** (72 × 72 grass with a lake (36, 30) to (70, 50), days 1 to 8, then the
+first days of weeks 3 and 4, Red playing; a town each, a day-1 event taking Red's gold; stamp
+216b91af): E12-12 two Fountains of Fortune's words each day and on days 15 and 22 (weeks 1 to 4,
+the row's); E12-17 a School of War with no gold (refused, the kind mark set first: the hint's bonus
+line over the second School, "not visited"), the hints before as the control and after stepping
+off; E12-14 two Wells (full: refused, no mark; refilled after a cast; the other Well "visited";
+day 2 refilled); E12-9 a Spring's entrances L and R (each 40 after a cast, L again refused, both
+emptied; day 8 both full and refilled), its words read off the tile the hero stands on; E12-10
+the Stables (E12-10 without Cavaliers +400; it takes E12-10b's two Cavalier stacks; E12-10b's own
+first visit +400; day 2's 1 960 each; one stack given back; both revisits Champions with no points;
+day 8 bit 1 clear); E12-11 one hero at the Idol on days 1, 2 and 7 and the Temple on days 6 and 7,
+a Peasant fought between (luck; morale; Temple +1; +1 and +1, then +2); E12-13 the Oasis, the
+Watering Hole and the Swan Pond (2 659 / 2 800, 2 577 / 3 200, 0 / 3 200), then on day 2 a Faerie
+Ring, a Rally Flag and a Fountain of Youth with the hints over their twins before and after (the
+visitor "visited", E12-17 "not visited", the bonus line once visited); E12-7 with the Admiral's
+Hat: the Oasis, the boarding (1 837 × 3 000 / 2 360 = 2 335; VCMI's ÷ 1 560: 3 532), the Sirens (90,
+10, 1 keep 62, 7, 1; 310 experience; VCMI 63, 7, 1 and 300), a Peasant at sea, the Sirens again
+(43, 4, 1; 220), a Buoy and the Mermaids with the hints over their twins. Red eight heroes (the
+original's most); the towns are no main towns (no generated hero).
+
+**The walks and the fog** (a throwaway test in `h3-map`'s tests on both written maps, not
+committed): every object's blocked and visitable tiles as the README says (the School of War's
+eight blocked tiles, its `at` passable); the land points at the start (2 000, and 1 560 for
+Pikemen, Archers and Cavaliers); the plain legs priced (E12-17's (53, 24), (52, 23): 241;
+E12-14's to (9, 6): 300; E12-10b's (39, 7), (38, 6): 241; E12-7's to (43, 29): 341); the Peasants'
+zones by `guard_of` (each battle tile guarded, the routes not, the twins' entrances not). The steps
+onto the seventeen classes (blockers until T113b) priced by hand, none from above (design §1);
+every click and hint target explored at its moment. Both maps imported and played two days by
+`h3 adventure run`.
+
+**The review** (a fresh agent against survey §2 to §7, §10, §12, design §14, §18, the README,
+E24's §4.11 and the rewards survey §6.3; ten findings, all taken): (1) E12-17 stood on S1 while its
+hint was read (the tile reads as the hero's): it steps off first; (2) E12-3's tries: a click on a
+stack the try before left highlighted opens the creature's window, and two takes aimed at one slot:
+the order a, c, d, b, slots 3 and 4, the highlight noted; (3) a neighbour's visit's step is paid
+(ADV-OBJ-003): E12-7's B1 priced so (589, then 248), E12-10's meeting and E12-4's attack hedged;
+(4) E12-9 stood on L at the new week (its word hidden): it ends day 1 on (17, 6); (5) E12-5's
+nearest hero 113, not 130; (6) the Peasants are weekly class 54 too (E12-12's wording); (7) the
+towns not main towns (checked: the experiment's towns set none); (8) the Buoy's and the Mermaids'
+bytes predicted (+0x11A 1, +0x11B 1: M8's battle cleared the Oasis's); (9) the Stables' week mark
+read on day 8; (10) E12-1's wording (219 passed by class 33's rules, still entered from the sides).
+Found right: every priced walk and the points' chains, the boarding, the Sirens' counts and
+experience, the spell points, the days' logic, the fog, the directions, the heroes per map.
+
+**Agent's calls** (change freely): E12-4 attacking out on Red's turn, attacked on Blue's (one day);
+E12-6 with the unsplit army at the opening; E12-12 to day 22; design §18's E12-10 addition read as
+E12-10b's own first visit without Cavaliers, then its revisit with Cavaliers given back; the hints
+before the visits as controls (E12-16, E12-17); E12-14's day-2 refill; one hero for E12-15, E12-7,
+E12-8 and E12-16's water part.
+
+**For T110** (the queue's entry): the harness's reads and steps, the recipes, the runs.
+
+**Versions:** none moved (the writer's list grew; the import reads class 107 as before).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` passed
+every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask check-lane
+--cross-lane` ok) and `fmt` (one line of the test, fixed after); deny and ffi-smoke skipped by the
+scope. `cargo check --workspace --all-targets` and clippy with `-D warnings` on `h3-map` and
+`h3-experiment` clean. CI's full verify on the pull request is the record.

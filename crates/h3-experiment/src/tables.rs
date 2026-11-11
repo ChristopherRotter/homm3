@@ -88,7 +88,8 @@ pub struct Tables {
     /// Templates of the visitable objects without a body (`Objects.txt`, the classes of
     /// [`PLAIN_OBJECTS`]: the Cartographers, E08 T32a; since E08 T67 the boats, the sea's
     /// pickups but the bottle, the holes; since E08 T89a the Refugee Camp; since E08 T99a the
-    /// teleporters; since E08 T109a the fifteen bonus visitables), in the file's order.
+    /// teleporters; since E08 T109a the fifteen bonus visitables; since E08 T109b the School of
+    /// War), in the file's order.
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,

@@ -708,7 +708,8 @@ pub struct ObjectSpec {
     /// Magic Well `AVXwelg0`, `AVXwelr0` or `AVXwlsn0`, the Oasis `AVXosis0` (the same two), the
     /// Rally Flag `AVXrlly0`, the Stables `AVXstbl0`, the Temple `AVStmpl0`, the Watering Hole
     /// `AVXwtrh0` (`at` and the three west of it); on water the Buoy `AVSbuoy0`, the Mermaids
-    /// `AVXmerm0` and the Sirens `AVXsirn0`).
+    /// `AVXmerm0` and the Sirens `AVXsirn0`; since E08 T109b increment 7's School of War
+    /// `AVSwar20`, 4 × 3, entered at the tile west of `at`).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
