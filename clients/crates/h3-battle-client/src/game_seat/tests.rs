@@ -37,8 +37,8 @@ impl Host {
     /// replay's first battle command: the battle open for the player.
     pub(crate) fn sea_monster() -> Self {
         let path = repo().join("fixtures/replays/adventure/sea-deck-monster-s1.toml");
-        let replay = h3_files::adventure::parse_replay(&std::fs::read_to_string(path).unwrap())
-            .unwrap();
+        let replay =
+            h3_files::adventure::parse_replay(&std::fs::read_to_string(path).unwrap()).unwrap();
         let ids: Vec<String> = (replay.header.packs.iter())
             .map(|(id, _)| id.clone())
             .collect();
@@ -135,10 +135,12 @@ impl Host {
         let mut out = Vec::new();
         for sent in seat.take_outgoing() {
             match sent {
-                ToHost::Command { seq, command } => match self.session.play(PLAYER, seq, command, &mut out) {
-                    Ok(()) => self.accepted += 1,
-                    Err(_) => self.refused += 1,
-                },
+                ToHost::Command { seq, command } => {
+                    match self.session.play(PLAYER, seq, command, &mut out) {
+                        Ok(()) => self.accepted += 1,
+                        Err(_) => self.refused += 1,
+                    }
+                }
                 ToHost::Query { seq, query } => {
                     let (Some(battle), Some(side)) =
                         (self.session.state().battle(PLAYER), self.side())
@@ -252,9 +254,11 @@ fn a_host_s_window_plays_its_game_s_battle_live_and_gets_its_outcome() {
     };
     let mut host = Host::sea_monster();
     let mut seat = GameSeat::new(&host.header());
-    assert!(crate::battle::Ground::load_game(&source, seat.clone())
-        .unwrap_err()
-        .contains("not opened"));
+    assert!(
+        crate::battle::Ground::load_game(&source, seat.clone())
+            .unwrap_err()
+            .contains("not opened")
+    );
     host.serve(&mut seat);
     let ground = crate::battle::Ground::load_game(&source, seat).unwrap();
     assert_eq!(ground.content(), Some(h3_view::remote::Content::Same));

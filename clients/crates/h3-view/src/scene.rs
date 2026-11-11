@@ -1028,8 +1028,8 @@ pub fn battle_as(
             dissolve: None,
             ..moment.clone()
         });
-        let [list, drawn] =
-            [d.before.as_ref(), &now].map(|m| battle_as(observation, m, manifest, tables, layout, bugs));
+        let [list, drawn] = [d.before.as_ref(), &now]
+            .map(|m| battle_as(observation, m, manifest, tables, layout, bugs));
         let (rect, measured) = match &d.area {
             DissolveArea::Battlefield => (Some(BATTLEFIELD), Vec::new()),
             DissolveArea::Stacks(ids) => {
@@ -1077,8 +1077,8 @@ pub fn battle_as(
             bridge: None,
             ..moment.clone()
         };
-        let [shown, drawn] =
-            [before.as_ref(), &now].map(|m| battle_as(observation, m, manifest, tables, layout, bugs));
+        let [shown, drawn] = [before.as_ref(), &now]
+            .map(|m| battle_as(observation, m, manifest, tables, layout, bugs));
         return shown.and_then(|mut list| {
             drawn.map(|inner| {
                 list.push(Draw::Within {

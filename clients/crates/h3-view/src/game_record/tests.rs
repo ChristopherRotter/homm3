@@ -440,7 +440,10 @@ fn the_battles_read_one_message_at_a_time_as_a_record_s_all() {
         snapshot(5, attacker()),
     ];
     let mut battles = Battles::new(&header());
-    assert_eq!((battles.opened(), battles.get(0), battles.open()), (0, None, None));
+    assert_eq!(
+        (battles.opened(), battles.get(0), battles.open()),
+        (0, None, None)
+    );
     battles.read(&messages[0]);
     assert_eq!(battles.opened(), 0);
     battles.read(&messages[1]);

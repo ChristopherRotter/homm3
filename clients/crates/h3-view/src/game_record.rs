@@ -185,11 +185,9 @@ impl Battles {
     /// The battle opened `index`-th (from 0, in the order they open), done or open.
     #[must_use]
     pub fn get(&self, index: usize) -> Option<&GameBattle> {
-        self.done.get(index).or_else(|| {
-            self.open
-                .as_ref()
-                .filter(|_| index == self.done.len())
-        })
+        self.done
+            .get(index)
+            .or_else(|| self.open.as_ref().filter(|_| index == self.done.len()))
     }
 
     /// The battle open now, if any.

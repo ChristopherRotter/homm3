@@ -543,7 +543,13 @@ impl Ground {
         let looks = motion::looks(&record, &tables, &parsed)?;
         let magic = motion::magic(&record, &tables, &parsed, every)?;
         let siege = motion::siege(&record, &tables, &parsed)?;
-        let casts = motion::casts(&record, &tables, &parsed, &source.packs, (every, Bugs::Fixed))?;
+        let casts = motion::casts(
+            &record,
+            &tables,
+            &parsed,
+            &source.packs,
+            (every, Bugs::Fixed),
+        )?;
         // A battle fought as it is played may create any creature a spell or a raiser makes.
         let mut looks = looks;
         let made: Vec<u16> = casts.bodies.keys().copied().collect();

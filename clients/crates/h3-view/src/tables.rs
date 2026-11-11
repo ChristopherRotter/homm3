@@ -665,7 +665,9 @@ impl Tables {
         let (Some(sex), Bugs::Fixed) = (sex, bugs) else {
             return Some(own);
         };
-        let record = hero.picture.map(|p| (p & !1) | u8::from(sex == Sex::Female));
+        let record = hero
+            .picture
+            .map(|p| (p & !1) | u8::from(sex == Sex::Female));
         let picture = record.and_then(|r| self.battle.hero_pictures.get(usize::from(r)));
         Some(picture.map_or(own, |p| HeroArt {
             def: &p.def,
@@ -842,7 +844,8 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
             if let Some(p) = h.picture {
                 let record = tables.battle.hero_pictures.get(usize::from(p));
                 let own = record.is_some_and(|r| {
-                    (r.def.as_str(), r.cast, r.cast_frames) == (h.def.as_str(), h.cast, h.cast_frames)
+                    (r.def.as_str(), r.cast, r.cast_frames)
+                        == (h.def.as_str(), h.cast, h.cast_frames)
                 });
                 if !own || (p & 1 == 1) != h.female {
                     return Err(entry(&key, "its picture is its own record, of its own sex"));
