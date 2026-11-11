@@ -8,10 +8,11 @@ use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
 use h3_map::writer::{
     ABANDONED_MINE_OBJECT, ARTIFACT_OBJECT, ARTIFACT_SLOTS, DWELLING_OBJECT, EVENT_OBJECT,
-    GROUND_OBJECTS, LIGHTHOUSE_OBJECT, MINE_OBJECT, MULTI_DWELLING_OBJECT, ObjectTemplate,
-    PANDORA_OBJECT, PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS, RANDOM_DWELLING_BY_FACTION_OBJECT,
-    RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT, SCROLL_OBJECT, SHIPYARD_OBJECT,
-    SHRINE_OBJECTS, SIGN_OBJECTS, TOWN_OBJECT, WITCH_HUT_OBJECT,
+    GARRISON_OBJECT, GROUND_OBJECTS, LIGHTHOUSE_OBJECT, MINE_OBJECT, MULTI_DWELLING_OBJECT,
+    ObjectTemplate, PANDORA_OBJECT, PLAIN_OBJECTS, RANDOM_ARTIFACT_OBJECTS,
+    RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT,
+    SCROLL_OBJECT, SHIPYARD_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS, TOWN_OBJECT,
+    VERTICAL_GARRISON_OBJECT, WITCH_HUT_OBJECT,
 };
 
 /// Object class of a fixed wandering monster (subclass = creature id).
@@ -87,7 +88,7 @@ pub struct Tables {
     /// Templates of the visitable objects without a body (`Objects.txt`, the classes of
     /// [`PLAIN_OBJECTS`]: the Cartographers, E08 T32a; since E08 T67 the boats, the sea's
     /// pickups but the bottle, the holes; since E08 T89a the Refugee Camp; since E08 T99a the
-    /// teleporters), in the file's order.
+    /// teleporters; since E08 T109a the fifteen bonus visitables), in the file's order.
     pub plains: Vec<ObjectTemplate>,
     /// Town templates (`Objects.txt`, class [`TOWN_OBJECT`]) as (faction, template; E04c T5b).
     pub towns: Vec<(u32, ObjectTemplate)>,
@@ -101,7 +102,8 @@ pub struct Tables {
 
 /// Whether the writer's ownable objects take this class (E08 T78): a mine and the abandoned mine
 /// (53), SoD's abandoned mine (220), a Lighthouse (42), a Shipyard (87); since E08 T89a the
-/// dwellings (17, 20) and the random dwellings (216 to 218).
+/// dwellings (17, 20) and the random dwellings (216 to 218); since E08 T109a the garrisons (33,
+/// AB's 219).
 pub fn is_ownable(class: u32) -> bool {
     [
         MINE_OBJECT,
@@ -113,6 +115,8 @@ pub fn is_ownable(class: u32) -> bool {
         RANDOM_DWELLING_OBJECT,
         RANDOM_DWELLING_BY_LEVEL_OBJECT,
         RANDOM_DWELLING_BY_FACTION_OBJECT,
+        GARRISON_OBJECT,
+        VERTICAL_GARRISON_OBJECT,
     ]
     .contains(&class)
 }
@@ -363,7 +367,9 @@ mod tests {
              AVGrefg0.def {mask} 78 0 0 0\navrcgen3.def {mask} 217 2 0 0\n\
              AVXmn1b0.def {mask} 43 0 0 0\nAVXmx1b0.def {mask} 44 0 0 0\n\
              AVXmn8b0.def {mask} 45 7 0 0\nAvTCave.def {mask} 103 0 0 0\n\
-             AVXwhrl0.def {mask} 111 0 0 1\n"
+             AVXwhrl0.def {mask} 111 0 0 1\nAVCgar20.def {mask} 33 1 0 0\n\
+             avcvgarm.def {mask} 219 1 0 0\nAVXmags0.def {mask} 48 0 0 0\n\
+             AVXsirn0.def {mask} 92 0 0 0\n"
         );
         let (heroes, creatures) = (table(&["Orrin"]), table(&["Pikeman"]));
         let (skills, spells) = (table(&["Archery"]), table(&["Combat Spells", "Bless"]));
@@ -395,7 +401,8 @@ mod tests {
             .map(|g| (g.def.as_str(), g.class))
             .collect();
         assert_eq!(grounds, [("AVXcf0.def", 222), ("AVXcg5.def", 223)]);
-        // The Cartographers (E08 T32a); the Refugee Camp (E08 T89a); the teleporters (E08 T99a).
+        // The Cartographers (E08 T32a); the Refugee Camp (E08 T89a); the teleporters (E08 T99a);
+        // two bonus visitables (E08 T109a).
         let plains: Vec<_> = t.plains.iter().map(|p| (p.def.as_str(), p.class)).collect();
         assert_eq!(
             plains,
@@ -406,10 +413,13 @@ mod tests {
                 ("AVXmx1b0.def", 44),
                 ("AVXmn8b0.def", 45),
                 ("AvTCave.def", 103),
-                ("AVXwhrl0.def", 111)
+                ("AVXwhrl0.def", 111),
+                ("AVXmags0.def", 48),
+                ("AVXsirn0.def", 92)
             ]
         );
-        // A mine and a Lighthouse (E08 T78); a dwelling and a random dwelling (E08 T89a).
+        // A mine and a Lighthouse (E08 T78); a dwelling and a random dwelling (E08 T89a); the
+        // anti-magic garrisons (E08 T109a).
         let ownables: Vec<_> = t
             .ownables
             .iter()
@@ -421,7 +431,9 @@ mod tests {
                 ("AVMsawg0.def", 53),
                 ("AVXlths0.def", 42),
                 ("AVGgolm0.def", 20),
-                ("avrcgen3.def", 217)
+                ("avrcgen3.def", 217),
+                ("AVCgar20.def", 33),
+                ("avcvgarm.def", 219)
             ]
         );
         // Towns of a fixed faction only (E04c T5b), not the random town (77).

@@ -40,6 +40,11 @@
 //! ([`OwnedBody::RandomDwelling`]), the Refugee Camp (78) as a [`Plain`] object and the map's
 //! teams ([`Map::teams`]).
 //!
+//! Since E08 T109a (batch E12's maps, increment 12's design note §18) it writes the garrisons
+//! (33, AB's 219; subclass 1 the anti-magic garrison) with their owners, armies and removable
+//! flags ([`OwnedBody::Garrison`]) and the fifteen bonus visitables ([`BONUS_OBJECTS`]) as
+//! [`Plain`] objects.
+//!
 //! Since E09 T9a (the town map, design note `docs/epics/E09-design.md` §18) it writes a town of
 //! any kind ([`AnyTown`]: random towns with their alignments, a player's main town in the header,
 //! a name, random garrison stacks) and random heroes ([`RandomHero`]); since E09 T19a (design
@@ -53,10 +58,11 @@ mod town;
 use std::fmt;
 
 pub use economy::{
-    ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, DWELLING_OBJECT, HIGHEST_LEVEL_CODE,
-    LIGHTHOUSE_OBJECT, MINE_OBJECT, MULTI_DWELLING_OBJECT, OwnedBody, OwnedObject,
-    RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT,
-    REFUGEE_CAMP_OBJECT, SHIPYARD_OBJECT, TimedEvent,
+    ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ANTI_MAGIC_GARRISON_SUBCLASS, DWELLING_OBJECT,
+    GARRISON_OBJECT, HIGHEST_LEVEL_CODE, LIGHTHOUSE_OBJECT, MINE_OBJECT, MULTI_DWELLING_OBJECT,
+    OwnedBody, OwnedObject, RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT,
+    RANDOM_DWELLING_OBJECT, REFUGEE_CAMP_OBJECT, SHIPYARD_OBJECT, TimedEvent,
+    VERTICAL_GARRISON_OBJECT,
 };
 pub use extras::{AnyObject, Extras, GivenTile, RiverKind};
 pub use rewards::{
@@ -249,12 +255,21 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// 11's teleporters (batch E11; survey `docs/rules/surveys/E08-teleporters.md` §2, no body): the
 /// Monoliths One Way Entrance (43), One Way Exit (44) and Two-Way (45), their subclass the channel
 /// (0 to 2 in every version, 3 to 7 in SoD); the Subterranean Gate (103) and the Whirlpool (111),
-/// subclass 0, its six tiles all blocked and visitable, on water. On either level (a level's
-/// objects, [`Underground::objects`]).
-pub const PLAIN_OBJECTS: [u32; 26] = [
-    8, 13, 22, 29, 43, 44, 45, 55, 63, 78, 82, 86, 100, 101, 103, 104, 105, 108, 109, 111, 112,
-    124, 135, 137, 155, 212,
+/// subclass 0, its six tiles all blocked and visitable, on water. Since E08 T109a increment 12's
+/// bonus visitables ([`BONUS_OBJECTS`]). On either level (a level's objects,
+/// [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 41] = [
+    8, 11, 13, 14, 22, 28, 29, 30, 31, 38, 43, 44, 45, 48, 49, 52, 55, 56, 63, 64, 78, 82, 86, 92,
+    94, 96, 100, 101, 103, 104, 105, 108, 109, 110, 111, 112, 124, 135, 137, 155, 212,
 ];
+/// Object classes of the fifteen bonus visitables (E08 T109a: batch E12; survey
+/// `docs/rules/surveys/E08-garrisons-bonuses.md` §1.2, no body, subclass 0), among
+/// [`PLAIN_OBJECTS`]: the Buoy (11), the Swan Pond (14), the Faerie Ring (28), the Fountain of
+/// Fortune (30), the Fountain of Youth (31), the Idol of Fortune (38), the Magic Spring (48; two
+/// entrances), the Magic Well (49), the Mermaids (52), the Oasis (56; two entrances), the Rally
+/// Flag (64), the Sirens (92), the Stables (94), the Temple (96) and the Watering Hole (110; four
+/// entrances). The Buoy, the Mermaids and the Sirens stand on water.
+pub const BONUS_OBJECTS: [u32; 15] = [11, 14, 28, 30, 31, 38, 48, 49, 52, 56, 64, 92, 94, 96, 110];
 /// Object class of a one-way monolith's entrance (E08 T99a; subclass the channel).
 pub const MONOLITH_ONE_WAY_ENTRANCE_OBJECT: u32 = 43;
 /// Object class of a one-way monolith's exit (E08 T99a; subclass the channel).
@@ -654,7 +669,7 @@ pub enum MapObject {
     /// Ocean Bottle's or a sign's message).
     Reward(RewardObject),
     /// An ownable object with its body (E08 T78): a mine, an abandoned mine, a Lighthouse, a
-    /// Shipyard.
+    /// Shipyard; since E08 T89a a dwelling, since E08 T109a a garrison.
     Owned(OwnedObject),
 }
 

@@ -9,8 +9,16 @@
 //! `docs/rules/surveys/E08-dwellings.md` §1, §3.1): the dwellings (17, 20) with their owners and
 //! the random dwellings (216 to 218) not tied to a town, with their owners, faction sets and
 //! levels. The Refugee Camp (78) has no body: a [`Plain`](super::Plain) object.
+//!
+//! Since E08 T109a increment 12's garrisons (batch E12's maps; increment 12's design note §18,
+//! survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1.1, §2): the horizontal garrison (33)
+//! and AB's vertical one (219), subclass 1 the anti-magic garrison of each, with their owners,
+//! armies and removable flags. The fifteen bonus visitables have no body: they are
+//! [`Plain`](super::Plain) objects ([`BONUS_OBJECTS`](super::BONUS_OBJECTS)).
 
-use super::{Codes, FACTION_COUNT, Format, Map, ObjectTemplate, Out, WriteError, out_of_range};
+use super::{
+    ARMY_SLOTS, Codes, FACTION_COUNT, Format, Map, ObjectTemplate, Out, WriteError, out_of_range,
+};
 
 /// The object class of a mine (subclass 0 to 6 the resource it produces, `RESTYPES.TXT` order;
 /// subclass 7 the abandoned mine).
@@ -48,6 +56,16 @@ const DWELLING_TYPES: u32 = 80;
 const MULTI_DWELLING_TYPES: u32 = 2;
 /// The highest level code a random dwelling names (0 is level 1, 6 level 7; A-36).
 pub const HIGHEST_LEVEL_CODE: u8 = 6;
+/// The object class of a horizontal garrison (E08 T109a; subclass 0 `AVCgar10`, 1 the anti-magic
+/// garrison `AVCgar20`): it blocks three tiles of a row, the middle one its entrance.
+pub const GARRISON_OBJECT: u32 = 33;
+/// AB's object class of a vertical garrison (E08 T109a; subclass 0 `AVCvgr`, 1 the anti-magic
+/// garrison `avcvgarm`): it blocks three tiles of a column, the middle one its entrance. The game
+/// loads it as class 33 (survey §2); an RoE map holds none.
+pub const VERTICAL_GARRISON_OBJECT: u32 = 219;
+/// The subclass of an anti-magic garrison (of [`GARRISON_OBJECT`] or
+/// [`VERTICAL_GARRISON_OBJECT`]): a battle on its entrance has no casts (survey §4).
+pub const ANTI_MAGIC_GARRISON_SUBCLASS: u32 = 1;
 
 /// What an ownable object's body holds (`docs/formats/h3m.md`, "Object bodies by class").
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -73,6 +91,21 @@ pub enum OwnedBody {
         /// not above the highest; A-36): for 216 and 218, `None` for 217 (its subclass is its
         /// level).
         levels: Option<(u8, u8)>,
+    },
+    /// A garrison ([`GARRISON_OBJECT`] or [`VERTICAL_GARRISON_OBJECT`], subclass 0 or
+    /// [`ANTI_MAGIC_GARRISON_SUBCLASS`]; E08 T109a, `docs/formats/h3m.md`'s row "33, 219
+    /// garrison"): its owner, its army and whether the army may be taken out, then 8 unused
+    /// bytes.
+    Garrison {
+        /// Its owner, as [`OwnedBody::Owner`]'s.
+        owner: Option<u8>,
+        /// The stacks (creature, count) by slot; every slot may be empty (82 of the shipped
+        /// neutral garrisons are). A random stack is not written (no shipped garrison holds one,
+        /// and the import refuses it: increment 12's design note §4).
+        army: [Option<(u16, u16)>; ARMY_SLOTS],
+        /// The army may be taken out (the editor's default). An RoE map stores no such byte (the
+        /// game reads every RoE garrison as removable), so it writes only `true`.
+        removable: bool,
     },
 }
 
@@ -180,6 +213,25 @@ pub(super) fn validate(map: &Map, object: &OwnedObject, codes: &Codes) -> Result
                 return Err(out_of_range("random dwelling levels", highest));
             }
         }
+        OwnedBody::Garrison {
+            owner,
+            army,
+            removable,
+        } => {
+            if !matches!(class, GARRISON_OBJECT | VERTICAL_GARRISON_OBJECT)
+                || subclass > ANTI_MAGIC_GARRISON_SUBCLASS
+            {
+                return Err(out_of_range("garrison class", class));
+            }
+            if class == VERTICAL_GARRISON_OBJECT {
+                codes.refuse("AB's vertical garrison in an RoE map", class)?;
+            }
+            if !removable {
+                codes.refuse("a garrison not removable in an RoE map", 0u8)?;
+            }
+            validate_owner(map, owner)?;
+            codes.army(&army)?;
+        }
     }
     Ok(())
 }
@@ -217,6 +269,18 @@ pub(super) fn write_body(out: &mut Out, body: OwnedBody) {
             if let Some((lowest, highest)) = levels {
                 out.bytes(&[lowest, highest]);
             }
+        }
+        OwnedBody::Garrison {
+            owner: o,
+            army,
+            removable,
+        } => {
+            out.u32(owner(o));
+            out.army(&army);
+            if out.1 == Format::Sod {
+                out.bool(removable);
+            }
+            out.bytes(&[0; 8]);
         }
     }
 }

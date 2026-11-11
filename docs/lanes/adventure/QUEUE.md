@@ -4,22 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T109 — batch E12's maps: the writer's seventeen classes, the spec's fields, the specs** (decisions 303, 309)
+**E08 T109b — batch E12's specs and templates: E12a and E12b** (decisions 303, 309, 310)
 
-- **Scope:** as T99 for increment 11 (design note `E08-design.md` §18, §19's round 2): `h3_map::writer`
-  writes the garrisons (33, 219 by subclass: the owner, the seven stacks, the removable byte, the
-  unused bytes) and the fifteen bonus classes by template (no body); `h3-experiment`'s spec gains
-  the garrisons with an owner, an army and the removable byte, the fifteen classes by template, a
-  hero's spell points and army at the start, a second player's hero (battle-owned: `cross-lane`
-  with the user's consent, label it); the specs and templates of runs **E12a** (E12-1 to E12-6,
-  day 1, two players) and **E12b** (E12-7 to E12-17, days 1 to 7 and the next week's first, one
-  player), with the predictions added in §18.
-- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1 (the templates), §2 (the
-  garrison's body), §12 (the rows); design note §18; T99's record in `E08-log.md` as the form.
-- **Depends on:** T108b (done). **Status:** ready (the original data: the executable and both
-  tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
+- **Scope:** as T99b for increment 11 (design note `E08-design.md` §18, §19's round 2): the specs
+  and templates of runs **E12a** (E12-1 to E12-6, the garrisons, day 1, two players) and **E12b**
+  (E12-7 to E12-17, the bonus visitables, days 1 to 7 and the next week's first, one player), with
+  the predictions added in §18; each walk priced on the written map (TRAPS: price an experiment's
+  walks; the seventeen classes import as blockers until T113b, so a step onto one is priced by
+  hand) and a fresh review, as T99b1's. The writer and the spec's fields are T109a's (done): the
+  garrisons in `[[map.ownable]]` with `owner`, `army`, `removable`; the fifteen in `[[map.object]]`
+  by picture (`docs/experiments/README.md`, "Increment 12's objects"); a Blue hero is an
+  `[[encounter.also]]`; no spell points at the start (decision 311).
+- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1, §12 (the rows), §3 to §7
+  and §10 for the predictions; design note §18; T99b1's and T99b2's records in `E08-log.md` as the
+  form; T109a's record.
+- **Depends on:** T109a (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the maps; confirm the cut at its start: likely in two by spec, E12a then
+  E12b, as decision 277).
 
 ## Inbox
 
