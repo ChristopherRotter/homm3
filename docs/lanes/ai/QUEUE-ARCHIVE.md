@@ -4,6 +4,48 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+**E25 increment 8, T33's round 1** (moved 2026-11-11, done: `E25-log.md` T33; round 2 stays in
+the queue):
+
+- **T33 — PPO's settings by short continuations from #2** (refined 2026-11-11, decision 3,
+  T30's ranking; **in progress: round 1 prepared, the user's GPU next**). Each arm is **the first
+  2 M samples of a 20 M run from #2** (`--init-from runs/e25-structure-1/best.pt`; #2's run's
+  config `e25-imitate-structure.toml`, seed 1, at T31's update speed; `lr_horizon` 20 M, so the
+  arm T35 picks resumes into the long run with `--set samples=N`, no sample lost; the run's own
+  ladders cut to 1 episode a kind, no final one: the learner is measured after it).
+  - **Round 1** (three arms; test `test_increment_8s_continuations_are_structure_1s_run_with_
+    their_settings`): (1) `e25-continue-1` (`configs/e25-continue.toml`): the entropy bonus at 0,
+    no imitation loss; (2) `e25-continue-imitate-1` (`e25-continue-imitate.toml`): (1) with the
+    imitation loss held at 0.05 (`[ppo] imitation_floor = 1`, new; at #2's cross-entropy to the
+    fair actor, 3.3 nats, the term about the policy loss's size); (3) `e25-continue-lr-1`
+    (`e25-continue-lr.toml`): (1) at a quarter of the learning rate (6.25e-5, #2's own at 15 M).
+    **Round 2** (one arm, refined on round 1's read): the epochs (2 against 4: the update's 67 s
+    about halved) or the bonus's control (#2's 0.01).
+  - **The measures, stated before it runs:** (a) a head-to-head of fixed size, the learner at
+    2 M (`checkpoint.pt`) against #2 on all 4 000 pairs of the gate set (`h3env.train.gate
+    --fixed`, new): the score and its standard error (about 0.005); (b) its ladder against the
+    fair and the all-seeing actor (the report set v1, 500 a kind, ± 0.019) and on the neutral set
+    (500 a kind); (c) the update records: entropy, KL, clip, the teacher's agreement (arm 2). The
+    run's own end gate (the SPRT) is recorded beside. An arm **gains** when (a) lies above 0.5
+    by two standard errors and (b) against the fair actor stays within its interval of #2's
+    0.511; the arms are ranked by (a).
+  - **Budget:** about 2 hours an arm (about 78 updates of 83 s, T31; the head-to-head about 2
+    minutes, the ladders a few): round 1 about 6 hours, round 2 about 2 (decision 3's 8 for
+    PPO's settings). Parts under 2 hours: Ctrl-C, then `--resume`.
+  - **The user's commands** (from `python/`; for each arm its `<config>` and `<run>`, the three
+    pairs above; `--device cuda` on the user's card):
+
+        uv run --group train python -m h3env.train --config configs/<config>.toml --init-from runs/e25-structure-1/best.pt --out runs/<run>
+        uv run --group train python -m h3env.train --resume runs/<run>
+        uv run --group train python -m h3env.train.gate --candidate runs/<run>/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/<run>/head-to-head.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/<run>/checkpoint.pt --opponents system,system-all-seeing --device cuda --json runs/<run>/ladder.json
+        uv run --group train python -m h3env.train.ladder --checkpoint runs/<run>/checkpoint.pt --set neutral-v1 --device cuda --json runs/<run>/neutral.json
+
+    The upload: each run's `record.json`, `metrics.jsonl`, `head-to-head.json`, `ladder.json`,
+    `neutral.json` (no network). **Acceptance:** the records committed (`python/records/
+    <run>.json`, the measures under `python/records/continue/`), the read in `E25-log.md` T33,
+    the arms ranked for T35.
+
 **E25 increment 5, T16** (moved 2026-11-02, done: `E25-log.md` T16):
 
 - **T16 The cloning bench.** *Scope:* a C ABI call giving the system actor's choice (either

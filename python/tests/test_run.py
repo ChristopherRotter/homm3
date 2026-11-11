@@ -887,6 +887,24 @@ def test_increment_8s_continuations_are_structure_1s_run_with_their_settings() -
     assert dataclasses.replace(low, lr=plain.lr) == plain and low.lr == plain.lr / 4
 
 
+def test_increment_8s_annealed_arm_is_the_quarter_rate_falling_to_structure_1s_floor() -> None:
+    # E25 T33's round 2 (the user, 2026-11-11): the third arm's settings, the rate falling from
+    # 6.25e-5 over the arm's 2 M to #2's own last rate (its run's floor, 1.25e-5, reached at 1.6 M).
+    configs = PYTHON / "configs"
+    structure, low, anneal = (
+        load_config((configs / f"{n}.toml").read_text())
+        for n in ("e25-imitate-structure", "e25-continue-lr", "e25-continue-anneal")
+    )
+    trainable(anneal)
+    assert dataclasses.replace(anneal, lr_horizon=low.lr_horizon, lr_floor=low.lr_floor) == low
+    assert (anneal.samples, anneal.lr_horizon) == (2_000_000, 2_000_000)
+    floor = learning_rate(structure, structure.samples)
+    assert learning_rate(anneal, 0) == low.lr == learning_rate(structure, 15_000_000)
+    assert learning_rate(anneal, 1_600_000) == pytest.approx(floor, rel=1e-12)
+    assert learning_rate(anneal, anneal.samples) == pytest.approx(floor, rel=1e-12)
+    assert learning_rate(anneal, 800_000) == pytest.approx((low.lr + floor) / 2, rel=1e-12)
+
+
 def test_the_league_draws_scores_and_retires() -> None:
     # Design §8: PFSP's weights from the decayed scores, the live set and when it is drawn again,
     # the episodes' opponents, the most beaten member retired, the state round-tripped.
