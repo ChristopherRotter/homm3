@@ -140,7 +140,7 @@ epic   = "E16"
 [[stub]]
 id     = "SRV-STUB-14"
 where  = "crates/h3-protocol/src/session/game.rs::GameSession::tell"
-reason = "A game's battle's last snapshot when it ends (SRV-Q27 (1); the battle session's last Snapshot, v38, CLT-STUB-3): the command that ends a battle closes it in h3_game, so the session does not yet observe the battle as it ended; each owner's view ends at BattleEnded. h3-game keeps the battles a command ended readable until the next accepted command since 2026-11-11 (GameState::ended_battles, the adventure lane); lifted when the session sends each owner its side's last Snapshot from them"
+reason = "A game's battle's last snapshot when it ends (SRV-Q27 (1); the battle session's last Snapshot, v38, CLT-STUB-3): the command that ends a battle closes it in h3_game, so the session does not yet observe the battle as it ended; each owner's view ends at BattleEnded. Since 2026-11-11 h3-game gives the sink each battle as it ended, when the command closes it (h3_game::Sink::battle_ended, the adventure lane); lifted when the session's sink keeps it and the session sends each owner its side's last Snapshot from it"
 epic   = "E16"
 
 # --- client (CLT-STUB-<n>) ---

@@ -412,57 +412,62 @@ fn a_battle_played_to_its_end_applies_its_outcome() {
     }
 }
 
+/// A sink that keeps its events and each battle as it ended, with the number of events before it.
+#[derive(Default)]
+struct Ending {
+    events: Vec<GameEvent>,
+    ended: Vec<(usize, OpenBattle)>,
+}
+
+impl Sink for Ending {
+    fn emit(&mut self, event: GameEvent) {
+        self.events.push(event);
+    }
+
+    fn battle_ended(&mut self, battle: &OpenBattle) {
+        self.ended.push((self.events.len(), battle.clone()));
+    }
+}
+
 // covers: GAM-BAT-001
 #[test]
-fn a_battle_a_command_ended_stays_readable_until_the_next_accepted_command() {
+fn the_command_that_ends_a_battle_gives_the_sink_the_battle_as_it_ended() {
     // SRV-Q27 (1), the server lane's SRV-STUB-14: the session sends each owner its battle as it
     // ended, which the command that ended it closed.
     let rules = rules();
     let (mut game, _, _) = attacked(&rules, 5);
-    assert_eq!(game.ended_battles().count(), 0);
-    let (_, outcome) = play_out(&mut game, &rules);
-    assert_eq!(game.battle(RED), None);
-    let ended: Vec<&OpenBattle> = game.ended_battles().collect();
-    assert_eq!(ended.len(), 1);
-    let battle = ended[0];
-    assert_eq!(battle.state().outcome(), Some(outcome));
-    assert_eq!(battle.owners(), [Some(RED), Some(BLUE)]);
-    assert_eq!(battle.heroes(), [Some(RED_HERO), Some(BLUE_HERO)]);
-    // Each owner's side as it ended, as a battle session's last snapshot.
-    for (player, side) in [(RED, BattleSide::Attacker), (BLUE, BattleSide::Defender)] {
-        assert_eq!(battle.side_of(player), Some(side));
-        let last: Observation = h3_battle::observe(battle.state(), rules.battle(), side);
-        assert_eq!(last.viewer, side);
+    for _ in 0..2000 {
+        let (owner, _) = to_act(&game);
+        let listed = legal_commands(&game, &rules, Actor::Player(owner));
+        let fights = |c: &&GameCommand| !matches!(c, GameCommand::Battle(c) if c.leaves_battle());
+        let command = listed.iter().rfind(fights).unwrap().clone();
+        let mut sink = Ending::default();
+        apply(&mut game, &rules, Actor::Player(owner), command, &mut sink).unwrap();
+        if game.battle(RED).is_some() {
+            // A command that ends no battle gives none.
+            assert!(sink.ended.is_empty());
+            continue;
+        }
+        let [(before, battle)] = &sink.ended[..] else {
+            panic!("{:?}", sink.ended.len())
+        };
+        // Before its outcome's events, `BattleEnded` first.
+        let outcome = battle.state().outcome().unwrap();
+        assert!(matches!(
+            sink.events[*before],
+            GameEvent::BattleEnded { result, .. } if result == outcome.result
+        ));
+        assert_eq!(battle.owners(), [Some(RED), Some(BLUE)]);
+        assert_eq!(battle.heroes(), [Some(RED_HERO), Some(BLUE_HERO)]);
+        // Each owner's side as it ended, as a battle session's last snapshot.
+        for (player, side) in [(RED, BattleSide::Attacker), (BLUE, BattleSide::Defender)] {
+            assert_eq!(battle.side_of(player), Some(side));
+            let last: Observation = h3_battle::observe(battle.state(), rules.battle(), side);
+            assert_eq!(last.viewer, side);
+        }
+        return;
     }
-    // Out of the state hash: the state without it hashes the same.
-    let mut forgotten = game.clone();
-    forgotten.forget_ended();
-    assert_ne!(forgotten, game);
-    assert_eq!(forgotten.state_hash(), game.state_hash());
-    // A rejected command keeps it, the state untouched; the next accepted one forgets it.
-    let before = game.clone();
-    let mut end = |player| {
-        let command = GameCommand::EndTurn;
-        apply(
-            &mut game,
-            &rules,
-            Actor::Player(player),
-            command,
-            &mut Vec::new(),
-        )
-    };
-    assert_eq!(end(BLUE), Err(GameCommandError::NotYourTurn(BLUE)));
-    assert_eq!(game, before);
-    assert_eq!(game.ended_battles().count(), 1);
-    apply(
-        &mut game,
-        &rules,
-        Actor::Player(RED),
-        GameCommand::EndTurn,
-        &mut Vec::new(),
-    )
-    .unwrap();
-    assert_eq!(game.ended_battles().count(), 0);
+    panic!("the battle did not end");
 }
 
 /// A sink that keeps its events but says it does not record (`Sink::RECORDS`).

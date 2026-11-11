@@ -22,8 +22,8 @@
 //! University as decisions ([`GameState::choice`], [`GameState::university`]; T63a); for a
 //! server keeping each viewer's view by its events (SRV-Q26, SRV-Q27; the adventure lane's
 //! inbox work of 2026-11-11), what a viewer newly sees since an explored grid of its own
-//! ([`reveal`]), the heroes' movement changes told last, and the battles the last command ended
-//! ([`GameState::ended_battles`]).
+//! ([`reveal`]), the heroes' movement changes told last, and each battle as it ended to the sink
+//! ([`Sink::battle_ended`]).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.

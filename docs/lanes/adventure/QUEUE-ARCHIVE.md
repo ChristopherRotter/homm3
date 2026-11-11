@@ -1227,7 +1227,7 @@ T105b2 took adventure replay format v12.
   Miles' 8; `wineserver -w` waits at most 60 s. Nothing else drives the original otherwise
   (runbook, "Sound", "The clips", "Traps"). *Moved by E08 T107: for information; the harness's runbook (`clients/capture/README.md`) holds it for batch E12.*
 
-## Inbox notes acted upon (moved 2026-11-11, `adventure/srv-q26-reveal`: `GameState::ended_battles`, the server lane's inbox told)
+## Inbox notes acted upon (moved 2026-11-11, `adventure/srv-q26-reveal`: `h3_game::Sink::battle_ended`, the server lane's inbox told)
 
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game

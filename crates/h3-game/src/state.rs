@@ -250,12 +250,6 @@ pub struct GameState {
     /// rest's owner has an open decision ([`crate::apply`] runs the others), so a turn never ends
     /// with one; never seen by a player but through the decisions it leads to.
     rests: Vec<Held>,
-    /// The battles the last accepted command ended, in the order they ended, each as it ended
-    /// (SRV-Q27 (1), the server lane's `SRV-STUB-14`): readable until the next accepted command
-    /// ([`Self::ended_battles`]), so a server sends each owner its battle's last snapshot (the own
-    /// hero's Eagle Eye picks, which no event shows). None when it ended none, so a fork of a
-    /// state without counts no reference. Out of the state hash and the replays: no rule reads it.
-    ended: Option<Arc<[Arc<OpenBattle>]>>,
     /// The day's schedule: turn groups in order, each the players who act together
     /// (ADR-0017 point 3). Sequential play, the only schedule of increment 1, is one player per
     /// group in player order.
@@ -387,7 +381,6 @@ impl GameState {
             treasuries: Treasuries::new(players.len(), start.human()),
             decisions: None,
             rests: Vec::new(),
-            ended: None,
             players,
             groups,
             group: 0,

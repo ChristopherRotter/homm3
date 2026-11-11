@@ -15412,11 +15412,15 @@ the parts `SRV-STUB-1` alone names lay within the answer's keys (no miss); each 
 20 tiles 27 µs; `e08-economy-144` 287–305 and 19; the golden replays' 28 528 viewer-commands 539 ms
 of `observe` against 109 ms of reveals asked after every command.
 
-**The ended battles** (`GameState::ended_battles`): `settle` keeps the closed battle's `Arc` in
-`GameState::ended`, which `apply` forgets at an accepted command's start (a rejected command puts
-it back, so its state is untouched); out of the state hash, `PartialEq` included. Test:
-`tests/battles.rs`' battle readable until the next accepted command (its outcome, owners, heroes,
-each side's observation; the hash unchanged by forgetting it; a refused `EndTurn` keeps it).
+**The ended battles** (`h3_game::Sink::battle_ended`, a provided method, ignored by default):
+`settle` gives the sink the closed battle as it ended, before its outcome's events. First built as
+the server lane's note suggested, a `GameState` field kept until the next accepted command (a
+rejected command putting it back, out of the hash): `bench-check` measured every fork 9 Ir dearer
+and those after a battle's end 60 (`fork-rewards-36` +2.25 %, over its 2 % gate; the economy,
+meeting and sea XL forks +1.6 %), so the battle goes to the sink instead and the state is as
+before. Test: `tests/battles.rs`' command that ends a battle gives the sink the battle (none for
+the others; before `BattleEnded`, its result the outcome's; owners, heroes, each side's
+observation).
 
 **The movement** (`AdventureEventKind::MovementChanged { hero, movement, max_movement }`;
 `h3_adventure::Movements`): `apply` takes each hero's points and maximum before the command (for a

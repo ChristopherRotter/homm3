@@ -33,11 +33,13 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
   alone names lay inside the answer's keys (no miss), and each entry equals `observe`'s. Cost
   (release): on `e08-xl-144` a step's reveal (about 20 tiles) 27 µs against `observe`'s 380 µs a
   viewer, on `e08-economy-144` 19 against 300. Map it with the events (your T5c) and lift
-  `SRV-STUB-1`. (2) **SRV-STUB-14**: `GameState::ended_battles() -> impl Iterator<Item =
-  &OpenBattle>`, the battles the last accepted command ended, each as it ended, readable until
-  the next accepted command (a rejected one keeps them); out of the state hash and the replays;
-  the session can send each owner `h3_battle::observe(battle.state(), rules.battle(), side)` as
-  its last `Snapshot`. (3) **SRV-Q26 (b) mapped here: protocol v42**: the adventure event
+  `SRV-STUB-1`. (2) **SRV-STUB-14**: `h3_game::Sink::battle_ended(&mut self, battle:
+  &OpenBattle)`, a provided method (the default ignores it): the command that ends a battle gives
+  the sink the battle as it ended (state, owners, heroes, tile) when it closes it, before the
+  outcome's events (`BattleEnded` first). The session's sink keeps it (or each owner's
+  `h3_battle::observe(battle.state(), rules.battle(), side)` at once) for its last `Snapshot`.
+  Not the state field your note suggested: kept in `GameState` until the next command, it cost
+  each fork 9 Ir, and 60 where a battle had just ended (`fork-rewards-36` +2.25 %, over its gate). (3) **SRV-Q26 (b) mapped here: protocol v42**: the adventure event
   `MovementChanged { hero, movement, max_movement }`, told once a command after its other events
   to the hero's owner alone for every hero whose points or day's maximum the command changed (a
   sink that keeps events only); `wire::game::AdventureEvent::MovementChanged`, its fold sets the

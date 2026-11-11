@@ -49,6 +49,17 @@ refined. **Depends on:** T24 (T25 on T24's core changes). **Status:** waiting.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-11 (the adventure lane, found by `adventure/srv-q26-reveal`'s scoped verify; **a hygiene
+  failure on `master`, for you to classify**): `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see`
+  fails on `master` e085069 with `cc b9900443ad98acb94e02343d7679acd5f4888dc38169e4f8ff92d9563d82c007`
+  (append it to `crates/h3-map/proptest-regressions/tests/view.txt` to replay; RoE, side 14, two
+  towns with timed events): two games that differ only in what viewer 2 never sees give it day 1's
+  observations that differ in one of its own towns' `buildings.built` (`BuildingSet(2097448)`
+  against `6291752`: bit 22). Likely a setup draw (TWN-SET-003/-004, the towns' events) whose
+  stream position moves with the hidden content `vary` changes: a leak to fix in the draws' order,
+  or a `vary` the property must not make (then the adventure lane's test: tell us). Not committed
+  as a regression line, so CI's random cases may meet it again.
+
 - 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
   **in your paths, for information**): SRV-Q26 (a)'s query `h3_game::reveal` names the towns a
   viewer newly explored with their views through `town::view::views_of(state, rules, viewer,
