@@ -7745,3 +7745,49 @@ buttons), applied to the battle's DEF buttons and confirmed by three stills.
   keeps one `held`: the mouse's press lets the hotkey's go unclicked in both profiles; the
   original keeps it drawn pressed, its key's release dropped by the loop, as CLT-Q71's case,
   whose (b) is the client's profile).
+
+### 13.2 The battle as a hosted element (M7 T3a)
+
+The map client lane's request for E24 M4 T5 (its inbox of 2026-10-31): a battle of a whole game
+drawn in the map viewer's window, as the original switches screens, and handed back with its
+outcome. The shape the user agreed for both lanes at T3's start (2026-11-11): the host owns the
+window, its loop and the frame; the battle is an element of it, drawn natively as any other, so
+that a later layout (HD's) shows it as a dialog over the adventure screen. Not a reading: the
+original's combat screen runs a modal loop of its own (0x602520's kind, design §7.19), which the
+host's loop stands in for.
+
+- **The crate** (T3a1): `clients/crates/h3-battle-client`, the adapters that were `h3-view`'s
+  binary (the window's battle, a seat on a server, the sound, the gate, the headless renderer,
+  the harness's commands) as a library, and the `h3-view` command line as its binary. `h3-view`
+  stays the pure scene model. A host depends on `h3-battle-client` (and through it on the
+  engine's crates a battle fought here needs).
+- **Loading** (`window::Prepared`): a `battle::Ground` (today from a `battle::Source`: a
+  scenario fought here, a record file, a seat on a server; T3b adds a whole game's battle),
+  `Prepared::new(&ground)` the battle with its first checkpoint's cursors; before the host opens
+  its window it reads the frame's size (`frame_size`) and the first cursor (`cursor_at`,
+  `cursor_image`: drawn, and as the hardware cursor's image). `Prepared::start(setup, ticks_ns,
+  lines)` starts it once the window is open (the platform up): `Setup` holds the keys, the combat
+  options' settings and their file, the battle's time the clock starts at, the sound (mute, the
+  installation, the opening's seed) and an unattended run's `Presses`.
+- **A pass** of the host's loop, in this order (`h3-view window`'s, the battle's frame alone):
+  `timeout(now)` (how long to wait for input: the next frame's time, the opening's end, at most
+  250 ms, 10 ms for a server's seat); `before` (the result window and a notice opened at their
+  times, a server's messages, a restarted server's record: `Flow::Again` begins the pass again,
+  an unattended press, the key that stopped Auto Combat acting on its turn); each input to
+  `event`, which answers a `Took` (nothing, quit, redraw, or one of the window's own keys the
+  host does: fullscreen, vsync, the cursor drawn or the hardware's; the battle does its clock's,
+  its sound's and Quit's itself), then `take_moved` (the mouse moved where a drawn cursor shows);
+  `closed` (the result window's OK closed the battle's screen: the host takes over); `after`
+  (the boxes' and the options dialog's close, the mouse followed, the frame now made again); the
+  cursor (`cursor_at` its look and whether it shows, `cursor_image`); `sound(now)` (the opening's
+  end, the cues, the end's tune: the battle's time then); `due(battle_ms)` the frame to present
+  if any, `showed(frame)` once presented (a redraw presents `shown` again). Each call that reads
+  the time takes the host's tick source (`&dyn Fn() -> u64`, ns), as the loop read the window's
+  clock at each step.
+- **Coordinates:** everything in the battle's frame's (800 × 600 at the original's layout): a
+  host that draws it elsewhere draws `Frame::screen` at its place and moves the mouse's events
+  by it. `Frame::xrgb` is the frame widened ahead of its time, which a host presenting the frame
+  alone (`h3-view window`) presents as it is.
+- **Not yet** (*provisional*): the outcome handed back and a whole game's start (T3b); the
+  sound on the host's device and the music through `h3_ui::music` (T3c; until then the element
+  opens a device of its own and a host must not play beside it).

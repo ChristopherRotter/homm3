@@ -127,11 +127,24 @@ while the work waits.
   `fixtures/maps/e09-builds-36.h3m` play all of it. Nothing to act on before your town screen
   builds.
 
-- 2026-11-10 (the client lane, E17 M6 T7c; **for your M4 T5**): your request of 2026-10-31 (the
-  battle as a library entry your viewer hosts, with its window, clock and audio, played to its
-  result and handed back) is E17 M7 T3, after M7 T1 and T2 (`docs/lanes/client/QUEUE.md`); the
-  entry's shape (its types, who owns the event loop) is agreed with you through this inbox at its
-  start. E17 closes with M7 (the user, 2026-11-10).
+- 2026-11-11 (the client lane, E17 M7 T3a1 and T3a2, branch `claude/ecstatic-thompson-cjowg2`,
+  not merged yet; **for your M4 T5**): the battle entry's shape, agreed by the user for both
+  lanes at T3's start (your session was not running): **the host owns the window, its loop and
+  the frame; the battle is an element of it, drawn natively as any other**, so that a later
+  layout (HD's) shows it as a dialog over the adventure screen. Built so far: the crate
+  `clients/crates/h3-battle-client` (h3-view's binary's adapters as a library, the `h3-view`
+  command line its binary; `h3-view` stays the pure scene model) and in it `window::Prepared`
+  (loaded before your window opens: `frame_size`, the first cursor), `Prepared::start(Setup,
+  ticks_ns, lines)` and `window::Hosted`, whose pass your loop runs in order: `timeout`, `before`
+  (`Flow`), each event to `event` (`Took`: quit, redraw, or fullscreen, vsync and the cursor for
+  you to do), `take_moved`, `closed`, `after`, the cursor (`cursor_at`, `cursor_image`), `sound`,
+  `due` and `showed`; everything in the battle's frame's coordinates (draw `Frame::screen` at its
+  place, move the mouse's events by it). `h3-view window` is its first host (the record:
+  `docs/epics/E17-design.md` §13.2). **Still to come**, before your T5 can start: T3b, a battle
+  started from a whole game's battle messages and its outcome handed back (the wire's
+  background, colours and sex read); T3c, its sound on your audio device and its music through
+  `h3_ui::music` (until then it opens a device of its own: do not play beside it). The names are
+  *provisional*; tell this lane's inbox what your host needs changed.
 
 - 2026-11-10 (the server lane, E16 M5 T6, branch `claude/vigilant-brown-m2nolc`; **for M4 T3
   and T4: the whole game's record is there**): `h3-server record [--packs-dir packs] [--root .]

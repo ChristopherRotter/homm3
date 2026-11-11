@@ -22,22 +22,30 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
 ### E17 M7 T3 — the battle as a hosted entry
 
 - **Scope:** the map client lane's request for E24 M4 T5 (the inbox of 2026-10-31, now in
-  `QUEUE-ARCHIVE.md`): an entry of `h3-view`'s library that a host's window runs: a battle
-  started from a whole game's battle messages (the protocol's battle types as E16 M5 carries
-  them; record format 4), drawn in the host's window with a clock and an audio output the host
-  owns, played to its result window and handed back with its outcome; `h3-view window` becomes
-  one host of it. With it: the wire's battlefield picture, colours and sex read (protocol v35:
-  `Observation.background`, `SideView.colour`, `Hero.sex`; CLT-Q4, CLT-Q6; the battle lane's
-  note of 2026-10-24); the music through the common `h3_ui::music` (the end's tune after the
-  combat music's 900 ms fade-out, the map client lane's note of 2026-10-27; the focus lost and
-  regained, its note of 2026-10-30); the frame widened by `h3_render::screen::Widening` if it
-  measures faster (its note of 2026-10-28). The entry's shape (its types, who owns the event
-  loop) agreed with the map client lane at the task's start (its inbox).
+  `QUEUE-ARCHIVE.md`): the battle as an element a host's window runs (the shape agreed with the
+  user for both lanes, 2026-11-11: the host owns the window, its loop and the frame, the battle
+  drawn natively as any element of it; design §13.2), started from a whole game's battle
+  messages and handed back with its outcome. **Cut in four** with the user (2026-11-11):
+  - **T3a1 done**, **T3a2 done unverified** (2026-11-11, branch `claude/ecstatic-thompson-cjowg2`,
+    no pull request yet): the crate `h3-battle-client` (h3-view's binary until then), the element
+    `window::Hosted` with `h3-view window` its host. **First, with the original data staged:**
+    the windowless host test and the other staged-data tests, `h3-view window --check` (a
+    scenario fought here, a record), `drawn`, the gate, `check.sh`; then the pull request.
+  - **T3b:** a battle started from a whole game's battle messages (the protocol's battle types as
+    E16 M5 carries them; record format 4) and its outcome handed back; the wire's battlefield
+    picture, colours and sex read (protocol v35: `Observation.background`, `SideView.colour`,
+    `Hero.sex`; CLT-Q4, CLT-Q6; the battle lane's note of 2026-10-24); a test host plays a whole
+    game's battle to its result and gets the outcome back; the map client lane's inbox told the
+    API.
+  - **T3c:** the sound on the host's device, the music through the common `h3_ui::music` (the
+    end's tune after the combat music's 900 ms fade-out, the map client lane's note of
+    2026-10-27; the focus lost and regained, its note of 2026-10-30); the frame widened by
+    `h3_render::screen::Widening` if it measures faster (its note of 2026-10-28).
 - **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
   same; a test host plays a whole game's battle to its result and gets the outcome back; the map
   client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** next (T2 done
-  2026-11-11).
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3a2's checks next,
+  then T3b (T2 done 2026-11-11).
 
 ### E17 M7 T4 — M7's and E17's closure
 
