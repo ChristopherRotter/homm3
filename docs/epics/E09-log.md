@@ -3066,5 +3066,6 @@ eligible sets).
 `h3-heroes`' derivations, the hashes and the pack format), for T108b's versions. No version moved.
 Ids: questions next 14, decisions next 79.
 
-**Verify:** docs only. `cargo xtask verify --scope town --summary --with-original-data` with no
-failing step; CI on the pull request is the record.
+**Verify:** docs only: `scripts/verify-once.sh engine --base origin/master` ran the light gates
+(no fingerprinted path changed: `check-rules`, `check-stubs`, `check-docs`, `check-exe-map`, all
+passing), `cargo xtask check-lane` ok; CI on the pull request is the record.
