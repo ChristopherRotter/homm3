@@ -25,10 +25,19 @@
 //!   (`music_resume` 0x59AC00) asks for the track the thread opened last again, whatever is
 //!   pending: it comes back, faded in, where its fade began.
 //!
+//! - **A track played once** (E17 M7 T3c: the battle's end tune, `play_music` with a loop count
+//!   of 1, 0x477905; E17 design §8.2): asked for as any other ([`Music::request_once`]), so it
+//!   waits for the fade-in under way and for the fade-out of the track playing (the end's tune
+//!   900 ms after the request); opened from its start at the whole volume (no fade-in, so the
+//!   lock is free at once), it closes at its end and nothing follows (a later request opens at
+//!   once). *Provisional*: one that ends during its own fade-out closes then (the original's
+//!   thread sleeps out the fade's 900 ms first).
+//!
 //! [`Music`] is that state; [`Queue`] runs it twice for a stream queued ahead: once at the
 //! frames heard (where a request lands) and once at the frames queued (what to queue next),
-//! re-queuing from the heard point when a request is taken. Only looping tracks (the map's), at
-//! the music's whole volume (a setting of 10); a track is known by its length in frames once
+//! re-queuing from the heard point when a request is taken. Looping tracks (the map's, the
+//! battle's) and tracks played once, at the music's whole volume (a setting of 10: a window
+//! applies the setting as its stream's gain); a track is known by its length in frames once
 //! decoded ([`Track`]): the original opens its file at once, the window waits for its decoding.
 
 use alloc::collections::BTreeMap;
@@ -103,14 +112,25 @@ enum Stream {
     /// The track opened last being decoded (the window's; the thread holds its lock).
     Opening,
     /// The track opened last playing at frame `at` of `len`, `heard` frames since its fade-in
-    /// began (at most a fade's): the thread holds its lock until the fade-in's end.
-    Playing { len: u64, at: u64, heard: u64 },
+    /// began (at most a fade's): the thread holds its lock until the fade-in's end. `once`: a
+    /// track played once (no fade-in: `heard` a fade's from its start), closed at its end.
+    Playing {
+        len: u64,
+        at: u64,
+        heard: u64,
+        once: bool,
+    },
     /// The track opened last fading out at frame `at` of `len`, `heard` frames into the fade;
     /// the thread opens the pending track at its end.
-    Fading { len: u64, at: u64, heard: u64 },
+    Fading {
+        len: u64,
+        at: u64,
+        heard: u64,
+        once: bool,
+    },
     /// The track opened last at frame `at` of `len` while the game lacks the focus: never
     /// started (0x59AA15), silent; the focus regained opens it again there.
-    Held { len: u64, at: u64 },
+    Held { len: u64, at: u64, once: bool },
 }
 
 /// The original's music: the names, the stream and the places (`music_positions` 0x69FEC0).
@@ -122,9 +142,13 @@ pub struct Music {
     bugs: Bugs,
     /// The track asked for and not yet opened (`music_pending_name` 0x6A3394).
     pending: Option<String>,
+    /// Whether the last request taken asked for a track played once (E17 M7 T3c).
+    pending_once: bool,
     /// The track the thread opened last (`music_playing_name` 0x6A3290): kept through its
     /// fade-out until the next opens.
     playing: Option<String>,
+    /// Whether it was opened to be played once.
+    playing_once: bool,
     stream: Stream,
     /// Where each track's last fade-out began, by name.
     places: BTreeMap<String, u64>,
@@ -144,7 +168,9 @@ impl Music {
             step: (u64::from(rate) / 10).max(1),
             bugs,
             pending: None,
+            pending_once: false,
             playing: None,
+            playing_once: false,
             stream: Stream::Closed,
             places: BTreeMap::new(),
             active: true,
@@ -159,6 +185,17 @@ impl Music {
 
     /// `play_music` 0x59ACB0 asked for `name` (a looping track, the effects kept).
     pub fn request(&mut self, name: &str) -> Request {
+        self.ask(name, false)
+    }
+
+    /// `play_music` 0x59ACB0 asked for `name` with a loop count of 1 (E17 M7 T3c: the battle's
+    /// end tune): played once from its start, filtered as any request.
+    pub fn request_once(&mut self, name: &str) -> Request {
+        self.ask(name, true)
+    }
+
+    /// A request of `name`, played `once` or looping.
+    fn ask(&mut self, name: &str, once: bool) -> Request {
         if self.pending.as_deref() == Some(name) {
             return Request::Pending;
         }
@@ -178,6 +215,7 @@ impl Music {
             }
         }
         self.pending = Some(name.into());
+        self.pending_once = once;
         Request::Taken
     }
 
@@ -196,12 +234,16 @@ impl Music {
             self.stop = matches!(self.stream, Stream::Opening | Stream::Playing { .. });
             return;
         }
-        if let (Stream::Held { at, .. }, Some(name)) = (&self.stream, &self.playing) {
-            self.places.insert(name.clone(), *at);
+        if let (Stream::Held { at, once, .. }, Some(name)) = (&self.stream, &self.playing) {
+            // A track played once has no place: it opens from its start.
+            if !once {
+                self.places.insert(name.clone(), *at);
+            }
             self.stream = Stream::Closed;
         }
         if let Some(name) = &self.playing {
             self.pending = Some(name.clone());
+            self.pending_once = self.playing_once;
         }
     }
 
@@ -241,9 +283,19 @@ impl Music {
         self.settle(tracks);
         while left > 0 {
             let (step, fade) = (self.step, self.fade());
-            let (len, at, heard, volumes) = match &mut self.stream {
-                Stream::Playing { len, at, heard } => (*len, at, heard, &FADE_IN),
-                Stream::Fading { len, at, heard } => (*len, at, heard, &FADE_OUT),
+            let (len, at, heard, volumes, once) = match &mut self.stream {
+                Stream::Playing {
+                    len,
+                    at,
+                    heard,
+                    once,
+                } => (*len, at, heard, &FADE_IN, *once),
+                Stream::Fading {
+                    len,
+                    at,
+                    heard,
+                    once,
+                } => (*len, at, heard, &FADE_OUT, *once),
                 Stream::Closed | Stream::Opening | Stream::Held { .. } => break,
             };
             let volume = usize::try_from(*heard / step)
@@ -263,9 +315,15 @@ impl Music {
                 frames: n,
                 volume,
             });
+            let ended = once && *at + n == len;
             *at = (*at + n) % len;
             *heard = (*heard + n).min(fade);
             left -= n;
+            // A track played once closes at its end (fading out too, *provisional*).
+            if ended {
+                self.stop = false;
+                self.stream = Stream::Closed;
+            }
             self.settle(tracks);
         }
         runs
@@ -288,23 +346,30 @@ impl Music {
                 }
                 // A thread let in once the fade-in ended (a track's or the stub's):
                 // `music_stop_fade` keeps the place, then fades the stream out from the whole.
-                Stream::Playing { len, at, .. } => {
+                Stream::Playing { len, at, once, .. } => {
                     if self.pending.is_none() && !self.stop {
                         return;
                     }
                     self.stop = false;
                     let name = self.playing.clone().unwrap_or_default();
                     self.places.insert(name, at);
-                    self.stream = Stream::Fading { len, at, heard: 0 };
+                    self.stream = Stream::Fading {
+                        len,
+                        at,
+                        heard: 0,
+                        once,
+                    };
                 }
                 // A thread with a track to open, the stream held: its place kept (the fade of a
                 // stream never started is silent), closed.
-                Stream::Held { at, .. } => {
+                Stream::Held { at, once, .. } => {
                     if self.pending.is_none() {
                         return;
                     }
-                    let name = self.playing.clone().unwrap_or_default();
-                    self.places.insert(name, at);
+                    if !once {
+                        let name = self.playing.clone().unwrap_or_default();
+                        self.places.insert(name, at);
+                    }
                     self.stream = Stream::Closed;
                 }
                 // `music_thread` opens the pending name as it is now (0x59A96A, cleared at
@@ -314,11 +379,15 @@ impl Music {
                         return;
                     };
                     self.playing = Some(name);
+                    self.playing_once = self.pending_once;
                     self.stream = Stream::Opening;
                 }
                 Stream::Opening => {
                     let name = self.playing.as_deref().unwrap_or_default();
-                    let place = |len| self.place(name).filter(|&p| p < len).unwrap_or(0);
+                    let once = self.playing_once;
+                    // A looping track where its name's last fade began (0x59AA82), one played
+                    // once from its start.
+                    let place = |len| (self.place(name).filter(|&p| p < len && !once)).unwrap_or(0);
                     let stream = match tracks(name) {
                         Track::Decoding => return,
                         Track::Missing | Track::Frames(0) => Stream::Closed,
@@ -327,11 +396,14 @@ impl Music {
                         Track::Frames(len) if !self.active => Stream::Held {
                             len,
                             at: place(len),
+                            once,
                         },
+                        // A track played once at its volume: no fade-in, the lock free.
                         Track::Frames(len) => Stream::Playing {
                             len,
                             at: place(len),
-                            heard: 0,
+                            heard: if once { fade } else { 0 },
+                            once,
                         },
                     };
                     if matches!(stream, Stream::Held { .. }) {
@@ -396,6 +468,22 @@ impl Queue {
     pub fn request(&mut self, name: &str, queued: u64, tracks: &impl Fn(&str) -> Track) -> Request {
         self.hear(queued, tracks);
         let request = self.heard.request(name);
+        if request.changed() {
+            self.cleared();
+        }
+        request
+    }
+
+    /// `name` asked for to be played once ([`Music::request_once`]) while the stream holds
+    /// `queued` frames; as [`Queue::request`].
+    pub fn request_once(
+        &mut self,
+        name: &str,
+        queued: u64,
+        tracks: &impl Fn(&str) -> Track,
+    ) -> Request {
+        self.hear(queued, tracks);
+        let request = self.heard.request_once(name);
         if request.changed() {
             self.cleared();
         }
