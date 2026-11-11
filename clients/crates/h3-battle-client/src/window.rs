@@ -4424,10 +4424,6 @@ pub(crate) mod tests {
         let end = hosted.battle().timeline().end;
         let at = hosted.ms(clock.get());
         let defend = h3_view::panel::DEFEND;
-        eprintln!(
-            "DEBUG end {end} at {at} enabled {}",
-            hosted.battle().enabled(at, defend)
-        );
         assert!(at < end && hosted.battle().enabled(at, defend));
         let [x, y] = button_centre(hosted.battle().panel_at(at), defend).unwrap();
         let press = [
