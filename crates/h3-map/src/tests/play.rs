@@ -3427,8 +3427,13 @@ fn landing(
     let kinds: Vec<AdventureEventKind> = events
         .iter()
         .filter_map(|e| match e {
+            // The movement changes come last (SRV-Q26 (b)): `view.rs`' `check_told` reads them.
             GameEvent::Adventure(AdventureEvent { kind, .. })
-                if !matches!(kind, AdventureEventKind::HeroRemoved { .. }) =>
+                if !matches!(
+                    kind,
+                    AdventureEventKind::HeroRemoved { .. }
+                        | AdventureEventKind::MovementChanged { .. }
+                ) =>
             {
                 Some(*kind)
             }
@@ -5714,19 +5719,28 @@ fn check_timed(
             }
         }
     }
-    // The views a town event's build tells, after its `TownBuilt`.
+    // The views a town event's build tells, after its `TownBuilt`; the turn's points restored,
+    // told last (SRV-Q26 (b): `check_told` reads them).
     let mut built = false;
     let told: Vec<GameEvent> = events[turn..]
         .iter()
         .filter(|e| {
             built |= matches!(e, GameEvent::TownBuilt { .. });
-            !(built
-                && matches!(
-                    e,
-                    GameEvent::TownChanged { .. }
-                        | GameEvent::TownStackSeen { .. }
-                        | GameEvent::TownIncomeSeen { .. }
-                ))
+            let moved = matches!(
+                e,
+                GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::MovementChanged { .. },
+                    ..
+                })
+            );
+            !moved
+                && !(built
+                    && matches!(
+                        e,
+                        GameEvent::TownChanged { .. }
+                            | GameEvent::TownStackSeen { .. }
+                            | GameEvent::TownIncomeSeen { .. }
+                    ))
         })
         .copied()
         .collect();

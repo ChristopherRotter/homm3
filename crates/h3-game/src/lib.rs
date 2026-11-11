@@ -19,7 +19,11 @@
 //! with Scholar and the army dialogs as decisions, during which the management commands name
 //! two armies ([`GameState::meeting`], [`GameState::army_dialog`]; T51b); the answers typed by
 //! the decision's kind, the choices (a treasure chest's, the Arena's, a School's) and the
-//! University as decisions ([`GameState::choice`], [`GameState::university`]; T63a).
+//! University as decisions ([`GameState::choice`], [`GameState::university`]; T63a); for a
+//! server keeping each viewer's view by its events (SRV-Q26, SRV-Q27; the adventure lane's
+//! inbox work of 2026-11-11), what a viewer newly sees since an explored grid of its own
+//! ([`reveal`]), the heroes' movement changes told last, and each battle as it ended to the sink
+//! ([`Sink::battle_ended`]).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -58,6 +62,9 @@ pub use command::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
     HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, UniversityAnswer, apply,
 };
+/// What [`reveal`] answers of the adventure map and the grid it reads (SRV-Q26 (a);
+/// `h3_adventure`'s types): a server keeps each viewer's last explored grid.
+pub use h3_adventure::{AdventureReveal, BitGrid, RevealedTile};
 /// The army commands a [`Manage::Army`] carries (E08 T51a; `h3_adventure`'s, ADR-0016 point 3).
 pub use h3_adventure::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 /// A choice's and a University's views (E08 T63a; `h3_adventure`'s types): what
@@ -95,8 +102,8 @@ pub use legal::{
 };
 pub use manage::{Manage, ManageError};
 pub use observe::{
-    DecisionView, GameObservation, HeroInfo, HireCreature, HireView, LevelUpView, PlayerView,
-    Viewer, observe, project,
+    DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireView, LevelUpView,
+    PlayerView, Viewer, observe, project, reveal,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{

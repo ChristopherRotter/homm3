@@ -336,6 +336,15 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
             creature: Handle::from_raw(creature),
             count,
         },
+        A::MovementChanged {
+            hero,
+            movement,
+            max_movement,
+        } => K::MovementChanged {
+            hero: id(hero),
+            movement,
+            max_movement,
+        },
     }
 }
 
@@ -1136,6 +1145,11 @@ fn every_event() -> Vec<GameEvent> {
             slot: 3,
             creature,
             count: 2,
+        },
+        K::MovementChanged {
+            hero,
+            movement: 1_234,
+            max_movement: 2_000,
         },
     ];
     events.extend(adventure.map(|kind| GameEvent::Adventure(AdventureEvent { kind, seen_by })));

@@ -335,6 +335,11 @@ pub enum AdventureEvent {
         creature: u16,
         count: u32,
     },
+    MovementChanged {
+        hero: u16,
+        movement: u32,
+        max_movement: u32,
+    },
 }
 
 /// Why a Shipyard builds no boat (`h3_adventure::ShipyardBlock`).

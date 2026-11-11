@@ -544,6 +544,15 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
             creature: creature.raw(),
             count,
         },
+        K::MovementChanged {
+            hero,
+            movement,
+            max_movement,
+        } => AdventureEvent::MovementChanged {
+            hero: hero.raw(),
+            movement,
+            max_movement,
+        },
     }
 }
 

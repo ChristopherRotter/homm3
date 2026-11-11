@@ -32,9 +32,14 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 
 use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
+use crate::persistent::BitGrid;
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId, RiverId, RoadId};
 use crate::setup::{Pos, TileMask};
-use crate::state::{AdventureState, Resolved, StaticTile, allied};
+use crate::state::{AdventureState, Boat, HeroOnMap, MapObject, Resolved, StaticTile, allied};
+
+mod reveal;
+
+pub use reveal::{AdventureReveal, RevealedTile};
 
 /// What one player may know of the adventure map.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -335,40 +340,24 @@ impl AdventureState {
             boats: Vec::new(),
         };
         let row_tiles = usize::from(width);
-        // A tile as it stands now; only a tile an object covered, or one an object added in play
-        // covers (E08 T83b2a), can differ from the static map's.
         let added = self.added_tiles();
-        let live = |row: usize, x: usize, tile: &StaticTile| {
-            let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
-            let pos = || {
-                let height = usize::from(height);
-                let level = u8::try_from(row / height).unwrap_or(u8::MAX);
-                Pos::new(at(x), at(row % height), level)
-            };
-            if tile.blocked || tile.visitable || added.is_some_and(|grid| grid.get(pos())) {
-                self.live(pos(), *tile)
-            } else {
-                *tile
-            }
-        };
         for (row, tiles) in map.tiles().chunks_exact(row_tiles).enumerate() {
             let start = row * observation.stride;
             for (x, tile) in tiles.iter().enumerate() {
                 let (word, bit) = (start + x / 64, x % 64);
-                let view = if observation.explored[word] >> bit & 1 == 1 {
-                    TileView::Seen(live(row, x, tile))
-                } else if observation.fringe[word] >> bit & 1 == 0 {
-                    TileView::Hidden
-                } else if objects_on_fringe {
-                    TileView::Seen(live(row, x, tile))
-                } else {
-                    TileView::Ground {
-                        terrain: tile.terrain,
-                        road: tile.road,
-                        river: tile.river,
-                    }
+                let at = |n: usize| u16::try_from(n).unwrap_or(u16::MAX);
+                let pos = || {
+                    let height = usize::from(height);
+                    let level = u8::try_from(row / height).unwrap_or(u8::MAX);
+                    Pos::new(at(x), at(row % height), level)
                 };
-                observation.tiles.push(view);
+                observation.tiles.push(tile_view(
+                    observation.explored[word] >> bit & 1 == 1,
+                    observation.fringe[word] >> bit & 1 == 1,
+                    objects_on_fringe,
+                    tile,
+                    || self.live_tile(added, *tile, pos),
+                ));
             }
         }
         // Where the viewer sees heroes, it sees empty boats (ADV-FOG-008): the original's boat is
@@ -381,14 +370,7 @@ impl AdventureState {
             .filter(|(_, boat)| !boat.aboard && !boat.gone && sees_heroes(boat.tile))
             .map(|(_, boat)| {
                 let tile = boat.tile;
-                (
-                    (tile.level, tile.y, tile.x),
-                    BoatView {
-                        tile,
-                        kind: boat.kind,
-                        facing: boat.facing,
-                    },
-                )
+                ((tile.level, tile.y, tile.x), boat_view(boat))
             })
             .collect::<BTreeMap<_, _>>()
             .into_values()
@@ -397,23 +379,7 @@ impl AdventureState {
             .heroes()
             .iter()
             .filter(|hero| hero.owner == viewer || sees_heroes(hero.pos))
-            .map(|hero| HeroView {
-                id: hero.id,
-                owner: hero.owner,
-                pos: hero.pos,
-                boat: hero
-                    .boat
-                    .and_then(|index| self.boat(usize::try_from(index).unwrap_or(usize::MAX)))
-                    .map(|boat| boat.kind),
-                own: (hero.owner == viewer).then(|| OwnHeroView {
-                    army: hero.army.clone(),
-                    movement: hero.movement,
-                    max_movement: hero.max_movement,
-                    formation: hero.formation,
-                    tactics: hero.tactics,
-                    marks: self.marks_of(hero.id),
-                }),
-            })
+            .map(|hero| self.hero_view(hero, viewer))
             .collect();
         observation.heroes = heroes;
         observation.boats = boats;
@@ -423,51 +389,109 @@ impl AdventureState {
             observation.is_explored(pos)
                 || ((objects_on_fringe || monster) && observation.is_fringe(pos))
         };
-        let words = part.params().monsters();
         // The added objects after the static map's, in map order (E08 T83b2a).
-        let objects = map
-            .objects()
-            .iter()
-            .chain(self.added_objects())
-            .enumerate()
-            .filter_map(|(index, object)| {
-                let object_type = object.object_type?;
-                let monster = object.monster.is_some();
-                // An event is never observed (ADV-FOG-007, E08 T62b2).
-                (!self.is_removed(index)
-                    && object.event().is_none()
-                    && object.tiles(map).any(|pos| sees(pos, monster)))
-                .then(|| {
-                    let owner = self.owner(index);
-                    let ours = owner.is_some_and(|owner| allied(owner, viewer));
-                    ObjectView {
-                        object_type,
-                        anchor: object.anchor,
-                        blocked: object.blocked,
-                        visitable: object.visitable,
-                        drawn: object.drawn,
-                        monster: object.monster.as_ref().map(|monster| MonsterView {
-                            creature: monster.creature,
-                            count_word: words.map_or(0, |w| {
-                                w.count_word(self.monster_count(index).unwrap_or(monster.count))
-                            }),
-                        }),
-                        owner,
-                        production: ours.then(|| self.production(part, index)).flatten(),
-                        guards: self.guards_view(part, index, ours),
-                        visited: self.visited_by(index, viewer),
-                        // A town's spot is its Shipyard's (E09 T18a), not the object's.
-                        boat_tile: (ours && map.town_id(index).is_none())
-                            .then(|| object.resolved.boat_tile())
-                            .flatten(),
-                        town: map.town_id(index),
-                    }
-                })
+        let objects = self
+            .observable()
+            .filter(|&(_, object, _)| {
+                object
+                    .tiles(map)
+                    .any(|pos| sees(pos, object.monster.is_some()))
+            })
+            .map(|(index, object, object_type)| {
+                self.object_view(part, viewer, (index, object, object_type))
             })
             .collect();
         observation.objects = objects;
         observation.known = self.known_by(part, viewer);
         observation
+    }
+
+    /// A tile as it stands now, `tile` the static map's at `pos`: only a tile an object covered, or
+    /// one an object added in play covers (E08 T83b2a), can differ from the static map's.
+    fn live_tile(
+        &self,
+        added: Option<&BitGrid>,
+        tile: StaticTile,
+        pos: impl Fn() -> Pos,
+    ) -> StaticTile {
+        if tile.blocked || tile.visitable || added.is_some_and(|grid| grid.get(pos())) {
+            self.live(pos(), tile)
+        } else {
+            tile
+        }
+    }
+
+    /// The objects a viewer may see where it sees a tile they cover, by object index, the static
+    /// map's then those added in play (E08 T83b2a), with their type: the typed ones still on the
+    /// map, never an event (ADV-FOG-007, E08 T62b2).
+    fn observable(&self) -> impl Iterator<Item = (usize, &MapObject, ObjectTypeId)> {
+        self.map()
+            .objects()
+            .iter()
+            .chain(self.added_objects())
+            .enumerate()
+            .filter(|&(index, object)| !self.is_removed(index) && object.event().is_none())
+            .filter_map(|(index, object)| object.object_type.map(|ty| (index, object, ty)))
+    }
+
+    /// `viewer`'s view of `hero`, a hero it sees (ADV-FOG-006): its tile, owner and boat's type,
+    /// and its army, movement points and marks if it is the viewer's own.
+    fn hero_view(&self, hero: &HeroOnMap, viewer: PlayerId) -> HeroView {
+        HeroView {
+            id: hero.id,
+            owner: hero.owner,
+            pos: hero.pos,
+            boat: hero
+                .boat
+                .and_then(|index| self.boat(usize::try_from(index).unwrap_or(usize::MAX)))
+                .map(|boat| boat.kind),
+            own: (hero.owner == viewer).then(|| OwnHeroView {
+                army: hero.army.clone(),
+                movement: hero.movement,
+                max_movement: hero.max_movement,
+                formation: hero.formation,
+                tactics: hero.tactics,
+                marks: self.marks_of(hero.id),
+            }),
+        }
+    }
+
+    /// `viewer`'s view of the object at `index` of type `object_type`, an object it sees
+    /// (ADV-OWN-003): a monster's creature and count's word, the owner, a mine's production and a
+    /// Shipyard's boat tile to the owner's team, a mine's guards, the viewer's visited mark, the
+    /// town it is.
+    // rule: ADV-OWN-003
+    fn object_view(
+        &self,
+        part: &AdventureRuleset,
+        viewer: PlayerId,
+        (index, object, object_type): (usize, &MapObject, ObjectTypeId),
+    ) -> ObjectView {
+        let map = self.map();
+        let owner = self.owner(index);
+        let ours = owner.is_some_and(|owner| allied(owner, viewer));
+        ObjectView {
+            object_type,
+            anchor: object.anchor,
+            blocked: object.blocked,
+            visitable: object.visitable,
+            drawn: object.drawn,
+            monster: object.monster.as_ref().map(|monster| MonsterView {
+                creature: monster.creature,
+                count_word: part.params().monsters().map_or(0, |w| {
+                    w.count_word(self.monster_count(index).unwrap_or(monster.count))
+                }),
+            }),
+            owner,
+            production: ours.then(|| self.production(part, index)).flatten(),
+            guards: self.guards_view(part, index, ours),
+            visited: self.visited_by(index, viewer),
+            // A town's spot is its Shipyard's (E09 T18a), not the object's.
+            boat_tile: (ours && map.town_id(index).is_none())
+                .then(|| object.resolved.boat_tile())
+                .flatten(),
+            town: map.town_id(index),
+        }
     }
 
     /// What a viewer sees of the guards of the mine at object index `index` (ADV-OWN-003,
@@ -559,6 +583,39 @@ impl AdventureState {
     }
 }
 
+/// What a viewer sees of a tile (ADV-FOG-004, ADV-FOG-005), `tile` the static map's there and
+/// `live` the tile as it stands now: an explored tile whole, a tile of the fringe whole under
+/// `ADV-QUIRK-1` (`objects_on_fringe`) and its ground without it, nothing of any other.
+// rule: ADV-FOG-004, ADV-FOG-005
+fn tile_view(
+    explored: bool,
+    fringe: bool,
+    objects_on_fringe: bool,
+    tile: &StaticTile,
+    live: impl FnOnce() -> StaticTile,
+) -> TileView {
+    if explored || (fringe && objects_on_fringe) {
+        TileView::Seen(live())
+    } else if fringe {
+        TileView::Ground {
+            terrain: tile.terrain,
+            road: tile.road,
+            river: tile.river,
+        }
+    } else {
+        TileView::Hidden
+    }
+}
+
+/// An empty boat as every viewer that sees it sees it (ADV-FOG-008).
+const fn boat_view(boat: &Boat) -> BoatView {
+    BoatView {
+        tile: boat.tile,
+        kind: boat.kind,
+        facing: boat.facing,
+    }
+}
+
 impl AdventureEvent {
     /// The event as `viewer` may see it, or `None` if it is not among the players who see it
     /// (ADR-0016 point 6): a step's tile where the viewer does not see the hero is left out. The
@@ -599,6 +656,7 @@ impl AdventureEvent {
                 AdventureEventKind::ObjectRemoved { .. }
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
+                | AdventureEventKind::MovementChanged { .. }
                 | AdventureEventKind::HeroRemoved { .. }
                 | AdventureEventKind::CreaturesJoined { .. }
                 | AdventureEventKind::EventFired { .. }

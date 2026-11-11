@@ -15465,3 +15465,72 @@ every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo 
 --cross-lane` ok) and `fmt` (one line of the test, fixed after); deny and ffi-smoke skipped by the
 scope. `cargo check --workspace --all-targets` and clippy with `-D warnings` on `h3-map` and
 `h3-experiment` clean. CI's full verify on the pull request is the record.
+
+### Inbox work: the server lane's T5c blockers, SRV-Q26 (a) and (b), SRV-STUB-14 (2026-11-11, `adventure/srv-q26-reveal`, `cross-lane`)
+
+Baseline: `master` 5b2e761 (#858; CI green on it, the code's last run ecb0d90 green; the sandbox's
+full baseline died with a VM restart and was not rerun). Nothing staged (no import, pack or
+experiment touched). **The scope** (decision 315, the user): the query T5c waits for, with
+`SRV-STUB-14`'s and `SRV-STUB-2`'s engine parts; `cross-lane` for `h3-protocol` (the event's
+mapping) and the town lane's `town/view.rs`.
+
+**The reveal** (`h3_adventure::AdventureState::reveal`, `observe/reveal.rs`; `h3_game::reveal`,
+`GameReveal`): `since` an earlier explored grid of the viewer's (the server keeps
+`state.adventure().explored(player)`); both sights' planes built word by word (`Sight::of`), every
+tile whose class (explored, fringe, neither) differs listed in tile order with its view as
+`observe` builds it, then the heroes (not the viewer's own) and the empty boats on tiles where the
+viewer sees heroes now and did not, the typed objects it sees now (a tile it covers explored, or
+on the fringe under `ADV-QUIRK-1` or for a monster) and saw through no tile then, and the towns a
+tile of which it explored now and none then (TWN-VEW-001), whose views `views_of` gives through the
+town lane's `Seer`. An object can be newly seen only on a changed tile, so an object whose masks
+(8 × 6 left of and above its anchor) cannot reach the changed tiles' box on its level is skipped
+before its tiles are read (the XL map's reveal 86 µs before, 27 µs after). `observe` shares the
+pieces (`tile_view`, `live_tile`, `observable`, `hero_view`, `object_view`, `boat_view`: the same
+code, refactored out of its closures). Tests: `observe/reveal/tests.rs` against an oracle that
+observes the same state through the older grid (a step's newly explored and fringe tiles, a hero
+on each, a pile, a monster on the fringe in either profile, a boat on the fringe under the quirk;
+everything since nothing; nothing since the same grid; a grid of other dimensions; a viewer that
+is not a player); `town/tests/view.rs`' town revealed with its view (its object not new under the
+quirk, the older grid's fringe having shown it). A throwaway test beside the server lane's fold
+gate (not committed): over the 72 golden replays every viewer-command whose explored count grew
+(1 969) had a non-empty answer and no other one; every difference of the fold from `observe` in
+the parts `SRV-STUB-1` alone names lay within the answer's keys (no miss); each entry equalled
+`observe`'s. Cost (release): `e08-xl-144` `observe` 356–385 µs a viewer, a step's reveal of about
+20 tiles 27 µs; `e08-economy-144` 287–305 and 19; the golden replays' 28 528 viewer-commands 539 ms
+of `observe` against 109 ms of reveals asked after every command.
+
+**The ended battles** (`h3_game::Sink::battle_ended`, a provided method, ignored by default):
+`settle` gives the sink the closed battle as it ended, before its outcome's events. First built as
+the server lane's note suggested, a `GameState` field kept until the next accepted command (a
+rejected command putting it back, out of the hash): `bench-check` measured every fork 9 Ir dearer
+and those after a battle's end 60 (`fork-rewards-36` +2.25 %, over its 2 % gate; the economy,
+meeting and sea XL forks +1.6 %), so the battle goes to the sink instead and the state is as
+before. Test: `tests/battles.rs`' command that ends a battle gives the sink the battle (none for
+the others; before `BattleEnded`, its result the outcome's; owners, heroes, each side's
+observation).
+
+**The movement** (`AdventureEventKind::MovementChanged { hero, movement, max_movement }`;
+`h3_adventure::Movements`): `apply` takes each hero's points and maximum before the command (for a
+sink that keeps events) and tells, after the rests, each hero on the map whose either changed, in
+hero order, to its owner alone. Mapped in `h3-protocol` (`wire::game::AdventureEvent`, the fold
+sets the own hero's two values; protocol v42), `SRV-STUB-2` lifted from the fold gate's
+"movement" part (exact over the golden replays) and the registry. Tests: `tests/moves.rs` (a
+move's, the new day's restoring, none for an end of turn that changes no points, a sink that
+keeps nothing told nothing with the same state); `h3-map`'s `check_told` checks each told value
+against the viewer's observation after the command; the tests of other events drop them
+(`tests::moved`, `after_steps`, `capture.rs`' `step`, `landing`'s kinds).
+
+**Versions:** protocol v42 (the server lane's, mapped here); none of the adventure lane's moved
+(the ended battles are out of the state hash; an event is in no hash or replay).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary` passed every step but
+`check-lane` (by design on a `cross-lane` branch; `cargo xtask check-lane --cross-lane` ok; deny
+and ffi-smoke skipped by the scope); its coverage step, after two regions of `reveal.rs` made
+total (a level's box indexed, a changed bit's tile read by its index), rerun alone: ok. Its
+`bench-check` inside every gate: the fork workloads' +1.3 to +1.8 % and `month-start-xl-144`'s
++1.6 % are `master`'s own (measured on `master` e085069 at the branch's counts); the random plays
++0.01 %. `cargo xtask verify-step coverage --scope server` ok (a `MovementChanged` of a hero the
+view does not hold added to the fold's unchanged-view test); `h3-protocol`'s, `h3-server`'s and
+`h3-sim`'s tests, the golden replays (`h3-cli`), `cargo check --workspace --all-targets`, clippy
+with `-D warnings` on the touched crates. The first scoped run met a hygiene property case that
+fails on `master` too (`b99004…`, the town lane's inbox; not committed as a regression line).
