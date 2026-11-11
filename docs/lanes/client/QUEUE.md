@@ -30,17 +30,17 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
     checked with the data staged by the next session): the crate `h3-battle-client` (h3-view's
     binary until then), the element `window::Hosted` with `h3-view window` its host.
   - **T3b**, cut in two with the user (2026-11-11):
-    - **T3b1:** a whole game's record (format 4) gives the battle the element plays and hands
-      back with its outcome: the game's battle messages as the battle's record (the protocol's
-      battle types as E16 M5 carries them: `BattleStarted`, the battle's `Snapshot`, its events
-      inside `GameEvents`, `BattleEnded`), `h3-view window` on a game record, its result window
-      and OK, the outcome handed to the host; the battlefield picture's variant from the wire
-      (protocol v35's `Observation.background`, CLT-Q4; the colours and the sex, CLT-Q6, are
-      read already); a windowless test host over a golden replay's game; the map client lane's
-      inbox told the API (its E24 M4 T5 shows golden replays' battles).
+    - **T3b1 done** (2026-11-11, branch `client/e17-m7-t3b1`; design §13.3): a whole game's
+      record's battle played and handed back with its outcome; the wire's picture variant and
+      colours read.
     - **T3b2:** the same battle played live through the host's game session (the element giving
-      its human side's commands to the host, the game's messages back); a test host plays a
-      whole game's battle to its result and gets the outcome back.
+      its human side's commands to the host, the game's messages back: `GameTurn`,
+      `GameAccepted`, `GameEvents` as `h3_view::game_record` reads them); a test host plays a
+      whole game's battle to its result and gets the outcome back (a real game in the client's
+      tests needs `h3-pack-adventure` and `h3-files` in the client workspace, so `clients.yml`'s
+      paths: a `shared/` pull request first, the user asked); the hero's battle picture by a sex
+      the map gave (`Hero.sex`: the 18 battle DEFs of 0x63BD40 by town × 2 + female in the
+      asset tables, a format change for the review list).
   - **T3c:** the sound on the host's device, the music through the common `h3_ui::music` (the
     end's tune after the combat music's 900 ms fade-out, the map client lane's note of
     2026-10-27; the focus lost and regained, its note of 2026-10-30); the frame widened by
@@ -48,8 +48,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
 - **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
   same; a test host plays a whole game's battle to its result and gets the outcome back; the map
   client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3b1 next (T3a done
-  2026-11-11).
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3b2 next (T3a and
+  T3b1 done 2026-11-11).
 
 ### E17 M7 T4 — M7's and E17's closure
 
@@ -81,7 +81,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
   "Assets and archives".
 
-- CLT-Q4: the background variants 0 and 1. NOTES, "Battlefields and boats".
+- CLT-Q4: the background variants 0 and 1 (read from the wire since E17 M7 T3b1; not recorded:
+  a situation needs trees, mountains or dead vegetation around the battle). NOTES,
+  "Battlefields and boats".
 
 - Later (placed at E17 M7 T4): graphics options (the user, at M1), an HD layout's origin and viewport.
   NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to

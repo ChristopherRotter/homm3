@@ -11,10 +11,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   map client's E24 M4 T5 waits on it), cut in four with the user: **T3a1 done** (`h3-view`'s
   binary became the library crate `h3-battle-client`), **T3a2 done** (the element
   `window::Hosted`, `h3-view window` its host; design §13.2; checked with the data staged in the
-  next session), T3b cut in two with the user: **T3b1** a whole game's record's battle and its
-  outcome handed back, **T3b2** the same played live through the host's game session; T3c the
-  sound on the host's device; T4 the closure, **which closes E17**. **Next:** T3b1. The pull
-  request of T3a1 and T3a2: the branch `claude/ecstatic-thompson-cjowg2`.
+  next session; **#849**), T3b cut in two with the user: **T3b1 done** (a whole game's
+  record's battle played and handed back with its outcome, `h3_view::game_record`; design §13.3;
+  the branch `client/e17-m7-t3b1`, stacked on #849), **T3b2** the same played live through the
+  host's game session (its test host needs a `shared/` change of `clients.yml`'s paths: ask the
+  user); T3c the sound on the host's device; T4 the closure, **which closes E17**. **Next:**
+  T3b2. Watch #849 and T3b1's pull request until they merge (#849 first, then rebase T3b1's on
+  `master`).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -49,12 +52,12 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
-- **2026-11-11, E17 M7 T3a2's checks (done; `claude/ecstatic-thompson-cjowg2`).** The
+- **2026-11-11, E17 M7 T3a2's checks and T3b1 (done; #849, `client/e17-m7-t3b1`).** The
   original data staged at once (57 files); the baseline's `check.sh` on the branch was lost to a
-  VM restart in coverage and passed when run again, the staged-data tests run (the windowless
-  host test among them). The gate; `window --check` on a scenario fought here (a human, the
-  result closed) and on a whole battle's record, every frame exact; `drawn` all the same. T3b
-  cut in two with the user (T3b1, T3b2). Record: `E17-log.md`.
+  VM restart in coverage and passed when run again. T3a2's checks (the windowless host test, the
+  gate, `window --check` here and on a record, `drawn`) all passed: #849. T3b cut in two with
+  the user; T3b1 checked on two golden replays' game records (`h3-server record`), every frame
+  exact. M7 review item 6. Record: `E17-log.md`.
 - **2026-11-11, E17 M7 T3a1 and T3a2 (done, T3a2 unverified; `claude/ecstatic-thompson-cjowg2`,
   no pull request).** T3 cut in four with the user, who agreed the entry's shape for the map
   client lane (the host owns the window and the frame, the battle an element drawn natively)

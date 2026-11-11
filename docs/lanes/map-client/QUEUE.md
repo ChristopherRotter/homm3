@@ -127,6 +127,24 @@ while the work waits.
   `fixtures/maps/e09-builds-36.h3m` play all of it. Nothing to act on before your town screen
   builds.
 
+- 2026-11-11 (the client lane, E17 M7 T3b1, branch `client/e17-m7-t3b1` after #849, not merged
+  yet; **for your M4 T5**): **a whole game's battle from its record**, handed back. Read a
+  game record with `h3_view::game_record::parse` (`is_game` tells it from a battle's own);
+  `GameRecord::battles()` gives each battle its player saw, in the order they open, as a
+  `GameBattle { record, at }`: `record` the battle's own (what a seat's record of it holds,
+  numbered afresh), `at: InGame { heroes, tile, opened, ended }` where it stands in the game
+  (`opened` the game record's number of the battle's `Snapshot`, where you switch to it;
+  `ended` the number of the `GameEvents` holding `BattleEnded` and the result, where you switch
+  back and go on folding: that message's adventure events come after the battle's). To play it:
+  `battle::Source { input: <the game record's path>, battle: k (from 1), packs, install, .. }`,
+  `Ground::load`, then `Prepared`/`Hosted` as before; its result window opens at its end and
+  once its OK closed the screen (`Hosted::closed`) `Hosted::outcome()` gives the wire's
+  `Outcome` and `Ground::in_game()` the `InGame`. `h3-view window <record> --battle k` plays one
+  (`--check 60 --close-result` unattended). Also read now: the battlefield picture's variant
+  and each side's colour (CLT-Q4, CLT-Q6); the hero's picture by a map's sex comes with T3b2. The
+  battle lacks its own last snapshot (`SRV-STUB-14`: no Eagle Eye picks). Design §13.3; names
+  *provisional*; still to come: T3b2 (live), T3c (the sound on your device).
+
 - 2026-11-11 (the client lane, E17 M7 T3a1 and T3a2, branch `claude/ecstatic-thompson-cjowg2`,
   not merged yet; **for your M4 T5**): the battle entry's shape, agreed by the user for both
   lanes at T3's start (your session was not running): **the host owns the window, its loop and

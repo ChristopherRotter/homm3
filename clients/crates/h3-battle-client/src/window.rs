@@ -59,6 +59,13 @@
 //! (the frame's size, the first cursor), [`Prepared::start`] starts it from a [`Setup`]. This
 //! command's window is its first host: the battle's frame alone, at the window's scale.
 //!
+//! **A whole game's battle** (E17 M7 T3b1, *provisional*): a whole game's record (format 4,
+//! `h3-server record`'s; `h3_view::game_record`) gives the battle `--battle` names as a record of
+//! its own, played as any record; at its end its result window opens as a battle fought here's
+//! (the outcome the game told, the creatures' values by its packs compiled here when the content
+//! check finds them the game's), and once its OK closed the screen the host takes the outcome
+//! ([`Hosted::outcome`]) and where the battle stands in the game (`Ground::in_game`).
+//!
 //! `--check <s>` and `--measure <s>` run unattended for that many seconds and report when each
 //! frame showed against its time; `--check` also reads every frame back before presenting it and
 //! compares it with the composed frame at the window's scale (the black around it included). An
@@ -178,7 +185,7 @@ fn sides(name: &str) -> Option<[bool; 2]> {
 }
 
 impl Options {
-    /// Parses `(<scenario.toml | record.jsonl> | --server <ws://… | wss://…> (--game <id> |
+    /// Parses `(<scenario.toml | record.jsonl> [--battle <k>] | --server <ws://… | wss://…> (--game <id> |
     /// --create <offer>) --seat attacker|defender [--token <t>] [--name <display>]
     /// [--pins <file>] [--drop <n>] [--login <login> [--register <display>] [--accounts <file>]])
     /// [--seed <n>] [--speed <0-2>] [--packs <dir>]
@@ -194,7 +201,7 @@ impl Options {
         let (mut from, mut run, mut mute, mut humans) = (0, None, false, [false; 2]);
         let (mut leave, mut keys, mut auto) = (None, None, None);
         let (mut settings, mut speed_set, mut question) = (None, false, (false, false));
-        let mut close_result = false;
+        let (mut close_result, mut battle) = (false, 1);
         // The computer's sight (E17 M6 T5b1, *provisional*): the fair actor's by default.
         let mut sight = None;
         // A seat on a server (E17 M5 T6b1): `connect`'s options.
@@ -261,6 +268,8 @@ impl Options {
                     };
                 }
                 "--close-result" => close_result = true,
+                // A whole game's record's battle (E17 M7 T3b1), from 1.
+                "--battle" => battle = usize::try_from(number(value()?)?).unwrap_or(usize::MAX),
                 "--sight" => {
                     sight = Some(match value()?.as_str() {
                         "fair" => Sight::Fair,
@@ -309,6 +318,7 @@ impl Options {
                 humans,
                 computer: Computer::Original(sight.unwrap_or_default()),
                 server,
+                battle,
             },
             scale,
             vsync,
@@ -1887,6 +1897,13 @@ impl<'g> Hosted<'g> {
         self.battle.result_closed()
     }
 
+    /// How the battle ended once its screen [`closed`](Self::closed) (E17 M7 T3b1): its outcome,
+    /// handed back for the host to go on from (a whole game's battle: where it stands in the game,
+    /// `Ground::in_game`); none before.
+    pub fn outcome(&self) -> Option<h3_protocol::wire::Outcome> {
+        self.closed().then(|| self.battle.result()).flatten()
+    }
+
     /// A pass's end, after its inputs, `ticks_ns` the host's time: the boxes' close, the options
     /// dialog's, Creature Info's level, the mouse followed and the frame now made again.
     pub fn after(&mut self, ticks_ns: &dyn Fn() -> u64) -> Result<(), String> {
@@ -2154,6 +2171,18 @@ impl<'g> Hosted<'g> {
                     "re-joined {} times; the game over: {}",
                     online.rejoined,
                     yes(online.over())
+                ));
+            } else if let Some(at) = self.ground.in_game() {
+                // A whole game's battle (E17 M7 T3b1): a record, no battle fought again; where it
+                // stands in the game and whether its screen closed (its frames read back).
+                lines.push(format!(
+                    "a whole game's battle: opened at message {}, ended {}; its screen closed: {}",
+                    at.opened,
+                    at.ended.map_or_else(
+                        || "after the record".to_owned(),
+                        |(n, result)| format!("at message {n} ({result:?})")
+                    ),
+                    yes(self.closed())
                 ));
             } else {
                 let same = self.battle.as_the_bot_fights().unwrap_or(Ok(false))?;
@@ -3809,16 +3838,11 @@ mod tests {
             "median 5.0, p95 9.5, max 10.0 (100 frames)"
         );
     }
-    #[test]
-    fn a_host_without_a_window_runs_the_battle_to_its_result_and_its_close() {
-        // E17 M7 T3a2: the element alone, its host a loop of its own: a clock it moves by each
-        // pass's timeout as a wait with no input would, no window, no sound. The unattended
-        // presses play the human's side, the result window opens at the battle's end and its OK
-        // pressed closes the battle's screen, which the host reads.
-        let Some(source) = crate::battle::tests::staged("seq-end.toml", [true, false]) else {
-            return;
-        };
-        let ground = Ground::load(&source).unwrap();
+    /// A host without a window (E17 M7 T3a2): the element alone, its host a loop of its own: a
+    /// clock it moves by each pass's timeout as a wait with no input would, no window, no sound;
+    /// the unattended presses' OK closing the result window. The element after its close (or
+    /// after too many passes) and the frames shown.
+    fn hosted_to_close<'g>(ground: &'g Ground, source: &Source) -> (Hosted<'g>, usize) {
         let clock = std::cell::Cell::new(0_u64);
         let ticks = || clock.get();
         let setup = Setup {
@@ -3836,7 +3860,7 @@ mod tests {
             }),
         };
         let mut lines = Vec::new();
-        let prepared = Prepared::new(&ground).unwrap();
+        let prepared = Prepared::new(ground).unwrap();
         let mut hosted = prepared.start(setup, &ticks, &mut lines).unwrap();
         let (mut passes, mut shown) = (0, 0);
         while !hosted.closed() && passes < 200_000 {
@@ -3858,7 +3882,155 @@ mod tests {
             hosted.closed(),
             "{passes} passes, {shown} frames: {lines:?}"
         );
+        (hosted, shown)
+    }
+
+    #[test]
+    fn a_host_without_a_window_runs_the_battle_to_its_result_and_its_close() {
+        // E17 M7 T3a2: the unattended presses play the human's side, the result window opens at
+        // the battle's end and its OK pressed closes the battle's screen, which the host reads,
+        // with the outcome (E17 M7 T3b1).
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let (hosted, shown) = hosted_to_close(&ground, &source);
         assert!(!hosted.battle().playing());
         assert!(shown > 1 && hosted.shown().is_some());
+        assert!(hosted.outcome().is_some());
+        assert_eq!(ground.in_game(), None);
+    }
+
+    /// The whole game's record of a test host's game whose battle is `fought` (a spectator's
+    /// record): an adventure turn's start, the battle's start in a command's events (its heroes
+    /// `heroes`, its tile `tile`), its snapshot, each command's events (the last with the
+    /// battle's end and the adventure's after it), the adventure again; as
+    /// `h3_protocol::session::game` sends them (`h3-server record`'s files). With the result and
+    /// the number of the message that ended the battle.
+    fn game_record(
+        fought: &h3_view::record::Record,
+        (heroes, tile): ([Option<u16>; 2], h3_protocol::wire::game::Pos),
+    ) -> (String, h3_protocol::wire::Outcome, u32) {
+        use h3_protocol::wire::game::{
+            GameEvent, GameKeyTables, GameManifest, GameRecordHeader, MapIdentity,
+        };
+        use h3_protocol::wire::{ServerMessage, WireU64};
+        let m = &fought.header.manifest;
+        let header = GameRecordHeader {
+            format: h3_protocol::RECORD_FORMAT_VERSION,
+            game: 9,
+            player: 0,
+            manifest: GameManifest {
+                protocol: m.protocol,
+                engine: m.engine.clone(),
+                packs: m.packs.clone(),
+                profile: m.profile.clone(),
+                ruleset_hash: m.ruleset_hash,
+                battle_ruleset_hash: m.battle_ruleset_hash,
+                adventure_ruleset_hash: WireU64(0),
+                town_ruleset_hash: WireU64(0),
+                rng: m.rng.clone(),
+                hash: m.hash.clone(),
+                battle_state_hash_version: m.battle_state_hash_version,
+                adventure_state_hash_version: 0,
+                game_state_hash_version: 0,
+                map: MapIdentity {
+                    content_hash: WireU64(0),
+                    import_version: 0,
+                },
+                field: m.field,
+                keys: m.keys.clone(),
+                game_keys: GameKeyTables::default(),
+            },
+            first: 1,
+        };
+        let result = (fought.messages.iter())
+            .find_map(|m| match m {
+                ServerMessage::GameEnded { result, .. } => Some(*result),
+                _ => None,
+            })
+            .unwrap();
+        fn battle(events: &[h3_protocol::wire::Event]) -> impl Iterator<Item = GameEvent> + '_ {
+            (events.iter().cloned()).map(|event| GameEvent::Battle { event })
+        }
+        let mut told = vec![
+            vec![GameEvent::TurnStarted { player: 0 }],
+            core::iter::once(GameEvent::BattleStarted { heroes, tile })
+                .chain(battle(fought.opening().unwrap_or_default()))
+                .collect(),
+        ];
+        let commands: Vec<&[h3_protocol::wire::Event]> = fought.commands().collect();
+        for (i, events) in commands.iter().enumerate() {
+            let mut list: Vec<GameEvent> = battle(events).collect();
+            if i + 1 == commands.len() {
+                list.push(GameEvent::BattleEnded { heroes, result });
+                list.push(GameEvent::TurnEnded { player: 0 });
+            }
+            told.push(list);
+        }
+        let mut messages = Vec::new();
+        let ended = u32::try_from(told.len() + 1).unwrap();
+        for (i, events) in told.into_iter().enumerate() {
+            let n = u32::try_from(messages.len() + 1).unwrap();
+            messages.push(ServerMessage::GameEvents { n, events });
+            if i == 1 {
+                messages.push(ServerMessage::Snapshot {
+                    n: n + 1,
+                    observation: fought.first_snapshot().unwrap().clone(),
+                });
+            }
+        }
+        let mut text = h3_protocol::codec::encode_text(&header);
+        for m in &messages {
+            text.push('\n');
+            text.push_str(&h3_protocol::codec::encode_text(m));
+        }
+        (text, result, ended)
+    }
+
+    #[test]
+    fn a_host_gets_a_whole_game_s_battle_back_with_its_outcome() {
+        // E17 M7 T3b1: a battle of a whole game's record (`h3_view::game_record`), here a test
+        // host's whose battle the computer fought here on both sides (`seq-end`'s), played by
+        // the element as a record: its result window at its end, the presses' OK closing it, the
+        // outcome the game told handed back with where the battle stands in the game. A battle
+        // the record does not hold is refused.
+        let Some(mut source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let (ruleset, setup) =
+            crate::scenario::battle(&source.input, &source.packs, source.seed).unwrap();
+        let players = ([false, false], Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, source.seed, players).unwrap();
+        while live.next().unwrap().is_some() {}
+        let fought = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let tile = h3_protocol::wire::game::Pos {
+            x: 4,
+            y: 7,
+            level: 0,
+        };
+        let (text, result, ended) = game_record(&fought, ([Some(3), None], tile));
+        let path =
+            std::env::temp_dir().join(format!("h3-view-game-record-{}.jsonl", std::process::id()));
+        fs::write(&path, text).unwrap();
+        source.input = path.clone();
+        let ground = Ground::load(&source).unwrap();
+        assert_eq!(
+            ground.in_game(),
+            Some(&h3_view::game_record::InGame {
+                heroes: [Some(3), None],
+                tile: Some(tile),
+                opened: 3,
+                ended: Some((ended, result)),
+            })
+        );
+        assert_eq!(ground.content(), Some(h3_view::remote::Content::Same));
+        let (hosted, shown) = hosted_to_close(&ground, &source);
+        assert!(shown > 1);
+        assert_eq!(hosted.outcome(), Some(result));
+        source.battle = 2;
+        let refused = Ground::load(&source).unwrap_err();
+        assert!(refused.contains("no battle 2"), "{refused}");
+        fs::remove_file(&path).unwrap();
     }
 }

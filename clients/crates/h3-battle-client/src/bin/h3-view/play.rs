@@ -30,13 +30,13 @@ pub struct Options {
 
 impl Options {
     /// Parses `<scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
-    /// [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]`.
+    /// [--install <dir>] [--battle <k>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let clients = assets::clients_dir();
         let env = std::env::var_os("H3_INSTALL").map(PathBuf::from);
         let (mut input, mut seed, mut speed, mut packs, mut install) = (None, 1, 0, None, None);
         let (mut out, mut png, mut from, mut to) = (None, false, 0, None);
-        let mut moments = false;
+        let (mut moments, mut battle) = (false, 1);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -55,6 +55,8 @@ impl Options {
                 }
                 "--packs" => packs = Some(PathBuf::from(value()?)),
                 "--install" => install = Some(PathBuf::from(value()?)),
+                // A whole game's record's battle (E17 M7 T3b1), from 1.
+                "--battle" => battle = usize::try_from(number(value()?)?).unwrap_or(usize::MAX),
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--png" => png = true,
                 "--moments" => moments = true,
@@ -80,6 +82,7 @@ impl Options {
                 // The fixed bot on both sides (E17 M6 T5b1, *provisional*: a fixture's battle).
                 computer: h3_battle_client::live::Computer::Greedy,
                 server: None,
+                battle,
             },
             out,
             png,

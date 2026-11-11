@@ -917,6 +917,50 @@ fn a_special_battlefield_has_its_own_picture() {
 }
 
 #[test]
+fn the_battlefield_s_picture_is_the_variant_the_battle_names() {
+    // Protocol v35 (CLT-Q4; E17 M7 T3b1): the variant 0x41ADB0 picks by the battle's surroundings
+    // on the adventure map, the third without it; a battlefield of fewer pictures its last.
+    let (tables, layout) = (tables(), layout());
+    let background = |battlefield, variant| {
+        let mut o = observation();
+        (o.terrain, o.battlefield, o.background) = (Some(0), battlefield, variant);
+        let list = battle(&o, &keys(), &tables, &layout).unwrap();
+        list.into_iter().find_map(|d| match d {
+            Draw::Background { picture, .. } => Some(picture),
+            _ => None,
+        })
+    };
+    assert_eq!(background(None, Some(0)).as_deref(), Some("CmBkGrDd.pcx"));
+    assert_eq!(background(None, Some(1)).as_deref(), Some("CmBkGrMt.pcx"));
+    assert_eq!(background(None, None).as_deref(), Some("CmBkGrTr.pcx"));
+    assert_eq!(background(Some(0), Some(0)).as_deref(), Some("CmBkBch.pcx"));
+}
+
+#[test]
+fn each_side_s_colour_is_the_one_the_battle_names() {
+    // Protocol v35 (CLT-Q6; E17 M7 T3b1): a side's player colour, else red for the attacker and
+    // blue for the defender.
+    let mut o = observation();
+    assert_eq!(players(&o), [0, 1]);
+    (o.sides[0].colour, o.sides[1].colour) = (Some(5), None);
+    assert_eq!(players(&o), [5, 1]);
+    o.sides[1].colour = Some(0);
+    assert_eq!(players(&o), [5, 0]);
+    // The heroes' flags in them.
+    let mut o = battle_view();
+    (o.sides[0].hero, o.sides[1].hero) = (led(0), led(1));
+    (o.sides[0].colour, o.sides[1].colour) = (Some(3), Some(6));
+    let list = battle(&o, &keys(), &tables(), &layout()).unwrap();
+    let flags: Vec<u8> = (list.iter())
+        .filter_map(|d| match d {
+            Draw::Flag { player, .. } => Some(*player),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(flags, [3, 6]);
+}
+
+#[test]
 fn what_the_tables_or_the_manifest_lack_is_an_error() {
     let (tables, layout) = (tables(), layout());
     let run = |change: &dyn Fn(&mut Observation)| {
