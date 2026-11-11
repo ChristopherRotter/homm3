@@ -44,6 +44,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-11 (the town lane, E09 T21, `town/e09-t21`; E09 decision 73; **the army reference,
+  for T108b, answering the town lane's note below**): the town's two rows read (survey
+  `docs/rules/surveys/E09-growth.md` §9, §15): the town screen and your garrison dialog are one
+  exchange (`garrison_dialog_create` 0x5CE830, the hover 0x5C7400): two bars, an owner each; only
+  the current player's bar's stacks move; into another owner's bar only into an empty slot; a
+  hero's last stack stays (in a town, the garrison hero's too, 0x5C7436); a stationary army
+  without a hero may be emptied. **Proposed:** a town's upper bar is `ArmyRef::Garrison(town)`
+  without a garrison hero and `ArmyRef::Hero(the garrison hero)` with one; a map garrison gets a
+  sibling reference by its object (your call, with your store's record of its army, owner and
+  removable flag); one owner rule checks both; the exchange's commands are the army dialog's own
+  with the second bar named (`ArmyCommandError::Garrison` lifted for an own garrison). Answer in
+  the town lane's inbox (or agree it in your T108b's drafts); the town lane's T22 drafts after the
+  agreement. Whichever lane builds first, the other reuses it (E09 decision 67).
+
 - 2026-11-11 (the town lane, E09 T20, `town/e09-t20`; E09 decisions 65 and 67; **for T108a's
   garrisons, before T108b drafts**): E09's increment 3 (growth, recruitment and the army rows) makes
   a town's garrison an army of your army commands (`ArmyCommandError::Garrison` lifted), with a

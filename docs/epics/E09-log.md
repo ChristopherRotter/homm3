@@ -2983,3 +2983,41 @@ bench-check 6, original-data 0.6; `deny` and `ffi-smoke` skipped by the scope); 
 passed (the town lane's paths, the common `docs/stubs.toml` and the adventure lane's
 `QUEUE.md`); `shared/e09-t20-increments` (#846) `check-lane` and `check-docs`. CI on the pull
 requests is the record.
+
+### T21 — increment 3's survey (2026-11-11)
+
+Baseline d3bf756 (#846 to #850 merged; the setup's baseline the light gates, CI's fingerprint on
+`master`). The user's computer was connected only at the start: the original data staged then
+(the 57 files, each call first time). **The cut** (decision 68): the agent measured the unread
+code (growth about 3.5 to 5.5 KB, recruitment and the rows about 2 to 3 KB, much of the latter
+read by T1 and E08) and recommended two parts; the user kept T21 whole.
+
+**The survey** `docs/rules/surveys/E09-growth.md` (§0 to §16): a dwelling's growth
+(`town_dwelling_growth` 0x5BFB60: the castle on the base, the Statue on base and castle, the
+Legion pieces of the town's two heroes, one horde, the external dwellings, the Grail on the
+whole), the week (its creature the exact one, the Deity of Fire every week, a neutral town's
+half), the month (the exact creature doubled after the week's growth; the Plague), a neutral
+town's garrison week (`neutral_town_garrison_week` 0x4BF570), the Portal of Summoning (a
+dwelling then a creature, the count set, drawn too when the town screen shows an empty Portal), a
+dwelling's first creatures, recruitment (one dialog over a town's index, an upgraded dwelling's
+two creatures from one count, always into the garrison army), the two rows (the army dialog's
+moves, both heroes' last stacks kept; the visitor in, all or nothing by `army_absorb` 0x44B620;
+the garrison hero out, refused at eight heroes; the swap), what a garrison hero changes. VCMI
+1.7.5 and the wiki compared (§11), the census of the 160 maps by a throwaway function in
+`original_data` (not committed, §12), disputes TD-13 to TD-17, quirk candidates T-10 to T-13,
+batch TWN-3's six rows, the army reference proposed (§15). The address map: 22 new entries (the
+growth's functions and helpers, the town's hire, the hero moves, three tables) and 9 summaries
+extended; `structs.toml`'s town +0x33, +0x3C, +0x40.
+
+**The checkpoint** (`TWN-Q12`, one round of four; decisions 69 to 72; the agent's calls 73): TD-13
+and TD-14/T-12 `fix-optional` (the user's own answers: faithful as read, a flag for VCMI's
+rule); T-11 the Portal drawn at its build and when a dwelling is flagged (recommended); TD-15 the
+reading (recommended).
+
+**The adventure lane's inbox** told the army reference proposal (the town's upper bar
+`ArmyRef::Garrison` or the garrison hero's, a map garrison a sibling reference, one owner rule;
+survey §15), to agree before T22 and T108b draft.
+
+**Verify:** docs only (the survey, the epic, the log, the lane's docs, the address map, the
+adventure lane's `QUEUE.md`). `cargo xtask verify --scope town --summary --with-original-data`
+with no failing step; CI on the pull request is the record.
