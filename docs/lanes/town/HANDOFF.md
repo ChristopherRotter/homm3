@@ -25,7 +25,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   inbox), the guild's spells at the start (`TWN-STUB-6`, increment 4), the Grail building's forbid
   (`TWN-STUB-2`, the victory conditions), Visions' reach told (`TWN-STUB-13`, increment 4; the
   server lane's fold test exempts it).
-- **Open pull requests:** T19c2's (branch `town/e09-t19c2`, `cross-lane`: `h3-map`'s
+- **Open pull requests:** T19c2's #842 (branch `town/e09-t19c2`, `cross-lane`: `h3-map`'s
   `examples/original_data.rs`, `h3-cli`'s bench, the workloads, `h3m.md`, the map client's
   inbox) after `shared/e09-t19c2-benches` (#841, the benches README's rows), which merges first.
   #837 merged.
