@@ -522,6 +522,13 @@ of the three classes stands on them, 3 to 7 on SoD maps only), 103 602 on 98 (30
 111 224 on 62 (9 underground), the survey's counts (`docs/rules/surveys/E08-teleporters.md` §1).
 No shipped 220 is below subclass 7 (the mines' table changes none of them).
 
+E08 T106c's census (the same import, seed 0): the rest of the survey's teleporter census is checked
+too (the counts by class, subclass and level, the maps with each class, the one-way channels by
+entrances and exits, the two-way ones by size, the Whirlpools' 1 344 tiles and the maps by their
+Whirlpools: all as T103b and T104 found them), and each class's most on one map (8 one-way
+entrances, 8 exits, 17 two-way monoliths, 26 gates, 19 Whirlpools; 4 one-way and 6 two-way
+channels), the teleporters XL map's numbers (survey §1).
+
 ## The subset we write (E04a T2)
 
 ### Order of a SoD map (version `0x1C`), as we write it

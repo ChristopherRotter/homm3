@@ -1,0 +1,28 @@
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
+
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
+target = "x86_64-unknown-linux-gnu"
+
+[workload]
+description = "the reachable-tiles query of every walking hero of the acting player at each step of 2 random games of 28 days on the teleporters XL map (E08 T106c, increment 11's design note §14: 144 x 144 with an underground and a sea, the shipped maps' most of each teleporter class on one map, 8 one-way entrances and 8 exits over 4 channels, 17 two-way monoliths over 6, 26 gates, 19 Whirlpools, each land one in a cell of its own spread over both levels; ten walkers, two beside boats; 378 gnoll stacks, one on every hundredth free land tile); seed 11 by a search of seeds 1 to 24 for the most jumps (7 jumps, 6 revisits, 26 battles in 2 777 steps): 9 350 walkers' queries, about 127 k Ir each, 885 of them (9.5 %) reaching a teleporter's tile, a stop node (927 tiles); 94 % inside h3_game::legal::legal_moves, Reach::search 62 % itself; counts only inside h3_cli::adventure::bench::reach_queries; baselined at its first count"
+args = [
+    "adventure",
+    "bench",
+    "--map",
+    "fixtures/maps/e08-teleporters-144.h3m",
+    "--workload",
+    "reach",
+    "--games",
+    "2",
+    "--days",
+    "28",
+    "--seed",
+    "11",
+]
+collect = "*reach_queries*"
+instructions = 1184099078
+threshold_percent = 2

@@ -113,6 +113,12 @@ rows above the anchor, `h3m.md`).
   none stands on it); Whirlpools on water only.
 - **Clean inputs:** no teleporter entrance is the visitable tile of another object or under another
   object's blocked tile, none lies off the map, none has a body.
+- **The most on one map** (E08 T106c, `h3-map`'s `original_data`, checked with the rows above;
+  the first map by file name that holds it): one-way entrances 8 (Back For Revenge - Allied), exits
+  8 (Jihad), two-way monoliths 17 (Serpents Treasure), Subterranean Gates 26 (Islands and Caves:
+  13 pairs), Whirlpools 19 (Thousand Islands (allies)); one-way channels 4 (Battle of the Sexes
+  Allied), two-way channels 6 (Hatchet Axe and Saw). The teleporters XL map
+  (`fixtures/maps/e08-teleporters-144.h3m`) holds these numbers.
 
 ## 2. The objects in the map file and at load
 

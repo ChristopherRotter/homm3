@@ -26,6 +26,7 @@ mod sea_xl_map;
 mod strategy;
 mod teleporters;
 mod teleporters_map;
+mod teleporters_xl_map;
 mod towns;
 mod towns_map;
 mod view;
