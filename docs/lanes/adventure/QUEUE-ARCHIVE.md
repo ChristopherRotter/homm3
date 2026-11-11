@@ -4,6 +4,24 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-11, E08 T109b: done whole, decision 312; the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314; the record in `E08-log.md`, T110 queued.)* **E08 T109b — batch E12's specs and templates: E12a and E12b** (decisions 303, 309, 310)
+
+- **Scope:** as T99b for increment 11 (design note `E08-design.md` §18, §19's round 2): the specs
+  and templates of runs **E12a** (E12-1 to E12-6, the garrisons, day 1, two players) and **E12b**
+  (E12-7 to E12-17, the bonus visitables, days 1 to 7 and the next week's first, one player), with
+  the predictions added in §18; each walk priced on the written map (TRAPS: price an experiment's
+  walks; the seventeen classes import as blockers until T113b, so a step onto one is priced by
+  hand) and a fresh review, as T99b1's. The writer and the spec's fields are T109a's (done): the
+  garrisons in `[[map.ownable]]` with `owner`, `army`, `removable`; the fifteen in `[[map.object]]`
+  by picture (`docs/experiments/README.md`, "Increment 12's objects"); a Blue hero is an
+  `[[encounter.also]]`; no spell points at the start (decision 311).
+- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1, §12 (the rows), §3 to §7
+  and §10 for the predictions; design note §18; T99b1's and T99b2's records in `E08-log.md` as the
+  form; T109a's record.
+- **Depends on:** T109a (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the maps; confirm the cut at its start: likely in two by spec, E12a then
+  E12b, as decision 277).
+
 *(Moved 2026-11-11, E08 T109a: the entry as it stood before T109 was cut in two at the code's seam, decision 310; T109a's record in `E08-log.md`, T109b queued.)* **E08 T109 — batch E12's maps: the writer's seventeen classes, the spec's fields, the specs** (decisions 303, 309)
 
 - **Scope:** as T99 for increment 11 (design note `E08-design.md` §18, §19's round 2): `h3_map::writer`

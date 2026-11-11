@@ -1,0 +1,53 @@
+# E25 T33's round 2 (the user, 2026-11-11, on round 1's read): `e25-continue-lr.toml` (2 M samples
+# from `e25-structure-1` #2 at a quarter of the learning rate, the entropy bonus at 0) annealed:
+# the rate falls linearly from 6.25e-5 to #2's own floor, 1.25e-5, over the arm's 2 M (reached at
+# 1.6 M, `lr_horizon` 2 M, `lr_floor` 0.2), as #2's run fell from 6.25e-5 at 15 M to its floor at
+# 19 M of 20. Round 1 measured every arm at 5 to 20 times #2's final rate against #2's annealed
+# endpoint (each below it, 0.478 to 0.494); this arm asks whether more PPO from #2 pays once
+# annealed, which decides whether T35's long run starts from #2 or from T32's clone. It cannot
+# resume into a long run (its rate ends at the floor). About 2 hours on the GTX 1070. From python/:
+#
+#   uv run --group train python -m h3env.train --config configs/e25-continue-anneal.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-continue-anneal-1
+#
+# Ctrl-C stops it at the next update boundary, checkpointed; each later part:
+#
+#   uv run --group train python -m h3env.train --resume runs/e25-continue-anneal-1
+
+seed = 1
+samples = 2_000_000
+
+[env]
+kinds = [78, 2, 100, 50, 25, 3]
+
+[network]
+kind = "hexconv"
+norm = "layer"
+width = 96
+layers = 6
+mask_input = true
+order = true
+attack_hex = true
+tactics_rounds = 3
+
+[ppo]
+lr = 6.25e-5
+lr_floor = 0.2
+lr_horizon = 2_000_000
+accumulate = 4
+chunk_align = 32
+shaping = true
+entropy_coef = 0.0
+
+[league]
+self_play = 0.5
+snapshot_every = 1_000_000
+max_members = 16
+live = 4
+live_every = 250_000
+
+[gate]
+gate_every = 10_000_000
+
+[ladder]
+ladder_episodes = 1
+ladder_final_episodes = 0

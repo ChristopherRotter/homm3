@@ -133,6 +133,16 @@ with the imitation weight 0, 0.5 and 2 (`imitation_horizon` 10 M, the ladders at
 kind), `-ceiling` the four networks scored against the fair actor's draws (`h3env.train.ceiling`;
 the runs' learners from their `checkpoint.pt`). The findings in `docs/epics/E25-log.md` T21.
 
+## The continuations
+
+`continue/<run>-<measure>.json` (E25 T33): a short continuation's learner (`runs/<run>/
+checkpoint.pt`) measured after its run, the user's GPU: `-head-to-head` the fixed head-to-head
+against `e25-structure-1` #2 on all 4 000 pairs of the gate set (`h3env.train.gate --fixed
+--json`: the pairs' counts per score, the score and its standard error), `-ladder` its ladder
+against the fair and the all-seeing system actor on the report set v1 (500 a kind), `-neutral`
+on the neutral set v1 (`h3env.train.ladder --json`). The runs' records beside the others
+(`<run>.json`). The findings in `docs/epics/E25-log.md` T33.
+
 ## The search's measurements
 
 `search/<run>-<set>-<N>[-<per kind>].json` (E06 T8c): `python -m h3env.search --report --best
@@ -235,3 +245,8 @@ its `parent`.
   `inspect/e25-structure-1-report-v1.json`, its temperature diagnostic
   `inspect/e25-structure-1-temperature.json` (E25 T30, the sandbox's CPU, as
   `e25-scale-1-temperature.json`). Its network is on the user's machine.
+- `e25-continue-1`, `e25-continue-imitate-1`, `e25-continue-lr-1` (E25 T33's round 1,
+  2026-11-11; `configs/e25-continue.toml`, `e25-continue-imitate.toml`, `e25-continue-lr.toml`,
+  each `--init-from` `e25-structure-1` #2): 2 M samples each, no promotion (their own gate
+  rejected the learner); measured after the run (`continue/`): 0.494, 0.478 and 0.493 head to
+  head against #2 (`docs/epics/E25-log.md` T33). Their networks are on the user's machine.

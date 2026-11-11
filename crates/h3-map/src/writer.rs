@@ -256,11 +256,12 @@ pub const GROUND_OBJECTS: [u32; 12] = [21, 46, 222, 223, 224, 225, 226, 227, 228
 /// Monoliths One Way Entrance (43), One Way Exit (44) and Two-Way (45), their subclass the channel
 /// (0 to 2 in every version, 3 to 7 in SoD); the Subterranean Gate (103) and the Whirlpool (111),
 /// subclass 0, its six tiles all blocked and visitable, on water. Since E08 T109a increment 12's
-/// bonus visitables ([`BONUS_OBJECTS`]). On either level (a level's objects,
-/// [`Underground::objects`]).
-pub const PLAIN_OBJECTS: [u32; 41] = [
+/// bonus visitables ([`BONUS_OBJECTS`]). Since E08 T109b increment 7's School of War (107; no
+/// body, batch E12's E12-17: a refused visit's kind mark, decision 313). On either level (a
+/// level's objects, [`Underground::objects`]).
+pub const PLAIN_OBJECTS: [u32; 42] = [
     8, 11, 13, 14, 22, 28, 29, 30, 31, 38, 43, 44, 45, 48, 49, 52, 55, 56, 63, 64, 78, 82, 86, 92,
-    94, 96, 100, 101, 103, 104, 105, 108, 109, 110, 111, 112, 124, 135, 137, 155, 212,
+    94, 96, 100, 101, 103, 104, 105, 107, 108, 109, 110, 111, 112, 124, 135, 137, 155, 212,
 ];
 /// Object classes of the fifteen bonus visitables (E08 T109a: batch E12; survey
 /// `docs/rules/surveys/E08-garrisons-bonuses.md` §1.2, no body, subclass 0), among

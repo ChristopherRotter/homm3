@@ -773,6 +773,27 @@ the screen closes; a build then copies it into the every-built set +0x158 (recom
 standing set). Without an enemy the game ends at a visit's close ("all your enemies have been
 defeated"): a map whose players are all allies needs a player outside their team.
 
+**Growth, the garrison hero and a town's hire** (E09 T23, batch TWN-3; `docs/rules/surveys/E09-growth.md`
+§1 to §9). The town reads gain `town:x,y:counts` (the available creatures +0x16, i16 by the
+faction's index: `base 14, 9, 7, 0, 0, 0, 0; upgraded 0, …`), `count:<i>`, `dwellings` (the
+external dwellings' counts +0x118, the same layout), `portal` (+0x3C, +0x40: `14 Pikemen`, `none
+(count 21936)`: the count is not set until the first draw) and `garrison_hero` (+0xC: its name,
+`none`); `kinds` reads the week's and the month's kinds and creatures (0x697750, 0x6983FC,
+0x698834, 0x697748: `week 0 (name 7), month 1 (Griffin)`). Two town screen actions:
+`hero_in = true` moves the visitor into the garrison (its portrait, item 124 at (241, 483), then
+the garrison's, the flag 100 or the garrison hero 122 at (241, 387), each 58 × 64; the visitor's
+selection frame is item 125): a click acts in the mode the hover set (`town_hero_hover`
+0x5C7250), and a click right after one mouse move was lost under Wine (the hover not yet run), so
+each click waits until the status line (item 151) changes; a refusal's message is recorded
+(`GENRLTXT:276`) and its OK clicked. `building = <id>` clicks the town screen's building (its
+item, at its box's centre) and waits for its hire dialog; `amount` and `click = ["recruit"]` then
+act there, and the walk closes a hire dialog left open by its Close. `hire:creatures` reads the
+creatures the dialog offers with the counts it reads (`14 Halberdiers, 14 Pikemen`: an upgraded
+dwelling's two, one count). Observed (batch TWN-3): a Recruit closes the town's hire dialog even
+with two creatures offered; a dwelling's hire question (`ADVEVENT:35`) comes at a walk onto a
+neutral one, after its flag (`answer = { hire = "no" }`); a player without a town is out of the
+game after seven days of play (a map's opponent needs one when the batch plays a week).
+
 **Dwellings, the hire dialog and a computer player's turn** (E08 T90, batches E10a and E10b;
 `docs/rules/surveys/E08-dwellings.md` §2.1, §5, §7, §9). `dwelling:x,y[,level]` reads the dwelling
 record whose entrance is that tile (game +0x4E39C, 0x5C bytes each, `h3mem.dwellings`: `record 3;
@@ -1294,6 +1315,25 @@ sequence fails at its end when any forced value was.
 | `wall_retarget_tie` | `random(1, 100) <= 50` the later (1, 100) | 0x445E44, the next shot's target once its own fell |
 | `catapult_tie` | `random(1, k)` (1, 1) | 0x473DA0, the Catapult's own aim: the k-th of the weakest walls (no draw for k = 1: `random_between` 0x50B230 returns an equal bound before drawing; the adventure lane's note of 2026-11-06) |
 | `quake_target` | `random(1, k)` (1, 1) | 0x5A7DD8, Earthquake's target per hit: the k-th standing target with hit points left (E17 M4 T2c-2) |
+| `week_chance` | `random(1, 4) = 1` (1, 2) | 0x4C87CE, at a week's start (`new_day_week_events`): the coming week a creature's; not drawn when the month's fourth week ends (E09 T23) |
+| `week_creature` | `rand()` mod the eligible creatures' count (a value only) | 0x4C883E, its creature, the (r + 1)-th eligible from the top (E09 T23) |
+| `month_kind` | `random(1, 10)`: 6 to 9 a creature's month, 10 the Plague (10, 1) | 0x4C8F5E, at a month's start (`new_month`, after the week's events; E09 T23) |
+| `month_creature` | `month_creatures`[`random(0, 11)`] (a value only: 1 the Griffin) | 0x4C8FA5, a creature month's creature (E09 T23) |
+
+**On the adventure map** (E09 T23, batch TWN-3): a recipe's `rolls = { <name> = <value> }` (at each
+new game) and a step's `rolls` make every later draw of the roll return the value (`"natural"`:
+drawn again), a step's `roll = { <name> = <value> | [<a>, <b>, ...] }` its next draw (or draws),
+before the step plays; a refused one stops the batch. The week's and the month's kinds are drawn
+when the week or the month starts, into the globals the towns' growth reads right after (survey
+`E09-growth.md` §2, §3): writing them in memory before does nothing, so they are forced as draws.
+xdd.dll also logs, unforced, a neutral town's garrison week (`garrison_chance_fort` 0x4C8E09 and
+`garrison_chance` 0x4C8E1C, `random(0, 100)` below 80 or 40; `garrison_sum_1` to `_3` 0x4BF5E5,
+0x4BF5F0, 0x4BF5FB, `random(0, n + 1)` each; `garrison_upgrade` 0x4BF74D, `random(1, 100)`) and
+the Portal of Summoning's draws (`portal_dwelling` 0x5BD825, `random(0, n - 1)`; `portal_creature`
+0x5BD86E, `rand()`), each line `name value` in its file `draws` (h3drive.LOGGED): a step's `draws`
+(`draws:<prefix>`, e.g. `draws:garrison`) reads those its play logged, `turn_draws[:<prefix>]` those
+of the batch's last end turn. A step's `date = [month, week, day]` writes the game's date (+0x1F63E)
+before it plays: the week's last day, then two end turns, start the next week at once.
 
 A sequence's action `roll:<name>` forces the roll's next draw to fall, `roll:<name>:fail` to fail,
 `roll:<name>:<n>` to be n (E17 M4 T2b: the wall shots' rolls, whose draw picks among more than
