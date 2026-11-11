@@ -39,7 +39,7 @@ same record (the day's construction, the available creatures, the guild's spells
 
    `h3-towns` is a logic crate (`no_std`, `check-arch` purity, the 100 % coverage gate). It
    depends on the kernel, the core content, `h3-contracts` and the hero model `h3-heroes` (the
-   shared layer, for the services that change a hero from increment 4); no domain crate depends
+   shared layer, for the services that change a hero from increment 5); no domain crate depends
    on it, `h3-game` does. Both crates and the pack files `packs/*/towns.toml` are the town
    lane's (`lanes.toml`).
 2. **A town is split between two contexts, each fact held once** (decision 2):
@@ -110,14 +110,14 @@ same record (the day's construction, the available creatures, the guild's spells
    (survey §13; no gap-fill override).
 6. **Seams.** `h3-towns` and `h3-adventure` never import each other; `h3-game` reads both. The
    only new contract type of increment 1 is `TownId`. The siege's facts cross to the battle as
-   ADR-0023's `Siege` (point 7). From increment 4 a town's service reads a hero's details by
+   ADR-0023's `Siege` (point 7). From increment 5 a town's service reads a hero's details by
    reference and returns `h3_heroes::HeroChange`s, which the game applies (ADR-0017 point 10), as
    a visit of the adventure does; recruitment returns the creatures for the game to place in an
    army the adventure holds.
    **Increment 2** adds the **town command**, `h3_towns::TownCommand` (decision 45; increment 2's
    one variant `Build { town: TownId, building: BuildingId }`), which the game wraps as
    `GameCommand::Town` (ADR-0017 point 1) and whose later variants are the town's own actions
-   (increment 3's recruitment, increment 4's services). `h3-towns` validates the town's part
+   (increment 3's recruitment, increment 5's services). `h3-towns` validates the town's part
    (buildable now) and names the price (the part's cost), each refusal typed
    (`TownCommandError`); the game checks the turn, the owner and the treasury, pays and applies
    the build infallibly (ADR-0017 point 10). No new contract type: the command and its errors are
@@ -134,7 +134,7 @@ same record (the day's construction, the available creatures, the guild's spells
    are the ruleset's factions with a town record (eight with the base pack alone, nine with AB),
    within the map's allowed set for a player (ADR-0017 point 1).
 8. **The hero pool is the game's** (decision 18; ADR-0017 point 1): `h3-towns` holds no hero
-   and no pool; the Tavern (increment 3) is a town's building whose hire the game composes from
+   and no pool; the Tavern (increment 4) is a town's building whose hire the game composes from
    the pool and the store.
 9. **Versions owned by the town lane:** `h3-towns`' state hash and the town part's hash (v1 when
    the crate is created). Its changes bump the adventure lane's versions it touches (the game
