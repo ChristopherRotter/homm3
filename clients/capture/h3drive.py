@@ -198,6 +198,23 @@ def run(*args, **kw):
     return subprocess.run(args, env=env(), check=True, **kw)
 
 
+# The panel's hotkeys over the battle, which a `key-down:` may hold (E17 M7 T1c: the viewer's
+# still takes only these; `h3_view::keys::BUTTONS`), by xdotool's names.
+PANEL_HOTKEYS = ("s", "r", "o", "a", "c", "w", "d", "space")
+
+
+def let_go(keys, buttons):
+    """The keys (xdotool's names) and the mouse buttons (1 left, 3 right) released on the display,
+    in that order, whatever the release meets (E17 M7 T4, R1-2: what a failed or killed run
+    left down stays down for the next game on the display, as h3map.py's). xdotool's failures are
+    ignored: with no display yet nothing is held."""
+    for name in keys:
+        subprocess.run(["xdotool", "keyup", name], env=env(), check=False, capture_output=True)
+    for button in buttons:
+        subprocess.run(["xdotool", "mouseup", str(button)], env=env(), check=False,
+                       capture_output=True)
+
+
 # The settings key (setup.sh's): its name holds the registered sign in Windows-1252 (0xAE).
 SETTINGS_KEY = ("HKEY_LOCAL_MACHINE\\SOFTWARE\\New World Computing\\"
                 "Heroes of Might and Magic\xae III\\1.0")
@@ -364,6 +381,10 @@ class Game:
         # (`registry_values`).
         self.shades = dict(shades or {})
         self.shades_before = {}
+        # E17 M7 T4 (R1-2): the keys a `key-down:` holds and the buttons a `right:` or a `down:`
+        # holds (`act`), which `stop` lets go if the run left them down.
+        self.keys_held = set()
+        self.right_held = self.left_held = False
 
     # -- the process ------------------------------------------------------------------------
     def start(self, map_path=None):
@@ -395,6 +416,9 @@ class Game:
         # A game left running (an earlier run's `--keep`, an interrupted batch) takes the display
         # and makes the dumps unreadable: end it first (E17 H2).
         subprocess.run(["wineserver", "-k"], env=env(), check=False)
+        # The panel's hotkeys and the buttons a killed run left down (E17 M7 T4, R1-2; as
+        # h3map.py's): let go before the game starts, which sees none of it.
+        let_go(PANEL_HOTKEYS, (3, 1))
         if self.clock_dir.exists():
             shutil.rmtree(self.clock_dir)
         self.clock_dir.mkdir()
@@ -433,6 +457,12 @@ class Game:
             except subprocess.TimeoutExpired:
                 self.proc.kill()
                 self.proc.wait(timeout=30)
+        # What the actions left down (E17 M7 T4, R1-2: a capture that failed between a
+        # `key-down:` and its `key-up:`, or before `capture` let the buttons go), let go once the
+        # game is gone: the display is the next game's. Nothing on a run that ended as it should.
+        buttons = [b for b, held in ((3, self.right_held), (1, self.left_held)) if held]
+        let_go(sorted(self.keys_held), buttons)
+        self.keys_held, self.right_held, self.left_held = set(), False, False
         # Creature Info's level put back as the prefix held it (E17 M6 T4b2b1): also over a
         # `key:F5`, which the game saves into the registry at once (0x475902).
         if self.army_info_set:
@@ -1207,6 +1237,11 @@ def act(game, action):
         if kind == "key-down":
             run("xset", "r", "off")
         run("xdotool", "keydown" if kind == "key-down" else "keyup", arg)
+        # Noted, so that `Game.stop` lets go of a key the run leaves down (E17 M7 T4, R1-2).
+        if kind == "key-down":
+            game.keys_held.add(arg)
+        else:
+            game.keys_held.discard(arg)
         time.sleep(0.3)
     elif kind == "step":
         game.clock(f"step {int(arg)}")
