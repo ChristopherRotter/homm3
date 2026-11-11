@@ -1,14 +1,14 @@
 # Draft: ADR-0028 amended for E09 increment 3 (growth, recruitment and the army rows)
 
-- Status: **Draft**, growth's half (E09 T22a, 2026-11-11); T22b adds recruitment's and the
-  rows' half and puts the whole to the user at its checkpoint (`TWN-Q14`); the `shared/` task
-  after batch TWN-3 moves it into `docs/adr/0028-town-context.md` (as increment 2's T15).
+- Status: **Draft**, whole: growth's half by E09 T22a, recruitment's and the rows' by T22b
+  (2026-11-11), put to the user at T22b's checkpoint (`TWN-Q14`); the `shared/` task after batch
+  TWN-3 (T24) moves it into `docs/adr/0028-town-context.md` (as increment 2's T15).
 - Decisions: the epic's 65 (content), 69 to 73 (the survey's checkpoint, `TWN-Q12`), 74 to 77
   (`TWN-Q13`: the cut, the towns' stream, the Legion as hero effects, the week's kind in the
-  game), 78 (the agent's calls of T22a).
-- Working detail: the survey `docs/rules/surveys/E09-growth.md` (§1 to §7, §11 to §13), the
-  design note `docs/epics/E09-design.md` Part E (§37 to §47). Each block below says where it
-  goes in the ADR.
+  game), 78 (the agent's calls of T22a), 79 (T22b whole) and `TWN-Q14`'s (T22b).
+- Working detail: the survey `docs/rules/surveys/E09-growth.md` (§1 to §13, §15), the design
+  note `docs/epics/E09-design.md` Part E (§37 to §47 growth, §48 to §51 recruitment). Each block
+  below says where it goes in the ADR; recruitment's follow growth's in the same point.
 
 ## Point 2, after increment 2's paragraph
 
@@ -56,6 +56,18 @@ inputs the game gives:
 Every derivation reads the record as the last write left it, so a build, an event and a week
 change the counts at once.
 
+**Increment 3's recruitment** (TWN-REC-001, -002; survey §5, §8) adds three rules over the same
+record: **the source** of a standing building (ever built, no built building superseding it) of
+role `dwelling` (its index), `horde` (its horde's index) or `portal` (the Portal), else a typed
+refusal, as is a base index whose upgraded dwelling is ever built (its count moved, its growth
+none); **the stock** of a source: an index below 7 its creature with the index's count, an
+upgraded index its upgrade then its base creature, **both with the index's one count** (the
+original's second creature), the Portal its creature and count (none while nothing is summoned);
+**the purchase**: a creature of the stock, an amount from 1 to the count, typed refusals
+otherwise, and its write, the source's count lowered by the amount. The army the creatures join,
+its room and the price are not the town's (point 6). A town holds **no garrison hero**: the hero
+in the garrison and its army are the adventure's (ADR-0016 point 3).
+
 ## Point 5, after increment 2's paragraph
 
 **Increment 3** gives buildings three roles: **`horde`** (a level and whether upgraded, as
@@ -80,6 +92,20 @@ dwellings' creatures (the adventure's owners and kinds), the week's kind and the
 the counts and the Portal into the store and the returned garrison into the adventure (ADR-0016
 point 1) in one infallible application. No new contract type.
 
+**Increment 3's recruitment** adds the town command's second variant, **`TownCommand::Recruit {
+town, building }`** (the original's click paths name a building: a dwelling, a horde, the
+Portal): `h3-towns` gives the source or its typed refusal; the game checks the turn, the owner
+and that no decision is open, and opens E08's **hire dialog** (ADR-0017 point 6) with the
+town's source and the garrison as its target, its creatures and counts read from the store at
+each view. **A purchase crosses three contexts**, as E08's purchase rule (ADV-HIR-002) parts
+it: `h3-towns` checks the creature and the amount against the stock, the adventure the room in
+the target army (the garrison hero's army when one stands, else the town's garrison; ADR-0016
+point 3) and the game the treasury against the core's price; then the game pays, writes the
+lowered count into the store and calls the adventure's join, in one infallible application.
+The town's refusals reach the player as the hire dialog's (`HireError`'s offer and amount), one
+vocabulary for both sources. No new contract type: the adventure's `HireSource` and `HireTarget`
+name the town by `TownId` and the index as a plain number.
+
 ## Point 9, after increment 2's paragraph
 
 **Increment 3's growth** bumps the town state hash (v3: the counts, the Portal) and the town part
@@ -87,15 +113,22 @@ point 1) in one infallible application. No new contract type.
 towns' stream, the store), the protocol (the week's kind, the owner's town view), the adventure
 replays re-recorded; `shared/`: the kernel's stream id, `h3-content`'s two hero effects and two
 quirk flags (pack format v52).
+**Increment 3's recruitment and rows** move no version of the town's own (the counts are growth's
+v3; no new role or parameter); `cross-lane`: the game state hash (the hire dialog's town sources
+and target), the adventure state hash (a town's garrison hero, ADR-0016 point 3), the adventure
+replay format (`town recruit`, the hero moves), the env's action encoding (ADR-0017 point 8) and
+the protocol.
 
 ## Consequences, a new item
 
 - Increment 3: each week writes every town with a dwelling (a fork's first week copies most
   towns); the day's start computes each town's growth twice at a month's first day (the week and
   the month), measured against `day-start-builds-36`.
+- Increment 3's recruitment reads the counts from the store at each view and purchase (no copy in
+  the dialog); a purchase writes one town and one army.
 
 ## Revision history, a new item (when moved)
 
-- 2026-11-xx (E09 T2x `shared/`; `TWN-Q12` to `TWN-Q14`, decisions 65 to 78 and T22b's): points
-  2, 5, 6 and 9 amended for increment 3. Drafted in E09 T22a and T22b (design note Part E); batch
-  TWN-3's verdicts (survey §14).
+- 2026-11-xx (E09 T24 `shared/`; `TWN-Q12` to `TWN-Q14`, decisions 65 to 79 and `TWN-Q14`'s):
+  points 2, 5, 6 and 9 amended for increment 3. Drafted in E09 T22a and T22b (design note Part
+  E); batch TWN-3's verdicts (survey §14).
