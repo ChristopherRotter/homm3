@@ -270,14 +270,15 @@ one-way exit beside a guard: no fight on arrival by §5's reading, unobserved; b
 (the Whirlpool's effect still none: a boat's step onto it refused until T105a2). `draw_exit` counts the
 candidates over the channel's list, then takes the drawn one (two passes, no allocation); `jump`
 arrives when no hero stands on the exit, else explores radius 1 and leaves the mover on the
-entrance (`ADV-STUB-16`: the battle and the meeting are T105b's); `arrive` writes the tile, keeps
+entrance (`ADV-STUB-16`: the battle and the meeting are T105b's; lifted by T105b1, §12); `arrive` writes the tile, keeps
 the points, explores the scouting radius and emits `HeroTeleported`. The entrance's guard needed
 nothing: T103d's held visit is the jump, `visit_held` passing the stream.
 *As built* (T105a2, `adventure/e08-t105a2`): `Effect::Whirlpool(divisor)`, `visit_whirlpool` (the
 loss unless protected, then `draw_exit` over `Channels::whirlpools`, each tile excluded when its
 Whirlpool is the entrance's object); `draw_exit` takes the list's tiles with what the visit
 excludes, so one pass serves the three kinds; the arrival with the boat needed nothing (the hero's
-tile is the boat's). An enemy hero on a drawn Whirlpool tile: `ADV-STUB-16` as the monoliths'.
+tile is the boat's). An enemy hero on a drawn Whirlpool tile: `ADV-STUB-16` as the monoliths' (lifted by
+T105b1).
 
 ###### 8. The Whirlpool's loss (ADV-TEL-006; `whirlpool_losses` 0x4ACAA0, §4.4)
 
@@ -687,7 +688,7 @@ ADRs are applied once with the rows' verdicts:
 | 5 | **T103** | T103a: the kinds, the packs, the harvest's check, `h3_heroes::whirlpool_protection` (note §1 to §3; part v18). T103b: the import, A-39's refusal and its entry (note §4; map import v21); a step onto an entrance refused as any unbuilt visit's until T105a. *Cut at its start* (decision 282): T103c batch E11c, T103d decision 279's order, after T103c |
 | 6 | **T104** | The build: the surfaces (A-42 and its entry), the channels, the gates' pairs (note §5); `build-gates-xl-144` |
 | 7 | **T105** | T105a, in two by land and water (decision 287): T105a1 the stream in `apply`, the monoliths' and the gates' jumps, the events and views, the entrance's guard, the reach's measure against `master`, A-41's entry (done); T105a2 the Whirlpool, its loss and jump (A-38's, A-40's entries; done). T105b: the battle and the meeting at an exit, the held jump, `Revisit` and its legal set, the env (§12, §13, §14's env; game state hash v27, E09 T17a having taken v26; replay format v11, `cross-lane` v8; A-37's entry) |
-| 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined |
+| 8 | **T106** + **T107** | T106: the teleporters' maps, their replays and properties, the benchmarks, `--with-original-data` (§14). T107: the audit against the exit criteria; increment 11 closed; increment 12 refined (both done: T106a to T106c, T107 whole) |
 
 *Added at T101* (decisions 279, 280): batch E11c (§16) and decision 279's order for every entered
 kind (ADV-MON-006, GAM-DEC-007), both before T105a; their ids and cut at round 5's start.
@@ -710,15 +711,16 @@ kind (ADV-MON-006, GAM-DEC-007), both before T105a; their ids and cut at round 5
    unless protected by the Hats (ADV-TEL-006, -007, HER-ADV-009); a guard beside an entered
    object, an entrance too, is met before its visit (decision 279; ADV-MON-006, GAM-DEC-007).
 6. No path goes through a teleporter: the reach and `MoveHero` meet an entrance as a destination;
-   the reach's workloads hold their baselines (ADV-OBJ-003, D-58).
+   the reach's workloads inside their gate (re-baselined by T105b2 for the random games' course;
+   `reach-teleporters-xl-144` the new one) (ADV-OBJ-003, D-58; worded as built by T107).
 7. `Revisit` visits the entered object under the hero again without points, every entered kind
    with a built visit; the env plays it (ADV-TEL-008).
 8. A viewer sees a teleporter's type, never its exits or its pair, and a jump as a step's two ends,
-   never a hidden exit (A-41); the loss and "leads nowhere" are the visitor's owner's alone
-   (ADV-FOG-004).
-9. Every new rule has its id, source and tests; `ADV-QUIRK-39` to `-44` recorded; the gates pass
-   (coverage, determinism with the new and rehashed replays, the benchmarks at their baselines and
-   the new ones baselined).
+   never a hidden exit (A-41; ADV-FOG-004); the loss and "leads nowhere" are the visitor's owner's
+   alone (ADV-TEL-004 to -006; the citation corrected by T107).
+9. Every new rule has its id, source and tests; `ADV-QUIRK-39` to `-45` recorded (`-45` A-43's,
+   T104); the gates pass (coverage, determinism with the new and rehashed replays, the benchmarks
+   at their baselines and the new ones baselined).
 10. Batch E11 run and scored (T101), batch E11c too; the consensus rows `verified`.
 
 ###### 18. Risks and open points

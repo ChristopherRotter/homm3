@@ -106,6 +106,28 @@ fn a_guarded_entrances_jump_follows_its_guards_battle() {
     assert_eq!(state.adventure().hero(HERO).unwrap().pos, exit);
 }
 
+// covers: ADV-MON-006, GAM-DEC-007, ADV-TEL-003
+#[test]
+fn a_guarded_entrances_held_jump_draws_from_its_owners_stream() {
+    let rules = rules();
+    // The guarded entrance with three exits: once the guard's battle is over, the held visit
+    // draws the exit from red's stream (`run_rest`'s `adventure_for`; E08 T107's audit). The
+    // battle's seed came from it at the battle's start; its turns draw from the battle's own.
+    let free = [Pos::new(3, 0, 0), Pos::new(3, 1, 0), Pos::new(0, 3, 0)];
+    let mut objects = vec![monolith(&rules, "t:entrance", AT), guard(&rules)];
+    objects.extend(free.map(|exit| monolith(&rules, "t:exit", exit)));
+    let mut state = game(&rules, objects);
+    let events = play(&mut state, &rules, RED, move_hero(0, &[AT])).unwrap();
+    assert!(starts_battle(&events) && exits(&events).is_empty());
+    let (mut expected, blue) = (state.stream(RED), state.stream(BLUE));
+    let place = usize::try_from(expected.below(3)).unwrap();
+    let events = fight(&mut state, &rules);
+    assert!(state.level_up(RED).is_none());
+    assert_eq!(exits(&events), [free[place]]);
+    assert_eq!(state.stream(RED), expected);
+    assert_eq!(state.stream(BLUE), blue);
+}
+
 /// [`game`] with Blue's hero on `at` leading `count` Imps and Red's with `red` Imps at 999
 /// experience, one point from its second level.
 fn facing(

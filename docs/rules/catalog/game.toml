@@ -665,6 +665,12 @@ quirks   = ["ADV-QUIRK-29"]
   retrieved  = "2026-11-07"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-19 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06; survey E08-teleporters.md section 15; cited by E08 T107): a guarded two-way entrance's guard fought first, the jump after the won battle"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
 [[rule]]
 id       = "GAM-DEC-008"
 title    = "The hire dialog: a pending decision of purchases bounded by the count, the treasury and the room"
