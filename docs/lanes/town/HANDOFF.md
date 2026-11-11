@@ -14,7 +14,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T22b's (branch `town/e09-t22b`, docs only: the drafts, the design note,
+- **Open pull requests:** #858, T22b's (branch `town/e09-t22b`, docs only: the drafts, the design note,
   the epic, the log, the answered question, the lane's queue and the adventure lane's inbox).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
