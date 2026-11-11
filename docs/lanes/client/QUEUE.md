@@ -19,20 +19,6 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 
-### E17 M7 T2 — the DEF button's own loop
-
-- **Scope:** CLT-Q72 (a), T7b's R3-4, M6 review item 52: `def_button_message` 0x45641C modelled
-  for the panel's buttons, the stats dialog's OK and the combat options' Default, OK and speeds,
-  in both profiles: while the left button holds an enabled button, keys and the right press are
-  dropped and no right-button popup opens; the right button's release ends the hold, clicking
-  when the button is drawn pressed; a disabled button runs no loop (its help opens, as now).
-  R3-4's stale `over` goes with it; CLT-Q39's mouse case and R4-2 (a)'s dropped right press
-  folded in.
-- **Acceptance:** unit tests of each case; a sequence or still recorded where the harness can
-  hold a button (else listed); `drawn` all the same or recorded.
-- **Depends on:** nothing (T1b's Q71 let-go, `window::release_taken`, touches the same held
-  state; T1c's `stats-held` records the original's keeping the pressed frame). **Status:** next.
-
 ### E17 M7 T3 — the battle as a hosted entry
 
 - **Scope:** the map client lane's request for E24 M4 T5 (the inbox of 2026-10-31, now in
@@ -50,7 +36,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
 - **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
   same; a test host plays a whole game's battle to its result and gets the outcome back; the map
   client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** waiting.
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** next (T2 done
+  2026-11-11).
 
 ### E17 M7 T4 — M7's and E17's closure
 
@@ -60,7 +47,7 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gat
   refinement after E27); E17 closed (`docs/BACKLOG.md`'s row, and E27's draft, which still names
   E17 M7 for the lobby and the browser, by a `shared/` pull request).
 - **Acceptance:** the review list accepted; every open thread placed; E17 done.
-- **Depends on:** T2, T3 (T1 done). **Status:** waiting.
+- **Depends on:** T3 (T1, T2 done). **Status:** waiting.
 
 ## Inbox
 

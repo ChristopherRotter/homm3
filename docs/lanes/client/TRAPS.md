@@ -115,6 +115,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   An unattended run's presser times a box by the window's clock (`win.ticks_ns`), never the
   battle's, which a notice's box holds (T8b2, R5a-1); a box that gives way to another keeps
   `message_open()` true: compare its buttons (`box_shown`).
+- A DEF button the mouse holds runs its own loop (E17 M7 T2, design §13.1): over the battle
+  `window::mouse_holds` drops every key but the viewer's own and the right press, keeps the moves
+  from the battle and makes it stand (`next_frame`'s `holding`); a new key, popup or input to the
+  battle checks it first. Only an enabled panel button is held (`Battle::enabled`). In a dialog
+  `message::Open::holds_mouse` says the same (no description, no hint, the stats dialog's
+  creature held in `Open::holds`).
 - The result window (E17 M5 T4b1) is a message box (`Asked::Result`): modal, its OK (Enter,
   Escape) ends the window's run, unattended runs leave it open (the presser skips it). Behind it
   the battle stands at its end with the heroes' flags of the moment before (`result::behind`):

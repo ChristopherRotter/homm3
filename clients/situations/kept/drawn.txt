@@ -8569,6 +8569,7 @@ set/heroes-inferno-necropolis t00000 e8d17aee70216258
 set/heroes-necropolis-dungeon t00000 ad0bcf5534243143
 set/heroes-rampart-tower t00000 25ab6788da492eee
 set/heroes-tower-inferno t00000 82fe310e69417900
+set/hold-right t00100 e1c4f3f658565d24
 set/holy-ground t00000 e2a1b7f8f420bf0c
 set/lava t00000 28076bcb99f9afd8
 set/lucid-pools t00000 6163a9fdb46b25f9
@@ -8621,6 +8622,7 @@ set/options-closed t00000 9e94b4e5dca464fd
 set/options-closed t00100 eaaf5d9ed5050254
 set/options-default t00000 7745002417a48be9
 set/options-help t00000 5232a0a58db2f565
+set/options-hold-right t00100 fe8f86e15b9ff7e0
 set/options-no-sound t00100 92397b86bcf84249
 set/options-set t00000 e150d4afee15e98b
 set/options-sound t00000 f018f9c919575750
@@ -8682,6 +8684,8 @@ set/stats-dragon t01100 4b565a13bb0e7adf
 set/stats-escape t00100 af65fc538375264b
 set/stats-held t00100 f8de2535872e5792
 set/stats-hint t00100 bd790074f26ac437
+set/stats-hold-right t00100 f3f77f95ac3db26a
+set/stats-hold-right t00200 f3f77f95ac3db26a
 set/stats-key t00100 b0d0cdcdd86090f0
 set/stats-luck t00000 b3feab18ba872294
 set/stats-luck-cursed t00000 a9d550cc2c0f5954

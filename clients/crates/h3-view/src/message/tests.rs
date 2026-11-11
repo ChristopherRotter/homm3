@@ -439,9 +439,11 @@ fn a_button_clicks_when_released_over_it_or_by_its_key() {
     assert_eq!(open.moved(ok), Outcome::Nothing);
     assert_eq!(open.key_up("A"), Outcome::Nothing);
     assert_eq!(open.key_up("Return"), Outcome::Nothing);
-    // Pressed: down; off it: up; back on: down; released over it: clicked.
+    // Pressed: down, its own loop running (E17 M7 T2); off it: up; back on: down; released over
+    // it: clicked.
+    assert!(!open.holds_mouse());
     assert_eq!(open.press(ok), Outcome::Changed);
-    assert!(open.message.shown.state(YES).pressed);
+    assert!(open.message.shown.state(YES).pressed && open.holds_mouse());
     assert_eq!(open.press(cancel), Outcome::Nothing);
     assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Nothing);
     assert_eq!(open.moved([x + 61, y + 71]), Outcome::Nothing);
@@ -454,9 +456,10 @@ fn a_button_clicks_when_released_over_it_or_by_its_key() {
     assert_eq!(open.moved(ok), Outcome::Changed);
     assert_eq!(open.release(), Outcome::Changed);
     assert!(!open.message.shown.state(NO).pressed);
-    // Its key: down, then its key's release clicks; another key's release does nothing.
+    // Its key: down (no loop of its own), then its key's release clicks; another key's release
+    // does nothing.
     assert_eq!(open.key(Key::Cancel, "Escape"), Outcome::Changed);
-    assert!(open.message.shown.state(NO).pressed);
+    assert!(open.message.shown.state(NO).pressed && !open.holds_mouse());
     assert_eq!(open.moved(ok), Outcome::Nothing);
     assert_eq!(open.release(), Outcome::Nothing);
     assert_eq!(open.key_up("Return"), Outcome::Nothing);

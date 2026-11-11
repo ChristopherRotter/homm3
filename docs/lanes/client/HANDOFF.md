@@ -7,11 +7,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
   `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
   in QUEUE): **T1 done** (the answered slips, cut in four: T1a the options dialog and F6 to F8;
-  T1b the slips Q70, Q71, Q77; T1c the reads and captures; T1d the tools); T2 the DEF button's
-  own loop (CLT-Q72); T3 the battle as an entry a host's window runs (the map client's E24 M4 T5
-  waits on it); T4 the closure, **which closes E17** (ranked play, the pause, the browser and a
-  login: E27 first, then a refinement of their own). **Next:** M7 T2. **Open pull request:**
-  T1c and T1d's (`client/e17-m7-t1c`) until it merges.
+  T1b the slips Q70, Q71, Q77; T1c the reads and captures; T1d the tools); **T2 done** (the DEF
+  button's own loop, CLT-Q72 (a); design §13.1); T3 the battle as an entry a host's window runs
+  (the map client's E24 M4 T5 waits on it); T4 the closure, **which closes E17** (ranked play,
+  the pause, the browser and a login: E27 first, then a refinement of their own). **Next:** M7
+  T3 (its entry's shape agreed with the map client lane at its start). **Open pull request:**
+  T2's (`client/e17-m7-t2`) until it merges.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -46,6 +47,11 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-11, E17 M7 T2 (done; `client/e17-m7-t2`).** Kept whole with the user (the loop and
+  the harness's stills). The original data staged at once (57 files); the baseline's `check.sh`
+  passed on `master`. The loop in both profiles for the panel, the stats dialog, the options
+  dialog and the boxes; the harness's `down:` and three stills, exact once the battle's and the
+  stats creature's standing (which they found) were built. M7 review item 4. Record: `E17-log.md`.
 - **2026-11-10, E17 M7 T1c and T1d (done; `client/e17-m7-t1c`).** The rest of T1 in one session
   (the user). The original data staged at once (57 files); the baseline's `check.sh` passed on
   `master`. T1c: 0x5994B0 read (CLT-Q73: the original starts a combat tune as the bar rises);
@@ -59,10 +65,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `stats::side_player` (a heroless side's own player, a side with none the viewing player's),
   Q71 (b) `window::release_taken` (the original's held until T1c), Q77 (b) `Rows::places` and
   `row_xs` in the profile (`message::pictures` takes it). M7 review item 2. Record: `E17-log.md`.
-- **2026-11-10, E17 M7 T1a (done; `client/e17-m7-t1a`).** T1 cut in four with the user (T1a
-  only this session). The original data staged at once (57 files); the VM restarted during the
-  baseline, CI's Clients run on `master` stood in. The options dialog takes the profile
-  (`Open::new`'s `Bugs`): Q43 (2) a box or a bar clicks on a release over it, Q44 (c) no bar
-  refused, Q43 (3) the window posts the mouse at the close (`post_mouse`); Q74 one click and
-  Q75 F6 to F8 on every turn (`Battle::takes_keys`, `shades::overlay`) in both. M7 review item
-  1. Record: `E17-log.md`.

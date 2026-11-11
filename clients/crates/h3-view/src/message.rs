@@ -749,7 +749,9 @@ impl Open {
         Outcome::Changed
     }
 
-    /// The left button released: the button it held clicks when the mouse is still over it.
+    /// The left button released, or the right one while the mouse holds a button (the DEF
+    /// button's own loop ends at either, `def_button_message` 0x456451 and 0x456338; E17 M7 T2,
+    /// CLT-Q72 (a)): the button it held clicks when the mouse is still over it.
     pub fn release(&mut self) -> Outcome {
         match self.held.take_if(|h| h.key.is_none()) {
             Some(h) if h.over => Outcome::Closed(h.id),
@@ -794,6 +796,14 @@ impl Open {
             Some(h) => Outcome::Closed(h.id),
             None => Outcome::Nothing,
         }
+    }
+
+    /// Whether the mouse holds a button down: its own loop runs until a release (`def_button_message`
+    /// 0x45641C; E17 M7 T2, CLT-Q72 (a)), every key and the right press dropped, the moves only
+    /// its own (it follows them on and off; the dialog's hints do not).
+    #[must_use]
+    pub fn holds_mouse(&self) -> bool {
+        self.held.as_ref().is_some_and(|h| h.key.is_none())
     }
 
     /// Lets the button held by key `by` (none: by the mouse) go without its click, drawn up again

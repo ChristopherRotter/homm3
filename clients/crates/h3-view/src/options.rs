@@ -586,6 +586,18 @@ impl Open {
         }
     }
 
+    /// The right button released: it ends a DEF button's hold by the mouse as the left's release
+    /// does (its own loop, `def_button_message` 0x456338; E17 M7 T2, CLT-Q72 (a)), clicking it
+    /// when the mouse is over it; a bar or a box the mouse holds (a DEF picture, no loop of its
+    /// own) and the OK its key holds are kept.
+    pub fn right_release(&mut self) -> Did {
+        if matches!(self.held, Some(Held::Button { .. })) {
+            self.release()
+        } else {
+            Did::default()
+        }
+    }
+
     /// The OK's key down (Enter or Escape; `by` the key whose release clicks): the OK goes down
     /// with its press sample (`button_press` from 0x4565E7; E17 M6 T7b, R4-3).
     pub fn key(&mut self, by: &str) -> Did {
@@ -621,23 +633,24 @@ impl Open {
         help_key(self.item_at(point)?.id())
     }
 
-    /// Lets what the mouse (`by` none) or the key `by` holds go without its click, a DEF button
-    /// drawn up again: the release the right button's help popup took (`popup_run_held` 0x602A40
-    /// takes a left release as its end and drops a key's). The original keeps the press (a box or
-    /// a bar then clicks at the next left release anywhere, the OK stays drawn pressed); the
-    /// client's profile lets it go, as CLT-Q39's stats dialog (`message::Open::let_go`; E17 M6
-    /// T7b, R4-2). No still chords them, so the original's is not built for the comparisons.
+    /// Lets what the mouse (`by` none) or the key `by` holds go without its click, the OK drawn up
+    /// again: the release the right button's help popup took (`popup_run_held` 0x602A40 takes a
+    /// left release as its end and drops a key's). The original keeps the press (a box or a bar
+    /// then clicks at the next left release anywhere, the OK stays drawn pressed); the client's
+    /// profile lets it go, as CLT-Q39's stats dialog (`message::Open::let_go`; E17 M6 T7b, R4-2).
+    /// No still chords them, so the original's is not built for the comparisons. A DEF button
+    /// the mouse holds is never let go here: its own loop drops the right press, so no popup
+    /// opens over it ([`Self::help_at`]; E17 M7 T2).
     pub fn let_go(&mut self, by: Option<&str>) -> Did {
         let held = self.held.take_if(|h| match h {
             Held::Key(key) => by == Some(key.as_str()),
-            Held::Button { .. } | Held::Picture { .. } => by.is_none(),
+            Held::Picture { .. } => by.is_none(),
+            Held::Button { .. } => false,
         });
-        let id = match held {
-            Some(Held::Button { id, .. }) => id,
-            Some(Held::Key(_)) => OK,
-            Some(Held::Picture { .. }) | None => return Did::default(),
-        };
-        set_pressed(&mut self.window.shown, id, false);
+        if !matches!(held, Some(Held::Key(_))) {
+            return Did::default();
+        }
+        set_pressed(&mut self.window.shown, OK, false);
         Did {
             changed: true,
             ..Did::default()

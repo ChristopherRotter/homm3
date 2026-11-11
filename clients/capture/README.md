@@ -202,7 +202,11 @@ same (`h3-view render --walls`, *provisional*); the states are checked before th
 it, a `click:` presses there and parks the mouse, a `move:` rests it). Since E17 M7 T1c
 (CLT-Q71) `key-down:<name>` holds a key (the display's key repeat off first) across the actions
 after it and `key-up:<name>` lets it go: in a still a panel button's hotkey held over the battle,
-drawn pressed, and let go while a dialog takes the release (`stats-held`). The book needs the hero's
+drawn pressed, and let go while a dialog takes the release (`stats-held`). Since E17 M7 T2
+(CLT-Q72, design §13.1) `down:x,y` moves the mouse there and holds the left button down across the
+actions after it (let go after the frames, after the right button): over a DEF button its own loop
+runs, so in a still only `move:` and `right:` (the entry's last action) may follow (`hold-right`,
+`stats-hold-right`, `options-hold-right`). The book needs the hero's
 spells, so its stills render the attacker's record (`seat = "attacker"`). After a `move:` the
 original's cursor stays where it was until the clock steps (its status line follows at once):
 take such frames from 100 ms. Since E17 M6 T2a2b1 (design §12.3) `right:x,y` moves the mouse

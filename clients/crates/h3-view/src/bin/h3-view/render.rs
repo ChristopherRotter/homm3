@@ -520,6 +520,14 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 let key = h3_view::panel::help_at(layout.panel_in(observation), point)?;
                 Some(catalogue.text(key, &h3_ui::text::Args::new()))
             };
+            // The panel's enabled button a left press holds down (E17 M7 T2, the harness's
+            // `down:`): the panel the opening shows, as its turn left it enabled.
+            let first_turn = timeline.turns.first().map_or(0, |&(t, _)| t);
+            let button = |point: [i32; 2]| {
+                let id = layout.panel_in(observation).button_at(point)?;
+                (panels.enabled(observation, &timeline.turns, first_turn, &layout, id))
+                    .then_some(id)
+            };
             // A side's hero's info window as the opening fills it (E17 M6 T3b1), where the right
             // button shows it and, at Creature Info's levels 1 and 2, the mouse's move (T4b2b1).
             let hero_window = |side: h3_protocol::wire::Side| {
@@ -604,6 +612,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 held: &held,
                 turret: &turret,
                 help: &help,
+                button: &button,
                 hero_info: &hero_info,
                 options: &options,
                 army: Some(crate::spellbook::Army {

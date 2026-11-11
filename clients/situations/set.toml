@@ -2416,3 +2416,50 @@ actions = ["key:o", "click:199,151", "key:Return", "move:234,196"]
 at = 100
 differing = 0
 why = "exact: the grid composed at the close, no shade under the resting mouse; the move to hex 38 puts hex 37's block from before the dialog back, without the grid's lines (oddity 2, CLT-Q52) (E17 M6 T4c)"
+
+# E17 M7 T2 (CLT-Q72 (a); design §13.1): the left button held over a DEF button (the harness's
+# `down:`, let go after the frames) runs the button's own loop (`def_button_message` 0x45641C): the
+# right press is dropped, so no popup opens. `hold-right`: Defend held, the right button pressed
+# over it (771,578; `help-wait`'s popup is Wait's): Defend drawn pressed, no help, the cursor shown.
+# `stats-hold-right`: the Marksmen's dialog, its OK held, the right button pressed over the attack
+# line (`stats-describe`'s): no description, the OK drawn up (the mouse off it), the status line
+# the OK's hint (the moves reach the button alone); at 200 ms whether the creature steps under the
+# loop. `options-hold-right`: the options dialog's Default held, the right button pressed over it:
+# Default drawn pressed, no help (R4-2 (a), read at E17 M6 T7b).
+[[situation]]
+id = "hold-right"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["down:771,578", "right:771,578"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Defend drawn pressed, the right press dropped by its own loop: no help, the cursor shown; the battle standing (its outline's pulse and flags as at the press) (E17 M7 T2)"
+
+[[situation]]
+id = "stats-hold-right"
+scenario = "book.toml"
+seat = "attacker"
+actions = ["click:102,448", "down:248,528", "right:200,330"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: no description, the OK drawn up (the mouse off it), the status line the OK's hint; the creature not stepping under the loop (E17 M7 T2)"
+
+[[situation.frame]]
+at = 200
+differing = 0
+why = "exact: still held, the creature as at 100 ms (E17 M7 T2)"
+
+[[situation]]
+id = "options-hold-right"
+scenario = "hero-info.toml"
+seat = "attacker"
+actions = ["key:o", "down:455,467", "right:455,467"]
+
+[[situation.frame]]
+at = 100
+differing = 0
+why = "exact: Default drawn pressed, no help (R4-2 (a)) (E17 M7 T2)"
