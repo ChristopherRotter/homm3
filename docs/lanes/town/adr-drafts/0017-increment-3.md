@@ -1,10 +1,10 @@
 # Draft: ADR-0017 amended for E09 increment 3 (growth, recruitment and the army rows)
 
-- Status: **Draft**, whole: growth's half by E09 T22a, recruitment's and the rows' by T22b
-  (2026-11-11), put to the user at T22b's checkpoint (`TWN-Q14`); moved into
+- Status: **Accepted** at T22b's checkpoint (`TWN-Q14`, 2026-11-11; E09 decisions 80 to 83, each
+  as recommended); drafted by E09 T22a (growth) and T22b (recruitment, the rows), to be moved into
   `docs/adr/0017-game-orchestration.md` by the `shared/` task after batch TWN-3 (T24).
 - Decisions: the epic's 65, 69 to 73, 74 to 77 (`TWN-Q13`: the towns' stream, decision 75; the
-  week's kind in the game, decision 77), 78 (the agent's calls), 79 and `TWN-Q14`'s; E08's 305.
+  week's kind in the game, decision 77), 78 (the agent's calls), 79, 80 to 83 (`TWN-Q14`); E08's 305.
 - Working detail: survey `docs/rules/surveys/E09-growth.md` §2 to §10; design note
   `docs/epics/E09-design.md` Part E §41 to §46 (growth), §49 to §54 (recruitment, the rows).
 
@@ -45,7 +45,9 @@ builder's stream, after the build is checked (a refused build draws nothing); at
 build from the towns' stream; at the setup from the setup stream after every existing
 placeholder (a town that starts with a Portal and an owner); when its owner flags a dwelling while
 it has none, from the visitor's stream after the visit's own draws (each such Portal in `TownId`
-order). No other command of growth draws: the counts, the first creatures and the events'
+order); **at a capture** that finds a standing Portal empty, from the capturer's stream after the
+capture's own draws (decision 82: a human's capture opens the town screen, which draws at once).
+No other command of growth draws: the counts, the first creatures and the events'
 creatures are draw-free. The towns' stream is server-only (point 5) and hashed with the state.
 
 ## Point 1, the commands: after E09 increment 2's `GameCommand::Town`
@@ -88,7 +90,7 @@ rules are the map's: the legal answers each creature's most, `Close`; it stays o
 offers two creatures (an upgraded index: the upgrade and its base from one count) and closes
 after the purchase of a one-creature source. Its view and `HireOpened` name the town and the
 index or the Portal in place of an object's type and anchor.
-**The town's two rows open no decision** (TWN-ROW-001; `TWN-Q14`, recommended): in its turn with
+**The town's two rows open no decision** (TWN-ROW-001; decision 80): in its turn with
 no decision open, the owner's army commands (`Manage::Army`) may name an own town's upper bar
 alone or with that town's visitor's army, as the original's town screen, which opens at will and
 needs no answer; the game admits the pair as it admits a meeting's two heroes (GAM-MAN-001
@@ -141,5 +143,5 @@ empty garrison hero yields the town without a battle (T-5, `TWN-QUIRK-11`).
 
 ## Revision history, a new item (when moved)
 
-- 2026-11-xx (E09 T24 `shared/`; decisions 65 to 79 and `TWN-Q14`'s): points 1 to 4, 6, 8 to 11
+- 2026-11-xx (E09 T24 `shared/`; decisions 65 to 83): points 1 to 4, 6, 8 to 11
   amended for E09 increment 3. Drafted in E09 T22a and T22b.

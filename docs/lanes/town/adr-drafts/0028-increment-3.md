@@ -1,11 +1,12 @@
 # Draft: ADR-0028 amended for E09 increment 3 (growth, recruitment and the army rows)
 
-- Status: **Draft**, whole: growth's half by E09 T22a, recruitment's and the rows' by T22b
-  (2026-11-11), put to the user at T22b's checkpoint (`TWN-Q14`); the `shared/` task after batch
-  TWN-3 (T24) moves it into `docs/adr/0028-town-context.md` (as increment 2's T15).
+- Status: **Accepted** at T22b's checkpoint (`TWN-Q14`, 2026-11-11; E09 decisions 80 to 83, each
+  as recommended); drafted by E09 T22a (growth) and T22b (recruitment, the rows), to be moved into
+  `docs/adr/0028-town-context.md` by the `shared/` task after batch TWN-3 (T24) with its verdicts
+  (as increment 2's T15).
 - Decisions: the epic's 65 (content), 69 to 73 (the survey's checkpoint, `TWN-Q12`), 74 to 77
   (`TWN-Q13`: the cut, the towns' stream, the Legion as hero effects, the week's kind in the
-  game), 78 (the agent's calls of T22a), 79 (T22b whole) and `TWN-Q14`'s (T22b).
+  game), 78 (the agent's calls of T22a), 79 (T22b whole), 80 to 83 (`TWN-Q14`).
 - Working detail: the survey `docs/rules/surveys/E09-growth.md` (§1 to §13, §15), the design
   note `docs/epics/E09-design.md` Part E (§37 to §47 growth, §48 to §51 recruitment). Each block
   below says where it goes in the ADR; recruitment's follow growth's in the same point.
@@ -50,8 +51,8 @@ inputs the game gives:
 - **The Portal of Summoning** (TWN-GRO-007; §5, TD-16 by the reading, T-11 by decision 71): given
   the owner's dwellings' creatures in object order, one dwelling drawn, then one of its
   creatures; the count set to that creature's growth (not added; no castle, Grail, week, month or
-  Plague); no dwelling: none. The same draw when the Portal is built and when its owner flags a
-  dwelling while it has none.
+  Plague); no dwelling: none. The same draw when the Portal is built, when its owner flags a
+  dwelling while it has none and at a capture that finds it empty (decision 82).
 
 Every derivation reads the record as the last write left it, so a build, an event and a week
 change the counts at once.
@@ -129,6 +130,6 @@ the protocol.
 
 ## Revision history, a new item (when moved)
 
-- 2026-11-xx (E09 T24 `shared/`; `TWN-Q12` to `TWN-Q14`, decisions 65 to 79 and `TWN-Q14`'s):
+- 2026-11-xx (E09 T24 `shared/`; `TWN-Q12` to `TWN-Q14`, decisions 65 to 83):
   points 2, 5, 6 and 9 amended for increment 3. Drafted in E09 T22a and T22b (design note Part
   E); batch TWN-3's verdicts (survey §14).

@@ -1,8 +1,8 @@
 # Draft: ADR-0023 amended for E09 increment 3 (a garrison hero at a town's battle)
 
-- Status: **Draft** (E09 T22b, 2026-11-11); put to the user at T22b's checkpoint (`TWN-Q14`);
-  moved into `docs/adr/0023-sieges.md` by the `shared/` task after batch TWN-3 (T24).
-- Decisions: the epic's 12 (T-5 faithful, in increment 3), 65, 79 and `TWN-Q14`'s.
+- Status: **Accepted** at T22b's checkpoint (`TWN-Q14`, 2026-11-11; E09 decisions 81, 83);
+  drafted by E09 T22b; to be moved into `docs/adr/0023-sieges.md` by the `shared/` task after batch TWN-3 (T24).
+- Decisions: the epic's 12 (T-5 faithful, in increment 3), 65, 79, 81, 83.
 - Working detail: survey `docs/rules/surveys/E09-towns.md` §8.1, §9.1 (`town_visit` 0x4AB0EE to
   0x4AB338), `E09-growth.md` §10; design note `docs/epics/E09-design.md` Part E §53. The game's
   side is `0017-increment-3.md` point 11, the visit's `0016-increment-3.md` point 4.

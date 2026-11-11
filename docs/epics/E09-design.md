@@ -1427,8 +1427,9 @@ still change at `TWN-Q14` (decision 78 lists them).
   - when its owner flags a dwelling while it has none: after the visit's outcome names the flag,
     each of the visitor's player's towns with an empty Portal in `TownId` order (the visitor's
     stream, after the visit's draws).
-- **Not drawn:** at a capture (the original keeps +0x3C; a human's screen would draw at once: the
-  week or a flag draws here, an open point for `TWN-Q14`); in a neutral town (the original's
+- **At a capture** that finds a standing Portal empty (decision 82, `TWN-Q14`; §51): drawn from
+  the capturer's stream after the capture's own draws (the original keeps +0x3C and a human's
+  capture opens the screen, which draws at once). **Not drawn** in a neutral town (the original's
   week skips it).
 - **Its hire** is T22b's half (into the garrison army, survey §5).
 
@@ -1592,12 +1593,12 @@ address map. The drafts are the same five files' second blocks, with `0023-incre
 - `Recruit` at the `portal` building (survey §5, `town_portal_hire` 0x5D2950): the Portal's
   creature and count, into the town's upper bar's army (`town_garrison_army`, as a dwelling's), a
   one-creature dialog; refused while nothing is summoned.
-- **A capture's empty Portal** (§45's open point; `TWN-Q14`): the original keeps +0x3C at a
-  capture, and a human's capture opens its town screen at once, whose creature panel draws an
-  empty Portal's creature (T-11's path). *Recommended:* drawn at the capture too when the Portal
-  stands empty and the capturer owns a dwelling (from the capturer's stream, after the capture's
-  own draws; decision 71's "what a human sees at once" carried to the capture). Not chosen: no
-  draw at a capture (the week or a flag draws).
+- **A capture's empty Portal** (§45's open point; decision 82, `TWN-Q14`, recommended): the
+  original keeps +0x3C at a capture, and a human's capture opens its town screen at once, whose
+  creature panel draws an empty Portal's creature (T-11's path). So it is **drawn at the capture**
+  when the Portal stands empty and the capturer owns a dwelling (from the capturer's stream, after
+  the capture's own draws; decision 71's "what a human sees at once" carried to the capture). Not
+  chosen: no draw at a capture (the week or a flag draws).
 
 ### 52. The town's two bars (TWN-ROW-001; GAM-MAN-001, -002 amended)
 
@@ -1607,7 +1608,7 @@ address map. The drafts are the same five files' second blocks, with `0023-incre
   (built by E08 T114a in `h3-adventure`'s army commands): a town's garrison its town's owner (the
   adventure's owner of the town object; the town lane wires it into the rule's lookup), a hero its
   owner.
-- **Admitted without a decision** (`TWN-Q14`, recommended): in its turn with no decision open, the
+- **Admitted without a decision** (decision 80, `TWN-Q14`, recommended): in its turn with no decision open, the
   owner's `Manage::Army` commands may name an own town's upper bar **alone** (moves within it, its
   dismissals) or **with that town's visitor** (between the bars, either way); the game's
   management check admits the pair as a meeting's two heroes (`Together`'s rule gains a town's
@@ -1632,7 +1633,7 @@ address map. The drafts are the same five files' second blocks, with `0023-incre
 
 ### 53. The garrison hero (TWN-ROW-002 to -005; ADV-MOV-002, GAM-RES-003, -005 amended)
 
-- **Its record** (`TWN-Q14`, recommended): **the whole record of the hero on the map moves into
+- **Its record** (decision 81, `TWN-Q14`, recommended): **the whole record of the hero on the map moves into
   the town's record in the adventure** (`Holds::Town { formation, garrison_hero:
   Option<HeroOnMap> }`; adventure state hash next): its army, points and day's maximum, formation
   and tactics flag, and from E08's T115a its battle bonuses and timed marks, kept as they were (the
@@ -1769,7 +1770,7 @@ visit marks on `HeroOnMap` (T115a).
 | 2 | **T23** | Batch TWN-3 (survey §14, six rows; row 6 with §55's record): the spec and template, the harness's reads and writes (the week's and month's kinds, a town's counts, Portal and garrison hero; the writer's garrison hero and Portal), the recipe, the runs, the scoring. Needs the original data. Cut at its start (increment 2's T14 was cut in three) |
 | 3 | **T24** | `shared/` (`cross-lane`): the five drafts applied with T23's verdicts; `StreamId::TOWNS`; `h3-content`'s `TownGrowth`, `OwnerTownGrowth` and two quirk flags (pack format v52) with the packs' six artifacts (`cross-lane`); the glossary (available creatures, the week's kind, the Portal, the upper bar, the garrison hero); `docs/06-security.md`'s town lines. In merge order with E08's T112 (both amend ADR-0013, -0016, -0017) |
 | 4 | **T25** | Growth's town side (the town lane's paths only): T25a the part's roles, `roe` and parameters (part v5), the record's counts and Portal (store v3), TWN-GRO-001 and -005 with `TWN-QUIRK-8`; T25b TWN-GRO-003, -004 (`TWN-QUIRK-9`, `-10` and their flags), -006, -007 as pure functions |
-| 5 | **T26** | Growth in the game (`cross-lane`): T26a the week's kind and the towns' stream (TWN-GRO-002), the day's order (GAM-CAL-002, -003), the inputs (owners, dwellings, the Legion), the week and the month, the first creatures at every build, the events' creatures (`TWN-STUB-10` lifted), map import (`roe`), the game state hash; T26b the neutral garrison week, the Portal's draws (and at a capture, per `TWN-Q14`), the views (the owner's counts and Portal, the week's kind) and the protocol, the replays re-recorded, the bench |
+| 5 | **T26** | Growth in the game (`cross-lane`): T26a the week's kind and the towns' stream (TWN-GRO-002), the day's order (GAM-CAL-002, -003), the inputs (owners, dwellings, the Legion), the week and the month, the first creatures at every build, the events' creatures (`TWN-STUB-10` lifted), map import (`roe`), the game state hash; T26b the neutral garrison week, the Portal's draws (at a capture too, decision 82), the views (the owner's counts and Portal, the week's kind) and the protocol, the replays re-recorded, the bench |
 | 6 | **T27** | Recruitment (`cross-lane`): `TownCommand::Recruit`, the hire dialog's town sources and target (the town's garrison until T28a), the purchase across the store and the adventure, the legal commands, `HireSeen` and the protocol, `town recruit`, the env's `RECRUIT` (v10) |
 | 7 | **T28** | The rows (`cross-lane`; after E08's T114a and T115a merged): T28a the town's bars admitted (TWN-ROW-001), the garrison hero's record (adventure state hash), `Enter`, `Leave`, `Swap` (TWN-ROW-002 to -004), the hire's target into its army, its events and views, the replay format, the env's entries (v11), the protocol; T28b what it changes: its day and income (TWN-ROW-005; ADV-MOV-002, GAM-RES-003, -005 with the town's garrison's Crystal Dragons), growth's inputs with it, rows 1 and 3 of a visit (TWN-SIE-001, -002, TWN-CAP-003, GAM-BAT-001), T-5 (`TWN-QUIRK-11`), TWN-VEW-001 |
 | 8 | **T29** + **T30** | T29: the scripted replays on the builds map (growth through a month, recruitment, the rows), the census of `original_data` (§47's walk), the properties, the benchmarks (`day-start-builds-36` re-baselined, a week workload), `--with-original-data`. T30: the audit against the exit criteria; increment 3 closed; increment 4 (the Tavern) refined |
@@ -1779,7 +1780,7 @@ before the rows (it needs no garrison hero; T28a widens its target); T25 in the 
 alone, so it never waits on E08's merges; each env entry with its command's task (two bumps, each
 the AI lane's `cross-lane` consent).
 
-### 57. Increment 3's exit criteria (proposed for `TWN-Q14`)
+### 57. Increment 3's exit criteria (accepted at `TWN-Q14`, decision 83; the epic's list)
 
 1. The town part's roles `horde`, `portal`, `week_of`, a record's `roe` and the growth parameters
    compile from the packs; each town holds its fourteen counts, bounded at 32 767 (`TWN-QUIRK-8`),
@@ -1796,7 +1797,7 @@ the AI lane's `cross-lane` consent).
    the Plague takes the growth then halves (`TWN-QUIRK-9` off: every town halves) (TWN-GRO-002,
    -004; GAM-CAL-002, -003).
 4. A neutral town's garrison grows each week as read; the Portal is drawn each week, at its build,
-   at a flagged dwelling (and at a capture as `TWN-Q14` decides), its count set; a town event's
+   at a flagged dwelling and at a capture that finds it empty, its count set; a town event's
    creatures reach the counts (TWN-GRO-006, -007, TWN-EVT-004; `TWN-STUB-10` lifted).
 5. Its owner recruits at a standing dwelling, horde or Portal through the hire dialog into the
    town's upper bar's army, an upgraded index selling both creatures from one count; every refused
@@ -1832,5 +1833,4 @@ the AI lane's `cross-lane` consent).
   week on the map, the same points, marks and gains) guard them.
 - **The legal sets grow:** a `Recruit` per standing dwelling of every own town each step (the
   env's masks; the AI lane's step cap already bounds the revisit loops).
-- **Open:** a garrison hero's reveal (§53; only after a Cover of Darkness); the original's town
-  screen drawing a Portal at a capture, if `TWN-Q14` keeps no draw there.
+- **Open:** a garrison hero's reveal (§53; only after a Cover of Darkness).

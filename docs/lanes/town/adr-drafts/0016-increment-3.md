@@ -1,12 +1,13 @@
 # Draft: ADR-0016 amended for E09 increment 3 (growth, recruitment and the army rows)
 
-- Status: **Draft**, whole: growth's half by E09 T22a, the rows' and recruitment's by T22b
-  (2026-11-11, the army reference as agreed with E08's increment 12, its decision 305), put to
-  the user at T22b's checkpoint (`TWN-Q14`); moved into `docs/adr/0016-adventure-state.md` by
-  the `shared/` task after batch TWN-3 (T24), after or before E08's T112, whichever merges
-  second rebasing (both amend points 1, 3, 4 and 6).
+- Status: **Accepted** at T22b's checkpoint (`TWN-Q14`, 2026-11-11; E09 decisions 80 to 83, each
+  as recommended); drafted by E09 T22a (growth) and T22b (recruitment, the rows), the army reference as
+  agreed with E08's increment 12 (its decision 305); to be moved into
+  `docs/adr/0016-adventure-state.md` by the `shared/` task after batch TWN-3 (T24), in merge order
+  with E08's T112 (both amend points 1, 3, 4 and 6; the second rebases).
 - Decisions: the epic's 65, 67 and 73 (the army reference), 72 (TD-15 by the reading), 75, 78,
-  79 and `TWN-Q14`'s; E08's 305 (the reference and the one owner rule, accepted for both lanes).
+  79, 80 (the rows without a decision), 81 (the garrison hero's record
+  in the town), 83; E08's 305 (the reference and the one owner rule, accepted for both lanes).
 - Working detail: survey `docs/rules/surveys/E09-growth.md` §4, §5, §8 to §10, §15; design note
   `docs/epics/E09-design.md` Part E §44, §45, §49 to §53; E08's design note §12, §13
   (`docs/epics/E08-design.md`).

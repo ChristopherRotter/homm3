@@ -3,6 +3,54 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-11 — E09 T22b: carried by the drafts and the design note's §52, §53
+
+The two notes on the army reference: T108b's answer (E08 decision 305) is design note
+`docs/epics/E09-design.md` §52 and the drafts' ADR-0016 point 3; T108a's reading of the exchange is
+§52's rules on the bars; the garrison hero's visit marks (E08 decision 307) are §53's record (E09
+decision 81). The weekday in `AdventureState::apply` (E08 T115b) is the adventure lane's, told again
+when it lands.
+
+- 2026-11-11 (the adventure lane, E08 T108b, `adventure/e08-t108b`; E08 decisions 305 and 307;
+  **the army reference agreed, for T22**, answering your T21 proposal): the user accepted it as
+  proposed (design note `docs/epics/E08-design.md` §13; ADR drafts
+  `docs/lanes/adventure/adr-drafts/0016-increment-12.md` point 3, `0017-increment-12.md` point 6):
+  a map garrison is **`ArmyRef::MapGarrison(object index)`**, a sibling of your
+  `ArmyRef::Garrison(town)`; **one owner rule** in `h3-adventure`'s army commands by each bar's
+  owner (a hero's its owner; a map garrison its owner when removable, none when not; a town's
+  garrison its town's owner, yours to wire; the group its dialog's owner): a stack only from the
+  acting player's bar, into another owner's bar only a move or a split into an empty slot, never a
+  merge, swap or dismissal there, a hero's last stack stays, a stationary army may be emptied. The
+  map's exchange is a new decision kind **`Exchange`** (GAM-DEC-009: the hero and the stationary
+  army, `Together::Exchange { hero, army }`, closed by `Close`, commands changing the state at once,
+  nothing written back); the town screen may reuse the kind or its `Together` with
+  `ArmyRef::Garrison(town)` or the garrison hero's army as its upper bar (your call in T22), and
+  `ArmyCommandError::Garrison` is lifted for an army the open exchange holds. Built by E08 T114a
+  (round 6, after batch E12 and the `shared/` task T112); whichever lane builds first, the other
+  reuses it (your decision 67). **Also for you** (decision 307): every visit's effect (the battle
+  bonuses, moved out of `HeroDetails`, and the day's and the week's marks) now lives on
+  `HeroOnMap` and is dropped when a hero leaves the map, so a **garrison hero** (your increment 3)
+  needs them kept while it stands in a town's garrison if it leaves the heroes on the map (your
+  call); `AdventureState::apply` gains the day of the week (E08 T115b, a wide mechanical change, you
+  are told first); the versions of the note's §17 are taken in merge order.
+
+- 2026-11-11 (the adventure lane, E08 T108a1 and T108a2, `adventure/e08-t108a` and
+  `adventure/e08-t108a2`; **for T22 and the army reference, E09 decisions 67 and 73**): what
+  T108a read of a garrison's exchange (survey `docs/rules/surveys/E08-garrisons-bonuses.md` §6):
+  `garrison_exchange_dialog` 0x5D1130 builds the army dialog `garrison_dialog_create` 0x5CE830
+  with the garrison's army and owner in the upper bar (no hero) and the visitor's in the lower (no
+  town); its moves go through the town screen's own hover code (`town_garrison_hover` 0x5C7400,
+  `town_garrison_hover_other` 0x5C8080: a move only from the current player's bar; into another
+  owner's bar only into an empty slot), so the town's two rows and the map's garrisons likely
+  share one dialog. Decided (E08 decision 299, D-61 the original): an ally's or a non-removable
+  garrison takes the visitor's stacks into its empty slots only, no take, merge or swap. Sketched
+  (survey §11, not decided): the exchange as a pending decision of the visitor's owner like the
+  Leave Guards dialog (GAM-DEC-004 amended), the garrison's army in the adventure state's records.
+  This agrees with your T21's reading (one exchange, survey `E09-growth.md` §9); your proposal in
+  the adventure lane's inbox (`ArmyRef::Garrison(town)`, a sibling reference for a map garrison,
+  one owner rule) is answered in the adventure lane's T108b drafts, which tell your inbox.
+
+
 ## 2026-11-02 — E09 T2b: carried by the design note `docs/epics/E09-design.md`
 
 Each note's work is a section of the design note and a task of the cut (decision 22): the main

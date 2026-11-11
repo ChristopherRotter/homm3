@@ -1,8 +1,8 @@
 # Draft: ADR-0013 amended for E09 increment 3 (the Legion's town growth)
 
-- Status: **Draft** (E09 T22a, 2026-11-11; T22b added nothing: the garrison heroes' place in
-  the owner's share was written by T22a); put to the user at T22b's checkpoint (`TWN-Q14`);
-  moved into `docs/adr/0013-heroes-in-battle.md` by the `shared/` task after batch TWN-3 (T24), in
+- Status: **Accepted** at T22b's checkpoint (`TWN-Q14`, 2026-11-11; E09 decision 83); drafted
+  by E09 T22a (T22b added nothing: the garrison heroes' place in the owner's share was written
+  then); to be moved into `docs/adr/0013-heroes-in-battle.md` by the `shared/` task after batch TWN-3 (T24), in
   merge order with E08's T112 (its `0013-increment-12.md` moves the battle bonuses to the hero
   on the map).
 - Decisions: the epic's 76 (`TWN-Q13`: the Legion as hero effects, recommended) and 78.
