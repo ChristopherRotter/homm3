@@ -216,8 +216,9 @@ touched by either. The creature month's monsters on the map and the Artifact Mer
      day, the week already counted up); S = three draws of `random_between(0, n + 1)` summed.
   2. **The level:** the first of the weights 2, 3, 4, 5, 4, 3 (`neutral_garrison_level_weights`
      0x6779B0) that S does not exceed, S lessened by each passed: S ≤ 2 level 1, ≤ 5 level 2, ≤ 9
-     level 3, ≤ 14 level 4, ≤ 18 level 5, ≤ 21 level 6, else level 7. The first week (n = 1, S ≤
-     6) gives levels 1 to 3; level 7 needs S ≥ 22, so n ≥ 7 (the seventh week).
+     level 3, ≤ 14 level 4, ≤ 18 level 5, ≤ 21 level 6, else level 7. Week w's draw has n = w −
+     1 (up to 8): the first (week 2, S ≤ 6) gives levels 1 to 3; level 7 needs S ≥ 22, so n ≥ 7
+     (from week 8).
   3. **The creature:** the faction's base creature of the level, its upgrade when the garrison
      already holds the upgrade (`army_count_of_type` 0x44ADC0); the count its growth (+0x44).
   4. **Room:** `army_can_take` (a stack of the creature or an empty slot); none: the stack whose
