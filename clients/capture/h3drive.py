@@ -114,8 +114,13 @@ PARK = (618, 593)
 # name, the draw that makes the roll fall and the one that makes it fail. Each draw happens for
 # every stack at its moment, whatever its morale or luck: a forced one goes to the next.
 # The draws xdd.dll logs without forcing them (E17 M3 T7c-3, its `logged` sites): Chain
-# Lightning's rays turning (`ray_aim`), kept for the frame check (`ray_draws`).
-LOGGED = ("ray_aim",)
+# Lightning's rays turning (`ray_aim`), kept for the frame check (`ray_draws`); since E09 T23
+# (batch TWN-3) a neutral town's garrison week (its chance with and without a Fort, the level's
+# three draws, the upgrade's) and the Portal of Summoning's draws (the dwelling, its creature),
+# read by a recipe's `draws` (h3adv.py; xdd.dll's file `draws`, `name value` per line).
+LOGGED = ("ray_aim", "garrison_chance_fort", "garrison_chance", "garrison_sum_1",
+          "garrison_sum_2", "garrison_sum_3", "garrison_upgrade", "portal_dwelling",
+          "portal_creature")
 
 ROLLS = {
     "good_morale": (1, 24),  # random(1, 24) <= morale after an action: another turn
@@ -138,6 +143,15 @@ ROLLS = {
     # Earthquake's (E17 M4 T2c-2): random(1, k) per hit, the k-th standing target with hit points
     # left; `roll:quake_target:<a>,<b>,...` forces one hit's draw after the other.
     "quake_target": (1, 1),
+    # The adventure map's weekly and monthly draws (E09 T23, batch TWN-3; survey E09-growth.md
+    # §2, §3), forced by a recipe's `roll` and `rolls` (h3adv.py): random(1, 4) = 1 makes the
+    # coming week a creature's; its creature rand() mod the eligible count (a value only);
+    # random(1, 10) the month's kind (6 to 9 a creature's, 10 the Plague: `falls`); its
+    # creature month_creatures[random(0, 11)] (a value only: 1 the Griffin).
+    "week_chance": (1, 2),
+    "week_creature": (0, 0),
+    "month_kind": (10, 1),
+    "month_creature": (0, 0),
 }
 # How long `turn:` waits for the stack's turn (M3 T7a-2a): a human's stack waiting for an action
 # would keep the clock stepping for ever.

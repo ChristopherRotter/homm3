@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts accepted (T22a, T22b; TWN-Q13, TWN-Q14), batch TWN-3 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts accepted (T22a, T22b; TWN-Q13, TWN-Q14), batch TWN-3 run and scored (T23), T24 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -87,13 +87,17 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     hero moves as `AdventureCommand::TownHeroes` (`Enter`, `Leave`, `Swap`), `GarrisonHeroChanged`,
     the own hero view's place, each env entry with its command's task (v10, v11), batch TWN-3's
     row 6 with the garrison hero's points, `TWN-QUIRK-11` for T-5.
+84. **T23 kept whole** (the user at T23's start, asked; recommended was three parts: growth's rows,
+    row 6, the scoring), its branch `cross-lane` (the battle lane's experiments README; the
+    common capture harness). The week's and month's kinds forced as draws by xdd.dll, not written
+    (survey §17: the globals are written by the draw and read straight after).
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T20** the audit of increment 2's exit criteria, its closure, this refinement. Done 2026-11-11 (decisions 64–67; `E09-log.md`).
 - **T21** the survey (decision 66), kept whole (decision 68). Done 2026-11-11: `docs/rules/surveys/E09-growth.md`, the checkpoint `TWN-Q12` (decisions 69–73; `E09-log.md`).
 - **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66), in two halves (decision 74): **T22a** growth's: done 2026-11-11 (`TWN-Q13`, decisions 74–78). **T22b** recruitment's and the rows', the cut, the exit criteria: done 2026-11-11 (whole, decision 79; `TWN-Q14`, decisions 80–83; the five drafts `adr-drafts/*-increment-3.md` accepted; Part E §48 to §58; no version moved; `E09-log.md`).
-- **T23** batch TWN-3 (survey §14, row 6 with design §55's record; decision 74); next, cut at its start; needs the original data.
+- **T23** batch TWN-3 (survey §14, row 6 with design §55's record; decision 74). Done 2026-11-11, whole (decision 84): two runs of each part, every row as the reading (survey §17; `E09-log.md`).
 - **T24** `shared/` (`cross-lane`): the five drafts applied with T23's verdicts, `StreamId::TOWNS`, pack format v52, the glossary, `docs/06-security.md`; in merge order with E08's T112.
 - **T25** growth's town side (T25a, T25b); **T26** growth in the game (T26a, T26b; `cross-lane`); **T27** recruitment (`cross-lane`); **T28** the rows (T28a, T28b; `cross-lane`; after E08's T114a and T115a); **T29** the gates; **T30** the audit and the closure (design note §56).
 

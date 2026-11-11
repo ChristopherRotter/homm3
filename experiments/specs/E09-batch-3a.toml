@@ -1,0 +1,398 @@
+# Experiment batch TWN-3, part a (E09 T23; decision 74; design note §47): growth's five rows of
+# increment 3's survey (docs/rules/surveys/E09-growth.md §1 to §5, §14), in SoD on Easy, hot seat.
+# Part b (`E09-batch-3b.toml`) holds row TWN-3-6. Build: docs/experiments/README.md. Predictions are
+# for the agent who evaluates the results; the template never shows them. "The reading" is the
+# survey's code reading of Heroes3.exe (the engine follows it, faithful); VCMI's is VCMI 1.7.5 as
+# the survey summarises it (§11).
+#
+# | row     | settles               | the reading                           | otherwise                    |
+# | TWN-3-1 | TD-13, T-13 (§3)      | a creature's month doubles the index  | VCMI and the wiki: both      |
+# |         |                       | of the exact creature: the base Grif- | towns' Griffins doubled (the |
+# |         |                       | fin Tower's, not the upgraded one's   | month's creature or its      |
+# |         |                       |                                       | upgrade)                     |
+# | TWN-3-2 | §1 (the sum)          | each index as §1 computes it (the     | VCMI: the Statue on the base |
+# |         |                       | Statue on base + castle, the Grail on | only (§11)                   |
+# |         |                       | the whole)                            |                              |
+# | TWN-3-3 | TD-14, T-12 (§3)      | the Plague: owned half of before the  | VCMI and the wiki: every     |
+# |         |                       | week; neutral max(0, before − ⌈g/2⌉)  | count halved after the week  |
+# |         |                       | ÷ 2                                   |                              |
+# | TWN-3-4 | TD-15 (§4)            | §4's chances, levels, creatures,      | VCMI: no neutral garrison    |
+# |         |                       | room, counts lowered, upgrade         | growth (§11)                 |
+# | TWN-3-5 | §5, T-11              | the Portal's count set to the         | VCMI: added like a dwell-    |
+# |         |                       | growth (not added), no Plague, the    | ing's; the first creature at |
+# |         |                       | first creature at the town screen     | the week's start (§11)       |
+#
+# **Forcing the draws.** The week's and the month's kinds are drawn when the week or the month
+# starts (`new_day_week_events`, `new_month`), into the globals they are read from straight after,
+# so writing them before does nothing: the capture harness forces the draws themselves (xdd.dll's
+# sites `week_chance`, `month_kind`, `month_creature`; E09 T23, the runbook's "Forced rolls"):
+# every week normal (`week_chance` 2: never a creature's), the second month the Griffin's
+# (`month_kind` 6, `month_creature` 1), the third the Plague (`month_kind` 10). It logs the neutral
+# towns' garrison draws and the Portal's (`garrison_*`, `portal_*`). Played by hand, only the
+# reads can be followed: the weeks' kinds then come as they fall.
+#
+# **The weeks.** The harness writes the date (game +0x1F63E) to the week's last day before each
+# pair of end turns (Red's, Blue's), so each pair starts a week: M1 W2, W3, W4, M2 W1 (the
+# Griffin's month), M3 W1 (after M2 W4 written: the Plague), M3 W2, W3, W4. A neutral garrison's
+# n (survey §4) counts the days from the written date: 1, 2, 3, 4, 8, 8, 8, 8.
+#
+# **The towns** (`[[map.town]]`, custom sets by name; the game's ids in the predictions): map row 7,
+# entrances 8 columns apart from column 7: K1 (7, 7) Red's Castle with the upgraded Griffin Tower,
+# K2 (15, 7) with the Griffin Tower (TWN-3-1); G1 (23, 7) Red's Castle with the Castle, the
+# Guardhouse, the Archers' Tower, the Griffin Tower, the Griffin Bastion and the Grail (TWN-3-2); D1
+# (31, 7) Red's Dungeon with the Portal of Summoning (TWN-3-5); O1 (39, 7) Red's Castle and N1 (47,
+# 7) a neutral one, each with the Guardhouse and the Archers' Tower (TWN-3-3; N1's garrison seven
+# strong stacks of other factions, so its garrison's week never changes it or its counts). Map row
+# 15, neutral (TWN-3-4), the garrisons empty unless said: F1 (7, 15) Castle with the Fort, the
+# Guardhouse and the Archers' Tower; F2 (15, 15) Rampart with the Fort; F3 (23, 15) Castle with the
+# Citadel; W1 (31, 15) Castle and W2 (39, 15) Tower without a fort; FF (47, 15) Castle with the
+# Fort, its garrison seven weak stacks of other factions (one each: Gremlin, Imp, Gnoll,
+# Troglodyte, Skeleton, Goblin, Centaur; AI values 44, 50, 56, 59, 60, 60, 100).
+#
+# **The dwellings** (`[[map.ownable]]`, neutral at the start, flagged by Red's heroes on day 1):
+# two Guardhouses (Pikemen) at (10, 30) and (16, 30), a Harpy Loft (Harpies) at (22, 30), each
+# entered from the tile below it.
+#
+# **The heroes** (Red's unless said): TWN-3-2 (Legs of Legion) south of G1, enters it on day 1 and
+# stays (its visitor); TWN-3-2s (the Statue of Legion: worn by a hero of Red's, it adds to every
+# one of Red's towns, survey §1) flags GH1, TWN-3-2t flags GH2; TWN-3-5 flags the
+# Harpy Loft; TWN-3-5d south of D1, enters it after the flags (its town screen's first Portal draw);
+# TWN-3-1, TWN-3-3 and TWN-3-4 far off, never moving (each encounter has a hero); Blue's TWN-3b far
+# off (a player without a hero is offered no Artifact as its starting bonus).
+
+[map]
+name = "E09 batch TWN-3a"
+description = "Engine-generated experiment map (E09, batch TWN-3, part a): a dwelling's growth, the creature's month, the Plague, the neutral towns' garrisons and the Portal of Summoning over eight weeks. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E09-batch-3a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, Red and Blue both human, difficulty **Easy**. Before you start it, compare the stamp at the start of the map's description with the stamp above.",
+    "The records are the game's memory: a town's record (game +0x21614, 0x168 bytes each, `docs/exe/structs.toml`): its available creatures +0x16 (i16 by the faction's index, 0-6 base, 7-13 upgraded), its Portal's creature +0x3C and count +0x40, its garrison +0xE0, its external dwellings' counts +0x118; the date +0x1F63E. The capture harness reads them and forces the weeks' and months' draws (`clients/capture/batches/E09-batch-3a.toml`, E09 T23). Played by hand the counts show in the town screen (the Fort's list) and the garrisons in the town's popup; the weeks' and months' kinds come as they fall.",
+    "Tiles are (column, row) from 0 at the top left; a town's or dwelling's entrance is the tile a hero visits. A step: click the target once (the path's marks show), then again (the hero goes).",
+    "Order: Red's day 1 (the reads, the flags, the visits); then each week: end Red's turn and Blue's (by hand: play the days through), the reads on Red's new turn.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- the towns --------------------------------------------------------------------------------
+
+[[map.town]]  # K1: the upgraded Griffin Tower (TWN-3-1)
+entrance = [7, 7]
+faction = "castle"
+owner = "red"
+buildings = ["dwelling 3", "upgraded dwelling 3"]
+
+[[map.town]]  # K2: the Griffin Tower (TWN-3-1)
+entrance = [15, 7]
+faction = "castle"
+owner = "red"
+buildings = ["dwelling 3"]
+
+[[map.town]]  # G1: §1's every part (TWN-3-2)
+entrance = [23, 7]
+faction = "castle"
+owner = "red"
+buildings = ["fort", "citadel", "castle", "dwelling 1", "dwelling 2", "dwelling 3", "horde 3", "grail"]
+
+[[map.town]]  # D1: the Portal of Summoning (TWN-3-5)
+entrance = [31, 7]
+faction = "dungeon"
+owner = "red"
+buildings = ["portal of summoning"]
+
+[[map.town]]  # O1: owned (TWN-3-3)
+entrance = [39, 7]
+faction = "castle"
+owner = "red"
+buildings = ["dwelling 1", "dwelling 2"]
+
+[[map.town]]  # N1: neutral, its garrison's week changes nothing (TWN-3-3)
+entrance = [47, 7]
+faction = "castle"
+owner = "neutral"
+buildings = ["dwelling 1", "dwelling 2"]
+garrison = [["Black Dragon", 10], ["Gold Dragon", 10], ["Titan", 10], ["Ghost Dragon", 10], ["Ancient Behemoth", 10], ["Chaos Hydra", 10], ["Arch Devil", 10]]
+
+[[map.town]]  # F1: neutral, the Fort and two dwellings (TWN-3-4)
+entrance = [7, 15]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort", "dwelling 1", "dwelling 2"]
+garrison = []
+
+[[map.town]]  # F2: neutral Rampart, the Fort (TWN-3-4)
+entrance = [15, 15]
+faction = "rampart"
+owner = "neutral"
+buildings = ["fort"]
+garrison = []
+
+[[map.town]]  # F3: neutral, the Citadel (TWN-3-4)
+entrance = [23, 15]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort", "citadel"]
+garrison = []
+
+[[map.town]]  # W1: neutral, no fort (TWN-3-4)
+entrance = [31, 15]
+faction = "castle"
+owner = "neutral"
+buildings = []
+garrison = []
+
+[[map.town]]  # W2: neutral Tower, no fort (TWN-3-4)
+entrance = [39, 15]
+faction = "tower"
+owner = "neutral"
+buildings = []
+garrison = []
+
+[[map.town]]  # FF: neutral, the Fort, seven weak stacks (TWN-3-4: the replaced stack)
+entrance = [47, 15]
+faction = "castle"
+owner = "neutral"
+buildings = ["fort"]
+garrison = [["Gremlin", 1], ["Imp", 1], ["Gnoll", 1], ["Troglodyte", 1], ["Skeleton", 1], ["Goblin", 1], ["Centaur", 1]]
+
+[[map.town]]  # B1: Blue's (a player without a town is out of the game after seven days)
+entrance = [63, 40]
+faction = "castle"
+owner = "blue"
+buildings = []
+
+# --- the dwellings, flagged by Red on day 1 ------------------------------------------------------
+
+[[map.ownable]]  # GH1
+picture = "AVGpike0"
+at = [10, 30]
+
+[[map.ownable]]  # GH2
+picture = "AVGpike0"
+at = [16, 30]
+
+[[map.ownable]]  # HL
+picture = "AVGharp0"
+at = [22, 30]
+
+# --- TWN-3-1: the creature's month and an upgraded dwelling -------------------------------------
+
+[[encounter]]
+id = "TWN-3-1"
+title = "A month of the Griffin: K1's upgraded Griffin Tower and K2's Griffin Tower"
+questions = ["TD-13", "T-13", "TWN-GRO-004"]
+procedure = [
+    "Red's turn, day 1: read K1's (entrance (7, 7)) and K2's (15, 7) available creatures.",
+    "Play the weeks as TWN-3-4 says. Before the second month starts (Red's turn of month 1, week 4, its last day; by the harness the second month's draw forced to the Griffin's) read K1's and K2's available creatures; on Red's first day of month 2 read them again, with the month's kind and creature.",
+]
+record = [
+    { field = "day 1: K1's and K2's available creatures" },
+    { field = "month 1, week 4 (before the month): K1's and K2's available creatures" },
+    { field = "month 2, day 1: the week's and month's kinds; K1's and K2's available creatures" },
+    { field = "anything odd" },
+]
+predictions = """
+The Griffin index 2 (base) and the Royal Griffin index 9, both growth 7; no castle, no horde, no
+Grail; the Statue of Legion worn by TWN-3-2s adds (7 + 0) ÷ 2 = 3 in every town of Red's (survey
+§1): a week's growth 10. Day 1: K1 index 9 7 (the upgrade moved the base count, survey §6), index 2
+0; K2 index 2 7. Each week + 10 at K1's index 9 (index 2's growth 0: building 39 built) and at
+K2's index 2 (three weeks before the month: 37 each at month 1 week 4).
+- **The reading** (§3: the exact creature doubles; the week first, then the month): **K1 index 9
+  before + 10** (not doubled: the Royal Griffin is not the month's creature), **K2 index 2 (before
+  + 10) × 2**.
+- **VCMI and the wiki** (a creature's month doubles that creature's dwellings, upgraded or not):
+  K1 doubled too. VCMI doubles the growth rather than the count: K2 before + 20.
+"""
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+at = [62, 62]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-3-2: a dwelling's growth, every part ------------------------------------------------------
+
+[[encounter]]
+id = "TWN-3-2"
+title = "A dwelling's growth with the Castle, a horde, the Grail, two flagged Guardhouses, the Statue of Legion elsewhere and Legs of Legion on the visitor (G1)"
+questions = ["TWN-GRO-001", "TWN-GRO-003"]
+procedure = [
+    "Red's turn, day 1, before any hero moves: read G1's (entrance (23, 7)) available creatures and external dwellings' counts.",
+    "Read G1's standing and every-built sets. TWN-3-2s (the Statue of Legion) steps onto the Guardhouse GH1's entrance (10, 30), TWN-3-2t onto GH2's (16, 30): each flags it for Red (answer No to the hire question). Read G1's external dwellings' counts.",
+    "TWN-3-2 (Legs of Legion) steps north onto G1's entrance and stays there (close the town screen): G1's visitor.",
+    "At the first week's start (Red's turn of week 2, day 1) read G1's available creatures, its visitor and which heroes wear the Statue and Legs.",
+]
+record = [
+    { field = "day 1: G1's available creatures; its external dwellings' counts; its standing and every-built sets" },
+    { field = "after the flags: G1's external dwellings' counts; GH1's and GH2's owners" },
+    { field = "after the visit: G1's visitor" },
+    { field = "week 2, day 1: G1's available creatures; its visitor; the Statue's and Legs' wearers" },
+    { field = "anything odd" },
+]
+predictions = """
+G1's indexes (Castle): 0 Pikemen (g 14), 1 Archers (9), 2 Griffins (7; the Griffin Bastion 18,
++3, the horde of index 2), 7 to 9 their upgrades (no upgraded dwelling: growth 0). Day 1 (the
+setup builds each dwelling with its base growth alone, §6): 14, 9, 7, the rest 0; the external
+dwellings' counts 0; the every-built set holds 18 (the Griffin Bastion; the map's "horde 3", the horde of the level-3 dwelling). After
+the flags (`set_dwelling_owner` → `town_dwelling_count_add`): index 0 **2** and index 7 **2** (a
+base creature counts at its upgrade too).
+- **The reading** (§1): with c the Castle's (+ g), the Statue (+ (g + c) ÷ 2), Legs of Legion on
+  the visitor (+5 at level 2), the horde (+3 at index 2), the flagged dwellings (+2 at index 0),
+  then the Grail (× 1.5, truncated, on the whole): index 0 (14 + 14 + 14 + 2) = 44 → **66**; index
+  1 (9 + 9 + 9 + 5) = 32 → **48**; index 2 (7 + 7 + 7 + 3) = 24 → **36**; indexes 7 to 9 **0** (no
+  dwelling, the external count at index 7 not added). So at week 2: **80, 57, 43**, the rest 0.
+- **VCMI** (§11: the Statue's bonus on the base growth only, the Grail's on base + castle?): index
+  0 14 + 14 + 7 + 2 + Grail; the difference shows in the Statue's term (7 for 14, 4 for 9, 3 for 7).
+- The visitor read −1 while it is the selected hero: the reading then counts the hero standing on
+  the entrance, so Legs counts either way.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+at = [23, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[encounter.hero.artifacts]
+"misc 1" = "Legs of Legion"
+[[encounter.also]]
+type = "Octavia"
+specialty = "resource gold"
+name = "TWN-3-2s"
+at = [10, 31]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[encounter.also.artifacts]
+"misc 1" = "Statue of Legion"
+[[encounter.also]]
+type = "Nagash"
+specialty = "resource gold"
+name = "TWN-3-2t"
+at = [16, 31]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-3-3: the Plague -------------------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-3-3"
+title = "The Plague: an owned town (O1) and a neutral one (N1) with known counts"
+questions = ["TD-14", "T-12", "TWN-GRO-004"]
+procedure = [
+    "Red's turn, day 1: read O1's (entrance (39, 7)) and N1's (47, 7) available creatures and N1's garrison.",
+    "Play the weeks as TWN-3-4 says. Before the third month starts (Red's turn of month 2, week 4, its last day; by the harness the third month's draw forced to the Plague) read O1's and N1's available creatures; on Red's first day of month 3 read them again, with the month's kind, and N1's garrison.",
+]
+record = [
+    { field = "day 1: O1's and N1's available creatures; N1's garrison" },
+    { field = "month 2, week 4 (before the Plague): O1's and N1's available creatures" },
+    { field = "month 3, day 1: the week's and month's kinds; O1's and N1's available creatures; N1's garrison" },
+    { field = "anything odd" },
+]
+predictions = """
+Indexes 0 Pikemen (g 14), 1 Archers (g 9). Day 1: both towns 14, 9. Each week O1 + 14, + 9; N1 + 7,
++ 4 (halved, truncated; its garrison's week never changes it: seven stacks far above any new
+stack's value, so `neutral_town_garrison_week` stops before the counts, §4.4). Let (a, b) be O1's and
+(c, d) N1's counts before the month.
+- **The reading** (§3: the week, then the Plague: the count less the unhalved growth, at least 0,
+  halved): **O1 (a ÷ 2, b ÷ 2)** (half of before the week); **N1 (max(0, c + 7 − 14) ÷ 2, max(0, d
+  + 4 − 9) ÷ 2)** = ((c − 7) ÷ 2, (d − 5) ÷ 2) (TD-14, T-12: ⌈g ÷ 2⌉ lost).
+- **VCMI and the wiki** (the Plague halves the counts after the week's growth): O1 ((a + 14) ÷ 2,
+  (b + 9) ÷ 2), N1 ((c + 7) ÷ 2, (d + 4) ÷ 2). (Some accounts: no growth that week, the counts
+  halved: (a ÷ 2, b ÷ 2) for both.)
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+at = [62, 64]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-3-4: the neutral towns' garrisons -----------------------------------------------------------
+
+[[encounter]]
+id = "TWN-3-4"
+title = "The neutral towns' garrisons over eight weeks: with a Fort (F1, F2, FF), the Citadel (F3), without (W1, W2)"
+questions = ["TD-15", "TWN-GRO-006"]
+procedure = [
+    "Red's turn, day 1: read the six towns' garrisons (F1 (7, 15), F2 (15, 15), F3 (23, 15), W1 (31, 15), W2 (39, 15), FF (47, 15)) and F1's available creatures.",
+    "Each week: end Red's turn and Blue's (by the harness: the date first written to the week's last day); on Red's new turn read the date, the six garrisons, F1's available creatures and the draws the week made (by the harness: xdd.dll's log). The weeks: month 1 weeks 2 to 4, month 2 week 1, month 3 weeks 1 to 4 (month 2 weeks 2 to 4 skipped by writing the date).",
+]
+record = [
+    { table = ["week (the date)", "F1 garrison", "F2 garrison", "F3 garrison", "W1 garrison", "W2 garrison", "FF garrison", "F1's available creatures", "the garrisons' draws (in the towns' order)"], rows = 9 },
+    { field = "anything odd" },
+]
+predictions = """
+Per neutral town (the game's towns in their order; the strong N1 too), each week (§4): a draw
+`random_between(0, 100)`, below 80 with a Fort, Citadel or Castle standing (F1, F2, F3, FF), else
+below 40 (W1, W2, N1), calls the garrison's week: n = min(days ÷ 7, 8) (days (month × 4 + week − 5)
+× 7 + day: 1, 2, 3, 4, 8, 8, 8, 8 by the weeks), S = three draws `random_between(0, n + 1)`
+summed; the level the first of the weights 2, 3, 4, 5, 4, 3 that S does not exceed (S lessened by
+each passed), else 7; the faction's base creature of the level (its upgrade when the garrison
+holds the upgrade), the count its growth; room: a stack of it or an empty slot, else the stack of
+the least AI value × count below the new stack's is cleared (the first of equal ones), else
+nothing more; then the stack added (merged), the town's counts at the level's base and upgraded
+indexes lowered by the count (at least 0), and for a base creature `random_between(1, 100)` ≤ 5
+turns every stack of it into the upgrade. So each logged chance, sum and upgrade draw predicts its
+week's change exactly; FF's first replaced stacks are the Gremlin (44), then the Imp, the Gnoll,
+the Troglodyte, the Skeleton (60, the first of the two at 60). An owned town's garrison never grows.
+- **VCMI** (§11): neutral garrisons do not grow; nothing changes.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+at = [62, 66]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+
+# --- TWN-3-5: the Portal of Summoning ---------------------------------------------------------------
+
+[[encounter]]
+id = "TWN-3-5"
+title = "The Portal of Summoning (D1): its first creature at the town screen, the weekly count set, the Plague"
+questions = ["TWN-GRO-007", "T-11"]
+procedure = [
+    "Red's turn, day 1, before any hero moves: read D1's (entrance (31, 7)) Portal (creature and count).",
+    "After TWN-3-2's flags, TWN-3-5 steps onto the Harpy Loft's entrance (22, 30) (Red's third flagged dwelling; close its hire dialog). Read D1's Portal.",
+    "TWN-3-5d steps north onto D1's entrance (the town screen opens; close it): read D1's Portal right before the step and after it.",
+    "Each week (TWN-3-4's), on Red's new turn: read D1's Portal and the Portal's draws the week made (by the harness: xdd.dll's log), with the month's kind (the third month the Plague).",
+]
+record = [
+    { field = "day 1: D1's Portal" },
+    { field = "after the three flags: D1's Portal; the Harpy Loft's owner" },
+    { field = "D1's visit: the Portal before; after; the Portal's draws" },
+    { table = ["week (the date)", "D1's Portal", "the Portal's draws"], rows = 8 },
+    { field = "anything odd" },
+]
+predictions = """
+Red's flagged dwellings in the dwellings' vector order (GH1, GH2, the Harpy Loft; n = 3): Pikemen
+(growth 14) or Harpies (8).
+- **The reading** (§5): day 1 **none** (−1, `town_init`) until the town screen: D1's visit draws its
+  first creature there (T-11: `random_between(0, 2)`, then `rand()` mod 1), the count its
+  growth (14 or 8). Each week one draw again: the creature drawn, **the count its growth, set not
+  added** (14 or 8 each week, nothing accumulates); the Plague's month leaves it (M3 W1 still 14 or
+  8).
+- **VCMI** (§11): the Portal's creature drawn at the week's start, its count added like a dwelling's
+  (accumulating while not hired); the first creature at week 2, not at the screen.
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+at = [22, 31]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Jenova"
+specialty = "resource gold"
+name = "TWN-3-5d"
+at = [31, 8]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]
+[[encounter.also]]
+type = "Aine"
+specialty = "resource gold"
+owner = "blue"
+name = "TWN-3b"
+at = [60, 60]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 1]]

@@ -138,6 +138,31 @@ static struct site sites[] = {
     /* ray_aim 0x5A5260: Chain Lightning's ray turns by random_between(10, 80) hundredths of a
        radian (or -80 to -10) at each aim while its target is far (E17 M3 T7c-3); logged */
     {"ray_aim", 0x5A53FC, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    /* E09 T23 (batch TWN-3; survey docs/rules/surveys/E09-growth.md §2 to §5): the adventure
+       map's weekly and monthly draws. new_day_week_events 0x4C8780: random_between(1, 4) = 1
+       makes the coming week a creature's (not drawn when the month's fourth week ends) */
+    {"week_chance", 0x4C87CE, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* its creature: rand() mod the eligible creatures' count, the (r + 1)-th from the top */
+    {"week_creature", 0x4C883E, CRT_RAND, 0, 0, 0, 0, 0},
+    /* new_month 0x4C8F40: random_between(1, 10), 6 to 9 a creature's month, 10 the Plague,
+       else normal (the week of the Imp's month is the Imp's whatever it draws) */
+    {"month_kind", 0x4C8F5E, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* a creature's month's creature: month_creatures 0x63E678[random_between(0, 11)] */
+    {"month_creature", 0x4C8FA5, RANDOM_BETWEEN, 0, 0, 0, 0, 0},
+    /* logged: a neutral town's garrison week, random_between(0, 100) below 80 with a Fort,
+       Citadel or Castle standing, else below 40, in the towns' order */
+    {"garrison_chance_fort", 0x4C8E09, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    {"garrison_chance", 0x4C8E1C, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    /* neutral_town_garrison_week 0x4BF570: three random_between(0, n + 1) summed, the level */
+    {"garrison_sum_1", 0x4BF5E5, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    {"garrison_sum_2", 0x4BF5F0, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    {"garrison_sum_3", 0x4BF5FB, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    /* its base creature's upgrade: random_between(1, 100) at most 5 */
+    {"garrison_upgrade", 0x4BF74D, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    /* portal_of_summoning_week 0x5BD750: the owner's flagged dwelling, random_between(0, n - 1),
+       then one of its creatures, rand() mod their number */
+    {"portal_dwelling", 0x5BD825, RANDOM_BETWEEN, 0, 0, 0, 0, 0, 1},
+    {"portal_creature", 0x5BD86E, CRT_RAND, 0, 0, 0, 0, 0, 1},
 };
 #define SITES (sizeof sites / sizeof *sites)
 

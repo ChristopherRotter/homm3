@@ -8,20 +8,10 @@ Epic: `docs/epics/E09-towns.md` (increment 3: growth, recruitment and the army r
 T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 and 2 (closed by T10
 and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 (`TWN-Q12`), the
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
-the drafts accepted). The building rounds follow the cut of design note §56 (decision 83): batch
-TWN-3 first (T23), the `shared/` task (T24), then the build, E08's increment 12 merging in
+the drafts accepted), batch TWN-3 (T23, decision 84). The building rounds follow the cut of design
+note §56 (decision 83): the `shared/` task (T24), then the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T23 — batch TWN-3** (decisions 74, 83; queued 2026-11-11 by T22a): the six rows of survey §14
-(growth's TWN-3-1 to -5, design §47; TWN-3-6 with design §55's extra record, the garrison hero's
-points at its owner's next turn) as TWN-1 and TWN-2 were run: the spec and template, the capture
-harness's gaps (survey §14: writes of the week's and the month's kinds, reads of a town's counts,
-its Portal and its garrison hero, the writer's garrison hero and Portal), the recipe, the runs,
-the scoring into the survey (`verified` rows; a reading refuted goes to the user). Needs the
-original data (staged at a session's start while the user's computer is connected: the four
-LODs, the executables and DLLs, both tars). **At its start:** confirm the cut (increment 2's T14
-was cut in three). **Status:** next.
 
 **E09 T24 — `shared/`: increment 3's ADRs and core changes** (decision 83; design note §56 round 3):
 the five accepted drafts (`adr-drafts/*-increment-3.md`) into ADR-0028, -0017, -0016, -0013,
@@ -29,8 +19,8 @@ the five accepted drafts (`adr-drafts/*-increment-3.md`) into ADR-0028, -0017, -
 and `OwnerTownGrowth` and the two quirk flags (pack format v52), the packs' six artifacts
 (`cross-lane`); `docs/03-domain.md`'s terms (available creatures, the week's kind, the Portal of
 Summoning, the upper bar, the garrison hero); `docs/06-security.md`'s town lines. In merge order
-with E08's T112 (both amend ADR-0013, -0016, -0017: the second rebases). **Depends on:** T23.
-**Status:** waiting.
+with E08's T112 (both amend ADR-0013, -0016, -0017: the second rebases). T23's verdicts (survey
+`E09-growth.md` §17): every row as the reading, the drafts stand. **Status:** next.
 
 **E09 T25 to T30 — the build** (decision 83; design note §56 rounds 4 to 8, each cut confirmed at
 its start, the agent queues each in full when the one before it ends): **T25** growth's town side
@@ -50,6 +40,27 @@ Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0)
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
 - 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".
+
+- 2026-11-11 (the adventure lane, found by `adventure/srv-q26-reveal`'s scoped verify; **a hygiene
+  failure on `master`, for you to classify**): `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see`
+  fails on `master` e085069 with `cc b9900443ad98acb94e02343d7679acd5f4888dc38169e4f8ff92d9563d82c007`
+  (append it to `crates/h3-map/proptest-regressions/tests/view.txt` to replay; RoE, side 14, two
+  towns with timed events): two games that differ only in what viewer 2 never sees give it day 1's
+  observations that differ in one of its own towns' `buildings.built` (`BuildingSet(2097448)`
+  against `6291752`: bit 22). Likely a setup draw (TWN-SET-003/-004, the towns' events) whose
+  stream position moves with the hidden content `vary` changes: a leak to fix in the draws' order,
+  or a `vary` the property must not make (then the adventure lane's test: tell us). Not committed
+  as a regression line, so CI's random cases may meet it again.
+
+- 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
+  **in your paths, for information**): SRV-Q26 (a)'s query `h3_game::reveal` names the towns a
+  viewer newly explored with their views through `town::view::views_of(state, rules, viewer,
+  towns)`, a new `pub(crate)` function beside `town_views` (the `Seer`'s view of each, in order;
+  the viewer's explored tiles read from the state). Your `Told`'s "a town the viewer comes to see
+  by exploring" is that query's now. Tested in `town/tests/view.rs`
+  (`a_town_explored_since_a_grid_is_revealed_with_its_view`); `town/tests/capture.rs`' `step`
+  drops the `MovementChanged` events a command now tells last (SRV-Q26 (b)). Keep `views_of` in
+  step with `town_views` when the views change.
 
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`

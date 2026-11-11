@@ -317,6 +317,12 @@ TOWN_VISITING_HERO = 0x10
 # E09-towns §8.3) and the towns' vector's end (game +0x21618, after its begin +0x21614: the
 # game's own loops over its towns run from one to the other, cover_of_darkness_hide 0x4C7BA0).
 TOWN_OWNER, TOWNS_END = 0x1, 0x21618
+# E09 T23 (batch TWN-3; survey E09-growth.md §1, §5): a town's available creatures (i16[14] +0x16
+# by the faction's creature index, 0-6 base, 7-13 upgraded), its Portal of Summoning's creature
+# (i32 +0x3C, -1 none) and count (i16 +0x40), and its external dwellings' counts (i32[14] +0x118,
+# town_dwelling_count_add 0x5BFE50: a flagged dwelling's creature at its index, a base one at the
+# upgrade's too).
+TOWN_RECRUITS, TOWN_PORTAL_CREATURE, TOWN_PORTAL_COUNT, TOWN_DWELLINGS = 0x16, 0x3C, 0x40, 0x118
 # E24 M3 T5b2 (design §4.9): the kind asked (the manager's +0x398) and a timed kind's end (+0x39C,
 # a clock time; status_window_set_kind 0x415D60), the kind none (8); the date's window's picture
 # (DEF item 2001, its frame the window's step); the kingdom's: the viewer's towns by their halls
@@ -2298,7 +2304,10 @@ def town_fields(index, at, raw):
     empty one [-1, 0]), built (the buildings standing, u64 +0x150) and every_built (u64 +0x158;
     with what each built one supersedes), each as the building ids ascending; since E09 T14b
     (batch TWN-2) mark, the day's mark (u8 +0x2: 0 none, 1 a building built today, 2 a
-    computer-only team's on Easy or Normal; survey E09-construction §3)."""
+    computer-only team's on Easy or Normal; survey E09-construction §3); since E09 T23 (batch
+    TWN-3) recruits (i16[14] +0x16, the available creatures by the faction's index), portal
+    ([creature, count]: i32 +0x3C, -1 none; i16 +0x40) and dwellings (i32[14] +0x118, the external
+    dwellings' counts by index)."""
     types = struct.unpack_from("<7i", raw, TOWN_ARMY)
     counts = struct.unpack_from("<7i", raw, TOWN_ARMY + 28)
     built = struct.unpack_from("<Q", raw, TOWN_STANDING)[0]
@@ -2311,7 +2320,11 @@ def town_fields(index, at, raw):
             "army": [[t, c] for t, c in zip(types, counts)],
             "built": [b for b in range(64) if built >> b & 1],
             "every_built": [b for b in range(64) if every >> b & 1],
-            "mark": raw[TOWN_BUILT_TODAY]}
+            "mark": raw[TOWN_BUILT_TODAY],
+            "recruits": list(struct.unpack_from("<14h", raw, TOWN_RECRUITS)),
+            "portal": [struct.unpack_from("<i", raw, TOWN_PORTAL_CREATURE)[0],
+                       struct.unpack_from("<h", raw, TOWN_PORTAL_COUNT)[0]],
+            "dwellings": list(struct.unpack_from("<14i", raw, TOWN_DWELLINGS))}
 
 
 def adventure_state(mem):

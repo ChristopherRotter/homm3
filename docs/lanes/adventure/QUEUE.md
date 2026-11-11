@@ -4,9 +4,9 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 315; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T111 — batch E12 scored** (decisions 299 to 303, 309, 312 to 315; then **T112**)
+**E08 T111 — batch E12 scored** (decisions 299 to 303, 309, 312 to 314, 316; then **T112**)
 
 - **Scope:** as T101 for increment 11: score T110's two filled templates against survey
   `E08-garrisons-bonuses.md`'s readings and the specs' predictions, row by row (E12-1 to E12-17),
@@ -27,6 +27,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
+  changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
+  town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
+  `week_creature`, `month_kind`, `month_creature`; eight logged: the neutral garrisons' and the
+  Portal's draws), so `h3drive.ROLLS` and `LOGGED` hold 30 calls: a battle sequence checks that
+  xdd.dll redirected all 30, and a stale `xdd.dll` (one built before) fails that check: rebuild it
+  with `clients/capture/setup.sh`. `h3adv` gains a recipe's and a step's `rolls`, `roll` and
+  `date`, the reads `draws`, `turn_draws`, `kinds`, the town parts `counts`, `count:<i>`,
+  `dwellings`, `portal`, `garrison_hero`, `hire:creatures`, the town screen actions `hero_in` and
+  `building`; `h3mem`'s town record gains `recruits`, `portal`, `dwellings`. Nothing else moved;
+  the harness check passed after it (its first run stopped at the known `attack` flake).
+
 - 2026-11-11 (the town lane, E09 T22b, `town/e09-t22b`; E09 decisions 80 to 83, `TWN-Q14`; **the
   town's rows and the garrison hero in your paths, for T114a, T115a and the order**; the town
   epic's design note `docs/epics/E09-design.md` §52, §53, §56): (1) **the town's two rows open no
@@ -46,24 +58,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   lines naming a town's bar), T26a (the game state hash, map import `roe`); T28 waits for your
   T114a and T115a merged.
 
-- 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
-  **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
-  session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the
-  battle opens, but cannot send the last one when it ends, as the battle session does (v38,
-  CLT-STUB-3: the own hero's Eagle Eye picks, which no event shows): the ending command closes the
-  battle in `h3_game`, so `GameState::battle` has none. Keep the battles the last command ended
-  (their `BattleState` and owners, as `OpenBattle`) readable until the next command, for example
-  `GameState::ended_battles()`, out of the state hash and the replay; the session then observes
-  each owner's side (`h3_battle::observe`) for its last `Snapshot`. Tell the server lane's inbox
-  when it lands.
-
 - 2026-11-09 (the server lane, E16 M5 T3c2, SRV-Q26 and SRV-Q27; **the user's decisions**, for
   the whole game on the wire): **the fold's gaps are the stubs `SRV-STUB-1` to `-11`**
   (`docs/stubs.toml`; `-12` and `-13` are the town lane's). The server lane's fold
   (`h3-protocol`'s `wire/game/fold.rs`) keeps a viewer's view current by its projected events; its
   gate (`tests/game_fold.rs`, the 55 golden replays) asserts it equals `observe` after every
   command for every viewer but for the parts a stub names. The SRV-Q26 note below: its (1) is
-  `SRV-STUB-1` (the query), (2) `-2`, (3) `-3` (its heroes; in the golden replays objects and boats
+  `SRV-STUB-1` (the query; landed 2026-11-11, `h3_game::reveal`, the server lane's T5c lifts the
+  stub), ~~(2) `-2`~~ (lifted 2026-11-11: `MovementChanged`, protocol v42), (3) `-3` (its heroes; in the golden replays objects and boats
   appear with a reveal only), (4) `-4`. Beyond it (SRV-Q27 (2): what the rules derive):
   `-4` also what any visit tells (`AdventureObservation::known`, ADV-VIS-006, and
   `OwnHeroView::marks`: no event carries them); `-5` the views of an offer, a choice, a University
@@ -86,12 +88,14 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   observation costs 730 to 860 times a command's `apply` on an XL map with eight players), so a
   client must fold its snapshot with its projected events into what `h3_game::observe` gives after
   every command. What it cannot fold today (the golden replays and two eight-player XL games):
-  (1) **a query for what a viewer sees on the tiles it explored since a given explored grid** (a
+  ~~(1) **a query for what a viewer sees on the tiles it explored since a given explored grid** (a
   `BitGrid` the server keeps per viewer): their `TileView`s, explored and fringe, and the objects,
   heroes and towns it now sees there as `observe` shows them; the server asks when the viewer's
-  `explored(..).count()` grew (a step's reveal has no event, `TilesRevealed` only a count);
-  (2) **a hero's movement points left** after a step or a visit (no event or `HeroChange` carries
-  them; `OwnHeroView::movement` changes with every move); (3) **what comes into view without a
+  `explored(..).count()` grew (a step's reveal has no event, `TilesRevealed` only a count)~~ (done
+  2026-11-11, `adventure/srv-q26-reveal`: `h3_game::reveal`, the server lane's inbox told);
+  ~~(2) **a hero's movement points left** after a step or a visit (no event or `HeroChange` carries
+  them; `OwnHeroView::movement` changes with every move)~~ (done 2026-11-11: `MovementChanged`,
+  told last to the owner for every hero a command changed, mapped at protocol v42); (3) **what comes into view without a
   reveal, with its public view**: another player's hero stepping into sight (`HeroStepped` gives
   its id and tiles, not its owner, type or boat), an object or a boat that appears (63 objects and
   9 boats in the golden replays); (4) **a visit that changes only the hero's points and the
