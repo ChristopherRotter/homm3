@@ -7680,3 +7680,68 @@ Champions without their outline and hint at 0 ms).
   `results::served` reads the seat's own hero's mana and Eagle Eye picks from it (CLT-STUB-3
   lifted, §12.21). The battle seen at the end (`Battle::end_seen`) is still the record's replay.
 
+
+## 13. The battle client's last steps (M7)
+
+### 13.1 The DEF button's own loop (M7 T2)
+
+CLT-Q72 (a) (the user, 2026-11-10: copied, the right button's release clicking), with T7b's R3-4,
+M6 review item 52, CLT-Q39's mouse case and R4-2 (a). No new reading: T7b's fixer F2's of
+`def_button_message` 0x456190 and E24 design §4.13's of the same loop (the adventure map's
+buttons), applied to the battle's DEF buttons and confirmed by three stills.
+
+- **The loop** (0x45641C): an enabled DEF button (not state 8: a disabled one takes no press,
+  0x4562DD) pressed by the left button (0x456328, `button_press`) runs a loop of its own until a
+  release: each turn the tick 0x4ED490 (the mouse's poll, the palettes), the messages pumped, the
+  next input message. Every message but the mouse's moves and the buttons' releases goes to the
+  mouse manager and is dropped (0x456341, 0x45634D): every key, down or up, and the right press.
+  A move inside presses the button again with its sample (0x4563A2), outside lets it up
+  (0x4563B5). The left button's release (0x456451) or the right's (0x456338) ends it, the button
+  clicked when drawn pressed. A hotkey's key down presses its button and returns at once
+  (0x4565E7): no loop.
+- **So, while the mouse holds an enabled DEF button:** no right-button popup opens (a control's
+  help, a stack's held dialog, a hero's window, a turret's info; the stats dialog's descriptions;
+  the options dialog's help, R4-2 (a)); no key acts (another button's hotkey, F5 to F8, T, the
+  log's arrows); the battle's procedure gets no move (its status line and cursor stay as the
+  press left them) and no idle step runs, neither the battle's (the outline's pulse, the flags)
+  nor the stats dialog's creature's.
+- **Built, both profiles** (the window; *provisional* where marked):
+  - The panel: a left press over an enabled button (`Battle::enabled`, `scene::Panels::enabled`:
+    the panel the time shows) holds it (`window::mouse_holds`); a disabled one takes none (before,
+    the window held it too, drawn unpressed), its help the right button's as before. During the
+    hold every key but the viewer's own (`Do::Window`) is dropped, the right press with them; the
+    moves are the button's alone (`Held::over`), none reaches the battle (*provisional*: nothing
+    is posted at the release, the battle takes the mouse at its next move; the map's recorded
+    release gives the point's hint, E24 design §4.13); the battle stands (`next_frame`'s
+    `holding`, as behind a dialog: only an input draws it, at its time). The right button's
+    release ends the hold as the left's (`let_go_held`): over the button its click (Wait's and
+    Defend's commands, a log's scroll, Auto Combat, the book, the options dialog, the leave's
+    question). R3-4's stale `over` is gone with the popups.
+  - The stats dialog (`h3_view::stats::Modal`): while the mouse holds its OK or cast button
+    (`message::Open::holds_mouse`) `describe` gives none and `hover` nothing; the press holds the
+    creature's steps (`Battle::stats_press`: a hold in `Open::holds`, as a popup's), the release
+    (left or right, `Battle::stats_release`) ends both. CLT-Q39's mouse case cannot happen (the
+    popup never opens over a held button, and a left press ends a popup): `held_input` lost its
+    left release.
+  - The options dialog: `Open::right_release` ends a DEF button's hold (Default, OK, the speeds);
+    a bar or a box (a DEF picture, no loop of its own) and the OK its key holds are kept;
+    `let_go` no longer lets a held DEF button go (no popup opens over it).
+  - The message boxes and the result window (*provisional*: their buttons are DEF buttons, no
+    still): the right button's release ends their button's hold (`Battle::message_release`).
+- **The harness** (`h3drive.py`'s `down:x,y`): the mouse moved there and the left button held
+  down across the actions after it, let go after the frames, after the right button. The
+  viewer's stills (`spellbook::still`, `Boxes::button`) take it over an enabled panel button
+  (drawn pressed over it, the battle standing: `Still::holding`), the stats dialog's OK or cast
+  button (its creature held) and an options dialog's DEF button; only `move:` and `right:` come
+  after it. Additive: no earlier capture is driven otherwise.
+- **Recorded** (`set.toml`, all exact): `hold-right` (Defend held, the right press over it: its
+  pressed frame, no help, the cursor shown; first 742 pixels: the viewer had the outline's pulse
+  and the flags at 100 ms, the original's stood), `stats-hold-right` (the Marksmen's OK held, the
+  right press over the attack line: no description, the OK up off it, the OK's hint kept; first
+  659 and 766 pixels at 100 and 200 ms: the creature, which the original's loop does not step),
+  `options-hold-right` (Default held, the right press over it: no help).
+- **Not modelled:** the press sample of the panel's buttons and of a move back over one (the
+  panel plays none in the client); a hotkey's button and the mouse's held at once (the window
+  keeps one `held`: the mouse's press lets the hotkey's go unclicked in both profiles; the
+  original keeps it drawn pressed, its key's release dropped by the loop, as CLT-Q71's case,
+  whose (b) is the client's profile).

@@ -6568,3 +6568,40 @@ The same session and branch as T1c (`client/e17-m7-t1c`, one pull request for th
   captured again as recorded; `clients/scripts/check.sh` all gates passed (coverage 100 %, the
   staged-data tests run, the two new ones among them); `h3-view gate` passed; the scoped
   verify with the original data no failing step.
+### M7 T2 — the DEF button's own loop (2026-11-11)
+
+Branch `client/e17-m7-t2`. Kept whole with the user (asked whether to cut it into the loop and the
+harness's stills: the user took both in one session). CLT-Q72 (a), T7b's R3-4, M6 review item 52,
+CLT-Q39's mouse case and R4-2 (a); design §13.1.
+
+- **The library** (`h3-view`): `message::Open::holds_mouse` (the mouse holds a button: its loop
+  runs) and `release` the right button's too; `stats::Modal::describe` none and `hover` nothing
+  while the mouse holds the OK or the cast button, `held_input` without its left release (the
+  mouse case cannot happen); `options::Open::right_release` (a DEF button's hold ended with its
+  click; a bar, a box or the OK its key holds kept) and `let_go` never for a held DEF button.
+- **The window:** `Battle::enabled` (the panel's `Panels::enabled` at the time): a press over a
+  disabled panel button takes nothing; `mouse_holds` drops every key but the viewer's own and the
+  right press, keeps the moves from the battle (`Held::over` alone) and makes the battle stand
+  (`next_frame`'s `holding`); the right release ends the hold as the left's (`let_go_held`, the
+  left release's old body); the stats dialog, the options dialog and the boxes end a held button
+  at the right release (`stats_release`, `options_right_release`, `message_release`); the stats
+  dialog's press holds the creature's steps until the release (`stats_press`/`stats_release` at
+  their time). Agent decisions, *provisional* (change freely): nothing posted at the release; the
+  viewer's own keys act during the hold; the boxes' buttons too (no still).
+- **The harness and the stills:** `h3drive.py`'s `down:x,y` (the left button held across the
+  later actions, let go after the frames, after the right button); `spellbook::still` takes it
+  (`Boxes::button`, `Still::holding`/`stands`), `stats_action` and `options_action` too; only
+  `move:` and `right:` after it. New stills `hold-right` (first 742 differing: the viewer had the
+  outline's pulse and the flags advance, the original's battle stood), `stats-hold-right` (first
+  659 and 766 at 100 and 200 ms: the dialog's creature stood too), `options-hold-right` (0); both
+  standings built (the window and the stills), all three exact, each captured again as recorded.
+- **Tests:** `the_ok_the_mouse_holds_runs_its_own_loop` (stats), `the_right_release_ends_a_def_button_s_hold_with_its_click`
+  (options), the message test's `holds_mouse`; over the staged installation
+  `only_an_enabled_panel_button_takes_the_mouse_s_press`,
+  `the_stats_dialog_s_ok_the_mouse_holds_runs_its_own_loop` (battle) and
+  `a_panel_button_the_mouse_holds_runs_its_own_loop_to_either_release` (window); the still
+  player's `the_left_button_held_over_a_panel_button_runs_its_own_loop`,
+  `the_left_button_held_over_an_options_button_drops_the_right_press` and the cast button test's
+  `down:` cases.
+- **Gates:** GATES_PLACEHOLDER
+

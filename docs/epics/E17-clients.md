@@ -9,7 +9,7 @@ text). Refined 2026-10-12 (E17a, the asset notes, done the same day). Decisions:
 [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint, point 7 rewritten there).
 Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`; done tasks in
 full: [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset
-notes are there). Next: M7 T2 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
+notes are there). Next: M7 T3 (`docs/lanes/client/QUEUE.md`). Since T9c (2026-10-23) this epic
 is the battle client's; the adventure map client is E24, the map-client lane's.
 
 ## Goal
@@ -172,11 +172,13 @@ context.
   - **T1d done 2026-11-10** (the tools;
     [log](E17-log.md#m7-t1d--the-tools-2026-11-10)): `--close-result`; `Changes::after` and the
     cast's stop under test.
-- **T2, the DEF button's own loop** (CLT-Q72 (a), T7b's R3-4, M6 review item 52):
-  `def_button_message` 0x45641C for the panel's buttons, the stats dialog's OK and the combat
-  options' Default, OK and speeds, in both profiles: keys and the right press dropped while the
-  left button holds an enabled button, the right button's release ending the hold with its click,
-  a disabled button's help as now.
+- **T2 done 2026-11-11** (the DEF button's own loop, CLT-Q72 (a), T7b's R3-4, M6 review item
+  52; kept whole with the user; [log](E17-log.md#m7-t2--the-def-buttons-own-loop-2026-11-11),
+  design §13.1): in both profiles, while the mouse holds an enabled DEF button (the panel's, the
+  stats dialog's OK and cast button, the options dialog's, a box's) keys and the right press are
+  dropped, the right release ends the hold with its click, the moves reach the button alone and
+  the battle and the stats dialog's creature stand; a disabled panel button takes no press. The
+  harness's `down:`; the stills `hold-right`, `stats-hold-right`, `options-hold-right`, exact.
 - **T3, the battle as a hosted entry** (the map client lane's request for E24 M4 T5, the inbox of
   2026-10-31): `h3-view`'s library gains an entry a host's window runs: a battle started from a
   whole game's battle messages (the protocol's battle types as E16 M5 carries them; record
@@ -292,3 +294,11 @@ The next milestone's list starts here.
    over the battle refused); the effects' bars of a sound still recorded as differing (578
    pixels) rather than drawn at the run's volume; `--close-result` pressing Eagle Eye's boxes
    after the result window too.
+4. The DEF button's own loop (T2, CLT-Q72 (a), design §13.1; *provisional* where marked): in
+   both profiles; nothing posted at the release (the battle and the stats dialog take the mouse
+   at its next move: the map's recorded release gives the point's hint); the boxes' and the
+   result window's buttons ended by the right release too (no still); a disabled panel button
+   takes no press (before, held unpressed); the viewer's own keys still act during the hold; a
+   hotkey's button let go by the mouse's press in both profiles (the original's keeps it drawn
+   pressed); the panel's press samples not built. Recorded: `hold-right`, `stats-hold-right`,
+   `options-hold-right` (exact, the battle's and the creature's standing found by them).
