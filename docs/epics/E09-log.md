@@ -2877,3 +2877,106 @@ first and the workloads in a later session).
   convention reproduced in `survey_order` beside the game's terms; `legal` counting the whole
   listing but the moves (`legal_commands`) rather than the builds alone, on the town map; the
   builds map's day 8 for its turn start (the week and two of the Harbour's events).
+
+### T20 — the audit; increment 2 closed; increment 3 refined (2026-11-11)
+
+One session, the user present at the start; branch `town/e09-t20`, docs only but for four
+comments in the town modules (the renumbered increments), with the ADRs' citations in
+`shared/e09-t20-increments`. Starting point: `master` at 1e54a50 (#841 to #845 merged; CI green
+there; the setup's `verify-once` found CI's fingerprint of the engine code: the light gates
+only). The user's computer was connected at the start: the original data staged then (each LOD
+a call, 13 files in one, the 40 MP3s in one; 57 files). **At its start** (the user, asked with a
+first look at the audit, `TWN-Q11`): T20 whole (decision 64) and increment 3's two questions
+(decisions 65, 66).
+
+**The audit of increment 2's exit criteria** (`E09-archive.md`), on `master`'s code:
+
+1. **The build.** TWN-BLD-001 to -007, TWN-SET-011: `h3-towns`' `build.rs` tests
+   (`the_hall_offers_what_the_ever_built_set_allows`, `the_hall_offers_a_horde_as_its_upgraded_horde`,
+   `a_capitol_is_offered_only_to_a_player_without_one`, `the_hall_never_builds_the_grail`,
+   `a_town_built_in_today_offers_nothing`, `every_refusal_comes_in_its_order`,
+   `the_offer_is_what_check_build_allows_and_possible_holds_it`), the part's
+   `the_buildings_close_what_they_require_and_list_their_costs`; `h3-game`'s
+   `town/tests/command.rs` (`an_owner_builds_in_its_turn_and_pays_the_price`,
+   `a_town_is_built_in_once_a_day_and_the_day_s_start_clears_the_mark`,
+   `every_refused_build_changes_nothing`, `a_capitol_is_refused_while_its_player_holds_another`),
+   `town/tests/offer.rs` (the legal builds the payable part of the hall, in town order, one Capitol),
+   `town/tests/build.rs`' `a_town_without_water_loses_its_shipyard_at_the_start`; `h3-map`'s
+   `each_refused_build_on_the_builds_map_changes_nothing` (every refusal kind, the state hash
+   unchanged). The costs and the closed requirement lists by the harvest (`--with-original-data`'s
+   byte-for-byte packs). **Holds.**
+2. **A build changes increment 1's reads at once.** TWN-BLD-005: `h3-towns`' store test
+   `increment_1_s_reads_follow_a_build_at_once` (the Town Hall's gold, a Citadel's fort and moat in
+   the siege's facts, the Tavern's view level, the silo's resources, the Capitol public with its
+   gold), `a_build_adds_the_building_and_what_it_supersedes`,
+   `the_automatic_buildings_follow_to_a_fixed_point`; the views' `a_build_tells_each_viewer_its_
+   changed_view_and_a_new_tavern_its_owners_raised_levels`. **Holds.**
+3. **The town events.** TWN-EVT-001 to -004: `town/tests/events.rs` (at the owner's turn start
+   after the map's events; only for the town's owner, named and of its kind; losses floored at
+   zero; built without the hall's tests or the mark; a building two events name built once; T-8's
+   Capitol beside the owner's other one; day 1's inside the build), `h3-towns`'
+   `an_event_builds_without_the_halls_tests` and `TWN-QUIRK-7`'s test; TD-12 through the map's
+   events' own `TimedEventSetup::fires` (the first day, then every interval); the creatures
+   registered as `TWN-STUB-10`. **Holds.**
+4. **The views.** TWN-VEW-004, `docs/06-security.md`, "A town's construction (E09 increment 2)":
+   `town/tests/view.rs` (a build's changed view to each viewer, the day's start's cleared marks,
+   a viewer that does not see the town told nothing), the told-views property
+   `town_views_move_as_the_events_say` and the hygiene property's `vary` with the builds and the
+   events (T19b), `vary_changes_the_towns_the_viewer_never_sees_only`. **Holds.**
+5. **The env, the plans, the replays, determinism.** `h3-sim`'s `the_rollout_draws_the_builds`,
+   `a_build_action_names_its_town_by_the_entrance`, `the_env_plays_the_town_map_to_its_end_of_days`,
+   `town_map_rollouts_and_forks_are_deterministic` (T19c1, action encoding v9); the plans'
+   `check_town_builds`, `accepted_builds` and `check_towns` (T19b); the golden replays
+   `builds-week-s1`, `builds-capture-s1`, `builds-events-s1` and the random `builds-s262-d14`,
+   `-s271-d14`, `-s290-d14`; `h3-towns`' `a_build_writes_one_town_of_a_fork_and_sets_its_mark`.
+   **Wording:** "golden replays cover each refusal" no longer matched (a replay holds no refused
+   command, T19a: the refusals are the builds map's test): worded as built. **Holds.**
+6. **The census.** `h3-map`'s `original_data` run again here on `master`'s code with the staged
+   data: all 160 maps import, build and play their town events (141 a week, the 29 with later
+   events to their last first day, the longest 168 days); 369 events, 299 fire, 496 firings (236
+   with resources, 38 with buildings, 59 with creatures, 190 a message alone), 34 buildings built
+   (2 inside the build), 22 skipped as standing, 5 superseded; no Shipyard an event's; 591 of the
+   625 towns of a faction with a Shipyard without a spot, no custom set losing a built one; survey
+   §10's 57 / 30 / 27 in its order: T19c2's counts, unchanged. **Holds.**
+7. **Batch TWN-2.** Scored by T14c (survey `E09-construction.md` §13: TD-9 the reading, TD-11
+   refused by the build dialog's owner test), applied by T15 (ADR-0028, -0016, -0017). **Holds.**
+8. **The gates, the versions, the inboxes.** `h3-towns`, `h3-adventure` and `h3-game` under the
+   100 % coverage gate with no town file excluded; CI's full verify green on `master` at 1e54a50;
+   `check-rules` passes (459 rules). The versions in the lane HANDOFF (town state hash v2, part v4,
+   game state hash v26 by T17a, adventure part v19 by T18a, replay format v11 by T18b1, protocol
+   v41 by T18c, action encoding v9 by T19c1). Told: the AI lane's inbox (T19c1), the map client's
+   (T19c2), the server lane's (T18b1, T18b2a, T18b2b, T18c). **Wording:** the server's manifest
+   of the part's hash is the server lane's own (`GameManifest::town_ruleset_hash`, its E16 T4 of
+   2026-11-10, after the part's v4): worded as built. **Holds.**
+
+**The gap fixed:** TWN-BLD-001 cites batch TWN-2's rows 1 and 2 and matched them in every point it
+decides (the owner alone in its turn, the price from its treasury, the mark; nothing changed by a
+refused build) but stayed `implemented`: now `verified`, with a note. Stay `implemented`:
+TWN-BLD-003 (TWN-2 does not observe the hordes, design §36), -004 and -005 (the mark and the sets
+observed in part: TWN-2-1 shows one build's mark and sets, not the next day's or the automatic
+buildings), the TWN-EVT rules and TWN-SET-011 (the reading with VCMI and the wiki; the census is
+the engine's own walk) and TWN-VEW-004. **Left open, by design:** `TWN-STUB-2` (the Grail,
+increment 6 and E10), `TWN-STUB-6` (increment 5), `TWN-STUB-8` (the battle lane's inbox),
+`TWN-STUB-10` (increment 3), `TWN-STUB-13` (increment 5), `TWN-STUB-1` (E10's, reserved). No code
+gap queued.
+
+**Increment 2 closed** (2026-11-11): its section (the refinement's note, decisions 36 to 63, the
+task list and the exit criteria with criteria 5 and 8 worded as built) moved verbatim to
+`E09-archive.md` (checked by script: every line of the old epic in the new epic or the archive);
+its design note's Part D stays in `E09-design.md`, as Parts A to C (decision 40).
+
+**Increment 3 refined** (`TWN-Q11`; decisions 64 to 67): growth, recruitment and the army rows;
+the Tavern a new increment 4, the guild and the services 5, travel and the Grail 6. The live
+citations renumbered (agent's call, decision 67): `town.toml` (TWN-SET-005, -007, -009,
+TWN-BLD-002, -005), `docs/stubs.toml` (`TWN-STUB-6`, `-13`), `h3-towns`' `Cargo.toml` and
+`command.rs`, `h3-game`'s `town/heroes.rs`, the queue's inbox, and in `shared/e09-t20-increments`
+ADR-0016's town boat spot, ADR-0017 points 1 and 4 and its consequences, ADR-0028 points 1, 6 and
+8 and `docs/06-security.md`'s construction list; the log, the archive, the surveys and the design note
+keep their words. The adventure lane's inbox told of the army exchange (its increment 12's
+garrisons, decision 295): one army reference agreed before either lane drafts. The inbox's
+2026-11-11 note (the intermediate `TownChanged` at a capture under the Capitol's limit) kept as
+built and archived. The queue holds T21 (the survey) and T22 (the drafts).
+
+**Verify:** the engine's code is `master`'s but for four comments; the scoped verify with the
+original data and `check-lane` (the town lane's paths, the common `docs/stubs.toml` and the
+adventure lane's `QUEUE.md`) on the branch; CI on the pull request is the record.

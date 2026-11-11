@@ -8,7 +8,7 @@ license.workspace = true
 publish.workspace = true
 
 # `arch.toml` allows the kernel, the core content, the contracts and the hero model (ADR-0028
-# point 1); each comes with the first code that reads it (the hero model with E09 increment 4).
+# point 1); each comes with the first code that reads it (the hero model with E09 increment 5).
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true

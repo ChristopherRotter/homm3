@@ -4,37 +4,39 @@ Pre-refined tasks of the town lane, in order, then the inbox of discovered work.
 
 ## Tasks
 
-Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN-Q7`); done tasks
-in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
-(decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
-T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c, T19a, T19b, T19c1, T19c2 (done), T20 the audit (next); each
-queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
-acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E09-towns.md` (increment 3: growth, recruitment and the army rows, refined at
+T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 and 2 (closed by T10
+and T20) in `E09-archive.md`. Increment 3's first round (decision 66): the survey T21 and its
+checkpoint, then the drafts with the design note's Part E and the cut T22, accepted before
+anything is built. Each task's cut confirmed at its start; every entry's acceptance includes the
+Definition of Done (`docs/05-testing.md`).
 
-**E09 T20 — the audit of increment 2** (design §35, decision 50; queued 2026-11-11 by T19c2):
-exit criteria 1 to 8 audited against what is built (each criterion's rules, tests, replays and
-the census of T19c2, `E09-log.md`), a gap closed or queued; increment 2 closed (its scope,
-decisions and task list moved to `E09-archive.md`, a row in "Closed increments", the design note's
-Part D kept as Part A to C were, decision 40); increment 3 (recruitment, decision 4 and the
-inbox's notes for it) refined with the user (`TWN-Q11`). **At its start:** confirm the cut.
-**Status:** next.
+**E09 T21 — increment 3's survey** (decisions 65, 66; queued 2026-11-11 by T20): a survey
+`docs/rules/surveys/E09-growth.md` (an agent's name) as T12's: the code reading of `Heroes3.exe`
+(the week's step for the towns: each dwelling's growth, the castle's bonus by fort level, the
+hordes, the Grail's where it touches growth, the owned dwellings on the map if read, the week's
+creature and the month's kinds with the Plague, ADR-0017 point 4; a dwelling's first creatures at
+its build; the town events' creatures, `TWN-STUB-10`, TWN-EVT-004; recruitment at a town's
+dwellings into the garrison or the visitor, E08's hire dialog `HireDialog` reused; the town
+screen's two rows: the garrison's army, a garrison hero, the heroes' swap, and what a garrison hero
+changes of the siege and the views), VCMI 1.7.5 and the wiki compared, a census of the shipped
+maps (the towns' dwellings and garrisons at the start, the events' creatures, heroes in towns),
+the disputes (`TD-13` on) and quirk candidates (`T-10` on), the experiment rows at risk (batch
+TWN-3), the checkpoint's questions. With the adventure lane: E08 T108a reads its garrisons'
+exchange (E08 decision 295) at the same time; agree one army reference through the inboxes
+before either drafts (decision 67). Needs the original data. **At its start:** confirm the cut
+(by family: growth and the events' creatures; recruitment; the two rows, measuring the reading
+first). **Status:** next.
+
+**E09 T22 — increment 3's drafts, the design note's Part E and the cut** (decision 66): the ADR
+amendment drafts (ADR-0028, and the others the survey names) in `adr-drafts/`, Part E of
+`E09-design.md` from §37, the building tasks' cut and the exit criteria, accepted by the user at
+the checkpoint (`TWN-Q12` on). **At its start:** confirm the cut. **Status:** after T21.
 
 ## Inbox
 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
-
-- 2026-11-11 (the adventure lane, E08 T107, `adventure/e08-t107`, #844; **for your town checks,
-  nothing to do unless you prefer one event**): CI's random plans found a counterexample of
-  `master`'s `check_towns` (`h3-map`'s `tests/play.rs`): a siege won by a player who holds another
-  Capitol tells the old owner `TownChanged` with `capitol: true` after the garrison's battle, then
-  the capture's Capitol limit (TWN-CAP-002) demotes the town and both viewers are told `capitol:
-  false`. The engine is consistent (each event tells the town as it stood); the check assumed
-  every `TownChanged` of a command carries the final Capitol, so it now compares each viewer's
-  last one. The seed is kept in `proptest-regressions/tests/play.txt`. If you would rather not
-  tell the old owner the intermediate town (the capture follows in the same command), the check
-  holds either way.
 
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
@@ -118,19 +120,19 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   told when the hire dialog lands.
 - (adventure archive, 2026-10-03, E04a T3a) Not harvested: the spells' town chances and the hero
   classes' tavern weights (RoE lacks the Conflux column: an override kind or a per-faction table).
-  Increment 3 (weights: only the tavern's draw reads them, survey `E09-towns.md` §4.4), increment
-  4 (chances).
+  Increment 4, the Tavern (weights: only the tavern's draw reads them, survey `E09-towns.md`
+  §4.4), increment 5 (chances).
 - (adventure queue, 2026-10-20, T24a2b1) `Marshland Menace` gives 15 hero types a map-wide
-  experience of 2 000 that only its taverns reach. Increment 3.
+  experience of 2 000 that only its taverns reach. Increment 4, the Tavern.
 - (ADR-0017 point 4; E08 decision 197) The week's creature, drawn from a stream of its own, and the
   Plague's effect on towns. Increment 3.
 - (`ADV-STUB-9`, E10's) A Tavern town to hire a retreated hero again: a fact of the battle's
-  retreat setup. Increment 3, with E10.
+  retreat setup. Increment 4, the Tavern, with E10.
 - (ADR-0013 point 13.6; E08 decision 199, A-30) The Castle's Lighthouse building (sea movement).
-  Increment 4.
+  Increment 5.
 - (adventure archive, 2026-10-14, T19a2b) The Necropolis buildings' +10/+20 % Necromancy
-  (0x4E3CD0 with the building bits 0x66CE40, 0x66CE68). Increment 4.
+  (0x4E3CD0 with the building bits 0x66CE40, 0x66CE68). Increment 5.
 - (adventure archive, 2026-10-03, E04a T3b) Combination artifacts' costs (blank in the original):
-  the Artifact Merchants. Increment 4.
+  the Artifact Merchants. Increment 5.
 - (adventure archive, 2026-10-11, T8a; T34b) The new day's reveal around owned objects after a
-  Cover of Darkness hid tiles (0x4C7BA0). Increment 4.
+  Cover of Darkness hid tiles (0x4C7BA0). Increment 5.
