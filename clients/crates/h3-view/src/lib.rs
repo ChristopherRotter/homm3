@@ -1,5 +1,6 @@
 //! The viewer's scene model (E17, ADR-0020 points 2 and 8): `h3-protocol` messages and a time in,
-//! what is on screen at that time out, as a draw list for `h3-render`. [`record`] reads a record,
+//! what is on screen at that time out, as a draw list for `h3-render`. [`record`] reads a record
+//! (and [`game_record`] a whole game's, each battle it shows the player as a record of its own),
 //! [`anim`] plays its commands at the original's timing, [`scene`] makes the draw list of a
 //! snapshot at a time ([`hero`]: the heroes and their flags), [`batch`] holds a checkpoint's decoded assets,
 //! [`compose`] draws the list into a frame; [`tables`] and [`layout`] are the asset tables and
@@ -45,6 +46,7 @@ pub mod book;
 pub mod clip;
 pub mod compose;
 pub mod eagle_eye;
+pub mod game_record;
 pub mod hero;
 pub mod hero_info;
 pub mod keys;

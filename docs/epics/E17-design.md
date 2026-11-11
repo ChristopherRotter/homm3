@@ -7788,6 +7788,51 @@ host's loop stands in for.
   host that draws it elsewhere draws `Frame::screen` at its place and moves the mouse's events
   by it. `Frame::xrgb` is the frame widened ahead of its time, which a host presenting the frame
   alone (`h3-view window`) presents as it is.
-- **Not yet** (*provisional*): the outcome handed back and a whole game's start (T3b); the
-  sound on the host's device and the music through `h3_ui::music` (T3c; until then the element
-  opens a device of its own and a host must not play beside it).
+- **The outcome** (T3b1): once `closed`, `Hosted::outcome` hands the host how the battle ended
+  (the wire's `Outcome`: a battle fought here's by the engine, else its record's `GameEnded`).
+- **Not yet** (*provisional*): a whole game's battle played live through the host's game (T3b2;
+  T3b1 plays one from its record, §13.3); the sound on the host's device and the music through
+  `h3_ui::music` (T3c; until then the element opens a device of its own and a host must not play
+  beside it).
+
+### 13.3 A whole game's battle from its record (M7 T3b1)
+
+What the map client's E24 M4 T5 needs to show a golden replay's battles: a whole game's record
+(format 4, `h3-server record`'s, `h3_protocol::session::game`) gives the battle its player saw as
+a record of its own, which the element plays as any record and hands back. Not a reading: the
+switch from the adventure screen and back is the host's (the original's combat screen, design
+§7.19's modal loop).
+
+- **The battle's record** (`h3_view::game_record`, pure): a battle opens for the player with the
+  battle's own `Snapshot` right after the `GameEvents` whose `BattleStarted` began it (its battle
+  events after `BattleStarted` there are the start's, which the snapshot already shows); then
+  its events inside `GameEvents`, the player's turns in `GameTurn`, its acceptances and refusals
+  in `GameAccepted` and `GameRejected` (`GameCommand::Battle`, `GameReject::Battle`), until
+  `BattleEnded`. The record holds, numbered afresh from 1, what a seat's of the battle holds: the
+  snapshot, the start's `Events`, `YourTurn` (the turn's battle commands), `Accepted`,
+  `Rejected`, a command's `Events` (none for a message without battle events), a later
+  snapshot, `GameEnded`; its header the game's battle manifest and the snapshot's viewer's seat.
+  A start is the snapshot's only when its message comes right before it (another player's battle
+  the player sees start opens none). Lacking: the battle as it ended (`SRV-STUB-14`), so the
+  seat's Eagle Eye picks. `InGame` says where it stands: its heroes, its tile, the game record's
+  numbers of its snapshot and of its end, the result.
+- **Played** (`battle::Ground`): `--battle <k>` (from 1, in the order they open; `window`,
+  `play`) names one of a game record's battles; it is a record (no command given, the viewer's
+  scrolls and buttons only), its result window opens at its end as a battle fought here's (the
+  outcome as a server's game's, `results::served`; the creatures' values by the battle part its
+  packs compile to here when the content check finds it the game's, as a server's game's), its
+  colours the record's player's; the OK closes the screen and the host takes `Hosted::outcome`
+  and `Ground::in_game`. An unattended run presses the OK with `--close-result` and reports where
+  the battle stands.
+- **Read from the wire with it** (protocol v35): the battlefield picture's variant
+  (`Observation.background`, CLT-Q4: 0x41ADB0's pick by the surroundings, the third without it),
+  each side's colour for the heroes' flags and the panel (`SideView.colour`, CLT-Q6, through
+  `scene::players`: red and blue without it; a neutral side's not read). The hero's battle
+  picture by a sex the map gave (`Hero.sex`) is not drawn yet: the picture is the record 0x63BD40
+  holds at town × 2 + female, of which the asset tables keep each hero type's own only (T3b2).
+- **Checked:** two golden replays' records (`sea-deck-monster-s1`, a monster's battle;
+  `teleporters-exit-battle-s1`, both players' views of a heroes' battle) played unattended to
+  their closed result windows, every frame read back exact; a test host's game around a battle
+  fought here, windowless.
+- *Provisional*: the names, the numbers afresh, the battle's choice by its number, a record's
+  result window only for a whole game's battle (a battle's own record still opens none).

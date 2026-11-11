@@ -54,17 +54,20 @@ commands:
           keeps its own); --walls gives a siege's wall states (the 18 parts' picture states,
           then the gate's, comma-separated) in place of the record's.
   play <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
-       [--install <dir>] [--out <dir>] [--png] [--from <ms>] [--to <ms>] [--moments]
+       [--install <dir>] [--battle <k>] [--out <dir>] [--png] [--from <ms>] [--to <ms>]
+       [--moments]
           a whole battle frame by frame, headless: a scenario is fought to its end in-process
           with a simple bot in both seats (its obstacles from the seed, default 1), or a record
-          is read; its commands are played at the original's timing at combat speed --speed
+          is read (a whole game's, `h3-server record`'s: its battle --battle, from 1, default
+          the first its player saw); its commands are played at the original's timing at combat speed --speed
           (h3_view::anim) and every distinct frame is drawn (from --from to --to ms). Writes the
           record, each frame's moment (frames.txt) and the creatures' sound cues (cues.txt) to
           <out> (default clients/out/play/<stem>[-s<seed>]); --png also writes each frame as
           f<ms>.png there. --moments times a frame's moment for each quarter of the frames: the
           playhead's (read forward) and the reference's (read from the battle's start).
   window <scenario.toml | record.jsonl> [--seed <n>] [--speed <0-2>] [--packs <dir>]
-         [--install <dir>] [--human attacker|defender|both] [--keys <file>] [--settings <file>]
+         [--install <dir>] [--battle <k>] [--human attacker|defender|both] [--keys <file>]
+         [--settings <file>]
          [--scale <n>] [--vsync] [--drawn-cursor] [--fullscreen] [--from <ms>] [--mute]
          [--check <s> | --measure <s>] [--leave retreat|surrender] [--auto <n>]
          [--auto-question cancel|retreat|surrender] [--close-result] [--sight fair|all-seeing]
@@ -86,7 +89,9 @@ commands:
           press of the battle stops it as the next turn starts), the combat options (its button or O: the dialog;
           Default, the speeds, the volumes, the boxes; OK, Enter or Esc closes it; the right
           button over a control its help). A battle fought here ends in its result window over the screen darkened;
-          its OK (or Enter or Esc) closes the window. With sound
+          its OK (or Enter or Esc) closes the window. A whole game's record (`h3-server
+          record`'s) plays its battle --battle (from 1, default the first its player saw) as a
+          record, ending in its result window as one fought here. With sound
           (the installation's sound archives and MP3 folder; none with --mute): from the
           battle's start its start sound plays while the clock waits, then the battle music
           loops and the creatures' sounds follow their animations. Every key goes through a table

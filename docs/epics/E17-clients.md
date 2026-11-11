@@ -192,13 +192,14 @@ context.
     `window::Hosted` (with `Prepared` and `Setup`), `h3-view window` its first host. Built
     without the original data (the user's choice); checked by the next session with the data
     staged (the windowless host test, `window --check`, `drawn`, the gate, `check.sh`).
-  - **T3b**, cut in two with the user (2026-11-11): **T3b1** a whole game's record (format 4)
-    gives the battle the element plays and hands back with its outcome (the game's battle
-    messages as the battle's record; `h3-view window` on a game record; the battlefield
-    picture's variant from the wire, protocol v35's `Observation.background`, CLT-Q4; a
-    windowless test host; the map client lane's inbox told the API): what E24 M4 T5 needs, which
-    shows golden replays' battles. **T3b2** the same battle played live through the host's game
-    session (the element giving its commands to the host), before T3c.
+  - **T3b**, cut in two with the user (2026-11-11): **T3b1 done 2026-11-11**
+    ([log](E17-log.md#m7-t3b1--a-whole-games-battle-from-its-record-2026-11-11); design §13.3):
+    a whole game's record gives each battle its player saw as a record of its own
+    (`h3_view::game_record`), which the element plays to its result window and hands back
+    (`Hosted::outcome`, `Ground::in_game`); `--battle <k>`; the battlefield picture's variant and
+    each side's colour from the wire (CLT-Q4, CLT-Q6); the map client lane told the API.
+    **T3b2** the same battle played live through the host's game session (the element giving
+    its commands to the host), with the hero's battle picture by the map's sex, before T3c.
   - **T3c:** the sound on the host's device and the music through the common `h3_ui::music` (the
     end's tune after the combat music's 900 ms fade; the focus lost and regained: the map client
     lane's notes of 2026-10-27 and 2026-10-30); the frame widened by
@@ -324,3 +325,12 @@ The next milestone's list starts here.
    the window's own keys split (the battle's clock and sound its own, fullscreen, vsync and the
    cursor the host's), its sound still on a device of its own until T3c. Not recorded (nothing
    the original draws changed); checked with the data staged by the next session.
+6. A whole game's battle from its record (T3b1; design §13.3, *provisional* where marked):
+   `h3_view::game_record` (the battle's record numbered afresh, its seat the snapshot's viewer, a
+   start the snapshot's only right before it, a `BattleStarted` while a battle is open ending
+   that one), `--battle <k>` by the order the battles open, the result window opened for a whole
+   game's battle only (a battle's own record still opens none), `Hosted::outcome` the wire's
+   `Outcome`; the colours from the wire for the flags and the panel (a neutral side's not read:
+   blue as before); the test host's game built around a battle fought here (a real game in the
+   client's tests needs the adventure's packs and `clients.yml`'s paths: a `shared/` change).
+   The variants 0 and 1 and the colours not recorded (no situation names them).
