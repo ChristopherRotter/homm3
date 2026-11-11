@@ -51,6 +51,14 @@
 //! OK (a click, Enter or Escape) closes the window's battle, as the original's leaves the battle's
 //! screen.
 //!
+//! **The battle as an element** (E17 M7 T3a2; the map client lane's request for E24 M4 T5, the
+//! shape agreed with the user on 2026-11-11, *provisional*): what the loop did is [`Hosted`]'s, a
+//! battle a host's window runs and draws as any element of its own; the host owns the window, its
+//! loop, the frame presented and the cursor shown, and the window's own keys but those of the
+//! battle's clock and sound. [`Prepared`] is the battle loaded before the host's window opens
+//! (the frame's size, the first cursor), [`Prepared::start`] starts it from a [`Setup`]. This
+//! command's window is its first host: the battle's frame alone, at the window's scale.
+//!
 //! `--check <s>` and `--measure <s>` run unattended for that many seconds and report when each
 //! frame showed against its time; `--check` also reads every frame back before presenting it and
 //! compares it with the composed frame at the window's scale (the black around it included). An
@@ -425,13 +433,17 @@ pub fn run(options: &Options) -> ExitCode {
 
 /// A frame composed ahead of its time: the change it shows, its draw list, the frame and the
 /// frame widened; `held`, at the end the battle holds at for the computer's cast (E17 M6 T5b2b,
-/// [`After::Held`]): the frame shown before, made again when it is due.
+/// [`After::Held`]): the frame shown before, made again when it is due. Public since E17 M7 T3a2:
+/// what a host presents ([`Hosted::due`]).
 #[derive(Debug)]
-struct Frame {
-    t: u32,
+pub struct Frame {
+    /// The battle's time of the change it shows.
+    pub t: u32,
     list: Vec<Draw>,
-    screen: Screen,
-    xrgb: Vec<u32>,
+    /// The frame.
+    pub screen: Screen,
+    /// The frame widened (`Screen::xrgb`).
+    pub xrgb: Vec<u32>,
     held: bool,
 }
 
@@ -620,8 +632,6 @@ fn next_frame(
 struct Report {
     /// Per frame shown at its time: how late, in microseconds.
     late_us: Vec<u64>,
-    /// Frames passed over because a later one was due already.
-    skipped: usize,
     /// Frames read back, and those that matched.
     read: usize,
     exact: usize,
@@ -631,7 +641,1535 @@ struct Report {
     geometry: Option<String>,
 }
 
-/// Opens the window and plays the battle until Esc, a close, or the unattended run's end.
+/// What a host gives the battle it runs besides its ground (E17 M7 T3a2, *provisional*: the
+/// shape agreed with the user for the map client lane, 2026-11-11): the keys, the combat options'
+/// settings and their file, where the battle's clock starts, the sound and an unattended run's
+/// presses.
+#[derive(Debug)]
+pub struct Setup {
+    /// The table of keys (the user's file over the defaults).
+    pub keys: Keys,
+    /// The combat options' settings (E17 M6 T4a).
+    pub settings: Settings,
+    /// The file the combat options dialog writes them to.
+    pub settings_path: PathBuf,
+    /// The battle's time the clock starts at (a seat on a server's at its record's end at the
+    /// latest) and that Restart seeks to.
+    pub from: u32,
+    /// No sound.
+    pub mute: bool,
+    /// The installation copy whose sound archives and music are read.
+    pub install: PathBuf,
+    /// The seed that chooses the opening's sounds (the scenario's).
+    pub seed: u64,
+    /// Unattended: the keys do nothing but quit.
+    pub unattended: bool,
+    /// Unattended, a human's commands pressed by the battle itself (E17 M5 T2b): how; none, no
+    /// presses.
+    pub presses: Option<Presses>,
+}
+
+/// How an unattended run presses a human's commands (E17 M5 T2b): the panel button the human side
+/// leaves by (Surrender or Retreat, through its question: E17 M5 T4a), the human's turn Auto
+/// Combat is switched on at (from 1; E17 M5 T4c1), the answers to Auto Combat's question and
+/// offer (E17 M6 T5b2a) and whether the result window's OK is pressed once it shows (E17 M7 T1d).
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct Presses {
+    /// The panel button the human side leaves by.
+    pub leave: Option<u16>,
+    /// The human's turn Auto Combat is switched on at.
+    pub auto: Option<usize>,
+    /// The question's OK, then the offer's.
+    pub question: (bool, bool),
+    /// The result window's OK pressed once it shows, Eagle Eye's boxes after it too.
+    pub close_result: bool,
+}
+
+/// The cursors the checkpoint batch holds from the start: the combat cursor, the spell book's
+/// default cursor (E17 M5 T3a) and the spell cursor (E17 M5 T3b).
+fn load_cursors(battle: &mut Battle<'_>) -> Result<(), String> {
+    let combat = battle.layout().mouse.cursor.clone();
+    let book_cursor = battle.layout().book.cursor.clone();
+    let spell_cursor = battle.layout().mouse.spell_cursor.clone();
+    battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])
+}
+
+/// A battle loaded for a host before the host's window opens (E17 M7 T3a2): the frame's size and
+/// the cursor the window opens with; [`Prepared::start`] starts it once the window is open (its
+/// clock from the window's, its sound on the device the window's platform opened).
+pub struct Prepared<'g> {
+    ground: &'g Ground,
+    battle: Battle<'g>,
+    cursors: Cursors,
+}
+
+impl core::fmt::Debug for Prepared<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Prepared").finish_non_exhaustive()
+    }
+}
+
+impl<'g> Prepared<'g> {
+    /// The battle `ground` is drawn from, its first checkpoint's cursors loaded.
+    pub fn new(ground: &'g Ground) -> Result<Self, String> {
+        let mut battle = Battle::new(ground)?;
+        // The checkpoint batch: the cursor now, each frame's names as it is first drawn.
+        load_cursors(&mut battle)?;
+        Ok(Self {
+            ground,
+            battle,
+            // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as
+            // shown.
+            cursors: Cursors::default(),
+        })
+    }
+
+    /// The battle's frame, width and height: what the host draws it into.
+    pub fn frame_size(&self) -> [u32; 2] {
+        self.battle.frame_size()
+    }
+
+    /// The cursor at the battle's time `t`.
+    pub fn cursor_at(&self, t: u32) -> CursorLook {
+        self.battle.cursor(t)
+    }
+
+    /// The cursor `look` drawn and as the hardware cursor's image.
+    pub fn cursor_image(&mut self, look: &CursorLook) -> Result<(Cursor, CursorImage), String> {
+        self.cursors.get(&self.battle, look)
+    }
+
+    /// The battle started by `setup`, the clock at `ticks_ns`' time (the host's, in ns), the
+    /// sound's report in `lines`: the sound decoded and the device opened (none with `mute` or
+    /// without a device), the battle waiting for its samples when it plays them, the settings set,
+    /// the opening's start sound playing while the clock waits (from the battle's start only).
+    pub fn start(
+        self,
+        setup: Setup,
+        ticks_ns: &dyn Fn() -> u64,
+        lines: &mut Vec<String>,
+    ) -> Result<Hosted<'g>, String> {
+        let Self {
+            ground,
+            mut battle,
+            cursors,
+        } = self;
+        // The sound: decoded now, the device opened; none with --mute or without a device.
+        let seed = u32::try_from(setup.seed & u64::from(u32::MAX)).unwrap_or(1);
+        let opening = h3_view::sound::opening(seed);
+        let library = if setup.mute {
+            None
+        } else {
+            // The stacks' sounds and the battle's own its cues name (the heal's, E17 M3 T3b; the
+            // casts', T7b-1).
+            let sounds = (battle.stack_sounds(), battle.battle_sounds());
+            Some(Library::load(
+                &setup.install,
+                (opening, &battle.layout().options.sound),
+                sounds,
+                &TUNES,
+                lines,
+            )?)
+        };
+        let mut player = match library.as_ref().map(Player::open) {
+            Some(Ok(p)) => Some(p),
+            Some(Err(e)) => {
+                lines.push(format!("audio: {e}; no sound"));
+                None
+            }
+            None => None,
+        };
+        // With its sound playing, the battle waits for its samples as the original does on a
+        // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
+        if let (Some(_), Some(lib)) = (player.as_ref(), library.as_ref()) {
+            ground.play_sounds(lib.lengths());
+            battle = Battle::new(ground)?;
+            load_cursors(&mut battle)?;
+        }
+        // The settings the combat options dialog shows, against the audio device opened or not (its
+        // no-sound box; E17 M6 T4a); its volumes on the sound.
+        let settings = setup.settings;
+        battle.settings = settings;
+        battle.audio = player.is_some();
+        if let Some(p) = player.as_mut() {
+            p.set_volumes(settings.music, settings.effects);
+        }
+        // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
+        // before the window joined is not played again.
+        let start = if ground.online().is_some() {
+            setup.from.max(battle.timeline().end)
+        } else {
+            setup.from
+        };
+        let cue = battle.timeline().cue_from(start);
+        let mut changes = Changes::new(&battle);
+        let mut clock = Clock::new(ticks_ns(), start);
+        // The opening: the clock waits while the start sound plays (from the battle's start only).
+        let mut opening_until = None;
+        if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
+            let now = ticks_ns();
+            let wait = if start == 0 { p.start(lib) } else { 0 };
+            if wait > 0 {
+                clock.toggle(now);
+                opening_until = Some(now + u64::from(wait) * 1_000_000);
+            } else {
+                p.start_music(now);
+            }
+        }
+        let from = changes.latest(&mut battle, start)?;
+        let next = Some(frame_at(&mut battle, from)?);
+        // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2). Creature Info's
+        // level from the settings at the opening (E17 M6 T4b2a), kept by every Restart, and the
+        // level the hints read now: a change (F5, the options dialog) is an input at its time.
+        let inputs: Vec<Input> = vec![
+            Input::ArmyInfo {
+                at: 0,
+                level: battle.settings.army_info,
+            },
+            // The grid's and the shadows' options from the settings at the opening (E17 M6 T4c),
+            // the background composed with them.
+            Input::Shades {
+                at: 0,
+                options: Shades::of(&battle.settings),
+                keyed: false,
+            },
+        ];
+        let army_info = battle.settings.army_info;
+        // An unattended run presses a human's commands itself (E17 M5 T2b).
+        let presser = setup.presses.map(|presses| Presser {
+            points: crate::pointer::press_points(battle.layout()),
+            leave: presses.leave,
+            auto: presses.auto,
+            question: presses.question,
+            close_result: presses.close_result,
+            ..Presser::default()
+        });
+        Ok(Hosted {
+            ground,
+            battle,
+            cursors,
+            keys: setup.keys,
+            from: setup.from,
+            unattended: setup.unattended,
+            presses: setup.presses.unwrap_or_default(),
+            presser,
+            library,
+            player,
+            settings_path: setup.settings_path,
+            unsaved: std::cell::RefCell::new(Vec::new()),
+            cue,
+            // Whether the battle's end's tune started (E17 M3 T8).
+            ended: false,
+            changes,
+            clock,
+            // The clock is held under a notice's box (E17 M5 T5a).
+            notice_held: false,
+            opening_until,
+            shown: None,
+            next,
+            pointer: None,
+            inputs,
+            army_info,
+            // The options dialog open as the last pass ended (E17 M6 T4c, design §12.16).
+            options_open: false,
+            scrolls: Vec::new(),
+            held: None,
+            // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5
+            // T4c1; its index, T8b2 R5c-4): it acts on that turn if a human's (0x474625).
+            stopped_by: None,
+            // Either Control key held (E24 M3 T1b: a chord's Ctrl+), and whether it was pressed
+            // alone (E17 M6 T7b, R5-1).
+            ctrl: Control::default(),
+            skipped: 0,
+            pass: Pass::default(),
+            moved: false,
+        })
+    }
+}
+
+/// A pass of the host's loop as the battle reads it (E17 M7 T3a2: the loop's locals until then):
+/// the mouse moved or the battle followed it, the battle grew, the spell book or a box opened,
+/// closed or changed, and the input queue's flush as a box opens.
+#[derive(Debug, Default)]
+struct Pass {
+    mouse_changed: bool,
+    /// The mouse followed in the pass already (an aim's press, E17 M5 T8b2: R4b-1), whether
+    /// what it shows changed then.
+    followed: bool,
+    grew: bool,
+    /// The spell book opened, closed or changed (E17 M5 T3a).
+    book_changed: bool,
+    flush: Flush,
+}
+
+/// Whether the host's pass goes on after [`Hosted::before`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Flow {
+    /// It takes the pass's events.
+    On,
+    /// The battle started afresh (a restarted server's record, E17 M5 T6b2): the pass begins
+    /// again.
+    Again,
+}
+
+/// What an input did for the host ([`Hosted::event`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Took {
+    /// Nothing the host does.
+    Nothing,
+    /// The battle's window quits (Esc over the battle, the window closed).
+    Quit,
+    /// The window's frame presented again (the platform asked).
+    Redraw,
+    /// One of the window's own keys the host does: fullscreen, vsync, the cursor drawn or the
+    /// hardware's (the battle does its clock's, its sound's and Quit's itself).
+    Window(Own),
+}
+
+/// The battle as an element a host's window runs (E17 M7 T3a2; the map client lane's request for
+/// E24 M4 T5, the shape agreed with the user, 2026-11-11: the host owns the window, its loop and
+/// the frame, the battle drawn natively as any element of it, so that a later layout can show it
+/// as a dialog over the adventure screen). A pass of the host's loop: [`Hosted::timeout`] (how
+/// long the host may wait for input), [`Hosted::before`], each input to [`Hosted::event`] (a
+/// [`Took`] for the host; [`Hosted::take_moved`] after it: the mouse moved where a drawn cursor
+/// shows), [`Hosted::closed`] (the result window's OK closed the battle's screen), then
+/// [`Hosted::after`], the cursor ([`Hosted::cursor_at`], [`Hosted::cursor_image`]), the sound
+/// ([`Hosted::sound`]) and the frame due ([`Hosted::due`]; once the host presented it,
+/// [`Hosted::showed`]). Everything is in the battle's frame's coordinates: a host that draws it
+/// elsewhere moves the mouse's by its place. *Provisional*: the sound still opens its own device
+/// (T3c moves it to the host's); `h3-view window` is its first host.
+pub struct Hosted<'g> {
+    ground: &'g Ground,
+    battle: Battle<'g>,
+    cursors: Cursors,
+    keys: Keys,
+    from: u32,
+    unattended: bool,
+    presses: Presses,
+    presser: Option<Presser>,
+    library: Option<Library>,
+    player: Option<Player>,
+    settings_path: PathBuf,
+    unsaved: std::cell::RefCell<Vec<String>>,
+    cue: usize,
+    ended: bool,
+    changes: Changes,
+    clock: Clock,
+    notice_held: bool,
+    opening_until: Option<u64>,
+    shown: Option<Frame>,
+    next: Option<Frame>,
+    pointer: Option<(i32, i32)>,
+    inputs: Vec<Input>,
+    army_info: u8,
+    options_open: bool,
+    scrolls: Vec<(u32, i64)>,
+    held: Option<Held>,
+    stopped_by: Option<(Do, usize)>,
+    ctrl: Control,
+    /// Frames passed over because a later one was due already.
+    skipped: usize,
+    pass: Pass,
+    /// The mouse moved where the cursor shows in the last input ([`Hosted::take_moved`]).
+    moved: bool,
+}
+
+impl core::fmt::Debug for Hosted<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Hosted").finish_non_exhaustive()
+    }
+}
+
+impl<'g> Hosted<'g> {
+    /// How long the host may wait for input from its time `now` (ns), in ms: until the next frame
+    /// is due or the opening's end, at most [`WAIT_MS`] ([`POLL_MS`] while a seat on a server is
+    /// played).
+    pub fn timeout(&self, now: u64) -> u32 {
+        self.next
+            .as_ref()
+            .and_then(|f| self.clock.until(now, f.t))
+            .or_else(|| self.opening_until.map(|end| end.saturating_sub(now)))
+            .map_or(WAIT_MS, |ns| {
+                u32::try_from(ns / 1_000_000)
+                    .unwrap_or(WAIT_MS)
+                    .min(WAIT_MS)
+            })
+            .min(if self.battle.online() {
+                POLL_MS
+            } else {
+                WAIT_MS
+            })
+    }
+
+    /// A pass's start, before its inputs, `ticks_ns` the host's time: the result window and a
+    /// notice opened at their times, what a server sent taken, a restarted server's record opened
+    /// afresh ([`Flow::Again`]), an unattended run's press, the key that stopped Auto Combat
+    /// acting on its turn. Its report's lines go to `lines`.
+    pub fn before(
+        &mut self,
+        ticks_ns: &dyn Fn() -> u64,
+        lines: &mut Vec<String>,
+    ) -> Result<Flow, String> {
+        let files = SettingsFile {
+            path: &self.settings_path,
+            library: self.library.as_ref(),
+            lines: &self.unsaved,
+        };
+        self.pass = Pass::default();
+        // The box open as the pass starts, to tell one that opens in it (E17 M5 T8b2).
+        let box_before = box_shown(&self.battle);
+        // The result window opens at the battle's end (E17 M5 T4b1).
+        let ms = self.clock.ms(ticks_ns());
+        if self.battle.open_result(ms) {
+            lines.push(format!("the result window opened at {ms} ms"));
+            self.pass.book_changed = true;
+        }
+        // A notice opens at its time, the clock held there until its box closes (E17 M5 T5a).
+        if let Some(t) = self.battle.open_notice(ms) {
+            lines.push(format!("a message box opened at {t} ms"));
+            let now = ticks_ns();
+            self.clock.seek(now, t);
+            if !self.clock.paused() {
+                self.clock.toggle(now);
+                self.notice_held = true;
+            }
+            self.pass.book_changed = true;
+        }
+        if self.notice_held && !self.battle.message_open() {
+            self.clock.toggle(ticks_ns());
+            self.notice_held = false;
+        }
+        // A seat on a server: what the server sent since (E17 M5 T6b1), never waited on.
+        let ticks = ticks_ns();
+        self.pass.grew |= self.battle.poll(self.clock.ms(ticks), ticks / 1_000_000)?;
+        // A restarted server's record opened afresh (E17 M5 T6b2): the battle and the window's
+        // clock, inputs and presses start again from its new opening, a new timeline.
+        if self.battle.opened_afresh() {
+            self.battle = self.battle.afresh()?;
+            load_cursors(&mut self.battle)?;
+            lines.push(format!(
+                "a new timeline at {} ms of the one before",
+                self.clock.ms(ticks_ns())
+            ));
+            let start = self.battle.timeline().end;
+            self.clock = Clock::new(ticks_ns(), start);
+            (self.notice_held, self.ended, self.held, self.stopped_by) = (false, false, None, None);
+            self.inputs.clear();
+            self.scrolls.clear();
+            self.changes = Changes::new(&self.battle);
+            self.cue = self.battle.timeline().cue_from(start);
+            let from = self.changes.latest(&mut self.battle, start)?;
+            self.next = Some(frame_at(&mut self.battle, from)?);
+            self.shown = None;
+            if let Some(p) = self.presser.as_mut() {
+                *p = Presser {
+                    points: core::mem::take(&mut p.points),
+                    leave: self.presses.leave,
+                    auto: self.presses.auto,
+                    question: self.presses.question,
+                    close_result: self.presses.close_result,
+                    ..Presser::default()
+                };
+            }
+            return Ok(Flow::Again);
+        }
+        if let Some(p) = self.presser.as_mut() {
+            let ticks = ticks_ns();
+            self.pass.grew |= p.press(
+                &mut self.battle,
+                &mut self.inputs,
+                self.clock.ms(ticks),
+                ticks / 1_000_000,
+            )?;
+        }
+        // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
+        // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it. A
+        // human's turn Auto Combat does not play reads no stop (E17 M6 T4b1): its start drops
+        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there). E17 M6
+        // T5b2b (CLT-Q61): a stop read at the end of the computer's cast for the hero is that
+        // turn's, the key acting there (*provisional*: read, not recorded).
+        let cast_stop = self
+            .stopped_by
+            .and_then(|(_, turn)| self.battle.auto_stopped_at(turn));
+        if let Some((command, turn)) = self.stopped_by
+            && let Some((start, read)) = stop_start(&self.battle.timeline().turns, turn, cast_stop)
+        {
+            let last = self.battle.timeline().turns.len();
+            let at_start = || read && self.battle.auto_at_start(turn);
+            let carry = carry((self.battle.waiting(), last, turn), at_start);
+            if carry != Carry::Wait {
+                self.stopped_by = None;
+            }
+            if carry == Carry::Act {
+                match command {
+                    Do::LogUp | Do::LogDown => {
+                        self.scrolls
+                            .push((start, if command == Do::LogUp { -1 } else { 1 }));
+                    }
+                    // F5 both stopped Auto Combat and cycles the level there (E17 M6 T4b2a); F6 to
+                    // F8 toggle their options there (E17 M6 T4c).
+                    Do::ArmyInfo => {
+                        let at = self.clock.ms(ticks_ns()).max(start);
+                        self.army_info =
+                            cycle_army_info(&mut self.battle, &mut self.inputs, at, &files);
+                    }
+                    Do::Shades(toggle) => {
+                        let at = self.clock.ms(ticks_ns()).max(start);
+                        toggle_shades(&mut self.battle, &mut self.inputs, (at, toggle), &files);
+                    }
+                    // T opens the acting stack's stats dialog there (E17 M6 T7b, R5's question:
+                    // the stop's key reaches the same key switch, 0x475D07).
+                    Do::Stats => {
+                        let at = self.clock.ms(ticks_ns()).max(start);
+                        self.pass.book_changed |=
+                            acting_stats(&mut self.battle, &mut self.inputs, at, self.pointer);
+                    }
+                    _ => {
+                        let at = self.clock.ms(ticks_ns()).max(start);
+                        // F over the battlefield hides the army info windows first (CLT-Q49,
+                        // E17 M6 T4b2b1).
+                        if let Some(hide) = key_hides(
+                            self.battle.takes(at),
+                            self.battle.layout(),
+                            (at, self.pointer),
+                        ) {
+                            self.inputs.push(hide);
+                        }
+                        if let Some(spell) = self.battle.dragon_aim(at) {
+                            self.inputs.push(Input::Aim {
+                                at,
+                                spell,
+                                creature: true,
+                            });
+                        }
+                    }
+                }
+                self.pass.mouse_changed = true;
+            }
+        }
+        // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
+        // presses and key-downs that come with the input that opened it, or after the box opened
+        // in this pass, are dropped; the key-ups (no key stays held), the moves and Quit go on.
+        self.pass.flush = Flush {
+            last: box_before,
+            emptied: false,
+        };
+        Ok(Flow::On)
+    }
+
+    /// One input of the pass, `ticks_ns` the host's time: what the battle does with it, and what
+    /// the host does ([`Took`]).
+    pub fn event(&mut self, event: Event, ticks_ns: &dyn Fn() -> u64) -> Result<Took, String> {
+        let files = SettingsFile {
+            path: &self.settings_path,
+            library: self.library.as_ref(),
+            lines: &self.unsaved,
+        };
+        // The options dialog's close by the event before counts before this one (E17 M6
+        // T7b, R5-3): an enemy pressed or the dialog opened again in the same pass finds the
+        // boxes changed, and under Auto Combat the turn handed over.
+        self.pass.grew |= self.battle.boxes_closed(self.clock.ms(ticks_ns()))?;
+        // The modifier's state is no input to a box: a Control key's down the queue drops
+        // still holds it (E17 M6 T7b, R5-6).
+        self.ctrl.saw(&event);
+        if self.pass.flush.drops(box_shown(&self.battle), &event) {
+            return Ok(Took::Nothing);
+        }
+        let now = ticks_ns();
+        let at = self.clock.ms(now);
+        // A key's release a dialog, a popup, the spell book or an aim takes (the branches
+        // below) lets go of the panel button that key holds, without its click, in the
+        // client's profile (CLT-Q71 (b); E17 M7 T1b): it is not left drawn pressed after.
+        if let Event::KeyUp(key) = event
+            && (self.battle.message_open()
+                || self.battle.stats_open()
+                || self.battle.options_open()
+                || self.battle.book_open()
+                || self.battle.aiming())
+            && release_taken(&mut self.held, key, Bugs::Fixed)
+        {
+            self.pass.mouse_changed = true;
+        }
+        match event {
+            Event::Quit => return Ok(Took::Quit),
+            // Control held with a key makes another chord (E24 M3 T1b). Itself a key down, it
+            // stops Auto Combat as any key does (T8b2, R5c-5; design §7.22), but only pressed
+            // alone, at its release: a chord of the window's own (Ctrl+F5 to Ctrl+F8) stays
+            // the window's (E17 M6 T7b, R5-1, *provisional*: a stop by Control alone comes
+            // at its release, not as it goes down).
+            Event::Key(Key::LeftCtrl | Key::RightCtrl) => self.ctrl.pressed(),
+            Event::KeyUp(Key::LeftCtrl | Key::RightCtrl) => {
+                let context = Context::of(
+                    self.battle.result_open(),
+                    self.battle.message_open(),
+                    (self.battle.stats_open(), self.battle.options_open()),
+                    self.battle.book_open(),
+                    self.battle.aiming(),
+                );
+                if self.ctrl.released()
+                    && !self.unattended
+                    && context == Context::Battle
+                    && self.battle.stop_auto(at).is_some()
+                {
+                    self.pass.mouse_changed = true;
+                }
+            }
+            // Unattended, the keys do nothing but quit, whatever is open (the mouse still
+            // moves the battle's; a human's commands are the presser's).
+            Event::Key(key) if self.unattended => {
+                let command = self
+                    .keys
+                    .command(Context::Battle, self.ctrl.held(), key.name());
+                if command == Some(Do::Window(Own::Quit)) {
+                    return Ok(Took::Quit);
+                }
+            }
+            Event::KeyUp(_) if self.unattended => {}
+            // The right button's release ends the own loop of the panel button the mouse
+            // holds as the left's does, clicking it over it (E17 M7 T2, CLT-Q72 (a);
+            // `def_button_message` 0x456338).
+            Event::KeyUp(Key::RightButton) if mouse_holds(self.held) => {
+                if let Some(h) = self.held.take() {
+                    let lists = (&mut self.inputs, &mut self.scrolls);
+                    let (g, b) = let_go_held(&mut self.battle, lists, at, h)?;
+                    (
+                        self.pass.grew,
+                        self.pass.book_changed,
+                        self.pass.mouse_changed,
+                    ) = (self.pass.grew | g, self.pass.book_changed | b, true);
+                }
+            }
+            // A turret's info held by the right button over the battle (E17 M6 T2b2, design
+            // §12.6), a control's help over the panel (T3a, §12.7) or a hero's info window
+            // (T3b1, §12.8; `popup_run_held` 0x602A40): its ends (the right button's release, a left press or release)
+            // close it; every other input is dropped, the moves too (the battle takes none
+            // meanwhile, nor after: nothing is posted, 0x476BBF).
+            Event::KeyUp(Key::RightButton) | Event::Click { down: true, .. }
+                if self.battle.popup_held() =>
+            {
+                self.pass.book_changed |= self.battle.popup_end();
+            }
+            // Over the combat options dialog the release a popup takes lets go of what the
+            // mouse or that key holds there without its click (CLT-Q39's fix in the client's
+            // profile; E17 M6 T7b, R4-2).
+            Event::Click { down: false, .. } if self.battle.popup_held() => {
+                self.pass.book_changed |= self.battle.options_let_go(None);
+                self.pass.book_changed |= self.battle.popup_end();
+            }
+            Event::KeyUp(key) if self.battle.popup_held() => {
+                self.pass.book_changed |= self.battle.options_let_go(Some(key.name()));
+            }
+            Event::Key(_) if self.battle.popup_held() => {}
+            Event::Pointer(p) if self.battle.popup_held() => self.pointer = p,
+            // The stats dialog's right button's description (E17 M6 T2a2b1, design §12.3),
+            // held while the button is: the popup's loop (0x602A40) takes only its ends (the
+            // right button's release, a left press or release) and drops every other input
+            // (a key's release lets the OK it holds go in the client's profile, CLT-Q39); the
+            // battle keeps where the mouse is.
+            // The right button's stats dialog over the battle (E17 M6 T2b1) the same: its
+            // end closes it, the battle taking the mouse again (`Input::Looked`).
+            Event::KeyUp(Key::RightButton) | Event::Click { .. } if self.battle.stats_popup() => {
+                let did = self.battle.stats_held(at, true, None);
+                self.pass.book_changed |= stats_did(&mut self.battle, &mut self.inputs, at, did);
+            }
+            Event::KeyUp(key) if self.battle.stats_popup() => {
+                let did = self.battle.stats_held(at, false, Some(key.name()));
+                self.pass.book_changed |= stats_did(&mut self.battle, &mut self.inputs, at, did);
+            }
+            Event::Key(_) if self.battle.stats_popup() => {}
+            Event::Pointer(p) if self.battle.stats_popup() => {
+                self.pointer = p;
+                if let Some((x, y)) = p {
+                    self.inputs.push(Input::Move { at, to: [x, y] });
+                    self.pass.mouse_changed = true;
+                }
+            }
+            Event::Key(Key::RightButton) if self.battle.stats_open() => {
+                let point = self.pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                self.pass.book_changed |= self.battle.stats_right(at, point);
+            }
+            // The combat options dialog's help (E17 M6 T4a, design §12.12): the right button
+            // over a control shows it while held, as the panel's controls' help.
+            Event::Key(Key::RightButton)
+                if self.battle.options_open() && !self.battle.message_open() =>
+            {
+                let point = self.pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                self.pass.book_changed |= self.battle.options_right(point);
+            }
+            // What a key does where the battle takes it now (E24 M3 T1b, `h3_view::keys`): a
+            // dialog or an aim over the battle takes its own keys and the window's that work
+            // whatever is open; its Esc is its close, Cancel or give-up, never the window's
+            // quit.
+            Event::Key(key) => {
+                let context = Context::of(
+                    self.battle.result_open(),
+                    self.battle.message_open(),
+                    (self.battle.stats_open(), self.battle.options_open()),
+                    self.battle.book_open(),
+                    self.battle.aiming(),
+                );
+                let ctrl_held = self.ctrl.held();
+                // The tactics phase's panel's keys first, then the battle's (E17 M5 T4c2b).
+                let command = (context == Context::Battle && self.battle.in_tactics(at))
+                    .then(|| self.keys.command(Context::Tactics, ctrl_held, key.name()))
+                    .flatten()
+                    .or_else(|| self.keys.command(context, ctrl_held, key.name()));
+                // While the mouse holds a panel button its own loop runs (E17 M7 T2, CLT-Q72
+                // (a); `def_button_message` 0x456338 to 0x45641C): every key and the right
+                // press are dropped, no popup opens; the viewer's own keys stay its own.
+                if mouse_holds(self.held) && !matches!(command, Some(Do::Window(_))) {
+                    return Ok(Took::Nothing);
+                }
+                // A key while Auto Combat plays stops it as the next turn starts and does
+                // nothing else (E17 M5 T4c1, 0x4741F9); the window's own keys stay its own.
+                if context == Context::Battle
+                    && !matches!(command, Some(Do::Window(_)))
+                    && let Some(turn) = self.battle.stop_auto(at)
+                {
+                    self.stopped_by = command.filter(|&c| carried(c)).map(|c| (c, turn));
+                    self.pass.mouse_changed = true;
+                    return Ok(Took::Nothing);
+                }
+                // The right button over the battlefield (E17 M6 T2b1, design §12.5;
+                // `battle_right_click` 0x4769C0): the stack on the hex there shows its stats
+                // dialog while the button is held, the combat cursor's pointer set first;
+                // over the panel a control's help (T3a, `battle_control_help` 0x472A50).
+                if command.is_none()
+                    && matches!(key, Key::RightButton)
+                    && context == Context::Battle
+                {
+                    let point = self.pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
+                    if self.battle.look_held(at, point) {
+                        self.inputs.push(Input::Look { at });
+                        self.pass.book_changed = true;
+                    } else if let Some(side) = self.battle.hero_info(at, point) {
+                        // Else a hero's info window over its rectangle (T3b1, design §12.8),
+                        // held as the stats dialog's popup; at Creature Info's levels 1 and 2
+                        // it stays shown after the release (E17 M6 T4b2b1, §12.15).
+                        self.inputs.push(Input::HeroInfo { at, side });
+                        (self.pass.book_changed, self.pass.mouse_changed) = (true, true);
+                    } else {
+                        // Else a turret's info held (E17 M6 T2b2, design §12.6), or over the
+                        // panel a control's help (T3a, design §12.7; `battle_buttons`
+                        // 0x474DE4): each held as the stats dialog's popup.
+                        self.pass.book_changed |= self.battle.turret_info(at, point, true)
+                            || self.battle.control_help(at, point);
+                    }
+                    return Ok(Took::Nothing);
+                }
+                let Some(command) = command else {
+                    return Ok(Took::Nothing);
+                };
+                match command {
+                    Do::Window(own) => {
+                        // A key that moves the battle ends the opening first: the clock
+                        // runs, the music starts (pause does nothing more).
+                        if matches!(own, Own::Pause | Own::Frame | Own::Restart)
+                            && self.opening_until.take().is_some()
+                        {
+                            self.clock.toggle(now);
+                            if let Some(p) = self.player.as_mut() {
+                                p.start_music(now);
+                            }
+                            if own == Own::Pause {
+                                return Ok(Took::Nothing);
+                            }
+                        }
+                        match own {
+                            Own::Quit => return Ok(Took::Quit),
+                            Own::Pause => {
+                                self.clock.toggle(now);
+                                if let Some(p) = self.player.as_mut() {
+                                    p.pause(self.clock.paused(), now);
+                                }
+                            }
+                            Own::Frame if self.clock.paused() => {
+                                if let Some(f) = &self.next {
+                                    // The sounds of the frames stepped over are dropped; the
+                                    // next frame's, cued as this one shows, play when the
+                                    // battle runs again.
+                                    self.clock.seek(now, f.t);
+                                    self.cue = self.battle.timeline().cue_from(f.t);
+                                    if let Some(p) = self.player.as_mut() {
+                                        p.silence();
+                                    }
+                                }
+                            }
+                            // A frame on while running: nothing.
+                            Own::Frame => {}
+                            Own::Restart => {
+                                self.clock.seek(now, self.from);
+                                // The inputs and scrolls after it are gone (design
+                                // §9.10; E17 M3 T9b, the reviewer: they played again at
+                                // their times); Auto Combat's switches and stops stay the
+                                // battle's, and a key that stopped it still acts on the
+                                // turn it stops at (T8b2, R5c-4).
+                                self.inputs.retain(|i| i.at() <= self.from);
+                                // Creature Info's level stays the settings' (E17 M6 T4b2a),
+                                // the grid's and the shadows' options too (E17 M6 T4c).
+                                self.inputs.push(Input::ArmyInfo {
+                                    at: self.from,
+                                    level: self.army_info,
+                                });
+                                self.inputs.push(Input::Shades {
+                                    at: self.from,
+                                    options: Shades::of(&self.battle.settings),
+                                    keyed: false,
+                                });
+                                self.scrolls.retain(|&(t, _)| t <= self.from);
+                                self.pass.mouse_changed = true;
+                                self.shown = None;
+                                let from = self.changes.latest(&mut self.battle, self.from)?;
+                                self.next = Some(frame_at(&mut self.battle, from)?);
+                                self.cue = self.battle.timeline().cue_from(self.from);
+                                if let Some(p) = self.player.as_mut() {
+                                    p.silence();
+                                    // The end's tune gives way to the battle's music again.
+                                    if self.ended {
+                                        p.start_music(now);
+                                    }
+                                }
+                                self.ended = false;
+                            }
+                            Own::Music => {
+                                if let Some(p) = self.player.as_mut() {
+                                    p.music_on = !p.music_on;
+                                }
+                            }
+                            Own::Effects => {
+                                if let Some(p) = self.player.as_mut() {
+                                    p.effects_on = !p.effects_on;
+                                    if !p.effects_on {
+                                        p.silence();
+                                    }
+                                }
+                            }
+                            // The window's own: the host's (its fullscreen, its vsync, its cursor drawn
+                            // or the hardware's).
+                            Own::Fullscreen | Own::Vsync | Own::Cursor => {
+                                return Ok(Took::Window(own));
+                            }
+                        }
+                    }
+                    // A message box over the battle (and the book; E17 M5 T4a): its button
+                    // down, its key's release clicking it.
+                    Do::Message(k) => {
+                        let did = self.battle.message_key(k, key.name());
+                        self.pass.grew |= message_did(
+                            &mut self.battle,
+                            &mut self.inputs,
+                            (at, self.pointer),
+                            did,
+                            &mut self.pass.book_changed,
+                        )?;
+                    }
+                    // The result window's OK (E17 M5 T4b1): down, its key's release closing
+                    // the battle's screen.
+                    Do::ResultOk => {
+                        let did = self
+                            .battle
+                            .message_key(h3_view::message::Key::Ok, key.name());
+                        self.pass.grew |= message_did(
+                            &mut self.battle,
+                            &mut self.inputs,
+                            (at, self.pointer),
+                            did,
+                            &mut self.pass.book_changed,
+                        )?;
+                    }
+                    // The combat options dialog's OK down, its key's release closing it (E17
+                    // M6 T4a).
+                    Do::OptionsOk => {
+                        let did = self.battle.options_key(key.name());
+                        self.pass.book_changed |=
+                            options_did(&mut self.battle, &mut self.player, did, &files);
+                    }
+                    // A stack's stats dialog's OK down, its key's release closing it (E17
+                    // M6 T2a2a).
+                    Do::StatsOk => {
+                        self.pass.book_changed |=
+                            self.battle.stats_key(key.name()) != StatsDid::Nothing;
+                    }
+                    // The acting stack's stats dialog (E17 M6 T2a2a).
+                    Do::Stats => {
+                        self.pass.book_changed |=
+                            acting_stats(&mut self.battle, &mut self.inputs, at, self.pointer);
+                    }
+                    // The spell book open over the battle (E17 M5 T3a).
+                    Do::Book(k) => {
+                        let did = self.battle.book_key(k);
+                        self.pass.grew |= book_did(
+                            &mut self.battle,
+                            &mut self.inputs,
+                            at,
+                            did,
+                            &mut self.pass.book_changed,
+                        )?;
+                    }
+                    // A spell aimed given up (E17 M5 T3b; the aim's loop 0x5A3070).
+                    Do::AimCancel => {
+                        self.battle.cancel_aim();
+                        self.inputs.push(Input::Cancel { at });
+                        // The stats dialog's close after its cast button's aim (E17 M6
+                        // T2a2b1).
+                        if self.battle.looked_after_aim() {
+                            self.inputs.push(Input::Looked { at });
+                        }
+                        self.pass.mouse_changed = true;
+                    }
+                    // Creature Info's level (E17 M6 T4b2a, design §12.14; `battle_buttons`'
+                    // case 63, no test of the turn but only where the battle takes its keys):
+                    // cycled 0, 1, 2, no hint written (the line stays until the mouse takes
+                    // another hex), the frame drawn again and the settings written at once.
+                    Do::ArmyInfo if !self.battle.takes(at) => {}
+                    Do::ArmyInfo => {
+                        self.army_info =
+                            cycle_army_info(&mut self.battle, &mut self.inputs, at, &files);
+                        self.pass.book_changed = true;
+                    }
+                    // The grid and the shadows (E17 M6 T4c, design §12.16; `battle_buttons`'
+                    // F6 to F8, no test of the turn: on every turn, CLT-Q75 (a), E17 M7
+                    // T1a): toggled, the frame drawn again (on a human's turn the mouse's
+                    // hex shaded again, on another the acting stack's reach drawn until its
+                    // action), the settings written at once.
+                    Do::Shades(_) if !self.battle.takes_keys(at) => {}
+                    Do::Shades(toggle) => {
+                        toggle_shades(&mut self.battle, &mut self.inputs, (at, toggle), &files);
+                        (self.pass.book_changed, self.pass.mouse_changed) = (true, true);
+                    }
+                    // One of the battle's keys made while a battle fought here takes no
+                    // input is dropped (design §9.11; E17 M5 T2b).
+                    Do::LogUp | Do::LogDown if !self.battle.takes(at) => {}
+                    Do::LogUp | Do::LogDown => {
+                        self.scrolls
+                            .push((at, if command == Do::LogUp { -1 } else { 1 }));
+                        self.pass.mouse_changed = true;
+                    }
+                    // The Faerie Dragon's key aims its drawn spell (E17 M5 T3b); with the mouse
+                    // over the battlefield the client's profile hides the army info windows
+                    // first (CLT-Q49, E17 M6 T4b2b1).
+                    Do::DragonSpell => {
+                        if let Some(hide) = key_hides(
+                            self.battle.takes(at),
+                            self.battle.layout(),
+                            (at, self.pointer),
+                        ) {
+                            self.inputs.push(hide);
+                            self.pass.mouse_changed = true;
+                        }
+                        if let Some(spell) = self.battle.dragon_aim(at) {
+                            self.inputs.push(Input::Aim {
+                                at,
+                                spell,
+                                creature: true,
+                            });
+                            self.pass.mouse_changed = true;
+                        }
+                    }
+                    // A panel button's hotkey holds it down; its release clicks (below).
+                    Do::Button(id) => {
+                        if self.battle.takes(at) {
+                            self.held = Some(Held {
+                                id,
+                                key: Some(key),
+                                over: true,
+                            });
+                            self.pass.mouse_changed = true;
+                        }
+                    }
+                }
+            }
+            // The right button's release ends the hold of the box's button the mouse holds as
+            // the left's does (its own loop; E17 M7 T2, CLT-Q72 (a)); nothing else.
+            Event::KeyUp(Key::RightButton) if self.battle.message_open() => {
+                let did = self.battle.message_release();
+                self.pass.grew |= message_did(
+                    &mut self.battle,
+                    &mut self.inputs,
+                    (at, self.pointer),
+                    did,
+                    &mut self.pass.book_changed,
+                )?;
+            }
+            Event::KeyUp(key) if self.battle.message_open() => {
+                let did = self.battle.message_key_up(key.name());
+                self.pass.grew |= message_did(
+                    &mut self.battle,
+                    &mut self.inputs,
+                    (at, self.pointer),
+                    did,
+                    &mut self.pass.book_changed,
+                )?;
+            }
+            // The right button's release ends the hold of the OK or the cast button the mouse
+            // holds as the left's does (E17 M7 T2, CLT-Q72 (a)); nothing else.
+            Event::KeyUp(Key::RightButton) if self.battle.stats_open() => {
+                let did = self.battle.stats_release(at);
+                let changed = stats_did(&mut self.battle, &mut self.inputs, at, did);
+                (self.pass.book_changed, self.pass.mouse_changed) = (
+                    self.pass.book_changed | changed,
+                    self.pass.mouse_changed | changed,
+                );
+            }
+            Event::KeyUp(key) if self.battle.stats_open() => {
+                let did = self.battle.stats_key_up(key.name());
+                let changed = stats_did(&mut self.battle, &mut self.inputs, at, did);
+                (self.pass.book_changed, self.pass.mouse_changed) = (
+                    self.pass.book_changed | changed,
+                    self.pass.mouse_changed | changed,
+                );
+            }
+            // The right button's release ends a DEF button's hold by the mouse as the left's
+            // does (E17 M7 T2, CLT-Q72 (a)); a bar or a box held, nothing.
+            Event::KeyUp(Key::RightButton) if self.battle.options_open() => {
+                let did = self.battle.options_right_release();
+                let changed = options_did(&mut self.battle, &mut self.player, did, &files);
+                (self.pass.book_changed, self.pass.mouse_changed) = (
+                    self.pass.book_changed | changed,
+                    self.pass.mouse_changed | changed,
+                );
+            }
+            Event::KeyUp(key) if self.battle.options_open() => {
+                let did = self.battle.options_key_up(key.name());
+                let changed = options_did(&mut self.battle, &mut self.player, did, &files);
+                (self.pass.book_changed, self.pass.mouse_changed) = (
+                    self.pass.book_changed | changed,
+                    self.pass.mouse_changed | changed,
+                );
+            }
+            Event::KeyUp(_) if self.battle.book_open() || self.battle.aiming() => {}
+            Event::KeyUp(key) => {
+                if let Some(h) = self.held.take_if(|h| h.key == Some(key)) {
+                    // The keys C, S, R and O over the battlefield hide the army info windows
+                    // first in the client's profile (CLT-Q49, E17 M6 T4b2b1).
+                    if HIDING_HOTKEYS.contains(&h.id)
+                        && let Some(hide) = key_hides(
+                            self.battle.takes(at),
+                            self.battle.layout(),
+                            (at, self.pointer),
+                        )
+                    {
+                        self.inputs.push(hide);
+                    }
+                    // A hotkey's release clicks its button (0x45659F).
+                    if let Some(command) = self.battle.button(at, h.id) {
+                        self.pass.grew |= give(&mut self.battle, &mut self.inputs, at, command)?;
+                    }
+                    // A switches Auto Combat on (E17 M5 T4c1).
+                    if h.id == h3_view::panel::AUTO_COMBAT {
+                        self.pass.grew |= self.battle.switch_auto(at)?;
+                    }
+                    // C opens the spell book (E17 M5 T3a), or its refusal's box (E17 M6 T5a).
+                    if h.id == h3_view::panel::SPELL_BOOK {
+                        self.pass.book_changed |=
+                            opened(&mut self.inputs, at, self.battle.open_book(at));
+                    }
+                    // O opens the combat options dialog (E17 M6 T4a).
+                    self.pass.book_changed |=
+                        h.id == h3_view::panel::OPTIONS && self.battle.open_options(at);
+                    // S and R ask first (E17 M5 T4a).
+                    self.pass.book_changed |= self.battle.ask_leave(at, h.id);
+                    self.pass.mouse_changed = true;
+                }
+            }
+            Event::Pointer(p) if self.battle.message_open() => {
+                self.pointer = p;
+                self.moved = true;
+                if let Some((x, y)) = p {
+                    self.pass.book_changed |= self.battle.message_moved([x, y]);
+                }
+            }
+            Event::Click {
+                down: true,
+                at: (x, y),
+            } if self.battle.message_open() => {
+                let did = self.battle.message_press([x, y]);
+                self.pass.grew |= message_did(
+                    &mut self.battle,
+                    &mut self.inputs,
+                    (at, self.pointer),
+                    did,
+                    &mut self.pass.book_changed,
+                )?;
+            }
+            Event::Click { down: false, .. } if self.battle.message_open() => {
+                let did = self.battle.message_release();
+                self.pass.grew |= message_did(
+                    &mut self.battle,
+                    &mut self.inputs,
+                    (at, self.pointer),
+                    did,
+                    &mut self.pass.book_changed,
+                )?;
+            }
+            // A stack's stats dialog over the battle (E17 M6 T2a2a): its moves, its OK.
+            Event::Pointer(p) if self.battle.stats_open() => {
+                self.pointer = p;
+                self.moved = true;
+                if let Some((x, y)) = p {
+                    self.pass.book_changed |= self.battle.stats_moved([x, y]);
+                    // The battle keeps where the mouse is, to take it as the dialog closes.
+                    self.inputs.push(Input::Move { at, to: [x, y] });
+                    self.pass.mouse_changed = true;
+                }
+            }
+            Event::Click {
+                down: true,
+                at: (x, y),
+            } if self.battle.stats_open() => {
+                self.pass.book_changed |= self.battle.stats_press(at, [x, y]) != StatsDid::Nothing;
+            }
+            Event::Click { down: false, .. } if self.battle.stats_open() => {
+                let did = self.battle.stats_release(at);
+                let changed = stats_did(&mut self.battle, &mut self.inputs, at, did);
+                (self.pass.book_changed, self.pass.mouse_changed) = (
+                    self.pass.book_changed | changed,
+                    self.pass.mouse_changed | changed,
+                );
+            }
+            // The combat options dialog over the battle (E17 M6 T4a): its moves (the button
+            // held follows; the battle takes none), its presses and releases.
+            Event::Pointer(p) if self.battle.options_open() => {
+                self.pointer = p;
+                self.moved = true;
+                if let Some((x, y)) = p {
+                    let did = self.battle.options_moved([x, y]);
+                    self.pass.book_changed |=
+                        options_did(&mut self.battle, &mut self.player, did, &files);
+                }
+            }
+            Event::Click {
+                down: true,
+                at: (x, y),
+            } if self.battle.options_open() => {
+                let did = self.battle.options_press([x, y]);
+                self.pass.book_changed |=
+                    options_did(&mut self.battle, &mut self.player, did, &files);
+            }
+            Event::Click { down: false, .. } if self.battle.options_open() => {
+                let did = self.battle.options_release();
+                let changed = options_did(&mut self.battle, &mut self.player, did, &files);
+                (self.pass.book_changed, self.pass.mouse_changed) = (
+                    self.pass.book_changed | changed,
+                    self.pass.mouse_changed | changed,
+                );
+            }
+            Event::Pointer(p) if self.battle.book_open() => {
+                self.pointer = p;
+                self.moved = true;
+                if let Some((x, y)) = p {
+                    self.pass.book_changed |= self.battle.book_hover([x, y]);
+                    // The battle keeps where the mouse is, to aim from there (E17 M5 T3b).
+                    self.inputs.push(Input::Move { at, to: [x, y] });
+                    self.pass.mouse_changed = true;
+                }
+            }
+            Event::Click {
+                down: true,
+                at: (x, y),
+            } if self.battle.book_open() => {
+                let did = self.battle.book_press([x, y]);
+                self.pass.grew |= book_did(
+                    &mut self.battle,
+                    &mut self.inputs,
+                    at,
+                    did,
+                    &mut self.pass.book_changed,
+                )?;
+            }
+            Event::Click { down: false, .. } if self.battle.book_open() => {}
+            Event::Click { down: true, .. } if self.battle.aiming() => {
+                // The press casts at the hex the cursor took as it went down: the pass's
+                // moves before it followed first (E17 M5 T8b2, R4b-1: `wait` gives every
+                // pending event at once, a move and the press among them).
+                self.pass.followed |= self.battle.mouse(&self.inputs, &self.scrolls)?;
+                if let Some(command) = self.battle.aim_press(at) {
+                    self.pass.grew |= give(&mut self.battle, &mut self.inputs, at, command)?;
+                    // The stats dialog's close after its cast button's aim, the action
+                    // given (E17 M6 T2a2b1: its posted move waits behind the action).
+                    if self.battle.looked_after_aim() {
+                        self.inputs.push(Input::Looked { at });
+                    }
+                }
+                self.pass.mouse_changed = true;
+            }
+            Event::Click { down: false, .. } if self.battle.aiming() => {}
+            Event::Pointer(p) => {
+                self.pointer = p;
+                self.moved = true;
+                if let Some((x, y)) = p {
+                    if let Some(h) = self.held.as_mut().filter(|h| h.key.is_none()) {
+                        // The mouse's button follows it on or off the button it holds, whose
+                        // own loop takes the move: the battle takes none until the release
+                        // (E17 M7 T2, CLT-Q72 (a), *provisional*: its status line and cursor
+                        // as the press left them, as read for the adventure map's).
+                        h.over = self.battle.panel_at(at).button_at([x, y]) == Some(h.id);
+                    } else {
+                        // The battle takes the move now (inputs after a seek back are gone).
+                        self.inputs.retain(|i| i.at() <= at);
+                        self.inputs.push(Input::Move { at, to: [x, y] });
+                    }
+                    self.pass.mouse_changed = true;
+                }
+            }
+            // A press while Auto Combat plays stops it as the next turn starts and does
+            // nothing else (E17 M5 T4c1).
+            Event::Click { down: true, .. } if self.battle.stop_auto(at).is_some() => {
+                self.pass.mouse_changed = true;
+            }
+            // A press made while a battle fought here takes no input is dropped, its release
+            // then doing nothing (design §9.11; E17 M5 T2b).
+            Event::Click { down: true, .. } if !self.battle.takes(at) => {}
+            Event::Click {
+                down: true,
+                at: (x, y),
+            } => {
+                // An enabled panel button goes down and runs its own loop while the mouse
+                // holds it (E17 M7 T2, CLT-Q72 (a)); a disabled one takes no press
+                // (`def_button_message` 0x4562DD), its help the right button's still.
+                if let Some(id) = self.battle.panel_at(at).button_at([x, y]) {
+                    if self.battle.enabled(at, id) {
+                        self.held = Some(Held {
+                            id,
+                            key: None,
+                            over: true,
+                        });
+                        self.pass.mouse_changed = true;
+                    }
+                    return Ok(Took::Nothing);
+                }
+                // Any left press over the battlefield hides the army info windows first, the
+                // mouse's hex kept (0x4752BB; E17 M6 T4b2b1, design §12.15).
+                if h3_view::army_info::on_field(self.battle.layout(), [x, y]) {
+                    self.inputs.push(Input::Hide { at, key: false });
+                    self.pass.mouse_changed = true;
+                }
+                if let Some(command) = self.battle.press(at, [x, y]) {
+                    // A press over the battlefield acts as the button goes down (design
+                    // §9.11; E17 M5 T2b).
+                    self.pass.grew |= give(&mut self.battle, &mut self.inputs, at, command)?;
+                } else if self.battle.look(at, [x, y], false) {
+                    // A stack to look at: its stats dialog (E17 M6 T2a2a).
+                    self.inputs.push(Input::Look { at });
+                    self.pass.book_changed = true;
+                } else if self.battle.turret_info(at, [x, y], false) {
+                    // A turret: its info in a box, the combat cursor's pointer set first
+                    // (0x476E22; E17 M6 T2b2).
+                    self.inputs.push(Input::Look { at });
+                    self.pass.book_changed = true;
+                }
+            }
+            Event::Click { down: false, .. } => {
+                if let Some(h) = self.held.take_if(|h| h.key.is_none()) {
+                    let lists = (&mut self.inputs, &mut self.scrolls);
+                    let (g, b) = let_go_held(&mut self.battle, lists, at, h)?;
+                    (
+                        self.pass.grew,
+                        self.pass.book_changed,
+                        self.pass.mouse_changed,
+                    ) = (self.pass.grew | g, self.pass.book_changed | b, true);
+                }
+            }
+            Event::Redraw => return Ok(Took::Redraw),
+        }
+        Ok(Took::Nothing)
+    }
+
+    /// Whether the last input moved the mouse where the cursor shows (a drawn cursor is drawn
+    /// again), once.
+    pub fn take_moved(&mut self) -> bool {
+        core::mem::take(&mut self.moved)
+    }
+
+    /// Whether the result window's OK closed the battle's screen (E17 M5 T4b1): the battle is
+    /// over for its host.
+    pub fn closed(&self) -> bool {
+        self.battle.result_closed()
+    }
+
+    /// A pass's end, after its inputs, `ticks_ns` the host's time: the boxes' close, the options
+    /// dialog's, Creature Info's level, the mouse followed and the frame now made again.
+    pub fn after(&mut self, ticks_ns: &dyn Fn() -> u64) -> Result<(), String> {
+        // The options dialog's close changed the Auto Combat boxes (E17 M6 T4b1): the turns to
+        // come, and under Auto Combat the turn waiting, play by them (a close by the pass's last
+        // event; one before it counted before the next event, above).
+        self.pass.grew |= self.battle.boxes_closed(self.clock.ms(ticks_ns()))?;
+        // The options dialog's close composes the background again with its options, without the
+        // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
+        let options_closed = self.options_open && !self.battle.options_open();
+        if options_closed {
+            self.inputs.push(Input::Shades {
+                at: self.clock.ms(ticks_ns()),
+                options: Shades::of(&self.battle.settings),
+                keyed: false,
+            });
+            self.pass.mouse_changed = true;
+        }
+        self.options_open = self.battle.options_open();
+        // An aim with both shadows on turns the movement shadow off as it starts and on again as
+        // it ends in the mouse's follow alone (`mouse::track`, `Options::aiming`; E17 M6 T4c,
+        // design §12.16): the settings and their file keep the player's (E17 M6 T7b, R7-2:
+        // *provisional*, the original's saves the switch each time, oddity 8, which a window
+        // closed inside the aim would leave in the file). The block that copied it never ran: it
+        // read the turn's aims, whose original numbers only `pointer::legal` names.
+        // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
+        if self.battle.settings.army_info != self.army_info {
+            self.army_info = self.battle.settings.army_info;
+            self.inputs.push(Input::ArmyInfo {
+                at: self.clock.ms(ticks_ns()),
+                level: self.army_info,
+            });
+            self.pass.mouse_changed = true;
+        }
+        // Then the mouse posted where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a):
+        // the cursor, the line (at the level just set) and the shade those of the hex under it at
+        // once, where the original's leave the dialog's arrow and the old hex's until the mouse
+        // moves (oddity 10, the stills').
+        if options_closed {
+            post_mouse(&mut self.inputs, self.clock.ms(ticks_ns()), self.pointer);
+        }
+        // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
+        // T2b): the battle follows them and the frame now is made again.
+        if self.pass.mouse_changed || self.pass.grew || self.pass.book_changed {
+            let pressed = self.held.filter(|h| h.over).map(|h| h.id);
+            let changed = self.battle.mouse(&self.inputs, &self.scrolls)?
+                || self.pass.followed
+                || self.battle.pressed != pressed;
+            self.battle.pressed = pressed;
+            if changed || self.pass.grew || self.pass.book_changed {
+                let ms = self.clock.ms(ticks_ns());
+                self.changes = Changes::new(&self.battle);
+                let latest = self.changes.latest(&mut self.battle, ms)?;
+                // The result window's clip goes on from its frame now (E17 M5 T4b2b).
+                let latest = self
+                    .battle
+                    .clip_times(ms)
+                    .map_or(latest, |(began, _)| latest.max(began));
+                self.next = Some(frame_at(&mut self.battle, latest)?);
+                self.shown = None;
+            }
+        }
+        Ok(())
+    }
+
+    /// The battle's time at the host's time `now` (ns).
+    pub fn ms(&self, now: u64) -> u32 {
+        self.clock.ms(now)
+    }
+
+    /// How late the host's time `now` (ns) is past the battle's time `t`, in ns.
+    pub fn late(&self, now: u64, t: u32) -> u64 {
+        self.clock.late(now, t)
+    }
+
+    /// The cursor's frame at the battle's time `ms`, and whether it shows: none while a ray hides
+    /// it, the stats dialog's popup (`mouse_hide` 0x602A6C; E17 M6 T2a2b1) or a turret's info held
+    /// (T2b2).
+    pub fn cursor_at(&self, ms: u32) -> (CursorLook, bool) {
+        let visible = !self.battle.timeline().cursor_hidden(ms)
+            && !self.battle.stats_popup()
+            && !self.battle.popup_held();
+        (self.battle.cursor(ms), visible)
+    }
+
+    /// The cursor `look` drawn and as the hardware cursor's image.
+    pub fn cursor_image(&mut self, look: &CursorLook) -> Result<(Cursor, CursorImage), String> {
+        self.cursors.get(&self.battle, look)
+    }
+
+    /// Where the mouse is over the battle's frame (none: outside the window).
+    pub fn pointer(&self) -> Option<(i32, i32)> {
+        self.pointer
+    }
+
+    /// The sound at the host's time `now` (ns): the opening's end (the clock runs, the music
+    /// starts), Eagle Eye's pickup, the timeline's cues and the end's tune; the battle's time then.
+    pub fn sound(&mut self, now: u64) -> u32 {
+        if self.opening_until.is_some_and(|end| now >= end) {
+            self.opening_until = None;
+            self.clock.toggle(now);
+            if let Some(p) = self.player.as_mut() {
+                p.start_music(now);
+            }
+        }
+        let battle_ms = self.clock.ms(now);
+        // A box of Eagle Eye's message opened (E17 M6 T5c): its pickup sound starts, category 3
+        // as good luck's, on no stack.
+        let picked = self.battle.take_pickup();
+        if let (Some(p), Some(lib)) = (self.player.as_mut(), self.library.as_ref()) {
+            if let Some(n) = picked {
+                let pickup = h3_view::anim::Cue {
+                    at: battle_ms,
+                    stack: 0,
+                    sound: h3_view::anim::Sound::Pickup(n),
+                    stop: false,
+                    creature: None,
+                };
+                p.cue(lib, &pickup);
+            }
+            if !self.clock.paused() {
+                while let Some(c) = self
+                    .battle
+                    .timeline()
+                    .cues
+                    .get(self.cue)
+                    .filter(|c| c.at <= battle_ms)
+                {
+                    p.cue(lib, c);
+                    self.cue += 1;
+                }
+                if let Some((_, tune)) = self
+                    .battle
+                    .end_tune()
+                    .filter(|(at, _)| !self.ended && *at <= battle_ms)
+                {
+                    p.end(lib, tune);
+                    self.ended = true;
+                }
+            }
+            p.service(lib, now);
+        }
+        battle_ms
+    }
+
+    /// The frame due at the battle's time `battle_ms`, if any: the next one, or the latest change
+    /// when a later one is due already (none when it draws what shows).
+    pub fn due(&mut self, battle_ms: u32) -> Result<Option<Frame>, String> {
+        // A later change may be due already: show the latest instead; if it draws what shows,
+        // nothing new is presented (a redraw still is).
+        let due = match self.next.take_if(|f| f.t <= battle_ms) {
+            None => None,
+            Some(d) => {
+                let latest = self.changes.latest(&mut self.battle, battle_ms)?;
+                if latest <= d.t && !d.held {
+                    Some(d)
+                } else {
+                    // A later change due already; or the cast's end held (E17 M6 T5b2b): the
+                    // battle played on now, the clock there, its frame made now.
+                    self.skipped += usize::from(!d.held);
+                    let late = frame_at(&mut self.battle, latest)?;
+                    match self.shown.as_mut().filter(|s| s.list == late.list) {
+                        Some(s) => {
+                            s.t = latest;
+                            self.next = next_frame(
+                                &mut self.battle,
+                                &mut self.changes,
+                                (s, mouse_holds(self.held)),
+                            )?;
+                            None
+                        }
+                        None => Some(late),
+                    }
+                }
+            }
+        };
+        Ok(due)
+    }
+
+    /// `frame` presented: it shows, the next one made.
+    pub fn showed(&mut self, frame: Frame) -> Result<(), String> {
+        self.next = next_frame(
+            &mut self.battle,
+            &mut self.changes,
+            (&frame, mouse_holds(self.held)),
+        )?;
+        self.shown = Some(frame);
+        Ok(())
+    }
+
+    /// The frame showing, which a redraw presents again.
+    pub fn shown(&self) -> Option<&Frame> {
+        self.shown.as_ref()
+    }
+
+    /// The battle.
+    pub fn battle(&self) -> &Battle<'g> {
+        &self.battle
+    }
+
+    /// Frames passed over because a later one was due already.
+    pub fn skipped(&self) -> usize {
+        self.skipped
+    }
+
+    /// The lines of the settings' writes that failed, once.
+    pub fn take_unsaved(&self) -> Vec<String> {
+        self.unsaved.take()
+    }
+
+    /// The sound's report: the library's and the device's.
+    pub fn describe_sound(&self, lines: &mut Vec<String>) {
+        if let Some(lib) = &self.library {
+            lines.push(lib.describe());
+        }
+        if let Some(p) = &self.player {
+            lines.push(p.describe());
+        }
+    }
+
+    /// The sound's device closed (a host closes it before its window).
+    pub fn close_sound(&mut self) {
+        self.player = None;
+    }
+
+    /// An unattended run's presses reported to `lines`: whether they did what they were to do.
+    pub fn summary(&mut self, lines: &mut Vec<String>) -> Result<bool, String> {
+        let mut ok = true;
+        if let Some(p) = &self.presser {
+            lines.push(format!(
+                "pressed: {} commands on the battlefield, {} on the panel's buttons, {} given without \
+                 a press",
+                p.at, p.buttons, p.given
+            ));
+            let yes = |b: bool| if b { "yes" } else { "no" };
+            if let Some(turn) = p.auto {
+                // E17 M5 T4c1: switched on at the human's turn asked, stopped two commands later.
+                let at = |c: Option<usize>| c.map_or_else(|| "never".to_owned(), |c| c.to_string());
+                lines.push(format!(
+                    "auto combat at the human's turn {turn}: switched on after {} commands, stopped \
+                     after {}",
+                    at(p.switched.map(|(on, _)| on)),
+                    at(p.switched.and_then(|(_, off)| off)),
+                ));
+                ok &= p.switched.is_some();
+            }
+            if let Some(left) = p.left {
+                // Left through its question (E17 M5 T4a): the bot's battle up to the question, and
+                // the battle over by the leaving.
+                let before = p.before_leaving == Some(true);
+                let over = !self.battle.playing();
+                lines.push(format!(
+                    "left by {left:?} after {} commands: the battle before it the bot's at once: {}, \
+                     over: {}",
+                    self.battle.commands().saturating_sub(1),
+                    yes(before),
+                    yes(over)
+                ));
+                ok &= before && over;
+            } else if let Some(online) = self.ground.online() {
+                // A seat on a server (E17 M5 T6b1): what the connection did, whether the game ended.
+                let online = online.borrow();
+                lines.extend(online.lines.iter().cloned());
+                lines.push(format!(
+                    "re-joined {} times; the game over: {}",
+                    online.rejoined,
+                    yes(online.over())
+                ));
+            } else {
+                let same = self.battle.as_the_bot_fights().unwrap_or(Ok(false))?;
+                lines.push(format!(
+                    "the battle so far is the bot's at once: {}",
+                    yes(same)
+                ));
+                ok &= same;
+            }
+        }
+        Ok(ok)
+    }
+}
+
+/// Opens the window and plays the battle until Esc, a close, or the unattended run's end: the
+/// battle's first host (E17 M7 T3a2, [`Hosted`]), its window the battle's frame alone.
 fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     let mut lines = Vec::new();
     let (keys, keys_from) = load_keys(options.keys.as_deref())?;
@@ -647,20 +2185,11 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         ..options.source.clone()
     };
     let ground = Ground::load(source)?;
-    let mut battle = Battle::new(&ground)?;
-    // The checkpoint batch: the cursor now, each frame's names as it is first drawn.
-    // The spell book's default cursor too (E17 M5 T3a).
-    let combat = battle.layout().mouse.cursor.clone();
-    let book_cursor = battle.layout().book.cursor.clone();
-    // The spell cursor too (E17 M5 T3b).
-    let spell_cursor = battle.layout().mouse.spell_cursor.clone();
-    battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
-    // The combat cursor's frames as the mouse manager draws them (E17 M3 T6c-2), made as shown.
-    let mut cursors = Cursors::default();
-    let mut frame_now = battle.cursor(options.from);
+    let mut prepared = Prepared::new(&ground)?;
+    let mut frame_now = prepared.cursor_at(options.from);
     let mut cursor_visible = true;
-    let (_, hardware) = cursors.get(&battle, &frame_now)?;
-    let [width, height] = battle.frame_size();
+    let (_, hardware) = prepared.cursor_image(&frame_now)?;
+    let [width, height] = prepared.frame_size();
     // A seat on a server: the content check's note in the title (E17 M5 T6b1).
     let note = ground.content().and_then(content_note);
     if let Some(note) = note {
@@ -682,121 +2211,27 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         lines.push(format!("hardware cursor: {e}; drawn instead"));
         drawn_cursor = true;
     }
-
-    // The sound: decoded now, the device opened; none with --mute or without a device.
-    let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
-    let opening = h3_view::sound::opening(seed);
-    let library = if options.mute {
-        None
-    } else {
-        // The stacks' sounds and the battle's own its cues name (the heal's, E17 M3 T3b; the
-        // casts', T7b-1).
-        let sounds = (battle.stack_sounds(), battle.battle_sounds());
-        Some(Library::load(
-            &source.install,
-            (opening, &battle.layout().options.sound),
-            sounds,
-            &TUNES,
-            &mut lines,
-        )?)
-    };
-    let mut player = match library.as_ref().map(Player::open) {
-        Some(Ok(p)) => Some(p),
-        Some(Err(e)) => {
-            lines.push(format!("audio: {e}; no sound"));
-            None
-        }
-        None => None,
-    };
-    // With its sound playing, the battle waits for its samples as the original does on a
-    // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
-    if let (Some(_), Some(lib)) = (player.as_ref(), library.as_ref()) {
-        ground.play_sounds(lib.lengths());
-        battle = Battle::new(&ground)?;
-        battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
-    }
-    // The settings the combat options dialog shows, against the audio device opened or not (its
-    // no-sound box; E17 M6 T4a); its volumes on the sound.
-    battle.settings = settings;
-    battle.audio = player.is_some();
-    if let Some(p) = player.as_mut() {
-        p.set_volumes(settings.music, settings.effects);
-    }
-    let unsaved = std::cell::RefCell::new(Vec::new());
-    let files = SettingsFile {
-        path: &settings_path,
-        library: library.as_ref(),
-        lines: &unsaved,
-    };
-    // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
-    // before the window joined is not played again.
-    let start = if ground.online().is_some() {
-        options.from.max(battle.timeline().end)
-    } else {
-        options.from
-    };
-    let mut cue = battle.timeline().cue_from(start);
-    // Whether the battle's end's tune started (E17 M3 T8).
-    let mut ended = false;
-
-    let mut changes = Changes::new(&battle);
-    let mut clock = Clock::new(win.ticks_ns(), start);
-    // The clock is held under a notice's box (E17 M5 T5a).
-    let mut notice_held = false;
-    // The opening: the clock waits while the start sound plays (from the battle's start only).
-    let mut opening_until = None;
-    if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
-        let now = win.ticks_ns();
-        let wait = if start == 0 { p.start(lib) } else { 0 };
-        if wait > 0 {
-            clock.toggle(now);
-            opening_until = Some(now + u64::from(wait) * 1_000_000);
-        } else {
-            p.start_music(now);
-        }
-    }
-    let mut shown: Option<Frame> = None;
-    let from = changes.latest(&mut battle, start)?;
-    let mut next = Some(frame_at(&mut battle, from)?);
-    let mut pointer: Option<(i32, i32)> = None;
-    // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2). Creature Info's
-    // level from the settings at the opening (E17 M6 T4b2a), kept by every Restart, and the level
-    // the hints read now: a change (F5, the options dialog) is an input at its time.
-    let mut inputs: Vec<Input> = vec![
-        Input::ArmyInfo {
-            at: 0,
-            level: battle.settings.army_info,
-        },
-        // The grid's and the shadows' options from the settings at the opening (E17 M6 T4c), the
-        // background composed with them.
-        Input::Shades {
-            at: 0,
-            options: Shades::of(&battle.settings),
-            keyed: false,
-        },
-    ];
-    let mut army_info = battle.settings.army_info;
-    // The options dialog open as the last pass ended (E17 M6 T4c, design §12.16).
-    let mut options_open = false;
-    let mut scrolls: Vec<(u32, i64)> = Vec::new();
-    let mut held: Option<Held> = None;
-    // A battle's own key that stopped Auto Combat, and the turn the stop comes at (E17 M5 T4c1;
-    // its index, T8b2 R5c-4): it acts on that turn if a human's (0x474625).
-    let mut stopped_by: Option<(Do, usize)> = None;
-    // Either Control key held (E24 M3 T1b: a chord's Ctrl+), and whether it was pressed alone
-    // (E17 M6 T7b, R5-1).
-    let mut ctrl = Control::default();
-    let mut report = Report::default();
     // An unattended run presses a human's commands itself (E17 M5 T2b).
     let plays = source.humans.contains(&true) || ground.content().is_some();
-    let mut presser = (options.run.is_some() && plays).then(|| Presser {
-        points: crate::pointer::press_points(battle.layout()),
+    let presses = (options.run.is_some() && plays).then_some(Presses {
         leave: options.leave,
         auto: options.auto,
         question: options.question,
         close_result: options.close_result,
-        ..Presser::default()
     });
+    let setup = Setup {
+        keys,
+        settings,
+        settings_path,
+        from: options.from,
+        mute: options.mute,
+        install: source.install.clone(),
+        seed: source.seed,
+        unattended: options.run.is_some(),
+        presses,
+    };
+    let mut hosted = prepared.start(setup, &|| win.ticks_ns(), &mut lines)?;
+    let mut report = Report::default();
     let started = win.ticks_ns();
     let stop_ns = options
         .run
@@ -807,893 +2242,56 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
             break;
         }
-        let timeout = next
-            .as_ref()
-            .and_then(|f| clock.until(now, f.t))
-            .or_else(|| opening_until.map(|end| end.saturating_sub(now)))
-            .map_or(WAIT_MS, |ns| {
-                u32::try_from(ns / 1_000_000)
-                    .unwrap_or(WAIT_MS)
-                    .min(WAIT_MS)
-            })
-            .min(if battle.online() { POLL_MS } else { WAIT_MS });
+        let timeout = hosted.timeout(now);
         let mut redraw = false;
-        let mut mouse_changed = false;
-        // The mouse followed in the pass already (an aim's press, E17 M5 T8b2: R4b-1), whether
-        // what it shows changed then.
-        let mut followed = false;
-        let mut grew = false;
-        // The spell book opened, closed or changed (E17 M5 T3a).
-        let mut book_changed = false;
-        // The box open as the pass starts, to tell one that opens in it (E17 M5 T8b2).
-        let box_before = box_shown(&battle);
-        // The result window opens at the battle's end (E17 M5 T4b1).
-        let ms = clock.ms(win.ticks_ns());
-        if battle.open_result(ms) {
-            lines.push(format!("the result window opened at {ms} ms"));
-            book_changed = true;
-        }
-        // A notice opens at its time, the clock held there until its box closes (E17 M5 T5a).
-        if let Some(t) = battle.open_notice(ms) {
-            lines.push(format!("a message box opened at {t} ms"));
-            let now = win.ticks_ns();
-            clock.seek(now, t);
-            if !clock.paused() {
-                clock.toggle(now);
-                notice_held = true;
-            }
-            book_changed = true;
-        }
-        if notice_held && !battle.message_open() {
-            clock.toggle(win.ticks_ns());
-            notice_held = false;
-        }
-        // A seat on a server: what the server sent since (E17 M5 T6b1), never waited on.
-        let ticks = win.ticks_ns();
-        grew |= battle.poll(clock.ms(ticks), ticks / 1_000_000)?;
-        // A restarted server's record opened afresh (E17 M5 T6b2): the battle and the window's
-        // clock, inputs and presses start again from its new opening, a new timeline.
-        if battle.opened_afresh() {
-            battle = battle.afresh()?;
-            battle.load_batch(std::iter::empty(), &[&combat, &book_cursor, &spell_cursor])?;
-            lines.push(format!(
-                "a new timeline at {} ms of the one before",
-                clock.ms(win.ticks_ns())
-            ));
-            let start = battle.timeline().end;
-            clock = Clock::new(win.ticks_ns(), start);
-            (notice_held, ended, held, stopped_by) = (false, false, None, None);
-            inputs.clear();
-            scrolls.clear();
-            changes = Changes::new(&battle);
-            cue = battle.timeline().cue_from(start);
-            let from = changes.latest(&mut battle, start)?;
-            next = Some(frame_at(&mut battle, from)?);
-            shown = None;
-            if let Some(p) = presser.as_mut() {
-                *p = Presser {
-                    points: core::mem::take(&mut p.points),
-                    leave: options.leave,
-                    auto: options.auto,
-                    question: options.question,
-                    close_result: options.close_result,
-                    ..Presser::default()
-                };
-            }
+        let flow = hosted.before(&|| win.ticks_ns(), &mut lines)?;
+        if flow == Flow::Again {
             continue 'run;
         }
-        if let Some(p) = presser.as_mut() {
-            let ticks = win.ticks_ns();
-            grew |= p.press(&mut battle, &mut inputs, clock.ms(ticks), ticks / 1_000_000)?;
-        }
-        // The key that stopped Auto Combat acts on the turn it stops at, a human's: there the
-        // battle hands it to its key handler (0x474625; E17 M5 T4c1); a computer's drops it. A
-        // human's turn Auto Combat does not play reads no stop (E17 M6 T4b1): its start drops
-        // the key, as with Auto Combat off (CLT-Q45 (2): the original's acts there). E17 M6
-        // T5b2b (CLT-Q61): a stop read at the end of the computer's cast for the hero is that
-        // turn's, the key acting there (*provisional*: read, not recorded).
-        let cast_stop = stopped_by.and_then(|(_, turn)| battle.auto_stopped_at(turn));
-        if let Some((command, turn)) = stopped_by
-            && let Some((start, read)) = stop_start(&battle.timeline().turns, turn, cast_stop)
-        {
-            let last = battle.timeline().turns.len();
-            let at_start = || read && battle.auto_at_start(turn);
-            let carry = carry((battle.waiting(), last, turn), at_start);
-            if carry != Carry::Wait {
-                stopped_by = None;
-            }
-            if carry == Carry::Act {
-                match command {
-                    Do::LogUp | Do::LogDown => {
-                        scrolls.push((start, if command == Do::LogUp { -1 } else { 1 }));
-                    }
-                    // F5 both stopped Auto Combat and cycles the level there (E17 M6 T4b2a); F6 to
-                    // F8 toggle their options there (E17 M6 T4c).
-                    Do::ArmyInfo => {
-                        let at = clock.ms(win.ticks_ns()).max(start);
-                        army_info = cycle_army_info(&mut battle, &mut inputs, at, &files);
-                    }
-                    Do::Shades(toggle) => {
-                        let at = clock.ms(win.ticks_ns()).max(start);
-                        toggle_shades(&mut battle, &mut inputs, (at, toggle), &files);
-                    }
-                    // T opens the acting stack's stats dialog there (E17 M6 T7b, R5's question:
-                    // the stop's key reaches the same key switch, 0x475D07).
-                    Do::Stats => {
-                        let at = clock.ms(win.ticks_ns()).max(start);
-                        book_changed |= acting_stats(&mut battle, &mut inputs, at, pointer);
-                    }
-                    _ => {
-                        let at = clock.ms(win.ticks_ns()).max(start);
-                        // F over the battlefield hides the army info windows first (CLT-Q49,
-                        // E17 M6 T4b2b1).
-                        if let Some(hide) =
-                            key_hides(battle.takes(at), battle.layout(), (at, pointer))
-                        {
-                            inputs.push(hide);
-                        }
-                        if let Some(spell) = battle.dragon_aim(at) {
-                            inputs.push(Input::Aim {
-                                at,
-                                spell,
-                                creature: true,
-                            });
-                        }
-                    }
-                }
-                mouse_changed = true;
-            }
-        }
-        // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
-        // presses and key-downs that come with the input that opened it, or after the box opened
-        // in this pass, are dropped; the key-ups (no key stays held), the moves and Quit go on.
-        let mut flush = Flush {
-            last: box_before,
-            emptied: false,
-        };
         for event in win.wait(timeout) {
-            // The options dialog's close by the event before counts before this one (E17 M6
-            // T7b, R5-3): an enemy pressed or the dialog opened again in the same pass finds the
-            // boxes changed, and under Auto Combat the turn handed over.
-            grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
-            // The modifier's state is no input to a box: a Control key's down the queue drops
-            // still holds it (E17 M6 T7b, R5-6).
-            ctrl.saw(&event);
-            if flush.drops(box_shown(&battle), &event) {
-                continue;
-            }
-            let now = win.ticks_ns();
-            let at = clock.ms(now);
-            // A key's release a dialog, a popup, the spell book or an aim takes (the branches
-            // below) lets go of the panel button that key holds, without its click, in the
-            // client's profile (CLT-Q71 (b); E17 M7 T1b): it is not left drawn pressed after.
-            if let Event::KeyUp(key) = event
-                && (battle.message_open()
-                    || battle.stats_open()
-                    || battle.options_open()
-                    || battle.book_open()
-                    || battle.aiming())
-                && release_taken(&mut held, key, Bugs::Fixed)
-            {
-                mouse_changed = true;
-            }
-            match event {
-                Event::Quit => break 'run,
-                // Control held with a key makes another chord (E24 M3 T1b). Itself a key down, it
-                // stops Auto Combat as any key does (T8b2, R5c-5; design §7.22), but only pressed
-                // alone, at its release: a chord of the window's own (Ctrl+F5 to Ctrl+F8) stays
-                // the window's (E17 M6 T7b, R5-1, *provisional*: a stop by Control alone comes
-                // at its release, not as it goes down).
-                Event::Key(Key::LeftCtrl | Key::RightCtrl) => ctrl.pressed(),
-                Event::KeyUp(Key::LeftCtrl | Key::RightCtrl) => {
-                    let context = Context::of(
-                        battle.result_open(),
-                        battle.message_open(),
-                        (battle.stats_open(), battle.options_open()),
-                        battle.book_open(),
-                        battle.aiming(),
-                    );
-                    if ctrl.released()
-                        && options.run.is_none()
-                        && context == Context::Battle
-                        && battle.stop_auto(at).is_some()
-                    {
-                        mouse_changed = true;
-                    }
+            let took = hosted.event(event, &|| win.ticks_ns())?;
+            match took {
+                Took::Quit => break 'run,
+                Took::Redraw => redraw = true,
+                Took::Window(Own::Fullscreen) => {
+                    let on = !win.fullscreen();
+                    win.set_fullscreen(on);
                 }
-                // Unattended, the keys do nothing but quit, whatever is open (the mouse still
-                // moves the battle's; a human's commands are the presser's).
-                Event::Key(key) if options.run.is_some() => {
-                    let command = keys.command(Context::Battle, ctrl.held(), key.name());
-                    if command == Some(Do::Window(Own::Quit)) {
-                        break 'run;
-                    }
+                Took::Window(Own::Vsync) => {
+                    let on = !win.vsync();
+                    win.set_vsync(on);
                 }
-                Event::KeyUp(_) if options.run.is_some() => {}
-                // The right button's release ends the own loop of the panel button the mouse
-                // holds as the left's does, clicking it over it (E17 M7 T2, CLT-Q72 (a);
-                // `def_button_message` 0x456338).
-                Event::KeyUp(Key::RightButton) if mouse_holds(held) => {
-                    if let Some(h) = held.take() {
-                        let lists = (&mut inputs, &mut scrolls);
-                        let (g, b) = let_go_held(&mut battle, lists, at, h)?;
-                        (grew, book_changed, mouse_changed) = (grew | g, book_changed | b, true);
-                    }
-                }
-                // A turret's info held by the right button over the battle (E17 M6 T2b2, design
-                // §12.6), a control's help over the panel (T3a, §12.7) or a hero's info window
-                // (T3b1, §12.8; `popup_run_held` 0x602A40): its ends (the right button's release, a left press or release)
-                // close it; every other input is dropped, the moves too (the battle takes none
-                // meanwhile, nor after: nothing is posted, 0x476BBF).
-                Event::KeyUp(Key::RightButton) | Event::Click { down: true, .. }
-                    if battle.popup_held() =>
-                {
-                    book_changed |= battle.popup_end();
-                }
-                // Over the combat options dialog the release a popup takes lets go of what the
-                // mouse or that key holds there without its click (CLT-Q39's fix in the client's
-                // profile; E17 M6 T7b, R4-2).
-                Event::Click { down: false, .. } if battle.popup_held() => {
-                    book_changed |= battle.options_let_go(None);
-                    book_changed |= battle.popup_end();
-                }
-                Event::KeyUp(key) if battle.popup_held() => {
-                    book_changed |= battle.options_let_go(Some(key.name()));
-                }
-                Event::Key(_) if battle.popup_held() => {}
-                Event::Pointer(p) if battle.popup_held() => pointer = p,
-                // The stats dialog's right button's description (E17 M6 T2a2b1, design §12.3),
-                // held while the button is: the popup's loop (0x602A40) takes only its ends (the
-                // right button's release, a left press or release) and drops every other input
-                // (a key's release lets the OK it holds go in the client's profile, CLT-Q39); the
-                // battle keeps where the mouse is.
-                // The right button's stats dialog over the battle (E17 M6 T2b1) the same: its
-                // end closes it, the battle taking the mouse again (`Input::Looked`).
-                Event::KeyUp(Key::RightButton) | Event::Click { .. } if battle.stats_popup() => {
-                    let did = battle.stats_held(at, true, None);
-                    book_changed |= stats_did(&mut battle, &mut inputs, at, did);
-                }
-                Event::KeyUp(key) if battle.stats_popup() => {
-                    let did = battle.stats_held(at, false, Some(key.name()));
-                    book_changed |= stats_did(&mut battle, &mut inputs, at, did);
-                }
-                Event::Key(_) if battle.stats_popup() => {}
-                Event::Pointer(p) if battle.stats_popup() => {
-                    pointer = p;
-                    if let Some((x, y)) = p {
-                        inputs.push(Input::Move { at, to: [x, y] });
-                        mouse_changed = true;
-                    }
-                }
-                Event::Key(Key::RightButton) if battle.stats_open() => {
-                    let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
-                    book_changed |= battle.stats_right(at, point);
-                }
-                // The combat options dialog's help (E17 M6 T4a, design §12.12): the right button
-                // over a control shows it while held, as the panel's controls' help.
-                Event::Key(Key::RightButton) if battle.options_open() && !battle.message_open() => {
-                    let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
-                    book_changed |= battle.options_right(point);
-                }
-                // What a key does where the battle takes it now (E24 M3 T1b, `h3_view::keys`): a
-                // dialog or an aim over the battle takes its own keys and the window's that work
-                // whatever is open; its Esc is its close, Cancel or give-up, never the window's
-                // quit.
-                Event::Key(key) => {
-                    let context = Context::of(
-                        battle.result_open(),
-                        battle.message_open(),
-                        (battle.stats_open(), battle.options_open()),
-                        battle.book_open(),
-                        battle.aiming(),
-                    );
-                    let ctrl_held = ctrl.held();
-                    // The tactics phase's panel's keys first, then the battle's (E17 M5 T4c2b).
-                    let command = (context == Context::Battle && battle.in_tactics(at))
-                        .then(|| keys.command(Context::Tactics, ctrl_held, key.name()))
-                        .flatten()
-                        .or_else(|| keys.command(context, ctrl_held, key.name()));
-                    // While the mouse holds a panel button its own loop runs (E17 M7 T2, CLT-Q72
-                    // (a); `def_button_message` 0x456338 to 0x45641C): every key and the right
-                    // press are dropped, no popup opens; the viewer's own keys stay its own.
-                    if mouse_holds(held) && !matches!(command, Some(Do::Window(_))) {
-                        continue;
-                    }
-                    // A key while Auto Combat plays stops it as the next turn starts and does
-                    // nothing else (E17 M5 T4c1, 0x4741F9); the window's own keys stay its own.
-                    if context == Context::Battle
-                        && !matches!(command, Some(Do::Window(_)))
-                        && let Some(turn) = battle.stop_auto(at)
-                    {
-                        stopped_by = command.filter(|&c| carried(c)).map(|c| (c, turn));
-                        mouse_changed = true;
-                        continue;
-                    }
-                    // The right button over the battlefield (E17 M6 T2b1, design §12.5;
-                    // `battle_right_click` 0x4769C0): the stack on the hex there shows its stats
-                    // dialog while the button is held, the combat cursor's pointer set first;
-                    // over the panel a control's help (T3a, `battle_control_help` 0x472A50).
-                    if command.is_none()
-                        && matches!(key, Key::RightButton)
-                        && context == Context::Battle
-                    {
-                        let point = pointer.map_or(crate::pointer::PARK, |(x, y)| [x, y]);
-                        if battle.look_held(at, point) {
-                            inputs.push(Input::Look { at });
-                            book_changed = true;
-                        } else if let Some(side) = battle.hero_info(at, point) {
-                            // Else a hero's info window over its rectangle (T3b1, design §12.8),
-                            // held as the stats dialog's popup; at Creature Info's levels 1 and 2
-                            // it stays shown after the release (E17 M6 T4b2b1, §12.15).
-                            inputs.push(Input::HeroInfo { at, side });
-                            (book_changed, mouse_changed) = (true, true);
-                        } else {
-                            // Else a turret's info held (E17 M6 T2b2, design §12.6), or over the
-                            // panel a control's help (T3a, design §12.7; `battle_buttons`
-                            // 0x474DE4): each held as the stats dialog's popup.
-                            book_changed |= battle.turret_info(at, point, true)
-                                || battle.control_help(at, point);
-                        }
-                        continue;
-                    }
-                    let Some(command) = command else {
-                        continue;
+                Took::Window(Own::Cursor) => {
+                    drawn_cursor = !drawn_cursor;
+                    let image = if drawn_cursor {
+                        None
+                    } else {
+                        Some(hosted.cursor_image(&frame_now)?.1)
                     };
-                    match command {
-                        Do::Window(own) => {
-                            // A key that moves the battle ends the opening first: the clock
-                            // runs, the music starts (pause does nothing more).
-                            if matches!(own, Own::Pause | Own::Frame | Own::Restart)
-                                && opening_until.take().is_some()
-                            {
-                                clock.toggle(now);
-                                if let Some(p) = player.as_mut() {
-                                    p.start_music(now);
-                                }
-                                if own == Own::Pause {
-                                    continue;
-                                }
-                            }
-                            match own {
-                                Own::Quit => break 'run,
-                                Own::Pause => {
-                                    clock.toggle(now);
-                                    if let Some(p) = player.as_mut() {
-                                        p.pause(clock.paused(), now);
-                                    }
-                                }
-                                Own::Frame if clock.paused() => {
-                                    if let Some(f) = &next {
-                                        // The sounds of the frames stepped over are dropped; the
-                                        // next frame's, cued as this one shows, play when the
-                                        // battle runs again.
-                                        clock.seek(now, f.t);
-                                        cue = battle.timeline().cue_from(f.t);
-                                        if let Some(p) = player.as_mut() {
-                                            p.silence();
-                                        }
-                                    }
-                                }
-                                // A frame on while running: nothing.
-                                Own::Frame => {}
-                                Own::Restart => {
-                                    clock.seek(now, options.from);
-                                    // The inputs and scrolls after it are gone (design
-                                    // §9.10; E17 M3 T9b, the reviewer: they played again at
-                                    // their times); Auto Combat's switches and stops stay the
-                                    // battle's, and a key that stopped it still acts on the
-                                    // turn it stops at (T8b2, R5c-4).
-                                    inputs.retain(|i| i.at() <= options.from);
-                                    // Creature Info's level stays the settings' (E17 M6 T4b2a),
-                                    // the grid's and the shadows' options too (E17 M6 T4c).
-                                    inputs.push(Input::ArmyInfo {
-                                        at: options.from,
-                                        level: army_info,
-                                    });
-                                    inputs.push(Input::Shades {
-                                        at: options.from,
-                                        options: Shades::of(&battle.settings),
-                                        keyed: false,
-                                    });
-                                    scrolls.retain(|&(t, _)| t <= options.from);
-                                    mouse_changed = true;
-                                    shown = None;
-                                    let from = changes.latest(&mut battle, options.from)?;
-                                    next = Some(frame_at(&mut battle, from)?);
-                                    cue = battle.timeline().cue_from(options.from);
-                                    if let Some(p) = player.as_mut() {
-                                        p.silence();
-                                        // The end's tune gives way to the battle's music again.
-                                        if ended {
-                                            p.start_music(now);
-                                        }
-                                    }
-                                    ended = false;
-                                }
-                                Own::Music => {
-                                    if let Some(p) = player.as_mut() {
-                                        p.music_on = !p.music_on;
-                                    }
-                                }
-                                Own::Effects => {
-                                    if let Some(p) = player.as_mut() {
-                                        p.effects_on = !p.effects_on;
-                                        if !p.effects_on {
-                                            p.silence();
-                                        }
-                                    }
-                                }
-                                Own::Fullscreen => {
-                                    let on = !win.fullscreen();
-                                    win.set_fullscreen(on);
-                                }
-                                Own::Vsync => {
-                                    let on = !win.vsync();
-                                    win.set_vsync(on);
-                                }
-                                Own::Cursor => {
-                                    drawn_cursor = !drawn_cursor;
-                                    let image = if drawn_cursor {
-                                        None
-                                    } else {
-                                        Some(cursors.get(&battle, &frame_now)?.1)
-                                    };
-                                    if win.set_cursor(image).is_err() {
-                                        drawn_cursor = true;
-                                    }
-                                    redraw = true;
-                                }
-                            }
-                        }
-                        // A message box over the battle (and the book; E17 M5 T4a): its button
-                        // down, its key's release clicking it.
-                        Do::Message(k) => {
-                            let did = battle.message_key(k, key.name());
-                            grew |= message_did(
-                                &mut battle,
-                                &mut inputs,
-                                (at, pointer),
-                                did,
-                                &mut book_changed,
-                            )?;
-                        }
-                        // The result window's OK (E17 M5 T4b1): down, its key's release closing
-                        // the battle's screen.
-                        Do::ResultOk => {
-                            let did = battle.message_key(h3_view::message::Key::Ok, key.name());
-                            grew |= message_did(
-                                &mut battle,
-                                &mut inputs,
-                                (at, pointer),
-                                did,
-                                &mut book_changed,
-                            )?;
-                        }
-                        // The combat options dialog's OK down, its key's release closing it (E17
-                        // M6 T4a).
-                        Do::OptionsOk => {
-                            let did = battle.options_key(key.name());
-                            book_changed |= options_did(&mut battle, &mut player, did, &files);
-                        }
-                        // A stack's stats dialog's OK down, its key's release closing it (E17
-                        // M6 T2a2a).
-                        Do::StatsOk => {
-                            book_changed |= battle.stats_key(key.name()) != StatsDid::Nothing;
-                        }
-                        // The acting stack's stats dialog (E17 M6 T2a2a).
-                        Do::Stats => {
-                            book_changed |= acting_stats(&mut battle, &mut inputs, at, pointer);
-                        }
-                        // The spell book open over the battle (E17 M5 T3a).
-                        Do::Book(k) => {
-                            let did = battle.book_key(k);
-                            grew |= book_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
-                        }
-                        // A spell aimed given up (E17 M5 T3b; the aim's loop 0x5A3070).
-                        Do::AimCancel => {
-                            battle.cancel_aim();
-                            inputs.push(Input::Cancel { at });
-                            // The stats dialog's close after its cast button's aim (E17 M6
-                            // T2a2b1).
-                            if battle.looked_after_aim() {
-                                inputs.push(Input::Looked { at });
-                            }
-                            mouse_changed = true;
-                        }
-                        // Creature Info's level (E17 M6 T4b2a, design §12.14; `battle_buttons`'
-                        // case 63, no test of the turn but only where the battle takes its keys):
-                        // cycled 0, 1, 2, no hint written (the line stays until the mouse takes
-                        // another hex), the frame drawn again and the settings written at once.
-                        Do::ArmyInfo if !battle.takes(at) => {}
-                        Do::ArmyInfo => {
-                            army_info = cycle_army_info(&mut battle, &mut inputs, at, &files);
-                            book_changed = true;
-                        }
-                        // The grid and the shadows (E17 M6 T4c, design §12.16; `battle_buttons`'
-                        // F6 to F8, no test of the turn: on every turn, CLT-Q75 (a), E17 M7
-                        // T1a): toggled, the frame drawn again (on a human's turn the mouse's
-                        // hex shaded again, on another the acting stack's reach drawn until its
-                        // action), the settings written at once.
-                        Do::Shades(_) if !battle.takes_keys(at) => {}
-                        Do::Shades(toggle) => {
-                            toggle_shades(&mut battle, &mut inputs, (at, toggle), &files);
-                            (book_changed, mouse_changed) = (true, true);
-                        }
-                        // One of the battle's keys made while a battle fought here takes no
-                        // input is dropped (design §9.11; E17 M5 T2b).
-                        Do::LogUp | Do::LogDown if !battle.takes(at) => {}
-                        Do::LogUp | Do::LogDown => {
-                            scrolls.push((at, if command == Do::LogUp { -1 } else { 1 }));
-                            mouse_changed = true;
-                        }
-                        // The Faerie Dragon's key aims its drawn spell (E17 M5 T3b); with the mouse
-                        // over the battlefield the client's profile hides the army info windows
-                        // first (CLT-Q49, E17 M6 T4b2b1).
-                        Do::DragonSpell => {
-                            if let Some(hide) =
-                                key_hides(battle.takes(at), battle.layout(), (at, pointer))
-                            {
-                                inputs.push(hide);
-                                mouse_changed = true;
-                            }
-                            if let Some(spell) = battle.dragon_aim(at) {
-                                inputs.push(Input::Aim {
-                                    at,
-                                    spell,
-                                    creature: true,
-                                });
-                                mouse_changed = true;
-                            }
-                        }
-                        // A panel button's hotkey holds it down; its release clicks (below).
-                        Do::Button(id) => {
-                            if battle.takes(at) {
-                                held = Some(Held {
-                                    id,
-                                    key: Some(key),
-                                    over: true,
-                                });
-                                mouse_changed = true;
-                            }
-                        }
+                    if win.set_cursor(image).is_err() {
+                        drawn_cursor = true;
                     }
+                    redraw = true;
                 }
-                // The right button's release ends the hold of the box's button the mouse holds as
-                // the left's does (its own loop; E17 M7 T2, CLT-Q72 (a)); nothing else.
-                Event::KeyUp(Key::RightButton) if battle.message_open() => {
-                    let did = battle.message_release();
-                    grew |= message_did(
-                        &mut battle,
-                        &mut inputs,
-                        (at, pointer),
-                        did,
-                        &mut book_changed,
-                    )?;
-                }
-                Event::KeyUp(key) if battle.message_open() => {
-                    let did = battle.message_key_up(key.name());
-                    grew |= message_did(
-                        &mut battle,
-                        &mut inputs,
-                        (at, pointer),
-                        did,
-                        &mut book_changed,
-                    )?;
-                }
-                // The right button's release ends the hold of the OK or the cast button the mouse
-                // holds as the left's does (E17 M7 T2, CLT-Q72 (a)); nothing else.
-                Event::KeyUp(Key::RightButton) if battle.stats_open() => {
-                    let did = battle.stats_release(at);
-                    let changed = stats_did(&mut battle, &mut inputs, at, did);
-                    (book_changed, mouse_changed) =
-                        (book_changed | changed, mouse_changed | changed);
-                }
-                Event::KeyUp(key) if battle.stats_open() => {
-                    let did = battle.stats_key_up(key.name());
-                    let changed = stats_did(&mut battle, &mut inputs, at, did);
-                    (book_changed, mouse_changed) =
-                        (book_changed | changed, mouse_changed | changed);
-                }
-                // The right button's release ends a DEF button's hold by the mouse as the left's
-                // does (E17 M7 T2, CLT-Q72 (a)); a bar or a box held, nothing.
-                Event::KeyUp(Key::RightButton) if battle.options_open() => {
-                    let did = battle.options_right_release();
-                    let changed = options_did(&mut battle, &mut player, did, &files);
-                    (book_changed, mouse_changed) =
-                        (book_changed | changed, mouse_changed | changed);
-                }
-                Event::KeyUp(key) if battle.options_open() => {
-                    let did = battle.options_key_up(key.name());
-                    let changed = options_did(&mut battle, &mut player, did, &files);
-                    (book_changed, mouse_changed) =
-                        (book_changed | changed, mouse_changed | changed);
-                }
-                Event::KeyUp(_) if battle.book_open() || battle.aiming() => {}
-                Event::KeyUp(key) => {
-                    if let Some(h) = held.take_if(|h| h.key == Some(key)) {
-                        // The keys C, S, R and O over the battlefield hide the army info windows
-                        // first in the client's profile (CLT-Q49, E17 M6 T4b2b1).
-                        if HIDING_HOTKEYS.contains(&h.id)
-                            && let Some(hide) =
-                                key_hides(battle.takes(at), battle.layout(), (at, pointer))
-                        {
-                            inputs.push(hide);
-                        }
-                        // A hotkey's release clicks its button (0x45659F).
-                        if let Some(command) = battle.button(at, h.id) {
-                            grew |= give(&mut battle, &mut inputs, at, command)?;
-                        }
-                        // A switches Auto Combat on (E17 M5 T4c1).
-                        if h.id == h3_view::panel::AUTO_COMBAT {
-                            grew |= battle.switch_auto(at)?;
-                        }
-                        // C opens the spell book (E17 M5 T3a), or its refusal's box (E17 M6 T5a).
-                        if h.id == h3_view::panel::SPELL_BOOK {
-                            book_changed |= opened(&mut inputs, at, battle.open_book(at));
-                        }
-                        // O opens the combat options dialog (E17 M6 T4a).
-                        book_changed |= h.id == h3_view::panel::OPTIONS && battle.open_options(at);
-                        // S and R ask first (E17 M5 T4a).
-                        book_changed |= battle.ask_leave(at, h.id);
-                        mouse_changed = true;
-                    }
-                }
-                Event::Pointer(p) if battle.message_open() => {
-                    pointer = p;
-                    redraw |= drawn_cursor;
-                    if let Some((x, y)) = p {
-                        book_changed |= battle.message_moved([x, y]);
-                    }
-                }
-                Event::Click {
-                    down: true,
-                    at: (x, y),
-                } if battle.message_open() => {
-                    let did = battle.message_press([x, y]);
-                    grew |= message_did(
-                        &mut battle,
-                        &mut inputs,
-                        (at, pointer),
-                        did,
-                        &mut book_changed,
-                    )?;
-                }
-                Event::Click { down: false, .. } if battle.message_open() => {
-                    let did = battle.message_release();
-                    grew |= message_did(
-                        &mut battle,
-                        &mut inputs,
-                        (at, pointer),
-                        did,
-                        &mut book_changed,
-                    )?;
-                }
-                // A stack's stats dialog over the battle (E17 M6 T2a2a): its moves, its OK.
-                Event::Pointer(p) if battle.stats_open() => {
-                    pointer = p;
-                    redraw |= drawn_cursor;
-                    if let Some((x, y)) = p {
-                        book_changed |= battle.stats_moved([x, y]);
-                        // The battle keeps where the mouse is, to take it as the dialog closes.
-                        inputs.push(Input::Move { at, to: [x, y] });
-                        mouse_changed = true;
-                    }
-                }
-                Event::Click {
-                    down: true,
-                    at: (x, y),
-                } if battle.stats_open() => {
-                    book_changed |= battle.stats_press(at, [x, y]) != StatsDid::Nothing;
-                }
-                Event::Click { down: false, .. } if battle.stats_open() => {
-                    let did = battle.stats_release(at);
-                    let changed = stats_did(&mut battle, &mut inputs, at, did);
-                    (book_changed, mouse_changed) =
-                        (book_changed | changed, mouse_changed | changed);
-                }
-                // The combat options dialog over the battle (E17 M6 T4a): its moves (the button
-                // held follows; the battle takes none), its presses and releases.
-                Event::Pointer(p) if battle.options_open() => {
-                    pointer = p;
-                    redraw |= drawn_cursor;
-                    if let Some((x, y)) = p {
-                        let did = battle.options_moved([x, y]);
-                        book_changed |= options_did(&mut battle, &mut player, did, &files);
-                    }
-                }
-                Event::Click {
-                    down: true,
-                    at: (x, y),
-                } if battle.options_open() => {
-                    let did = battle.options_press([x, y]);
-                    book_changed |= options_did(&mut battle, &mut player, did, &files);
-                }
-                Event::Click { down: false, .. } if battle.options_open() => {
-                    let did = battle.options_release();
-                    let changed = options_did(&mut battle, &mut player, did, &files);
-                    (book_changed, mouse_changed) =
-                        (book_changed | changed, mouse_changed | changed);
-                }
-                Event::Pointer(p) if battle.book_open() => {
-                    pointer = p;
-                    redraw |= drawn_cursor;
-                    if let Some((x, y)) = p {
-                        book_changed |= battle.book_hover([x, y]);
-                        // The battle keeps where the mouse is, to aim from there (E17 M5 T3b).
-                        inputs.push(Input::Move { at, to: [x, y] });
-                        mouse_changed = true;
-                    }
-                }
-                Event::Click {
-                    down: true,
-                    at: (x, y),
-                } if battle.book_open() => {
-                    let did = battle.book_press([x, y]);
-                    grew |= book_did(&mut battle, &mut inputs, at, did, &mut book_changed)?;
-                }
-                Event::Click { down: false, .. } if battle.book_open() => {}
-                Event::Click { down: true, .. } if battle.aiming() => {
-                    // The press casts at the hex the cursor took as it went down: the pass's
-                    // moves before it followed first (E17 M5 T8b2, R4b-1: `wait` gives every
-                    // pending event at once, a move and the press among them).
-                    followed |= battle.mouse(&inputs, &scrolls)?;
-                    if let Some(command) = battle.aim_press(at) {
-                        grew |= give(&mut battle, &mut inputs, at, command)?;
-                        // The stats dialog's close after its cast button's aim, the action
-                        // given (E17 M6 T2a2b1: its posted move waits behind the action).
-                        if battle.looked_after_aim() {
-                            inputs.push(Input::Looked { at });
-                        }
-                    }
-                    mouse_changed = true;
-                }
-                Event::Click { down: false, .. } if battle.aiming() => {}
-                Event::Pointer(p) => {
-                    pointer = p;
-                    redraw |= drawn_cursor;
-                    if let Some((x, y)) = p {
-                        if let Some(h) = held.as_mut().filter(|h| h.key.is_none()) {
-                            // The mouse's button follows it on or off the button it holds, whose
-                            // own loop takes the move: the battle takes none until the release
-                            // (E17 M7 T2, CLT-Q72 (a), *provisional*: its status line and cursor
-                            // as the press left them, as read for the adventure map's).
-                            h.over = battle.panel_at(at).button_at([x, y]) == Some(h.id);
-                        } else {
-                            // The battle takes the move now (inputs after a seek back are gone).
-                            inputs.retain(|i| i.at() <= at);
-                            inputs.push(Input::Move { at, to: [x, y] });
-                        }
-                        mouse_changed = true;
-                    }
-                }
-                // A press while Auto Combat plays stops it as the next turn starts and does
-                // nothing else (E17 M5 T4c1).
-                Event::Click { down: true, .. } if battle.stop_auto(at).is_some() => {
-                    mouse_changed = true;
-                }
-                // A press made while a battle fought here takes no input is dropped, its release
-                // then doing nothing (design §9.11; E17 M5 T2b).
-                Event::Click { down: true, .. } if !battle.takes(at) => {}
-                Event::Click {
-                    down: true,
-                    at: (x, y),
-                } => {
-                    // An enabled panel button goes down and runs its own loop while the mouse
-                    // holds it (E17 M7 T2, CLT-Q72 (a)); a disabled one takes no press
-                    // (`def_button_message` 0x4562DD), its help the right button's still.
-                    if let Some(id) = battle.panel_at(at).button_at([x, y]) {
-                        if battle.enabled(at, id) {
-                            held = Some(Held {
-                                id,
-                                key: None,
-                                over: true,
-                            });
-                            mouse_changed = true;
-                        }
-                        continue;
-                    }
-                    // Any left press over the battlefield hides the army info windows first, the
-                    // mouse's hex kept (0x4752BB; E17 M6 T4b2b1, design §12.15).
-                    if h3_view::army_info::on_field(battle.layout(), [x, y]) {
-                        inputs.push(Input::Hide { at, key: false });
-                        mouse_changed = true;
-                    }
-                    if let Some(command) = battle.press(at, [x, y]) {
-                        // A press over the battlefield acts as the button goes down (design
-                        // §9.11; E17 M5 T2b).
-                        grew |= give(&mut battle, &mut inputs, at, command)?;
-                    } else if battle.look(at, [x, y], false) {
-                        // A stack to look at: its stats dialog (E17 M6 T2a2a).
-                        inputs.push(Input::Look { at });
-                        book_changed = true;
-                    } else if battle.turret_info(at, [x, y], false) {
-                        // A turret: its info in a box, the combat cursor's pointer set first
-                        // (0x476E22; E17 M6 T2b2).
-                        inputs.push(Input::Look { at });
-                        book_changed = true;
-                    }
-                }
-                Event::Click { down: false, .. } => {
-                    if let Some(h) = held.take_if(|h| h.key.is_none()) {
-                        let lists = (&mut inputs, &mut scrolls);
-                        let (g, b) = let_go_held(&mut battle, lists, at, h)?;
-                        (grew, book_changed, mouse_changed) = (grew | g, book_changed | b, true);
-                    }
-                }
-                Event::Redraw => redraw = true,
+                Took::Window(_) | Took::Nothing => {}
+            }
+            // The mouse moved: a drawn cursor is drawn again where it is.
+            if hosted.take_moved() {
+                redraw |= drawn_cursor;
             }
         }
         // The result window's OK closes the battle's screen (E17 M5 T4b1).
-        if battle.result_closed() {
+        if hosted.closed() {
             break;
         }
-        // The options dialog's close changed the Auto Combat boxes (E17 M6 T4b1): the turns to
-        // come, and under Auto Combat the turn waiting, play by them (a close by the pass's last
-        // event; one before it counted before the next event, above).
-        grew |= battle.boxes_closed(clock.ms(win.ticks_ns()))?;
-        // The options dialog's close composes the background again with its options, without the
-        // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
-        let options_closed = options_open && !battle.options_open();
-        if options_closed {
-            inputs.push(Input::Shades {
-                at: clock.ms(win.ticks_ns()),
-                options: Shades::of(&battle.settings),
-                keyed: false,
-            });
-            mouse_changed = true;
-        }
-        options_open = battle.options_open();
-        // An aim with both shadows on turns the movement shadow off as it starts and on again as
-        // it ends in the mouse's follow alone (`mouse::track`, `Options::aiming`; E17 M6 T4c,
-        // design §12.16): the settings and their file keep the player's (E17 M6 T7b, R7-2:
-        // *provisional*, the original's saves the switch each time, oddity 8, which a window
-        // closed inside the aim would leave in the file). The block that copied it never ran: it
-        // read the turn's aims, whose original numbers only `pointer::legal` names.
-        // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
-        if battle.settings.army_info != army_info {
-            army_info = battle.settings.army_info;
-            inputs.push(Input::ArmyInfo {
-                at: clock.ms(win.ticks_ns()),
-                level: army_info,
-            });
-            mouse_changed = true;
-        }
-        // Then the mouse posted where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a):
-        // the cursor, the line (at the level just set) and the shade those of the hex under it at
-        // once, where the original's leave the dialog's arrow and the old hex's until the mouse
-        // moves (oddity 10, the stills').
-        if options_closed {
-            post_mouse(&mut inputs, clock.ms(win.ticks_ns()), pointer);
-        }
-        // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
-        // T2b): the battle follows them and the frame now is made again.
-        if mouse_changed || grew || book_changed {
-            let pressed = held.filter(|h| h.over).map(|h| h.id);
-            let changed = battle.mouse(&inputs, &scrolls)? || followed || battle.pressed != pressed;
-            battle.pressed = pressed;
-            if changed || grew || book_changed {
-                let ms = clock.ms(win.ticks_ns());
-                changes = Changes::new(&battle);
-                let latest = changes.latest(&mut battle, ms)?;
-                // The result window's clip goes on from its frame now (E17 M5 T4b2b).
-                let latest = battle
-                    .clip_times(ms)
-                    .map_or(latest, |(began, _)| latest.max(began));
-                next = Some(frame_at(&mut battle, latest)?);
-                shown = None;
-            }
-        }
+        hosted.after(&|| win.ticks_ns())?;
         // The cursor's frame now, none while a ray hides it: the hardware cursor made again when
         // it changes.
-        let ms = clock.ms(win.ticks_ns());
-        let frame = battle.cursor(ms);
-        // The stats dialog's popup hides it too (`mouse_hide` 0x602A6C; E17 M6 T2a2b1), and a
-        // turret's info held (T2b2).
-        let visible =
-            !battle.timeline().cursor_hidden(ms) && !battle.stats_popup() && !battle.popup_held();
+        let ms = hosted.ms(win.ticks_ns());
+        let (frame, visible) = hosted.cursor_at(ms);
         if (&frame, visible) != (&frame_now, cursor_visible) {
             let image = if visible && !drawn_cursor {
-                Some(cursors.get(&battle, &frame)?.1)
+                Some(hosted.cursor_image(&frame)?.1)
             } else {
                 None
             };
@@ -1714,179 +2312,52 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             drawn_cursor = true;
             redraw = true;
         }
-        let now = win.ticks_ns();
-        if opening_until.is_some_and(|end| now >= end) {
-            opening_until = None;
-            clock.toggle(now);
-            if let Some(p) = player.as_mut() {
-                p.start_music(now);
-            }
-        }
-        let battle_ms = clock.ms(now);
-        // A box of Eagle Eye's message opened (E17 M6 T5c): its pickup sound starts, category 3
-        // as good luck's, on no stack.
-        let pickup = battle.take_pickup();
-        if let (Some(p), Some(lib)) = (player.as_mut(), library.as_ref()) {
-            if let Some(n) = pickup {
-                let cue = h3_view::anim::Cue {
-                    at: battle_ms,
-                    stack: 0,
-                    sound: h3_view::anim::Sound::Pickup(n),
-                    stop: false,
-                    creature: None,
-                };
-                p.cue(lib, &cue);
-            }
-            if !clock.paused() {
-                while let Some(c) = battle
-                    .timeline()
-                    .cues
-                    .get(cue)
-                    .filter(|c| c.at <= battle_ms)
-                {
-                    p.cue(lib, c);
-                    cue += 1;
-                }
-                if let Some((_, tune)) = battle
-                    .end_tune()
-                    .filter(|(at, _)| !ended && *at <= battle_ms)
-                {
-                    p.end(lib, tune);
-                    ended = true;
-                }
-            }
-            p.service(lib, now);
-        }
-        // A later change may be due already: show the latest instead; if it draws what shows,
-        // nothing new is presented (a redraw still is).
-        let due = match next.take_if(|f| f.t <= battle_ms) {
-            None => None,
-            Some(d) => {
-                let latest = changes.latest(&mut battle, battle_ms)?;
-                if latest <= d.t && !d.held {
-                    Some(d)
-                } else {
-                    // A later change due already; or the cast's end held (E17 M6 T5b2b): the
-                    // battle played on now, the clock there, its frame made now.
-                    report.skipped += usize::from(!d.held);
-                    let late = frame_at(&mut battle, latest)?;
-                    match shown.as_mut().filter(|s| s.list == late.list) {
-                        Some(s) => {
-                            s.t = latest;
-                            next = next_frame(&mut battle, &mut changes, (s, mouse_holds(held)))?;
-                            None
-                        }
-                        None => Some(late),
-                    }
-                }
-            }
-        };
+        let battle_ms = hosted.sound(win.ticks_ns());
+        let due = hosted.due(battle_ms)?;
+        let pointer = (drawn_cursor && cursor_visible)
+            .then_some(hosted.pointer())
+            .flatten();
         if let Some(due) = due {
-            let back = show(
-                &mut win,
-                &due,
-                (drawn_cursor && cursor_visible)
-                    .then_some(pointer)
-                    .flatten(),
-                &cursors.get(&battle, &frame_now)?.0,
-                read,
-            )?;
+            let cursor = hosted.cursor_image(&frame_now)?.0;
+            let back = show(&mut win, &due, pointer, &cursor, read)?;
             report
                 .late_us
-                .push(clock.late(win.ticks_ns(), due.t) / 1000);
+                .push(hosted.late(win.ticks_ns(), due.t) / 1000);
             if let Some((back, presented)) = back {
                 compare(&back, &due, &presented, &mut report);
             }
-            next = next_frame(&mut battle, &mut changes, (&due, mouse_holds(held)))?;
-            shown = Some(due);
-        } else if redraw && let Some(f) = &shown {
-            show(
-                &mut win,
-                f,
-                (drawn_cursor && cursor_visible)
-                    .then_some(pointer)
-                    .flatten(),
-                &cursors.get(&battle, &frame_now)?.0,
-                false,
-            )?;
+            hosted.showed(due)?;
+        } else if redraw && hosted.shown().is_some() {
+            let cursor = hosted.cursor_image(&frame_now)?.0;
+            if let Some(f) = hosted.shown() {
+                show(&mut win, f, pointer, &cursor, false)?;
+            }
         }
     }
     let seconds = win.ticks_ns().saturating_sub(started) / 1_000_000;
     lines.push(format!("keys: {keys_from}"));
     lines.push(format!("settings: {settings_from}"));
-    lines.extend(unsaved.take());
+    lines.extend(hosted.take_unsaved());
     lines.push(win.describe());
-    if let Some(lib) = &library {
-        lines.push(lib.describe());
-    }
-    if let Some(p) = &player {
-        lines.push(p.describe());
-    }
-    drop(player);
+    hosted.describe_sound(&mut lines);
+    // The sound closes before the window.
+    hosted.close_sound();
     drop(win);
     lines.push(format!(
         "{} commands, {} ms at speed {}; {} shown in {} ms, {} passed over",
-        battle.commands(),
-        battle.timeline().end,
+        hosted.battle().commands(),
+        hosted.battle().timeline().end,
         source.speed.setting(),
         report.late_us.len(),
         seconds,
-        report.skipped,
+        hosted.skipped(),
     ));
     lines.push(format!(
         "frame after its time (ms): {}",
         summary(&mut report.late_us)
     ));
     let mut ok = report.difference.is_none();
-    if let Some(p) = &presser {
-        lines.push(format!(
-            "pressed: {} commands on the battlefield, {} on the panel's buttons, {} given without \
-             a press",
-            p.at, p.buttons, p.given
-        ));
-        let yes = |b: bool| if b { "yes" } else { "no" };
-        if let Some(turn) = p.auto {
-            // E17 M5 T4c1: switched on at the human's turn asked, stopped two commands later.
-            let at = |c: Option<usize>| c.map_or_else(|| "never".to_owned(), |c| c.to_string());
-            lines.push(format!(
-                "auto combat at the human's turn {turn}: switched on after {} commands, stopped \
-                 after {}",
-                at(p.switched.map(|(on, _)| on)),
-                at(p.switched.and_then(|(_, off)| off)),
-            ));
-            ok &= p.switched.is_some();
-        }
-        if let Some(left) = p.left {
-            // Left through its question (E17 M5 T4a): the bot's battle up to the question, and
-            // the battle over by the leaving.
-            let before = p.before_leaving == Some(true);
-            let over = !battle.playing();
-            lines.push(format!(
-                "left by {left:?} after {} commands: the battle before it the bot's at once: {}, \
-                 over: {}",
-                battle.commands().saturating_sub(1),
-                yes(before),
-                yes(over)
-            ));
-            ok &= before && over;
-        } else if let Some(online) = ground.online() {
-            // A seat on a server (E17 M5 T6b1): what the connection did, whether the game ended.
-            let online = online.borrow();
-            lines.extend(online.lines.iter().cloned());
-            lines.push(format!(
-                "re-joined {} times; the game over: {}",
-                online.rejoined,
-                yes(online.over())
-            ));
-        } else {
-            let same = battle.as_the_bot_fights().unwrap_or(Ok(false))?;
-            lines.push(format!(
-                "the battle so far is the bot's at once: {}",
-                yes(same)
-            ));
-            ok &= same;
-        }
-    }
+    ok &= hosted.summary(&mut lines)?;
     if read {
         lines.push(format!(
             "read back: {} of {} frames exact ({}){}",
@@ -2006,6 +2477,7 @@ type BoxShown = Option<([Option<[i32; 2]>; 3], u32)>;
 
 /// The input queue emptied as a box opens in a pass of the window's loop (the modal loop
 /// 0x602520; design §7.19): the box shown before the pass's next input, and whether one opened.
+#[derive(Debug, Default)]
 struct Flush {
     last: BoxShown,
     emptied: bool,
@@ -2910,27 +3382,12 @@ mod tests {
         // Over the battlefield while the battle takes the key: the hide, a key's; off the
         // battlefield (the panel), not taking it, or the mouse out of the window: none.
         let layout =
-            h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
-                .unwrap();
+            h3_view::layout::parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let hide = Some(Input::Hide { at: 7, key: true });
         assert_eq!(key_hides(true, &layout, (7, Some((400, 300)))), hide);
         assert_eq!(key_hides(true, &layout, (7, Some((400, 590)))), None);
         assert_eq!(key_hides(false, &layout, (7, Some((400, 300)))), None);
         assert_eq!(key_hides(true, &layout, (7, None)), None);
-    }
-
-    #[test]
-    fn the_usage_names_every_command_of_the_key_table() {
-        // E17 M6 T7b (R5-5): the usage's list of what a user's `[battle]` table may bind is the
-        // table's, in its order.
-        use h3_ui::keys::Command as _;
-        let (_, list) = crate::USAGE.split_once("(the commands: ").unwrap();
-        let (list, _) = list.split_once("; []").unwrap();
-        let listed: Vec<&str> = list.split(',').map(str::trim).collect();
-        let names: Vec<String> = (h3_view::keys::Command::all().into_iter())
-            .map(h3_view::keys::Command::name)
-            .collect();
-        assert_eq!(listed, names);
     }
 
     #[test]
@@ -3351,5 +3808,57 @@ mod tests {
             summary(&mut us),
             "median 5.0, p95 9.5, max 10.0 (100 frames)"
         );
+    }
+    #[test]
+    fn a_host_without_a_window_runs_the_battle_to_its_result_and_its_close() {
+        // E17 M7 T3a2: the element alone, its host a loop of its own: a clock it moves by each
+        // pass's timeout as a wait with no input would, no window, no sound. The unattended
+        // presses play the human's side, the result window opens at the battle's end and its OK
+        // pressed closes the battle's screen, which the host reads.
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [true, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let clock = std::cell::Cell::new(0_u64);
+        let ticks = || clock.get();
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-hosted-test-settings.toml"),
+            from: 0,
+            mute: true,
+            install: source.install.clone(),
+            seed: source.seed,
+            unattended: true,
+            presses: Some(Presses {
+                close_result: true,
+                ..Presses::default()
+            }),
+        };
+        let mut lines = Vec::new();
+        let prepared = Prepared::new(&ground).unwrap();
+        let mut hosted = prepared.start(setup, &ticks, &mut lines).unwrap();
+        let (mut passes, mut shown) = (0, 0);
+        while !hosted.closed() && passes < 200_000 {
+            let timeout = hosted.timeout(clock.get());
+            assert_eq!(hosted.before(&ticks, &mut lines), Ok(Flow::On));
+            if hosted.closed() {
+                break;
+            }
+            hosted.after(&ticks).unwrap();
+            let ms = hosted.sound(clock.get());
+            if let Some(frame) = hosted.due(ms).unwrap() {
+                hosted.showed(frame).unwrap();
+                shown += 1;
+            }
+            clock.set(clock.get() + u64::from(timeout.max(1)) * 1_000_000);
+            passes += 1;
+        }
+        assert!(
+            hosted.closed(),
+            "{passes} passes, {shown} frames: {lines:?}"
+        );
+        assert!(!hosted.battle().playing());
+        assert!(shown > 1 && hosted.shown().is_some());
     }
 }

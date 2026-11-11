@@ -180,16 +180,29 @@ context.
   the battle and the stats dialog's creature stand; a disabled panel button takes no press. The
   harness's `down:`; the stills `hold-right`, `stats-hold-right`, `options-hold-right`, exact.
 - **T3, the battle as a hosted entry** (the map client lane's request for E24 M4 T5, the inbox of
-  2026-10-31): `h3-view`'s library gains an entry a host's window runs: a battle started from a
-  whole game's battle messages (the protocol's battle types as E16 M5 carries them; record
-  format 4), drawn in the host's window with a clock and an audio output the host owns, played
-  to its result window and handed back with its outcome. With it: the background and colours from
-  the wire (protocol v35's `Observation.background`, `SideView.colour`, `Hero.sex`: CLT-Q4,
-  CLT-Q6, read nowhere yet); the music through the common `h3_ui::music` (the end's tune after
-  the combat music's 900 ms fade; the focus lost and regained: the map client lane's notes of
-  2026-10-27 and 2026-10-30); the frame widened by `h3_render::screen::Widening` if measured
-  faster (2026-10-28). The entry's shape agreed with the map client lane (its inbox) at the
-  task's start.
+  2026-10-31; cut in four with the user at its start, 2026-11-11, who agreed the entry's shape for
+  the map client lane: the host owns the window, its loop and the frame, the battle drawn
+  natively as any element of it, so that a later layout, HD's, shows it as a dialog over the
+  adventure screen; design §13.2):
+  - **T3a1 done 2026-11-11** ([log](E17-log.md#m7-t3a1-and-t3a2--the-battle-clients-library-and-the-hosted-element-2026-11-11)):
+    `h3-view`'s binary became the library crate `h3-battle-client` (the user: an adapter crate,
+    left out of the coverage gate as the binaries are), the `h3-view` command line its binary,
+    `h3-view` the pure library alone; nothing changed in behaviour.
+  - **T3a2 done 2026-11-11** (same log entry): the window's loop as the element
+    `window::Hosted` (with `Prepared` and `Setup`), `h3-view window` its first host. Built
+    without the original data (the user's choice); checked by the next session with the data
+    staged (the windowless host test, `window --check`, `drawn`, the gate, `check.sh`).
+  - **T3b**, cut in two with the user (2026-11-11): **T3b1** a whole game's record (format 4)
+    gives the battle the element plays and hands back with its outcome (the game's battle
+    messages as the battle's record; `h3-view window` on a game record; the battlefield
+    picture's variant from the wire, protocol v35's `Observation.background`, CLT-Q4; a
+    windowless test host; the map client lane's inbox told the API): what E24 M4 T5 needs, which
+    shows golden replays' battles. **T3b2** the same battle played live through the host's game
+    session (the element giving its commands to the host), before T3c.
+  - **T3c:** the sound on the host's device and the music through the common `h3_ui::music` (the
+    end's tune after the combat music's 900 ms fade; the focus lost and regained: the map client
+    lane's notes of 2026-10-27 and 2026-10-30); the frame widened by
+    `h3_render::screen::Widening` if measured faster (2026-10-28).
 - **T4, M7's and E17's closure:** a fresh reviewer, the captures where the battle screen changed,
   the review list with the user; the epic's open threads placed ("Later": E27, E24 or the
   backlog); E17 closed (the backlog's row by a `shared/` pull request).
@@ -302,3 +315,12 @@ The next milestone's list starts here.
    hotkey's button let go by the mouse's press in both profiles (the original's keeps it drawn
    pressed); the panel's press samples not built. Recorded: `hold-right`, `stats-hold-right`,
    `options-hold-right` (exact, the battle's and the creature's standing found by them).
+5. The battle's library and the hosted element (T3a1, T3a2; design §13.2, *provisional* where
+   marked): the crate `h3-battle-client` (the user's choice, not reviewed again) with the
+   binary's modules all public and the `h3-view` binary in it; the element's shape (`Prepared`,
+   `Setup`, `Presses`, `Hosted` and its pass: `timeout`, `before`, `event`, `closed`, `after`,
+   the cursor, `sound`, `due`/`showed`; `Flow`, `Took`), *provisional*: the host's tick source
+   handed to each call (`&dyn Fn() -> u64`), the platform's `Event` and cursor image in its API,
+   the window's own keys split (the battle's clock and sound its own, fullscreen, vsync and the
+   cursor the host's), its sound still on a device of its own until T3c. Not recorded (nothing
+   the original draws changed); checked with the data staged by the next session.

@@ -2,7 +2,7 @@
 # battlefield: the absolute obstacle (drawn into the background), layer-1 obstacles (drawn before
 # every stack) and layer-0 ones (drawn in their anchor row's passes, so over the stacks of the rows
 # above and under those of their own row; docs/epics/E17-design.md §4.4, §4.6); one- and two-hex
-# stacks on both sides. `cargo run --release -p h3-view -- render scenarios/obstacles.toml` from
+# stacks on both sides. `cargo run --release -p h3-battle-client -- render scenarios/obstacles.toml` from
 # clients/.
 
 [scenario]

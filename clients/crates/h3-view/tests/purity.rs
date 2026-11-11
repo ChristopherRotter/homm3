@@ -8,7 +8,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-/// The pure crates (their libraries; `h3-view`'s binary under `src/bin/` is an adapter), each with
+/// The pure crates (their libraries; a binary under `src/bin/` is an adapter), each with
 /// the dependencies it may have. A new dependency of a pure crate is added here deliberately.
 const PURE: [(&str, &[&str]); 4] = [
     ("h3-assets", &["h3-formats"]),
@@ -30,40 +30,12 @@ const PURE: [(&str, &[&str]); 4] = [
 ];
 
 /// Dependencies of a pure crate's package that only its binary (an adapter) uses: Cargo has no
-/// binary-only dependencies, so the library's sources must never name them (*provisional*, E17 M1
-/// T7: the headless renderer's scenario adapter; T8: `h3-formats`, whose archive and executable
-/// readers only the adapters use; M2 T1: the capture harness's map writer `h3-map` and the
-/// ruleset's type `h3-content-battle`; M2 T5a: the platform adapter `h3-sdl`, the window; T5b:
-/// `nanomp3`, the music; M3 T7b-2b-2a: `h3-content` and `h3-contracts`, a hero's battle effects
-/// and the skills behind them for the original's map; M5 T6a: the connection's I/O thread, the
-/// WebSocket with TLS, the welcome's signature and the hello's nonce; M5 T7: `argon2`, the
-/// account's key; M6 T3c3: `h3-pack-towns` and `h3-towns`, the town records; M6 T5b1:
-/// `h3-battle-ai`, the original's computer).
-const BINARY_ONLY: [(&str, &[&str]); 1] = [(
-    "h3-view",
-    &[
-        "argon2",
-        "ed25519-dalek",
-        "getrandom",
-        "h3-battle",
-        "h3-battle-ai",
-        "h3-content",
-        "h3-content-battle",
-        "h3-contracts",
-        "h3-formats",
-        "h3-kernel",
-        "h3-map",
-        "h3-pack-battle",
-        "h3-pack-towns",
-        "h3-sdl",
-        "h3-towns",
-        "nanomp3",
-        "rustls",
-        "rustls-graviola",
-        "rustls-native-certs",
-        "tungstenite",
-    ],
-)];
+/// binary-only dependencies, so the library's sources must never name them. None since E17 M7
+/// T3a1: `h3-view`'s binary and the adapters it held (and with them every dependency this list
+/// named for it, from E17 M1 T7's scenario adapter to M6 T5b1's `h3-battle-ai`) are
+/// `h3-battle-client`'s, an adapter crate of its own; the check stays for a pure crate that gains
+/// a binary again.
+const BINARY_ONLY: [(&str, &[&str]); 0] = [];
 
 /// Attributes every pure crate root carries.
 const REQUIRED: [&str; 2] = ["#![no_std]", "#![forbid(unsafe_code)]"];

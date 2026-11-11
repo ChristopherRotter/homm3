@@ -69,7 +69,11 @@ print("deny policy: as the engine'"'"'s")
 #   /src/bin/         the adapters
 #   /crates/h3-sdl/   the platform adapter: every SDL call (E17 M2 T5a, ADR-0024); `h3-view
 #                     window --check` exercises it
-ignore='/src/bin/|/crates/h3-sdl/'
+#   /crates/h3-battle-client/
+#                     the battle client's adapters (E17 M7 T3a1: h3-view's binary until then, a
+#                     library since so that another host runs the battle; the user, 2026-11-11):
+#                     `h3-view window --check`, `drawn` and the harness exercise it
+ignore='/src/bin/|/crates/h3-sdl/|/crates/h3-battle-client/'
 if [ "$coverage" = true ]; then
     step "coverage (excluded: $ignore)"
     run 1 cargo llvm-cov --locked --quiet --workspace --all-targets \

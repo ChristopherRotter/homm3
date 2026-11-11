@@ -6,13 +6,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
   `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
-  in QUEUE): **T1 done** (the answered slips, cut in four: T1a the options dialog and F6 to F8;
-  T1b the slips Q70, Q71, Q77; T1c the reads and captures; T1d the tools); **T2 done** (the DEF
-  button's own loop, CLT-Q72 (a); design §13.1); T3 the battle as an entry a host's window runs
-  (the map client's E24 M4 T5 waits on it); T4 the closure, **which closes E17** (ranked play,
-  the pause, the browser and a login: E27 first, then a refinement of their own). **Next:** M7
-  T3 (its entry's shape agreed with the map client lane at its start). **Open pull request:**
-  T2's (`client/e17-m7-t2`) until it merges.
+  in QUEUE): **T1 done** (the answered slips, cut in four); **T2 done** (the DEF button's own
+  loop, CLT-Q72 (a); design §13.1); **T3** the battle as an element a host's window runs (the
+  map client's E24 M4 T5 waits on it), cut in four with the user: **T3a1 done** (`h3-view`'s
+  binary became the library crate `h3-battle-client`), **T3a2 done** (the element
+  `window::Hosted`, `h3-view window` its host; design §13.2; checked with the data staged in the
+  next session), T3b cut in two with the user: **T3b1** a whole game's record's battle and its
+  outcome handed back, **T3b2** the same played live through the host's game session; T3c the
+  sound on the host's device; T4 the closure, **which closes E17**. **Next:** T3b1. The pull
+  request of T3a1 and T3a2: the branch `claude/ecstatic-thompson-cjowg2`.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -47,21 +49,22 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-11, E17 M7 T3a2's checks (done; `claude/ecstatic-thompson-cjowg2`).** The
+  original data staged at once (57 files); the baseline's `check.sh` on the branch was lost to a
+  VM restart in coverage and passed when run again, the staged-data tests run (the windowless
+  host test among them). The gate; `window --check` on a scenario fought here (a human, the
+  result closed) and on a whole battle's record, every frame exact; `drawn` all the same. T3b
+  cut in two with the user (T3b1, T3b2). Record: `E17-log.md`.
+- **2026-11-11, E17 M7 T3a1 and T3a2 (done, T3a2 unverified; `claude/ecstatic-thompson-cjowg2`,
+  no pull request).** T3 cut in four with the user, who agreed the entry's shape for the map
+  client lane (the host owns the window and the frame, the battle an element drawn natively)
+  and the adapter crate. The baseline's `check.sh` passed on `master`; no original data (no
+  computer linked): the user chose T3a2 unverified. T3a1 the move (build, clippy, 1 326 tests);
+  T3a2 the loop as `Hosted` (token-diffed against the old loop; 159 tests, the new staged-data
+  test skipped). The map client lane's inbox told the shape. M7 review item 5. Record:
+  `E17-log.md`.
 - **2026-11-11, E17 M7 T2 (done; `client/e17-m7-t2`).** Kept whole with the user (the loop and
   the harness's stills). The original data staged at once (57 files); the baseline's `check.sh`
   passed on `master`. The loop in both profiles for the panel, the stats dialog, the options
   dialog and the boxes; the harness's `down:` and three stills, exact once the battle's and the
   stats creature's standing (which they found) were built. M7 review item 4. Record: `E17-log.md`.
-- **2026-11-10, E17 M7 T1c and T1d (done; `client/e17-m7-t1c`).** The rest of T1 in one session
-  (the user). The original data staged at once (57 files); the baseline's `check.sh` passed on
-  `master`. T1c: 0x5994B0 read (CLT-Q73: the original starts a combat tune as the bar rises);
-  the stills `stats-ability` (R2-1), `stats-held` (Q71: Defend keeps its pressed frame, the
-  original's profile as built), `options-sound` and `options-speed-sound` (Q74: one click), with
-  the harness's `key-down:`/`key-up:` and sound stills (`samples`). T1d: `--close-result`;
-  `Changes::after` and the cast's stop under test. M7 review item 3. Record: `E17-log.md`.
-- **2026-11-10, E17 M7 T1b (done; `client/e17-m7-t1b`).** Kept whole (three small fixes, no
-  cut needed). The original data staged at once (57 files); the baseline's `check.sh` passed on
-  `master`. Each in the client's profile, the original's in the stills: CLT-Q70 (b)
-  `stats::side_player` (a heroless side's own player, a side with none the viewing player's),
-  Q71 (b) `window::release_taken` (the original's held until T1c), Q77 (b) `Rows::places` and
-  `row_xs` in the profile (`message::pictures` takes it). M7 review item 2. Record: `E17-log.md`.

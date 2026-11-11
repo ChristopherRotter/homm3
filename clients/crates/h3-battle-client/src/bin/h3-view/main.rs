@@ -1,40 +1,16 @@
 //! `h3-view`: the client's command line (E17). An adapter: it reads files, measures time, prints
-//! and opens the window (through `h3-sdl`); what it computes comes from the pure crates.
+//! and opens the window (through `h3-sdl`); what it computes comes from the pure crates, the
+//! commands themselves from the battle client's library (`h3_battle_client`, E17 M7 T3a1: the
+//! adapters moved there from this binary so that another host can run the battle) but for
+//! `harvest`, `play` and `situation`, this binary's own.
 
-mod account;
-mod aims;
-mod assets;
-mod audio;
-mod battle;
-mod bot;
-mod boxes;
-#[cfg(test)]
-mod clicks;
-mod connect;
-mod gate;
 mod harvest;
-mod live;
-mod log;
-mod motion;
-mod net;
-mod online;
 mod play;
-mod pointer;
-mod render;
-mod results;
-mod scenario;
-mod sequences;
 mod situation;
-mod sounds;
-mod spellbook;
-mod sprite;
-mod stats;
-mod text;
-mod video;
-mod videos;
-mod window;
 
 use std::process::ExitCode;
+
+use h3_battle_client::{account, connect, gate, render, sequences, sprite, text, video, window};
 
 const USAGE: &str = "\
 usage: h3-view <command> [options]
@@ -298,4 +274,23 @@ fn help() -> ExitCode {
 fn usage_error(message: &str) -> ExitCode {
     eprint!("h3-view: {message}\n\n{USAGE}");
     ExitCode::from(2)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::USAGE;
+
+    #[test]
+    fn the_usage_names_every_command_of_the_key_table() {
+        // E17 M6 T7b (R5-5): the usage's list of what a user's `[battle]` table may bind is the
+        // table's, in its order.
+        use h3_ui::keys::Command as _;
+        let (_, list) = USAGE.split_once("(the commands: ").unwrap();
+        let (list, _) = list.split_once("; []").unwrap();
+        let listed: Vec<&str> = list.split(',').map(str::trim).collect();
+        let names: Vec<String> = (h3_view::keys::Command::all().into_iter())
+            .map(h3_view::keys::Command::name)
+            .collect();
+        assert_eq!(listed, names);
+    }
 }
