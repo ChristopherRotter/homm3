@@ -11,7 +11,7 @@ use h3_contracts::TownId;
 use crate::building::BuildingId;
 
 /// A command to the town context, issued by a player (E09 decision 45). Increment 3's recruitment
-/// and increment 4's services add their variants; exhaustive, as the game's other commands, so
+/// and increment 5's services add their variants; exhaustive, as the game's other commands, so
 /// that the game and the wire match every variant (SRV-Q25; E09 T18b1).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 // rule: TWN-BLD-001
@@ -42,7 +42,7 @@ pub enum TownCommandError {
     Built,
     /// It is forbidden in this town (the map's set, the Shipyard without water).
     Forbidden,
-    /// The Grail's building, which the hall never builds (the Grail's path, increment 5).
+    /// The Grail's building, which the hall never builds (the Grail's path, increment 6).
     Grail,
     /// Not every building it requires was ever built.
     Requirements,

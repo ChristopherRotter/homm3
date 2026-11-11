@@ -1,6 +1,6 @@
 # E09 — archive: closed increments
 
-Moved out of `E09-towns.md` on 2026-11-06 (increment 1, T10), verbatim, so that the epic file holds what is open and the decisions that apply to the whole epic (1 to 7, and those from 36). Cited elsewhere as "E09 decision N", "increment N" or by task (T7b2a …). The first section is the epic's starting point at its refinement. Increment 1's design note stays in `E09-design.md` (its Parts A to C, §1 to §22; decision 40); the record of every task is in `E09-log.md`.
+Moved out of `E09-towns.md` verbatim on 2026-11-06 (increment 1, T10) and on 2026-11-11 (increment 2, T20; decisions 36 to 63), so that the epic file holds what is open and the decisions that apply to the whole epic (1 to 7, and those from 64). Cited elsewhere as "E09 decision N", "increment N" or by task (T7b2a …). The first section is the epic's starting point at its refinement. Increment 1's design note stays in `E09-design.md` (its Parts A to C, §1 to §22; decision 40), and so does increment 2's (Part D, §23 to §36; T20); the record of every task is in `E09-log.md`, the audits of the exit criteria in its T10 and T20.
 
 ## Starting point (2026-10-31)
 
@@ -135,3 +135,192 @@ Moved out of `E09-towns.md` on 2026-11-06 (increment 1, T10), verbatim, so that 
 5. The gates hold: 100 % coverage on `h3-towns` and the town modules, golden replays with a town captured, the adventure benchmarks inside their gate, the map oracle's property plans playing towns.
 6. What each viewer sees of a town is in `docs/06-security.md` and tested.
 7. The env plays the maps with towns (`cross-lane`).
+
+## Increment 2 — construction
+
+Refined with the user on 2026-11-06 (T10; `TWN-Q7`, asked at T10's start with a first look at the audit). Built like increment 1: commands, validation, events, observation, the env, replays and the gates grow with the content. The audit of increment 1's exit criteria is in `E09-log.md` (T10).
+
+### Decisions at the refinement (2026-11-06, the user; TWN-Q7)
+
+36. **T10 whole** (the user at T10's start, `AskUserQuestion`; recommended): the audit, the closure and this refinement in one session and one docs-only pull request, as E08's T53. Not chosen: T10a (the audit and the closure), then T10b (the refinement).
+37. **Content: construction with the town events** (recommended). **The build command:** a town's owner, in its turn, builds one of the town's faction's buildings not built and not forbidden whose requirements stand, paid from the treasury, one a town a day (the original's rules as the survey reads them: the requirements and costs, one Capitol per player, the Shipyard's water and the Grail building, which the survey places); what a new building changes of increment 1's reads at once (the hall's income, the fort's siege, the Tavern's views, the silo); the map's forbidden buildings (173 custom sets forbid some, survey `E09-towns.md` §1.3). **The map's town events** (369 on 110 towns of the shipped maps: 70 build, 105 give resources, 56 add creatures, 189 carry a message only; §1.3): their buildings and resources on their days, their creatures with increment 3's growth. **The content:** each faction's requirements and costs harvested (TD-9 settled by the survey). A building's other effects come with the increments that build them (a dwelling's creatures 3, the guild and the services 4, the Grail's 5). The env plays the build command (decision 7). Not chosen: construction alone (the town events with increment 3); construction with growth and recruitment (increments 2 and 3 in one).
+38. **The first round** (recommended): a survey (T12) and its checkpoint, then the ADR amendment drafts with the design note and the cut (T13), accepted before anything is built, as increment 1 (decision 7). Not chosen: the survey alone first.
+39. **`ADV-STUB-13` first, a small task T11** (recommended): the random dwellings tied to a town (classes 216 and 217 whose identifier a town of the map has: 1 397 on the shipped maps, all tied to random towns, untyped blockers since E08 T93b) take the town's drawn faction at the build (`random_dwellings_resolve` 0x502B60, survey `E08-dwellings.md` §3.2; E08 decision 231), then play as E08's dwellings; `cross-lane` in the adventure lane's import and build, map import bumped, the census re-run with the original data; before increment 2's survey. Not chosen: inside increment 2; with increment 3; the adventure lane's inbox.
+40. *Agent's call (change freely):* **increment 1's design note stays in `E09-design.md`** (§1 to §22; its header: the file goes when the epic closes): about 85 lines of code comments in 37 files of seven crates, in three lanes' paths (town, adventure, battle), cite it as "`E09-design.md` §N" or, in the town modules, "design §N". Increment 2's note joins the same file (T13) as its Part D, its sections numbered from §23, so no citation changes meaning. Not chosen: E08's way (the note moved into the log at the closure, its citations rewritten).
+
+### Decisions at the survey's checkpoint (2026-11-07, the user; TWN-Q8)
+
+41. **TD-9: the executable's list** (recommended; survey `E09-construction.md` §6, §11): the Conflux's upgraded Altar of Fire (40) needs the Altar of Fire (33) and the upgraded Altar of Air (38); a row of an experiment batch TWN-2 observes the original's hall, and its verdict overrides. Not chosen: the list without an experiment; VCMI's and the fandom wiki's (the Altar of Fire).
+42. **TD-11: the town's owner builds and pays** (recommended; VCMI's rule): a TWN-2 row (two allied humans in hot seat, the visitor at the ally's hall) observes the original, which shows no owner test on the hall's path (§1.1, §1.4); revisited if it lets the visitor build. Not chosen: the owner without an experiment; the reading's (the current player in any town it visits, from its own treasury).
+43. **One a town a day for every player** (recommended; §3): the computer's every other day on Easy and Normal comes with the computer player (E10, E13); the day's mark is kept across a capture and cleared when the town passes from a team without a human to a team with one, as read. Not chosen: a difficulty in the setup with the handicap now.
+44. **The town events as the original plays them** (recommended; §8 to §10): at the owner's turn start, after the map's timed events, in the map's order; their days, players and kinds as the map's events'; the resources, then the buildings (the event's bits through the town's faction, less what stands, what the faction lacks, what the event's own buildings supersede and the Shipyard without its spot; no requirement, forbidden, Capitol, Grail, cost or day's-mark test; with the heroes' visit), then the creatures (the level's upgraded dwelling, else its dwelling, else lost). **T-8 is not a quirk to fix** (an event's Capitol beside the owner's other one stands); **TD-12 the original's day** (an every-day event fires from its first day, not VCMI's day before). Not chosen: one Capitol per player for events too; TWN-2 rows for both first.
+
+### Decisions at the drafts (2026-11-07, the user; TWN-Q9)
+
+Asked at T13's start, before the drafts were written (T13 kept whole, the user).
+
+45. **The build is a town command** (recommended): `GameCommand::Town(h3_towns::TownCommand::Build
+    { town, building })`; `h3-towns` checks the building (buildable now, the day's mark) and names
+    the price, the game the turn, the owner and the treasury, then pays and applies, as
+    `BuildBoat`; later town actions join `TownCommand`. No hero in the town (the original's town
+    list opens the hall). Not chosen: a game command `GameCommand::Build` with each later town
+    action its own variant; a pending decision opened by entering an own town.
+46. **The Shipyard's water now** (recommended; `TWN-STUB-2`'s Shipyard half moved from increment
+    4): the adventure fixes each town's boat spot when the game is built, as a Shipyard's tile
+    (ADV-SHY-001); without one the Shipyard is forbidden from the start and a custom set's built
+    Shipyard removed, as the original; the build and the town events skip it; the boat stays
+    increment 4's. Not chosen: the Shipyard refused until increment 4 (the Castle's Lighthouse with
+    it); buildable everywhere until then.
+47. **The views as the original shows them** (the user: "this depends on what the original does;
+    if a visiting ally hero sees the buildings, they should be revealed to them upon the
+    visitation event"): the owner sees its town's buildings (the town list opens its town screen at
+    any time); a player whose hero enters an ally's town learns them at that visit (the town screen
+    opens for an allied town, survey `E09-towns.md` §7.2; with E10's teams); whether a town was
+    built in today is public where the town is seen (the popup's portrait); the fort and the
+    Capitol stay public, the top level's facts as they are; nobody else learns the buildings. Not
+    chosen: the owner's team at any time; also at Visions' top level; the owner alone.
+
+### Decisions at the checkpoint (2026-11-07, the user; TWN-Q10)
+
+48. **The drafts accepted as written** (recommended): `docs/lanes/town/adr-drafts/0028-increment-2.md`,
+    `0016-increment-2.md`, `0017-increment-2.md`, applied into `docs/adr/` by the `shared/` task
+    T15 after batch TWN-2, with its verdicts. Not chosen: accepted with changes.
+49. **The cut as proposed** (recommended; design §35): batch TWN-2 first (T14), the `shared/` task
+    (T15), the part and the harvest (T16a, T16b), `h3-towns` (T17), the water, the command and the
+    town events (T18a to T18c), the gates and the env (T19), the audit (T20). Not chosen: TWN-2
+    alongside the build; fewer, larger tasks.
+50. **The exit criteria as proposed** (recommended; below, design §35).
+51. **The agent's calls kept** (recommended; design §26 to §31): the hall's offer (a horde as its
+    upgraded horde), the day's mark a flag, the town's boat spot as the town object's
+    `Resolved::BoatTile` fixed after the random dwellings resolve (until the build task reads the
+    original's order), one `TownChanged` for the town's seen facts; **T-9 fixed without a flag**
+    (the event loop's bits 41 to 43 read past the table: `TWN-QUIRK-7` with the build). Not chosen:
+    T-9 with a `faithful` flag; changes now.
+
+### Decisions at T18b2's start (2026-11-10, the user; SRV-Q26)
+
+52. **T18b2 cut in two:** T18b2a the views and events of §31 with SRV-Q26's town gap; T18b2b the
+    legal builds, `town_offer`, the bench gate, the plans building, the rollout's choice. Not
+    chosen: three parts (the gap a task of its own); T18b2 whole.
+53. **Every viewer's changed view of a town told to it** (the agent's recommendation, after the
+    user's first pick was a misreading): a small `TownChanged` with the view's facts, then a
+    `TownStackSeen` per shown stack and a `TownIncomeSeen` per income line (`GameEvent` stays
+    `Copy`), after a build, a capture, a siege's merge, a garrison's battle and the day's start; it
+    replaces decision 51's one `TownChanged` for the seen facts and covers a neutral garrison
+    emptied by another player's battle and a new Tavern's raised levels. Not chosen: the whole view
+    in one `TownChanged` (fixed arrays, every event larger); a notice and a query.
+54. **Visions' reach stubbed** (`TWN-STUB-13`, the server lane told): a hero's step, army or Power
+    moving another team's town in or out of its viewer's top level is not told. Not chosen: each
+    Visions holder's reach compared after every command now.
+
+### Decisions at T18b2b's start (2026-11-10, the user)
+
+55. **T18b2b whole** (recommended): the listing, `town_offer`, the bench gate, the plans building
+    and the rollout's choice in one session and one `cross-lane` pull request. Not chosen: two
+    parts (the listing, the offer, the rollout and the bench; then the plans' new checks).
+56. **The env's rollout skips the builds until T19** (recommended): its random agent draws from
+    the listed commands but a town's build, which has no action before T19's build entry (drawn,
+    it would end the turn); nothing in the env moves; T19 drops the skip with the entry. Not
+    chosen: kept, a drawn build ending the turn (the town map's random games moved).
+
+### Decisions at T18c's start (2026-11-10, the user)
+
+57. **T18c whole, the plans' checks to T19** (recommended): the game's town events, their wire
+    mapping and day 1's in one session and one `cross-lane` pull request; the plans'
+    `check_towns` and `check_rewards` taught the events' builds and gains in T19, with the writer
+    that first gives the plans' towns events (the writer writes none before T19, so checks taught
+    now would run on nothing). Not chosen: as queued (the checks now, unexercised); two parts (the
+    resources, `TownEventFired` and day 1; then the buildings, the views and the checks). The
+    user also had the hygiene property's CI counterexample fixed first (#822).
+
+### Decisions at T19's start (2026-11-10, the user)
+
+58. **T19 cut in three** (recommended, as increment 1's T9, decision 32): **T19a** the writer's
+    town events, the map and its scripted golden replays; **T19b** the plans (the step `Build`,
+    `check_towns` and `check_rewards` taught the events, decision 57, the legal-builds,
+    refused-build, told-views, hygiene and mark-clearing properties); **T19c** the env's build
+    entry (the AI lane's action encoding), the rollout's skip dropped (decision 56), random play
+    with builds, the benchmarks and the census. Not chosen: the plans folded into T19a (two
+    parts); T19c cut again (the env and random play; the benchmarks and the census).
+59. **Increment 2's own map** (recommended): `fixtures/maps/e09-builds-36.h3m` carries the Castle
+    by water and the one inland, the Conflux, the town events and the custom set forbidding a
+    requirement, so that the town map `e09-towns-36.h3m` and its replays, the env's seeds and the
+    four `towns-36` workloads stay as they are (design §32 had the town map gain them). The env's
+    and the benchmarks' builds (T19c) may use either map. Not chosen: the town map extended (eight
+    replays re-recorded, the env's seeds searched again, four workloads re-set).
+
+### Decisions at T19b's start (2026-11-10, the user)
+
+60. **T19b whole** (recommended): the plans' towns given events, the step `Build` with runs of
+    builds, `check_timed` and `check_towns` taught the events' gains and builds, the towns' cover
+    test counting them, the hygiene and told-views properties with both, in one session and one
+    `cross-lane` pull request. Not chosen: two parts (the events and their checks; then the step
+    and the views).
+61. **`master`'s counterexample of the plans' gains fixed first** (recommended): the adventure
+    lane's inbox entry of T19a (a guarded Mystical Garden's gain expected before the joining
+    monster's treasure), reproduced on `master`'s strategy and fixed in the same pull request,
+    since T19b's new plan field changes the draws and its seed then replays another case. Not
+    chosen: left to the adventure lane.
+
+### Decisions at T19c's start (2026-11-10, the user)
+
+62. **T19c cut in two, the env first** (recommended): **T19c1** the env's build entry and
+    building head (the AI lane's action encoding v9), the rollout's skip dropped (decision 56), a
+    test playing the town map to its end of days with builds, random replays with builds, the
+    town map's workloads re-baselined where their random games moved, the AI lane's inbox told;
+    **T19c2** the new benchmark workloads against `master` and the census of the 160 shipped maps
+    with the original data, the map client's inbox told. Not chosen: the census and the new
+    workloads first (the env's random games would then move the workloads a second time); T19c
+    whole (one long session, one pull request over the AI, adventure and server lanes' paths).
+
+### Decisions at T19c2's start (2026-11-11, the user)
+
+63. **T19c2 whole** (the agent recommended the census first, while the original data were
+    staged, and the workloads in a later session, which needs no original data): the census of
+    the 160 shipped maps, the new benchmark workloads against `master` and the map client's inbox
+    in one session and one `cross-lane` pull request (the benches README's rows in a `shared/`
+    one). Not chosen: the census now and the workloads next; the workloads first.
+
+### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
+
+- **T11 The random dwellings tied to a town** (`ADV-STUB-13`, decision 39; `cross-lane`). Done 2026-11-06 (map import v20; `E09-log.md`).
+- **T12 The construction survey** (decision 38; survey `E09-construction.md`), cut in two at its start (the user, 2026-11-06): **T12a** the build command's checks, what a build does, the cost and requirement tables, VCMI and the wiki compared: done 2026-11-07 (§0 to §7; TD-9 kept, TD-11 new; `E09-log.md`). **T12b** the town events, the census of the shipped maps, the disputes and quirk candidates of both parts, the checkpoint with the user: done 2026-11-07 (§8 to §12; TD-12 and T-8 new; `TWN-Q8`, decisions 41–44; `E09-log.md`).
+- **T13 The ADR amendment drafts, the design note (Part D of `E09-design.md`, §23 to §36) and the cut**, kept whole at its start (the user): done 2026-11-07 (`TWN-Q9` before the drafts, decisions 45–47; the checkpoint `TWN-Q10`, decisions 48–51; `E09-log.md`).
+- **T14 Batch TWN-2** (design §33; TD-9's and TD-11's rows), cut in three at its start (the user, 2026-11-07, as TWN-1's T3a to T3c): **T14a** the spec and template and **T14b** the harness's hall path, the recipe and two runs: done 2026-11-07 (`experiments/results/E09-batch-2a.md`, `-run2.md`; `E09-log.md`). **T14c** the scoring, kept whole at its start (the user): done 2026-11-07 (survey `E09-construction.md` §13: TD-9 as the reading, TD-11 refused by the build dialog's owner test; decisions 41 and 42 stand; the town screen's display pieces, nothing to build, no `T-10`; `E09-log.md`).
+- **T15** `shared/`: the drafts into `docs/adr/` with TWN-2's verdicts, `docs/03`'s terms, `docs/06-security.md`'s words (design §35), kept whole at its start (the user): done 2026-11-07 (ADR-0028 points 2, 5, 6, 9; ADR-0016 points 1, 4, 6; ADR-0017 points 1 to 4, 6 to 10; the drafts deleted; `E09-log.md`).
+- **T16a** the part's requirements, costs and the role `shipyard` (§24, part v4), kept whole at its start: done 2026-11-07 (part v4; the adventure replays' `town_ruleset_hash` line, `cross-lane`; `E09-log.md`). **T16b** their harvest (§25, `cross-lane`, original data), kept whole at its start: done 2026-11-07 (the base and AB packs re-harvested; the adventure replays' `town_ruleset_hash` line, `cross-lane`; `E09-log.md`).
+- **T17** `h3-towns`: the day's mark, the store's writes, the rules, `TownCommand` (§26, §27), cut in two at its start (the user, 2026-11-09): **T17a** the mark, `built_with` and the store's writes: done 2026-11-09 (town state hash v2, game state hash v26, `cross-lane`; TWN-BLD-004, -005; `E09-log.md`). **T17b** the rules that decide a build, `TownCommand` and its errors, the other catalog entries, `TWN-QUIRK-7`: done 2026-11-09 (no version moved; TWN-BLD-001 to -003, -006, -007, TWN-EVT-003; `E09-log.md`).
+- **T18a** the Shipyard's water (§28), kept whole at its start (the user, 2026-11-09): done 2026-11-09 (adventure ruleset part v19, `cross-lane`; TWN-SET-011; `E09-log.md`); **T18b** the command, the legal builds, the day's start, the capture's mark, the views (§29 to §31), cut in two at its start (the user, 2026-11-09): **T18b1** the command, the day's start, the capture's mark: done 2026-11-09 (adventure replay format v11, `cross-lane`; TWN-BLD-001, -004 the game's halves; `E09-log.md`); **T18b2** the legal builds and the views, cut in two at its start (the user, 2026-11-10; decisions 52 to 54): **T18b2a** the views and events with SRV-Q26's town gap: done 2026-11-10 (no version moved, `cross-lane`; TWN-VEW-001 amended, TWN-VEW-004, `TWN-STUB-13`; `E09-log.md`); **T18b2b** the legal builds and `town_offer`, kept whole at its start (the user, decisions 55, 56): done 2026-11-10 (no version moved, `cross-lane`; TWN-BLD-001 amended; `E09-log.md`); **T18c** the town events at the turn start (§30), kept whole at its start with the plans' checks moved to T19 (the user, decision 57): done 2026-11-10 (protocol v41, `cross-lane`; TWN-EVT-001, -002, -004, TWN-EVT-003's game half, GAM-CAL-004 amended, `TWN-STUB-10`; `E09-log.md`).
+- **T19** the writer's town events, fixtures, replays, properties (with the plans' `check_towns` and `check_rewards` taught the events' builds and gains, decision 57), benchmarks, the env, the census (§32), cut in three at its start (the user, decisions 58, 59): **T19a** the writer's events, the builds map and its scripted replays: done 2026-11-10 (no version moved, `cross-lane`; `writer::TownEvent`, `e09-builds-36.h3m`, `builds-week-s1`, `-capture-s1`, `-events-s1`; `E09-log.md`); **T19b** the plans, kept whole at its start with `master`'s counterexample of the plans' gains fixed first (the user, decisions 60, 61): done 2026-11-10 (no version moved, `cross-lane`, tests only; `E09-log.md`); **T19c** the env, random play with builds, the benchmarks, the census, cut in two at its start (the user, decision 62): **T19c1** the env and random play: done 2026-11-10 (the AI lane's action encoding v9, `cross-lane`; `builds-s262-d14`, `-s271-d14`, `-s290-d14`; three workloads re-baselined; `E09-log.md`); **T19c2** the new benchmark workloads and the census, kept whole at its start (the user, decision 63): done 2026-11-11 (no version moved, `cross-lane`; `legal-towns-36`, `day-start-builds-36`; the census of exit criterion 6 in `h3-map`'s `original_data`; `E09-log.md`).
+- **T20** the audit against the exit criteria; increment 2 closed; increment 3 refined.
+
+### Exit criteria
+
+Accepted at T13's checkpoint (decision 50; design §35; increment 1's: `E09-archive.md`):
+
+1. A town's owner, in its turn, builds a building of its town's faction that the original's hall
+   offers it (its requirements in the ever-built set by the executable's lists, not forbidden, the
+   Shipyard only with water, one Capitol a player, the hordes as their upgrades), one a town a day,
+   paid from its treasury at `Building.txt`'s costs; every other build is refused, typed, changing
+   nothing (TWN-BLD-001 to -007, TWN-SET-011).
+2. A build changes increment 1's reads at once: the hall's income, the fort and the siege's facts,
+   the Tavern's view levels, the silo, the Capitol (tests per role).
+3. The map's town events fire as the original's: their days, players and kinds, at their owner's
+   turn start after the map's timed events, in the map's order; their resources, then their
+   buildings without the hall's tests; their creatures registered for increment 3 (TWN-EVT-001 to
+   -004; T-8 and TD-12 as decided).
+4. The views are the original's: the owner sees its buildings, everyone who sees the town its
+   day's mark, fort and Capitol; nothing else leaks (the hygiene and told-views properties with
+   builds; `docs/06-security.md`).
+5. The env plays the build; the plans build; golden replays cover a week of builds, a capture
+   after a build and the town events, and the builds map's test each refusal (a replay holds no
+   refused command, T19a); determinism and the forks' sharing hold (a build copies one town)
+   (worded as built by T20).
+6. With the original data all 160 shipped maps import, build and play their town events over
+   their first days; the census (the Shipyards removed for want of water, the events fired, built
+   and skipped) is recorded against the survey.
+7. Batch TWN-2 is scored and its verdicts applied (TD-9, TD-11).
+8. The gates hold (100 % coverage, the scoped verify, CI's full verify); the versions are bumped and
+   recorded; the other lanes' inboxes are told (the AI lane's encoding, the map client's town
+   screen, the server lane's wire for the command and the events); the server's manifest carries
+   the part's hash since its own E16 T4 (worded as built by T20).

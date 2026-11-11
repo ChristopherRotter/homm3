@@ -173,7 +173,7 @@ epic   = "E09"
 [[stub]]
 id     = "TWN-STUB-6"
 where  = "crates/h3-game/src/town/heroes.rs::main_town_heroes"
-reason = "A main town's hero learns none of the town's guild spells at the start (TWN-SET-009; E09 T7b2b): the original's main_town_heroes calls town_heroes_learn_spells 0x5BE030 at 0x4CA1A2 after placing the hero, which teaches the town's visitor and garrison hero the spells of the town's Mage Guild when that hero has a spell book and the town has its Mage Guild ever built (building 0); VCMI 1.7.5 teaches them nothing at the start: a dispute for increment 4, when the guild's spells are drawn (they are not yet). The census (h3-map's example original_data, seed 0): 33 of the 523 main towns' heroes of the 156 shipped maps that build start with a spell book in a main town with a Mage Guild built"
+reason = "A main town's hero learns none of the town's guild spells at the start (TWN-SET-009; E09 T7b2b): the original's main_town_heroes calls town_heroes_learn_spells 0x5BE030 at 0x4CA1A2 after placing the hero, which teaches the town's visitor and garrison hero the spells of the town's Mage Guild when that hero has a spell book and the town has its Mage Guild ever built (building 0); VCMI 1.7.5 teaches them nothing at the start: a dispute for increment 5, when the guild's spells are drawn (they are not yet). The census (h3-map's example original_data, seed 0): 33 of the 523 main towns' heroes of the 156 shipped maps that build start with a spell book in a main town with a Mage Guild built"
 epic   = "E09"
 
 [[stub]]
@@ -191,7 +191,7 @@ epic   = "E09"
 [[stub]]
 id     = "TWN-STUB-13"
 where  = "crates/h3-game/src/town/view.rs::Told"
-reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 4 casts Visions on the map; the server lane's fold test exempts it until then)"
+reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 5 casts Visions on the map; the server lane's fold test exempts it until then)"
 epic   = "E09"
 
 # --- ai (AI-STUB-<n>) ---

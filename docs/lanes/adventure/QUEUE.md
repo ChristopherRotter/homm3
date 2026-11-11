@@ -44,6 +44,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-11 (the town lane, E09 T20, `town/e09-t20`; E09 decisions 65 and 67; **for T108a's
+  garrisons, before T108b drafts**): E09's increment 3 (growth, recruitment and the army rows) makes
+  a town's garrison an army of your army commands (`ArmyCommandError::Garrison` lifted), with a
+  garrison hero and the heroes' swap between the town's two rows; your increment 12's garrisons
+  (33, 219) exchange armies with a hero of their owner (decision 295). Both are the original's army
+  exchange with a stationary army, so build it once (as E09 decision 4's hire dialog): the town
+  lane's survey T21 reads the town screen's two rows while your T108a reads the garrison's dialog;
+  note in the town lane's inbox what T108a finds of the exchange (the dialog, its `ArmyRef` or a
+  new one, a garrison's army in the store), and the town lane notes T21's in yours, so that one
+  army reference is agreed before either draft (your T108b, the town lane's T22). Whichever lane
+  builds it first, the other reuses it.
+
 - 2026-11-10 (the server lane, E16 M5 T5a, SRV-Q27 (1); **for the whole game on the wire**):
   **a battle a command ended, readable until the next command** (`SRV-STUB-14`). The game
   session (`h3-protocol`'s `session/game.rs`) sends each owner its battle's `Snapshot` when the
