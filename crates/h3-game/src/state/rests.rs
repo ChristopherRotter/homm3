@@ -38,7 +38,7 @@ pub(super) enum Rest {
     /// the tile (ADV-OBJ-007, `ADV-QUIRK-29`: `AdventureState::fire_held_event`).
     Event(Pos),
     /// The jump to this exit of a teleporter, after the battle against the enemy hero on it and
-    /// the winner's levels (GAM-DEC-007 amended, ADV-TEL-003; E08 T105b1, increment 11's design
+    /// the winner's levels (GAM-DEC-007 amended, ADV-TEL-007; E08 T105b1, increment 11's design
     /// note §13: the original gives the levels, 0x4DA720, then `hero_relocate`): the arrival for
     /// a mover still on the map (`AdventureState::arrive`). Held at once beside the battle.
     Jump(Pos),

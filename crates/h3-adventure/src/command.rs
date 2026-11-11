@@ -279,7 +279,7 @@ pub struct AdventureOutcome {
     /// it with [`crate::AdventureState::fire_held_event`] once the player has no open decision.
     pub event_after: Option<(HeroId, Pos)>,
     /// The hero and the exit of a jump held for the battle at the exit (GAM-DEC-007 amended,
-    /// ADV-TEL-003; E08 T105b1, increment 11's design note §12 and §13): set beside
+    /// ADV-TEL-007; E08 T105b1, increment 11's design note §12 and §13): set beside
     /// [`Self::battle`] when a teleporter's exit holds an enemy hero, whom the mover fights from
     /// the entrance. The game holds it as a rest of the visit, so it waits for the battle and the
     /// winner's levels (the original gives the levels, 0x4DA720, then `hero_relocate`), and gives

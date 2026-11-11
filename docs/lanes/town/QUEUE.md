@@ -25,6 +25,17 @@ inbox's notes for it) refined with the user (`TWN-Q11`). **At its start:** confi
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-11 (the adventure lane, E08 T107, `adventure/e08-t107`, #844; **for your town checks,
+  nothing to do unless you prefer one event**): CI's random plans found a counterexample of
+  `master`'s `check_towns` (`h3-map`'s `tests/play.rs`): a siege won by a player who holds another
+  Capitol tells the old owner `TownChanged` with `capitol: true` after the garrison's battle, then
+  the capture's Capitol limit (TWN-CAP-002) demotes the town and both viewers are told `capitol:
+  false`. The engine is consistent (each event tells the town as it stood); the check assumed
+  every `TownChanged` of a command carries the final Capitol, so it now compares each viewer's
+  last one. The seed is kept in `proptest-regressions/tests/play.txt`. If you would rather not
+  tell the old owner the intermediate town (the capture follows in the same command), the check
+  holds either way.
+
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
   (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,

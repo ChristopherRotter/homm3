@@ -4,6 +4,7 @@
 //! Gates' jumps (`jumps.rs`); since T105a2 (design note §7 item 5, §8) the Whirlpool's loss and
 //! jump.
 
+use core::num::NonZeroU32;
 use std::string::String;
 
 use h3_content::{ArtifactClass, ArtifactDef, ArtifactSlotDef, HeroEffect};
@@ -28,7 +29,8 @@ pub(super) const HERO: HeroId = HeroId::new(1);
 /// `t:two_way_1` of channel 1; since T105a2 a Whirlpool `t:whirlpool_3` of divisor 3, the
 /// creatures' fight values (the Pikeman the Pegasus's 407, the Gnoll the Dendroid Guard's 690, the
 /// Peasant 15, the Wolf the Azure Dragon's 56 315: batch E11's E11-10 and E11-12) and a hat
-/// `t:hat` worn on the head, which spares its wearer a Whirlpool's loss.
+/// `t:hat` worn on the head, which spares its wearer a Whirlpool's loss; since T107 a stack holds
+/// up to the base pack's 1 000 000.
 pub(super) fn teleporter_rules() -> Rules {
     movement_rules_with(
         true,
@@ -56,6 +58,10 @@ pub(super) fn teleporter_rules() -> Rules {
             }];
         },
         |part| {
+            // The base pack's cap, so that a stack's fight value times its count passes 32 bits
+            // (E08 T107's audit).
+            let params = part.params.as_mut().unwrap();
+            params.max_stack_count = NonZeroU32::new(1_000_000).unwrap();
             let ty = |k: &str, from_above, kind| ObjectTypeDef {
                 key: key(k),
                 name: "Object".into(),
@@ -277,6 +283,7 @@ fn a_teleporter_off_its_surface_is_refused_when_the_game_is_built() {
         ("t:monolith", 2),
         ("t:entrance", 4),
         ("t:underground_gate", 3),
+        ("t:underground_gate", 5),
         ("t:whirlpool", 1),
         ("t:whirlpool", 5),
     ] {
@@ -290,6 +297,18 @@ fn a_teleporter_off_its_surface_is_refused_when_the_game_is_built() {
             "{k} on {x}"
         );
     }
+    // Two off their surface: the first in object order is named, though the second's tiles come
+    // first in the walk (E08 T107's audit).
+    let mut setup = world(&rows, 1, vec![]);
+    setup.map.objects.extend(fine.clone());
+    setup
+        .map
+        .objects
+        .extend([o("t:monolith", 2, 3), o("t:whirlpool", 1, 3)]);
+    assert_eq!(
+        started(&rules, &setup).err(),
+        Some(SetupError::TeleporterSurface(2))
+    );
     assert_eq!(
         SetupError::TeleporterSurface(2).to_string(),
         "teleporter 2 has a visitable tile off its surface"
@@ -540,6 +559,41 @@ fn a_two_way_monolith_leads_to_another_of_its_channel_never_itself() {
         );
     }
     assert_eq!(seen, [true; 2]);
+    // One free member, the other under Red's own hero 3: the one candidate, no draw (E08 T107's
+    // audit).
+    let mut state = jump_state(&rules, (1, None), &[(3, 0, members[2])], &objects);
+    let mut draws = stream();
+    let (_, events) = walk(&mut state, &rules, &ONTO, &mut draws).unwrap();
+    assert_eq!(draws, stream());
+    assert_eq!(jumps(&events), [(Some(members[0]), Some(members[1]))]);
+}
+
+// covers: ADV-OBJ-003, ADV-TEL-004, ADV-TEL-005
+#[test]
+fn no_path_goes_through_a_teleporter_of_any_kind() {
+    let rules = teleporter_rules();
+    let heroes = [Arc::new(hero_details(&[]))];
+    // A corridor of grass, Red's hero on (0, 0): (3, 0) and (4, 0) lie beyond (2, 0). The paths
+    // to (2, 0) and to (4, 0) without and with a teleporter on (2, 0).
+    let rows = ["ggggg"];
+    let paths = |k: Option<&str>| {
+        let mut setup = world(&rows, 1, vec![hero_at(1, 0, p(0, 0), &[PIKEMAN])]);
+        setup
+            .map
+            .objects
+            .extend(k.map(|k| object(&rules, Some(k), p(2, 0), 1)));
+        let state = started(&rules, &setup).unwrap();
+        let reach = state.reach(&rules.0, &rules.1, &heroes, HERO).unwrap();
+        (reach.path(p(2, 0)), reach.path(p(4, 0)))
+    };
+    let onto = Some(vec![p(1, 0), p(2, 0)]);
+    let corridor = Some((1..=4).map(|x| p(x, 0)).collect());
+    assert_eq!(paths(None), (onto.clone(), corridor));
+    // Every monolith's way and the gate a destination, the path's last tile: nothing beyond it is
+    // reached (D-58 as the original; the Whirlpool's: the sea's test below; E08 T107's audit).
+    for k in ["t:entrance", "t:exit", "t:monolith", "t:underground_gate"] {
+        assert_eq!(paths(Some(k)), (onto.clone(), None), "{k}");
+    }
 }
 
 // covers: ADV-TEL-004, ADV-TEL-005
@@ -720,6 +774,69 @@ fn a_guarded_entrance_meets_its_guard_first_then_the_jump_follows() {
     assert_eq!(held, AdventureOutcome::default());
     assert_eq!(red(&state).0, p(20, 1));
     assert_eq!(jumps(&events), [(Some(p(2, 1)), Some(p(20, 1)))]);
+    // A guarded gate likewise to its pair (E08 T107's audit).
+    let gates = [
+        ("t:underground_gate", p(2, 1)),
+        ("t:underground_gate", at(2, 1, 1)),
+    ];
+    let mut state = jump_state(&rules, (2, Some(p(3, 2))), &[], &gates);
+    let (outcome, _) = walk(&mut state, &rules, &ONTO, &mut stream()).unwrap();
+    assert_eq!((outcome.visit_after, red(&state).0), (Some(HERO), p(2, 1)));
+    let mut events = Vec::new();
+    state.visit_held(rules3, (RED, HERO), &mut stream(), &mut events);
+    assert_eq!(jumps(&events), [(Some(p(2, 1)), Some(at(2, 1, 1)))]);
+    // A guarded two-way monolith's held visit draws its exit from the stream it is given (the
+    // game's: the visitor's owner's, `run_rest`).
+    let members = [p(2, 1), p(12, 1), p(22, 1)];
+    let mut seen = [false; 2];
+    for seed in 0..16 {
+        let objects = members.map(|m| ("t:monolith", m));
+        let mut state = jump_state(&rules, (1, Some(p(3, 2))), &[], &objects);
+        let (outcome, _) = walk(&mut state, &rules, &ONTO, &mut stream()).unwrap();
+        assert_eq!(outcome.visit_after, Some(HERO));
+        let mut draws = Rng::for_stream(seed, StreamId::player(0));
+        let mut expected = draws.clone();
+        let place = usize::try_from(expected.below(2)).unwrap();
+        seen[place] = true;
+        let mut events = Vec::new();
+        state.visit_held(rules3, (RED, HERO), &mut draws, &mut events);
+        assert_eq!(draws, expected, "seed {seed}");
+        assert_eq!(red(&state).0, members[1 + place]);
+    }
+    assert_eq!(seen, [true; 2]);
+}
+
+// covers: GAM-BAT-004, GAM-BAT-013
+#[test]
+fn a_battle_at_an_exit_takes_the_entrances_ground_for_the_attacker() {
+    let rules = teleporter_rules();
+    // A hallow lying under the entrance (2, 1), blocking nothing; Blue's hero 2 on the one exit:
+    // the mover fights from the entrance, so the attacker's ground is the entrance's (E08 T107's
+    // audit; `fought_at` asserts none for the other exits' battles).
+    let rows = vec!["g".repeat(WIDE); 3];
+    let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
+    let heroes = vec![
+        hero_at(1, 0, p(0, 1), &[PIKEMAN]),
+        hero_at(2, 1, p(20, 1), &[PIKEMAN]),
+    ];
+    let mut setup = world(&rows, 1, heroes);
+    setup.map.objects.extend([
+        object(&rules, Some("t:entrance"), p(2, 1), 1),
+        object(&rules, Some("t:exit"), p(20, 1), 1),
+        ObjectSetup {
+            blocked: TileMask::default(),
+            visitable: TileMask::default(),
+            drawn: TileMask::from_bits(1),
+            ..object(&rules, Some("t:hallow"), p(2, 1), 0)
+        },
+    ]);
+    let mut state = started(&rules, &setup).unwrap();
+    let (outcome, _) = walk(&mut state, &rules, &ONTO, &mut stream()).unwrap();
+    let battle = outcome.battle.as_ref().unwrap();
+    assert!(matches!(&battle.defender, Defender::Hero(c) if c.hero == HeroId::new(2)));
+    assert_eq!(battle.tile, p(20, 1));
+    assert_eq!(battle.attacker_ground, Some(key("t:hallow")));
+    assert_eq!(outcome.jump_after, Some((HERO, p(20, 1))));
 }
 
 // covers: ADV-FOG-004, ADV-TEL-007
@@ -910,6 +1027,14 @@ fn a_whirlpool_takes_the_weakest_stack_by_fight_value_times_count_first_slot_on_
             vec![stack(0, WOLF, 1800), stack(1, WOLF, 888)],
             (1, WOLF, 888),
         ),
+        // Past 32 bits: 77 000 (4 336 255 000) above 70 000 (3 942 050 000), which a 32-bit
+        // product would wrap below it (E08 T107's audit).
+        (
+            "t:whirlpool",
+            vec![stack(0, WOLF, 77_000), stack(1, WOLF, 70_000)],
+            vec![stack(0, WOLF, 77_000), stack(1, WOLF, 35_000)],
+            (1, WOLF, 35_000),
+        ),
         // Beside another stack a lone creature is lost, its slot emptied.
         (
             "t:whirlpool",
@@ -975,6 +1100,53 @@ fn a_whirlpool_spares_a_hero_wearing_the_hat() {
         let told: Vec<u32> = losses(&events).iter().map(|loss| loss.3).collect();
         assert_eq!(told, lost);
     }
+    // A hero the store holds no details of has no hat: the loss taken (the other tests' store
+    // holds none for `HERO`; E08 T107's audit).
+    let mut state = whirlpool_state(&rules, army, &[("t:whirlpool", p(3, 1), 0x0303)]);
+    let (_, events) = whirl(&mut state, &rules, &[bare], &mut stream());
+    assert_eq!(losses(&events), [(HERO, 0, PIKEMAN, 5)]);
+}
+
+// covers: ADV-TEL-006
+#[test]
+fn a_whirlpool_takes_every_players_hero_alike() {
+    let rules = teleporter_rules();
+    // Blue's hero 2 boards boat 2 on (13, 1) and steps onto a Whirlpool's tile (13, 0): its loss
+    // as Red's hero's, told to Blue alone (A-40 not reproduced, `ADV-QUIRK-42`: the original
+    // spares a computer player's hero; no player here is either, decision 16; E08 T107's audit).
+    let whirlpool = [("t:whirlpool", p(13, 0), 1)];
+    let mut state = whirlpool_state(&rules, vec![stack(0, PIKEMAN, 4)], &whirlpool);
+    let blue = HeroId::new(2);
+    state.put_aboard(blue, 2);
+    let at = state.heroes.partition_point(|h| h.id < blue);
+    state.heroes[at].army = vec![stack(0, PIKEMAN, 6)];
+    assert!(state.check_boats(&rules.1));
+    let store = [Arc::new(hero_details(&[]))];
+    let command = AdventureCommand::MoveHero {
+        hero: blue,
+        path: vec![p(13, 0)],
+    };
+    let mut events = Vec::new();
+    let mut draws = Rng::for_stream(7, StreamId::player(1));
+    state
+        .apply(
+            &rules.0,
+            &rules.1,
+            &store,
+            (BLUE, &mut draws),
+            &command,
+            &mut events,
+        )
+        .unwrap();
+    assert_eq!(state.hero(blue).unwrap().army, [stack(0, PIKEMAN, 3)]);
+    let told: Vec<_> = events
+        .iter()
+        .filter_map(|e| match e.kind {
+            AdventureEventKind::WhirlpoolLoss { hero, count, .. } => Some((hero, count, e.seen_by)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(told, [(blue, 3, Viewers::NONE.with(BLUE))]);
 }
 
 // covers: ADV-TEL-006, ADV-TEL-003, ADV-TEL-007
@@ -1043,4 +1215,29 @@ fn a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_
         }
     }
     assert_eq!(seen, [true; 3]);
+}
+
+// covers: ADV-TEL-003, ADV-TEL-006
+#[test]
+fn an_enemy_on_the_entrances_own_whirlpool_is_a_candidate() {
+    let rules = teleporter_rules();
+    // A lone Whirlpool, (2, 0) to (3, 1): its own tiles are excluded, but Blue's hero 2 in its
+    // boat on (3, 1) stands on a listed tile, a candidate whatever lies there (the hero tested
+    // before the exclusion, `teleport_exit_draw` 0x4CDB80, survey §4.1; E08 T107's audit): the
+    // one candidate, no draw; the loss, then the battle there with the jump held after it.
+    let whirlpool = [("t:whirlpool", p(3, 1), 0x0303)];
+    let mut state = whirlpool_state(&rules, vec![stack(0, PIKEMAN, 4)], &whirlpool);
+    let blue = HeroId::new(2);
+    state.put_aboard(blue, 2);
+    let at = state.heroes.partition_point(|h| h.id < blue);
+    state.heroes[at].pos = p(3, 1);
+    assert!(state.check_boats(&rules.1));
+    let store = [Arc::new(hero_details(&[]))];
+    let mut draws = stream();
+    let (outcome, events) = whirl(&mut state, &rules, &store, &mut draws);
+    assert_eq!(draws, stream());
+    assert_eq!(losses(&events), [(HERO, 0, PIKEMAN, 2)]);
+    assert!(jumps(&events).is_empty());
+    let battle = fought_at(&outcome, p(3, 1), blue);
+    assert_eq!(battle.battlefield, Some(key("t:boats")));
 }

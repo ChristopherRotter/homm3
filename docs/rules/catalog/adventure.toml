@@ -529,6 +529,12 @@ numeric  = "integer"
   ref        = "ADR-0016 points 5 and 6: one explored layer per player, no line-of-sight memory; an event's visibility resolved when it is emitted, a move per step"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-18 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06; survey E08-teleporters.md section 15; cited by E08 T107): the Replay Opponent Turn moved the view to an enemy jump's exit in the viewer's shroud and back (A-41 as read; not reproduced, ADV-QUIRK-43), the exit's surroundings never drawn, nothing explored. Not observed: the rule's other views (wider than increment 11)"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-FOG-005"
 title    = "What a player sees on the fringe"
@@ -725,6 +731,12 @@ numeric  = "integer"
   retrieved  = "2026-11-03"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15; cited by E08 T107): the five teleporter classes as the original reads them, the monoliths of classes 43 to 45 by subclass (channels kept apart by subclass and way: E11-2, E11-4, E11-15), the Subterranean Gates (E11-6 to E11-9) and the Whirlpools reached by boat (E11-10 to E11-17), each entered on its entrance"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-OBJ-003"
 title    = "Visit modes: an object's visitable tile is entered, or visited from the tile before"
@@ -750,6 +762,12 @@ numeric  = "integer"
   retrieved  = "2026-10-12"
   confidence = "high"
   note       = "Agrees on the modes, the price and the end of the path; the drop to 0 is ADV-Q3's reading (D-3). On a tile visited from two objects VCMI's neighbour visit takes the first, the engine the last (the original's one object per tile; E08 T14a, the user's leave of 2026-10-12)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-1 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06; survey E08-teleporters.md section 15; cited by E08 T107): no path through a two-way monolith to the tile beyond it, the path to the monolith ending on it (D-58 as the original; VCMI's path through a two-way pair not the original's). Not observed: the rule's other destinations (wider than increment 11)"
+  retrieved  = "2026-11-07"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-OBJ-004"
@@ -1240,7 +1258,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11c.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-07; survey E08-teleporters.md sections 15 and 15.1): a guarded monolith's entrance fought before the jump (E11-19); a guarded mine's battle opened with the mine still neutral, flagged after the win (E11-21); a guarded Learning Stone's battle at experience 0, its 1 000 and the level-up after the win (E11-22); the step off a guarded exit into the guard's zone fought (E11-20, E11-23's control)"
+  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11c.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-07; survey E08-teleporters.md sections 15 and 15.1): a guarded monolith's entrance fought before the jump (E11-19); a monster beside a monolith's exit not fought at the arrival, the control step beside it fought (E11-3); a guarded mine's battle opened with the mine still neutral, flagged after the win (E11-21); a guarded Learning Stone's battle at experience 0, its 1 000 and the level-up after the win (E11-22); the step off a guarded exit into the guard's zone fought (E11-20, E11-23's control)"
   retrieved  = "2026-11-07"
   confidence = "high"
 
@@ -3293,7 +3311,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15): heroes stepped onto and stood on the entrances of two-way and one-way monoliths, gates and (in boats) Whirlpools (E11-2, E11-4, E11-5, E11-8, E11-10, E11-14, E11-19); channels kept apart by subclass and way (E11-2, E11-4, E11-15)"
+  ref        = "experiments/results/E08-batch-11a.md and E08-batch-11b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15): heroes stepped onto and stood on the entrances of two-way and one-way monoliths, gates and (in boats) Whirlpools (E11-2, E11-4, E11-5, E11-8, E11-10, E11-14, E11-19); channels kept apart by subclass and way (E11-2, E11-4, E11-15); every row of both batches (E11-1 to E11-19) met its teleporters as their classes and subclasses type them. Not observed (E08 T107): A-39's and A-42's refusals (crafted maps the original loads) and the SoD channels 3 to 7"
   retrieved  = "2026-11-07"
   confidence = "high"
 
@@ -3327,6 +3345,12 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E08-batch-11a.md E11-9 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06; survey E08-teleporters.md section 15): a surface gate led to the underground gate first in the walk of two at the truncated distance 4 (squares 18 and 16), not the nearer by squares (D-56 confirmed)"
   retrieved  = "2026-11-06"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-8 and E08-batch-11b.md E11-15 and E11-17 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15; cited by E08 T107): a gate left over without a pair leads nowhere (ADVEVENT 153); each of four two-way monoliths of one channel led only to the other three; the Whirlpools' list read at the start, 16 tiles in the walk's order (W1's six, W3's five, W2's five) each with its Whirlpool's word, both boats' tiles out (ADV-QUIRK-45). Not observed: the greedy order over several unpaired gates (a gate not paired with its nearest: the reading's and the census's alone)"
+  retrieved  = "2026-11-07"
   confidence = "high"
 
 [[rule]]
@@ -3368,6 +3392,12 @@ numeric  = "integer"
   retrieved  = "2026-11-05"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-4 and E08-batch-11b.md E11-16 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15; cited by E08 T107): a one-way entrance whose only exit holds a hero of the team has no candidate: the hero stays on it, nothing shown; a Whirlpool's tile under an enemy hero drawn as an exit (the landing on it, A-37)"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-TEL-004"
 title    = "A monolith's jump"
@@ -3394,11 +3424,17 @@ numeric  = "integer"
   retrieved  = "2026-11-05"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11b.md E11-15 and E08-batch-11a.md E11-19 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md section 15; cited by E08 T107): a two-way monolith's jump to one of its channel's three other members with the points kept, never the monolith stood on; a guarded two-way entrance's guard fought first, then the jump (decision 279). Not observed: an enemy hero on a monolith's exit (its battle; a gate's, E11-7, and a Whirlpool's, E11-16, are) and a two-way channel of one"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-TEL-005"
 title    = "A Subterranean Gate's jump"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "The step onto a Subterranean Gate ends the move there (ADV-OBJ-003); its visit is the jump to its pair (ADV-TEL-002), with no draw (increment 11's design note section 7 item 4). A gate without a pair leads nowhere: told to the visitor's owner alone (`LeadsNowhere`; the original's ADVEVENT 153, shown without a human test), the hero stays. A free pair: the arrival (ADV-TEL-007). A hero on the pair, of any team: the tiles within 1 of it explored by the mover's owner (no event), then the meeting with a hero of the team (GAM-MET-001: the outcome's meeting, the two heroes no neighbours, the mover staying on the gate) or the battle at the pair with an enemy (GAM-BAT-004, the jump held after the winner's levels, GAM-DEC-007). E08 T105a1: `jumps.rs`' `visit_gate`; T105b1: the meeting and the battle (`jump`)."
 numeric  = "integer"
 
@@ -3419,6 +3455,12 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Subterranean_Gate"
   retrieved  = "2026-11-05"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-6 and E11-7 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06; survey E08-teleporters.md section 15; cited by E08 T107): a hero of the team on the pair: the tiles within 1 of the pair explored, the meeting opened with the mover staying on the gate with its points; an enemy hero on the pair: the 3 x 3 about it explored as the battle opened, the battle on the pair's terrain with the mover attacking from the gate, won, then the mover on the pair"
+  retrieved  = "2026-11-07"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-TEL-006"
@@ -3460,6 +3502,12 @@ numeric  = "integer"
   retrieved  = "2026-11-05"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11b.md E11-17 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-07; survey E08-teleporters.md section 15; cited by E08 T107): with the Admiral's Hat, 61 jumps a run from three Whirlpools in a boat lost nothing and told nothing; each exit one of the other Whirlpools' listed tiles, never the Whirlpool stood on (D-57)"
+  retrieved  = "2026-11-07"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-TEL-007"
 title    = "A jump's arrival"
@@ -3493,6 +3541,12 @@ numeric  = "integer"
   url        = "https://heroes.shoutwiki.com/wiki/Lith"
   retrieved  = "2026-11-05"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-11a.md E11-7 and E11-10 and E08-batch-11c.md E11-20 (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-06 and -07; survey E08-teleporters.md sections 15 and 15.1; cited by E08 T107): after the won battle at a gate's pair the mover on the pair with its points; a Whirlpool's arrival in the hero's boat with 1 400 of 1 500 (the step's 100); the arrival on a one-way exit beside a guard: no battle, no message, 1 900 kept"
+  retrieved  = "2026-11-07"
+  confidence = "high"
 
 [[rule]]
 id       = "ADV-TEL-008"

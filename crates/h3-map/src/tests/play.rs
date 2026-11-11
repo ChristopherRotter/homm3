@@ -6775,18 +6775,28 @@ fn check_towns(
         let (old, new) = (before.towns().get(town), after.towns().get(town));
         let (old, new) = (old.unwrap(), new.unwrap());
         prop_assert_eq!(old.faction(), new.faction());
-        let changed: Vec<bool> = events
+        let changed: Vec<(PlayerId, bool)> = events
             .iter()
             .filter_map(|e| match *e {
                 GameEvent::TownChanged {
-                    town: t, capitol, ..
-                } if t == town => Some(capitol),
+                    player,
+                    town: t,
+                    capitol,
+                    ..
+                } if t == town => Some((player, capitol)),
                 _ => None,
             })
             .collect();
+        // Each viewer's last `TownChanged` tells the Capitol as the command left it: a siege won
+        // tells the old owner the town after the garrison's battle, then after the capture and
+        // its Capitol's limit (TWN-CAP-002; CI's counterexample on E08 T107's pull request).
         let capitol = after.towns().capitol(town, part);
+        let last = |k: usize, p: PlayerId| changed[k + 1..].iter().all(|&(q, _)| q != p);
         prop_assert!(
-            changed.iter().all(|&c| c == capitol),
+            changed
+                .iter()
+                .enumerate()
+                .all(|(k, &(p, c))| !last(k, p) || c == capitol),
             "{:?}: {:?}",
             town,
             changed
