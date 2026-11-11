@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -47,11 +47,18 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
 66. **The first round** (recommended): a survey (T21: the code reading of `Heroes3.exe` for the week's growth, a dwelling's recruitment and the town screen's two rows and swap, VCMI and the wiki compared, a census of the shipped maps) and its checkpoint, then the ADR amendment drafts with the design note's Part E and the cut (T22), accepted before anything is built, as decisions 7 and 38. Not chosen: the survey alone first.
 67. *Agent's calls (change freely):* **the design note's Part E** in `E09-design.md`, its sections numbered from §37, as decision 40. **The renumbering:** the live citations of the sketch's increments (the rules, the stubs, the town modules' comments, the queue; ADR-0016, -0017, -0028 and `docs/06-security.md` in `shared/e09-t20-increments`) renumbered by T20; the log, the archive, the surveys and the design note's Parts A to D keep their words, as E08's sketch keeps its trail. **The army rows with E08's increment 12:** its garrisons (classes 33, 219) exchange armies with a hero of their owner (E08 decision 295), as a town's garrison will: T21 reads the original's town screen and the adventure lane's T108a its garrison dialog, and the two lanes agree one army reference through their inboxes before either drafts (E08 T108b, T22); built once, by whichever lane builds first, as decision 4's hire dialog (the adventure lane's inbox told). **The inbox's 2026-11-11 note kept as built:** a siege won by a player who holds another Capitol tells the old owner the town with its Capitol before the limit demotes it (each event tells the town as it stood; the plans' check compares each viewer's last `TownChanged`).
 
+68. **T21 whole** (the user at T21's start, `AskUserQuestion`; the agent recommended two parts, growth first, then recruitment and the rows): the survey in one session and one docs-only pull request. Not chosen: two parts; three (growth, recruitment, the rows).
+69. **TD-13, a creature's month** (`TWN-Q12`; the user's own answer, "fix-optional flag"; survey `E09-growth.md` §3, §16): a quirk (candidate T-13), class `fix-optional`: faithful, only the index whose creature is the month's doubles (the original's code, the wiki, VCMI's forum); with the flag, the level whichever of its creatures is the month's (VCMI 1.7.5's code). Registered by its building task.
+70. **TD-14 and T-12, the Plague in a neutral town** (`TWN-Q12`; the user's own answer, "fix-optional"): class `fix-optional`: faithful as read (the full growth taken off a count that got half of it); with the flag, every town keeps half of its count before the week.
+71. **T-11, the Portal of Summoning's first creature** (`TWN-Q12`, recommended): drawn when the Portal is built and when its owner flags a dwelling while it has none, besides each week; the original's draw at the town screen is not modelled. Not chosen: only each week (the computer's path).
+72. **TD-15, a neutral town's garrison week** (`TWN-Q12`, recommended): the reading (survey §4). Not chosen: VCMI's approximation.
+73. *Agent's calls (change freely):* TD-16 (the Portal: a dwelling, then one of its creatures; the count set; no Plague) and TD-17 (an ally's visitor moves no hero, E10) as read; T-10 fixed by proposal (a town's counts saturate where the original's 16 bits wrap); the army reference (survey §15: the town's upper bar `ArmyRef::Garrison` or the garrison hero's, a map garrison a sibling reference, one owner rule) proposed in the adventure lane's inbox, settled in T22's and T108b's drafts; batch TWN-3's six rows (survey §14) for T22's cut.
+
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
 - **T20** the audit of increment 2's exit criteria, its closure, this refinement. Done 2026-11-11 (decisions 64–67; `E09-log.md`).
-- **T21** the survey (decision 66); next.
-- **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66).
+- **T21** the survey (decision 66), kept whole (decision 68). Done 2026-11-11: `docs/rules/surveys/E09-growth.md`, the checkpoint `TWN-Q12` (decisions 69–73; `E09-log.md`).
+- **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66); next.
 
 ### Exit criteria
 
