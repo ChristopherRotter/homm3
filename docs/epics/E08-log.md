@@ -15371,9 +15371,10 @@ an RoE refusal left to the writer (the spec does not know the format until it wr
 
 **Versions:** none moved (the writer and the spec; the import reads the classes as before).
 
-**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` (see
-the pull request), `cargo xtask check-lane --cross-lane`, `cargo check --workspace --all-targets`,
-clippy with `-D warnings` on `h3-map` and `h3-experiment`. The writer's public types gained a body
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` passed
+every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask check-lane
+--cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace --all-targets`
+and clippy with `-D warnings` on `h3-map` and `h3-experiment` clean. The writer's public types gained a body
 variant, constants and a longer `PLAIN_OBJECTS`; `OwnedBody` is matched only in `h3-map` and
 `h3-experiment` (the clients build `MapObject`s, none matches `OwnedBody`). CI's full verify on the
 pull request is the record.
