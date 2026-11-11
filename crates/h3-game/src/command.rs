@@ -20,7 +20,7 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
-use crate::{GameRuleset, GameState, MonthKind};
+use crate::{GameRuleset, GameState, MonthKind, OpenBattle};
 
 /// Who issues a command (ADR-0017 point 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -729,6 +729,17 @@ pub trait Sink {
 
     /// Receives one event.
     fn emit(&mut self, event: GameEvent);
+
+    /// Receives a battle as it ended, when the command that ended it closes it, before its
+    /// outcome's events (`BattleEnded` first): its state, owners, heroes and tile (SRV-Q27 (1),
+    /// the server lane's `SRV-STUB-14`). A server sends each owner the battle as its side saw it
+    /// last (`h3_battle::observe` of its side: the own hero's Eagle Eye picks, which no event
+    /// shows), as a battle session's last snapshot. Server-only, as [`GameState::battle`]'s state
+    /// is: never in an event. The default ignores it, so the state keeps no closed battle and a
+    /// fork pays nothing for it.
+    fn battle_ended(&mut self, battle: &OpenBattle) {
+        let _ = battle;
+    }
 }
 
 /// A sink that drops every event.
@@ -762,6 +773,10 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 /// unowned side's battle commands ([`Actor::System`], E08 T20b2). While a level-up is open the
 /// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002).
 /// After the command the rests whose owners have no open decision run (GAM-DEC-007, E08 T63b).
+/// Each battle the command ends goes to the sink as it ended ([`Sink::battle_ended`]; SRV-Q27
+/// (1)). Last, a sink that keeps events ([`Sink::RECORDS`]) is told each hero's movement points
+/// and day's maximum that the command changed (`AdventureEventKind::MovementChanged`, to its
+/// owner; SRV-Q26 (b)).
 // rule: GAM-DEC-002, GAM-DEC-007
 ///
 /// # Errors
@@ -775,8 +790,13 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     state.check_held(actor)?;
+    // What the command changes of the heroes' movement is told after it (SRV-Q26 (b)).
+    let movements = S::RECORDS.then(|| state.adventure().movements());
     run(state, rules, actor, command, sink)?;
     state.run_rests(rules, sink);
+    if let Some(movements) = movements {
+        movements.tell(state.adventure(), &mut AdventureSink(sink));
+    }
     Ok(())
 }
 

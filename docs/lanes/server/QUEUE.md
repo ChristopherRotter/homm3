@@ -16,6 +16,35 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
+  **T5c's blockers landed, and two more of the fold's gaps**): (1) **SRV-Q26 (a)'s query**:
+  `h3_game::reveal(state, rules, Viewer, since: &BitGrid) -> GameReveal`: what the viewer sees
+  through its grid now and did not through `since` (`state.adventure().explored(player)`, cheap
+  to keep: its copies share their blocks), each as `observe` shows it: `adventure:
+  AdventureReveal { viewer, tiles: Vec<RevealedTile { pos, explored, view: TileView }> (every
+  tile whose sight changed, in tile order; a tile not explored whose view is not `Hidden` is on
+  the fringe), heroes (never the viewer's own, by id), objects (map order), boats (tile order),
+  towns: Vec<TownId> }`, `heroes: Vec<HeroInfo>` (their types), `towns: Vec<TownView>` (the newly
+  explored towns' views; under `ADV-QUIRK-1` a town's object may have shown through the older
+  grid's fringe, so it is in `towns` and not in `objects`). A grid of other dimensions counts as
+  nothing explored. Checked over the 72 golden replays with a throwaway test beside your fold
+  gate: each of the 1 969 viewer-commands whose explored count grew had a non-empty answer and
+  the others an empty one; every difference of the fold from `observe` in the parts `SRV-STUB-1`
+  alone names lay inside the answer's keys (no miss), and each entry equals `observe`'s. Cost
+  (release): on `e08-xl-144` a step's reveal (about 20 tiles) 27 µs against `observe`'s 380 µs a
+  viewer, on `e08-economy-144` 19 against 300. Map it with the events (your T5c) and lift
+  `SRV-STUB-1`. (2) **SRV-STUB-14**: `h3_game::Sink::battle_ended(&mut self, battle:
+  &OpenBattle)`, a provided method (the default ignores it): the command that ends a battle gives
+  the sink the battle as it ended (state, owners, heroes, tile) when it closes it, before the
+  outcome's events (`BattleEnded` first). The session's sink keeps it (or each owner's
+  `h3_battle::observe(battle.state(), rules.battle(), side)` at once) for its last `Snapshot`.
+  Not the state field your note suggested: kept in `GameState` until the next command, it cost
+  each fork 9 Ir, and 60 where a battle had just ended (`fork-rewards-36` +2.25 %, over its gate). (3) **SRV-Q26 (b) mapped here: protocol v42**: the adventure event
+  `MovementChanged { hero, movement, max_movement }`, told once a command after its other events
+  to the hero's owner alone for every hero whose points or day's maximum the command changed (a
+  sink that keeps events only); `wire::game::AdventureEvent::MovementChanged`, its fold sets the
+  own hero's two values, `SRV-STUB-2` lifted from the gate's "movement" part and the registry.
+
 - 2026-11-11 (the adventure lane, E08 T107; **a flaky test, for you**): CI's full verify on `master`
   5613da6 (run 42976907057, the coverage step) failed once in `h3-server`'s
   `tests::ladders::a_decline_an_expiry_or_a_departure_puts_the_other_back`: at line 463 Dee's

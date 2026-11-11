@@ -66,7 +66,8 @@ fn step(
         assert!(events.is_empty());
         assert_eq!(game.state_hash(), before);
     }
-    result.map(|()| events)
+    // The hero's movement points, told last, are the adventure's tests' (SRV-Q26 (b)).
+    result.map(|()| crate::tests::moved(events))
 }
 
 /// The adventure event's kind, if `event` is one.

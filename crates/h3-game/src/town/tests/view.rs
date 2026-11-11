@@ -24,9 +24,9 @@ use super::{
 use crate::tests::key;
 use crate::town::view::in_visions;
 use crate::{
-    Actor, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, GarrisonStackView,
+    Actor, BitGrid, GameCommand, GameEvent, GameRuleset, GameSetup, GameState, GarrisonStackView,
     GarrisonView, HeroArmy, NoopSink, OWNER_LEVEL, TownBuildingsView, TownOwnerView, TownView,
-    Viewer, apply, observe, project,
+    Viewer, apply, observe, project, reveal,
 };
 
 const RED: PlayerId = PlayerId::new(0);
@@ -343,6 +343,59 @@ fn a_town_no_tile_of_which_the_viewer_has_explored_is_not_shown() {
     assert!(red.adventure.is_fringe(fringe));
     assert_eq!(linked(&red), [Some(T0), Some(T1)]);
     assert_eq!(towns(&red.towns), [T0]);
+}
+
+// covers: TWN-VEW-001
+#[test]
+fn a_town_explored_since_a_grid_is_revealed_with_its_view() {
+    // SRV-Q26 (a), the adventure lane's reveal (`cross-lane`): a town comes into a viewer's view
+    // by exploring with no event; the reveal names it with its view, and under the quirk its
+    // object, which the older grid's fringe showed, is not new.
+    for faithful in [false, true] {
+        let rules = if faithful {
+            fringe_rules()
+        } else {
+            rules_of(towns_core(false), &town_pack(false), false, 16)
+        };
+        let far = Pos::new(14, 14, 0);
+        let game = GameState::new(&rules, &wide(&rules, far), 7).unwrap();
+        let red = observe(&game, &rules, Viewer::Player(RED));
+        let near = (3..16)
+            .map(|x| Pos::new(x, 3, 0))
+            .rfind(|&pos| red.adventure.is_explored(pos))
+            .unwrap();
+        let game = GameState::new(&rules, &wide(&rules, near), 7).unwrap();
+        let red = observe(&game, &rules, Viewer::Player(RED));
+        let grid = game.adventure().explored(RED).unwrap();
+        let same = reveal(&game, &rules, Viewer::Player(RED), grid);
+        assert_eq!((same.towns, same.adventure.towns), (vec![], vec![]));
+        // Since the grid without blue's town's tile: that tile, the town and its view.
+        let mut since = grid.clone();
+        since.set(near, false);
+        let newly = reveal(&game, &rules, Viewer::Player(RED), &since);
+        assert_eq!(newly.adventure.towns, [T1]);
+        let blues: Vec<TownView> = red.towns.iter().filter(|t| t.town == T1).cloned().collect();
+        assert_eq!(newly.towns, blues);
+        assert!(
+            newly
+                .adventure
+                .tiles
+                .iter()
+                .any(|t| t.pos == near && t.explored)
+        );
+        let objects: Vec<_> = newly.adventure.objects.iter().map(|o| o.town).collect();
+        assert_eq!(objects, if faithful { vec![] } else { vec![Some(T1)] });
+        // Since nothing: every town red sees, and every hero but its own with its type.
+        let all = reveal(&game, &rules, Viewer::Player(RED), &BitGrid::new(16, 16, 1));
+        assert_eq!(all.towns, red.towns);
+        let others: Vec<_> = red
+            .heroes
+            .iter()
+            .filter(|h| red.adventure.hero(h.id).is_some_and(|v| v.owner != RED))
+            .cloned()
+            .collect();
+        assert_eq!(all.heroes, others);
+    }
 }
 
 /// The town tests' rules on a 16 × 16 map whose town part names the gog a Visions creature (as

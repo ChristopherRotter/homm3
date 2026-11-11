@@ -1100,6 +1100,25 @@ fn check_told(
                 kind: AdventureEventKind::CreaturesJoined { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // SRV-Q26 (b): a hero's movement points and day's maximum after the command, told to
+            // its owner alone, as the viewer's observation shows them after it (ADV-FOG-006).
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    AdventureEventKind::MovementChanged {
+                        hero,
+                        movement,
+                        max_movement,
+                    },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let shown = after
+                    .adventure
+                    .hero(hero)
+                    .and_then(|h| h.own.as_ref())
+                    .map(|o| (o.movement, o.max_movement));
+                prop_assert_eq!(shown, Some((movement, max_movement)), "{:?}", event);
+            }
             // E08 T105a2: a Whirlpool's loss, told to the hero's owner alone, as its army is
             // (ADV-TEL-006).
             GameEvent::Adventure(AdventureEvent {
