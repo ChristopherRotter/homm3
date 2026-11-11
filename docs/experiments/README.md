@@ -301,6 +301,25 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   The engine refuses such a map (a boat on a tile an object covers), so a walk's price is read on
   a copy without those boats. The worn Hats needed nothing new (`artifacts = { head = "Sea
   Captain's Hat" }`, batch E8's).
+  **Increment 12's objects** (E08 T109a, batch E12; survey
+  `docs/rules/surveys/E08-garrisons-bonuses.md` §1, §2, increment 12's design note §18; on the
+  surface): `[[map.ownable]]` takes a garrison by its `picture`, with its `owner` (neutral by
+  default), its `army` (as a hero's, at most seven stacks of one or more; none: empty) and
+  `removable` (true by default; `false` needs the SoD format): the horizontal `AVCgar10` and its
+  anti-magic `AVCgar20` (class 33; `at` and the two tiles west of it, entered at the middle one),
+  the vertical `AVCvgr` and its anti-magic `avcvgarm` (AB's 219, not in an RoE map; `at` and the
+  two tiles above it, entered at the middle one). A hero visits a garrison by stepping onto its
+  entrance; none may start there. `[[map.object]]` takes the fifteen bonus visitables, each by its
+  picture (no body; `Objects.txt`'s masks): the Swan Pond `AVSclvd0`, `AVSclvg0` or `AVSclvs0`,
+  the Faerie Ring `AVSring0`, the Temple `AVStmpl0`, the Mermaids `AVXmerm0` and the Sirens
+  `AVXsirn0` (on water) entered at the tile west of `at`; the Fountain of Fortune `AVSfntn0`, the
+  Fountain of Youth `AVXfyth0`, the Idol of Fortune `AVSidol0`, the Magic Well `AVXwelg0`,
+  `AVXwelr0` or `AVXwlsn0`, the Rally Flag `AVXrlly0`, the Stables `AVXstbl0` and the Buoy
+  `AVSbuoy0` (on water) at `at`; the Magic Spring `AVXmags0` and the Oasis `AVXosis0` at `at` and
+  the tile west of it (two entrances); the Watering Hole `AVXwtrh0` at `at` and the three tiles
+  west of it (four). A Blue hero (E12-4) is an `[[encounter.also]]` with `owner = "blue"`, a
+  hero's army at the start its `army`; the format holds no spell points for a hero (every hero
+  starts full; the user at T109a's start: none needed).
 - `[[encounter]]`: `id` (also the hero's name in the game), `title`, `questions`, `level` (E08
   T22a1: 1 puts the encounter's heroes and opponent on the underground; the template says so),
   `procedure`

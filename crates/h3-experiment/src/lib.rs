@@ -14,7 +14,9 @@
 //! treasure and a hero's backpack filled to 64, and may be written in the RoE format. From E08
 //! T78 (batch E9) it holds the ownable objects with their owners and the map's timed events; from
 //! E08 T89a (batch E10) the dwellings, the random dwellings with their factions and levels, the
-//! Refugee Camp and the map's teams.
+//! Refugee Camp and the map's teams; from E08 T99a (batch E11) the teleporters on either level;
+//! from E08 T109a (batch E12) the garrisons with their armies and removable flags and the fifteen
+//! bonus visitables.
 
 pub mod tables;
 
@@ -24,13 +26,13 @@ use std::fmt::Write as _;
 use h3_map::model::{Rewards, Stack};
 use h3_map::writer::{
     ABANDONED_MINE_OBJECT, ABANDONED_MINE_SUBCLASS, ARMY_SLOTS, ARTIFACT_OBJECT, ARTIFACT_SLOTS,
-    BOAT_OBJECT, EVENT_OBJECT, Event, Format, Ground, Guards, Hero, HeroArtifacts, MINE_OBJECT,
-    Map, MapObject, Message, Monster, ObjectTemplate, OwnedBody, OwnedObject, PANDORA_OBJECT,
-    PLAYERS, Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS,
+    BOAT_OBJECT, EVENT_OBJECT, Event, Format, GARRISON_OBJECT, Ground, Guards, Hero, HeroArtifacts,
+    MINE_OBJECT, Map, MapObject, Message, Monster, ObjectTemplate, OwnedBody, OwnedObject,
+    PANDORA_OBJECT, PLAYERS, Patch, Pile, Plain, Player, RANDOM_ARTIFACT_OBJECTS,
     RANDOM_DWELLING_BY_FACTION_OBJECT, RANDOM_DWELLING_BY_LEVEL_OBJECT, RANDOM_DWELLING_OBJECT,
     RewardBody, RewardObject, Road, RoadKind, SCROLL_OBJECT, SHRINE_OBJECTS, SIGN_OBJECTS,
     SUBTERRANEAN_GATE_OBJECT, Teams, Terrain, TimedEvent, Town, TownBuildings, Treasure,
-    Underground, WHIRLPOOL_OBJECT, WITCH_HUT_OBJECT,
+    Underground, VERTICAL_GARRISON_OBJECT, WHIRLPOOL_OBJECT, WITCH_HUT_OBJECT,
 };
 use serde::Deserialize;
 
@@ -226,7 +228,8 @@ pub struct MapSpec {
     #[serde(default)]
     pub underground: Option<UndergroundSpec>,
     /// Objects without a body (`[[map.object]]`, E08 T32a): the Cartographers; since E08 T36a
-    /// the trees and the Border Gates.
+    /// the trees and the Border Gates; later increments' (the list at [`ObjectSpec::picture`]),
+    /// since E08 T109a the fifteen bonus visitables.
     #[serde(default)]
     pub object: Vec<ObjectSpec>,
     /// The scenario's level limit (E08 T32a; 0, the default: none).
@@ -267,7 +270,8 @@ pub struct MapSpec {
     #[serde(default)]
     pub bottle: Vec<BottleSpec>,
     /// Ownable objects (`[[map.ownable]]`, E08 T78: batch E9): mines, abandoned mines,
-    /// Lighthouses and Shipyards with their owners.
+    /// Lighthouses and Shipyards with their owners; since E08 T89a the dwellings, since E08 T109a
+    /// the garrisons.
     #[serde(default)]
     pub ownable: Vec<OwnableSpec>,
     /// Wandering monsters of no encounter (`[[map.monster]]`, E08 T78: batch E9's growing
@@ -470,7 +474,10 @@ pub struct BottleSpec {
 /// may stand on a tile it blocks or is visited from. The file holds no guards for a mine: an
 /// abandoned mine's Troglodytes are drawn when the game starts, other guards are left in play
 /// (Leave Guards; survey `docs/rules/surveys/E08-economy.md` §2.1, §3.3, §3.4); nor for a dwelling,
-/// whose guards the game sets (survey `docs/rules/surveys/E08-dwellings.md` §2.2).
+/// whose guards the game sets (survey `docs/rules/surveys/E08-dwellings.md` §2.2). Since E08 T109a
+/// (batch E12; increment 12's design note §18) a garrison with its army and removable flag
+/// (survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1.1, §2), which the game's battles and
+/// exchanges read: its entrance, the middle of its three tiles, is where a hero visits it.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OwnableSpec {
@@ -480,7 +487,10 @@ pub struct OwnableSpec {
     /// a dwelling of one creature (17, its subclass the type: `AVGpike0` the Guardhouse) or of
     /// several (20: `AVGelem0` the Elemental Conflux, `AVGgolm0` the Golem Factory); a random
     /// dwelling (216 `avrcgen0`), one of a level (217 `avrcgen1` level 1 … `avrcgen7` level 7) or
-    /// one of a faction (218 `avrcgn00` Castle … `avrcgn08` Conflux).
+    /// one of a faction (218 `avrcgn00` Castle … `avrcgn08` Conflux); since E08 T109a a garrison:
+    /// horizontal (33) `AVCgar10`, its anti-magic one `AVCgar20` (its tile and the two west of it,
+    /// the middle one its entrance), vertical (AB's 219) `AVCvgr`, its anti-magic one `avcvgarm`
+    /// (its tile and the two above it, the middle one its entrance).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile.
     pub at: [u8; 2],
@@ -499,6 +509,16 @@ pub struct OwnableSpec {
     /// codes 0 to 6), the lowest first. Only for 216 and 218 (217's is its picture's).
     #[serde(default)]
     pub levels: Option<[u8; 2]>,
+    /// A garrison's army as (creature, count), at most seven stacks, each of one or more
+    /// creatures, in slot order (E08 T109a); none (the default) leaves it empty. Only for a
+    /// garrison.
+    #[serde(default)]
+    pub army: Vec<(String, u16)>,
+    /// Whether a garrison's army may be taken out (E08 T109a; the map editor's "removable units");
+    /// none: yes, the editor's default. `false` needs the SoD format (an RoE map stores no such
+    /// flag: every RoE garrison is removable). Only for a garrison.
+    #[serde(default)]
+    pub removable: Option<bool>,
 }
 
 fn neutral() -> String {
@@ -680,7 +700,15 @@ pub struct ObjectSpec {
     /// `AVXmn1r0`, `AVXmn1y0`, `AVXmn4i0` … `AVXmn8i0` (7), exits `AVXmx1b0`, `AVXmx1r0`,
     /// `AVXmx1y0`, `AVXmn4o0` … `AVXmn8o0`, two-way `AVXmn2g0`, `AVXmn2o0`, `AVXmn2p0`, `AVXmn4b0` …
     /// `AVXmn8b0`, channels 3 to 7 SoD's; the Subterranean Gate `AvTCave`, the Whirlpool
-    /// `AVXwhrl0`).
+    /// `AVXwhrl0`; since E08 T109a the fifteen bonus visitables
+    /// ([`h3_map::writer::BONUS_OBJECTS`]; survey `docs/rules/surveys/E08-garrisons-bonuses.md`
+    /// §1.2): the Swan Pond `AVSclvd0`, `AVSclvg0` or `AVSclvs0`, the Faerie Ring `AVSring0`, the
+    /// Fountain of Fortune `AVSfntn0`, the Fountain of Youth `AVXfyth0`, the Idol of Fortune
+    /// `AVSidol0`, the Magic Spring `AVXmags0` (entered on `at` and the tile west of it), the
+    /// Magic Well `AVXwelg0`, `AVXwelr0` or `AVXwlsn0`, the Oasis `AVXosis0` (the same two), the
+    /// Rally Flag `AVXrlly0`, the Stables `AVXstbl0`, the Temple `AVStmpl0`, the Watering Hole
+    /// `AVXwtrh0` (`at` and the three west of it); on water the Buoy `AVSbuoy0`, the Mermaids
+    /// `AVXmerm0` and the Sirens `AVXsirn0`).
     pub picture: String,
     /// The object's position, `[column, row]`: the picture's bottom-right tile (the land
     /// Cartographer covers it and the tile west of it, its entrance; a Border Gate it and the two
@@ -1121,6 +1149,9 @@ pub fn build_only(
         let owned = ownable(o, tables, size)?;
         if let OwnedBody::Owner(Some(owner))
         | OwnedBody::RandomDwelling {
+            owner: Some(owner), ..
+        }
+        | OwnedBody::Garrison {
             owner: Some(owner), ..
         } = owned.body
         {
@@ -2161,7 +2192,8 @@ fn monster(
     })
 }
 
-/// An ownable object by its picture (E08 T78; since E08 T89a the dwellings and random dwellings).
+/// An ownable object by its picture (E08 T78; since E08 T89a the dwellings and random dwellings,
+/// since E08 T109a the garrisons).
 fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, String> {
     let ctx = |e: String| format!("the ownable `{}` at {:?}: {e}", o.picture, o.at);
     let name = o.picture.to_ascii_lowercase();
@@ -2182,6 +2214,10 @@ fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, St
     let random = (RANDOM_DWELLING_OBJECT..=RANDOM_DWELLING_BY_FACTION_OBJECT).contains(&class);
     if !random && (!o.factions.is_empty() || o.levels.is_some()) {
         return Err(ctx("`factions` and `levels` are a random dwelling's".into()));
+    }
+    let garrison = matches!(class, GARRISON_OBJECT | VERTICAL_GARRISON_OBJECT);
+    if !garrison && (!o.army.is_empty() || o.removable.is_some()) {
+        return Err(ctx("`army` and `removable` are a garrison's".into()));
     }
     let owner = || -> Result<Option<u8>, String> {
         Ok(match o.owner.as_str() {
@@ -2215,6 +2251,14 @@ fn ownable(o: &OwnableSpec, tables: &Tables, size: u8) -> Result<OwnedObject, St
         OwnedBody::Resources(set)
     } else if !o.resources.is_empty() {
         return Err(ctx("`resources` is an abandoned mine's".into()));
+    } else if garrison {
+        // E08 T109a: an empty army is the editor's empty garrison (82 of the shipped neutral
+        // ones); the writer refuses AB's 219 and a garrison not removable in an RoE map.
+        OwnedBody::Garrison {
+            owner: owner()?,
+            army: army_of(&o.army, tables).map_err(|e| ctx(format!("army: {e}")))?,
+            removable: o.removable.unwrap_or(true),
+        }
     } else if random {
         let factions = if class == RANDOM_DWELLING_BY_FACTION_OBJECT {
             if !o.factions.is_empty() {
@@ -2866,6 +2910,14 @@ mod tests {
                  010000000000000000000000000000000000000000000000 011111111 011111111 103 0 0 0",
                 "AVXwhrl0.def 000111110001111111111111111111111111111111111111 \
                  111000001110000000000000000000000000000000000000 100000000 100000000 111 0 0 1",
+                // Three bonus visitables (E08 T109a): the Magic Spring, the Watering Hole, the
+                // Sirens.
+                "AVXmags0.def 001111111111111111111111111111111111111111111111 \
+                 110000000000000000000000000000000000000000000000 111111111 000100000 48 0 0 0",
+                "AVXwtrh0.def 000011111111111111111111111111111111111111111111 \
+                 111100000000000000000000000000000000000000000000 111111111 000100000 110 0 0 0",
+                "AVXsirn0.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 100000000 100000000 92 0 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -2929,6 +2981,11 @@ mod tests {
                  110000000000000000000000000000000000000000000000 111111111 011111111 217 2 0 0",
                 "avrcgn03.def 001111110011111111111111111111111111111111111111 \
                  110000000000000000000000000000000000000000000000 111111111 011111111 218 3 0 0",
+                // E08 T109a: a horizontal garrison and AB's vertical anti-magic one.
+                "AVCgar10.def 000111111111111111111111111111111111111111111111 \
+                 010000000000000000000000000000000000000000000000 111111111 011111111 33 0 0 0",
+                "avcvgarm.def 011111110111111101111111111111111111111111111111 \
+                 000000001000000000000000000000000000000000000000 111111111 011111111 219 1 0 0",
             ]
             .map(|line| ObjectTemplate::from_objects_txt(line).expect("template"))
             .to_vec(),
@@ -5101,5 +5158,153 @@ mod tests {
         assert!(err.contains("teams: blue is on two teams"), "{err}");
         let err = fails(teams, "teams = [[\"red\", \"blue\"], []]");
         assert!(err.contains("team 2 has no colour"), "{err}");
+    }
+
+    const GARRISONS: &str = r#"
+        [map]
+        name = "Garrisons"
+        description = "d"
+        terrain = "grass"
+
+        [[map.patch]]
+        terrain = "water"
+        from = [30, 0]
+        to = [35, 35]
+
+        [[map.ownable]]
+        picture = "AVCgar10"
+        at = [8, 4]
+        owner = "red"
+        army = [["Pikeman", 10], ["Archangel", 1]]
+        removable = false
+
+        [[map.ownable]]
+        picture = "avcvgarm.def"
+        at = [14, 10]
+        owner = "blue"
+
+        [[map.object]]
+        picture = "AVXmags0"
+        at = [20, 4]
+
+        [[map.object]]
+        picture = "avxwtrh0.def"
+        at = [24, 10]
+
+        [[map.object]]
+        picture = "AVXsirn0"
+        at = [33, 10]
+
+        [[encounter]]
+        id = "E1"
+        title = "The garrisons"
+        [encounter.hero]
+        type = "Orrin"
+        specialty = "skill Archery"
+        at = [4, 30]
+        primary = [1, 1, 1, 1]
+        army = [["Pikeman", 10]]
+    "#;
+
+    #[test]
+    fn builds_increment_12_s_objects() {
+        let spec = parse(GARRISONS).expect("spec");
+        let (map, _) = build(&spec, &tables(), "g.h3m").expect("build");
+        // Blue plays: it owns the vertical garrison.
+        assert!(map.players[1].is_some() && map.players[2].is_none());
+        let owned: Vec<(u32, u32, (u8, u8), OwnedBody)> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Owned(o) => {
+                    Some((o.template.class, o.template.subclass, o.tile, o.body))
+                }
+                _ => None,
+            })
+            .collect();
+        let mut army = [None; ARMY_SLOTS];
+        army[..2].copy_from_slice(&[Some((0, 10)), Some((1, 1))]);
+        assert_eq!(
+            owned,
+            [
+                (
+                    33,
+                    0,
+                    (8, 4),
+                    OwnedBody::Garrison {
+                        owner: Some(0),
+                        army,
+                        removable: false
+                    }
+                ),
+                (
+                    219,
+                    1,
+                    (14, 10),
+                    OwnedBody::Garrison {
+                        owner: Some(1),
+                        army: [None; ARMY_SLOTS],
+                        removable: true
+                    }
+                ),
+            ]
+        );
+        let plains: Vec<(u32, (u8, u8))> = map
+            .objects
+            .iter()
+            .filter_map(|o| match o {
+                MapObject::Plain(p) => Some((p.template.class, p.tile)),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(plains, [(48, (20, 4)), (110, (24, 10)), (92, (33, 10))]);
+        let bytes = h3_map::writer::write(&map).expect("writes");
+        let raw = h3_map::parse(&bytes, &h3_map::Limits::default()).expect("reads back");
+        let bodies: Vec<&h3_map::model::Body> = raw
+            .objects
+            .iter()
+            .map(|o| &o.body)
+            .filter(|b| matches!(b, h3_map::model::Body::Garrison { .. }))
+            .collect();
+        assert_eq!(bodies.len(), 2);
+        // An RoE map holds neither garrison: the writer refuses one not removable (the first
+        // here) and AB's vertical one.
+        let roe = h3_map::writer::write_in(&map, Format::RoE).expect_err("RoE");
+        assert!(
+            roe.to_string()
+                .starts_with("a garrison not removable in an RoE map"),
+            "{roe}"
+        );
+    }
+
+    #[test]
+    fn rejects_mistakes_in_increment_12_s_objects() {
+        let t = tables();
+        let fails = |from: &str, to: &str| {
+            assert!(GARRISONS.contains(from), "{from}");
+            let spec = parse(&GARRISONS.replacen(from, to, 1)).expect("spec");
+            build(&spec, &t, "g.h3m").expect_err(to)
+        };
+        let err = fails("picture = \"AVCgar10\"", "picture = \"AVXlths0\"");
+        assert!(
+            err.contains(
+                "the ownable `AVXlths0` at [8, 4]: `army` and `removable` are a garrison's"
+            ),
+            "{err}"
+        );
+        let err = fails("[\"Archangel\", 1]", "[\"Archdevil\", 1]");
+        assert!(err.contains("army: unknown creature `Archdevil`"), "{err}");
+        let err = fails("[\"Archangel\", 1]", "[\"Archangel\", 0]");
+        assert!(err.contains("army: an empty stack of Archangel"), "{err}");
+        let err = fails("[\"Archangel\", 1]", &["[\"Pikeman\", 1]"; 7].join(", "));
+        assert!(err.contains("army: 8 stacks (1–7)"), "{err}");
+        let err = fails("owner = \"red\"", "owner = \"teal\"");
+        assert!(err.contains("owner `teal`"), "{err}");
+        // A hero on a garrison's entrance (the tile west of its anchor), a bonus visitable on
+        // another's tile.
+        let err = fails("at = [4, 30]", "at = [7, 4]");
+        assert!(err.contains("two objects on the tile (7, 4)"), "{err}");
+        let err = fails("at = [24, 10]", "at = [21, 4]");
+        assert!(err.contains("two objects on the tile"), "{err}");
     }
 }

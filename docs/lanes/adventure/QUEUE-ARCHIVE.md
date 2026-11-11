@@ -4,6 +4,21 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Completed tasks (the "Tasks" text as it stood on 2026-10-24)
 
+*(Moved 2026-11-11, E08 T109a: the entry as it stood before T109 was cut in two at the code's seam, decision 310; T109a's record in `E08-log.md`, T109b queued.)* **E08 T109 — batch E12's maps: the writer's seventeen classes, the spec's fields, the specs** (decisions 303, 309)
+
+- **Scope:** as T99 for increment 11 (design note `E08-design.md` §18, §19's round 2): `h3_map::writer`
+  writes the garrisons (33, 219 by subclass: the owner, the seven stacks, the removable byte, the
+  unused bytes) and the fifteen bonus classes by template (no body); `h3-experiment`'s spec gains
+  the garrisons with an owner, an army and the removable byte, the fifteen classes by template, a
+  hero's spell points and army at the start, a second player's hero (battle-owned: `cross-lane`
+  with the user's consent, label it); the specs and templates of runs **E12a** (E12-1 to E12-6,
+  day 1, two players) and **E12b** (E12-7 to E12-17, days 1 to 7 and the next week's first, one
+  player), with the predictions added in §18.
+- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1 (the templates), §2 (the
+  garrison's body), §12 (the rows); design note §18; T99's record in `E08-log.md` as the form.
+- **Depends on:** T108b (done). **Status:** ready (the original data: the executable and both
+  tars, to compile the maps and check them in the editor's reader; confirm the cut at its start).
+
 *(Moved 2026-11-11, E08 T108b: done whole, decision 304; the checkpoint ADV-Q50, decisions 305–309; the record in `E08-log.md`.)* **E08 T108b — the ADR amendment drafts, the design note and the cut** (decision 296)
 
 - **Scope:** as T98b for increment 11: the drafts `adr-drafts/0016-increment-12.md` and

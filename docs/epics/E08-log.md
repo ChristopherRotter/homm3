@@ -15324,3 +15324,57 @@ queued; the town lane's inbox told of the army reference, the moved marks and th
 
 **Verify:** docs only: the docs gates (`check-docs`, `check-lane`, `doc-drift`). No code, version or
 replay moved; CI's run on the pull request is the record.
+
+### Increment 12, round 2: T109a, the writer's seventeen classes and the spec's fields (2026-11-11, `adventure/e08-t109a`, `cross-lane`)
+
+Baseline: `master` 072675c (#856, T108b, and the client lane's #854 merged; CI green on it, standing
+in for the sandbox's baseline, stopped in its coverage step to free the CPUs). Staged: the
+executable, `H3bitmap.lod`, `H3ab_bmp.lod`, `maps.tar`, `extracted.tar`. **The cut** (decision
+310): T109 in two at the code's seam, as T89 and T99; T109a this. The queue's "a hero's spell
+points at the start" left out (decision 311: the format holds none).
+
+**The writer** (`h3_map::writer`): `PLAIN_OBJECTS` takes the fifteen bonus classes (41 classes; no
+body; either level), listed apart as `BONUS_OBJECTS`; the garrisons are ownable objects with a body,
+`OwnedBody::Garrison { owner, army, removable }` on `GARRISON_OBJECT` (33) or
+`VERTICAL_GARRISON_OBJECT` (219), subclass 0 or `ANTI_MAGIC_GARRISON_SUBCLASS` (1): the u32 owner
+(0xFF neutral), the seven stacks (the format's code and count; an empty slot the "none" code), from
+AB on the removable byte, then 8 unused bytes (`docs/formats/h3m.md`'s row; survey §2). Refused: a
+garrison's body on another class or past subclass 1, an owner nobody plays, a stack the format
+cannot name or of no creature, an owner alone on class 33; in an RoE map AB's 219 and a garrison not
+removable (RoE stores no such byte). Tests (`tests/garrisons_bonuses.rs`): the four garrisons and the
+fifteen read back as written (the bodies, each class), the masks as the game's (a horizontal
+garrison blocks its tile and the two west, the middle entered; a vertical one its tile and the two
+above, the middle entered; the Spring entered on two tiles, the Watering Hole on four; the Buoy,
+Mermaids and Sirens on water only); an RoE map's garrisons without the byte read back removable;
+the refusals; the import as it reads them until T113b: no class or subclass typed
+(`codes::object_type` none), each a blocker, the setup valid under SoD's and RoE's rules.
+
+**The spec** (`h3-experiment`, battle-owned, `cross-lane` with the user's consent as T99a's):
+`[[map.ownable]]` takes the garrisons by picture (`AVCgar10`, `AVCgar20`, `AVCvgr`, `avcvgarm`;
+`Tables::ownables` by `is_ownable`) with `owner`, `army` (as a hero's: at most seven stacks of one
+or more, none empty) and `removable` (true by default); `army` and `removable` on another ownable
+are refused; a garrison's owner makes its colour play, as a mine's. `[[map.object]]` takes the
+fifteen by picture through `Tables::plains` (the doc lists each picture and its entrances). Tests:
+`builds_increment_12_s_objects` (a red garrison not removable with two stacks, a blue anti-magic
+vertical one empty, the Spring, the Watering Hole and the Sirens; written and read back; the RoE
+writer refuses it), `rejects_mistakes_in_increment_12_s_objects` (an army on a Lighthouse, an
+unknown creature, an empty stack, eight stacks, an unknown owner, a hero on a garrison's entrance,
+two bonus visitables on one tile); the tables' test with two garrisons and two bonus pictures. The
+experiments README's paragraph "Increment 12's objects". Checked with the staged tables: a spec of
+all four garrison pictures and every bonus picture (the Swan Pond's and the Well's three each), a
+Red and a Blue hero, compiles, and `h3 adventure run` imports and plays the map two days (in
+`/tmp`, not committed).
+
+**Agent's calls** (change freely): the garrisons in `[[map.ownable]]` beside the other owned bodies
+(not a table of their own; on the surface, as every ownable: no row of E12 needs one underground);
+an RoE refusal left to the writer (the spec does not know the format until it writes).
+
+**Versions:** none moved (the writer and the spec; the import reads the classes as before).
+
+**Verify:** the scoped `cargo xtask verify --scope adventure --summary --with-original-data` passed
+every step it runs but `check-lane` (by design on a `cross-lane` branch; `cargo xtask check-lane
+--cross-lane` ok); deny and ffi-smoke skipped by the scope. `cargo check --workspace --all-targets`
+and clippy with `-D warnings` on `h3-map` and `h3-experiment` clean. The writer's public types gained a body
+variant, constants and a longer `PLAIN_OBJECTS`; `OwnedBody` is matched only in `h3-map` and
+`h3-experiment` (the clients build `MapObject`s, none matches `OwnedBody`). CI's full verify on the
+pull request is the record.
