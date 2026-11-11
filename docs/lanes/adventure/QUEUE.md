@@ -19,7 +19,9 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   once-marks' amounts); decisions 295 to 303 (the checkpoint's answers: the original in D-59 to
   D-64, A-44's `fix-optional` flag and A-45 fixed, the kind marks in, batch E12 before the build);
   ADR-0013 (`BattleBonuses`' eight marks), ADR-0015 to -0017; the client lane's inbox note of
-  2026-11-03 (`EffectSource::Visit`); T98b's drafts as the form.
+  2026-11-03 (`EffectSource::Visit`); the town lane's of 2026-11-11 (one army reference for the
+  garrisons' and the town's exchange, agreed with its T21 before either drafts; T108a's findings
+  in its inbox); T98b's drafts as the form.
 - **Depends on:** T108a2 (done). **Status:** ready (docs only; the original data not needed).
 
 ## Inbox
