@@ -15277,3 +15277,50 @@ address is covered.
 
 **Verify:** docs and the address map only: the docs gates and `scripts/exe.py check`. No code,
 version or replay moved; CI's run on the pull request is the record.
+
+### Increment 12, round 1: T108b, the ADR amendment drafts, the design note and the cut (2026-11-11, `adventure/e08-t108b`)
+
+Baseline: `master` ea6d390 (#853, T108a2, merged at the start). Docs only, no original data needed
+(the survey holds the readings): nothing staged. The user's cut at the start (decision 304,
+`AskUserQuestion`): **whole** (not chosen: by family, recommended, the garrisons with the army
+reference first; by side, as T98b).
+
+**The design note** `E08-design.md` for increment 12, in four parts: **A** the content (§1 the kind
+`garrison { anti_magic }`, four types, entered and visitable from above, 219 among the
+background's ownable classes; §2 six bonus kinds for the fifteen classes: `bonus` with a week of
+morale and luck, its movement or the Swan Pond's drain and the kind mark for ten,
+`fountain_of_fortune`, `magic_well`, `magic_spring`, `stables`, `sirens`, the amounts as parameters;
+§3 the packs, base and AB, and the kind marks' list); **B** the map (§4 the import, map import v22,
+a random stack refused; §5 the state: a garrison's army on its object, its removable flag static,
+the fortunes' and the springs' blocks, the kind marks in `Flags`, the day of the week an input of
+`apply`, adventure state hash v22; §6 the garrison's visit, battle without a question, capture and
+exchange; §7 the passage through its team's garrisons as a key holder's gate, in the reach's
+visitable branch; §8 the fifteen's visits; §9 the Sirens by `kernel::num`'s `Real`, A-45 fixed, A-44's
+flag; §10 information and the events; §11 the ids and quirks `ADV-QUIRK-46`, `-47`); **C** the visit
+marks (§12, rewritten at the checkpoint: the battle bonuses and the timed marks on `HeroOnMap`, a
+short list of `u8` once-marks with their amounts, `derive_battle_hero` and `land_points` taking them
+as inputs); **D** the game (§13 the exchange: a decision, `ArmyRef::MapGarrison`, the one owner rule;
+§14 the battles and the anti-magic flag; §15 the day, the week and the garrison's views by the
+town's levels and events; §16 the env (v8 kept), replays (format v13), the two maps, properties,
+benchmarks; §17 versions; §18 batch E12 with E12-17 added; §19 the shared and `cross-lane` work, the
+cut T109 to T117, ten exit criteria; §20 risks).
+
+**The drafts** `docs/lanes/adventure/adr-drafts/`: `0016-increment-12.md` (points 1, 3, 4, 5, 6),
+`0017-increment-12.md` (points 1, 2, 3, 4, 6, 9, 10, 11), `0013-increment-12.md` (points 1, 2, 13,
+15.1, 15.2), each with the consequences, alternatives and history lines.
+
+**The checkpoint** (ADV-Q50, `AskUserQuestion`, two rounds of four, the note and the drafts sent to
+the user; decisions 305–309): the exchange as recommended (a decision with the direct reference,
+which answers the town lane's T21 proposal; its inbox told); the once-marks **a short dynamic
+list** instead of 32 fixed marks (the user: a fixed set does not scale beyond SoD), the mark `u8`
+with the seam as is; **every visit's effect on the hero on the map**, the battle bonuses moved
+there from the details too (the user: no effect carries over to a hero that leaves the map); A-44's
+fix one Sirens mark kept; the cut and every other call as written. The note and the drafts were
+rewritten for decisions 306 and 307 and accepted.
+
+**Docs:** decisions 304 to 309 in the epic with the tasks T109 to T117; ADV-Q50 in
+`QUESTIONS-ANSWERED.md`; T108b's entry and the town lane's two notes to `QUEUE-ARCHIVE.md`; T109
+queued; the town lane's inbox told of the army reference, the moved marks and the weekday.
+
+**Verify:** docs only: the docs gates (`check-docs`, `check-lane`, `doc-drift`). No code, version or
+replay moved; CI's run on the pull request is the record.

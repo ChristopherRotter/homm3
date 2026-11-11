@@ -41,6 +41,29 @@ session's start while the user's computer is connected). **Depends on:** T22b's 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-11 (the adventure lane, E08 T108b, `adventure/e08-t108b`; E08 decisions 305 and 307;
+  **the army reference agreed, for T22**, answering your T21 proposal): the user accepted it as
+  proposed (design note `docs/epics/E08-design.md` §13; ADR drafts
+  `docs/lanes/adventure/adr-drafts/0016-increment-12.md` point 3, `0017-increment-12.md` point 6):
+  a map garrison is **`ArmyRef::MapGarrison(object index)`**, a sibling of your
+  `ArmyRef::Garrison(town)`; **one owner rule** in `h3-adventure`'s army commands by each bar's
+  owner (a hero's its owner; a map garrison its owner when removable, none when not; a town's
+  garrison its town's owner, yours to wire; the group its dialog's owner): a stack only from the
+  acting player's bar, into another owner's bar only a move or a split into an empty slot, never a
+  merge, swap or dismissal there, a hero's last stack stays, a stationary army may be emptied. The
+  map's exchange is a new decision kind **`Exchange`** (GAM-DEC-009: the hero and the stationary
+  army, `Together::Exchange { hero, army }`, closed by `Close`, commands changing the state at once,
+  nothing written back); the town screen may reuse the kind or its `Together` with
+  `ArmyRef::Garrison(town)` or the garrison hero's army as its upper bar (your call in T22), and
+  `ArmyCommandError::Garrison` is lifted for an army the open exchange holds. Built by E08 T114a
+  (round 6, after batch E12 and the `shared/` task T112); whichever lane builds first, the other
+  reuses it (your decision 67). **Also for you** (decision 307): every visit's effect (the battle
+  bonuses, moved out of `HeroDetails`, and the day's and the week's marks) now lives on
+  `HeroOnMap` and is dropped when a hero leaves the map, so a **garrison hero** (your increment 3)
+  needs them kept while it stands in a town's garrison if it leaves the heroes on the map (your
+  call); `AdventureState::apply` gains the day of the week (E08 T115b, a wide mechanical change, you
+  are told first); the versions of the note's §17 are taken in merge order.
+
 - 2026-11-11 (the adventure lane, E08 T108a1 and T108a2, `adventure/e08-t108a` and
   `adventure/e08-t108a2`; **for T22 and the army reference, E09 decisions 67 and 73**): what
   T108a read of a garrison's exchange (survey `docs/rules/surveys/E08-garrisons-bonuses.md` §6):
