@@ -33,13 +33,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   autotuner in the update (`[device] cudnn_autotune`, on), `[ppo] chunk_align`; a `hexconv` run
   sets `accumulate = 4`, `chunk_align = 32`: 958 to 649 µs a sample-pass, 98 to 67 s an update
   on the GTX 1070; `gpu.cap` now passes the card's index (every CUDA entry point since T28
-  stopped there). **T33 in progress** (refined in `QUEUE.md`): round 1's three arms, each the
-  first 2 M samples of a 20 M run from #2 (the entropy bonus at 0; with the imitation loss held at
-  0.05, `[ppo] imitation_floor`; at a quarter of the rate), measured by a fixed head-to-head
-  against #2 (`h3env.train.gate --fixed`) and the ladders; prepared, **next: the user runs them**
-  (about 6 hours of the GPU; the commands in `QUEUE.md`), then round 2 and T32.
-- **Open pull requests:** the one of `claude/gallant-brown-w3cnht` (T33's preparation). Merged:
-  #827 (T28, T29), #829 (T30), #835 (T31).
+  stopped there). **T33 in progress** (`QUEUE.md`): round 1 done (`E25-log.md` T33): no arm
+  gains, head to head against #2 the bonus at 0 0.494, a quarter of the rate 0.493, the
+  imitation loss held 0.478 (± 0.002), the ladders inside #2's interval; each ran at 5 to 20
+  times #2's final rate, and the entropy rose without the bonus. Round 2 prepared (the user's
+  choice): `e25-continue-anneal-1`, the quarter rate annealed to #2's floor over 2 M; **next: the
+  user runs it** (about 2 hours; the commands in `QUEUE.md`), then its read closes T33 and says
+  whether T35's long run starts from #2 or from T32's clone; then T32.
+- **Open pull requests:** the one of `ai/e25-t33-round1` (T33's round 1 and round 2's
+  preparation). Merged: #829 (T30), #835 (T31), #843 (T33's preparation).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -52,6 +54,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-11 — E25 T33 (round 1 read, round 2 prepared)
+
+- #843 merged. The session linked to the user's computer: round 1's outcomes read in place
+  (`python/runs/`, `device_bash`), the twelve measure files staged to the sandbox and committed;
+  the user chose round 2's arm. The setup's engine baseline in the background; `uv sync`, then
+  `--group train`; the scoped verify and the Python suite.
 
 ### 2026-11-11 — E25 T33 (prepared)
 
@@ -69,14 +78,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   stopped at `gpu.cap` (fixed), then the variants, the sweep by rows (its autotuner column void:
   cuDNN's cache, `TRAPS.md`), the sweep again, the confirmation. The Python suite 254 (2.4
   minutes).
-
-### 2026-11-10 — E25 T28
-
-- #765 merged; the branch started from `master`, its code verified (only the light gates);
-  `cargo build --release -p h3-ffi` 52 s, `uv sync --group train` a few minutes. The user ran
-  T28 in 13 segments and uploaded the record, metrics and `best.pt`, with the GPU's slowdown:
-  the cap first (the Python suite 248, 2.8 minutes), then T19's tool (66 s) and `inspect` (30
-  minutes on the CPU); #827 opened, CI green. The user then pasted the head-to-head and answered
-  AI-Q17 (T29): the current best, increment 8 with its budget and probe families. #827 merged;
-  the branch restarted from `master` for T30 (the sandbox's CPU: the temperature ladder 76
-  minutes, the ceiling with its confusion table a few minutes beside it).
