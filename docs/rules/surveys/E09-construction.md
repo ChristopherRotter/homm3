@@ -495,6 +495,24 @@ The fandom wiki's Conflux page gives the upgraded Altar of Fire the Altar of Fir
 - **The creatures:** 56 events, naming the levels 55, 52, 48, 38, 39, 38 and 38 times; in the
   fixed towns 106 of those levels have no dwelling at the start nor from an earlier event (lost
   unless the owner has built it by then), 61 go to an upgraded dwelling.
+- **Checked by play** (E09 T19c2, exit criterion 6; `h3-map`'s `original_data`, seed 0, the
+  packs' closed requirement lists): the fixed towns' events in this census's order give its
+  numbers again, **57 built, 30 skipped as standing, 27 without a requirement**, once its terms
+  are read as T12b counted them: each of an event's buildings built one by one in id order, the
+  one another of its own supersedes too (the game builds the superseding one alone, its
+  `supersedes` bringing the other: 38 of the 57 told as builds, 19 folded into them), and the
+  requirement test the executable's direct lists (the closed lists: 23 of the 38); the ever-built
+  sets after each event are the same both ways (checked). **Played by `EndTurn` alone** (a week;
+  the 29 maps with events on to the last first day of an owned town's event that fires, a
+  repeating one to its second firing; 168 days at most): of the 369 events 299 fire, 23 are a
+  neutral town's (none fires without a capture: the `Back For Revenge` pair's Capitols among
+  them), 8 do not name their town's owner, 39 name it but not its kind (a colour a human may play
+  counts as human, GAM-BAT-010); 496 firings (236 with resources, 38 with buildings, 59 with
+  creatures, 190 a message alone); the fixed towns' build 18 (9 without a requirement: the `Back
+  For Revenge` pair's Rampart day-11 dwellings and `Undead Unrest`'s day-14 dwelling), skip 18 as
+  standing and fold 5; the random towns' build 16 and skip 4; no Shipyard is an event's. Every
+  firing and build is the census's own walk of TWN-EVT-001 and -003 (by day, town, place and
+  building; day 1's inside the build).
 
 ## 11. Disputes, quirk candidates and open points (T12b; both parts, for the checkpoint)
 

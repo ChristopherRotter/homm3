@@ -529,6 +529,16 @@ Whirlpools: all as T103b and T104 found them), and each class's most on one map 
 entrances, 8 exits, 17 two-way monoliths, 26 gates, 19 Whirlpools; 4 one-way and 6 two-way
 channels), the teleporters XL map's numbers (survey §1).
 
+E09 T19c2's census (the same import, seed 0; exit criterion 6 of the town epic's increment 2):
+all 160 import, validate, build and play by `EndTurn` alone (a week; the 29 maps with town
+events on to the last first day of an owned town's event that fires, a repeating one to its
+second firing, 168 days at most). The town events' 496 firings and their 34 builds are the
+census's own walk of TWN-EVT-001 and -003 (checked by day, town, place and building, day 1's
+inside the build); the fixed towns' events in the construction survey's order give its 57 built,
+30 skipped as standing and 27 without a requirement (checked; survey `E09-construction.md` §10,
+"Checked by play"). Of the 625 towns of a faction with a Shipyard 591 have no spot, so their
+Shipyards are forbidden (TWN-SET-011, E09 T18a); no custom set loses a built one.
+
 ## The subset we write (E04a T2)
 
 ### Order of a SoD map (version `0x1C`), as we write it

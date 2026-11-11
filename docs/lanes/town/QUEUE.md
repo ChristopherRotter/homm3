@@ -8,22 +8,16 @@ Epic: `docs/epics/E09-towns.md` (increment 2: construction, refined at T10, `TWN
 in `E09-log.md`; increment 1 (closed by T10) in `E09-archive.md`. Increment 2's first round
 (decision 38) is done: the survey T12 (T12a, T12b) and the drafts with the design note and the cut
 T13 (accepted at `TWN-Q10`, decisions 48–51). The build's rounds (design §35, decision 49): T14
-batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c, T19a, T19b, T19c1 (done), T19c2 (next), T20 the audit; each
+batch TWN-2 (T14a to T14c done), T15 `shared/` (done), T16a, T16b (done), T17a, T17b, T18a, T18b1, T18b2a, T18b2b, T18c, T19a, T19b, T19c1, T19c2 (done), T20 the audit (next); each
 queued here as the round before it is done. Each task's cut confirmed at its start; every entry's
 acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T19c2 — the new benchmark workloads and the census** (design §32, decisions 58, 62; queued
-2026-11-10 by T19c1; `cross-lane`: the workloads and `h3-cli`'s bench are the adventure lane's):
-the workloads (`benches/adventure/`, skill `homm3-bench-regression`) against `master` built in the
-same sandbox: `legal_commands` on a town map (the builds' sets: each owned town's `buildable` and
-treasury test; a new `h3 adventure bench` workload kind), `day-start-towns-36` with the marks
-(T19c1's re-baseline already plays the builds: check what it counts), a turn start with the builds
-map's town events; the census with the original data (exit criterion 6: the 160 shipped maps
-import and build, the Shipyards removed for want of water counted, then each played some days by
-`EndTurn` alone: the town events fired, built, skipped as standing, against survey
-`E09-construction.md` §10's 57 built, 30 skipped, 27 without a requirement in the fixed towns);
-the map client's inbox told (the town screen's builds: `GameState::town_offer`, `TownBuilt`).
-**At its start:** confirm the cut.
+**E09 T20 — the audit of increment 2** (design §35, decision 50; queued 2026-11-11 by T19c2):
+exit criteria 1 to 8 audited against what is built (each criterion's rules, tests, replays and
+the census of T19c2, `E09-log.md`), a gap closed or queued; increment 2 closed (its scope,
+decisions and task list moved to `E09-archive.md`, a row in "Closed increments", the design note's
+Part D kept as Part A to C were, decision 40); increment 3 (recruitment, decision 4 and the
+inbox's notes for it) refined with the user (`TWN-Q11`). **At its start:** confirm the cut.
 **Status:** next.
 
 ## Inbox

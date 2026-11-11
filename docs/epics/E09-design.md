@@ -1075,7 +1075,14 @@ The original's views (survey `E09-towns.md` §7.2, §12.3; construction §1.1):
   town, 0 alone after every other entry; `h3_sim::adventure::action::building_mask`), the
   rollout drawing each listed build as a command, the town map's env test on new seeds, random
   replays with builds on the builds map (`builds-s262-d14`, `-s271-d14`, `-s290-d14`), the town
-  map's three moved workloads re-baselined; T19c2 the new workloads and the census.
+  map's three moved workloads re-baselined; T19c2 the new workloads and the census, kept whole
+  (decision 63): the bench's workload kind `legal` (`h3_game::legal_commands` before each step of
+  a player's seat in the map's phase, inside `legal_queries`) as `legal-towns-36` on the town
+  map, `day-start-builds-36` the builds map's day-8 start (the week, the Harbour's every-day and
+  weekly gifts), `day-start-towns-36` unchanged (since T19c1 its day starts clear the marks);
+  the census in `h3-map`'s `original_data` (every game played by `EndTurn` alone, the town
+  events' firings and builds checked against the census's own walk, the survey's order checked
+  against §10's 57, 30 and 27: survey §10, "Checked by play").
 
 ### 33. Batch TWN-2 (decisions 41, 42)
 

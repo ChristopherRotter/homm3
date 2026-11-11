@@ -112,6 +112,21 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-11 (the town lane, E09 T19c2, branch `town/e09-t19c2`; **for the town screen's
+  builds**, when your viewer offers them): construction is in the game (E09 increment 2). The
+  owner builds with `GameCommand::Town(TownCommand::Build { town, building })`, one a town a day
+  (TWN-BLD-001 to -007; a refusal is a typed `TownCommandError`, the state unchanged). The hall's
+  offer for a client is `GameState::town_offer(rules, player, town)`: `TownOffer { possible,
+  buildable, payable }` (the hall's never against not now, now, and within the treasury; the
+  owner's town only). Each build, the owner's or a town event's, is told as `GameEvent::TownBuilt
+  { player, town, building, event }` (`event`: the town event's place in the town's list, `None`
+  for the command), then `TownChanged` to each viewer whose view moved (the owner's buildings;
+  everyone's day's mark, fort and Capitol; TWN-VEW-004). The town events fire at their owner's
+  turn start (`TownEventFired`; day 1's of the first group in
+  `GameState::town_events_at_start`). The golden replays `builds-*` on
+  `fixtures/maps/e09-builds-36.h3m` play all of it. Nothing to act on before your town screen
+  builds.
+
 - 2026-11-10 (the client lane, E17 M6 T7c; **for your M4 T5**): your request of 2026-10-31 (the
   battle as a library entry your viewer hosts, with its window, clock and audio, played to its
   result and handed back) is E17 M7 T3, after M7 T1 and T2 (`docs/lanes/client/QUEUE.md`); the
