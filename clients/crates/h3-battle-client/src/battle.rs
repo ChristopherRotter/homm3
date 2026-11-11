@@ -4254,8 +4254,7 @@ pub(crate) mod tests {
                 ..Settings::FIRST_RUN
             }
         );
-        let layout =
-            layout::parse_battle(include_str!("../../../../../layouts/battle.toml")).unwrap();
+        let layout = layout::parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let catalogue = h3_ui::text::Catalogue::default();
         let mut open =
             h3_view::options::Open::new(&layout.options, &catalogue, shown, (0, true, Bugs::Fixed));

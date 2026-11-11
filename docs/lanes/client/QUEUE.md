@@ -15,7 +15,7 @@ user at its start when it outgrows half a context. The original files: stage the
 user's computer must be online); never from the installation. The captures need the five DLLs,
 `Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
 `clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
-check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from
+check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
 `clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
 `faithful`/`fixed` profile) with the first one a task finds.
 

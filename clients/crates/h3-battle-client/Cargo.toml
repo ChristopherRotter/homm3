@@ -1,0 +1,55 @@
+[package]
+name = "h3-battle-client"
+description = "The battle client: the adapters around the viewer's scene model (the window's battle, a seat on a server, the sound, the real-asset gate, the headless renderer, the harness's commands) as a library another host runs, and the `h3-view` command line over it (E17 M7 T3a1)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The scene model (pure): what is on screen at a time.
+h3-view.workspace = true
+h3-assets.workspace = true
+# The result window's clips (E17 M5 T4b2): the Bink decoder, pure.
+h3-bink.workspace = true
+h3-formats.workspace = true
+h3-protocol.workspace = true
+h3-render.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+toml.workspace = true
+# What both viewers share (E24 M3 T1a): the clock, the cursor and its `Sprite`, the dialog items,
+# the string catalogue.
+h3-ui.workspace = true
+# The engine's crates the adapters use (a battle fought here, a scenario's setup, the towns).
+h3-battle.workspace = true
+h3-kernel.workspace = true
+h3-pack-battle.workspace = true
+h3-content-battle.workspace = true
+# The original's computer (E17 M6 T5b1): the window's opponent and Auto Combat's casts and
+# actions for a human's side.
+h3-battle-ai.workspace = true
+# A hero's battle effects and the skills that give them (E17 M3 T7b-2b-2a, `situation`).
+h3-content.workspace = true
+h3-contracts.workspace = true
+h3-map.workspace = true
+# A siege's buildings by the town records (E17 M6 T3c3).
+h3-pack-towns.workspace = true
+h3-towns.workspace = true
+# The window (E17 M2 T5a): the platform adapter.
+h3-sdl.workspace = true
+# The music (E17 M2 T5b): MP3.
+nanomp3.workspace = true
+# A game on a server (E17 M5 T6a): the connection's I/O thread.
+tungstenite.workspace = true
+rustls.workspace = true
+rustls-graviola.workspace = true
+rustls-native-certs.workspace = true
+ed25519-dalek.workspace = true
+getrandom.workspace = true
+# Accounts (E17 M5 T7): the key's derivation.
+argon2.workspace = true
+
+[lints]
+workspace = true

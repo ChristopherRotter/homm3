@@ -34,9 +34,9 @@ use h3_map::writer::{
     PLAYERS, Patch, Plain, Player, TOWN_OBJECT, Terrain, Town, TownBuildings, gzip, write,
 };
 
-use crate::gate::find_ci;
 use crate::harvest::{creature_names, hero_names, spell_numbers};
-use crate::scenario::{Book, Sides, SiegeTown, sides};
+use h3_battle_client::gate::find_ci;
+use h3_battle_client::scenario::{Book, Sides, SiegeTown, sides};
 /// Where Blue stands on the 36 × 36 map by default; Red stands one tile west. The original's
 /// obstacles depend on the battle's tile (`--tile`: the capture set's other battlefields).
 const BLUE_TILE: (u8, u8) = (11, 10);
@@ -647,7 +647,7 @@ fn map(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::scenario::SideHero;
+    use h3_battle_client::scenario::SideHero;
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()

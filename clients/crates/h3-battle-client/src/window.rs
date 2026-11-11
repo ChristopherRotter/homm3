@@ -2910,27 +2910,12 @@ mod tests {
         // Over the battlefield while the battle takes the key: the hide, a key's; off the
         // battlefield (the panel), not taking it, or the mouse out of the window: none.
         let layout =
-            h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
-                .unwrap();
+            h3_view::layout::parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let hide = Some(Input::Hide { at: 7, key: true });
         assert_eq!(key_hides(true, &layout, (7, Some((400, 300)))), hide);
         assert_eq!(key_hides(true, &layout, (7, Some((400, 590)))), None);
         assert_eq!(key_hides(false, &layout, (7, Some((400, 300)))), None);
         assert_eq!(key_hides(true, &layout, (7, None)), None);
-    }
-
-    #[test]
-    fn the_usage_names_every_command_of_the_key_table() {
-        // E17 M6 T7b (R5-5): the usage's list of what a user's `[battle]` table may bind is the
-        // table's, in its order.
-        use h3_ui::keys::Command as _;
-        let (_, list) = crate::USAGE.split_once("(the commands: ").unwrap();
-        let (list, _) = list.split_once("; []").unwrap();
-        let listed: Vec<&str> = list.split(',').map(str::trim).collect();
-        let names: Vec<String> = (h3_view::keys::Command::all().into_iter())
-            .map(h3_view::keys::Command::name)
-            .collect();
-        assert_eq!(listed, names);
     }
 
     #[test]

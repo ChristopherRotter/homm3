@@ -324,6 +324,41 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-battle-client"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "ed25519-dalek",
+ "getrandom 0.3.4",
+ "h3-assets",
+ "h3-battle",
+ "h3-battle-ai",
+ "h3-bink",
+ "h3-content",
+ "h3-content-battle",
+ "h3-contracts",
+ "h3-formats",
+ "h3-kernel",
+ "h3-map",
+ "h3-pack-battle",
+ "h3-pack-towns",
+ "h3-protocol",
+ "h3-render",
+ "h3-sdl",
+ "h3-towns",
+ "h3-ui",
+ "h3-view",
+ "nanomp3",
+ "rustls",
+ "rustls-graviola",
+ "rustls-native-certs",
+ "serde",
+ "serde_json",
+ "toml 1.1.8+spec-1.1.0",
+ "tungstenite",
+]
+
+[[package]]
 name = "h3-bink"
 version = "0.1.0"
 dependencies = [
@@ -502,35 +537,15 @@ dependencies = [
 name = "h3-view"
 version = "0.1.0"
 dependencies = [
- "argon2",
- "ed25519-dalek",
- "getrandom 0.3.4",
  "h3-assets",
- "h3-battle",
- "h3-battle-ai",
  "h3-bink",
- "h3-content",
- "h3-content-battle",
- "h3-contracts",
- "h3-formats",
- "h3-kernel",
- "h3-map",
- "h3-pack-battle",
- "h3-pack-towns",
  "h3-protocol",
  "h3-render",
- "h3-sdl",
- "h3-towns",
  "h3-ui",
- "nanomp3",
  "proptest",
- "rustls",
- "rustls-graviola",
- "rustls-native-certs",
  "serde",
  "serde_json",
  "toml 1.1.8+spec-1.1.0",
- "tungstenite",
 ]
 
 [[package]]

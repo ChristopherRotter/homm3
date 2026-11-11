@@ -9,7 +9,7 @@
 # has them (Orrin's skills and his Centaur's Axe left out: nothing drawn shows them); the capture
 # set's `smoke` (situations/set.toml) shows this battle in hot seat, so that it opens idle, at the
 # same tile as the smoke map's battle (11, 10) and with the same obstacles.
-# `cargo run --release -p h3-view -- render scenarios/smoke.toml` from clients/.
+# `cargo run --release -p h3-battle-client -- render scenarios/smoke.toml` from clients/.
 
 [scenario]
 id = "capture-smoke"

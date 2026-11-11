@@ -3,7 +3,7 @@
 Working detail of E17: the formats as the client decodes them, the code readings, layouts.
 Decisions live in [ADR-0020](../adr/0020-clients.md), the history of done tasks in
 [`E17-log.md`](E17-log.md). Figures from the user's files (the Complete edition's four LODs) come
-from the real-asset gate, `cargo run --release -p h3-view -- gate` (from `clients/`; its full report
+from the real-asset gate, `cargo run --release -p h3-battle-client -- gate` (from `clients/`; its full report
 stays local in `clients/out/gate/`).
 
 ## 1. The archives' image formats (M1 T2, T3)
@@ -1092,7 +1092,7 @@ the frame is 96 artifacts only.
 ### 7.10 A whole battle: turns, layers, fidgets (M2 T4b-2a)
 
 `h3-view play <scenario | record>` draws a battle frame by frame headless, M2's headless exit: a
-scenario is fought to its end by a bot of the viewer's own in both seats (`bin/h3-view/bot.rs`:
+scenario is fought to its end by a bot of the viewer's own in both seats (`h3-battle-client/src/bot.rs`:
 it shoots, else strikes, else walks toward the nearest enemy, the first such command the engine
 lists; the engine plays the battle, the protocol's session replays its commands for a
 spectator's record), its commands are played at the original's timing and every distinct frame
@@ -3269,7 +3269,7 @@ ADR-0024 built: `clients/crates/h3-sdl` and `h3-view window` (log: M2 T5a).
   binary a `std::time::Instant`.
 - **The frame** goes up widened on the CPU (`Screen::xrgb`, the PNG's bit repetition; ADR-0024
   point 3's second form), so every renderer gets the same bytes.
-- **The loop** (`bin/h3-view/window.rs`). The battle loads as `play` loads it (`battle.rs`, shared
+- **The loop** (`h3-battle-client/src/window.rs`). The battle loads as `play` loads it (`battle.rs`, shared
   since T5a); every frame to the end names the checkpoint batch, with `CRDEFLT.DEF`. The pure
   `h3_view::clock` turns SDL's nanoseconds into the battle's milliseconds, with a pause, a seek
   (restart, a step) and the delay of a frame. The next frame, the first later change of the
@@ -3400,7 +3400,7 @@ seeded with the battle's seed (*provisional*, as the fidgets; the executable dra
 generator), the fade-in's volumes, the volumes 127 and 64, and since M3 T8 the end's tune
 (`end_tune`, by the outcome, the snapshot's human sides and a town, none yet: sieges are not drawn;
 `Timeline::ended`, the end of the command whose events end the battle). The window
-(`bin/h3-view/audio.rs`): every sound the battle's stacks name and the start sound are decoded when
+(`h3-battle-client/src/audio.rs`): every sound the battle's stacks name and the start sound are decoded when
 the battle loads, the music by `nanomp3` (i16; the battle's 44 clips and a 3-minute track in 0.4 s
 in the sandbox); `h3-sdl` opens one device and 10 streams: the music's, the start sound's and 8
 creature channels, each a free one or the next in turn, as `play_sample` takes them. A one-shot is
@@ -6819,12 +6819,12 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
   The trigger stays the engine's refusal (no target and no untargeted cast listed): the client
   only chooses the box, by the original's order and the spell's original number.
 - **The client's** (to build; where each piece plugs in):
-  - `bin/h3-view/battle.rs` `Battle::open_book` (its *not modelled* refusals): 685, then 684,
+  - `h3-battle-client/src/battle.rs` `Battle::open_book` (its *not modelled* refusals): 685, then 684,
     before the book, as `tell(…, (Style::Ok, None), Asked::Told)`; `Battle::book_did`'s
     `Outcome::Chosen`: 748, then 537, then the entry's box by the original number (today's 186
     for the stack spells and Teleport, 0x59F135), the posted move after it as today; a wall with
     no free hex opens its aim with no target.
-  - `bin/h3-view/boxes.rs`: the texts beside `no_one` and the number sets beside
+  - `h3-battle-client/src/boxes.rs`: the texts beside `no_one` and the number sets beside
     `affects_someone_only`; the facts as one record built by `aims.rs` (local, both sides' views)
     or from the seat's view (a server).
   - `clients/text/keys.toml`: records 685, 684 (printf hero, artifact), 748, 537 (artifact,
@@ -6886,7 +6886,7 @@ to 0x5A3109) and `spell_target_cursor`'s refusal (0x59F83E to 0x59F889) to compa
   `clients/capture/README.md`), Clone's and the Summons' 20 records (7 army stacks and 4 war
   machines leave 9 to create, a round each): their unit tests'.
 - **As built** (M6 T5a, *provisional* where marked; captured):
-  - The facts and the choice: `bin/h3-view/boxes.rs` `Facts::of` (the seat's own view, the side to
+  - The facts and the choice: `h3-battle-client/src/boxes.rs` `Facts::of` (the seat's own view, the side to
     act the active stack's controller as the engine's `side_to_act`: a hypnotized stack's turn names
     its controller's hero in 537 and 539; the battle's opening for the natives, each side's
     `OwnHero` as known, the ruleset when the content is the client's: the field's level limit and

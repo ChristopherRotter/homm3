@@ -1,9 +1,9 @@
 //! `h3-view play` (E17 M2 T4b-2a): a whole battle, frame by frame, headless (M2's headless
-//! exit). A scenario is fought to its end in-process by the bot in both seats ([`crate::bot`]),
-//! as it is played since E17 M5 T1b (each command when the frames reach the timeline's end,
-//! `crate::live`), or a record file is read; its commands are played at the original's timing
-//! (`h3_view::anim`) and every distinct frame is drawn. An adapter: it reads files and the
-//! archives, and writes the frames.
+//! exit). A scenario is fought to its end in-process by the bot in both seats
+//! ([`h3_battle_client::bot`]), as it is played since E17 M5 T1b (each command when the frames
+//! reach the timeline's end, `h3_battle_client::live`), or a record file is read; its commands
+//! are played at the original's timing (`h3_view::anim`) and every distinct frame is drawn. An
+//! adapter: it reads files and the archives, and writes the frames.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
@@ -12,10 +12,10 @@ use std::process::ExitCode;
 use h3_view::anim::{Playhead, Speed, Timeline};
 use h3_view::scene::Moment;
 
-use crate::assets;
-use crate::battle::{Battle, Ground, Source};
-use crate::gate::timed;
-use crate::render::write;
+use h3_battle_client::assets;
+use h3_battle_client::battle::{Battle, Ground, Source};
+use h3_battle_client::gate::timed;
+use h3_battle_client::render::write;
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -78,7 +78,7 @@ impl Options {
                     .unwrap_or_else(|| clients.join("../original-data/install")),
                 humans: [false; 2],
                 // The fixed bot on both sides (E17 M6 T5b1, *provisional*: a fixture's battle).
-                computer: crate::live::Computer::Greedy,
+                computer: h3_battle_client::live::Computer::Greedy,
                 server: None,
             },
             out,
@@ -229,7 +229,9 @@ fn moments(timeline: &Timeline, times: &[u32]) -> Vec<String> {
 
 /// A moment as one line, as `sequences --frames` writes them.
 fn describe(t: u32, moment: &Moment) -> String {
-    crate::sequences::describe(t, moment).trim_end().to_owned()
+    h3_battle_client::sequences::describe(t, moment)
+        .trim_end()
+        .to_owned()
 }
 
 #[cfg(test)]

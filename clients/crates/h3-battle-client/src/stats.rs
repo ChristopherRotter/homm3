@@ -58,6 +58,14 @@ pub struct Sources<'a> {
     pub towns: Option<&'a TownRuleset>,
 }
 
+// A bundle of borrowed sources (and closures) handed to one call: nothing to print (the struct is
+// public since E17 M7 T3a1, when the binary became `h3-battle-client`'s library).
+impl core::fmt::Debug for Sources<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Sources").finish_non_exhaustive()
+    }
+}
+
 /// The dialog a left press (or the key T) opened on a stack: the modal dialog with its OK's
 /// state, status line and cursor (E17 M6 T2a2a), its creature's first steps, and the point the
 /// mouse was at (the battle's cursor and status line keep it: §12.1); or the one the right
@@ -1093,7 +1101,7 @@ pub(crate) mod tests {
         o.active = Some(marksmen);
         let shown = |bugs: Bugs| {
             let layout =
-                h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
+                h3_view::layout::parse_battle(include_str!("../../../layouts/battle.toml"))
                     .unwrap();
             let mut memory = Memory::new(bugs);
             let open = open(
@@ -1223,8 +1231,7 @@ pub(crate) mod tests {
             towns: None,
         };
         let layout =
-            h3_view::layout::parse_battle(include_str!("../../../../../layouts/battle.toml"))
-                .unwrap();
+            h3_view::layout::parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
         let marksmen = stack_of(&manifest, &o, "base:marksman");
         let frames: BTreeMap<u32, u32> = [(0, 8), (1, 6), (2, 4), (3, 5), (4, 7), (20, 2), (21, 2)]
             .into_iter()
