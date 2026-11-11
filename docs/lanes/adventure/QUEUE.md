@@ -4,34 +4,35 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1, the survey and the ADR amendment drafts first: T108a, then T108b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1, the survey and the ADR amendment drafts first: T108a in two (decision 297): T108a1 done (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 next; then T108b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T108a — the garrisons and bonus visitables survey** (decision 296; as T98a for increment 11: survey file
-`docs/rules/surveys/E08-garrisons-bonuses.md`, or one per family if T108a is cut by family, the agent's call)
+**E08 T108a2 — the bonus visitables survey; the batch's plan, the ids, the checkpoint** (decisions 296,
+297; survey `docs/rules/surveys/E08-garrisons-bonuses.md` §10 to §14)
 
-- **Scope:** the census of classes 33 and 219 and of the fifteen bonus visitables (11, 14, 28, 30,
-  31, 38, 48, 49, 52, 56, 64, 92, 94, 96, 110) on the 160 shipped maps (by subclass, owner and
-  army; T97c's counts in `E08-log.md`, T97c); their `.h3m` bodies and templates
-  (`docs/formats/h3m.md`, VCMI 1.7.5's reader); the original's code (`docs/exe/README.md`,
-  `scripts/exe.py`): a garrison's owner, army and flag, the passage (the side it is entered from,
-  the step through, a hero standing in it), the exchange with a hero of its owner, the battle
-  against its army (owned or neutral; 219's without spells), its capture and Leave Guards; each
-  bonus visitable's gain, its duration (to the next battle, the day's or the week's end) and its
-  marks (once per hero, a day, a week), how the bonuses reach the battle (morale, luck) and the
-  movement and spell points, the Stables' Cavaliers, the Sirens' losses and experience, the
-  Idol's and the Temple's days; what a viewer sees (a garrison's army, a visit's marks); VCMI's and
-  the wiki's rules; disputes `D-<n>` from 59, reading quirk candidates `A-<n>` from 44; the
-  proposed rule ids; the batch's plan (E12) on the client lane's harness (decision 296's agent's
-  call). Likely in parts by family (the garrisons; the bonus visitables, perhaps in two),
-  confirmed with the user at its start.
-- **Inputs:** decisions 295, 296; ADR-0015 to -0017 (ADR-0016 points 3, 4 and 6, ADR-0017's
-  decisions and rests), ADR-0013 (the hero's derived properties); the battle's morale and luck
-  inputs (HER-BAT-003, HER-ADV-008) and the inbox's note of 2026-11-03 (CLT-Q40: the visits by
-  once-mark, `EffectSource::Visit`); increment 9's owned objects (flags, Leave Guards: ADV-MIN-002)
-  and increment 6's army dialog; a battle without spells is the battle lane's (its queue, with
-  the banks' flag of the sketch's item 13); the lane's `TRAPS.md`.
-- **Depends on:** T107 (done). **Status:** ready (the original data and the shipped maps are needed:
-  staging per `docs/08-work-process.md`, "Cloud sandbox").
+- **Scope:** the fifteen bonus visitables (11, 14, 28, 30, 31, 38, 48, 49, 52, 56, 64, 92, 94, 96,
+  110; census in survey §1.2): each one's gain, its duration (to the next battle, the day's or the
+  week's end) and its marks (once per hero, a day, a week; the hero's +0x105 bits and the tiles'
+  words), how the bonuses reach the battle (morale, luck) and the movement and spell points, the
+  Stables' Cavaliers, the Sirens' losses and experience, the Idol's and the Temple's days, the
+  objects with several entrances (48, 56, 110); what a viewer sees (a visit's marks, the hint's
+  texts); VCMI's and the wiki's rules; disputes from D-62, quirk candidates from A-44; then for
+  both families the interfaces' sketch (commands, decisions, events, the observation, replays,
+  benchmarks), batch E12's plan on the client lane's harness (survey §9.4's garrison rows with the
+  bonus ones), the proposed rule ids (§9.3's family ADV-GAR with the bonus ones) and the
+  checkpoint's questions (D-59 to D-61, §9.2's open points, the bonus visitables'), asked at its
+  end.
+- **Inputs:** survey §0 to §9 (T108a1); decisions 295 to 297; the handlers measured at T108a's
+  start (about 4.9 KB): `visit_object`'s inline cases 11, 14, 28 and 52 and the handlers of 30 to 110
+  (`visit_fountain_of_fortune` 0x4A2480 to `visit_watering_hole` 0x4A7EA0 in the address map,
+  named from the switch; the Sirens' and the Stables' with three small callees); read before: `hero_morale_description`
+  0x4DC320 and `hero_luck_description` 0x4DCAC0 (the visits' bits), `hero_battle_bonuses_clear`
+  0x4DA510, `new_day` 0x4C7FE0 and the new week 0x4C8780, `hero_max_land_movement` 0x4E4990 (the
+  Stables' bit 1); the battle's morale and luck inputs (HER-BAT-003, HER-ADV-008) and the inbox's
+  note of 2026-11-03 (CLT-Q40: the visits by once-mark, `EffectSource::Visit`); increment 7's
+  battle bonuses (the Warrior's Tomb, the Pyramid); ADR-0013 (the hero's derived properties);
+  ADR-0015 to -0017; the lane's `TRAPS.md`.
+- **Depends on:** T108a1 (done). **Status:** ready (the original data staged: `Heroes3.exe` for the
+  reading, the shipped maps for the batch's plan).
 
 **E08 T108b — the ADR amendment drafts, the design note and the cut** (decision 296)
 
@@ -39,7 +40,7 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `0017-increment-12.md`, increment 12's design note `E08-design.md` (its parts by side), the
   building tasks' cut and the exit criteria; the checkpoint with the user (the note, the drafts,
   the agent's calls, the cut).
-- **Depends on:** T108a (its checkpoint's answers). **Status:** after T108a.
+- **Depends on:** T108a2 (its checkpoint's answers). **Status:** after T108a2.
 
 ## Inbox
 
