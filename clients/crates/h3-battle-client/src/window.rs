@@ -782,11 +782,14 @@ impl<'g> Prepared<'g> {
             // The stacks' sounds and the battle's own its cues name (the heal's, E17 M3 T3b; the
             // casts', T7b-1).
             let sounds = (battle.stack_sounds(), battle.battle_sounds());
+            // The tracks the host's sound has already (an earlier battle's) are its (E17 M7 T4,
+            // R4-4, *provisional*): not decoded again.
+            let kept = |name: &str| setup.sound.as_ref().is_some_and(|s| s.has_track(name));
             Library::load(
                 &setup.install,
                 (opening, &battle.layout().options.sound),
                 sounds,
-                &TUNES,
+                (&TUNES, &kept),
                 lines,
             )
             .map_err(|e| lines.push(format!("sound: {e}; no sound")))

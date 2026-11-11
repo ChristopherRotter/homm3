@@ -67,6 +67,9 @@ fn gain(volume: u8) -> f32 {
 /// A decoded MP3: its rate, channels and samples.
 pub type Music = (u32, u16, Vec<i16>);
 
+/// Whether the host's sound has a track already ([`HostSound::has_track`]; E17 M7 T4, R4-4).
+pub type Kept<'a> = &'a dyn Fn(&str) -> bool;
+
 /// The creatures' sounds a battle's cues may name (E17 M5 T8b2, R6-1): each stack of the record's
 /// first snapshot by its id, and each creature the battle may create by its handle (a created
 /// stack's cues name its creature, [`Cue::creature`]: an id it reuses keeps no sound of the
@@ -104,7 +107,8 @@ pub struct Library {
     combat: String,
     /// The music's tracks by name, until the host's sound takes them ([`Player::open`]): the
     /// combat music and the end's tunes (E17 M3 T8), each the battle may end with (E17 M5 T1b: a
-    /// battle fought as it is played does not know which yet); none, a track missing.
+    /// battle fought as it is played does not know which yet); none, a track missing. Those the
+    /// host's sound has already are not decoded again (E17 M7 T4, R4-4: `kept`).
     tracks: Vec<(String, Option<Music>)>,
     /// The music's part of the report, made as the tracks were decoded.
     music_note: String,
@@ -124,17 +128,24 @@ pub struct Library {
 impl Library {
     /// Decodes the start sound, every sound of `voices`, the battle's own sounds `named` by cue
     /// and the buttons' press sample `button` from the sound archives of `install`, and the music
-    /// and the end's `tunes` from its `MP3` folder. A missing or undecodable sound costs that
-    /// sound, noted in `lines`.
+    /// and the end's `tunes` from its `MP3` folder but the tracks the host's sound has already
+    /// (`kept`, [`HostSound::has_track`]: an earlier battle's, E17 M7 T4, R4-4). A missing or
+    /// undecodable sound costs that sound, noted in `lines`.
     pub fn load(
         install: &Path,
         (opening, button): (Opening, &str),
         (voices, named): (Voices, BTreeMap<Sound, String>),
-        tunes: &[Tune],
+        (tunes, kept): (&[Tune], Kept<'_>),
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let (result, took) = crate::gate::timed(|| {
-            Self::decode(install, (opening, button), (voices, named), tunes, lines)
+            Self::decode(
+                install,
+                (opening, button),
+                (voices, named),
+                (tunes, kept),
+                lines,
+            )
         });
         let mut library = result?;
         library.took = took.as_millis();
@@ -146,7 +157,7 @@ impl Library {
         install: &Path,
         (opening, button): (Opening, &str),
         (voices, named): (Voices, BTreeMap<Sound, String>),
-        tunes: &[Tune],
+        (tunes, kept): (&[Tune], Kept<'_>),
         lines: &mut Vec<String>,
     ) -> Result<Self, String> {
         let start = opening.start_sound();
@@ -165,11 +176,16 @@ impl Library {
         wanted.dedup();
         let clips = clips(install, &wanted, lines)?;
         let combat = opening.music_file();
-        let mut tracks = vec![(combat.clone(), mp3(install, &combat, lines)?)];
-        for &tune in tunes {
-            tracks.push((tune.file().to_owned(), mp3(install, tune.file(), lines)?));
+        let names = std::iter::once(combat.as_str()).chain(tunes.iter().map(|t| t.file()));
+        let (mut tracks, mut left) = (Vec::new(), Vec::new());
+        for name in names {
+            if kept(name) {
+                left.push(name.to_owned());
+            } else {
+                tracks.push((name.to_owned(), mp3(install, name, lines)?));
+            }
         }
-        let music_note = music_note(&tracks);
+        let music_note = music_note(&combat, &tracks, &left);
         Ok(Self {
             clips,
             combat,
@@ -320,22 +336,34 @@ impl Library {
     }
 }
 
-/// The music's part of the report: the combat music's (the first track's) format and length,
-/// and how many of the end's tunes were decoded.
-fn music_note(tracks: &[(String, Option<Music>)]) -> String {
-    let music = tracks.first().and_then(|(_, m)| m.as_ref()).map_or_else(
-        || "no music".to_owned(),
-        |(rate, channels, samples)| {
+/// The music's part of the report: the `combat` music's format and length, how many of the
+/// end's tunes were decoded (`tracks`), and how many tracks the host's sound had already
+/// (`kept`, E17 M7 T4).
+fn music_note(combat: &str, tracks: &[(String, Option<Music>)], kept: &[String]) -> String {
+    let decoded = (tracks.iter()).find_map(|(n, m)| m.as_ref().filter(|_| n == combat));
+    let music = match decoded {
+        _ if kept.iter().any(|n| n == combat) => "music kept".to_owned(),
+        Some((rate, channels, samples)) => {
             let seconds = samples.len() / usize::from(*channels).max(1) / (*rate).max(1) as usize;
             format!("music {rate} Hz × {channels}, {seconds} s")
-        },
-    );
-    let tune = match tracks.iter().skip(1).filter(|(_, m)| m.is_some()).count() {
+        }
+        None => "no music".to_owned(),
+    };
+    let tune = match (tracks.iter())
+        .filter(|(n, m)| n != combat && m.is_some())
+        .count()
+    {
         0 => String::new(),
         1 => ", the end's tune".to_owned(),
         n => format!(", the end's {n} tunes"),
     };
-    format!("{music}{tune}")
+    let others = kept.iter().filter(|n| *n != combat).count();
+    let more = if others > 0 {
+        format!(", {others} kept")
+    } else {
+        String::new()
+    };
+    format!("{music}{tune}{more}")
 }
 
 /// One channel of the creature sounds: its stream, the format queued on it, what plays there.
@@ -569,8 +597,9 @@ pub struct Player {
 impl Player {
     /// The battle's sound on the host's `sound`: the start sound's stream and the creature
     /// sounds' channels added to its device, the library's tracks (the combat music, the end's
-    /// tunes) given to its music, one refused noted in `lines`. On an error the streams added are
-    /// removed and the host's sound handed back with it.
+    /// tunes) given to its music, one refused noted in `lines`; those it had already stay its own
+    /// (E17 M7 T4, R4-4: the library left them). On an error the streams added are removed and
+    /// the host's sound handed back with it.
     pub fn open(
         mut sound: HostSound,
         library: &mut Library,
@@ -990,15 +1019,45 @@ pub(crate) mod tests {
         (MUSIC_RATE, MUSIC_CHANNELS, vec![0; 2 * 44_100 * seconds])
     }
 
-    /// The battle's library of an installation copy of nothing.
-    fn bare_library(install: &Path) -> (Library, Vec<String>) {
+    /// The battle's library of an installation copy of nothing, the host's sound having the
+    /// tracks `kept` already.
+    fn bare_library(install: &Path, kept: Kept<'_>) -> (Library, Vec<String>) {
         let mut lines = Vec::new();
         let opening = h3_view::sound::opening(1);
         let sounds = (Voices::default(), BTreeMap::new());
         let tunes = [Tune::Win, Tune::Lose];
-        let library =
-            Library::load(install, (opening, "BUTTON"), sounds, &tunes, &mut lines).unwrap();
-        (library, lines)
+        let music = (&tunes[..], kept);
+        let library = Library::load(install, (opening, "BUTTON"), sounds, music, &mut lines);
+        (library.unwrap(), lines)
+    }
+
+    #[test]
+    fn the_tracks_the_host_s_sound_has_are_not_decoded_again() {
+        // E17 M7 T4 (R4-4): a later battle on the host's sound reuses the tracks an earlier one
+        // left it: they are not decoded again, and the host's stay its own.
+        let install = bare_install("kept-tracks");
+        let combat = h3_view::sound::opening(1).music_file();
+        let kept = |name: &str| name == combat || name == Tune::Win.file();
+        let (library, lines) = bare_library(&install, &kept);
+        let names: Vec<&str> = library.tracks.iter().map(|(n, _)| n.as_str()).collect();
+        assert_eq!(names, [Tune::Lose.file()]);
+        let missing: Vec<&String> = lines.iter().filter(|l| l.starts_with("music: ")).collect();
+        assert_eq!(missing.len(), 1, "{lines:?}");
+        assert!(library.describe().contains("music kept, 1 kept"));
+        // Given to the host's sound: its own decoded track stays.
+        if let Some((_lock, mut sound)) = dummy(Bugs::Fixed) {
+            sound.add_track(&combat, Some(track(1)));
+            let (mut library, mut lines) = bare_library(&install, &|n| sound.has_track(n));
+            let player = Player::open(sound, &mut library, &mut lines).unwrap();
+            let state = track_state(&player.sound.tracks, &combat);
+            assert_eq!(state, Track::Frames(44_100));
+            assert_eq!(
+                track_state(&player.sound.tracks, Tune::Win.file()),
+                Track::Missing
+            );
+            drop(player.close());
+        }
+        fs::remove_dir_all(&install).unwrap();
     }
 
     #[test]
@@ -1010,7 +1069,7 @@ pub(crate) mod tests {
             return;
         };
         let install = bare_install("restart-music");
-        let (mut library, mut lines) = bare_library(&install);
+        let (mut library, mut lines) = bare_library(&install, &|_| false);
         let mut player = Player::open(sound, &mut library, &mut lines).unwrap();
         let combat = library.combat.clone();
         player.sound.add_track(&combat, Some(track(5)));
@@ -1063,7 +1122,7 @@ pub(crate) mod tests {
             ("losecombat".to_owned(), None),
         ];
         assert_eq!(
-            music_note(&tracks),
+            music_note("COMBAT02", &tracks, &[]),
             "music 44100 Hz × 2, 3 s, the end's tune"
         );
         let more = vec![
@@ -1071,7 +1130,16 @@ pub(crate) mod tests {
             ("win battle".to_owned(), Some(second.clone())),
             ("losecombat".to_owned(), Some(second)),
         ];
-        assert_eq!(music_note(&more), "no music, the end's 2 tunes");
-        assert_eq!(music_note(&[]), "no music");
+        assert_eq!(
+            music_note("COMBAT02", &more, &[]),
+            "no music, the end's 2 tunes"
+        );
+        assert_eq!(music_note("COMBAT02", &[], &[]), "no music");
+        // E17 M7 T4: the tracks the host's sound had already.
+        let kept = ["COMBAT02".to_owned(), "surrender".to_owned()];
+        assert_eq!(
+            music_note("COMBAT02", &more[1..], &kept),
+            "music kept, the end's 2 tunes, 1 kept"
+        );
     }
 }
