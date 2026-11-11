@@ -1,0 +1,671 @@
+# Experiment batch E12b (E08 T109b; decisions 299 to 303, 306 to 309, 312, 313): rows E12-7 to
+# E12-17 of increment 12's plan, the bonus visitables (survey
+# docs/rules/surveys/E08-garrisons-bonuses.md §10, §12; docs/epics/E08-design.md §18), in SoD on
+# Easy, hot seat, days 1 to 8 (the second week's first), then the third's and the fourth's first
+# days for E12-12 alone; Red plays, Blue only ends its turns. Batch E12a (`E08-batch-12a`) is the
+# garrisons. Build: docs/experiments/README.md. Predictions are for the agent who evaluates the
+# results; the template never shows them.
+#
+# | row    | settles                                    | the reading (faithful)                       | the other source(s)                     |
+# | E12-7  | §10.5, D-64: the Sirens                    | 90, 10, 1 keep 62, 7, 1 (the double product  | VCMI: 63, 7, 1 and 300 (ceil 30 %       |
+# |        |                                            | trunc(n × 0.7)); experience 310             | drowned)                                |
+# | E12-8  | §10.5, A-44: the Sirens after a battle     | losses again (bit 20 cleared by the battle)  | VCMI the same; the wiki: a bug (HotA)   |
+# | E12-9  | §10.6, D-62: a Magic Spring's entrances    | each refills once a week on its own; both    | VCMI: one object, the second refused;   |
+# |        |                                            | again at the week                            | the wiki: two independent tiles         |
+# | E12-10 | §10.4, D-63: the Stables visited again     | +400 once a week (a hero's mark); Cavaliers  | VCMI: nothing while its week bonus      |
+# |        |                                            | upgraded at every visit; +400 to the day's   | holds (Cavaliers kept)                  |
+# |        |                                            | land points                                  |                                         |
+# | E12-11 | §10.2: the Idol by the day, the Temple     | odd luck, even morale, day 7 both; Temple +1,| VCMI and the wiki the same              |
+# |        |                                            | day 7 +2                                     |                                         |
+# | E12-12 | §10.6: two Fountains of Fortune            | −1, +1, +2 or +3 each; new only at a week's  | VCMI the same (reset every 7 days)      |
+# |        |                                            | start                                        |                                         |
+# | E12-13 | §10.4: Oasis, Watering Hole, Swan Pond     | +800 and +400 to the points and the day's    | VCMI: the points only, its maximum      |
+# |        |                                            | maximum; then points 0, the maximum kept     | computed anew                           |
+# | E12-15 | §10.4, open point: the Admiral's Hat after | the boarding divides by the raised maximum   | VCMI: by the maximum computed anew      |
+# |        | an Oasis                                   |                                              |                                         |
+# | E12-16 | §10.7: the hint's bonus line and mark      | the kind's line once the team visited one;   | the original only (E24's reading)       |
+# |        |                                            | the mark by the selected hero's bit          |                                         |
+# | E12-17 | rewards survey §6.1, §6.3: a School of War | refused (no gold), the kind mark still set:  | the original only                       |
+# |        | without gold                               | the line over a second School                |                                         |
+#
+# **Rows and heroes.** Red has eight heroes (the original's most): E12-7 plays E12-15, E12-7,
+# E12-8 and E12-16's water part in that order (the Oasis, the boat, the Sirens, a battle, the
+# Sirens again, a Buoy, the Mermaids); E12-13 plays E12-13 and, on day 2, E12-16's land part;
+# E12-17 also reads E12-12 (which needs no hero) and is the other hero E12-16's marks are read with.
+#
+# **A town each** (the lane's TRAPS.md): a player without a town is defeated seven days after, and
+# the run reaches day 22. Red has a Castle at (10, 66), Blue a Stronghold at (10, 50), each with
+# the editor's standard buildings, far from every row; no hero enters them. **Red's treasury** is
+# emptied by a timed event on day 1 (as batch E10a's "Take": its results left Red exactly the gold
+# its events gave, the starting bonus before them): E12-17 visits its School on day 1 with no gold.
+# Nothing else reads the treasury.
+#
+# **The pictures** (docs/experiments/README.md, "Increment 12's objects"; `Objects.txt`): the Idol,
+# the Magic Wells, the Fountains of Fortune and the Buoys block their tile `at` and are visited
+# from a neighbour, never stood on; the others are entered (stood on): the Stables and the Rally
+# Flag at `at` (they block `at` and the tile west of it), the Swan Pond, the Faerie Ring, the
+# Temple at the tile west of `at` (the same two tiles), the Fountain of Youth at `at` (it blocks
+# `at`, the tile west and the two above), the Magic Spring and the Oasis at `at` and the tile west
+# of it (the Oasis also blocks the two above), the Watering Hole at `at` and the three west of
+# it, the Mermaids and the Sirens at the middle of their three tiles; the School of War `AVSwar20`
+# (since T109b, E12-17) at the tile west of `at`. **None is visited or entered from above** (design
+# §1; neither of the original's lists holds them), so every visit below comes from the row of the
+# object or from below, and no hero leaves an entered object upwards.
+#
+# **The points.** Ten or two Archangels and one Archangel give 2 000 land points a day; an army
+# whose slowest is a Pikeman or an Archer 1 560 (packs/base/adventure.toml `land_points`); at sea
+# 1 500, with the Admiral's Hat 3 000 (HER-ADV-009). A step costs 100 on grass and at sea, 141
+# diagonally (priced by hand: the bonus visitables import as blockers until T113b, so no reach
+# query prices a step onto one; the plain legs by a throwaway search on the written map). A hero's
+# scouting radius is 5 (dx² + dy² ≤ 30, ADV-FOG-002): every click below is on a tile explored by
+# then (the long walks are split into legs for it, ADV-MOV-008).
+#
+# **The reads** (the capture harness, E08 T110): a hero's status bits (+0x105), its visits' morale
+# and luck bytes (+0x11A, +0x11B), the day's maximum (+0x49), the points left (+0x4D), the spell
+# points (+0x18), experience and army; a tile's word (the Fountain of Fortune's value, bits 13 to
+# 16 signed; a Magic Spring's entrance, bit 6 full); the map hint's text over an entrance. **A hero
+# standing on an entrance hides its tile's word** (batch E10b's trap): a Spring's word is read on
+# the entrance the hero does not stand on.
+#
+# The trap of the starting bonus: a hot-seat player's random starting bonus may give a hero an
+# artifact; an artifact on a moving hero goes under "anything odd" (boots, a Necklace of Ocean
+# Guidance would move the points; a Talisman of Mana the spell points).
+
+[map]
+name = "E08 batch E12b"
+description = "Engine-generated experiment map (E08, batch E12b): the bonus visitables through a week and the next week's first day: the Sirens before and after a battle, a Magic Spring's two entrances, the Stables visited again, the Idol and the Temple by the day, two Fountains of Fortune, the movement objects and the Admiral's Hat, the hint's bonus lines, a School of War without gold. Hot seat, Red and Blue human, difficulty Easy; follow the results template."
+size = 72
+terrain = "grass"
+difficulty = "easy"
+instructions = [
+    "Copy `E08-batch-12b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty **Easy**. If the scenario's options let you, set both players' starting bonus to gold. Before you start it, compare the stamp at the start of the map's description with the stamp above. Save right away (save 1), and at the start of Red's turn on days 2, 6, 8 and 15 (saves 2 to 5).",
+    "Day 1 opens with a message for Red (a tax collector takes its gold): close it.",
+    "Most records are the game's memory: the date (game +0x1F63E the day of the week, +0x1F640 the week), a hero's tile, status bits (hero +0x105), its visits' morale and luck (+0x11A, +0x11B), the day's maximum movement (+0x49), the points left (+0x4D), the spell points (+0x18), experience and army; a tile's word; the map hint's text; every message's text. The capture harness reads them (`clients/capture/batches/E08-batch-12b.toml`, E08 T110). Played by hand, read the screens instead (the hero screen's morale and luck lists, the status bar's hint) and leave the memory-only lines empty.",
+    "Tiles are (column, row) from 0 at the top left. A walk: click the target once (the path's marks show), then again (the hero goes). A visit of an object that is not entered: click it twice from where the hero stands. **A hint:** with the hero named selected, hold the mouse over the tile named (an object's entrance) and note the status bar's text. **Another hero's hint:** select that hero in the hero list, centre the view on the tile with a click on the minimap, then hold the mouse over it.",
+    "**A cast:** open the hero's spell book on the adventure map, cast View Earth, close its view.",
+    "**The exchange between two heroes** (a click on a hero of one's own beside the hero): a move is a click on a stack, then a click on an empty slot of the other hero's bar (slots 0 to 6 from the left); close it with OK.",
+    "Each battle by auto combat. A level-up's dialog: take the left skill.",
+    "Order, Red's turns (Blue ends each of its turns at once): **day 1**: E12-12's reads, E12-17, E12-14, E12-9, E12-10, E12-11, E12-13, E12-7; **day 2**: E12-12, E12-14, E12-10, E12-11, E12-13 (E12-16's land part); **days 3 to 5**: E12-12; **day 6**: E12-12, E12-11; **day 7**: E12-12, E12-11; **day 8**: E12-12, E12-9, E12-10's reads; then end the turns to **day 15** and **day 22**: E12-12 on each. Then the map is done.",
+    "Fill in this file (anything unexpected goes into the encounter's last line) and keep it in the repo.",
+]
+
+# --- The towns and Red's treasury -------------------------------------------------------------------------
+
+[[map.town]]
+entrance = [10, 66]
+faction = "castle"
+owner = "red"
+
+[[map.town]]
+entrance = [10, 50]
+faction = "stronghold"
+owner = "blue"
+
+[[map.timed_event]]
+name = "Take"
+message = "A tax collector takes your gold."
+day = 1
+players = ["red"]
+resources = { gold = -99999 }
+
+# --- The lake (E12-7, E12-8, E12-15, E12-16's water part) -------------------------------------------------
+
+[[map.patch]]
+terrain = "water"
+from = [36, 30]
+to = [70, 50]
+
+# --- E12-14: two Magic Wells ------------------------------------------------------------------------------
+
+[[map.object]]
+picture = "AVXwelg0"
+at = [6, 5]
+
+[[map.object]]
+picture = "AVXwelr0"
+at = [10, 5]
+
+# --- E12-9: a Magic Spring, its entrances L (17, 5) and R (18, 5) -------------------------------------------
+
+[[map.object]]
+picture = "AVXmags0"
+at = [18, 5]
+
+# --- E12-12: two Fountains of Fortune ----------------------------------------------------------------------
+
+[[map.object]]
+picture = "AVSfntn0"
+at = [26, 4]
+
+[[map.object]]
+picture = "AVSfntn0"
+at = [30, 4]
+
+# --- E12-10: the Stables, entered at (38, 5) -----------------------------------------------------------------
+
+[[map.object]]
+picture = "AVXstbl0"
+at = [38, 5]
+
+# --- E12-11: an Idol of Fortune, a Temple entered at (53, 5), three Peasants ---------------------------------
+
+[[map.object]]
+picture = "AVSidol0"
+at = [48, 5]
+
+[[map.object]]
+picture = "AVStmpl0"
+at = [54, 5]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [46, 9]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [51, 9]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [56, 9]
+
+# --- E12-13: an Oasis (entered at (43, 16) and (44, 16)), a Watering Hole ((47, 16) to (50, 16)), a Swan Pond
+# --- (entered at (55, 16)) ----------------------------------------------------------------------------------
+
+[[map.object]]
+picture = "AVXosis0"
+at = [44, 16]
+
+[[map.object]]
+picture = "AVXwtrh0"
+at = [50, 16]
+
+[[map.object]]
+picture = "AVSclvg0"
+at = [56, 16]
+
+# --- E12-16's land part: a Faerie Ring, a Rally Flag, a Fountain of Youth, each twice -------------------------
+
+[[map.object]]
+picture = "AVSring0"
+at = [58, 20]
+
+[[map.object]]
+picture = "AVXrlly0"
+at = [61, 20]
+
+[[map.object]]
+picture = "AVXfyth0"
+at = [64, 20]
+
+[[map.object]]
+picture = "AVSring0"
+at = [58, 24]
+
+[[map.object]]
+picture = "AVXrlly0"
+at = [61, 24]
+
+[[map.object]]
+picture = "AVXfyth0"
+at = [64, 24]
+
+# --- E12-17: two Schools of War, entered at (51, 22) and (51, 26) ---------------------------------------------
+
+[[map.object]]
+picture = "AVSwar20"
+at = [52, 22]
+
+[[map.object]]
+picture = "AVSwar20"
+at = [52, 26]
+
+# --- E12-15, E12-7, E12-8: an Oasis on the shore, an empty boat, the Sirens, a Peasant at sea ------------------
+
+[[map.object]]
+picture = "AVXosis0"
+at = [42, 27]
+
+[[map.object]]
+picture = "AVXboat0"
+at = [44, 30]
+
+[[map.object]]
+picture = "AVXsirn0"
+at = [48, 33]
+
+[[map.monster]]
+creature = "Peasant"
+count = 1
+at = [47, 37]
+
+# --- E12-16's water part: a Buoy and the Mermaids, each twice --------------------------------------------------
+
+[[map.object]]
+picture = "AVSbuoy0"
+at = [51, 33]
+
+[[map.object]]
+picture = "AVXmerm0"
+at = [54, 33]
+
+[[map.object]]
+picture = "AVSbuoy0"
+at = [51, 38]
+
+[[map.object]]
+picture = "AVXmerm0"
+at = [53, 37]
+
+# --- E12-12 and E12-17 ------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-17"
+title = "Two Fountains of Fortune through the weeks (E12-12); a School of War visited without gold: refused, the kind mark set before the gold test, the hint over a second School (E12-17)"
+questions = ["ADV-BON-003", "GAM-CAL-002", "ADV-TCH-002", "ADV-BON-009", "ADV-VIS-006"]
+procedure = [
+    "**E12-12.** Every day of Red's from day 1 to day 8, then on day 15 and day 22, first in Red's turn: read the date and the tile words of the Fountains of Fortune F1 (26, 4) and F2 (30, 4) (their value, bits 13 to 16 signed; their team bits 5 to 12). No hero visits them.",
+    "**E12-17.** Day 1, Red's turn, after E12-12's reads (Red's treasury: 0 gold after the day's message): the Schools of War S1 (entered at (51, 22)) and S2 (entered at (51, 26)). E12-17 stands at (54, 24) with one Archangel. Read Red's gold, E12-17's points and its School of War bits (hero +0x7B).",
+    "With E12-17 selected, the hint over S2's entrance (51, 26); note its text.",
+    "Click S1's entrance (51, 22) twice: E12-17 steps onto it. Note every message and dialog (their texts; answer a question with its leave or cancel button), then E12-17's tile, points, attack, defense, +0x7B, and Red's gold.",
+    "Click (52, 23) twice: E12-17 steps off S1, south-east (a hero on an entrance hides its object from the hint). With E12-17 selected, the hints over S2's entrance (51, 26) and S1's (51, 22); note each text and E12-17's points.",
+]
+record = [
+    { table = ["day", "F1 (26, 4): value; team bits", "F2 (30, 4): value; team bits"], rows = 10 },
+    { field = "E12-17 before: Red's gold; E12-17's points; +0x7B" },
+    { field = "the hint over S2 (51, 26) before" },
+    { field = "the step onto S1 (51, 22): messages and dialogs (texts)" },
+    { field = "after it: E12-17's tile; points; attack; defense; +0x7B; Red's gold" },
+    { field = "the hints after (E12-17 on (52, 23)): over S2 (51, 26); over S1 (51, 22); E12-17's points" },
+    { field = "anything odd" },
+]
+predictions = """
+E12-12:
+
+- **The value** (survey §10.6; 0x4C1479 at a new game, 0x4C8C9F at each new week): the tile word's
+  bits 13 to 16, drawn by `random_between(0, 3)`, 0 giving **−1** and 1 to 3 themselves: each of
+  −1, +1, +2, +3 one in four, for each fountain apart (in the map walk's order among the weekly
+  classes: here also the four Peasants, class 54, all beaten by day 6). **Unchanged on days 2 to
+  7**; drawn again on **days 8, 15
+  and 22** (each new week). Never 0 (no fountain has a body to set it). The team bits **0**
+  throughout (cleared at the new game, kept at a week; nobody visits). VCMI: four rewards of 25 %,
+  reset every 7 days (the same law); the wiki: −1 to +3, changed on a week's first day.
+- The draws themselves are the game's generator's: no value is predicted, only the set and when.
+
+E12-17:
+
+- **The treasury:** 0 gold after the day's event (−99 999 takes it all; batch E10a's day-1 events
+  left Red exactly the 1 000 they gave, the starting bonus included before them).
+- **The hint before** (E24-design.md §4.11: on an entrance the name, the bonus when the viewing
+  player knows the kind, then the mark by the selected hero): no School of War visited by Red, so
+  `kinds_visited` + 10 clear: **the name, then "not visited"** (GENRLTXT 354; E12-17's +0x7B bit
+  for S2's number clear), no bonus line.
+- **The visit** (survey `E08-rewards.md` §6.3, `visit_school_of_war` 0x4A7A40, as the School of
+  Magic's 0x4A33E0): not visited, so **the team's kind mark first** (k 10, for every player of
+  Red's team), then Red's gold below 1 000: **refused with a message** (its text; no question, no
+  choice), **no hero mark**, nothing paid; E12-17 on **(51, 22)** with **1 618** (382: (53, 23),
+  (52, 23), (51, 22)), attack and defense 1, +0x7B 0, gold 0.
+- **The hints after** (E12-17 stepped off to (52, 23), 141: 1 477; a hero standing on an entrance
+  makes the tile read as the hero's, survey §7): over S2 **the name, the bonus line (XtraInfo
+  record 10), "not visited"**; over S1 the same (its own bit clear too: the refusal set none). So a refused visit counts as
+  seen for the hint (the reading's point; decision 302 builds the kind marks so).
+"""
+[encounter.hero]
+type = "Calh"
+specialty = "creature Gog"
+at = [54, 24]
+primary = [1, 1, 1, 1]
+army = [["Archangel", 1]]
+
+# --- E12-14 ----------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-14"
+title = "Two Magic Wells: a full hero, a refill after a cast, another Well the same day, the next day"
+questions = ["ADV-BON-006", "HER-MAN-001", "HER-MAN-002"]
+procedure = [
+    "Day 1, Red's turn, after E12-17: the Magic Wells W1 (6, 5) and W2 (10, 5) (each visited from a neighbour). E12-14 stands at (6, 6), south of W1, with one Archangel, a spell book with View Earth, knowledge 2 (its maximum 20, full). Read its spell points and status bits (+0x105).",
+    "Click W1 (6, 5) twice: note every message, the spell points and bit 0.",
+    "Cast View Earth. Read the spell points. Click W1 twice: note every message, the spell points and bit 0.",
+    "Cast View Earth. Read the spell points. Click W2 (10, 5) twice (E12-14 walks to a tile beside it): note every message, the tile, the spell points and bit 0.",
+    "Day 2, Red's turn: read E12-14's spell points and bit 0. Click W2 twice: note every message, the spell points and bit 0.",
+]
+record = [
+    { field = "day 1 before: spell points; +0x105" },
+    { field = "W1, full: messages; spell points; bit 0" },
+    { field = "the cast: spell points; W1 again: messages; spell points; bit 0" },
+    { field = "the cast: spell points; W2: messages; E12-14's tile; spell points; bit 0" },
+    { field = "day 2 before: spell points; bit 0" },
+    { field = "W2 on day 2: messages; spell points; bit 0" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The Well** (survey §10.2, §10.4; `visit_magic_well` 0x4A3730): bit 0 clear and spell points
+  below the hero's maximum (10 × Knowledge × `hero_intelligence`, HER-MAN-001: **20**): set to the
+  maximum, bit 0, ADVEVENT 77; at or above it: **ADVEVENT 79, no bit** (the hero may drink again
+  after casting); bit 0 set: ADVEVENT 78 ("visited"), nothing.
+- **Day 1:** before 20, bit 0 clear. **W1 full: refused, 79**, 20, bit 0 clear. The cast (View
+  Earth, 2): 18; **W1 again: refilled, 77**, 20, bit 0 set. The cast: 18; **W2: "visited", 78**,
+  18, bit 0 set (any Well: the bit is the hero's, not the Well's). E12-14 beside W2, (9, 6) or
+  (9, 5).
+- **Day 2** (`new_day` 0x4C7FE0 clears bit 0 for every hero; HER-MAN-002's regain 1): 19, bit 0
+  clear; **W2: refilled, 77**, 20, bit 0 set. VCMI: `bonus` with `ONE_DAY`, below 100 % only: the
+  same; the wiki: once a turn.
+"""
+[encounter.hero]
+type = "Thane"
+specialty = "creature Genie"
+at = [6, 6]
+primary = [1, 1, 1, 2]
+army = [["Archangel", 1]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["View Earth"]
+
+# --- E12-9 -----------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-9"
+title = "A Magic Spring's two entrances: each refills once a week on its own; both again at the next week"
+questions = ["D-62", "ADV-BON-007", "HER-MAN-001", "HER-MAN-002"]
+procedure = [
+    "Day 1, Red's turn, after E12-14: the Magic Spring's entrances L (17, 5) and R (18, 5). E12-9 stands at (16, 6) with one Archangel, a spell book with View Earth, knowledge 2 (its maximum 20, full). Read its spell points and the words of L and R (bit 6).",
+    "Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word.",
+    "Cast View Earth; read the spell points. Click R (18, 5) twice: E12-9 steps onto it. Note every message, the spell points and L's word.",
+    "Cast View Earth; read the spell points. Click L (17, 5) twice: E12-9 steps onto it. Note every message, the spell points and R's word. Then click (17, 6) twice (E12-9 steps off, south) and read L's and R's words.",
+    "Day 8, Red's turn (the second week's first day): read E12-9's tile, spell points and the words of L and R. Cast View Earth; read the spell points. Click R (18, 5) twice: note every message, the spell points and L's word. Cast View Earth; read the spell points. Click L (17, 5) twice: note every message, the spell points and R's word.",
+]
+record = [
+    { field = "day 1 before: spell points; L's word (bit 6); R's word (bit 6)" },
+    { field = "onto L: messages; spell points; R's bit 6" },
+    { field = "the cast: spell points; onto R: messages; spell points; L's bit 6" },
+    { field = "the cast: spell points; onto L again: messages; spell points; R's bit 6" },
+    { field = "off to (17, 6): L's bit 6; R's bit 6" },
+    { field = "day 8 before: E12-9's tile; spell points; L's bit 6; R's bit 6" },
+    { field = "day 8, the cast: spell points; onto R: messages; spell points; L's bit 6" },
+    { field = "day 8, the cast: spell points; onto L: messages; spell points; R's bit 6" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The setup** (survey §10.6, `setup_map_objects`' case 48): R's left neighbour L is an entrance
+  of class 48, so R copies L's word: both full (bit 6 set), one counter.
+- **The visit** (`visit_magic_spring` 0x4A3590): the entrance's bit 6 set and spell points below
+  twice the maximum (**40**): set to 40, **that entrance's** bit 6 cleared, ADVEVENT 74; bit 6
+  clear: ADVEVENT 75, nothing; at or above 40: 76, nothing (the entrance stays full).
+- **Day 1:** before 20, L and R full. **Onto L: 40, 74**; R still full. The cast: 38. **Onto R:
+  40, 74** (its own word: D-62's point), L emptied (bit 6 clear). The cast: 38. **Onto L again:
+  75, nothing**, 38; R emptied. Off to (17, 6): **both emptied**. **VCMI 1.7.5:** one object visited once a week (`visitMode:
+  once`): the step onto R **refused** (38 kept). The wiki: two independent tiles.
+- **Days 2 to 7:** 38 stays (above the maximum: HER-MAN-002 never lowers, no regain past 20).
+- **Day 8** (0x4C8B9C sets bit 6 on every entrance at a new week): E12-9 on (17, 6) with 38; **L
+  and R full**. The cast: 36. **Onto R** ((18, 5), from below-left, 141): **40, 74**; L full. The
+  cast: 38. **Onto L** (100): **40, 74**; R emptied. VCMI: the
+  first refill, the second refused.
+"""
+[encounter.hero]
+type = "Ivor"
+specialty = "creature Wood Elf"
+at = [16, 6]
+primary = [1, 1, 1, 2]
+army = [["Archangel", 1]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["View Earth"]
+
+# --- E12-10 ----------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-10"
+title = "The Stables: a first visit without Cavaliers, Cavaliers taken from a second hero, its own first visit, the revisits on day 2"
+questions = ["D-63", "ADV-BON-005", "HER-ADV-003", "ADV-MOV-001"]
+procedure = [
+    "Day 1, Red's turn, after E12-9: the Stables ST, entered at (38, 5). E12-10 stands at (39, 7) with five Pikemen; E12-10b at (40, 7) with two stacks of three Cavaliers and five Pikemen (slots 0, 1, 2). Read both heroes' points, day's maximum, status bits (+0x105) and armies.",
+    "Click ST's entrance (38, 5) with E12-10 twice: E12-10 steps onto it. Note every message, its points, day's maximum, bit 1 and army.",
+    "Click E12-10b (40, 7) with E12-10 twice: E12-10 walks beside it and the exchange opens. Move both of E12-10b's Cavalier stacks into E12-10's empty slots 1 and 2; close it. Note both armies, E12-10's tile and points.",
+    "Click ST's entrance (38, 5) with E12-10b twice: E12-10b steps onto it. Note every message, its points, day's maximum, bit 1 and army. Then click (37, 6) with E12-10b twice (it steps off, south-west).",
+    "Day 2, Red's turn: read both heroes' points, day's maximum, bit 1 and armies.",
+    "Click E12-10 (39, 6) with E12-10b twice: the exchange opens. Move E12-10's Cavaliers of slot 2 into E12-10b's empty slot 0; close it. Note both armies.",
+    "Click ST's entrance (38, 5) with E12-10 twice: note every message, its points, day's maximum and army. Then click (39, 5) with E12-10 twice (it steps off, east).",
+    "Click ST's entrance (38, 5) with E12-10b twice: note every message, its points, day's maximum and army.",
+    "Day 8, Red's turn (the second week's first day): read both heroes' day's maximum, points, bit 1 and armies.",
+]
+record = [
+    { field = "day 1 before: E12-10's points, maximum, +0x105, army; E12-10b's the same" },
+    { field = "E12-10 onto ST: messages; points; maximum; bit 1; army" },
+    { field = "the exchange: both armies after; E12-10's tile; points" },
+    { field = "E12-10b onto ST: messages; points; maximum; bit 1; army; its tile after stepping off" },
+    { field = "day 2 before: E12-10's points, maximum, bit 1, army; E12-10b's the same" },
+    { field = "the exchange back: both armies after" },
+    { field = "E12-10 onto ST again: messages; points; maximum; army" },
+    { field = "E12-10b onto ST again: messages; points; maximum; army" },
+    { field = "day 8: E12-10's maximum, points, bit 1, army; E12-10b's the same" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The visit** (survey §10.2, §10.4; `visit_stables` 0x4A60A0): bit 1 clear: +400 to the points
+  left and the day's maximum (`movement_bonus_stables` 0x698A94), bit 1; then **every visit**: when
+  a slot holds Cavaliers (10) with a count above 0 (`army_count_type`), every Cavalier slot becomes
+  Champions (11), its count kept (`army_replace_type`); messages 137 (movement), 138 (upgrade), 139
+  (both), 136 (bit 1 set and nothing to upgrade). Bit 1 is the hero's (cleared for every hero at a
+  new week, 0x4C8D2A); while it holds, `hero_max_land_movement` adds 400 to the day's land points.
+- **Day 1:** both 1 560 / 1 560 (the slowest speed 4, Pikemen). **E12-10 onto ST** ((39, 6), (38,
+  5) or (38, 6), (38, 5): 241): **137**, 1 319 + 400 = **1 719**, maximum **1 960**, bit 1, army
+  unchanged. The exchange (one diagonal step to (39, 6), 141: **1 578**, or **1 437** if the
+  meeting's step is paid as a neighbour's visit's, ADV-OBJ-003): E12-10 Pikeman 5, Cavalier 3,
+  Cavalier 3; E12-10b —, —, Pikeman 5. **E12-10b onto ST** ((39, 7), (38, 6), (38, 5): 341;
+  E12-10's visit does not count for it): **137**, 1 219 + 400 = **1 619**, maximum **1 960**, bit
+  1; no Cavaliers, so no upgrade. Off to (37, 6): 1 478.
+- **Day 2:** both **1 960 / 1 960** (1 560 + 400: the Stables' week; HER-ADV-003). The exchange
+  back: E12-10 Pikeman 5, Cavalier 3; E12-10b Cavalier 3, —, Pikeman 5 (E12-10b on (38, 6)).
+  **E12-10 onto ST** (141): **138**, **Champion 3** (slot 1), **no points** (1 819, maximum 1 960)
+  (D-63). **E12-10b onto ST** (100, after E12-10 stepped off): **138**, **Champion 3** (slot 0), no
+  points: a hero's own visit the same week (day 1's) leaves only the upgrade (design §18's
+  addition). **VCMI 1.7.5:** while its `ONE_WEEK` bonus holds nothing at all: both keep their
+  Cavaliers, no message of an upgrade; day 2's points the same (+400 to the week's end). The wiki:
+  +400 a day for the rest of the week; Cavaliers upgraded free.
+- **Day 8** (the new week clears bit 1 for every hero, 0x4C8D2A): both **bit 1 clear, 1 560 /
+  1 560** (the slowest still the Pikemen; Champions are speed 9).
+"""
+[encounter.hero]
+type = "Thorgrim"
+specialty = "skill Resistance"
+at = [39, 7]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 5]]
+
+[[encounter.also]]
+type = "Mephala"
+specialty = "skill Armorer"
+name = "E12-10b"
+at = [40, 7]
+primary = [1, 1, 1, 1]
+army = [["Cavalier", 3], ["Cavalier", 3], ["Pikeman", 5]]
+
+# --- E12-11 ----------------------------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-11"
+title = "The Idol of Fortune on days 1, 2 and 7, the Temple on days 6 and 7, a battle between (the marks cleared)"
+questions = ["ADV-BON-002", "GAM-BAT-014", "HER-ADV-008"]
+procedure = [
+    "Day 1, Red's turn, after E12-10: the Idol of Fortune ID (48, 5) (visited from a neighbour), the Temple TE entered at (53, 5); three Peasants P1 (46, 9), P2 (51, 9), P3 (56, 9). E12-11 stands at (48, 6), south of ID, with two Archangels. Read the date, E12-11's +0x105, +0x11A, +0x11B.",
+    "Click ID (48, 5) twice: note every message, then +0x105, +0x11A, +0x11B. Click P1 (46, 9) twice: E12-11 walks towards it and fights it (auto combat). Note the battle, E12-11's tile, then +0x105, +0x11A, +0x11B.",
+    "Day 2, Red's turn: read the date. Click ID (48, 5) twice (E12-11 walks beside it from below or the side): note every message, then +0x105, +0x11A, +0x11B. Click P2 (51, 9) twice: the battle; note E12-11's tile, then +0x105, +0x11A, +0x11B.",
+    "Day 6, Red's turn: read the date. Click TE's entrance (53, 5) twice: note every message, then +0x105, +0x11A, +0x11B. Click P3 (56, 9) twice: the battle; note E12-11's tile, then +0x105, +0x11A, +0x11B.",
+    "Day 7, Red's turn: read the date. Click ID (48, 5) twice: note every message, then +0x105, +0x11A, +0x11B. Click TE's entrance (53, 5) twice: note every message, then +0x105, +0x11A, +0x11B, and the hero screen's morale and luck lists.",
+]
+record = [
+    { field = "day 1 before: date (day of the week); +0x105; +0x11A; +0x11B" },
+    { table = ["day", "visit or battle", "messages", "+0x105 after", "+0x11A (morale) after", "+0x11B (luck) after"], rows = 8 },
+    { field = "day 7: the hero screen's morale and luck lists" },
+    { field = "anything odd" },
+]
+predictions = """
+- **The Idol** (survey §10.2; `visit_idol_of_fortune` 0x4A12F0, by the day of the week +0x1F63E):
+  bit 4 or 25 set: ADVEVENT 63, nothing; else **day 7: +1 morale and +1 luck** (bits 4 and 25);
+  **an odd day: +1 luck** (bit 4); **an even day: +1 morale** (bit 25); ADVEVENT 62. **The Temple**
+  (`visit_temple` 0x4A6200): bit 8 or 26 set: 141, nothing; else **day 7: +2 morale** (bit 26),
+  else **+1** (bit 8); 140.
+- **The battles** (`hero_battle_bonuses_clear` 0x4DA510 at a battle's end; GAM-BAT-014): bits 2 to
+  16, 20, 21, 25 to 29 cleared, +0x11A and +0x11B 0. Each Peasant savage, never flees: fought on the
+  first tile of its zone the walk reaches, won by auto combat.
+- **Day 1** (day of the week 1, odd): ID: **luck +1** (+0x11B 1, bit 4), morale 0; P1's battle:
+  **all 0, bits 4 cleared**. **Day 2** (even): ID: **morale +1** (+0x11A 1, bit 25); P2: all 0.
+  **Day 6** (even, not 7): TE: **morale +1** (bit 8); P3: all 0. **Day 7:** ID: **+1 morale, +1
+  luck** (bits 4, 25: +0x11A 1, +0x11B 1); TE: **+2 morale** (bit 26): **+0x11A 3, +0x11B 1**. The
+  hero screen (`hero_morale_description` 0x4DC320, `hero_luck_description` 0x4DCAC0): a line for
+  the Idol and one for the Temple under morale, the Idol's under luck. VCMI 1.7.5 (`dayOfWeek`
+  limiters) and the wiki the same.
+"""
+[encounter.hero]
+type = "Josephine"
+specialty = "creature Stone Golem"
+at = [48, 6]
+primary = [5, 5, 1, 1]
+army = [["Archangel", 2]]
+
+# --- E12-13 and E12-16's land part ---------------------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-13"
+title = "An Oasis, a Watering Hole, a Swan Pond (the points and the day's maximum); on day 2 a Faerie Ring, a Rally Flag, a Fountain of Youth and the hints over their twins (E12-16)"
+questions = ["ADV-BON-004", "ADV-BON-002", "ADV-BON-009", "ADV-VIS-006", "HER-ADV-008"]
+procedure = [
+    "Day 1, Red's turn, after E12-11: the Oasis O1 (entered at (43, 16), (44, 16)), the Watering Hole WH (entered at (47, 16) to (50, 16)), the Swan Pond SW (entered at (55, 16)). E12-13 stands at (42, 17) with two Archangels. Read its points (+0x4D), day's maximum (+0x49), +0x105, +0x11A, +0x11B.",
+    "Click O1's entrance (43, 16) twice. Note every message, then +0x4D, +0x49, +0x105, +0x11A, +0x11B.",
+    "Click WH's entrance (47, 16) twice. Note every message, then +0x4D, +0x49, +0x105, +0x11A, +0x11B.",
+    "Click (51, 17) twice (a walk east), then SW's entrance (55, 16) twice. Note every message, then +0x4D, +0x49, +0x105, +0x11A, +0x11B.",
+    "**E12-16, land.** Day 2, Red's turn: the Faerie Ring F1 (entered at (57, 20)), the Rally Flag R1 (at (61, 20)), the Fountain of Youth Y1 (at (64, 20)); their twins F2 (57, 24), R2 (61, 24), Y2 (64, 24). Read E12-13's points, day's maximum and +0x105. Click (58, 19) twice, then (60, 22) twice (two walks). With E12-13 selected, the hints over F2 (57, 24), R2 (61, 24) and Y2 (64, 24): note each text.",
+    "Click F1's entrance (57, 20) twice; then R1's (61, 20) twice; then Y1's (64, 20) twice. After each note every message, +0x4D, +0x49, +0x105, +0x11A, +0x11B.",
+    "With E12-13 selected, the hints over F2 (57, 24), R2 (61, 24) and Y2 (64, 24); then with E12-17 selected (the hero list; centre the view on them with the minimap) the same three. Note each text.",
+]
+record = [
+    { field = "day 1 before: +0x4D; +0x49; +0x105; +0x11A; +0x11B" },
+    { table = ["visit", "messages", "+0x4D after", "+0x49 after", "+0x105 after", "+0x11A after", "+0x11B after"], rows = 6 },
+    { field = "day 2 before: +0x4D; +0x49; +0x105" },
+    { field = "day 2, the hints before (E12-13 selected): F2; R2; Y2" },
+    { field = "the hints after, E12-13 selected: F2; R2; Y2" },
+    { field = "the hints after, E12-17 selected: F2; R2; Y2" },
+    { field = "anything odd" },
+]
+predictions = """
+E12-13 (the table's first three rows):
+
+- **The movement objects** (survey §10.2, §10.4; `visit_oasis` 0x4A3CA0, `visit_watering_hole`
+  0x4A7EA0): +1 morale and +800 (the Oasis) or +400 (the Watering Hole) to **both** the points
+  left (+0x4D) and the day's maximum (+0x49), 32 bits; **the Swan Pond** (inline case 14): +2 luck,
+  the points left set to 0, **the day's maximum kept**.
+- **The walk:** (43, 16) 141: 1 859; **O1: 95, 2 659 / 2 800**, bit 7, morale 1. (44, 17), (45, 17),
+  (46, 17), (47, 16) 482: 2 177; **WH: 166, 2 577 / 3 200**, bit 6, morale 2. (48, 17) … (51, 17)
+  441, (52, 17) … (55, 16) 441: 1 695; **SW: 29, 0 / 3 200** (design §18's addition: the maximum
+  kept at the raised value), bit 3, luck 2. **VCMI 1.7.5:** `movePoints` raise the points only, its
+  maximum computed anew (2 000 throughout; not in memory: the original's +0x49 is the record).
+
+E12-16, land (the table's last three rows and the hints):
+
+- **Day 2** (the day's start: the maximum anew, 2 000; the visits' bits until the next battle):
+  2 000 / 2 000, bits 3, 6, 7 held. The walks (56, 17), (57, 18), (58, 19) 423 and (59, 20), (60,
+  21), (60, 22) 382: 1 195.
+- **The hints before** (E24-design.md §4.11): no Faerie Ring, Rally Flag or Fountain of Youth
+  visited by Red: each **the name, then "not visited"** (E12-13's bits 13, 16, 14 clear), no bonus
+  line.
+- **The visits** (§10.2): **F1** ((59, 21), (58, 21), (57, 20): 382): 49, +1 luck (bit 13), 813 /
+  2 000, morale 2, luck 3; **R1** (482): 111, +1 morale, +1 luck, +400 both (bit 16): 731 / 2 400,
+  morale 3, luck 4; **Y1** (382): 57, +1 morale, +400 both (bit 14): 749 / 2 800, morale 4, luck 4
+  (byte adds over day 1's 2 and 2, kept until a battle; the battle bounds the sums).
+- **The hints after**, E12-13 selected: each **the name, its bonus line (XtraInfo records 2, 17,
+  13), "visited"**; E12-17 selected: **the name, the bonus line, "not visited"** (the kind mark is
+  the team's, the mark the selected hero's). Nothing tells another player (Blue) of a visit.
+"""
+[encounter.hero]
+type = "Piquedram"
+specialty = "creature Stone Gargoyle"
+at = [42, 17]
+primary = [1, 1, 1, 1]
+army = [["Archangel", 2]]
+
+# --- E12-15, E12-7, E12-8, E12-16's water part ----------------------------------------------------------------------
+
+[[encounter]]
+id = "E12-7"
+title = "The Admiral's Hat's boarding after an Oasis (E12-15); the Sirens (E12-7), a battle, the Sirens again (E12-8); a Buoy, the Mermaids and the hints over their twins (E12-16)"
+questions = ["D-64", "A-44", "ADV-BON-008", "ADV-SEA-002", "HER-EXP-001", "ADV-BON-009"]
+procedure = [
+    "**E12-15.** Day 1, Red's turn, after E12-13: the Oasis O2 (entered at (41, 27), (42, 27)) on the shore; an empty boat on (43, 30); the Sirens SI, entered at (47, 33); a Peasant M8 at sea (47, 37). E12-7 stands at (40, 28) with ninety Pikemen, ten Archers and one Griffin (slots 0, 1, 2), the Admiral's Hat, no skills. Read its points, day's maximum, experience, army and +0x105.",
+    "Click O2's entrance (41, 27) twice: note every message, the points and the day's maximum. Click (43, 29) twice (the shore beside the boat): note the points. Click the boat (43, 30) twice: E12-7 boards it. Note the points and the day's maximum.",
+    "**E12-7.** Click SI's entrance (47, 33) twice: E12-7 sails onto it. Note every message (their texts), the army, experience, level, +0x105 and the points.",
+    "**E12-8.** Click M8 (47, 37) twice: E12-7 sails towards it and fights it (auto combat). Note the battle, the tile, the army, experience and +0x105 after it. With E12-7 selected, the hints over the Buoy B2 (51, 38) and the Mermaids M2's entrance (52, 37): note each text (E12-16's before). Click SI's entrance (47, 33) twice: note every message, the army, experience, level and +0x105.",
+    "**E12-16, water.** The Buoy B1 (51, 33) (visited from a neighbour) and the Mermaids M1, entered at (53, 33). Click B1 twice: note every message, the tile, the points, +0x105 and +0x11A. Click M1's entrance (53, 33) twice: note every message, the points, +0x105 and +0x11B.",
+    "With E12-7 selected, the hints over B2 (51, 38) and M2's entrance (52, 37); then with E12-17 selected (the hero list; centre the view on them with the minimap) the same two. Note each text.",
+]
+record = [
+    { field = "E12-15 before: points; day's maximum; experience; army; +0x105" },
+    { field = "E12-15, O2: messages; points; day's maximum" },
+    { field = "E12-15, on the shore (43, 29): points" },
+    { field = "E12-15, after boarding: points; day's maximum" },
+    { field = "E12-7, the Sirens: messages (texts); army; experience; level; +0x105; points" },
+    { field = "E12-8, the battle: result; E12-7's tile; army; experience; +0x105" },
+    { field = "E12-16, the hints before (E12-7 selected): B2; M2" },
+    { field = "E12-8, the Sirens again: messages (texts); army; experience; level; +0x105" },
+    { field = "E12-16, B1: messages; tile; points; +0x105; +0x11A" },
+    { field = "E12-16, M1: messages; points; +0x105; +0x11B" },
+    { field = "E12-16, the hints after, E12-7 selected: B2; M2" },
+    { field = "E12-16, the hints after, E12-17 selected: B2; M2" },
+    { field = "anything odd" },
+]
+predictions = """
+E12-15:
+
+- **The Oasis** ((41, 27), 141): 1 560 − 141 = 1 419, **+800: 2 219 / 2 360** (95; bit 7).
+  (42, 28), (43, 29) 282: **1 937**.
+- **The boarding** (ADV-SEA-002, HER-ADV-009; survey §10.4, the open point; `hero_boards_boat`
+  0x4A1010 converts the points while the hero wears the Admiral's Hat 136, dividing by the day's
+  maximum +0x49): the step 100 first (D-41), then 1 837 × 3 000 / **2 360** = **2 335**
+  (truncated), the maximum the sea's **3 000** (1 500 + the Hat's 1 500). **VCMI 1.7.5**
+  (`movementPointsAfterEmbark`, the land maximum computed anew, 1 560): 1 837 × 3 000 / 1 560 =
+  **3 532**.
+
+E12-7:
+
+- **The sail** ((44, 31), (45, 32), (45, 33), (46, 34), (47, 33): 664; the Sirens are not entered
+  from above): **1 671**.
+- **The Sirens** (survey §10.5; `visit_sirens` 0x4A5980, `sirens_losses` 0x527EC0): each slot with
+  a count above 1 keeps trunc(count × 0.7) by the IEEE double product (the constant an f64): **90
+  keeps 62** (62.999…), **10 keeps 7** (exactly 7.0), **1 keeps 1** (a lone creature kept); the
+  loss times the hit points (Pikeman 10, Archer 10): (28 + 3) × 10 = 310, times `hero_learning`
+  (1, no Learning): **experience 310** (ADVEVENT 132 with "310"), level 1; **bit 20 set**; points
+  1 671 (the visit costs none). **VCMI 1.7.5** (ceil(count × 0.3) drowned): **63, 7, 1**, experience
+  **300**. The wiki: 30 %.
+
+E12-8:
+
+- **The battle** ((47, 34), (47, 35), (47, 36): 300, the battle on (47, 36), M8's zone, at sea):
+  won by auto combat; experience +1 (the Peasant's hit point): **311**; **bit 20 cleared** (with
+  every battle bonus: bits 2 to 16, 20, 21, 25 to 29; +0x11A, +0x11B 0); the army as before (62, 7,
+  1, unless the Peasant struck: a Pikeman's 10 hit points against its 1 damage, no loss).
+- **The Sirens again** ((47, 35), (47, 34), (47, 33): 300): **losses again** (A-44, the
+  `fix-optional` flag's faithful side): **62 → 43** (43.4), **7 → 4** (4.8999…), 1 kept;
+  experience (19 + 3) × 10 = **220** (132 with "220"): **531**, level 1; bit 20 set. VCMI the same
+  (its `ONE_BATTLE` dummy bonus); the wiki calls it a bug (HotA fixed it).
+
+E12-16, water:
+
+- **The hints before** (from (47, 36), both explored): **B2: the name, "not visited"; M2: the
+  name, "not visited"** (no kind mark: k 0 and 16 clear; E12-7's bits 2 and 15 clear).
+- **B1** (to (50, 34): (48, 34), (49, 34), (50, 34), 341, and the visit's step to B1 paid, 141, as
+  any neighbour's visit, ADV-OBJ-003: 1 071 − 482 = **589**): ADVEVENT 21, +1 morale (bit 2; k 0):
+  **+0x11A 1** (the Oasis's morale went with M8's battle). **M1** ((51, 34), (52, 34), (53, 33):
+  341): **248**; 83, +1 luck (bit 15; k 16): **+0x11B 1**.
+- **The hints after:** E12-7 selected: **the name, the bonus line (XtraInfo 0, 16), "visited"**;
+  E12-17 selected: **the name, the bonus line, "not visited"**.
+"""
+[encounter.hero]
+type = "Clancy"
+specialty = "creature Unicorn"
+at = [40, 28]
+primary = [1, 1, 1, 1]
+army = [["Pikeman", 90], ["Archer", 10], ["Griffin", 1]]
+artifacts = { head = "Admiral's Hat" }

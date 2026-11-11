@@ -1770,3 +1770,80 @@ an entry only where a task builds on it.
   updates): about 14 hours of updates instead of 21, about 21 hours in all instead of 28 (its
   rollouts, gates and ladders unchanged). The autotuner alone, at `accumulate` 8, gives 0.75 to
   0.81; T33's continuations from #2 run with all three.
+
+## T33 — PPO's settings by short continuations from #2 (2026-11-11)
+
+- **Round 1** (the user's GPU, 2026-11-11, commit `75332a5`; the configs and the measures as the
+  AI queue stated them before the runs; each arm `--init-from` #2 at 20 022 456 samples, seed 1,
+  about 2.01 M samples in 79 updates, 112 to 116 minutes, 296 to 315 samples a second against
+  T28's 217: T31's update holds; the records `python/records/<run>.json`, the measures
+  `python/records/continue/`). The run's own end gate rejected each learner (131, 95 and 54
+  pairs; 0.496, 0.487, 0.468).
+- **(a) The fixed head-to-head against #2** (`h3env.train.gate --fixed`: all 4 000 pairs of the
+  gate set, 8 000 games; a pair's score 0 to 2, both seats):
+
+  | Arm | Score | Standard error | From 0.5 | Pairs scoring 0, ½, 1, 1½, 2 | Elo |
+  |---|---:|---:|---:|---|---:|
+  | `e25-continue-1` (the bonus at 0) | 0.4938 | 0.0020 | −3.1 SE | 151, 5, 3 740, 1, 103 | −4.3 |
+  | `e25-continue-imitate-1` (the loss held at 0.05) | 0.4779 | 0.0022 | −10.0 SE | 246, 6, 3 674, 3, 71 | −15.3 |
+  | `e25-continue-lr-1` (a quarter of the rate) | 0.4928 | 0.0019 | −3.8 SE | 141, 6, 3 766, 1, 86 | −5.0 |
+
+  The seat decides most pairs (0.92 to 0.94 split, each side winning its seat); the standard
+  error is a third of the 0.005 the queue expected, so the measure resolves 0.004.
+- **(b) The ladders** (500 a kind; the report set's interval ± 0.019; #2's row T28's final):
+
+  | Network | Fair actor | Hero | Siege hero | Siege garrison | Value | All-seeing (value) | Neutral set's value |
+  |---|---:|---:|---:|---:|---:|---:|---:|
+  | #2 | 0.511 | 0.509 | 0.519 | 0.505 | +0.027 | 0.507 (+0.026) | +0.302 |
+  | `e25-continue-1` | 0.506 | 0.499 | 0.521 | 0.502 | +0.023 | 0.507 (+0.022) | +0.303 |
+  | `e25-continue-imitate-1` | 0.496 | 0.495 | 0.495 | 0.501 | +0.005 | 0.493 (+0.002) | +0.292 |
+  | `e25-continue-lr-1` | 0.506 | 0.503 | 0.517 | 0.500 | +0.024 | 0.506 (+0.020) | +0.301 |
+
+- **(c) The update records** (the last 20 updates' means; #2's run at the same rates beside):
+
+  | | Rate | KL (the first update) | Clip | Entropy (the first update, the end, the peak) | Teacher's agreement |
+  |---|---|---:|---:|---|---|
+  | `e25-continue-1` | 2.5e-4 to 2.25e-4 | 0.055 (0.220) | 0.26 | 0.99, 1.11, 1.27 at 1.0 M | |
+  | `e25-continue-imitate-1` | the same | 0.020 (0.298) | 0.15 | 1.09, 0.99, 1.25 at 0.1 M | 0.36 to 0.60 (the loss 3.42 to 1.13 nats) |
+  | `e25-continue-lr-1` | 6.25e-5 to 5.6e-5 | 0.014 (0.028) | 0.12 | 0.97, 1.08, 1.11 at 1.9 M | |
+  | #2's run, its first 1 M (the loss at 0.5) | 2.5e-4 | 0.012 | 0.09 | 0.70 | 0.70 |
+  | #2's run at 14.4 to 15.9 M | 7.1e-5 to 5.1e-5 | 0.012 | 0.11 | 1.24 | |
+  | #2's run, its last 0.5 M (the floor) | 1.25e-5 | 0.0025 | 0.03 | 1.00 | |
+
+  The explained variance stayed 0.79 to 0.80 in each arm (#2's end 0.78).
+- **The read** (decision 3's question: which of PPO's settings moves #2):
+  1. **No arm gains:** each lies below #2 head to head, by more than two standard errors; none
+     fails (b) (each fair row inside #2's interval, 0.492 to 0.530). Ranked by (a): the bonus at
+     0 (0.4938) and a quarter of the rate (0.4928) level, 0.0010 apart (0.4 of their combined
+     error); the loss held last (0.4779).
+  2. **The imitation loss held pulls #2 back to its teacher:** the agreement from 0.36 to 0.60,
+     the level #2 had when its own loss ended at 10 M (0.58); the value against the fair actor
+     from +0.027 to +0.005, and −0.022 head to head. The teacher is weaker than #2 (0.511
+     against it); a held loss sharpens towards the teacher's policy (its entropy the lowest,
+     0.99), not towards #2's best. It leaves the long run's settings.
+  3. **PPO's full rate from #2 steps four to five times as far** as #2's run did at the same rate
+     (KL 0.055 against 0.012, the clip 0.26 against 0.09; its first update 0.22), a quarter of it
+     as far as #2's run did at that rate (0.014 against 0.012). Yet the two end level: over 2 M
+     the step's size is not what costs.
+  4. **The bonus at 0 does not sharpen:** the entropy rose in both arms without the loss (+0.10 to
+     the end, the full rate's +0.28 at its peak), as in #2's run, where it rose to 1.34 at 12.8 M
+     (T28; the bonus falling, 0.004 there) and fell to 1.00 only as the rate reached its floor.
+     At these rates the entropy follows the rate, not the bonus; the bonus's control (#2's 0.01)
+     would measure little (round 2's other candidate).
+  5. **So (a) compares unlike points:** each arm is a policy at 5 to 20 times #2's final rate,
+     measured against #2's annealed endpoint, which T30's temperature diagnostic prices (+0.011
+     at 0.5). A 2 M arm at a near-constant rate cannot show whether more PPO from #2 pays; an
+     annealed one can. Nor the epochs (round 2's other candidate): a speed question once the long
+     run's start is known.
+- **Round 2** (the user, 2026-11-11, on the read: the annealed arm, of the three offered with the
+  epochs and the bonus's control): **`e25-continue-anneal-1`** (`configs/e25-continue-anneal.toml`,
+  test `test_increment_8s_annealed_arm_is_the_quarter_rate_falling_to_structure_1s_floor`):
+  `e25-continue-lr-1`'s settings with the rate falling linearly from 6.25e-5 to #2's floor,
+  1.25e-5, over the arm's 2 M (`lr_horizon` 2 M, `lr_floor` 0.2; the floor at 1.6 M), as #2's run
+  fell from 15 M to 19 M of its 20. The same measures and seed as round 1, so it pairs with
+  `e25-continue-lr-1` at its start. **Stated before it runs:** (a) above 0.5 by two standard
+  errors and (b) inside #2's interval: more PPO from #2 pays once annealed, and T35's long run may
+  start from #2 at a quarter of the rate, annealed to its end; (a) within two standard errors of
+  0.5: #2 sits at this setup's plateau (increment 2's scale run was flat from 20 M), and the long
+  run starts from T32's best clone; below: the same, and the continuation's cost is not the rate.
+  The entropy's end against 1.00 (#2's) says whether the annealing sharpened.

@@ -1,0 +1,32 @@
+{
+ "candidate": "runs/e25-continue-1/checkpoint.pt",
+ "best": "runs/e25-structure-1/best.pt",
+ "test": {
+  "elo0": 0.0,
+  "elo1": 20.0,
+  "alpha": 0.05,
+  "beta": 0.05,
+  "max_pairs": 4000
+ },
+ "fixed": true,
+ "max_steps": 2000,
+ "result": "rejected",
+ "pairs": 4000,
+ "counts": [
+  151,
+  5,
+  3740,
+  1,
+  103
+ ],
+ "llr": -148.2390909033206,
+ "bounds": [
+  -2.9444389791664403,
+  2.9444389791664403
+ ],
+ "score": 0.49375,
+ "elo": -4.343171035283276,
+ "games": 8000,
+ "seconds": 583.890000000014,
+ "stderr": 0.0019958501269966033
+}

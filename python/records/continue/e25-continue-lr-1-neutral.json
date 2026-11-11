@@ -1,0 +1,63 @@
+{
+ "system": {
+  "win_rate": 0.9907757575757575,
+  "interval": 0.006456858660232718,
+  "value": 0.3009029404048138,
+  "kinds": {
+   "wandering": 0.994,
+   "guards": 0.986,
+   "siege_neutral": 0.894
+  },
+  "games": 1500,
+  "skipped": 0,
+  "truncated": 0.0,
+  "seconds": 31.796000000002095,
+  "by_kind": {
+   "wandering": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.994,
+     "reward": 0.30411649665236473,
+     "truncated": 0.0,
+     "by_kind": {
+      "wandering": {
+       "episodes": 500,
+       "win_rate": 0.994
+      }
+     }
+    }
+   },
+   "guards": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.986,
+     "reward": 0.292188687549904,
+     "truncated": 0.0,
+     "by_kind": {
+      "guards": {
+       "episodes": 500,
+       "win_rate": 0.986
+      }
+     }
+    }
+   },
+   "siege_neutral": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.894,
+     "reward": 0.20761138776515145,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_neutral": {
+       "episodes": 500,
+       "win_rate": 0.894
+      }
+     }
+    }
+   }
+  }
+ }
+}

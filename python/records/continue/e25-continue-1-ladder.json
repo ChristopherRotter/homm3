@@ -1,0 +1,202 @@
+{
+ "system": {
+  "win_rate": 0.505549957056971,
+  "interval": 0.0185915935431073,
+  "value": 0.02317380442117229,
+  "kinds": {
+   "hero": 0.4986973947895792,
+   "siege_hero": 0.521,
+   "siege_garrison": 0.502060120240481
+  },
+  "games": 2998,
+  "skipped": 2,
+  "truncated": 0.0,
+  "seconds": 125.76500000001397,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.6973947895791583,
+     "reward": 0.08856277283524183,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 499,
+       "win_rate": 0.6973947895791583
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.3,
+     "reward": -0.04693316495022736,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 500,
+       "win_rate": 0.3
+      }
+     }
+    }
+   },
+   "siege_hero": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.584,
+     "reward": -0.011421731231035665,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.584
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.458,
+     "reward": 0.0823131895000406,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.458
+      }
+     }
+    }
+   },
+   "siege_garrison": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.944,
+     "reward": 0.14933156697824598,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 500,
+       "win_rate": 0.944
+      }
+     }
+    },
+    "defender": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.06012024048096192,
+     "reward": -0.13319965315990165,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 499,
+       "win_rate": 0.06012024048096192
+      }
+     }
+    }
+   }
+  }
+ },
+ "system-all-seeing": {
+  "win_rate": 0.5065488119095333,
+  "interval": 0.01862082736780942,
+  "value": 0.022099145183958613,
+  "kinds": {
+   "hero": 0.4986953907815631,
+   "siege_hero": 0.526,
+   "siege_garrison": 0.4990601202404809
+  },
+  "games": 2998,
+  "skipped": 2,
+  "truncated": 0.0,
+  "seconds": 103.53099999998813,
+  "by_kind": {
+   "hero": {
+    "attacker": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.6953907815631263,
+     "reward": 0.08862265919844707,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 499,
+       "win_rate": 0.6953907815631263
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.302,
+     "reward": -0.046806745629641225,
+     "truncated": 0.0,
+     "by_kind": {
+      "hero": {
+       "episodes": 500,
+       "win_rate": 0.302
+      }
+     }
+    }
+   },
+   "siege_hero": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.59,
+     "reward": -0.015419995392672718,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.59
+      }
+     }
+    },
+    "defender": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.462,
+     "reward": 0.0784600921308156,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_hero": {
+       "episodes": 500,
+       "win_rate": 0.462
+      }
+     }
+    }
+   },
+   "siege_garrison": {
+    "attacker": {
+     "episodes": 500,
+     "skipped": 0,
+     "win_rate": 0.938,
+     "reward": 0.14924383798381313,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 500,
+       "win_rate": 0.938
+      }
+     }
+    },
+    "defender": {
+     "episodes": 499,
+     "skipped": 1,
+     "win_rate": 0.06012024048096192,
+     "reward": -0.13319965315990165,
+     "truncated": 0.0,
+     "by_kind": {
+      "siege_garrison": {
+       "episodes": 499,
+       "win_rate": 0.06012024048096192
+      }
+     }
+    }
+   }
+  }
+ }
+}

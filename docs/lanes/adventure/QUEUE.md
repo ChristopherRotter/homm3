@@ -4,25 +4,29 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 next, then T111. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T109b — batch E12's specs and templates: E12a and E12b** (decisions 303, 309, 310)
+**E08 T110 — batch E12's harness, recipes and runs** (decisions 303, 309, 312 to 314; then **T111**)
 
-- **Scope:** as T99b for increment 11 (design note `E08-design.md` §18, §19's round 2): the specs
-  and templates of runs **E12a** (E12-1 to E12-6, the garrisons, day 1, two players) and **E12b**
-  (E12-7 to E12-17, the bonus visitables, days 1 to 7 and the next week's first, one player), with
-  the predictions added in §18; each walk priced on the written map (TRAPS: price an experiment's
-  walks; the seventeen classes import as blockers until T113b, so a step onto one is priced by
-  hand) and a fresh review, as T99b1's. The writer and the spec's fields are T109a's (done): the
-  garrisons in `[[map.ownable]]` with `owner`, `army`, `removable`; the fifteen in `[[map.object]]`
-  by picture (`docs/experiments/README.md`, "Increment 12's objects"); a Blue hero is an
-  `[[encounter.also]]`; no spell points at the start (decision 311).
-- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1, §12 (the rows), §3 to §7
-  and §10 for the predictions; design note §18; T99b1's and T99b2's records in `E08-log.md` as the
-  form; T109a's record.
-- **Depends on:** T109a (done). **Status:** ready (the original data: the executable and both
-  tars, to compile the maps; confirm the cut at its start: likely in two by spec, E12a then
-  E12b, as decision 277).
+- **Scope:** as T100 for increment 11 (design note `E08-design.md` §18, §19's round 3): the capture
+  harness's new reads and steps (`clients/capture/`, common), the recipes
+  `clients/capture/batches/E08-batch-12a.toml` and `-12b.toml` for T109b's specs, the runs and the
+  templates filled. The reads: a hero's +0x105, +0x11A, +0x11B, +0x49, +0x4D, +0x18 and +0x7B; a
+  tile's word (the Fountain of Fortune's bits 13 to 16, a Magic Spring's bit 6, read on the entrance
+  the hero does not stand on); a garrison's record (game +0x4E3AC, 0x40 bytes); a battle's
+  +0x53C4 and each side's stacks at its opening; the map hint's text over an entrance with a hero
+  selected (another hero selected, the view centred by the minimap); Red's explored bits. The
+  steps: the exchange's moves (a garrison's bars, two heroes' bars), the spell book in a battle of
+  two humans (open or refused, Bless, Defend, then attack), View Earth on the adventure map, a
+  boarding, ending turns to day 22. **T111** scores both runs (survey §15, new), folds the
+  verdicts for T112.
+- **Inputs:** the specs and their predictions (`experiments/specs/E08-batch-12a.toml`, `-12b`);
+  T109b's record in `E08-log.md` (the walks, the review); T100a's and T100b's records as the form;
+  the lane's `TRAPS.md` (the harness's traps: hot-seat battles of two humans refuse auto combat,
+  the selected hero's tile, `at_opening`).
+- **Depends on:** T109b (done). **Status:** ready (the original data: the executables, DLLs, the
+  four LODs, the sound and video archives, both tars and the MP3s; confirm the cut at its start:
+  likely in two by spec, as decision 278).
 
 ## Inbox
 
