@@ -14,7 +14,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T23's (branch `town/e09-t23`, `cross-lane`: the capture harness, the
+- **Open pull requests:** #860, T23's (branch `town/e09-t23`, `cross-lane`: the capture harness, the
   battle lane's experiments README, the specs, recipes and results, the survey, the docs).
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
