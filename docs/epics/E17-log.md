@@ -6603,5 +6603,8 @@ CLT-Q39's mouse case and R4-2 (a); design §13.1.
   player's `the_left_button_held_over_a_panel_button_runs_its_own_loop`,
   `the_left_button_held_over_an_options_button_drops_the_right_press` and the cast button test's
   `down:` cases.
-- **Gates:** GATES_PLACEHOLDER
+- **Gates:** `drawn` 267 of 267 the same and the 3 new recorded (`drawn --record --only`
+  each); `clients/scripts/check.sh` all gates passed (coverage 100 %, the staged-data tests run);
+  `h3-view gate` passed; the scoped verify with the original data no failing step; `check-docs`,
+  `check-lane` ok.
 
