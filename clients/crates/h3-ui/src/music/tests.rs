@@ -655,3 +655,122 @@ fn the_queue_follows_the_focus() {
     want.push(("A", 290, 10, FULL));
     assert_eq!(line(&s.heard), join(want));
 }
+
+/// E17 M7 T3c: the battle's end tune (`play_music` with a loop count of 1) waits for the fade-out
+/// of the track playing, then plays once from its start at the whole volume, and nothing follows.
+#[test]
+fn a_track_played_once_follows_the_fade_out_and_ends() {
+    let mut m = playing_a(200);
+    assert_eq!(m.request_once("C"), Request::Taken);
+    assert_eq!(m.pending(), Some("C"));
+    let runs = m.advance(500, &tracks);
+    let mut want = fade_out("A", 200);
+    want.push(("C", 0, 300, FULL));
+    assert_eq!(line(&runs), join(want));
+    // Its end closes the stream: nothing plays, nothing is pending, A's place kept.
+    assert_eq!((m.playing(), m.pending()), (None, None));
+    assert_eq!((m.place("A"), m.place("C")), (Some(200), None));
+    assert!(m.advance(10, &tracks).is_empty());
+}
+
+/// A battle ended within the music's fade-in: the tune waits for the fade-in's end too (the
+/// thread holds the lock through it).
+#[test]
+fn a_track_played_once_waits_for_the_fade_in() {
+    let mut m = playing_a(45);
+    assert_eq!(m.request_once("short"), Request::Taken);
+    let runs = m.advance(45 + 90 + 30, &tracks);
+    let mut want: Vec<_> = fade_in("A", 0).into_iter().skip(4).collect();
+    want[0] = ("A", 45, 5, 63);
+    want.extend(fade_out("A", 90));
+    want.push(("short", 0, 25, FULL));
+    assert_eq!(line(&runs), join(want));
+}
+
+/// Asked for again once it ended, it opens at once from its start; a looping request fades it
+/// out (its place kept, as `music_stop_fade` keeps any), and it never opens at that place.
+#[test]
+fn a_track_played_once_opens_from_its_start_each_time() {
+    let mut m = Music::new(RATE, Bugs::Fixed);
+    assert_eq!(m.request_once("short"), Request::Taken);
+    assert_eq!(line(&m.advance(40, &tracks)), [("short", 0, 25, FULL)]);
+    assert_eq!(m.request_once("short"), Request::Taken);
+    assert_eq!(line(&m.advance(10, &tracks)), [("short", 0, 10, FULL)]);
+    // Playing once, it is the track playing: asked for again, dropped.
+    assert_eq!(m.request_once("short"), Request::Playing);
+    m.request_once("C");
+    let _ = m.advance(15 + 100, &tracks);
+    assert_eq!(m.playing(), Some("C"));
+    // C faded out by A at its frame 100, then asked for once again: from its start.
+    assert_eq!(m.request("A"), Request::Taken);
+    let _ = m.advance(90 + 90, &tracks);
+    assert_eq!(m.place("C"), Some(100));
+    assert_eq!(m.request_once("C"), Request::Taken);
+    let runs = m.advance(90 + 10, &tracks);
+    let mut want = fade_out("A", 90);
+    want.push(("C", 0, 10, FULL));
+    assert_eq!(line(&runs), join(want));
+}
+
+/// *Provisional*: a track played once that ends during its own fade-out closes then, and the
+/// pending track opens at once.
+#[test]
+fn a_track_played_once_ending_in_its_fade_out_closes_then() {
+    let mut m = Music::new(RATE, Bugs::Fixed);
+    m.request_once("short");
+    let _ = m.advance(20, &tracks);
+    m.request("A");
+    let runs = m.advance(5 + 20, &tracks);
+    let mut want = vec![("short", 20, 5, 114)];
+    want.extend(fade_in("A", 0).into_iter().take(2));
+    assert_eq!(line(&runs), join(want));
+    assert_eq!(m.place("short"), Some(20));
+}
+
+/// Without the focus a track played once is held unstarted, and it has no place: regained, it
+/// opens from its start; another asked for meanwhile replaces it (no place kept for it).
+#[test]
+fn a_track_played_once_without_the_focus() {
+    let mut m = Music::new(RATE, Bugs::Fixed);
+    m.focus(false);
+    m.request_once("short");
+    assert!(m.advance(10, &tracks).is_empty());
+    assert_eq!(m.playing(), Some("short"));
+    m.focus(true);
+    assert_eq!(m.pending(), Some("short"));
+    assert_eq!(line(&m.advance(30, &tracks)), [("short", 0, 25, FULL)]);
+    assert_eq!(m.place("short"), None);
+    // Held once, then a looping track asked for: the held one closes with no place.
+    m.focus(false);
+    m.request_once("short");
+    let _ = m.advance(1, &tracks);
+    m.request("A");
+    assert!(m.advance(10, &tracks).is_empty());
+    assert_eq!((m.playing(), m.place("short")), (Some("A"), None));
+    m.focus(true);
+    assert_eq!(line(&m.advance(20, &tracks)), fade_in("A", 0)[..2].to_vec());
+}
+
+/// The queue's request of a track played once lands at the frames heard as any other.
+#[test]
+fn the_queue_plays_a_track_once() {
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Fixed), Device::default());
+    cue(&mut q, &mut s, "A");
+    run(&mut q, &mut s, 200, 20);
+    let request = q.request_once("short", s.queued(), &tracks);
+    assert_eq!(request, Request::Taken);
+    s.queue.clear();
+    run(&mut q, &mut s, 200, 20);
+    let mut want = fade_in("A", 0);
+    want.push(("A", 90, 110, FULL));
+    want.extend(fade_out("A", 200));
+    want.push(("short", 0, 25, FULL));
+    assert_eq!(line(&s.heard), join(want));
+    // Ended, it is asked for again: taken, and opened at once (no thread holds the lock), so a
+    // third ask finds it playing: dropped.
+    assert_eq!(q.request_once("short", s.queued(), &tracks), Request::Taken);
+    assert_eq!(
+        q.request_once("short", s.queued(), &tracks),
+        Request::Playing
+    );
+}

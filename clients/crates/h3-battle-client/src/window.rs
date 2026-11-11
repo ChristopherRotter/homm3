@@ -78,7 +78,7 @@ use std::process::ExitCode;
 use h3_battle_ai::Sight;
 use h3_protocol::wire::{Command, Target};
 use h3_render::Bugs;
-use h3_render::screen::Screen;
+use h3_render::screen::{Screen, Widening};
 use h3_sdl::{Config, CursorImage, Event, Key, ReadBack, Window};
 use h3_ui::clock::Clock;
 use h3_ui::cursor::Cursor;
@@ -94,7 +94,7 @@ use h3_view::shades::{Options as Shades, Toggle};
 use h3_view::sound::Tune;
 
 use crate::assets;
-use crate::audio::{Library, Player};
+use crate::audio::{HostSound, Library, Player};
 use crate::battle::{
     Battle, BookDid, CursorLook, Ground, MessageDid, Opened, Press, Source, StatsDid,
 };
@@ -563,7 +563,7 @@ fn after(
 fn frame_at(battle: &mut Battle<'_>, t: u32) -> Result<Frame, String> {
     let list = battle.list_at(t)?;
     let screen = battle.compose(t, &list)?;
-    let xrgb = screen.xrgb();
+    let xrgb = battle.widen(&screen);
     Ok(Frame {
         t,
         list,
@@ -623,7 +623,7 @@ fn next_frame(
         let list = battle.list_at(next)?;
         if list != shown.list {
             let screen = battle.compose(next, &list)?;
-            let xrgb = screen.xrgb();
+            let xrgb = battle.widen(&screen);
             return Ok(Some(Frame {
                 t: next,
                 list,
@@ -666,8 +666,9 @@ pub struct Setup {
     /// The battle's time the clock starts at (a seat on a server's at its record's end at the
     /// latest) and that Restart seeks to.
     pub from: u32,
-    /// No sound.
-    pub mute: bool,
+    /// The host's sound the battle plays on (E17 M7 T3c: its device and its music), handed back
+    /// by [`Hosted::take_sound`]; none, no sound.
+    pub sound: Option<HostSound>,
     /// The installation copy whose sound archives and music are read.
     pub install: PathBuf,
     /// The seed that chooses the opening's sounds (the scenario's).
@@ -706,7 +707,7 @@ fn load_cursors(battle: &mut Battle<'_>) -> Result<(), String> {
 
 /// A battle loaded for a host before the host's window opens (E17 M7 T3a2): the frame's size and
 /// the cursor the window opens with; [`Prepared::start`] starts it once the window is open (its
-/// clock from the window's, its sound on the device the window's platform opened).
+/// clock from the window's, its sound on the host's, E17 M7 T3c).
 pub struct Prepared<'g> {
     ground: &'g Ground,
     battle: Battle<'g>,
@@ -750,9 +751,10 @@ impl<'g> Prepared<'g> {
     }
 
     /// The battle started by `setup`, the clock at `ticks_ns`' time (the host's, in ns), the
-    /// sound's report in `lines`: the sound decoded and the device opened (none with `mute` or
-    /// without a device), the battle waiting for its samples when it plays them, the settings set,
-    /// the opening's start sound playing while the clock waits (from the battle's start only).
+    /// sound's report in `lines`: the sound decoded and played on the host's (none without it;
+    /// an archive that cannot be read costs the sound, noted, the host's handed back all the
+    /// same), the battle waiting for its samples when it plays them, the settings set, the
+    /// opening's start sound playing while the clock waits (from the battle's start only).
     pub fn start(
         self,
         setup: Setup,
@@ -764,30 +766,41 @@ impl<'g> Prepared<'g> {
             mut battle,
             cursors,
         } = self;
-        // The sound: decoded now, the device opened; none with --mute or without a device.
+        // The sound: decoded now, played on the host's; none without it.
         let seed = u32::try_from(setup.seed & u64::from(u32::MAX)).unwrap_or(1);
         let opening = h3_view::sound::opening(seed);
-        let library = if setup.mute {
+        let mut library = if setup.sound.is_none() {
             None
         } else {
             // The stacks' sounds and the battle's own its cues name (the heal's, E17 M3 T3b; the
             // casts', T7b-1).
             let sounds = (battle.stack_sounds(), battle.battle_sounds());
-            Some(Library::load(
+            Library::load(
                 &setup.install,
                 (opening, &battle.layout().options.sound),
                 sounds,
                 &TUNES,
                 lines,
-            )?)
+            )
+            .map_err(|e| lines.push(format!("sound: {e}; no sound")))
+            .ok()
         };
-        let mut player = match library.as_ref().map(Player::open) {
-            Some(Ok(p)) => Some(p),
-            Some(Err(e)) => {
-                lines.push(format!("audio: {e}; no sound"));
+        // The host's sound kept to hand back when the battle plays none on it.
+        let mut spare = None;
+        let mut player = match (setup.sound, library.as_mut()) {
+            (Some(sound), Some(lib)) => match Player::open(sound, lib, lines) {
+                Ok(p) => Some(p),
+                Err(failed) => {
+                    let (e, sound) = *failed;
+                    lines.push(format!("audio: {e}; no sound"));
+                    spare = Some(sound);
+                    None
+                }
+            },
+            (sound, _) => {
+                spare = sound;
                 None
             }
-            None => None,
         };
         // With its sound playing, the battle waits for its samples as the original does on a
         // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
@@ -823,7 +836,7 @@ impl<'g> Prepared<'g> {
                 clock.toggle(now);
                 opening_until = Some(now + u64::from(wait) * 1_000_000);
             } else {
-                p.start_music(now);
+                p.start_music();
             }
         }
         let from = changes.latest(&mut battle, start)?;
@@ -865,6 +878,7 @@ impl<'g> Prepared<'g> {
             presser,
             library,
             player,
+            spare,
             settings_path: setup.settings_path,
             unsaved: std::cell::RefCell::new(Vec::new()),
             cue,
@@ -946,8 +960,9 @@ pub enum Took {
 /// [`Hosted::after`], the cursor ([`Hosted::cursor_at`], [`Hosted::cursor_image`]), the sound
 /// ([`Hosted::sound`]) and the frame due ([`Hosted::due`]; once the host presented it,
 /// [`Hosted::showed`]). Everything is in the battle's frame's coordinates: a host that draws it
-/// elsewhere moves the mouse's by its place. *Provisional*: the sound still opens its own device
-/// (T3c moves it to the host's); `h3-view window` is its first host.
+/// elsewhere moves the mouse's by its place. The sound plays on the host's ([`Setup::sound`],
+/// E17 M7 T3c), handed back by [`Hosted::take_sound`]; the host tells the focus's changes
+/// ([`Hosted::focus`]). `h3-view window` is its first host.
 pub struct Hosted<'g> {
     ground: &'g Ground,
     battle: Battle<'g>,
@@ -959,6 +974,8 @@ pub struct Hosted<'g> {
     presser: Option<Presser>,
     library: Option<Library>,
     player: Option<Player>,
+    /// The host's sound when the battle plays none on it, kept to hand back.
+    spare: Option<HostSound>,
     settings_path: PathBuf,
     unsaved: std::cell::RefCell<Vec<String>>,
     cue: usize,
@@ -1379,7 +1396,7 @@ impl<'g> Hosted<'g> {
                         {
                             self.clock.toggle(now);
                             if let Some(p) = self.player.as_mut() {
-                                p.start_music(now);
+                                p.start_music();
                             }
                             if own == Own::Pause {
                                 return Ok(Took::Nothing);
@@ -1390,7 +1407,7 @@ impl<'g> Hosted<'g> {
                             Own::Pause => {
                                 self.clock.toggle(now);
                                 if let Some(p) = self.player.as_mut() {
-                                    p.pause(self.clock.paused(), now);
+                                    p.pause(self.clock.paused());
                                 }
                             }
                             Own::Frame if self.clock.paused() => {
@@ -1436,7 +1453,7 @@ impl<'g> Hosted<'g> {
                                     p.silence();
                                     // The end's tune gives way to the battle's music again.
                                     if self.ended {
-                                        p.start_music(now);
+                                        p.start_music();
                                     }
                                 }
                                 self.ended = false;
@@ -2006,7 +2023,7 @@ impl<'g> Hosted<'g> {
             self.opening_until = None;
             self.clock.toggle(now);
             if let Some(p) = self.player.as_mut() {
-                p.start_music(now);
+                p.start_music();
             }
         }
         let battle_ms = self.clock.ms(now);
@@ -2040,13 +2057,22 @@ impl<'g> Hosted<'g> {
                     .end_tune()
                     .filter(|(at, _)| !self.ended && *at <= battle_ms)
                 {
-                    p.end(lib, tune);
+                    p.end(tune);
                     self.ended = true;
                 }
             }
-            p.service(lib, now);
+            p.service(lib);
         }
         battle_ms
+    }
+
+    /// The host's window lost or regained the focus (E17 M7 T3c; the original's WM_ACTIVATEAPP,
+    /// E24 design §4.15): every effect playing held where it is and the music faded out, or
+    /// played on and faded in. A host tells each change in order.
+    pub fn focus(&mut self, on: bool) {
+        if let Some(p) = self.player.as_mut() {
+            p.focus(on);
+        }
     }
 
     /// The frame due at the battle's time `battle_ms`, if any: the next one, or the latest change
@@ -2124,9 +2150,14 @@ impl<'g> Hosted<'g> {
         }
     }
 
-    /// The sound's device closed (a host closes it before its window).
-    pub fn close_sound(&mut self) {
-        self.player = None;
+    /// The host's sound handed back (E17 M7 T3c): the battle's own streams removed from its
+    /// device, the music the host's again (the end's tune plays on until the host asks for its
+    /// own track); none when the host lent none. The battle plays no sound afterwards.
+    pub fn take_sound(&mut self) -> Option<HostSound> {
+        self.player
+            .take()
+            .map(Player::close)
+            .or_else(|| self.spare.take())
     }
 
     /// An unattended run's presses reported to `lines`: whether they did what they were to do.
@@ -2248,12 +2279,21 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         question: options.question,
         close_result: options.close_result,
     });
+    // The host's sound (E17 M7 T3c): the device opened here and lent to the battle; none with
+    // --mute or without a device.
+    let sound = if options.mute {
+        None
+    } else {
+        HostSound::open(Bugs::Fixed)
+            .map_err(|e| lines.push(format!("audio: {e}; no sound")))
+            .ok()
+    };
     let setup = Setup {
         keys,
         settings,
         settings_path,
         from: options.from,
-        mute: options.mute,
+        sound,
         install: source.install.clone(),
         seed: source.seed,
         unattended: options.run.is_some(),
@@ -2266,6 +2306,7 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         .run
         .map(|(seconds, _)| u64::from(seconds) * 1_000_000_000);
     let read = options.run.is_some_and(|(_, read)| read);
+    let mut focused = win.focused();
     'run: loop {
         let now = win.ticks_ns();
         if stop_ns.is_some_and(|s| now.saturating_sub(started) >= s) {
@@ -2277,7 +2318,16 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         if flow == Flow::Again {
             continue 'run;
         }
-        for event in win.wait(timeout) {
+        let events = win.wait(timeout);
+        // The sound follows the focus (E17 M7 T3c, design §13.6): each change of the batch in
+        // order, a loss and a regain both (E24 M3 T7's review, F4-8).
+        for &has_focus in win.focus_changes() {
+            if has_focus != focused {
+                hosted.focus(has_focus);
+                focused = has_focus;
+            }
+        }
+        for event in events {
             let took = hosted.event(event, &|| win.ticks_ns())?;
             match took {
                 Took::Quit => break 'run,
@@ -2348,7 +2398,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
             .flatten();
         if let Some(due) = due {
             let cursor = hosted.cursor_image(&frame_now)?.0;
-            let back = show(&mut win, &due, pointer, &cursor, read)?;
+            let widening = hosted.battle().widening();
+            let back = show(&mut win, (&due, widening), pointer, &cursor, read)?;
             report
                 .late_us
                 .push(hosted.late(win.ticks_ns(), due.t) / 1000);
@@ -2359,7 +2410,13 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
         } else if redraw && hosted.shown().is_some() {
             let cursor = hosted.cursor_image(&frame_now)?.0;
             if let Some(f) = hosted.shown() {
-                show(&mut win, f, pointer, &cursor, false)?;
+                show(
+                    &mut win,
+                    (f, hosted.battle().widening()),
+                    pointer,
+                    &cursor,
+                    false,
+                )?;
             }
         }
     }
@@ -2369,8 +2426,8 @@ fn window(options: &Options) -> Result<(Vec<String>, bool), String> {
     lines.extend(hosted.take_unsaved());
     lines.push(win.describe());
     hosted.describe_sound(&mut lines);
-    // The sound closes before the window.
-    hosted.close_sound();
+    // The host's sound taken back, closed before the window.
+    drop(hosted.take_sound());
     drop(win);
     lines.push(format!(
         "{} commands, {} ms at speed {}; {} shown in {} ms, {} passed over",
@@ -3214,11 +3271,12 @@ impl Cursors {
     }
 }
 
-/// Presents `frame`, with the drawn cursor at `pointer` if any; reads it back first if `read`,
-/// with the pixels presented (the drawn cursor's among them: E17 M3 T9b, the reviewer).
+/// Presents `frame`, with the drawn cursor at `pointer` if any (only its rectangle widened again,
+/// by `widening`: E17 M7 T3c); reads it back first if `read`, with the pixels presented (the drawn
+/// cursor's among them: E17 M3 T9b, the reviewer).
 fn show(
     win: &mut Window,
-    frame: &Frame,
+    (frame, widening): (&Frame, &Widening),
     pointer: Option<(i32, i32)>,
     cursor: &Cursor,
     read: bool,
@@ -3228,7 +3286,9 @@ fn show(
         Some((x, y)) => {
             let mut screen = frame.screen.clone();
             cursor.draw(&mut screen, x, y);
-            with_cursor = screen.xrgb();
+            let mut widened = frame.xrgb.clone();
+            widening.widen_rect(&screen, cursor.rect(x, y), &mut widened);
+            with_cursor = widened;
             &with_cursor
         }
         None => &frame.xrgb,
@@ -3860,7 +3920,7 @@ pub(crate) mod tests {
             settings: Settings::read(None).unwrap().0,
             settings_path: std::env::temp_dir().join("h3-view-hosted-test-settings.toml"),
             from: 0,
-            mute: true,
+            sound: None,
             install: source.install.clone(),
             seed: source.seed,
             unattended: true,
