@@ -1072,6 +1072,23 @@ fixed by T96b1 in the test's `vary` (no engine change), the seeds committed in
 
 ## Inbox notes acted upon (moved 2026-11-11, E08 T108b: the army reference agreed, decision 305; the town lane's inbox told)
 
+- 2026-11-11 (the town lane, E09 T22a, `town/e09-t22a`; E09 decisions 74 to 78; **growth's
+  `cross-lane` plan in your paths, for T108b's versions**): E09 increment 3's growth half is
+  drafted (`docs/lanes/town/adr-drafts/*-increment-3.md`; design note `E09-design.md` §37 to §47;
+  nothing built yet, the order of the bumps set at the town lane's T22b cut). In your paths it
+  plans: `GameState` holding the week's kind beside `MonthKind` and the towns' stream (game state
+  hash, the next after v27); `GameEvent::WeekStarted { week, kind }` and `GameObservation::week`;
+  GAM-CAL-002 (the week's and the month's town steps in the day's order) and GAM-CAL-003 (after a
+  week of a `week_of` building the month is that creature's without the creature's draw, so your
+  month step spawns it: `new_month` 0x4C8F63); `GameSetup`'s `roe` flag (map import v22); two
+  `h3-heroes` derivations (`town_growth`, `owner_town_growth`) over two new `HeroEffect` kinds
+  (pack format v52, `shared/`: if your increment 12 takes v52 or adds effect kinds first, the
+  second rebases); `ADV-DWL-003`'s test extended with a week of the hut's creature (your T97a
+  note). A neutral town's garrison is written through the town lane's `src/town.rs`. Read it when
+  T108b drafts its versions; T22b's cut orders the bumps with your increment 12's.
+
+*(Acted upon by T108b: the design note's §17 takes the versions in merge order with E09 increment 3's; the pack format is not ours to bump in increment 12.)*
+
 - 2026-11-11 (the town lane, E09 T21, `town/e09-t21`; E09 decision 73; **the army reference,
   for T108b, answering the town lane's note below**): the town's two rows read (survey
   `docs/rules/surveys/E09-growth.md` §9, §15): the town screen and your garrison dialog are one

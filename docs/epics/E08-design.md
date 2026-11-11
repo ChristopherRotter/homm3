@@ -500,8 +500,11 @@ Unmoved: the core ruleset hash and the pack format (no core change). The ids: pa
 C §12 (HER-ADV-003, HER-ADV-008 amended; HER-MAN-001 read), GAM-DEC-009 new, GAM-DEC-007,
 GAM-MAN-001, GAM-BAT-001, GAM-BAT-014, GAM-CAL amended; `ADV-QUIRK-46`, `-47`; decisions 304 to
 309 (next 310).
-The town lane takes these versions' next numbers after ours in its T22 or later (each merges in
-order, the second rebasing and bumping again, the town lane's `TRAPS.md`).
+**The numbers are the next after today's, not reserved:** the town lane's E09 increment 3 plans
+the same next ones (its T22a note: the game state hash for the week's kind, map import v22 for
+`GameSetup`'s `roe` flag, pack format v52 for its two `HeroEffect` kinds, which increment 12 does
+not touch), so whichever task merges first takes a number and the other rebases and bumps again
+(the town lane's `TRAPS.md`; E09 T22b's cut orders its bumps with these).
 
 ###### 18. Batch E12
 

@@ -8,19 +8,33 @@ Epic: `docs/epics/E09-towns.md` (increment 3: growth, recruitment and the army r
 T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 and 2 (closed by T10
 and T20) in `E09-archive.md`. Increment 3's first round (decision 66): the survey T21 and its
 checkpoint (done 2026-11-11, `TWN-Q12`), then the drafts with the design note's Part E and the
-cut T22, accepted before anything is built. Each task's cut confirmed at its start; every entry's acceptance includes the
-Definition of Done (`docs/05-testing.md`).
+cut T22, in two halves (decision 74): T22a growth's (done 2026-11-11, `TWN-Q13`), T22b next;
+accepted before anything is built; batch TWN-3 after (T23). Each task's cut confirmed at its
+start; every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T22 — increment 3's drafts, the design note's Part E and the cut** (decision 66; queued
-2026-11-11 by T20, its input since T21): from the survey `docs/rules/surveys/E09-growth.md` and
-its checkpoint (`TWN-Q12`, decisions 69 to 73: two `fix-optional` quirks, T-13 and T-12, with
-their flags; the Portal drawn at its build and a dwelling flagged; T-10's saturating counts), the
-ADR amendment drafts (ADR-0028, ADR-0017 point 4's week's creature stream, and the others the
-survey touches: the army reference, a garrison hero at a siege) in `adr-drafts/`, Part E of `E09-design.md` from §37, the building tasks' cut and the exit criteria,
-batch TWN-3's runs (survey §14), accepted by the user at the checkpoint (`TWN-Q13` on). **Before
-drafting:** the army reference agreed with the adventure lane (its inbox, T21's note of
-2026-11-11; its T108b drafts the map's garrisons). **At its start:** confirm the cut. **Status:**
-next.
+**E09 T22b — recruitment's and the two rows' drafts, the cut, the exit criteria, the checkpoint**
+(decision 74; queued 2026-11-11 by T22a): from the survey `docs/rules/surveys/E09-growth.md` §8 to
+§10, §15 (recruitment, the two rows, what a garrison hero changes, the army reference) and T22a's
+growth half, the rest of the drafts in `docs/lanes/town/adr-drafts/*-increment-3.md` (ADR-0028
+point 6's recruitment, the hire through E08's dialog: `HireSource` with a town's dwelling and the
+Portal, `HireTarget` with the garrison, ADR-0017's town commands and decisions, ADR-0016's army
+reference and garrison hero, ADR-0023's garrison hero at a siege, T-5) and Part E of
+`E09-design.md` from §48 (its sections of recruitment and the rows; the building tasks' cut for
+the whole increment with the `cross-lane` bumps' order; the exit criteria; the risks), then the
+checkpoint `TWN-Q14` with the user (the drafts of both halves, decision 78's agent's calls and
+T22b's, the cut, the exit criteria; design §47's open points: a capture's empty Portal, the
+garrison hero in the growth's inputs). **Before drafting the rows:** the army reference agreed
+with the adventure lane (T21's proposal in its inbox; its T108b answers it in its drafts and
+tells this inbox); if T108b has not answered, ask the user at T22b's start. Docs only; no
+original data needed. **At its start:** confirm the cut. **Status:** next.
+
+**E09 T23 — batch TWN-3** (decision 74; queued 2026-11-11 by T22a): the six rows of survey §14
+(growth's TWN-3-1 to -5, design §47; T22b's TWN-3-6) as TWN-1 and TWN-2 were run: the spec and
+template, the capture harness's gaps (survey §14: writes of the week's and the month's kinds,
+reads of a town's counts, its Portal and its garrison hero, the writer's garrison hero and
+Portal), the recipe, the runs, the scoring into the survey. Needs the original data (staged at a
+session's start while the user's computer is connected). **Depends on:** T22b's checkpoint.
+**At its start:** confirm the cut (increment 2's T14 was cut in three). **Status:** waiting.
 
 ## Inbox
 
