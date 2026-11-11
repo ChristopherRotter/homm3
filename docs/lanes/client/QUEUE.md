@@ -33,14 +33,10 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
     - **T3b1 done** (2026-11-11, branch `client/e17-m7-t3b1`; design §13.3): a whole game's
       record's battle played and handed back with its outcome; the wire's picture variant and
       colours read.
-    - **T3b2:** the same battle played live through the host's game session (the element giving
-      its human side's commands to the host, the game's messages back: `GameTurn`,
-      `GameAccepted`, `GameEvents` as `h3_view::game_record` reads them); a test host plays a
-      whole game's battle to its result and gets the outcome back (a real game in the client's
-      tests needs `h3-pack-adventure` and `h3-files` in the client workspace, so `clients.yml`'s
-      paths: a `shared/` pull request first, the user asked); the hero's battle picture by a sex
-      the map gave (`Hero.sex`: the 18 battle DEFs of 0x63BD40 by town × 2 + female in the
-      asset tables, a format change for the review list).
+    - **T3b2 done** (2026-11-11, branch `client/e17-m7-t3b2` after #851; design §13.4,
+      §13.5): the same battle played live through the host's game (`game_seat::GameSeat`,
+      `Ground::load_game`; a test host's real game to its result and outcome); the hero's battle
+      picture by the map's sex in the client's profile (CLT-Q78 (b)).
   - **T3c:** the sound on the host's device, the music through the common `h3_ui::music` (the
     end's tune after the combat music's 900 ms fade-out, the map client lane's note of
     2026-10-27; the focus lost and regained, its note of 2026-10-30); the frame widened by
@@ -48,8 +44,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
 - **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
   same; a test host plays a whole game's battle to its result and gets the outcome back; the map
   client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3b2 next (T3a and
-  T3b1 done 2026-11-11).
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3c next (T3a and
+  T3b done 2026-11-11).
 
 ### E17 M7 T4 — M7's and E17's closure
 

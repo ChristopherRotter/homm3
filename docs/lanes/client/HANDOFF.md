@@ -6,18 +6,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 - **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
   `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
-  in QUEUE): **T1 done** (the answered slips, cut in four); **T2 done** (the DEF button's own
-  loop, CLT-Q72 (a); design §13.1); **T3** the battle as an element a host's window runs (the
-  map client's E24 M4 T5 waits on it), cut in four with the user: **T3a1 done** (`h3-view`'s
-  binary became the library crate `h3-battle-client`), **T3a2 done** (the element
-  `window::Hosted`, `h3-view window` its host; design §13.2; checked with the data staged in the
-  next session; **#849**), T3b cut in two with the user: **T3b1 done** (a whole game's
-  record's battle played and handed back with its outcome, `h3_view::game_record`; design §13.3;
-  the branch `client/e17-m7-t3b1`, stacked on #849), **T3b2** the same played live through the
-  host's game session (its test host needs a `shared/` change of `clients.yml`'s paths: ask the
-  user); T3c the sound on the host's device; T4 the closure, **which closes E17**. **Next:**
-  T3b2. Watch #849 and T3b1's pull request until they merge (#849 first, then rebase T3b1's on
-  `master`).
+  in QUEUE): **T1 done**, **T2 done**; **T3** the battle as an element a host's window runs (the
+  map client's E24 M4 T5 waits on it): **T3a1, T3a2, T3b1 done** (#849, #850 merged), **T3b2
+  done** (a whole game's battle played live through the host's game, `game_seat::GameSeat`;
+  the hero's battle picture by the map's sex, CLT-Q78 (b); design §13.4, §13.5; branch
+  `client/e17-m7-t3b2`, stacked on **#851**, the `shared/` PR of `clients.yml`'s paths, which
+  merges first); **T3c** the sound on the host's device; T4 the closure, **which closes E17**.
+  **Next:** T3c. Watch #851 and T3b2's pull request until they merge (#851 first, then rebase
+  T3b2's: `git rebase --onto origin/master aa19b93`).
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
   in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
   `E17-log.md`.
@@ -30,9 +26,10 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the battle and server lanes; their inboxes, 2026-11-10).
   `CLT-STUB-1` (T5a, G1: a server's seat lacks the other hero's Orb and Cloak; the user requires
   parity with local play, asked of the battle and server lanes) is commented in
-  `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a small cross-lane PR with the user's consent
+  `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/` change), as `CLT-STUB-4`
+  (T3b2: a live game's battle takes no Auto Combat switch). An engine change the lane needs goes as a small cross-lane PR with the user's consent
   (#739 and #745 were). Next ids:
-  CLT-Q78, CLT-STUB-4.
+  CLT-Q79, CLT-STUB-5.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -52,6 +49,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-11, E17 M7 T3b2 (done; `client/e17-m7-t3b2` after #851).** Kept whole with the
+  user, who agreed the `shared/` PR of `clients.yml`'s paths (#851) and answered CLT-Q78 (b)
+  (the original draws a hero by its type's sex, never a map's). The original data staged at
+  once (57 files); the baseline's `check.sh` on `master` lost to a VM restart in coverage and
+  passed when run again. The live battle through a host's game (a test host's real game, the
+  seat's record equal to the game's), the picture by sex (the asset tables' 18 records).
+  M7 review items 7 and 8. Record: `E17-log.md`.
 - **2026-11-11, E17 M7 T3a2's checks and T3b1 (done; #849, `client/e17-m7-t3b1`).** The
   original data staged at once (57 files); the baseline's `check.sh` on the branch was lost to a
   VM restart in coverage and passed when run again. T3a2's checks (the windowless host test, the
@@ -66,8 +70,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   T3a2 the loop as `Hosted` (token-diffed against the old loop; 159 tests, the new staged-data
   test skipped). The map client lane's inbox told the shape. M7 review item 5. Record:
   `E17-log.md`.
-- **2026-11-11, E17 M7 T2 (done; `client/e17-m7-t2`).** Kept whole with the user (the loop and
-  the harness's stills). The original data staged at once (57 files); the baseline's `check.sh`
-  passed on `master`. The loop in both profiles for the panel, the stats dialog, the options
-  dialog and the boxes; the harness's `down:` and three stills, exact once the battle's and the
-  stats creature's standing (which they found) were built. M7 review item 4. Record: `E17-log.md`.

@@ -260,7 +260,9 @@ on the M1 review list):
   shows (`moving`, `mouse_over`, `standing`, the reactions `hit`, `defend`, `death`, `strike` and
   `shoot` up, straight and down, `move_start`, `move_end`; design §7), `hero_groups` (a battle
   hero's: `standing`, `idle`, `defeat`, `victory`, `cast`; M3 T3a), `flags` (the left and the
-  right side's flag DEFs), `magic` (M3 T3b: the magic animations by number, each `def`, `place`,
+  right side's flag DEFs), `hero_pictures` (the heroes' battle pictures by the hero class's town
+  × 2 + female, `hero_battle_defs`' 18 records, each `def`, `cast`, `cast_frames`; optional; E17
+  M7 T3b2, design §13.5), `magic` (M3 T3b: the magic animations by number, each `def`, `place`,
   where it is drawn over a stack, 0 on the hex, 1 centred, 2 above, 3 beside, higher not over a
   stack, and `translucent`; design §7.15), `heal_sound` (the First Aid Tent's heal),
   `resist_sound` (a spell resisted by the stack it was aimed at; M3 T7b-1) and
@@ -284,7 +286,8 @@ on the M1 review list):
   §4.5; M3 T3a), and from the same record `cast` (its cast point in the DEF's frame, x, y) and
   `cast_frames` (the casting group's frames played before the spell; M3 T7b-1, design §7.16);
   `female = true` for a female hero type (the static hero table's +0; E17 M6 T5a: the Summons'
-  box's pronoun, design §12.17).
+  box's pronoun, design §12.17); `picture` (its own record of `hero_pictures`, the same DEF and
+  cast, of its own sex: the client draws the other sex's when a map gave it; E17 M7 T3b2).
 - `[[spell]]` (M3 T7b-1): `key`, `original` (its spell number, its record among `sptraits.txt`'s
   spell rows), optional `animation` (its magic animation's number, the spell record's +8),
   `sound` (the record's +4, an entry name without its extension) and `projectile` with
