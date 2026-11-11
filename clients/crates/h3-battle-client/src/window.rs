@@ -1928,40 +1928,21 @@ impl<'g> Hosted<'g> {
         // come, and under Auto Combat the turn waiting, play by them (a close by the pass's last
         // event; one before it counted before the next event, above).
         self.pass.grew |= self.battle.boxes_closed(self.clock.ms(ticks_ns()))?;
-        // The options dialog's close composes the background again with its options, without the
-        // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
-        let options_closed = self.options_open && !self.battle.options_open();
-        if options_closed {
-            self.inputs.push(Input::Shades {
-                at: self.clock.ms(ticks_ns()),
-                options: Shades::of(&self.battle.settings),
-                keyed: false,
-            });
-            self.pass.mouse_changed = true;
-        }
-        self.options_open = self.battle.options_open();
+        // The options dialog's close, the level it set, the mouse posted (`options_closing`).
         // An aim with both shadows on turns the movement shadow off as it starts and on again as
         // it ends in the mouse's follow alone (`mouse::track`, `Options::aiming`; E17 M6 T4c,
         // design §12.16): the settings and their file keep the player's (E17 M6 T7b, R7-2:
         // *provisional*, the original's saves the switch each time, oddity 8, which a window
         // closed inside the aim would leave in the file). The block that copied it never ran: it
         // read the turn's aims, whose original numbers only `pointer::legal` names.
-        // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
-        if self.battle.settings.army_info != self.army_info {
-            self.army_info = self.battle.settings.army_info;
-            self.inputs.push(Input::ArmyInfo {
-                at: self.clock.ms(ticks_ns()),
-                level: self.army_info,
-            });
-            self.pass.mouse_changed = true;
-        }
-        // Then the mouse posted where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a):
-        // the cursor, the line (at the level just set) and the shade those of the hex under it at
-        // once, where the original's leave the dialog's arrow and the old hex's until the mouse
-        // moves (oddity 10, the stills').
-        if options_closed {
-            post_mouse(&mut self.inputs, self.clock.ms(ticks_ns()), self.pointer);
-        }
+        let options_closed = self.options_open && !self.battle.options_open();
+        self.options_open = self.battle.options_open();
+        self.pass.mouse_changed |= options_closing(
+            &mut self.inputs,
+            (self.clock.ms(ticks_ns()), self.pointer),
+            (options_closed, &self.battle.settings),
+            &mut self.army_info,
+        );
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
         if self.pass.mouse_changed || self.pass.grew || self.pass.book_changed {
@@ -2484,6 +2465,42 @@ fn post_mouse(inputs: &mut Vec<Input>, at: u32, pointer: Option<(i32, i32)>) {
         inputs.push(Input::Move { at, to: [x, y] });
     }
     inputs.push(Input::Cancel { at });
+}
+
+/// A pass's end at `at`, the mouse at `pointer` (factored at E17 M7 T4, R1-3), in this order: the
+/// combat options dialog `closed` composes the background again with `settings`' options,
+/// without the cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52); Creature
+/// Info's level the dialog set (`settings`' against `army_info`, the hints' until now, which it
+/// becomes) read by the hints from now (E17 M6 T4b2a); then, the dialog closed, the mouse posted
+/// where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a): the cursor, the line (at the
+/// level just set) and the shade those of the hex under it at once, where the original's leave
+/// the dialog's arrow and the old hex's until the mouse moves (oddity 10, the stills'). Whether
+/// it gave the battle an input.
+fn options_closing(
+    inputs: &mut Vec<Input>,
+    (at, pointer): (u32, Option<(i32, i32)>),
+    (closed, settings): (bool, &Settings),
+    army_info: &mut u8,
+) -> bool {
+    if closed {
+        inputs.push(Input::Shades {
+            at,
+            options: Shades::of(settings),
+            keyed: false,
+        });
+    }
+    let level = settings.army_info != *army_info;
+    if level {
+        *army_info = settings.army_info;
+        inputs.push(Input::ArmyInfo {
+            at,
+            level: *army_info,
+        });
+    }
+    if closed {
+        post_mouse(inputs, at, pointer);
+    }
+    closed || level
 }
 
 /// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, the cast it closed on
@@ -3446,6 +3463,60 @@ pub(crate) mod tests {
         inputs.clear();
         post_mouse(&mut inputs, 900, None);
         assert_eq!(inputs, [Input::Cancel { at: 900 }]);
+    }
+
+    #[test]
+    fn the_options_dialog_s_close_composes_then_sets_the_level_then_posts_the_mouse() {
+        // E17 M7 T4 (R1-3; T1a, CLT-Q43 (3)): the shades first, the level the dialog set next,
+        // then the mouse posted where it rests, so that the line it writes is at the new level;
+        // the level alone without a close (none posted), nothing when neither changed.
+        let settings = Settings {
+            army_info: 2,
+            grid: true,
+            ..Settings::CAPTURE
+        };
+        let shades = Input::Shades {
+            at: 40,
+            options: Shades::of(&settings),
+            keyed: false,
+        };
+        let (mut inputs, mut level) = (Vec::new(), 0);
+        let at = (40, Some((5, 6)));
+        assert!(options_closing(
+            &mut inputs,
+            at,
+            (true, &settings),
+            &mut level
+        ));
+        let moved = Input::Move { at: 40, to: [5, 6] };
+        let army_info = Input::ArmyInfo { at: 40, level: 2 };
+        let cancel = Input::Cancel { at: 40 };
+        assert_eq!(inputs, [shades, army_info, moved, cancel]);
+        assert_eq!(level, 2);
+        inputs.clear();
+        assert!(options_closing(
+            &mut inputs,
+            at,
+            (true, &settings),
+            &mut level
+        ));
+        assert_eq!(inputs, [shades, moved, cancel]);
+        inputs.clear();
+        assert!(!options_closing(
+            &mut inputs,
+            at,
+            (false, &settings),
+            &mut level
+        ));
+        assert!(inputs.is_empty());
+        level = 1;
+        assert!(options_closing(
+            &mut inputs,
+            at,
+            (false, &settings),
+            &mut level
+        ));
+        assert_eq!((inputs.as_slice(), level), ([army_info].as_slice(), 2));
     }
 
     #[test]

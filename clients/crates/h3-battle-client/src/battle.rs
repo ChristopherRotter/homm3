@@ -4276,6 +4276,46 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn the_grid_s_and_shadows_keys_are_taken_on_every_turn_once_its_action_played() {
+        // E17 M7 T4 (R1-3; CLT-Q75 (a), T1a): F6 to F8 count on the computer's turn before its
+        // command, where the battle takes no press (`takes`), and on the human's once the
+        // action before played; never during an action or once the battle is over; a record's
+        // whenever.
+        let Some(source) = staged("seq-melee.toml", [false, true]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        // The Angels' turn, the computer's, at the opening.
+        assert!(battle.playing() && battle.played.timeline().end == 0);
+        assert!(battle.takes_keys(0) && !battle.takes(0));
+        // The Wolf Riders' turn, the human's, after the Angels' action.
+        assert!(battle.grow(0).unwrap() && battle.waiting());
+        let end = battle.played.timeline().end;
+        assert!(end > 0 && !battle.takes_keys(end - 1));
+        assert!(battle.takes_keys(end) && battle.takes(end));
+        // A battle over (`seq-end`'s one strike), then its record.
+        let Some(mut source) = staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        while battle.grow_one().unwrap() {}
+        assert!(matches!(battle.played, Played::Finished(_)));
+        let end = battle.played.timeline().end;
+        assert!(end > 0 && !battle.takes_keys(end) && !battle.takes_keys(end + 1000));
+        let path =
+            std::env::temp_dir().join(format!("h3-view-takes-keys-{}.jsonl", std::process::id()));
+        std::fs::write(&path, battle.record_text().unwrap().unwrap()).unwrap();
+        source.input = path.clone();
+        let recorded = Ground::load(&source).unwrap();
+        let record = Battle::new(&recorded).unwrap();
+        assert!(record.fight.is_none());
+        assert!(record.takes_keys(0) && record.takes_keys(end - 1) && record.takes_keys(end));
+        std::fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
     fn the_panel_behind_auto_combat_s_question_at_a_switch_is_the_switch_s() {
         // E17 M6 T7b (R9-1, design §12.19 Recorded 2): Auto Combat switched on the Champions'
         // first turn asks the question at once; behind its box the panel is dimmed, its button
