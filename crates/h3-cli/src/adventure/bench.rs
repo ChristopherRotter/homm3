@@ -37,6 +37,12 @@
 //!   [`game_build`] (`h3_game::GameState::new` from the map's setup: the static map with its
 //!   objects' draws, the teleporters' channels and the gates' pairs, the heroes, the start), no
 //!   play (`build-gates-xl-144` on the gates XL map: the pairing's worst case).
+//! * `legal` (E09 T19c2, the town epic's design note §32): random legal play with the env's
+//!   random agent; at each step of a player's seat in the map's phase, that player's legal
+//!   commands but its moves (`h3_game::legal_commands`: `EndTurn`, the Shipyards' boats, the
+//!   revisits, and in its turn without a decision each owned town's builds, the hall's offer
+//!   `h3_towns::buildable` and the treasury's test; or a decision's answers) inside
+//!   [`legal_queries`], the play around it not counted (`legal-towns-36` on the town map).
 //!
 //! Two variants measure what an agent adds (wall time only, for the docs): `--observe 1`, the
 //! acting player's observation before each step; `--masks 1`, the entry mask and the chosen
@@ -80,6 +86,8 @@ pub enum Workload {
     Siege,
     /// The game's build (E08 T104).
     Build,
+    /// The legal commands but the moves (E09 T19c2).
+    Legal,
 }
 
 /// What [`run`] plays.
@@ -119,7 +127,8 @@ pub struct BenchOptions {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BenchResult {
     /// Counted operations: steps (`play`), queries (`reach`), forks (`fork`), listings
-    /// (`manage`), day starts (`day-start`), sieges opened (`siege`) or games built (`build`).
+    /// (`manage`, `legal`), day starts (`day-start`), sieges opened (`siege`) or games built
+    /// (`build`).
     pub operations: u64,
     /// Steps played in all.
     pub steps: u64,
@@ -146,6 +155,8 @@ pub struct BenchResult {
     /// `siege`: the counted sieges a hero defended, the town's visitor with the garrison merged
     /// into its army (E09 T9c; the others a garrison alone).
     pub visitors: u64,
+    /// `legal`: the builds the counted listings held (E09 T19c2: `GameCommand::Town`).
+    pub builds: u64,
 }
 
 /// Runs a workload on a map below `root` with the packs of `packs_dir`.
@@ -175,6 +186,7 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
         creature_months: 0,
         added: 0,
         visitors: 0,
+        builds: 0,
     };
     for g in 0..options.games {
         // The setup built the first game: a reset cannot fail.
@@ -238,6 +250,11 @@ pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<Benc
                 result.visitors += u64::from(besieged.visitor);
                 (besieged.counted, besieged.steps, besieged.seconds)
             }
+            Workload::Legal => {
+                let listed = legal_rollout(&mut env, g);
+                result.builds += listed.builds;
+                (listed.counted, listed.steps, listed.seconds)
+            }
             // Built above, without an env.
             Workload::Build => (0, 0, 0.0),
         };
@@ -274,6 +291,7 @@ fn builds(rules: &GameRuleset, setup: &GameSetup, options: &BenchOptions) -> Res
         creature_months: 0,
         added: 0,
         visitors: 0,
+        builds: 0,
     })
 }
 
@@ -741,6 +759,59 @@ fn month_start(env: &AdventureEnv) -> bool {
 pub fn day_start_step(env: &mut AdventureEnv, seat: Seat, action: Action) -> u32 {
     let _ = env.step(seat, action);
     env.state().day()
+}
+
+/// What [`legal_rollout`] played and measured.
+struct Listed {
+    /// The listings counted.
+    counted: u64,
+    /// The steps played.
+    steps: u64,
+    /// Seconds spent in the counted listings.
+    seconds: f64,
+    /// The builds they held.
+    builds: u64,
+}
+
+/// Random legal play with the env's random agent (agent seed `agent_seed`) until the episode
+/// ends (`legal`; E09 T19c2): before each step of a player's seat in the map's phase, its
+/// listing inside [`legal_queries`] (the counted and timed part).
+fn legal_rollout(env: &mut AdventureEnv, agent_seed: u64) -> Listed {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut listed = Listed {
+        counted: 0,
+        steps: 0,
+        seconds: 0.0,
+        builds: 0,
+    };
+    loop {
+        let Some(seat) = env.to_move().next() else {
+            break;
+        };
+        if let Some(player) = seat.player().filter(|&p| env.phase(p) == Phase::Adventure) {
+            let start = Instant::now();
+            listed.builds += legal_queries(env, player);
+            listed.seconds += start.elapsed().as_secs_f64();
+            listed.counted += 1;
+        }
+        let action = choose(env, seat, &mut rng);
+        // A legal action is always accepted (h3-sim's tests).
+        let _ = env.step(seat, action);
+        listed.steps += 1;
+    }
+    listed
+}
+
+/// `player`'s legal commands but its moves (`h3_game::legal_commands`): the `legal` workload
+/// (`legal-towns-36`) counts the instructions inside this function. Returns the builds listed.
+#[inline(never)]
+pub fn legal_queries(env: &AdventureEnv, player: PlayerId) -> u64 {
+    let commands = h3_game::legal_commands(env.state(), env.rules(), Actor::Player(player));
+    let builds = black_box(&commands)
+        .iter()
+        .filter(|command| matches!(command, GameCommand::Town(_)))
+        .count();
+    u64::try_from(builds).unwrap_or(u64::MAX)
 }
 
 /// What [`play_to_siege`] played and measured.

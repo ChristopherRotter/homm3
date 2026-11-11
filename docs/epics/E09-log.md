@@ -2813,3 +2813,67 @@ MP3s in one). **T19c cut in two at its start, the env first** (the user, decisio
   another entry by its tile's legality (a reach query for a move) rather than the entry's alone;
   14 days and three replays on the builds map; the invariant's gap fixed here (the adventure
   lane's test file, already in this `cross-lane` pull request) rather than sent to its inbox.
+
+### T19c2 — the new workloads and the census of the 160 maps (2026-11-11)
+
+One session, the user present at the start; branch `town/e09-t19c2`, `cross-lane` (`h3-map`'s
+`examples/original_data.rs`, `h3-cli`'s `src/adventure/`, the workloads and `docs/formats/h3m.md`
+the adventure lane's; the map client's inbox), the benches README's rows in
+`shared/e09-t19c2-benches` (#841). Starting point: `master` at 81024ba (#839, #840 merged); the
+setup's full baseline was lost to a VM restart during its coverage step, so CI's full verify on
+`master`'s engine code (5613da6) stands for it. The user's computer was connected at the start:
+the original data staged then (each LOD a call, 13 files in one, the 40 MP3s in one; 57 files).
+**T19c2 kept whole at its start** (the user, decision 63; the agent had recommended the census
+first and the workloads in a later session).
+
+- **The census** (`h3-map`'s `original_data`, exit criterion 6; `played_town_events`, `fire`,
+  `survey_order`, `town_event_differences`): every one of the 160 games that build (seed 0) is
+  played by `EndTurn` alone, a week (`PLAYED_DAYS`, 8: the week's step), a map whose owned towns'
+  events fire later on to the last first day of such an event (a repeating one to its second
+  firing): 141 maps 8 days, the longest 122 and 168 days; the whole check takes 16 s in debug.
+  The census walks TWN-EVT-001 and -003 itself from each town's record before its events (the
+  same game built again without the towns' events, its factions checked the same): the owner at
+  the start, the kind by its `human` (the game's `TimedEventSetup::fires`), each event in order,
+  `h3_towns::event_buildings` with the town's water, each building through `built_with` unless
+  standing by its turn. Checked against the play (an error fails the map): the events fired by
+  day, town and place (day 1's of the first group from `GameState::town_events_at_start`), the
+  buildings built after the build by day, town, event and building (`TownBuilt`), the first
+  group's towns' ever-built sets after the build. All 160 hold. Counted: of the 369 events 299
+  fire, 23 are a neutral town's, 8 do not name their town's owner, 39 name it but not its kind;
+  496 firings (236 with resources, 38 with buildings, 59 with creatures, `TWN-STUB-10`, 190 a
+  message alone); 34 buildings built (2 inside the build), the fixed towns' 18 (9 without a
+  requirement: the `Back For Revenge` pair's Rampart day-11 dwellings, `Undead Unrest`'s day-14
+  upgraded Hall of Darkness), 18 skipped as standing, 5 folded into the building that supersedes
+  them; the random towns' 16 and 4; no Shipyard is an event's. T18a's counts stand: 591 of the
+  625 towns of a faction with a Shipyard have no spot, no custom set loses a built one.
+- **The survey's census reproduced** (survey `E09-construction.md` §10, "Checked by play"): the
+  fixed towns' events in its order (every event once, day order, owned or not) give 57 built, 30
+  skipped as standing and 27 without a requirement (`SURVEY_TOWN_EVENTS`, checked) once its terms
+  are T12b's: each of an event's buildings built one by one in id order, the superseded one too
+  (the game builds the superseding one alone: 38 of the 57, 19 folded), and the executable's
+  direct requirement lists (the part's lists are closed: 23 of the 38 without one). The ever-built
+  sets after each event are the same both ways (checked). A first count with the game's terms
+  gave (38, 30, 23); the two conventions were found by trying the variants.
+- **The workloads** (`benches/adventure/`, baselined at their first count; `master` built in
+  `target/wt-master`, measured in this sandbox): `legal-towns-36`, the new workload kind `legal`
+  (`h3 adventure bench --workload legal`: `h3_game::legal_commands` before each step of a player's
+  seat in the map's phase, inside `legal_queries`; `BenchResult::builds` counts the builds
+  listed), 16 random games of 7 days on the town map: 1 389 steps, 1 172 listings, 3 467 builds
+  listed, 8 129 621 Ir (about 6 900 a listing: `h3_towns::buildable` 27 %, `offered_as` 18 %,
+  `payable` 7 %, `holds_capitol` 6 %). `day-start-builds-36`, the `day-start` kind on the builds
+  map (16 games of 7 days): 359 758 Ir, about 22 500 a day start, the town events 15 %
+  (`fire_events` 9 %, `firing` 6 %); `master`'s 359 566 (+0.05 %, the same code).
+  `day-start-towns-36` unchanged: 854 090 against its 853 501 (+0.07 %, `GameState::end_turn`'s
+  inlining in the rebuilt binary, every other function the same); its day starts clear the marks
+  since T19c1 (`Towns::start_day` 128 times). `h3-cli`'s bench test runs `legal` on the town map
+  (builds listed) and the duel (none).
+- The map client's inbox told (the town screen's builds: `TownCommand::Build`,
+  `GameState::town_offer`, `TownBuilt`, `TownChanged`, `TownEventFired`). No version moved; no
+  rule, stub or quirk new; no replay or bot report moved.
+- **Agent's calls (change freely):** the census in the existing check rather than a test (it
+  needs the original data; 16 s in debug); a week for every map and the later first days for the
+  29 with events, a repeating event to its second firing, rather than a fixed horizon; the
+  census's own walk of the rules rather than a copy of the survey's throwaway; the survey's
+  convention reproduced in `survey_order` beside the game's terms; `legal` counting the whole
+  listing but the moves (`legal_commands`) rather than the builds alone, on the town map; the
+  builds map's day 8 for its turn start (the week and two of the Harbour's events).
