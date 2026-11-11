@@ -971,6 +971,27 @@ fn the_harvested_flags_of_increment_7() {
 }
 
 #[test]
+fn the_harvested_flags_of_e09_increment_3() {
+    // E09 T24: T-13's and T-12's flags (planned `TWN-QUIRK-10`, `-9`), on in `faithful` and off
+    // in `strict-fixed` with every expansion.
+    use h3_content::{CREATURE_MONTH_EXACT, NEUTRAL_PLAGUE_FULL_GROWTH};
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        for (profile, on) in [("base:faithful", true), ("base:strict-fixed", false)] {
+            let q = compile(packs, profile).unwrap().quirks();
+            assert_eq!(
+                [CREATURE_MONTH_EXACT, NEUTRAL_PLAGUE_FULL_GROWTH].map(|f| q.is_enabled(f)),
+                [on; 2],
+                "{profile}"
+            );
+        }
+    }
+}
+
+#[test]
 fn the_level_data_and_class_overrides_parse() {
     // E08 T26b (pack format v44): the experience of the first levels, the highest level, the
     // skills offered when due, the class's intervals and a gated class override.
