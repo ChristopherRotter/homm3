@@ -46,6 +46,23 @@ use crate::record::{self, Record, RecordError};
 mod accounts;
 mod pace;
 mod seen;
+/// The turn a seat's `record` asks it to play: the record's last `YourTurn` (its legal commands
+/// and the spells its hero may cast), unless a command was accepted or the game ended after it
+/// (a server's seat, a host's game played live: E17 M7 T3b2).
+#[must_use]
+pub fn turn(record: &Record) -> Option<(&[Command], &[u16])> {
+    for message in record.messages.iter().rev() {
+        match message {
+            ServerMessage::YourTurn {
+                legal, castable, ..
+            } => return Some((legal, castable)),
+            ServerMessage::Accepted { .. } | ServerMessage::GameEnded { .. } => return None,
+            _ => {}
+        }
+    }
+    None
+}
+
 #[cfg(test)]
 mod tests;
 
@@ -396,19 +413,9 @@ impl Client {
         self.phase == Phase::Closed
     }
 
-    /// The turn the seat is asked to play: the record's last `YourTurn` (its legal commands and
-    /// the spells its hero may cast), unless a command was accepted or the game ended after it.
+    /// The turn the seat is asked to play ([`turn`] of its record).
     pub fn turn(&self) -> Option<(&[Command], &[u16])> {
-        for message in self.record.as_ref()?.messages.iter().rev() {
-            match message {
-                ServerMessage::YourTurn {
-                    legal, castable, ..
-                } => return Some((legal, castable)),
-                ServerMessage::Accepted { .. } | ServerMessage::GameEnded { .. } => return None,
-                _ => {}
-            }
-        }
-        None
+        turn(self.record.as_ref()?)
     }
 
     /// Whether the record holds the game's end.

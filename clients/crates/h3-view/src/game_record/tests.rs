@@ -419,3 +419,42 @@ fn a_start_while_a_battle_is_open_ends_that_one_unended() {
         Some(&[Event::TurnStarted { stack: 4 }][..])
     );
 }
+
+#[test]
+fn the_battles_read_one_message_at_a_time_as_a_record_s_all() {
+    // E17 M7 T3b2: a host's game hands its player's messages over as they come; the battle
+    // opened `k`-th is the one the record's battles give, open until it ends.
+    let started = GameEvent::BattleStarted {
+        heroes: [Some(2), None],
+        tile: TILE,
+    };
+    let ended = GameEvent::BattleEnded {
+        heroes: [Some(2), None],
+        result: WON,
+    };
+    let messages = vec![
+        events(1, vec![started.clone()]),
+        snapshot(2, attacker()),
+        events(3, vec![battle(Event::Waited { stack: 0 }), ended]),
+        events(4, vec![started]),
+        snapshot(5, attacker()),
+    ];
+    let mut battles = Battles::new(&header());
+    assert_eq!((battles.opened(), battles.get(0), battles.open()), (0, None, None));
+    battles.read(&messages[0]);
+    assert_eq!(battles.opened(), 0);
+    battles.read(&messages[1]);
+    assert_eq!(battles.opened(), 1);
+    assert_eq!(battles.get(0), battles.open());
+    assert_eq!(battles.get(0).map(|b| b.at.opened), Some(2));
+    battles.read(&messages[2]);
+    assert_eq!((battles.opened(), battles.open()), (1, None));
+    assert_eq!(battles.get(0).and_then(|b| b.at.ended), Some((3, WON)));
+    for message in &messages[3..] {
+        battles.read(message);
+    }
+    assert_eq!(battles.opened(), 2);
+    assert_eq!(battles.get(1).map(|b| b.at.opened), Some(5));
+    assert_eq!(battles.get(2), None);
+    assert_eq!(battles.clone().finish(), game(messages).battles());
+}

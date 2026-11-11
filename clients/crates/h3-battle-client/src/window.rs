@@ -3292,7 +3292,7 @@ fn summary(us: &mut [u64]) -> String {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
 
     fn args(list: &[&str]) -> Vec<String> {
@@ -3843,6 +3843,16 @@ mod tests {
     /// the unattended presses' OK closing the result window. The element after its close (or
     /// after too many passes) and the frames shown.
     fn hosted_to_close<'g>(ground: &'g Ground, source: &Source) -> (Hosted<'g>, usize) {
+        hosted_to_close_with(ground, source, || {})
+    }
+
+    /// [`hosted_to_close`], `serve` called at each pass's start (E17 M7 T3b2: a host's game
+    /// played between the element's passes).
+    pub(crate) fn hosted_to_close_with<'g>(
+        ground: &'g Ground,
+        source: &Source,
+        mut serve: impl FnMut(),
+    ) -> (Hosted<'g>, usize) {
         let clock = std::cell::Cell::new(0_u64);
         let ticks = || clock.get();
         let setup = Setup {
@@ -3864,6 +3874,7 @@ mod tests {
         let mut hosted = prepared.start(setup, &ticks, &mut lines).unwrap();
         let (mut passes, mut shown) = (0, 0);
         while !hosted.closed() && passes < 200_000 {
+            serve();
             let timeout = hosted.timeout(clock.get());
             assert_eq!(hosted.before(&ticks, &mut lines), Ok(Flow::On));
             if hosted.closed() {
@@ -4017,7 +4028,7 @@ mod tests {
         let ground = Ground::load(&source).unwrap();
         assert_eq!(
             ground.in_game(),
-            Some(&h3_view::game_record::InGame {
+            Some(h3_view::game_record::InGame {
                 heroes: [Some(3), None],
                 tile: Some(tile),
                 opened: 3,

@@ -51,5 +51,12 @@ getrandom.workspace = true
 # Accounts (E17 M5 T7): the key's derivation.
 argon2.workspace = true
 
+[dev-dependencies]
+# A test host's real game (E17 M7 T3b2): an adventure replay fixture's battle played through
+# `h3_protocol::session::game::GameSession`, the element the player's side.
+h3-files.workspace = true
+h3-game.workspace = true
+h3-pack-adventure.workspace = true
+
 [lints]
 workspace = true
