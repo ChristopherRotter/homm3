@@ -294,6 +294,23 @@ are computed before the seam (03-domain). The seam must change once for E04a and
     3. **Every hero of the store** regains (the original's 156 records: on the map and off
        it); a hero's income counts only for its owner's heroes on the map (garrison heroes:
        E09).
+    4. **A hero's town growth** (E09 increment 3; TWN-GRO-001's inputs), two pure derivations
+       of the details and the ruleset, each worn artifact type counting once whether worn or a
+       part of a worn combination (the original's `hero_wears_artifact` 0x4D91F0: a yes or no
+       per type):
+       - **by level**, the `town_growth` effects' amounts summed per creature level (the Legs,
+         Loins, Torso, Arms and Head of Legion: +5, +4, +3, +2, +1 at levels 2 to 6); the game
+         adds the garrison hero's and the visitor's to their town's growth, nobody else's;
+       - **the owner's share**, the highest `owner_town_growth` in basis points of the hero's
+         sources (the Statue of Legion: 5 000, half); the game takes the highest of the owner's
+         heroes on the map and in its towns' garrisons (the original's
+         `player_hero_wears_artifact` 0x4BACB0) for each of the owner's towns.
+       A worn Statue of Legion, a combination of the five pieces, gives both: its share and,
+       through its parts, the pieces' amounts. Batch TWN-3 confirmed both (E09 T23: the Statue
+       worn elsewhere in every town of its owner, TWN-3-1; the Legs of Legion on the visitor,
+       TWN-3-2). Pack format v52 (`h3-content`'s `HeroEffect::TownGrowth { level, amount }` and
+       `HeroEffect::OwnerTownGrowth { bp }`, core ruleset hash v53; the base pack's five pieces,
+       the SoD pack's Statue).
 
 ## Consequences
 
@@ -459,3 +476,6 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   derives them so; the battle sums them as before); the hero's morale and luck effects with their
   sources and the stacks' unclamped morale and luck are public, as VCMI shows them, for the stats
   dialog's descriptions (`docs/epics/E17-design.md` §12.4).
+- 2026-11-12 (E09 T24 `shared/`; E09 decision 76, `TWN-Q13`): point 16.4 added, a hero's town
+  growth (E09 increment 3; pack format v52). Drafted in E09 T22a, accepted at `TWN-Q14`; batch
+  TWN-3's verdicts (E09 T23) cited.

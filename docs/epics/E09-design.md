@@ -1218,8 +1218,8 @@ batch TWN-2 runs first, so the ADRs are applied once with its verdicts, as incre
 ### 37. Scope, sources and choices
 
 Increment 3's note (the epic's decisions 65 and 66). A handover, not binding, as Parts A to D:
-the working detail behind the drafts `docs/lanes/town/adr-drafts/0028-increment-3.md`,
-`0017-increment-3.md`, `0016-increment-3.md` and `0013-increment-3.md`, written from the survey
+the working detail behind increment 3's amendments of ADR-0028, ADR-0017, ADR-0016 and ADR-0013
+(drafted here, moved into `docs/adr/` by T24 on 2026-11-12), written from the survey
 `docs/rules/surveys/E09-growth.md` (§ numbers are the survey's unless they name this note), the
 survey's checkpoint (`TWN-Q12`, decisions 69 to 73) and `TWN-Q13` (decisions 74 to 77). Written
 in two halves (decision 74): **T22a, growth** (§37 to §47, this text) and **T22b, recruitment and
@@ -1296,6 +1296,11 @@ still change at `TWN-Q14` (decision 78 lists them).
   in `strict-fixed` (the class `fix-optional`, decisions 69, 70).
 - **The stream** (decision 75; `h3-kernel`, `shared/`): `StreamId::TOWNS = Self(7)`, "the towns'
   weekly randomness" in the closed list. `GameState` holds its `Rng` beside the game's (§42).
+- *As built (T24, `shared/e09-t24`):* as above; `h3_content::TOWN_GROWTH_LEVELS` (7) bounds
+  `level`, two `town_growth` of one list collide only at one level (as `daily_resource`'s by
+  resource), core ruleset hash v53 (golden base `0x9649_783d_4639_ded0`); the synthetic packs'
+  profiles name neither flag (off, as the adventure's flags), the `synthetic-ext` Storm Regalia
+  carries both kinds (the every-kind check; a combination's own, as the Statue's).
 
 ### 40. The record and the store: the available creatures, the Portal (`h3-towns`; town state hash v3)
 
@@ -1503,7 +1508,8 @@ still change at `TWN-Q14` (decision 78 lists them).
 The note's second half (decision 74; T22b whole, decision 79), written from the survey §5, §8 to
 §10, §15, E08's increment 12 note (`docs/epics/E08-design.md` §12, §13: the army reference agreed,
 E08 decision 305, the exchange, the one owner rule, the visit marks on `HeroOnMap`) and the
-address map. The drafts are the same five files' second blocks, with `0023-increment-3.md` new.
+address map. The drafts were the same files' second blocks, with ADR-0023's new (all five in
+`docs/adr/` since T24).
 
 - **Recruitment builds:** the town command `Recruit` and the hire dialog with a town's source
   (§49), the purchase across the store, the adventure and the treasury (§50), the Portal's hire
