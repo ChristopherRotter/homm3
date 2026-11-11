@@ -6648,7 +6648,11 @@ unverified, its checks before its pull request opens. The baseline's `check.sh` 
   the staged installation, skipped here: a host loop with its own clock, the unattended presses
   playing `seq-end`'s human side to the result window and its OK). The workspace's 1 326 tests
   (T3a1) and the crate's 159 (T3a2) passed without the data; fmt and clippy clean.
-- **Owed** (the next session with the data staged, before the pull request): the windowless test
-  and the other staged-data tests, `h3-view window --check` on a scenario fought here and on a
-  record (as T2's), `drawn` (no viewer change, its binary built from the new package), the
-  real-asset gate, `check.sh`.
+- **Checked** (the next session, 2026-11-11, the original data staged: 57 files): `check.sh` on
+  the branch all gates passed (coverage 100 %; the setup's run was lost to a VM restart in
+  coverage, run again), the crate's 159 tests over the installation (the windowless host test
+  ran, 28 s); `h3-view gate` passed; under Xvfb with SDL's `disk` audio, `window
+  scenarios/battle.toml --human attacker --check 40 --close-result`: 452 of 452 frames read back
+  exact, the battle the bot's at once, and `window record.jsonl --check 90` on `play`'s record of
+  the same battle (24 commands): 1 085 of 1 085 exact; `drawn` (its binary built from the new
+  package) 270 of 270 the same. Nothing recorded: nothing the original draws changed.

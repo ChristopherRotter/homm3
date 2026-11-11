@@ -26,17 +26,21 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
   user for both lanes, 2026-11-11: the host owns the window, its loop and the frame, the battle
   drawn natively as any element of it; design §13.2), started from a whole game's battle
   messages and handed back with its outcome. **Cut in four** with the user (2026-11-11):
-  - **T3a1 done**, **T3a2 done unverified** (2026-11-11, branch `claude/ecstatic-thompson-cjowg2`,
-    no pull request yet): the crate `h3-battle-client` (h3-view's binary until then), the element
-    `window::Hosted` with `h3-view window` its host. **First, with the original data staged:**
-    the windowless host test and the other staged-data tests, `h3-view window --check` (a
-    scenario fought here, a record), `drawn`, the gate, `check.sh`; then the pull request.
-  - **T3b:** a battle started from a whole game's battle messages (the protocol's battle types as
-    E16 M5 carries them; record format 4) and its outcome handed back; the wire's battlefield
-    picture, colours and sex read (protocol v35: `Observation.background`, `SideView.colour`,
-    `Hero.sex`; CLT-Q4, CLT-Q6; the battle lane's note of 2026-10-24); a test host plays a whole
-    game's battle to its result and gets the outcome back; the map client lane's inbox told the
-    API.
+  - **T3a1 done**, **T3a2 done** (2026-11-11, branch `claude/ecstatic-thompson-cjowg2`; T3a2
+    checked with the data staged by the next session): the crate `h3-battle-client` (h3-view's
+    binary until then), the element `window::Hosted` with `h3-view window` its host.
+  - **T3b**, cut in two with the user (2026-11-11):
+    - **T3b1:** a whole game's record (format 4) gives the battle the element plays and hands
+      back with its outcome: the game's battle messages as the battle's record (the protocol's
+      battle types as E16 M5 carries them: `BattleStarted`, the battle's `Snapshot`, its events
+      inside `GameEvents`, `BattleEnded`), `h3-view window` on a game record, its result window
+      and OK, the outcome handed to the host; the battlefield picture's variant from the wire
+      (protocol v35's `Observation.background`, CLT-Q4; the colours and the sex, CLT-Q6, are
+      read already); a windowless test host over a golden replay's game; the map client lane's
+      inbox told the API (its E24 M4 T5 shows golden replays' battles).
+    - **T3b2:** the same battle played live through the host's game session (the element giving
+      its human side's commands to the host, the game's messages back); a test host plays a
+      whole game's battle to its result and gets the outcome back.
   - **T3c:** the sound on the host's device, the music through the common `h3_ui::music` (the
     end's tune after the combat music's 900 ms fade-out, the map client lane's note of
     2026-10-27; the focus lost and regained, its note of 2026-10-30); the frame widened by
@@ -44,8 +48,8 @@ check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-clie
 - **Acceptance:** `h3-view window` runs its battles through the entry with `drawn` all the
   same; a test host plays a whole game's battle to its result and gets the outcome back; the map
   client lane's inbox told the entry's API.
-- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3a2's checks next,
-  then T3b (T2 done 2026-11-11).
+- **Depends on:** E16 M5 part 1's whole-game record (merged). **Status:** T3b1 next (T3a done
+  2026-11-11).
 
 ### E17 M7 T4 — M7's and E17's closure
 

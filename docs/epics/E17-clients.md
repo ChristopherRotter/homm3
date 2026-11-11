@@ -188,16 +188,17 @@ context.
     `h3-view`'s binary became the library crate `h3-battle-client` (the user: an adapter crate,
     left out of the coverage gate as the binaries are), the `h3-view` command line its binary,
     `h3-view` the pure library alone; nothing changed in behaviour.
-  - **T3a2 done 2026-11-11, unverified** (same log entry): the window's loop as the element
-    `window::Hosted` (with `Prepared` and `Setup`), `h3-view window` its first host. The session
-    had no original data (no computer linked); the user chose to build it unverified:
-    `window --check` and the windowless host test run, with the data staged, before its pull
-    request opens.
-  - **T3b:** a battle started from a whole game's battle messages (the protocol's battle types
-    as E16 M5 carries them; record format 4) and handed back with its outcome; the background and
-    colours from the wire (protocol v35's `Observation.background`, `SideView.colour`,
-    `Hero.sex`: CLT-Q4, CLT-Q6, read nowhere yet); a test host that plays a whole game's battle
-    to its result and gets the outcome back; the map client lane's inbox told the API.
+  - **T3a2 done 2026-11-11** (same log entry): the window's loop as the element
+    `window::Hosted` (with `Prepared` and `Setup`), `h3-view window` its first host. Built
+    without the original data (the user's choice); checked by the next session with the data
+    staged (the windowless host test, `window --check`, `drawn`, the gate, `check.sh`).
+  - **T3b**, cut in two with the user (2026-11-11): **T3b1** a whole game's record (format 4)
+    gives the battle the element plays and hands back with its outcome (the game's battle
+    messages as the battle's record; `h3-view window` on a game record; the battlefield
+    picture's variant from the wire, protocol v35's `Observation.background`, CLT-Q4; a
+    windowless test host; the map client lane's inbox told the API): what E24 M4 T5 needs, which
+    shows golden replays' battles. **T3b2** the same battle played live through the host's game
+    session (the element giving its commands to the host), before T3c.
   - **T3c:** the sound on the host's device and the music through the common `h3_ui::music` (the
     end's tune after the combat music's 900 ms fade; the focus lost and regained: the map client
     lane's notes of 2026-10-27 and 2026-10-30); the frame widened by
@@ -321,5 +322,5 @@ The next milestone's list starts here.
    the cursor, `sound`, `due`/`showed`; `Flow`, `Took`), *provisional*: the host's tick source
    handed to each call (`&dyn Fn() -> u64`), the platform's `Event` and cursor image in its API,
    the window's own keys split (the battle's clock and sound its own, fullscreen, vsync and the
-   cursor the host's), its sound still on a device of its own until T3c. Not recorded (no
-   original data in T3a2's session: its checks first).
+   cursor the host's), its sound still on a device of its own until T3c. Not recorded (nothing
+   the original draws changed); checked with the data staged by the next session.
