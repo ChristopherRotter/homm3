@@ -7,6 +7,7 @@
 //! - **The window's battle:** [`window`] (`h3-view window`: the loop, the keys, the mouse, the
 //!   frames), [`battle`] (a battle ready to draw at any time, grown as it is played), [`live`] (a
 //!   battle fought here), [`online`], [`net`], [`connect`] and [`account`] (a seat on a server),
+//!   [`game_seat`] (a whole game's battle played live through its host's game),
 //!   [`pointer`], [`spellbook`], [`boxes`], [`results`], [`stats`] (what the mouse, the spell
 //!   book, the message boxes, the result window and the stats dialog do), [`audio`] and
 //!   [`sounds`] (the sound), [`motion`] and [`aims`] (the stage's numbers, a cast's aim),
@@ -32,6 +33,7 @@ pub mod boxes;
 #[cfg(test)]
 mod clicks;
 pub mod connect;
+pub mod game_seat;
 pub mod gate;
 pub mod live;
 pub mod log;

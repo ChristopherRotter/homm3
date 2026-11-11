@@ -17,6 +17,9 @@
 //! one cannot: the battle as it ended (`SRV-STUB-14`: the game sends no last snapshot yet), so the
 //! seat's own hero's Eagle Eye picks.
 //!
+//! [`Battles`] reads the messages one at a time (E17 M7 T3b2): a host's game played live hands the
+//! battle client its player's messages as they come.
+//!
 //! *Provisional* (E17 M7 T3b1): the names, the battles in the order they open, the numbers
 //! afresh, the record's seat the snapshot's viewer, a `BattleStarted` while a battle is open
 //! ending that one unended (the engine opens one battle at a time).
@@ -121,7 +124,7 @@ pub fn manifest(game: &GameManifest) -> Manifest {
 
 /// A battle's start as a `GameEvents` message tells it: its heroes, its tile, the battle's events
 /// after it, and its end if the same message holds it.
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 struct Start {
     heroes: [Option<u16>; 2],
     tile: Option<Pos>,
@@ -134,123 +137,188 @@ impl GameRecord {
     /// documentation); the last one still open where the record ends.
     #[must_use]
     pub fn battles(&self) -> Vec<GameBattle> {
-        let manifest = manifest(&self.header.manifest);
-        let mut done = Vec::new();
-        let mut open: Option<GameBattle> = None;
-        // A start is the snapshot's right after its `GameEvents` only.
-        let mut pending: Option<Start> = None;
+        let mut battles = Battles::new(&self.header);
         for message in &self.messages {
-            let start = pending.take();
-            match message {
-                ServerMessage::GameEvents { n, events } => {
-                    let mut told = Vec::new();
-                    for event in events {
-                        match event {
-                            GameEvent::BattleStarted { heroes, tile } => {
-                                if let Some(battle) = open.take() {
-                                    done.push(battle);
-                                }
-                                pending = Some(Start {
-                                    heroes: *heroes,
-                                    tile: Some(*tile),
-                                    ..Start::default()
-                                });
-                            }
-                            GameEvent::Battle { event } => match (&open, &mut pending) {
-                                (Some(_), _) => told.push(event.clone()),
-                                (None, Some(start)) => start.events.push(event.clone()),
-                                (None, None) => {}
-                            },
-                            GameEvent::BattleEnded { result, .. } => {
-                                if let Some(mut battle) = open.take() {
-                                    battle.tell(core::mem::take(&mut told));
-                                    battle.end(*n, *result);
-                                    done.push(battle);
-                                } else if let Some(start) = &mut pending {
-                                    start.ended = Some((*n, *result));
-                                }
-                            }
-                            _ => {}
+            battles.read(message);
+        }
+        battles.finish()
+    }
+}
+
+/// The battles a whole game's messages show its player, read one message at a time (E17 M7
+/// T3b2: a host's game played live hands the battle its player's messages as they come;
+/// [`GameRecord::battles`] reads a record's all). Each battle opens, grows and ends as the
+/// module's documentation says.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Battles {
+    /// The game's id, each battle's record's.
+    game: u32,
+    /// The battle's manifest of the game's ([`manifest`]).
+    manifest: Manifest,
+    /// The battles ended or left unended by the next one's start, in the order they opened.
+    done: Vec<GameBattle>,
+    /// The battle open now.
+    open: Option<GameBattle>,
+    /// The start a `GameEvents` told: the snapshot right after it opens its battle.
+    pending: Option<Start>,
+}
+
+impl Battles {
+    /// No battle read yet of the game whose record `header` heads.
+    #[must_use]
+    pub fn new(header: &GameRecordHeader) -> Self {
+        Self {
+            game: header.game,
+            manifest: manifest(&header.manifest),
+            done: Vec::new(),
+            open: None,
+            pending: None,
+        }
+    }
+
+    /// How many battles opened so far: those done and the one open.
+    #[must_use]
+    pub fn opened(&self) -> usize {
+        self.done.len() + usize::from(self.open.is_some())
+    }
+
+    /// The battle opened `index`-th (from 0, in the order they open), done or open.
+    #[must_use]
+    pub fn get(&self, index: usize) -> Option<&GameBattle> {
+        self.done
+            .get(index)
+            .or_else(|| self.open.as_ref().filter(|_| index == self.done.len()))
+    }
+
+    /// The battle open now, if any.
+    #[must_use]
+    pub const fn open(&self) -> Option<&GameBattle> {
+        self.open.as_ref()
+    }
+
+    /// Every battle read, in the order they opened; the last one still open where the messages
+    /// end.
+    #[must_use]
+    pub fn finish(self) -> Vec<GameBattle> {
+        let mut done = self.done;
+        done.extend(self.open);
+        done
+    }
+
+    /// What the player's next `message` adds to its battles.
+    pub fn read(&mut self, message: &ServerMessage) {
+        let start = self.pending.take();
+        match message {
+            ServerMessage::GameEvents { n, events } => self.events(*n, events),
+            ServerMessage::Snapshot { n, observation } => match &mut self.open {
+                Some(battle) => battle.push(|n| ServerMessage::Snapshot {
+                    n,
+                    observation: observation.clone(),
+                }),
+                None => {
+                    let start = start.unwrap_or_default();
+                    let mut battle =
+                        GameBattle::open(self.game, &self.manifest, observation, &start, *n);
+                    battle.tell(start.events);
+                    match start.ended {
+                        Some((n, result)) => {
+                            battle.end(n, result);
+                            self.done.push(battle);
                         }
-                    }
-                    if let Some(battle) = &mut open {
-                        battle.tell(told);
+                        None => self.open = Some(battle),
                     }
                 }
-                ServerMessage::Snapshot { n, observation } => match &mut open {
-                    Some(battle) => battle.push(|n| ServerMessage::Snapshot {
+            },
+            ServerMessage::GameTurn {
+                legal, castable, ..
+            } => {
+                let legal: Vec<_> = (legal.iter())
+                    .filter_map(|c| match c {
+                        GameCommand::Battle { command } => Some(*command),
+                        _ => None,
+                    })
+                    .collect();
+                if let Some(battle) = self.open.as_mut().filter(|_| !legal.is_empty()) {
+                    battle.push(|n| ServerMessage::YourTurn {
                         n,
-                        observation: observation.clone(),
-                    }),
-                    None => {
-                        let start = start.unwrap_or_default();
-                        let mut battle = GameBattle::open(self, &manifest, observation, &start, *n);
-                        battle.tell(start.events);
-                        match start.ended {
-                            Some((n, result)) => {
-                                battle.end(n, result);
-                                done.push(battle);
-                            }
-                            None => open = Some(battle),
-                        }
+                        legal,
+                        castable: castable.clone(),
+                    });
+                }
+            }
+            ServerMessage::GameAccepted {
+                seq,
+                command: GameCommand::Battle { command },
+                ..
+            } => {
+                if let Some(battle) = &mut self.open {
+                    battle.push(|n| ServerMessage::Accepted {
+                        n,
+                        seq: *seq,
+                        command: *command,
+                    });
+                }
+            }
+            ServerMessage::GameRejected {
+                seq,
+                code: GameReject::Battle { code },
+                ..
+            } => {
+                if let Some(battle) = &mut self.open {
+                    battle.push(|n| ServerMessage::Rejected {
+                        n,
+                        seq: *seq,
+                        code: *code,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// The game's message `n`'s `events`: a battle's start, its events, its end.
+    fn events(&mut self, n: u32, events: &[GameEvent]) {
+        let mut told = Vec::new();
+        for event in events {
+            match event {
+                GameEvent::BattleStarted { heroes, tile } => {
+                    if let Some(battle) = self.open.take() {
+                        self.done.push(battle);
                     }
+                    self.pending = Some(Start {
+                        heroes: *heroes,
+                        tile: Some(*tile),
+                        ..Start::default()
+                    });
+                }
+                GameEvent::Battle { event } => match (&self.open, &mut self.pending) {
+                    (Some(_), _) => told.push(event.clone()),
+                    (None, Some(start)) => start.events.push(event.clone()),
+                    (None, None) => {}
                 },
-                ServerMessage::GameTurn {
-                    legal, castable, ..
-                } => {
-                    let legal: Vec<_> = (legal.iter())
-                        .filter_map(|c| match c {
-                            GameCommand::Battle { command } => Some(*command),
-                            _ => None,
-                        })
-                        .collect();
-                    if let Some(battle) = open.as_mut().filter(|_| !legal.is_empty()) {
-                        battle.push(|n| ServerMessage::YourTurn {
-                            n,
-                            legal,
-                            castable: castable.clone(),
-                        });
-                    }
-                }
-                ServerMessage::GameAccepted {
-                    seq,
-                    command: GameCommand::Battle { command },
-                    ..
-                } => {
-                    if let Some(battle) = &mut open {
-                        battle.push(|n| ServerMessage::Accepted {
-                            n,
-                            seq: *seq,
-                            command: *command,
-                        });
-                    }
-                }
-                ServerMessage::GameRejected {
-                    seq,
-                    code: GameReject::Battle { code },
-                    ..
-                } => {
-                    if let Some(battle) = &mut open {
-                        battle.push(|n| ServerMessage::Rejected {
-                            n,
-                            seq: *seq,
-                            code: *code,
-                        });
+                GameEvent::BattleEnded { result, .. } => {
+                    if let Some(mut battle) = self.open.take() {
+                        battle.tell(core::mem::take(&mut told));
+                        battle.end(n, *result);
+                        self.done.push(battle);
+                    } else if let Some(start) = &mut self.pending {
+                        start.ended = Some((n, *result));
                     }
                 }
                 _ => {}
             }
         }
-        done.extend(open);
-        done
+        if let Some(battle) = &mut self.open {
+            battle.tell(told);
+        }
     }
 }
 
 impl GameBattle {
-    /// The battle `observation` opens for the player of `game` at the game's message `opened`:
-    /// its record's header and snapshot.
+    /// The battle `observation` opens for the player of the game `game` at the game's message
+    /// `opened`: its record's header and snapshot.
     fn open(
-        game: &GameRecord,
+        game: u32,
         manifest: &Manifest,
         observation: &Observation,
         start: &Start,
@@ -263,7 +331,7 @@ impl GameBattle {
         };
         let header = RecordHeader {
             format: RECORD_FORMAT_VERSION,
-            game: game.header.game,
+            game,
             seat,
             manifest: manifest.clone(),
             first: 1,

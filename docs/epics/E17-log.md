@@ -6703,3 +6703,53 @@ original data staged at once (57 files). Design §13.3.
 - Agent decisions, *provisional* (change freely): the names (`game_record`, `GameBattle`,
   `InGame`, `FromGame`, `--battle`), the numbers afresh, a battle by its number, the result window
   for a whole game's battle only, the report's line. M7 review item 6.
+
+### M7 T3b2 — a whole game's battle played live, and the picture by sex (2026-11-11)
+
+Branch `client/e17-m7-t3b2`, stacked on `shared/clients-ci-game-crates` (#851: `clients.yml`
+watches `h3-pack-adventure`, `h3-files`, `h3-sim`; the user's consent at the task's start). Kept
+whole with the user (both parts in one session). The original data staged at once (57 files); the
+baseline's `check.sh` on `master` lost to a VM restart in coverage and passed when run again.
+Design §13.4, §13.5.
+
+- **Read the game's messages one at a time** (`h3_view::game_record::Battles`: `new`, `read`,
+  `opened`, `get`, `open`, `finish`; `GameRecord::battles` reads a record's all through it) and
+  the turn a seat's record asks for as a pure rule (`h3_view::remote::turn`, the server client's
+  `Client::turn` over it).
+- **The game's seat** (`h3_battle_client::game_seat`): `GameSeat::new(&header)`, `receive` (the
+  player's messages from the host), `opened`, `in_game`, `take_outgoing` (`ToHost::Command` with
+  the seat's number, `ToHost::Query`), `answer`; a turn given once its queries are answered and no
+  command waits; a `GameAccepted` or `GameRejected` echoing the command's number frees it (a
+  refusal by a code the battle's record holds nothing of too).
+- **The battle over it** (`battle.rs`): the trait `Remote` (`poll`, `record`, `turn`, `targets`,
+  `send`, `seat`, `over`) over `Online` and `GameSeat`, `Fight::Server` a `&RefCell<dyn Remote>`;
+  `Fought::Game` (the seat, the content check, the ruleset the game's packs compile to here),
+  `Ground::load_game`, `Ground::game_seat`; `Ground::in_game` by value (a live battle's from its
+  seat). The panel's Auto Combat switch is off there, as on a server (`CLT-STUB-4`).
+- **CLT-Q78** (asked and answered in the task): `battle_load_heroes` 0x463370 picks the picture by
+  the hero type's sex in the static hero table (the type +0x1A, the table's +0), never the map's
+  (+0x3D5); no code stores into that table. The user: (b), the map's sex in the client's profile.
+  The asset tables' `[battle]` `hero_pictures` (the 18 records of 0x63BD40, from the executable)
+  and each hero's `picture` (checked at load: its own DEF and cast, its own sex; 156 heroes in
+  `base.toml` and `ab.toml`); `h3-view harvest` writes both. `Tables::hero_art(key, sex, bugs)`;
+  `scene::battle_as` (the profile; `battle_at` the client's), `motion::casts`'s profile (the cast
+  point), `motion::heroes` by the client's (the 18 DEFs' groups are the same); the harness's
+  sequences draw the original's.
+- **Tests:** `game_record`'s reader one message at a time against a record's all; the tables'
+  `hero_art` and its load checks; the scene's hero by the map's sex in each profile;
+  `a_host_s_game_s_battle_is_played_through_the_seat_to_its_end` (no original data: a test host's
+  real game, `sea-deck-monster-s1`'s, in-process through `GameSession`, its adventure commands up
+  to its first battle command, the monster's side the plain choice; the seat's queries before its
+  turn, a refusal by another code freeing the turn, its record equal message for message to the
+  battle the game's record shows the player, its end the game's `BattleEnded`);
+  `a_host_s_window_plays_its_game_s_battle_live_and_gets_its_outcome` (over the staged
+  installation: the element over the seat, its side pressed by the unattended presses, to its
+  closed result window and the game's outcome; the windowless host loop shared with the window's
+  tests, `hosted_to_close_with`).
+- **Checked:** `clients/scripts/check.sh` with the data staged (every gate; coverage 100 %;
+  `ci paths` with #851's lists); `h3drive.py drawn` (270 sequences and situations, none not the
+  same); `h3-view gate` (the tables' 679 names found and decoded, the 18 pictures among them);
+  the scoped verify with the original data (`check-lane` once #851 merged and the branch was
+  rebased on it).
+- *Provisional:* the names, the queries the host answers, the seat's numbers, the battle followed
+  the first to open, the Auto Combat switch off (CLT-STUB-4). M7 review items 7 and 8.

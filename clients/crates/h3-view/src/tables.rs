@@ -16,6 +16,8 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
+use h3_protocol::wire::Sex;
+use h3_render::Bugs;
 use serde::Deserialize;
 
 use crate::anim::Sound;
@@ -73,6 +75,11 @@ pub struct Battle {
     /// The flags' DEFs beside the heroes: the left side's, the right side's (0x4634AB; E17 M3
     /// T3a).
     pub flags: [String; 2],
+    /// The heroes' battle pictures and casts by the hero class's town × 2 + female
+    /// (`hero_battle_defs` 0x63BD40, 18 records; E17 M7 T3b2): a hero's by the sex a map gave
+    /// it ([`Tables::hero_art`], CLT-Q78); none harvested: each hero type's own alone.
+    #[serde(default)]
+    pub hero_pictures: Vec<HeroPicture>,
     /// The magic animations by number (`PlayMagicAnimation` 0x496840's table 0x641E08, 83
     /// records; E17 M3 T3b): the tent's heal is number 79.
     pub magic: Vec<Magic>,
@@ -221,6 +228,36 @@ pub struct Hero {
     /// the hero's pronoun by it, GENRLTXT 540 or 541, where the map gives no sex).
     #[serde(default)]
     pub female: bool,
+    /// Its record among `[battle]`'s `hero_pictures` (its class's town × 2 + its own sex; E17 M7
+    /// T3b2): the same DEF and cast as its own; none, no picture by another sex.
+    #[serde(default)]
+    pub picture: Option<u8>,
+}
+
+/// A record of the heroes' battle pictures (`hero_battle_defs` 0x63BD40, 0x10 bytes; E17 M7
+/// T3b2): its DEF and its cast, as a hero type's own ([`Hero`]).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroPicture {
+    /// The battle DEF.
+    pub def: String,
+    /// The cast point in the DEF's frame (x, y).
+    #[serde(default)]
+    pub cast: [i16; 2],
+    /// The frames of the cast group played before the spell.
+    #[serde(default)]
+    pub cast_frames: u8,
+}
+
+/// A hero's battle picture as a battle draws it (E17 M7 T3b2, [`Tables::hero_art`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroArt<'a> {
+    /// The battle DEF.
+    pub def: &'a str,
+    /// The cast point in the DEF's frame (x, y).
+    pub cast: [i16; 2],
+    /// The frames of the cast group played before the spell.
+    pub cast_frames: u8,
 }
 
 /// A spell's sign, sound and magic animation (`spell_table` 0x685450, its records' +0, +4 and +8;
@@ -611,6 +648,34 @@ pub struct Tables {
 }
 
 impl Tables {
+    /// The battle picture of the hero type `key` whose sex a map gave as `sex` (E17 M7 T3b2,
+    /// CLT-Q78): the client's profile draws its class's town's record by that sex
+    /// (`hero_battle_defs` 0x63BD40, town × 2 + female); the original's ([`Bugs::Original`], the
+    /// comparisons) the type's own always, as `battle_load_heroes` 0x463370 reads the static hero
+    /// table's sex (+0), never the one a map gave the hero (+0x3D5, which the Summons' box reads).
+    /// A type without its record, or no sex given, is drawn as its own; none: no such type.
+    #[must_use]
+    pub fn hero_art(&self, key: &str, sex: Option<Sex>, bugs: Bugs) -> Option<HeroArt<'_>> {
+        let hero = self.heroes.get(key)?;
+        let own = HeroArt {
+            def: &hero.def,
+            cast: hero.cast,
+            cast_frames: hero.cast_frames,
+        };
+        let (Some(sex), Bugs::Fixed) = (sex, bugs) else {
+            return Some(own);
+        };
+        let record = hero
+            .picture
+            .map(|p| (p & !1) | u8::from(sex == Sex::Female));
+        let picture = record.and_then(|r| self.battle.hero_pictures.get(usize::from(r)));
+        Some(picture.map_or(own, |p| HeroArt {
+            def: &p.def,
+            cast: p.cast,
+            cast_frames: p.cast_frames,
+        }))
+    }
+
     /// Every sound archive entry the creatures name, upper-cased, each once.
     pub fn sound_names(&self) -> BTreeSet<String> {
         self.creatures
@@ -630,6 +695,7 @@ impl Tables {
             .values()
             .flat_map(|c| core::iter::once(&c.def).chain(&c.missile))
             .chain(self.heroes.values().map(|h| &h.def))
+            .chain(self.battle.hero_pictures.iter().map(|p| &p.def))
             .chain(&self.battle.flags)
             .chain(self.battle.wall_explosions.iter().flatten())
             .chain(self.battle.magic.iter().map(|m| &m.def))
@@ -722,8 +788,12 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
     let [battle] = battles[..] else {
         return Err(TableError::Battle(battles.len()));
     };
-    for flag in &battle.flags {
-        names("[battle]", &[(flag, ".DEF")])?;
+    for def in battle
+        .flags
+        .iter()
+        .chain(battle.hero_pictures.iter().map(|p| &p.def))
+    {
+        names("[battle]", &[(def, ".DEF")])?;
     }
     for def in battle
         .magic
@@ -770,6 +840,17 @@ pub fn load(files: &[TableFile], top: &str) -> Result<Tables, TableError> {
         for h in &file.hero {
             let key = qualify(id, &h.key)?;
             names(&key, &[(&h.def, ".DEF")])?;
+            // Its record is its own picture, of its own sex (E17 M7 T3b2).
+            if let Some(p) = h.picture {
+                let record = tables.battle.hero_pictures.get(usize::from(p));
+                let own = record.is_some_and(|r| {
+                    (r.def.as_str(), r.cast, r.cast_frames)
+                        == (h.def.as_str(), h.cast, h.cast_frames)
+                });
+                if !own || (p & 1 == 1) != h.female {
+                    return Err(entry(&key, "its picture is its own record, of its own sex"));
+                }
+            }
             insert(&mut tables.heroes, key, h.clone())?;
         }
         for spell in &file.spell {
@@ -1639,5 +1720,53 @@ at = [124, 254]
                 "`a:b`: rule",
             ]
         );
+    }
+
+    #[test]
+    fn a_hero_is_drawn_by_the_sex_a_map_gave_in_the_client_s_profile_only() {
+        // E17 M7 T3b2, CLT-Q78: the client's profile takes the record of the hero's class's town
+        // by the map's sex; the original's the type's own; a type without its record, no sex or
+        // its own sex the type's own too.
+        let mut b = base();
+        let pictures = [("CH00.DEF", [92, 67]), ("CH01.DEF", [94, 54])];
+        b.battle.as_mut().unwrap().hero_pictures = (pictures.iter())
+            .map(|&(def, cast)| HeroPicture {
+                def: def.into(),
+                cast,
+                cast_frames: 5,
+            })
+            .collect();
+        b.hero[0].picture = Some(0);
+        let mut plain = b.hero[0].clone();
+        (plain.key, plain.picture) = ("plain".into(), None);
+        b.hero.push(plain);
+        let t = load(core::slice::from_ref(&b), "base").unwrap();
+        assert!(t.names().contains("CH01.DEF"));
+        let art = |key, sex, bugs| t.hero_art(key, sex, bugs).map(|a| (a.def, a.cast));
+        let own = Some(("CH00.DEF", [92, 67]));
+        assert_eq!(art("base:orrin", None, Bugs::Fixed), own);
+        assert_eq!(art("base:orrin", Some(Sex::Male), Bugs::Fixed), own);
+        assert_eq!(
+            art("base:orrin", Some(Sex::Female), Bugs::Fixed),
+            Some(("CH01.DEF", [94, 54]))
+        );
+        assert_eq!(art("base:orrin", Some(Sex::Female), Bugs::Original), own);
+        assert_eq!(art("base:plain", Some(Sex::Female), Bugs::Fixed), own);
+        assert_eq!(art("base:nobody", None, Bugs::Fixed), None);
+        // A hero's record is its own picture, of its own sex.
+        for (picture, female) in [(1, false), (0, true), (2, false)] {
+            let mut bad = b.clone();
+            (bad.hero[0].picture, bad.hero[0].female) = (Some(picture), female);
+            assert_eq!(
+                load(&[bad], "base"),
+                Err(TableError::Entry(
+                    "base:orrin".into(),
+                    "its picture is its own record, of its own sex".into()
+                ))
+            );
+        }
+        let mut bad = b;
+        bad.battle.as_mut().unwrap().hero_pictures[1].def = "CH01".into();
+        assert!(load(&[bad], "base").is_err());
     }
 }

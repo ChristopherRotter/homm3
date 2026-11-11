@@ -127,6 +127,24 @@ while the work waits.
   `fixtures/maps/e09-builds-36.h3m` play all of it. Nothing to act on before your town screen
   builds.
 
+- 2026-11-11 (the client lane, E17 M7 T3b2, branch `client/e17-m7-t3b2` after #851, not merged
+  yet; **for your M4 T5**): **a whole game's battle played live through your game**. Make a
+  `h3_battle_client::game_seat::GameSeat::new(&header)` (your player's `GameRecordHeader`: the
+  game's manifest, its id, the player) and hand it your player's frames as they come
+  (`receive`, decoded `ServerMessage`s, from the game's start or from the `GameEvents` whose
+  `BattleStarted` begins the battle); once `opened()`, `battle::Ground::load_game(&source,
+  seat)` (`source`: `packs`, `install`, `speed`, `seed`), then `Prepared`/`Hosted` as before.
+  At each pass of your loop, after the element's: `ground.game_seat().unwrap().borrow_mut()`,
+  `take_outgoing()`: each `ToHost::Command { seq, command }` you play as the player's
+  (`GameSession::play(player, seq, command, ..)`), each `ToHost::Query { seq, query }` you answer
+  with `answer(seq, h3_protocol::map::query(battle.state(), rules.battle(), side, query))` from
+  `GameState::battle(player)`; play the other side's turns (another player's, or the system
+  actor's for a monster), then hand the new frames over. At its end the result window opens; once
+  closed, `Hosted::outcome()` and `Ground::in_game()` (now an `Option<InGame>` by value) as
+  T3b1's. No Auto Combat switch there yet (`CLT-STUB-4`). The hero's battle picture follows a
+  map's sex now (CLT-Q78). Design §13.4; the test host in `game_seat/tests.rs` is a worked
+  example; names *provisional*; still to come: T3c (the sound on your device).
+
 - 2026-11-11 (the client lane, E17 M7 T3b1, branch `client/e17-m7-t3b1` after #849, not merged
   yet; **for your M4 T5**): **a whole game's battle from its record**, handed back. Read a
   game record with `h3_view::game_record::parse` (`is_game` tells it from a battle's own);

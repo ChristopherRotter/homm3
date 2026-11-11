@@ -246,6 +246,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   uncovered until a test calls it at run time.
 
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
+- **A worktree's linked data** (E17 M7 T3b2): `drawn` and the staged-data tests read the
+  repository's own `original-data/` and `clients/target/release/`, so a worktree links both to
+  the main clone's; `.gitignore`'s `original-data/` matches a directory, not a link, so
+  `git add -A` commits the link (add `original-data` to `.git/info/exclude` first). Sharing the
+  main clone's `clients/target` keeps SDL's build; drop its `incremental/` folders when the disk
+  runs short (about 8 GB after a baseline).
 - **The sandbox's disk after a full capture** (E17 M6 T7a): about 43 GB usable; the 91
   sequences' `clients/out/frames` (9 GB) and `out/drawn` (3.6 GB) beside the client's targets
   left none for `check.sh`'s coverage build ("No space left on device"). Delete them once the
