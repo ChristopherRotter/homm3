@@ -8,20 +8,10 @@ Epic: `docs/epics/E09-towns.md` (increment 3: growth, recruitment and the army r
 T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 and 2 (closed by T10
 and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 (`TWN-Q12`), the
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
-the drafts accepted). The building rounds follow the cut of design note §56 (decision 83): batch
-TWN-3 first (T23), the `shared/` task (T24), then the build, E08's increment 12 merging in
+the drafts accepted), batch TWN-3 (T23, decision 84). The building rounds follow the cut of design
+note §56 (decision 83): the `shared/` task (T24), then the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E09 T23 — batch TWN-3** (decisions 74, 83; queued 2026-11-11 by T22a): the six rows of survey §14
-(growth's TWN-3-1 to -5, design §47; TWN-3-6 with design §55's extra record, the garrison hero's
-points at its owner's next turn) as TWN-1 and TWN-2 were run: the spec and template, the capture
-harness's gaps (survey §14: writes of the week's and the month's kinds, reads of a town's counts,
-its Portal and its garrison hero, the writer's garrison hero and Portal), the recipe, the runs,
-the scoring into the survey (`verified` rows; a reading refuted goes to the user). Needs the
-original data (staged at a session's start while the user's computer is connected: the four
-LODs, the executables and DLLs, both tars). **At its start:** confirm the cut (increment 2's T14
-was cut in three). **Status:** next.
 
 **E09 T24 — `shared/`: increment 3's ADRs and core changes** (decision 83; design note §56 round 3):
 the five accepted drafts (`adr-drafts/*-increment-3.md`) into ADR-0028, -0017, -0016, -0013,
@@ -29,8 +19,8 @@ the five accepted drafts (`adr-drafts/*-increment-3.md`) into ADR-0028, -0017, -
 and `OwnerTownGrowth` and the two quirk flags (pack format v52), the packs' six artifacts
 (`cross-lane`); `docs/03-domain.md`'s terms (available creatures, the week's kind, the Portal of
 Summoning, the upper bar, the garrison hero); `docs/06-security.md`'s town lines. In merge order
-with E08's T112 (both amend ADR-0013, -0016, -0017: the second rebases). **Depends on:** T23.
-**Status:** waiting.
+with E08's T112 (both amend ADR-0013, -0016, -0017: the second rebases). T23's verdicts (survey
+`E09-growth.md` §17): every row as the reading, the drafts stand. **Status:** next.
 
 **E09 T25 to T30 — the build** (decision 83; design note §56 rounds 4 to 8, each cut confirmed at
 its start, the agent queues each in full when the one before it ends): **T25** growth's town side

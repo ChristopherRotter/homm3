@@ -3118,3 +3118,52 @@ TWN-GRO-001 to -007, TWN-REC-001, -002, TWN-ROW-001 to -005.
 **Verify:** docs only: `scripts/verify-once.sh engine --base origin/master` ran the light gates
 (`check-rules`, `check-stubs`, `check-docs`, `check-exe-map`), `cargo xtask check-lane` ok; CI on
 the pull request is the record.
+
+### T23 — batch TWN-3: the specs, the harness's draws and town screen actions, the runs, the scoring (2026-11-11)
+
+One session, the user present at the start; branch `town/e09-t23`, `cross-lane` (the user's consent
+at the start: `docs/experiments/README.md` is the battle lane's; the capture harness is common).
+Starting point: `master` at 5b2e761 (#858 merged; the setup's baseline lost to a VM restart, CI's
+run on `master` stands for it). The user's computer was connected at the start only: the original
+data staged then (20 files, the four LODs one per call). **Kept whole** (decision 84; the agent
+recommended three parts). Found at the start: §14's plan to write the month's kind before the month
+was void (`new_month` draws it into 0x698834 and 0x697748 and reads them straight after), so the
+harness forces the draws.
+
+- **The harness** (`clients/capture/`, common): xdd.dll's sites gain the week's chance and
+  creature (0x4C87CE, 0x4C883E) and the month's kind and creature (0x4C8F5E, 0x4C8FA5), forced, and
+  logs the neutral garrisons' (0x4C8E09, 0x4C8E1C, 0x4BF5E5, 0x4BF5F0, 0x4BF5FB, 0x4BF74D) and the
+  Portal's draws (0x5BD825, 0x5BD86E) (`h3drive.ROLLS`, `LOGGED`; the address map's twelve
+  `*_draw` sites); `h3adv` gains a recipe's and a step's `rolls` and `roll`, a step's `date`, the
+  reads `draws[:<prefix>]`, `turn_draws[:<prefix>]`, `kinds`, the town parts `counts`, `count:<i>`,
+  `dwellings`, `portal`, `garrison_hero` (`h3mem`'s town record +0x16, +0x3C, +0x40, +0x118),
+  `hire:creatures`, and the town screen actions `hero_in` (the two portraits, each click after the
+  hover ran: a click right after one move was lost) and `building = <id>` (a dwelling's hire); the
+  walk closes a hire dialog left open. README: "Forced rolls" and "Growth, the garrison hero and a
+  town's hire". xdd.dll redirected all 30 calls; the harness check passed (its first run stopped
+  at the known `attack` flake, the adventure lane's TRAPS).
+- **The specs and recipes:** `experiments/specs/E09-batch-3a.toml` (stamp `d5f72a08`; rows 1 to 5:
+  six towns on row 7, six neutral ones on row 15, three dwellings flagged on day 1, Blue's town so
+  that Blue stays in the game; eight weeks by the date written to each week's last day, the second
+  month the Griffin's, the third the Plague) and `-3b.toml` (stamp `a20d41e4`; row 6: T with the
+  upgraded Guardhouse, U with four stacks); the recipes `clients/capture/batches/E09-batch-3a.toml`
+  (38 steps, about 8 minutes) and `-3b.toml` (5 steps, about 3 minutes).
+- **The runs:** two of each, recorded (`experiments/results/E09-batch-3a.md`, `-3a-run2.md`,
+  `-3b.md`, `-3b-run2.md`). Probes (not recorded): the town screen's items; a 3a run whose map's
+  horde was the level-1 dwelling's ("horde 1"; the Castle's Griffin Bastion is "horde 3") and whose
+  Blue, without a town, was out of the game after seven days; a 3b run whose portrait clicks were
+  lost (the purchase then into the town's own garrison).
+- **The scoring** (survey §17): every row as the reading in every read of both runs: TD-13 (only
+  the exact creature doubles: K1 47, K2 94), §1's sum (80, 57, 43), TD-14 (O1 53, 30; N1 17, 10),
+  TD-15 (a replay of §4 over the logged draws predicted all 56 reads of each run), TD-16 and T-11
+  (the Portal's first creature at the screen, the count set, no Plague), row 6 (the purchase into
+  the garrison hero's army, one count for two creatures, the move refused with GENRLTXT 276, the
+  points refilled). Not predicted, nothing for the engine: the Portal's stale count while it has no
+  creature, the town's hire dialog closing after a Recruit. No question; decisions 69 to 83 stand.
+
+**The queue:** T23 out; T24 next. The client, map-client and adventure lanes' inboxes told the
+harness's change (xdd.dll's sites: a stale `xdd.dll` fails the sequences' count of redirected
+calls; rebuild it with `setup.sh`). No version moved. Ids: questions next 15, decisions next 85.
+
+**Verify:** no engine code: `scripts/verify-once.sh engine --base origin/master` (the light gates),
+`cargo xtask check-lane --cross-lane`; CI on the pull request is the record.

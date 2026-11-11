@@ -112,6 +112,18 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
+  changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
+  town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
+  `week_creature`, `month_kind`, `month_creature`; eight logged: the neutral garrisons' and the
+  Portal's draws), so `h3drive.ROLLS` and `LOGGED` hold 30 calls: a battle sequence checks that
+  xdd.dll redirected all 30, and a stale `xdd.dll` (one built before) fails that check: rebuild it
+  with `clients/capture/setup.sh`. `h3adv` gains a recipe's and a step's `rolls`, `roll` and
+  `date`, the reads `draws`, `turn_draws`, `kinds`, the town parts `counts`, `count:<i>`,
+  `dwellings`, `portal`, `garrison_hero`, `hire:creatures`, the town screen actions `hero_in` and
+  `building`; `h3mem`'s town record gains `recruits`, `portal`, `dwellings`. Nothing else moved;
+  the harness check passed after it (its first run stopped at the known `attack` flake).
+
 - 2026-11-11 (the town lane, E09 T19c2, branch `town/e09-t19c2`; **for the town screen's
   builds**, when your viewer offers them): construction is in the game (E09 increment 2). The
   owner builds with `GameCommand::Town(TownCommand::Build { town, building })`, one a town a day

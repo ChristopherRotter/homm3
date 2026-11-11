@@ -1,0 +1,93 @@
+# E09 batch TWN-3, part b, played by the capture harness (E09 T23; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-3b.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Row TWN-3-6 on Red's day 1, then both turns ended and the points read on
+# Red's day 2.
+#
+# Each visit is a walk onto a town's entrance whose `actions` play on its town screen (README,
+# "Towns"): `hero_in` (the visitor's portrait, then the garrison's: the visitor into the
+# garrison; a message that comes is recorded and its OK clicked), `building = <id>` (the
+# building's click: its hire dialog), `amount = <n>` (the hire's slider) and `click =
+# ["recruit"]`; the walk then closes what is left open (the hire dialog by its Close, the town
+# screen). The reads in an action are live right after it; the step's after the visit. A town by
+# its entrance (`town:x,y:<part>`: `garrison_hero`, `visitor`, `counts`, `garrison`), a hero by
+# its name (`hero[<name>]:army`, `:points`), the hire dialog now (`hire:creatures`: each creature
+# it offers with the count it reads). The game's building ids: 37 the upgraded Guardhouse, 30 the
+# Guardhouse.
+
+spec = "experiments/specs/E09-batch-3b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- the reads before any hero moves ---------------------------------------------------------------
+
+[[step]]
+encounter = "TWN-3-6"
+hero = "TWN-3-6"
+[step.record]
+"before: T's garrison hero, visitor, available creatures, garrison; U's the same" = ["text:T hero: ", "town:7,7:garrison_hero", "text:visitor: ", "town:7,7:visitor", "town:7,7:counts", "town:7,7:garrison", "text:U hero: ", "town:15,7:garrison_hero", "text:visitor: ", "town:15,7:visitor", "town:15,7:counts", "town:15,7:garrison"]
+"before: G's army and points; V's army and points; Red's resources" = ["text:G: ", "hero[TWN-3-6]:army", "hero[TWN-3-6]:points", "text:V: ", "hero[TWN-3-6v]:army", "hero[TWN-3-6v]:points", "text:Red: ", "treasury:red"]
+[step.note]
+"the game's version" = "map_kind"
+
+# --- G into T's garrison, then 2 Halberdiers ---------------------------------------------------------
+
+[[step]]
+encounter = "TWN-3-6"
+hero = "TWN-3-6"
+walk = [7, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+hero_in = true
+record = { "G into T's garrison: the messages; T's garrison hero, visitor, garrison; G's army" = ["messages", "text:hero: ", "town:7,7:garrison_hero", "text:visitor: ", "town:7,7:visitor", "text:garrison: ", "town:7,7:garrison", "text:G: ", "hero[TWN-3-6]:army"] }
+[[step.actions]]
+building = 37
+record = { "T's upgraded Guardhouse: the hire dialog as it opened (creatures, counts)" = ["hire:creatures", "hire"] }
+[[step.actions]]
+amount = 2
+[[step.actions]]
+click = ["recruit"]
+record = { "2 Halberdiers recruited: the dialog after (counts)" = ["hire:creatures", "hire"] }
+[step.record]
+"after G's visit: T's available creatures and garrison; G's army and points; Red's resources" = ["town:7,7:counts", "text:garrison: ", "town:7,7:garrison", "text:G: ", "hero[TWN-3-6]:army", "hero[TWN-3-6]:points", "text:Red: ", "treasury:red"]
+[step.note]
+"G's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"G's visit: screens not known by their vtable" = "unknown_screens"
+
+# --- V into U's garrison (refused?), then 1 Pikeman at U ---------------------------------------------
+
+[[step]]
+encounter = "TWN-3-6"
+hero = "TWN-3-6v"
+walk = [15, 7]
+expect = { question = "none", battle = false }
+[[step.actions]]
+hero_in = true
+record = { "V into U's garrison: the messages; U's garrison hero, visitor, garrison; V's army" = ["messages", "text:hero: ", "town:15,7:garrison_hero", "text:visitor: ", "town:15,7:visitor", "text:garrison: ", "town:15,7:garrison", "text:V: ", "hero[TWN-3-6v]:army"] }
+[[step.actions]]
+building = 30
+note = { "U's Guardhouse: the hire dialog as it opened" = ["hire:creatures", "hire"] }
+[[step.actions]]
+amount = 1
+[[step.actions]]
+click = ["recruit"]
+record = { "1 Pikeman recruited at U: U's garrison; V's army; U's available creatures" = ["text:garrison: ", "town:15,7:garrison", "text:V: ", "hero[TWN-3-6v]:army", "town:15,7:counts", "hire"] }
+[step.note]
+"V's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"V's visit: screens not known by their vtable" = "unknown_screens"
+
+# --- Red's day 2: the garrison hero's points ------------------------------------------------------
+
+[[step]]
+encounter = "TWN-3-6"
+end_turn = true
+[step.note]
+"Blue's turn: G's and Z's points" = ["text:G: ", "hero[TWN-3-6]:points", "text:Z: ", "hero[TWN-3-6z]:points"]
+
+[[step]]
+encounter = "TWN-3-6"
+end_turn = true
+[step.record]
+"Red's day 2: G's points; Z's points; T's garrison hero; G's army" = ["text:G: ", "hero[TWN-3-6]:points", "text:of the day's: ", "hero[TWN-3-6]:day_points", "text:Z: ", "hero[TWN-3-6z]:points", "text:of the day's: ", "hero[TWN-3-6z]:day_points", "text:T's garrison hero: ", "town:7,7:garrison_hero", "text:G's army: ", "hero[TWN-3-6]:army"]
+[step.note]
+"the date" = "date"

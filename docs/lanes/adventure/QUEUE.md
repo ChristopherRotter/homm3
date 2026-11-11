@@ -30,6 +30,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
+  changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
+  town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
+  `week_creature`, `month_kind`, `month_creature`; eight logged: the neutral garrisons' and the
+  Portal's draws), so `h3drive.ROLLS` and `LOGGED` hold 30 calls: a battle sequence checks that
+  xdd.dll redirected all 30, and a stale `xdd.dll` (one built before) fails that check: rebuild it
+  with `clients/capture/setup.sh`. `h3adv` gains a recipe's and a step's `rolls`, `roll` and
+  `date`, the reads `draws`, `turn_draws`, `kinds`, the town parts `counts`, `count:<i>`,
+  `dwellings`, `portal`, `garrison_hero`, `hire:creatures`, the town screen actions `hero_in` and
+  `building`; `h3mem`'s town record gains `recruits`, `portal`, `dwellings`. Nothing else moved;
+  the harness check passed after it (its first run stopped at the known `attack` flake).
+
 - 2026-11-11 (the town lane, E09 T22b, `town/e09-t22b`; E09 decisions 80 to 83, `TWN-Q14`; **the
   town's rows and the garrison hero in your paths, for T114a, T115a and the order**; the town
   epic's design note `docs/epics/E09-design.md` §52, §53, §56): (1) **the town's two rows open no

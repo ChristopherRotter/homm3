@@ -1,0 +1,358 @@
+# E09 batch TWN-3, part a, played by the capture harness (E09 T23; h3adv.py batch): the procedure
+# of experiments/specs/E09-batch-3a.toml as steps, on Easy, hot seat, Red and Blue human, the
+# starting bonus Gold. Red's day 1: the reads, the dwellings flagged, G1's visitor placed, D1's
+# town screen; then eight weeks, each a pair of end turns (Red's, Blue's) whose first writes the
+# date to the week's last day (`date = [month, week, day]`), the reads on Red's new turn.
+#
+# The draws (README, "Forced rolls"; xdd.dll's sites, E09 T23): the recipe's `rolls` make every
+# week normal (`week_chance` 2: a creature's week needs 1); a step's `roll` forces the next month's
+# kind (`month_kind` 6, a creature's, with `month_creature` 1, the Griffin; `month_kind` 10, the
+# Plague). The neutral towns' garrison draws and the Portal's are logged: `draws:<prefix>` those of
+# the step, `turn_draws:<prefix>` those of the last end turn (a later step's record). The reads: a
+# town by its entrance (`town:x,y:counts`, `:garrison`, `:portal`, `:dwellings`, `:visitor`),
+# `kinds` (the week's and month's kinds as the game holds them), `date`, a dwelling's owner.
+
+spec = "experiments/specs/E09-batch-3a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+rolls = { week_chance = 2 }
+
+# --- Red's day 1: the reads before any hero moves -------------------------------------------
+
+[[step]]
+encounter = "TWN-3-1"
+hero = "TWN-3-1"
+[step.record]
+"day 1: K1's and K2's available creatures" = ["text:K1: ", "town:7,7:counts", "text:K2: ", "town:15,7:counts"]
+[step.note]
+"the game's version" = "map_kind"
+"the kinds at the start" = "kinds"
+
+[[step]]
+encounter = "TWN-3-2"
+hero = "TWN-3-1"
+[step.record]
+"day 1: G1's available creatures; its external dwellings' counts; its standing and every-built sets" = ["town:23,7:counts", "text:dwellings: ", "town:23,7:dwellings", "text:standing: ", "town:23,7:built", "text:every: ", "town:23,7:every"]
+
+[[step]]
+encounter = "TWN-3-3"
+hero = "TWN-3-1"
+[step.record]
+"day 1: O1's and N1's available creatures; N1's garrison" = ["text:O1: ", "town:39,7:counts", "text:N1: ", "town:47,7:counts", "text:N1's garrison: ", "town:47,7:garrison"]
+
+[[step]]
+encounter = "TWN-3-4"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts"]
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"day 1: D1's Portal" = "town:31,7:portal"
+
+# --- the flags: GH1 by TWN-3-2s (the Statue of Legion), GH2 by TWN-3-2t, the Harpy Loft by TWN-3-5 ------
+
+[[step]]
+encounter = "TWN-3-2"
+hero = "TWN-3-2s"
+walk = [10, 30]
+answer = { hire = "no" }
+expect = { battle = false }
+[step.note]
+"GH1's visit: the questions" = "questions"
+
+[[step]]
+encounter = "TWN-3-2"
+hero = "TWN-3-2t"
+walk = [16, 30]
+answer = { hire = "no" }
+expect = { battle = false }
+[step.record]
+"after the flags: G1's external dwellings' counts; GH1's and GH2's owners" = ["town:23,7:dwellings", "text:GH1: ", "dwelling:10,30:owner", "text:GH2: ", "dwelling:16,30:owner"]
+[step.note]
+"GH2's visit: the questions" = "questions"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-5"
+walk = [22, 30]
+answer = { hire = "no" }
+expect = { battle = false }
+[step.record]
+"after the three flags: D1's Portal; the Harpy Loft's owner" = ["town:31,7:portal", "text:the Harpy Loft: ", "dwelling:22,30:owner"]
+[step.note]
+"the Harpy Loft's visit: the questions" = "questions"
+"the Harpy Loft's record" = "dwelling:22,30"
+
+# --- G1's visitor (Legs of Legion) and D1's town screen -------------------------------------------
+
+[[step]]
+encounter = "TWN-3-2"
+hero = "TWN-3-2"
+walk = [23, 7]
+expect = { question = "none", battle = false }
+[step.note]
+"G1's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+
+[[step]]
+encounter = "TWN-3-2"
+hero = "TWN-3-1"
+[step.record]
+"after the visit: G1's visitor" = "town:23,7:visitor"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-5d"
+walk = [31, 7]
+expect = { question = "none", battle = false }
+[step.record]
+"D1's visit: the Portal before; after; the Portal's draws" = ["text:before: ", "before:town:31,7:portal", "text:after: ", "town:31,7:portal", "text:draws: ", "draws:portal"]
+[step.note]
+"D1's visit: a town screen; how it closed" = ["town_screen", "town_screen_closed"]
+"D1's visit: screens not known by their vtable" = "unknown_screens"
+
+# --- the week M1 W2: Red's turn ended (the date month 1, week 1, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+date = [1, 1, 7]
+[step.note]
+"M1 W2: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M1 W2: the kinds" = "kinds"
+"M1 W2: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M1 W2: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M1 W2: the kinds" = "kinds"
+
+[[step]]
+encounter = "TWN-3-2"
+hero = "TWN-3-1"
+[step.record]
+"week 2, day 1: G1's available creatures; its visitor; the Statue's and Legs' wearers" = ["town:23,7:counts", "text:visitor: ", "town:23,7:visitor", "text:the Statue: ", "hero[TWN-3-2s]:equipment", "text:Legs: ", "hero[TWN-3-2]:equipment"]
+[step.note]
+"week 2: G1's external dwellings' counts" = "town:23,7:dwellings"
+"week 2: the kinds" = "kinds"
+
+# --- the week M1 W3: Red's turn ended (the date month 1, week 2, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+date = [1, 2, 7]
+[step.note]
+"M1 W3: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M1 W3: the kinds" = "kinds"
+"M1 W3: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M1 W3: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M1 W3: the kinds" = "kinds"
+
+# --- the week M1 W4: Red's turn ended (the date month 1, week 3, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+date = [1, 3, 7]
+[step.note]
+"M1 W4: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M1 W4: the kinds" = "kinds"
+"M1 W4: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M1 W4: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M1 W4: the kinds" = "kinds"
+
+# --- the week M2 W1: Red's turn ended (the date month 1, week 4, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-1"
+end_turn = true
+date = [1, 4, 7]
+roll = { month_kind = 6, month_creature = 1 }
+[step.record]
+"month 1, week 4 (before the month): K1's and K2's available creatures" = ["text:K1: ", "town:7,7:counts", "text:K2: ", "town:15,7:counts"]
+[step.note]
+"M2 W1: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M2 W1: the kinds" = "kinds"
+"M2 W1: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M2 W1: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M2 W1: the kinds" = "kinds"
+
+[[step]]
+encounter = "TWN-3-1"
+hero = "TWN-3-1"
+[step.record]
+"month 2, day 1: the week's and month's kinds; K1's and K2's available creatures" = ["kinds", "text:K1: ", "town:7,7:counts", "text:K2: ", "town:15,7:counts"]
+
+# --- the week M3 W1: Red's turn ended (the date month 2, week 4, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-3"
+end_turn = true
+date = [2, 4, 7]
+roll = { month_kind = 10 }
+[step.record]
+"month 2, week 4 (before the Plague): O1's and N1's available creatures" = ["text:O1: ", "town:39,7:counts", "text:N1: ", "town:47,7:counts"]
+[step.note]
+"M3 W1: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M3 W1: the kinds" = "kinds"
+"M3 W1: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M3 W1: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M3 W1: the kinds" = "kinds"
+
+[[step]]
+encounter = "TWN-3-3"
+hero = "TWN-3-1"
+[step.record]
+"month 3, day 1: the week's and month's kinds; O1's and N1's available creatures; N1's garrison" = ["kinds", "text:O1: ", "town:39,7:counts", "text:N1: ", "town:47,7:counts", "text:N1's garrison: ", "town:47,7:garrison"]
+
+# --- the week M3 W2: Red's turn ended (the date month 3, week 1, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+date = [3, 1, 7]
+[step.note]
+"M3 W2: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M3 W2: the kinds" = "kinds"
+"M3 W2: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M3 W2: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M3 W2: the kinds" = "kinds"
+
+# --- the week M3 W3: Red's turn ended (the date month 3, week 2, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+date = [3, 2, 7]
+[step.note]
+"M3 W3: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M3 W3: the kinds" = "kinds"
+"M3 W3: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M3 W3: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M3 W3: the kinds" = "kinds"
+
+# --- the week M3 W4: Red's turn ended (the date month 3, week 3, day 7), then Blue's ---------
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+date = [3, 3, 7]
+[step.note]
+"M3 W4: Blue's turn: the date" = "date"
+
+[[step]]
+encounter = "TWN-3-4"
+end_turn = true
+[step.record]
+"row:week (the date)" = ["date", "town:7,15:garrison", "town:15,15:garrison", "town:23,15:garrison", "town:31,15:garrison", "town:39,15:garrison", "town:47,15:garrison", "town:7,15:counts", "draws:garrison"]
+[step.note]
+"M3 W4: the kinds" = "kinds"
+"M3 W4: N1's garrison and counts" = ["town:47,7:garrison", "town:47,7:counts"]
+"M3 W4: the new turn's messages" = "messages"
+
+[[step]]
+encounter = "TWN-3-5"
+hero = "TWN-3-1"
+[step.record]
+"row:week (the date)" = ["date", "town:31,7:portal", "turn_draws:portal"]
+[step.note]
+"M3 W4: the kinds" = "kinds"
