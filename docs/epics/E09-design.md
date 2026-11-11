@@ -1212,3 +1212,287 @@ batch TWN-2 runs first, so the ADRs are applied once with its verdicts, as incre
 - **TD-11:** settled by batch TWN-2 (§33): the original refuses an ally's visitor too; the owner
   test does not widen.
 - **The creatures of 56 shipped town events** are lost until increment 3 (`TWN-STUB-10`).
+
+## Part E — increment 3: growth, recruitment and the army rows
+
+### 37. Scope, sources and choices
+
+Increment 3's note (the epic's decisions 65 and 66). A handover, not binding, as Parts A to D:
+the working detail behind the drafts `docs/lanes/town/adr-drafts/0028-increment-3.md`,
+`0017-increment-3.md`, `0016-increment-3.md` and `0013-increment-3.md`, written from the survey
+`docs/rules/surveys/E09-growth.md` (§ numbers are the survey's unless they name this note), the
+survey's checkpoint (`TWN-Q12`, decisions 69 to 73) and `TWN-Q13` (decisions 74 to 77). Written
+in two halves (decision 74): **T22a, growth** (§37 to §47, this text) and **T22b, recruitment and
+the two rows** (from §48: the hire through E08's dialog, the Portal's hire, the army reference
+agreed with E08's increment 12, a garrison hero and the heroes' moves, T-5), which also writes the
+building tasks' cut, the exit criteria and the checkpoint (`TWN-Q14`). Batch TWN-3 is its own task
+after the checkpoint (T23). *Agent's call (change freely)* marks a choice of this note the user may
+still change at `TWN-Q14` (decision 78 lists them).
+
+- **Growth builds:** the town's available creatures and its Portal in the store (§40); a
+  dwelling's growth and its inputs (§41); the week's kind and the week's growth (§42); the month
+  (§43); a neutral town's garrison week (§44); the Portal's draws (§45); a dwelling's first
+  creatures and the town events' creatures (§46, `TWN-STUB-10` lifted); the part's roles and
+  parameters (§38); the core's hero effects, quirk flags and stream (§39); the day's order, the
+  views, the versions and the gates (§47).
+- **Not growth's:** buying the creatures (T22b's half: the hire takes the counts this half keeps);
+  the growth panel's figures (§7, a display: the client computes them from the views); the
+  computer's recruitment and its use of the Portal (E13); the Necropolis' and Conflux's Grail
+  extras (increment 5); the RoE and AB rules of growth (E11).
+- **Sources and disputes:** the reading for every rule; TD-13 and TD-14 the reading with a
+  `fix-optional` flag each (T-13, T-12; decisions 69, 70); TD-15 and TD-16 the reading (72, 73);
+  T-10 fixed (a count saturates, 73); T-11 drawn at the build and at a dwelling flagged (71).
+
+### 38. The town part: the roles `horde`, `portal`, `week_of`, a record's `roe`, the parameters (`h3-towns`, `h3-pack-towns`; part v5)
+
+- **The format** (`h3-pack-towns`' format doc): a building's `horde = [level, upgraded]` (as
+  `dwelling`: the level within the record's, the upgraded flag needing the level's upgrade);
+  `portal = true`; `week_of = level` (within the record's levels). A record's `roe = false` (absent:
+  true). `[town_params]` gains `week_creature_chance = [1, 4]` (a creature's week: 1 in 4),
+  `week_creature_bonus = 5` and `garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3,
+  4, 5, 4, 3], weeks = 8, upgrade = 5 }` (the odds without and with a standing fort; the weights
+  `neutral_garrison_level_weights` 0x6779B0; the upgrade in 100).
+- **Compiled:** `BuildingRoles::horde: Option<Horde { level, upgraded }>`, `portal: bool`,
+  `week_of: Option<u8>`; `TownRecord::roe: bool`; `TownParams::week` and `::garrison_week`.
+  Refused (`TownCompileError`'s variants, new ones named by the task): two hordes of one index in
+  a record (no faction has two on a level, §7), a second `portal` or `week_of` in a record, a
+  level outside the record's, an upgraded horde of a level without an upgrade, a chance whose
+  numerator exceeds its denominator or is 0, an odds above `out_of`, empty weights. A horde's
+  growth is **the core's `horde_growth`** of its index's creature (the figures
+  `horde_table_init` 0x5BDF60 copies into `town_hordes`; checked equal for the twenty base
+  creatures with a horde, the AB pack's Pixies and Sprites too): one fact, held once (*agent's
+  call*).
+- **The hash** (v5): after `shipyard`, the horde (0 none, else 1, its level, its flag), `portal`,
+  `week_of` (0 none, else 1 and its level); after the record's buildings `roe`; the parameters'
+  week and garrison week after Visions'. Pinned in `ruleset/tests.rs`.
+- **Overrides:** none (`TownPatch` gains nothing; RoE's and AB's growth are E11's).
+- **The content** (T16b's route, `h3-harvest`'s `src/towns.rs`, `cross-lane`, original data):
+  `horde` from the horde table it reads already (`town_hordes` 0x6887A0, `horde_buildings`
+  0x642E20: the level by the record's index, upgraded for 19 and 25); `portal` on the Dungeon's
+  building 22 and `week_of = 1` on the Inferno's 26 as gap-fill roles (the harvest's role spec;
+  the executable tests the ids, not data); `roe = false` on Conflux's record (the AB pack's); the
+  parameters in the base pack's `[town_params]`. The report's line "the hordes' growth not
+  harvested" goes.
+- **The synthetic pack:** a horde and its upgrade, a Portal and a `week_of` building in its
+  records, so `h3-towns`' tests and the scripted replays reach each role without original data.
+
+### 39. The core: two hero effects, two quirk flags, the towns' stream (`shared/` and `cross-lane`)
+
+- **Hero effects** (decision 76; ADR-0013 point 16.4's draft; `h3-content`'s `effect.rs`,
+  `shared/`, pack format v52): `HeroEffect::TownGrowth { level: u8 (1..=7), amount: u16 (≥ 1) }`
+  (file `{ kind = "town_growth", level = 2, amount = 5 }`) and `HeroEffect::OwnerTownGrowth { bp:
+  u16 (1..=10 000) }` (`{ kind = "owner_town_growth", bp = 5000 }`), codes after
+  `WhirlpoolProtection`'s 60. The base pack's five pieces (`legs_of_legion` +5 at level 2 to
+  `head_of_legion` +1 at level 6) and the SoD pack's `statue_of_legion` (5 000) get them, their
+  "pending" comments dropped (the packs are the battle lane's: `cross-lane`).
+- **The derivations** (`h3-heroes`, the adventure lane's: `cross-lane`): `town_growth(details,
+  core) -> [u16; 7]` by level and `owner_town_growth(details, core) -> u16`, each worn type once,
+  a worn combination's parts counting (`hero_wears_artifact` 0x4D91F0; as `WhirlpoolProtection`
+  reads the Sea Captain's Hat through the Admiral's): a worn Statue gives its share and the five
+  pieces' amounts.
+- **Quirk flags** (`h3-content`'s `quirks.rs`, `shared/`; the profiles in the base pack's
+  `core.toml`, `cross-lane`): `quirk.town.creature_month_exact` (T-13, `QuirkFlag(39)`) and
+  `quirk.town.neutral_plague_full_growth` (T-12, `QuirkFlag(40)`), each on in `faithful` and off
+  in `strict-fixed` (the class `fix-optional`, decisions 69, 70).
+- **The stream** (decision 75; `h3-kernel`, `shared/`): `StreamId::TOWNS = Self(7)`, "the towns'
+  weekly randomness" in the closed list. `GameState` holds its `Rng` beside the game's (§42).
+
+### 40. The record and the store: the available creatures, the Portal (`h3-towns`; town state hash v3)
+
+- **The record:** `Town` gains `available: [u16; INDEXES]` (`INDEXES` = 2 ×
+  `MAX_CREATURE_LEVELS` = 14: index `level − 1` the level's creature, `level − 1 + 7` its
+  upgrade; the original's +0x16) and `portal: Option<Summoned { creature, count: u16 }>` (+0x3C,
+  +0x40). `MAX_AVAILABLE = 32 767` bounds every count (**T-10 fixed**, planned `TWN-QUIRK-8`, no
+  flag: the original's i16 adds and doubles wrap past it; below it nothing differs). Accessors
+  `available(index)`, `portal()`.
+- **The store's writes** (as T17a's): `set_available`, `set_portal`, and the rules' whole-town
+  results (§42 to §46) through one `write(town, Town)`; a fork's first write copies that town.
+- **The hash** (v3): after the day's mark, the fourteen counts (`u16` each) and the Portal (0
+  none, else 1, the creature's handle, the count). Pinned in the store's tests.
+- **At the build** (`h3-towns`' setup): each level whose dwelling is ever built gets its
+  creature's growth at the index of its standing dwelling (the upgrade's when the upgraded
+  dwelling is ever built, else the base's): what the original's `town_build` in id order leaves
+  (§6; VCMI's first day agrees). A Portal is drawn for an owned town only (§45); a neutral town's
+  (one shipped map's) stays empty until owned.
+- **A capture** keeps the counts and the Portal (`town_change_owner` writes neither).
+
+### 41. A dwelling's growth (TWN-GRO-001; `h3-towns`' `growth.rs`, the inputs from `h3-game`'s `src/town*`)
+
+- **The rule** `growth(town, part, core, index, &GrowthInputs) -> u16`, in §1's order, in `u32`
+  then capped at `MAX_AVAILABLE`: none without the index's dwelling ever built (a building of role
+  `dwelling` with the index's level and flag), none at a base index whose upgraded dwelling is
+  ever built; g the index's creature's core `growth`; + g with a standing fort level 3, + g ÷ 2
+  with level 2; for an owned town + (g + that) × `share_bp` ÷ 10 000 (truncated: the Statue's
+  5 000 is the original's ÷ 2) + `legion[level]`; + the first building in index order ever built
+  whose `horde` is the index (its creature's `horde_growth`); + `dwellings[index]`; then with a
+  `grail` building ever built + the sum ÷ 2.
+- **The inputs** (`GrowthInputs { owned, share_bp, legion: [u16; 7], dwellings: [u16; 14] }`),
+  computed by the game once per town and step: `owned` the adventure's owner; `share_bp` the
+  highest `owner_town_growth` of the owner's heroes on the map and in its towns' garrisons
+  (`player_hero_wears_artifact` 0x4BACB0; garrison heroes come with T22b's half); `legion` the
+  visitor's `town_growth` plus the garrison hero's (each hero once, §1's "each hero apart");
+  `dwellings` per index the owner's dwellings whose kind's **first** creature is that index's (the
+  original's record +4), a base creature counting at its upgrade's index too. A neutral town's
+  inputs are all zero. *Agent's call:* the dwellings' table built once per player per step (a
+  `Vec` by creature handle), not per town.
+- **Not modelled:** the original's stored counts +0x118 (derived here from the owners: one fact
+  once); the growth panel (§7).
+
+### 42. The week (TWN-GRO-002, -003; GAM-CAL-002 amended; `h3-game`'s `src/town/week.rs`, `state.rs` and `state/day.rs` `cross-lane`)
+
+- **The kind** `h3_towns::WeekKind` (*agent's call*: the town crate's type, read by its rules,
+  re-exported by `h3-game`; the value in `GameState` beside `MonthKind`, decision 77): `Normal`,
+  `Creature(CreatureTypeId)`, `Of { creatures: [Option<CreatureTypeId>; 2], bonus: u16 }` (a
+  `week_of` level's base and upgrade, the base's core growth as the bonus: the Imps' 15). Hash 0,
+  1 and the handle, 2 and both and the bonus. The game's first week is `Normal`.
+- **The draw** (TWN-GRO-002), on a week's first day before `WeekStarted`, from the towns' stream:
+  unless the day is a month's first, `below(4)` (the part's chance) and on 0 a creature `below(n)`
+  of the eligible list (every town record's levels' creatures, base then upgrade, records in the
+  part's order; on an RoE map only the records with `roe`; the original's §2 set, checked: 126
+  creatures with AB, 112 without Conflux); then the first town in `TownId` order with a standing
+  `week_of` building, of any owner, makes it `Of` its level's, the draw kept or not (the
+  original's order: drawn, then overwritten, every week the month's first too). The setup's
+  **`roe`** flag (`GameSetup`, the import's `Version::RoE`; map import v22, `cross-lane`) is read
+  only here.
+- **`GameEvent::WeekStarted { week, kind }`** and `GameObservation::week` (public, as the
+  month's), `cross-lane` with the protocol's mapping (the global trap: the same pull request).
+- **The towns' week** (TWN-GRO-003; `h3_towns::week_growth`): in `TownId` order, each index whose
+  growth is above 0 gains growth + the kind's bonus when its creature is one of the kind's
+  (`Creature`: that creature alone, 5; `Of`: either form, the bonus), halved (truncated, after the
+  bonus) in a town without an owner, added saturating.
+- **Then** the adventure's week step as before (the game's stream; the map's dwellings read no
+  week's kind, ADV-DWL-003: the inbox's E08 T97a note asks the building task to extend
+  `a_month_s_kind_never_reaches_a_dwelling_or_a_camp` with a week of the hut's creature), then
+  §44, then §45.
+
+### 43. The month (TWN-GRO-004; GAM-CAL-003 amended)
+
+- **The kind** as GAM-CAL-003 draws it (the game's stream), but when the week's kind is `Of`
+  (the month's first week, so a `week_of` building's) it becomes `MonthKind::Creature(that base
+  creature)` without the creature's draw (`new_month` 0x4C8F5E draws, 0x4C8F63 to 0x4C8F82
+  overwrites, no second draw): `MonthStarted` names it and the adventure's month step spawns that
+  creature on the map (the original's monsters of the month).
+- **The towns' month** (`h3_towns::month`), in `TownId` order after `MonthStarted` and before the
+  adventure's month step, each index whose growth (§41, the same inputs) is above 0:
+  - a `Creature(c)` month, unless the week is `Of`: the count doubles (saturating) when the
+    index's creature is c; with `quirk.town.creature_month_exact` off, when c is either of the
+    level's creatures (T-13, planned `TWN-QUIRK-10`, VCMI 1.7.5's rule);
+  - the Plague: the count loses the growth (at least 0), then halves (truncated); with
+    `quirk.town.neutral_plague_full_growth` off, a neutral town loses half the growth (what its
+    week added), so every town keeps half of its count before the week (T-12, planned
+    `TWN-QUIRK-9`).
+  The fifteenth index of the original (building 44's bit, never set) is nothing. The Portal and
+  the garrisons are untouched.
+
+### 44. A neutral town's garrison week (TWN-GRO-006; `h3-towns`' `garrison.rs`, `h3-adventure`'s `src/town.rs`)
+
+- **The rule** `garrison_week(town, part, core, weeks, garrison: &[ArmyStack], draws) ->
+  Option<GarrisonWeek { stacks, town }>`, for each town without an owner in `TownId` order after
+  the adventure's week step, from the towns' stream:
+  1. `below(out_of)` under the odds (80 with a standing fort level, else 40, in 101); else none.
+  2. n = min(`weeks`, the parameters' 8), `weeks` the weeks since the start, (day − 1) ÷ week
+     length (the original's days ÷ 7 on the week's first day); S the sum of three
+     `range_inclusive(0, n + 1)`; the level the first weight S does not exceed, S less each
+     passed, else level 7.
+  3. The creature: the level's base, its upgrade when a garrison stack holds the upgrade; the
+     count its core growth.
+  4. Room: a stack of the creature or an empty slot (seven); else the stack of least AI value
+     (core `ai_value`) × count below the new stack's, the first of equals in slot order, cleared;
+     else none (nothing lowered, no further draw). Then merged into the creature's stack or put in
+     the first empty slot.
+  5. The level's two counts each lose the count (at least 0).
+  6. For a base creature, `range_inclusive(1, 100)` at most 5: every stack of it becomes the
+     upgrade (a level without one: unchanged).
+- **The game** writes the stacks with `AdventureState::set_town_garrison` (a writer in the town
+  lane's `src/town.rs`; the armies on objects, ADR-0016 point 1's draft) and the town into the
+  store, in one application. An owned town's garrison never grows.
+- **Views:** the garrison's change is told to every viewer whose view of the town moves
+  (TWN-VEW-002's levels), with the towns' day's `TownChanged`s (§47).
+- TD-15 by the reading (decision 72); batch TWN-3's row TWN-3-4 observes the distribution.
+
+### 45. The Portal of Summoning (TWN-GRO-007)
+
+- **The draw** `h3_towns::summon(town, part, core, offer: &[&[CreatureTypeId]], draws) -> Town`:
+  `offer` the owner's dwellings' creature lists in object order (`StaticMap::dwellings`, never a
+  camp); none: the Portal empty; else a dwelling `below(n)`, then one of its creatures
+  `below(k)`: `Summoned { creature, count: its core growth }`, set, not added; a dwelling without
+  creatures leaves the Portal as it was. No castle, horde, Grail, week, month or Plague touches
+  it (TD-16).
+- **When** (decision 71, ADR-0017 point 4's draft), each only for a town with an owner and a
+  standing `portal` building:
+  - each week, after §44, every such town in `TownId` order (the towns' stream);
+  - at its build: a command's (`town::build`, after the checks and the payment, the builder's
+    stream), a town event's (the towns' stream), the setup's (the setup stream, after every
+    other placeholder);
+  - when its owner flags a dwelling while it has none: after the visit's outcome names the flag,
+    each of the visitor's player's towns with an empty Portal in `TownId` order (the visitor's
+    stream, after the visit's draws).
+- **Not drawn:** at a capture (the original keeps +0x3C; a human's screen would draw at once: the
+  week or a flag draws here, an open point for `TWN-Q14`); in a neutral town (the original's
+  week skips it).
+- **Its hire** is T22b's half (into the garrison army, survey §5).
+
+### 46. A dwelling's first creatures and the town events' creatures (TWN-GRO-005, TWN-EVT-004 amended)
+
+- **First creatures** (TWN-GRO-005): the build's result (`h3_towns::built_with`, T17a) applies,
+  for each building it makes ever built with role `dwelling`, base first: a base dwelling sets
+  its index's count to its creature's growth (the earlier count overwritten); an upgraded one
+  sets its index's count to the base index's and the base's to 0. A horde adds nothing at once.
+  The same at a command's, an event's and (§40) the setup's build.
+- **The events' creatures** (TWN-EVT-004 amended; `h3_towns::event_creatures`): after the
+  event's buildings, each level's count added (saturating) at the upgraded dwelling's index when
+  it is ever built, else at the dwelling's, else lost. `TWN-STUB-10` lifted (`h3-game`'s
+  `town/events.rs`; its test's "creatures alone" case then adds them).
+
+### 47. Growth's day, views, versions, ids and gates
+
+- **The day's order** (GAM-CAL-002 amended; ADR-0017 point 3's draft): the day + 1; on a week's
+  first day the week's kind (§42), `WeekStarted`, the towns' week, the adventure's week step, the
+  neutral garrisons (§44), the Portals (§45); on a month's first day the month's kind (§43),
+  `MonthStarted`, the towns' month, the adventure's month step; the towns' day (the marks; the
+  views told); the income; the spell points; the adventure's day.
+- **Views** (TWN-VEW-004 amended; `docs/06-security.md`'s town section by the `shared/` task):
+  the owner part of the town view (`TownBuildingsView`, the owner's alone) gains the fourteen
+  counts and the Portal; the towns' day tells `TownChanged` to the owner of every town the week,
+  the month, a build or an event wrote, and to each viewer of a neutral town whose garrison grew
+  (the `Told` comparison, T18b2a's). The protocol maps them (`cross-lane`, the server lane's fold
+  gate).
+- **Versions** (each bumped by the first building task that needs it; the order with E08's
+  increment 12 at T22b's cut):
+
+  | Version | Change | Owner |
+  |---|---|---|
+  | town state hash v3 | the counts, the Portal | town |
+  | town ruleset part v5 | `horde`, `portal`, `week_of`, `roe`, the week's and garrison week's parameters | town |
+  | pack format v52 | `town_growth`, `owner_town_growth`; two quirk flags | `shared/` (`h3-content`) |
+  | kernel streams | `StreamId::TOWNS` | `shared/` (`h3-kernel`) |
+  | game state hash v28 (after E08's v27) | the week's kind, the towns' stream (and the store's v3) | adventure, `cross-lane` |
+  | map import v22 | the setup's `roe` | adventure, `cross-lane` |
+  | protocol v42 | `WeekStarted`'s kind, the observation's week, the owner's counts and Portal | server, `cross-lane` |
+  | adventure replay format, env encodings | none (no growth command; no flat adventure observation, E08 decision 187) | — |
+
+- **Rule ids** (`town.toml`): TWN-GRO-001 a dwelling's growth, -002 the week's kind, -003 the
+  week's growth, -004 the month, -005 a dwelling's first creatures, -006 a neutral town's
+  garrison week, -007 the Portal of Summoning. Amended: TWN-EVT-004 (the creatures), TWN-VEW-004
+  (the owner's counts), GAM-CAL-002 (the order), GAM-CAL-003 (the month after a `week_of` week).
+- **Quirks** (`quirks-town.md`, registered by the tasks that build them, in this order):
+  `TWN-QUIRK-8` T-10 (the counts saturate; fixed), `-9` T-12 (the neutral Plague,
+  `fix-optional`), `-10` T-13 (the creature month's exact creature, `fix-optional`). **Stubs:**
+  `TWN-STUB-10` lifted; none new for growth.
+- **Gates:** each rule's unit tests in `h3-towns` (the synthetic pack's roles; the boundaries:
+  a count at `MAX_AVAILABLE`, the Plague at 0, a full garrison with and without a weaker stack,
+  the Portal without dwellings and with an empty dwelling); the game's tests (the order of the
+  day, the stream's isolation: a town week leaves the game's stream where it was, a refused
+  build draws nothing); properties (no count above the bound, the Plague never raises a count, a
+  fork's week equals its parent's); scripted replays on the builds map (`e09-builds-36.h3m`,
+  T19a's) through a month with a horde, a Grail, a neutral town and a Portal (the writer builds a
+  Dungeon with one); the census of `original_data` (T19c2's walk: every shipped map to day 29,
+  each town's counts checked against an independent walk of §41 to §46); the benchmark
+  `day-start-builds-36` re-baselined or a week workload added (skill `homm3-bench-regression`).
+  The adventure replays are re-recorded (skill `homm3-rerecord-replays`).
+- **Batch TWN-3** (survey §14; T23 after `TWN-Q14`): rows TWN-3-1 (T-13), -2 (§1's sum, a worn
+  piece), -3 (T-12), -4 (TD-15), -5 (§5, T-11) are growth's; TWN-3-6 is T22b's half.
+- **Open for T22b:** the garrison hero as the Legion's second hero and in the owner's share
+  (§41's inputs); the Portal's hire; a capture's empty Portal (§45); the `cross-lane` bumps'
+  order with E08's increment 12 (T108b's drafts touch ADR-0013 and ADR-0016 too, and pack format
+  or game state hash numbers may move: whichever merges second bumps again).
