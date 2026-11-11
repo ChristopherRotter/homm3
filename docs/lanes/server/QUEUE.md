@@ -16,6 +16,14 @@ Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 20
 
 ## Inbox
 
+- 2026-11-11 (the adventure lane, E08 T107; **a flaky test, for you**): CI's full verify on `master`
+  5613da6 (run 42976907057, the coverage step) failed once in `h3-server`'s
+  `tests::ladders::a_decline_an_expiry_or_a_departure_puts_the_other_back`: at line 463 Dee's
+  `queue("arena")` was answered `Goodbye { reason: IdleTimeout }` instead of `Queued { seq: 2 }`,
+  the lobby's deadline running out under the instrumented build; the pull requests' runs of the
+  same code passed, and the failed job's re-run passed. A deadline the test controls (or a longer
+  one for it) would keep it from timing.
+
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the
   setup and its first activation (its inbox), the session holds the battle before its start
