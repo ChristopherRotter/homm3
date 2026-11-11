@@ -27,6 +27,22 @@ next.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-11 (the adventure lane, E08 T108a1 and T108a2, `adventure/e08-t108a` and
+  `adventure/e08-t108a2`; **for T22 and the army reference, E09 decisions 67 and 73**): what
+  T108a read of a garrison's exchange (survey `docs/rules/surveys/E08-garrisons-bonuses.md` §6):
+  `garrison_exchange_dialog` 0x5D1130 builds the army dialog `garrison_dialog_create` 0x5CE830
+  with the garrison's army and owner in the upper bar (no hero) and the visitor's in the lower (no
+  town); its moves go through the town screen's own hover code (`town_garrison_hover` 0x5C7400,
+  `town_garrison_hover_other` 0x5C8080: a move only from the current player's bar; into another
+  owner's bar only into an empty slot), so the town's two rows and the map's garrisons likely
+  share one dialog. Decided (E08 decision 299, D-61 the original): an ally's or a non-removable
+  garrison takes the visitor's stacks into its empty slots only, no take, merge or swap. Sketched
+  (survey §11, not decided): the exchange as a pending decision of the visitor's owner like the
+  Leave Guards dialog (GAM-DEC-004 amended), the garrison's army in the adventure state's records.
+  This agrees with your T21's reading (one exchange, survey `E09-growth.md` §9); your proposal in
+  the adventure lane's inbox (`ArmyRef::Garrison(town)`, a sibling reference for a map garrison,
+  one owner rule) is answered in the adventure lane's T108b drafts, which tell your inbox.
+
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane`; **a town's
   revisit, for your visit**; increment 11's design note §13): `AdventureCommand::Revisit { hero }`
   (ADV-TEL-008) visits the entered object under a hero again as a step's last step onto it would,

@@ -4,43 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1, the survey and the ADR amendment drafts first: T108a in two (decision 297): T108a1 done (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 next; then T108b. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-**E08 T108a2 — the bonus visitables survey; the batch's plan, the ids, the checkpoint** (decisions 296,
-297; survey `docs/rules/surveys/E08-garrisons-bonuses.md` §10 to §14)
-
-- **Scope:** the fifteen bonus visitables (11, 14, 28, 30, 31, 38, 48, 49, 52, 56, 64, 92, 94, 96,
-  110; census in survey §1.2): each one's gain, its duration (to the next battle, the day's or the
-  week's end) and its marks (once per hero, a day, a week; the hero's +0x105 bits and the tiles'
-  words), how the bonuses reach the battle (morale, luck) and the movement and spell points, the
-  Stables' Cavaliers, the Sirens' losses and experience, the Idol's and the Temple's days, the
-  objects with several entrances (48, 56, 110); what a viewer sees (a visit's marks, the hint's
-  texts); VCMI's and the wiki's rules; disputes from D-62, quirk candidates from A-44; then for
-  both families the interfaces' sketch (commands, decisions, events, the observation, replays,
-  benchmarks), batch E12's plan on the client lane's harness (survey §9.4's garrison rows with the
-  bonus ones), the proposed rule ids (§9.3's family ADV-GAR with the bonus ones) and the
-  checkpoint's questions (D-59 to D-61, §9.2's open points, the bonus visitables'), asked at its
-  end.
-- **Inputs:** survey §0 to §9 (T108a1); decisions 295 to 297; the handlers measured at T108a's
-  start (about 4.9 KB): `visit_object`'s inline cases 11, 14, 28 and 52 and the handlers of 30 to 110
-  (`visit_fountain_of_fortune` 0x4A2480 to `visit_watering_hole` 0x4A7EA0 in the address map,
-  named from the switch; the Sirens' and the Stables' with three small callees); read before: `hero_morale_description`
-  0x4DC320 and `hero_luck_description` 0x4DCAC0 (the visits' bits), `hero_battle_bonuses_clear`
-  0x4DA510, `new_day` 0x4C7FE0 and the new week 0x4C8780, `hero_max_land_movement` 0x4E4990 (the
-  Stables' bit 1); the battle's morale and luck inputs (HER-BAT-003, HER-ADV-008) and the inbox's
-  note of 2026-11-03 (CLT-Q40: the visits by once-mark, `EffectSource::Visit`); increment 7's
-  battle bonuses (the Warrior's Tomb, the Pyramid); ADR-0013 (the hero's derived properties);
-  ADR-0015 to -0017; the lane's `TRAPS.md`.
-- **Depends on:** T108a1 (done). **Status:** ready (the original data staged: `Heroes3.exe` for the
-  reading, the shipped maps for the batch's plan).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1, the survey and the ADR amendment drafts first: T108a in two (decision 297), both done: T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E08 T108b — the ADR amendment drafts, the design note and the cut** (decision 296)
 
 - **Scope:** as T98b for increment 11: the drafts `adr-drafts/0016-increment-12.md` and
-  `0017-increment-12.md`, increment 12's design note `E08-design.md` (its parts by side), the
+  `0017-increment-12.md` (and `0013-increment-12.md` for the twelve new once-marks and their
+  amounts, survey §10.3), increment 12's design note `E08-design.md` (its parts by side), the
   building tasks' cut and the exit criteria; the checkpoint with the user (the note, the drafts,
   the agent's calls, the cut).
-- **Depends on:** T108a2 (its checkpoint's answers). **Status:** after T108a2.
+- **Inputs:** survey `docs/rules/surveys/E08-garrisons-bonuses.md` (§9.3 and §13 the proposed
+  ids, §11 the interfaces' sketch, §10.9 the open points left to T108b: where the Well's day mark
+  and the Stables' week mark live, the movement's maximum raised with the points, the shape of the
+  once-marks' amounts); decisions 295 to 303 (the checkpoint's answers: the original in D-59 to
+  D-64, A-44's `fix-optional` flag and A-45 fixed, the kind marks in, batch E12 before the build);
+  ADR-0013 (`BattleBonuses`' eight marks), ADR-0015 to -0017; the client lane's inbox note of
+  2026-11-03 (`EffectSource::Visit`); the town lane's two of 2026-11-11 (E09 T20's ask and T21's
+  proposal: `ArmyRef::Garrison(town)` and a sibling for a map garrison, one owner rule; answer it
+  in the drafts and tell the town lane's inbox; T108a's findings are in its inbox); T98b's drafts as the form.
+- **Depends on:** T108a2 (done). **Status:** ready (docs only; the original data not needed).
 
 ## Inbox
 

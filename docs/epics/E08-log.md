@@ -15217,3 +15217,63 @@ T108b after it.
 
 **Verify:** docs and the address map only: the docs gates and `scripts/exe.py check`. No code,
 version or replay moved; CI's run on the pull request is the record.
+
+### Increment 12, round 1: T108a2, the bonus visitables survey and the checkpoint (2026-11-11, `adventure/e08-t108a2`)
+
+Whole (decision 298, the user at its start, the reading measured: the seven of morale and luck
+about 2.1 KB of code, the eight of movement and spell points about 2.6 KB). Baseline: `master`
+f2532f3 (#846; T108a1's #847 merged before the start). Staged the executable, `maps.tar`,
+`extracted.tar`; the setup ran the engine's full verify in the background while the survey was
+written in a worktree. Survey `docs/rules/surveys/E08-garrisons-bonuses.md` §0.1, §10 to §14:
+
+- **The fifteen read whole** (§10.2): four inline cases of `visit_object` (11, 14, 28, 52) and
+  eleven handlers, with `sirens_losses` 0x527EC0, `army_count_type` 0x4E2340 and
+  `army_replace_type` 0x4E2370; each one's test, gain, marks, kind mark and messages in one table.
+- **The lifetimes** (§10.1): `hero_battle_bonuses_clear` read again: bits 2 to 16, 20, 21 and 25 to
+  29 end with the next battle (the Sirens' 20 among them); bit 0 (the Well) a day, bit 1 (the
+  Stables) a week (the new week's loop 0x4C8D2A, 156 heroes).
+- **The battle's bonuses** (§10.3): one per kind until the battle; the Idol by the day (odd luck,
+  even morale, day 7 both), the Temple +2 on day 7, the Fountain of Fortune by its value. The
+  engine's eight once-marks need twelve more kinds and each mark's amounts (the client lane's
+  `EffectSource::Visit` carry).
+- **Movement and spell points** (§10.4): +800 or +400 to the points left and the day's maximum;
+  the Swan Pond's points 0, its maximum kept; the Stables' week (+400 to the land points) and the
+  Cavaliers upgraded at every visit; the Well to the maximum once a day (a full hero unmarked), the
+  Spring to twice it.
+- **The Sirens** (§10.5): trunc(f32(count) × 0.7) kept at 53 bits, so 90 keep 62 (74 892 of the
+  counts below 3 000 000 differ from the exact tenths; 2 336 of 2 to 100 000 from VCMI's ceil),
+  cut to 16 bits (46 812 keeps −32 768); the lost hit points × learning as experience; again after
+  every battle.
+- **The entrances and the draws** (§10.6): the Spring's two entrances with their own words (the
+  setup copies the left one's), each emptied on its own and refilled weekly (0x4C8B9C); the
+  Fountain's value drawn at the start (0x4C1479) and each week (0x4C8C9F), 1 in 4 each of −1 to +3.
+- **What a viewer sees** (§10.7, from E24's §4.11): the hint's bonus by a per-player kind mark the
+  engine lacks; the marks by the selected hero's bits.
+- **VCMI and the wiki** (§10.8): VCMI 1.7.5's rewardable configs, `CGSirens`, the visit modes and
+  `ONE_WEEK`; the wiki's Morale, Luck, Idol, Buoy and object-list pages (the list reached through
+  a search's link; a direct fetch is refused).
+- **Disputes** D-62 (the Spring per entrance; the wiki agrees with the original), D-63 (the
+  Stables visited again), D-64 (the Sirens' rounding); **quirk candidates** A-44 (the Sirens again
+  after a battle, the wiki's bug) and A-45 (16-bit survivors); open points (the movement's
+  maximum, where the day's and the week's marks live, the kind marks, the base pack).
+- **§11** the interfaces' sketch for both families (no new command, the garrison's exchange the
+  only decision; the events, the observation, the versions, the benches); **§12** batch E12's
+  sixteen rows in two runs; **§13** the ids ADV-GAR-001 to -006 and ADV-BON-001 to -009 with the
+  amendments; **§14** the checkpoint.
+
+**The checkpoint** (ADV-Q49, `AskUserQuestion`, two rounds; decisions 299–303): every answer as
+recommended: D-59 to D-64 the original, the garrisons' packs and import as recommended, A-44 a
+`fix-optional` flag (A-45 always fixed), the kind marks in increment 12, batch E12 before the
+build.
+
+**The address map:** the eleven handlers read (their entries from `inferred` to `read`), 13 new
+entries (3 functions `army_count_type`, `army_replace_type`, `sirens_losses`; 9 sites: the four
+inline cases, `setup_fountain_of_fortune`, `setup_magic_spring`, `week_magic_spring`,
+`week_fountain_of_fortune`, `week_stables_clear`; the global `const_f64_seven_tenths`), and
+`hero_battle_bonuses_clear`'s bits. `scripts/exe.py check` agrees with the executable; every cited
+address is covered.
+
+**The queue:** the T108a2 entry moved verbatim to `QUEUE-ARCHIVE.md`; T108b ready.
+
+**Verify:** docs and the address map only: the docs gates and `scripts/exe.py check`. No code,
+version or replay moved; CI's run on the pull request is the record.
