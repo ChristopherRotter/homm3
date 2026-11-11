@@ -98,7 +98,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    masks; every placed hero's and prisoner's type taken, then each player's **pick reserved**,
    before any draw (T-2 and T-3 fixed: the original marks neither in time, E09 decision 12); a
    drawn or generated hero's type taken; a hero that leaves the map in play goes back free (the
-   original's 0x4D9EC0; nothing draws from the pool in play before E09 increment 3's Tavern,
+   original's 0x4D9EC0; nothing draws from the pool in play before E09 increment 4's Tavern,
    which also takes `ADV-STUB-9`'s retreat facts).
    **The setup:** `GameSetup` gains the towns' setups (`h3-towns`', joined to the adventure's
    town objects by `TownId`) and, per player, its **allowed factions**, its **faction choice** (a
@@ -284,7 +284,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    water are draw-free. At the build, after the adventure's static map is built, a town whose
    faction has a building of role `shipyard` and whose object has no boat spot gets that building
    forbidden and, if the setup built it, unbuilt (TWN-SET-011; E09 decision 46; `TWN-STUB-2`'s
-   Shipyard half lifted; its Grail half stays with increment 5 and E10's victory conditions): a
+   Shipyard half lifted; its Grail half stays with increment 6 and E10's victory conditions): a
    write of the store before the first turn, after every draw, so no stream position moves.
    **Increment 10's setup placeholders**: in the static map's placement walk, in object order,
    each **random dwelling's faction** (uniform among its set) then **level** (uniform in its
@@ -766,8 +766,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   `TownId` and building order. The day's start and the turn start each gain one call into the
   game's town module (the adventure lane's `state/day.rs`, `cross-lane`). Increment 3 gives the
   town events' creatures their recruits (`TWN-STUB-10` lifted) and a dwelling's first creatures
-  at its build; increment 4 the heroes' visit after a build (the services, the guild's spells)
-  and the Tower's reveals; increment 5 the Grail's building.
+  at its build; increment 5 the heroes' visit after a build (the services, the guild's spells)
+  and the Tower's reveals; increment 6 the Grail's building.
 - Increment 10: one new decision kind and its answer, so the game state hash (v23) and the
   adventure replay format bump (E09's T5a2 took the replay format's v9 first, so increment 10's is
   v10; E09 bumps the game state hash too, the second to merge bumps again). The dialog's purchase

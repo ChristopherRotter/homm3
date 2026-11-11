@@ -161,7 +161,7 @@ it with builds.
   the visiting player the town's buildings once, as the original's town screen opens at the
   visit.
 - **Never public:** another player's town's buildings and legal builds; the town's boat spot
-  (increment 4 places its view as a Shipyard's boat tile, the owner's team).
+  (increment 5 places its view as a Shipyard's boat tile, the owner's team).
 - **Events:** a build and a town event's buildings (`TownBuilt`) and a town event's firing
   (`TownEventFired`) to the owner alone, its resources in the owner's `ResourceGained` and
   `ResourceLost`; every change of a viewer's view of a town it sees (a build's, a capture's, a

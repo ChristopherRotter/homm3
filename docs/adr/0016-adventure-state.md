@@ -104,7 +104,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      that is a tile of the map on water that no object blocks or is visited from (a boat's tile
      allowed, the state's boats being no objects); none: the town has no water. It is held for
      every town, whatever its faction; the game reads it at the build (ADR-0017 point 4: a
-     Shipyard forbidden without it) and for the town events' Shipyard; increment 4's town boat
+     Shipyard forbidden without it) and for the town events' Shipyard; increment 5's town boat
      is built on it. No other town state becomes the adventure's.
    - **Increment 10's dwellings and Refugee Camps** (E08 decision 231):
      - **Owners:** the dwellings are ownable objects (point 4), their owners in the owners' block
