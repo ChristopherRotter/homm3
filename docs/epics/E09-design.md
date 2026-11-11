@@ -1496,3 +1496,341 @@ still change at `TWN-Q14` (decision 78 lists them).
   (§41's inputs); the Portal's hire; a capture's empty Portal (§45); the `cross-lane` bumps'
   order with E08's increment 12 (T108b's drafts touch ADR-0013 and ADR-0016 too, and pack format
   or game state hash numbers may move: whichever merges second bumps again).
+
+### 48. Recruitment and the rows: scope, sources and choices (T22b)
+
+The note's second half (decision 74; T22b whole, decision 79), written from the survey §5, §8 to
+§10, §15, E08's increment 12 note (`docs/epics/E08-design.md` §12, §13: the army reference agreed,
+E08 decision 305, the exchange, the one owner rule, the visit marks on `HeroOnMap`) and the
+address map. The drafts are the same five files' second blocks, with `0023-increment-3.md` new.
+
+- **Recruitment builds:** the town command `Recruit` and the hire dialog with a town's source
+  (§49), the purchase across the store, the adventure and the treasury (§50), the Portal's hire
+  (§51).
+- **The rows build:** the town's two bars under E08's one owner rule, admitted without a decision
+  (§52), the garrison hero's record and its three moves (§53), its day, income and growth inputs
+  (§53), what it changes at a visit and in the views (§54).
+- **Not this increment's:** the computer's recruitment and hero moves (E13); an ally's visitor at a
+  town (E10: the one owner rule already covers its stacks, TD-17 its hero moves); a garrison hero
+  learning the guild's spells and its spell points at a guild (increment 5); the Tavern's hire and
+  its limit (increment 4, which reads this half's count of heroes on the map); the town screen's
+  displays (the client's).
+- **Read by T22b** (from the address map's entries and two slices of `next_player_turn`, no
+  survey section): the turn's start sets the points of the player's heroes, then of its two tavern
+  heroes, then of each of its towns' **garrison heroes** (+0xC; 0x4C7486 to 0x4C74AE);
+  `new_day`'s and the week's loops over **every** hero record (the day flags 0x4C80CF, the Stables
+  0x4C8D2A, the spell points) reach a garrison hero too; `town_visitor_to_garrison` takes the hero
+  out of its owner's list, so the economy survey's open point (§14 there: a garrison hero counted
+  twice) is answered: once.
+- **The open points of §47 settled:** the garrison hero in growth's inputs (§53); the Portal's
+  hire (§51); a capture's empty Portal (`TWN-Q14`, §51); the `cross-lane` bumps' order with E08's
+  increment 12 (§55, §56).
+
+### 49. Recruitment: the command and the dialog (TWN-REC-001; GAM-DEC-008 amended)
+
+- **The command** `TownCommand::Recruit { town: TownId, building: BuildingId }` (`h3-towns`;
+  *agent's call:* by building, the original's click paths, survey §8, and the env's building head):
+  `h3_towns::recruit_source(town, part, building) -> Result<RecruitSource, TownCommandError>`, a
+  standing building (ever built, no built building superseding it) of role `dwelling` (its level
+  and flag: index `level − 1`, `+ 7` upgraded), `horde` (its horde's index, the same way) or
+  `portal`; refused, typed: another role (`NotRecruiting`), not standing (`NotStanding`), a base
+  index whose upgraded dwelling is ever built (`NotStanding`: its count was moved, its growth is
+  none). `RecruitSource::{Index(u8), Portal}`.
+- **The game** (`h3-game`'s `src/town/recruit.rs`): the actor the town's owner (`NotYourTown`), its
+  turn, no decision open (GAM-DEC-001); a Portal with nothing summoned is refused
+  (`TownCommandError::NothingSummoned`: the original's message, no draw at the command, decision
+  71); else `Decision::Hire { owner, dialog: HireDialog { target: HireTarget::Garrison(town),
+  source } }` with `source` `HireSource::Town { town, index }` or `HireSource::Portal { town }`,
+  and `HireOpened` to the owner. *Agent's call:* opened at a count of 0 too (the original's dialog
+  shows it; its only legal answer is `Close`).
+- **The adventure's types** (E08 T95b built them to be extended; `command.rs`, `cross-lane`):
+  `HireSource::Town { town: TownId, index: u8 }`, `HireSource::Portal { town: TownId }` (a plain
+  index: `h3-adventure` imports no town type), `HireTarget::Garrison(TownId)`: the town's upper
+  bar (§52), the garrison hero's army when one stands, else the town's garrison, **never the
+  visitor's** (survey §8: the manual, the reading and VCMI's client agree; VCMI's server also takes
+  the visitor, a deviation of no rule). `hire_stock` gives nothing for a town's source (the counts
+  are the store's), `hire_room` the room of the garrison target (ADV-ARM-007's room rule, the
+  stack's most).
+- **The view and the event** (the owner's; the protocol maps them, `cross-lane`): `HireView` and
+  `HireOpened` name their source as `HireSeen::Object { object_type, anchor }` (as now),
+  `::Town { town, index }` or `::Portal { town }`; the creatures, counts and costs read at each
+  view, the counts from the store.
+- **The legal commands** (GAM-DEC-001's set when no decision is open): per own town in `TownId`
+  order, after its builds, a `Recruit` for each standing building of the three roles in the part's
+  building order (a Portal only with a creature summoned). The env's entry (§55).
+- **Replay** (the adventure replay format, `cross-lane`): `town recruit <town> <building>`, the
+  purchases the hire dialog's lines as now.
+
+### 50. The purchase (TWN-REC-001; ADV-HIR-002's room and price as built)
+
+- **The stock** `h3_towns::recruit_stock(town, part, core, source) -> Vec<(CreatureTypeId, u16)>`:
+  an index below 7 its creature with its count; an upgraded index its upgrade, then its base
+  creature, **both with the index's one count** (survey §8, `recruit_dialog_init_town` 0x551560:
+  the upgrade selected first); the Portal its creature and count; empty when nothing is summoned.
+- **The check** (the game's `hire` for a town's source, in this order): `h3_towns::check_recruit`
+  (the creature in the stock, else `NotOffered`; the amount from 1 to the count, else `Amount`),
+  the adventure's room (`hire_room`; `NoRoom`), the treasury against `hire_price` (the core's cost
+  times the amount; `CannotPay`). *Agent's call:* the town's two refusals are given as
+  `HireError::NotOffered` and `::Amount`, one vocabulary for the client and the env whatever the
+  source.
+- **The application** (infallible): the price paid; the source's count lowered by the amount
+  (`h3_towns::recruit` returns the town, the store writes it; the Portal's count too, its creature
+  kept until the week sets it again); the creatures joined into the target army by the adventure
+  (`join_at` at the room's slot; `StackChanged` naming `ArmyRef::Garrison(town)` or
+  `ArmyRef::Hero(garrison hero)` to the owner; the town's viewers told the upper bar's change at
+  their level, increment 1's `TownStackSeen` and the `Told` comparison); the dialog closes after
+  the purchase of a one-creature source (`DecisionClosed`), else stays open, as the map's.
+- **The most** each legal `Buy` names: the count, the treasury's bound and the room's, as
+  `hire_mosts` (the counts from the store).
+- **Tests** (`h3-towns`, `h3-game`): every refusal changes nothing (the store, the army, the
+  treasury); an upgraded index sells either creature from one count and the other's count falls
+  with it; a full garrison refuses with `NoRoom` while a stack of the creature takes it; a purchase
+  into a garrison hero's army (§53).
+
+### 51. The Portal's hire (TWN-REC-002) and a capture's empty Portal
+
+- `Recruit` at the `portal` building (survey §5, `town_portal_hire` 0x5D2950): the Portal's
+  creature and count, into the town's upper bar's army (`town_garrison_army`, as a dwelling's), a
+  one-creature dialog; refused while nothing is summoned.
+- **A capture's empty Portal** (§45's open point; `TWN-Q14`): the original keeps +0x3C at a
+  capture, and a human's capture opens its town screen at once, whose creature panel draws an
+  empty Portal's creature (T-11's path). *Recommended:* drawn at the capture too when the Portal
+  stands empty and the capturer owns a dwelling (from the capturer's stream, after the capture's
+  own draws; decision 71's "what a human sees at once" carried to the capture). Not chosen: no
+  draw at a capture (the week or a flag draws).
+
+### 52. The town's two bars (TWN-ROW-001; GAM-MAN-001, -002 amended)
+
+- **The references** (agreed: E08 decision 305, the town lane's proposal): the **upper bar** is
+  `ArmyRef::Garrison(town)` without a garrison hero, `ArmyRef::Hero(the garrison hero)` with one;
+  the **lower bar** the visitor's `ArmyRef::Hero`. Their **bar owners** by E08's one owner rule
+  (built by E08 T114a in `h3-adventure`'s army commands): a town's garrison its town's owner (the
+  adventure's owner of the town object; the town lane wires it into the rule's lookup), a hero its
+  owner.
+- **Admitted without a decision** (`TWN-Q14`, recommended): in its turn with no decision open, the
+  owner's `Manage::Army` commands may name an own town's upper bar **alone** (moves within it, its
+  dismissals) or **with that town's visitor** (between the bars, either way); the game's
+  management check admits the pair as a meeting's two heroes (`Together`'s rule gains a town's
+  two bars); `ArmyCommandError::Garrison` stays for a garrison the game does not admit (another's
+  town, a neutral one). The original's town screen opens at will and needs no answer, so nothing
+  is opened or closed; E08's `Exchange` (GAM-DEC-009) stays the map garrison's, opened by a visit.
+  *Not chosen:* the town's rows as E08's `Exchange`, opened by a town command or at entering and
+  closed by `Close`: a decision to open and close at every use, and the hero moves (§53) would
+  change the armies the open decision holds.
+- **The rules on the bars** are the army commands' (ADV-ARM-001 to -004, -007) under the one owner
+  rule: a stack only from the acting player's bar; into another owner's only a move or split into
+  an empty slot (an ally's visitor, E10); a hero's last stack never leaves its army (a garrison
+  hero's too: the original's 0x5C7436 keeps it); the town's own garrison may be emptied.
+- **The listings** (GAM-MAN-002 amended): the visitor's per-hero listing gains the upper bar as
+  its other army while it stands on an own town's entrance with no decision open (after its own
+  slots, as a meeting's other hero's); `legal_town_management(state, rules, actor, town)` lists the
+  upper bar's own moves and dismissals (a garrison hero's whole management, its artifacts and
+  formation too, through `legal_management` with that hero). The env plays no army management
+  (its encoding has no army entry, before or after).
+- **Told:** the commands' `StackChanged` to the owner; the upper bar's change to the town's
+  viewers at their level (increment 1's `Told`); the visitor's army as any hero's.
+
+### 53. The garrison hero (TWN-ROW-002 to -005; ADV-MOV-002, GAM-RES-003, -005 amended)
+
+- **Its record** (`TWN-Q14`, recommended): **the whole record of the hero on the map moves into
+  the town's record in the adventure** (`Holds::Town { formation, garrison_hero:
+  Option<HeroOnMap> }`; adventure state hash next): its army, points and day's maximum, formation
+  and tactics flag, and from E08's T115a its battle bonuses and timed marks, kept as they were (the
+  original keeps the hero record whole); its tile stays the entrance's, unread. It is **not on the
+  map**: no tile, reach, meeting or visit, not the town's visitor (TWN-VIS-002), not in the env's
+  hero slots, not among the player's heroes on the map (the part's most, 8: the original's player
+  record +1). Its details stay in the game's store. E08 decision 307's drop at leaving the map does
+  not apply (the inbox's call: the record moves, it is not dropped). *Not chosen:* the hero kept
+  among the heroes on the map with a placement flag (every map query, the reach, the tiles, the
+  views, the env's slots, the visitor's derivation, would have to skip it); the hero leaving the map
+  and losing its on-map state (the original keeps its points, marks and bonuses).
+- **The lookups:** `ArmyRef::Hero(id)` resolves to a garrison hero's army after the heroes on the
+  map (the adventure's army lookup); the game's ownership check admits a garrison hero for its own
+  management and its town's bars, never for a move, a visit or a battle of its own.
+- **The moves** `AdventureCommand::TownHeroes { town, change: TownHeroChange }` (*agent's call:*
+  the adventure's command, since the garrison and the visitor are the adventure's facts, ADR-0028
+  point 2; the variant in `command.rs`, its rules in the town module `src/town.rs`), each the town's
+  owner's in its turn with no decision open (the original's moves are a human's town screen's; a
+  computer's are E13's), each refusal typed (`TownHeroError`) and changing nothing:
+  - **`Enter`** (TWN-ROW-002; `town_visitor_to_garrison` 0x4B9FC0, `army_absorb` 0x44B620): a
+    visitor of the town's owner, no garrison hero (`GarrisonHeld`, `NoVisitor`); the town's
+    garrison joins the visitor's army by the reading's steps (each garrison stack in slot order:
+    onto the hero's stack of its creature, else the first empty slot, else the hero's own two
+    stacks of one creature merged, the later into the earlier, and the slot tried again), all or
+    nothing: refused when no slot frees (`ArmiesDoNotFit`, GENRLTXT 276; VCMI's test, the
+    creatures of both counted once fit the slots) or a merge would pass a stack's most
+    (ADV-ARM-007; `TooManyCreatures`, unreachable with the original's counts); else the hero's
+    record moves into the town (its garrison then empty), its tile freed.
+  - **`Leave`** (TWN-ROW-003; `town_hero_out_click` 0x5D5220, `town_garrison_to_visitor`
+    0x5BE390): a garrison hero (`NoGarrisonHero`), no visitor (`EntranceHeld`), fewer than the most
+    heroes on the map (`TooManyHeroes`, GENRLTXT 19), a stack in its army (`EmptyArmy`, GENRLTXT 20;
+    T-5's case only): its record back onto the entrance as the visitor, its points as kept.
+  - **`Swap`** (TWN-ROW-004; `town_swap_heroes` 0x5BE450): both, the visitor the town's owner's
+    (TD-17 by the reading: an ally's visitor moves no hero, E10): the visitor's record into the
+    town, the garrison hero's onto the entrance, each with its army.
+  - **The invariant:** while a garrison hero stands, the town's own garrison is empty (`Enter`
+    takes it in; recruits go to the hero's army, §49; a neutral week has no garrison hero, §44).
+    Tested as a property.
+  - **Told:** the visitor's leaving and arriving as a hero's leaving and entering the map to the
+    viewers who see its tile; a new `GarrisonHeroChanged { town, hero: Option<HeroId> }` to the
+    owner and to each viewer whose town view shows the garrison's army (*agent's call*), with the
+    upper bar's `TownStackSeen`.
+- **Its day** (TWN-ROW-005; §48's reading): its day's maximum and points set at its owner's turn
+  start after the heroes on the map, in `TownId` order (ADV-MOV-002 amended; on land, no boat);
+  its spell points each day as every hero's (the store's loop, as now); its day marks dropped at
+  each day's start and its week marks at each week's (E08 T115a's drops, over the garrison heroes
+  too); its battle bonuses kept until its next battle. **Its income:** its `daily_income`
+  (Estates, the worn resource artifacts; `town_gold_income`'s garrison hero, `count_worn_artifact`'s
+  towns' heroes) with its owner's (GAM-RES-003 amended); **its army's weekly resources** and the
+  town's garrison's: the Crystal Dragons in an owned town's upper bar (the garrison hero's army,
+  else the town's garrison) count once with the heroes' (GAM-RES-005's "a town's garrison is
+  E09's" lifted; economy survey §7.3 point 3). Not reached: its reveal (off the map; the town's own
+  radius covers the entrance; the original's `reveal_owned` over the hero records is not read for a
+  hidden hero, an open point that matters only after a Cover of Darkness).
+- **Growth's inputs** (§41, its open point): `legion` the visitor's `town_growth` plus the garrison
+  hero's; `share_bp` the highest of the owner's heroes on the map and its garrison heroes
+  (`player_hero_wears_artifact` 0x4BACB0: the list, then the towns' +0xC heroes).
+- **Its views:** the owner's own hero views list its garrison heroes with the town in place of a
+  tile (`OwnHeroView`'s place `Map(pos)` or `Garrison(town)`, *agent's call*; the protocol maps
+  it); every other viewer sees it only through the town's view (§54).
+
+### 54. What a garrison hero changes (TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001 amended; GAM-BAT-001)
+
+- **A visit of another team** (survey `E09-towns.md` §9.1, rows 1 and 3; increment 1 built rows 2
+  and 4):
+  - **a visitor and a garrison hero** (row 1): a battle against the visitor with its own army,
+    **not a siege** (`siege: None`, the gate tile's battlefield as any hero's battle, no town
+    bonuses; ADR-0023 point 1's draft), its owner's side; no merge; the town stays its owner's
+    whatever the outcome (the attacker outside; a beaten visitor to the pool); the next visit
+    meets the garrison hero (the guide's "another click", VCMI's `isBattleOutsideTown`);
+  - **a garrison hero alone** (row 3): **a siege** against it with its own army
+    (`Defender::Hero`), its town bonuses (ADR-0023 point 3); a win captures the town (TWN-CAP-003)
+    and the beaten garrison hero goes to the pool, its record gone from the town; a loss or a
+    retreat leaves it.
+  - **T-5** (`TWN-QUIRK-11`, faithful, decision 12; `town_visit` 0x4AB0EE): a garrison hero whose
+    army is empty does not defend: the first visitor of another team enters and captures the town
+    without a battle, the hero back to the pool with its artifacts, no experience, nothing taken.
+    Reachable only by a defence won with no stack of its own left (summoned creatures alone; the
+    bars keep a hero's last stack); the tests build it as a state.
+  - **The merge** (TD-7, TWN-SIE-002) only without a garrison hero (row 2).
+- **The views** (TWN-VEW-001 amended; survey §10): at level 3 a garrison hero and its army as the
+  town's garrison (the quick view), at lower levels the garrison's levels from its army as now;
+  the owner's view marks the town's garrison hero (the status window's `townqkgh.pcx`).
+- **Increment 2's reads:** the build and the events read no hero; the income reads the garrison
+  hero's (§53).
+
+### 55. Recruitment's and the rows' views, versions, ids and gates
+
+- **Views** (`docs/06-security.md`'s town section, the `shared/` task): the hire dialog's town
+  sources the owner's alone; a garrison hero at the town's level 3 and its owner's; the hero moves
+  told as §53 says; the protocol maps the new commands, events and view fields (`cross-lane`, the
+  server lane's fold gate).
+- **Versions** (each bumped by the first task that needs it, the number the next at merge; T22a's
+  table in §47 for growth's):
+
+  | Version | Change | Task | Owner |
+  |---|---|---|---|
+  | game state hash | `Decision::Hire`'s town sources and target | T27 | adventure, `cross-lane` |
+  | adventure state hash | a town's garrison hero | T28a | adventure, `cross-lane` |
+  | adventure replay format | `town recruit`; `town heroes <town> enter\|leave\|swap`, management lines naming a town's bar | T27, T28a | adventure, `cross-lane` |
+  | env action encoding v10, v11 | `RECRUIT` (tile and building heads); `TOWN_HEROES` + 3 (tile head) | T27, T28a | AI lane, `cross-lane` |
+  | protocol | the commands, `HireSeen`, `HireTarget::Garrison`, `GarrisonHeroChanged`, the own hero view's place | T27, T28a | server lane, `cross-lane` |
+  | town state hash, town part | none (the counts and roles are growth's) | — | — |
+
+- **Rule ids** (`town.toml`): TWN-REC-001 recruitment at a town, -002 the Portal's hire; TWN-ROW-001
+  the town's two bars, -002 the visitor into the garrison, -003 the garrison hero out, -004 the
+  swap, -005 a garrison hero's day and income. Amended: TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001,
+  TWN-VIS-002; GAM-DEC-008, GAM-MAN-001, -002, GAM-BAT-001, GAM-RES-003, -005, ADV-MOV-002.
+- **Quirks:** `TWN-QUIRK-11` T-5 (faithful), after growth's `-8` to `-10`. **Stubs:** none new (an
+  ally's visitor and town are E10's: the one owner rule and TD-17 decide them without a stub; the
+  computer's town play is E13's, no player meets it).
+- **Gates:** each rule's unit tests (the refusals change nothing; an upgraded index's one count;
+  the absorb's steps, its all-or-nothing refusal and the hero's own merge; each move's refusals;
+  the record kept whole across `Enter` and `Leave`, its points and marks; the bars under the owner
+  rule; rows 1 and 3, T-5); properties (no hero both on the map and in a garrison; a garrison hero's
+  town has an empty garrison; a purchase never drives a count below 0; a refused command leaves
+  the state's hash); scripted replays on the builds map (a purchase at an upgraded dwelling and at
+  the Portal, `Enter`, a week in the garrison, `Leave` with full points, `Swap`, a siege of a
+  garrison hero and the battle beside one); the env's tests (the entries, their masks); the fold
+  gate; batch TWN-3's row 6.
+- **Batch TWN-3's row 6** (survey §14) gains one record: the garrison hero's points at its owner's
+  next turn (the reading predicts its maximum).
+
+### 56. The building tasks (the whole increment; the order with E08's increment 12)
+
+The tasks continue the epic's ids; each task's cut confirmed at its start. **E08's increment 12
+runs at the same time** (its rounds 2 to 8, T109 to T117, design note §19 there): every
+`cross-lane` number is the next at merge, the second to merge rebases and bumps again (the town
+lane's `TRAPS.md`); the rows wait on E08's army reference and owner rule **built** (T114a) and the
+visit marks on `HeroOnMap` (T115a).
+
+| Round | Tasks | Content |
+|---|---|---|
+| 2 | **T23** | Batch TWN-3 (survey §14, six rows; row 6 with §55's record): the spec and template, the harness's reads and writes (the week's and month's kinds, a town's counts, Portal and garrison hero; the writer's garrison hero and Portal), the recipe, the runs, the scoring. Needs the original data. Cut at its start (increment 2's T14 was cut in three) |
+| 3 | **T24** | `shared/` (`cross-lane`): the five drafts applied with T23's verdicts; `StreamId::TOWNS`; `h3-content`'s `TownGrowth`, `OwnerTownGrowth` and two quirk flags (pack format v52) with the packs' six artifacts (`cross-lane`); the glossary (available creatures, the week's kind, the Portal, the upper bar, the garrison hero); `docs/06-security.md`'s town lines. In merge order with E08's T112 (both amend ADR-0013, -0016, -0017) |
+| 4 | **T25** | Growth's town side (the town lane's paths only): T25a the part's roles, `roe` and parameters (part v5), the record's counts and Portal (store v3), TWN-GRO-001 and -005 with `TWN-QUIRK-8`; T25b TWN-GRO-003, -004 (`TWN-QUIRK-9`, `-10` and their flags), -006, -007 as pure functions |
+| 5 | **T26** | Growth in the game (`cross-lane`): T26a the week's kind and the towns' stream (TWN-GRO-002), the day's order (GAM-CAL-002, -003), the inputs (owners, dwellings, the Legion), the week and the month, the first creatures at every build, the events' creatures (`TWN-STUB-10` lifted), map import (`roe`), the game state hash; T26b the neutral garrison week, the Portal's draws (and at a capture, per `TWN-Q14`), the views (the owner's counts and Portal, the week's kind) and the protocol, the replays re-recorded, the bench |
+| 6 | **T27** | Recruitment (`cross-lane`): `TownCommand::Recruit`, the hire dialog's town sources and target (the town's garrison until T28a), the purchase across the store and the adventure, the legal commands, `HireSeen` and the protocol, `town recruit`, the env's `RECRUIT` (v10) |
+| 7 | **T28** | The rows (`cross-lane`; after E08's T114a and T115a merged): T28a the town's bars admitted (TWN-ROW-001), the garrison hero's record (adventure state hash), `Enter`, `Leave`, `Swap` (TWN-ROW-002 to -004), the hire's target into its army, its events and views, the replay format, the env's entries (v11), the protocol; T28b what it changes: its day and income (TWN-ROW-005; ADV-MOV-002, GAM-RES-003, -005 with the town's garrison's Crystal Dragons), growth's inputs with it, rows 1 and 3 of a visit (TWN-SIE-001, -002, TWN-CAP-003, GAM-BAT-001), T-5 (`TWN-QUIRK-11`), TWN-VEW-001 |
+| 8 | **T29** + **T30** | T29: the scripted replays on the builds map (growth through a month, recruitment, the rows), the census of `original_data` (§47's walk), the properties, the benchmarks (`day-start-builds-36` re-baselined, a week workload), `--with-original-data`. T30: the audit against the exit criteria; increment 3 closed; increment 4 (the Tavern) refined |
+
+*Agent's calls:* growth before recruitment (the dialog sells the counts growth keeps), recruitment
+before the rows (it needs no garrison hero; T28a widens its target); T25 in the town lane's paths
+alone, so it never waits on E08's merges; each env entry with its command's task (two bumps, each
+the AI lane's `cross-lane` consent).
+
+### 57. Increment 3's exit criteria (proposed for `TWN-Q14`)
+
+1. The town part's roles `horde`, `portal`, `week_of`, a record's `roe` and the growth parameters
+   compile from the packs; each town holds its fourteen counts, bounded at 32 767 (`TWN-QUIRK-8`),
+   and its Portal; a built dwelling gives its first creatures at the setup, a command's and an
+   event's build (TWN-GRO-005).
+2. A dwelling's growth is the reading's sum (the castle by the fort, the owner's share, the
+   Legion of the visitor and the garrison hero, the first horde, the owner's dwellings by their
+   first creature, the Grail); each week adds it with the week's bonus, halved in a neutral town
+   (TWN-GRO-001, -003).
+3. The week's kind is drawn from the towns' stream (1 in 4 a creature's; on an RoE map among the
+   `roe` records; a standing `week_of` building's week), public in `WeekStarted` and the
+   observation; a month after a `week_of` week is its level's base creature's without the
+   creature's draw; a creature's month doubles the exact creature (`TWN-QUIRK-10` off: the level),
+   the Plague takes the growth then halves (`TWN-QUIRK-9` off: every town halves) (TWN-GRO-002,
+   -004; GAM-CAL-002, -003).
+4. A neutral town's garrison grows each week as read; the Portal is drawn each week, at its build,
+   at a flagged dwelling (and at a capture as `TWN-Q14` decides), its count set; a town event's
+   creatures reach the counts (TWN-GRO-006, -007, TWN-EVT-004; `TWN-STUB-10` lifted).
+5. Its owner recruits at a standing dwelling, horde or Portal through the hire dialog into the
+   town's upper bar's army, an upgraded index selling both creatures from one count; every refused
+   purchase changes nothing (TWN-REC-001, -002; GAM-DEC-008).
+6. Its owner's army commands move stacks within an own town's upper bar and between it and the
+   visitor by the one owner rule agreed with E08's increment 12 (TWN-ROW-001; GAM-MAN-001, -002).
+7. The visitor enters the garrison all or nothing by the absorb's steps, the garrison hero leaves
+   onto a free entrance within the most heroes on the map, the two swap; a garrison hero keeps its
+   whole record, gets its points at its owner's turn start, its spell points and its marks' drops
+   each day and week, its income and its army's weekly resources (TWN-ROW-002 to -005;
+   ADV-MOV-002, GAM-RES-003, -005).
+8. A garrison hero alone defends the siege; a visitor beside one fights outside it and the town
+   stays; an empty garrison hero yields the town (`TWN-QUIRK-11`); a viewer at level 3 sees a
+   garrison hero and its army (TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001).
+9. A town's counts, its Portal and its hire dialog are its owner's alone, the week's kind
+   everyone's; every viewer's changed view is told (the fold gate) (TWN-VEW-004).
+10. The env plays recruitment and the hero moves (encodings v10, v11); the replays record them.
+11. Every new rule has its id, source and tests; `TWN-QUIRK-8` to `-11` recorded; the gates pass
+    (coverage; determinism with the re-recorded replays; the census of `original_data` to day 29;
+    the benchmarks at their baselines and the week workload baselined); batch TWN-3 run and scored,
+    its consensus rows `verified`.
+
+### 58. Risks and open points
+
+- **Two lanes in the same crates at once:** E08's T113 to T115 and this increment's T26 to T28
+  change `h3-adventure`'s state and hashes, the game's day, the army commands and the hire dialog:
+  merges in order, a rebase and a second re-recording when both bump.
+- **The rows wait on E08's T114a and T115a:** a delay there delays T28 (growth and recruitment do
+  not wait).
+- **The garrison hero's loops:** every per-hero step that must reach it (the turn's points, the
+  marks' drops, the income, the weekly resources, the Legion's share) is explicit; a missed one is
+  a silent divergence, so the census walk and a property (a week in a garrison against the same
+  week on the map, the same points, marks and gains) guard them.
+- **The legal sets grow:** a `Recruit` per standing dwelling of every own town each step (the
+  env's masks; the AI lane's step cap already bounds the revisit loops).
+- **Open:** a garrison hero's reveal (§53; only after a Cover of Darkness); the original's town
+  screen drawing a Portal at a capture, if `TWN-Q14` keeps no draw there.
