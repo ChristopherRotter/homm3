@@ -323,4 +323,11 @@ fn a_game_of_connections_reopens_with_its_seats_taken_and_its_numbers_kept() {
         &entries,
     );
     assert!(matches!(hosted, Err(GameRestoreError::Setup(_))));
+    // A journal the game rejects reopens none: the waiting player's turn ended out of its turn.
+    let out_of_turn = [GameEntry::Numbered(waiting, 1, Engine::EndTurn)];
+    let hosted = reopen(&out_of_turn);
+    assert!(matches!(
+        hosted,
+        Err(GameRestoreError::Rejected { at: 0, .. })
+    ));
 }
