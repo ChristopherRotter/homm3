@@ -433,7 +433,11 @@ pace them).
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08
 decision 8; the inbox's 2026-10-21 note, SRV-Q19), computer seats for the unowned sides
 (`h3_battle_ai::choose_fair`, the inbox's 2026-11-02 note), concurrent battles, sequence numbers
-against duplicates, long journals measured, spectators once `h3_game::Viewer` has one.
+against duplicates, long journals measured, spectators once `h3_game::Viewer` has one; from T7b's
+review: a viewer's open battle known by its identity, so that a second battle queued for a player
+while its first is open does not resend the first's `Snapshot` as the second's opening (not
+reachable while a turn group is one player), and a player's own rejections inside a battle
+bounded (its record gets no fresh snapshot there: the turn timers end a stalled battle).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

@@ -463,7 +463,7 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                 }
                 // What it newly sees, after the events (E16 M5 T5c).
                 let now = explored(&state, viewer);
-                let revealed = now.count() != grid.count();
+                let revealed = now != *grid;
                 if revealed {
                     view.reveal(&reveal(&state, rules, viewer, grid));
                     *grid = now;
@@ -1770,6 +1770,51 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
             (7, newly)
         ]
     );
+}
+
+#[test]
+fn a_view_of_the_largest_sides_folds_its_far_corner_without_a_panic() {
+    // A hostile or corrupt snapshot (E16 M5 T7b's review): sides whose tile count is beyond a
+    // 32-bit `usize`, no tiles, an object in the far corner of the second level.
+    let mut v = view();
+    let corner = Pos {
+        x: u16::MAX - 1,
+        y: u16::MAX - 1,
+        level: 1,
+    };
+    (v.adventure.width, v.adventure.height, v.adventure.levels) = (u16::MAX, u16::MAX, 2);
+    v.adventure.tiles.clear();
+    v.adventure.objects = vec![object(1, corner, 1, 1)];
+    let mut far = v.clone();
+    far.reveal(&GameReveal {
+        adventure: AdventureReveal {
+            viewer: v.viewer,
+            palette: vec![RevealedView {
+                explored: true,
+                view: Tile::Hidden {},
+            }],
+            areas: vec![RevealedArea {
+                corner,
+                width: 1,
+                tiles: vec![1],
+            }],
+            heroes: Vec::new(),
+            objects: Vec::new(),
+            boats: Vec::new(),
+            towns: Vec::new(),
+        },
+        heroes: Vec::new(),
+        towns: Vec::new(),
+    });
+    let removed = adventure(AdventureEvent::ObjectRemoved {
+        object_type: 1,
+        anchor: corner,
+    });
+    far.fold(&removed);
+    // Beyond the view's tiles and planes: nothing to change there but the object.
+    assert!(far.adventure.objects.is_empty());
+    assert_eq!(far.adventure.explored, v.adventure.explored);
+    assert_eq!(far.adventure.tiles.len(), 0);
 }
 
 /// The tile views of `v` in tile order.

@@ -743,3 +743,40 @@ fn a_record_is_cut_at_its_snapshots_within_its_bound() {
     assert!(fresh > 10, "{fresh}");
     assert!(held_back > 0, "{held_back}");
 }
+
+#[test]
+fn a_players_own_rejections_keep_its_record_within_its_bound() {
+    // E16 M5 T7b's review: rejections fill a record as the events do.
+    let (rules, setup) = duel();
+    let mut out = Vec::new();
+    let session =
+        GameSession::start(rules, &setup, 3, manifest(rules, MAP), options(0), &mut out).unwrap();
+    let acting = session.state().turn_group()[0];
+    let waiting = PlayerId::new(u8::from(acting.raw() == 0));
+    let snapshot = out.iter().find(|o| o.to == waiting).unwrap().frame.len();
+    let bound = 2 * snapshot + (4 << 10);
+    let bounded = GameOptions {
+        record_bytes: bound,
+        ..options(0)
+    };
+    out.clear();
+    let mut session =
+        GameSession::start(rules, &setup, 3, manifest(rules, MAP), bounded, &mut out).unwrap();
+    let (mut fresh, hash) = (0, session.state().state_hash());
+    for seq in 0..2_000 {
+        out.clear();
+        let refused = session.play(waiting, seq, GameCommand::EndTurn {}, &mut out);
+        assert!(refused.is_err());
+        // Its rejection, then a fresh snapshot past half the bound, to it alone.
+        assert!(out.iter().all(|o| o.to == waiting));
+        assert!(out[0].frame.starts_with(r#"{"GameRejected":"#));
+        fresh += out.len() - 1;
+        let record = session.record(waiting).unwrap();
+        let mut lines = record.lines().skip(1);
+        assert!(lines.next().unwrap().starts_with(r#"{"GameSnapshot":"#));
+        let bytes: usize = record.lines().skip(1).map(|l| l.len() + 1).sum();
+        assert!(bytes <= bound, "{seq}: {bytes} of {bound}");
+    }
+    assert!(fresh >= 2, "{fresh}");
+    assert_eq!(session.state().state_hash(), hash);
+}

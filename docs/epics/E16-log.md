@@ -2508,3 +2508,46 @@ Baseline: T7a1 (`claude/keen-tesla-q5uxid`, the scoped verify passed). No origin
   reader's limits.
 - **For the review list:** the count and timing of every other player's commands told to every
   player (one `GameEvents` per command, T5a's choice; part 2 may batch or pace them).
+
+### M5 part 1's reviewer agent (2026-11-12, in T7b)
+
+- **The review**: a fresh, read-only agent over everything part 1 changed in the two crates
+  (`14e5335e..76140f4`, about 7 100 lines of code and 6 000 of tests); two major findings, four
+  minor, no leak. Found sound: `play`'s viewer index (every engine path refuses a player outside
+  the game first); the battle events and the session's flags seen only by the battle's owners;
+  projection by construction (the snapshot, events, reveal and battle snapshots take the viewer,
+  a rejection echoes only the actor's own values, a town's ownership checked before its
+  buildings, the manifest without seed, stream or state hash, objects in tile order without an
+  index, the reveal's packing matched by the fold); the fold on 64 bits (every index checked,
+  every count saturating, allocations proportional to the message); the record's cut and `first`,
+  `since` reset by a snapshot, none inside a battle; the restore equal to the live game (a
+  divergence or a misplaced checkpoint caught, a missing last one re-made); `command_to_engine`;
+  `h3-server record`'s checks (the header first, the map's path below the root without `..`,
+  its hash and import version and the checkpoints' count before it is parsed).
+- **Fixed** (*provisional* in their shape; the rejections' test fails with its fix taken out, at
+  the 258th rejection; the 32-bit overflow is the arithmetic's, no 32-bit target being installed;
+  the grids' comparison changes no outcome while explored tiles only grow):
+  - **Major: the fold's indices overflowed a 32-bit `usize`** (a wasm client): a hostile
+    snapshot's sides of 65 535 with two levels made `Adventure::index` and a reveal's plane word
+    beyond `u32`, a panic with overflow checks on. Both are computed in `u64` now and taken only
+    if they fit (`game_fold.rs`'s `a_view_of_the_largest_sides_folds_its_far_corner_...`, which
+    on 64 bits checks the far corner's bounds).
+  - **Major: a player's own rejections escaped its record's bound**: `GameRejected` went into
+    the record with no look at the bound, so a player sending refused commands grew its record
+    without a fresh snapshot. A rejection now runs the same check (`Viewer::refresh`;
+    `game_session.rs`'s `a_players_own_rejections_keep_its_record_within_its_bound`: 2 000
+    refused end-of-turns, the record from a snapshot and within its bound throughout). Inside a
+    battle there is still no fresh snapshot: part 2's (below).
+  - **A reveal by the grid, not its count**: a command hiding as many tiles as it explored (Cover
+    of Darkness, once E09 brings it) would have sent none. The session and the fold's gate
+    compare the grids now (as cheap: their copies share blocks).
+  - **`h3-server record`**: two replays of one file name refused (the second overwrote the
+    first's records), the arguments kept as given (`OsString`; a path that is not UTF-8 was
+    changed by a lossy conversion).
+- **Left**, with the reason: a second battle queued for a player while its first is open would
+  resend the first's `Snapshot` as the second's opening (the session knows only whether a
+  battle is open), unreachable while a turn group is one player: part 2's concurrent battles
+  (the epic's part 2). A player's own rejections inside a battle are still recorded beyond the
+  bound until the battle ends: part 2's turn timers (`docs/06-security.md`, "Not covered yet").
+  Two objects of one type on one anchor that differ would be named alike by the engine's events:
+  a question for the adventure lane (its inbox), no server change either way.

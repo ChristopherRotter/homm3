@@ -648,11 +648,14 @@ impl Adventure {
                 };
                 *held = view;
                 let fringe = !explored && !matches!(view, Tile::Hidden {});
-                let row = usize::from(pos.level) * usize::from(self.height) + usize::from(pos.y);
-                let word = row * usize::from(self.stride) + usize::from(pos.x / 64);
+                // In 64 bits: a hostile view's sides overflow a 32-bit `usize` (a wasm client).
+                let row = u64::from(pos.level) * u64::from(self.height) + u64::from(pos.y);
+                let word = row * u64::from(self.stride) + u64::from(pos.x / 64);
+                let word = usize::try_from(word).ok();
                 let bit = 1_u64 << (pos.x % 64);
                 for (plane, on) in [(&mut self.explored, explored), (&mut self.fringe, fringe)] {
-                    plane.get_mut(word).into_iter().for_each(|WireU64(w)| {
+                    let held = word.and_then(|word| plane.get_mut(word));
+                    held.into_iter().for_each(|WireU64(w)| {
                         *w = if on { *w | bit } else { *w & !bit };
                     });
                 }
@@ -771,13 +774,16 @@ impl Adventure {
         (self.palette, self.tiles) = pack(&tiles);
     }
 
-    /// The index of the tile `pos` in tile order; none off the map.
+    /// The index of the tile `pos` in tile order; none off the map, or beyond a `usize`.
     fn index(&self, pos: Pos) -> Option<usize> {
-        (pos.x < self.width && pos.y < self.height && pos.level < self.levels).then(|| {
-            (usize::from(pos.level) * usize::from(self.height) + usize::from(pos.y))
-                * usize::from(self.width)
-                + usize::from(pos.x)
-        })
+        (pos.x < self.width && pos.y < self.height && pos.level < self.levels)
+            .then(|| {
+                // In 64 bits, as the planes' words (`reveal`).
+                (u64::from(pos.level) * u64::from(self.height) + u64::from(pos.y))
+                    * u64::from(self.width)
+                    + u64::from(pos.x)
+            })
+            .and_then(|i| usize::try_from(i).ok())
     }
 }
 

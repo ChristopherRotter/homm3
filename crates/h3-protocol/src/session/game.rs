@@ -24,7 +24,7 @@
 //!   none when the same events open another battle for it, whose opening `Snapshot` a reader
 //!   could not tell from it), its `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
 //!   keeps each viewer's explored grid as it was last told it and asks `h3_game::reveal` when the
-//!   grid's count changed) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
+//!   grid changed, T7b) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
 //!   events are then the battle client's, inside `GameEvents`), a fresh `GameSnapshot` when its
 //!   record needs one (below), then every player that may act its `GameTurn`. A rejected command changes nothing and is told to its player alone
 //!   (`GameRejected`).
@@ -39,9 +39,10 @@
 //!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]): the
 //!   oldest lines go first, but only up to a `GameSnapshot`, which the rest folds onto (T7a1).
 //!   Once a player was sent more than half the bound since its last snapshot it gets a fresh one
-//!   after a command's messages (before its turn), unless a battle is open in its view (whose own
-//!   `Snapshot` opens it), so a record holds about one to two such stretches; one command's
-//!   messages, or a battle's, may take it beyond its bound. [`GameSession::record`] gives it with
+//!   after a command's messages (before its turn) or after its own rejection (T7b), unless a
+//!   battle is open in its view (whose own `Snapshot` opens it), so a record holds about one to
+//!   two such stretches; one command's messages, or a battle's (its own rejections there too), may
+//!   take it beyond its bound. [`GameSession::record`] gives it with
 //!   its header line ([`GameRecordHeader`]: the game's manifest and the player), as a record file
 //!   holds it.
 //! - **Not here yet:** a hero's moves, which
@@ -194,9 +195,9 @@ struct Viewer {
     battle: bool,
     /// The latest numbered messages sent (E16 M5 T5b).
     record: Record,
-    /// Its explored tiles as it was last told them, with their count (E16 M5 T5c): the grid
-    /// `h3_game::reveal` compares with; none before the game is opened.
-    explored: Option<(BitGrid, u32)>,
+    /// Its explored tiles as it was last told them (E16 M5 T5c): the grid `h3_game::reveal`
+    /// compares with; none before the game is opened.
+    explored: Option<BitGrid>,
     /// The bytes of the lines its record got since its last snapshot (E16 M5 T7a1).
     since: usize,
 }
@@ -221,6 +222,22 @@ impl Viewer {
         };
         self.record.push(frame.clone(), snapshot);
         out.push(GameOutbound { to, frame });
+    }
+
+    /// Past half its record's bound since its last snapshot, the viewer `to` gets a fresh one of
+    /// `state` (E16 M5 T7a1), where its record may be cut; never inside a battle, which its own
+    /// `Snapshot` opens.
+    fn refresh(
+        &mut self,
+        to: PlayerId,
+        state: &GameState,
+        rules: &GameRuleset,
+        out: &mut Vec<GameOutbound>,
+    ) {
+        if self.since > self.record.limit() / 2 && !self.battle {
+            let observation = map::game::observe(state, rules, EngineViewer::Player(to));
+            self.post(to, |n| ServerMessage::GameSnapshot { n, observation }, out);
+        }
     }
 }
 
@@ -392,6 +409,8 @@ impl<'r> GameSession<'r> {
                         |n| ServerMessage::GameRejected { n, seq, code },
                         out,
                     );
+                    // Its own rejections fill its record too (E16 M5 T7b's review).
+                    viewer.refresh(player, &self.state, self.rules, out);
                 }
                 Err(code)
             }
@@ -522,9 +541,10 @@ impl<'r> GameSession<'r> {
                 viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
             let now = explored(&self.state, player);
-            // The count changes exactly when the grid does (the design note §14).
-            if let (Some((since, before)), Some((_, count))) = (&viewer.explored, &now)
-                && before != count
+            // The grid, not its count (T7b's review): a count stays when as many tiles are
+            // hidden as explored (once Cover of Darkness hides them, E09).
+            if let (Some(since), Some(now)) = (&viewer.explored, &now)
+                && since != now
             {
                 let reveal = map::game::reveal(&self.state, self.rules, engine_viewer, since);
                 viewer.post(player, |n| ServerMessage::GameReveal { n, reveal }, out);
@@ -538,16 +558,7 @@ impl<'r> GameSession<'r> {
                 viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
             viewer.battle = open.is_some();
-            // Past half its record's bound since its last snapshot, a fresh one (E16 M5 T7a1),
-            // where its record may be cut; never inside a battle, which its own snapshot opens.
-            if viewer.since > viewer.record.limit() / 2 && !viewer.battle {
-                let observation = map::game::observe(&self.state, self.rules, engine_viewer);
-                viewer.post(
-                    player,
-                    |n| ServerMessage::GameSnapshot { n, observation },
-                    out,
-                );
-            }
+            viewer.refresh(player, &self.state, self.rules, out);
         }
         self.turns(out);
     }
@@ -585,12 +596,9 @@ fn own_battle(state: &GameState, player: PlayerId) -> Option<(&OpenBattle, Battl
         .and_then(|battle| battle.side_of(player).map(|side| (battle, side)))
 }
 
-/// `player`'s explored grid now with its count; none for a player outside the game.
-fn explored(state: &GameState, player: PlayerId) -> Option<(BitGrid, u32)> {
-    state
-        .adventure()
-        .explored(player)
-        .map(|grid| (grid.clone(), grid.count()))
+/// `player`'s explored grid now; none for a player outside the game.
+fn explored(state: &GameState, player: PlayerId) -> Option<BitGrid> {
+    state.adventure().explored(player).cloned()
 }
 
 /// The players by index, as many as the game has (at most 256: `PlayerId`'s range).
