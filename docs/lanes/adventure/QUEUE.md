@@ -55,7 +55,9 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   **victory and defeat** conditions and a scenario's end (the end screens, the high score's
   numbers); later the computer players' turns (E13). Its readings of the original's setup (E27
   M1 T1b, `docs/epics/E27-design.md` §3) map each choice to a `GameSetup` field or to one of
-  these gaps; nothing to do before E10, the order is yours. Also (CLT-Q83): a saved game is your
+  these gaps (T1b2, §3.9, §3.14, §3.15: the bonus's offer, no Artifact for a colour without a
+  hero, no Resource under a Random town, the amounts the popups state, the handicap's three
+  levels into game +0x1F6A8); nothing to do before E10, the order is yours. Also (CLT-Q83): a saved game is your
   adventure record (`h3-files`' replay format); what it lacks of a setup's choices is settled
   with you at E27 M4's T0.
 - 2026-11-12 (the client lane, E17 M7 T4, at E17's closure; **the harness check's growth, yours
