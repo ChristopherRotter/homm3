@@ -190,7 +190,9 @@ fn connections_hear_what_the_in_process_hosts_players_hear() {
     // Its journal, the seats' entries and the numbered commands, restores the game with its seats
     // taken, none held (E16 M5 T8b).
     let entries: Vec<GameEntry> = net.drain_entries().collect();
-    let numbered = entries.iter().filter(|e| matches!(e, GameEntry::Numbered(..)));
+    let numbered = entries
+        .iter()
+        .filter(|e| matches!(e, GameEntry::Numbered(..)));
     assert_eq!(numbered.count(), replay.commands.len() - systems);
     let manifest = manifest(&rules, MAP);
     let back = GameSession::reopen(&rules, &setup, seed, manifest, OPTIONS, token, &entries);

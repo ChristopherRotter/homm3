@@ -941,7 +941,13 @@ impl<'r> GameSession<'r> {
 
     /// `player`'s request numbered `seq` rejected with `code`, told to it alone (none to a player
     /// outside the game); nothing changed.
-    fn reject(&mut self, player: PlayerId, seq: u32, code: GameReject, out: &mut Vec<GameOutbound>) {
+    fn reject(
+        &mut self,
+        player: PlayerId,
+        seq: u32,
+        code: GameReject,
+        out: &mut Vec<GameOutbound>,
+    ) {
         if let Some(viewer) = self.viewers.get_mut(player.index()) {
             viewer.post(
                 player,

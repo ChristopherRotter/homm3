@@ -9,7 +9,7 @@ use std::string::ToString;
 use std::vec::Vec;
 
 use h3_contracts::PlayerId;
-use h3_game::GameCommand as Engine;
+use h3_game::{GameCommand as Engine, GameSetup};
 
 use super::game_seats::{MAP, OPTIONS, end_turn, join, joined_after, send, to, token};
 use super::game_session::duel;
@@ -104,8 +104,14 @@ fn a_resend_applies_nothing_and_is_answered_as_the_first_time() {
     assert!(accepted(&to(&send(&mut s, C, end_turn(6)), C), 6));
     // A seat keeps its last `KEPT_ANSWERS` answers: an older command's resend is stale.
     for round in 0..u32::try_from(KEPT_ANSWERS).unwrap() {
-        assert!(accepted(&to(&send(&mut s, A, end_turn(2 + round)), A), 2 + round));
-        assert!(accepted(&to(&send(&mut s, C, end_turn(7 + round)), C), 7 + round));
+        assert!(accepted(
+            &to(&send(&mut s, A, end_turn(2 + round)), A),
+            2 + round
+        ));
+        assert!(accepted(
+            &to(&send(&mut s, C, end_turn(7 + round)), C),
+            7 + round
+        ));
     }
     let hash = s.state().state_hash();
     assert!(rejected(&to(&send(&mut s, C, end_turn(6)), C), 6, stale));
@@ -161,7 +167,7 @@ fn the_host_pauses_another_seat_asks_and_a_join_resumes() {
     let paused = ServerMessage::Goodbye {
         reason: GoodbyeReason::Paused,
     };
-    assert_eq!(to(&out, A), [paused.clone()]);
+    assert_eq!(to(&out, A), std::slice::from_ref(&paused));
     assert_eq!(to(&out, C), [paused]);
     assert!(out.iter().all(|o| o.close));
     assert!(s.paused());
@@ -190,7 +196,7 @@ fn a_game_of_connections_reopens_with_its_seats_taken_and_its_numbers_kept() {
     let acting = s.state().turn_group()[0];
     let waiting = other(acting);
     // The account's seat first (the host's), the anonymous one second; a command, a pause, a
-    // resume, a command, the host back, a pause.
+    // resume, a command, the host back, the other seat gone, a pause (told to the host alone).
     s.logged_in(A, "ann".to_string());
     send(&mut s, A, join(acting.raw(), None));
     send(&mut s, C, join(waiting.raw(), None));
@@ -199,7 +205,9 @@ fn a_game_of_connections_reopens_with_its_seats_taken_and_its_numbers_kept() {
     send(&mut s, C, join(waiting.raw(), Some(&token(waiting))));
     assert!(accepted(&to(&send(&mut s, C, end_turn(1)), C), 1));
     send(&mut s, A, join(acting.raw(), None));
-    send(&mut s, A, pause(6));
+    s.disconnected(C);
+    let out = send(&mut s, A, pause(6));
+    assert!(out.len() == 1 && out[0].to == A && out[0].close);
     assert!(s.paused());
     let entries: Vec<GameEntry> = s.drain_entries().collect();
     assert_eq!(
@@ -218,7 +226,15 @@ fn a_game_of_connections_reopens_with_its_seats_taken_and_its_numbers_kept() {
     // Reopened: the same game, paused, no entry lacking; each player's record begins again with
     // its snapshot, told to nobody.
     let reopen = |entries: &[GameEntry]| {
-        GameSession::reopen(rules, &setup, 3, manifest(rules, MAP), OPTIONS, token, entries)
+        GameSession::reopen(
+            rules,
+            &setup,
+            3,
+            manifest(rules, MAP),
+            OPTIONS,
+            token,
+            entries,
+        )
     };
     let mut back = reopen(&entries).unwrap();
     assert!(back.started() && back.paused());
@@ -275,4 +291,36 @@ fn a_game_of_connections_reopens_with_its_seats_taken_and_its_numbers_kept() {
         &mut out,
     );
     assert!(matches!(restored, Err(GameRestoreError::Diverged { .. })));
+    // A seat's numbered command re-runs in-process as its player's: the host vouches for it.
+    let numbered = [GameEntry::Numbered(acting, 4, Engine::EndTurn)];
+    let restored = GameSession::restore(
+        rules,
+        &setup,
+        3,
+        manifest(rules, MAP),
+        OPTIONS,
+        &numbered,
+        &mut out,
+    )
+    .unwrap();
+    let mut twin = GameSession::start(rules, &setup, 3, manifest(rules, MAP), OPTIONS, &mut out);
+    let twin = twin.as_mut().unwrap();
+    twin.play(acting, 4, GameCommand::EndTurn {}, &mut out)
+        .unwrap();
+    assert_eq!(restored.state().state_hash(), twin.state().state_hash());
+    // A setup that starts no game reopens none.
+    let none = GameSetup {
+        difficulty: 200,
+        ..setup.clone()
+    };
+    let hosted = GameSession::reopen(
+        rules,
+        &none,
+        3,
+        manifest(rules, MAP),
+        OPTIONS,
+        token,
+        &entries,
+    );
+    assert!(matches!(hosted, Err(GameRestoreError::Setup(_))));
 }

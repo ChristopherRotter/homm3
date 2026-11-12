@@ -308,11 +308,7 @@ client lane's 2026-11-04 request, when online battles need them).
 
 - **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
   - **T8a Seats and connections:** done 2026-11-12, protocol v45 (`E16-log.md`).
-  - **T8b Numbers, pause, restore:** each seat numbers its commands, and a number the session
-    already took is answered as it was the first time, applying nothing (a resend after a
-    reconnect; ADR-0018's per-viewer sequence numbers); the host's pause and resume, as a
-    battle's (entries); the restore with the seats taken, none held. A protocol step if the
-    wire changes.
+  - **T8b Numbers, pause, restore:** done 2026-11-12, protocol v46 (`E16-log.md`).
 - **T9 A whole game hosted** (`h3-server`): the map offers in the configuration (a map file by
   its hash, packs and profile, difficulty; checked at start), listed in the lobby with the map's
   name, size and players; `CreateGame` from one; the game on its own thread with its journal file
@@ -347,6 +343,14 @@ the tasks land):
   other messages until T8b and T9 take what it needs (the record's download, the pause); the
   host's tokens through a closure (`GameSession::new`), the in-process host holding every seat
   (`start`, `restore`); `GameSession::route` public for the system actor's frames (T10).
+- T8b (v46): a seat's accepted commands numbered strictly increasing, gaps allowed; a resend
+  answered `GameAccepted` with the first echo while the seat keeps it (its last `KEPT_ANSWERS` =
+  16), numbered and recorded, else `GameRejected { Stale }`; a rejected command takes no number;
+  `GameJoined`'s `last`; the host the seat taken first, its `Pause` pausing, another seat's ask
+  told as `GamePauseAsked`, once until a command (`AlreadyAsked`), a paused game rejecting
+  `NotStarted`, any seat's join resuming it; the journal's seat entries (`Numbered`, `Taken`,
+  `TakenBy`, `Started`, `Paused`, `Resumed`) and `GameSession::reopen` with the host's tokens, a
+  restored started game's snapshots and turns into its records.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
