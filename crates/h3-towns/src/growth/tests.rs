@@ -209,3 +209,38 @@ fn a_built_dwelling_gives_its_first_creatures() {
     );
     assert_eq!(none.available(0), 0);
 }
+
+// covers: TWN-EVT-004
+#[test]
+fn an_event_s_creatures_go_to_the_upgraded_dwelling_else_the_dwelling_else_nowhere() {
+    let part = part();
+    let creatures = [3, 4, 5, 6, 0, 0, 9];
+    let counts = |built: &[usize], before: &[(usize, u16)]| {
+        let town = before.iter().fold(town(built), |t, &(index, count)| {
+            t.with_available(index, count)
+        });
+        *event_creatures(&town, &part, &creatures).available_all()
+    };
+    // No dwelling: every level's lost.
+    assert_eq!(counts(&[], &[]), [0; CREATURE_INDEXES]);
+    // Level 1's dwelling and level 2's: added to the counts there (no week's growth); level 3
+    // without a dwelling, level 4 without its, level 7 the Keep lacks: lost.
+    let mut expected = [0; CREATURE_INDEXES];
+    expected[0] = 10;
+    expected[1] = 4;
+    assert_eq!(counts(&[DWELLING_1, DWELLING_2], &[(0, 7)]), expected);
+    // The upgraded dwelling ever built: level 1's go to its index, the base's count kept.
+    let mut expected = [0; CREATURE_INDEXES];
+    expected[0] = 2;
+    expected[7] = 4;
+    assert_eq!(
+        counts(&[DWELLING_1, UPG_DWELLING_1], &[(0, 2), (7, 1)]),
+        expected
+    );
+    // Held at the bound (`TWN-QUIRK-8`).
+    let held = counts(&[DWELLING_1], &[(0, MAX_AVAILABLE - 1)]);
+    assert_eq!(held[0], MAX_AVAILABLE);
+    // A faction without a record keeps its counts.
+    let wild = town_of(WILD, &[DWELLING_1]).with_available(0, 5);
+    assert_eq!(event_creatures(&wild, &part, &creatures), wild);
+}

@@ -2,13 +2,13 @@
 //! note §30; survey `E09-construction.md` §8): right after the map's timed events, each event of
 //! each town the player owns that fires for it today gives its resources, then builds its
 //! buildings without the hall's tests and without the day's mark, each told as a build with the
-//! views it changed. Its creatures wait for increment 3 (`TWN-STUB-10`).
+//! views it changed; since E09 T26a1 it adds its creatures to the town's dwellings.
 
 use alloc::vec::Vec;
 
 use h3_content::ResourceId;
 use h3_contracts::{PlayerId, TownId};
-use h3_towns::{BuildingSet, TownEvent};
+use h3_towns::{BuildingSet, MAX_CREATURE_LEVELS, TownEvent};
 
 use super::command::build_told;
 use crate::command::{GameEvent, Sink};
@@ -34,7 +34,10 @@ use crate::{GameRuleset, GameState};
 ///    start brought it) is not built again. No
 ///    requirement, forbidden, Capitol, Grail, cost or mark test (T-8: an event's Capitol beside
 ///    its owner's other one stands; E09 decision 44);
-/// 3. its creatures (TWN-EVT-004): none placed yet.
+/// 3. its creatures (TWN-EVT-004; E09 T26a1, design note §46): each level's count added to the
+///    town's count of the level's upgraded dwelling when it is ever built (by now: an earlier
+///    step's building counts), else of its dwelling, else lost ([`h3_towns::event_creatures`]);
+///    nothing told (the counts are the owner's, shown with E09 T26b).
 ///
 /// The events fire at the turn start of the town's owner only, whatever player they name, so a
 /// captured town's fire for its new owner when they name it. Day 1's fire inside the game's build
@@ -46,8 +49,6 @@ pub(crate) fn fire_events<S: Sink>(
     player: PlayerId,
     sink: &mut S,
 ) {
-    // stub: TWN-STUB-10 (an event's creatures are not added to the town's dwellings: increment 3
-    // adds them to the level's upgraded dwelling's recruits, else its dwelling's, else loses them)
     for fired in firing(state, rules, player) {
         state.gain(player, &fired.gains, sink);
         state.lose(player, &fired.losses, sink);
@@ -66,6 +67,14 @@ pub(crate) fn fire_events<S: Sink>(
                 build_told(state, rules, player, fired.town, building, event, sink);
             }
         }
+        let added = state
+            .towns()
+            .get(fired.town)
+            .map(|town| h3_towns::event_creatures(town, rules.towns(), &fired.creatures))
+            .filter(|after| state.towns().get(fired.town) != Some(after));
+        if let Some(after) = added {
+            state.towns_mut().write(fired.town, after);
+        }
     }
 }
 
@@ -83,6 +92,8 @@ struct Fired {
     /// start built (an earlier event's building is skipped at its turn, [`fire_events`]: the
     /// only fact of the set that a build changes is the ever-built set).
     buildings: BuildingSet,
+    /// Its creatures by level, from level 1.
+    creatures: [u16; MAX_CREATURE_LEVELS],
 }
 
 /// The events that fire for `player` at its turn start today, the towns in `TownId` order and
@@ -116,6 +127,7 @@ fn firing(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Fired
                 gains: changes(event, true),
                 losses: changes(event, false),
                 buildings,
+                creatures: event.creatures,
             });
         }
     }

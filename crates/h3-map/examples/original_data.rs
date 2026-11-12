@@ -2772,10 +2772,7 @@ fn played_town_events(
                     usize::from(!event.buildings.is_empty()),
                 );
                 let creatures = event.creatures.iter().any(|&n| n > 0);
-                add(
-                    "firings with creatures (not added, TWN-STUB-10)",
-                    usize::from(creatures),
-                );
+                add("firings with creatures", usize::from(creatures));
                 add(
                     "firings with a message alone",
                     usize::from(

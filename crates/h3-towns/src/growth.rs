@@ -1,8 +1,8 @@
 //! A town's growth (E09 increment 3, design note §41, §46; survey `E09-growth.md` §1, §6): a
 //! dwelling's growth a week (TWN-GRO-001) from the town and the inputs the game computes
-//! ([`GrowthInputs`]), and a dwelling's first creatures when it is built (TWN-GRO-005). The week
-//! and the month read them (`week.rs`, E09 T25b1), a neutral town's garrison week and the
-//! Portal's draw too (T25b2).
+//! ([`GrowthInputs`]), a dwelling's first creatures when it is built (TWN-GRO-005) and since E09
+//! T26a1 a town event's creatures (TWN-EVT-004). The week and the month read them (`week.rs`,
+//! E09 T25b1), a neutral town's garrison week and the Portal's draw too (T25b2).
 
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::FortLevel;
@@ -157,6 +157,47 @@ pub(crate) fn first_creatures(
         town.with_available(index + MAX_CREATURE_LEVELS, town.available(index))
             .with_available(index, 0)
     })
+}
+
+/// `town` with a town event's `creatures` by level, from level 1 (TWN-EVT-004; E09 design §46,
+/// survey `E09-construction.md` §8.4, the original's `town_events_apply` 0x5BFEB0, after the
+/// event's buildings), with its faction's record in `part`: each level's count added at the
+/// upgrade's index when the level's upgraded dwelling is ever built, else at the level's index
+/// when its dwelling is, else lost; held at [`MAX_AVAILABLE`] (`TWN-QUIRK-8`: the original's
+/// 16-bit add wraps). The week's growth is not involved; a faction without a record in `part`
+/// keeps its counts.
+// rule: TWN-EVT-004
+pub fn event_creatures(
+    town: &Town,
+    part: &TownRuleset,
+    creatures: &[u16; MAX_CREATURE_LEVELS],
+) -> Town {
+    let roles = Roles::of(town, part);
+    let ever = |dwelling: Dwelling| {
+        roles
+            .built_roles()
+            .any(|(_, r)| r.dwelling == Some(dwelling))
+    };
+    (1..=u8::MAX)
+        .zip(creatures)
+        .fold(town.clone(), |next, (level, &count)| {
+            let at = usize::from(level) - 1;
+            let index = if ever(Dwelling {
+                level,
+                upgraded: true,
+            }) {
+                at + MAX_CREATURE_LEVELS
+            } else if ever(Dwelling {
+                level,
+                upgraded: false,
+            }) {
+                at
+            } else {
+                return next;
+            };
+            let added = next.available(index).saturating_add(count);
+            next.with_available(index, added)
+        })
 }
 
 #[cfg(test)]

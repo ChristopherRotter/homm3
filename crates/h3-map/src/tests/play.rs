@@ -1470,7 +1470,8 @@ pub(super) fn town() -> impl Strategy<Value = TownPlan> {
 /// colours, kinds, days and resources) with none to three of the 41 map slots of a custom set as
 /// its buildings (the hall's tests do not apply: a Capitol, a Grail's building, a Shipyard
 /// without water, a building standing or another of its event's supersedes among them,
-/// TWN-EVT-003, T-8) and creatures by level (none placed, `TWN-STUB-10`).
+/// TWN-EVT-003, T-8) and creatures by level (TWN-EVT-004, E09 T26a1: added to the counts, which
+/// no view shows before E09 T26b).
 fn town_events() -> impl Strategy<Value = Vec<TownEvent>> {
     let event = (timed_event(), vec(0u8..41, 0..=3), vec(0u16..=20, 7)).prop_map(
         |(event, slots, creatures)| {
@@ -5585,7 +5586,7 @@ fn town_id(place: usize) -> TownId {
 /// 0, `TownEventFired` with its place, then each building that `h3_towns::event_buildings` gives
 /// of the town as the turn starts (with the Shipyard's water, TWN-SET-011) and that does not
 /// stand by its turn (an earlier building or event brought it), a `TownBuilt` with the event's
-/// place, in index order; its creatures none (`TWN-STUB-10`). The views a build tells after its
+/// place, in index order; its creatures no event (TWN-EVT-004). The views a build tells after its
 /// `TownBuilt` are the told-views property's (`view.rs`), left out of the comparison.
 fn check_timed(
     rules: &GameRuleset,

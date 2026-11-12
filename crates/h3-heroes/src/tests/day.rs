@@ -307,3 +307,65 @@ fn the_regain_saturates_and_a_ruleset_without_hero_parameters_regains_nothing() 
         4
     );
 }
+
+/// The day pack with town growth (E09 T26a1): `t:band` +5 at level 2 (the Legs of Legion's
+/// shape), `t:eye` +4 at level 2 and +1 at level 6, `t:loop` (needs Luck) +3 at level 1, `t:helm`
+/// the Statue's share 5 000, the combination `t:circle` (band, loop, helm) a share of 2 500 and
+/// the most at level 7, `t:kit` +1 at level 7; `specialty` the hero's.
+fn town_pack(specialty: Vec<HeroEffectDef>) -> ContentPack {
+    let mut p = day_pack(specialty);
+    let level = |level: u8, amount: u16| HeroEffectDef::TownGrowth { level, amount };
+    let share = |bp: u16| HeroEffectDef::OwnerTownGrowth { bp };
+    for a in &mut p.artifacts {
+        a.effects = match a.key.to_string().as_str() {
+            "t:band" => vec![level(2, 5)],
+            "t:eye" => vec![level(2, 4), level(6, 1)],
+            "t:loop" => vec![level(1, 3)],
+            "t:helm" => vec![share(5_000)],
+            "t:circle" => vec![share(2_500), level(7, u16::MAX)],
+            "t:kit" => vec![level(7, 1)],
+            _ => continue,
+        };
+    }
+    p
+}
+
+// covers: TWN-GRO-001
+#[test]
+fn a_heros_town_growth_counts_each_worn_type_once_with_a_combinations_parts() {
+    let r = compile(town_pack(vec![])).unwrap();
+    let of = |skills: &[(&str, u8)], worn: &[&str]| {
+        let h = hero(&r, 10, 1, 0, skills, worn);
+        (town_growth(&h, &r), owner_town_growth(&h, &r))
+    };
+    // Nothing worn: nothing; the backpack's Statue (every test hero carries one) gives no share.
+    assert_eq!(of(&[], &[]), ([0; 7], 0));
+    // A piece at its level; a second copy of the type counts once.
+    assert_eq!(of(&[], &["t:band"]), ([0, 5, 0, 0, 0, 0, 0], 0));
+    assert_eq!(of(&[], &["t:band", "t:band"]), ([0, 5, 0, 0, 0, 0, 0], 0));
+    // Two types at one level add; each of a type's levels.
+    assert_eq!(
+        of(&[], &["t:band", "t:eye", "t:eye"]),
+        ([0, 9, 0, 0, 0, 1, 0], 0)
+    );
+    // The Statue's share alone.
+    assert_eq!(of(&[], &["t:helm"]), ([0; 7], 5_000));
+    // A combination gives its own and its parts' (a part needing a skill only with it), its part
+    // worn beside it once; the share the highest of its sources, saturating by level.
+    assert_eq!(
+        of(&[], &["t:circle", "t:band", "t:kit"]),
+        ([0, 5, 0, 0, 0, 0, u16::MAX], 5_000)
+    );
+    assert_eq!(
+        of(&[("t:luck", 1)], &["t:circle"]),
+        ([3, 5, 0, 0, 0, 0, u16::MAX], 5_000)
+    );
+    // A specialty is a source too: the highest share wins.
+    let r = compile(town_pack(vec![HeroEffectDef::OwnerTownGrowth {
+        bp: 6_000,
+    }]))
+    .unwrap();
+    let share = |worn: &[&str]| owner_town_growth(&hero(&r, 10, 1, 0, &[], worn), &r);
+    assert_eq!(share(&[]), 6_000);
+    assert_eq!(share(&["t:helm"]), 6_000);
+}

@@ -64,7 +64,7 @@ pub use change::{
 };
 pub use choice::{ArmyWorth, TerrainShares, original_choice};
 pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemble_changes};
-pub use day::{daily_income, day_mana};
+pub use day::{daily_income, day_mana, owner_town_growth, town_growth};
 pub use derive::{
     MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, attack_defense, derive_battle_hero,
     gained_experience, join_bonus, max_mana, necromancy, power,
