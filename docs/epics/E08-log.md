@@ -15626,3 +15626,46 @@ Fountains are visited from a neighbour; the Wells and the Idol were stood on (th
 entrances, not blocked: `access`), the water objects visited from the neighbouring water.
 
 **Versions:** none moved (the harness, two recipes, two filled templates, docs).
+
+### Increment 12, round 3: T111, batch E12 scored (2026-11-12, `adventure/e08-t111`)
+
+Baseline: `master` 4a70238 (#865, T110 merged). Docs only; whole (the queue's cut: one survey
+section and its checkpoint); nothing staged (the XtraInfo comparison below read the user's
+extracted tables in place).
+
+**Scored** (survey `E08-garrisons-bonuses.md` §15) from T110's filled templates and its record of
+the runs: **every row as read.** E12-1 the path through Red's own V1 with no visit, the exchange at
+a move's end (**D-59**); E12-2 no path past the empty neutral G2, flagged by the visit (**D-59**);
+E12-3 the move into G3's empty slot made, the merge and both takes refused (**D-61**); E12-4 the
+flag set and both books refused (GENRLTXT 685) when Blue attacked the hero in G4, clear and casts
+made when it attacked out of it, G4's Pikemen not in the battle, the attack's step paid (1 659;
+**D-60**); E12-5 the six tiles of radius 3 about G5 at the start (decision 314); E12-6 one stack of
+20 Pikemen at once, G6 Red's and empty, the hero on the entrance with 1 700 and 200 experience;
+E12-7 62, 7, 1 and 310 (**D-64**); E12-8 bit 20 cleared by the battle, 43, 4, 1 and 531 (**A-44**);
+E12-9 each entrance refilled on its own, both at the week (**D-62**); E12-10 +400 once, the
+Champions at both revisits with no points, the week's land points, the meetings' steps paid
+(**D-63**); E12-11 the Idol by the day, the Temple's +2 on day 7, each battle clearing all; E12-12
+new values only on days 8, 15, 22; E12-13 the maximum raised with the points, the Swan Pond's 0
+under 3 200 kept, day 2 anew; E12-14 the Well's 79 unmarked, 77, 78, day 2's 77; E12-15 2 335 by the
+raised 2 360 (**§10.9's open point**, as the original); E12-16 the bonus lines and the marks (M2's
+"before" unread: its entrance unexplored then); E12-17 the School's kind mark before the gold
+test. The Faerie Ring's line read as XTRAINFO 16 is the harness's tie-break between records 2 and
+16, which hold one text (compared in the user's `original-data/extracted/`).
+
+**Beyond the rows:** **the visit modes** (the checkpoint below); the steps paid as built
+(GAM-BAT-004, GAM-MET-001, ADV-OBJ-003; a monster's battle is the step onto its guarded tile,
+ADV-MON-006: E12-8's 1 130); the Fountains' later draws alike in four runs (not the new game's
+seed; nothing for the build, the engine's streams its own); no hint over an unexplored tile (E24's
+reading); the in-boat bit outliving the battle's clear. VCMI 1.7.5's object configs read for the
+modes (`config/objects/rewardableBonusing.json`, `magicWell.json`, `generic.json`): the Buoy alone
+`blockedVisitable`.
+
+**The checkpoint** (ADV-Q51, `AskUserQuestion`; the epic's decision 317): **the original's class
+lists** for the fifteen's visit modes: the Buoy, the Mermaids and the Sirens visited from a
+neighbour (`object_classes_not_entered` 0x63AA58), the Buoy also from above (0x63AB00); the twelve
+others entered, the Fountain of Fortune by the list. Corrected with it: survey §10.4's last point,
+design §2, §8 and §18 (*Scored*), the ADR-0016 draft's point 4 (its status, alternatives), the
+lane's two traps on visits; T112 queued with the experiments README's objects note (battle-owned,
+`cross-lane`).
+
+**Versions:** none moved (documents only).

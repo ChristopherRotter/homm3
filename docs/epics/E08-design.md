@@ -56,9 +56,13 @@ fix one Sirens mark kept through battles (308); the cut and every other agent's 
 
 Six kinds for the fifteen classes, none ownable or guarded by the kind, each one type (subclass 0,
 no body in the file; the templates' masks as the map's). Entered or visited from a neighbour by
-the class (the original's `object_classes_not_entered`, §1.2's "blocked" column): **visited from a
-neighbour** the Buoy (11), the Fountain of Fortune (30), the Idol of Fortune (38) and the Magic
-Well (49); **entered** the other eleven. None visitable from above (neither list holds them).
+the class (the original's `object_classes_not_entered` 0x63AA58, `E08-objects.md` §2.1): **visited
+from a neighbour** the Buoy (11), the Mermaids (52) and the Sirens (92); **entered** the other
+twelve, the Fountain of Fortune (30), the Idol of Fortune (38) and the Magic Well (49) among them.
+Visitable from above (`object_classes_from_above` 0x63AB00) the Buoy alone. *Corrected by T111*
+(batch E12, survey §15; ADV-Q51, decision 317): first written from the templates' blocked tile
+(survey §1.2), which says nothing of the mode; the hero stood on the Wells and the Idol and visited
+the Sirens, the Buoy and the Mermaids from the neighbouring water.
 
 - **`bonus { mark, days, points, drain, kind_mark }`** (ten classes: the Buoy, the Swan Pond, the
   Faerie Ring, the Fountain of Youth, the Idol of Fortune, the Mermaids, the Oasis, the Rally Flag,
@@ -87,8 +91,9 @@ Well (49); **entered** the other eleven. None visitable from above (neither list
   original's 0.7 as the ratio 7 / 10, §9 of this note), the experience the lost hit points × the
   Learning factor; its mark lasts until the next battle under `faithful` (A-44, `ADV-QUIRK-46`).
 - **Not entered from water and never on it** but the Buoy, the Mermaids and the Sirens, which
-  stand on water only (§1.2) and are reached only from a boat (ADV-PIK-018's passage, D-46): the
-  Buoy from a neighbouring tile, the Mermaids and the Sirens entered by the boat.
+  stand on water only (§1.2) and are reached only from a boat (ADV-PIK-018's passage, D-46), each
+  visited from a neighbouring water tile (ADV-SEA-005: the step's price paid, the hero staying in
+  its boat; the Buoy from any of the eight, the Mermaids and the Sirens not from the three above).
 - *Agent's call:* the values (+800, +400, 0.7, the Fountain's four) are the kinds' parameters, not
   constants in code; the original holds them as immediates (§10.2's last paragraph) but a pack may
   change them, as the Whirlpool's divisor (increment 11's note §1).
@@ -245,8 +250,9 @@ after the kind mark (§3) where the survey's table §10.2 sets it on every visit
 
 Points and the day's maximum are `HeroOnMap`'s (ADR-0016 point 3), so a later boarding or landing
 with the Admiral's Hat divides by the raised maximum (A-28's proportion; batch E12's E12-15).
-**`Revisit`** visits an entered one again (ADV-TEL-008; its rules unchanged: no step, no points);
-the four visited from a neighbour are never stood on.
+**`Revisit`** visits an entered one again (ADV-TEL-008; its rules unchanged: no step, no points):
+the twelve entered, the Wells and the Idol too (batch E12's E12-14, E12-11); the Buoy, the Mermaids
+and the Sirens, visited from a neighbour, are never stood on (§2, decision 317).
 
 ###### 9. The Sirens (ADV-BON-008; survey §10.5; D-64, A-44, A-45)
 
@@ -529,6 +535,10 @@ Easy, hot seat, from maps `h3-experiment` writes:
   +0x49, +0x4D, +0x18 and of a tile's word (the Fountain's value, the Spring's bit 6), ending turns
   to a given day; the hint's text (E24's `visits` reads it). The rows' verdicts (T111) fold into
   the ADRs at the `shared/` task (T112).
+- *Scored* (T111, survey §15): **every row as read** (D-59 to D-64 and A-44 confirmed, the raised
+  maximum and the Hat's proportion by it as the original; the attack's and the meeting's steps
+  paid, as built). Beyond the rows the visit modes of §2 were the templates', not the original's
+  class list: corrected there and in §8 (ADV-Q51, decision 317).
 
 ###### 19. Shared and `cross-lane` work; the building tasks; the exit criteria
 
