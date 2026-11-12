@@ -149,6 +149,26 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      - **The surfaces** are checked when the game is built: a monolith's or a gate's visitable
        tile on water, or a Whirlpool's on land, is refused (A-42: a jump between surfaces would
        put a hero in a boat on land or a walker on water; none on the shipped maps).
+   - **Increment 12's objects** (E08 decision 295):
+     - **A garrison's army** is written on its object when the game is built, in the table of the
+       armies on objects (as a town's garrison), its **owner** in the ownable objects' block, its
+       **removable flag** static (the object's own: a capture keeps it), so the static map's. No
+       new block for garrisons.
+     - **The Fountains of Fortune's values**, one per fountain in the static map's fountains'
+       order, a block drawn when the game is built and at each week's step; none for a map
+       without one (batch E12's E12-12: unchanged on days 2 to 7, new at each week's start).
+     - **The Magic Springs' entrances**, a "full" bit per entrance (each Spring's two), a block
+       that stands only while some entrance is emptied: none when the game is built and after
+       each week's step (as increment 10's dwellings' week). By entrance, not the original's
+       counter mod 32 (D-62; E12-9: each entrance once a week on its own).
+     - **The kind marks** (E08 decision 302): in the per-player block of object types (beside the
+       Cartographer types bought and the keys), the types whose kind a team's visit marked, each
+       with its player bits, set for every player of the visitor's team. None until a first mark.
+     - **Every visit's effect is the hero on the map's** (point 3; E08 decision 307): its battle
+       bonuses and its day's and week's marks, not the hero's details (ADR-0013 point 1): none
+       carries over to a hero that leaves the map and is hired again.
+     - **The day of the week** is the game's calendar's: an input of the adventure's command
+       application (ADR-0017 point 1), never copied into the adventure's state.
 
    A fork is `Clone`: a few reference increments plus the plain arrays. The structures are
    hand-rolled in `h3-adventure` (no persistent-collections dependency) and move to the kernel
@@ -192,8 +212,9 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    formation and the flag change at no cost. The adventure
    validates and applies these commands; the game routes them and checks the turn and the
    decision (ADR-0017 points 1 and 6). From increment 7 a visit's changes to the hero come back
-   as hero changes (ADR-0013 points 2 and 15); its morale and luck bonuses are the details'. The
-   once-per-hero marks are the adventure's (point 1).
+   as hero changes (ADR-0013 points 2 and 15); its morale and luck bonuses are the details' (from
+   increment 12 the hero on the map's, below). The once-per-hero marks are the adventure's (point
+   1).
    From increment 8 a hero on the map may be **in a boat** (it holds its boat's index) and keeps
    its **day's maximum**, the points its turn started with on its surface. The turn start sets the
    day's points and the maximum by the hero's surface: on land the land points (ADR-0013 point
@@ -230,8 +251,33 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    its points and the day's maximum are kept, and a hero in a boat jumps with its boat (an aboard
    boat's record keeps the tile it was boarded on). A Whirlpool's loss lowers or empties one stack
    of the army and never empties the army.
-   **E09's increment 3, the garrison hero** (TWN-ROW-002 to -005; survey `E09-growth.md` §9, §10;
-   after E08 increment 12's text once E08's T112 adds it): a hero of the town's owner moved into a
+   From increment 12 a visit may raise a hero's points left **and** its day's maximum together
+   (the movement objects, the Stables' first visit of a week), so a later boarding or landing
+   converts by the raised maximum, or set the points left to 0 and keep the maximum (the Swan
+   Pond; batch E12's E12-13 and E12-15: the original's, VCMI's maximum anew not). A hero on the
+   map also holds **its battle bonuses** (moved from the details, E08 decisions 306, 307): the
+   morale and the luck no once-mark names (a Pandora's Box's, an event's), each held saturating,
+   and **a short list of once-marks**, each the mark (a `u8` the content names) and the morale
+   and luck its visit gave, sorted by mark and unique, with no fixed count; a visit adds its pair
+   only while its mark is not listed. They last until the end of the hero's next battle, which
+   clears them but the marks the part names as outliving a battle under the profile (the Sirens'
+   with `ADV-QUIRK-46` off: A-44, decision 308; E12-8 and E12-11). And **its timed marks**: the
+   object types whose day's or week's mark it holds (the Magic Well's, the Stables'), each kind
+   naming its lifetime, dropped at the next day's or week's start; the week marks' kinds' points
+   are added to its day's land points (`h3-heroes`' input, ADR-0013 point 13; E12-10, E12-14).
+   Each is dropped when the hero leaves the map. The army commands gain **one owner rule** for the
+   armies they name (E08 decision 299, D-61): each army has a **bar owner**: a hero's army its
+   owner, a map garrison's (the reference `MapGarrison` by its object) its owner when removable
+   and none when not, a town's garrison its town's owner (E09's), an army dialog's group its
+   owner. A command takes a stack only from a bar of the acting player; into a bar of another
+   owner, none included, it only moves or splits a stack into an **empty** slot, never merges
+   into, swaps with or dismisses that bar's stacks; a hero's last stack never leaves its army; a
+   stationary army may be emptied (E12-1 and E12-3: an own removable garrison emptied, a
+   non-removable one's merge and takes refused). Each refusal is typed and changes nothing. The
+   Sirens' visit lowers stacks and never empties a slot; the Stables' changes a slot's creature,
+   its count kept.
+   **E09's increment 3, the garrison hero** (TWN-ROW-002 to -005; survey `E09-growth.md` §9,
+   §10): a hero of the town's owner moved into a
    town's garrison **keeps its whole record** (its army, its points and day's maximum, its
    formation and tactics flag, and from E08's increment 12 its battle bonuses and timed marks: the
    original keeps the hero record whole, `town_visitor_to_garrison` 0x4B9FC0; batch TWN-3's
@@ -679,6 +725,71 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      first and the jump given after the win, which decision 279 adopted for every entered kind
      (above). A one-way exit's arrival beside a guard is batch E11c's (before the jump is built).
      The import's refusals and the surfaces' check were not in it.
+   - **Increment 12's kinds** (the import maps 33 and 219 by subclass and the fifteen bonus
+     classes; of the fifteen only the Buoy visitable from above):
+     - **The garrison** (`garrison { anti_magic }`; ADV-GAR-001): ownable, entered, visitable from
+       above (the original's class list: a horizontal one entered from above and below, a
+       vertical one from the sides). The import reads its owner (a colour the map does not play
+       refused), its army (a count of 0 an empty slot; a **random stack refused**,
+       `ImportError::RandomStack`) and its removable flag (RoE maps: removable). Its kinds 33.0
+       and 33.1 in the base pack, 219.0 and 219.1 in the AB pack.
+     - **Its visit** (ADV-GAR-002): a garrison of the visitor's team opens the **exchange**
+       (ADR-0017 point 6); another team's or a neutral one holding a creature is fought at once,
+       **without a question**, its army as it stands, unsplit (its owner's side without a hero, or
+       unowned guards); won, or holding nothing, it is **flagged** for the visitor's owner (the
+       flag's reveal), its army empty, then the exchange (after a battle, once the winner's levels
+       are answered); lost, its survivors stay. A defeated player's garrisons become neutral with
+       their armies (E10's defeat).
+     - **The passage** (ADV-GAR-004, ADV-OBJ-003 amended; D-59 the original): a garrison of the
+       mover's team is crossed by a path and a move **without a visit**, as a border gate by its
+       key's holders (a tile like any other, on the way or at the end, the search going on from it
+       in every direction); the one at the move's end is visited. Every other garrison is a
+       destination. Every player's path as a human's (the computer's, E10's).
+     - **The anti-magic battle** (ADV-GAR-005; D-60 the original): a battle whose tile is an
+       anti-magic garrison's entrance, its own or a hero's standing on it, is fought without magic
+       (the battle's setup flag, ADR-0017 point 11).
+     - **The bonus kinds** (ADV-BON-001; all in the base pack; by the original's class lists,
+       `object_classes_not_entered` 0x63AA58 and `object_classes_from_above` 0x63AB00, the Buoy,
+       the Mermaids and the Sirens visited from a neighbour, the Buoy from above too, the twelve
+       others entered, none from above; the three on water, reached from a boat; E08 decision 317,
+       batch E12): **`bonus`** (ten classes: a once-mark, the morale and luck by the day of the
+       week, the movement added to the points left and the day's maximum or the points drained,
+       the kind mark), **`fountain_of_fortune`** (a once-mark and the luck values its weekly draw
+       picks among, equal chances), **`magic_well`** (a day mark), **`magic_spring`** (per
+       entrance), **`stables`** (a week mark, its points, the upgrade's two creatures),
+       **`sirens`** (a once-mark, the kept ratio 7 / 10). The amounts are parameters (the
+       original's immediates), as the Whirlpool's divisor.
+     - **Their visits** (ADV-BON-002 to -008): the hero's mark set gives nothing; else a `bonus`
+       adds the day's morale and luck with its mark (the amounts kept on it), then its movement;
+       a Fountain of Fortune its value's luck (its knowledge marked for the team at every visit);
+       a Magic Well the spell points to the hero's maximum and the day mark, a full hero refused
+       **unmarked**; a Magic Spring's entrance, full and the hero below twice its maximum, twice
+       the maximum, the entrance emptied (D-62: each entrance apart); the Stables at the week's
+       first visit their points now and to each day's land points until the week ends (the week
+       mark with its points), and at **every** visit every slot of Cavaliers made Champions when
+       the army holds one (D-63); the Sirens each stack above one creature **trunc(count × 0.7)**
+       by the double product (`kernel::num`, D-64), in full width (A-45 fixed), the lost hit
+       points as experience with the Learning factor, the mark either way, cleared at the next
+       battle's end only under `ADV-QUIRK-46` (A-44, `fix-optional`, on in `faithful`). The kind
+       mark is set where the original's handler sets it (on the gain path for most, on every
+       visit for the Spring, also when full for the Well; increment 7's kinds as read, some before
+       a refusal).
+     - **The draws:** the Fountains' values are drawn when the game is built (the setup stream,
+       the first week's walk with the weekly objects, in object order) and at each week's step
+       (the game's stream, the weekly pass, in object order), uniformly among the kind's values.
+     - `Revisit` visits an entered one again under its rules (no step, no points), the twelve
+       entered bonus kinds among them (batch E12 revisited the Wells and the Idol so), never the
+       Buoy, the Mermaids or the Sirens (neighbour-visited).
+     Batch E12 (E08 T110, T111; survey `E08-garrisons-bonuses.md` §15) confirmed every row of it
+     as the original's: D-59 (E12-1, E12-2: the team's garrison crossed with no visit, an empty
+     neutral one a destination), D-60 (E12-4: the battle's tile decides, also for a hero standing
+     on the entrance), D-62 to D-64 (E12-9, E12-10, E12-7), A-44's faithful side (E12-8), the
+     garrison fought at once and unsplit (E12-6), the Idol's and the Temple's days and the
+     Fountain's weekly values (E12-11, E12-12), the Well's refusal unmarked (E12-14) and the kind
+     mark before a refusal (E12-17: increment 7's School of War). Beyond the rows it corrected the
+     fifteen's visit modes: the hero stood on the Wells and the Idol and visited the Sirens, the
+     Buoy and the Mermaids from the neighbouring water, as the class lists above say, not the
+     templates' blocked tiles (ADV-Q51, E08 decision 317).
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
    memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
@@ -700,11 +811,14 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    dwelling owned at load. From increment 11 a **jump** reveals the tiles within the hero's
    scouting radius of the exit to its owner, as a step's reveal; an exit a hero occupies first
    reveals the tiles within 1 of it to the mover's owner (the original's, before the battle or the
-   meeting: batch E11's E11-7). The **fringe** is the hidden tiles touching an explored tile (the
-   reveal's shape: ADV-Q5). A viewer sees on explored tiles the public part of their content; on the
-   fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
-   `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
-   a hidden tile. Shared vision of allies comes with teams (E10).
+   meeting: batch E11's E11-7). From increment 12 a **garrison's flag** reveals its radius (the
+   flag radius, 3) around its entrance for its new owner, and an owned garrison at the start for
+   its owner, as every ownable object's (batch E12's E12-5: radius 3, not 2 or 4). The
+   **fringe** is the hidden tiles touching an explored tile (the reveal's shape: ADV-Q5). A viewer
+   sees on explored tiles the public part of their content; on the fringe terrain, roads and rivers,
+   plus object appearance under the `faithful` profile once `ADV-QUIRK-1` is confirmed (Q30's rule:
+   until then the clean behaviour only); nothing else of a hidden tile. Shared vision of allies
+   comes with teams (E10).
 6. **Information hiding.** `observe` and `project` take the viewer (ADR-0004 point 6). An
    event's visibility is resolved when it is emitted, with the state at hand: it carries the
    players who may see it (a move per step, since the fog changes during it), so `project`
@@ -798,6 +912,18 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    to the visitor's owner alone; a battle at an exit is seen as any battle, a meeting at a gate as
    any meeting; a revisit is told only by what its visit tells (no step). `docs/06-security.md`
    lists it (E08 T102).
+   From increment 12 every viewer that sees a **garrison** sees its type and owner, and **its army
+   at the viewer's level** (the town's garrison levels: the owner's team or Visions at level 3 in
+   reach of the entrance all, else by the viewer's towns with a Tavern), the game's view (ADR-0017
+   point 2); its removable flag only the owner's team. Every viewer that sees a **bonus
+   visitable** sees its type; a viewer's team's **kind marks** are its own; a Fountain of
+   Fortune's knowledge is by object, its **value never**; a Spring's entrances' state never (a
+   weekly object's contents never show). A hero's marks and their amounts are its owner's (its own
+   hero's view on the map). The exchange's moves, the movement gains, the Sirens' losses, the
+   Stables' upgrade and a refused visit are told to the visitor's owner alone; a garrison's changed
+   army to every viewer that sees it, at its level. Batch E12's E12-16 read the hint so (the name
+   and "not visited" before a visit; the bonus line and "visited" for the visitor after; nothing
+   over an unexplored tile). `docs/06-security.md` lists it (E08 T112).
 
 ## Consequences
 
@@ -869,6 +995,11 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   Whirlpool's protection is a core artifact effect kind (pack format v51, core ruleset hash v52).
   Decision 279's order (the guard first) changes every entered kind's visit on a guarded tile, not
   only the teleporters'.
+- Increment 12: the seventeen classes become typed objects (adventure ruleset part v20, map import
+  v22, adventure state hash v22: the heroes' bonuses and timed marks, the fortunes, the springs,
+  the kind marks), so on 159 of the 160 shipped maps their entrances become destinations and the
+  passages' garrisons crossable; the army commands gain the owner rule the town's rows reuse; the
+  adventure's command application takes the day of the week.
 
 ## Alternatives considered
 
@@ -945,6 +1076,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   of A-42's refusal; a jump dropping the entrance's guard (the design's call before batch E11's
   E11-19) or the guard first for the teleporters only (decision 279); A-43's list reproduced, or
   a placed boat on a Whirlpool refused when the game is built (decision 280).
+- Increment 12 (ADV-Q49 to ADV-Q51): VCMI's passage through any empty garrison with a visit on
+  the way (D-59), its magic forbidden only against the garrison's own army (D-60), its merge into
+  an ally's stack (D-61), its one refill a week for a Spring (D-62), its Stables giving nothing
+  while the week's bonus holds (D-63), its ceil(count × 0.3) drowned (D-64); the Sirens' revisit
+  reproduced with no flag or always fixed (A-44); the kind marks left for E24; a garrison's
+  exchange as the Leave Guards dialog's copied group instead of a direct reference; the Springs by
+  the original's counter; one kind per bonus class instead of six; the visit marks in the hero's
+  details as the original's records keep them (a fixed set of 32 once-marks with their amounts,
+  the day's and the week's marks beside them); the fifteen's visit modes from the templates'
+  blocked tiles (the design before batch E12, ADV-Q51).
 
 ## Revision history
 
@@ -1058,3 +1199,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   references, the hire dialog's town sources, the visit of a town with a garrison hero). Drafted
   in E09 T22a and T22b; batch TWN-3's verdicts (E09 T23) cited. E08's T112 adds its increment 12
   text to points 1, 3, 4 and 6 before this (merge order, the second rebases).
+- 2026-11-12 (E08 T112 `shared/`; the user at ADV-Q48 to ADV-Q51, E08 decisions 295, 299–302,
+  305–309, 317): points 1, 3, 4, 5 and 6 amended for E08 increment 12, garrisons and the bonus
+  visitables: a garrison's army, owner and static removable flag, the Fountains' values, the
+  Springs' entrances and the kind marks; the raised day's maximum, the battle bonuses (moved from
+  the details) and the timed marks on the hero on the map, the army commands' one owner rule (in
+  point 3 before E09's garrison hero, whose clause on this text is dropped); the kinds garrison,
+  bonus, Fountain of Fortune, Magic Well, Magic Spring, Stables and Sirens with their visits, the
+  passage, the anti-magic battle, the import's refusal of a random stack; a garrison's flag
+  reveal; a garrison's army by the viewer's level, a Fountain's value and a Spring's state
+  hidden. Drafted in E08 T108b (survey `E08-garrisons-bonuses.md`); batch E12's outcome (T111,
+  §15: every row as read) folded in, the fifteen's visit modes by the original's class lists
+  (ADV-Q51).

@@ -15669,3 +15669,60 @@ lane's two traps on visits; T112 queued with the experiments README's objects no
 `cross-lane`).
 
 **Versions:** none moved (documents only).
+
+### Increment 12, round 4: T112, the `shared/` task (2026-11-12, `shared/e08-t112`, `cross-lane`)
+
+**The cut** (decision 318; asked at the start, `AskUserQuestion`, with the consent to the
+`cross-lane` change): whole, one `shared/` pull request, as T102. Not chosen: two pull requests
+(the ADRs, then the rest); the ADRs alone. **Baseline:** `master` 07c3241 (#869 merged; the last
+code run, 2baf95b's, green on CI). Docs and a doc comment: nothing staged, no build beyond xtask.
+
+- **The ADRs** (the three drafts accepted at ADV-Q50, decisions 305–309, the visit modes at
+  ADV-Q51, decision 317; applied with batch E12's outcome, survey §15, then deleted with their
+  folder): **ADR-0013** points 1 (the battle bonuses the hero on the map's from increment 12, a
+  short list of once-marks with their amounts; E12-8, E12-10, E12-11), 2 (the bonus and the clear
+  no longer hero changes), 13.1 (the week's land points as an input; E12-10), 15.1 (the bonuses
+  an explicit input of `derive_battle_hero`, each mark its own source, the adventure's clear with
+  the kept marks; E12-8, E12-11) and 15.2 (the record's bonuses on the hero on the map), a
+  consequence, an alternative, the history. **ADR-0016** points 1 (a part **Increment 12's
+  objects**: the garrison's army, owner and static removable flag, the Fountains' values, the
+  Springs' entrances, the kind marks, the effects on the hero on the map, the day of the week as
+  an input), 3 (the raised maximum and the Swan Pond, the battle bonuses and timed marks, the one
+  owner rule; **before E09's garrison hero paragraph, whose clause "after E08 increment 12's text
+  once E08's T112 adds it" is dropped**, the town lane's inbox note; increment 7's line "its
+  morale and luck bonuses are the details'" pointed to it), 4 (a part **Increment 12's kinds**:
+  the garrison, its visit, the passage, the anti-magic battle, the bonus kinds by the class lists,
+  their visits, the draws, the revisit for the twelve entered; then a batch E12 paragraph as
+  increment 11's), 5 (the garrison's flag radius; E12-5) and 6 (a garrison's army by the viewer's
+  level, the bonus visitables' hidden facts; E12-16), a consequence, an alternative, the history.
+  **ADR-0017** points 1 (no command, `ArmyRef::MapGarrison`, the day of the week), 2 (the map
+  garrison's view, the kind marks), 3 (the day's and the week's drops, the Springs, the Fountains;
+  **before E09's garrison heroes' turn start**, whose text names increment 12's drops), 4 (the
+  Fountains' draws; E12-12), 6 (the exchange GAM-DEC-009, at the end of the point after E09's
+  increment 2 paragraph; E12-1, E12-2, E12-3, E12-6), 9 (the versions line), 10 (the outcomes;
+  E12-7), 11 (a garrison's battle, the anti-magic flag, the bonuses from the hero on the map, the
+  clear's kept marks; E12-4, E12-6, E12-8; increment 7's clear pointed to it), a consequence, an
+  alternative, the history. The index's three Read-when cells. *Agent's calls* (change freely):
+  each point cites the rows that confirmed it (T102's); ADR-0017 point 6's "the town's rows reuse
+  the kind or its armies held together" written as E09 decision 80 settled it (its armies, not the
+  kind); ADR-0017's consequence names "the fields moved from the details to the hero on the map"
+  for the draft's "the details' fields"; ADR-0013 point 2 rewrapped.
+- **The glossary** (`docs/03-domain.md`): the battle bonuses' line amended (the hero on the map's
+  from increment 12, the once-marks with their amounts), day mark and week mark; map garrison,
+  anti-magic garrison, exchange, bar owner, bonus visitable, kind mark, a Fountain's value, a
+  Spring's entrance.
+- **`docs/06-security.md`**: increment 12's lines (a garrison's army by the viewer's level and its
+  removable flag the team's; the exchange its owner's, validated by the decision and the one
+  owner rule; the kind marks the team's; a Fountain's value and a Spring's state hidden, the
+  draws server-only; the hero's marks, the gains, the losses, the upgrade and a refusal the
+  owner's; a visit's battle source public as every hero's, ADR-0013 point 9).
+- **`h3-contracts`**: `EffectSource::Visit`'s doc comment (the marks the battle bonuses the game
+  passes, the hero on the map's from increment 12; no longer `h3_heroes::BattleBonuses::marks`).
+- **The experiments README** (battle-owned, `cross-lane`): "Increment 12's objects" by the class
+  lists: the Mermaids and the Sirens visited from a neighbouring water tile, not entered; the
+  Fountain of Fortune, the Fountain of Youth, the Idol, the Wells, the Rally Flag and the Stables
+  entered at `at`; the Buoy from any of its eight neighbours.
+- **Docs**: design §19's *As built*, the header's drafts repointed; decision 318 and the task's
+  line; the queue (T112 out, T113 in).
+
+**Versions:** none moved. T113 (round 5, its cut at its start) next.

@@ -352,6 +352,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-12 (T112 done, `shared/e08-t112`: decision 318): the town lane's note below moved from the inbox, acted on (ADR-0016 point 3's text before E09's garrison hero paragraph, its clause dropped; ADR-0017 point 3's drops before E09's garrison heroes' turn start).
+  - 2026-11-12 (the town lane, E09 T24, branch `shared/e09-t24`, `cross-lane`; **for T112's
+    merge order**): T24 moved E09 increment 3's drafts into ADR-0013 (point 16.4), ADR-0016 (points
+    1, 3, 4, 6), ADR-0017 (points 1 to 4, 6, 8 to 11), ADR-0023 and ADR-0028, so your T112 is the
+    second and rebases (E09 design note §56): put increment 12's text in ADR-0016 point 3 before the
+    paragraph "**E09's increment 3, the garrison hero**" (it says "after E08 increment 12's text
+    once E08's T112 adds it": drop that clause then), and in ADR-0017 point 3 the turn start's maximum
+    and points before E09's garrison heroes' paragraph (the draft's anchor, "the maximum and the
+    points left of each of its heroes", was not in the ADR). Shared versions now: core ruleset hash
+    v53, pack format v52 (`town_growth`, `owner_town_growth`, unread until E09 T25 and T26), quirk
+    flags 41 (`quirk.town.*`, on in `faithful`); your 72 replays kept commands and state hashes,
+    only `ruleset_hash` moved.
+
 - 2026-10-19 (T21b's audit): since E04c T10b's re-recording no golden replay declines a guarded pile's question or a Cartographer's offer (the battle lane's note of 2026-10-16 below, (5)); both stay covered by `h3-game`'s unit tests and the property plans. A wider seed search or a fixture of its own would restore them, with the next re-recording. *Done by E08 T86a (2026-11-03): `duel-s4749-d28` and `duel-s5249-d28` decline a pile's question, `duel-s3560-d28` and `duel-s645-d28` a Cartographer's offer.*
 
 - 2026-10-31 (T82 and T83a done together: decision 213, T83 cut in two; ADV-Q39 answered, decision 214; T83b queued): the T82 and T83 entries as they stood in the "Tasks" text:
