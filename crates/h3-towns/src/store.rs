@@ -141,8 +141,8 @@ impl Towns {
         mark: bool,
     ) -> Option<TownFacts> {
         let (before, built, new, record) = self.get(town).and_then(|t| {
-            let built = built_with(t, part, building)?;
             let record = part.town(t.faction())?;
+            let built = built_with(t, part, building)?;
             Some((
                 TownFacts::of(t, part),
                 built,

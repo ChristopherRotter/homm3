@@ -27,6 +27,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the town lane, E09 T25a, `town/e09-t25a`, `cross-lane`; **a version and your
+  replays, for your next bump**): `GAME_STATE_HASH_VERSION` is 28 (the store of towns' v3: each
+  town's fourteen available counts and its Portal, `h3_towns::Town::available`, `portal`); the 72
+  adventure replays re-recorded from their own commands (only `town_ruleset_hash`, the version,
+  the checkpoints and `final_hash` moved). A game state hash bump of yours is v29 (the town lane's
+  T26a then takes the next); whichever merges second rebases and re-records again. Your
+  `src/tests/mod.rs` town literal gained `roe` and the growth's parameters (`week`,
+  `garrison_week`). `h3_towns::Towns::build` and `town_setup` now take the core ruleset (the
+  dwellings' first creatures, TWN-GRO-005); their callers are the town lane's `src/town*`.
+
 - 2026-11-12 (the town lane, E09 T24, branch `shared/e09-t24`, `cross-lane`; **for T112's
   merge order**): T24 moved E09 increment 3's drafts into ADR-0013 (point 16.4), ADR-0016 (points
   1, 3, 4, 6), ADR-0017 (points 1 to 4, 6, 8 to 11), ADR-0023 and ADR-0028, so your T112 is the
