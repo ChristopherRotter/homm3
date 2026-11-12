@@ -8,7 +8,7 @@ use std::vec::Vec;
 use super::full;
 use crate::lobby::{Limits, Lobby};
 use crate::map;
-use crate::wire::game::{MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
+use crate::wire::game::{Computer, MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
 use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage, WireU64};
 
 fn offers() -> Vec<Offer> {
@@ -35,6 +35,7 @@ fn maps() -> Vec<MapOffer> {
             content_hash: WireU64(9),
             import_version: 1,
         },
+        computer: Computer::Fair,
     }]
 }
 

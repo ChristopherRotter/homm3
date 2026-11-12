@@ -13,7 +13,7 @@ use serde::de::DeserializeOwned;
 use super::battle;
 use crate::PROTOCOL_VERSION;
 use crate::map;
-use crate::wire::game::{MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
+use crate::wire::game::{Computer, MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
 use crate::wire::*;
 
 /// One of every command.
@@ -396,6 +396,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     content_hash: WireU64(5),
                     import_version: 21,
                 },
+                computer: Computer::AllSeeing,
             }],
             map_games: vec![MapGameInfo {
                 game: 5,

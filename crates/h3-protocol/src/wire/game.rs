@@ -35,7 +35,7 @@ pub use command::{
     StandReject, TownCommand, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
-pub use lobby::{MapGameInfo, MapOffer, SeatedPlayer};
+pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
 pub use manifest::{GameKeyTables, GameManifest, GameRecordHeader, MapIdentity};
 
 /// A tile of the adventure map: its column, its row and its level (0 the surface, 1 the

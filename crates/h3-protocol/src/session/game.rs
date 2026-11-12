@@ -42,7 +42,12 @@
 //! - **The system actor** (`h3_game::Actor::System`, E08 T20b2): its commands come from the host
 //!   ([`GameSession::system`]; its legal ones [`GameSession::system_legal`]): an unowned battle
 //!   side's, a wandering monster's. No player is told its acceptance or its rejection; its events
-//!   are told as every command's.
+//!   are told as every command's. In a game of connections the host's computer plays them (E16
+//!   M5 T10, [`GameSession::computer`]): whenever an unowned side is to act in the running game
+//!   (after a seat's accepted command, at a join that resumes the game, when the computer is
+//!   handed over), as a battle's bot plays its seat; each command is journaled as the system
+//!   actor's, so a restore re-runs it and asks no computer (a policy's new version voids no
+//!   game).
 //! - **Viewers.** Each player is a viewer with its own message numbers `n`; everything it gets is
 //!   projected for it by construction ([`crate::map::game`]). When the game starts it gets its
 //!   `GameSnapshot`. After every accepted command: the player that sent it `GameAccepted`
@@ -94,14 +99,17 @@
 //! game's), the host's tokens drawn through a closure (T8a); the numbering rule, the answers kept,
 //! a resend's answer numbered and recorded, `GameJoined`'s `last`, the pause's messages and
 //! entries, `reopen` with the host's tokens, a restored started game's snapshots and turns into
-//! its records (T8b); the empty game's pause, the record's download answered as a battle's (T9b).
+//! its records (T8b); the empty game's pause, the record's download answered as a battle's (T9b);
+//! the computer handed over after the construction, playing at once, a rejected choice replaced
+//! by the first legal command (T10).
 
+use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_battle::BattleSide;
+use h3_battle::{BattleSide, LegalCommands};
 use h3_contracts::PlayerId;
 use h3_game::{
     Actor, BitGrid, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState, NoopSink,
@@ -109,7 +117,8 @@ use h3_game::{
 };
 
 use super::{
-    ConnId, Outbound, Record, game_unseated, goodbye, handed, refusal, refused, reply, unseated,
+    Bot, ConnId, Outbound, Record, game_unseated, goodbye, handed, refusal, refused, reply,
+    unseated,
 };
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
@@ -400,6 +409,8 @@ pub struct GameSession<'r> {
     paused: bool,
     /// The login names of the logged-in connections, as the host said (E16 M5 T8a).
     logins: BTreeMap<ConnId, String>,
+    /// The host's computer, which plays the unowned battle sides (E16 M5 T10).
+    computer: Option<Box<dyn Bot + Send>>,
 }
 
 impl<'r> GameSession<'r> {
@@ -589,6 +600,7 @@ impl<'r> GameSession<'r> {
             host: None,
             paused: false,
             logins: BTreeMap::new(),
+            computer: None,
         })
     }
 
@@ -803,7 +815,11 @@ impl<'r> GameSession<'r> {
         }
         self.snapshot(player, &mut frames);
         if self.started {
-            self.turn(player, &mut frames);
+            // A resumed game may be the computer's to play (E16 M5 T10); its commands' turns
+            // are every player's, the joiner's too.
+            if !self.unowned(&mut frames) {
+                self.turn(player, &mut frames);
+            }
         } else if held {
             self.started = true;
             self.entries.push(GameEntry::Started);
@@ -999,6 +1015,7 @@ impl<'r> GameSession<'r> {
                     out,
                 );
                 self.tell(told, out);
+                self.unowned(out);
                 Ok(())
             }
         }
@@ -1047,6 +1064,55 @@ impl<'r> GameSession<'r> {
             .iter()
             .map(map::game::command)
             .collect()
+    }
+
+    /// Hands the host's `computer` the unowned battle sides from now on (E16 M5 T10; a game of
+    /// connections'): it is asked for the side's command whenever one is to act in the running
+    /// game, each command applied and journaled as the system actor's and told as
+    /// [`GameSession::system`]'s. It plays at once if one is to act now: a restored game whose
+    /// journal a crash cut between a seat's command and the computer's answers
+    /// ([`GameSession::reopen`] re-runs the journal and asks no computer), its frames to `out`
+    /// as [`GameSession::handle`]'s, its entries to drain.
+    pub fn computer(&mut self, computer: Box<dyn Bot + Send>, out: &mut Vec<Outbound>) {
+        self.computer = Some(computer);
+        let mut frames = Vec::new();
+        self.unowned(&mut frames);
+        self.route(frames, out);
+    }
+
+    /// The computer's commands while an unowned battle side is to act in the running game (E16
+    /// M5 T10), each told; whether it played any. A choice the engine rejects is replaced by the
+    /// side's first legal command it accepts, as a battle's bot's (`super::Session`): it accepts
+    /// every legal command, so the computer plays until a player is to act or no battle is its.
+    /// None without a computer, before the start and while the game is paused.
+    fn unowned(&mut self, out: &mut Vec<GameOutbound>) -> bool {
+        let (mut legal, mut played, mut moved) = (LegalCommands::new(), false, true);
+        while moved && self.started && !self.paused {
+            let Some(computer) = self.computer.as_mut() else {
+                break;
+            };
+            let to_act = self.state.unowned_battle();
+            let Some((battle, side)) = to_act.and_then(|b| Some((b, b.state().side_to_act()?)))
+            else {
+                break;
+            };
+            let ruleset = self.rules.battle();
+            h3_battle::legal_commands(battle.state(), ruleset, side, &mut legal);
+            let choice = computer.command(battle.state(), ruleset, side, &legal);
+            let mut choices = core::iter::once(choice).chain(legal.iter().copied());
+            moved = choices.any(|command| {
+                let mut told = Told {
+                    rules: self.rules,
+                    events: Vec::new(),
+                    ended: Vec::new(),
+                };
+                let command = h3_game::GameCommand::Battle(command);
+                let applied = self.execute(Origin::Host(Actor::System), command, &mut told);
+                applied.map(|()| self.tell(told, out)).is_ok()
+            });
+            played |= moved;
+        }
+        played
     }
 
     /// The game's state (the host's: the hashes, the end).

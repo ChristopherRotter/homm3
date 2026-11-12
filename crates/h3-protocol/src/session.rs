@@ -124,9 +124,11 @@ pub struct Outbound {
 
 /// A bot that plays a seat: the host's (ADR-0018 point 6). It is asked for a command whenever its
 /// side is to act, with the side's legal commands; casts are not listed there but are valid
-/// choices. It must use only what its side may know (the engine's per-side functions:
-/// `legal_commands`, `castable_spells`, `cast_targets`, `observe`). A choice the engine rejects is
-/// replaced by the first legal command.
+/// choices. A battle's seat's must use only what its side may know (the engine's per-side
+/// functions: `legal_commands`, `castable_spells`, `cast_targets`, `observe`); a whole game's
+/// computer, which plays the unowned battle sides (E16 M5 T10, `game::GameSession::computer`),
+/// reads the whole battle where its offer says so (`wire::game::Computer::AllSeeing`). A choice
+/// the engine rejects is replaced by the first legal command.
 pub trait Bot: fmt::Debug {
     /// The command for `side`.
     fn command(

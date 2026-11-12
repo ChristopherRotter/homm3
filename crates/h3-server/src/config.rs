@@ -64,6 +64,8 @@
 //! profile = "base:faithful"
 //! difficulty = 1                     # optional: 0 easy to 4 impossible; normal (1) by default
 //! name = "Duel"                      # optional: the lobby's name; the map file's by default
+//! computer = "fair"                  # optional: who plays its unowned battle sides (E16 M5 T10):
+//!                                    # "fair" (by default) or "all-seeing"
 //!
 //! [[ladder]]                         # a ranked game configuration (E16 M4); none by default
 //! id = "arena"                       # a-z 0-9 _ -, at most 32: its results log's file name
@@ -122,6 +124,18 @@ pub enum BotKind {
     /// The sim's random agent.
     #[default]
     Random,
+}
+
+/// The computer that plays a whole game's unowned battle sides (E16 M5 T10; provisional): the
+/// original's battle AI, fair or all-seeing (`h3_protocol::wire::game::Computer`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Computer {
+    /// On its side's world (`h3_battle_ai::choose_fair`).
+    #[default]
+    Fair,
+    /// On the whole battle (`h3_battle_ai::choose`).
+    AllSeeing,
 }
 
 /// One `[[ladder.bot]]` (E16 M4 T5): an account of the server's, which never logs in, whose seats
@@ -332,6 +346,9 @@ pub struct MapOffer {
     /// The lobby's name for it; the map file's own by default.
     #[serde(default)]
     pub name: Option<String>,
+    /// Who plays its games' unowned battle sides (E16 M5 T10): the fair computer by default.
+    #[serde(default)]
+    pub computer: Computer,
 }
 
 /// The difficulty a `[[map]]` that names none plays at: normal.

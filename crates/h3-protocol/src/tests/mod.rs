@@ -2,7 +2,7 @@
 //! core (M1 T2), the lobby (M2 T1), the decoder under mutated frames (M2 T5d), the ladders' queues
 //! (M4 T2), the server's card (M6 T2), lists of servers (M6 T5), the whole game's wire (M5 T2), its
 //! commands and rejections (M5 T3a), its events (M5 T3b), its seats (M5 T8a), its resends, pause
-//! and restore with seats (M5 T8b).
+//! and restore with seats (M5 T8b), its computer (M5 T10).
 
 mod card;
 mod codec;
@@ -10,6 +10,7 @@ mod connection;
 mod game;
 mod game_bounds;
 mod game_command;
+mod game_computer;
 mod game_event;
 mod game_fold;
 mod game_manifest;
