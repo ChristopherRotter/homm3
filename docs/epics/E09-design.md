@@ -1440,6 +1440,11 @@ still change at `TWN-Q14` (decision 78 lists them).
 - **Views:** the garrison's change is told to every viewer whose view of the town moves
   (TWN-VEW-002's levels), with the towns' day's `TownChanged`s (§47).
 - TD-15 by the reading (decision 72); batch TWN-3's row TWN-3-4 observes the distribution.
+- *As built (T25b2):* `h3_towns::garrison_week(town, part, core, weeks, garrison, rules, draws)
+  -> Option<GarrisonWeek { stacks, town }>` (`garrison.rs`), `rules` the adventure part's army
+  slots and a stack's most (the room is ADV-ARM-007's), the stacks returned in slot order; a level
+  the record lacks, a creature growing none and a growth above a stack's most give none after the
+  sums; row TWN-3-4's room cases are unit tests (decision 88).
 
 ### 45. The Portal of Summoning (TWN-GRO-007)
 
@@ -1463,6 +1468,9 @@ still change at `TWN-Q14` (decision 78 lists them).
   capture opens the screen, which draws at once). **Not drawn** in a neutral town (the original's
   week skips it).
 - **Its hire** is T22b's half (into the garrison army, survey §5).
+- *As built (T25b2):* `h3_towns::summon(town, part, core, offer, draws) -> Town` (`portal.rs`):
+  a town without a standing `portal` building unchanged with no draw, an empty `offer` empties
+  the Portal with no draw; the owner and the streams the game's (T26b).
 
 ### 46. A dwelling's first creatures and the town events' creatures (TWN-GRO-005, TWN-EVT-004 amended)
 

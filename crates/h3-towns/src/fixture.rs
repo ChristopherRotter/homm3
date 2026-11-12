@@ -5,7 +5,7 @@
 //! requirements, costs and Shipyard, E09 T17b; increment 3's horde roles, Portal and week's
 //! building, E09 T25a), the Marsh's small one (a silo that pays gold, one level of creatures, free
 //! buildings without requirements, not a Restoration of Erathia record) and no record for the
-//! Wild; the core's creatures by handle, with the Keep's and the Marsh's growths.
+//! Wild; the core's creatures by handle, with the Keep's and the Marsh's growths and AI values.
 
 extern crate std;
 
@@ -190,6 +190,12 @@ pub(crate) const fn growths(raw: u16) -> (u16, u16) {
     }
 }
 
+/// The core's AI value of the creature of handle `raw` (E09 T25b2, the garrison week's room): ten
+/// times its handle (the Keep's level-1 creature 100, its upgrade 110, level 2 200).
+pub(crate) const fn ai_value(raw: u16) -> u32 {
+    raw as u32 * 10
+}
+
 /// The set of the Keep's buildings at `indices`.
 pub(crate) fn set(indices: &[usize]) -> BuildingSet {
     indices.iter().fold(BuildingSet::EMPTY, |set, &i| {
@@ -219,8 +225,8 @@ fn key(text: &str) -> ContentKey {
 }
 
 /// The core: the resources `t:wood`, `t:ore`, `t:gold`, the factions `t:keep`, `t:marsh`,
-/// `t:wild` and the creatures `t:c0` to `t:c51` (handles 0 to 51), with [`growths`]; its profile
-/// enables no quirk flag.
+/// `t:wild` and the creatures `t:c0` to `t:c51` (handles 0 to 51), with [`growths`] and
+/// [`ai_value`]; its profile enables no quirk flag.
 pub(crate) fn core() -> Ruleset {
     core_with(&[])
 }
@@ -244,6 +250,7 @@ pub(crate) fn core_with(quirks: &[&str]) -> Ruleset {
             info: CreatureInfoDef {
                 growth,
                 horde_growth,
+                ai_value: ai_value(raw),
                 ..CreatureInfoDef::default()
             },
         }
@@ -483,16 +490,24 @@ pub(crate) fn part() -> TownRuleset {
 
 /// The part with its parameters changed by `change`.
 pub(crate) fn part_with(change: impl FnOnce(&mut TownParams)) -> TownRuleset {
-    let mut params = params();
-    change(&mut params);
-    TownRuleset::new(&core(), Some(params), vec![keep(), marsh()])
+    part_changed(change, |_| {})
 }
 
 /// The part with the Keep's record changed by `change`.
 pub(crate) fn part_with_keep(change: impl FnOnce(&mut TownRecord)) -> TownRuleset {
-    let mut keep = keep();
-    change(&mut keep);
-    TownRuleset::new(&core(), Some(params()), vec![keep, marsh()])
+    part_changed(|_| {}, change)
+}
+
+/// The part with its parameters changed by `params_change` and the Keep's record by
+/// `keep_change` (E09 T25b2).
+pub(crate) fn part_changed(
+    params_change: impl FnOnce(&mut TownParams),
+    keep_change: impl FnOnce(&mut TownRecord),
+) -> TownRuleset {
+    let (mut params, mut keep) = (params(), keep());
+    params_change(&mut params);
+    keep_change(&mut keep);
+    TownRuleset::new(&core(), Some(params), vec![keep, marsh()])
 }
 
 /// The part without towns (no parameters, no record).

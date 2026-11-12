@@ -36,6 +36,7 @@ use h3_protocol::codec;
 use h3_protocol::ladder::{Matched, Queues, Told};
 use h3_protocol::lobby::{self, Lobby};
 use h3_protocol::session::{self, ConnId};
+use h3_protocol::wire::game::SeatedPlayer;
 use h3_protocol::wire::{
     ClientMessage, GameInfo, Phase, Refusal, Seat, Seated, ServerMessage, UnqueueReason,
 };
@@ -45,6 +46,7 @@ use tokio::time::Instant;
 use crate::archive::Archive;
 use crate::game::{self, Offer, Outbox, Prepared, Stores, ToGame};
 use crate::ladders::{Ladders, Pool};
+use crate::whole::{self, MapOffer};
 use crate::{Error, config, journal};
 
 /// A game's inbox: messages waiting for the game's thread.
@@ -90,6 +92,8 @@ pub(crate) enum Hosted {
 pub(crate) struct Registry {
     lobby: Lobby<IpAddr>,
     offers: Vec<Arc<Offer>>,
+    /// The map offers (E16 M5 T9a).
+    maps: Vec<Arc<MapOffer>>,
     games: BTreeMap<u32, Hosted>,
     server: config::Server,
     /// The server's bounds: how many spectators each game takes (E16 M2 T4), the deadlines of
@@ -120,24 +124,27 @@ pub(crate) struct Registry {
 }
 
 impl Registry {
-    /// A registry of `offers` and of the ladders' queues within `limits`, and no games; its games'
-    /// books are `stores` (their ids follow those handed out before, E16 M4 T3b).
+    /// A registry of `offers` and of `maps` (E16 M5 T9a), and of the ladders' queues within
+    /// `limits`, and no games; its games' books are `stores` (their ids follow those handed out
+    /// before, E16 M4 T3b).
     pub(crate) fn new(
-        offers: Vec<Arc<Offer>>,
+        (offers, maps): (Vec<Arc<Offer>>, Vec<Arc<MapOffer>>),
         limits: &config::Limits,
         server: config::Server,
         stores: Stores,
     ) -> Self {
         let infos = offers.iter().map(|o| o.info.clone()).collect();
+        let map_infos = maps.iter().map(|m| m.info.clone()).collect();
         let games = lobby::Limits {
             games: limits.games,
             games_per_origin: limits.games_per_address,
         };
-        let mut lobby = Lobby::new(infos, games);
+        let mut lobby = Lobby::new(infos, map_infos, games);
         lobby.skip(stores.ids.last());
         Self {
             lobby,
             offers,
+            maps,
             games: BTreeMap::new(),
             server,
             limits: *limits,
@@ -502,6 +509,17 @@ impl Registry {
         self.lobby.seat(game, seated);
     }
 
+    /// Where the whole game `game` is now (E16 M5 T9a): its phase and its open seats.
+    pub(crate) fn report_map(&mut self, game: u32, status: (Phase, Vec<u8>)) {
+        self.lobby.update_map(game, status);
+    }
+
+    /// The seats of the whole game `game` that belong to accounts, with their display names (E16
+    /// M5 T9a).
+    pub(crate) fn seat_map(&mut self, game: u32, seated: Vec<SeatedPlayer>) {
+        self.lobby.seat_map(game, seated);
+    }
+
     /// Whether game `game`, in `phase`, leaves now: when it is not running and no connection is
     /// bound to it, unless it is a match's game that waits for its players (E16 M4 T2: they have
     /// not come yet). Then it is gone from the lobby, and its thread ends.
@@ -673,6 +691,75 @@ pub(crate) fn create(
         },
     );
     Ok((game, to_game))
+}
+
+/// Creates a whole game of the map offer `offer` for a client at `origin`, whose creator takes
+/// `player`'s seat, and binds the creator (`conn`, its queue `to`, its account's `login`) to it
+/// (E16 M5 T9a): the game's id and inbox, or why not. As [`create`]: the creator's join is the
+/// game's first message, the game draws its secrets and creates its journal on its own thread.
+pub(crate) fn create_map(
+    shared: &Shared,
+    origin: IpAddr,
+    (offer, player): (&str, u8),
+    (conn, to, login): (ConnId, Outbox, Option<String>),
+) -> Result<(u32, mpsc::Sender<ToGame>), Refusal> {
+    let mut registry = lock(shared);
+    let (game, index) = registry.lobby.create_map(origin, offer, player)?;
+    let offer = Arc::clone(&registry.maps[index]);
+    let (server, limits) = (registry.server.clone(), registry.limits);
+    let stores = registry.stores.clone();
+    let prepare =
+        move || match whole::Prepared::new(offer, game, origin, (&server, &limits, stores)) {
+            Ok(prepared) => Some(prepared),
+            Err(e) => {
+                eprintln!("h3-server: game {game} not created: {e}");
+                None
+            }
+        };
+    let (to_game, inbox) = mpsc::channel(GAME_INBOX);
+    let join = ClientMessage::GameJoin {
+        game,
+        player,
+        token: None,
+    };
+    Opening {
+        conn,
+        to,
+        login,
+        join,
+    }
+    .first(&to_game);
+    if let Err(e) = game::launch(game, prepare, inbox, Arc::clone(shared)) {
+        eprintln!("h3-server: game {game} not created: {e}");
+        registry.lobby.remove(game);
+        return Err(Refusal::TooManyGames);
+    }
+    registry.games.insert(
+        game,
+        Hosted::Live {
+            to: to_game.clone(),
+            bound: 1,
+        },
+    );
+    Ok((game, to_game))
+}
+
+/// Binds a connection that joins a seat of the whole game `game` (E16 M5 T9a): the game's inbox,
+/// and the connection's `opening` back for its task to pass (the game's session refuses the join
+/// or takes it), or why not. A paused game has no thread only when it is a battle's (a whole game
+/// keeps its thread while paused until E16 M5 T9b): no such whole game.
+pub(crate) fn bind_map(
+    shared: &Shared,
+    game: u32,
+    opening: Opening,
+) -> Result<(mpsc::Sender<ToGame>, Option<Opening>), Refusal> {
+    match lock(shared).games.get_mut(&game) {
+        Some(Hosted::Live { to, bound }) => {
+            *bound += 1;
+            Ok((to.clone(), Some(opening)))
+        }
+        None | Some(Hosted::Paused { .. }) => Err(Refusal::NoSuchGame),
+    }
 }
 
 /// Binds a connection that joins `seat` of game `game` with `token`: the game's inbox, and the
@@ -879,7 +966,10 @@ mod tests {
             ids: Arc::new(GameIds::open(&data).unwrap()),
         };
         let limits = config::Limits::default();
-        (Registry::new(vec![], &limits, server, stores), data)
+        (
+            Registry::new((vec![], vec![]), &limits, server, stores),
+            data,
+        )
     }
 
     #[test]
