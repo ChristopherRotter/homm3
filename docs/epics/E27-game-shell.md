@@ -115,8 +115,7 @@ The user, 2026-11-12 (M1 T1b2; `CLT-Q92` to `CLT-Q95`; T1b2 kept whole at its st
     computer's (CLT-Q94); a human's Random town stays Random, drawn by the engine at the build
     (CLT-Q95; the original takes the town drawn at the list's read). The reading also found that
     the bonus, the handicap and the turn's duration have no `GameSetup` field (design §3.9: the
-    first two E10's, the timer the hot seat's, E24 M5), and that a single player's row first shows
-    a town drawn at the list's read.
+    first two E10's, the timer the hot seat's, E24 M5).
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing

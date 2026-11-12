@@ -164,9 +164,10 @@ network handlers, about 10 KB, only noted).
   network messages. Checked privately in the staged data (never committed): `ArrayTxt.txt`'s,
   GENRLTXT's and `turndur.txt`'s records' subjects; the 159 maps' player blocks (no human-only
   colour; no colour with placed heroes and neither flag nor main hero).
-- **Found:** the human records (any colour) and the computer records (by colour); a single
-  player's town first shows a town drawn at the list's read, and a human's Random takes that town
-  at Begin (a computer's is drawn then); single player cannot set a handicap; the hero arrows act
+- **Found:** the human records (any colour) and the computer records (by colour); a human's
+  Random town takes the town drawn at the list's read (a computer's is drawn at Begin), which a
+  single player's row shows first only on a map with a human-only colour (none shipped; CLT-Q95's
+  question overstated it as the general case, corrected after the answer, which stands); single player cannot set a handicap; the hero arrows act
   for humans only and skip another human's hero (as the engine's `PickTaken`); the bonus skips the
   Artifact for a colour without a hero and the Resource under a Random town, its popups state the
   amounts (E10's); on a map with a human-only colour the single player is pinned from it on; the

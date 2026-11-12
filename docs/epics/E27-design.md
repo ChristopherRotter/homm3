@@ -712,9 +712,9 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
   colour −1 (a load: the colours lost in the save, game +0x1F636, no longer playable by a human);
   then **the hot seat:** each colour a human may play (the map's player +0, in colour order) to
   the next human record without one (a load: first the save's own humans, `load_slots` 0x69FDA4); **single:**
-  the first colour only a human may play, else the first a human may play, else the first anyone
-  plays, else none, to the local record, with its town the one the list's record drew for it
-  (§3.17). On a map with a colour only a human may play, the original makes that colour and every
+  to the local record the first colour only a human may play, with its town the one the list's
+  record drew for it (§3.17), else the first a human may play, else the first anyone plays, else
+  none (its town Random). On a map with a colour only a human may play, the original makes that colour and every
   later one computer-only (the first two loops of 0x584DF0): the player may then move only to an
   earlier colour; no shipped map has such a colour (the 159 maps' headers, checked privately).
   **CLT-Q93** (decision 13): the client turns only the other human-only colours computer-only.
@@ -807,8 +807,8 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
 - **The handicap** (207 to 214): (+1) modulo 3, its caption `handicap_names`, the row redrawn.
 - **The flag** (263 to 270, `scenario_flag_click` 0x58B790; a network guest's does nothing):
   - **single:** to a colour a human may play, not its own: the old flag's highlight cleared, the
-    players block's +0x30 bytes of the two colours exchanged (*inferred*: their kinds), the
-    local record's colour the new one, its town and hero Random, the lists; then the flags (§3.5).
+    players block's +0x30 byte of the old colour takes the new one's and the new one's becomes its
+    colour's index (*not understood*), the local record's colour the new one, its town and hero Random, the lists; then the flags (§3.5).
   - **the hot seat** (and a host): to a colour a human may play, `hot_seat_colour_cycle`
     0x577AE0: its holder loses it; the first human record with a player from index (the holder's
     +0x74 + 1), always 0 outside network play, or with no holder from the first player without a
@@ -908,10 +908,12 @@ After Begin's checks (§3.6), the busy cursor and `loading_screen_open` (§2.1),
    chosen heroes into `chosen_heroes` (E09's survey §4.1); `new_game_load` 0x4C0520 (the map's
    read and the game's setup, E08's and E09's readings); a step; a host sends the game (not built).
 
-So a single player's Random town is the town its row showed first (§3.12), and any human's is fixed
-before Begin. **CLT-Q95** (decision 13): the client hands the engine `FactionChoice::Random`,
-drawn at the build from the game's seed (TWN-SET-001); the row still first shows a town the client
-draws; the original's rule for the comparisons only. For the client the begin is: the filled
+So a human's Random town is fixed when the list is read, not at Begin (on a map with a human-only
+colour the single player's row even shows it first, §3.12; on the shipped maps the row shows
+Random and the pre-draw stays hidden). **CLT-Q95** (decision 13): the client hands the engine
+`FactionChoice::Random`, drawn at the build from the game's seed (TWN-SET-001); the row shows what
+the original's shows (on a map with a human-only colour a town the client draws); the original's
+rule for the comparisons only. For the client the begin is: the filled
 `GameSetup` built and validated by the engine, handed to the hot seat (E24 M5); the loading bar's
 steps are the client's (M2's loading).
 
