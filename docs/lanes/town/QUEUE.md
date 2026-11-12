@@ -48,6 +48,13 @@ income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, i
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **two versions taken, for
+  your T26a and T28a**): map import **v22** (the garrisons and the bonus visitables imported, a
+  garrison's body in the new `h3_adventure::Holds::Garrison { army, removable }`) and adventure
+  state hash **v22** (`Holds` tag 11) are taken: T26a's `roe` import bump is v23 or the next at
+  merge, an adventure state hash bump of yours the next after v22 (the adventure lane's T114a
+  plans v23 and the game state hash v29, as your T25a note said). The 72 adventure replays'
+  version lines and hashes were re-recorded; whichever merges second rebases and re-records.
 - 2026-11-12 (the server lane, E16 M5 part 2's refinement, SRV-Q29; **the user's decision,
   informational**): in increment 2c the server lane builds `Viewer::Spectator` (public facts only)
   through `h3-towns`' projections too (a town's view at a spectator's level), in a `cross-lane`

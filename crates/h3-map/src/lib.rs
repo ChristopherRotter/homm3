@@ -76,8 +76,13 @@ pub use parse::parse;
 /// faction when the game is built. v21 (E08 T103b): the teleporters typed (the monoliths 43 to 45
 /// by subclass, the channel; the Subterranean Gate 103 and the Whirlpool 111), a monolith subclass
 /// past 7 refused (A-39); class 220 typed by the mines' subclasses as 53 (a crafted 220.0 a
-/// Sawmill, 220.8 refused; every shipped one is 220.7).
-pub const MAP_IMPORT_VERSION: u32 = 21;
+/// Sawmill, 220.8 refused; every shipped one is 220.7). v22 (E08 T113b): the garrisons (33, 219)
+/// typed by subclass, each with its owner (a colour nobody plays refused), its troops (a count of
+/// 0 an empty slot) and its removable flag (true on an RoE map), a random stack in one refused for
+/// good (`ImportError::RandomStack`), a subclass past 1 refused; the fifteen bonus visitables (11,
+/// 14, 28, 30, 31, 38, 48, 49, 52, 56, 64, 92, 94, 96, 110) typed, a subclass past 0 refused; 219
+/// ownable among a battle's surroundings.
+pub const MAP_IMPORT_VERSION: u32 = 22;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///
