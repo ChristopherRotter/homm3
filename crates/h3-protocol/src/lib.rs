@@ -92,7 +92,9 @@ pub mod wire;
 /// points left and day's maximum after a command that changed them, its owner's alone. v43 (E16
 /// M5 T5c, SRV-Q26 (a)): the whole game's message `GameReveal`, what a viewer newly sees after a
 /// command that explored tiles for it (`h3_game::reveal`); a view's objects in tile order
-/// (`wire::game::Object::place`), no longer the map's: the field is unchanged, its order is new.
+/// (`wire::game::Object::place`), no longer the map's: the field is unchanged, its order is new;
+/// `GameLastSnapshot`, a game's battle as each owner's side saw it when it ended (SRV-Q27 (1),
+/// `h3_game::Sink::battle_ended`).
 pub const PROTOCOL_VERSION: u32 = 43;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when

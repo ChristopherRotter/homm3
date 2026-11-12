@@ -19,7 +19,9 @@
 //!   `GameSnapshot`. After every accepted command: the player that sent it `GameAccepted`
 //!   (echoed), then every viewer `GameEvents` with the command's events as it may see them (also
 //!   an empty list, so that what a viewer receives does not depend on what it may not see), its
-//!   `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
+//!   battle as its side saw it when it ended (`GameLastSnapshot`, E16 M5 T5c: the session's sink
+//!   keeps each owner's last view of a battle the command ends, `h3_game::Sink::battle_ended`;
+//!   SRV-Q27 (1)), its `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
 //!   keeps each viewer's explored grid as it was last told it and asks `h3_game::reveal` when the
 //!   grid's count changed) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
 //!   events are then the battle client's, inside `GameEvents`), then every player that may act
@@ -36,7 +38,7 @@
 //!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]: the
 //!   oldest lines go first): [`GameSession::record`] gives it with its header line
 //!   ([`GameRecordHeader`]: the game's manifest and the player), as a record file holds it.
-//! - **Not here yet:** a battle's last snapshot when it ends (`SRV-STUB-14`); a hero's moves, which
+//! - **Not here yet:** a hero's moves, which
 //!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`; a query
 //!   with part 2's network seats); the journal's file and the hosting over the network (part 2).
 //!
@@ -44,7 +46,8 @@
 //! the message order, a `GameTurn` after every accepted command to every player that may act, a
 //! system command told to nobody, a player outside the game told nothing; the entries, a restore
 //! telling every player its snapshot and turn afresh, the record's header with the game's id; a
-//! reveal as a message of its own after the events (T5c).
+//! reveal as a message of its own after the events, a battle's last view as one of its own
+//! before it (T5c).
 
 use alloc::string::String;
 use alloc::vec;
@@ -52,6 +55,7 @@ use alloc::vec::Vec;
 
 use h3_battle::BattleSide;
 use h3_contracts::PlayerId;
+use h3_game::Sink;
 use h3_game::{
     Actor, BitGrid, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState,
     OpenBattle, Viewer as EngineViewer,
@@ -61,8 +65,8 @@ use super::Record;
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
-use crate::wire::ServerMessage;
 use crate::wire::game::{GameCommand, GameEvent, GameManifest, GameRecordHeader, GameReject};
+use crate::wire::{Observation, ServerMessage};
 
 /// A frame for a player: the host delivers it to the player's client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -149,6 +153,28 @@ pub enum GameRestoreError {
         /// The entry's index.
         at: usize,
     },
+}
+
+/// What a command told (E16 M5 T5c): its events and, for each battle it ended, each owner's last
+/// view of it, as its side saw it as it ended.
+struct Told<'r> {
+    rules: &'r GameRuleset,
+    events: Vec<h3_game::GameEvent>,
+    ended: Vec<(PlayerId, Observation)>,
+}
+
+impl Sink for Told<'_> {
+    fn emit(&mut self, event: h3_game::GameEvent) {
+        self.events.push(event);
+    }
+
+    fn battle_ended(&mut self, battle: &OpenBattle) {
+        let owned = BattleSide::BOTH.into_iter().zip(battle.owners());
+        for (side, owner) in owned.filter_map(|(side, owner)| owner.map(|o| (side, o))) {
+            let last = map::observe(battle.state(), self.rules.battle(), side);
+            self.ended.push((owner, last));
+        }
+    }
 }
 
 /// One viewer of the game: a player.
@@ -350,14 +376,14 @@ impl<'r> GameSession<'r> {
                 }
                 Err(code)
             }
-            Ok((command, events)) => {
+            Ok((command, told)) => {
                 // The engine accepts only a player of the game's command.
                 self.viewers[player.index()].post(
                     player,
                     |n| ServerMessage::GameAccepted { n, seq, command },
                     out,
                 );
-                self.tell(&events, out);
+                self.tell(told, out);
                 Ok(())
             }
         }
@@ -374,8 +400,8 @@ impl<'r> GameSession<'r> {
         command: GameCommand,
         out: &mut Vec<GameOutbound>,
     ) -> Result<(), GameReject> {
-        let (_, events) = self.apply(Actor::System, command)?;
-        self.tell(&events, out);
+        let (_, told) = self.apply(Actor::System, command)?;
+        self.tell(told, out);
         Ok(())
     }
 
@@ -425,44 +451,58 @@ impl<'r> GameSession<'r> {
     }
 
     /// `command` of `actor` mapped to the engine's, applied and journaled: the command as
-    /// applied, on the wire, and its events.
+    /// applied, on the wire, and what it told.
     fn apply(
         &mut self,
         actor: Actor,
         command: GameCommand,
-    ) -> Result<(GameCommand, Vec<h3_game::GameEvent>), GameReject> {
+    ) -> Result<(GameCommand, Told<'r>), GameReject> {
         let command = map::game::command_to_engine(command)?;
         let echo = map::game::command(&command);
-        let mut events = Vec::new();
+        let mut told = Told {
+            rules: self.rules,
+            events: Vec::new(),
+            ended: Vec::new(),
+        };
         h3_game::apply(
             &mut self.state,
             self.rules,
             actor,
             command.clone(),
-            &mut events,
+            &mut told,
         )
         .map_err(map::game::reject)?;
         self.journal
             .append(actor, command, &self.state, &mut self.entries);
-        Ok((echo, events))
+        Ok((echo, told))
     }
 
-    /// Every viewer gets `events` as it may see them, what it newly sees when its explored tiles
-    /// grew and a battle's snapshot when one opens for it; then each player that may act its turn.
-    fn tell(&mut self, events: &[h3_game::GameEvent], out: &mut Vec<GameOutbound>) {
+    /// Every viewer gets the command's events as it may see them, its battle's last view when the
+    /// command ended it, what it newly sees when its explored tiles grew and a battle's snapshot
+    /// when one opens for it; then each player that may act its turn.
+    fn tell(&mut self, told: Told<'_>, out: &mut Vec<GameOutbound>) {
+        let Told { events, ended, .. } = told;
         for (player, viewer) in players().zip(&mut self.viewers) {
             let engine_viewer = EngineViewer::Player(player);
-            let events = map::game::events(events, engine_viewer);
+            let events = map::game::events(&events, engine_viewer);
             let started = events
                 .iter()
                 .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
-            // The fold ends a view's battle at its end (`GameObservation::fold`), without the
-            // battle's last snapshot, which h3_game no longer holds (stub: SRV-STUB-14).
+            // The fold ends a view's battle at its end (`GameObservation::fold`); the battle's
+            // last view follows the events.
             let held = viewer.battle
                 && !events
                     .iter()
                     .any(|e| matches!(e, GameEvent::BattleEnded { .. }));
             viewer.post(player, |n| ServerMessage::GameEvents { n, events }, out);
+            for (_, observation) in ended.iter().filter(|(owner, _)| *owner == player) {
+                let observation = observation.clone();
+                viewer.post(
+                    player,
+                    |n| ServerMessage::GameLastSnapshot { n, observation },
+                    out,
+                );
+            }
             let now = explored(&self.state, player);
             // The count changes exactly when the grid does (the design note §14).
             if let (Some((since, before)), Some((_, count))) = (&viewer.explored, &now)

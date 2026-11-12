@@ -627,6 +627,10 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             n: 7,
             reveal: reveal(),
         },
+        ServerMessage::GameLastSnapshot {
+            n: 8,
+            observation: map::observe(&state, &ruleset, BattleSide::Defender),
+        },
     ]);
     out
 }

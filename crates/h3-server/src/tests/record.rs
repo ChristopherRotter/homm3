@@ -1,7 +1,7 @@
 //! `h3-server record` (E16 M5 T6): every golden adventure replay runs through the whole game's
 //! session to its checkpoints and final hash, and each player's record is its header and the
 //! messages it was sent: one `GameEvents` per command whatever the player may see, a
-//! `GameReveal` only right after one (E16 M5 T5c), its own commands echoed, no state hash
+//! `GameReveal` only after one (E16 M5 T5c), its own commands echoed, no state hash
 //! anywhere (what each message holds is projected for its viewer
 //! by construction, gated in `h3-protocol`'s `game_session` test). A replay that is not its re-run
 //! records nothing; the files are written per player.
@@ -80,10 +80,14 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
     for (i, line) in lines.enumerate() {
         let message = codec::decode_server(line.as_bytes(), usize::MAX).unwrap();
         assert_eq!(number(line), i as u64 + 1, "{name} player {k}: numbered on");
-        let was = core::mem::replace(
-            &mut after_events,
-            matches!(message, ServerMessage::GameEvents { .. }),
-        );
+        // A battle's last view may come between the events and the reveal.
+        let was = match message {
+            ServerMessage::GameLastSnapshot { .. } => after_events,
+            _ => core::mem::replace(
+                &mut after_events,
+                matches!(message, ServerMessage::GameEvents { .. }),
+            ),
+        };
         match message {
             ServerMessage::GameSnapshot { .. } => assert_eq!(i, 0, "{name}: the snapshot first"),
             ServerMessage::GameEvents { .. } => events += 1,
@@ -92,7 +96,9 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
                 reveals += 1;
             }
             ServerMessage::GameAccepted { seq, .. } => seqs.push(seq),
-            ServerMessage::GameTurn { .. } | ServerMessage::Snapshot { .. } => {}
+            ServerMessage::GameTurn { .. }
+            | ServerMessage::Snapshot { .. }
+            | ServerMessage::GameLastSnapshot { .. } => {}
             other => panic!("{name} player {k}: {other:?}"),
         }
     }
