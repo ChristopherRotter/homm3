@@ -5,13 +5,13 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_content::FactionId;
-use h3_game::GameRuleset;
+use h3_game::{GameRuleset, GameSetup};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 
 use crate::PROTOCOL_VERSION;
 use crate::map::{field, key_tables as battle_key_tables, wide};
-use crate::wire::game::{GameKeyTables, GameManifest, MapIdentity};
+use crate::wire::game::{GameKeyTables, GameManifest, MapIdentity, MapOffer};
 use crate::wire::{Algorithm, PackRef};
 
 /// What a whole game on `rules` and the map `map` is made of: the adventure replay header's
@@ -50,6 +50,35 @@ pub fn manifest(rules: &GameRuleset, map: MapIdentity) -> GameManifest {
         field: field(rules.battle()),
         keys: battle_key_tables(rules.battle()),
         game_keys: key_tables(rules),
+    }
+}
+
+/// The lobby's map offer `id` (E16 M5 T9a): the map `map` named `name`, its size, levels and
+/// players from `setup` (each player a seat, by colour), the game's difficulty from it too, on
+/// `rules` (the manifest's packs, profile and core hash).
+pub fn map_offer(
+    id: &str,
+    name: String,
+    (rules, setup): (&GameRuleset, &GameSetup),
+    map: MapIdentity,
+) -> MapOffer {
+    let GameManifest {
+        packs,
+        profile,
+        ruleset_hash,
+        ..
+    } = manifest(rules, map);
+    MapOffer {
+        id: String::from(id),
+        name,
+        size: setup.map.width,
+        levels: setup.map.levels,
+        players: setup.players.iter().map(|p| p.colour).collect(),
+        difficulty: setup.difficulty,
+        packs,
+        profile,
+        ruleset_hash,
+        map,
     }
 }
 

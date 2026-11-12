@@ -1119,3 +1119,70 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md sections 40 and 46 (E09 decision 78): the setup's first creatures, the base first, the upgrade's move"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-GRO-006"
+title    = "A neutral town's garrison week"
+context  = "town"
+status   = "implemented"
+summary  = "On a week's first day, after the adventure's week step, each town without an owner, in `TownId` order, from the towns' stream: `below(out_of)` under the odds (the original's 80 in 101 with a standing fort level, else 40) or nothing; n = min(the weeks since the start, the parameters' 8), S the sum of three `range_inclusive(0, n + 1)`, the level the first of the weights 2, 3, 4, 5, 4, 3 that S does not exceed, S lessened by each passed, else level 7 (S <= 2 level 1, <= 5 level 2, <= 9 level 3, <= 14 level 4, <= 18 level 5, <= 21 level 6); the creature the faction's base of the level, its upgrade when the garrison holds the upgrade, its count the creature's core growth; room is a stack of the creature or a free slot (the army's rule, ADV-ARM-007), else the stack of least AI value x count below the new stack's (the first of equal ones in slot order) is cleared and the new stack takes its slot, else nothing more happens (no draw after the sums); the stack merges into the creature's or takes the first free slot; the level's base and upgraded counts each lose the count (at least 0); for a base creature `range_inclusive(1, 100)` at most 5 turns every stack of it into the upgrade. An owned town's garrison never grows. A level the record lacks, a creature growing none and a growth above a stack's most add nothing (the engine's). E09 T25b2 (design section 44): `h3_towns::garrison_week(town, part, core, weeks, garrison, rules, draws) -> Option<GarrisonWeek { stacks, town }>`; the game calls it and writes the garrison and the town (E09 T26b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 4): new_day_week_events at its neutral towns calls neutral_garrison_week (0x4BF570, read whole) when random_between(0, 100) is below 80 with a Fort, Citadel or Castle standing, else below 40; n = min(days / 7, 8), three random_between(0, n + 1) summed, the level by neutral_garrison_level_weights (0x6779B0: 2, 3, 4, 5, 4, 3); the upgrade when army_count_of_type (0x44ADC0) finds it; army_can_take, else army_clear_slot (0x44AB60) of the least AI value (record +0x40) x count below the new stack's, else nothing; army_add_stack; the level's two town counts lowered; random_between(1, 100) <= 5 upgrades every stack of a base creature"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 row TWN-3-4 (the capture harness, 2026-11-11, eight weeks, every draw logged; scored in survey E09-growth.md section 17): a replay of the reading over the logged draws predicted all 48 garrisons and 8 counts in each run: the odds by a standing fort, the sums and the weights' levels, the creature with its growth, the least AI value x count cleared first, a garrison with no weaker stack left alone with no draw after the sums, the counts lowered, the upgrade draw for a base creature only; level 7 at n 8"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 11: updateNeutralTownGarrison's approximation (80/40 in 100 by a fort, the level the mean of three draws, a stack of the level or a free slot, never a replacement, 5 in 100 the stack upgraded; its comment calls it observed), refuted by batch TWN-3 row 4"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 44 (E09 decisions 72 and 75; TD-15 by the reading): the towns' stream, the TownId order after the adventure's week step; E09 decision 88's agent's calls: the army's slots and a stack's most passed by the game, a level the record lacks, a creature growing none and a growth above a stack's most adding nothing"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-GRO-007"
+title    = "The Portal of Summoning's draw"
+context  = "town"
+status   = "implemented"
+summary  = "A town's Portal of Summoning (a standing building of role `portal`; the Dungeon's) holds one creature of its owner's dwellings on the map (classes 17 and 20, never a Refugee Camp) with a count. A draw: without a standing Portal nothing (no draw); without such a dwelling the Portal is emptied (no draw); else a dwelling `below(n)` in object order, then one of its creatures `below(k)`: the Portal holds that creature, its count the creature's core growth, set, not added (what was not hired is gone); a dwelling without creatures leaves the Portal as it was. No castle, horde, Grail, week, month or Plague touches the count. Drawn (E09 decisions 71 and 82; the game's, E09 T26b) each week after the neutral garrisons in `TownId` order, at the Portal's build, when its owner flags a dwelling while it is empty, and at a capture that finds it empty; never in a town without an owner. E09 T25b2 (design section 45): `h3_towns::summon(town, part, core, offer, draws) -> Town`, `offer` the owner's dwellings' creature lists."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 5): portal_of_summoning_week (0x5BD750, read whole) for each town of a player in the game with building 22 standing lists the map's dwellings (+0x4E39C, classes 17 and 20) of the town's owner, sets the creature -1 without one, else random_between(0, n - 1) for the dwelling and crt_rand() mod its creatures' number for the creature, the count (+0x40) set to its growth (+0x44); a dwelling without a creature changes nothing; town_portal_hire (0x5D2950) and the town screen's creature panel draw the same when the creature is -1 (T-11)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 row TWN-3-5 (the capture harness, 2026-11-11; scored in survey E09-growth.md section 17): no creature on day 1 and after three flags, the first drawn at the town screen (a dwelling, then its creature), one draw a week, the count the creature's growth set and never accumulated (8 or 14 as the Harpy Loft or a Guardhouse was drawn), the Plague's first day not halving it"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 11: setPortalDwelling picks a creature from the set of the owner's dwellings' creatures, the count the growth accumulating, the Plague halving it (at least 1), drawn at the week, the build, a capture and a flagged dwelling (its triggers kept by decision 71; its count refuted by batch TWN-3 row 5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "low"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Dungeon (its unique buildings): the Portal of Summoning allows recruiting from one random external flagged creature dwelling; the RoE manual's page 88 (the shoutwiki copy, survey E09-growth.md's sources): on day 1 of each week a random creature type from a flagged dwelling"
+  url        = "https://heroes.thelazy.net/index.php/Dungeon"
+  retrieved  = "2026-11-12"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 45 (E09 decisions 71 and 82; TD-16 by the reading, T-11): the draw at the build, the flag and the capture instead of the screen, the streams, no draw in a neutral town"
+  confidence = "high"

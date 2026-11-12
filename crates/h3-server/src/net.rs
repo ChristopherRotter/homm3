@@ -745,6 +745,36 @@ impl Link {
                     }
                 }
             }
+            ClientMessage::CreateMapGame { seq, offer, player } => {
+                let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
+                let creator = (self.conn, to, login);
+                let asked = (offer.as_str(), player);
+                match registry::create_map(&self.registry, self.origin, asked, creator) {
+                    Err(reason) => Routed::Reply(refused(reason)),
+                    Ok((game, to_game)) => {
+                        let created = ServerMessage::GameCreated { seq, game };
+                        self.switch(game, (to_game, from_game), None, Some(created))
+                            .await
+                    }
+                }
+            }
+            ClientMessage::GameJoin { game, .. }
+                if self.bound.as_ref().is_none_or(|bound| bound.game != game) =>
+            {
+                let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
+                let opening = Opening {
+                    conn: self.conn,
+                    to,
+                    login,
+                    join: message,
+                };
+                match registry::bind_map(&self.registry, game, opening) {
+                    Err(reason) => Routed::Reply(refused(reason)),
+                    Ok((to_game, opening)) => {
+                        self.switch(game, (to_game, from_game), opening, None).await
+                    }
+                }
+            }
             ClientMessage::Join {
                 game,
                 seat,
@@ -936,12 +966,11 @@ fn refused(reason: Refusal) -> Frame {
 }
 
 /// The answer to a game's message from a connection that is in no game: as a game answers a
-/// connection without a seat (`NotSeated`; `Leave` closes). A whole game's join is refused: no
-/// whole game is hosted yet (E16 M5 T8a; T9 hosts them).
+/// connection without a seat (`NotSeated`; `Leave` closes). A join or a creation never comes here
+/// (`Link::route` binds it).
 fn unbound(message: &ClientMessage) -> Frame {
     let seq = match message {
         ClientMessage::Leave {} => return goodbye(GoodbyeReason::Left),
-        ClientMessage::GameJoin { .. } => return refused(Refusal::NoSuchGame),
         ClientMessage::GameCommand { seq, .. } => {
             return text(codec::encode_text(&ServerMessage::GameRejected {
                 n: 0,
@@ -957,6 +986,7 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::SetSpectators { seq, .. }
         | ClientMessage::ListGames { seq }
         | ClientMessage::CreateGame { seq, .. }
+        | ClientMessage::CreateMapGame { seq, .. }
         | ClientMessage::ListReplays { seq, .. }
         | ClientMessage::FetchArchived { seq, .. }
         | ClientMessage::Login { seq, .. }
@@ -975,7 +1005,10 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Describe { seq }
         | ClientMessage::ListPeers { seq, .. }
         | ClientMessage::Lists { seq } => *seq,
-        ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
+        ClientMessage::Hello { .. }
+        | ClientMessage::Ping { .. }
+        | ClientMessage::Join { .. }
+        | ClientMessage::GameJoin { .. } => 0,
     };
     Frame {
         text: codec::encode_text(&ServerMessage::Rejected {
@@ -1346,7 +1379,7 @@ mod tests {
                 ladders: Arc::clone(&ladders),
                 ids: Arc::new(GameIds::open(&server.data).unwrap()),
             };
-            let mut registry = Registry::new(vec![], &limits, server, stores);
+            let mut registry = Registry::new((vec![], vec![]), &limits, server, stores);
             registry.host(7, game);
             let registry = Arc::new(Mutex::new(registry));
             let counts = Arc::new(Mutex::new(Counts::default()));

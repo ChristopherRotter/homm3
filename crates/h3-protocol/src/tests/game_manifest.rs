@@ -13,8 +13,8 @@ use h3_sim::adventure::replay::map_content_hash;
 
 use super::game::{RULES, round_trips};
 use crate::map;
-use crate::map::game::{key_tables, manifest};
-use crate::wire::game::{GameRecordHeader, MapIdentity};
+use crate::map::game::{key_tables, manifest, map_offer};
+use crate::wire::game::{GameRecordHeader, MapIdentity, MapOffer};
 use crate::wire::{ServerMessage, WireU64};
 
 /// A golden adventure replay's map, as the manifest names it.
@@ -85,6 +85,33 @@ fn the_game_manifest_names_what_an_adventure_replay_names() {
     assert_eq!((&m.field, &m.keys), (&battle.field, &battle.keys));
     assert_eq!(m.game_keys, key_tables(rules));
     round_trips(&m);
+}
+
+#[test]
+fn a_map_offer_names_the_maps_size_players_and_rules() {
+    let rules = &*RULES;
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let (_, setup) =
+        h3_files::adventure::load_map(&root, "fixtures/maps/e08-duel-36.h3m", rules).unwrap();
+    let at = golden_map();
+    let offer = map_offer("duel", String::from("Duel"), (rules, &setup), at);
+    let m = manifest(rules, at);
+    assert_eq!(
+        offer,
+        MapOffer {
+            id: String::from("duel"),
+            name: String::from("Duel"),
+            size: 36,
+            levels: 2,
+            players: Vec::from([0, 1]),
+            difficulty: 1,
+            packs: m.packs,
+            profile: m.profile,
+            ruleset_hash: m.ruleset_hash,
+            map: at,
+        }
+    );
+    round_trips(&offer);
 }
 
 #[test]

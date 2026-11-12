@@ -114,7 +114,7 @@ use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::wire::game::{GameCommand, GameEvent, GameManifest, GameRecordHeader, GameReject};
-use crate::wire::{ClientMessage, GoodbyeReason, Observation, Refusal, ServerMessage};
+use crate::wire::{ClientMessage, GoodbyeReason, Observation, Phase, Refusal, ServerMessage};
 
 /// A frame for a player: the host delivers it to the player's client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -645,6 +645,7 @@ impl<'r> GameSession<'r> {
             | ClientMessage::SetListed { .. }
             | ClientMessage::ListGames { .. }
             | ClientMessage::CreateGame { .. }
+            | ClientMessage::CreateMapGame { .. }
             | ClientMessage::ListReplays { .. }
             | ClientMessage::FetchArchived { .. }
             | ClientMessage::ListLadders { .. }
@@ -695,6 +696,46 @@ impl<'r> GameSession<'r> {
     /// seat was taken since: the host may drop the session, the journal is the game.
     pub const fn paused(&self) -> bool {
         self.paused
+    }
+
+    /// Whether the connection `conn` holds a seat (E16 M5 T9a): one that does not, after its
+    /// message, has left the game (a refused join, `Leave`, a seat re-taken by another).
+    pub fn holds(&self, conn: ConnId) -> bool {
+        self.taken().iter().any(|seat| seat.holder == Some(conn))
+    }
+
+    /// Whether a connection holds a seat (E16 M5 T9a); the in-process host holds none.
+    pub fn seated(&self) -> bool {
+        self.taken().iter().any(|seat| seat.holder.is_some())
+    }
+
+    /// Where the game is, as the lobby lists it (E16 M5 T9a): waiting until every seat was held
+    /// at once, then running, or paused by its host; a whole game is never over before E10.
+    pub const fn phase(&self) -> Phase {
+        if !self.started {
+            Phase::Waiting
+        } else if self.paused {
+            Phase::Paused
+        } else {
+            Phase::Running
+        }
+    }
+
+    /// The players whose seats were never taken (E16 M5 T9a): a newcomer takes one without a
+    /// token, as the lobby lists them.
+    pub fn open_seats(&self) -> Vec<u8> {
+        let open = self.taken().iter().zip(0..=u8::MAX);
+        open.filter_map(|(seat, player)| (!seat.issued).then_some(player))
+            .collect()
+    }
+
+    /// The seats that belong to accounts, each player with its account's login name (E16 M5
+    /// T9a), as the lobby names them.
+    pub fn accounts(&self) -> Vec<(u8, &str)> {
+        let seats = self.taken().iter().zip(0..=u8::MAX);
+        seats
+            .filter_map(|(seat, player)| Some((player, seat.account.as_deref()?)))
+            .collect()
     }
 
     /// `GameJoin` of `player`'s seat in `game` with `token` (E16 M5 T8a): takes or re-takes it;

@@ -5,17 +5,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 and 2 closed (T10, T20; `E09-archive.md`, design notes Parts A
-  to D). **Increment 3** (growth, recruitment and the army rows; decisions 64–87): the survey
+  to D). **Increment 3** (growth, recruitment and the army rows; decisions 64–88): the survey
   (T21), the drafts and Part E §37 to §58 (T22a, T22b), the cut (`TWN-Q13`, `TWN-Q14`), batch
   TWN-3 (T23), the `shared/` task (T24), T25a (decision 86: the part v5, the store v3,
-  TWN-GRO-001, -005, `TWN-QUIRK-8`), **T25b1** (decision 87, T25b in two: `WeekKind`,
-  TWN-GRO-003, -004, `TWN-QUIRK-9`, `-10`). **Next: T25b2** (TWN-GRO-006, -007 as pure functions
-  over the draws given), then T26 to T30 (design §56; T28, the rows, after the adventure lane's
-  T114a and T115a). The Tavern is increment 4, the guild and the services 5, travel and the
-  Grail 6.
+  TWN-GRO-001, -005, `TWN-QUIRK-8`), T25b1 (decision 87: `WeekKind`, TWN-GRO-003, -004,
+  `TWN-QUIRK-9`, `-10`), **T25b2** (decision 88: `garrison_week`, `summon`, TWN-GRO-006, -007).
+  **Next: T26** (growth in the game, `cross-lane`, T26a and T26b; `QUEUE.md`), then T27 to T30
+  (design §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is
+  increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T25b1's (branch `town/e09-t25b1`, the lane's paths only); watch it
+- **Open pull requests:** T25b2's (branch `town/e09-t25b2`, the lane's paths only); watch it
   until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -30,9 +30,9 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   lane's HANDOFF. Shared, from T24: core ruleset hash v53, pack format v52, quirk flags 41
   (`quirk.town.creature_month_exact` 39, `quirk.town.neutral_plague_full_growth` 40, read by
   T25b1's `month`), `StreamId::TOWNS` (7).
-- **Ids** (next): questions `TWN-Q15`; decisions 88; quirks `TWN-QUIRK-11` (planned `-11`: T-5);
-  stubs `TWN-STUB-14` (`-11`, `-12` planned by design §34); rules planned TWN-GRO-002, -006,
-  -007, TWN-REC-001, -002, TWN-ROW-001 to -005 (design §47, §55);
+- **Ids** (next): questions `TWN-Q15`; decisions 89; quirks `TWN-QUIRK-11` (planned `-11`: T-5);
+  stubs `TWN-STUB-14` (`-11`, `-12` planned by design §34); rules planned TWN-GRO-002, TWN-REC-001,
+  -002, TWN-ROW-001 to -005 (design §47, §55);
   experiment batch `TWN-4`; disputes `TD-18`; quirk candidates `T-14`. ADR-0028 is the lane's;
   no drafts wait.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
@@ -43,6 +43,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-12 — T25b2: a neutral town's garrison week and the Portal's draw
+
+Baseline 21d6ba0 (#882 merged; the setup's local baseline stopped as `master` moved past it, CI's
+run on `master` stands for it). T25b2 kept whole (the user, decision 88; recommended). The
+user's computer was connected at the start only: the original data staged then (17 files), used
+for the scoped verify. The lane's paths only: `h3-towns`' `garrison.rs` (`garrison_week`,
+`GarrisonWeek`) and `portal.rs` (`summon`), the fixture's AI values, the catalog's TWN-GRO-006,
+-007. No version moved. T26 queued in full.
 
 ### 2026-11-12 — T25b1: the week's kind, a town's week and month of growth
 
@@ -61,14 +70,3 @@ and the scoped verify. `cross-lane`: the harvester and the re-harvested `base` a
 (the 22 horde roles, the Portal, the Deity, Conflux's `roe`, the parameters), game state hash
 v28, the 72 adventure replays (hash lines only), one `h3-game` test literal. Part v5, store v3,
 TWN-GRO-001, -005, `TWN-QUIRK-8`. The adventure lane's inbox and versions line told.
-
-### 2026-11-12 — T24: increment 3's `shared/` task (the ADRs, the stream, the effects, the flags)
-
-Baseline 8679604 (#860 merged; CI's green run on `master` stood for the setup's baseline). T24
-kept whole (the user, decision 85). The user's computer was connected at the start only: the
-original data staged then (21 files), used for the re-harvest and the scoped verify. Branch
-`shared/e09-t24`, `cross-lane`: `StreamId::TOWNS`, `town_growth` and `owner_town_growth` with the
-packs' six Legion artifacts, the two `quirk.town` flags, core ruleset hash v53; the 82 golden
-replays' `ruleset_hash` and the bot reports' `engine.core` only; the five drafts into the ADRs
-with T23's verdicts; the glossary; `docs/06-security.md`; the adventure lane's inbox (T112's
-order). T25 queued.

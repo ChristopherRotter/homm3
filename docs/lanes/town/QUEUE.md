@@ -9,31 +9,39 @@ T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 an
 and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 (`TWN-Q12`), the
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
-ADRs, the stream, the effects and flags); the build's T25a (decision 86) and T25b1 (decision 87). The building rounds follow the cut of design note §56
+ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87) and
+T25b2 (decision 88). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T25b2 — the garrison week and the Portal's draw** (decision 83; design note §56 round 4,
-its second part, cut in two by decision 87; T25b1 done, `E09-log.md`): TWN-GRO-006 (§44: a neutral
-town's garrison week, `h3-towns`' `garrison.rs`, the core's `ai_value`, the parameters'
-`garrison_week`) and -007 (§45: `summon`, the Portal's draw) as pure functions over the draws
-given (`&mut Rng`), reading T25a's `growth` and the store's Portal. The rule ids in `town.toml`
-with their sources (survey `E09-growth.md` §4, §5, batch TWN-3's rows 4 and 5 in §17) and tests;
-no version moves (the game calls them from T26b). **At its start:** confirm the cut. **Depends
-on:** T25b1 (its pull request merged). **Status:** next.
+**E09 T26 — growth in the game** (decision 83; design note §56 round 5, `cross-lane`; T25a, T25b1,
+T25b2 done, `E09-log.md`), in two parts: **T26a** the week's kind and the towns' stream
+(TWN-GRO-002, §42: `StreamId::TOWNS`, the game state beside the month's kind, `WeekStarted` with
+it), the day's order (§47; GAM-CAL-002, -003 amended: the month after a `week_of` week), each
+town's `GrowthInputs` (§41: the owners, the owner's dwellings on the map, the Legion's two
+effects from `h3-heroes`), `week_growth` and `month` (T25b1's; the game's `MonthKind` mapped to
+`MonthGrowth`), the first creatures at every build (T25a's, the setup's and the events'), the
+events' creatures (§46, TWN-EVT-004 amended, `TWN-STUB-10` lifted), map import v22 (the setup's
+`roe`), the game state hash v29, the `(planned)` marks of `TWN-QUIRK-9` and `-10` dropped
+(`h3-content`'s flag docs, the harvester's profile comment, the packs' `core.toml`: `shared/` and
+`cross-lane`), the inbox's 2026-11-05 T97a note (a week of the hut's creature leaves the map's
+dwellings at their growth); **T26b** the neutral garrison week (T25b2's `garrison_week`, written by
+`AdventureState::set_town_garrison` in `h3-adventure`'s `src/town.rs`, the adventure part's army
+rules passed), the Portal's draws (T25b2's `summon`: each week, at its build, a flagged dwelling,
+a capture, decisions 71 and 82, each from its stream), the views (§47: the owner's counts and
+Portal, the week's kind; `TownChanged` told) and the protocol (`cross-lane`, the server lane's
+fold gate), the replays re-recorded (skill `homm3-rerecord-replays`), the bench (skill
+`homm3-bench-regression`). Each part's rule ids, sources and tests; the merge order with E08's
+increment 12 (each `cross-lane` number the next at merge). **At its start:** confirm the cut.
+**Depends on:** T25b2 (its pull request merged). **Status:** next.
 
-**E09 T26 to T30 — the rest of the build** (decision 83; design note §56 rounds 5 to 8, each cut
-confirmed at its start, the agent queues each in full when the one before it ends): **T26**
-growth in the game (`cross-lane`; T26a the week's kind, the stream, the day's order, the inputs,
-the week and month, the first and the events' creatures, `TWN-STUB-10` lifted, map import `roe`;
-T26b the neutral week, the Portal's draws, the views and the protocol, the replays, the bench);
-**T27** recruitment (`cross-lane`; §49 to §51, the env's v10); **T28** the rows (`cross-lane`,
-after E08's T114a and T115a merged; T28a §52, §53's record and moves, the env's v11; T28b §53's
-day and income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, increment 4
-refined. T26a also drops the `(planned)` marks of `TWN-QUIRK-9` and `-10` (entered by T25b1) in
-`h3-content`'s flag docs, the harvester's profile comment and the packs' `core.toml` (`shared/`
-and `cross-lane`). **Depends on:** T25b2. **Status:** waiting.
+**E09 T27 to T30 — the rest of the build** (decision 83; design note §56 rounds 6 to 8, each cut
+confirmed at its start, the agent queues each in full when the one before it ends): **T27**
+recruitment (`cross-lane`; §49 to §51, the env's v10); **T28** the rows (`cross-lane`, after E08's
+T114a and T115a merged; T28a §52, §53's record and moves, the env's v11; T28b §53's day and
+income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, increment 4 refined.
+**Depends on:** T26. **Status:** waiting.
 
 ## Inbox
 

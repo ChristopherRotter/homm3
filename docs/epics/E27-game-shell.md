@@ -1,7 +1,7 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); M1 T1a1 and T1a2 done; next **M1 T1b**
-(`docs/lanes/client/QUEUE.md`).
+Status: **refined** (2026-11-12, M0, with the user); M1 T1a1, T1a2 and T1b1 done (T1b cut in
+three, decision 11); next **M1 T1b2** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -84,6 +84,25 @@ The user, 2026-11-12 (M1 T1a2; `CLT-Q87` to `CLT-Q89`):
     names (its assets unused). The reading also found that `HSANIM` and `HSLOOP` play at a won
     scenario's score screen (T1b), not in High Scores (design §2.8).
 
+The user, 2026-11-12 (M1 T1b's start):
+
+11. **T1b cut in three:** the scenario screen alone is about 80 KB of code in about 110
+    functions (T1a2 read about 11 KB), one dialog for a new game, a load and a save (its mode 2,
+    from play). T1b1 the scenario screen's frame, its list and information panel in the three
+    modes (the saved games and the save's file name included), the difficulty, Begin and Back;
+    T1b2 the advanced options (the players' setup, each choice to `GameSetup` or an E10 gap), the
+    random map's tab (a `CLT-Q`) and the game's begin; T1b3 the system options and the menu in
+    play, the end of a scenario (victory, defeat, their clips and messages, the win screen, the
+    high score's entry).
+
+The user, 2026-11-12 (M1 T1b1; `CLT-Q90`, `CLT-Q91`):
+
+12. **The scenario list's order** (CLT-Q90): a stable sort by the column, then the name (as the
+    name column compares it), then the file name; a capture whose list has ties may differ, each
+    difference listed. **Its two oddities fixed** (CLT-Q91): the first press on the size column
+    sorts ascending (the client records the key it sorted by), and a double click needs the same
+    row twice; the original's rules are kept for the comparisons only.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -158,8 +177,10 @@ tasks are refined here.
 |---|---|---|
 | T1a1 | The catalogue, part 1a: the start (the clips' order and skipping, the loading bar), the main menu, New Game's and Load Game's menus, Quit | done 2026-11-12 (design §2; CLT-Q84 to CLT-Q86) |
 | T1a2 | The catalogue, part 1b: Multiplayer (its modes, decided as a `CLT-Q`) and the hot seat's names, High Scores, Credits | done 2026-11-12 (design §2.6 to §2.9; CLT-Q87 to CLT-Q89) |
-| T1b | The catalogue, part 2: scenario selection and the players' setup, the advanced options, the random map's tab, Load's and Save's dialogs, the system options, the system menu in play, the end of a scenario | ready |
-| T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was); the harness on every catalogued screen; the reference captures; the traps | after T1b |
+| T1b1 | The catalogue, part 2a: the scenario screen's frame, its list and information panel in its three modes (new, load, save), the difficulty, Begin and Back (decision 11) | done 2026-11-12 (design §3; CLT-Q90, CLT-Q91) |
+| T1b2 | The catalogue, part 2b: the advanced options (the players' setup to `GameSetup` or an E10 gap), the random map's tab, the game's begin | ready |
+| T1b3 | The catalogue, part 2c: the system options and the system menu in play, the end of a scenario (victory, defeat, their clips and messages, the win screen, the high score's entry) | after T1b2 |
+| T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was); the harness on every catalogued screen; the reference captures; the traps | after T1b3 |
 | T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
 
 **M1's review list** (the agent's calls, *provisional*, for T3):
@@ -171,6 +192,9 @@ tasks are refined here.
    `HiScore.dat` (not imported), the defaults read from `CampHigh.txt`; the player's name
    (`Network Default Name`, the registry's) a client setting; the leftover `RMT*SC.BIN`'s deletion
    not built.
+3. T1b1 (design §3.10): the scenario screen's network paths (the host's relays, a guest's wait,
+   the chat), the busy cursor's helper thread and the edition's format check not built; the
+   original's saves not listed (decision 8), the autosave's naming kept by the client's file name.
 
 ## Dependencies and boundaries
 

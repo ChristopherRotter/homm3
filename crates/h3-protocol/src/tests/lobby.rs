@@ -1,5 +1,5 @@
 //! The lobby (E16 M2 T1): offers, game ids, the limits in total and per origin, the list and the
-//! games' updates.
+//! games' updates; the map offers and the whole games (E16 M5 T9a).
 
 use std::string::ToString;
 use std::vec;
@@ -8,7 +8,8 @@ use std::vec::Vec;
 use super::full;
 use crate::lobby::{Limits, Lobby};
 use crate::map;
-use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage};
+use crate::wire::game::{MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
+use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage, WireU64};
 
 fn offers() -> Vec<Offer> {
     let (ruleset, _) = full();
@@ -18,9 +19,29 @@ fn offers() -> Vec<Offer> {
     ]
 }
 
+/// A map offer of two players (by hand: the lobby reads only its id and players).
+fn maps() -> Vec<MapOffer> {
+    vec![MapOffer {
+        id: "duel".to_string(),
+        name: "Duel".to_string(),
+        size: 36,
+        levels: 2,
+        players: vec![0, 1],
+        difficulty: 1,
+        packs: vec![],
+        profile: "base:faithful".to_string(),
+        ruleset_hash: WireU64(7),
+        map: MapIdentity {
+            content_hash: WireU64(9),
+            import_version: 1,
+        },
+    }]
+}
+
 fn lobby(games: usize, games_per_origin: usize) -> Lobby<u8> {
     Lobby::new(
         offers(),
+        maps(),
         Limits {
             games,
             games_per_origin,
@@ -28,17 +49,28 @@ fn lobby(games: usize, games_per_origin: usize) -> Lobby<u8> {
     )
 }
 
-fn games(lobby: &Lobby<u8>) -> Vec<GameInfo> {
+/// The lobby's list: its battles and its whole games, the offers checked.
+fn listed(lobby: &Lobby<u8>) -> (Vec<GameInfo>, Vec<MapGameInfo>) {
     let ServerMessage::Games {
         seq: 4,
         offers: listed,
         games,
+        maps: listed_maps,
+        map_games,
     } = lobby.list(4)
     else {
         panic!("not a list")
     };
-    assert_eq!(listed, offers());
-    games
+    assert_eq!((listed, listed_maps), (offers(), maps()));
+    (games, map_games)
+}
+
+fn games(lobby: &Lobby<u8>) -> Vec<GameInfo> {
+    listed(lobby).0
+}
+
+fn map_games(lobby: &Lobby<u8>) -> Vec<MapGameInfo> {
+    listed(lobby).1
 }
 
 #[test]
@@ -247,4 +279,76 @@ fn a_matchs_game_counts_against_the_servers_limit_only() {
         lobby.create_ranked(0, ("arena.1", "arena"), true),
         Err(Refusal::Draining)
     );
+}
+
+#[test]
+fn whole_games_are_created_from_map_offers_and_listed() {
+    let mut lobby = lobby(8, 8);
+    assert!(map_games(&lobby).is_empty());
+    assert_eq!(lobby.create_map(1, "duel", 0), Ok((1, 0)));
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((2, 0)));
+    assert_eq!(lobby.create_map(2, "duel", 1), Ok((3, 0)), "one id space");
+    let waiting = |game| MapGameInfo {
+        game,
+        offer: "duel".to_string(),
+        phase: Phase::Waiting,
+        open: vec![0, 1],
+        seated: vec![],
+    };
+    assert_eq!(map_games(&lobby), [waiting(1), waiting(3)]);
+    assert_eq!(games(&lobby).len(), 1, "the battle beside them");
+    assert_eq!(lobby.in_play(), 3);
+    // A whole game reports where it is and who holds its seats; a battle's reports leave it be,
+    // and its own leave a battle be.
+    lobby.update_map(1, (Phase::Running, vec![1]));
+    let ann = vec![SeatedPlayer {
+        player: 0,
+        display: "Ann".to_string(),
+    }];
+    lobby.seat_map(1, ann.clone());
+    lobby.update(1, (Phase::Over, vec![], true));
+    lobby.seat(1, vec![]);
+    lobby.update_map(2, (Phase::Paused, vec![]));
+    lobby.seat_map(2, ann.clone());
+    lobby.update_map(9, (Phase::Paused, vec![]));
+    lobby.seat_map(9, ann.clone());
+    let running = MapGameInfo {
+        phase: Phase::Running,
+        open: vec![1],
+        seated: ann,
+        ..waiting(1)
+    };
+    assert_eq!(map_games(&lobby), [running, waiting(3)]);
+    let battle = &games(&lobby)[0];
+    assert_eq!((battle.phase, battle.seated.len()), (Phase::Waiting, 0));
+    // A paused whole game is not in play; a removed one leaves the list.
+    lobby.update_map(3, (Phase::Paused, vec![]));
+    assert_eq!(lobby.in_play(), 2);
+    lobby.remove(1);
+    assert_eq!(map_games(&lobby).len(), 1);
+}
+
+#[test]
+fn map_creations_are_refused_with_their_reason() {
+    let mut lobby = lobby(3, 2);
+    for (offer, player, refusal) in [
+        ("nothing", 0, Refusal::NoSuchOffer),
+        ("pvp", 0, Refusal::NoSuchOffer),
+        ("duel", 2, Refusal::NoSuchSeat),
+    ] {
+        assert_eq!(lobby.create_map(1, offer, player), Err(refusal), "{offer}");
+    }
+    assert_eq!(
+        lobby.create(1, "duel", Seat::Attacker, true),
+        Err(Refusal::NoSuchOffer),
+        "a map offer is no battle's"
+    );
+    // The limits count battles and whole games alike: the origin's, then the total's.
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));
+    assert_eq!(lobby.create_map(1, "duel", 0), Ok((2, 0)));
+    assert_eq!(lobby.create_map(1, "duel", 0), Err(Refusal::TooManyGames));
+    assert_eq!(lobby.create_map(2, "duel", 1), Ok((3, 0)));
+    assert_eq!(lobby.create_map(3, "duel", 0), Err(Refusal::TooManyGames));
+    lobby.drain();
+    assert_eq!(lobby.create_map(3, "duel", 0), Err(Refusal::Draining));
 }

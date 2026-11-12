@@ -923,3 +923,72 @@ fields = [
   { offset = 0x158, name = "every_built", type = "u64", summary = "the built set with what each built one supersedes (town_setup 0x5C0821); the Capitol's limit clears 13 (capitol_limit 0x5BEC60); the town list's Fort bit 7 (town_list_slot); batch TWN-1 reads it (E09 T3b)", confidence = "read", refs = ["rules/surveys/E09-towns.md §5.1", "rules/surveys/E09-towns.md §5.3", "rules/surveys/E09-towns.md §8.4", "epics/E24-design.md §4.5"] },
   { offset = 0x160, name = "buildable", type = "u64", summary = "the faction's listed buildings (faction_buildings 0x6976F0) less the forbidden, written only by town_buildings_setup (0x5C0AB0, 0x5C0BFC): the keep counts the standing buildings among it (town_turret_count 0x5BF4F0), never the Village Hall (E09 T5b1)", confidence = "read", refs = ["rules/surveys/E09-towns.md §5.3", "rules/surveys/E09-towns.md §16.4"] },
 ]
+
+[[struct]]
+name = "scenario_dialog"
+size = 0x1970
+summary = "The scenario screen (scenario_dialog_create 0x579960; on the caller's stack): the fields E27 M1 T1b1 read; the players' rows (+0x1064, +0x1444) and the random map's are T1b2's"
+refs = ["epics/E27-design.md §3"]
+h3api = "H3SelectScenarioDialog"
+fields = [
+  { offset = 0x60, name = "last_row_press", type = "u32", summary = "clock_ms of the screen's opening, then of each row press that was not a double one (scenario_row_click 0x5872E4)", confidence = "read" },
+  { offset = 0x64, name = "load_mode", type = "u8", summary = "the constructor's argument 1", confidence = "read" },
+  { offset = 0x65, name = "save_mode", type = "u8", summary = "the constructor's argument 2 (from game_save_dialog 0x418160)", confidence = "read" },
+  { offset = 0x66, name = "list_kind", type = "u8", summary = "0 the files, 1 the random maps' list (+0x1040; scenario_list_toggle 0x580A70)", confidence = "read" },
+  { offset = 0x68, name = "save_row", type = "i32", summary = "the save mode's pressed row, -1 at the start", confidence = "read" },
+  { offset = 0x36C, name = "descending", type = "u8", summary = "the list's order flipped (the columns' presses; scenario_list_sort 0x585050)", confidence = "read" },
+  { offset = 0x370, name = "top", type = "i32", summary = "the list's first visible entry", confidence = "read" },
+  { offset = 0x374, name = "selection", type = "i32", summary = "the selected entry of the shown list, -1 none (scenario_select 0x585500)", confidence = "read" },
+  { offset = 0x378, name = "turn_duration", type = "i32", summary = "the turn's duration setting (10 for a new game; a save's +0x4A7; T1b2)", confidence = "inferred" },
+  { offset = 0x37C, name = "advanced_shown", type = "u8", summary = "the advanced options' panel shown (T1b2)", confidence = "inferred" },
+  { offset = 0x37D, name = "list_shown", type = "u8", summary = "the list's panel shown (scenario_list_toggle); the keys act only then", confidence = "read" },
+  { offset = 0x37E, name = "random_shown", type = "u8", summary = "the random map's panel shown (T1b2)", confidence = "inferred" },
+  { offset = 0x37F, name = "random_chosen", type = "u8", summary = "a random map chosen: Begin makes it (scenario_begin 0x58BCE0); cleared by the list's toggle", confidence = "read" },
+  { offset = 0x380, name = "save_edit", type = "ptr", summary = "the save mode's name edit (item 160)", confidence = "read" },
+  { offset = 0x388, name = "network_transfers", type = "ptr", summary = "a network game's eight pending transfers (not the save mode); a column press waits for none", confidence = "inferred" },
+  { offset = 0x38C, name = "own_info", type = "scenario_info", summary = "the screen's own record (a random map's; scenario_select points +0x1060 here)", confidence = "read" },
+  { offset = 0x1030, name = "full_list", type = "vector<scenario_info>", summary = "the files' records (scenario_list_build 0x582B40), sorted in place", confidence = "read" },
+  { offset = 0x1040, name = "random_list", type = "vector<scenario_info>", summary = "the random maps' records (the list's kind 1)", confidence = "read" },
+  { offset = 0x1050, name = "shown_list", type = "vector<scenario_info>", summary = "the full (or random) list less the other sizes (+0x1860), in its order", confidence = "read" },
+  { offset = 0x1060, name = "selected_info", type = "scenario_info*", summary = "the selected record", confidence = "read" },
+  { offset = 0x1834, name = "list_ready", type = "u8", summary = "set by scenario_list_finish 0x582E90", confidence = "read" },
+  { offset = 0x183C, name = "list_bar", type = "ptr", summary = "the list's scroll bar (item 337)", confidence = "read" },
+  { offset = 0x1840, name = "duration_bar", type = "ptr", summary = "the turn duration's bar (item 338; T1b2)", confidence = "read" },
+  { offset = 0x1854, name = "selection_changed", type = "u8", summary = "scenario_select's last call changed the selection (or saves): a whole redraw", confidence = "read" },
+  { offset = 0x185C, name = "sort_key", type = "i32", summary = "the column recorded as current: 1 after the list's read though it is sorted by 2 (CLT-Q91)", confidence = "read" },
+  { offset = 0x1860, name = "size_filter", type = "i32", summary = "36, 72, 108, 144 or 0 all (scenario_list_filter 0x585D90)", confidence = "read" },
+  { offset = 0x1864, name = "list_read", type = "u8", summary = "the files read once (scenario_list_toggle)", confidence = "read" },
+  { offset = 0x1870, name = "flags_background", type = "ptr", summary = "the flags' strip's kept background, 310 x 25 (scenario_team_flags 0x585300)", confidence = "read" },
+  { offset = 0x1898, name = "edition", type = "i32", summary = "the edition (edition_pointer) at the construction", confidence = "read" },
+  { offset = 0x196C, name = "description_text", type = "ptr", summary = "the description's scrollable text (422, 155, 319, 115)", confidence = "read" },
+]
+
+[[struct]]
+name = "scenario_info"
+size = 0xCA4
+summary = "A scenario list's record (scenario_header_read 0x583170): a map's or a save's header, names, the file's time; the fields E27 M1 T1b1 read"
+refs = ["epics/E27-design.md §3"]
+h3api = "H3ScenarioMapInformation"
+fields = [
+  { offset = 0x0, name = "format", type = "u32", summary = "the map's format: 0x0E RoE, 0x15 AB, 0x1C SoD (another: an old map's names; scenario_compare_version 0x591190)", confidence = "read" },
+  { offset = 0x1, name = "also_standard_victory", type = "u8", summary = "the standard victory also allowed: the victory text joins the standard one (scenario_info_draw 0x5840F0; within the header's copy)", confidence = "inferred" },
+  { offset = 0x4, name = "any_players", type = "u8", summary = "clear: a map nobody can play (GENRLTXT 507)", confidence = "read" },
+  { offset = 0x5, name = "difficulty", type = "u8", summary = "the map's difficulty (the difficulty names' index); cleared for an old format", confidence = "read" },
+  { offset = 0x6, name = "players", type = "u8", summary = "the list's %d/%d first number and ten times the players' key (inferred: the players)", confidence = "inferred" },
+  { offset = 0x8, name = "humans", type = "u8", summary = "the list's second number; a network or hot-seat list needs 2 (inferred: the human players)", confidence = "inferred" },
+  { offset = 0x18, name = "size", type = "i32", summary = "the side in tiles: 36, 72, 108, 144 (the size letter, mark and filter)", confidence = "read" },
+  { offset = 0x30, name = "victory_type", type = "i8", summary = "the victory's type, -1 the standard (the mark's frame, 11 for none)", confidence = "read" },
+  { offset = 0x7C, name = "loss_type", type = "i8", summary = "the loss's type, -1 the standard (the mark's frame, 3 for none)", confidence = "read" },
+  { offset = 0x2D0, name = "name_string", type = "string", summary = "the header's name", confidence = "read" },
+  { offset = 0x2E0, name = "description_string", type = "string", summary = "the header's description", confidence = "read" },
+  { offset = 0x304, name = "players_info", type = "bytes[0x1CC]", summary = "the game's +0x1F6A0 block (H3API's H3PlayersInfo) as read", confidence = "read" },
+  { offset = 0x33C, name = "difficulty_chosen", type = "i8", summary = "the block's +0x38 (game +0x1F6D8): a save's difficulty, into scenario_last_difficulty", confidence = "read" },
+  { offset = 0x33D, name = "file_name", type = "char[]", summary = "the block's +0x39 (game +0x1F6D9): the file's name (the load and save rows' text; the AUTOSAVE checks)", confidence = "read" },
+  { offset = 0x4A7, name = "turn_duration", type = "i8", summary = "a save's turn duration (the block's +0x1A3, game +0x1F843)", confidence = "read" },
+  { offset = 0x58C, name = "name", type = "char[61]", summary = "the shown name (60 copied)", confidence = "read" },
+  { offset = 0x5C9, name = "description", type = "char[300]", summary = "the shown description", confidence = "read" },
+  { offset = 0x6F8, name = "file_time", type = "FILETIME", summary = "the file's last-write time (the load and save modes' date)", confidence = "read" },
+  { offset = 0x708, name = "save_version", type = "i32", summary = "a save's version: below 25 and not 16 to 18 an unusable file", confidence = "read" },
+  { offset = 0x70C, name = "save_format_kind", type = "i32", summary = "a save's format: 2 SoD, 1 AB, else RoE (scenario_begin's edition check)", confidence = "read" },
+  { offset = 0xBE0, name = "save_mark_flag", type = "u8", summary = "with +0xBE8 (0 to 19, a table) a save's version mark in the list; not read", confidence = "inferred" },
+]

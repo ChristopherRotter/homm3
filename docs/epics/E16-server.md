@@ -309,11 +309,13 @@ client lane's 2026-11-04 request, when online battles need them).
 - **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
   - **T8a Seats and connections:** done 2026-11-12, protocol v45 (`E16-log.md`).
   - **T8b Numbers, pause, restore:** done 2026-11-12, protocol v46 (`E16-log.md`).
-- **T9 A whole game hosted** (`h3-server`): the map offers in the configuration (a map file by
-  its hash, packs and profile, difficulty; checked at start), listed in the lobby with the map's
-  name, size and players; `CreateGame` from one; the game on its own thread with its journal file
-  (each `GameEntry` durable before the call's frames), its restore at start, the sweep of
-  abandoned games, drain and shutdown; the record download. A journal format step.
+- **T9 A whole game hosted** (`h3-server`), in two (the user, 2026-11-12):
+  - **T9a Live hosting:** done 2026-11-12, protocol v47, the whole game's journal format 1
+    (`E16-log.md`).
+  - **T9b The lifecycle:** the restore at start from the journal (`GameSession::reopen`), the
+    sweep of abandoned games (a running game whose seats stayed empty pauses) and a paused game
+    leaving its thread (resumed by a join), drain and shutdown (a running whole game never ends
+    in 2a), the record download (`FetchRecord`); lifts `SRV-STUB-12`.
 - **T10 The unowned sides played by the server:** an unowned battle side's command from
   `h3_battle_ai::choose_fair` by default, the all-seeing `choose` as an offer's option (the
   inbox's 2026-11-02 note), its random stream from the game's secrets; each command journaled as
@@ -351,6 +353,17 @@ the tasks land):
   `NotStarted`, any seat's join resuming it; the journal's seat entries (`Numbered`, `Taken`,
   `TakenBy`, `Started`, `Paused`, `Resumed`) and `GameSession::reopen` with the host's tokens, a
   restored started game's snapshots and turns into its records.
+- T9a (v47, whole game journal format 1): the lobby's whole games beside the battles (`Games`'s
+  `maps` and `map_games`, `wire::game::MapOffer`, `MapGameInfo`, `SeatedPlayer`), one id space and
+  the same limits; `CreateMapGame { seq, offer, player }`, not `CreateGame` widened (its `seat` is a
+  battle's); a `[[map]]` pinned by its file's content hash, with packs, profile, difficulty
+  (normal by default) and a name (the map header's as Latin-1, at most 64 characters, by
+  default); every seat's player `human` (no computer player in 2a); the journal
+  `<data>/whole/<game>.journal` of its own format (`GAME_JOURNAL_FORMAT_VERSION`, so the battles'
+  journals stay valid), its first line the adventure replay before its first command, commands
+  in the replay's text form; a game waiting with no seat held abandoned (its journal gone); a
+  draining server's running whole games play on, as a battle's (T9b decides, as they never end);
+  `GameSession`'s host accessors (`holds`, `seated`, `phase`, `open_seats`, `accounts`).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
