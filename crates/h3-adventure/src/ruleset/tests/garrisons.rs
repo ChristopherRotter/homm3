@@ -1,7 +1,7 @@
 //! Increment 12's kinds in the ruleset part (E08 T113a, increment 12's design note §1 to §3): the
 //! garrison with its anti-magic flag, the six bonus kinds with their parameters, every type's kind
-//! mark, compiled, checked and in the hash (part v20). Their visits come with T114a and T115b:
-//! until then none has an effect.
+//! mark, compiled, checked and in the hash (part v20). The garrisons' visits came with T114a1,
+//! the bonus visitables' come with T115b: until then none of the six has an effect.
 
 use super::*;
 
@@ -75,7 +75,7 @@ fn kinds() -> [ObjectKindDef; 8] {
 
 // covers: ADV-GAR-001, ADV-BON-001
 #[test]
-fn the_garrisons_and_the_bonus_kinds_compile_with_no_visit_yet() {
+fn the_garrisons_and_the_bonus_kinds_compile_with_the_garrisons_visit_alone() {
     let core = core();
     let creature = |k: &str| core.creature_by_key(k).unwrap();
     let expected = [
@@ -106,13 +106,12 @@ fn the_garrisons_and_the_bonus_kinds_compile_with_no_visit_yet() {
     for (def, kind) in kinds().into_iter().zip(expected) {
         let ty = compiled(def);
         assert_eq!(ty.kind, kind);
-        // No visit yet (T114a, T115b): a step onto one is refused as a blocker's.
-        assert_eq!(ty.kind.effect(), None);
+        // The garrison's visit since T114a1; none of the bonus kinds' yet (T115b): a step onto
+        // one is refused as a blocker's.
+        let garrison = matches!(kind, ObjectKind::Garrison { .. });
+        assert_eq!(ty.kind.effect(), garrison.then_some(Effect::Garrison));
         // Only a garrison is ownable; none is weekly.
-        assert_eq!(
-            ty.kind.ownable(),
-            matches!(kind, ObjectKind::Garrison { .. })
-        );
+        assert_eq!(ty.kind.ownable(), garrison);
         assert!(!ty.kind.weekly());
         assert_eq!(ty.kind.battle_terrain(), None);
         assert_eq!(ty.kind.dwelling_footprint(), None);

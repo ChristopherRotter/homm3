@@ -334,8 +334,9 @@ impl Reach {
             // E08 T33). Else what objects still on the map cover there (the
             // occupancy layer): a visit ends the path (ADV-OBJ-003), a blocked tile, a visit not
             // built yet or one entered from above against ADV-OBJ-004 stops it, and a gate the
-            // owner holds the key of is crossed (ADV-VIS-005): `visit_at` with the owner, as
-            // `MoveHero`'s step. Directions 3 to 5 step down (DIRECTIONS).
+            // owner holds the key of is crossed (ADV-VIS-005), as a garrison of its team
+            // (ADV-GAR-004, E08 T114a1): `visit_at` with the owner, as `MoveHero`'s step.
+            // Directions 3 to 5 step down (DIRECTIONS).
             let mut visit = false;
             if search.occupied[next] {
                 if (3..=5).contains(&dir) && state.closed_above(part, pos) {

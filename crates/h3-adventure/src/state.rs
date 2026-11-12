@@ -89,6 +89,7 @@ mod dwellings;
 mod economy;
 mod events;
 mod flags;
+mod garrisons;
 mod holds;
 mod jumps;
 mod manage;
@@ -1192,8 +1193,9 @@ impl CanonicalHash for Pos {
 /// What a player's step onto an object's visitable tile meets (ADV-OBJ-003): the object, by index
 /// (the static map's or, after them, one added in play), its type, the tile it is visited from,
 /// how it is visited, whether the player passes it instead (a border gate whose key it holds,
-/// ADV-VIS-005: the step does not visit, the tile is crossed like any other), whether it may be
-/// from above (ADV-OBJ-004) and what the visit does.
+/// ADV-VIS-005: the step does not visit, the tile is crossed like any other; since E08 T114a1 a
+/// garrison of its team, ADV-GAR-004, crossed so on the way and visited where the move ends:
+/// [`Self::visited_at_end`]), whether it may be from above (ADV-OBJ-004) and what the visit does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct StepVisit<'p> {
     pub(crate) object: usize,
@@ -1203,6 +1205,17 @@ pub(crate) struct StepVisit<'p> {
     pub(crate) pass: bool,
     pub(crate) from_above: bool,
     pub(crate) effect: Effect<'p>,
+}
+
+impl StepVisit<'_> {
+    /// Whether the object is visited when the move ends on its tile: one not passed, and a
+    /// garrison of the mover's team, passed on the way only (ADV-GAR-004, E08 T114a1; D-59: the
+    /// original's step clears a human's visit of its team's garrison unless the tile is the
+    /// hero's planned destination, `hero_move_step` 0x48154B, survey `E08-garrisons-bonuses.md`
+    /// §7). A border gate its key's holder passes is never visited (ADV-VIS-005).
+    pub(crate) fn visited_at_end(&self) -> bool {
+        !self.pass || matches!(self.effect, Effect::Garrison)
+    }
 }
 
 /// What a step meets that ends the move (ADV-OBJ-003): an object's visit, or another hero, by
@@ -1750,6 +1763,16 @@ impl AdventureState {
                     _ => return Err(AdventureCommandError::NoStop { step }),
                 }
             };
+            // rule: ADV-GAR-004
+            // A garrison of the mover's team is crossed on the way and visited where the move
+            // ends (D-59: the planned destination's, 0x48154B).
+            let met = match met {
+                None if last && to.visitable => self
+                    .visit_at(part, player, next)
+                    .filter(StepVisit::visited_at_end)
+                    .map(Meets::Object),
+                met => met,
+            };
             let cost = pricing.step_by(mode, (&from, &to), direction % 2 == 1, points);
             let left = points
                 .checked_sub(cost)
@@ -2237,7 +2260,8 @@ impl AdventureState {
     /// ([`Self::visit_gate`]), whose visit is the jump; `draws` is the visitor's stream, from
     /// which a monolith's exit is drawn (ADV-TEL-003). Since T105a2 a Whirlpool
     /// ([`Self::visit_whirlpool`]): its loss, then the jump with the hero's boat. Since T105b1 a
-    /// jump's exit under a hero gives the meeting or the battle with the held jump.
+    /// jump's exit under a hero gives the meeting or the battle with the held jump. Since T114a1 a
+    /// garrison ([`Self::visit_garrison`]): its battle at once, or its flag.
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
     // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
     fn visit<S: Sink>(
@@ -2333,6 +2357,9 @@ impl AdventureState {
                 let visit = (visit, divisor);
                 outcome = self.visit_whirlpool(rules, (player, hero), visit, draws, sink);
             }
+            Effect::Garrison => {
+                outcome = self.visit_garrison((core, rules.1), (player, hero), object, sink);
+            }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
             Effect::Message(leaves) => {
@@ -2377,7 +2404,11 @@ impl AdventureState {
             .map(|h| h.pos)
             .filter(|&at| self.live(at, self.map.at(at)).visitable);
         match tile.and_then(|at| self.visit_at(rules.1, player, at)) {
-            Some(visit) if !visit.pass => self.visit(rules, (player, hero), visit, draws, sink),
+            // The hero's tile is its move's end: a garrison of its team is visited there too
+            // (ADV-GAR-004).
+            Some(visit) if visit.visited_at_end() => {
+                self.visit(rules, (player, hero), visit, draws, sink)
+            }
             _ => AdventureOutcome::default(),
         }
     }
@@ -2643,12 +2674,14 @@ impl AdventureState {
     /// player: a border gate whose key `player` holds is passed, not visited (ADV-VIS-005, E08
     /// T15b; the original's step, 0x480EE2, and its pathfinder, 0x56ABB1, test the player's key
     /// bit); a town ([`Self::town_visit`], TWN-VIS-001) its garrison or a visitor of another team
-    /// defends against `player` is visited from the tile before, the siege (E09 T8b2a, T8b2b).
-    /// `MoveHero`
+    /// defends against `player` is visited from the tile before, the siege (E09 T8b2a, T8b2b); a
+    /// garrison of `player`'s team is passed on the way, visited where the move ends (ADV-GAR-004,
+    /// E08 T114a1, D-59: the original's path, `pathfinder_pass_through` 0x56ACAE, tests the
+    /// owner's team; [`StepVisit::visited_at_end`]), one read of its owner. `MoveHero`
     /// and the reachable-tiles query both ask here. The caller has checked that `pos` is
     /// visitable as it stands now. Out of line, as the compiler kept it before the town's test,
     /// which made it inline it into the walking search (`bench-check`, E09 T8a2).
-    // rule: ADV-VIS-005, TWN-VIS-001
+    // rule: ADV-VIS-005, TWN-VIS-001, ADV-GAR-004
     #[inline(never)]
     pub(crate) fn visit_at<'p>(
         &self,
@@ -2667,7 +2700,13 @@ impl AdventureState {
                 object_type,
                 tile: pos,
                 mode,
-                pass: matches!(effect, Effect::Gate(key) if self.has_key(player, key)),
+                pass: match effect {
+                    Effect::Gate(key) => self.has_key(player, key),
+                    Effect::Garrison => self
+                        .owner(object)
+                        .is_some_and(|owner| allied(owner, player)),
+                    _ => false,
+                },
                 from_above: ty.from_above,
                 effect,
             }

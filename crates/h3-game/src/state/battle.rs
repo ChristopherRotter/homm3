@@ -194,11 +194,15 @@ impl GameState {
     /// already over (then its outcome applies at once). Since E09 T8b1 a siege
     /// ([`BattleStart::town`]) is built so, then from its town ([`town::siege_setup`]: its facts,
     /// the defending hero's bonuses, the town's terrain and the tile's special ground; TWN-SIE-003
-    /// to -005) before its obstacles are drawn. A setup the battle refuses cannot come
+    /// to -005) before its obstacles are drawn. Since E08 T114a1 a battle on an anti-magic
+    /// garrison's entrance, the garrison's own or a hero's standing in it, is fought without
+    /// magic (ADV-GAR-005: `AdventureState::anti_magic`, the setup's `anti_magic`, BAT-TER-004),
+    /// and a map garrison's army defends as an owned mine's guards or a pile's (ADV-GAR-002).
+    /// A setup the battle refuses cannot come
     /// from a valid game (the armies, the heroes and the parts were checked when they were built);
     /// it would start no battle.
     // rule: GAM-BAT-001, GAM-BAT-004, ADV-MON-009, ADV-PIK-004, ADV-MIN-002
-    // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005
+    // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005, ADV-GAR-002, ADV-GAR-005
     pub(crate) fn start_battle<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -306,6 +310,8 @@ impl GameState {
             // rule: GAM-BAT-011
             background: Some(start.background),
             colours,
+            // rule: ADV-GAR-005
+            anti_magic: self.adventure.anti_magic(rules.adventure(), start.tile),
             ..BattleSetup::default()
         };
         // rule: TWN-SIE-003, TWN-SIE-004, TWN-SIE-005

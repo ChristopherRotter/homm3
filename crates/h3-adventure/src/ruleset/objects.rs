@@ -506,6 +506,10 @@ pub(crate) enum Effect<'k> {
     /// jump to another Whirlpool's tile drawn among them, with the hero's boat (a Whirlpool,
     /// ADV-TEL-006, E08 T105a2).
     Whirlpool(u32),
+    /// For a hero of its owner's team, a tile crossed without a visit, visited where the move ends
+    /// (its exchange); for any other, its army fought at once while it holds one, then its flag
+    /// (a garrison, ADV-GAR-002, ADV-GAR-004, E08 T114a1).
+    Garrison,
 }
 
 impl ObjectKind {
@@ -520,7 +524,7 @@ impl ObjectKind {
     /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects; T84b2: the
     /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns; E08 T105a1:
     /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
-    /// whose visit is its loss and the jump. Who reaches a kind's visit is the passage's: on water
+    /// whose visit is its loss and the jump; T114a1: the garrisons. Who reaches a kind's visit is the passage's: on water
     /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
@@ -557,6 +561,7 @@ impl ObjectKind {
             }),
             Self::SubterraneanGate => Some(Effect::SubterraneanGate),
             Self::Whirlpool { divisor } => Some(Effect::Whirlpool(*divisor)),
+            Self::Garrison { .. } => Some(Effect::Garrison),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -567,14 +572,13 @@ impl ObjectKind {
             // typed; its step came with E09 T8a2. E08 T103a: increment 11's three kinds are
             // typed; the monoliths' and the gates' jump came with T105a1 (increment 11's design
             // note §7), the Whirlpool's with T105a2 (its loss first, note §8). E08 T113a:
-            // increment 12's seven kinds are typed; the garrisons' visits come with T114a, the
-            // bonus visitables' with T115b (increment 12's design note §19).
+            // increment 12's seven kinds are typed; the garrisons' visits came with T114a1, the
+            // bonus visitables' come with T115b (increment 12's design note §19).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
             | Self::RandomDwelling
-            | Self::Garrison { .. }
             | Self::Bonus { .. }
             | Self::FountainOfFortune { .. }
             | Self::MagicWell

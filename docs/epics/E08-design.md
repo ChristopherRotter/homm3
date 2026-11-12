@@ -212,6 +212,13 @@ the Sirens, the Buoy and the Mermaids from the neighbouring water.
 - The hash (v22): each hero on the map's battle bonuses and timed marks (part C), the fortunes,
   the springs' block (each entrance as it stands, so no block and a block of full entrances hash
   alike), the kind marks.
+- *As built* (T114a1, `adventure/e08-t114a1`; decision 323): **the army is not written at the
+  build** (*agent's call*, against the first bullet): `AdventureState::garrison_army` reads
+  `army_left` and else the map's `Holds::Garrison` army, as a mine's guards (`mine_guards`) and a
+  pile's (`guards_left`) already do, so the build and a fork carry nothing new and the hash moves
+  only once a battle writes the survivors (a won battle or a draw an empty army). No version
+  moved: the adventure state hash's v23 stays with T115 (the heroes' marks, the fortunes, the
+  springs, the kind marks).
 
 ###### 6. The garrison's visit, battle and capture (ADV-GAR-002; survey §3 to §5)
 
@@ -240,6 +247,15 @@ A garrison's army changes only by its battles and its exchange. **A defeat** (a 
 makes its garrisons neutral with their armies, `player_defeated` 0x4F11A0, survey §5) is E10's: no
 defeat is built; ADV-GAR-002's text names it for E10.
 
+*As built* (T114a1; decision 323): `state/garrisons.rs`' `visit_garrison` (`Effect::Garrison`),
+`garrison_battle` (`Defender::Garrison` for an owned one, `Defender::Guards` for a neutral one,
+`battle_at` on the entrance), `end_garrison_battle` (from `end_unowned_battle`: survivors by slot
+as the army, or none and `reward_after` after a win) and `give_won`'s garrison arm (`flag_won`, as
+a mine's: the flag after the winner's levels). Steps 1 and 3's exchange is `ADV-STUB-17` until
+T114a2: a team's garrison's visit, an empty one's capture and a won one's flag open nothing more.
+The survivors' change is told with T114b (`GarrisonChanged`, §15): until then no event and no view
+of a map garrison's army.
+
 ###### 7. The passage and the reach (ADV-GAR-004, ADV-OBJ-003 amended; D-59 as the original)
 
 - **A garrison of the mover's team is crossed** by a path and a move without a visit, as a border
@@ -259,6 +275,13 @@ defeat is built; ADV-GAR-002's text names it for E10.
 - **The hot path:** the test is in the reach's visitable branch only (`visit_at`, reached for a
   tile an object covers), one owner read for a garrison's entrance; the walking loop is unchanged.
   Measured against `master` right after the first build (`homm3-bench-regression`; part D §16).
+- *As built* (T114a1): `visit_at`'s `pass` for `Effect::Garrison` is the owner's team
+  (`allied`); `StepVisit::visited_at_end` (not passed, or a garrison) decides the visit where a
+  move ends: `move_hero` asks it of the last step's tile when the step met nothing (walking and
+  flying alike), and `visit_held` (a guard beside the entrance fought first) asks it in place of
+  `!pass`; the reach and the passage table are unchanged (a passed garrison is a gate's free
+  tile). `Revisit` still leaves a passed garrison out (its `!pass` filter): the exchange's revisit
+  comes with T114a2. The reach's five workloads against `master`: the log's T114a1 record.
 
 ###### 8. The bonus visitables' visits (ADV-BON-002 to -007; survey §10.1 to §10.6)
 
@@ -472,6 +495,13 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
   game sets `BattleSetup.anti_magic` from it (BAT-TER-002, built by the battle lane: every cast of
   both sides refused). A hero attacking out of a garrison (the defender beside it) fights with
   magic (the attacker's tile is not the battle's).
+- *As built* (T114a1; decision 323): **a query, not a field** (*agent's call*, against the first
+  bullet's `BattleStart::anti_magic`): `AdventureState::anti_magic(part, tile)` answers whether
+  the tile is an anti-magic garrison's entrance, and `start_battle` sets `BattleSetup.anti_magic`
+  from it with the start's tile (the defender's); no `BattleStart` literal changes, so the town
+  lane's siege and its tests and the server lane's mapping stay untouched, and the flag reaches
+  viewers through the battle's own observation (ADR-0022 point 6). A siege never stands on a
+  garrison.
 - **The battle's end clears both heroes' battle bonuses** (GAM-BAT-014 amended: now the
   adventure's change of its heroes on the map, the game calling it), keeping the marks the part
   names as outliving a battle under the profile (§12.3; A-44, decision 308). The battle's setup
