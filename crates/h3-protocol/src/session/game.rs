@@ -18,10 +18,13 @@
 //!   projected for it by construction ([`crate::map::game`]). When the game starts it gets its
 //!   `GameSnapshot`. After every accepted command: the player that sent it `GameAccepted`
 //!   (echoed), then every viewer `GameEvents` with the command's events as it may see them (also
-//!   an empty list, so that what a viewer receives does not depend on what it may not see) and a
-//!   battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its events are then the battle
-//!   client's, inside `GameEvents`), then every player that may act its `GameTurn`. A rejected
-//!   command changes nothing and is told to its player alone (`GameRejected`).
+//!   an empty list, so that what a viewer receives does not depend on what it may not see), its
+//!   `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
+//!   keeps each viewer's explored grid as it was last told it and asks `h3_game::reveal` when the
+//!   grid's count changed) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
+//!   events are then the battle client's, inside `GameEvents`), then every player that may act
+//!   its `GameTurn`. A rejected command changes nothing and is told to its player alone
+//!   (`GameRejected`).
 //! - **The journal** (E16 M5 T5b). The accepted commands with their actors and a state hash every
 //!   `checkpoint_every` commands: the adventure replay in progress ([`GameJournal`]; its header,
 //!   map and difficulty are the host's). What a restart must redo comes out as [`GameEntry`]s,
@@ -33,15 +36,15 @@
 //!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]: the
 //!   oldest lines go first): [`GameSession::record`] gives it with its header line
 //!   ([`GameRecordHeader`]: the game's manifest and the player), as a record file holds it.
-//! - **Not here yet:** what each viewer newly sees on the tiles it explored (T5c, SRV-Q26;
-//!   `SRV-STUB-1`); a battle's last snapshot when it ends (`SRV-STUB-14`); a hero's moves, which
+//! - **Not here yet:** a battle's last snapshot when it ends (`SRV-STUB-14`); a hero's moves, which
 //!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`; a query
 //!   with part 2's network seats); the journal's file and the hosting over the network (part 2).
 //!
 //! Provisional (E16 M5 T5a, T5b; the epic's review list): the names, the start as the constructor,
 //! the message order, a `GameTurn` after every accepted command to every player that may act, a
 //! system command told to nobody, a player outside the game told nothing; the entries, a restore
-//! telling every player its snapshot and turn afresh, the record's header with the game's id.
+//! telling every player its snapshot and turn afresh, the record's header with the game's id; a
+//! reveal as a message of its own after the events (T5c).
 
 use alloc::string::String;
 use alloc::vec;
@@ -50,8 +53,8 @@ use alloc::vec::Vec;
 use h3_battle::BattleSide;
 use h3_contracts::PlayerId;
 use h3_game::{
-    Actor, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState, OpenBattle,
-    Viewer as EngineViewer,
+    Actor, BitGrid, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState,
+    OpenBattle, Viewer as EngineViewer,
 };
 
 use super::Record;
@@ -157,6 +160,9 @@ struct Viewer {
     battle: bool,
     /// The latest numbered messages sent (E16 M5 T5b).
     record: Record,
+    /// Its explored tiles as it was last told them, with their count (E16 M5 T5c): the grid
+    /// `h3_game::reveal` compares with; none before the game is opened.
+    explored: Option<(BitGrid, u32)>,
 }
 
 impl Viewer {
@@ -284,6 +290,7 @@ impl<'r> GameSession<'r> {
             n: 0,
             battle: false,
             record: Record::new(options.record_bytes),
+            explored: None,
         };
         Ok(Self {
             rules,
@@ -308,6 +315,7 @@ impl<'r> GameSession<'r> {
             let observation =
                 map::game::observe(&self.state, self.rules, EngineViewer::Player(player));
             viewer.battle = observation.battle.is_some();
+            viewer.explored = explored(&self.state, player);
             viewer.post(
                 player,
                 |n| ServerMessage::GameSnapshot { n, observation },
@@ -439,11 +447,12 @@ impl<'r> GameSession<'r> {
         Ok((echo, events))
     }
 
-    /// Every viewer gets `events` as it may see them and a battle's snapshot when one opens for
-    /// it; then each player that may act its turn.
+    /// Every viewer gets `events` as it may see them, what it newly sees when its explored tiles
+    /// grew and a battle's snapshot when one opens for it; then each player that may act its turn.
     fn tell(&mut self, events: &[h3_game::GameEvent], out: &mut Vec<GameOutbound>) {
         for (player, viewer) in players().zip(&mut self.viewers) {
-            let events = map::game::events(events, EngineViewer::Player(player));
+            let engine_viewer = EngineViewer::Player(player);
+            let events = map::game::events(events, engine_viewer);
             let started = events
                 .iter()
                 .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
@@ -454,6 +463,15 @@ impl<'r> GameSession<'r> {
                     .iter()
                     .any(|e| matches!(e, GameEvent::BattleEnded { .. }));
             viewer.post(player, |n| ServerMessage::GameEvents { n, events }, out);
+            let now = explored(&self.state, player);
+            // The count changes exactly when the grid does (the design note §14).
+            if let (Some((since, before)), Some((_, count))) = (&viewer.explored, &now)
+                && before != count
+            {
+                let reveal = map::game::reveal(&self.state, self.rules, engine_viewer, since);
+                viewer.post(player, |n| ServerMessage::GameReveal { n, reveal }, out);
+            }
+            viewer.explored = now;
             let open = own_battle(&self.state, player);
             if let Some((battle, side)) = open
                 && (started || !held)
@@ -497,6 +515,14 @@ fn own_battle(state: &GameState, player: PlayerId) -> Option<(&OpenBattle, Battl
     state
         .battle(player)
         .and_then(|battle| battle.side_of(player).map(|side| (battle, side)))
+}
+
+/// `player`'s explored grid now with its count; none for a player outside the game.
+fn explored(state: &GameState, player: PlayerId) -> Option<(BitGrid, u32)> {
+    state
+        .adventure()
+        .explored(player)
+        .map(|grid| (grid.clone(), grid.count()))
 }
 
 /// The players by index, as many as the game has (at most 256: `PlayerId`'s range).

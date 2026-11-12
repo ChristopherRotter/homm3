@@ -128,58 +128,8 @@ fn inverse(a: &Adventure) -> AdventureObservation {
         tiles: (0..a.tiles.len())
             .map(|i| tile_back(*a.tile(i).unwrap()))
             .collect(),
-        heroes: a
-            .heroes
-            .iter()
-            .map(|h| HeroView {
-                id: HeroId::new(h.id),
-                owner: PlayerId::new(h.owner),
-                pos: pos_back(h.pos),
-                boat: h.boat,
-                own: h.own.as_ref().map(|o| OwnHeroView {
-                    army: army_back(&o.army),
-                    movement: o.movement,
-                    max_movement: o.max_movement,
-                    formation: match o.formation {
-                        Formation::Loose => EngineFormation::Loose,
-                        Formation::Tight => EngineFormation::Tight,
-                    },
-                    tactics: o.tactics,
-                    marks: o
-                        .marks
-                        .iter()
-                        .map(|m| (Handle::from_raw(m.object_type), pos_back(m.anchor)))
-                        .collect(),
-                }),
-            })
-            .collect(),
-        objects: a
-            .objects
-            .iter()
-            .map(|o| ObjectView {
-                object_type: Handle::from_raw(o.object_type),
-                anchor: pos_back(o.anchor),
-                blocked: TileMask::from_bits(o.blocked.0),
-                visitable: TileMask::from_bits(o.visitable.0),
-                drawn: TileMask::from_bits(o.drawn.0),
-                monster: o.monster.map(|m| MonsterView {
-                    creature: Handle::from_raw(m.creature),
-                    count_word: m.count_word,
-                }),
-                owner: o.owner.map(PlayerId::new),
-                production: o
-                    .production
-                    .map(|p| (Handle::from_raw(p.resource), p.amount)),
-                guards: o.guards.as_ref().map(|g| GuardsView {
-                    creature: g.creature.map(Handle::from_raw),
-                    count_word: g.count_word,
-                    army: g.army.as_deref().map(army_back),
-                }),
-                visited: o.visited,
-                boat_tile: o.boat_tile.map(pos_back),
-                town: o.town.map(TownId::new),
-            })
-            .collect(),
+        heroes: a.heroes.iter().map(hero_back).collect(),
+        objects: a.objects.iter().map(object_back).collect(),
         bought: a.bought.iter().copied().map(Handle::from_raw).collect(),
         keys: a.keys,
         known: a
@@ -204,15 +154,90 @@ fn inverse(a: &Adventure) -> AdventureObservation {
                 },
             })
             .collect(),
-        boats: a
-            .boats
-            .iter()
-            .map(|b| BoatView {
-                tile: pos_back(b.tile),
-                kind: b.kind,
-                facing: b.facing,
-            })
-            .collect(),
+        boats: a.boats.iter().map(boat_back).collect(),
+    }
+}
+
+fn hero_back(h: &MapHero) -> HeroView {
+    HeroView {
+        id: HeroId::new(h.id),
+        owner: PlayerId::new(h.owner),
+        pos: pos_back(h.pos),
+        boat: h.boat,
+        own: h.own.as_ref().map(|o| OwnHeroView {
+            army: army_back(&o.army),
+            movement: o.movement,
+            max_movement: o.max_movement,
+            formation: match o.formation {
+                Formation::Loose => EngineFormation::Loose,
+                Formation::Tight => EngineFormation::Tight,
+            },
+            tactics: o.tactics,
+            marks: o
+                .marks
+                .iter()
+                .map(|m| (Handle::from_raw(m.object_type), pos_back(m.anchor)))
+                .collect(),
+        }),
+    }
+}
+
+fn object_back(o: &Object) -> ObjectView {
+    ObjectView {
+        object_type: Handle::from_raw(o.object_type),
+        anchor: pos_back(o.anchor),
+        blocked: TileMask::from_bits(o.blocked.0),
+        visitable: TileMask::from_bits(o.visitable.0),
+        drawn: TileMask::from_bits(o.drawn.0),
+        monster: o.monster.map(|m| MonsterView {
+            creature: Handle::from_raw(m.creature),
+            count_word: m.count_word,
+        }),
+        owner: o.owner.map(PlayerId::new),
+        production: o
+            .production
+            .map(|p| (Handle::from_raw(p.resource), p.amount)),
+        guards: o.guards.as_ref().map(|g| GuardsView {
+            creature: g.creature.map(Handle::from_raw),
+            count_word: g.count_word,
+            army: g.army.as_deref().map(army_back),
+        }),
+        visited: o.visited,
+        boat_tile: o.boat_tile.map(pos_back),
+        town: o.town.map(TownId::new),
+    }
+}
+
+fn boat_back(b: &Boat) -> BoatView {
+    BoatView {
+        tile: pos_back(b.tile),
+        kind: b.kind,
+        facing: b.facing,
+    }
+}
+
+/// The engine's objects in the wire's order (`Object::place`, E16 M5 T5c): the wire leaves out
+/// the map's.
+pub(super) fn in_tile_order(objects: &mut [ObjectView]) {
+    objects.sort_by_key(|o| {
+        let a = o.anchor;
+        (
+            a.level,
+            a.y,
+            a.x,
+            o.object_type.raw(),
+            o.blocked.bits(),
+            o.visitable.bits(),
+            o.drawn.bits(),
+        )
+    });
+}
+
+fn info_back(h: &HeroInfo) -> h3_game::HeroInfo {
+    h3_game::HeroInfo {
+        id: HeroId::new(h.id),
+        hero_type: Handle::from_raw(h.hero_type),
+        details: h.details.as_ref().map(|d| Arc::new(details_back(d))),
     }
 }
 
@@ -334,10 +359,15 @@ fn every_part() -> AdventureObservation {
                 own: None,
             },
         ],
+        // Not in tile order, which the wire's is (E16 M5 T5c).
         objects: vec![
             object(true),
-            object(false),
             ObjectView {
+                anchor: p(5, 1, 0),
+                ..object(false)
+            },
+            ObjectView {
+                anchor: p(4, 1, 0),
                 guards: Some(GuardsView {
                     creature: Some(Handle::from_raw(8)),
                     count_word: 0,
@@ -375,8 +405,17 @@ fn every_part() -> AdventureObservation {
 
 #[test]
 fn every_part_of_the_adventure_map_maps_back_and_round_trips() {
-    let o = every_part();
+    let mut o = every_part();
     let wire = adventure_view(&o);
+    assert_eq!(
+        wire.objects[1].anchor,
+        Pos {
+            x: 4,
+            y: 1,
+            level: 0
+        }
+    );
+    in_tile_order(&mut o.objects);
     assert_eq!(inverse(&wire), o);
     assert_eq!(wire.tiles, [0, 1, 2, 2, 3, 0]);
     assert_eq!(wire.palette.len(), 4);
@@ -424,15 +463,38 @@ fn check_played(map: &[u8], seed: u64, steps: usize) -> (usize, usize) {
     let mut env = AdventureEnv::new(rules.clone(), setup, seed, 28).unwrap();
     let mut rng = Rng::for_stream(seed, StreamId::AGENT);
     let (mut largest, mut checked) = (0, 0);
+    let players = env.state().players();
+    let explored = |state: &h3_game::GameState, p: u8| {
+        state
+            .adventure()
+            .explored(PlayerId::new(p))
+            .unwrap()
+            .clone()
+    };
+    let mut grids: Vec<_> = (0..=u8::MAX)
+        .take(players)
+        .map(|p| explored(env.state(), p))
+        .collect();
     for step in 0..steps {
-        for player in (0..=u8::MAX).take(env.state().players()) {
+        for (player, grid) in (0..=u8::MAX).zip(&mut grids) {
             let viewer = PlayerId::new(player);
+            // What the viewer newly sees maps back too (E16 M5 T5c).
+            let now = explored(env.state(), player);
+            if now != *grid {
+                let r = h3_game::reveal(env.state(), rules, Viewer::Player(viewer), grid);
+                let wire =
+                    crate::map::game::reveal(env.state(), rules, Viewer::Player(viewer), grid);
+                assert_eq!(inverse_reveal(&wire), sorted_reveal(&r));
+                *grid = now;
+            }
             let o = h3_game::observe(env.state(), rules, Viewer::Player(viewer));
             let wire = observe(env.state(), rules, Viewer::Player(viewer));
             assert_eq!(wire, observation(&o));
+            let mut sorted = o.clone();
+            in_tile_order(&mut sorted.adventure.objects);
             assert_eq!(
                 inverse_game(&wire, o.battle.clone()),
-                o,
+                sorted,
                 "step {step}, player {player}"
             );
             check_palette(&wire.adventure);
@@ -694,6 +756,72 @@ pub(super) fn set_back(bits: u64) -> BuildingSet {
         .fold(BuildingSet::EMPTY, BuildingSet::with)
 }
 
+/// The wire's reveal back in the engine's types (E16 M5 T5c).
+fn inverse_reveal(r: &GameReveal) -> h3_game::GameReveal {
+    let a = &r.adventure;
+    h3_game::GameReveal {
+        adventure: h3_game::AdventureReveal {
+            viewer: PlayerId::new(a.viewer),
+            tiles: a
+                .tiles
+                .iter()
+                .map(|t| h3_game::RevealedTile {
+                    pos: pos_back(t.pos),
+                    explored: t.explored,
+                    view: tile_back(t.view),
+                })
+                .collect(),
+            heroes: a.heroes.iter().map(hero_back).collect(),
+            objects: a.objects.iter().map(object_back).collect(),
+            boats: a.boats.iter().map(boat_back).collect(),
+            towns: a.towns.iter().copied().map(TownId::new).collect(),
+        },
+        heroes: r.heroes.iter().map(info_back).collect(),
+        towns: r.towns.iter().map(town_back).collect(),
+    }
+}
+
+/// `r` with its objects in the wire's order.
+fn sorted_reveal(r: &h3_game::GameReveal) -> h3_game::GameReveal {
+    let mut r = r.clone();
+    in_tile_order(&mut r.adventure.objects);
+    r
+}
+
+#[test]
+fn every_part_of_a_reveal_maps_back_and_round_trips() {
+    let o = every_game_part(None, MonthKind::Normal);
+    let a = &o.adventure;
+    let engine = h3_game::GameReveal {
+        adventure: h3_game::AdventureReveal {
+            viewer: o.viewer,
+            tiles: a
+                .tiles
+                .iter()
+                .zip(0..)
+                .map(|(&view, x)| h3_game::RevealedTile {
+                    pos: h3_adventure::Pos::new(x, 0, 0),
+                    explored: x % 2 == 0,
+                    view,
+                })
+                .collect(),
+            heroes: a.heroes.clone(),
+            objects: a.objects.clone(),
+            boats: a.boats.clone(),
+            towns: o.towns.iter().map(|t| t.town).collect(),
+        },
+        heroes: o.heroes.clone(),
+        towns: o.towns.clone(),
+    };
+    let wire = crate::map::game::reveal_view(&engine);
+    assert_eq!(inverse_reveal(&wire), sorted_reveal(&engine));
+    round_trips(&wire);
+    assert_eq!(
+        text(&wire.adventure.tiles[0]),
+        r#"{"pos":{"x":0,"y":0,"level":0},"explored":true,"view":{"Hidden":{}}}"#
+    );
+}
+
 /// The wire's observation back in the engine's types, with `battle` for the battle's part.
 fn inverse_game(
     g: &GameObservation,
@@ -720,15 +848,7 @@ fn inverse_game(
         treasury: g.treasury.clone(),
         events_today: g.events_today.clone(),
         decision: g.decision.as_ref().map(decision_back),
-        heroes: g
-            .heroes
-            .iter()
-            .map(|h| h3_game::HeroInfo {
-                id: HeroId::new(h.id),
-                hero_type: Handle::from_raw(h.hero_type),
-                details: h.details.as_ref().map(|d| Arc::new(details_back(d))),
-            })
-            .collect(),
+        heroes: g.heroes.iter().map(info_back).collect(),
         adventure: inverse(&g.adventure),
         towns: g.towns.iter().map(town_back).collect(),
         battle,
@@ -967,17 +1087,20 @@ fn every_part_of_the_game_maps_back_and_round_trips() {
         .chain([None])
         .zip(months.into_iter().cycle());
     for (decision, month) in cases {
-        let o = every_game_part(decision, month);
+        let mut o = every_game_part(decision, month);
         let wire = observation(&o);
+        in_tile_order(&mut o.adventure.objects);
         assert_eq!(inverse_game(&wire, o.battle.clone()), o);
         round_trips(&wire);
     }
     // Without a battle.
-    let o = h3_game::GameObservation {
+    let mut o = h3_game::GameObservation {
         battle: None,
         ..every_game_part(None, MonthKind::Normal)
     };
-    assert_eq!(inverse_game(&observation(&o), None), o);
+    let wire = observation(&o);
+    in_tile_order(&mut o.adventure.objects);
+    assert_eq!(inverse_game(&wire, None), o);
 }
 
 #[test]

@@ -1,6 +1,7 @@
 //! The whole game's session (E16 M5 T5a, T5b): the golden adventure replays run through it, each
 //! command applied as its actor's, each player's messages checked against an engine run beside
-//! it (the order, the numbers, the events, the battles' snapshots, the turns); a rejected command
+//! it (the order, the numbers, the events, what each newly sees, the battles' snapshots, the
+//! turns); a rejected command
 //! changes nothing and is told to its player alone. The journal is the replay's commands and
 //! checkpoints, its entries restore the game at any point, a journal that is not its re-run
 //! restores nothing; each player's record is its header and every frame it was sent.
@@ -10,7 +11,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_contracts::PlayerId;
-use h3_game::{Actor, GameRuleset, GameSetup, GameState, Viewer, apply, legal_commands};
+use h3_game::{Actor, BitGrid, GameRuleset, GameSetup, GameState, Viewer, apply, legal_commands};
 
 use super::game::RULES;
 use super::game_fold::golden;
@@ -110,6 +111,7 @@ fn number(message: &ServerMessage) -> u32 {
     match message {
         ServerMessage::GameSnapshot { n, .. }
         | ServerMessage::GameEvents { n, .. }
+        | ServerMessage::GameReveal { n, .. }
         | ServerMessage::GameTurn { n, .. }
         | ServerMessage::GameAccepted { n, .. }
         | ServerMessage::GameRejected { n, .. }
@@ -148,11 +150,14 @@ struct Seen {
     turns: usize,
     casts: usize,
     restores: usize,
+    reveals: usize,
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
-/// `GameAccepted` first if it sent `echo`, then its `GameEvents` (`told`), a battle's snapshot
-/// when one opens for it, its turn if it may act. `battle` is whether its view holds a battle.
+/// `GameAccepted` first if it sent `echo`, then its `GameEvents` (`told`), its `GameReveal` when
+/// its explored tiles grew since `grid`, the grid it was last told (then kept), a battle's
+/// snapshot when one opens for it, its turn if it may act. `battle` is whether its view holds a
+/// battle.
 #[allow(
     clippy::too_many_arguments,
     reason = "a test's check of one viewer's messages"
@@ -165,7 +170,7 @@ fn check(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
-    battle: &mut bool,
+    (battle, grid): (&mut bool, &mut BitGrid),
     seen: &mut Seen,
 ) {
     for m in messages {
@@ -198,6 +203,18 @@ fn check(
     assert_eq!(*events, told);
     let observed = observe(state, rules, Viewer::Player(player)).battle;
     let mut rest: Vec<&ServerMessage> = m.collect();
+    let now = state.adventure().explored(player).unwrap();
+    if let Some(ServerMessage::GameReveal { reveal, .. }) = rest.first() {
+        assert_ne!(now, grid, "a reveal only when the explored tiles grew");
+        let viewer = Viewer::Player(player);
+        assert_eq!(*reveal, map::game::reveal(state, rules, viewer, grid));
+        assert!(!reveal.adventure.tiles.is_empty());
+        seen.reveals += 1;
+        rest.remove(0);
+    } else {
+        assert_eq!(now, grid, "the explored tiles grew without a reveal");
+    }
+    grid.clone_from(now);
     if let Some(ServerMessage::Snapshot { observation, .. }) = rest.first() {
         assert_eq!(Some(observation), observed.as_ref());
         assert!(started || !*battle, "a snapshot only when a battle opens");
@@ -253,6 +270,10 @@ fn the_golden_replays_run_through_the_session() {
         frames(&out, &mut sent);
         // The start: each player's snapshot, then its turn.
         let (mut next, mut battle) = opened(&out, &shadow, rules, name);
+        let mut grids: Vec<BitGrid> = ids
+            .iter()
+            .map(|&p| shadow.adventure().explored(p).unwrap().clone())
+            .collect();
         assert!(session.system_legal().is_empty());
         assert_eq!(
             session.drain_entries().count(),
@@ -297,7 +318,7 @@ fn the_golden_replays_run_through_the_session() {
                     &shadow,
                     rules,
                     player,
-                    &mut battle[player.index()],
+                    (&mut battle[player.index()], &mut grids[player.index()]),
                     &mut seen,
                 );
             }
@@ -352,6 +373,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.snapshots > 0, "{seen:?}");
     assert!(seen.turns >= seen.commands - seen.system, "{seen:?}");
     assert!(seen.casts > 0, "{seen:?}");
+    assert!(seen.reveals > 1_000, "{seen:?}");
     assert_eq!(seen.restores, 72, "{seen:?}");
 }
 

@@ -78,12 +78,6 @@ epic   = "E08"
 # --- server (SRV-STUB-<n>) ---
 
 [[stub]]
-id     = "SRV-STUB-1"
-where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
-reason = "A reveal's content (SRV-Q26 (a)): a step's reveal has no event and an object's TilesRevealed only a count, so the fold keeps the viewer's explored tiles, tile views, objects, towns, empty boats, heroes, garrisons and owner facts in sight as they were. The adventure lane's query has landed (2026-11-11: h3_game::reveal(state, rules, viewer, since) -> GameReveal, what the viewer sees through its grid now and did not through since); lifted by T5c, whose session keeps each viewer's last grid and sends the answer with the events when the viewer's explored count grew; the fold gate (h3-protocol's tests/game_fold.rs) lets the parts this alone names differ only where the explored tiles grew"
-epic   = "E16"
-
-[[stub]]
 id     = "SRV-STUB-3"
 where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
 reason = "A hero coming into the viewer's sight without a reveal (SRV-Q26 (c)): HeroStepped gives its id and tiles, not its owner, type or boat, so the fold cannot add it (179 viewer-commands of the golden replays with steps alone). The adventure lane's inbox (2026-11-09)"

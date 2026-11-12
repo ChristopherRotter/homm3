@@ -12,10 +12,12 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, BoatView, Choice as EngineChoice, ChoiceKind as EngineChoiceKind,
-    GuardsView, HeroView, HireTarget as EngineHireTarget, Known as EngineKnown, KnownObject,
-    MonsterView, ObjectTypeId, ObjectView, Offer as EngineOffer, OfferKind as EngineOfferKind,
-    OwnHeroView, StaticTile, TileMask, TileView, UniversityVisit as EngineVisit,
+    AdventureObservation, AdventureReveal as EngineAdventureReveal, BoatView,
+    Choice as EngineChoice, ChoiceKind as EngineChoiceKind, GuardsView, HeroView,
+    HireTarget as EngineHireTarget, Known as EngineKnown, KnownObject, MonsterView, ObjectTypeId,
+    ObjectView, Offer as EngineOffer, OfferKind as EngineOfferKind, OwnHeroView,
+    RevealedTile as EngineRevealedTile, StaticTile, TileMask, TileView,
+    UniversityVisit as EngineVisit,
 };
 use h3_content::{Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
@@ -32,11 +34,12 @@ use h3_kernel::handle::Handle;
 
 use crate::wire::WireU64;
 use crate::wire::game::{
-    Adventure, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind, Decision, Formation,
-    GameObservation, Garrison, GarrisonStack, Guards, HeroDetails, HeroInfo, Hire, HireCreature,
-    HireTarget, Known, KnownObject as WireKnownObject, LevelUp, MapHero, Monster, Month, Object,
-    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, SkillLevel,
-    SlotState, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit,
+    Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
+    Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
+    HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
+    MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player,
+    Pos, PrimarySkill, RevealedTile, SkillLevel, SlotState, Tile, Town, TownBuildings,
+    TownOwnerFacts, UniversityVisit,
 };
 
 mod command;
@@ -50,6 +53,59 @@ pub use manifest::{key_tables, manifest};
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {
     observation(&h3_game::observe(state, rules, viewer))
+}
+
+/// What `viewer` sees now that it did not see through `since`, an earlier explored grid of its
+/// own, on the wire (`h3_game::reveal`, SRV-Q26 (a); E16 M5 T5c).
+pub fn reveal(
+    state: &GameState,
+    rules: &GameRuleset,
+    viewer: Viewer,
+    since: &h3_game::BitGrid,
+) -> GameReveal {
+    reveal_view(&h3_game::reveal(state, rules, viewer, since))
+}
+
+/// A game reveal on the wire.
+pub(crate) fn reveal_view(r: &h3_game::GameReveal) -> GameReveal {
+    let h3_game::GameReveal {
+        adventure,
+        heroes,
+        towns,
+    } = r;
+    let EngineAdventureReveal {
+        viewer,
+        tiles,
+        heroes: seen,
+        objects: newly,
+        boats,
+        towns: ids,
+    } = adventure;
+    GameReveal {
+        adventure: AdventureReveal {
+            viewer: viewer.raw(),
+            tiles: tiles
+                .iter()
+                .map(
+                    |&EngineRevealedTile {
+                         pos: at,
+                         explored,
+                         view,
+                     }| RevealedTile {
+                        pos: pos(at),
+                        explored,
+                        view: tile(view),
+                    },
+                )
+                .collect(),
+            heroes: seen.iter().map(map_hero).collect(),
+            objects: objects(newly),
+            boats: boats.iter().map(boat).collect(),
+            towns: ids.iter().map(|&t| t.raw()).collect(),
+        },
+        heroes: heroes.iter().map(hero_info).collect(),
+        towns: towns.iter().map(town).collect(),
+    }
 }
 
 /// A game observation on the wire.
@@ -461,7 +517,7 @@ pub(crate) fn adventure_view(o: &AdventureObservation) -> Adventure {
         palette,
         tiles,
         heroes: heroes.iter().map(map_hero).collect(),
-        objects: objects.iter().map(object).collect(),
+        objects: crate::map::game::objects(objects),
         bought: bought.iter().map(|&t| t.raw()).collect(),
         keys: *keys,
         known: known.iter().map(known_object).collect(),
@@ -616,6 +672,17 @@ fn own_map_hero(h: &OwnHeroView) -> OwnMapHero {
         tactics: *tactics,
         marks: marks.iter().copied().map(object_ref).collect(),
     }
+}
+
+/// Objects on the wire, in tile order ([`Object::place`]; E16 M5 T5c): the engine lists them in
+/// the map's order, which a fold cannot keep without each object's index
+/// (`docs/06-security.md`).
+fn objects(views: &[ObjectView]) -> Vec<Object> {
+    let mut objects: Vec<Object> = views.iter().map(object).collect();
+    // Objects sharing a place are alike in every field (`Object::place`): their order is no
+    // choice.
+    let _ = h3_kernel::order::sort_by_unique_key(&mut objects, Object::place);
+    objects
 }
 
 /// An object on the wire.

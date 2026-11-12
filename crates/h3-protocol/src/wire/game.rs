@@ -3,7 +3,8 @@
 //! ([`Adventure`]) and its battle (the battle's [`super::Observation`]); what it commands
 //! ([`GameCommand`]) and why a command was rejected ([`GameReject`], T3a); what happened, as it
 //! sees it ([`GameEvent`], T3b); how a viewer keeps its observation current by its events
-//! ([`GameObservation::fold`], T3c); and what the game is made of ([`GameManifest`], T4).
+//! ([`GameObservation::fold`], T3c) and by what it newly sees ([`GameReveal`], T5c); and what the
+//! game is made of ([`GameManifest`], T4).
 //!
 //! The same rules as [`super`]'s: the protocol's own types, translated by [`crate::map::game`]
 //! with every engine field named; serde's default enum form with `deny_unknown_fields`; content
@@ -121,7 +122,11 @@ pub struct Adventure {
     pub tiles: Vec<u32>,
     /// The heroes it sees, by id: its own and those on a tile it sees them on.
     pub heroes: Vec<MapHero>,
-    /// The objects still on the map that it sees, in the map's order.
+    /// The objects still on the map that it sees, in tile order ([`Object::place`]; E16 M5 T5c),
+    /// not the map's: a fold places an object it newly sees there ([`GameReveal`]), where the
+    /// map's order would need each object's index, which counts the objects before it, seen or
+    /// not (`docs/06-security.md`). A client finds an object's entry in the map's file by its
+    /// type and anchor.
     pub objects: Vec<Object>,
     /// The Cartographer types the player has bought, in type order (ADV-VIS-001).
     pub bought: Vec<u16>,
@@ -251,6 +256,24 @@ pub struct Object {
     pub town: Option<u16>,
 }
 
+impl Object {
+    /// Its place among a view's objects ([`Adventure::objects`]): its anchor's level, row and
+    /// column, then its type and masks. Two objects share a place only as two special grounds of
+    /// one type with the same masks, which the setup lets stack on one anchor (E08 T20a2a) and
+    /// which are alike in every field.
+    pub const fn place(&self) -> (u8, u16, u16, u16, u64, u64, u64) {
+        (
+            self.anchor.level,
+            self.anchor.y,
+            self.anchor.x,
+            self.object_type,
+            self.blocked.0,
+            self.visitable.0,
+            self.drawn.0,
+        )
+    }
+}
+
 /// A monster as a player sees it on the map.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -328,6 +351,58 @@ pub struct Boat {
     pub kind: u8,
     /// Its facing in the original's order of eight directions.
     pub facing: u8,
+}
+
+/// What a viewer sees now that it did not see through its explored tiles when it was last told
+/// them (`h3_game::reveal`, SRV-Q26 (a); E16 M5 T5c): the game's `GameReveal`, each part as
+/// [`GameObservation`] shows it. A viewer's observation folded with its events
+/// ([`GameObservation::fold`]) and then this ([`GameObservation::reveal`]) is its observation
+/// again.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameReveal {
+    /// The adventure map's part.
+    pub adventure: AdventureReveal,
+    /// The heroes of [`AdventureReveal::heroes`] with their types, in their order, as
+    /// [`GameObservation::heroes`] holds them (none is the viewer's own: none has details).
+    pub heroes: Vec<HeroInfo>,
+    /// The viewer's views of [`AdventureReveal::towns`], in their order, as
+    /// [`GameObservation::towns`] holds them (TWN-VEW-001 to -004).
+    pub towns: Vec<Town>,
+}
+
+/// The adventure map's part of a [`GameReveal`] (`h3_adventure::AdventureReveal`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AdventureReveal {
+    /// The player it is for.
+    pub viewer: u8,
+    /// The tiles whose sight changed (explored, on the fringe or neither), in tile order, each
+    /// with its view now.
+    pub tiles: Vec<RevealedTile>,
+    /// The heroes the viewer sees now on a tile where it did not see heroes, by id: never its own.
+    pub heroes: Vec<MapHero>,
+    /// The objects still on the map it sees now and did not, in tile order ([`Object::place`]).
+    pub objects: Vec<Object>,
+    /// The empty boats it sees now on a tile where it did not see heroes, in tile order.
+    pub boats: Vec<Boat>,
+    /// The towns a tile of which it has explored now and none before (TWN-VEW-001), by id: their
+    /// views are [`GameReveal::towns`]. Under `ADV-QUIRK-1` a town's object may have shown on the
+    /// fringe before, so it is here and not in [`Self::objects`].
+    pub towns: Vec<u16>,
+}
+
+/// A tile whose sight changed ([`AdventureReveal::tiles`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RevealedTile {
+    /// The tile.
+    pub pos: Pos,
+    /// Whether the viewer has explored it now; a tile not explored whose view is not
+    /// [`Tile::Hidden`] is on its fringe (ADV-FOG-005).
+    pub explored: bool,
+    /// What the viewer sees of it now, as [`Adventure::tile`] shows it.
+    pub view: Tile,
 }
 
 /// What one player may know of a game (`h3_game::observe`, ADR-0017 points 1 and 2;

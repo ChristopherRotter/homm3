@@ -89,8 +89,11 @@ pub mod wire;
 /// hero visited again) and its rejection `NothingToRevisit`. v41 (E09 T18c, TWN-EVT-001): the
 /// game's event `TownEventFired`, a town event fired at its owner's turn start. v42 (SRV-Q26 (b),
 /// the adventure lane's inbox): the game's adventure event `MovementChanged`, a hero's movement
-/// points left and day's maximum after a command that changed them, its owner's alone.
-pub const PROTOCOL_VERSION: u32 = 42;
+/// points left and day's maximum after a command that changed them, its owner's alone. v43 (E16
+/// M5 T5c, SRV-Q26 (a)): the whole game's message `GameReveal`, what a viewer newly sees after a
+/// command that explored tiles for it (`h3_game::reveal`); a view's objects in tile order
+/// (`wire::game::Object::place`), no longer the map's: the field is unchanged, its order is new.
+pub const PROTOCOL_VERSION: u32 = 43;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
