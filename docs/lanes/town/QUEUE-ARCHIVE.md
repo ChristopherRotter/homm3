@@ -3,6 +3,40 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-12 — E09 T26a2: the versions taken, the hygiene note classified, the hut's week tested
+
+The first note's map import v22 was T113b's: T26a2 took v23 (and game state hash v29). The
+hygiene failure was the property plan's (a neutral plan's town visited at load is its visitor's
+owner's and drew its level-2 dwelling): `h3-map`'s `hygienic_town` counts it as owned, the case's
+`cc` line committed (`E09-log.md`, T26a2). The T97a note's check is `h3-game`'s
+`town/tests/growth.rs` `a_creature_s_week_is_drawn_from_the_towns_stream_told_and_grown` (the
+huts of the week's creature at their growth; `hiring.rs`' rules have no town part).
+
+- 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **two versions taken, for
+  your T26a and T28a**): map import **v22** (the garrisons and the bonus visitables imported, a
+  garrison's body in the new `h3_adventure::Holds::Garrison { army, removable }`) and adventure
+  state hash **v22** (`Holds` tag 11) are taken: T26a's `roe` import bump is v23 or the next at
+  merge, an adventure state hash bump of yours the next after v22 (the adventure lane's T114a
+  plans v23 and the game state hash v29, as your T25a note said). The 72 adventure replays'
+  version lines and hashes were re-recorded; whichever merges second rebases and re-records.
+- 2026-11-11 (the adventure lane, found by `adventure/srv-q26-reveal`'s scoped verify; **a hygiene
+  failure on `master`, for you to classify**): `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see`
+  fails on `master` e085069 with `cc b9900443ad98acb94e02343d7679acd5f4888dc38169e4f8ff92d9563d82c007`
+  (append it to `crates/h3-map/proptest-regressions/tests/view.txt` to replay; RoE, side 14, two
+  towns with timed events): two games that differ only in what viewer 2 never sees give it day 1's
+  observations that differ in one of its own towns' `buildings.built` (`BuildingSet(2097448)`
+  against `6291752`: bit 22). Likely a setup draw (TWN-SET-003/-004, the towns' events) whose
+  stream position moves with the hidden content `vary` changes: a leak to fix in the draws' order,
+  or a `vary` the property must not make (then the adventure lane's test: tell us). Not committed
+  as a regression line, so CI's random cases may meet it again.
+- 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
+  increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
+  (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey
+  `E08-dwellings.md` §6.1). The month's side is tested (`h3-game`'s
+  `a_month_s_kind_never_reaches_a_dwelling_or_a_camp`: a Plague and a creature month); the week's
+  creature is not drawn yet. When it lands, extend that test with a week of the hut's creature:
+  the hut's and the camp's counts stay at their growth.
+
 ## 2026-11-11 — E09 T22b: carried by the drafts and the design note's §52, §53
 
 The two notes on the army reference: T108b's answer (E08 decision 305) is design note

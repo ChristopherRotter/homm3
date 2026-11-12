@@ -10,33 +10,23 @@ and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
 ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87),
-T25b2 (decision 88) and T26a1 (decision 89). The building rounds follow the cut of design note §56
+T25b2 (decision 88), T26a1 (decision 89) and T26a2 (decision 90). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 **E09 T26 — growth in the game** (decision 83; design note §56 round 5, `cross-lane`; T26a in two,
-decision 89; **T26a1** done, `E09-log.md`): **T26a2** the week's kind and the towns' stream
-(TWN-GRO-002, §42: `StreamId::TOWNS` in the game state, the game state's week beside the month's
-kind, game state hash v29, `WeekStarted` with it and `GameObservation::week`, the protocol's
-mapping, `cross-lane`, the global trap), the draw on a week's first day before `WeekStarted`
-(the eligible creatures by the setup's `roe`: `GameSetup`'s new field, every struct literal in
-`h3-cli`'s and `h3-map`'s files, map import v23: E08's T113b took v22), the kind
-passed to `town::growth::grow_week` and `grow_month` (T26a1's `WeekKind::Normal` replaced), the
-month after a `week_of` week (§43; GAM-CAL-003 amended: `MonthKind::Creature` of the level's base
-creature without the creature's draw), the stream's isolation tested (a town week leaves the
-game's stream where it was), the inbox's 2026-11-05 T97a note (a week of the hut's creature
-leaves the map's dwellings at their growth), the replays re-recorded, the fork benchmarks (two
-new state fields); **T26b** the neutral garrison week (T25b2's `garrison_week`, written by
-`AdventureState::set_town_garrison` in `h3-adventure`'s `src/town.rs`, the adventure part's army
-rules passed), the Portal's draws (T25b2's `summon`: each week, at its build, a flagged
-dwelling, a capture, decisions 71 and 82, each from its stream), the views (§47: the owner's
-counts and Portal, the week's kind; `TownChanged` told after the week, the month and an event's
-creatures) and the protocol (`cross-lane`, the server lane's fold gate), the replays re-recorded
-(skill `homm3-rerecord-replays`), the bench (skill `homm3-bench-regression`). Each part's rule
-ids, sources and tests; the merge order with E08's increment 12 (each `cross-lane` number the
-next at merge). **At its start:** confirm the cut. **Depends on:** T26a1 (its pull request
-merged). **Status:** next (T26a2).
+decision 89; **T26a1** and **T26a2** done, decision 90, `E09-log.md`): **T26b** the neutral
+garrison week (T25b2's `garrison_week`, written by `AdventureState::set_town_garrison` in
+`h3-adventure`'s `src/town.rs`, the adventure part's army rules passed), the Portal's draws
+(T25b2's `summon`: each week, at its build, a flagged dwelling, a capture, decisions 71 and 82,
+each from its stream: the week's from the towns' stream `GameState` holds since T26a2), the views
+(§47: the owner's counts and Portal; `TownChanged` told after the week, the month and an event's
+creatures; the week's kind is told since T26a2) and the protocol (`cross-lane`, the server lane's
+fold gate; v51 or the next at merge), the replays re-recorded (skill `homm3-rerecord-replays`),
+the bench (skill `homm3-bench-regression`). Each part's rule ids, sources and tests; the merge
+order with E08's increment 12 (each `cross-lane` number the next at merge). **At its start:**
+confirm the cut. **Depends on:** T26a2 (its pull request merged). **Status:** next.
 
 **E09 T27 to T30 — the rest of the build** (decision 83; design note §56 rounds 6 to 8, each cut
 confirmed at its start, the agent queues each in full when the one before it ends): **T27**
@@ -50,13 +40,6 @@ income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, i
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
-- 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **two versions taken, for
-  your T26a and T28a**): map import **v22** (the garrisons and the bonus visitables imported, a
-  garrison's body in the new `h3_adventure::Holds::Garrison { army, removable }`) and adventure
-  state hash **v22** (`Holds` tag 11) are taken: T26a's `roe` import bump is v23 or the next at
-  merge, an adventure state hash bump of yours the next after v22 (the adventure lane's T114a
-  plans v23 and the game state hash v29, as your T25a note said). The 72 adventure replays'
-  version lines and hashes were re-recorded; whichever merges second rebases and re-records.
 - 2026-11-12 (the server lane, E16 M5 part 2's refinement, SRV-Q29; **the user's decision,
   informational**): in increment 2c the server lane builds `Viewer::Spectator` (public facts only)
   through `h3-towns`' projections too (a town's view at a spectator's level), in a `cross-lane`
@@ -64,17 +47,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   two notes of 2026-11-10 (`town_offer`, `town_events_at_start`) go to E16 M5 T11.
 
 - 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".
-
-- 2026-11-11 (the adventure lane, found by `adventure/srv-q26-reveal`'s scoped verify; **a hygiene
-  failure on `master`, for you to classify**): `h3-map`'s `tests::view::a_viewer_learns_nothing_it_cannot_see`
-  fails on `master` e085069 with `cc b9900443ad98acb94e02343d7679acd5f4888dc38169e4f8ff92d9563d82c007`
-  (append it to `crates/h3-map/proptest-regressions/tests/view.txt` to replay; RoE, side 14, two
-  towns with timed events): two games that differ only in what viewer 2 never sees give it day 1's
-  observations that differ in one of its own towns' `buildings.built` (`BuildingSet(2097448)`
-  against `6291752`: bit 22). Likely a setup draw (TWN-SET-003/-004, the towns' events) whose
-  stream position moves with the hidden content `vary` changes: a leak to fix in the draws' order,
-  or a `vary` the property must not make (then the adventure lane's test: tell us). Not committed
-  as a regression line, so CI's random cases may meet it again.
 
 - 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
   **in your paths, for information**): SRV-Q26 (a)'s query `h3_game::reveal` names the towns a
@@ -114,13 +86,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   player's stream). Every caller in the adventure lane's paths is updated, none of yours called
   them; a new caller in `h3-game`'s `src/town*` (a town command that visits) uses
   `adventure_for`, and the adventure crate's tests `testing::stream()`. Nothing moved in a hash.
-- 2026-11-05 (the adventure lane, E08 T97a, `adventure/e08-t97a`; **for the week's creature,
-  increment 3**): the map's dwellings and Refugee Camps ignore the week's and the month's kind
-  (ADV-DWL-003: the original's `dwelling_week_refill` 0x4B8A60 reads neither; survey
-  `E08-dwellings.md` §6.1). The month's side is tested (`h3-game`'s
-  `a_month_s_kind_never_reaches_a_dwelling_or_a_camp`: a Plague and a creature month); the week's
-  creature is not drawn yet. When it lands, extend that test with a week of the hut's creature:
-  the hut's and the camp's counts stay at their growth.
 - 2026-11-05 (the adventure lane, E08 T95b, `adventure/e08-t95b`; **for a town's recruitment,
   E09 decision 4**): the hire dialog is built to be reused (increment 10's design note §13,
   "E09's reuse"). `h3_adventure::HireDialog { target: HireTarget, source: HireSource }`: extend

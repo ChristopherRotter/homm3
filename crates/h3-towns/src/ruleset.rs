@@ -533,10 +533,12 @@ impl WeekDraw {
         let buildings = towns
             .iter()
             .filter_map(|record| {
-                record.buildings.iter().enumerate().find_map(|(i, b)| {
-                    let level = b.roles.week_of?;
-                    Some((record.faction, BuildingId::from_index(i)?, level))
-                })
+                let ids = (0..).map_while(BuildingId::from_index);
+                record
+                    .buildings
+                    .iter()
+                    .zip(ids)
+                    .find_map(|(b, id)| Some((record.faction, id, b.roles.week_of?)))
             })
             .collect();
         Self {

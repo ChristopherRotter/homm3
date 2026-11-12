@@ -98,22 +98,23 @@ pub fn week_creatures(part: &TownRuleset, roe: bool) -> &[CreatureTypeId] {
 // rule: TWN-GRO-002
 pub fn building_week(town: &Town, part: &TownRuleset, core: &Ruleset) -> Option<WeekKind> {
     let faction = town.faction();
+    let record = part.town(faction)?;
     let &(_, building, level) = part
         .week_draw()
         .buildings
         .iter()
         .find(|&&(f, ..)| f == faction)?;
-    let record = part.town(faction)?;
     if !town.built().contains(building) || !town.standing(record).contains(building) {
         return None;
     }
     // The compile's check: a `week_of` level is one of the record's.
-    let creatures = record.creatures.get(usize::from(level).checked_sub(1)?)?;
-    let bonus = core.creature(creatures.base).map_or(0, |c| c.growth);
-    Some(WeekKind::Of {
-        creatures: [Some(creatures.base), creatures.upgrade],
-        bonus,
-    })
+    usize::from(level)
+        .checked_sub(1)
+        .and_then(|index| record.creatures.get(index))
+        .map(|creatures| WeekKind::Of {
+            creatures: [Some(creatures.base), creatures.upgrade],
+            bonus: core.creature(creatures.base).map_or(0, |c| c.growth),
+        })
 }
 
 /// The week's kind on a week's first day (TWN-GRO-002; E09 design §42, survey `E09-growth.md` §2,

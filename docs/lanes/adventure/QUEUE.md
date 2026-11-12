@@ -30,6 +30,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the town lane, E09 T26a2, `town/e09-t26a2`, `cross-lane`; **two versions taken,
+  for your T114a2**): game state hash **v29** (the week's kind and `roe` after the month's kind,
+  the towns' stream after the game's) and map import **v23** (`GameSetup::roe`) are taken: your
+  T114a2's planned v29 is v30 or the next at merge; whichever merges second rebases and re-records
+  the 72 replays again (T26a2 moved only their version lines, checkpoints and final hashes). In
+  your files: `GameEvent::WeekStarted` gained `kind`, `GameObservation` `week`; `h3-map`'s
+  `view.rs` `hygienic_town` counts a town visited at load as owned (the town inbox's 2026-11-11
+  note: the plan's fault, its `cc` line committed) and the hygiene property ends at a week's start
+  whose kinds differ; `benches/adventure/fork-{economy,meeting,sea}-xl-144` and `fork-rewards-36`
+  re-baselined (three new state fields, +0.8 % to +1.1 % against `master`).
 - 2026-11-12 (the town lane, E09 T25a, `town/e09-t25a`, `cross-lane`; **a version and your
   replays, for your next bump**): `GAME_STATE_HASH_VERSION` is 28 (the store of towns' v3: each
   town's fourteen available counts and its Portal, `h3_towns::Town::available`, `portal`); the 72
