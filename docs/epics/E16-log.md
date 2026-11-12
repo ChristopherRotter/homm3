@@ -2628,8 +2628,8 @@ fingerprint; the scoped verify passed). No original data. Branch `server/e16-m5-
   frame for frame after every command, the hashes, journals and records equal; a seat by token
   and one by account (no token handed out, its token refused), a disconnected seat's record
   going on, its re-take refused without its token or with another, then a fresh snapshot
-  numbered on and its turn, an account's second connection replacing the first, `Leave`; the
-  joins and commands out of place (no such game, no such seat, already joined, unseated,
+  numbered on and its turn, an account's second connection replacing the first, `Leave`; a
+  setup that starts no game hosting none; the joins and commands out of place (no such game, no such seat, already joined, unseated,
   before the start, the system actor before the start, a battle's join and command, the
   connection's messages; the in-process host's seats) refused or rejected with nothing changed.
   The battle session's answer to a whole game's messages (`tests/session.rs`), the gate's login
