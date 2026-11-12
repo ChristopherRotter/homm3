@@ -364,8 +364,10 @@ inbox, the same day), mapped when it lands.
     rectangle per level (protocol v44; a whole XL map's reveal was 60 times its snapshot), a
     game's record cut only at its snapshots with a fresh one past half its bound, the frames' and
     records' sizes gated on the XL fixtures (`tests/game_bounds.rs`).
-  - **T7a2** the mutation tests over the game's messages (a client's decode and fold, the
-    session's play of mutated commands), `docs/06-security.md`'s game part (`cross-lane`).
+  - **T7a2 done** (2026-11-12; `E16-log.md`): the mutation tests over the game's messages (a
+    client's decode and fold of a record's frames and every event, the session's play of
+    mutated commands by every kind of actor; `tests/game_mutation.rs`), `docs/06-security.md`'s
+    whole game (`cross-lane`).
   - **T7b** a fresh reviewer over part 1, its fixes, the exit criteria shown, the checkpoint.
 
 **Review list so far** (the autonomy contract's queue, for part 1's checkpoint):
@@ -422,7 +424,10 @@ place (protocol v44), a game's record cut only at its snapshots with a fresh `Ga
 a command's messages once a player was sent half its bound since its last, before its turn, none
 inside a battle, the size gate's bounds (a reveal within the snapshot it brings the view to, a
 snapshot within 512 KiB, any other frame within 64 KiB on the fixtures), `GameTurn` after every
-command kept (60 to 80 % of a town-heavy game's record; part 2 may send it only when it changed).
+command kept (60 to 80 % of a town-heavy game's record; part 2 may send it only when it changed);
+T7a2's: every player told how many commands the others play and when (one `GameEvents` per
+command, also empty: T5a's choice, a side channel `docs/06-security.md` names; part 2 may batch or
+pace them).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

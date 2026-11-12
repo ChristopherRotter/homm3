@@ -2475,3 +2475,36 @@ green; the setup's light gates on CI's fingerprint). No original data.
   inside a battle, the bounds of the size gate (provisional), the turns left as they are (a
   `GameTurn` after every command is 60 to 80 % of a town-heavy record: part 2 may send it only
   when it changed).
+
+### M5 T7a2 — the game's messages mutated, `docs/06-security.md`'s whole game (2026-11-12)
+
+Baseline: T7a1 (`claude/keen-tesla-q5uxid`, the scoped verify passed). No original data.
+
+- **The mutation tests** (`tests/game_mutation.rs`; the decoder's of M2 T5d for the game, its
+  `Mutation` reused, over a game's longer frames and any of their values): the frames are player
+  0's record of `towns-s173-d21` played through the session (its header, snapshot, events,
+  reveals, turns, echoes and battles' snapshots) and a `GameEvents` of each kind of event (the
+  hand-built `every_event`, player 0's view). Mutated in their bytes or values, each decodes or
+  not without a panic (the header as a `GameRecordHeader`), round-trips when it decodes, and a
+  client folds it in place of the frame it was with the rest of the record after it (a snapshot
+  replaces the view, the events and a reveal fold into it) without a panic. The commands are one
+  of every kind (`every_command`) and the replay's, mutated in their values and played into a
+  session restored at any point of the replay by player 0 or 1, the replay's next actor, the
+  system actor or a player outside the game: never a panic; a rejection leaves the state's hash
+  and the journal as they were, drains no entry and is told to its player alone as a
+  `GameRejected` (to nobody for the system and an outsider); an accepted command drains its one
+  entry, and a restore with it re-runs to the same state. A deterministic test shows the
+  mutations reach both: a third or more of the frames with a number replaced still fold, the
+  replay's own commands are accepted from their actor and refused from an outsider, and replaced
+  numbers make both accepted and rejected commands. 100 000 cases of each property passed
+  (release, 35 s); the default 256 take under 2 s in a debug build.
+- **`docs/06-security.md`** (a shared path, `cross-lane` in this pull request, the user's choice
+  of 2026-11-12, as at the earlier closures): "Hosted games" gains the whole game (the host's
+  player, the mapping before the engine, a rejection's silence, the projection of every message,
+  objects named without an index, the shared fold, no seed or hash in messages or records, the
+  record cut at snapshots, the bounds and the mutation tests); "Not covered yet": in-process only
+  (seats, timers and the level-up hold are part 2's), every player learning how many commands the
+  others play and when (one `GameEvents` per command), a snapshot's size bounded only by the map
+  reader's limits.
+- **For the review list:** the count and timing of every other player's commands told to every
+  player (one `GameEvents` per command, T5a's choice; part 2 may batch or pace them).
