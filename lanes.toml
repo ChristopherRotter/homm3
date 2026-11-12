@@ -271,7 +271,8 @@ paths = [
     "docs/lanes/server/",
 ]
 
-# The battle client (E17: the battle viewer, then sieges and live play): the rest of the client
+# The battle client (E17: the battle viewer, then sieges and live play; closed at its M7 T4,
+# 2026-11-12), then the game shell (E27, the lane's once E17 closed): the rest of the client
 # workspace. The client foundation and the capture harness are common (above).
 [[lane]]
 name = "client"
@@ -279,6 +280,7 @@ code = "CLT"
 paths = [
     "clients/",
     "docs/epics/E17*",
+    "docs/epics/E27*",
     "docs/lanes/client/",
 ]
 
