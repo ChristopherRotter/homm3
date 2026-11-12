@@ -18,8 +18,9 @@
 //!   act; a seat's record goes on while no connection holds it (its frames are recorded, not
 //!   sent). A command is applied with the seat's player, never with anything the client wrote
 //!   (ADR-0018 point 6): the wire's commands name no player; one from a connection without a seat
-//!   is rejected `NotSeated`, numbered 0. Computer seats, turn timers and the level-up hold's
-//!   timer are part 2's (the epic).
+//!   is rejected `NotSeated`, numbered 0. Turn timers and the level-up hold's timer are part
+//!   2b's (the epic), computer players on the map E13's; the unowned battle sides are the host's
+//!   computer's (below).
 //! - **Numbers** (E16 M5 T8b; ADR-0018 point 7). A seat's client numbers its commands
 //!   (`GameCommand`'s `seq`), and its accepted commands take strictly increasing numbers, gaps
 //!   allowed. A number at or below the seat's last taken one is a resend (after a reconnect, also
@@ -1091,9 +1092,10 @@ impl<'r> GameSession<'r> {
             let Some(computer) = self.computer.as_mut() else {
                 break;
             };
+            // An unowned battle has a side to act.
             let to_act = self.state.unowned_battle();
-            let Some((battle, side)) = to_act.and_then(|b| Some((b, b.state().side_to_act()?)))
-            else {
+            let to_act = to_act.and_then(|b| b.state().side_to_act().map(|side| (b, side)));
+            let Some((battle, side)) = to_act else {
                 break;
             };
             let ruleset = self.rules.battle();
