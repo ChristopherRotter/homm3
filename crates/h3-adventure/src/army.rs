@@ -34,8 +34,10 @@ pub enum ArmyRef {
     /// A map garrison's army, by the garrison's object index (ADV-GAR-003, E08 T114a2; increment
     /// 12's design note §13, agreed with the town lane, E09 decision 67): a stationary army with
     /// no protected stack, managed while its exchange is open (GAM-DEC-009, the game's check), by
-    /// the one owner rule ([`ArmyCommandError::NotOwn`], [`ArmyCommandError::OnlyEmpty`]).
-    MapGarrison(usize),
+    /// the one owner rule ([`ArmyCommandError::NotOwn`], [`ArmyCommandError::OnlyEmpty`]). The
+    /// index is a `u32`, so the reference, a slot and a command stay small: every listing copies
+    /// them (`bench-check`, manage-army-12: +1.6 % with a `usize`).
+    MapGarrison(u32),
 }
 
 /// A slot of an army.
@@ -127,8 +129,9 @@ pub enum ArmyCommandError {
     /// The command names a town's garrison, which no army command manages before the town screen
     /// (E09 T8b2b; E09 increment 3).
     Garrison(TownId),
-    /// The command names a map garrison by an object index that holds none (E08 T114a2).
-    NoGarrison(usize),
+    /// The command names a map garrison by an object index that holds none (E08 T114a2; no
+    /// payload, so the error stays as small as before: the command names the index).
+    NoGarrison,
     /// The command takes a stack from an army whose bar owner is not the player (ADV-GAR-003, the
     /// one owner rule; E08 T114a2): another player's or nobody's, as a non-removable map
     /// garrison's (D-61: troops left there are never taken back).
@@ -152,7 +155,7 @@ impl fmt::Display for ArmyCommandError {
             Self::OtherCreature => f.write_str("the split's target holds another creature"),
             Self::SplitCount(count) => write!(f, "a split cannot leave {count} in its target"),
             Self::Garrison(town) => write!(f, "town {}'s garrison is not managed", town.raw()),
-            Self::NoGarrison(index) => write!(f, "object {index} is no map garrison"),
+            Self::NoGarrison => f.write_str("the object index holds no map garrison"),
             Self::NotOwn => f.write_str("the stack's army is not the player's to take from"),
             Self::OnlyEmpty => {
                 f.write_str("an army not the player's takes stacks only into its empty slots")

@@ -481,6 +481,26 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 - **Its view** (the owner's): the garrison by type and anchor, its army by slot, its removable
   flag; told by `ExchangeOpened` (as `LeaveGuardsOpened`), the slots by the commands'
   `StackChanged` (owner alone) and by `GarrisonChanged` to the other viewers (§15).
+- *As built* (T114a2, `adventure/e08-t114a2`, whole with the user's consent, decision 324):
+  `AdventureOutcome::exchange` (`Exchange`: the hero, the garrison's object index, type and anchor)
+  from `visit_garrison` (a team's garrison; an empty one after its flag) and `give_won` (after the
+  flag; none for a winner no longer on the map); **no `Rest::Exchange`** (*agent's call*, the
+  queue's alternative): the won battle's rest (`Rest::Won`) already waits for the winner's levels,
+  so its outcome opens the exchange as a dwelling's hire question after its guards, and no rest
+  tag moves (ADR-0017 point 6's "sixth rest" reads as this rest's outcome; T117's audit words it).
+  `Decision::Exchange` (hash tag 8; **game state hash v29**), `Together::Exchange { hero, army }`
+  (a map garrison outside its exchange `NotTogether`, another one `DecisionOpen`, the group
+  `NoGroup`), `GameEvent::ExchangeOpened { player, hero, garrison, object_type, anchor, removable }`
+  then each stack as `StackChanged` (`GameEvent` is `Copy`, so the army follows as the commands'
+  own event), `DecisionView::Exchange` with the **object index** beside type and anchor (*agent's
+  call*: the wire's command names the garrison by index, `h3-protocol` maps commands without the
+  state, so the owner's view gives it). The one owner rule in `state/manage.rs` (`held` returns the
+  bar's ownership; `NotOwn` before the plan, `OnlyEmpty` before the command's own rule, a slot
+  past the army's left to `NoSlot`; `ArmyCommandError::NoGarrison` for an index holding none), the
+  garrison's army written through `army_left`. `Revisit` takes `visited_at_end`. The build forced
+  two of T114b's pieces here: the replay text's `m<index>:<slot>` (**adventure replay format
+  v13**) and `h3-protocol`'s mapping (`cross-lane`, protocol v50: the wire's `MapGarrison`, the
+  three errors, the decision and its event, the fold of the owner's decision).
 
 ###### 14. The battles (GAM-BAT-001 amended, ADV-GAR-005; D-60 as the original)
 
@@ -572,8 +592,8 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 | map import | v21 | **v22** | T113b: the seventeen classes, the garrison's body (done) |
 | adventure state hash | v21 | **v22** | T113b: `Holds::Garrison` in the static map (done; decision 321) |
 | adventure state hash | v22 | **v23** | T114a, T115a, T115b: the heroes' bonuses and timed marks, the fortunes, the springs, the kind marks |
-| game state hash | v27 | **v28** | T114a (`Exchange`, `Rest::Exchange`), T115a (the details lose the bonuses) |
-| adventure replay format | v12 | **v13** | T114b: `MapGarrison` in management lines |
+| game state hash | v27 | **v28** | T114a (`Exchange`, `Rest::Exchange`), T115a (the details lose the bonuses); *as built* v28 was E09 T25a's, v29 T114a2's (the exchange, no new rest) |
+| adventure replay format | v12 | **v13** | T114b: `MapGarrison` in management lines; *as built* T114a2's (the build needs it) |
 | env action encoding | v8 | v8 | none (§16) |
 | `h3-protocol` | v40 | the server lane's | the mapping, `cross-lane` in T114b and T115b |
 

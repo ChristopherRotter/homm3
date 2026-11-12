@@ -205,7 +205,7 @@ fn decision_view(d: &DecisionView) -> Decision {
             army: stacks,
         } => Decision::Exchange {
             hero: hero.raw(),
-            garrison: command::object_index(*garrison),
+            garrison: *garrison,
             object: object_ref(*object),
             removable: *removable,
             army: army(stacks),

@@ -559,8 +559,8 @@ pub struct Garrison {
 pub struct Exchange {
     /// The visiting hero, on the garrison's entrance.
     pub hero: HeroId,
-    /// The garrison's object index.
-    pub garrison: usize,
+    /// The garrison's object index (as [`crate::ArmyRef::MapGarrison`] names it).
+    pub garrison: u32,
     /// The garrison's type.
     pub object_type: ObjectTypeId,
     /// The garrison's anchor.

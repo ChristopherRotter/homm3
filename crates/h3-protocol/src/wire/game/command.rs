@@ -576,10 +576,7 @@ pub enum ArmyReject {
         town: u16,
     },
     /// The object index holds no map garrison (E08 T114a2).
-    NoGarrison {
-        /// The object index.
-        garrison: u32,
-    },
+    NoGarrison {},
     /// The stack's army is not the actor's to take from (the one owner rule, ADV-GAR-003).
     NotOwn {},
     /// An army not the actor's takes stacks only into its empty slots (the one owner rule).

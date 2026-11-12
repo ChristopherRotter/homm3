@@ -163,6 +163,12 @@ pub(crate) enum Holder {
     Mine(usize),
 }
 
+/// The object index a map garrison's reference names (`ArmyRef::MapGarrison`, E08 T114a2): past
+/// the objects when it does not fit a `usize`, so it names none.
+pub(crate) fn object_index(garrison: u32) -> usize {
+    usize::try_from(garrison).unwrap_or(usize::MAX)
+}
+
 /// The drawn level of a level-up decision: `view`'s level with its two offers and `offered`.
 const fn drawn(view: &LevelUpView, offered: OfferLevels) -> LevelUp {
     let [first, second] = view.offers;
@@ -801,18 +807,18 @@ impl GameState {
     /// stacks as what its slot holds (`StackChanged`, in slot order; none for an empty garrison).
     // rule: GAM-DEC-009
     fn open_exchange<S: Sink>(&mut self, player: PlayerId, exchange: Exchange, sink: &mut S) {
-        let index = exchange.garrison;
+        let (garrison, index) = (exchange.garrison, object_index(exchange.garrison));
         sink.emit(GameEvent::ExchangeOpened {
             player,
             hero: exchange.hero,
-            garrison: index,
+            garrison,
             object_type: exchange.object_type,
             anchor: exchange.anchor,
             removable: self.adventure.garrison_removable(index).unwrap_or_default(),
         });
         for &stack in self.adventure.garrison_army(index) {
             let at = ArmySlot {
-                army: ArmyRef::MapGarrison(index),
+                army: ArmyRef::MapGarrison(garrison),
                 slot: stack.slot,
             };
             let stack = Some(stack);
@@ -1522,8 +1528,8 @@ impl CanonicalHash for GameState {
     /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
     /// whether a guard's visit waits; since v25 (E08 T95b) 7 a hire dialog: its owner, its target
     /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v29 (E08
-    /// T114a2) 8 a map garrison's exchange: its owner, its hero, the garrison's object index, type
-    /// and anchor; since v19 (E08 T63b) the rests in holding order, as length
+    /// T114a2) 8 a map garrison's exchange: its owner, its hero, the garrison's object index (a
+    /// `u32`), type and anchor; since v19 (E08 T63b) the rests in holding order, as length
     /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes
     /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
     /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
@@ -1719,7 +1725,7 @@ impl CanonicalHash for GameState {
                     h.write_u8(8);
                     h.write_u8(owner.raw());
                     h.write_u16(exchange.hero.raw());
-                    h.write_len(exchange.garrison);
+                    h.write_u32(exchange.garrison);
                     exchange.object_type.hash_into(h);
                     exchange.anchor.hash_into(h);
                 }

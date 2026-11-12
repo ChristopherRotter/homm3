@@ -581,7 +581,7 @@ pub enum GameEvent {
         /// The visiting hero, on the garrison's entrance.
         hero: HeroId,
         /// The garrison's object index, which the army commands name.
-        garrison: usize,
+        garrison: u32,
         /// The garrison's type.
         object_type: ObjectTypeId,
         /// The garrison's anchor.

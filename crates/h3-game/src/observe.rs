@@ -126,7 +126,7 @@ pub enum DecisionView {
         hero: HeroId,
         /// The garrison's object index, which the army commands name
         /// (`h3_adventure::ArmyRef::MapGarrison`).
-        garrison: usize,
+        garrison: u32,
         /// The garrison by type and anchor.
         object: (ObjectTypeId, Pos),
         /// Whether the viewer may take its troops back (its removable flag).
@@ -277,14 +277,14 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             })
             .or_else(|| {
                 let exchange = state.exchange(player)?;
-                let garrison = exchange.garrison;
+                let index = crate::state::object_index(exchange.garrison);
                 let adventure = state.adventure();
                 Some(DecisionView::Exchange {
                     hero: exchange.hero,
-                    garrison,
+                    garrison: exchange.garrison,
                     object: (exchange.object_type, exchange.anchor),
-                    removable: adventure.garrison_removable(garrison).unwrap_or_default(),
-                    army: adventure.garrison_army(garrison).to_vec(),
+                    removable: adventure.garrison_removable(index).unwrap_or_default(),
+                    army: adventure.garrison_army(index).to_vec(),
                 })
             }),
         heroes: hero_infos(state, &adventure.heroes),

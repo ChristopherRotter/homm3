@@ -18,12 +18,15 @@ use crate::ruleset::AdventureRuleset;
 use crate::setup::Holds;
 
 /// An army a command names, found: a hero's by its index among the heroes, the group, or since E08
-/// T114a2 a map garrison's by its object index.
+/// T114a2 a map garrison's by its object index, with whether its **bar owner** is the acting
+/// player (the one owner rule, ADV-GAR-003; increment 12's design note §13: a stack leaves only
+/// an own bar, and enters another's, nobody's included, only into an empty slot). The flag rides
+/// in the garrison's variant, so the enum keeps its size (`bench-check`, manage-army-12).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Held {
     Hero(usize),
     Group,
-    MapGarrison(usize),
+    MapGarrison { index: usize, own: bool },
 }
 
 impl Held {
@@ -32,12 +35,16 @@ impl Held {
     const fn keeps_last(self) -> bool {
         matches!(self, Self::Hero(_))
     }
-}
 
-/// An army found with whether its **bar owner** is the acting player (the one owner rule,
-/// ADV-GAR-003; increment 12's design note §13): a stack leaves only an own bar, and enters
-/// another's (nobody's included) only into an empty slot.
-type Found = (Held, bool);
+    /// Whether the army's bar owner is the acting player: a hero's (its owner, the player's) and
+    /// the group (its dialog's owner, the player) always; a map garrison's as found.
+    const fn own(self) -> bool {
+        match self {
+            Self::Hero(_) | Self::Group => true,
+            Self::MapGarrison { own, .. } => own,
+        }
+    }
+}
 
 impl AdventureState {
     /// The index of `player`'s hero `id` on the map.
@@ -49,37 +56,80 @@ impl AdventureState {
             .ok_or(ArmyCommandError::NotYourHero(id))
     }
 
-    /// The army `army` of `player`, with whether its bar owner is `player` (ADV-GAR-003): its
-    /// hero's (its owner's, the player's), or the group when one is open (its dialog's owner's,
-    /// the player's); a map garrison at its object index (E08 T114a2), its owner's when removable
-    /// and nobody's when not (the original passes −1, survey `E08-garrisons-bonuses.md` §6); never
-    /// a town's garrison (E09 T8b2b: not managed before the town screen; its bar owner, its town's
-    /// owner, is the town lane's hook, E09 T28a).
+    /// The army `army` of `player`, with whether its bar owner is `player` (ADV-GAR-003,
+    /// [`Held::own`]): its hero's (its owner's, the player's), or the group when one is open (its
+    /// dialog's owner's, the player's); a map garrison at its object index (E08 T114a2), its
+    /// owner's when removable and nobody's when not (the original passes −1, survey
+    /// `E08-garrisons-bonuses.md` §6); never a town's garrison (E09 T8b2b: not managed before the
+    /// town screen; its bar owner, its town's owner, is the town lane's hook, E09 T28a).
     // rule: ADV-GAR-003
-    fn held(&self, player: PlayerId, army: ArmyRef, open: bool) -> Result<Found, ArmyCommandError> {
+    #[inline]
+    fn held(&self, player: PlayerId, army: ArmyRef, open: bool) -> Result<Held, ArmyCommandError> {
         match army {
-            ArmyRef::Hero(id) => self
-                .own_hero(player, id)
-                .map(|index| (Held::Hero(index), true)),
-            ArmyRef::Group if open => Ok((Held::Group, true)),
+            ArmyRef::Hero(id) => self.own_hero(player, id).map(Held::Hero),
+            ArmyRef::Group if open => Ok(Held::Group),
             ArmyRef::Group => Err(ArmyCommandError::NoGroup),
             ArmyRef::Garrison(town) => Err(ArmyCommandError::Garrison(town)),
-            ArmyRef::MapGarrison(index) => match self.object(index).map(|object| &object.holds) {
-                Some(Holds::Garrison { removable, .. }) => {
-                    let own = *removable && self.owner(index) == Some(player);
-                    Ok((Held::MapGarrison(index), own))
-                }
-                _ => Err(ArmyCommandError::NoGarrison(index)),
-            },
+            ArmyRef::MapGarrison(index) => self.map_garrison(player, index),
         }
     }
 
-    /// The stacks of the army `held`, `group` being the open army dialog's.
+    /// [`Self::held`]'s map garrison at object index `index` (E08 T114a2): out of line, so a
+    /// hero's lookup stays as small as before (`bench-check`, manage-army-12: +3.7 % inlined).
+    #[cold]
+    #[inline(never)]
+    fn map_garrison(&self, player: PlayerId, index: u32) -> Result<Held, ArmyCommandError> {
+        let index = usize::try_from(index).unwrap_or(usize::MAX);
+        match self.object(index).map(|object| &object.holds) {
+            Some(Holds::Garrison { removable, .. }) => {
+                let own = *removable && self.owner(index) == Some(player);
+                Ok(Held::MapGarrison { index, own })
+            }
+            _ => Err(ArmyCommandError::NoGarrison),
+        }
+    }
+
+    /// The stacks of the army `held`, `group` being the open army dialog's: always inlined, a
+    /// map garrison's read out of line (`bench-check`, manage-army-12: a hero's and the group's
+    /// reads stay as before E08 T114a2).
+    #[inline(always)]
     fn stacks<'a>(&'a self, held: Held, group: Option<&'a [ArmyStack]>) -> &'a [ArmyStack] {
         match held {
             Held::Hero(index) => &self.heroes[index].army,
             Held::Group => group.unwrap_or_default(),
-            Held::MapGarrison(index) => self.garrison_army(index),
+            Held::MapGarrison { index, .. } => self.garrison_stacks(index),
+        }
+    }
+
+    /// [`Self::garrison_army`] out of line, for [`Self::stacks`].
+    #[cold]
+    #[inline(never)]
+    fn garrison_stacks(&self, index: usize) -> &[ArmyStack] {
+        self.garrison_army(index)
+    }
+
+    /// The one owner rule's refusal of `command` on its armies `source` and `target` (ADV-GAR-003;
+    /// E08 T114a2): a stack taken from a bar not the player's (`NotOwn`), or put onto a stack in
+    /// such a bar (`OnlyEmpty`; a slot past the army's left to the plan's `NoSlot`). Asked only
+    /// when a bar is not the player's (a map garrison's), out of line.
+    #[cold]
+    #[inline(never)]
+    fn check_bar_owners(
+        &self,
+        command: &ArmyCommand,
+        (source, target): (Held, Option<Held>),
+        group: Option<&[ArmyStack]>,
+    ) -> Result<(), ArmyCommandError> {
+        if !source.own() {
+            return Err(ArmyCommandError::NotOwn);
+        }
+        match (target, command.slots()) {
+            (Some(held), (_, Some(to)))
+                if !held.own() && self.stacks(held, group).iter().any(|s| s.slot == to.slot) =>
+            {
+                Err(ArmyCommandError::OnlyEmpty)
+            }
+            _ => Ok(()),
         }
     }
 
@@ -115,7 +165,7 @@ impl AdventureState {
             match held {
                 Held::Hero(index) => self.heroes[index].army = stacks,
                 Held::Group => *group = stacks,
-                Held::MapGarrison(index) => self.set_army_left(index, stacks),
+                Held::MapGarrison { index, .. } => self.set_army_left(index, stacks),
             }
         }
         Ok(())
@@ -135,24 +185,19 @@ impl AdventureState {
     ) -> Result<((Held, Option<Held>), army::Plan), ArmyCommandError> {
         let open = group.is_some();
         let (from, to) = command.armies();
-        let (source, own) = self.held(player, from, open)?;
+        let source = self.held(player, from, open)?;
         let target = to.map(|to| self.held(player, to, open)).transpose()?;
-        if !own {
-            return Err(ArmyCommandError::NotOwn);
-        }
-        if let (Some((held, false)), (_, Some(to))) = (target, command.slots())
-            && self.stacks(held, group).iter().any(|s| s.slot == to.slot)
-        {
-            return Err(ArmyCommandError::OnlyEmpty);
+        if !source.own() || target.is_some_and(|held| !held.own()) {
+            self.check_bar_owners(command, (source, target), group)?;
         }
         let rules = (part.params().army_slots(), part.params().max_stack_count());
         let plan = army::plan(
             command,
             (self.stacks(source, group), source.keeps_last()),
-            target.map(|(held, _)| self.stacks(held, group)),
+            target.map(|held| self.stacks(held, group)),
             rules,
         )?;
-        Ok(((source, target.map(|(held, _)| held)), plan))
+        Ok(((source, target), plan))
     }
 
     /// The army commands `player` may give on its army `from` but the splits (GAM-MAN-002; E08
@@ -206,25 +251,28 @@ impl AdventureState {
     ) -> Option<RangeInclusive<u32>> {
         let most = part.params().max_stack_count();
         let open = group.is_some();
-        let army = |slot: ArmySlot| {
-            self.held(player, slot.army, open)
-                .ok()
-                .map(|(held, own)| (self.stacks(held, group), own))
-        };
-        // The one owner rule (ADV-GAR-003): a stack splits only from an own bar.
-        let (source, own) = army(from)?;
-        let source = source
+        let source_army = self.held(player, from.army, open).ok()?;
+        let source = self
+            .stacks(source_army, group)
             .iter()
             .find(|s| s.slot == from.slot)
-            .copied()
-            .filter(|_| own)?;
+            .copied()?;
         // A split onto its own slot, or onto another creature, is none; a slot beyond the
-        // army's holds no stack; into another's bar only onto an empty slot.
-        let (target, target_own) = army(to)?;
-        let target = target.iter().find(|s| s.slot == to.slot).copied();
+        // army's holds no stack.
+        let target_army = self.held(player, to.army, open).ok()?;
+        let target = self
+            .stacks(target_army, group)
+            .iter()
+            .find(|s| s.slot == to.slot)
+            .copied();
         let same = from == to;
         let other = target.is_some_and(|t| t.creature != source.creature);
-        let fits = to.slot < part.params().army_slots() && (target_own || target.is_none());
+        let fits = to.slot < part.params().army_slots();
+        // The one owner rule (ADV-GAR-003): from an own bar only, into another's only an empty
+        // slot (a hero's and the group's bars are the player's).
+        if !source_army.own() || (target.is_some() && !target_army.own()) {
+            return None;
+        }
         let range = army::split_range(source.count, target.map_or(0, |t| t.count), most);
         (!same && !other && fits && !range.is_empty()).then_some(range)
     }

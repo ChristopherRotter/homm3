@@ -200,6 +200,16 @@ fn commands_round_trip_through_their_text() {
             })),
             "1 army move t3:0 12:5",
         ),
+        // E08 T114a2 (format v13): a map garrison's army by its object index, in its exchange.
+        (
+            PlayerId::new(1),
+            manage(Manage::Army(ArmyCommand::Split {
+                from: slot(ArmyRef::Hero(hero), 2),
+                to: slot(ArmyRef::MapGarrison(417), 6),
+                count: 3,
+            })),
+            "1 army split 12:2 m417:6 3",
+        ),
         (
             PlayerId::new(2),
             manage(Manage::Formation {
@@ -336,6 +346,9 @@ fn commands_round_trip_through_their_text() {
         "0 army move 1-0 1:1",
         "0 army move x:0 1:1",
         "0 army move 1:0 1:x",
+        "0 army move 1:0 m:1",
+        "0 army move 1:0 mx:1",
+        "0 army move m1:x 1:0",
         "0 army split 1:0 1:1",
         "0 army split 1:0 1:1 x",
         "0 army dismiss",

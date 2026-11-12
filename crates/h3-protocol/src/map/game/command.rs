@@ -163,25 +163,17 @@ fn manage(m: EngineManage) -> Manage {
 }
 
 /// An army slot on the wire.
-pub(super) fn slot(s: EngineSlot) -> ArmySlot {
+pub(super) const fn slot(s: EngineSlot) -> ArmySlot {
     let EngineSlot { army, slot } = s;
     ArmySlot {
         army: match army {
             EngineArmyRef::Hero(hero) => ArmyRef::Hero { hero: hero.raw() },
             EngineArmyRef::Group => ArmyRef::Group {},
             EngineArmyRef::Garrison(town) => ArmyRef::Garrison { town: town.raw() },
-            EngineArmyRef::MapGarrison(index) => ArmyRef::MapGarrison {
-                garrison: object_index(index),
-            },
+            EngineArmyRef::MapGarrison(garrison) => ArmyRef::MapGarrison { garrison },
         },
         slot,
     }
-}
-
-/// An object index on the wire (E08 T114a2: a map garrison's): `u32::MAX` past it, which names
-/// no object.
-pub(super) fn object_index(index: usize) -> u32 {
-    u32::try_from(index).unwrap_or(u32::MAX)
 }
 
 /// A hero's artifact place on the wire.
@@ -349,17 +341,14 @@ fn manage_to_engine(m: Manage) -> EngineManage {
 }
 
 /// A wire army slot in the engine.
-fn slot_to_engine(s: ArmySlot) -> EngineSlot {
+const fn slot_to_engine(s: ArmySlot) -> EngineSlot {
     let ArmySlot { army, slot } = s;
     EngineSlot {
         army: match army {
             ArmyRef::Hero { hero } => EngineArmyRef::Hero(HeroId::new(hero)),
             ArmyRef::Group {} => EngineArmyRef::Group,
             ArmyRef::Garrison { town } => EngineArmyRef::Garrison(TownId::new(town)),
-            // An index past the engine's names no object: refused as no garrison.
-            ArmyRef::MapGarrison { garrison } => {
-                EngineArmyRef::MapGarrison(usize::try_from(garrison).unwrap_or(usize::MAX))
-            }
+            ArmyRef::MapGarrison { garrison } => EngineArmyRef::MapGarrison(garrison),
         },
         slot,
     }
@@ -497,9 +486,7 @@ fn manage_reject(error: ManageError) -> ManageReject {
                 ArmyCommandError::OtherCreature => ArmyReject::OtherCreature {},
                 ArmyCommandError::SplitCount(count) => ArmyReject::SplitCount { count },
                 ArmyCommandError::Garrison(town) => ArmyReject::Garrison { town: town.raw() },
-                ArmyCommandError::NoGarrison(index) => ArmyReject::NoGarrison {
-                    garrison: object_index(index),
-                },
+                ArmyCommandError::NoGarrison => ArmyReject::NoGarrison {},
                 ArmyCommandError::NotOwn => ArmyReject::NotOwn {},
                 ArmyCommandError::OnlyEmpty => ArmyReject::OnlyEmpty {},
             },

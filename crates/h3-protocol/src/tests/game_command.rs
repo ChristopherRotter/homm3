@@ -203,7 +203,7 @@ fn every_rejection() -> Vec<GameCommandError> {
                 A::OtherCreature,
                 A::SplitCount(0),
                 A::Garrison(TownId::new(5)),
-                A::NoGarrison(12),
+                A::NoGarrison,
                 A::NotOwn,
                 A::OnlyEmpty,
             ]
@@ -347,7 +347,7 @@ fn manage_back(error: w::ManageReject) -> ManageError {
                 R::OtherCreature {} => A::OtherCreature,
                 R::SplitCount { count } => A::SplitCount(count),
                 R::Garrison { town } => A::Garrison(TownId::new(town)),
-                R::NoGarrison { garrison } => A::NoGarrison(garrison as usize),
+                R::NoGarrison {} => A::NoGarrison,
                 R::NotOwn {} => A::NotOwn,
                 R::OnlyEmpty {} => A::OnlyEmpty,
             }
@@ -463,9 +463,9 @@ fn a_building_beyond_every_record_is_refused_before_the_engine() {
 fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
     // 15 of the game's own, 31 of the battle's, 22 of the adventure's (E08 T105b2:
-    // `NothingToRevisit`), 10 of the army's, 6 of an artifact's move, 3 of a combination's, 4 of a
-    // hire's, 10 of a town's.
-    assert_eq!(errors.len(), 101);
+    // `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`, `OnlyEmpty`), 6
+    // of an artifact's move, 3 of a combination's, 4 of a hire's, 10 of a town's.
+    assert_eq!(errors.len(), 104);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

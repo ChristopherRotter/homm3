@@ -951,7 +951,7 @@ enum Open {
     // E08 T95b: a hire dialog, named by its army and its source.
     Hire(h3_game::HireTarget, h3_adventure::ObjectTypeId, TilePos),
     // E08 T114a2: a map garrison's exchange, its hero, the garrison and its army.
-    Exchange(HeroId, usize, Vec<ArmyStack>),
+    Exchange(HeroId, u32, Vec<ArmyStack>),
 }
 
 fn check_told(

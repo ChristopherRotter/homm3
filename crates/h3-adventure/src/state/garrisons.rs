@@ -20,11 +20,11 @@ impl AdventureState {
     /// The army of the garrison at object index `index` as it stands (ADV-GAR-002, E08 T114a1;
     /// increment 12's design note §5): what its last battle left ([`Self::army_left`]: none after
     /// a won battle or a draw), else the map's (`Holds::Garrison`); none for an object that is no
-    /// map garrison. Its stacks by slot.
+    /// map garrison or past the objects. Its stacks by slot.
     pub fn garrison_army(&self, index: usize) -> &[ArmyStack] {
-        match (&self.object_at(index).holds, self.army_left(index)) {
-            (Holds::Garrison { .. }, Some(left)) => left,
-            (Holds::Garrison { army, .. }, None) => army,
+        match (self.object(index).map(|o| &o.holds), self.army_left(index)) {
+            (Some(Holds::Garrison { .. }), Some(left)) => left,
+            (Some(Holds::Garrison { army, .. }), None) => army,
             _ => &[],
         }
     }
@@ -91,7 +91,8 @@ impl AdventureState {
         AdventureOutcome {
             exchange: Some(Exchange {
                 hero,
-                garrison: index,
+                // An object index past a `u32` names no object: no map holds one.
+                garrison: u32::try_from(index).unwrap_or(u32::MAX),
                 object_type,
                 anchor: self.object_at(index).anchor,
             }),

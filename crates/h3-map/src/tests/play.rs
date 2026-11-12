@@ -2837,7 +2837,7 @@ fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> 
             .map()
             .town_object(town)
             .and_then(|index| adventure.town_garrison(index)),
-        ArmyRef::MapGarrison(index) => Some(adventure.garrison_army(index)),
+        ArmyRef::MapGarrison(index) => Some(adventure.garrison_army(index as usize)),
     };
     army.and_then(|army| army.iter().find(|s| s.slot == at.slot).copied())
 }

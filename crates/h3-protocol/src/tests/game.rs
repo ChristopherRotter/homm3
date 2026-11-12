@@ -679,7 +679,7 @@ fn decision_back(d: &Decision) -> DecisionView {
             army,
         } => DecisionView::Exchange {
             hero: HeroId::new(*hero),
-            garrison: *garrison as usize,
+            garrison: *garrison,
             object: (
                 Handle::from_raw(object.object_type),
                 pos_back(object.anchor),

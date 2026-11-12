@@ -11,7 +11,7 @@ use h3_game::{GameEvent as EngineEvent, HeroChange as EngineChange, Viewer};
 use h3_heroes::OfferLevels as EngineLevels;
 use h3_kernel::handle::Handle;
 
-use super::command::{artifact_place, object_index, slot};
+use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill};
 use crate::map::{from_engine, outcome};
@@ -236,7 +236,7 @@ fn event(e: &EngineEvent) -> GameEvent {
         } => GameEvent::ExchangeOpened {
             player: player.raw(),
             hero: hero.raw(),
-            garrison: object_index(garrison),
+            garrison,
             object_type: object_type.raw(),
             anchor: pos(anchor),
             removable,

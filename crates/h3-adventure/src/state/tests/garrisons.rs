@@ -719,14 +719,14 @@ fn an_army_command_names_a_map_garrison_by_its_object_index() {
         ..garrison(&rules, "t:garrison", p(6, 0), None, &[])
     };
     let mut state = corridor(&rules, vec![own, blocker]);
-    for index in [1, 2, usize::MAX] {
+    for index in [1, 2, u32::MAX] {
         let command = ArmyCommand::Move {
             from: at(RED_ARMY, 0),
             to: at(ArmyRef::MapGarrison(index), 0),
         };
         assert_eq!(
             manage(&mut state, &rules, command),
-            Err(ArmyCommandError::NoGarrison(index))
+            Err(ArmyCommandError::NoGarrison)
         );
         let range = state.split_range(
             &rules.1,
@@ -736,11 +736,11 @@ fn an_army_command_names_a_map_garrison_by_its_object_index() {
         );
         assert_eq!(range, None);
     }
-    assert_eq!(
-        ArmyCommandError::NoGarrison(1).to_string(),
-        "object 1 is no map garrison"
-    );
-    for error in [ArmyCommandError::NotOwn, ArmyCommandError::OnlyEmpty] {
+    for error in [
+        ArmyCommandError::NoGarrison,
+        ArmyCommandError::NotOwn,
+        ArmyCommandError::OnlyEmpty,
+    ] {
         assert!(!error.to_string().is_empty());
     }
 }

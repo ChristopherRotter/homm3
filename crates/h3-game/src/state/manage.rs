@@ -180,7 +180,9 @@ impl GameState {
                 .map()
                 .town_object(town)
                 .and_then(|index| self.adventure.town_garrison(index)),
-            ArmyRef::MapGarrison(index) => Some(self.adventure.garrison_army(index)),
+            ArmyRef::MapGarrison(garrison) => {
+                Some(self.adventure.garrison_army(super::object_index(garrison)))
+            }
         };
         army.and_then(|army| army.iter().find(|s| s.slot == at.slot))
             .copied()
@@ -254,36 +256,55 @@ impl Together {
         self,
         (from, to): (ArmyRef, Option<ArmyRef>),
     ) -> Result<(), GameCommandError> {
-        let no_group = ManageError::Army(ArmyCommandError::NoGroup);
+        let manage = GameCommandError::Manage;
+        let no_group = manage(ManageError::Army(ArmyCommandError::NoGroup));
         let error = match (self, (from, to)) {
             // E09 T8b2b: a town's garrison is not managed before the town screen.
             (_, (ArmyRef::Garrison(town), _) | (_, Some(ArmyRef::Garrison(town)))) => {
-                Some(ManageError::Army(ArmyCommandError::Garrison(town)))
+                Some(manage(ManageError::Army(ArmyCommandError::Garrison(town))))
+            }
+            // E08 T114a2: a map garrison only in its own exchange.
+            (_, (ArmyRef::MapGarrison(_), _) | (_, Some(ArmyRef::MapGarrison(_)))) => {
+                self.stationary((from, to))
             }
             (Self::Alone, (ArmyRef::Hero(_), None)) | (Self::Dialog(_), _) => None,
-            (Self::Alone, (_, Some(_)) | (ArmyRef::MapGarrison(_), None)) => {
-                Some(ManageError::NotTogether)
-            }
+            (Self::Alone, (_, Some(_))) => Some(manage(ManageError::NotTogether)),
             (
                 Self::Alone | Self::Meeting(_) | Self::Exchange { .. },
                 (ArmyRef::Group, _) | (_, Some(ArmyRef::Group)),
             ) => Some(no_group),
             (Self::Meeting(_) | Self::Exchange { .. }, _) => None,
         };
-        error.map_or(Ok(()), |error| Err(GameCommandError::Manage(error)))?;
-        let named = [Some(from), to].into_iter().flatten();
-        // E08 T114a2: a map garrison only in its own exchange.
-        let held =
-            |army: ArmyRef| matches!(self, Self::Exchange { army: held, .. } if held == army);
-        if named
-            .clone()
-            .any(|army| matches!(army, ArmyRef::MapGarrison(_)) && !held(army))
-        {
-            return Err(GameCommandError::DecisionOpen);
-        }
-        self.admits_heroes(named.filter_map(|army| match army {
+        error.map_or(Ok(()), Err)?;
+        let heroes = [Some(from), to].into_iter().flatten();
+        self.admits_heroes(heroes.filter_map(|army| match army {
             ArmyRef::Hero(hero) => Some(hero),
             ArmyRef::Group | ArmyRef::Garrison(_) | ArmyRef::MapGarrison(_) => None,
         }))
+    }
+
+    /// [`Self::admits`]' refusal of a command naming a map garrison (E08 T114a2; GAM-DEC-009):
+    /// alone `NotTogether`; in the exchange that holds it, the group is `NoGroup`; any other
+    /// decision, or another map garrison, `DecisionOpen`. Out of line: no other command meets it.
+    #[cold]
+    #[inline(never)]
+    fn stationary(self, (from, to): (ArmyRef, Option<ArmyRef>)) -> Option<GameCommandError> {
+        let named = [Some(from), to].into_iter().flatten();
+        match self {
+            Self::Alone => Some(GameCommandError::Manage(ManageError::NotTogether)),
+            Self::Exchange { army, .. }
+                if named
+                    .clone()
+                    .all(|named| !matches!(named, ArmyRef::MapGarrison(_)) || named == army) =>
+            {
+                named
+                    .into_iter()
+                    .any(|named| named == ArmyRef::Group)
+                    .then_some(GameCommandError::Manage(ManageError::Army(
+                        ArmyCommandError::NoGroup,
+                    )))
+            }
+            _ => Some(GameCommandError::DecisionOpen),
+        }
     }
 }

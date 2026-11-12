@@ -80,7 +80,7 @@ fn slot_back(s: w::ArmySlot) -> ArmySlot {
             w::ArmyRef::Hero { hero } => ArmyRef::Hero(HeroId::new(hero)),
             w::ArmyRef::Group {} => ArmyRef::Group,
             w::ArmyRef::Garrison { town } => ArmyRef::Garrison(TownId::new(town)),
-            w::ArmyRef::MapGarrison { garrison } => ArmyRef::MapGarrison(garrison as usize),
+            w::ArmyRef::MapGarrison { garrison } => ArmyRef::MapGarrison(garrison),
         },
         slot: s.slot,
     }
@@ -559,7 +559,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
         } => GameEvent::ExchangeOpened {
             player: p(player),
             hero: id(hero),
-            garrison: garrison as usize,
+            garrison,
             object_type: ty(object_type),
             anchor: pos_back(anchor),
             removable,
@@ -1192,8 +1192,8 @@ pub(super) fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 36 kinds of event (the adventure's as one).
-    assert_eq!(distinct.len(), 36, "{distinct:?}");
+    // The game's 37 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`).
+    assert_eq!(distinct.len(), 37, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);
