@@ -96,7 +96,9 @@ impl AdventureState {
     ///   GAM-BAT-004; an own one in a meeting, GAM-MET-001, E08 T50) and a flight passes it; a
     ///   tile an object blocks a flight
     ///   passes; an object's visitable tile whose visit is not built a flight passes; a border
-    ///   gate whose key the owner holds is a free tile (ADV-VIS-005); an entered object is visited
+    ///   gate whose key the owner holds is a free tile (ADV-VIS-005), and so a garrison of the
+    ///   owner's team (ADV-GAR-004, E08 T114a1: `MoveHero` visits it where the move ends); an
+    ///   entered object is visited
     ///   from any node, a neighbour's from a stop node (ADV-OBJ-003), and a flight passes both; a
     ///   free tile is a stop.
     ///

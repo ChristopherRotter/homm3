@@ -12,6 +12,7 @@ mod decisions;
 mod dwellings;
 mod events;
 mod exchanges;
+mod garrisons;
 mod heroes;
 mod hiring;
 mod jumps;
@@ -686,6 +687,12 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                     channel: 0,
                     way: MonolithWay::Exit,
                 },
+            ),
+            // E08 T114a1: a garrison and an anti-magic one (`garrisons.rs`).
+            entered("t:garrison", ObjectKindDef::Garrison { anti_magic: false }),
+            entered(
+                "t:anti_garrison",
+                ObjectKindDef::Garrison { anti_magic: true },
             ),
         ],
         params: Some(AdventureParamsDef {
