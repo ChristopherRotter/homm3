@@ -3358,3 +3358,51 @@ and the month here, T25b2 the garrison week and the Portal next.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T25b2 — a neutral town's garrison week and the Portal's draw (2026-11-12)
+
+One session, the user present at the start; branch `town/e09-t25b2`, the town lane's paths only
+(`h3-towns`, the catalog's `town.toml`, E09's docs). Starting point: `master` at 21d6ba0 (#882
+merged; T25b1's #879 at 17:05 before it); the setup's local baseline was stopped once `master`
+moved past it twice, CI's run on `master` stands for it. The user's computer was connected at
+the start only: the original data staged then (17 files, as T25b1's), used for the scoped verify.
+**T25b2 kept whole** (decision 88, recommended).
+
+- **TWN-GRO-006** (`h3-towns`' new `garrison.rs`; design §44, survey §4): `garrison_week(town,
+  part, core, weeks, garrison, rules, draws) -> Option<GarrisonWeek { stacks, town }>`: the
+  chance `below(out_of)` under the odds by a standing fort level, n = min(`weeks`, the
+  parameters'), three `range_inclusive(0, n + 1)` summed, the level by the weights (a private
+  `level`), the base creature or the upgrade the garrison holds, its core growth; the room (a
+  stack of the creature within a stack's most, a free slot of `rules`' slots, else the least AI
+  value × count below the new stack's cleared, the first in slot order, the new stack in its
+  slot; else none), the level's two counts lowered (at least 0), the upgrade draw for a base
+  creature only turning every stack of it. None with no draw without parameters or a record;
+  none after the sums for a level the record lacks, a creature growing none or a growth above a
+  stack's most.
+- **TWN-GRO-007** (`h3-towns`' new `portal.rs`; design §45, survey §5): `summon(town, part,
+  core, offer, draws) -> Town`: no standing `portal` building unchanged (no draw); no dwelling
+  empties the Portal (no draw); else a dwelling `below(n)`, one of its creatures `below(k)`, the
+  count its core growth, set; a dwelling without creatures keeps the Portal.
+- **Tests** (`src/garrison/tests.rs` nine, `src/portal/tests.rs` four): the weights' table (the
+  survey's S ranges, the most S by n), the odds with and without a fort (forced, and the
+  original's 40 and 80 against the chance draw over 40 seeds), the first empty slot and the
+  counts, the held upgrade with no upgrade draw, the upgrade of every base stack (forced both
+  ways, the original's 5 against its draw over 200 seeds, a level without an upgrade), batch
+  TWN-3 row 4's room (the least cleared, the first of equal ones; no stack below the new one:
+  nothing, no draw after the sums; a held stack merges), the army's slots and a stack's most, the
+  weeks past the parameters' 8, the rules missing; the Portal without its building, without a
+  dwelling, the draw over 30 seeds (each creature drawn, set not added, with a castle, a horde and
+  a Grail standing), a dwelling without creatures, a creature the core lacks. Each test checks
+  the stream after against a reference of the draws expected. The fixture's core gains AI values
+  (ten times a handle) and `part_changed` (the parameters and the Keep at once). Coverage of both
+  modules 100 % (lines and regions).
+- **Catalog:** TWN-GRO-006 and -007 `implemented` (the code reading, batch TWN-3 rows 4 and 5,
+  VCMI 1.7.5 refuted, the Heroes 3 wiki's Dungeon page and the RoE manual for the Portal, the
+  design). The design note's §44 and §45 carry *As built (T25b2)* lines.
+- **No version moved** (the game calls them from T26b); the crate's doc names them.
+- **Agent's calls (change freely):** decision 88's list.
+
+**The queue:** T26 queued in full (T26a, T26b; its cut confirmed at its start).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.
