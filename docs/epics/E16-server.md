@@ -313,12 +313,8 @@ client lane's 2026-11-04 request, when online battles need them).
   - **T9a Live hosting:** done 2026-11-12, protocol v47, the whole game's journal format 1
     (`E16-log.md`).
   - **T9b The lifecycle:** done 2026-11-12, protocol v48 (`E16-log.md`).
-- **T10 The unowned sides played by the server:** an unowned battle side's command from
-  `h3_battle_ai::choose_fair` by default, the all-seeing `choose` as an offer's option (the
-  inbox's 2026-11-02 note), its random stream from the game's secrets; each command journaled as
-  the system actor's, so that a restore re-runs no AI (a policy's new version voids no game).
-  `h3-battle-ai` is not among `h3-server`'s allowed crates (`arch.toml`): through `h3-sim`'s
-  policy, or a `shared/` change first.
+- **T10 The unowned sides played by the server:** done 2026-11-12, protocol v49, after the
+  `shared/` change #889 (`E16-log.md`).
 - **T11 The game's queries on the wire:** a hero's moves (`h3_game::legal_moves`; `GameTurn`
   leaves them out), a town's offer to its owner (`GameState::town_offer`, the town lane's
   2026-11-10 note), day 1's town events of the first group at the game's start
@@ -368,6 +364,13 @@ the tasks land):
   the seed, difficulty and checkpoint interval of its journal, its map checked against the
   offer's by content hash and import version; the whole games' journals restored after the
   battles'.
+- T10 (v49): the computer named by the map offer alone (`MapOffer`'s `computer`, not the
+  manifest or the record's header), `[[map]] computer = "fair" | "all-seeing"`; the battle
+  session's `Bot` trait reused, handed over after the construction (`GameSession::computer`,
+  which plays at once for a cut journal) rather than a constructor's argument; the computer asked
+  after a seat's accepted command, at a resuming join and at the hand-over, a rejected choice
+  replaced by the first legal command; its stream a seed drawn from the OS for each hosting
+  (never journaled, as the battle server's bots'), `StreamId::AGENT`.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

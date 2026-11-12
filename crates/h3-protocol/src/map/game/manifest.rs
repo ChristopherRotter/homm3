@@ -11,7 +11,7 @@ use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 
 use crate::PROTOCOL_VERSION;
 use crate::map::{field, key_tables as battle_key_tables, wide};
-use crate::wire::game::{GameKeyTables, GameManifest, MapIdentity, MapOffer};
+use crate::wire::game::{Computer, GameKeyTables, GameManifest, MapIdentity, MapOffer};
 use crate::wire::{Algorithm, PackRef};
 
 /// What a whole game on `rules` and the map `map` is made of: the adventure replay header's
@@ -55,12 +55,13 @@ pub fn manifest(rules: &GameRuleset, map: MapIdentity) -> GameManifest {
 
 /// The lobby's map offer `id` (E16 M5 T9a): the map `map` named `name`, its size, levels and
 /// players from `setup` (each player a seat, by colour), the game's difficulty from it too, on
-/// `rules` (the manifest's packs, profile and core hash).
+/// `rules` (the manifest's packs, profile and core hash); `computer` plays its unowned battle
+/// sides (T10).
 pub fn map_offer(
-    id: &str,
-    name: String,
+    (id, name): (&str, String),
     (rules, setup): (&GameRuleset, &GameSetup),
     map: MapIdentity,
+    computer: Computer,
 ) -> MapOffer {
     let GameManifest {
         packs,
@@ -79,6 +80,7 @@ pub fn map_offer(
         profile,
         ruleset_hash,
         map,
+        computer,
     }
 }
 

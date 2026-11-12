@@ -3,15 +3,21 @@
 //! refusals, an abandoned game. Their life (T9b): a restart restores a whole game, its seats
 //! re-taken with their numbers kept and a seat's record downloaded; a paused game leaves its
 //! thread and a seat's join resumes it, also after a restart; a game whose seats stayed empty
-//! pauses at the sweep and goes void; a drain does not wait for a running whole game.
+//! pauses at the sweep and goes void; a drain does not wait for a running whole game. The unowned
+//! battle sides (T10): the server's computer plays a wandering monster's side, journaled as the
+//! system actor's; a restart re-runs its commands, and answers for it where a crash cut them.
 
 use std::fs;
 
 use h3_contracts::PlayerId;
 use h3_protocol::map::game::manifest;
 use h3_protocol::session::game::{GameEntry, GameOptions, GameSession};
-use h3_protocol::wire::game::{GameCommand, GameRecordHeader, MapGameInfo, MapOffer};
-use h3_protocol::wire::{ClientMessage, GoodbyeReason, Phase, Refusal, Seat, ServerMessage};
+use h3_protocol::wire::game::{
+    Computer, GameCommand, GameEvent, GameRecordHeader, MapGameInfo, MapOffer,
+};
+use h3_protocol::wire::{
+    ClientMessage, Command, GoodbyeReason, Phase, Refusal, Seat, ServerMessage,
+};
 
 use super::{GAME_TIME, fast, greeted, root};
 use crate::client::Client;
@@ -31,6 +37,7 @@ fn duel_map() -> config::MapOffer {
         profile: String::from("base:faithful"),
         difficulty: 1,
         name: None,
+        computer: config::Computer::Fair,
     }
 }
 
@@ -175,9 +182,15 @@ fn a_map_offer_is_configured() {
     assert!(parsed.offers.is_empty(), "a map alone is an offer");
     let m = &parsed.maps[0];
     assert_eq!(
-        (m.file.clone(), m.difficulty, m.name.clone()),
-        (base.join("m.h3m"), 1, None)
+        (m.file.clone(), m.difficulty, m.name.clone(), m.computer),
+        (base.join("m.h3m"), 1, None, config::Computer::Fair)
     );
+    // E16 M5 T10: the all-seeing computer by name.
+    let all = Config::parse(
+        &format!("[content]\npacks = \"p\"\n{map}computer = \"all-seeing\"\n"),
+        &base,
+    );
+    assert_eq!(all.unwrap().maps[0].computer, config::Computer::AllSeeing);
     let refused = |text: &str| Config::parse(&format!("[content]\npacks = \"p\"\n{text}"), &base);
     assert!(refused(&format!("{map}{map}")).is_err(), "a taken id");
     let offer = "[[offer]]\nid = \"m\"\nscenario = \"s.toml\"\n";
@@ -185,6 +198,10 @@ fn a_map_offer_is_configured() {
     assert!(
         refused(&map.replace("id = \"m\"", "id = \"\"")).is_err(),
         "an empty id"
+    );
+    assert!(
+        refused(&format!("{map}computer = \"human\"\n")).is_err(),
+        "no such computer"
     );
 }
 
@@ -650,4 +667,152 @@ async fn whole_journals_that_do_not_restore_are_void() {
         "{void:?}"
     );
     last.shutdown().await;
+}
+
+/// The golden replay whose 17th command opens a battle against a wandering monster on the duel
+/// map (its 18th the player's, then the system actor's).
+const MONSTER_REPLAY: &str = "fixtures/replays/adventure/duel-s3-easy-d7.toml";
+
+/// Game `game`'s journal rewritten in `data` with its first line `start` and `entries`.
+fn rewrite(data: &std::path::Path, start: &journal::GameStart, entries: &[GameEntry]) {
+    let path = journal::dir(data).join(format!("{}.journal", start.game));
+    fs::remove_file(&path).unwrap();
+    let mut writer = journal::create(data, start).unwrap();
+    writer.append_game(entries.iter().cloned()).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_server_plays_the_unowned_sides_and_a_restart_answers_for_them() {
+    let config = Config {
+        maps: vec![config::MapOffer {
+            computer: config::Computer::AllSeeing,
+            ..duel_map()
+        }],
+        ..super::config(fast())
+    };
+    let data = &config.server.data;
+    let running = start(&config).await.unwrap();
+    // The offer names its computer.
+    let (maps, _) = map_listed(&running).await;
+    assert_eq!(maps[0].computer, Computer::AllSeeing);
+    let (a, b, game, [t0, t1]) = started(&running).await;
+    for client in [a, b] {
+        client.close().await;
+    }
+    running.shutdown().await;
+    // Its journal re-seeded as the golden replay's game before its first command (nothing re-runs
+    // yet but the seats), so the replay's commands play on it.
+    let golden = fs::read_to_string(root().join(MONSTER_REPLAY)).unwrap();
+    let golden = h3_files::adventure::parse_replay(&golden).unwrap();
+    let path = journal::dir(data).join(format!("{game}.journal"));
+    let read = journal::read(&path).unwrap();
+    let mut replay = h3_files::adventure::parse_replay(&read.start.replay).unwrap();
+    (replay.seed, replay.difficulty) = (golden.seed, golden.difficulty);
+    let start_line = journal::GameStart {
+        replay: h3_files::adventure::replay_to_toml(&replay).unwrap(),
+        ..read.start.clone()
+    };
+    rewrite(data, &start_line, &read.entries);
+    let running = start(&config).await.unwrap();
+    let rejoin = |player, token: &String| ClientMessage::GameJoin {
+        game,
+        player,
+        token: Some(token.clone()),
+    };
+    let mut clients = [greeted(&running).await, greeted(&running).await];
+    clients[0].send(&rejoin(0, &t0)).await.unwrap();
+    clients[1].send(&rejoin(1, &t1)).await.unwrap();
+    let accepted = |seq| {
+        move |m| matches!(m, ServerMessage::GameAccepted { seq: s, .. } if s == seq).then_some(())
+    };
+    // The replay's commands up to the one opening the battle, each from its seat's client.
+    let opens = 16;
+    for (seq, (actor, command)) in golden.commands[..=opens].iter().enumerate() {
+        let h3_game::Actor::Player(player) = actor else {
+            panic!("command {seq} is the system actor's");
+        };
+        let seq = u32::try_from(seq).unwrap();
+        let message = ClientMessage::GameCommand {
+            seq,
+            command: h3_protocol::map::game::command(command),
+        };
+        let client = &mut clients[player.index()];
+        client.send(&message).await.unwrap();
+        next(client, accepted(seq)).await;
+    }
+    let [a, mut b] = clients;
+    a.close().await;
+    // The fighter plays its side, the server's computer the monster's, until the battle ends.
+    let mut rng = h3_kernel::Rng::from_seed(5);
+    let mut seq = u32::try_from(opens).unwrap();
+    let ended = loop {
+        match b.recv().await.expect("the connection closed") {
+            ServerMessage::GameTurn { legal, .. } => {
+                let battle: Vec<Command> = (legal.iter())
+                    .filter_map(|c| match c {
+                        GameCommand::Battle { command } => Some(*command),
+                        _ => None,
+                    })
+                    .collect();
+                let Some(command) = crate::bench::choose(&battle, &mut rng) else {
+                    continue;
+                };
+                seq += 1;
+                let command = GameCommand::Battle { command };
+                b.send(&ClientMessage::GameCommand { seq, command })
+                    .await
+                    .unwrap();
+            }
+            ServerMessage::GameEvents { events, .. }
+                if events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::BattleEnded { .. })) =>
+            {
+                break seq;
+            }
+            _ => {}
+        }
+    };
+    assert!(ended > u32::try_from(opens).unwrap());
+    b.close().await;
+    running.shutdown().await;
+    // The computer's commands are the system actor's in the journal, beside the fighter's.
+    let read = journal::read(&path).unwrap();
+    let theirs = |e: &GameEntry| matches!(e, GameEntry::Command(h3_game::Actor::System, _));
+    assert!(read.entries.iter().any(theirs), "{:?}", read.entries);
+    // A crash cut the journal after the fighter's last command the computer answered: the
+    // restart re-runs the computer's earlier commands and answers for it before any join.
+    let answered = (read.entries.iter().enumerate())
+        .filter(|(i, e)| {
+            matches!(e, GameEntry::Numbered(..))
+                && (read.entries[i + 1..].iter())
+                    .find(|e| !matches!(e, GameEntry::Checkpoint(_)))
+                    .is_some_and(theirs)
+        })
+        .map(|(i, _)| i)
+        .next_back()
+        .unwrap();
+    let cut = &read.entries[..=answered];
+    assert!(cut.iter().any(theirs));
+    rewrite(data, &read.start, cut);
+    // The offer's fair computer now: the computer is the offer's, not the journal's.
+    let fair = Config {
+        server: config.server.clone(),
+        ..with_map()
+    };
+    let running = start(&fair).await.unwrap();
+    let mut b = greeted(&running).await;
+    b.send(&rejoin(1, &t1)).await.unwrap();
+    next(&mut b, |m| {
+        matches!(m, ServerMessage::GameJoined { .. }).then_some(())
+    })
+    .await;
+    let again = journal::read(&path).unwrap().entries;
+    assert!(again.starts_with(cut));
+    let after = again[cut.len()..]
+        .iter()
+        .find(|e| !matches!(e, GameEntry::Checkpoint(_)));
+    assert!(after.is_some_and(theirs), "{:?}", &again[cut.len()..]);
+    b.close().await;
+    running.shutdown().await;
 }

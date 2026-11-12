@@ -14,9 +14,17 @@
 //! E10): it plays on until the server stops, which keeps its journal for the next start. A seat
 //! downloads its record (`FetchRecord`, the session's).
 //!
+//! The unowned battle sides (E16 M5 T10): the server's computer plays them, the original's battle
+//! AI (`h3_battle_ai`, ADR-0027), fair by default (`choose_fair`: it reads only what its side may
+//! know; the battle lane's 2026-11-02 note), all-seeing where the offer says so (`choose`). Its
+//! stream is the game's secret, drawn from the OS when the thread hosts the game, new or
+//! restored: never journaled, as its commands are (the system actor's), so a restore re-runs them
+//! and asks no computer, and a policy's new version voids no game.
+//!
 //! Provisional (the 2a review list): every seat's player human, a map's name from its header as
 //! Latin-1 within 64 characters, a draining server's running whole games playing on until the
-//! stop; a restored game at the difficulty its journal names.
+//! stop; a restored game at the difficulty its journal names; the computer's stream drawn afresh
+//! at each hosting, its config key `computer` (T10).
 
 use std::collections::BTreeMap;
 use std::net::IpAddr;
@@ -25,12 +33,15 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::{fmt, fs};
 
+use h3_battle::{BattleSide, BattleState, LegalCommands};
+use h3_content_battle::BattleRuleset;
 use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup, GameState};
+use h3_kernel::{Rng, StreamId};
 use h3_protocol::map::game::{manifest, map_offer};
 use h3_protocol::session::game::{GameEntry, GameOptions, GameSession};
-use h3_protocol::session::{ConnId, Outbound};
-use h3_protocol::wire::game::{MapGameInfo, MapIdentity, SeatedPlayer};
+use h3_protocol::session::{Bot, ConnId, Outbound};
+use h3_protocol::wire::game::{Computer, MapGameInfo, MapIdentity, SeatedPlayer};
 use h3_protocol::wire::{GoodbyeReason, Phase, WireU64};
 use h3_sim::adventure::replay::{MapRef, Replay, ReplayHeader};
 use tokio::sync::{mpsc, oneshot};
@@ -105,7 +116,11 @@ impl MapOffer {
             content_hash: WireU64(map.content_hash),
             import_version: map.import_version,
         };
-        let info = map_offer(&config.id, name, (&rules, &setup), identity);
+        let computer = match config.computer {
+            config::Computer::Fair => Computer::Fair,
+            config::Computer::AllSeeing => Computer::AllSeeing,
+        };
+        let info = map_offer((&config.id, name), (&rules, &setup), identity, computer);
         Ok(Self {
             id: config.id.clone(),
             rules,
@@ -123,6 +138,31 @@ fn latin1(bytes: &[u8]) -> String {
     chars.filter(|c| !c.is_control()).take(NAME_CHARS).collect()
 }
 
+/// The server's computer for a whole game's unowned battle sides (E16 M5 T10): the original's
+/// battle AI as the offer names it, drawing from its own stream.
+#[derive(Debug)]
+pub(crate) struct ComputerBot {
+    /// Fair or all-seeing.
+    pub kind: Computer,
+    /// Its stream: the game's secret, never journaled.
+    pub rng: Rng,
+}
+
+impl Bot for ComputerBot {
+    fn command(
+        &mut self,
+        state: &BattleState,
+        ruleset: &BattleRuleset,
+        side: BattleSide,
+        _: &LegalCommands,
+    ) -> h3_battle::Command {
+        match self.kind {
+            Computer::Fair => h3_battle_ai::choose_fair(state, ruleset, side, &mut self.rng),
+            Computer::AllSeeing => h3_battle_ai::choose(state, ruleset, side, &mut self.rng),
+        }
+    }
+}
+
 /// A whole game ready to run: its offer, its secrets and how it is hosted.
 #[derive(Debug)]
 pub(crate) struct Prepared {
@@ -136,6 +176,8 @@ pub(crate) struct Prepared {
     difficulty: u8,
     /// A token per player's seat.
     tokens: Vec<String>,
+    /// The seed of its computer's stream (E16 M5 T10): drawn from the OS for each hosting.
+    computer_seed: u64,
     options: GameOptions,
     /// The data directory.
     data: PathBuf,
@@ -181,7 +223,7 @@ impl Prepared {
         origin: IpAddr,
         (server, limits, stores): (&config::Server, &config::Limits, Stores),
     ) -> Result<Self, Error> {
-        let seed = os_u64()?;
+        let (seed, computer_seed) = (os_u64()?, os_u64()?);
         let tokens = (offer.setup.players.iter().map(|_| token())).collect::<Result<_, _>>()?;
         (stores.ids.reach(game)).map_err(|e| Error(format!("game {game}'s id: {e}")))?;
         let options = GameOptions {
@@ -196,6 +238,7 @@ impl Prepared {
             origin,
             seed,
             tokens,
+            computer_seed,
             options,
             data: server.data.clone(),
             stores,
@@ -240,6 +283,7 @@ impl Prepared {
             checkpoint_every: replay.checkpoint_every,
             record_bytes: limits.record_bytes,
         };
+        let computer_seed = os_u64().map_err(|e| e.0)?;
         Ok(Self {
             offer,
             game,
@@ -247,6 +291,7 @@ impl Prepared {
             seed: replay.seed,
             difficulty: replay.difficulty,
             tokens: read.start.tokens,
+            computer_seed,
             options,
             data: server.data.clone(),
             stores,
@@ -407,10 +452,21 @@ impl Hosting for Prepared {
         let Some((mut session, mut journal)) = begun else {
             return turn_away(&mut inbox, GoodbyeReason::Shutdown);
         };
+        // The computer plays the unowned sides (E16 M5 T10): at once for a restored game whose
+        // journal a crash cut before its answers (no seat is held yet: nothing to send).
+        let computer = ComputerBot {
+            kind: offer.info.computer,
+            rng: Rng::for_stream(self.computer_seed, StreamId::AGENT),
+        };
+        let mut out = Vec::new();
+        session.computer(Box::new(computer), &mut out);
+        if let Err(e) = journal.append_game(session.drain_entries()) {
+            eprintln!("h3-server: game {game}: the journal does not write ({e}): it stops");
+            return stop(&BTreeMap::new(), registry, game);
+        }
         let mut conns: BTreeMap<ConnId, Outbox> = BTreeMap::new();
         // How many messages each connection passed the game (E16 M2 T5b).
         let mut passed: BTreeMap<ConnId, u64> = BTreeMap::new();
-        let mut out = Vec::new();
         let status = |s: &GameSession<'_>| (s.phase(), s.open_seats());
         let mut reported = status(&session);
         // The seats' accounts the lobby names; a restored game was listed with them.

@@ -111,8 +111,11 @@ pub mod wire;
 /// (`wire::game::MapOffer`) and its whole games (`wire::game::MapGameInfo`), the client message
 /// `CreateMapGame` creates one and takes a player's seat in it. v48 (E16 M5 T9b): a whole game's
 /// seat downloads its record (`FetchRecord`, answered `Record` with the seat's player's record, its
-/// first line a `wire::game::GameRecordHeader`; `GameRejected { NotSeated }` without a seat).
-pub const PROTOCOL_VERSION: u32 = 48;
+/// first line a `wire::game::GameRecordHeader`; `GameRejected { NotSeated }` without a seat). v49
+/// (E16 M5 T10): a map offer names the computer that plays a whole game's unowned battle sides
+/// (`wire::game::MapOffer`'s `computer`, `wire::game::Computer`), whose commands the session
+/// tells as the system actor's.
+pub const PROTOCOL_VERSION: u32 = 49;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
