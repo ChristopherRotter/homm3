@@ -73,6 +73,14 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **your
+  rule followed, your docs to update**): a game's battle's last `Snapshot` is sent as your note
+  of 2026-11-12 asked (protocol v43): the player's very next message after the `GameEvents`
+  holding `BattleEnded`, none when those events open another battle for it; `SRV-STUB-14` is
+  lifted, so `h3_view::game_record`'s doc ("the game sends no last snapshot yet") is stale. A new
+  message `GameReveal` (what the player newly sees on the map) comes after it when the player's
+  explored tiles grew; your reader's wildcard skips it.
+
 - 2026-11-12 (the adventure lane, E08 T110, branch `adventure/e08-t110`; the capture harness, informational): `h3adv` gains a garrison's exchange as a screen (`garrison`, vtable 0x643890; `garrison_dialogs`, `bar:selected`, `bar:clicks`, `creature_windows`), the battle plan `{ book = "<spell>", then }` (the key C at each side's first stack's turn; `book:<side>`; `h3mem`'s stacks gain `spells`, `battlefield` gains `anti_magic`), a step's `cast` (the adventure book), a list of `hint` tiles (`hints`; an unexplored tile's hint says so), an end-turn step's `to_day`, `skip_quietly`, the hero screen's `morale` and `luck` (items 116, 117) with `popup:lines`, and `garrison:x,y`, `anti_magic`, `fountain:x,y`, `spring:x,y`, `hero:bit:<n>`, `hero:word:<offset>`, `dialog:items|boxes` (`h3mem.garrisons`, `battle_hero`). **Behaviour changed:** `h3drive.gold_bonus` clicks each row's arrow until the memory reads Gold (at most four: a heroless town player has no Artifact); `hint_at` parks the mouse first and reads until two reads agree (at most 3 s); `play_turns` gives no order once the battle is decided; an action's `row:` and `+` fields; a recipe's `+anything odd` kept beside the notes. The harness check passed. `clients/capture/README.md`, "Garrisons and the bonus visitables".
 
 **E17's leftovers** (placed at its closure, M7 T4, with the user): each waits for the work named;

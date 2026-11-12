@@ -1,8 +1,10 @@
-//! The game fold over the golden replays (E16 M5 T3c1, T3c2; SRV-Q26, SRV-Q27): each viewer's
-//! view, folded with its projected events after every command, against `observe`, part by part. A
-//! battle's snapshot replaces the view's battle when it opens (SRV-Q27 (1)); after each command the
-//! view is `observe`'s again, so each difference is that command's own. The gate: a part differs
-//! only where a stub of its own lets it (`PARTS`), and a stubbed part still differs somewhere.
+//! The game fold over the golden replays (E16 M5 T3c1, T3c2, T5c; SRV-Q26, SRV-Q27): each
+//! viewer's view, folded with its projected events after every command and then with what it
+//! newly sees when its explored tiles grew (`h3_game::reveal` against its grid as it was last
+//! told it, as the session sends it), against `observe`, part by part. A battle's snapshot
+//! replaces the view's battle when it opens (SRV-Q27 (1)); after each command the view is
+//! `observe`'s again, so each difference is that command's own. The gate: a part differs only
+//! where a stub of its own lets it (`PARTS`), and a stubbed part still differs somewhere.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -12,10 +14,10 @@ use std::vec::Vec;
 use std::{eprintln, format, fs};
 
 use h3_contracts::PlayerId;
-use h3_game::{GameRuleset, GameSetup, GameState, Viewer, apply};
+use h3_game::{BitGrid, GameRuleset, GameSetup, GameState, Viewer, apply};
 use h3_sim::adventure::replay::Replay;
 
-use crate::map::game::{events, observe};
+use crate::map::game::{events, observe, reveal};
 use crate::wire::WireU64;
 use crate::wire::game::*;
 
@@ -68,10 +70,6 @@ fn towns<T: PartialEq>(
 ) -> bool {
     pairs(&a.towns, &b.towns, |t| t.town).all(|(x, y)| f(x) == f(y))
 }
-
-/// The reveal's stub (SRV-Q26 (a)): a part it alone lets differ differs only where the viewer's
-/// explored tiles grew.
-const REVEAL: &str = "SRV-STUB-1";
 
 /// The town lane's stub of a Visions holder's reach (E09 T18b2a): a viewer's level of another
 /// team's town moves with no `TownChanged`, its garrison and its owner facts with it.
@@ -160,7 +158,7 @@ const PARTS: &[Part] = &[
     },
     Part {
         name: "heroes in sight",
-        stubs: &[REVEAL, "SRV-STUB-3"],
+        stubs: &["SRV-STUB-3"],
         agree: |a, b| {
             let ids = |o: &GameObservation| {
                 let map: Vec<_> = o.adventure.heroes.iter().map(|h| (h.id, h.owner)).collect();
@@ -220,7 +218,7 @@ const PARTS: &[Part] = &[
     },
     Part {
         name: "explored tiles",
-        stubs: &[REVEAL],
+        stubs: &[],
         agree: |a, b| {
             let planes =
                 |o: &GameObservation| (o.adventure.explored.clone(), o.adventure.fringe.clone());
@@ -229,14 +227,14 @@ const PARTS: &[Part] = &[
     },
     Part {
         name: "tile views",
-        stubs: &[REVEAL],
+        stubs: &[],
         agree: |a, b| {
             (&a.adventure.palette, &a.adventure.tiles) == (&b.adventure.palette, &b.adventure.tiles)
         },
     },
     Part {
         name: "objects in sight",
-        stubs: &[REVEAL],
+        stubs: &[],
         agree: |a, b| {
             let ids = |o: &GameObservation| {
                 o.adventure
@@ -304,12 +302,12 @@ const PARTS: &[Part] = &[
     },
     Part {
         name: "empty boats",
-        stubs: &[REVEAL],
+        stubs: &[],
         agree: |a, b| a.adventure.boats == b.adventure.boats,
     },
     Part {
         name: "towns in sight",
-        stubs: &[REVEAL],
+        stubs: &[],
         agree: |a, b| {
             let ids = |o: &GameObservation| o.towns.iter().map(|t| t.town).collect::<Vec<_>>();
             ids(a) == ids(b)
@@ -343,12 +341,12 @@ const PARTS: &[Part] = &[
     },
     Part {
         name: "garrisons",
-        stubs: &[REVEAL, VISIONS],
+        stubs: &[VISIONS],
         agree: |a, b| towns(a, b, |t| t.garrison.clone()),
     },
     Part {
         name: "town owner facts",
-        stubs: &[REVEAL, VISIONS],
+        stubs: &[VISIONS],
         agree: |a, b| towns(a, b, |t| t.owner_facts.clone()),
     },
 ];
@@ -358,15 +356,12 @@ const PARTS: &[Part] = &[
 struct Differences {
     /// The viewer-commands it differed after.
     count: usize,
-    /// Those of them whose explored tiles grew: a reveal, whose content no event carries
-    /// (SRV-Q26 (a)).
+    /// Those of them whose explored tiles grew (a reveal folded).
     with_reveal: usize,
     /// The replays it differed in.
     replays: BTreeSet<String>,
     /// The first: its replay, command, viewer and the kinds of the events it was told.
     first: Option<String>,
-    /// The first without a reveal.
-    first_unrevealed: Option<String>,
 }
 
 /// The workspace's root.
@@ -435,13 +430,24 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
             .collect();
         let mut views: Vec<GameObservation> =
             viewers.iter().map(|&v| observe(&state, rules, v)).collect();
+        let explored = |state: &GameState, Viewer::Player(player)| {
+            state.adventure().explored(player).unwrap().clone()
+        };
+        let mut grids: Vec<BitGrid> = viewers.iter().map(|&v| explored(&state, v)).collect();
         for (step, (actor, command)) in replay.commands.iter().enumerate() {
             let mut told = Vec::new();
             apply(&mut state, rules, *actor, command.clone(), &mut told).unwrap();
-            for (&viewer, view) in viewers.iter().zip(&mut views) {
+            for ((&viewer, view), grid) in viewers.iter().zip(&mut views).zip(&mut grids) {
                 let told = events(&told, viewer);
                 for event in &told {
                     view.fold(event);
+                }
+                // What it newly sees, after the events (E16 M5 T5c).
+                let now = explored(&state, viewer);
+                let revealed = now.count() != grid.count();
+                if revealed {
+                    view.reveal(&reveal(&state, rules, viewer, grid));
+                    *grid = now;
                 }
                 let observed = observe(&state, rules, viewer);
                 // The battle's snapshot when it opens (SRV-Q27 (1)).
@@ -451,8 +457,6 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                 {
                     view.battle.clone_from(&observed.battle);
                 }
-                let reveal = (&view.adventure.explored, &view.adventure.fringe)
-                    != (&observed.adventure.explored, &observed.adventure.fringe);
                 let mut any = false;
                 for &Part {
                     name: part, agree, ..
@@ -465,15 +469,11 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                     let at = differences.entry(part).or_default();
                     at.count += 1;
                     at.replays.insert(name.clone());
-                    at.with_reveal += usize::from(reveal);
-                    let first = || {
+                    at.with_reveal += usize::from(revealed);
+                    at.first.get_or_insert_with(|| {
                         let kinds: BTreeSet<String> = told.iter().map(kind).collect();
                         format!("{name} command {step} viewer {}: {kinds:?}", view.viewer)
-                    };
-                    if !reveal && at.first_unrevealed.is_none() {
-                        at.first_unrevealed = Some(first());
-                    }
-                    at.first.get_or_insert_with(first);
+                    });
                 }
                 // The views' battles agree between its snapshots only by its own events.
                 view.battle.clone_from(&observed.battle);
@@ -498,20 +498,17 @@ fn the_fold_against_observe_over_the_golden_replays() {
         eprintln!("{runs} viewer-commands; the parts that differed:");
         for (part, at) in &differences {
             eprintln!(
-                "- {part}: {} viewer-commands ({} with a reveal) in {} replays; first {}; \
-                 first without a reveal {}",
+                "- {part}: {} viewer-commands ({} with a reveal) in {} replays; first {}",
                 at.count,
                 at.with_reveal,
                 at.replays.len(),
                 at.first.as_deref().unwrap_or_default(),
-                at.first_unrevealed.as_deref().unwrap_or("none")
             );
         }
     }
-    // The gate (E16 M5 T3c2): a part the events carry whole equals `observe` after every command
-    // for every viewer, a part the reveal's stub alone names wherever the viewer's explored tiles
-    // did not grow; a stubbed part still differs somewhere, else its stubs are lifted from it (and
-    // from the registry once no part and no fold names them).
+    // The gate (E16 M5 T3c2): a part the events and the reveals carry whole equals `observe` after
+    // every command for every viewer; a stubbed part still differs somewhere, else its stubs are
+    // lifted from it (and from the registry once no part and no fold names them).
     let registry = fs::read_to_string(root().join("docs/stubs.toml")).unwrap();
     for part in PARTS {
         for stub in part.stubs {
@@ -528,13 +525,6 @@ fn the_fold_against_observe_over_the_golden_replays() {
                 part.name,
                 at.count,
                 at.first.as_deref().unwrap_or_default()
-            ),
-            ([REVEAL], Some(at)) if at.with_reveal < at.count => panic!(
-                "{}: the fold differs from `observe` without a reveal in {} viewer-commands, \
-                 first {}",
-                part.name,
-                at.count - at.with_reveal,
-                at.first_unrevealed.as_deref().unwrap_or_default()
             ),
             ([_, ..], None) => panic!(
                 "{}: the fold equals `observe` everywhere now: lift {:?} from it",
@@ -1518,7 +1508,8 @@ fn the_fold_keeps_the_objects_and_the_tiles_they_cover() {
         owner: Some(1),
         ..object(6, at(2, 1), 0, 0)
     };
-    v.adventure.objects = vec![a, b.clone(), c.clone(), mine, town];
+    // In tile order (`Object::place`).
+    v.adventure.objects = vec![mine.clone(), b.clone(), a, town.clone(), c.clone()];
     let known = |object_type, anchor, emptied| KnownObject {
         object_type,
         anchor,
@@ -1546,8 +1537,9 @@ fn the_fold_keeps_the_objects_and_the_tiles_they_cover() {
     );
     assert_eq!(v.adventure.palette.len(), 4);
     assert_eq!(v.adventure.known, [known(2, at(0, 1), false)]);
-    assert_eq!(v.adventure.objects[..2], [b, c]);
-    // A month's monster on the seen tile, another on the ground of the fringe.
+    assert_eq!(v.adventure.objects, [mine, b, town, c]);
+    // A month's monster on the seen tile, another on the ground of the fringe: each in its
+    // place.
     let added = |anchor| {
         adventure(AdventureEvent::MonsterAdded {
             object_type: 5,
@@ -1568,7 +1560,8 @@ fn the_fold_keeps_the_objects_and_the_tiles_they_cover() {
         }),
         ..object(5, at(1, 1), 1, 1)
     };
-    assert_eq!(v.adventure.objects[4], monster);
+    assert_eq!(v.adventure.objects[3], monster);
+    assert_eq!(v.adventure.objects[0].anchor, at(1, 0));
     let guards = |creature, count_word| {
         adventure(AdventureEvent::GuardsChanged {
             object_type: 4,
@@ -1604,24 +1597,24 @@ fn the_fold_keeps_the_objects_and_the_tiles_they_cover() {
         ],
     );
     let objects = &v.adventure.objects;
-    assert_eq!(objects[5].monster.map(|m| m.count_word), Some(3));
-    assert_eq!(objects[4].monster.map(|m| m.count_word), Some(2));
-    assert_eq!((objects[0].owner, objects[0].visited), (Some(1), true));
+    assert_eq!(objects[0].monster.map(|m| m.count_word), Some(3));
+    assert_eq!(objects[3].monster.map(|m| m.count_word), Some(2));
+    assert_eq!((objects[2].owner, objects[2].visited), (Some(1), true));
     let kept = Guards {
         creature: Some(8),
         count_word: 1,
         army: Some(vec![stack(0, 9)]),
     };
-    assert_eq!(objects[2].guards, Some(kept));
+    assert_eq!(objects[1].guards, Some(kept));
     fold(&mut v, &[guards(None, None)]);
-    assert_eq!(v.adventure.objects[2].guards, None);
+    assert_eq!(v.adventure.objects[1].guards, None);
     fold(&mut v, &[guards(Some(8), Some(0))]);
     let hint = Guards {
         creature: Some(8),
         count_word: 0,
         army: None,
     };
-    assert_eq!(v.adventure.objects[2].guards, Some(hint));
+    assert_eq!(v.adventure.objects[1].guards, Some(hint));
     fold(
         &mut v,
         &[adventure(AdventureEvent::TownCaptured {
@@ -1630,6 +1623,126 @@ fn the_fold_keeps_the_objects_and_the_tiles_they_cover() {
             owner: 0,
         })],
     );
-    assert_eq!(v.adventure.objects[3].owner, Some(0));
+    assert_eq!(v.adventure.objects[4].owner, Some(0));
     assert_eq!(v.towns[1].owner, Some(0));
+}
+
+#[test]
+fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
+    let mut v = view();
+    // The hand-built map: three columns, two rows; (0, 0) explored, (1, 0) on the fringe.
+    v.adventure.explored = vec![WireU64(0b001), WireU64(0)];
+    v.adventure.fringe = vec![WireU64(0b010), WireU64(0)];
+    let nothing = GameReveal {
+        adventure: AdventureReveal {
+            viewer: v.viewer,
+            tiles: Vec::new(),
+            heroes: Vec::new(),
+            objects: Vec::new(),
+            boats: Vec::new(),
+            towns: Vec::new(),
+        },
+        heroes: Vec::new(),
+        towns: Vec::new(),
+    };
+    let before = v.clone();
+    v.reveal(&nothing);
+    assert_eq!(v, before);
+    let ground = Tile::Ground {
+        terrain: 7,
+        road: None,
+        river: Some(1),
+    };
+    let tile = |x, y, explored, view| RevealedTile {
+        pos: at(x, y),
+        explored,
+        view,
+    };
+    // Hero 4 is seen already (of heroes 4, 5 and 9), hero 6 is new; town 1 is seen already, town
+    // 7 is new.
+    let hero = |id, x| MapHero {
+        id,
+        owner: 1,
+        pos: at(x, 0),
+        boat: Some(0),
+        own: None,
+    };
+    let info = |id, hero_type| HeroInfo {
+        id,
+        hero_type,
+        details: None,
+    };
+    let town = |id: u16| Town {
+        town: id,
+        name: Some(String::from("Newly")),
+        ..v.towns[0].clone()
+    };
+    let seen_already = v.adventure.objects[1].clone();
+    let flagged = Object {
+        owner: Some(0),
+        ..seen_already.clone()
+    };
+    let new = object(8, at(0, 1), 1, 0);
+    let boat = Boat {
+        tile: at(2, 1),
+        kind: 2,
+        facing: 4,
+    };
+    v.reveal(&GameReveal {
+        adventure: AdventureReveal {
+            viewer: v.viewer,
+            tiles: vec![
+                // Neither now, explored now, on the fringe now, off the map.
+                tile(0, 0, false, Tile::Hidden {}),
+                tile(1, 0, true, seen(true, false)),
+                tile(2, 1, false, ground),
+                tile(3, 0, true, seen(false, false)),
+            ],
+            heroes: vec![hero(4, 0), hero(6, 1)],
+            objects: vec![new.clone(), flagged.clone()],
+            boats: vec![boat],
+            towns: vec![1, 7],
+        },
+        heroes: vec![info(4, 40), info(6, 60)],
+        towns: vec![town(1), town(7)],
+    });
+    assert_eq!(v.adventure.explored, [WireU64(0b010), WireU64(0)]);
+    assert_eq!(v.adventure.fringe, [WireU64(0), WireU64(0b100)]);
+    let views = views_of(&v);
+    assert_eq!(views[..2], [Tile::Hidden {}, seen(true, false)]);
+    assert_eq!(views[5], ground);
+    assert_eq!(views[2..5], views_of(&before)[2..5]);
+    let ids: Vec<u16> = v.adventure.heroes.iter().map(|h| h.id).collect();
+    assert_eq!(ids, [4, 5, 6, 9]);
+    assert_eq!(v.adventure.heroes[0], hero(4, 0));
+    let infos: Vec<(u16, u16)> = v.heroes.iter().map(|h| (h.id, h.hero_type)).collect();
+    assert_eq!(infos, [(4, 40), (6, 60), (9, before.heroes[1].hero_type)]);
+    // The new object in its place, the one seen already replaced by its view now.
+    assert_eq!(v.adventure.objects[0], new);
+    assert_eq!(v.adventure.objects[2], flagged);
+    assert_eq!(
+        v.adventure.objects.len(),
+        before.adventure.objects.len() + 1
+    );
+    assert!(v.adventure.boats.contains(&boat));
+    let towns: Vec<(u16, Option<&str>)> = (v.towns.iter())
+        .map(|t| (t.town, t.name.as_deref()))
+        .collect();
+    let name = |t: usize| before.towns[t].name.as_deref();
+    let newly = Some("Newly");
+    assert_eq!(
+        towns,
+        [
+            (0, name(0)),
+            (1, newly),
+            (2, name(2)),
+            (3, name(3)),
+            (7, newly)
+        ]
+    );
+}
+
+/// The tile views of `v` in tile order.
+fn views_of(v: &GameObservation) -> Vec<Tile> {
+    (0..6).map(|i| *v.adventure.tile(i).unwrap()).collect()
 }

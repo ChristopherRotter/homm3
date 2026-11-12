@@ -1,6 +1,7 @@
 //! The whole game's session (E16 M5 T5a, T5b): the golden adventure replays run through it, each
 //! command applied as its actor's, each player's messages checked against an engine run beside
-//! it (the order, the numbers, the events, the battles' snapshots, the turns); a rejected command
+//! it (the order, the numbers, the events, a battle's last view, what each newly sees, the
+//! battles' snapshots, the turns); a rejected command
 //! changes nothing and is told to its player alone. The journal is the replay's commands and
 //! checkpoints, its entries restore the game at any point, a journal that is not its re-run
 //! restores nothing; each player's record is its header and every frame it was sent.
@@ -10,7 +11,10 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_contracts::PlayerId;
-use h3_game::{Actor, GameRuleset, GameSetup, GameState, Viewer, apply, legal_commands};
+use h3_game::{
+    Actor, BitGrid, GameRuleset, GameSetup, GameState, OpenBattle, Sink, Viewer, apply,
+    legal_commands,
+};
 
 use super::game::RULES;
 use super::game_fold::golden;
@@ -36,6 +40,23 @@ const fn options(checkpoint_every: u32) -> GameOptions {
         game: 9,
         checkpoint_every,
         record_bytes: usize::MAX,
+    }
+}
+
+/// The engine's events and the battles a command ended, as they ended (`Sink::battle_ended`).
+#[derive(Default)]
+struct Kept {
+    events: Vec<h3_game::GameEvent>,
+    ended: Vec<OpenBattle>,
+}
+
+impl Sink for Kept {
+    fn emit(&mut self, event: h3_game::GameEvent) {
+        self.events.push(event);
+    }
+
+    fn battle_ended(&mut self, battle: &OpenBattle) {
+        self.ended.push(battle.clone());
     }
 }
 
@@ -110,6 +131,7 @@ fn number(message: &ServerMessage) -> u32 {
     match message {
         ServerMessage::GameSnapshot { n, .. }
         | ServerMessage::GameEvents { n, .. }
+        | ServerMessage::GameReveal { n, .. }
         | ServerMessage::GameTurn { n, .. }
         | ServerMessage::GameAccepted { n, .. }
         | ServerMessage::GameRejected { n, .. }
@@ -148,11 +170,17 @@ struct Seen {
     turns: usize,
     casts: usize,
     restores: usize,
+    reveals: usize,
+    last_snapshots: usize,
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
-/// `GameAccepted` first if it sent `echo`, then its `GameEvents` (`told`), a battle's snapshot
-/// when one opens for it, its turn if it may act. `battle` is whether its view holds a battle.
+/// `GameAccepted` first if it sent `echo`, then its `GameEvents` (`told`), the last snapshot of
+/// each battle of `ended` it owned a side of unless they open another battle for it, its
+/// `GameReveal` when
+/// its explored tiles grew since `grid`, the grid it was last told (then kept), a battle's
+/// snapshot when one opens for it, its turn if it may act. `battle` is whether its view holds a
+/// battle.
 #[allow(
     clippy::too_many_arguments,
     reason = "a test's check of one viewer's messages"
@@ -161,11 +189,11 @@ fn check(
     messages: &[ServerMessage],
     next: &mut u32,
     echo: Option<(u32, &GameCommand)>,
-    told: Vec<GameEvent>,
+    (told, ended): (Vec<GameEvent>, &[OpenBattle]),
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
-    battle: &mut bool,
+    (battle_held, grid): (&mut bool, &mut BitGrid),
     seen: &mut Seen,
 ) {
     for m in messages {
@@ -190,7 +218,7 @@ fn check(
         .iter()
         .any(|e| matches!(e, GameEvent::BattleEnded { .. }))
     {
-        *battle = false;
+        *battle_held = false;
     }
     let Some(ServerMessage::GameEvents { events, .. }) = m.next() else {
         panic!("no events: {messages:?}");
@@ -198,10 +226,37 @@ fn check(
     assert_eq!(*events, told);
     let observed = observe(state, rules, Viewer::Player(player)).battle;
     let mut rest: Vec<&ServerMessage> = m.collect();
+    for battle in ended.iter().filter(|_| !started) {
+        if let Some(side) = battle.side_of(player) {
+            let last = map::observe(battle.state(), rules.battle(), side);
+            let Some(ServerMessage::Snapshot { observation, .. }) = rest.first() else {
+                panic!("no last snapshot: {rest:?}");
+            };
+            assert_eq!(*observation, last);
+            assert!(!*battle_held, "a last snapshot after its battle's end");
+            seen.last_snapshots += 1;
+            rest.remove(0);
+        }
+    }
+    let now = state.adventure().explored(player).unwrap();
+    if let Some(ServerMessage::GameReveal { reveal, .. }) = rest.first() {
+        assert_ne!(now, grid, "a reveal only when the explored tiles grew");
+        let viewer = Viewer::Player(player);
+        assert_eq!(*reveal, map::game::reveal(state, rules, viewer, grid));
+        assert!(!reveal.adventure.tiles.is_empty());
+        seen.reveals += 1;
+        rest.remove(0);
+    } else {
+        assert_eq!(now, grid, "the explored tiles grew without a reveal");
+    }
+    grid.clone_from(now);
     if let Some(ServerMessage::Snapshot { observation, .. }) = rest.first() {
         assert_eq!(Some(observation), observed.as_ref());
-        assert!(started || !*battle, "a snapshot only when a battle opens");
-        *battle = true;
+        assert!(
+            started || !*battle_held,
+            "a snapshot only when a battle opens"
+        );
+        *battle_held = true;
         seen.snapshots += 1;
         rest.remove(0);
     } else {
@@ -211,7 +266,7 @@ fn check(
         );
     }
     // The view holds a battle exactly when the viewer has one.
-    assert_eq!(*battle, observed.is_some());
+    assert_eq!(*battle_held, observed.is_some());
     match (rest.as_slice(), turn(state, rules, player)) {
         ([], None) => {}
         (
@@ -253,6 +308,10 @@ fn the_golden_replays_run_through_the_session() {
         frames(&out, &mut sent);
         // The start: each player's snapshot, then its turn.
         let (mut next, mut battle) = opened(&out, &shadow, rules, name);
+        let mut grids: Vec<BitGrid> = ids
+            .iter()
+            .map(|&p| shadow.adventure().explored(p).unwrap().clone())
+            .collect();
         assert!(session.system_legal().is_empty());
         assert_eq!(
             session.drain_entries().count(),
@@ -264,8 +323,8 @@ fn the_golden_replays_run_through_the_session() {
         for (seq, (actor, engine)) in replay.commands.iter().enumerate() {
             let seq = u32::try_from(seq).unwrap();
             let wire = command(engine);
-            let mut events_told = Vec::new();
-            apply(&mut shadow, rules, *actor, engine.clone(), &mut events_told).unwrap();
+            let mut kept = Kept::default();
+            apply(&mut shadow, rules, *actor, engine.clone(), &mut kept).unwrap();
             out.clear();
             match *actor {
                 Actor::Player(player) => session.play(player, seq, wire.clone(), &mut out),
@@ -293,11 +352,11 @@ fn the_golden_replays_run_through_the_session() {
                     &messages,
                     &mut next[player.index()],
                     echo,
-                    events(&events_told, Viewer::Player(player)),
+                    (events(&kept.events, Viewer::Player(player)), &kept.ended),
                     &shadow,
                     rules,
                     player,
-                    &mut battle[player.index()],
+                    (&mut battle[player.index()], &mut grids[player.index()]),
                     &mut seen,
                 );
             }
@@ -352,6 +411,8 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.snapshots > 0, "{seen:?}");
     assert!(seen.turns >= seen.commands - seen.system, "{seen:?}");
     assert!(seen.casts > 0, "{seen:?}");
+    assert!(seen.reveals > 1_000, "{seen:?}");
+    assert!(seen.last_snapshots > 0, "{seen:?}");
     assert_eq!(seen.restores, 72, "{seen:?}");
 }
 

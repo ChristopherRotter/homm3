@@ -2351,3 +2351,71 @@ protocol v40) reviewed from the inbox: one to one both ways, its round trips; ac
   of turn), nor a missing or malformed file, packs or map that are not there; the options parse;
   each player's file is written, a missing directory refused.
 - **The map client lane's inbox** holds the record's form and the command (E24 M4 T3, T4).
+
+### M5 T5c — what each viewer newly sees, a battle's last snapshot (2026-11-12)
+
+Baseline: `master` 7349ed4 (#863, the adventure lane's T5c blockers: `h3_game::reveal`,
+`Sink::battle_ended`, `MovementChanged` at protocol v42; the setup's light gates on CI's
+fingerprint); `master` f32979c (#867, the client lane's reader of a battle's last snapshot) merged
+in before the docs. No original data. In two parts (the user, 2026-11-12: T5c1 and T5c2, one pull
+request); the reveal's objects in tile order, not by an index (the user's condition: an index
+only if the client cannot draw without it; below).
+
+- **T5c1, the reveal on the wire (protocol v43, `SRV-STUB-1` lifted).** `wire::game::GameReveal`
+  (`adventure: AdventureReveal { viewer, tiles: Vec<RevealedTile { pos, explored, view }>,
+  heroes, objects, boats, towns }`, `heroes: Vec<HeroInfo>`, `towns: Vec<Town>`): the engine's
+  `h3_game::GameReveal` one to one (`map::game::reveal`, `reveal_view`; the test-only inverse
+  `inverse_reveal`). `ServerMessage::GameReveal { n, reveal }`: the session keeps each viewer's
+  explored grid as it was last told it with its count (`Viewer::explored`, set at the snapshot,
+  so after a restore too) and, after a command's `GameEvents` (and a battle's last `Snapshot`),
+  sends the engine's answer when the count changed, before a battle's opening `Snapshot` and the
+  turns. `GameObservation::reveal` folds it after the events: each tile's view and its two bits
+  (a tile not explored whose view is not `Hidden` is on the fringe; a tile off the map skipped),
+  the palette packed once; the heroes and their infos by id, the towns by id, each put in its
+  place or replacing the one there; an object the events told already replaced by its view now,
+  each object in its place; the boats as `Landed`'s.
+- **A view's objects in tile order** (`Object::place`: the anchor's level, row and column, then
+  the type and the masks; `map::game::objects` sorts through `h3_kernel::order`), no longer the
+  map's: a fold cannot put a newly seen object in the map's order without the object's index,
+  which `docs/06-security.md` rules out ("an index counts the objects before it, seen or not";
+  a monster a creature month adds would also tell how many it added elsewhere). The user asked
+  whether the map client needs the index for its draw order: it does not, since the original's
+  draw lists follow the map file's object order (`E24-design.md` §2.1), which the client holds:
+  it finds a seen object's entry there by type and anchor, unique among typed objects but for two
+  special grounds of one type with the same masks (E08 T20a2a), which are alike in every field
+  and share a place. A creature month's monster folded in its place too. No engine change, no
+  cross-lane change.
+- **The gate** (`tests/game_fold.rs`) folds each reveal as the session sends it (the viewer's
+  grid against its count after the events): over the 72 golden replays and 32 430
+  viewer-commands the explored tiles, tile views, objects in sight, empty boats and towns in sight
+  equal `observe` everywhere (36 parts, 23 exact); `heroes in sight` stays `SRV-STUB-3`'s (310,
+  none with a reveal), the garrisons and the owner facts `TWN-STUB-13`'s (8 each). The `REVEAL`
+  rule (a part only the reveal names differs only with one) is gone. `SRV-STUB-1` unregistered.
+- **T5c2, a battle's last snapshot (`SRV-STUB-14` lifted).** The session's sink (`Told`: the
+  events, and per battle a command ends each owner's `map::observe` of its side, taken in
+  `Sink::battle_ended`) gives each owner the battle as its side saw it when it ended (its own
+  hero's Eagle Eye picks among it) as a `Snapshot` right after the `GameEvents` whose
+  `BattleEnded` ended it, as the client lane's reader takes it (its inbox note of 2026-11-12,
+  `h3_view::game_record`): none when the same events open another battle for the player, whose
+  opening `Snapshot` a reader could not tell from it. A separate `GameLastSnapshot` message was
+  built first and dropped for the client lane's rule. Over the golden replays each of the 117
+  battles opened gets its last snapshot.
+- **No record format step:** a record's lines are the messages, which the header's manifest
+  versions (`protocol`); format 4 stands.
+- **Tests:** the session's (`tests/game_session.rs`): a `GameReveal` exactly when the viewer's
+  grid changed, equal to `map::game::reveal` against the grid it was last told (1 969 of them,
+  the adventure lane's count), each ended battle's last snapshot of each owner right after its
+  events; the inverse (`tests/game.rs`) over a hand-built reveal and every reveal of the fixture
+  games played at random, the engine's objects put in tile order for the comparison (`in_tile_order`;
+  the hand-built observation's objects now out of tile order); the fold's (`a_reveal_puts_...`:
+  every branch); the wire's (the message's round trip and its JSON form); `h3-server`'s record
+  test (a reveal only after a command's events, with at most a battle's last snapshot between;
+  over 1 000 of them).
+- **The ladders test** of the adventure lane's note (2026-11-11: CI's coverage build ran out the
+  300 ms lobby deadline before Dee's queue was answered) waits 900 ms, still below the match's
+  1 000 ms to accept, which Ann outwaits in the queue.
+- **For the review list:** `GameReveal` a message of its own after the events (not a field of
+  `GameEvents`, which the client lane's code builds and matches whole), the engine's reveal one
+  to one, a view's objects in tile order, the last snapshot as the battle's own `Snapshot` right
+  after the events that end it and none when they open another battle, one protocol step (v43)
+  for both.

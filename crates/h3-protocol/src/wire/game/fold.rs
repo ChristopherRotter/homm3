@@ -13,22 +13,26 @@
 //! battle is its snapshots' (SRV-Q27 (1)): its events are the battle client's, and the fold only
 //! ends it.
 //!
-//! Each gap is a stub (`SRV-STUB-1`, `SRV-STUB-3` to `SRV-STUB-11` and the town lane's
-//! `TWN-STUB-13`, `docs/stubs.toml`, marked where its event is folded), lifted when its lane's
-//! events carry it (`SRV-STUB-2`, a hero's movement points, by `MovementChanged`). The gate is `tests/game_fold.rs`: over the
-//! golden replays the fold equals `observe` after every command for every viewer, but for the
-//! parts a stub names.
+//! Each gap is a stub (`SRV-STUB-3` to `SRV-STUB-11` and the town lane's `TWN-STUB-13`,
+//! `docs/stubs.toml`, marked where its event is folded), lifted when its lane's events carry it
+//! (`SRV-STUB-2`, a hero's movement points, by `MovementChanged`). A reveal's content comes after
+//! the events that a command told the viewer, when the command explored tiles for it
+//! ([`GameObservation::reveal`], E16 M5 T5c; `SRV-STUB-1` lifted): the tiles whose sight changed,
+//! the heroes, objects, empty boats and towns it newly sees. The gate is `tests/game_fold.rs`:
+//! over the golden replays the fold equals `observe` after every command for every viewer, but
+//! for the parts a stub names.
 //!
-//! Provisional (E16 M5 part 1's review): the fold's place, what it derives from an event.
+//! Provisional (E16 M5 part 1's review): the fold's place, what it derives from an event, a
+//! reveal folded after the events.
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use super::{
-    Adventure, AdventureEvent, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact, ArtifactPlace, Boat,
-    Bonuses, Decision, GameEvent, GameObservation, Garrison, Guards, HeroChange, HeroDetails,
-    LevelUp, MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos, PrimarySkill, SkillLevel, Tile,
-    Town, TownOwnerFacts,
+    Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
+    ArtifactPlace, Boat, Bonuses, Decision, GameEvent, GameObservation, GameReveal, Garrison,
+    Guards, HeroChange, HeroDetails, LevelUp, MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos,
+    PrimarySkill, RevealedTile, SkillLevel, Tile, Town, TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -289,8 +293,8 @@ impl GameObservation {
                 object_type,
                 anchor,
             }),
-            // Its tiles' content is not carried, nor a step's reveal (SRV-Q26 (a);
-            // stub: SRV-STUB-1).
+            // Its tiles' content, as a step's reveal, comes after the events
+            // (`GameObservation::reveal`, SRV-Q26 (a)).
             AdventureEvent::TilesRevealed { .. } => {}
             AdventureEvent::KeyGained { key } => {
                 self.adventure.keys |= 1_u8.checked_shl(u32::from(key)).unwrap_or(0);
@@ -466,6 +470,25 @@ impl GameObservation {
         }
     }
 
+    /// Folds what the viewer newly sees (E16 M5 T5c; SRV-Q26 (a)), after the events of the
+    /// command that explored tiles for it: the tiles whose sight changed with their views, the
+    /// heroes with their types, the objects and empty boats it newly sees and its views of the
+    /// towns it newly explored, each put in its place in the view or replacing the one there.
+    pub fn reveal(&mut self, reveal: &GameReveal) {
+        let GameReveal {
+            adventure,
+            heroes,
+            towns,
+        } = reveal;
+        self.adventure.reveal(adventure);
+        for info in heroes {
+            put(&mut self.heroes, info.clone(), |info| info.id);
+        }
+        for view in towns {
+            put(&mut self.towns, view.clone(), |view| view.town);
+        }
+    }
+
     /// Whether `player`'s turn is running.
     fn acting(&self, player: u8) -> bool {
         self.players
@@ -592,7 +615,76 @@ fn set_slot(army: &mut Vec<ArmyStack>, slot: u8, stack: Option<ArmyStack>) {
     }
 }
 
+/// Puts `item` into `list`, ordered by `key`: in its place, or in place of the one with its key.
+fn put<T>(list: &mut Vec<T>, item: T, key: impl Fn(&T) -> u16) {
+    match list.binary_search_by_key(&key(&item), &key) {
+        Ok(at) => list[at] = item,
+        Err(at) => list.insert(at, item),
+    }
+}
+
 impl Adventure {
+    /// Folds the adventure map's part of a reveal ([`GameObservation::reveal`]).
+    fn reveal(&mut self, reveal: &AdventureReveal) {
+        let AdventureReveal {
+            // The view's own viewer.
+            viewer: _,
+            tiles,
+            heroes,
+            objects,
+            boats,
+            // Their views are the game's part's.
+            towns: _,
+        } = reveal;
+        if !tiles.is_empty() {
+            let mut views: Vec<Tile> = (0..self.tiles.len())
+                .map(|i| self.tile(i).copied().unwrap_or(Tile::Hidden {}))
+                .collect();
+            for &RevealedTile {
+                pos,
+                explored,
+                view,
+            } in tiles
+            {
+                // A tile off the map is no tile of the view.
+                let Some(held) = self.index(pos).and_then(|i| views.get_mut(i)) else {
+                    continue;
+                };
+                *held = view;
+                let fringe = !explored && !matches!(view, Tile::Hidden {});
+                let row = usize::from(pos.level) * usize::from(self.height) + usize::from(pos.y);
+                let word = row * usize::from(self.stride) + usize::from(pos.x / 64);
+                let bit = 1_u64 << (pos.x % 64);
+                for (plane, on) in [(&mut self.explored, explored), (&mut self.fringe, fringe)] {
+                    plane.get_mut(word).into_iter().for_each(|WireU64(w)| {
+                        *w = if on { *w | bit } else { *w & !bit };
+                    });
+                }
+            }
+            (self.palette, self.tiles) = pack(&views);
+        }
+        for hero in heroes {
+            put(&mut self.heroes, hero.clone(), |hero| hero.id);
+        }
+        // An object the events told already is replaced by its view now.
+        self.objects
+            .retain(|held| !objects.iter().any(|o| o.place() == held.place()));
+        for object in objects {
+            self.add_object(object.clone());
+        }
+        for &boat in boats {
+            self.add_boat(boat);
+        }
+    }
+
+    /// An object came into view, in its place ([`Object::place`]).
+    fn add_object(&mut self, object: Object) {
+        let at = self
+            .objects
+            .partition_point(|held| held.place() <= object.place());
+        self.objects.insert(at, object);
+    }
+
     /// The hero `hero` as the viewer sees it.
     fn hero_mut(&mut self, hero: u16) -> Option<&mut MapHero> {
         self.heroes.iter_mut().find(|seen| seen.id == hero)
@@ -631,10 +723,10 @@ impl Adventure {
         );
     }
 
-    /// A creature month's monster came onto the map (ADV-MON-014): an object added after every
-    /// other, its tile blocked and visited from.
+    /// A creature month's monster came onto the map (ADV-MON-014): an object in its place, its
+    /// tile blocked and visited from.
     fn add_monster(&mut self, at: ObjectRef, monster: Monster) {
-        self.objects.push(Object {
+        self.add_object(Object {
             object_type: at.object_type,
             anchor: at.anchor,
             blocked: WireU64(ONE_TILE),
