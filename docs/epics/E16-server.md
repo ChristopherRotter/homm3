@@ -358,7 +358,15 @@ inbox, the same day), mapped when it lands.
   55 golden replays (one `GameEvents` per command for every player, its own commands echoed, no
   state hash in any record); the map client lane's inbox note with the record's form.
 - **T7 closure**: mutation tests over the game's messages, the frame and record bounds for large
-  observations, `docs/06-security.md`'s game part, a fresh reviewer, the checkpoint.
+  observations, `docs/06-security.md`'s game part, a fresh reviewer, the checkpoint. In three
+  parts (the user, 2026-11-12; one pull request):
+  - **T7a1 done** (2026-11-12; `E16-log.md`): the reveal's tiles packed as a palette and a
+    rectangle per level (protocol v44; a whole XL map's reveal was 60 times its snapshot), a
+    game's record cut only at its snapshots with a fresh one past half its bound, the frames' and
+    records' sizes gated on the XL fixtures (`tests/game_bounds.rs`).
+  - **T7a2** the mutation tests over the game's messages (a client's decode and fold, the
+    session's play of mutated commands), `docs/06-security.md`'s game part (`cross-lane`).
+  - **T7b** a fresh reviewer over part 1, its fixes, the exit criteria shown, the checkpoint.
 
 **Review list so far** (the autonomy contract's queue, for part 1's checkpoint):
 `Query::CreatureCastTargets {}` (a message shape); the last `Snapshot` before `GameEnded` and the
@@ -408,7 +416,13 @@ manifest's `protocol` versions the messages); T6's: the command in the server's 
 the files' names (`<stem>.player-<k>.jsonl`), the game's id 0 unless given, a player's commands
 numbered by its own counter from 1, the records unbounded (the operator's files of a finished
 replay), the map imported from the very bytes whose hash was checked (`h3-map` a dependency of
-`h3-server`).
+`h3-server`); T7a1's: a reveal's tiles as a palette of `{ explored, view }` and a rectangle per
+level with an index per tile (0 unchanged), not one entry per tile nor a fresh snapshot in its
+place (protocol v44), a game's record cut only at its snapshots with a fresh `GameSnapshot` after
+a command's messages once a player was sent half its bound since its last, before its turn, none
+inside a battle, the size gate's bounds (a reveal within the snapshot it brings the view to, a
+snapshot within 512 KiB, any other frame within 64 KiB on the fixtures), `GameTurn` after every
+command kept (60 to 80 % of a town-heavy game's record; part 2 may send it only when it changed).
 
 **Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
 offers, players as seats), turn groups, timers and the level-up hold (system commands, E08

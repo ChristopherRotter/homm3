@@ -38,8 +38,8 @@ use crate::wire::game::{
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
     HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
     MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player,
-    Pos, PrimarySkill, RevealedTile, SkillLevel, SlotState, Tile, Town, TownBuildings,
-    TownOwnerFacts, UniversityVisit,
+    Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState, Tile, Town,
+    TownBuildings, TownOwnerFacts, UniversityVisit,
 };
 
 mod command;
@@ -81,23 +81,12 @@ pub(crate) fn reveal_view(r: &h3_game::GameReveal) -> GameReveal {
         boats,
         towns: ids,
     } = adventure;
+    let (palette, areas) = revealed(tiles);
     GameReveal {
         adventure: AdventureReveal {
             viewer: viewer.raw(),
-            tiles: tiles
-                .iter()
-                .map(
-                    |&EngineRevealedTile {
-                         pos: at,
-                         explored,
-                         view,
-                     }| RevealedTile {
-                        pos: pos(at),
-                        explored,
-                        view: tile(view),
-                    },
-                )
-                .collect(),
+            palette,
+            areas,
             heroes: seen.iter().map(map_hero).collect(),
             objects: objects(newly),
             boats: boats.iter().map(boat).collect(),
@@ -524,6 +513,62 @@ pub(crate) fn adventure_view(o: &AdventureObservation) -> Adventure {
         boats: boats.iter().map(boat).collect(),
     }
 }
+
+/// The tiles whose sight changed as the wire packs them (E16 M5 T7a1): their distinct views in
+/// the order of their first use in tile order, and for each level that has any, by level, the
+/// smallest rectangle holding them, each tile's index among the views from 1 (0 for a tile of
+/// the rectangle whose sight did not change).
+fn revealed(tiles: &[EngineRevealedTile]) -> (Vec<RevealedView>, Vec<RevealedArea>) {
+    let mut spans: BTreeMap<u8, Span> = BTreeMap::new();
+    for &EngineRevealedTile { pos: at, .. } in tiles {
+        let span = spans
+            .entry(at.level)
+            .or_insert(((at.x, at.x), (at.y, at.y)));
+        let ((left, right), (top, bottom)) = span;
+        (*left, *right) = ((*left).min(at.x), (*right).max(at.x));
+        (*top, *bottom) = ((*top).min(at.y), (*bottom).max(at.y));
+    }
+    let mut index = BTreeMap::new();
+    let mut palette = Vec::new();
+    let areas = spans
+        .into_iter()
+        .map(|(level, ((left, right), (top, bottom)))| {
+            let width = right - left + 1;
+            let mut area = alloc::vec![0; usize::from(width) * (usize::from(bottom - top) + 1)];
+            for &EngineRevealedTile {
+                pos: at,
+                explored,
+                view,
+            } in tiles.iter().filter(|t| t.pos.level == level)
+            {
+                let seen = RevealedView {
+                    explored,
+                    view: tile(view),
+                };
+                let n = *index.entry(seen).or_insert_with(|| {
+                    palette.push(seen);
+                    // At most one per tile, which a map's `u16` sides and `u8` levels bound.
+                    u32::try_from(palette.len()).unwrap_or(u32::MAX)
+                });
+                // Inside the span by its construction.
+                area[usize::from(at.y - top) * usize::from(width) + usize::from(at.x - left)] = n;
+            }
+            RevealedArea {
+                corner: Pos {
+                    x: left,
+                    y: top,
+                    level,
+                },
+                width,
+                tiles: area,
+            }
+        })
+        .collect();
+    (palette, areas)
+}
+
+/// A level's columns and rows that a reveal's tiles span: the first and last of each.
+type Span = ((u16, u16), (u16, u16));
 
 /// The tiles as their distinct views, in the order of their first use, and each tile's index
 /// among them.

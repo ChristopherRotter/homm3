@@ -25,8 +25,8 @@
 //!   could not tell from it), its `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
 //!   keeps each viewer's explored grid as it was last told it and asks `h3_game::reveal` when the
 //!   grid's count changed) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
-//!   events are then the battle client's, inside `GameEvents`), then every player that may act
-//!   its `GameTurn`. A rejected command changes nothing and is told to its player alone
+//!   events are then the battle client's, inside `GameEvents`), a fresh `GameSnapshot` when its
+//!   record needs one (below), then every player that may act its `GameTurn`. A rejected command changes nothing and is told to its player alone
 //!   (`GameRejected`).
 //! - **The journal** (E16 M5 T5b). The accepted commands with their actors and a state hash every
 //!   `checkpoint_every` commands: the adventure replay in progress ([`GameJournal`]; its header,
@@ -36,9 +36,14 @@
 //!   every player then told it afresh as at the start (its numbers and record begin again: they
 //!   are not journaled; a rejection changes nothing and is not journaled either).
 //! - **Records** (E16 M5 T5b, record format v4). Each player's record is the log of every
-//!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]: the
-//!   oldest lines go first): [`GameSession::record`] gives it with its header line
-//!   ([`GameRecordHeader`]: the game's manifest and the player), as a record file holds it.
+//!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]): the
+//!   oldest lines go first, but only up to a `GameSnapshot`, which the rest folds onto (T7a1).
+//!   Once a player was sent more than half the bound since its last snapshot it gets a fresh one
+//!   after a command's messages (before its turn), unless a battle is open in its view (whose own
+//!   `Snapshot` opens it), so a record holds about one to two such stretches; one command's
+//!   messages, or a battle's, may take it beyond its bound. [`GameSession::record`] gives it with
+//!   its header line ([`GameRecordHeader`]: the game's manifest and the player), as a record file
+//!   holds it.
 //! - **Not here yet:** a hero's moves, which
 //!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`; a query
 //!   with part 2's network seats); the journal's file and the hosting over the network (part 2).
@@ -86,7 +91,9 @@ pub struct GameOptions {
     /// A state hash after every this many accepted commands (0: none), as an adventure replay's.
     pub checkpoint_every: u32,
     /// The most a player's record holds, in bytes of its lines (each with its line break): beyond
-    /// it the oldest go, the newest stays.
+    /// it the oldest go up to a snapshot, the newest snapshot and what follows it stay; past half
+    /// of it since its last snapshot a player gets a fresh one (E16 M5 T7a1). `usize::MAX`: the
+    /// whole game, one snapshot.
     pub record_bytes: usize,
 }
 
@@ -190,6 +197,8 @@ struct Viewer {
     /// Its explored tiles as it was last told them, with their count (E16 M5 T5c): the grid
     /// `h3_game::reveal` compares with; none before the game is opened.
     explored: Option<(BitGrid, u32)>,
+    /// The bytes of the lines its record got since its last snapshot (E16 M5 T7a1).
+    since: usize,
 }
 
 impl Viewer {
@@ -201,8 +210,16 @@ impl Viewer {
         out: &mut Vec<GameOutbound>,
     ) {
         self.n = self.n.saturating_add(1);
-        let frame = codec::encode_text(&message(self.n));
-        self.record.push(frame.clone());
+        let message = message(self.n);
+        let snapshot = matches!(message, ServerMessage::GameSnapshot { .. });
+        let frame = codec::encode_text(&message);
+        // A record begins with a snapshot, which the rest folds onto (E16 M5 T7a1).
+        self.since = if snapshot {
+            0
+        } else {
+            self.since.saturating_add(frame.len() + 1)
+        };
+        self.record.push(frame.clone(), snapshot);
         out.push(GameOutbound { to, frame });
     }
 }
@@ -318,6 +335,7 @@ impl<'r> GameSession<'r> {
             battle: false,
             record: Record::new(options.record_bytes),
             explored: None,
+            since: 0,
         };
         Ok(Self {
             rules,
@@ -520,6 +538,16 @@ impl<'r> GameSession<'r> {
                 viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
             viewer.battle = open.is_some();
+            // Past half its record's bound since its last snapshot, a fresh one (E16 M5 T7a1),
+            // where its record may be cut; never inside a battle, which its own snapshot opens.
+            if viewer.since > viewer.record.limit() / 2 && !viewer.battle {
+                let observation = map::game::observe(&self.state, self.rules, engine_viewer);
+                viewer.post(
+                    player,
+                    |n| ServerMessage::GameSnapshot { n, observation },
+                    out,
+                );
+            }
         }
         self.turns(out);
     }

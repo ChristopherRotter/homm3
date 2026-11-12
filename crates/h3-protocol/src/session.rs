@@ -287,14 +287,18 @@ pub enum RestoreError {
 }
 
 /// A viewer's record (E16 M2 T5c; a whole game's players' since M5 T5b, `game`): the latest
-/// numbered messages it was sent, as their frames, the newest last, within a bound of bytes.
+/// numbered messages it was sent, as their frames, the newest last, within a bound of bytes. It
+/// begins with a line a record may begin with: any battle message, a whole game's snapshot (M5
+/// T7a1: a reader folds the rest onto it).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Record {
-    /// The frames, those numbered from `n - lines.len() + 1` to `n` (the viewer's last number).
-    lines: VecDeque<String>,
+    /// The frames, those numbered from `n - lines.len() + 1` to `n` (the viewer's last number),
+    /// each with whether a record may begin with it.
+    lines: VecDeque<(String, bool)>,
     /// The bytes of the lines, each with its line break.
     bytes: usize,
-    /// The most `bytes` may be; the oldest lines go first, the newest stays.
+    /// The most `bytes` may be; the oldest lines go first, the newest that may begin the record
+    /// and those after it stay.
     limit: usize,
 }
 
@@ -308,15 +312,25 @@ impl Record {
         }
     }
 
-    /// Records the frame of the viewer's next message; the oldest lines go while the bound is
-    /// exceeded, the newest stays.
-    pub(crate) fn push(&mut self, frame: String) {
+    /// Records the frame of the viewer's next message, which a record may begin with if `start`;
+    /// while the bound is exceeded the oldest lines go, up to the next that may begin it: the
+    /// newest such line and those after it stay.
+    pub(crate) fn push(&mut self, frame: String, start: bool) {
         self.bytes = self.bytes.saturating_add(frame.len() + 1);
-        self.lines.push_back(frame);
-        while self.bytes > self.limit && self.lines.len() > 1 {
-            let oldest = self.lines.pop_front().unwrap_or_default();
-            self.bytes = self.bytes.saturating_sub(oldest.len() + 1);
+        self.lines.push_back((frame, start));
+        while self.bytes > self.limit {
+            let Some(next) = self.lines.iter().skip(1).position(|&(_, start)| start) else {
+                break;
+            };
+            for (oldest, _) in self.lines.drain(..=next) {
+                self.bytes = self.bytes.saturating_sub(oldest.len() + 1);
+            }
         }
+    }
+
+    /// The most bytes it holds.
+    pub(crate) const fn limit(&self) -> usize {
+        self.limit
     }
 
     /// The number of the first line when the viewer's last message is numbered `n` (one more
@@ -329,7 +343,7 @@ impl Record {
     /// The record's text: the `header` line, then one line per message it holds.
     pub(crate) fn text(&self, header: String) -> String {
         let mut text = header;
-        for line in &self.lines {
+        for (line, _) in &self.lines {
             text.push('\n');
             text.push_str(line);
         }
@@ -372,7 +386,7 @@ impl Viewer {
                 close: false,
             });
         }
-        self.record.push(frame);
+        self.record.push(frame, true);
     }
 
     /// The number of the record's first line (one more than `n` while it holds none).

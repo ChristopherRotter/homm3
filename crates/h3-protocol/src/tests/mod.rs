@@ -7,6 +7,7 @@ mod card;
 mod codec;
 mod connection;
 mod game;
+mod game_bounds;
 mod game_command;
 mod game_event;
 mod game_fold;

@@ -32,7 +32,7 @@ use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
     ArtifactPlace, Boat, Bonuses, Decision, GameEvent, GameObservation, GameReveal, Garrison,
     Guards, HeroChange, HeroDetails, LevelUp, MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos,
-    PrimarySkill, RevealedTile, SkillLevel, Tile, Town, TownOwnerFacts,
+    PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town, TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -629,23 +629,19 @@ impl Adventure {
         let AdventureReveal {
             // The view's own viewer.
             viewer: _,
-            tiles,
+            palette,
+            areas,
             heroes,
             objects,
             boats,
             // Their views are the game's part's.
             towns: _,
         } = reveal;
-        if !tiles.is_empty() {
+        if !areas.is_empty() {
             let mut views: Vec<Tile> = (0..self.tiles.len())
                 .map(|i| self.tile(i).copied().unwrap_or(Tile::Hidden {}))
                 .collect();
-            for &RevealedTile {
-                pos,
-                explored,
-                view,
-            } in tiles
-            {
+            for (pos, &RevealedView { explored, view }) in revealed(palette, areas) {
                 // A tile off the map is no tile of the view.
                 let Some(held) = self.index(pos).and_then(|i| views.get_mut(i)) else {
                     continue;
@@ -783,6 +779,28 @@ impl Adventure {
                 + usize::from(pos.x)
         })
     }
+}
+
+/// The tiles of a reveal's areas whose sight changed, each with its view: an index beyond the
+/// palette names none, a tile beyond the sides a position can hold is none.
+fn revealed<'a>(
+    palette: &'a [RevealedView],
+    areas: &'a [RevealedArea],
+) -> impl Iterator<Item = (Pos, &'a RevealedView)> + 'a {
+    areas
+        .iter()
+        .filter(|area| area.width > 0)
+        .flat_map(move |area| {
+            let width = usize::from(area.width);
+            area.tiles.iter().enumerate().filter_map(move |(i, &n)| {
+                let at = usize::try_from(n).ok().and_then(|n| n.checked_sub(1));
+                let view = at.and_then(|at| palette.get(at))?;
+                let x = u16::try_from(usize::from(area.corner.x) + i % width).ok()?;
+                let y = u16::try_from(usize::from(area.corner.y) + i / width).ok()?;
+                let level = area.corner.level;
+                Some((Pos { x, y, level }, view))
+            })
+        })
 }
 
 /// Whether `object` is the one named `at`.

@@ -112,6 +112,19 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T7a1, branch `claude/keen-tesla-q5uxid`; **for your M4
+  T3, T4; replaces (1) of the T5c note below in its form**): protocol **v44**. (1) `GameReveal`'s
+  tiles are packed as a snapshot's: `adventure.palette` (each `{ explored, view }` once) and
+  `adventure.areas` (per level that has any, by level, the smallest rectangle holding the tiles
+  whose sight changed: `corner`, `width`, `tiles` row by row, 0 an unchanged tile, `n` the
+  palette's `n`-th view from 1), no longer `tiles` (one entry per tile made an XL map's whole
+  reveal 6.5 MB, 60 times its snapshot; now 390 KB with its objects). Fold it with
+  `GameObservation::reveal` as before. (2) A player may get a **fresh `GameSnapshot`** after a
+  command's messages, before its `GameTurn`, never while a battle is open in its view: it
+  replaces the view. A bounded record (the server's, part 2) is cut only at a snapshot, so it
+  always begins with one (the header's `first` is its number); `h3-server record` writes whole
+  games unbounded, one snapshot.
+
 - 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
   your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's
   `GameEvents` (and a battle's last `Snapshot`) a player whose explored tiles grew gets

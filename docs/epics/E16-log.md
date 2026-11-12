@@ -2419,3 +2419,59 @@ only if the client cannot draw without it; below).
   to one, a view's objects in tile order, the last snapshot as the battle's own `Snapshot` right
   after the events that end it and none when they open another battle, one protocol step (v43)
   for both.
+
+### M5 T7a1 — the reveal packed, a game's record cut at its snapshots, the frames' sizes (2026-11-12)
+
+T7's split (the user, 2026-11-12; one pull request): T7a1 the bounds, T7a2 the mutation tests and
+`docs/06-security.md`'s game part, T7b the reviewer and the checkpoint. T7a1 grew from the
+measurement (the user agreed to its three changes). Baseline: `master` 35fc648 (#868, T5c; CI
+green; the setup's light gates on CI's fingerprint). No original data.
+
+- **The measurement** (a scratch test, release; not kept): the eight 144-tile fixtures played 28
+  days at random through the session (two players each, as imported), every frame by kind. A
+  starting snapshot 50 to 150 KB; a command's events at most 22 KB, a turn 5.6 KB, a battle's
+  snapshot 8.6 KB; but **a reveal up to 6.5 MB** (`e08-xl-144`, seed 5: 34 101 tiles at once, a
+  whole map's), as each tile went with its whole view, against the snapshot's palette: 60 times
+  that map's snapshot. The reveals were 30 to 90 % of each record's bytes, the records up to
+  8 MB a player; the turns most of the rest in the town-heavy maps (1.5 to 1.7 MB of 2 MB in 28
+  days). And a bounded record dropped its oldest lines, its snapshot first: a game's record
+  within the server's 512 KiB could no longer be folded.
+- **The reveal packed** (protocol **v44**; `wire::game::AdventureReveal`): `palette:
+  Vec<RevealedView { explored, view }>` (each once, in first use) and `areas:
+  Vec<RevealedArea { corner, width, tiles }>` (per level that has any, by level, the smallest
+  rectangle holding the changed tiles, row by row, 0 an unchanged tile, `n` the palette's `n`-th
+  from 1), no longer `tiles: Vec<RevealedTile>`. `map::game::revealed` packs the engine's tiles;
+  the fold reads the areas (`revealed`: an index beyond the palette, a tile beyond a position's
+  sides or off the map, an area without columns: none). The whole map's reveal is 390 KB with its
+  2 523 objects, about the snapshot it brings the view to; a step's a few hundred bytes (all 28
+  days' reveals on `e08-xl-144`: 7.3 MB to 0.67 MB).
+- **A game's record cut at its snapshots** (`session::Record::push(frame, start)`: the oldest
+  lines go up to the next one a record may begin with; every battle message may, a game's
+  `GameSnapshot` alone): a player sent more than half its record's bound since its last snapshot
+  gets a fresh `GameSnapshot` after a command's messages, before its `GameTurn`, unless a battle
+  is open in its view (its own `Snapshot` opens it). A record holds one to two such stretches; a
+  command's messages or a battle's may take it beyond its bound. `usize::MAX` (`h3-server
+  record`, the golden replays' test): one snapshot. The battle's records are unchanged.
+- **Tests:** `tests/game_bounds.rs` (new, 25 s in a debug build): the eight fixtures 28 days at
+  random through the session with a 2 MiB record bound: a reveal at most the snapshot it brings
+  its viewer to, a snapshot within 512 KiB (431 KB at most: a fresh one after the whole map's
+  reveal), every other frame within 64 KiB (22 KB), every record from a snapshot and within its
+  bound (2.04 MB at most), the whole map's reveal met. `tests/game_session.rs`'s
+  `a_record_is_cut_at_its_snapshots_within_its_bound` (in place of the one-byte record's test):
+  `towns-s173-d21` with a 48 KiB bound, each fresh snapshot only past half the bound, equal to
+  `observe`, outside a battle, followed only by turns, a player past half without one in a
+  battle, every record the longest stretch from a snapshot within the bound (or the newest).
+  The fold's reveal test covers each branch of the areas; the inverse (`tests/game.rs`) unpacks
+  the areas into the engine's tiles in tile order (a hand-built reveal over both levels with
+  gaps; every reveal of the fixture games); the wire's JSON form pinned.
+- **The inboxes:** the map client lane's (the reveal's form, the fresh snapshot, a bounded
+  record's start), the client lane's (informational, `h3_view::game_record`).
+- **For part 2** (sizes the network seats need): a game's record and the outbound queue hold a
+  whole map's snapshot (431 KB on the XL fixtures; it grows with the objects a player saw, up to
+  the map reader's 65 536); the server's 512 KiB record and 2 MiB queue are a battle's.
+- **For the review list:** the reveal's tiles as a palette and a rectangle per level (not one
+  entry per tile; not a fresh snapshot in its place), a game's record cut only at its snapshots
+  with a fresh one past half the bound (not a synthetic snapshot the player was never sent), none
+  inside a battle, the bounds of the size gate (provisional), the turns left as they are (a
+  `GameTurn` after every command is 60 to 80 % of a town-heavy record: part 2 may send it only
+  when it changed).
