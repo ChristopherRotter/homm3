@@ -49,9 +49,10 @@ impl Owner {
             if firsts.is_empty() {
                 firsts = vec![0_u16; core.creature_count()];
             }
-            if let Some(count) = firsts.get_mut(usize::from(creature.raw())) {
-                *count = count.saturating_add(1);
-            }
+            let count = firsts.get_mut(usize::from(creature.raw()));
+            count
+                .into_iter()
+                .for_each(|count| *count = count.saturating_add(1));
         }
         Self { share_bp, firsts }
     }
