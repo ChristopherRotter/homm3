@@ -20,7 +20,7 @@ use crate::session::game::{GameEntry, GameOptions, GameOutbound, GameSession};
 use crate::session::{ConnId, Outbound};
 use crate::wire::game::{GameCommand, GameReject, MapIdentity};
 use crate::wire::{
-    ClientMessage, Command, GoodbyeReason, Refusal, RejectCode, Seat, ServerMessage, WireU64,
+    ClientMessage, Command, GoodbyeReason, Phase, Refusal, RejectCode, Seat, ServerMessage, WireU64,
 };
 
 /// A map's identity for the manifest (the session only carries it).
@@ -288,6 +288,35 @@ fn a_seat_is_taken_by_token_or_account_and_retaken_with_a_fresh_snapshot() {
         code: GameReject::NotSeated {},
     };
     assert_eq!(to(&send(&mut s, F, end_turn(2)), F), [unseated]);
+}
+
+#[test]
+fn the_host_sees_who_holds_the_seats_and_where_the_game_is() {
+    let (rules, setup) = duel();
+    let mut s = GameSession::new(rules, &setup, 3, manifest(rules, MAP), OPTIONS, token).unwrap();
+    let acting = s.state().turn_group()[0].raw();
+    let waiting = u8::from(acting == 0);
+    assert_eq!(s.phase(), Phase::Waiting);
+    assert_eq!((s.open_seats(), s.accounts()), (vec![0, 1], vec![]));
+    assert!(!s.seated() && !s.holds(A));
+    // An anonymous seat taken, then an account's: the game runs.
+    send(&mut s, A, join(waiting, None));
+    assert!(s.seated() && s.holds(A) && !s.holds(C));
+    assert_eq!((s.phase(), s.open_seats()), (Phase::Waiting, vec![acting]));
+    s.logged_in(C, "ann".to_string());
+    send(&mut s, C, join(acting, None));
+    assert_eq!((s.phase(), s.open_seats()), (Phase::Running, vec![]));
+    assert_eq!(s.accounts(), [(acting, "ann")]);
+    // A refused join holds nothing; the host's pause pauses it.
+    send(&mut s, D, join(acting, None));
+    assert!(!s.holds(D));
+    send(&mut s, A, ClientMessage::Pause { seq: 1 });
+    assert_eq!(s.phase(), Phase::Paused);
+    // The in-process host holds every seat and none is a connection's.
+    let host = GameSession::start(rules, &setup, 3, manifest(rules, MAP), OPTIONS, &mut vec![]);
+    let host = host.unwrap();
+    assert_eq!((host.phase(), host.open_seats()), (Phase::Running, vec![]));
+    assert!(!host.seated() && host.accounts().is_empty());
 }
 
 #[test]

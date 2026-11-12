@@ -131,6 +131,12 @@ where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
 reason = "A Cartographer's type (Adventure::bought, ADV-VIS-001): OfferAnswered does not name the offer's kind, so the fold cannot add the type bought. The adventure lane's inbox (2026-11-09)"
 epic   = "E16"
 
+[[stub]]
+id     = "SRV-STUB-12"
+where  = "crates/h3-server/src/whole.rs::Prepared::host"
+reason = "A hosted whole game's lifecycle (E16 M5 T9b): its journal (`<data>/whole/`) is kept as it is at start, not restored; no sweep pauses a running whole game whose seats stayed empty; a paused one keeps its thread; a seat's record is not downloaded (`FetchRecord`)"
+epic   = "E16"
+
 # --- client (CLT-STUB-<n>) ---
 
 # CLT-STUB-1 is kept as a comment until `cargo xtask check-stubs` also scans `clients/crates/`
