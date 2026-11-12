@@ -26,6 +26,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for E10's refinement**, the
+  user's decision CLT-Q81): the game shell (E27) fills `h3_game::GameSetup` from the scenario
+  screen and builds the original's setup and end screens before the engine has their rules; the
+  user (CLT-Q79): **E10 adds what is missing to `GameSetup`**, the shell stubs it until then (no
+  engine change ahead of E10). What the shell will need: a player's **starting bonus** (the
+  original's gold, resource or artifact choice, or random) and its draw; the **handicap**; the
+  **victory and defeat** conditions and a scenario's end (the end screens, the high score's
+  numbers); later the computer players' turns (E13). Its readings of the original's setup (E27
+  M1 T1b, `docs/epics/E27-design.md` §3) map each choice to a `GameSetup` field or to one of
+  these gaps; nothing to do before E10, the order is yours. Also (CLT-Q83): a saved game is your
+  adventure record (`h3-files`' replay format); what it lacks of a setup's choices is settled
+  with you at E27 M4's T0.
 - 2026-11-12 (the client lane, E17 M7 T4, at E17's closure; **the harness check's growth, yours
   to take when a batch needs it**, placed by the user): the harness's own check
   (`clients/capture/checks/harness-check.toml`, its recipe `capture/batches/harness-check.toml`)

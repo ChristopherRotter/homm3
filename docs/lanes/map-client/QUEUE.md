@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for your M5**, informational
+  until then): E27 (the game shell) is refined (`docs/epics/E27-game-shell.md`). Its scenario
+  screen hands a hot-seat game over as the engine's own `h3_game::GameSetup`, filled (CLT-Q79:
+  no new crate, no new type for it); what else the hand-over carries (the hot seat's names, the
+  map's file) is agreed with you at E27 M3's T0 within the existing crates. The system menu in
+  play (save, load, restart, main menu, quit) draws over your adventure screen at E27 M4, agreed
+  with you then. The campaign screens moved to E20 (CLT-Q82).
 - 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for your M4 T5 and M5**;
   E17 closes with it): **the hosted battle after M7's review**, design §13.2 to §13.6.
   (1) **The element borrows** its `Ground` and your game (`Prepared<'g>`, `Hosted<'g>`; the

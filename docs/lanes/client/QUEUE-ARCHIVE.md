@@ -4,6 +4,13 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-12 (E27 M0, the refinement with the user: the inbox's E27 entry placed in the epic's
+  scope, M2 and M3; the entry verbatim):
+
+  - **E27** (in its draft since M7 T4): the client's options (the volume settings 0x5996C0, a track
+    resuming 0x59AA82, CLT-Q25's step back), video (the intro videos, the video archives), CLT-Q2's
+    archive set by the LODs' tables (NOTES, "Assets and archives", "Options and layouts").
+
 - 2026-11-12 (E17 M7 T4 done, **E17 closed**; the queue's tasks section and T4's entry verbatim,
   then the inbox entries placed at E17's closure, verbatim: the town lane's harness note acted on
   (`xdd.dll` rebuilt; informational), the encoding-3 drawer note (informational, the user), the
