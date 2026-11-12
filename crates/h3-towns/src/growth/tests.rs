@@ -146,7 +146,7 @@ fn the_grail_adds_half_of_the_sum() {
     assert_eq!(g[1], 13);
 }
 
-// covers: TWN-QUIRK-8
+// TWN-QUIRK-8: a growth saturates (T-10 fixed).
 #[test]
 fn a_growth_is_held_at_the_bound() {
     let mut inputs = GrowthInputs::NEUTRAL;

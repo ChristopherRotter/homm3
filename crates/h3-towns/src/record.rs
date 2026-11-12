@@ -274,9 +274,9 @@ mod tests {
         assert!(rebuilt.built_today());
     }
 
-    // covers: TWN-QUIRK-8
+    // TWN-QUIRK-8's regression test (T-10 fixed: a count saturates).
     #[test]
-    fn a_town_holds_its_counts_and_portal_within_the_bound() {
+    fn twn_quirk_8_a_town_s_counts_saturate_at_the_bound() {
         let town = Town::new(FactionId::from_raw(2), set(&[0]), set(&[5]));
         assert_eq!(*town.available_all(), [0; CREATURE_INDEXES]);
         assert_eq!(
