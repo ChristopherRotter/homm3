@@ -501,7 +501,49 @@ pub struct TownRuleset {
     core_hash: u64,
     params: Option<TownParams>,
     towns: Vec<TownRecord>,
+    /// What the week's draw reads, derived from the records (not hashed: the records are).
+    week: WeekDraw,
     hash: u64,
+}
+
+/// What the week's draw reads (TWN-GRO-002, E09 T26a2; [`crate::draw_week`]), derived from the
+/// records when the part is built, so that a week's draw walks neither the records nor a town's
+/// buildings (`bench-check`: both every week cost `day-start-builds-36` +8.7 %).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub(crate) struct WeekDraw {
+    /// The creatures a creature's week may name ([`crate::week_creatures`]): every record's, then
+    /// the records' with `roe` alone.
+    pub(crate) creatures: [Vec<CreatureTypeId>; 2],
+    /// Each record's building of role `week_of` (at most one, the compile's check), with its
+    /// faction and level, in faction order.
+    pub(crate) buildings: Vec<(FactionId, BuildingId, u8)>,
+}
+
+impl WeekDraw {
+    /// The draw's inputs of `towns`.
+    fn of(towns: &[TownRecord]) -> Self {
+        let creatures = |roe: bool| {
+            towns
+                .iter()
+                .filter(|record| !roe || record.roe)
+                .flat_map(|record| &record.creatures)
+                .flat_map(|level| core::iter::once(level.base).chain(level.upgrade))
+                .collect()
+        };
+        let buildings = towns
+            .iter()
+            .filter_map(|record| {
+                record.buildings.iter().enumerate().find_map(|(i, b)| {
+                    let level = b.roles.week_of?;
+                    Some((record.faction, BuildingId::from_index(i)?, level))
+                })
+            })
+            .collect();
+        Self {
+            creatures: [creatures(false), creatures(true)],
+            buildings,
+        }
+    }
 }
 
 impl TownRuleset {
@@ -527,6 +569,7 @@ impl TownRuleset {
         let mut part = Self {
             core_hash: core.content_hash(),
             params,
+            week: WeekDraw::of(&towns),
             towns,
             hash: 0,
         };
@@ -554,6 +597,11 @@ impl TownRuleset {
     /// ADR-0028 point 7).
     pub fn towns(&self) -> &[TownRecord] {
         &self.towns
+    }
+
+    /// What the week's draw reads (E09 T26a2).
+    pub(crate) const fn week_draw(&self) -> &WeekDraw {
+        &self.week
     }
 
     /// The town record of `faction`, if it has one.

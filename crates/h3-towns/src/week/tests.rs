@@ -348,12 +348,18 @@ fn store(towns: &[Town]) -> Towns {
 #[test]
 fn a_week_s_creatures_are_every_record_s_levels_and_on_roe_the_roe_records_alone() {
     let part = part();
-    let all: Vec<u16> = week_creatures(&part, false).map(|c| c.raw()).collect();
+    let all: Vec<u16> = week_creatures(&part, false)
+        .iter()
+        .map(|c| c.raw())
+        .collect();
     // The Keep's levels, base then upgrade (level 3 has none), then the Marsh's (roe false).
     assert_eq!(all, [10, 11, 20, 21, 30, 40, 41, 50]);
-    let roe: Vec<u16> = week_creatures(&part, true).map(|c| c.raw()).collect();
+    let roe: Vec<u16> = week_creatures(&part, true)
+        .iter()
+        .map(|c| c.raw())
+        .collect();
     assert_eq!(roe, [10, 11, 20, 21, 30, 40, 41]);
-    assert_eq!(week_creatures(&empty_part(), false).count(), 0);
+    assert!(week_creatures(&empty_part(), false).is_empty());
 }
 
 #[test]
@@ -388,7 +394,10 @@ fn a_week_s_draw_is_a_creature_s_one_time_in_four_never_on_a_month_s_first() {
             }
             WeekKind::Creature(c) => {
                 creatures += 1;
-                let at = week_creatures(&part, false).position(|w| w == c).unwrap();
+                let at = week_creatures(&part, false)
+                    .iter()
+                    .position(|&w| w == c)
+                    .unwrap();
                 named[at] = true;
                 let mut twice = stream(seed);
                 assert_eq!(twice.below(4), 0);

@@ -6,13 +6,10 @@
 //! week's kind is drawn here from the towns' stream the game gives ([`draw_week`], TWN-GRO-002,
 //! E09 T26a2); the month's kind is the game's (GAM-CAL-003).
 
-use core::iter;
-
 use h3_content::{CREATURE_MONTH_EXACT, CreatureTypeId, NEUTRAL_PLAGUE_FULL_GROWTH, Ruleset};
 use h3_contracts::TownId;
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
-use crate::derive::Roles;
 use crate::growth::{GrowthInputs, TownGrowth, index_creature, level_of};
 use crate::record::{CREATURE_INDEXES, MAX_AVAILABLE, Town};
 use crate::ruleset::{TownRecord, TownRuleset};
@@ -88,14 +85,10 @@ impl CanonicalHash for WeekKind {
 /// §2 point 2): every record's levels' creatures in `part`'s order, each level's base then its
 /// upgrade; on a Restoration of Erathia map (`roe`) only the records with [`TownRecord::roe`] (the
 /// original's creatures below 118 but the elementals: Conflux's left out). A creature without a
-/// record (a neutral) never comes; upgrades do.
+/// record (a neutral) never comes; upgrades do. Derived when the part is built.
 // rule: TWN-GRO-002
-pub fn week_creatures(part: &TownRuleset, roe: bool) -> impl Iterator<Item = CreatureTypeId> + '_ {
-    part.towns()
-        .iter()
-        .filter(move |record| !roe || record.roe)
-        .flat_map(|record| &record.creatures)
-        .flat_map(|level| iter::once(level.base).chain(level.upgrade))
+pub fn week_creatures(part: &TownRuleset, roe: bool) -> &[CreatureTypeId] {
+    &part.week_draw().creatures[usize::from(roe)]
 }
 
 /// The week a town's standing building of role `week_of` makes (TWN-GRO-002; E09 design §42,
@@ -104,13 +97,18 @@ pub fn week_creatures(part: &TownRuleset, roe: bool) -> impl Iterator<Item = Cre
 /// such a building standing or without the faction's record in `part`.
 // rule: TWN-GRO-002
 pub fn building_week(town: &Town, part: &TownRuleset, core: &Ruleset) -> Option<WeekKind> {
-    let roles = Roles::of(town, part);
-    let level = roles.standing_roles().find_map(|(_, r)| r.week_of)?;
+    let faction = town.faction();
+    let &(_, building, level) = part
+        .week_draw()
+        .buildings
+        .iter()
+        .find(|&&(f, ..)| f == faction)?;
+    let record = part.town(faction)?;
+    if !town.built().contains(building) || !town.standing(record).contains(building) {
+        return None;
+    }
     // The compile's check: a `week_of` level is one of the record's.
-    let creatures = roles
-        .record()?
-        .creatures
-        .get(usize::from(level).checked_sub(1)?)?;
+    let creatures = record.creatures.get(usize::from(level).checked_sub(1)?)?;
     let bonus = core.creature(creatures.base).map_or(0, |c| c.growth);
     Some(WeekKind::Of {
         creatures: [Some(creatures.base), creatures.upgrade],
@@ -140,13 +138,17 @@ pub fn draw_week(
     let mut kind = WeekKind::Normal;
     if let Some(params) = part.params().filter(|_| !month_first) {
         let [numerator, denominator] = params.week.creature_chance.map(u32::from);
-        let n = u32::try_from(week_creatures(part, roe).count()).unwrap_or(u32::MAX);
+        let creatures = week_creatures(part, roe);
+        let n = u32::try_from(creatures.len()).unwrap_or(u32::MAX);
         if draws.below(denominator) < numerator && n > 0 {
             let pick = usize::try_from(draws.below(n)).unwrap_or(usize::MAX);
-            kind = week_creatures(part, roe)
-                .nth(pick)
-                .map_or(WeekKind::Normal, WeekKind::Creature);
+            kind = creatures
+                .get(pick)
+                .map_or(WeekKind::Normal, |&c| WeekKind::Creature(c));
         }
+    }
+    if part.week_draw().buildings.is_empty() {
+        return kind;
     }
     (0..=u16::MAX)
         .map(TownId::new)
