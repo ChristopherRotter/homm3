@@ -13,21 +13,23 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T1b3 — the catalogue, part 2c: the system options, the menu in play, the end
+#### E27 M1 T1b3b — the catalogue, part 2d: the end of a scenario
 
-- **Scope:** the system options (`SysOpBck.pcx`, 0x5B1790 from 0x41AC5A: every setting, where
-  the original keeps it) and its buttons in play (load, save, restart, main menu, quit, return),
-  the end of a scenario (game_main's after play from 0x4EF80B; victory, defeat, their clips and
-  messages; the win screen `scenario_win_screen` 0x4F3F60 with `HSANIM`, `HSLOOP` and the score;
-  the new entry `high_score_entry` 0x4E91D0 with `HighName.pcx`; the lost one 0x4EE2B0 with
-  `UltimateLose`, *inferred*). Into `E27-design.md` §4.
-- **Acceptance:** as T1a's. **Depends on:** T1b2 (done: design §3.12 to §3.18). **Status:** ready.
+- **Scope** (decision 14): the end of a scenario (`game_main` after play from 0x4EF80B: the path
+  from play's end to the menu loop, with `network_client_flag` 0x6972B8 (*inferred*), which gates
+  the result screens, and `game_reload_reset` clearing it; victory, defeat, their clips and
+  messages; the win screen `scenario_win_screen` 0x4F3F60 with `HSANIM`, `HSLOOP`, the score and
+  its call before the entry; the new entry `high_score_entry` 0x4E91D0 with `HighName.pcx` and `HiScore.dat`'s
+  write; the lost one `scenario_lose_screen` 0x4EE2B0 with clip 34 and `UltimateLose`). Into
+  `E27-design.md` §5. The campaigns' path (0x4EF8C9 on, `Endgame`) only noted (E20).
+- **Acceptance:** as T1a's. **Depends on:** T1b3a (done: design §4). **Status:** ready.
 
 #### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
 
 - **Scope:** the shell's clips: `original-data/shell-videos.vid` exists (made on the user's
-  computer at T1a1, design §1: `VIDEO.VID`'s ten shell entries; a clip T1b places beyond them is
-  added the same way, reading the installation only); the harness's `VIDEO.VID` holding both
+  computer at T1a1, rebuilt at T1b3a with three Smacker copies for CLT-Q96, design §1: 13 of
+  `VIDEO.VID`'s entries; a clip T1b3b places beyond them is added the same way, reading the
+  installation only); the harness's `VIDEO.VID` holding both
   archives' clips (`setup.sh`; `h3ab_ahd.vid` stays whole beside it); the harness's steps to every
   catalogued screen and its probes (the runbook, a section of its own); the reference captures of
   each screen (stills; a clip's frames where a screen plays one), each recorded twice; the start
@@ -35,7 +37,7 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   more than half a context.
 - **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
   same or each difference listed; the harness check passes; the Definition of Done.
-- **Depends on:** T1b3 (the user's computer only if T1b3 adds a clip). **Status:** ready after T1b3.
+- **Depends on:** T1b3b (the user's computer only if T1b3b adds a clip). **Status:** ready after T1b3b.
 
 #### E27 M1 T3 — M1's closure and M2's refinement
 
