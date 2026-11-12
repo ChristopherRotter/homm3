@@ -1,6 +1,7 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); next **M1 T1a** (`docs/lanes/client/QUEUE.md`).
+Status: **refined** (2026-11-12, M0, with the user); M1 T1a1 done; next **M1 T1a2**
+(`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -58,6 +59,18 @@ The user, 2026-11-12 (M0; the questions `CLT-Q79` to `CLT-Q83`, `lanes/client/QU
    tutorial) are decided at T1a from the reading, each a `CLT-Q`; which maps the scenario list
    shows (8 of the 160 shipped maps import whole today) is decided at M3's T0.
 
+The user, 2026-11-12 (M1 T1a1; `CLT-Q84` to `CLT-Q86`):
+
+9. **T1a cut in two** (T1a1 the start, the main menu, New Game's and Load Game's menus and Quit;
+   T1a2 Multiplayer and the hot seat's names, High Scores, Credits). **The tutorial** is drawn and
+   leads to a stub until the engine has a tutorial mode (CLT-Q84; the flag's rules, about 45 sites,
+   noted in BACKLOG's discovered work inbox). **No first-run case** (CLT-Q85): no `Testing` clip, the
+   start's clips always skippable, Bink always (the Smacker copies of `NWCLOGO` and `H3INTRO`
+   never play), `Show Intro` a client setting. **The menus' clip 33 draws nothing** (CLT-Q86: on
+   Complete a 4 × 4 placeholder; AB's menus show a 68 × 52 animation, E11's). The reading also
+   found that the loading bar is no clip (`loadbar.pcx`, `loadprog.def`) and `ProgressBar` a
+   network transfer's (design §2.1), so decision 5's Smacker serves `3DOLOGO` and the high scores.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -71,14 +84,15 @@ the harness as a reference, and compared at the pixel. Where the editions differ
 SoD) the shipped installation decides; E11 owns historical differences.
 
 - **The start:** the clips before the main menu (the 3DO and NWC logos, the intro: `3DOLOGO`,
-  `NWCLOGO`, `H3INTRO`; where `H3X1intr` plays is read at T1a), skipping them, the loading bar
-  (`ProgressBar.smk`), the main menu and its buttons, its music. The clips: design §1.
+  `NWCLOGO`, `H3INTRO`; `H3X1intr` is not played at the start), skipping them, the loading bar
+  (`loadbar.pcx` and `loadprog.def`), the main menu and its buttons, its music. The clips:
+  design §1; the reading: design §2.
 - **Start-up loading** (E17's CLT-Q2, placed at its M7 T4): the archive set read by the LODs'
   tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), `h3-view
   gate` measuring it; `lanes/client/NOTES.md`, "Assets and archives".
 - **New Game and Load Game:** the choice of single scenario, multiplayer, campaign (a stub until
-  E20) and the tutorial's place (T1a).
-- **Multiplayer's hot seat:** the names' dialog; the other modes are listed and decided at T1a,
+  E20) and the tutorial's place (T1a1: drawn, a stub, CLT-Q84).
+- **Multiplayer's hot seat:** the names' dialog; the other modes are listed and decided at T1a2,
   not built.
 - **Scenario selection:** the list with its filters and sort, the scenario's information, the
   difficulty, the players' setup (colour, human or computer, town, hero, starting bonus,
@@ -128,10 +142,17 @@ tasks are refined here.
 
 | Task | Scope | Status |
 |---|---|---|
-| T1a | The catalogue, part 1: the start (the clips' order and skipping, the loading bar), the main menu, New Game's and Load Game's choices, Multiplayer and the hot seat's names, High Scores, Credits, Quit | ready |
-| T1b | The catalogue, part 2: scenario selection and the players' setup, the advanced options, the random map's tab, Load's and Save's dialogs, the system options, the system menu in play, the end of a scenario | after T1a |
+| T1a1 | The catalogue, part 1a: the start (the clips' order and skipping, the loading bar), the main menu, New Game's and Load Game's menus, Quit | done 2026-11-12 (design §2; CLT-Q84 to CLT-Q86) |
+| T1a2 | The catalogue, part 1b: Multiplayer (its modes, decided as a `CLT-Q`) and the hot seat's names, High Scores, Credits | ready |
+| T1b | The catalogue, part 2: scenario selection and the players' setup, the advanced options, the random map's tab, Load's and Save's dialogs, the system options, the system menu in play, the end of a scenario | after T1a2 |
 | T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was); the harness on every catalogued screen; the reference captures; the traps | after T1b |
 | T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
+
+**M1's review list** (the agent's calls, *provisional*, for T3):
+
+1. Not built (T1a1, design §2.6): the CD status, its notices and the menus without Single,
+   Campaign and Tutorial; the free disk space check; a DirectPlay lobby's start; the single
+   instance; F4's window mode (E29).
 
 ## Dependencies and boundaries
 
