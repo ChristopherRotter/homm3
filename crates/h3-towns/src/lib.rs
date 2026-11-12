@@ -21,8 +21,11 @@
 //! ([`Towns::build`], [`Towns::start_day`], [`Towns::captured`]) with the town's public facts
 //! ([`TownFacts`]; E09 T17a), the hall's offer and tests ([`buildable`], [`possible`],
 //! [`check_build`]), the town command ([`TownCommand`], [`TownCommandError`]) and a town event's
-//! buildings ([`event_buildings`]; E09 T17b). What comes next: the game's command, day and town
-//! events (E09 T18).
+//! buildings ([`event_buildings`]; E09 T17b). Increment 3 (growth, E09 design Part E): a
+//! dwelling's growth ([`growth`] with the game's [`GrowthInputs`]; E09 T25a), the week's kind and
+//! growth and the month's ([`WeekKind`], [`week_growth`], [`MonthGrowth`], [`month`]; E09 T25b1).
+//! What comes next: a neutral town's garrison week and the Portal's draw (E09 T25b2), then the
+//! game's growth (E09 T26).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -59,6 +62,7 @@ mod setup;
 mod siege;
 mod store;
 mod view;
+mod week;
 
 pub use build::{buildable, built_with, check_build, event_buildings, possible};
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
@@ -83,6 +87,7 @@ pub use setup::{
 pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
 pub use store::{MAX_TOWNS, TownFacts, Towns};
 pub use view::has_tavern;
+pub use week::{MonthGrowth, WeekKind, month, week_growth};
 
 /// Version of the store of towns' canonical hash encoding, which the game state hash folds in
 /// (ADR-0028 points 4 and 9; `docs/08-work-process.md`, "Versions"; owned by the town lane). Bump

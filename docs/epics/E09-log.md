@@ -3312,3 +3312,49 @@ data staged then (17 files: the four LODs one per call, the executables, the fiv
 passed), `cargo xtask check-lane --cross-lane`, `cargo test --workspace --exclude xtask
 --all-targets`; `master` merged in (#868, #869), `h3-protocol`, `h3-server` and `h3-game` again;
 CI on the pull request is the record.
+
+### T25b1 — the week's kind, a town's week and month of growth (2026-11-12)
+
+One session, the user present at the start; branch `town/e09-t25b1`, the town lane's paths only
+(`h3-towns`, the catalog's `town.toml`, `quirks-town.md`, E09's docs). Starting point: `master`
+at a396c3f (#873, T25a's, merged; the setup's baseline found CI's fingerprint, the light gates).
+The user's computer was connected at the start only: the original data staged then (17 files, as
+T25a's), used for the scoped verify. **T25b in two** (decision 87, recommended): T25b1 the week
+and the month here, T25b2 the garrison week and the Portal next.
+
+- **`WeekKind`** (`h3-towns`' new `week.rs`; design §42): `Normal` (the default), `Creature(c)`,
+  `Of { creatures: [Option<c>; 2], bonus }`; `names(c)` (a creature's week its creature alone, a
+  building's either of its level's) and `bonus(part)` (the part's `creature_bonus`, the
+  building's own, none in a normal week or without parameters); its `CanonicalHash` (0; 1 and
+  the creature; 2, both options and the bonus), read by the game state hash from T26a.
+- **TWN-GRO-003** (`week_growth(town, part, core, &kind, &inputs) -> Town`): each index whose
+  growth (TWN-GRO-001) is above 0 gains it, + the bonus for a named creature, halved after the
+  bonus without an owner, held at the bound; the other indexes and the Portal kept; a faction
+  without a record unchanged.
+- **TWN-GRO-004** (`month(town, part, core, MonthGrowth, &week, &inputs) -> Town`; design §43):
+  `MonthGrowth { Normal, Creature(c), Plague }`, the town crate's (the game's `MonthKind` stays
+  in `h3-game`; T26a maps it). A creature's month doubles (held at the bound) the growing
+  indexes whose creature is the month's, with `quirk.town.creature_month_exact` off either of
+  the level's; nothing in a `week_of` week. The Plague: the count less the growth, at least 0,
+  halved; with `quirk.town.neutral_plague_full_growth` off a town without an owner loses half the
+  growth. The flags read from `core.quirks()`.
+- **Tests** (`src/week/tests.rs`, ten): the kind's names, bonus and hash; the week owned and
+  neutral, with the Statue's inputs, a creature's and a building's week (the bonus before the
+  halving), the bound, a town without a record; the month: batch TWN-3's row 1 (K1 47 kept, K2
+  94) and row 3 (O1 53 and 30, N1 17 and 10, after the week computed by `week_growth` from 106,
+  61, 42, 25: the fixture's growths 14 and 9 are the rows' towns'), both flags off (K1 94; N1 21
+  and 12), a `week_of` week and a normal month, the bound, the Plague's floor and an index that
+  grows nothing. The fixture's `core_with(&[flags])`.
+- **Catalog and ledger:** TWN-GRO-003 and -004 `implemented` (code reading, batch TWN-3 rows 1
+  to 3, VCMI 1.7.5, the design); `TWN-QUIRK-9` and `-10` (`fix-optional`, faithful on,
+  strict-fixed off) in `quirks-town.md`; `TWN-QUIRK-8`'s regression tests gain the week's bound.
+  The `(planned)` marks of the two quirks in `h3-content`'s flag docs, the harvester's profile
+  comment and the packs' `core.toml` stay (shared and battle-owned paths): for T26a's `shared/`
+  or `cross-lane` change.
+- **No version moved** (the game calls these from T26a); the crate's doc names increment 3.
+- **Agent's calls (change freely):** decision 87's list.
+
+**The queue:** T25b's entry is T25b2 (TWN-GRO-006, -007), next.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.
