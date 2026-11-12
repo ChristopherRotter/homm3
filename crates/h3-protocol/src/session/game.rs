@@ -1,15 +1,25 @@
 //! The whole game's session (E16 M5 T5a; SRV-Q25; ADR-0018 points 6 and 7 for the whole game):
-//! one game hosted in-process, its players as seats and viewers, the authoritative loop over
-//! `h3_game::apply`, sans I/O. The host passes in each player's command with the player it
-//! vouches for ([`GameSession::play`]) and the system actor's ([`GameSession::system`]), and
-//! delivers the frames that come out ([`GameOutbound`]); the session never sees a socket, a clock
-//! or a file.
+//! one hosted game, its players as seats and viewers, the authoritative loop over
+//! `h3_game::apply`, sans I/O. In-process the host passes in each player's command with the
+//! player it vouches for ([`GameSession::play`]) and the system actor's ([`GameSession::system`]),
+//! and delivers the frames that come out ([`GameOutbound`]); over the network it passes in what
+//! each connection sends ([`GameSession::handle`]) and sends the frames for connections
+//! ([`Outbound`]). The session never sees a socket, a clock or a file.
 //!
-//! - **Seats.** Every player of the game is a seat of the host's: in-process the host plays them
-//!   all (a replay's commands, a test's); network seats, computer seats, turn timers and the
-//!   level-up hold's timer are part 2's (the epic). A command is applied with the player the host
-//!   names, never with anything the client wrote (ADR-0018 point 6): the wire's commands name no
-//!   player.
+//! - **Seats** (E16 M5 T8a). Every player of the map is a seat. In-process the host holds them
+//!   all at once and plays them (a replay's commands, a test's: [`GameSession::start`]). Hosted
+//!   for connections ([`GameSession::new`]), a seat is taken as a battle's is (`GameJoin`): with
+//!   the token the host drew, or as the account a logged-in connection is
+//!   ([`GameSession::logged_in`]; the battle's rules, `super::refusal`); taken without a token
+//!   only the first time, re-taken after a disconnect with its token or by its account, a re-take
+//!   replacing a connection that still holds it. The game starts when every seat is held at
+//!   once; until then a command is rejected `NotStarted`. A joining seat gets `GameJoined`, its
+//!   `GameSnapshot` of the game as it stands and, once the game started, its `GameTurn` if it may
+//!   act; a seat's record goes on while no connection holds it (its frames are recorded, not
+//!   sent). A command is applied with the seat's player, never with anything the client wrote
+//!   (ADR-0018 point 6): the wire's commands name no player; one from a connection without a seat
+//!   is rejected `NotSeated`, numbered 0. Computer seats, turn timers and the level-up hold's
+//!   timer are part 2's (the epic).
 //! - **The system actor** (`h3_game::Actor::System`, E08 T20b2): its commands come from the host
 //!   ([`GameSession::system`]; its legal ones [`GameSession::system_legal`]): an unowned battle
 //!   side's, a wandering monster's. No player is told its acceptance or its rejection; its events
@@ -46,16 +56,21 @@
 //!   its header line ([`GameRecordHeader`]: the game's manifest and the player), as a record file
 //!   holds it.
 //! - **Not here yet:** a hero's moves, which
-//!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`; a query
-//!   with part 2's network seats); the journal's file and the hosting over the network (part 2).
+//!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`, T11); the
+//!   seats' entries (a restore with the seats taken), the commands' numbers against resends and
+//!   the host's pause (T8b); the journal's file and the hosting over the network (T9).
 //!
-//! Provisional (E16 M5 T5a, T5b; the epic's review list): the names, the start as the constructor,
-//! the message order, a `GameTurn` after every accepted command to every player that may act, a
-//! system command told to nobody, a player outside the game told nothing; the entries, a restore
-//! telling every player its snapshot and turn afresh, the record's header with the game's id; a
-//! reveal as a message of its own after the events, a battle's last `Snapshot` before it (T5c,
-//! the client lane's reader, 2026-11-12).
+//! Provisional (E16 M5 T5a, T5b, T8a; the epic's review list): the names, the start as the
+//! constructor, the message order, a `GameTurn` after every accepted command to every player that
+//! may act, a system command told to nobody, a player outside the game told nothing; the entries,
+//! a restore telling every player its snapshot and turn afresh, the record's header with the
+//! game's id; a reveal as a message of its own after the events, a battle's last `Snapshot`
+//! before it (T5c, the client lane's reader, 2026-11-12); the seats' messages of their own
+//! (`GameJoin`, `GameCommand`, `GameJoined`), the session's rejections inside `GameReject`, a
+//! battle's messages ignored here but its join and command (answered as a battle answers a whole
+//! game's), the host's tokens drawn through a closure (T8a).
 
+use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -68,12 +83,14 @@ use h3_game::{
     OpenBattle, Viewer as EngineViewer,
 };
 
-use super::Record;
+use super::{
+    ConnId, Outbound, Record, game_unseated, goodbye, handed, refusal, refused, reply, unseated,
+};
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::wire::game::{GameCommand, GameEvent, GameManifest, GameRecordHeader, GameReject};
-use crate::wire::{Observation, ServerMessage};
+use crate::wire::{ClientMessage, GoodbyeReason, Observation, Refusal, ServerMessage};
 
 /// A frame for a player: the host delivers it to the player's client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -241,7 +258,31 @@ impl Viewer {
     }
 }
 
-/// One whole game hosted in-process: its state, its manifest, its journal and its players as
+/// A player's seat in a game hosted for connections (E16 M5 T8a): a battle's player seat's
+/// claim (`super::refusal`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct SeatState {
+    /// Its token (opaque; the host drew it, ADR-0018 point 6).
+    token: String,
+    /// Whether it was taken once: its token handed out, or it belongs to an account.
+    issued: bool,
+    /// The login name of the account it belongs to: the account of the connection that took it
+    /// first, if that one was logged in.
+    account: Option<String>,
+    /// The connection that holds it.
+    holder: Option<ConnId>,
+}
+
+/// Who holds the players' seats (E16 M5 T8a).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Seats {
+    /// The host, every one at once: it plays them all in-process.
+    Host,
+    /// Connections take them, by player index.
+    Taken(Vec<SeatState>),
+}
+
+/// One hosted whole game: its state, its manifest, its journal, its players as seats and as
 /// viewers.
 #[derive(Debug)]
 pub struct GameSession<'r> {
@@ -256,13 +297,19 @@ pub struct GameSession<'r> {
     entries: Vec<GameEntry>,
     /// By player index.
     viewers: Vec<Viewer>,
+    /// Who holds the seats (E16 M5 T8a).
+    seats: Seats,
+    /// Whether every seat was held at once: the game runs (E16 M5 T8a).
+    started: bool,
+    /// The login names of the logged-in connections, as the host said (E16 M5 T8a).
+    logins: BTreeMap<ConnId, String>,
 }
 
 impl<'r> GameSession<'r> {
     /// Starts the game of `setup` with `seed` under `rules` (`h3_game::GameState::new`), made of
     /// what `manifest` names (the caller's: [`crate::map::game::manifest`]) and hosted as
-    /// `options` say: every player gets its `GameSnapshot`, then each that may act its
-    /// `GameTurn`.
+    /// `options` say, in-process: the host holds every seat at once (E16 M5 T8a), so the game
+    /// starts now; every player gets its `GameSnapshot`, then each that may act its `GameTurn`.
     ///
     /// # Errors
     ///
@@ -275,15 +322,46 @@ impl<'r> GameSession<'r> {
         options: GameOptions,
         out: &mut Vec<GameOutbound>,
     ) -> Result<Self, GameSetupError> {
-        let mut session = Self::new(rules, setup, seed, manifest, options)?;
+        let mut session = Self::build(rules, setup, seed, manifest, options)?;
         session.open(out);
+        Ok(session)
+    }
+
+    /// Hosts the game of `setup` as [`GameSession::start`] builds it, for connections (E16 M5
+    /// T8a): a seat per player of the map, its token `token(player)`'s (the host draws each from
+    /// the OS, ADR-0018 point 6), taken by the connections' `GameJoin`s ([`GameSession::handle`]).
+    /// Nothing is sent until a connection joins; the game starts when every seat is held.
+    ///
+    /// # Errors
+    ///
+    /// The engine's when the setup starts no game.
+    pub fn new(
+        rules: &'r GameRuleset,
+        setup: &GameSetup,
+        seed: u64,
+        manifest: GameManifest,
+        options: GameOptions,
+        mut token: impl FnMut(PlayerId) -> String,
+    ) -> Result<Self, GameSetupError> {
+        let mut session = Self::build(rules, setup, seed, manifest, options)?;
+        let seats = players()
+            .take(session.viewers.len())
+            .map(|player| SeatState {
+                token: token(player),
+                issued: false,
+                account: None,
+                holder: None,
+            });
+        session.seats = Seats::Taken(seats.collect());
+        session.started = false;
         Ok(session)
     }
 
     /// Restores a game from its journal's `entries` after a restart (E16 M5 T5b): builds the game
     /// as [`GameSession::start`] does, re-runs the entries' commands through the engine, each as
     /// its actor's, then tells every player the restored game afresh as `start` does (its
-    /// numbers and record begin again). The re-run makes its own entries, which the journal must
+    /// numbers and record begin again), in-process as `start` (its seats the host's; T8b restores
+    /// a game of connections). The re-run makes its own entries, which the journal must
     /// begin: a checkpoint whose hash differs, or one out of place, is a divergence. The first
     /// drained entries then are what the journal lacks: the checkpoint after its last command if
     /// a crash cut the journal between the two.
@@ -301,7 +379,7 @@ impl<'r> GameSession<'r> {
         out: &mut Vec<GameOutbound>,
     ) -> Result<Self, GameRestoreError> {
         let mut session =
-            Self::new(rules, setup, seed, manifest, options).map_err(GameRestoreError::Setup)?;
+            Self::build(rules, setup, seed, manifest, options).map_err(GameRestoreError::Setup)?;
         let mut events = Vec::new();
         for (at, entry) in entries.iter().enumerate() {
             match entry {
@@ -338,8 +416,8 @@ impl<'r> GameSession<'r> {
         Ok(session)
     }
 
-    /// The game of `setup`, nothing told yet.
-    fn new(
+    /// The game of `setup`, nothing told yet, its seats the host's.
+    fn build(
         rules: &'r GameRuleset,
         setup: &GameSetup,
         seed: u64,
@@ -367,29 +445,223 @@ impl<'r> GameSession<'r> {
                 checkpoints: Vec::new(),
             },
             entries: Vec::new(),
+            seats: Seats::Host,
+            started: true,
+            logins: BTreeMap::new(),
         })
     }
 
     /// Every player gets its `GameSnapshot` of the game as it stands, then each that may act its
     /// `GameTurn`.
     fn open(&mut self, out: &mut Vec<GameOutbound>) {
-        for (player, viewer) in players().zip(&mut self.viewers) {
-            let observation =
-                map::game::observe(&self.state, self.rules, EngineViewer::Player(player));
-            viewer.battle = observation.battle.is_some();
-            viewer.explored = explored(&self.state, player);
-            viewer.post(
-                player,
-                |n| ServerMessage::GameSnapshot { n, observation },
-                out,
-            );
+        for player in players().take(self.viewers.len()) {
+            self.snapshot(player, out);
         }
         self.turns(out);
     }
 
+    /// `player`'s `GameSnapshot` of the game as it stands: its view starts afresh from it.
+    fn snapshot(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
+        let observation = map::game::observe(&self.state, self.rules, EngineViewer::Player(player));
+        let viewer = &mut self.viewers[player.index()];
+        viewer.battle = observation.battle.is_some();
+        viewer.explored = explored(&self.state, player);
+        viewer.post(
+            player,
+            |n| ServerMessage::GameSnapshot { n, observation },
+            out,
+        );
+    }
+
+    /// Handles what connection `conn` sent after its hello (E16 M5 T8a); the frames to send go to
+    /// `out`. `GameJoin` takes or re-takes a seat, `GameCommand` is applied as the seat's
+    /// player's ([`GameSession::play`]), `Leave` frees the seat and closes. A battle's `Join` is
+    /// refused `NoSuchGame` and its `Command` rejected `NotSeated`; the hello, the ping and the
+    /// account's requests are the connection's ([`crate::connection`]), the lobby's the host's,
+    /// a battle's other messages none of a whole game's (T8b and T9 take what it needs): they are
+    /// ignored here.
+    pub fn handle(&mut self, conn: ConnId, message: ClientMessage, out: &mut Vec<Outbound>) {
+        match message {
+            ClientMessage::GameJoin {
+                game,
+                player,
+                token,
+            } => self.join(conn, (game, player), token.as_deref(), out),
+            ClientMessage::GameCommand { seq, command } => self.command(conn, seq, command, out),
+            ClientMessage::Leave {} => {
+                self.disconnected(conn);
+                out.push(goodbye(conn, GoodbyeReason::Left));
+            }
+            // A battle's: a whole game is none, nor a seat of one.
+            ClientMessage::Join { .. } => out.push(refused(conn, Refusal::NoSuchGame)),
+            ClientMessage::Command { seq, .. } => out.push(unseated(conn, seq)),
+            ClientMessage::Hello { .. }
+            | ClientMessage::Ping { .. }
+            | ClientMessage::Login { .. }
+            | ClientMessage::Rekey { .. }
+            | ClientMessage::Rename { .. }
+            | ClientMessage::SetListed { .. }
+            | ClientMessage::ListGames { .. }
+            | ClientMessage::CreateGame { .. }
+            | ClientMessage::ListReplays { .. }
+            | ClientMessage::FetchArchived { .. }
+            | ClientMessage::ListLadders { .. }
+            | ClientMessage::Queue { .. }
+            | ClientMessage::Dequeue { .. }
+            | ClientMessage::AcceptMatch { .. }
+            | ClientMessage::DeclineMatch { .. }
+            | ClientMessage::Leaderboard { .. }
+            | ClientMessage::Standing { .. }
+            | ClientMessage::Describe { .. }
+            | ClientMessage::ListPeers { .. }
+            | ClientMessage::Lists { .. }
+            | ClientMessage::Query { .. }
+            | ClientMessage::FetchReplay { .. }
+            | ClientMessage::FetchRecord { .. }
+            | ClientMessage::Pause { .. }
+            | ClientMessage::ProposePause { .. }
+            | ClientMessage::AnswerPause { .. }
+            | ClientMessage::SetSpectators { .. } => {}
+        }
+    }
+
+    /// The host's word that connection `conn` is logged in as the account `login` (E16 M5 T8a,
+    /// as a battle's `Session::logged_in`): a seat it takes belongs to the account, and it
+    /// re-takes the account's seats. Call it before the connection's join; it changes nothing
+    /// else.
+    pub fn logged_in(&mut self, conn: ConnId, login: String) {
+        self.logins.insert(conn, login);
+    }
+
+    /// The connection `conn` is gone (E16 M5 T8a): its seat waits for a re-take with its token,
+    /// or by its account; its record goes on meanwhile.
+    pub fn disconnected(&mut self, conn: ConnId) {
+        for seat in self.taken_mut() {
+            if seat.holder == Some(conn) {
+                seat.holder = None;
+            }
+        }
+        self.logins.remove(&conn);
+    }
+
+    /// Whether the game runs (E16 M5 T8a): every seat was held at once, or the host holds them
+    /// (in-process).
+    pub const fn started(&self) -> bool {
+        self.started
+    }
+
+    /// `GameJoin` of `player`'s seat in `game` with `token` (E16 M5 T8a): takes or re-takes it.
+    fn join(
+        &mut self,
+        conn: ConnId,
+        (game, player): (u32, u8),
+        token: Option<&str>,
+        out: &mut Vec<Outbound>,
+    ) {
+        if game != self.game {
+            return out.push(refused(conn, Refusal::NoSuchGame));
+        }
+        // In-process, the host holds every seat.
+        let Seats::Taken(seats) = &mut self.seats else {
+            return out.push(refused(conn, Refusal::SeatTaken));
+        };
+        if seats.iter().any(|seat| seat.holder == Some(conn)) {
+            return out.push(refused(conn, Refusal::AlreadyJoined));
+        }
+        let Some(seat) = seats.get_mut(usize::from(player)) else {
+            return out.push(refused(conn, Refusal::NoSuchSeat));
+        };
+        let login = self.logins.get(&conn);
+        let claim = (seat.token.as_str(), seat.issued, seat.account.as_deref());
+        if let Some(reason) = refusal(claim, token, login.map(String::as_str)) {
+            return out.push(refused(conn, reason));
+        }
+        let token = handed(claim, login.map(String::as_str));
+        if !seat.issued {
+            seat.issued = true;
+            seat.account = login.cloned();
+        }
+        if let Some(old) = seat.holder.replace(conn) {
+            out.push(goodbye(old, GoodbyeReason::Replaced));
+        }
+        let held = seats.iter().all(|seat| seat.holder.is_some());
+        let manifest = self.manifest.clone();
+        out.push(reply(
+            conn,
+            &ServerMessage::GameJoined {
+                game,
+                player,
+                token,
+                manifest,
+            },
+        ));
+        let (player, mut frames) = (PlayerId::new(player), Vec::new());
+        self.snapshot(player, &mut frames);
+        if self.started {
+            self.turn(player, &mut frames);
+        } else if held {
+            self.started = true;
+            self.turns(&mut frames);
+        }
+        self.route(frames, out);
+    }
+
+    /// `GameCommand` (E16 M5 T8a): the seat's command, applied as its player's.
+    fn command(&mut self, conn: ConnId, seq: u32, command: GameCommand, out: &mut Vec<Outbound>) {
+        let Some(player) = self.seat_of(conn) else {
+            return out.push(game_unseated(conn, seq));
+        };
+        let mut frames = Vec::new();
+        // A rejection is told to the player in the frames; it changed nothing.
+        let _rejected = self.play(player, seq, command, &mut frames);
+        self.route(frames, out);
+    }
+
+    /// The frames for players in `frames` (a call's: [`GameSession::system`]'s in a game of
+    /// connections), each to the connection that holds its player's seat; none for a seat no
+    /// connection holds, whose record has it (E16 M5 T8a). In-process, none: the host holds every
+    /// seat and delivers the frames itself.
+    pub fn route(&self, frames: Vec<GameOutbound>, out: &mut Vec<Outbound>) {
+        let seats = self.taken();
+        for GameOutbound { to, frame } in frames {
+            if let Some(conn) = seats.get(to.index()).and_then(|seat| seat.holder) {
+                out.push(Outbound {
+                    to: conn,
+                    frame,
+                    close: false,
+                });
+            }
+        }
+    }
+
+    /// The player whose seat `conn` holds.
+    fn seat_of(&self, conn: ConnId) -> Option<PlayerId> {
+        let mut seats = players().zip(self.taken());
+        seats
+            .find(|(_, seat)| seat.holder == Some(conn))
+            .map(|(player, _)| player)
+    }
+
+    /// The seats connections take: none in-process, where the host holds them.
+    fn taken(&self) -> &[SeatState] {
+        match &self.seats {
+            Seats::Host => &[],
+            Seats::Taken(seats) => seats,
+        }
+    }
+
+    /// The seats connections take, to change.
+    fn taken_mut(&mut self) -> &mut [SeatState] {
+        match &mut self.seats {
+            Seats::Host => &mut [],
+            Seats::Taken(seats) => seats,
+        }
+    }
+
     /// `player`'s command `command`, which the host vouches came from it, numbered `seq` by its
     /// client: applied as the player's (`Actor::Player`), then told (the module's order). A player
-    /// outside the game is told nothing.
+    /// outside the game is told nothing. In a game of connections it is the seat's command
+    /// ([`GameSession::handle`]); before the game started it is rejected `NotStarted`.
     ///
     /// # Errors
     ///
@@ -495,6 +767,9 @@ impl<'r> GameSession<'r> {
         actor: Actor,
         command: GameCommand,
     ) -> Result<(GameCommand, Told<'r>), GameReject> {
+        if !self.started {
+            return Err(GameReject::NotStarted {});
+        }
         let command = map::game::command_to_engine(command)?;
         let echo = map::game::command(&command);
         let mut told = Told {
@@ -563,28 +838,33 @@ impl<'r> GameSession<'r> {
         self.turns(out);
     }
 
-    /// Each player that may act gets its legal commands and, while its battle side is to act,
-    /// the spells its hero may cast.
+    /// Each player that may act gets its turn.
     fn turns(&mut self, out: &mut Vec<GameOutbound>) {
-        for (player, viewer) in players().zip(&mut self.viewers) {
-            let legal: Vec<GameCommand> =
-                h3_game::legal_commands(&self.state, self.rules, Actor::Player(player))
-                    .iter()
-                    .map(map::game::command)
-                    .collect();
-            if legal.is_empty() {
-                continue;
-            }
-            let castable = own_battle(&self.state, player)
-                .filter(|(battle, side)| battle.state().side_to_act() == Some(*side))
-                .map(|(battle, side)| map::castable(battle.state(), self.rules.battle(), side))
-                .unwrap_or_default();
-            viewer.post(
-                player,
-                |n| ServerMessage::GameTurn { n, legal, castable },
-                out,
-            );
+        for player in players().take(self.viewers.len()) {
+            self.turn(player, out);
         }
+    }
+
+    /// If `player` may act, its legal commands and, while its battle side is to act, the spells
+    /// its hero may cast.
+    fn turn(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
+        let legal: Vec<GameCommand> =
+            h3_game::legal_commands(&self.state, self.rules, Actor::Player(player))
+                .iter()
+                .map(map::game::command)
+                .collect();
+        if legal.is_empty() {
+            return;
+        }
+        let castable = own_battle(&self.state, player)
+            .filter(|(battle, side)| battle.state().side_to_act() == Some(*side))
+            .map(|(battle, side)| map::castable(battle.state(), self.rules.battle(), side))
+            .unwrap_or_default();
+        self.viewers[player.index()].post(
+            player,
+            |n| ServerMessage::GameTurn { n, legal, castable },
+            out,
+        );
     }
 }
 

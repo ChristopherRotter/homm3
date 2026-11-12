@@ -333,8 +333,8 @@ pub enum ArtifactPlace {
     },
 }
 
-/// Why the game rejected a command (`h3_game::GameCommandError`); a rejected command changed
-/// nothing. The text is the client's.
+/// Why the game rejected a command (`h3_game::GameCommandError`, and the session's last two, E16
+/// M5 T8a); a rejected command changed nothing. The text is the client's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum GameReject {
@@ -398,6 +398,11 @@ pub enum GameReject {
         /// Why.
         error: TownReject,
     },
+    /// The session's, not the engine's (E16 M5 T8a, v45): the connection holds no seat of the
+    /// game.
+    NotSeated {},
+    /// The session's (E16 M5 T8a, v45): the game has not started, not every seat was held yet.
+    NotStarted {},
 }
 
 /// Why a town command was refused (`h3_towns::TownCommandError`).

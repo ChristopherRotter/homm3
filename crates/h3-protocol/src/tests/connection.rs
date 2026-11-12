@@ -315,7 +315,7 @@ fn an_accounts_requests_need_a_login() {
 }
 
 /// E16 M3 T1: on a server that takes no anonymous players, joining or creating a game waits for
-/// the login; the lobby's lists do not.
+/// the login (a whole game's seat too, E16 M5 T8a); the lobby's lists do not.
 #[test]
 fn without_anonymous_play_a_game_waits_for_the_login() {
     let join = ClientMessage::Join {
@@ -329,14 +329,22 @@ fn without_anonymous_play_a_game_waits_for_the_login() {
         seat: Seat::Attacker,
         spectators: None,
     };
+    // A whole game's seat too (E16 M5 T8a).
+    let seat = ClientMessage::GameJoin {
+        game: 1,
+        player: 0,
+        token: None,
+    };
     let list = ClientMessage::ListGames { seq: 1 };
     let mut c = greeted(false);
     assert_eq!(receive(&mut c, &join), refused(Refusal::NotLoggedIn));
     assert_eq!(receive(&mut c, &create), refused(Refusal::NotLoggedIn));
+    assert_eq!(receive(&mut c, &seat), refused(Refusal::NotLoggedIn));
     assert_eq!(receive(&mut c, &list), Received::Game(list.clone()));
     c.logged_in("ann".to_string());
     assert_eq!(receive(&mut c, &join), Received::Game(join.clone()));
     assert_eq!(receive(&mut c, &create), Received::Game(create));
+    assert_eq!(receive(&mut c, &seat), Received::Game(seat));
     // Anonymous play: no login needed.
     assert_eq!(receive(&mut greeted(true), &join), Received::Game(join));
 }

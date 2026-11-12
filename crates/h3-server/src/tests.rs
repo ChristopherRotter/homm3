@@ -547,6 +547,15 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
             },
             Refusal::NoSuchGame,
         ),
+        // No whole game is hosted yet (E16 M5 T8a).
+        (
+            ClientMessage::GameJoin {
+                game,
+                player: 0,
+                token: None,
+            },
+            Refusal::NoSuchGame,
+        ),
     ] {
         assert_eq!(
             refusal(message).await,
@@ -564,6 +573,18 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
             n: 0,
             seq: 5,
             code: RejectCode::NotSeated
+        })
+    );
+    let end = ClientMessage::GameCommand {
+        seq: 6,
+        command: h3_protocol::wire::game::GameCommand::EndTurn {},
+    };
+    assert_eq!(
+        refusal(end).await,
+        Some(ServerMessage::GameRejected {
+            n: 0,
+            seq: 6,
+            code: h3_protocol::wire::game::GameReject::NotSeated {}
         })
     );
     // The waiting game goes when its creator does, and frees the address's place.
