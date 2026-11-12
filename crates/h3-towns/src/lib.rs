@@ -69,8 +69,9 @@ pub use income::{daily_income, hall_level};
 pub use record::{Town, TownEvent, TownStatic};
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
-    DefenderBonus, Dwelling, GarrisonRow, MAX_CREATURE_LEVELS, Reveal, TownCompileError, TownDef,
-    TownOverride, TownPack, TownParams, TownParamsDef, TownPatch, TownRecord, TownRuleset,
+    DefenderBonus, Dwelling, GarrisonRow, GarrisonWeekParams, Horde, MAX_CREATURE_LEVELS, Reveal,
+    TownCompileError, TownDef, TownOverride, TownPack, TownParams, TownParamsDef, TownPatch,
+    TownRecord, TownRuleset, WeekParams,
 };
 pub use setup::{
     BuildingsSetup, BuiltTown, GarrisonCreature, GarrisonStack, SlotSet, TownEventSetup,
@@ -95,5 +96,7 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 2;
 /// the factions' town records ([`TownRuleset`]'s `hash_into`). v2 (E09 T5b2a): each building's
 /// automatic set (`auto_with`, the hordes' upgrade). v3 (E09 T8c2): Visions' factor, least
 /// radius and creatures in the parameters (TWN-VEW-003). v4 (E09 T16a): each building's
-/// requirements (the closure) and cost, and the role `shipyard` (E09 design §24).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 4;
+/// requirements (the closure) and cost, and the role `shipyard` (E09 design §24). v5 (E09 T25a): the
+/// roles `horde`, `portal` and `week_of`, each record's `roe`, the week's and the garrison week's
+/// parameters (E09 design §38).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 5;

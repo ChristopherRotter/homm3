@@ -8,7 +8,8 @@
 //! `h3-pack`'s (unknown fields are errors, numbers must fit their types), and the compiler
 //! validates everything again (E09 increment 1's design note §2).
 //!
-//! # Format (E09 T5a1; the requirements, costs and role `shipyard` since E09 T16a)
+//! # Format (E09 T5a1; the requirements, costs and role `shipyard` since E09 T16a; the roles
+//! `horde`, `portal`, `week_of`, a record's `roe` and the growth's parameters since E09 T25a)
 //!
 //! ```toml
 //! [town_params]                    # exactly one enabled pack gives them when any pack has a
@@ -24,6 +25,14 @@
 //! capitol_demoted_to = "city_hall" # TWN-CAP-002: the key of a hall-3 building of every record
 //! visions_factor = 3               # TWN-VEW-003 (E09 T8c2): Visions' expert factor, tiles per
 //! visions_min_radius = 3           # point of Power, and its least radius
+//! week_creature_chance = [1, 4]    # TWN-GRO-002 (E09 T25a): a week of a creature with this
+//!                                  # chance, 1 <= numerator <= denominator
+//! week_creature_bonus = 5          # TWN-GRO-003: what its creature's dwellings grow more
+//! garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8,
+//!   upgrade = 5 }                  # TWN-GRO-006: a neutral town's stack a week with odds[0]
+//!                                  # (no standing fort level) or odds[1] in out_of (>= 1, each
+//!                                  # odds at most it); one to six level weights; the weeks
+//!                                  # counted; the upgrade's chance in 100
 //!
 //! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
 //! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
@@ -38,6 +47,8 @@
 //! creatures = [["pikeman", "halberdier"], ["archer", "marksman"]] # one to seven levels from
 //!                                  # 1: the faction's creature of the level, then optionally
 //!                                  # one of its upgrades
+//! roe = false                      # optional (true): its creatures may be a week's on a
+//!                                  # Restoration of Erathia map (TWN-GRO-002; Conflux's false)
 //!   [[town.building]]              # every building of the faction, roles or not; at most 64
 //!   key = "town_hall"              # [a-z0-9_]+, unique within the record
 //!   name = "Town Hall"             # the name only (Q13)
@@ -72,6 +83,9 @@
 //! | `silo = true` | one building: pays the record's `silo` (TWN-INC-002) | standing |
 //! | `grail = true` | one building: pays `grail_gold` | ever built |
 //! | `shipyard = true` | at most one building: the one that needs water (TWN-SET-011, E09 decision 46) | the setup (from E09 T18a) |
+//! | `horde = [level, upgraded]` | a level of the record, upgraded only with the level's upgrade; each once: its index's creature's `horde_growth` more a week (TWN-GRO-001) | ever built |
+//! | `portal = true` | at most one building: the Portal of Summoning (TWN-GRO-007) | standing |
+//! | `week_of = level` | at most one building, a level of the record: every week is the level's (TWN-GRO-002; the Inferno's Deity of Fire) | standing |
 //! | `dwelling = [level, upgraded]` | a level of the record, upgraded only with the level's upgrade; each once, `[1, false]` and `[2, false]` present | the standard set's setup (TWN-SET-003) |
 //! | `morale = n` | the siege's defender, -3 to 3 (the Brotherhood of the Sword replaces the Tavern) | standing |
 //! | `luck = n` | the siege's defender, -3 to 3 (the Fountain of Fortune); at most 8 buildings of a record change morale or luck (a siege names each, E09 T6b) | ever built |
@@ -90,9 +104,9 @@ use std::fmt;
 use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
 use h3_towns::{
-    BuildingDef, BuildingRoles, CreatureLevelDef, DefenderBonus, Dwelling, GarrisonRow, Moat,
-    Reveal, TownCompileError, TownDef, TownOverride, TownPack, TownParamsDef, TownPatch,
-    TownRuleset,
+    BuildingDef, BuildingRoles, CreatureLevelDef, DefenderBonus, Dwelling, GarrisonRow,
+    GarrisonWeekParams, Horde, Moat, Reveal, TownCompileError, TownDef, TownOverride, TownPack,
+    TownParamsDef, TownPatch, TownRuleset, WeekParams,
 };
 use serde::Deserialize;
 
@@ -190,6 +204,19 @@ struct ParamsDto {
     capitol_demoted_to: String,
     visions_factor: u8,
     visions_min_radius: u8,
+    week_creature_chance: [u16; 2],
+    week_creature_bonus: u16,
+    garrison_week: GarrisonWeekDto,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GarrisonWeekDto {
+    odds: [u16; 2],
+    out_of: u16,
+    weights: Vec<u8>,
+    weeks: u8,
+    upgrade: u8,
 }
 
 #[derive(Deserialize)]
@@ -233,8 +260,15 @@ struct TownDto {
     #[serde(default)]
     silo: BTreeMap<String, u32>,
     creatures: Vec<Vec<String>>,
+    #[serde(default = "yes")]
+    roe: bool,
     #[serde(default)]
     building: Vec<BuildingDto>,
+}
+
+/// A field's default of true (a record's `roe`).
+const fn yes() -> bool {
+    true
 }
 
 #[derive(Deserialize)]
@@ -262,6 +296,10 @@ struct BuildingDto {
     grail: bool,
     #[serde(default)]
     shipyard: bool,
+    horde: Option<(u8, bool)>,
+    #[serde(default)]
+    portal: bool,
+    week_of: Option<u8>,
     dwelling: Option<(u8, bool)>,
     #[serde(default)]
     morale: i8,
@@ -343,6 +381,9 @@ fn building(pack: &str, b: BuildingDto) -> Result<BuildingDef, KeyError> {
             silo: b.silo,
             grail: b.grail,
             shipyard: b.shipyard,
+            horde: b.horde.map(|(level, upgraded)| Horde { level, upgraded }),
+            portal: b.portal,
+            week_of: b.week_of,
             dwelling: b
                 .dwelling
                 .map(|(level, upgraded)| Dwelling { level, upgraded }),
@@ -390,6 +431,7 @@ fn town(pack: &str, t: TownDto) -> Result<TownDef, TownPackError> {
             .into_iter()
             .map(|b| building(pack, b))
             .collect::<Result<_, _>>()?,
+        roe: t.roe,
     })
 }
 
@@ -420,6 +462,17 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                 capitol_demoted_to: p.capitol_demoted_to,
                 visions_factor: p.visions_factor,
                 visions_min_radius: p.visions_min_radius,
+                week: WeekParams {
+                    creature_chance: p.week_creature_chance,
+                    creature_bonus: p.week_creature_bonus,
+                },
+                garrison_week: GarrisonWeekParams {
+                    odds: p.garrison_week.odds,
+                    out_of: p.garrison_week.out_of,
+                    weights: p.garrison_week.weights,
+                    weeks: p.garrison_week.weeks,
+                    upgrade: p.garrison_week.upgrade,
+                },
             })
         })
         .transpose()?;

@@ -90,6 +90,39 @@ pub struct TownParamsDef {
     pub visions_factor: u8,
     /// The least radius of that Visions (TWN-VEW-003; 0x4E5E6F).
     pub visions_min_radius: u8,
+    /// The week's creature and its bonus (TWN-GRO-002, -003; E09 design §38).
+    pub week: WeekParams,
+    /// A neutral town's garrison week (TWN-GRO-006; E09 design §38, §44).
+    pub garrison_week: GarrisonWeekParams,
+}
+
+/// The week's parameters (E09 design §38, §42): the chance of a creature's week and the bonus
+/// the week's creature grows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct WeekParams {
+    /// A week of a creature with `creature_chance[0]` in `creature_chance[1]` (the original's 1 in
+    /// 4, `new_day_week_events` 0x4C8780); `1 <= numerator <= denominator`.
+    pub creature_chance: [u16; 2],
+    /// What a dwelling of a creature week's creature grows more (the original's 5).
+    pub creature_bonus: u16,
+}
+
+/// A neutral town's garrison week's parameters (E09 design §38, §44; survey `E09-growth.md` §4):
+/// the odds of a week's stack, the level's weights, the weeks counted and the upgrade's chance.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GarrisonWeekParams {
+    /// A stack grows with `odds[0]` in `out_of` without a standing fort level and `odds[1]` with
+    /// one (the original's 40 and 80 in 101); each at most `out_of`.
+    pub odds: [u16; 2],
+    /// The draw's denominator, at least 1.
+    pub out_of: u16,
+    /// The levels' weights from level 1, one to six (`neutral_garrison_level_weights`
+    /// 0x6779B0); a sum past them all is the level after the last.
+    pub weights: Vec<u8>,
+    /// The most weeks the draw counts (the original's 8).
+    pub weeks: u8,
+    /// The chance in 100 that a base creature's stacks become its upgrade (the original's 5).
+    pub upgrade: u8,
 }
 
 /// A level's row of a neutral town's drawn garrison (TWN-SET-004): the stack is there with
@@ -118,6 +151,9 @@ pub struct TownDef {
     /// Every building of the faction, roles or not: a custom set may hold any (E09 survey §5.3),
     /// and the siege's turrets count them all.
     pub buildings: Vec<BuildingDef>,
+    /// Whether the record's creatures may be a week's on a Restoration of Erathia map (TWN-GRO-002;
+    /// E09 design §38: Conflux's record false).
+    pub roe: bool,
 }
 
 /// A level's creatures in a pack: the faction's creature of that level and its upgrade.
@@ -174,6 +210,14 @@ pub struct BuildingRoles {
     /// The Shipyard: at most one building of a record, the one that needs water (TWN-SET-011,
     /// E09 decision 46; the original's building 6).
     pub shipyard: bool,
+    /// The horde of an index: its creature's `horde_growth` more a week (TWN-GRO-001; E09 design
+    /// §38, §41), read over the ever-built set.
+    pub horde: Option<Horde>,
+    /// The Portal of Summoning (TWN-GRO-007): at most one building of a record, read standing.
+    pub portal: bool,
+    /// Every week is its level's (TWN-GRO-002; the Inferno's Deity of Fire): at most one building
+    /// of a record, a level of it, read standing.
+    pub week_of: Option<u8>,
     /// The creature dwelling of a level, if it is one.
     pub dwelling: Option<Dwelling>,
     /// The defender's morale in a siege, -3 to 3 (the Tavern, the Brotherhood of the Sword).
@@ -194,6 +238,16 @@ pub struct Dwelling {
     /// The creature level, from 1, within the record's levels.
     pub level: u8,
     /// The upgraded dwelling: the level's upgrade grows there.
+    pub upgraded: bool,
+}
+
+/// A horde's level and whether it is the upgraded one (E09 design §38): it grows at the level's
+/// index, the upgrade's when `upgraded`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Horde {
+    /// The creature level, from 1, within the record's levels.
+    pub level: u8,
+    /// The upgraded horde: it grows at the level's upgrade's index (needs the level's upgrade).
     pub upgraded: bool,
 }
 
@@ -363,6 +417,10 @@ pub struct TownParams {
     /// The creatures that give their hero's army Visions at its expert level, every enabled
     /// pack's [`TownPack::visions`] in handle order.
     pub visions_creatures: Vec<CreatureTypeId>,
+    /// The week's creature and its bonus.
+    pub week: WeekParams,
+    /// A neutral town's garrison week.
+    pub garrison_week: GarrisonWeekParams,
 }
 
 /// A faction's compiled town record.
@@ -382,6 +440,8 @@ pub struct TownRecord {
     pub buildings: Vec<Building>,
     /// The record's hall-3 building a demoted Capitol becomes.
     pub capitol_demoted_to: BuildingId,
+    /// Whether its creatures may be a week's on a Restoration of Erathia map (TWN-GRO-002).
+    pub roe: bool,
 }
 
 impl TownRecord {
@@ -526,21 +586,26 @@ fn hash_option<T>(h: &mut StateHasher, value: Option<T>, write: impl FnOnce(&mut
 }
 
 impl CanonicalHash for TownRuleset {
-    /// Encoding v4 (E09 T16a; v3, T8c2's, without the requirements, the costs and the role
-    /// `shipyard`; v2, T5b2a's, without Visions; v1, T5a1's first, without the automatic set):
-    /// version; the parameters (0 for none, else 1, the gold resource's handle, the four hall
-    /// amounts, the Grail's, the reveal radius, the level-2 dwelling chance, the four garrison
-    /// rows' chance and bounds, the demoted Capitol's key, Visions' factor and least radius, its
-    /// creatures as their number and handles); the records in faction order as their number and
-    /// each one's faction handle, moat (0 absent, 1 harmless, 2 damaging), natural obstacles, the
-    /// silo (length, each resource handle and amount), the creatures (length, each base handle and
-    /// the upgrade as an option), the buildings (length, each key, name, slot as an option, the
-    /// superseded set's bits, the forbidden-with building as an option, the automatic set's bits
-    /// (`auto_with`), the required set's bits (the closure), the cost (length, each resource
-    /// handle and amount), then the roles: hall and fort as options, tavern, silo, grail,
-    /// shipyard, the dwelling as an option of its level and upgrade flag, morale, luck, the escape tunnel, the defender's
-    /// attack, defense, power and mana, the reveal as 0 none, 1 and the radius, 2 all) and the
-    /// demoted Capitol's building. The core's hash is not part of it: replays record both.
+    /// Encoding v5 (E09 T25a; v4, T16a's, without the roles `horde`, `portal`, `week_of`, a
+    /// record's `roe` and the week's and garrison week's parameters; v3, T8c2's, without the
+    /// requirements, the costs and the role `shipyard`; v2, T5b2a's, without Visions; v1, T5a1's
+    /// first, without the automatic set): version; the parameters (0 for none, else 1, the gold
+    /// resource's handle, the four hall amounts, the Grail's, the reveal radius, the level-2
+    /// dwelling chance, the four garrison rows' chance and bounds, the demoted Capitol's key,
+    /// Visions' factor and least radius, its creatures as their number and handles, the week's
+    /// creature chance and bonus, the garrison week's two odds, its denominator, its weights as
+    /// their number and values, its weeks and its upgrade chance); the records in faction order as
+    /// their number and each one's faction handle, moat (0 absent, 1 harmless, 2 damaging),
+    /// natural obstacles, the silo (length, each resource handle and amount), the creatures
+    /// (length, each base handle and the upgrade as an option), the buildings (length, each key,
+    /// name, slot as an option, the superseded set's bits, the forbidden-with building as an
+    /// option, the automatic set's bits (`auto_with`), the required set's bits (the closure), the
+    /// cost (length, each resource handle and amount), then the roles: hall and fort as options,
+    /// tavern, silo, grail, shipyard, the horde as an option of its level and upgrade flag,
+    /// portal, `week_of` as an option, the dwelling as an option of its level and upgrade flag,
+    /// morale, luck, the escape tunnel, the defender's attack, defense, power and mana, the reveal
+    /// as 0 none, 1 and the radius, 2 all), `roe` and the demoted Capitol's building. The core's
+    /// hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_RULESET_HASH_VERSION);
         hash_option(h, self.params.as_ref(), |h, p| {
@@ -558,6 +623,15 @@ impl CanonicalHash for TownRuleset {
             h.write_u8(p.visions_min_radius);
             h.write_len(p.visions_creatures.len());
             p.visions_creatures.iter().for_each(|c| c.hash_into(h));
+            p.week.creature_chance.iter().for_each(|&n| h.write_u16(n));
+            h.write_u16(p.week.creature_bonus);
+            let g = &p.garrison_week;
+            g.odds.iter().for_each(|&n| h.write_u16(n));
+            h.write_u16(g.out_of);
+            h.write_len(g.weights.len());
+            g.weights.iter().for_each(|&w| h.write_u8(w));
+            h.write_u8(g.weeks);
+            h.write_u8(g.upgrade);
         });
         h.write_len(self.towns.len());
         for t in &self.towns {
@@ -590,6 +664,7 @@ impl CanonicalHash for TownRuleset {
                 }
                 hash_roles(h, &b.roles);
             }
+            h.write_bool(t.roe);
             h.write_u8(t.capitol_demoted_to.raw());
         }
     }
@@ -603,6 +678,12 @@ fn hash_roles(h: &mut StateHasher, r: &BuildingRoles) {
     h.write_bool(r.silo);
     h.write_bool(r.grail);
     h.write_bool(r.shipyard);
+    hash_option(h, r.horde, |h, d| {
+        h.write_u8(d.level);
+        h.write_bool(d.upgraded);
+    });
+    h.write_bool(r.portal);
+    hash_option(h, r.week_of, StateHasher::write_u8);
     hash_option(h, r.dwelling, |h, d| {
         h.write_u8(d.level);
         h.write_bool(d.upgraded);

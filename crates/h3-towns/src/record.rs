@@ -192,6 +192,7 @@ mod tests {
                 building("upg_dwelling_1", &[4]),
             ],
             capitol_demoted_to: id(2),
+            roe: true,
         }
     }
 
