@@ -51,9 +51,12 @@ fn hygienic() -> impl Strategy<Value = super::play::Plan> {
 /// a fixed faction (its hero's index as the code; its alignment then unused), a neutral town's
 /// editor garrison (drawn, TWN-SET-004) given as ten of a level-1 creature in its first slot, an
 /// owned town's standard set with a Fort (its level-2 dwelling drawn, TWN-SET-003; its buildings
-/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without.
+/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without. A town
+/// visited at load is its visitor's owner's whatever its plan's owner (`towns_laid_out`), so it
+/// counts as owned here (E09 T26a2: the town lane's inbox note of 2026-11-11, a neutral plan's
+/// visited town with a Fort drew a dwelling its new owner sees).
 fn hygienic_town(town: &mut TownPlan) {
-    if town.owner.is_some()
+    if (town.owner.is_some() || town.visited)
         && TOWN_BUILDINGS[town.buildings] == (Buildings::Standard { fort: true })
     {
         town.buildings = 0;
