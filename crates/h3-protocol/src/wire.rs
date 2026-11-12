@@ -1354,6 +1354,18 @@ pub enum ClientMessage {
         #[serde(default)]
         spectators: Option<bool>,
     },
+    /// Create a whole game of one of the server's map offers and take `player`'s seat in it (E16
+    /// M5 T9a, v47): answered `GameCreated`, then the game's `GameJoined` and the player's
+    /// `GameSnapshot`, or `Refused` (`NoSuchOffer`, `NoSuchSeat` for a player the map does not
+    /// have, `TooManyGames`, `Draining`). The game starts when every seat is held.
+    CreateMapGame {
+        /// The client's sequence number.
+        seq: u32,
+        /// The map offer's id.
+        offer: String,
+        /// The player whose seat the creator takes: its index among the map's players.
+        player: u8,
+    },
     /// Take a seat in a game, or re-take it after a disconnect: with its token, or as the account
     /// it belongs to (E16 M3 T3: a seat a logged-in connection took is its account's).
     Join {
@@ -1812,16 +1824,21 @@ pub enum ServerMessage {
         /// The ping's nonce.
         nonce: u32,
     },
-    /// The server's offers and its games (E16 M2 T1).
+    /// The server's offers and its games (E16 M2 T1); its map offers and whole games since v47
+    /// (E16 M5 T9a).
     Games {
         /// The client's sequence number.
         seq: u32,
-        /// What a game may be created from.
+        /// What a battle may be created from.
         offers: Vec<Offer>,
-        /// The hosted games, by id.
+        /// The hosted battles, by id.
         games: Vec<GameInfo>,
+        /// What a whole game may be created from (`CreateMapGame`).
+        maps: Vec<game::MapOffer>,
+        /// The hosted whole games, by id (one id space with the battles).
+        map_games: Vec<game::MapGameInfo>,
     },
-    /// A game was created; the game's `Joined` follows.
+    /// A game was created; the game's `Joined` follows, a whole game's `GameJoined` (E16 M5 T9a).
     GameCreated {
         /// The client's sequence number.
         seq: u32,

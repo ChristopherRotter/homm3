@@ -106,8 +106,11 @@ pub mod wire;
 /// (E16 M5 T8b): a seat's commands numbered against resends (`GameCommand`'s `seq` strictly
 /// increasing, a resend answered as the first time or rejected `Stale`), `GameJoined`'s `last`, the
 /// seat's last number; the host's pause of a whole game (`Pause`, another seat's ask told as
-/// `GamePauseAsked`, rejected `AlreadyAsked` once asked; a paused game rejects `NotStarted`).
-pub const PROTOCOL_VERSION: u32 = 46;
+/// `GamePauseAsked`, rejected `AlreadyAsked` once asked; a paused game rejects `NotStarted`). v47
+/// (E16 M5 T9a): whole games in the lobby: `Games` lists the server's map offers
+/// (`wire::game::MapOffer`) and its whole games (`wire::game::MapGameInfo`), the client message
+/// `CreateMapGame` creates one and takes a player's seat in it.
+pub const PROTOCOL_VERSION: u32 = 47;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

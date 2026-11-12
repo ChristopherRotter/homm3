@@ -2,7 +2,8 @@
 //! per server: it answers `ListGames`, creates a game for `CreateGame` within the limits, and
 //! hears from each game's session where the game is ([`crate::session::Session::phase`],
 //! `open_seats` and `takes_spectators`) and, from the host, the display names of the accounts its
-//! seats belong to (E16 M3 T3). The games themselves run in their own sessions.
+//! seats belong to (E16 M3 T3). The games themselves run in their own sessions. Since E16 M5 T9a
+//! it lists the server's map offers and its whole games too, under the same limits and ids.
 //!
 //! Provisional (E16 M2 T1): game ids counted from 1 and never reused; the limits count the games
 //! that are not over, in total and per origin (the host's notion of where a request came from: a
@@ -13,6 +14,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::wire::game::{MapGameInfo, MapOffer, SeatedPlayer};
 use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage};
 
 /// How many games may be open (not over) at once.
@@ -24,17 +26,35 @@ pub struct Limits {
     pub games_per_origin: usize,
 }
 
+/// A listed game: a battle's or a whole game's (E16 M5 T9a).
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Listed {
+    Battle(GameInfo),
+    Map(MapGameInfo),
+}
+
+impl Listed {
+    const fn phase(&self) -> Phase {
+        match self {
+            Self::Battle(info) => info.phase,
+            Self::Map(info) => info.phase,
+        }
+    }
+}
+
 /// A listed game and where its creation came from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Entry<O> {
     origin: O,
-    info: GameInfo,
+    info: Listed,
 }
 
 /// The server's offers and games; `O` names where a request came from.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Lobby<O> {
     offers: Vec<Offer>,
+    /// The map offers (E16 M5 T9a).
+    maps: Vec<MapOffer>,
     limits: Limits,
     games: BTreeMap<u32, Entry<O>>,
     /// The last id handed out.
@@ -44,10 +64,11 @@ pub struct Lobby<O> {
 }
 
 impl<O: Ord> Lobby<O> {
-    /// A lobby for `offers`, with no games.
-    pub const fn new(offers: Vec<Offer>, limits: Limits) -> Self {
+    /// A lobby for the battles' `offers` and the whole games' `maps` (E16 M5 T9a), with no games.
+    pub const fn new(offers: Vec<Offer>, maps: Vec<MapOffer>, limits: Limits) -> Self {
         Self {
             offers,
+            maps,
             limits,
             games: BTreeMap::new(),
             last: 0,
@@ -64,17 +85,44 @@ impl<O: Ord> Lobby<O> {
     /// How many listed games wait or run (E16 M2 T5a): a draining server stops at none. A paused
     /// game and one that is over do not count.
     pub fn in_play(&self) -> usize {
-        let playing = |e: &&Entry<O>| matches!(e.info.phase, Phase::Waiting | Phase::Running);
+        let playing = |e: &&Entry<O>| matches!(e.info.phase(), Phase::Waiting | Phase::Running);
         self.games.values().filter(playing).count()
     }
 
-    /// The answer to `ListGames`: the offers and the games, by id.
+    /// The answer to `ListGames`: the offers and the games, by id; the map offers and the whole
+    /// games, by id (E16 M5 T9a).
     pub fn list(&self, seq: u32) -> ServerMessage {
+        let (mut games, mut map_games) = (Vec::new(), Vec::new());
+        for entry in self.games.values() {
+            match &entry.info {
+                Listed::Battle(info) => games.push(info.clone()),
+                Listed::Map(info) => map_games.push(info.clone()),
+            }
+        }
         ServerMessage::Games {
             seq,
             offers: self.offers.clone(),
-            games: self.games.values().map(|e| e.info.clone()).collect(),
+            games,
+            maps: self.maps.clone(),
+            map_games,
         }
+    }
+
+    /// The next game's id for `origin`, within the limits: the games that are not over, in total
+    /// and, with `per_origin`, from `origin`.
+    fn next(&self, origin: &O, per_origin: bool) -> Result<u32, Refusal> {
+        let open = self
+            .games
+            .values()
+            .filter(|e| e.info.phase() != Phase::Over);
+        let (total, here) = open.fold((0, 0), |(total, here), e| {
+            (total + 1, here + usize::from(e.origin == *origin))
+        });
+        let room =
+            total < self.limits.games && (!per_origin || here < self.limits.games_per_origin);
+        (self.last.checked_add(1))
+            .filter(|_| room)
+            .ok_or(Refusal::TooManyGames)
     }
 
     /// Creates a game of the offer `offer` for `origin`, whose creator takes `seat`, listed as
@@ -103,15 +151,7 @@ impl<O: Ord> Lobby<O> {
         if found.bots.contains(&seat) {
             return Err(Refusal::SeatTaken);
         }
-        let open = self.games.values().filter(|e| e.info.phase != Phase::Over);
-        let (total, here) = open.fold((0, 0), |(total, here), e| {
-            (total + 1, here + usize::from(e.origin == origin))
-        });
-        let game = self
-            .last
-            .checked_add(1)
-            .filter(|_| total < self.limits.games && here < self.limits.games_per_origin)
-            .ok_or(Refusal::TooManyGames)?;
+        let game = self.next(&origin, true)?;
         self.last = game;
         let info = GameInfo {
             game,
@@ -125,6 +165,40 @@ impl<O: Ord> Lobby<O> {
             seated: Vec::new(),
             ladder: None,
         };
+        let info = Listed::Battle(info);
+        self.games.insert(game, Entry { origin, info });
+        Ok((game, index))
+    }
+
+    /// Creates a whole game of the map offer `offer` for `origin`, whose creator takes `player`'s
+    /// seat (E16 M5 T9a): the game's id and the offer's index, or why not. A draining server, an
+    /// offer it does not have, a player the map does not have (`NoSuchSeat`), or a full server or
+    /// origin, is refused. Every seat is open until taken.
+    pub fn create_map(
+        &mut self,
+        origin: O,
+        offer: &str,
+        player: u8,
+    ) -> Result<(u32, usize), Refusal> {
+        if self.draining {
+            return Err(Refusal::Draining);
+        }
+        let (index, found) = (self.maps.iter().enumerate())
+            .find(|(_, o)| o.id == offer)
+            .ok_or(Refusal::NoSuchOffer)?;
+        if usize::from(player) >= found.players.len() {
+            return Err(Refusal::NoSuchSeat);
+        }
+        let game = self.next(&origin, true)?;
+        self.last = game;
+        let info = MapGameInfo {
+            game,
+            offer: found.id.clone(),
+            phase: Phase::Waiting,
+            open: (0..=u8::MAX).take(found.players.len()).collect(),
+            seated: Vec::new(),
+        };
+        let info = Listed::Map(info);
         self.games.insert(game, Entry { origin, info });
         Ok((game, index))
     }
@@ -142,10 +216,7 @@ impl<O: Ord> Lobby<O> {
         if self.draining {
             return Err(Refusal::Draining);
         }
-        let open = self.games.values().filter(|e| e.info.phase != Phase::Over);
-        let game = (self.last.checked_add(1))
-            .filter(|_| open.count() < self.limits.games)
-            .ok_or(Refusal::TooManyGames)?;
+        let game = self.next(&origin, false)?;
         self.last = game;
         let info = GameInfo {
             game,
@@ -156,25 +227,43 @@ impl<O: Ord> Lobby<O> {
             seated: Vec::new(),
             ladder: Some(String::from(ladder)),
         };
+        let info = Listed::Battle(info);
         self.games.insert(game, Entry { origin, info });
         Ok(game)
     }
 
     /// Where game `game` is now, as its session reports it: its phase, its open seats and whether
-    /// it takes spectators.
+    /// it takes spectators. A whole game is not changed.
     pub fn update(&mut self, game: u32, (phase, open, spectators): (Phase, Vec<Seat>, bool)) {
-        if let Some(entry) = self.games.get_mut(&game) {
-            entry.info.phase = phase;
-            entry.info.open = open;
-            entry.info.spectators = spectators;
+        if let Some(Listed::Battle(info)) = self.games.get_mut(&game).map(|e| &mut e.info) {
+            info.phase = phase;
+            info.open = open;
+            info.spectators = spectators;
+        }
+    }
+
+    /// Where the whole game `game` is now, as its session reports it (E16 M5 T9a): its phase and
+    /// its open seats. A battle is not changed.
+    pub fn update_map(&mut self, game: u32, (phase, open): (Phase, Vec<u8>)) {
+        if let Some(Listed::Map(info)) = self.games.get_mut(&game).map(|e| &mut e.info) {
+            info.phase = phase;
+            info.open = open;
         }
     }
 
     /// The seats of game `game` that belong to accounts, with the accounts' display names (E16 M3
-    /// T3), as the host knows them.
+    /// T3), as the host knows them. A whole game is not changed.
     pub fn seat(&mut self, game: u32, seated: Vec<Seated>) {
-        if let Some(entry) = self.games.get_mut(&game) {
-            entry.info.seated = seated;
+        if let Some(Listed::Battle(info)) = self.games.get_mut(&game).map(|e| &mut e.info) {
+            info.seated = seated;
+        }
+    }
+
+    /// The seats of the whole game `game` that belong to accounts, with the accounts' display
+    /// names (E16 M5 T9a). A battle is not changed.
+    pub fn seat_map(&mut self, game: u32, seated: Vec<SeatedPlayer>) {
+        if let Some(Listed::Map(info)) = self.games.get_mut(&game).map(|e| &mut e.info) {
+            info.seated = seated;
         }
     }
 
@@ -182,8 +271,10 @@ impl<O: Ord> Lobby<O> {
     /// the ids handed out after it are higher. It is not checked against the limits (it was within
     /// them when it was created) and counts for every creation after.
     pub fn reopen(&mut self, origin: O, info: GameInfo) {
-        self.last = self.last.max(info.game);
-        self.games.insert(info.game, Entry { origin, info });
+        let game = info.game;
+        self.last = self.last.max(game);
+        let info = Listed::Battle(info);
+        self.games.insert(game, Entry { origin, info });
     }
 
     /// The ids up to `last` were handed out before (E16 M4 T3b: in the server's earlier lives):

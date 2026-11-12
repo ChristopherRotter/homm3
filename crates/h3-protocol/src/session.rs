@@ -691,6 +691,7 @@ impl<'r> Session<'r> {
             | ClientMessage::SetListed { .. }
             | ClientMessage::ListGames { .. }
             | ClientMessage::CreateGame { .. }
+            | ClientMessage::CreateMapGame { .. }
             | ClientMessage::ListReplays { .. }
             | ClientMessage::FetchArchived { .. }
             | ClientMessage::ListLadders { .. }
