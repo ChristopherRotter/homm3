@@ -3893,6 +3893,13 @@ url = "docs/rules/surveys/E09-towns.md"
 retrieved = "2026-11-03"
 
 [[source]]
+id = "exe-town-growth"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-growth.md 1, 2, 4, 5, scored by batch TWN-3 in 17): new_day_week_events 0x4C8780 draws a week of a creature 1 in 4 and town_week_growth 0x5BFDD0 adds 5 more to its dwellings; a town with the Inferno's building 26 (the Deity of Fire) standing makes every week level 1's; the Dungeon's building 22 is the Portal of Summoning (portal_of_summoning_week 0x5BD750); neutral_town_garrison_week 0x4BF570 grows a neutral town's garrison with 40 or 80 (a fort level standing) in 101, the level by the weights neutral_garrison_level_weights 0x6779B0 (2, 3, 4, 5, 4, 3) over three draws of 0 to min(weeks, 8) + 1, the upgrade 5 in 100; the hordes' growth town_hordes 0x6887A0 as each creature's horde growth (CRTRAITS)"
+url = "docs/rules/surveys/E09-growth.md"
+retrieved = "2026-11-11"
+
+[[source]]
 id = "exe-town-visions"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 12.3): hero_visions_level 0x4E5DE0 raises a hero's Visions level to 3 (expert) when its army holds creature 143 (the Rogue); hero_visions_reach 0x4E5E10 takes the radius as Visions' (spell 2's) effect for that level, 3 at expert (SPTRAITS.TXT), times the hero's Power held to 1-99, at least 3, and is true on the hero's level with the squared distance below the radius's square; town_popup 0x4167A0 measures from the town's entrance (its record's +0x5) and shows the top level"
@@ -3938,6 +3945,8 @@ role = [
   { faction = "Fortress", building = 21, roles = { defender = { attack = 2 } }, sources = ["exe-town-siege"] },
   { faction = "Fortress", building = 22, roles = { defender = { defense = 2 } }, sources = ["exe-town-siege"] },
   { faction = "Fortress", building = 26, roles = { defender = { attack = 10, defense = 10 } }, sources = ["exe-town-siege"] },
+  { faction = "Dungeon", building = 22, roles = { portal = true }, sources = ["exe-town-growth"] },
+  { faction = "Inferno", building = 26, roles = { week_of = 1 }, sources = ["exe-town-growth"] },
 ]
 
 # The [town_params] beside the executable's tables (TWN-INC-001, TWN-CAP-001, TWN-CAP-002).
@@ -3948,6 +3957,15 @@ hall_gold = [500, 1000, 2000, 4000]
 grail_gold = 5000
 reveal_radius = 5
 capitol_demoted_to = 12
+
+# The growth's [town_params] (E09 T25a, design §38): the week's creature (1 in 4, its dwellings 5
+# more), a neutral town's garrison week (40 or 80 in 101, the level weights, at most 8 weeks, the
+# upgrade 5 in 100).
+[towns.growth]
+sources = ["exe-town-growth"]
+week_creature_chance = [1, 4]
+week_creature_bonus = 5
+garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
 
 # Visions for the towns (TWN-VEW-003, E09 T8c2): its expert factor and least radius go into the
 # [town_params], the creatures that give it into their own pack's [town_visions] (the Rogue, AB's).

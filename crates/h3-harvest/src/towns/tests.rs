@@ -32,7 +32,15 @@ role = [
   { building = 26, roles = { grail = true }, sources = ["s"] },
   { faction = "Alpha", building = 21, roles = { luck = 2 }, sources = ["s"] },
   { faction = "Beta", building = 26, roles = { reveal = "all", defender = { attack = 20, mana = 5 } }, sources = ["s"] },
+  { faction = "Beta", building = 21, roles = { portal = true }, sources = ["s"] },
+  { faction = "Gamma", building = 26, roles = { week_of = 1 }, sources = ["s"] },
 ]
+
+[towns.growth]
+sources = ["s"]
+week_creature_chance = [1, 4]
+week_creature_bonus = 5
+garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
 
 [towns.params]
 sources = ["s"]
@@ -256,6 +264,16 @@ fn town_inputs() -> Inputs {
             rec.town = i32::try_from(f).unwrap();
             rec.level = i32::try_from(k / 2).unwrap();
         }
+        // The horde's creature's horde growth, as its record's (E09 T25a), in both tables.
+        let name = format!("Unit {}", first(f) + 2);
+        for table in [&mut i.sod_creatures, &mut i.ab_creatures] {
+            let row = table
+                .records
+                .iter_mut()
+                .find(|r| r.first() == Some(&name))
+                .unwrap();
+            row[12] = "3".into();
+        }
     }
     i.town_tables = TownData {
         factions: (0..3).map(faction).collect(),
@@ -299,7 +317,7 @@ fn run(i: &Inputs, gap: &str) -> Result<BTreeMap<&'static str, String>, String> 
     assert!(
         h.report
             .iter()
-            .any(|l| l.contains("towns: the hordes' growth"))
+            .any(|l| l.contains("towns: the hordes' growth checked"))
     );
     Ok(files.into_iter().collect())
 }
@@ -320,7 +338,10 @@ fn harvests_the_town_files_that_compile() {
          neutral_garrison = [\n  { chance = 33, count = [8, 15] },\n"
     ));
     assert!(base.contains(
-        "capitol_demoted_to = \"city_hall\"\nvisions_factor = 3\nvisions_min_radius = 2\n"
+        "capitol_demoted_to = \"city_hall\"\nvisions_factor = 3\nvisions_min_radius = 2\n\
+         week_creature_chance = [1, 4]\nweek_creature_bonus = 5\n\
+         garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, \
+         upgrade = 5 }\n"
     ));
     assert!(!ab.contains("[town_params]") && !sod.contains("[town_params]"));
     // Visions' creatures, each in its own pack's file (E09 T8c2).
@@ -384,6 +405,16 @@ fn harvests_the_town_files_that_compile() {
          requires = [\"upg_alpha_den_2\"]\n  cost = { ore = 1, gold = 2002 }\n"
     ));
     assert!(!base.contains("upg_beta_horde"));
+    // Each horde's role from the horde table (E09 T25a): its level, the upgrade's upgraded.
+    assert!(base.contains("cost = { ore = 1, gold = 2002 }\n  horde = [2, true]\n"));
+    assert_eq!(base.matches("  horde = [2, false]\n").count(), 2);
+    assert_eq!(base.matches("  horde = [2, true]\n").count(), 1);
+    assert_eq!(ab.matches("  horde = [2, true]\n").count(), 1);
+    // The gap-fill's Portal and week's building; `roe = false` on ab's records alone.
+    assert!(base.contains("cost = { ore = 2, gold = 2104 }\n  portal = true\n"));
+    assert!(ab.contains("grail = true\n  week_of = 1\n"));
+    assert!(ab.contains("[\"unit_140\", \"unit_141\"],\n]\nroe = false\n"));
+    assert!(!base.contains("roe = "));
     // The roles, merged and in the format's order.
     assert!(base.contains(
         "key = \"tavern\"\n  name = \"Tavern\"\n  slot = 6\n  cost = { wood = 5, gold = 1005 }\n  \
@@ -464,6 +495,11 @@ fn inconsistent_tables_are_errors() {
     assert!(e.contains("horde 18 without a creature"), "{e}");
     let e = error(|i| i.town_tables.factions[0].hordes[0].creature = Some(1));
     assert!(e.contains("horde 18's creature is no level's"), "{e}");
+    let e = error(|i| i.town_tables.factions[0].hordes[0].growth = 4);
+    assert!(
+        e.contains("Alpha: horde 18's growth is not its creature's horde growth"),
+        "{e}"
+    );
     let e = error(|i| i.town_tables.factions[0].supersedes[0] = entry(18, &[32]));
     assert!(
         e.contains("does not supersede its level's dwelling 31"),
@@ -528,6 +564,8 @@ fn gapfill_town_errors() {
     assert!(e.contains("`dwelling` is not a role it may give"), "{e}");
     let e = bad("roles = { luck = 2 }", "roles = { shipyard = true }");
     assert!(e.contains("`shipyard` is not a role it may give"), "{e}");
+    let e = bad("roles = { luck = 2 }", "roles = { horde = [1, false] }");
+    assert!(e.contains("`horde` is not a role it may give"), "{e}");
     let e = bad("roles = { luck = 2 }", "roles = { speed = 2 }");
     assert!(e.contains("`speed` is not a role it may give"), "{e}");
     let e = bad(

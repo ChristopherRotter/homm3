@@ -30,6 +30,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the town lane, E09 T25a, `town/e09-t25a`, `cross-lane`; **a version and your
+  replays, for your next bump**): `GAME_STATE_HASH_VERSION` is 28 (the store of towns' v3: each
+  town's fourteen available counts and its Portal, `h3_towns::Town::available`, `portal`); the 72
+  adventure replays re-recorded from their own commands (only `town_ruleset_hash`, the version,
+  the checkpoints and `final_hash` moved). A game state hash bump of yours is v29 (the town lane's
+  T26a then takes the next); whichever merges second rebases and re-records again. Your
+  `src/tests/mod.rs` town literal gained `roe` and the growth's parameters (`week`,
+  `garrison_week`). `h3_towns::Towns::build` and `town_setup` now take the core ruleset (the
+  dwellings' first creatures, TWN-GRO-005); their callers are the town lane's `src/town*`.
 - 2026-11-12 (the server lane, E16 M5 part 2's refinement, SRV-Q29; **the user's decision,
   informational**): the server lane builds two additive pieces of `h3-game` in `cross-lane` pull
   requests, with the user's consent: in increment 2b the trusted system commands ADR-0017 point 2

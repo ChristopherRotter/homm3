@@ -3229,3 +3229,86 @@ connected at the start only: the original data staged then (21 files, the four L
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
 check-lane --cross-lane`, `cargo check --workspace --all-targets`; CI on the pull request is the
 record.
+
+### T25a — the town part v5, the store v3, a dwelling's growth and first creatures (2026-11-12)
+
+One session, the user present at the start; branch `town/e09-t25a`, `cross-lane` (`h3-harvest`
+and the `ab` and `base` packs, the battle lane's; `GAME_STATE_HASH_VERSION`, `h3-game`'s
+`src/tests/mod.rs` literal and the 72 adventure replays, the adventure lane's). Starting point:
+`master` at 4a70238 (#864, T24's, and #865 merged; the setup's baseline found CI's fingerprint
+on fa98206, the light gates). The user's computer was connected at the start only: the original
+data staged then (17 files: the four LODs one per call, the executables, the five DLLs, both
+`.snd`, both videos, both tars); the harvest and the scoped verify used them. **T25a kept whole**
+(decision 86; the agent recommended T25a in two, the part v5 with its harvest first).
+
+- **The town part v5** (`h3-towns`' `ruleset.rs`, `compile.rs`; design §38): the roles `horde:
+  Option<Horde { level, upgraded }>`, `portal`, `week_of: Option<u8>`; `TownDef::roe` and
+  `TownRecord::roe`; `TownParams::week: WeekParams { creature_chance, creature_bonus }` and
+  `garrison_week: GarrisonWeekParams { odds, out_of, weights, weeks, upgrade }` (in the Def too).
+  Refusals: a horde's or a week's level outside the record's, an upgraded horde without the
+  level's upgrade, two hordes of one index, a second Portal or week's building, a week's chance
+  not `1 <= n <= d`, odds above `out_of` or `out_of` 0, weights not one to six, an upgrade chance
+  above 100. `TOWN_RULESET_HASH_VERSION` 5 (pinned `0x84b4_0449_24d2_2388`, the empty part
+  `0x04f0_d766_3d89_5b60`); every new field moves it (a test each).
+- **`h3-pack-towns`:** the format's `horde`, `portal`, `week_of`, `roe` (default true),
+  `week_creature_chance`, `week_creature_bonus`, `garrison_week` (the doc and the roles' table);
+  the synthetic pack's parameters (invented: 1 in 3, 4, 30 and 70 in 100, three weights), its
+  horde `[2, false]`, the Lookout's Portal, the Grail's `week_of = 1` (`horde_up` without a
+  role: `vale` has no upgrades; no new building). Tests: the roles and parameters parse, `roe =
+  false`, the strict parser's new fields, and `the_original_growth_roles` (the eleven hordes and
+  their upgrades at their levels with their creatures' horde growth 3, 4, 2, 4, 8, 3, 6, 7, 8, 6,
+  10; the Dungeon's Portal and the Inferno's Deity of Fire alone; every record RoE's but
+  Conflux's; the parameters).
+- **The harvest** (battle-owned, design §38): each horde's `horde` role from the horde table (its
+  level by its creature's, the upgrades' buildings 19 and 25 upgraded), its record's growth
+  checked equal to its creature's `CRTRAITS` horde growth (a new refusal; all match); the
+  gap-fill's `portal` (Dungeon 22) and `week_of = 1` (Inferno 26) with the new source
+  `exe-town-growth`, `horde` refused from the gap-fill; `roe = false` on the `ab` pack's records;
+  `[towns.growth]` written into `[town_params]`. The report's line now says the growth is checked.
+  `packs/base` and `packs/ab` re-harvested from the staged installation: the 22 horde roles, the
+  Portal, the Deity, Conflux's `roe`, the three parameter lines only.
+- **The store v3** (`record.rs`, `store.rs`; design §40): `CREATURE_INDEXES` (14),
+  `MAX_AVAILABLE` (32 767), `Summoned { creature, count }`; `Town::available`, `available_all`,
+  `portal`, `with_available`, `with_portal` (saturating: `TWN-QUIRK-8`, T-10 fixed); the
+  store's `set_available`, `set_portal`, `write(town, Town)` (each copies only its town;
+  `false` for a town the store lacks or an index past the fourteen), the closure write now
+  `update`. `TOWN_STATE_HASH_VERSION` 3 (pinned `0xFA14_A109_A1EC_2745`; each count and the
+  Portal's creature and count move it).
+- **TWN-GRO-001** (`growth.rs`, design §41): `growth(town, part, core, index, &GrowthInputs)` and
+  `index_creature`, `GrowthInputs { owned, share_bp, legion, dwellings }` with `NEUTRAL`; the
+  fixture's core gains 52 creatures (the Keep's levels growing 14, 9, 7, 4, its level-1 horde 8,
+  the Marsh's 6), the Keep's hordes their roles, its shrine the Portal, its Grail `week_of = 1`,
+  the Marsh `roe = false`. Tests: the dwelling and its upgrade, the castle's and the citadel's
+  (truncated), the Statue's share and the Legion only for an owned town, the horde at its index,
+  the map's dwellings at a growing index only, the Grail's half, batch TWN-3's row 2 (66 and 48),
+  the bound, a town without a record or a creature the core lacks.
+- **TWN-GRO-005** (design §46, §40): the first creatures (crate-private `first_creatures`): the
+  base dwellings first set their index to their creature's growth, then the upgraded ones move
+  the base count; `Towns::build` (now with the core) applies them to the buildings it makes ever
+  built, `town_setup` (now with the core) to the start's ever-built set. Tests in `growth`,
+  the store, the setup (a custom set's upgraded dwelling: 0 and 14) and the game (`h3-game`'s
+  `a_built_dwelling_gives_its_first_creatures_in_the_game`; the town tests' imp and gog grow 15
+  and 8).
+- **Catalog and ledger:** TWN-GRO-001 and -005 `implemented` (code reading, batch TWN-3 row 2,
+  VCMI 1.7.5, the design); `TWN-QUIRK-8` in `quirks-town.md` (its regression test
+  `twn_quirk_8_a_town_s_counts_saturate_at_the_bound`).
+- **`cross-lane`:** `GAME_STATE_HASH_VERSION` 28 (the store's v3 moves every game hash: design
+  §47 planned v28 for T26a, whose week's kind becomes v29); the 72 adventure replays re-recorded
+  from their own commands (a scratch script, 3 s in release): only `town_ruleset_hash`
+  (`0x8477f2008d862e55` to `0x4ded73a0d357e245`), `game_state_hash_version`, the checkpoints and
+  `final_hash` moved; each verified with `h3 adventure verify`. The battle replays and the bot
+  reports record neither hash: untouched. `h3-server`'s record tests' two literals (the server
+  lane's: `army-dialog-s1`'s checkpoint and final hash, found by `cargo test --workspace`; the
+  scoped verify does not run them). `h3-game`'s two test literals (one the adventure lane's
+  `src/tests/mod.rs`) gained the parameters and `roe`; its town modules pass the core to the
+  store's build and the setup. The adventure lane's inbox and HANDOFF versions line told.
+- **Agent's calls (change freely):** decision 86's list; the refusals' wording; the parameters'
+  integer types; `growth` and `index_creature` public, `first_creatures` crate-private.
+
+**The queue:** T25a out of T25's entry; T25b next (unchanged scope).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
+`check-lane`, by design, and coverage's one region, fixed and run again alone; the bench gate
+passed), `cargo xtask check-lane --cross-lane`, `cargo test --workspace --exclude xtask
+--all-targets`; `master` merged in (#868, #869), `h3-protocol`, `h3-server` and `h3-game` again;
+CI on the pull request is the record.

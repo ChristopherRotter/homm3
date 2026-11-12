@@ -163,6 +163,7 @@ fn the_main_towns_heroes_draw_after_the_random_towns_and_before_the_towns_buildi
                 castle,
                 owned,
                 rules.towns(),
+                rules.core(),
                 &mut replay,
             );
             let built = built.unwrap();

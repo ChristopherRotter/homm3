@@ -67,6 +67,39 @@ pub struct Towns {
     pub role: Vec<TownRole>,
     /// Visions for the towns (E09 T8c2).
     pub visions: TownVisions,
+    /// The growth's parameters (E09 T25a, design §38).
+    pub growth: TownGrowth,
+}
+
+/// The growth's `[town_params]` (E09 T25a, design §38; survey `E09-growth.md` §2, §4): the week's
+/// creature chance and bonus, a neutral town's garrison week.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownGrowth {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// A week of a creature: numerator and denominator.
+    pub week_creature_chance: [u16; 2],
+    /// What a week's creature's dwellings grow more.
+    pub week_creature_bonus: u16,
+    /// A neutral town's garrison week.
+    pub garrison_week: TownGarrisonWeek,
+}
+
+/// A neutral town's garrison week (`h3-pack-towns`' `garrison_week`).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownGarrisonWeek {
+    /// The odds without and with a standing fort level.
+    pub odds: [u16; 2],
+    /// The draw's denominator.
+    pub out_of: u16,
+    /// The levels' weights.
+    pub weights: Vec<u8>,
+    /// The most weeks counted.
+    pub weeks: u8,
+    /// The upgrade's chance in 100.
+    pub upgrade: u8,
 }
 
 /// Visions for the towns (TWN-VEW-003, E09 T8c2): its factor and least radius go into the
@@ -1027,6 +1060,7 @@ impl GapFill {
                         .iter()
                         .chain(&t.moat.sources)
                         .chain(&t.visions.sources)
+                        .chain(&t.growth.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

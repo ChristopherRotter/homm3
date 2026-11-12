@@ -342,7 +342,7 @@ fn a_capture_keeps_the_day_s_mark_unless_a_human_takes_it_from_no_human() {
         let mut game = GameState::new(&rules, &setup, 7).unwrap();
         // Town 1 built in today (its Fort already stands: the build only sets the mark).
         game.towns_mut()
-            .build(T1, fort, rules.towns(), true)
+            .build(T1, fort, rules.towns(), rules.core(), true)
             .unwrap();
         let mut events = Vec::new();
         crate::town::capture(&mut game, &rules, (T1, RED), &mut events);

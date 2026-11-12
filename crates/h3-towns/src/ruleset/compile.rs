@@ -1,5 +1,6 @@
 //! The town part's compiler (E09 increment 1's design note §2; increment 2's requirements, costs
-//! and role `shipyard`, design §24): the load order, each pack's parameters, records and
+//! and role `shipyard`, design §24; increment 3's roles `horde`, `portal`, `week_of`, `roe` and
+//! the growth's parameters, design §38): the load order, each pack's parameters, records and
 //! overrides in it, then the checks across packs.
 
 use alloc::collections::{BTreeMap, BTreeSet};
@@ -29,6 +30,7 @@ struct Entry {
     silo: Vec<(ResourceId, u32)>,
     creatures: Vec<CreatureLevel>,
     buildings: Vec<Building>,
+    roe: bool,
 }
 
 /// The pack being compiled: references resolve against the core within its dependency closure.
@@ -256,6 +258,7 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
             "a garrison row's count needs 1 <= least <= most",
         ));
     }
+    check_growth_params(def)?;
     Ok(TownParams {
         gold,
         hall_gold: def.hall_gold,
@@ -267,7 +270,38 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         visions_factor: def.visions_factor,
         visions_min_radius: def.visions_min_radius,
         visions_creatures: Vec::new(),
+        week: def.week,
+        garrison_week: def.garrison_week.clone(),
     })
+}
+
+/// The growth's parameters (E09 design §38): a week's creature chance `1 <= numerator <=
+/// denominator`; the garrison week's draw out of at least 1, both odds within it, one to six
+/// weights (the level past the last is at most 7), an upgrade chance at most 100.
+fn check_growth_params(def: &TownParamsDef) -> Result<()> {
+    let [numerator, denominator] = def.week.creature_chance;
+    if numerator == 0 || numerator > denominator {
+        return Err(TownCompileError::InvalidParams(
+            "the week's creature chance needs 1 <= numerator <= denominator",
+        ));
+    }
+    let g = &def.garrison_week;
+    if g.out_of == 0 || g.odds.iter().any(|&odds| odds > g.out_of) {
+        return Err(TownCompileError::InvalidParams(
+            "the garrison week's odds need 0 <= odds <= out_of, out_of >= 1",
+        ));
+    }
+    if g.weights.is_empty() || g.weights.len() >= MAX_CREATURE_LEVELS {
+        return Err(TownCompileError::InvalidParams(
+            "the garrison week has one to six level weights",
+        ));
+    }
+    if g.upgrade > 100 {
+        return Err(TownCompileError::InvalidParams(
+            "the garrison week's upgrade chance is above 100",
+        ));
+    }
+    Ok(())
 }
 
 fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<Entry> {
@@ -318,6 +352,7 @@ fn compile_town(scope: &Scope<'_>, faction: FactionId, def: &TownDef) -> Result<
         silo,
         creatures,
         buildings,
+        roe: def.roe,
     })
 }
 
@@ -353,14 +388,22 @@ fn check_building(
     if roles.fort.is_some_and(|level| !(1..=3).contains(&level)) {
         return bad("a fort level is 1 to 3");
     }
-    let dwelling_fits = roles.dwelling.is_none_or(|d| {
-        usize::from(d.level)
+    let level_of = |level: u8| {
+        usize::from(level)
             .checked_sub(1)
             .and_then(|i| creatures.get(i))
-            .is_some_and(|level| !d.upgraded || level.upgrade.is_some())
-    });
-    if !dwelling_fits {
+    };
+    let fits = |level: u8, upgraded: bool| {
+        level_of(level).is_some_and(|l| !upgraded || l.upgrade.is_some())
+    };
+    if !roles.dwelling.is_none_or(|d| fits(d.level, d.upgraded)) {
         return bad("a dwelling's level, or its upgrade, is not the faction's");
+    }
+    if !roles.horde.is_none_or(|h| fits(h.level, h.upgraded)) {
+        return bad("a horde's level, or its upgrade, is not the faction's");
+    }
+    if !roles.week_of.is_none_or(|level| fits(level, false)) {
+        return bad("a week's level is not the faction's");
     }
     if !(-3..=3).contains(&roles.morale) || !(-3..=3).contains(&roles.luck) {
         return bad("morale and luck are -3 to 3");
@@ -538,8 +581,9 @@ fn forbidden_cycle(forbidden: &[Option<BuildingId>], start: BuildingId) -> bool 
 }
 
 /// The record's roles across its buildings: one building of each hall and fort level, one Grail,
-/// one silo, at most one Shipyard; at most `MAX_TOWN_BONUSES` with a morale or luck change; each
-/// dwelling once, the level-1 and level-2 ones present.
+/// one silo, at most one Shipyard, Portal of Summoning and week's building; at most
+/// `MAX_TOWN_BONUSES` with a morale or luck change; each dwelling once, the level-1 and level-2
+/// ones present; each index's horde once.
 fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     let count =
         |role: &dyn Fn(&BuildingRoles) -> bool| buildings.iter().filter(|b| role(&b.roles)).count();
@@ -564,6 +608,12 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
     if count(&|r| r.shipyard) > 1 {
         return Err(invalid_town(faction, "has more than one Shipyard"));
     }
+    if count(&|r| r.portal) > 1 || count(&|r| r.week_of.is_some()) > 1 {
+        return Err(invalid_town(
+            faction,
+            "has more than one Portal of Summoning or week's building",
+        ));
+    }
     // A siege's bonuses name each such building (`h3_contracts::TownBonuses`, E09 T6b).
     if count(&|r| r.morale != 0 || r.luck != 0) > MAX_TOWN_BONUSES {
         return Err(invalid_town(
@@ -582,6 +632,12 @@ fn check_roles(faction: &str, buildings: &[Building]) -> Result<()> {
             faction,
             "needs the level-1 and level-2 dwellings",
         ));
+    }
+    let mut hordes = BTreeSet::new();
+    for h in buildings.iter().filter_map(|b| b.roles.horde) {
+        if !hordes.insert((h.level, h.upgraded)) {
+            return Err(invalid_town(faction, "has a horde of one index twice"));
+        }
     }
     Ok(())
 }
@@ -608,5 +664,6 @@ fn finish(params: &TownParams, entry: Entry) -> Result<TownRecord> {
         creatures: entry.creatures,
         buildings: entry.buildings,
         capitol_demoted_to,
+        roe: entry.roe,
     })
 }

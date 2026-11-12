@@ -1002,3 +1002,58 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 30: the creatures none placed until increment 3 (TWN-STUB-10)"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-GRO-001"
+title    = "A dwelling's growth a week"
+context  = "town"
+status   = "implemented"
+summary  = "What a town's dwelling at a creature index (index level - 1 the level's creature, level - 1 + 7 its upgrade) grows a week, summed in the original's order and held at 32 767 (TWN-QUIRK-8): none without the index's dwelling ever built (a building of role `dwelling` of its level and upgrade flag) and none at a base index whose level's upgraded dwelling is ever built; g the index's creature's core `growth`; + g with a standing fort level 3 (the Castle), + g / 2 with level 2 (the Citadel), the Fort nothing; for an owned town + (g + the castle's) x the owner's share in basis points / 10 000 (truncated; the Statue of Legion's 5 000, the highest `owner_town_growth` among the owner's heroes) + the level's Legion (`town_growth` of the town's heroes, each hero once); + the index's creature's `horde_growth` with a horde of the index ever built (role `horde`, the upgraded horde at the upgrade's index); + the owner's dwellings on the map whose kind's first creature is the index's (a base creature's at its upgrade's index too); then with a `grail` building ever built + the sum so far / 2 (truncated). A neutral town has no share and no Legion. E09 T25a (design section 41): `h3_towns::growth(town, part, core, index, &GrowthInputs)`, the inputs the game's (E09 T26a computes them; the week, the month, the garrison week and the Portal read the rule, T25b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 1): town_dwelling_growth (0x5BFB60, read whole) returns 0 without building 30 + i ever built (+0x158) and for i below 7 with 37 + i; the creature's growth (+0x44); the Castle (9) + g, else the Citadel (8) + g / 2 over the standing set (+0x150); for an owned town the Statue of Legion (133) worn by any hero of the owner (player_hero_wears_artifact 0x4BACB0) + (g + the castle's) / 2 and town_legion_growth (0x5BF900) for each of the garrison hero and the visitor; the first of the hordes 18, 19, 24, 25 ever built whose record's index is i (town_hordes 0x6887A0) + its growth; the town's dwelling counts (+0x118); the Grail (26) ever built + the sum / 2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 row TWN-3-2 (the capture harness, 2026-11-11; scored in survey E09-growth.md section 17): a Castle town with the Castle, the Griffin Bastion and the Grail, the Statue elsewhere and Legs of Legion on its visitor, two flagged Guardhouses, grew 66, 48 and 36 at levels 1 to 3, exactly the reading's sums ((14 + 14 + 14 + 2) x 1.5, (9 + 9 + 9 + 5) x 1.5, (7 + 7 + 7 + 3) x 1.5)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 11: CGTownInstance::getGrowthInfo sums the base, the castle's, a percentage on base + castle, the Legion's CREATURE_GROWTH, the horde's creature horde value, the dwellings (getDwellingBonus) and the Grail on the total, in the same order; its Statue on the base alone is refuted by batch TWN-3's row 2"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 38 and 41 (E09 decisions 76 and 78): the inputs as plain values, the Legion from the hero effects, a horde's growth the core's horde_growth (the executable's horde table holds the same figures, checked by the harvest)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-GRO-005"
+title    = "A dwelling's first creatures"
+context  = "town"
+status   = "implemented"
+summary  = "When a build makes a dwelling ever built (a command's, a town event's, or the game's setup, which builds the start's buildings in id order), its index gets its first creatures, before any week: each base dwelling (role `dwelling`, not upgraded) first, in index order, sets its index's count to its creature's core growth (the count before overwritten); then each upgraded one sets its index's count to its base index's and the base index's to 0. No castle, horde, Legion or Grail until the week; a horde adds nothing at once. So a town starts with each built dwelling's base growth at its standing dwelling's index. E09 T25a (design sections 40 and 46): `h3_towns::Towns::build` (with the core) and `h3_towns::town_setup`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 6): town_build (0x5BE930 at 0x5BEB7E to 0x5BEBE5) sets a base dwelling's (30 to 36) index count to its creature's growth (+0x44) alone; an upgraded dwelling (37 to 43) writes the upgrade's growth, then overwrites it with the base count and zeroes the base; a horde adds nothing; the setup builds the start's buildings the same way in id order (survey E09-towns.md section 5.3)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 6: NewTurnProcessor's generateTownGrowth with firstDay gives each built dwelling its base growth at the start"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 40 and 46 (E09 decision 78): the setup's first creatures, the base first, the upgrade's move"
+  confidence = "high"

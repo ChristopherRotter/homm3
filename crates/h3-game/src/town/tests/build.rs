@@ -202,6 +202,7 @@ fn the_store_holds_each_town_as_built_before_the_starting_armies() {
                 castle,
                 owned,
                 rules.towns(),
+                rules.core(),
                 &mut replay,
             )
             .unwrap();

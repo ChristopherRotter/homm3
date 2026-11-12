@@ -22,6 +22,9 @@ neutral_garrison = [
 capitol_demoted_to = "city_hall"
 visions_factor = 3
 visions_min_radius = 3
+week_creature_chance = [1, 4]
+week_creature_bonus = 5
+garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
 
 [[town]]
 faction = "castle"
@@ -174,6 +177,7 @@ creatures = [
   supersedes = ["griffin_tower"]
   requires = ["griffin_tower"]
   cost = { gold = 1000 }
+  horde = [3, false]
 
   [[town.building]]
   key = "upg_griffin_bastion"
@@ -183,6 +187,7 @@ creatures = [
   auto_with = ["griffin_bastion", "upg_griffin_tower"]
   requires = ["upg_griffin_tower"]
   cost = { gold = 1000 }
+  horde = [3, true]
 
   [[town.building]]
   key = "stables"
@@ -477,6 +482,7 @@ creatures = [
   supersedes = ["dwarf_cottage"]
   requires = ["dwarf_cottage"]
   cost = { gold = 1000 }
+  horde = [2, false]
 
   [[town.building]]
   key = "upg_miners_guild"
@@ -486,6 +492,7 @@ creatures = [
   auto_with = ["miners_guild", "upg_dwarf_cottage"]
   requires = ["upg_dwarf_cottage"]
   cost = { gold = 1000 }
+  horde = [2, true]
 
   [[town.building]]
   key = "fountain_of_fortune"
@@ -510,6 +517,7 @@ creatures = [
   supersedes = ["dendroid_arches"]
   requires = ["dendroid_arches"]
   cost = { gold = 2000 }
+  horde = [5, false]
 
   [[town.building]]
   key = "upg_dendroid_saplings"
@@ -519,6 +527,7 @@ creatures = [
   auto_with = ["dendroid_saplings", "upg_dendroid_arches"]
   requires = ["upg_dendroid_arches"]
   cost = { gold = 2000 }
+  horde = [5, true]
 
   [[town.building]]
   key = "spirit_guardian"
@@ -797,6 +806,7 @@ creatures = [
   supersedes = ["parapet"]
   requires = ["parapet"]
   cost = { gold = 1000 }
+  horde = [2, false]
 
   [[town.building]]
   key = "upg_sculptors_wings"
@@ -806,6 +816,7 @@ creatures = [
   auto_with = ["sculptors_wings", "upg_parapet"]
   requires = ["upg_parapet"]
   cost = { gold = 1000 }
+  horde = [2, true]
 
   [[town.building]]
   key = "lookout_tower"
@@ -1101,6 +1112,7 @@ creatures = [
   supersedes = ["imp_crucible"]
   requires = ["imp_crucible"]
   cost = { gold = 1000 }
+  horde = [1, false]
 
   [[town.building]]
   key = "upg_birthing_pools"
@@ -1110,6 +1122,7 @@ creatures = [
   auto_with = ["birthing_pools", "upg_imp_crucible"]
   requires = ["upg_imp_crucible"]
   cost = { gold = 1000 }
+  horde = [1, true]
 
   [[town.building]]
   key = "brimstone_stormclouds"
@@ -1140,6 +1153,7 @@ creatures = [
   supersedes = ["kennels"]
   requires = ["kennels"]
   cost = { gold = 1000 }
+  horde = [3, false]
 
   [[town.building]]
   key = "upg_cages"
@@ -1149,12 +1163,14 @@ creatures = [
   auto_with = ["cages", "upg_kennels"]
   requires = ["upg_kennels"]
   cost = { gold = 1000 }
+  horde = [3, true]
 
   [[town.building]]
   key = "deity_of_fire"
   name = "Deity of Fire"
   slot = 17
   grail = true
+  week_of = 1
 
   [[town.building]]
   key = "imp_crucible"
@@ -1434,6 +1450,7 @@ creatures = [
   supersedes = ["cursed_temple"]
   requires = ["skeleton_transformer"]
   cost = { gold = 1000 }
+  horde = [1, false]
 
   [[town.building]]
   key = "upg_unearthed_graves"
@@ -1443,6 +1460,7 @@ creatures = [
   auto_with = ["unearthed_graves", "upg_cursed_temple"]
   requires = ["upg_cursed_temple", "skeleton_transformer"]
   cost = { gold = 1000 }
+  horde = [1, true]
 
   [[town.building]]
   key = "necromancy_amplifier"
@@ -1735,6 +1753,7 @@ creatures = [
   supersedes = ["warren"]
   requires = ["warren"]
   cost = { gold = 1000 }
+  horde = [1, false]
 
   [[town.building]]
   key = "upg_mushroom_rings"
@@ -1744,6 +1763,7 @@ creatures = [
   auto_with = ["mushroom_rings", "upg_warren"]
   requires = ["upg_warren"]
   cost = { gold = 1000 }
+  horde = [1, true]
 
   [[town.building]]
   key = "mana_vortex"
@@ -1757,6 +1777,7 @@ creatures = [
   name = "Portal of Summoning"
   slot = 19
   cost = { ore = 5, gold = 2500 }
+  portal = true
 
   [[town.building]]
   key = "battle_scholar_academy"
@@ -2028,6 +2049,7 @@ creatures = [
   supersedes = ["goblin_barracks"]
   requires = ["goblin_barracks"]
   cost = { gold = 1000 }
+  horde = [1, false]
 
   [[town.building]]
   key = "upg_mess_hall"
@@ -2037,6 +2059,7 @@ creatures = [
   auto_with = ["mess_hall", "upg_goblin_barracks"]
   requires = ["upg_goblin_barracks"]
   cost = { gold = 1000 }
+  horde = [1, true]
 
   [[town.building]]
   key = "freelancers_guild"
@@ -2328,6 +2351,7 @@ creatures = [
   supersedes = ["gnoll_hut"]
   requires = ["gnoll_hut"]
   cost = { gold = 1000 }
+  horde = [1, false]
 
   [[town.building]]
   key = "upg_captains_quarters"
@@ -2337,6 +2361,7 @@ creatures = [
   auto_with = ["captains_quarters", "upg_gnoll_hut"]
   requires = ["upg_gnoll_hut"]
   cost = { gold = 1000 }
+  horde = [1, true]
 
   [[town.building]]
   key = "glyphs_of_fear"

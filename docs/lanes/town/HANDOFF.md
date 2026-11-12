@@ -5,36 +5,36 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E09** (towns): increments 1 and 2 closed (T10, T20; `E09-archive.md`, design notes Parts A
-  to D). **Increment 3** (growth, recruitment and the army rows; decisions 64–85): the survey
-  (T21, `E09-growth.md`), the drafts and Part E §37 to §58 (T22a, T22b) and the cut accepted at
-  `TWN-Q13` and `TWN-Q14` (decisions 80–83); batch TWN-3 run and scored (T23, survey §17: every
-  row as the reading; decision 84); the `shared/` task (T24, decision 85: the five drafts in
-  `docs/adr/`, `StreamId::TOWNS`, the Legion's effects and the two town flags, pack format v52;
-  E08's T112 rebases on it). **Next: T25** (growth's town side, T25a and T25b), then T26 to T30
-  (design §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is
-  increment 4, the guild and the services 5, travel and the Grail 6.
+  to D). **Increment 3** (growth, recruitment and the army rows; decisions 64–86): the survey
+  (T21), the drafts and Part E §37 to §58 (T22a, T22b), the cut (`TWN-Q13`, `TWN-Q14`), batch
+  TWN-3 (T23), the `shared/` task (T24), **T25a** (decision 86: the part v5, the store v3,
+  TWN-GRO-001, -005, `TWN-QUIRK-8`). **Next: T25b** (TWN-GRO-003, -004 with `TWN-QUIRK-9`, `-10`
+  and T24's flags, -006, -007 as pure functions over the draws given), then T26 to T30 (design
+  §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is increment 4, the
+  guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** #864, T24's (branch `shared/e09-t24`, `cross-lane`: the kernel, `h3-content`,
-  `h3-pack`, the harvester and packs, the 82 replays' and the bot reports' core hash, one
-  `h3-server` test line, the ADRs, the glossary, the security doc, the docs).
+- **Open pull requests:** #873, T25a's (branch `town/e09-t25a`, `cross-lane`: the harvester and the
+  `ab` and `base` packs, `GAME_STATE_HASH_VERSION`, one `h3-game` test literal, the 72 adventure
+  replays, `h3-server`'s record tests' two hashes); watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
   experiments. The rest of those crates is the adventure lane's: a change there is `cross-lane`,
   merged in order with its pull requests.
-- **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v2: T17a's day's
-  mark) and the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v4: T16a), both in `h3-towns`;
-  the adventure lane's (game state hash, adventure state and part hashes, map import, replay
-  format) and the env's and protocol's are bumped `cross-lane` (each task's record in
-  `E09-log.md`); their current values are in the adventure lane's HANDOFF. Shared, from T24: core
-  ruleset hash v53, pack format v52, quirk flags 41 (`quirk.town.creature_month_exact` 39,
-  `quirk.town.neutral_plague_full_growth` 40, read from T25b), `StreamId::TOWNS` (7).
-- **Ids** (next): questions `TWN-Q15`; decisions 86; quirks `TWN-QUIRK-8` (planned `-8` to `-11`:
-  T-10, T-12, T-13, T-5); stubs `TWN-STUB-14` (`-11`, `-12` planned by design §34); rules planned
-  TWN-GRO-001 to -007, TWN-REC-001, -002, TWN-ROW-001 to -005 (design §47, §55); experiment batch
-  `TWN-4`; disputes `TD-18`; quirk candidates `T-14`. ADR-0028 is the lane's;
-  no drafts wait (increment 3's five in `docs/adr/` since T24).
+- **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3: T25a's counts
+  and Portal) and the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v5: T25a's roles, `roe`,
+  parameters), both in `h3-towns`; the adventure lane's (game state hash v28 by T25a, adventure
+  state and part hashes, map import, replay format) and the env's and protocol's are bumped
+  `cross-lane` (each task's record in `E09-log.md`); their current values are in the adventure
+  lane's HANDOFF. Shared, from T24: core ruleset hash v53, pack format v52, quirk flags 41
+  (`quirk.town.creature_month_exact` 39, `quirk.town.neutral_plague_full_growth` 40, read from
+  T25b), `StreamId::TOWNS` (7).
+- **Ids** (next): questions `TWN-Q15`; decisions 87; quirks `TWN-QUIRK-9` (planned `-9` to `-11`:
+  T-12, T-13, T-5); stubs `TWN-STUB-14` (`-11`, `-12` planned by design §34); rules planned
+  TWN-GRO-002 to -004, -006, -007, TWN-REC-001, -002, TWN-ROW-001 to -005 (design §47, §55);
+  experiment batch `TWN-4`; disputes `TD-18`; quirk candidates `T-14`. ADR-0028 is the lane's;
+  no drafts wait.
 - **Working agreement:** a domain lane: a user checkpoint per increment and the cut confirmed at
   each round; the user confirms seams and ADRs; tokens first.
 
@@ -43,6 +43,16 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 In `TRAPS.md`.
 
 ## Recent sessions
+
+### 2026-11-12 — T25a: the part v5, the store v3, a dwelling's growth and first creatures
+
+Baseline 4a70238 (#864, #865 merged; the setup's baseline found CI's fingerprint, the light
+gates). T25a kept whole (the user, decision 86; two parts recommended). The user's computer was
+connected at the start only: the original data staged then (17 files), used for the re-harvest
+and the scoped verify. `cross-lane`: the harvester and the re-harvested `base` and `ab` packs
+(the 22 horde roles, the Portal, the Deity, Conflux's `roe`, the parameters), game state hash
+v28, the 72 adventure replays (hash lines only), one `h3-game` test literal. Part v5, store v3,
+TWN-GRO-001, -005, `TWN-QUIRK-8`. The adventure lane's inbox and versions line told.
 
 ### 2026-11-12 — T24: increment 3's `shared/` task (the ADRs, the stream, the effects, the flags)
 
@@ -64,12 +74,3 @@ the harness forces the weekly and monthly draws (xdd.dll's new sites) and logs t
 the Portal's; two runs of each part, every row as the reading (survey §17). `cross-lane` (the
 battle lane's experiments README); the client, map-client and adventure lanes' inboxes told.
 No version moved.
-
-### 2026-11-11 — T22b: recruitment's and the rows' drafts, the cut, the checkpoint
-
-Baseline 73e5e91 (#855, #856 merged; the light gates green). T22b whole (the user, decision 79);
-the army reference was settled by the adventure lane's T108b at its start (E08 decision 305). The
-user's computer was connected at the start only: the executable and both tars staged then, for
-`next_player_turn`'s towns' heroes (the garrison hero's points). The drafts accepted at `TWN-Q14`
-(decisions 80–83, each recommended). Docs only; no version moved. The adventure lane's inbox told
-the rows' and the garrison hero's plan.

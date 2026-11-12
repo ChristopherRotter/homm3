@@ -2,7 +2,9 @@
 # tests, not original game data (docs/05-testing.md, "Test data policy"): the parameters and a
 # town record of `vale`, its two levels without upgrades, every role once; since E09 T16a the
 # requirements (the halls' chain to the Capitol through the Tavern and the Castle, the forts',
-# the dwellings', the hordes') and the costs, and a Shipyard.
+# the dwellings', the hordes') and the costs, and a Shipyard; since E09 T25a the growth's
+# parameters, a horde (its upgrade has none: `vale`'s levels have no upgrades), a Portal of
+# Summoning (the Lookout's) and a week's building (the Grail's, as the Inferno's Deity of Fire).
 
 [town_params]
 gold = "coin"
@@ -16,6 +18,9 @@ neutral_garrison = [
 capitol_demoted_to = "city_hall"
 visions_factor = 2                 # TWN-VEW-003 (E09 T8c2); the original's 3 and 3
 visions_min_radius = 4
+week_creature_chance = [1, 3]      # TWN-GRO-002 (E09 T25a); the original's 1 in 4
+week_creature_bonus = 4            # the original's 5
+garrison_week = { odds = [30, 70], out_of = 100, weights = [2, 3, 4], weeks = 6, upgrade = 10 }
 
 [[town]]
 faction = "vale"
@@ -98,6 +103,7 @@ creatures = [["spearman"], ["synthetic:brute"]]
   escape_tunnel = true
   defender = { attack = 2, mana = 150 }
   reveal = "all"
+  week_of = 1
 
   [[town.building]]
   key = "dwelling_1"
@@ -119,6 +125,7 @@ creatures = [["spearman"], ["synthetic:brute"]]
   requires = ["fort"]
   cost = { coin = 1000, shard = 5 }
   reveal = 20
+  portal = true
 
   # A horde superseding its level's dwelling, and its upgrade: forbidden with it, built once the
   # horde and the level-2 dwelling are both ever built (the original's upgraded horde waits for
@@ -129,6 +136,7 @@ creatures = [["spearman"], ["synthetic:brute"]]
   supersedes = ["dwelling_2"]
   requires = ["dwelling_2"]
   cost = { coin = 1000 }
+  horde = [2, false]
 
   [[town.building]]
   key = "horde_up"
