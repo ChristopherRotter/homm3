@@ -306,15 +306,19 @@ client lane's 2026-11-04 request, when online battles need them).
 
 **2a's tasks** (about half a context each; the numbers go on from part 1's T7):
 
-- **T8 The whole game's seats** (`h3-protocol`, the session core): `GameSession` takes
-  connections as the battle's `Session` does: a seat per player of the map, taken by account
-  (by token in the anonymous mode), re-taken after a disconnect with a fresh `GameSnapshot` and
-  its `GameTurn` if it may act (its record goes on while no connection holds the seat); the game
-  started when every seat is held; the host's pause; the whole game's client messages on the
-  wire (a seat's join, its commands); each seat numbers its commands, and a number the session
-  already took is answered as it was the first time, applying nothing (a resend after a
-  reconnect; ADR-0018's per-viewer sequence numbers). The battle's seat logic shared where it
-  fits (provisional). A protocol step.
+- **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
+  - **T8a Seats and connections:** `GameSession` takes connections as the battle's `Session`
+    does: a seat per player of the map, taken by account (by token in the anonymous mode),
+    re-taken after a disconnect with a fresh `GameSnapshot` and its `GameTurn` if it may act (its
+    record goes on while no connection holds the seat); the game started when every seat is
+    held; a connection's commands applied as its seat's player, anything from an unseated one
+    rejected; the whole game's client messages on the wire (a seat's join, its commands). The
+    battle's seat logic shared where it fits (provisional). A protocol step.
+  - **T8b Numbers, pause, restore:** each seat numbers its commands, and a number the session
+    already took is answered as it was the first time, applying nothing (a resend after a
+    reconnect; ADR-0018's per-viewer sequence numbers); the host's pause and resume, as a
+    battle's (entries); the restore with the seats taken, none held. A protocol step if the
+    wire changes.
 - **T9 A whole game hosted** (`h3-server`): the map offers in the configuration (a map file by
   its hash, packs and profile, difficulty; checked at start), listed in the lobby with the map's
   name, size and players; `CreateGame` from one; the game on its own thread with its journal file
