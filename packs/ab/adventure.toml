@@ -251,6 +251,27 @@ visit = "enter"
 from_above = false
 dwelling = { creatures = ["troll"], blocked = [[0, 0], [1, 0], [1, 1]], visitable = [[0, 0]] }
 
+# ADV-GAR-001 (E08 T113a, increment 12's design note sections 1 and 3; survey
+# E08-garrisons-bonuses.md sections 1.1 and 2): the vertical garrisons of class 219 by subclass, an
+# AB class (no RoE-format map holds one; ObjNames.txt row 219; Objects.txt AVCvgr for 0, avcvgarm
+# for 1, the entrance the middle of three blocked tiles in a column), which the original loads as
+# class 33 (object_class_values 0x63A6E4): ownable, entered, visitable from above (219 is in
+# object_classes_from_above 0x63AB00: entered from the left and the right column). Subclass 1 is
+# the anti-magic one. Their visits come with T114a, as base's class 33's.
+[[object_type]]
+id = "garrison_vertical"
+name = "Garrison"
+visit = "enter"
+from_above = true
+garrison = {}
+
+[[object_type]]
+id = "anti_magic_garrison_vertical"
+name = "Garrison"
+visit = "enter"
+from_above = true
+garrison = { anti_magic = true }
+
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): Conflux's random-dwelling table,
 # derived as base's (random_dwellings_resolve 0x502B60 steps 3 and 4; town_creatures
 # 0x6747B4[8 x 14 + level], then the last class-17 subclass dwelling_creatures 0x63D570 lists the

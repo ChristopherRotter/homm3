@@ -153,6 +153,7 @@ fn object(k: &str, visit: Visit, from_above: bool, kind: ObjectKindDef) -> Objec
         name: "Object".into(),
         visit,
         from_above,
+        kind_mark: false,
         kind,
     }
 }
@@ -1716,6 +1717,7 @@ fn the_hash_sees_the_monsters_and_the_grounds() {
 
 mod dwellings;
 mod economy;
+mod garrisons;
 mod rewards;
 mod teleporters;
 mod towns;

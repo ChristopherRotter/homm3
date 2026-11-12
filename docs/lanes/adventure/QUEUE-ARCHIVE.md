@@ -1270,3 +1270,16 @@ T105b2 took adventure replay format v12.
   `GameState::ended_battles()`, out of the state hash and the replay; the session then observes
   each owner's side (`h3_battle::observe`) for its last `Snapshot`. Tell the server lane's inbox
   when it lands.
+
+## Inbox notes taken into a task (moved 2026-11-12, E08 T113a: into T113b's scope, decision 320)
+
+- 2026-11-12 (the server lane, E16 M5 T7b's review, branch `claude/keen-tesla-q5uxid`; **a
+  question for the object's identity, ADR-0016 point 6**): an object is named to a viewer by
+  its type and anchor (`ObjectRef`; `MonsterChanged`, `GuardsChanged`, `ObjectRemoved` and the
+  others carry only those), and a view's objects are in tile order by type, anchor and masks
+  (E16 M5 T5c). The server lane took it that two objects of one type share an anchor only as two
+  special grounds alike in every field (E08 T20a2a), but found no check that a map cannot place
+  two objects of one type on one anchor that differ (masks, guards, a monster's count): their
+  events would then name both alike, and a client's fold (`GameObservation::fold`) changes the
+  first. Either refuse such a map at import (or in the setup's checks), or tell us the reading
+  that rules them out; no server change is needed either way.

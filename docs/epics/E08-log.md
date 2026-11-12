@@ -15726,3 +15726,71 @@ code run, 2baf95b's, green on CI). Docs and a doc comment: nothing staged, no bu
   line; the queue (T112 out, T113 in).
 
 **Versions:** none moved. T113 (round 5, its cut at its start) next.
+
+### Increment 12, round 5: T113a, the kinds, the packs and the check against the original data (2026-11-12, `adventure/e08-t113a`, `cross-lane`)
+
+**The cut** (decision 319; asked at the start, `AskUserQuestion`, after the measure: T113a about
+1.5 to 2 times T103a's #784, T113b 1 to 1.5 times T103b's #787): T113a alone in this session, one
+pull request, `cross-lane` for the AI lane's two bots tables (as decision 283); T113b next, with the
+server lane's anchor question (decision 320). **Baseline:** `master` a396c3f (#873, the town lane's
+T25a; CI's fingerprint, so the setup ran the light gates only). The original data staged from the
+user's repo folder (the four LODs, both executables, `maps.tar`, `extracted.tar`), the
+`extracted/` tables copied by hand after the setup (`cp -rn`; the setup copies `H3bitmap` only).
+
+- **The kinds** (`h3-adventure`'s `ruleset/objects.rs`; design §1, §2): `ObjectKind::Garrison {
+  anti_magic }` (ownable, so entered by the part's rule), `Bonus { mark, days, points, drain }`
+  (`days` seven (morale, luck) pairs, `BONUS_DAYS`, exported), `FountainOfFortune { mark, values
+  }`, `MagicWell`, `MagicSpring`, `Stables { points, from, to }`, `Sirens { mark, keep }`, their
+  `Def`s; hash tags 37 to 43. Checks: a bonus not both `points` and `drain`; a part whose week has
+  more than seven days refused when it holds a bonus (`check_object_types` takes the calendar's
+  week); the Fountain's values at least one, distinct, none 0; the Stables' points from 1 and its
+  two creatures distinct, neither a war machine; the Sirens' numerator at most the denominator
+  (from 1). No `effect` for the seven until T114a and T115b: a step onto one is refused (`Visit`)
+  and the reach ends before it. *Agent's calls:* the Well's and the Stables' day and week marks no
+  field (the kind names the lifetime, the type is the mark: decision 307); the marks any `u8`.
+- **The kind mark** (design §3): `ObjectType::kind_mark` and `ObjectTypeDef::kind_mark`, hashed
+  after `from_above` for every type. **Adventure ruleset part v20.**
+- **The pack syntax** (`h3-pack-adventure`): `garrison = { anti_magic }`, `bonus = { mark, morale,
+  luck, points, drain }` or `{ mark, days = [[m, l] × 7], points, drain }` (an untagged pair of
+  tables, so both together is a syntax error, as six days are), `fountain_of_fortune = { mark,
+  values }`, `magic_well = {}`, `magic_spring = {}`, `stables = { points, from, to }`, `sirens = {
+  mark, keep = [n, d] }`, `kind_mark = true` on the type (false if left out); in the format's doc
+  block.
+- **The packs** (design §3): `base` the garrisons `garrison` (33.0) and `anti_magic_garrison`
+  (33.1) and the fifteen (`buoy` … `watering_hole`) after the Whirlpool, by class, the marks 2 to 13
+  in the original's bit order, the amounts the handlers' immediates; `ab` `garrison_vertical` and
+  `anti_magic_garrison_vertical` (219.0, 219.1) after its dwellings; `sod` none. The names
+  `ObjNames.txt`'s rows (all four garrisons "Garrison"). `kind_mark` on twelve of the fifteen and
+  increment 7's fourteen (26). Each with its sources in the pack's comments. The synthetic pack
+  unchanged (no test needs it yet).
+- **The check against the original data** (`h3-pack-adventure`'s `original_data`, check 6): each
+  subclass of the seventeen classes SoD's `Objects.txt` lists (19), listed by AB's too, has its one
+  type of its kind (a garrison's flag by subclass), `ObjNames.txt`'s trimmed name (rows 11 and 14
+  end in a tab), the class lists' visit and from above, the Stables' points `movement.txt`'s
+  Stables row (400, the original's `movement_bonus_stables`); the kind-marked types exactly the
+  reading's 26. It passes on the staged installation and fails on a perturbed visit (the Sirens
+  entered), points (401) and kind mark (the Buoy's).
+- **Tests:** `h3-adventure`'s `ruleset/tests/garrisons.rs` (the kinds, no effect, ownable only the
+  garrison, the checks' texts, the week's bound, the hash with the kind mark) and
+  `state/tests/garrisons.rs` (a step onto each kind refused with nothing changed, the reach ending
+  before it); `h3-pack-adventure`'s `parses_the_garrisons_and_the_bonus_kinds` and
+  `the_packs_type_the_garrisons_and_the_bonus_visitables_of_increment_12`, the two type counts
+  moved (base + 17, ab + 2); `h3-map`'s `the_typed_classes_import_as_their_object_types` leaving the
+  seven kinds out until T113b imports them; every test's `ObjectTypeDef` literal `kind_mark: false`.
+- **Rules:** ADV-GAR-001 and ADV-BON-001 new (`implemented`; the import T113b), citing batch E12a
+  and E12b as observations.
+- **Replays and records:** the 72 adventure goldens re-recorded from their commands (a scratch
+  script, `h3 adventure run --script` with each header's options): commands and days unchanged;
+  every header's `adventure_ruleset_hash` moved (to `0x505f48af68ec73ca`), and in 21 replays the
+  checkpoints and final hash (base's new types come before ab's and sod's, as at T103a); nothing
+  else. `h3-protocol`'s `tests::game_fold`, `tests::game_session` and `h3-server`'s `tests::record`
+  pass on them. **The AI lane's** two bots tables regenerated in release: only `engine.adventure`
+  moved (decision 319).
+- **Docs:** design §1 to §3's *As built*, §17's row; decisions 319, 320 and the task's line; the
+  queue (T113 out, T113b in with the server lane's question and the reading found: the setup's
+  `SharedAnchor` already refuses typed objects of one type on one anchor but the grounds, the
+  grounds of the sea and the holes); the server lane's note archived; `OVERVIEW.md`'s part line;
+  the map client's and the AI lane's inboxes.
+
+**Versions:** adventure ruleset part v20. The game state hash, the adventure state hash, the map
+import and the replay format unchanged. T113b next.

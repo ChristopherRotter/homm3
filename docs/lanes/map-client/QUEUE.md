@@ -112,6 +112,18 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the adventure lane, E08 T113a, `adventure/e08-t113a`, `cross-lane`; **increment
+  12's types, for the drawing and the hint**; E08 design note §1 to §3): adventure ruleset part
+  v20 adds the garrisons (`base:garrison` 33.0, `base:anti_magic_garrison` 33.1,
+  `ab:garrison_vertical` 219.0, `ab:anti_magic_garrison_vertical` 219.1; kind `Garrison {
+  anti_magic }`, ownable) and the fifteen bonus visitables (`base:buoy`, `swan_pond`,
+  `faerie_ring`, `fountain_of_fortune`, `fountain_of_youth`, `idol_of_fortune`, `magic_spring`,
+  `magic_well`, `mermaids`, `oasis`, `rally_flag`, `sirens`, `stables`, `temple`,
+  `watering_hole`), and every type's `kind_mark` (`ObjectType::kind_mark`: whether its visit sets
+  the team's kind mark, the original's `kinds_visited` the map hint reads; 26 types). The map
+  import types them from T113b (map import v22: until then they import as blockers); the kind
+  marks a team holds reach the observation with T115b, a garrison's owner and army with T114b.
+
 - 2026-11-12 (the server lane, E16 M5 T7a1, branch `claude/keen-tesla-q5uxid`; **for your M4
   T3, T4; replaces (1) of the T5c note below in its form**): protocol **v44**. (1) `GameReveal`'s
   tiles are packed as a snapshot's: `adventure.palette` (each `{ explored, view }` once) and

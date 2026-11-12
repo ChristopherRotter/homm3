@@ -51,6 +51,11 @@ fix one Sirens mark kept through battles (308); the cut and every other agent's 
   removable flag) is the map's (§2 of this note's part B), its owner the ownable objects' block.
 - The battle background's ownable classes (`h3_map`'s `codes::scenery`, GAM-BAT-011) gain **219**,
   which the original makes 33 (survey §9.2's gap), as 220 joined for the abandoned mine.
+- *As built* (T113a, `adventure/e08-t113a`; decision 319): `ObjectKind::Garrison { anti_magic }`
+  (hash tag 37), ownable (`ObjectKind::ownable`), so entered by the part's rule; no `effect` until
+  T114a (a step onto its entrance refused, `Visit`; the reach ends before it). The pack table
+  `garrison = { anti_magic = true }` (`false` if left out). 219 in `codes::scenery` moves to T113b
+  with the import (the queue's entry had put it in T113a; §19's table has it in T113b).
 
 ###### 2. The bonus kinds (ADV-BON-001; survey §10.2)
 
@@ -97,6 +102,18 @@ the Sirens, the Buoy and the Mermaids from the neighbouring water.
 - *Agent's call:* the values (+800, +400, 0.7, the Fountain's four) are the kinds' parameters, not
   constants in code; the original holds them as immediates (§10.2's last paragraph) but a pack may
   change them, as the Whirlpool's divisor (increment 11's note §1).
+- *As built* (T113a): `ObjectKind::{Bonus { mark, days, points, drain }, FountainOfFortune { mark,
+  values }, MagicWell, MagicSpring, Stables { points, from, to }, Sirens { mark, keep }}` (hash tags
+  38 to 43), none with an `effect` until T115b. `days` is `[(morale, luck); BONUS_DAYS]` (7, day 1
+  first); the pack writes `bonus = { mark, morale, luck, points, drain }` (one pair for every day)
+  or `bonus = { mark, days = [[m, l], …], points, drain }` (seven pairs). *Agent's calls:* the Magic
+  Well's and the Stables' `day_mark` and `week_mark` are no field (their kind names the lifetime,
+  the type is the mark, part C §12.4, decision 307); the Sirens' `keep` a pair (7, 10); checks: a
+  bonus not both `points` and `drain`, a part whose week has more days than seven refused (the
+  synthetic pack's five-day week passes), the Fountain's values as written, the Stables' points
+  from 1 and two distinct creatures not war machines, the Sirens' numerator at most the
+  denominator (from 1). The marks any `u8` (no bound: `BattleBonuses::MARKS` stays the Tomb's and
+  the Pyramid's until T115a moves the bonuses).
 
 ###### 3. The packs and the kind marks' list
 
@@ -115,6 +132,17 @@ the Sirens, the Buoy and the Mermaids from the neighbouring water.
   built (not in increment 12). *Agent's call:* the flag on the type (each original kind is one
   class here, one type each); a second type of one class would share its class's mark by its
   own entry, which no pack has.
+- *As built* (T113a): `ObjectType::kind_mark` and `ObjectTypeDef::kind_mark` (the pack's
+  `kind_mark = true` beside `from_above`, `false` if left out; hashed after `from_above` for every
+  type); base's 17 types after the Whirlpool (2 garrisons, the fifteen by class), ab's 2 after its
+  dwellings (`garrison_vertical`, `anti_magic_garrison_vertical`), all four garrisons named
+  "Garrison" (ObjNames.txt's rows 33 and 219); 26 types with the flag. The check against the
+  original data (`h3-pack-adventure`'s `original_data`, check 6): each subclass SoD's `Objects.txt`
+  lists for the seventeen classes, listed by AB's too, has its one type (its kind by class, a
+  garrison's flag by subclass), `ObjNames.txt`'s name (trimmed: rows 11 and 14 end in a tab),
+  the class lists' visit and from above, the Stables' points `movement.txt`'s Stables row (400);
+  the kind-marked types exactly the reading's 26. It passes on the staged installation (19 types)
+  and fails on a perturbed visit, points or kind mark.
 
 ##### Part B — the map (`h3-map`, `h3-adventure`)
 
@@ -494,7 +522,7 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 
 | Version | From | To | By |
 |---|---|---|---|
-| adventure ruleset part | v19 | **v20** | T113a: the six bonus kinds, `garrison`, `kind_mark` |
+| adventure ruleset part | v19 | **v20** | T113a: the six bonus kinds, `garrison`, `kind_mark` (done) |
 | map import | v21 | **v22** | T113b: the seventeen classes, the garrison's body |
 | adventure state hash | v21 | **v22** | T114a, T115a, T115b: the heroes' bonuses and timed marks, the fortunes, the springs, the kind marks |
 | game state hash | v27 | **v28** | T114a (`Exchange`, `Rest::Exchange`), T115a (the details lose the bonuses) |

@@ -163,6 +163,21 @@
 //! # monolith = { channel = 0, way = "entrance" } # or "exit", "two_way"; a channel 0-255
 //! # subterranean_gate = {}         # no parameters
 //! # whirlpool = { divisor = 2 }    # from 2: the weakest stack's count divided by it
+//! # E08 T113a, increment 12's kinds (ADV-GAR-001, ADV-BON-001):
+//! # garrison = { anti_magic = true } # ownable, visit = "enter"; anti_magic false if left out
+//! # bonus = { mark = 2, morale = 1 } # a once-mark (any number; kinds of one mark share it), the
+//! #                                # morale and luck of every day (0 if left out), or seven
+//! #                                # [morale, luck] pairs by the day: days = [[0, 1], [1, 0], …]
+//! #                                # (day 1 first); points = 400 added to the points left and the
+//! #                                # day's maximum, or drain = true (the points left 0), not both
+//! # fountain_of_fortune = { mark = 5, values = [-1, 1, 2, 3] } # the luck drawn among them:
+//! #                                # distinct, none 0
+//! # magic_well = {}                # also magic_spring = {}: no parameters
+//! # stables = { points = 400, from = "cavalier", to = "champion" } # points from 1; two
+//! #                                # distinct core creatures, neither a war machine
+//! # sirens = { mark = 13, keep = [7, 10] } # the part of a count kept, numerator <= denominator
+//! # kind_mark = true               # on the type, beside `from_above` (false if left out): its
+//! #                                # visit sets the visitor's team's kind mark (ADV-BON-009)
 //!
 //! [[random_dwelling]]              # E08 T93a (ADV-DWL-005): one table per faction in the part;
 //! faction = "castle"               # a core faction; the `dwelling` types a random dwelling of
@@ -434,6 +449,8 @@ struct ObjectTypeDto {
     name: String,
     visit: VisitDto,
     from_above: bool,
+    #[serde(default)]
+    kind_mark: bool,
     pickup: Option<PickupDto>,
     pickup_one_of: Option<Vec<String>>,
     pickup_paired: Option<PairedDto>,
@@ -473,6 +490,75 @@ struct ObjectTypeDto {
     monolith: Option<MonolithDto>,
     subterranean_gate: Option<EmptyDto>,
     whirlpool: Option<WhirlpoolDto>,
+    garrison: Option<GarrisonDto>,
+    bonus: Option<BonusKindDto>,
+    fountain_of_fortune: Option<FountainDto>,
+    magic_well: Option<EmptyDto>,
+    magic_spring: Option<EmptyDto>,
+    stables: Option<StablesDto>,
+    sirens: Option<SirensDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct GarrisonDto {
+    #[serde(default)]
+    anti_magic: bool,
+}
+
+/// A bonus's table: one (morale, luck) pair for every day, or seven pairs by the day.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum BonusKindDto {
+    Week(WeekBonusDto),
+    Constant(ConstantBonusDto),
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct WeekBonusDto {
+    mark: u8,
+    days: [[i8; 2]; 7],
+    #[serde(default)]
+    points: u32,
+    #[serde(default)]
+    drain: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ConstantBonusDto {
+    mark: u8,
+    #[serde(default)]
+    morale: i8,
+    #[serde(default)]
+    luck: i8,
+    #[serde(default)]
+    points: u32,
+    #[serde(default)]
+    drain: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FountainDto {
+    mark: u8,
+    values: Vec<i8>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StablesDto {
+    points: u32,
+    from: String,
+    to: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SirensDto {
+    mark: u8,
+    keep: [u32; 2],
 }
 
 #[derive(Deserialize)]
@@ -1061,6 +1147,43 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
         t.whirlpool
             .map(|w| ObjectKindDef::Whirlpool { divisor: w.divisor }),
     );
+    kinds.extend(t.garrison.map(|g| ObjectKindDef::Garrison {
+        anti_magic: g.anti_magic,
+    }));
+    kinds.extend(t.bonus.map(|b| match b {
+        BonusKindDto::Week(w) => ObjectKindDef::Bonus {
+            mark: w.mark,
+            days: w.days.map(|[morale, luck]| (morale, luck)),
+            points: w.points,
+            drain: w.drain,
+        },
+        BonusKindDto::Constant(c) => ObjectKindDef::Bonus {
+            mark: c.mark,
+            days: [(c.morale, c.luck); 7],
+            points: c.points,
+            drain: c.drain,
+        },
+    }));
+    kinds.extend(
+        t.fountain_of_fortune
+            .map(|f| ObjectKindDef::FountainOfFortune {
+                mark: f.mark,
+                values: f.values,
+            }),
+    );
+    kinds.extend(t.magic_well.map(|_| ObjectKindDef::MagicWell));
+    kinds.extend(t.magic_spring.map(|_| ObjectKindDef::MagicSpring));
+    if let Some(st) = t.stables {
+        kinds.push(ObjectKindDef::Stables {
+            points: st.points,
+            from: reference(pack, &st.from)?,
+            to: reference(pack, &st.to)?,
+        });
+    }
+    kinds.extend(t.sirens.map(|s| ObjectKindDef::Sirens {
+        mark: s.mark,
+        keep: (s.keep[0], s.keep[1]),
+    }));
     let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
         .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
     Ok(ObjectTypeDef {
@@ -1071,6 +1194,7 @@ fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventureP
             VisitDto::Neighbour => Visit::Neighbour,
         },
         from_above: t.from_above,
+        kind_mark: t.kind_mark,
         kind,
     })
 }

@@ -54,6 +54,7 @@ fn rules(one_in: u16) -> Rules {
                 name: "Object".into(),
                 visit: Visit::Enter,
                 from_above: false,
+                kind_mark: false,
                 kind,
             };
             part.object_types.extend([

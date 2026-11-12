@@ -127,6 +127,7 @@ pub(super) fn rules_with(
                 name: "Object".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
+                kind_mark: false,
                 kind,
             };
             let random = |classes: &[ArtifactClass]| ObjectKindDef::Artifact {

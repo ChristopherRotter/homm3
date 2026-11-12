@@ -67,6 +67,7 @@ pub(super) fn teleporter_rules() -> Rules {
                 name: "Object".into(),
                 visit: Visit::Enter,
                 from_above,
+                kind_mark: false,
                 kind,
             };
             part.object_types.extend([

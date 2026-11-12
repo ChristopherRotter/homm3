@@ -32,11 +32,11 @@ mod objects;
 mod rewards;
 mod starting;
 
-pub(crate) use objects::{Effect, MAX_DWELLING_CREATURES};
 pub use objects::{
-    KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, MonolithWay, ObjectKind, ObjectKindDef, ObjectType,
-    ObjectTypeDef, ObjectTypeId, Pickup, PickupDef, Visit,
+    BONUS_DAYS, KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, MonolithWay, ObjectKind, ObjectKindDef,
+    ObjectType, ObjectTypeDef, ObjectTypeId, Pickup, PickupDef, Visit,
 };
+pub(crate) use objects::{Effect, MAX_DWELLING_CREATURES};
 use objects::{
     ObjectTables, Scope, check_object_types, compile_object_types, compile_random_dwelling,
     derive_dwelling_guards, random_monsters,
@@ -882,6 +882,7 @@ impl AdventureRuleset {
             &tables.not_random_monsters,
             params.army_slots(),
             params.max_stack_count(),
+            params.calendar().week_days.get(),
         )?;
         let starting_resources = tables
             .starting_resources

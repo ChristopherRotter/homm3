@@ -453,7 +453,9 @@ fn the_typed_classes_import_as_their_object_types() {
     }
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
     // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
-    // (`dwellings.rs`; since E08 T103b increment 11's teleporters are among the cases).
+    // (`dwellings.rs`; since E08 T103b increment 11's teleporters are among the cases), and
+    // increment 12's garrisons and bonus visitables (E08 T113a's nineteen), which the import types
+    // from T113b.
     let typed = part
         .object_types()
         .iter()
@@ -463,11 +465,18 @@ fn the_typed_classes_import_as_their_object_types() {
                 h3_adventure::ObjectKind::Dwelling { .. }
                     | h3_adventure::ObjectKind::RandomDwelling
                     | h3_adventure::ObjectKind::RefugeeCamp { .. }
+                    | h3_adventure::ObjectKind::Garrison { .. }
+                    | h3_adventure::ObjectKind::Bonus { .. }
+                    | h3_adventure::ObjectKind::FountainOfFortune { .. }
+                    | h3_adventure::ObjectKind::MagicWell
+                    | h3_adventure::ObjectKind::MagicSpring
+                    | h3_adventure::ObjectKind::Stables { .. }
+                    | h3_adventure::ObjectKind::Sirens { .. }
             )
         })
         .count();
     assert_eq!(cases.len(), typed);
-    assert_eq!(part.object_types().len() - typed, 82 + 2);
+    assert_eq!(part.object_types().len() - typed, 82 + 2 + 19);
     let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
     assert_eq!(
         (town.map.objects[0].owner, &town.map.objects[0].holds),

@@ -49,6 +49,7 @@ pub(super) fn rules_edited(
     let mut part = adventure_pack(vec![88, 25], 2);
     part.object_types.push(ObjectTypeDef {
         from_above: false,
+        kind_mark: false,
         ..entered(
             "t:hut",
             ObjectKindDef::Dwelling {

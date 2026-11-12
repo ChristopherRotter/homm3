@@ -36,6 +36,10 @@ pub(crate) const MAX_DWELLING_CREATURES: usize = 4;
 /// §6: eight tents' colours, VCMI 1.7.5 `config/objects/moddables.json`); a key is one of them.
 pub const KEY_COLOURS: u8 = 8;
 
+/// The days a bonus names its morale and luck for (E08 T113a, increment 12's design note §2): the
+/// original's week (`date` +0x1F63E, 1 to 7); a part's week has no more.
+pub const BONUS_DAYS: usize = 7;
+
 /// The largest amount of a pickup before its type's multiplier: a map's fixed amount and a random
 /// amount's bounds. The original keeps a pile's amount in the low 19 bits of its tile's word (the
 /// setup tests `& 0x7FFFF`, 0x4C1AE4; survey `E08-objects.md` §1); the shipped maps' largest is
@@ -334,6 +338,74 @@ pub enum ObjectKind {
         /// least one (the original's 2); at least 2.
         divisor: u32,
     },
+    /// A garrison (E08 T113a, increment 12's design note §1; ADV-GAR-001, the original's classes
+    /// 33 and 219 by subclass): ownable, entered; its army, its removable flag and its owner the
+    /// map's. Its visit (the exchange, the battle, the capture: ADV-GAR-002, -003) comes with
+    /// T114a; until then a step onto its entrance is refused as any unbuilt visit's.
+    Garrison {
+        /// Whether a battle on its entrance is fought without magic (the original's subclass 1;
+        /// ADV-GAR-005).
+        anti_magic: bool,
+    },
+    /// A bonus visitable of the ten whose gain is a battle bonus and movement (E08 T113a,
+    /// increment 12's design note §2; ADV-BON-001: the Buoy, the Swan Pond, the Faerie Ring, the
+    /// Fountain of Youth, the Idol of Fortune, the Mermaids, the Oasis, the Rally Flag, the Temple,
+    /// the Watering Hole): once until the hero's next battle, under its mark, the day's morale and
+    /// luck, then its movement. Its visit comes with T115b (ADV-BON-002, -004).
+    Bonus {
+        /// The battle bonus's once-mark (part C §12.2: the original's bit order from 2; any
+        /// number, kinds of one mark sharing it).
+        mark: u8,
+        /// The morale and the luck it gives, by the day of the week from 1 (the original's date
+        /// +0x1F63E), each pair (morale, luck).
+        days: [(i8, i8); BONUS_DAYS],
+        /// The movement added to the points left and to the day's maximum (0 none).
+        points: u32,
+        /// Whether the points left are set to 0, the maximum kept (the Swan Pond); never with
+        /// `points`.
+        drain: bool,
+    },
+    /// A Fountain of Fortune (E08 T113a, increment 12's design note §2; ADV-BON-001, the
+    /// original's class 30): once until the hero's next battle, under its mark, the luck of the
+    /// fountain's value, drawn among `values` with equal chances when the game is built and at
+    /// each week's start (ADV-BON-003, T115b).
+    FountainOfFortune {
+        /// The once-mark.
+        mark: u8,
+        /// The values a draw picks among, in the pack's order: at least one, distinct, none 0.
+        values: Vec<i8>,
+    },
+    /// A Magic Well (E08 T113a, increment 12's design note §2; ADV-BON-001, the original's class
+    /// 49): the spell points to the hero's maximum, once a day per hero for every Well of its
+    /// type: its day mark is the type (part C §12.4; ADV-BON-006, T115b).
+    MagicWell,
+    /// A Magic Spring (E08 T113a, increment 12's design note §2; ADV-BON-001, the original's class
+    /// 48): the spell points to twice the hero's maximum, per entrance, each entrance refilled once
+    /// a week (D-62; ADV-BON-007, T115b).
+    MagicSpring,
+    /// The Stables (E08 T113a, increment 12's design note §2; ADV-BON-001, the original's class
+    /// 94): at a week's first visit `points` to the points left and the day's maximum and to every
+    /// day's land points until the week ends (its week mark is the type, part C §12.4); at every
+    /// visit every slot of `from` made `to` when the army holds `from` (D-63; ADV-BON-005, T115b).
+    Stables {
+        /// The movement of the week's first visit and of each day's land points until the week
+        /// ends; at least 1.
+        points: u32,
+        /// The creature upgraded (the original's Cavaliers).
+        from: CreatureTypeId,
+        /// What it becomes (the original's Champions), not `from`.
+        to: CreatureTypeId,
+    },
+    /// The Sirens (E08 T113a, increment 12's design note §2, §9; ADV-BON-001, the original's
+    /// class 92): under its mark, each stack above one creature keeps `keep` of its count, the
+    /// lost hit points the visitor's experience (ADV-BON-008, T115b).
+    Sirens {
+        /// The once-mark; it gives no battle bonus.
+        mark: u8,
+        /// The part of a stack's count kept, as (numerator, denominator): the denominator from 1,
+        /// the numerator at most it (the original's 0.7 as 7 / 10, design note §9).
+        keep: (u32, u32),
+    },
 }
 
 /// A monolith's way (E08 T103a, increment 11's design note §1; ADV-TEL-001): which of the
@@ -494,12 +566,21 @@ impl ObjectKind {
             // found no dwelling for stays random and is never visited. E09 T8a1: the town is
             // typed; its step came with E09 T8a2. E08 T103a: increment 11's three kinds are
             // typed; the monoliths' and the gates' jump came with T105a1 (increment 11's design
-            // note §7), the Whirlpool's with T105a2 (its loss first, note §8).
+            // note §7), the Whirlpool's with T105a2 (its loss first, note §8). E08 T113a:
+            // increment 12's seven kinds are typed; the garrisons' visits come with T114a, the
+            // bonus visitables' with T115b (increment 12's design note §19).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling => None,
+            | Self::RandomDwelling
+            | Self::Garrison { .. }
+            | Self::Bonus { .. }
+            | Self::FountainOfFortune { .. }
+            | Self::MagicWell
+            | Self::MagicSpring
+            | Self::Stables { .. }
+            | Self::Sirens { .. } => None,
         }
     }
 
@@ -514,7 +595,8 @@ impl ObjectKind {
 
     /// Whether a player may own an object of this kind (E08 T83a; ADR-0016 point 1): a mine, an
     /// abandoned mine, a Lighthouse, a Shipyard; since E08 T93a a dwelling and a random dwelling
-    /// (not a Refugee Camp, increment 10's design note §1); since E09 T8a1 a town.
+    /// (not a Refugee Camp, increment 10's design note §1); since E09 T8a1 a town; since E08
+    /// T113a a garrison (increment 12's design note §1).
     pub const fn ownable(&self) -> bool {
         matches!(
             self,
@@ -525,6 +607,7 @@ impl ObjectKind {
                 | Self::Dwelling { .. }
                 | Self::RandomDwelling
                 | Self::Town { .. }
+                | Self::Garrison { .. }
         )
     }
 
@@ -580,6 +663,10 @@ pub struct ObjectType {
     /// Whether it may be visited from the three tiles above its visitable tile; when not, a
     /// walking hero also leaves that tile toward none of them (ADV-OBJ-004).
     pub from_above: bool,
+    /// Whether its visit sets the visitor's team's kind mark (E08 T113a, increment 12's design
+    /// note §3; ADV-BON-009): the original's `kinds_visited` (game +0x4E344 + k), which the map
+    /// hint reads; the visits set it from T115b.
+    pub kind_mark: bool,
     /// Its behaviour.
     pub kind: ObjectKind,
 }
@@ -821,6 +908,51 @@ pub enum ObjectKindDef {
         /// The divisor.
         divisor: u32,
     },
+    /// [`ObjectKind::Garrison`] (E08 T113a): its type entered, as every ownable one's.
+    Garrison {
+        /// Whether it is an anti-magic garrison.
+        anti_magic: bool,
+    },
+    /// [`ObjectKind::Bonus`] (E08 T113a): `points` and `drain` not both.
+    Bonus {
+        /// The once-mark.
+        mark: u8,
+        /// The (morale, luck) by the day of the week from 1.
+        days: [(i8, i8); BONUS_DAYS],
+        /// The movement added.
+        points: u32,
+        /// Whether the points left are set to 0.
+        drain: bool,
+    },
+    /// [`ObjectKind::FountainOfFortune`] (E08 T113a): values distinct, at least one, none 0.
+    FountainOfFortune {
+        /// The once-mark.
+        mark: u8,
+        /// The values.
+        values: Vec<i8>,
+    },
+    /// [`ObjectKind::MagicWell`] (E08 T113a).
+    MagicWell,
+    /// [`ObjectKind::MagicSpring`] (E08 T113a).
+    MagicSpring,
+    /// [`ObjectKind::Stables`] (E08 T113a): points from 1; two distinct core creatures, neither
+    /// a war machine.
+    Stables {
+        /// The week's movement.
+        points: u32,
+        /// The creature upgraded.
+        from: ContentKey,
+        /// What it becomes.
+        to: ContentKey,
+    },
+    /// [`ObjectKind::Sirens`] (E08 T113a): the keep's denominator from 1, its numerator at most
+    /// the denominator.
+    Sirens {
+        /// The once-mark.
+        mark: u8,
+        /// The part kept, (numerator, denominator).
+        keep: (u32, u32),
+    },
 }
 
 /// An object type as a pack defines it.
@@ -834,6 +966,8 @@ pub struct ObjectTypeDef {
     pub visit: Visit,
     /// Whether it may be visited from above.
     pub from_above: bool,
+    /// Whether its visit sets the team's kind mark (E08 T113a).
+    pub kind_mark: bool,
     /// Its behaviour.
     pub kind: ObjectKindDef,
 }
@@ -1006,6 +1140,7 @@ pub(super) fn compile_object_types(
             name: def.name.clone(),
             visit: def.visit,
             from_above: def.from_above,
+            kind_mark: def.kind_mark,
             kind,
         });
     }
@@ -1017,7 +1152,8 @@ pub(super) fn compile_object_types(
 /// creature leaves its first a slot of the army's (E08 T61a); since E08 T83a that no two mines
 /// produce one resource, that with an abandoned mine every core resource has its mine (its daily
 /// amount, [`super::AdventureRuleset::mine_daily`]) and that its guards fit a stack; since E08
-/// T93a that a Refugee Camp has a creature to draw, as a random monster.
+/// T93a that a Refugee Camp has a creature to draw, as a random monster; since E08 T113a that a
+/// week has no day a bonus's days do not name (its seven, increment 12's design note §2).
 // rule: ADV-MIN-001
 pub(super) fn check_object_types(
     core: &Ruleset,
@@ -1025,11 +1161,20 @@ pub(super) fn check_object_types(
     excluded: &BTreeSet<CreatureTypeId>,
     army_slots: u8,
     max_stack_count: u32,
+    week_days: u8,
 ) -> Result<(), AdventureCompileError> {
     let invalid = |ty: &ObjectType, reason| AdventureCompileError::InvalidObjectType {
         key: String::from(ty.key.as_str()),
         reason,
     };
+    // rule: ADV-BON-001
+    if let Some(ty) = types
+        .iter()
+        .find(|ty| matches!(ty.kind, ObjectKind::Bonus { .. }))
+        && usize::from(week_days) > BONUS_DAYS
+    {
+        return Err(invalid(ty, "a bonus's days are fewer than the week's"));
+    }
     let mut mines = BTreeSet::new();
     for ty in types {
         if let ObjectKind::Mine { resource, .. } = &ty.kind
@@ -1521,6 +1666,72 @@ fn compile_kind(
                 Err("a whirlpool's divisor is below 2")
             }
         }
+        // rule: ADV-GAR-001
+        ObjectKindDef::Garrison { anti_magic } => Ok(ObjectKind::Garrison {
+            anti_magic: *anti_magic,
+        }),
+        // rule: ADV-BON-001
+        ObjectKindDef::Bonus {
+            mark,
+            days,
+            points,
+            drain,
+        } => {
+            if *drain && *points > 0 {
+                Err("a bonus both adds points and drains them")
+            } else {
+                Ok(ObjectKind::Bonus {
+                    mark: *mark,
+                    days: *days,
+                    points: *points,
+                    drain: *drain,
+                })
+            }
+        }
+        ObjectKindDef::FountainOfFortune { mark, values } => {
+            let distinct = values.iter().collect::<BTreeSet<_>>().len() == values.len();
+            if values.is_empty() {
+                Err("a fountain of fortune has no values")
+            } else if values.contains(&0) {
+                Err("a fountain of fortune's value is 0")
+            } else if !distinct {
+                Err("a fountain of fortune names a value twice")
+            } else {
+                Ok(ObjectKind::FountainOfFortune {
+                    mark: *mark,
+                    values: values.clone(),
+                })
+            }
+        }
+        ObjectKindDef::MagicWell => Ok(ObjectKind::MagicWell),
+        ObjectKindDef::MagicSpring => Ok(ObjectKind::MagicSpring),
+        ObjectKindDef::Stables { points, from, to } => {
+            let (from, to) = (scope.creature(from)?, scope.creature(to)?);
+            if *points == 0 {
+                Err("a Stables' points are 0")
+            } else if from == to {
+                Err("a Stables upgrades a creature to itself")
+            } else if scope.war_machine(from) || scope.war_machine(to) {
+                Err("a Stables' creature is a war machine")
+            } else {
+                Ok(ObjectKind::Stables {
+                    points: *points,
+                    from,
+                    to,
+                })
+            }
+        }
+        ObjectKindDef::Sirens { mark, keep } => {
+            let (numerator, denominator) = *keep;
+            if denominator == 0 || numerator > denominator {
+                Err("a Sirens' keep is not numerator <= denominator, denominator from 1")
+            } else {
+                Ok(ObjectKind::Sirens {
+                    mark: *mark,
+                    keep: *keep,
+                })
+            }
+        }
     })
 }
 
@@ -1616,14 +1827,16 @@ fn check_key(key: u8) -> Result<u8, &'static str> {
 }
 
 impl CanonicalHash for ObjectType {
-    /// Key, name, visit (0 enter, 1 neighbour), from above, then the kind: its tag (0 pickup,
+    /// Key, name, visit (0 enter, 1 neighbour), from above, since part v20 the kind mark, then
+    /// the kind: its tag (0 pickup,
     /// 1 reveal terrain, 2 reveal area, 3 key tent, 4 key guard, 5 key gate; since part v7 6
     /// monster, 7 ground; since part v12 8 chest, 9 artifact, 10 scroll, 11 gift, 12 Shrine,
     /// 13 Witch Hut, 14 Scholar, 15 University, 16 find, 17 Pandora's Box, 18 event, 19 Pyramid;
     /// since part v13 20 message, 21 ground of the sea, 22 hole; since part v14 23 mine, 24
     /// abandoned mine, 25 Lighthouse, 26 Shipyard, 27 Windmill, 28 Water Wheel, 29 Garden; since
     /// part v16 30 dwelling, 31 random dwelling, 32 Refugee Camp; since part v17 33 town; since
-    /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool) and
+    /// part v18 34 monolith, 35 Subterranean Gate, 36 Whirlpool; since part v20 37 garrison, 38
+    /// bonus, 39 Fountain of Fortune, 40 Magic Well, 41 Magic Spring, 42 Stables, 43 Sirens) and
     /// parameters (a pickup's own tag, 0 resource, 1 one of, 2 paired, then its fields in order; a
     /// monster's levels as 0 for none, else 1, low, high; a ground's battlefield key, since part
     /// v10 whether it takes the native price away; an artifact's classes as 0 for none, else 1
@@ -1633,7 +1846,10 @@ impl CanonicalHash for ObjectType {
     /// and row; since part v19 a town's boat offsets as a Shipyard's; a Garden's gifts as a price; a dwelling's creatures as length and handles, its
     /// blocked and visitable masks' bits, its guards as length and each creature and count, its
     /// shift; a Refugee Camp's low and high level; a monolith's channel and way as 0 entrance,
-    /// 1 exit, 2 two-way; a Whirlpool's divisor; the others' fields in order).
+    /// 1 exit, 2 two-way; a Whirlpool's divisor; a garrison's anti-magic flag; a bonus's mark, its
+    /// seven days' morale and luck, its points and drain; a Fountain of Fortune's mark and values
+    /// as length and each; a Stables' points and creatures; a Sirens' mark and keep as numerator
+    /// and denominator; the others' fields in order).
     fn hash_into(&self, h: &mut StateHasher) {
         self.key.as_str().hash_into(h);
         self.name.as_str().hash_into(h);
@@ -1642,6 +1858,7 @@ impl CanonicalHash for ObjectType {
             Visit::Neighbour => 1,
         });
         h.write_u8(u8::from(self.from_above));
+        h.write_bool(self.kind_mark);
         match &self.kind {
             ObjectKind::Pickup(pickup) => {
                 h.write_u8(0);
@@ -1847,6 +2064,50 @@ impl CanonicalHash for ObjectType {
             ObjectKind::Whirlpool { divisor } => {
                 h.write_u8(36);
                 h.write_u32(*divisor);
+            }
+            ObjectKind::Garrison { anti_magic } => {
+                h.write_u8(37);
+                h.write_bool(*anti_magic);
+            }
+            ObjectKind::Bonus {
+                mark,
+                days,
+                points,
+                drain,
+            } => {
+                h.write_u8(38);
+                h.write_u8(*mark);
+                for &(morale, luck) in days {
+                    h.write_i32(i32::from(morale));
+                    h.write_i32(i32::from(luck));
+                }
+                h.write_u32(*points);
+                h.write_bool(*drain);
+            }
+            ObjectKind::FountainOfFortune { mark, values } => {
+                h.write_u8(39);
+                h.write_u8(*mark);
+                h.write_len(values.len());
+                for &value in values {
+                    h.write_i32(i32::from(value));
+                }
+            }
+            ObjectKind::MagicWell => h.write_u8(40),
+            ObjectKind::MagicSpring => h.write_u8(41),
+            ObjectKind::Stables { points, from, to } => {
+                h.write_u8(42);
+                h.write_u32(*points);
+                from.hash_into(h);
+                to.hash_into(h);
+            }
+            ObjectKind::Sirens {
+                mark,
+                keep: (numerator, denominator),
+            } => {
+                h.write_u8(43);
+                h.write_u8(*mark);
+                h.write_u32(*numerator);
+                h.write_u32(*denominator);
             }
         }
     }
