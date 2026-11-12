@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4, M6 and M5 part 1 closed** (checkpoints SRV-Q12 to SRV-Q24 and SRV-Q28, 2026-11-12; M6 is discovery: ADR-0021). Part 1 (`E16-archive.md`, done in full in `E16-log.md`): the whole game's wire mapped exhaustively, the fold with its gate over the 72 golden replays (`tests/game_fold.rs`: 36 parts, 23 exact, the rest named by `SRV-STUB-3` to `-11` and `TWN-STUB-13`), the in-process `session::game::GameSession` with journal, restore and records (format v4, cut at snapshots), the packed `GameReveal`, `h3-server record`, the size gate (`tests/game_bounds.rs`) and the mutation tests (`tests/game_mutation.rs`). **Open pull request:** T7's (T7a1 to T7b, labelled `cross-lane` for `docs/06-security.md`), from `claude/keen-tesla-q5uxid`: watch it until it merges. **Next:** M5 part 2's refinement with the user (the epic's "M5 part 2"); no task is ready until then.
+- **M1–M4, M6 and M5 part 1 closed** (checkpoints SRV-Q12 to SRV-Q24 and SRV-Q28, 2026-11-12; M6 is discovery: ADR-0021). Part 1 (`E16-archive.md`, done in full in `E16-log.md`): the whole game's wire mapped exhaustively, the fold with its gate over the 72 golden replays (`tests/game_fold.rs`: 36 parts, 23 exact, the rest named by `SRV-STUB-3` to `-11` and `TWN-STUB-13`), the in-process `session::game::GameSession` with journal, restore and records (format v4, cut at snapshots), the packed `GameReveal`, `h3-server record`, the size gate (`tests/game_bounds.rs`) and the mutation tests (`tests/game_mutation.rs`). T7's pull request merged (#874). **M5 part 2 refined** (SRV-Q29, 2026-11-12): 2a whole games over the network (T8 to T13, the epic's "M5 part 2"), 2b time and 2c spectators and long journals, refined at the previous checkpoint; the server lane builds `h3-game`'s system commands (2b) and `Viewer::Spectator` (2c) in `cross-lane` pull requests (the user's consent). **Next: T8**, the whole game's seats.
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -24,6 +24,10 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
+### 2026-11-12 — M5 part 2's refinement (SRV-Q29)
+
+Baseline: `master` d1b5147 (#874, T7, merged). No original data. Refined part 2 with the user (SRV-Q29): three increments (2a network whole games, 2b time, 2c spectators and long journals), the engine's system commands and spectator viewer the server lane's in `cross-lane` pull requests, every map player a seat in 2a; 2a's tasks T8 to T13 in the epic; the adventure and town lanes' inboxes told. Next: T8.
+
 ### 2026-11-12 — M5 T7: part 1's closure (the reveal packed, records cut at snapshots, the review, SRV-Q28)
 
 Baseline: `master` 35fc648 (#868, T5c; CI green; the setup's light gates on CI's fingerprint). No original data. The user split T7 (T7a1, T7a2, T7b; one pull request) and agreed to T7a1's three changes after the measurement: an XL map's whole reveal was 6.5 MB, 60 times its snapshot, and a bounded game record lost its snapshot. Built T7a1 (`E16-log.md`): the reveal as a palette and a rectangle per level (v44), the record cut only at snapshots with a fresh one past half its bound, the size gate over the eight XL fixtures; the map client and client lanes' inboxes. Built T7a2: the game's mutation tests (100 000 cases each, no panic), `docs/06-security.md`'s whole game. T7b: a fresh reviewer (two major, four minor; both major and two minor fixed), the closure; the user passed the checkpoint (SRV-Q28: the review list as built, next part 2's refinement). One pull request for T7.
@@ -31,7 +35,3 @@ Baseline: `master` 35fc648 (#868, T5c; CI green; the setup's light gates on CI's
 ### 2026-11-12 — M5 T5c: what each viewer newly sees, a battle's last snapshot
 
 Baseline: `master` 7349ed4 (#863, the adventure lane's T5c blockers; the setup's light gates on CI's fingerprint), `master` f32979c merged in. No original data. The user confirmed T5c's split (T5c1, T5c2, one pull request) and that an object's index goes on the wire only if the map client's draw order needs it (it does not: a seen object's file entry by type and anchor; the map client lane's inbox). Built T5c (`E16-log.md`): `GameReveal` (v43) and its fold, the objects in tile order, the gate exact on the reveal's parts; a battle's last `Snapshot` as the client lane's reader takes it (a separate message built first, dropped); the ladders test's lobby deadline 900 ms. Next: T7.
-
-### 2026-11-10 — M5 T6: a golden replay as a record
-
-Baseline: `master` ac8ae2e (#821; its CI run in progress at the start, the previous run green; the sandbox's full baseline stopped, as it built the edited tree). No original data. Reviewed the adventure lane's `Revisit` mapping (protocol v40; accepted, archived). Built T6 (`E16-log.md`): `h3-server record`, the replay checked as `h3 adventure verify` checks it and run through the session, each player's record as a file; its test over the 55 golden replays; the record's form in the map client lane's inbox. Next: T5c or T7.
