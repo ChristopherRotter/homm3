@@ -4,8 +4,9 @@ Date: 2026-11-11. Scope: E08 increment 12 (decisions 295, 296), input for T108b'
 drafts, the design note and the cut. In two parts (the user at T108a's start, decision 297):
 **T108a1** (§0 to §9: the census of all seventeen classes, the garrisons in the file and at load,
 the visit, the battle, the capture, the exchange, the passage, what a viewer sees, VCMI and the
-wiki, the garrisons' disputes and proposed rules) and **T108a2** (§10 on: the fifteen bonus
-visitables, the interfaces, batch E12's plan, the proposed ids, the checkpoint).
+wiki, the garrisons' disputes and proposed rules) and **T108a2** (§10 to §14: the fifteen bonus
+visitables, the interfaces, batch E12's plan, the proposed ids, the checkpoint). **T111** (§15,
+2026-11-12): batch E12 scored.
 Input, not rules (`README.md`): a fact becomes binding when a task writes it into the catalog with
 its sources and tests.
 
@@ -506,11 +507,13 @@ from the code, not from data: +400 for the Stables is `movement_bonus_stables` 0
   bits) to it when below and marks bit 0; a full hero is told so (79) and keeps no mark, so it may
   drink again the same day after casting. The Spring sets twice it when below; at or above it
   tells 76 and the entrance stays full.
-- **The space key** (`Revisit`, increment 11): the entered ones (the Swan Pond, the Faerie Ring,
-  the Fountain of Youth, the Magic Spring, the Mermaids, the Oasis, the Rally Flag, the Sirens, the
-  Stables, the Temple, the Watering Hole) are visited again by a hero standing on them; the four
-  blocked ones (the Buoy, the Fountain of Fortune, the Idol, the Magic Well) are visited from a
-  neighbouring tile and are never stood on.
+- **The space key** (`Revisit`, increment 11): the entered ones are visited again by a hero
+  standing on them. *Corrected by T111* (§15, batch E12; ADV-Q51, decision 317): the mode is the
+  class list's (`object_classes_not_entered` 0x63AA58), not the templates' blocked tile: the Buoy,
+  the Mermaids and the Sirens are visited from a neighbouring tile and never stood on (the Buoy
+  also from above, 0x63AB00); the twelve others are entered, the Fountain of Fortune, the Idol and
+  the Magic Well among them. (Written first from §1.2's masks: the Buoy, the Fountain of Fortune,
+  the Idol and the Well from a neighbour, the Mermaids and the Sirens entered.)
 
 ### 10.5 The Sirens
 
@@ -747,3 +750,90 @@ each as recommended. (1) D-59 to D-61 **the original**; (2) the anti-magic kinds
 to D-64 **the original**; (4) A-44 **a `fix-optional` flag** (faithful again after a battle,
 strict-fixed once per hero), A-45 always fixed (state-corrupting, no question); (5) **the kind
 marks in increment 12**, for every kind that sets one; (6) **batch E12 before the build**.
+
+## 15. Batch E12 scored (T111)
+
+Scored on 2026-11-12 (E08 T111; docs only) from the recorded runs: E12a
+`experiments/results/E08-batch-12a.md` and E12b `E08-batch-12b.md` (T110: four runs each, the
+third filled; E12a's second to fourth alike in all 74 records, E12b's third and fourth in all 144,
+the second differing in the Fountains' first-week values and two reads fixed before the third),
+played by the capture harness (`clients/capture/batches/E08-batch-12a.toml`, `-12b.toml`) in SoD
+4.0 on Easy, hot seat, and read from the game's memory. Each row against §12's prediction with
+design §18's additions and the specs' predictions (`experiments/specs/E08-batch-12a.toml`,
+`-12b.toml`: their tiles and prices; the texts by table and line).
+
+| Row | Predicted | Observed | Verdict |
+|---|---|---|---|
+| E12-1 (§7, D-59) | the path through Red's own V1, no dialog on the way (VCMI: stops at it); the exchange only at a move's end there | the path 7,3 8,3 9,3 10,3 (green); walked with no dialog, on D1 (10, 3) with 1 600 (400), V1 unchanged; onto V1 (8, 3) 1 400, the exchange (V1's Pikeman 2 above, the Archangels below); the take into slot 1 made, V1 empty after OK | **D-59 confirmed**: the original crosses its team's garrison with no visit; VCMI's stop mid-move is not the original's. An own removable garrison's exchange the army dialog's |
+| E12-2 (§3, §7, D-59) | no path beyond the empty neutral G2 (VCMI: crossed, flagged on the way); the path to it ends there; flagged, the exchange | no path to D2 (no marks); the path to G2 (19, 5), (19, 6); no battle, the exchange (upper empty); G2 Red's, empty, removable; E12-2 on (19, 6) with 1 800 | **D-59 confirmed**: VCMI's crossing of an empty garrison is not the original's |
+| E12-3 (§6, D-61) | Red's non-removable G3: the move into an empty slot only; the merge and both takes refused | (a) the Archers into G3's slot 1 made; (c) the take of G3's Pikemen and (d) of the Archers back refused, G3's stack kept selected; (b) the merge onto G3's Pikemen refused, the click selecting them; no message, no creature window; after OK G3 Pikeman 5, Archer 5, not removable; E12-3 Pikeman 10, Griffin 2 | confirmed: **D-61**'s non-removable case (the sources agree there; troops given stay) |
+| E12-4 (§4, D-60; design §14) | attacked in the anti-magic G4: no cast for either side (VCMI: allowed); attacking out of it: casts allowed; 1 759, or 1 659 if the attack's step is paid | onto G4 (9, 22) 1 759, the exchange closed unchanged. Battle 2 (Red attacking E12-4b on (9, 21)): the flag clear, both books opened, Bless cast by both (20 → 15, 10 → 5), won; E12-4 on (9, 22) with **1 659**. Battle 1 (Blue's E12-4a attacking E12-4 on (9, 22)): the flag **set**, both books refused (GENRLTXT 685), no points spent; Red's side E12-4's Archangel 10 alone, G4's Pikemen not in it; won by Red; G4 unchanged | **D-60 confirmed**: the battle's tile (the defender's) decides, also for a hero standing on the entrance; VCMI's casts are not the original's. A hero in a garrison is fought as any hero, and the attack's step is paid (GAM-BAT-004 as built) |
+| E12-5 (§2, §5; decision 314) | radius 3 about G5's entrance (30, 31) at the start (dx² + dy² ≤ 12): (30, 28), (33, 31), (32, 33) explored; (30, 27), (34, 31), (33, 33) not | exactly so; no Red hero within its radius | confirmed (ADV-OWN-001's `flag_radius` 3, ADV-FOG-002's test; the tiles at 8 and 9 in, 13 and 16 out tell radius 3 from 2 and 4, not a bound of 9 from 12; VCMI the same tiles) |
+| E12-6 (§3 to §5) | no question; one stack of 20 Pikemen, the flag clear; G6 Red's, empty, the hero on the entrance with 1 700 and 200 experience; the exchange | the path 23,20 23,21 23,22, no question, the battle at once: the defender one stack of 20 Pikemen, unowned, the flag clear, grass; won with no loss; the exchange (upper empty); G6 Red's, empty; E12-6 on (23, 22) with 1 700 and 200 experience | confirmed: the army unsplit (a neutral mine's guards are split, D-47) |
+| E12-7 (§10.5, D-64) | 90, 10, 1 keep 62, 7, 1; 310 experience; bit 20; 1 671 (VCMI: 63, 7, 1 and 300) | ADVEVENT 132; Pikeman 62, Archer 7, Griffin 1; 310 experience, level 1; bit 20 set; 1 671, visited from (46, 34), the hero never on the Sirens | **D-64 confirmed**: the double product's 62 (VCMI's 63 and 300 are not the original's); the lone Griffin kept; visited from the neighbouring water (below) |
+| E12-8 (§10.5, A-44) | bit 20 cleared by a battle; losses again: 43, 4, 1; 531 | M8 won, the battle on (46, 36); 311 experience, +0x105 0x40000 (bit 20 cleared, the boat's bit 18 kept); the Sirens again ADVEVENT 132: 43, 4, 1, 531 experience, level 1, bit 20 set, 1 130 | **A-44 confirmed** (again after a battle: `ADV-QUIRK-46`'s faithful side); 4.899… truncated to 4 |
+| E12-9 (§10.6, D-62) | each entrance refills once a week on its own (VCMI: the second refused); both again at the week | L and R full; onto L 74, 40, R full; the cast 38; onto R 74, 40, L emptied; the cast 38; onto L again 75, 38; off both emptied; day 8 both full, 38 kept through the week; the cast 36; onto R 74, 40, L full; the cast 38; onto L 74, 40, R emptied | **D-62 confirmed**: the state per entrance (VCMI's one object is not the original's); 38 above the maximum kept on days 2 to 7 (HER-MAN-002) |
+| E12-10 (§10.4, D-63; design §18) | +400 once; Champions at the revisit, no points (VCMI: Cavaliers kept); day 2's land points +400; the second hero's own visit counts for it alone | E12-10 onto ST 137, 1 719 / 1 960, bit 1; the meeting from (39, 6) 1 437; E12-10b onto ST 137, 1 619 / 1 960, bit 1; day 2 both 1 960 / 1 960, bit 1; the meeting back 1 760; E12-10 onto ST again 138, Champion 3, 1 819 / 1 960 (no points); E12-10b 138, Champion 3, 1 660 / 1 960; day 8 bit 1 clear, 1 560 / 1 560, the Champions kept | **D-63 confirmed**: the upgrade at every visit (VCMI's nothing while its bonus holds is not the original's); the week mark the hero's; the meeting's step paid (GAM-MET-001 as built) |
+| E12-11 (§10.2) | the Idol day 1 luck, day 2 morale, day 7 both; the Temple day 6 +1, day 7 +2; each battle clears all | day 1 the Idol 62, bit 4, luck 1; P1 won: bits and bytes 0; day 2 62, bit 25, morale 1; P2 0; day 6 the Temple 140, bit 8, morale 1; P3 0; day 7 the Idol 62, bits 4 and 25, morale 1, luck 1, then the Temple 140, bit 26, morale 3, luck 1; the hero screen's pictures morale +3 (frame 6), luck +1 (frame 4); the hero stood on the Idol after each visit | confirmed (VCMI and the wiki the same; GAM-BAT-014's clear as built); **the Idol entered** (below) |
+| E12-12 (§10.6) | each −1, +1, +2 or +3; unchanged on days 2 to 7; drawn again on days 8, 15, 22; the team bits 0 | week 1 +2 and +2 (runs 1 to 3: +3/+1, +2/+3, +2/+2), unchanged to day 7; day 8 +3, +3; day 15 +2, +2; day 22 +1, +3 (weeks 2 to 4 alike in all four runs); the team bits none throughout | confirmed: new only at a week's start, never 0 (the law below) |
+| E12-13 (§10.4; design §18) | +800 to both; +400 to both; the Swan Pond's points 0, the maximum kept at 3 200 (VCMI: the maximum anew); day 2 anew | O1 95, 2 659 / 2 800, bit 7, morale 1; WH 166, 2 577 / 3 200, bit 6, morale 2; SW 29, 0 / 3 200, bit 3, luck 2; day 2 2 000 / 2 000, bits 3, 6, 7 held (0xC8) | confirmed: **§10.9's open point** as the original, the day's maximum raised with the points |
+| E12-14 (§10.4) | a full hero refused, 79, no mark; refilled after a cast, 77, bit 0; another Well 78; day 2 19, bit 0 clear, 77 | W1 full ADVEVENT 79, 20, bit 0 clear; the cast 18; W1 again (Space: the hero stood on it) 77, 20, bit 0 set; the cast 18; W2 78, 18, the hero on W2 (10, 5); day 2 19, bit 0 clear; W2 (Space) 77, 20, bit 0 set | confirmed (VCMI and the wiki the same); **the Well entered** (below) |
+| E12-15 (§10.4, open point) | the boarding 1 837 × 3 000 / 2 360 = 2 335 (VCMI: / 1 560, 3 532) | O2 95, 2 219 / 2 360; the shore 1 937; boarded 2 335 / 3 000 | confirmed: **§10.9's open point** as the original, the Hat's proportion by the raised maximum |
+| E12-16 (§10.7) | before: the name and "not visited"; after: the bonus line, "visited" for the visitor, "not visited" for another hero | F2, R2, Y2 and B2 before: the name and GENRLTXT 354, no bonus line; M2's entrance (52, 37) unexplored then (no hint, the bar kept its text); B1 ADVEVENT 21, 589, morale 1 (bit 2) and M1 83, 248, luck 1 (bit 15), both from the neighbouring water; F1 49, R1 111 (731 / 2 400), Y1 57 (749 / 2 800) as predicted; after: the lines (XTRAINFO 16, 17, 13, 0, 16) with 353 for the visitor (E12-13, E12-7), 354 for E12-17 | confirmed; M2's "before" unread (the spec counted the hero on (47, 36), it fought from (46, 36)); the Faerie Ring's "16" is the harness's tie-break: XtraInfo's records 2 and 16 hold one text (compared in the user's extracted tables), so its line is record 2 as read |
+| E12-17 (`E08-rewards.md` §6.1, §6.3) | refused for want of gold, no hero mark; the kind mark set before the gold test: the bonus line over S2 | gold 0, +0x7B 0; S2 before: the name and 354; onto S1 ADVEVENT 160, no question, 1 618, attack and defense 1, gold 0, +0x7B 0; after (from (52, 23), 1 477) over S2 and S1: the name, XTRAINFO 10, 354 | confirmed: decision 302's reading (a refused visit marks the team's kind, not the hero) |
+
+**Beyond the rows:**
+- **The visit modes of the fifteen** (against §10.4's last point, design §2 and §8 and the ADR-0016
+  draft's point 4; **ADV-Q51**, decision 317). They took the mode from the templates' masks (§1.2's
+  "one tile, blocked"): the Buoy, the Fountain of Fortune, the Idol and the Magic Well visited from
+  a neighbour, the Mermaids and the Sirens entered. The batch: the hero **stood on** the Wells
+  (E12-14: on W1 after its first visit, on W2 after the walk, Space for each visit again) and the
+  Idol (E12-11: on (48, 5) after each visit), while the Sirens (E12-7, E12-8), the Buoy and the
+  Mermaids (E12-16) were visited from the neighbouring water, the hero never on them and the step
+  to them paid (1 671, 589, 248). That is the original's class list, read at T11a
+  (`object_classes_not_entered` 0x63AA58, `E08-objects.md` §2.1; ADV-OBJ-003's source): of the
+  fifteen it holds the Buoy (11), the Mermaids (52) and the Sirens (92) alone, so the twelve
+  others are entered, the Fountain of Fortune (30) by the list (no row visits one); and
+  `object_classes_from_above` 0x63AB00 holds the Buoy alone of them, so a Buoy is visited from its
+  eight neighbours, the Mermaids and the Sirens not from the three above, and no entered one is
+  entered from above. A template's blocked visitable tile says nothing of the mode (ADV-Q39 was the
+  same misreading for the weekly objects). VCMI 1.7.5's configs mark only the Buoy
+  `blockedVisitable` (`config/objects/rewardableBonusing.json`; none in `magicWell.json` or
+  `generic.json`'s Sirens), so it enters the Mermaids and the Sirens. `Revisit` serves the twelve
+  entered (the Wells and the Idol as observed), not the Mermaids or the Sirens.
+- **The steps paid** (E12-4's 1 659, E12-10's 1 437 and 1 760, E12-16's 589 and 248): an attack on a
+  hero and a meeting pay the step toward the other hero as a neighbour's visit, the hero staying
+  (GAM-BAT-004, GAM-MET-001, ADV-OBJ-003 as built; the specs left both open). A battle with a monster
+  is the step onto its guarded tile (ADV-MON-006): E12-8's 1 130 is E12-7's 1 671 less 200 to (46,
+  36), 200 back and the Sirens' 141, with no step into the monster. Nothing new for the build.
+- **The Fountains' draws:** weeks 2 to 4 gave the same values in all four runs, the first week's
+  not (a new game's), so those draws do not depend on the new game's seed (a generator reseeded or
+  a second one; not read). No −1 among them: six independent first-week values (p ≈ 0.18 of none
+  under §10.6's law) and one fixed sequence of six, no evidence against `random_between(0, 3)` with
+  0 giving −1. The engine draws from its own streams (ADR-0017 point 4, E08 decision 9): nothing
+  for the build.
+- **A hint over an unexplored tile** (E12-16's M2): none, the status bar keeps its text, as E24's
+  reading (`E24-design.md` §4.11: the arrow and nothing else); the engine shows a viewer nothing
+  there (ADV-VIS-006). Nothing for the build.
+- **Smaller reads, as known:** the in-boat bit 18 (`E08-sea.md` §3) outlives a battle's clear; a
+  click on a non-removable garrison's stack after a refused take selects it (a display's, nothing
+  for the engine); GENRLTXT 7 in E12a's walks (its players hold no town, as batch E11's), 14 and 16
+  at the turns' and the week's starts.
+
+**For T112** (the drafts with this outcome): every point the rows test holds as drafted: ADR-0016
+point 3 (the raised maximum, the Swan Pond's drain, the Stables' week, the once-marks cleared by a
+battle, A-44's faithful side), point 4 (the garrison's visit, the passage D-59, the anti-magic
+battle D-60, the bonus kinds' visits D-62 to D-64, the Fountain's weekly draw), point 5 (the flag's
+radius 3), ADR-0017 point 6 (the exchange's one owner rule, D-61) and point 11 (the anti-magic
+flag), ADR-0013's moved bonuses and timed marks (by the marks observed; their place is the
+engine's). **Changed:** ADR-0016 point 4's visit modes (decision 317: the Buoy, the Mermaids and
+the Sirens visited from a neighbour, the Buoy also from above; the twelve others entered, none from
+above), corrected in the draft by T111; and the experiments README's "Increment 12's objects"
+(battle-owned, T112's `cross-lane`): the Mermaids and the Sirens are visited from a neighbouring
+water tile, not entered; the Wells, the Idol and the Fountain of Fortune are entered at `at`.
+
+**The checkpoint** (ADV-Q51, `AskUserQuestion`; the epic's decision 317): **the original's class
+lists** for the fifteen's visit modes (recommended): the Buoy, the Mermaids and the Sirens visited
+from a neighbour, the Buoy also from above; the twelve others entered, the Fountain of Fortune by
+the list; design §2 and §8, §10.4 and the ADR-0016 draft corrected now, the README by T112. Not
+chosen: the same with a later row for the Fountain of Fortune; the design's modes from the masks.
