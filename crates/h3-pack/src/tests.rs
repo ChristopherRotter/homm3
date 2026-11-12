@@ -972,8 +972,8 @@ fn the_harvested_flags_of_increment_7() {
 
 #[test]
 fn the_harvested_flags_of_e09_increment_3() {
-    // E09 T24: T-13's and T-12's flags (planned `TWN-QUIRK-10`, `-9`), on in `faithful` and off
-    // in `strict-fixed` with every expansion.
+    // E09 T24: T-13's and T-12's flags (`TWN-QUIRK-10`, `-9`), on in `faithful` and off in
+    // `strict-fixed` with every expansion.
     use h3_content::{CREATURE_MONTH_EXACT, NEUTRAL_PLAGUE_FULL_GROWTH};
     for packs in [
         &[SOD_CORE, AB_CORE, BASE_CORE][..],
