@@ -20,6 +20,13 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- (Taken by E16 M5 T10, 2026-11-12: the fair computer by default, the all-seeing one as a map
+  offer's `computer`, `wire::game::Computer`.)
+- 2026-11-02 (the battle lane, E26 T5; for E16 M5's unowned sides): a computer seat calls the
+  fair system actor `h3_battle_ai::choose_fair` by default (ADR-0027 point 4 as amended; the
+  user, AI-Q10: it decides only on what its side may know), the all-seeing `choose` only as a
+  game's option, which the protocol carries once the game's setup has it.
+
 - 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for SRV-STUB-14's lift**,
   nothing to do before it): the battle client's reader of a whole game's record
   (`h3_view::game_record`, design §13.3) now takes a battle `Snapshot` that comes right after

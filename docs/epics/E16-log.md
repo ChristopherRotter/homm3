@@ -2815,3 +2815,48 @@ sweep, a paused game off its thread, drain and shutdown, the record download; li
   sweep, then void; a drain ending the waiting game and not waiting for the running one, which
   plays on, its journal kept by the stop; a garbled journal void at a restart beside a restored
   one, and a journal whose map the server no longer offers void.
+
+### M5 T10 — the unowned battle sides played by the server (2026-11-12)
+
+The task (the epic's "M5 part 2"; the user kept T10 whole and chose a `shared/` change first over
+going through `h3-sim`, 2026-11-12): the unowned battle sides (a wandering monster's, a guarded
+object's guards) played by the server, fair by default, all-seeing as an offer's option (the
+battle lane's 2026-11-02 note); each command journaled as the system actor's. Baseline: `master`
+acd9863 (#888; CI green). No original data. Branches `shared/server-battle-ai` (#889: `arch.toml`
+lets `h3-server` use `h3-battle-ai`, as `h3-cli` does) and `claude/loving-wright-evc1b7` (the
+session's, on it).
+
+- **The wire** (protocol **v49**): a map offer names its computer (`MapOffer`'s `computer`,
+  `wire::game::Computer`: `Fair`, `AllSeeing`). No new message: the computer's commands are told
+  as the system actor's (events and turns, no acceptance), as before.
+- **`h3-protocol`:** `GameSession::computer(bot, out)` hands the host's computer (the battle
+  session's `Bot` trait, its doc amended: a whole game's computer may read the whole battle where
+  its offer says so) the unowned sides of a game of connections; it is asked whenever one is to
+  act in the running game: after a seat's accepted command (`answer`), at a join that resumes the
+  game (before the joiner's turn: its commands' turns are every player's), and at the hand-over
+  itself, which answers for a restored game whose journal a crash cut between a seat's command
+  and the computer's answers (`reopen` re-runs the journal and asks no computer; a policy's new
+  version voids no game). `unowned` plays while `GameState::unowned_battle` has a side to act, a
+  choice the engine rejects replaced by the side's first legal command it accepts, as a battle's
+  bot's; each command `execute`d as `Origin::Host(Actor::System)` (journaled `Command(System, …)`)
+  and `tell`'d. None in-process (`start`, `restore`: the host plays the system actor), before
+  the start and while paused. Provisional (the 2a review list): the hand-over after the
+  construction rather than a constructor's argument, the fallback to the first legal command.
+- **`h3-server`:** `[[map]] computer = "fair" | "all-seeing"` (`config::Computer`, fair by
+  default); `whole::ComputerBot` calls `h3_battle_ai::choose_fair` or `choose` with its own stream
+  (`StreamId::AGENT` of a seed drawn from the OS for each hosting, new or restored: the game's
+  secret, never journaled, as the battle server's bots'); the game's thread hands it over as it
+  begins and makes the entries of its answers durable before anything else.
+- **Tests:** `h3-protocol` `tests/game_computer.rs`: a golden replay with a monster battle
+  (`duel-s3-easy-d7`) played by its seats' connections, its system commands handed to a scripted
+  computer, heard frame for frame and recorded as the in-process host's players hear and record
+  it, the journal the same, a reopen asking no computer; a computer whose every choice the engine
+  rejects replaced by the first legal command; a restored journal cut before the computer's
+  answers gets them at the hand-over, and a game paused there gets them at the resuming join.
+  `h3-server` `tests/whole.rs`: the offer's computer in the lobby and in the configuration (an
+  unknown one refused); a game re-seeded as the golden replay's, its commands up to the battle
+  sent by the two clients, the fighter's side played over the network (strikes first) and the
+  monster's by the all-seeing computer until the battle ends, the computer's commands in the
+  journal as the system actor's; the journal cut after the fighter's last command the computer
+  answered, a restart (the fair computer now) re-running the earlier ones and answering for it
+  before any join.

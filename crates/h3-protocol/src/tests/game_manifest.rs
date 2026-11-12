@@ -14,7 +14,7 @@ use h3_sim::adventure::replay::map_content_hash;
 use super::game::{RULES, round_trips};
 use crate::map;
 use crate::map::game::{key_tables, manifest, map_offer};
-use crate::wire::game::{GameRecordHeader, MapIdentity, MapOffer};
+use crate::wire::game::{Computer, GameRecordHeader, MapIdentity, MapOffer};
 use crate::wire::{ServerMessage, WireU64};
 
 /// A golden adventure replay's map, as the manifest names it.
@@ -94,7 +94,9 @@ fn a_map_offer_names_the_maps_size_players_and_rules() {
     let (_, setup) =
         h3_files::adventure::load_map(&root, "fixtures/maps/e08-duel-36.h3m", rules).unwrap();
     let at = golden_map();
-    let offer = map_offer("duel", String::from("Duel"), (rules, &setup), at);
+    // E16 M5 T10: the offer names its computer.
+    let all_seeing = ("duel", String::from("Duel"));
+    let offer = map_offer(all_seeing, (rules, &setup), at, Computer::AllSeeing);
     let m = manifest(rules, at);
     assert_eq!(
         offer,
@@ -109,9 +111,11 @@ fn a_map_offer_names_the_maps_size_players_and_rules() {
             profile: m.profile,
             ruleset_hash: m.ruleset_hash,
             map: at,
+            computer: Computer::AllSeeing,
         }
     );
     round_trips(&offer);
+    round_trips(&Computer::Fair);
 }
 
 #[test]
