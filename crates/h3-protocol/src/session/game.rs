@@ -19,9 +19,10 @@
 //!   `GameSnapshot`. After every accepted command: the player that sent it `GameAccepted`
 //!   (echoed), then every viewer `GameEvents` with the command's events as it may see them (also
 //!   an empty list, so that what a viewer receives does not depend on what it may not see), its
-//!   battle as its side saw it when it ended (`GameLastSnapshot`, E16 M5 T5c: the session's sink
-//!   keeps each owner's last view of a battle the command ends, `h3_game::Sink::battle_ended`;
-//!   SRV-Q27 (1)), its `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
+//!   battle's last `Snapshot`, as its side saw it when the command ended it (E16 M5 T5c: the
+//!   session's sink keeps each owner's last view, `h3_game::Sink::battle_ended`; SRV-Q27 (1);
+//!   none when the same events open another battle for it, whose opening `Snapshot` a reader
+//!   could not tell from it), its `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
 //!   keeps each viewer's explored grid as it was last told it and asks `h3_game::reveal` when the
 //!   grid's count changed) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
 //!   events are then the battle client's, inside `GameEvents`), then every player that may act
@@ -46,8 +47,8 @@
 //! the message order, a `GameTurn` after every accepted command to every player that may act, a
 //! system command told to nobody, a player outside the game told nothing; the entries, a restore
 //! telling every player its snapshot and turn afresh, the record's header with the game's id; a
-//! reveal as a message of its own after the events, a battle's last view as one of its own
-//! before it (T5c).
+//! reveal as a message of its own after the events, a battle's last `Snapshot` before it (T5c,
+//! the client lane's reader, 2026-11-12).
 
 use alloc::string::String;
 use alloc::vec;
@@ -495,13 +496,12 @@ impl<'r> GameSession<'r> {
                     .iter()
                     .any(|e| matches!(e, GameEvent::BattleEnded { .. }));
             viewer.post(player, |n| ServerMessage::GameEvents { n, events }, out);
-            for (_, observation) in ended.iter().filter(|(owner, _)| *owner == player) {
+            let last = ended
+                .iter()
+                .filter(|(owner, _)| *owner == player && !started);
+            for (_, observation) in last {
                 let observation = observation.clone();
-                viewer.post(
-                    player,
-                    |n| ServerMessage::GameLastSnapshot { n, observation },
-                    out,
-                );
+                viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
             let now = explored(&self.state, player);
             // The count changes exactly when the grid does (the design note §14).

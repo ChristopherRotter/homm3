@@ -112,6 +112,27 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
+  your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's
+  `GameEvents` (and a battle's last `Snapshot`) a player whose explored tiles grew gets
+  `GameReveal { n, reveal }`: the tiles whose sight changed with their views, the heroes (with
+  their types), objects, empty boats and towns it newly sees; fold it after the events with
+  `GameObservation::reveal`, and the view equals `observe`'s on the tiles, objects, boats and
+  towns (`SRV-STUB-1` lifted; `h3-server record` writes it). (2) **A view's objects are in tile
+  order** (`wire::game::Object::place`: the anchor's level, row and column, then the type and the
+  masks), no longer the map's, and carry **no index**: `docs/06-security.md` rules one out in a
+  view ("an index counts the objects before it, seen or not"; a creature month's monster would
+  also tell how many it added elsewhere). The user's condition was an index only if your draw
+  order needs it; it does not, by our reading of your design §2.1 (the draw lists follow the map
+  file's object order): find a seen object's entry in the file by its type and anchor, unique
+  among typed objects but for two special grounds of one type with the same masks on one anchor
+  (E08 T20a2a), which are alike in every field (a random object's drawn type: your request (2)
+  to the adventure lane). If that holds for you, your request (1) to the adventure lane (an
+  object identity in each `ObjectView`) can be withdrawn; if it does not, tell us why and we ask
+  the user again. (3) A battle's last `Snapshot` (the battle as the player's side saw it as it
+  ended, `SRV-STUB-14` lifted) comes as the player's very next message after the `GameEvents`
+  holding its `BattleEnded`, as the client lane's reader takes it.
+
 - 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for your M4 T5 and M5**;
   E17 closes with it): **the hosted battle after M7's review**, design §13.2 to §13.6.
   (1) **The element borrows** its `Ground` and your game (`Prepared<'g>`, `Hosted<'g>`; the

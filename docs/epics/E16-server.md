@@ -345,8 +345,12 @@ inbox, the same day), mapped when it lands.
     every player told afresh) and each player's record (`GameSession::record`; record format
     **v4**: `GameRecordHeader`, the game's manifest and the player), the record shared with the
     battle's (`session::Record`).
-  - **T5c** each viewer's last explored grid and what it newly sees, once the adventure lane's
-    SRV-Q26 query lands (until then `SRV-STUB-1`).
+  - **T5c done** (2026-11-12; `E16-log.md`; in two parts, the user, one pull request):
+    **T5c1** each viewer's explored grid as last told, `GameReveal` (protocol v43) after the
+    events when it grew, `GameObservation::reveal`, a view's objects in tile order
+    (`Object::place`; no index, `docs/06-security.md`), the gate exact on the tiles, objects,
+    boats and towns (`SRV-STUB-1` lifted); **T5c2** a battle's last `Snapshot` right after the
+    events that end it (`Sink::battle_ended`, the client lane's reader; `SRV-STUB-14` lifted).
 - **T6 a golden replay as a record** (done 2026-11-10; `E16-log.md`): `h3-server record
   <replay>...` runs an adventure replay through the session (checked as `h3 adventure verify`
   checks it: the header, the map by its hash, every checkpoint, the final hash and day) and
@@ -393,7 +397,13 @@ header, map and difficulty the host's), a restore that tells every player its sn
 afresh (numbers and records begin again, as the battle's after a restart), a game record's header
 its own type (`GameRecordHeader`: format, the game's id, the player's number, the manifest, the
 first number) beside the battle's, one record format version for both (v4), the host's bound per
-record (`GameOptions::record_bytes`), the session's options as a struct (`GameOptions`); T6's: the command in the server's binary
+record (`GameOptions::record_bytes`), the session's options as a struct (`GameOptions`); T5c's:
+`GameReveal` a message of its own after the events (not a field of `GameEvents`), the engine's
+reveal one to one, a view's objects in tile order (`Object::place`: no index, which counts the
+objects before it; a client finds an object's entry in the map's file by type and anchor), the
+last snapshot as the battle's own `Snapshot` right after the events that end it and none when
+they open another battle, one protocol step (v43) for both, no record format step (the
+manifest's `protocol` versions the messages); T6's: the command in the server's binary
 (`h3-server record [--packs-dir] [--root] [--out] [--game] <replay.toml>...`, `h3_server::record`),
 the files' names (`<stem>.player-<k>.jsonl`), the game's id 0 unless given, a player's commands
 numbered by its own counter from 1, the records unbounded (the operator's files of a finished

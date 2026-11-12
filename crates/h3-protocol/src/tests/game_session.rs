@@ -132,7 +132,6 @@ fn number(message: &ServerMessage) -> u32 {
         ServerMessage::GameSnapshot { n, .. }
         | ServerMessage::GameEvents { n, .. }
         | ServerMessage::GameReveal { n, .. }
-        | ServerMessage::GameLastSnapshot { n, .. }
         | ServerMessage::GameTurn { n, .. }
         | ServerMessage::GameAccepted { n, .. }
         | ServerMessage::GameRejected { n, .. }
@@ -176,8 +175,9 @@ struct Seen {
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
-/// `GameAccepted` first if it sent `echo`, then its `GameEvents` (`told`), the last view of each
-/// battle of `ended` it owned a side of, its `GameReveal` when
+/// `GameAccepted` first if it sent `echo`, then its `GameEvents` (`told`), the last snapshot of
+/// each battle of `ended` it owned a side of unless they open another battle for it, its
+/// `GameReveal` when
 /// its explored tiles grew since `grid`, the grid it was last told (then kept), a battle's
 /// snapshot when one opens for it, its turn if it may act. `battle` is whether its view holds a
 /// battle.
@@ -226,10 +226,10 @@ fn check(
     assert_eq!(*events, told);
     let observed = observe(state, rules, Viewer::Player(player)).battle;
     let mut rest: Vec<&ServerMessage> = m.collect();
-    for battle in ended {
+    for battle in ended.iter().filter(|_| !started) {
         if let Some(side) = battle.side_of(player) {
             let last = map::observe(battle.state(), rules.battle(), side);
-            let Some(ServerMessage::GameLastSnapshot { observation, .. }) = rest.first() else {
+            let Some(ServerMessage::Snapshot { observation, .. }) = rest.first() else {
                 panic!("no last snapshot: {rest:?}");
             };
             assert_eq!(*observation, last);

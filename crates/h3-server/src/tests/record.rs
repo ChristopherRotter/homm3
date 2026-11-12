@@ -80,9 +80,9 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
     for (i, line) in lines.enumerate() {
         let message = codec::decode_server(line.as_bytes(), usize::MAX).unwrap();
         assert_eq!(number(line), i as u64 + 1, "{name} player {k}: numbered on");
-        // A battle's last view may come between the events and the reveal.
+        // A battle's last snapshot may come between the events and the reveal.
         let was = match message {
-            ServerMessage::GameLastSnapshot { .. } => after_events,
+            ServerMessage::Snapshot { .. } => after_events,
             _ => core::mem::replace(
                 &mut after_events,
                 matches!(message, ServerMessage::GameEvents { .. }),
@@ -96,9 +96,7 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
                 reveals += 1;
             }
             ServerMessage::GameAccepted { seq, .. } => seqs.push(seq),
-            ServerMessage::GameTurn { .. }
-            | ServerMessage::Snapshot { .. }
-            | ServerMessage::GameLastSnapshot { .. } => {}
+            ServerMessage::GameTurn { .. } | ServerMessage::Snapshot { .. } => {}
             other => panic!("{name} player {k}: {other:?}"),
         }
     }
