@@ -93,3 +93,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 - **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example and `h3-cli`'s `src/ai/census.rs` do).
 - **An `AdventureSetup` with towns gives one garrison and one faction per town** (`SetupError::Garrisons`, since E09 T11 `TownFactions`, checked first): a test that builds the adventure alone with towns sets both (`state/tests/towns.rs`' `town_setup`, `reach/tests.rs`); the game gives step 2's factions.
+- **The game's town tests give the part's dwellings and forts no map slot** (`town/tests.rs`'
+  `town_pack`; E09 T26a1): a `BuildingsSetup::Custom` cannot build them; build them after
+  `GameState::new` with `towns_mut().build(town, building, part, core, false)` (the first
+  creatures come with it). An adventure object type a test needs (a dwelling, the months) goes
+  through `rules_with_adventure`'s edit.
