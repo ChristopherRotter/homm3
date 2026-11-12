@@ -15921,3 +15921,70 @@ from the user's repo folder: the four LODs, both executables, `maps.tar`, `extra
   GAM-BAT-001 amended. `ADV-STUB-17` registered.
 - **Docs:** design §5, §6, §7, §14 *As built*; decision 323 and the task's line; the queue's
   entry (T114a2 and T114b), `OVERVIEW.md`, a trap (`pass` and `visited_at_end`).
+
+### Increment 12, round 6: T114a2, the garrisons' exchange and the one owner rule (2026-11-12, `adventure/e08-t114a2`)
+
+**The cut** (decision 324; asked at T114a2's start, `AskUserQuestion`, with the `cross-lane`
+consent): whole, one pull request; the new reference breaks `h3-files`' replay text and
+`h3-protocol`'s mapping, so adventure replay format v13 and the protocol mapping of the reference,
+the errors, the decision and its event move here from T114b. **Baseline:** `master` 268d586
+(#894, client-only after #892); the setup's full verify passed fmt to the tests and was stopped at
+the coverage to keep the disk (12 GB in `llvm-cov-target`, 8.7 GB left), CI's green run on
+`master` standing for the rest. Staged from the user's repo folder: the four LODs, both
+executables, `maps.tar`, `extracted.tar`.
+
+- **The adventure** (design §13's *As built*): `ArmyRef::MapGarrison(u32)` (the garrison's object
+  index); `ArmyCommandError::{NoGarrison, NotOwn, OnlyEmpty}`; `state/manage.rs`' `Held` with the
+  garrison's bar ownership (its owner's when removable, nobody's when not; a hero's and the group
+  the player's), `NotOwn` before the plan, `OnlyEmpty` before the command's own rule, the slot past
+  the army's left to `NoSlot`, `army_commands` and `split_range` by the same rule, the army written
+  through `army_left`; `Held::keeps_last` false for a stationary army. `AdventureOutcome::exchange`
+  (`Exchange`: hero, index, type, anchor) from `visit_garrison` (a team's garrison; an empty one
+  after its flag) and `give_won` (after the flag, for a winner still on the map). `garrison_army`
+  answers none past the objects (it read `object_at`). `Revisit` by `visited_at_end`.
+- **The game:** `Decision::Exchange` (hash kind 8: owner, hero, index, type, anchor; **game state
+  hash v29**), `Together::Exchange { hero, army }` (`admits`: a map garrison outside its exchange
+  `NotTogether`, another one or in another decision `DecisionOpen`, the group `NoGroup`; out of
+  line, `stationary`), `open_exchange` (`ExchangeOpened`, then each stack as `StackChanged`), the
+  `Close` through `close_exchange` (closes only), `GameState::exchange`, `DecisionView::Exchange`,
+  `legal_management`'s stationary army (the group's or the garrison's own commands after the
+  hero's), `stack_at`. No `Rest::Exchange` (*agent's call*: the won battle's rest's outcome).
+- **The wire** (`cross-lane`, protocol v50): `ArmyRef::MapGarrison { garrison }`,
+  `ArmyReject::{NoGarrison, NotOwn, OnlyEmpty}`, `Decision::Exchange`, `GameEvent::ExchangeOpened`,
+  both ways; the fold opens the exchange and keeps its army from the `StackChanged`s. The
+  round-trip lists (104 rejections, 37 event kinds, two exchange views) and a fold case.
+- **The replay text:** `m<index>:<slot>`, **adventure replay format v13** (`h3-sim`'s
+  `REPLAY_FORMAT_VERSION`; its hire test's assertion, the AI lane's path, `cross-lane`).
+- **The speed gate** (`bench-check --lane adventure` after the first build, `master` in
+  `target/wt-master`): every workload as `master` but `manage-army-12` (+3.7 % on `master`'s
+  402 619 430 Ir: `held` out of line, `Together::admits`' extra pass, a `usize` in `ArmyRef` making
+  `ArmySlot` and `ArmyCommand` 2.5 times larger). Eight designs measured; kept: the garrison's
+  lookups and reads `#[cold]` out of line, `admits`' garrison arm out of line, the index a `u32`:
+  408 299 902 (+1.41 % on `master`, the owner rule's checks in each listed command), re-baselined
+  with the reason (the file's baseline 399 997 833 was already 0.66 % below `master`). The fork,
+  day-start and month-start workloads' +1 to +1.8 % on their files are `master`'s own (measured
+  equal there).
+- **Tests:** `h3-adventure`'s `state/tests/garrisons.rs`: the T114a1 cases opening the exchange (a
+  move's end, an empty one's capture, `give_won` with and without the winner),
+  `a_passed_garrison_of_the_hero_s_team_is_revisited_into_its_exchange`,
+  `an_own_removable_garrison_takes_the_army_dialog_s_full_rules`,
+  `a_bar_not_the_player_s_only_takes_stacks_into_its_empty_slots` (own non-removable, another's,
+  neutral: every refusal, the moves and splits into empty slots kept, the listing, the ranges),
+  `an_army_command_names_a_map_garrison_by_its_object_index`. `h3-game`'s `tests/garrisons.rs`:
+  `a_team_s_garrison_opens_the_exchange_whose_commands_name_both_armies` (the events, the
+  projection, the view, `Close` as the legal and default answer, `EndTurn` refused, the listing,
+  the split range, every refusal, the close, the revisit),
+  `a_non_removable_garrison_s_exchange_only_takes_stacks_into_its_empty_slots`,
+  `an_empty_garrison_s_capture_opens_the_exchange_after_its_flag` (the hash with it open); the
+  T114a1 cases closing it. `h3-files`' text cases; `h3-map`'s `play.rs` (`managed`, `stack_at`)
+  and `view.rs` (`check_told`'s exchange) follow it.
+- **Replays:** the 72 adventure goldens re-recorded from their commands (`h3 adventure run
+  --script`): only `format`, `game_state_hash_version`, the checkpoints and `final_hash` moved;
+  `h3-server`'s `tests/record.rs` literals with them (`cross-lane`).
+- **Rules:** ADV-GAR-003 and GAM-DEC-009 written (`implemented`); ADV-GAR-002, -004, ADV-TEL-008,
+  GAM-MAN-001, -002 amended. `ADV-STUB-17` lifted. Docs: design §13's *As built*, §17's rows;
+  decision 324 and the task's line; the queue (T114b), `OVERVIEW.md`, `TRAPS.md` (a stationary
+  army's arms, `ArmyRef`'s size); the town and server lanes' inboxes.
+
+**Versions:** game state hash v29, adventure replay format v13, protocol v50 (the server lane's,
+`cross-lane`). The adventure state hash, the part and the map import unchanged. T114b next.
