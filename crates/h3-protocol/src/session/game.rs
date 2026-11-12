@@ -84,10 +84,20 @@
 //!   its header line ([`GameRecordHeader`]: the game's manifest and the player), as a record file
 //!   holds it; a seat downloads its player's with `FetchRecord` (E16 M5 T9b: answered `Record`,
 //!   which takes no number, as a battle's).
-//! - **Not here yet:** a hero's moves, which
-//!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`, T11); a
-//!   battle's `ProposePause`, `AnswerPause` (no whole game is ranked), `Query`, `FetchReplay` (no
-//!   whole game ends before E10) and `SetSpectators` (2c), ignored here.
+//! - **Queries** (E16 M5 T11). A seat asks the server's rules for its player (`GameQuery`,
+//!   [`GameSession::query`] in-process): its hero's moves, which `GameTurn` leaves out as
+//!   `h3_game::legal_commands` does (`h3_game::legal_moves`, a path tree on the wire), its town's
+//!   hall, its battle's targets (the battle's `Query`, as `GameQuery::Battle`). The answer
+//!   (`GameAnswer`) carries the number of the player's last message and takes none: it is not
+//!   recorded, as `Record`. A query before the start or while paused is rejected `NotStarted`, as
+//!   a command.
+//! - **The start's events** (E16 M5 T11, as a battle's start's, CLT-Q20). When the game starts
+//!   (in-process at [`GameSession::start`], for connections at the join that holds the last seat),
+//!   each player whose town events fired at its turn start inside the build gets them in one
+//!   `GameEvents` after its `GameSnapshot`, before the turns; a restore and a re-taken seat never.
+//! - **Not here yet:** a battle's `ProposePause`, `AnswerPause` (no whole game is ranked),
+//!   `FetchReplay` (no whole game ends before E10) and `SetSpectators` (2c), ignored here; its
+//!   `Query` too (a whole game's is `GameQuery::Battle`).
 //!
 //! Provisional (E16 M5 T5a, T5b, T8a, T8b; the epic's review list): the names, the start as the
 //! constructor, the message order, a `GameTurn` after every accepted command to every player that
@@ -102,7 +112,9 @@
 //! entries, `reopen` with the host's tokens, a restored started game's snapshots and turns into
 //! its records (T8b); the empty game's pause, the record's download answered as a battle's (T9b);
 //! the computer handed over after the construction, playing at once, a rejected choice replaced
-//! by the first legal command (T10).
+//! by the first legal command (T10); one query message for the game's queries, its answer
+//! unnumbered and unrecorded, a query outside a running game rejected as a command, the start's
+//! events only to a player that has any (T11).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};

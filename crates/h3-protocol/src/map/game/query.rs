@@ -4,6 +4,7 @@
 //! question about its own heroes, towns and battle side only.
 
 use alloc::collections::BTreeMap;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::Reach;
@@ -54,7 +55,8 @@ pub fn moves(reach: &Reach) -> Moves {
     let mut tree = Tree {
         children: BTreeMap::new(),
         steps: Vec::new(),
-        left: Vec::new(),
+        // Node 0's, the hero's tile, dropped below.
+        left: vec![0],
     };
     for (tile, points) in reach.tiles() {
         // Every listed tile but the hero's own has a path of at least one step.
@@ -64,22 +66,21 @@ pub fn moves(reach: &Reach) -> Moves {
             node = tree.step(node, direction(at, step));
             at = step;
         }
-        let slot = node
-            .checked_sub(1)
-            .and_then(|slot| usize::try_from(slot).ok());
-        if let Some(left) = slot.and_then(|slot| tree.left.get_mut(slot)) {
-            *left = points.saturating_add(1);
-        }
+        // A node the tree made: within `left`.
+        tree.left[usize::try_from(node).unwrap_or_default()] = points.saturating_add(1);
     }
+    let mut left = tree.left;
+    left.remove(0);
     Moves {
         origin,
         points: reach.points_left(reach.origin()).unwrap_or_default(),
         steps: tree.steps,
-        left: tree.left,
+        left,
     }
 }
 
-/// A path tree being built: each node's step and points, and its children by direction.
+/// A path tree being built: each node's step (from node 1) and points (from node 0), and its
+/// children by direction.
 struct Tree {
     children: BTreeMap<(u32, u32), u32>,
     steps: Vec<u32>,
