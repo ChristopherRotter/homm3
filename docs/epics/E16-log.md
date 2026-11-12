@@ -2551,3 +2551,28 @@ Baseline: T7a1 (`claude/keen-tesla-q5uxid`, the scoped verify passed). No origin
   bound until the battle ends: part 2's turn timers (`docs/06-security.md`, "Not covered yet").
   Two objects of one type on one anchor that differ would be named alike by the engine's events:
   a question for the adventure lane (its inbox), no server change either way.
+
+### M5 T7b — part 1's closure (2026-11-12)
+
+- **The start.** T7a1 and T7a2 on `claude/keen-tesla-q5uxid` (the scoped verify passed); `master`
+  still 35fc648. The reviewer agent's review and fixes: above.
+- **Part 1's scope, each shown** (the user's order of 2026-10-31 and SRV-Q25; no exit criteria
+  were written at the refinement, so these are its own points): the whole game's types mapped
+  exhaustively, a new engine variant or field failing `h3-protocol`'s build (`map::game`'s
+  patterns without `..`, the inverses in `tests/game.rs`, `game_command.rs`, `game_event.rs`);
+  every message projected per viewer by construction, the fold equal to `observe` after every
+  command for every viewer over the 72 golden replays but for the stubbed parts
+  (`tests/game_fold.rs`: 36 parts, 23 exact, the rest named by `SRV-STUB-3` to `-11` and
+  `TWN-STUB-13`); the session hosting one game in-process, every golden replay's command accepted
+  as its actor's with the engine's hashes, each player's messages in order and numbered, the
+  journal the replay's, a restore halfway equal to the live game (`tests/game_session.rs`); each
+  player's record, a golden replay as records with no state hash in any form
+  (`h3-server record`, its `tests/record.rs` over the 72 replays); and from T7: the frames' and
+  records' sizes gated (`tests/game_bounds.rs`), the mutation tests (`tests/game_mutation.rs`),
+  `docs/06-security.md`'s whole game, the reviewer's major findings fixed; the full verify is
+  CI's on the pull request (`h3-protocol` at 100 % in the scoped verify's coverage gate).
+- **The docs:** the epic's part 1 (scope, tasks, review list) moved verbatim to `E16-archive.md`,
+  the queue's to `QUEUE-ARCHIVE.md`; the epic keeps part 2's list, with T7b's two left findings.
+- **The checkpoint**: the user's, SRV-Q28, passed 2026-11-12 (the agent's recommendations): the
+  review list as built, the left findings as described, next M5 part 2's refinement with the
+  user.
