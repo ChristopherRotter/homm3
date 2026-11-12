@@ -265,7 +265,9 @@ pub enum EffectSource {
     /// The hero type's specialty.
     Specialty,
     /// An adventure-map object the hero visited since its last battle, by the once-mark the visit
-    /// set (`h3_heroes::BattleBonuses::marks`; the adventure's content names the object type).
+    /// set (the adventure's content names the object type). The marks with their amounts are the
+    /// battle bonuses the game passes to `derive_battle_hero` (ADR-0013 point 15.1), from E08
+    /// increment 12 the hero on the map's (ADR-0016 point 3), no longer the hero details'.
     Visit {
         /// The once-mark.
         mark: u8,

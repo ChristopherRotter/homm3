@@ -311,13 +311,19 @@ only Red's); the battle log's entries read as empty strings this way. Batches 4a
   two tiles above it, entered at the middle one). A hero visits a garrison by stepping onto its
   entrance; none may start there. `[[map.object]]` takes the fifteen bonus visitables, each by its
   picture (no body; `Objects.txt`'s masks): the Swan Pond `AVSclvd0`, `AVSclvg0` or `AVSclvs0`,
-  the Faerie Ring `AVSring0`, the Temple `AVStmpl0`, the Mermaids `AVXmerm0` and the Sirens
-  `AVXsirn0` (on water) entered at the tile west of `at`; the Fountain of Fortune `AVSfntn0`, the
-  Fountain of Youth `AVXfyth0`, the Idol of Fortune `AVSidol0`, the Magic Well `AVXwelg0`,
-  `AVXwelr0` or `AVXwlsn0`, the Rally Flag `AVXrlly0`, the Stables `AVXstbl0` and the Buoy
-  `AVSbuoy0` (on water) at `at`; the Magic Spring `AVXmags0` and the Oasis `AVXosis0` at `at` and
-  the tile west of it (two entrances); the Watering Hole `AVXwtrh0` at `at` and the three tiles
-  west of it (four). A Blue hero (E12-4) is an `[[encounter.also]]` with `owner = "blue"`, a
+  the Faerie Ring `AVSring0` and the Temple `AVStmpl0` entered at the tile west of `at`; the
+  Mermaids `AVXmerm0` and the Sirens `AVXsirn0` (on water) visited at the tile west of `at` from
+  a neighbouring water tile, never entered and not from the three tiles above; the Fountain of
+  Fortune `AVSfntn0`, the Fountain of Youth `AVXfyth0`, the Idol of Fortune `AVSidol0`, the Magic
+  Well `AVXwelg0`, `AVXwelr0` or `AVXwlsn0`, the Rally Flag `AVXrlly0` and the Stables
+  `AVXstbl0` entered at `at` (a hero stands on it after the visit, Space visits it again); the
+  Buoy `AVSbuoy0` (on water) visited at `at` from any of its eight neighbours, never entered; the
+  Magic Spring `AVXmags0` and the Oasis `AVXosis0` entered at `at` and the tile west of it (two
+  entrances); the Watering Hole `AVXwtrh0` at `at` and the three tiles west of it (four). The
+  modes are the original's class lists (`object_classes_not_entered` 0x63AA58,
+  `object_classes_from_above` 0x63AB00), not the templates' blocked tiles: batch E12 stood on the
+  Wells and the Idol and visited the Sirens, the Buoy and the Mermaids from the water beside them
+  (survey §15; ADV-Q51, E08 decision 317). A Blue hero (E12-4) is an `[[encounter.also]]` with `owner = "blue"`, a
   hero's army at the start its `army`; the format holds no spell points for a hero (every hero
   starts full; the user at T109a's start: none needed). Since E08 T109b (E12-17) `[[map.object]]`
   also takes increment 7's School of War `AVSwar20` (no body; it blocks `at`'s two west tiles,
