@@ -13,7 +13,8 @@
 //! context's commands ([`command`]: the build) and the towns' day ([`day`]); since E09 T18b2a
 //! it tells each viewer the views a change made ([`view::Told`]); since E09 T18b2b it gives the
 //! hall's offer and the legal builds ([`offer`]); since E09 T18c it fires the town events at a
-//! player's turn start ([`events`]).
+//! player's turn start ([`events`]); since E09 T26a1 it grows the towns' counts each week and
+//! month ([`growth`]).
 
 use alloc::vec::Vec;
 
@@ -29,6 +30,7 @@ pub(crate) mod capture;
 pub(crate) mod command;
 pub(crate) mod day;
 pub(crate) mod events;
+pub(crate) mod growth;
 pub(crate) mod heroes;
 pub(crate) mod income;
 pub(crate) mod offer;
