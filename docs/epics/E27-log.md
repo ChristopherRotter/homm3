@@ -73,7 +73,7 @@ Scores, 1 for Credits); no cut needed.
   `H3bitmap.lod` and `Heroes3.exe`, and Complete's three manuals (unused). Complete's and SoD's
   `VIDEO.VID` tables listed on the computer: SoD's `CREDITS.SMK` and `.BIK` are a real clip (556 ×
   100, 12 frames at 6 a second), Complete's placeholders.
-- **Read** (`E27-design.md` §2.6 to §2.9; 64 new map entries, 7 updated): `multiplayer_dialog_run`
+- **Read** (`E27-design.md` §2.6 to §2.9; 66 new map entries, 7 updated): `multiplayer_dialog_run`
   and `multiplayer_dialog_init` whole (the items, the two stages 0x50EFC0 and 0x50EEF0, the click
   handler 0x50F4E0 and its switch, the procedure 0x50F940); the default dialog procedure and its
   mouse move and right press (0x5FF820, 0x5FF6E0, 0x5FF790: H3API's names confirmed); the hot seat

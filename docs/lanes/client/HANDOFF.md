@@ -48,7 +48,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   staged at once (57 files, plus SoD's small `VIDEO.VID`, `H3bitmap.lod` and `Heroes3.exe` for a
   comparison), while the user's computer was online. Read the Multiplayer dialog (two stages, six
   connection types), the hot seat's names dialog, High Scores (the manager, the dialog, its draw and
-  procedure) and Credits whole, the network paths by their entry points: 64 new map entries.
+  procedure) and Credits whole, the network paths by their entry points: 66 new map entries.
   Found: `HSANIM` and `HSLOOP` are a won scenario's, the credits run on the menus' clip's
   frames, Online quits the game. Asked: CLT-Q87 to CLT-Q89 (decision 10). No harness run.
   Record: `E27-log.md`, "M1 T1a2".
