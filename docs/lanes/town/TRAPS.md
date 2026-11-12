@@ -4,6 +4,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 ## Working in the adventure lane's crates
 
+- **Never build `xtask` of another worktree into the main clone's target dir** (E09 T26a1): the
+  binary keeps its worktree's root, so a later `cargo xtask` in the clone runs every step
+  (verify, bench-check, check-docs) on the other tree without a word. Run a worktree's `xtask`
+  with its own target dir; if it happened, `cargo clean -p xtask` in the clone.
+
 - **Ownership is by the longest match** (`lanes.toml`): only files whose path starts with `crates/h3-adventure/src/town`, `crates/h3-game/src/town`, `crates/h3-map/src/import/town` or `crates/h3-map/src/writer/town` are this lane's. A `mod town;` line in a `lib.rs`, a field in a state struct, a hash, a version constant, a replay or a bot report is the adventure lane's: such a pull request is `cross-lane` (the label at once), and `cargo xtask check-lane --cross-lane` is its local check.
 - **Merge in order:** before a task starts and before a pull request opens, look at the adventure lane's open pull requests (its HANDOFF). When both lanes bump the same version, the second rebases and bumps again, and re-records the replays a second time (skill `homm3-rerecord-replays`).
 - **The adventure lane's traps apply** to its crates (forks without deep copies, server-only RNG seeds, template masks, staging the shipped maps): its `TRAPS.md`.
@@ -19,6 +24,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   workload with the reason in its description.
 
 ## The property plans (`h3-map` `src/tests/play.rs`, `view.rs`; the adventure lane's files)
+
+- **A town's counts move without a told view** (E09 T26a1): `check_towns` lets the counts change
+  only with a week's start, a build or a town event of the town, and compares the rest of the
+  record as before. When T26b shows the counts in the owner's view, a count's change must be
+  told too (add it to the `TownChanged` check there).
 
 - **A plan's town has no `KINDS` entry** (E09 T9b1): `towns_laid_out` lays the plan's towns
   (`TownPlan`) out after every other object but the boats, each with a template appended after

@@ -6868,7 +6868,27 @@ fn check_towns(
                 town
             );
         }
-        if old != new {
+        // E09 T26a1: a town's counts move with a week's start (its growth, the month's after it;
+        // TWN-GRO-003, -004), a build's first creatures (TWN-GRO-005) and a town event's
+        // creatures (TWN-EVT-004) only, told by nothing until the owner's view shows them (E09
+        // T26b); the rest of the record as before.
+        if old.available_all() != new.available_all() {
+            let week = events
+                .iter()
+                .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
+            let fired = events
+                .iter()
+                .any(|e| matches!(*e, GameEvent::TownEventFired { town: t, .. } if t == town));
+            prop_assert!(
+                week || !built.is_empty() || fired,
+                "{:?}'s counts moved without a week, a build or an event",
+                town
+            );
+        }
+        let with_old_counts = (0..h3_towns::CREATURE_INDEXES).fold(new.clone(), |t, index| {
+            t.with_available(index, old.available(index))
+        });
+        if *old != with_old_counts {
             let cleared = day_started && old.built_today();
             prop_assert!(
                 !captured.is_empty() || !built.is_empty() || cleared,

@@ -19,7 +19,8 @@ pub fn fort_level(town: &Town, part: &TownRuleset) -> FortLevel {
     fort(&Roles::of(town, part))
 }
 
-fn fort(roles: &Roles<'_>) -> FortLevel {
+/// [`fort_level`] of a town already read with its record (E09 T26a1: the growth's one pass).
+pub(crate) fn fort(roles: &Roles<'_>) -> FortLevel {
     match roles
         .standing_roles()
         .filter_map(|(_, r)| r.fort)

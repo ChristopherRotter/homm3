@@ -109,8 +109,8 @@ fn hut(rules: &GameRuleset, (x, y): (u16, u16), owner: Option<PlayerId>) -> Obje
 
 /// The towns' setup with four towns of `t:town` and only their Village Halls: red's T0 on (1, 1),
 /// its visitor red's hero wearing the Legs and the Statue; blue's T1 on (3, 0); red's T2 on
-/// (0, 3); the neutral T3 on (2, 0). A hut of red's on (3, 2), one of blue's on (0, 2), a neutral
-/// one on (2, 3).
+/// (0, 3); the neutral T3 on (2, 0). A hut of red's on (3, 2) and two neutral ones on (0, 2) and
+/// (2, 3).
 fn setup(rules: &GameRuleset) -> GameSetup {
     let castle = faction(rules, "t:town");
     let mut setup = towns_setup(rules);
@@ -131,7 +131,7 @@ fn setup(rules: &GameRuleset) -> GameSetup {
         town_object(rules, (0, 3), Some(0)),
         town_object(rules, (2, 0), None),
         hut(rules, (3, 2), Some(RED)),
-        hut(rules, (0, 2), Some(BLUE)),
+        hut(rules, (0, 2), None),
         hut(rules, (2, 3), None),
     ];
     let core = rules.core();
@@ -194,14 +194,14 @@ fn a_towns_inputs_are_its_owners_share_its_visitors_legion_and_its_owners_dwelli
         inputs
     };
     // Red's T0: the Statue's share, the visitor's Legs, red's hut (its first creature the imp;
-    // the town's level 1 has no upgrade, so nothing at index 7). Blue's T1: its hut alone. Red's
-    // T2: the share (any hero of red's) and the hut, no visitor. The neutral T3: nothing (the
-    // neutral hut counts for nobody).
+    // the town's level 1 has no upgrade, so nothing at index 7). Blue's T1: nothing (no Legion,
+    // no hut). Red's T2: the share (any hero of red's) and the hut, no visitor. The neutral T3:
+    // nothing (the neutral huts count for nobody).
     assert_eq!(
         crate::town::growth::inputs(&game, &rules),
         [
             owned(5_000, 5, 1),
-            owned(0, 0, 1),
+            owned(0, 0, 0),
             owned(5_000, 0, 1),
             GrowthInputs::NEUTRAL,
         ]
@@ -218,15 +218,15 @@ fn every_town_grows_its_week_on_the_week_s_first_day_a_neutral_one_half() {
     // Nothing during the week.
     to_day(&rules, &mut game, 7);
     assert_eq!(counts(&game), start);
-    // Day 8: T0 15 + 7 + 5 + 1 imps and 8 + 4 gogs; T1 15 + 1; T2 15 + 7 + 1; T3 15 ÷ 2.
+    // Day 8: T0 15 + 7 + 5 + 1 imps and 8 + 4 gogs; T1 15; T2 15 + 7 + 1; T3 15 ÷ 2.
     to_day(&rules, &mut game, 8);
-    assert_eq!(counts(&game), [(43, 20), (31, 0), (38, 0), (22, 0)]);
+    assert_eq!(counts(&game), [(43, 20), (30, 0), (38, 0), (22, 0)]);
     to_day(&rules, &mut game, 15);
-    assert_eq!(counts(&game), [(71, 32), (47, 0), (61, 0), (29, 0)]);
+    assert_eq!(counts(&game), [(71, 32), (45, 0), (61, 0), (29, 0)]);
     // A normal month changes nothing more.
     to_day(&rules, &mut game, 29);
     assert_eq!(game.month(), MonthKind::Normal);
-    assert_eq!(counts(&game), [(127, 56), (79, 0), (107, 0), (43, 0)]);
+    assert_eq!(counts(&game), [(127, 56), (75, 0), (107, 0), (43, 0)]);
 }
 
 // covers: TWN-GRO-004, GAM-CAL-003
@@ -240,7 +240,7 @@ fn a_month_doubles_its_creature_s_counts_and_the_plague_halves_after_the_week() 
         game.month(),
         MonthKind::Creature(rules.core().creature_by_key("t:gog").unwrap())
     );
-    assert_eq!(counts(&game), [(127, 112), (79, 0), (107, 0), (43, 0)]);
+    assert_eq!(counts(&game), [(127, 112), (75, 0), (107, 0), (43, 0)]);
     // The Plague: each count less its growth, then halved; the neutral T3 less half its growth
     // (`quirk.town.neutral_plague_full_growth` off in this profile, TWN-QUIRK-9).
     let rules = rules_plague();
@@ -251,7 +251,7 @@ fn a_month_doubles_its_creature_s_counts_and_the_plague_halves_after_the_week() 
         counts(&plague),
         [
             ((127 - 28) / 2, (56 - 12) / 2),
-            ((79 - 16) / 2, 0),
+            ((75 - 15) / 2, 0),
             ((107 - 23) / 2, 0),
             ((43 - 7) / 2, 0)
         ]

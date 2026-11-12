@@ -13,7 +13,8 @@ use h3_adventure::{AdventureState, ObjectKind};
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::{
-    GrowthInputs, MAX_CREATURE_LEVELS, MonthGrowth, Town, TownRuleset, WeekKind, index_creature,
+    CREATURE_INDEXES, GrowthInputs, MAX_CREATURE_LEVELS, MonthGrowth, Town, TownRuleset, WeekKind,
+    index_creature,
 };
 
 use crate::{GameRuleset, GameState, MonthKind};
@@ -26,7 +27,8 @@ struct Owner {
     /// heroes: E09 T28b).
     share_bp: u16,
     /// By creature handle: how many of the player's dwellings on the map have it as their kind's
-    /// first creature (the original's `town_dwelling_count_add` 0x5BFE50; a Refugee Camp is none).
+    /// first creature (the original's `town_dwelling_count_add` 0x5BFE50; a Refugee Camp is none);
+    /// empty when the player owns none.
     firsts: Vec<u16>,
 }
 
@@ -42,8 +44,11 @@ impl Owner {
             .map(|details| h3_heroes::owner_town_growth(details, core))
             .max()
             .unwrap_or(0);
-        let mut firsts = vec![0_u16; core.creature_count()];
+        let mut firsts = Vec::new();
         for creature in owned_dwellings(adventure, rules, player) {
+            if firsts.is_empty() {
+                firsts = vec![0_u16; core.creature_count()];
+            }
             if let Some(count) = firsts.get_mut(usize::from(creature.raw())) {
                 *count = count.saturating_add(1);
             }
@@ -111,12 +116,16 @@ pub(crate) fn inputs(state: &GameState, rules: &GameRuleset) -> Vec<GrowthInputs
                 .map_or([0; MAX_CREATURE_LEVELS], |details| {
                     h3_heroes::town_growth(details, core)
                 });
-            let dwellings = core::array::from_fn(|at| {
-                let base = at
-                    .checked_sub(MAX_CREATURE_LEVELS)
-                    .and_then(|base| index_creature(record, base));
-                owner.dwellings(index_creature(record, at), base)
-            });
+            let dwellings = if owner.firsts.is_empty() {
+                [0; CREATURE_INDEXES]
+            } else {
+                core::array::from_fn(|at| {
+                    let base = at
+                        .checked_sub(MAX_CREATURE_LEVELS)
+                        .and_then(|base| index_creature(record, base));
+                    owner.dwellings(index_creature(record, at), base)
+                })
+            };
             GrowthInputs {
                 owned: true,
                 share_bp: owner.share_bp,

@@ -221,8 +221,13 @@ fn an_event_s_creatures_go_to_the_upgraded_dwelling_else_the_dwelling_else_nowhe
         });
         *event_creatures(&town, &part, &creatures).available_all()
     };
-    // No dwelling: every level's lost.
+    // No dwelling: every level's lost; no creatures: the town as it was.
     assert_eq!(counts(&[], &[]), [0; CREATURE_INDEXES]);
+    let kept = town(&[DWELLING_1]).with_available(0, 4);
+    assert_eq!(
+        event_creatures(&kept, &part, &[0; MAX_CREATURE_LEVELS]),
+        kept
+    );
     // Level 1's dwelling and level 2's: added to the counts there (no week's growth); level 3
     // without a dwelling, level 4 without its, level 7 the Keep lacks: lost.
     let mut expected = [0; CREATURE_INDEXES];

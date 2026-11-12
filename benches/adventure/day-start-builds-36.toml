@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "E09 T19c2 (the town epic's design note §32): the step that starts day 8 (the last EndTurn of day 7: the week's step, the towns' income, the marks cleared, then red's turn start with its town events, TWN-EVT-001, -002: the Harbour's every-day and weekly gifts) in each of 16 random games of 7 days on the builds map (e09-builds-36.h3m, 36 x 36, four towns with custom sets and town events, increment 2's own map, decision 59); the fork that tries the step is dropped before it, as day-start-towns-36's: 760 steps, about 22 500 Ir a day start, the town events 15 % (h3_game::town::events::fire_events 9 %, firing 6 %), the towns' income 19 %; counts only inside h3_cli::adventure::bench::day_start_step; master's 359 566 measured in the same sandbox (the same code, the bench binary's inlining +0.05 %)"
+description = "E09 T19c2 (the town epic's design note §32): the step that starts day 8 (the last EndTurn of day 7: the week's step, the towns' income, the marks cleared, then red's turn start with its town events, TWN-EVT-001, -002: the Harbour's every-day and weekly gifts) in each of 16 random games of 7 days on the builds map (e09-builds-36.h3m, 36 x 36, four towns with custom sets and town events, increment 2's own map, decision 59); the fork that tries the step is dropped before it, as day-start-towns-36's: 760 steps, about 22 500 Ir a day start, the town events 15 % (h3_game::town::events::fire_events 9 %, firing 6 %), the towns' income 19 %; counts only inside h3_cli::adventure::bench::day_start_step; master's 359 566 measured in the same sandbox (the same code, the bench binary's inlining +0.05 %); E09 T26a1 re-baselined at 567 462 (+56.9 % against master's 361 745 measured in the same sandbox): the step now runs the towns' week (TWN-GRO-003: h3_game::town::growth::grow_week 23 %, of it h3_towns::TownGrowth::of 9 %, one pass over a town's buildings for its fourteen indexes, a pass per index having cost +199 %) and each town's inputs once (TWN-GRO-001: growth::inputs 11 %, the visitors 4 %); every other counted function the same code"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*day_start_step*"
-instructions = 359758
+instructions = 567462
 threshold_percent = 2

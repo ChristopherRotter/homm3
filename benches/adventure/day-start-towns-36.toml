@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "the step that starts day 8 (the last EndTurn of day 7: the week's step, each owned town's income, TWN-INC-001, -002, the spell points, the next turn's start) in each of 16 random games of 7 days on the town map (E09 T9c, the town epic's design note §18: e09-towns-36.h3m, 36 x 36, eight towns, four owned at load and those captured in the week): about 52 000 Ir a day start (day-start-xl-144's about 322 000 on its 144 x 144 map with an underground); the fork that tries the step is dropped before it, as day-start-xl-144's; counts only inside h3_cli::adventure::bench::day_start_step (the env's step); since E09 T19c1 re-baselined with the builds in the random agent's draw (encoding v9: the week's games build, so the day start pays more halls' and silos' income, h3_towns::daily_income 25 000 to 35 400 Ir, and clears the towns' marks; every counted function the same code): the branch +3.29 % against master's 826 336 measured in the same sandbox"
+description = "the step that starts day 8 (the last EndTurn of day 7: the week's step, each owned town's income, TWN-INC-001, -002, the spell points, the next turn's start) in each of 16 random games of 7 days on the town map (E09 T9c, the town epic's design note §18: e09-towns-36.h3m, 36 x 36, eight towns, four owned at load and those captured in the week): about 52 000 Ir a day start (day-start-xl-144's about 322 000 on its 144 x 144 map with an underground); the fork that tries the step is dropped before it, as day-start-xl-144's; counts only inside h3_cli::adventure::bench::day_start_step (the env's step); since E09 T19c1 re-baselined with the builds in the random agent's draw (encoding v9: the week's games build, so the day start pays more halls' and silos' income, h3_towns::daily_income 25 000 to 35 400 Ir, and clears the towns' marks; every counted function the same code): the branch +3.29 % against master's 826 336 measured in the same sandbox; E09 T26a1 re-baselined at 1 206 371 (+41.1 % against master's 854 709 measured in the same sandbox): the step now runs the towns' week and each town's inputs once (TWN-GRO-001, -003: h3_game::town::growth's grow_week and inputs, h3_towns::TownGrowth's one pass over a town's buildings); every other counted function the same code"
 args = [
     "adventure",
     "bench",
@@ -24,5 +24,5 @@ args = [
     "1",
 ]
 collect = "*day_start_step*"
-instructions = 853501
+instructions = 1206371
 threshold_percent = 2

@@ -3444,8 +3444,8 @@ growth with every week a normal one; T26a2 the week's kind.
 - **Tests:** `h3-towns`' event creatures (no dwelling, a dwelling, the upgraded one, the bound,
   a faction without a record); `h3-game`'s `town/tests/growth.rs` on four towns (red's with its
   visitor wearing the Legs and the Statue, blue's, red's without a visitor, a neutral one) and
-  three huts (red's, blue's, a neutral one): the inputs whole; the week on days 8, 15, 22 and 29
-  (43 and 20, 31, 38, 22 on day 8), nothing between; a gogs' month (T0's gogs 56 to 112) and the
+  three huts (red's and two neutral ones): the inputs whole; the week on days 8, 15, 22 and 29
+  (43 and 20, 30, 38, 22 on day 8), nothing between; a gogs' month (T0's gogs 56 to 112) and the
   Plague (each count less its growth, halved; the neutral town less half, the profile's flag
   off); a town event's imps added on day 2 and its gogs lost. The town tests' `rules_with_adventure`
   (an adventure pack edited before it compiles).
@@ -3459,11 +3459,22 @@ growth with every week a normal one; T26a2 the week's kind.
   `-s271-d14`, `-s290-d14`, `builds-week-s1`, `towns-income-s1`, `towns-s173-d21`, `-s1702-d21`,
   `-s3435-d21`): only checkpoints and final hashes, each first differing at day 8's start; the
   other 63 unchanged. The bot reports unchanged.
-- **Bench** (callgrind, against `master` built in `target/wt-master`): `day-start-builds-36`
-  +0.42 % (the towns' week: 361 745 to 363 281 Ir), `day-start-towns-36` +0.14 % against its
-  baseline, `day-start-dwellings-xl-144` −0.45 %, `month-start-xl-144` and `day-start-xl-144`
-  within 0.01 % and +0.40 % of their baselines; every workload inside its gate (`master` itself
-  sits at +1.6 % and +1.69 % of the two XL baselines), none re-baselined.
+- **Bench** (callgrind, `master` built in the same sandbox): the towns' week is new work in the
+  two town day-start workloads. Its first build, one `growth` call per index (each reading the
+  town's buildings again), cost `day-start-builds-36` +199 % and `day-start-towns-36` +89 %. So
+  `h3-towns` gained `TownGrowth` (crate-private: one pass over a town's ever-built roles, its fort
+  level once, then `at(index)`; `growth` and the week's and month's loops read it), and
+  `event_creatures` reads the dwellings once and returns at once without creatures. In the game,
+  an owner without dwellings skips the index table. After that, `day-start-builds-36` is 567 462
+  Ir against `master`'s 361 745 (+56.9 %: `grow_week` 23 %, of it `TownGrowth::of` 9 %, `inputs`
+  11 %, the visitors' lookup 4 %) and `day-start-towns-36` is 1 206 371 against 854 709 (+41.1 %).
+  Both were re-baselined with the reason in their descriptions. Every other workload passes its
+  gate (`random-play-*`, `day-start-xl-144`, `day-start-dwellings-xl-144`, `month-start-xl-144`,
+  the forks).
+- **The plans' property** (`h3-map`'s `play.rs`, `check_towns`, the adventure lane's file): a
+  town's record changing without a capture, a build or the day's start failed it once the counts
+  grew. Now the counts may move only with a week's start, a build or a town event of the town
+  (told by nothing until T26b), and the rest of the record is compared as before.
 - **Agent's calls (change freely):** decision 89's list.
 
 **The queue:** T26a2 and T26b queued (T26a2 next, its cut confirmed at its start).
