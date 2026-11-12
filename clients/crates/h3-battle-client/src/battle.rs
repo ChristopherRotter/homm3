@@ -14,7 +14,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use h3_battle::BattleSetup;
@@ -200,9 +200,9 @@ struct FromGame {
     ruleset: Option<BattleRuleset>,
 }
 
-/// The battle `source.battle` of the whole game's record `text` (E17 M7 T3b1) as a record of its
-/// own ([`h3_view::game_record`]), with the battle part the game's packs compile to here.
-fn game_battle(text: &str, source: &Source) -> Result<(Record, FromGame), String> {
+/// The battle `source.battle` of the whole game's record `text` (E17 M7 T3b1,
+/// [`h3_view::game_record`]).
+fn game_battle(text: &str, source: &Source) -> Result<GameBattle, String> {
     let game = h3_view::game_record::parse(text)
         .map_err(|e| format!("{}: {e}", source.input.display()))?;
     let mut battles = game.battles();
@@ -216,18 +216,33 @@ fn game_battle(text: &str, source: &Source) -> Result<(Record, FromGame), String
                 source.battle
             )
         })?;
-    let GameBattle { record, at } = battles.swap_remove(index);
-    let ruleset = crate::scenario::ruleset(&source.packs, &record.header.manifest).ok();
+    Ok(battles.swap_remove(index))
+}
+
+/// A whole game's `battle` as a record of its own, with the battle part the game's packs in
+/// `packs` compile to here (E17 M7 T3b1; a host's in memory too, E17 M7 T4, R3-4).
+fn from_game(battle: GameBattle, packs: &Path) -> (Record, FromGame) {
+    let GameBattle { record, at } = battle;
+    let ruleset = crate::scenario::ruleset(packs, &record.header.manifest).ok();
     let own = ruleset.as_ref().map(h3_protocol::map::manifest);
     let content = h3_view::remote::content(&record.header.manifest, own.as_ref());
-    Ok((
+    (
         record,
         FromGame {
             at,
             content,
             ruleset,
         },
-    ))
+    )
+}
+
+/// What a battle's ground is read from besides its [`Source`] (E17 M7 T4): the source's input
+/// alone, a host's game's seat ([`Ground::load_game`]) or a whole game's battle a host holds
+/// ([`Ground::load_battle`]).
+enum Given {
+    Source,
+    Seat(Box<GameSeat>),
+    Battle(Box<GameBattle>),
 }
 
 /// Where a press gives a command (E17 M5 T2b).
@@ -401,33 +416,53 @@ impl Ground {
     /// (its battle is fought as it is played: every magic animation and spell read for it, as its
     /// events are not known yet).
     pub fn load(source: &Source) -> Result<Self, String> {
-        Self::load_from(source, None)
+        Self::load_from(source, Given::Source)
+    }
+
+    /// Reads what the whole game's `battle` a host holds is drawn from (E17 M7 T4, R3-4,
+    /// *provisional*: a record the host read itself, `h3_view::game_record::GameRecord::battles`,
+    /// a golden replay's run in memory say): played as a record, as [`Ground::load`] plays a game
+    /// record file's battle `source.battle` (which is this, read from the file), its packs
+    /// compiled from `source.packs`, the archives read from `source.install`; `source.input` and
+    /// `source.battle` unread.
+    ///
+    /// # Errors
+    /// A human's side asked for (a record's battle is watched), or as [`Ground::load`].
+    pub fn load_battle(source: &Source, battle: GameBattle) -> Result<Self, String> {
+        Self::load_from(source, Given::Battle(Box::new(battle)))
     }
 
     /// Reads what the battle `seat` follows is drawn from (E17 M7 T3b2): a whole game's battle
     /// played live through its host's game, once it opened ([`GameSeat::opened`]); its player
     /// the one human here, its packs compiled from `source.packs`, the archives read from
     /// `source.install` (its other fields as a record's: the speed, the seed of the viewer's own
-    /// fidgets).
+    /// fidgets). The seat stays on that battle (E17 M7 T4, R3-3): a host makes one for each
+    /// battle it shows. Only the seat's player's side is played here: a hot-seat battle between
+    /// two of the host's humans is not (CLT-STUB-5, the user at E17 M7 T4: with E24 M5).
     ///
     /// # Errors
     /// The battle not open, the game's packs absent here, or as [`Ground::load`].
     pub fn load_game(source: &Source, seat: GameSeat) -> Result<Self, String> {
-        Self::load_from(source, Some(seat))
+        Self::load_from(source, Given::Seat(Box::new(seat)))
     }
 
-    /// [`Ground::load`], or [`Ground::load_game`] with `seat`.
-    fn load_from(source: &Source, seat: Option<GameSeat>) -> Result<Self, String> {
+    /// [`Ground::load`], [`Ground::load_game`] or [`Ground::load_battle`], by what is `given`.
+    fn load_from(source: &Source, given: Given) -> Result<Self, String> {
         let mut humans = source.humans;
-        if humans.contains(&true) && !source.scenario() {
+        let watched = !source.scenario() || matches!(given, Given::Battle(_));
+        if humans.contains(&true) && watched {
             return Err("a human plays a scenario's battle, not a record's".into());
         }
         let mut game = None;
-        let (record, fight) = if let Some(seat) = seat {
+        let (record, fight) = if let Given::Seat(mut seat) = given {
             // A whole game's battle played live (E17 M7 T3b2): as a server's seat, its record's
             // opening, its player the one human here (the other side's is the host's game's).
-            let record = seat_opening(&seat).map_err(|_| "the game's battle has not opened")?;
+            // The seat stays on that battle (E17 M7 T4, R3-3).
+            let record = seat_opening(&*seat).map_err(|_| "the game's battle has not opened")?;
+            seat.follow();
             let index = usize::from(seat.seat() == Seat::Defender);
+            // stub: CLT-STUB-5 (a hot-seat battle between two of the host's humans: one side
+            // human here, the seat's player's; the other's turns would need the host's UI)
             humans = [index == 0, index == 1];
             let manifest = &record.header.manifest;
             let ruleset = crate::scenario::ruleset(&source.packs, manifest).ok();
@@ -440,11 +475,16 @@ impl Ground {
                 ));
             }
             let fought = Fought::Game(Box::new(GameServed {
-                seat: RefCell::new(seat),
+                seat: RefCell::new(*seat),
                 content,
                 ruleset,
             }));
             (record, Some(fought))
+        } else if let Given::Battle(battle) = given {
+            // A whole game's battle a host holds (E17 M7 T4, R3-4): played as a record.
+            let (record, from) = from_game(*battle, &source.packs);
+            game = Some(Box::new(from));
+            (record, None)
         } else if let Some(server) = &source.server {
             // A seat on a server (E17 M5 T6b1): its record's opening, its player the one human
             // here (`remote_turn`: the other seat's player is the network's).
@@ -497,7 +537,7 @@ impl Ground {
                 .map_err(|e| format!("{}: {e}", source.input.display()))?;
             // A whole game's record (E17 M7 T3b1): the battle it names, played as a record.
             if h3_view::game_record::is_game(&text) {
-                let (record, from) = game_battle(&text, source)?;
+                let (record, from) = from_game(game_battle(&text, source)?, &source.packs);
                 game = Some(Box::new(from));
                 (record, None)
             } else {
@@ -4250,7 +4290,7 @@ pub(crate) mod tests {
     /// the repository's `original-data/install`): none without its archives (E17 M6 T7b, R9-1:
     /// a `Battle`'s text tables are the game's; the test then checks nothing, as on CI).
     pub(crate) fn staged(situation: &str, humans: [bool; 2]) -> Option<Source> {
-        let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let install = std::env::var_os("H3_INSTALL")
             .map_or_else(|| repo.join("original-data/install"), PathBuf::from);
         if !install.join("Data/H3bitmap.lod").is_file() {
@@ -4273,6 +4313,46 @@ pub(crate) mod tests {
     /// The result window `window` opened over `battle` (E17 M7 T1d: the window's presser).
     pub(crate) fn open_result(battle: &mut Battle<'_>, window: MessageBox) {
         battle.message = Some((h3_view::message::Open::new(window), 0, Asked::Result));
+    }
+
+    #[test]
+    fn the_grid_s_and_shadows_keys_are_taken_on_every_turn_once_its_action_played() {
+        // E17 M7 T4 (R1-3; CLT-Q75 (a), T1a): F6 to F8 count on the computer's turn before its
+        // command, where the battle takes no press (`takes`), and on the human's once the
+        // action before played; never during an action or once the battle is over; a record's
+        // whenever.
+        let Some(source) = staged("seq-melee.toml", [false, true]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        // The Angels' turn, the computer's, at the opening.
+        assert!(battle.playing() && battle.played.timeline().end == 0);
+        assert!(battle.takes_keys(0) && !battle.takes(0));
+        // The Wolf Riders' turn, the human's, after the Angels' action.
+        assert!(battle.grow(0).unwrap() && battle.waiting());
+        let end = battle.played.timeline().end;
+        assert!(end > 0 && !battle.takes_keys(end - 1));
+        assert!(battle.takes_keys(end) && battle.takes(end));
+        // A battle over (`seq-end`'s one strike), then its record.
+        let Some(mut source) = staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let mut battle = Battle::new(&ground).unwrap();
+        while battle.grow_one().unwrap() {}
+        assert!(matches!(battle.played, Played::Finished(_)));
+        let end = battle.played.timeline().end;
+        assert!(end > 0 && !battle.takes_keys(end) && !battle.takes_keys(end + 1000));
+        let path =
+            std::env::temp_dir().join(format!("h3-view-takes-keys-{}.jsonl", std::process::id()));
+        fs::write(&path, battle.record_text().unwrap().unwrap()).unwrap();
+        source.input = path.clone();
+        let recorded = Ground::load(&source).unwrap();
+        let record = Battle::new(&recorded).unwrap();
+        assert!(record.fight.is_none());
+        assert!(record.takes_keys(0) && record.takes_keys(end - 1) && record.takes_keys(end));
+        fs::remove_file(&path).unwrap();
     }
 
     #[test]

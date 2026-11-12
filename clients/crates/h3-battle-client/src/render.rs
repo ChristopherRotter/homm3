@@ -275,13 +275,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         let looks = motion::looks(&record, &tables, &archives)?;
         let magic = motion::magic(&record, &tables, &archives, false)?;
         let siege = motion::siege(&record, &tables, &archives)?;
-        let casts = motion::casts(
-            &record,
-            &tables,
-            &archives,
-            &options.packs,
-            (false, Bugs::Fixed),
-        )?;
+        let casts = frame_casts(&record, &tables, &archives, &options.packs)?;
         let stage = motion::stage(&record, &tables, &layout, (&magic, &casts, siege.as_ref()));
         let commands = anim::commands(&record.messages);
         let timeline = anim::timeline(
@@ -767,6 +761,19 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     Ok(lines)
 }
 
+/// The casts of the frames `--frames` draws (E17 M7 T4, R3-2): the original's, as the hero's
+/// picture there is its type's own (`sequences`' `scene::battle_as` with `Bugs::Original`), so
+/// the cast point and the cast group's length are that picture's (design §13.5), as the timing
+/// check's (`sequences`).
+fn frame_casts(
+    record: &record::Record,
+    tables: &h3_view::tables::Tables,
+    archives: &[(&str, LodArchive<'_>)],
+    packs: &Path,
+) -> Result<anim::Casts, String> {
+    motion::casts(record, tables, archives, packs, (false, Bugs::Original))
+}
+
 /// The colour whose view the screen shows in `observation`'s battle (`viewing_player` 0x4CEA20;
 /// E17 M5 T4a, as the window's battle takes it): the attacker's when human, else the defender's
 /// when human, else red (the record names none: red for the attacker, blue for the defender).
@@ -792,6 +799,54 @@ mod tests {
     use h3_protocol::wire::{
         Algorithm, Field, KeyTables, Manifest, PackRef, RecordHeader, Seat, WireU64,
     };
+
+    #[test]
+    fn the_frames_casts_are_the_hero_type_s_own_picture_s() {
+        // E17 M7 T4 (R3-2): `--frames` draws the hero by its type's own picture (the original's),
+        // so its cast point and cast group come from that picture, not from the one a map's sex
+        // picks (the client's): Orrin, a male Knight (CH00), made female (CH01), casting Slow.
+        use h3_protocol::wire::{Event, ServerMessage, Sex, Side, Target};
+        let Some(source) = crate::battle::tests::staged("seq-cast.toml", [false, false]) else {
+            return;
+        };
+        let (ruleset, setup) =
+            crate::scenario::battle(&source.input, &source.packs, source.seed).unwrap();
+        let players = ([false, false], crate::live::Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, source.seed, players).unwrap();
+        let mut record = record::parse(&live.record().unwrap()).unwrap();
+        let keys = &record.header.manifest.keys;
+        let slow = keys.spells.iter().position(|k| k == "base:slow").unwrap();
+        let slow = u16::try_from(slow).unwrap();
+        let Some(ServerMessage::Snapshot { observation, .. }) = record.messages.first_mut() else {
+            panic!("no snapshot first");
+        };
+        let hero = observation.sides[0].hero.as_mut().unwrap();
+        hero.sex = Some(Sex::Female);
+        let n = u32::try_from(record.messages.len() + 1).unwrap();
+        record.messages.push(ServerMessage::Events {
+            n,
+            events: vec![Event::SpellCast {
+                side: Side::Attacker,
+                spell: slow,
+                target: Target::None {},
+                second: Target::None {},
+            }],
+        });
+        let top = record.header.manifest.packs.last().unwrap().id.clone();
+        let tables = assets::load(&assets::default_dir(), &top).unwrap();
+        let bytes = read_archives(&source.install).unwrap();
+        let archives: Vec<(&str, LodArchive<'_>)> = (bytes.iter())
+            .map(|(name, b)| (*name, LodArchive::parse(b).unwrap()))
+            .collect();
+        let casts = |bugs| {
+            motion::casts(&record, &tables, &archives, &source.packs, (false, bugs)).unwrap()
+        };
+        let (original, fixed) = (casts(Bugs::Original), casts(Bugs::Fixed));
+        assert!(original.casters[0].is_some());
+        assert_ne!(original.casters[0], fixed.casters[0]);
+        let frames = frame_casts(&record, &tables, &archives, &source.packs).unwrap();
+        assert_eq!(frames.casters[0], original.casters[0]);
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).to_owned()).collect()

@@ -4,9 +4,12 @@
 //!
 //! - **In:** the host hands the seat its player's messages as they come ([`GameSeat::receive`]),
 //!   from the game's start or from the `GameEvents` whose `BattleStarted` begins the battle. The
-//!   seat follows the first battle that opens in them, its record growing as `h3_view::game_record`
-//!   reads the game's messages (the battle's `Snapshot`, its events inside `GameEvents`, the
-//!   player's turns in `GameTurn`, `GameAccepted`, `GameRejected`, until `BattleEnded`).
+//!   seat follows the last battle that opened in them (E17 M7 T4, R3-3: the battles done before
+//!   it are not kept), its record growing as `h3_view::game_record` reads the game's messages (the
+//!   battle's `Snapshot`, its events inside `GameEvents`, the player's turns in `GameTurn`,
+//!   `GameAccepted`, `GameRejected`, until `BattleEnded`). Loaded (`Ground::load_game`, which takes
+//!   the seat: one seat for each battle a host shows), it stays on that battle: past the message
+//!   right after its end (its last snapshot, once the game sends it) it reads nothing more.
 //! - **Out:** what the battle sends goes to the host ([`GameSeat::take_outgoing`]): its human
 //!   side's commands, as the player's `GameCommand::Battle` numbered by the seat (the host plays
 //!   each as that player's with its number, which the game's answer echoes), and each turn's
@@ -18,13 +21,14 @@
 //!
 //! An adapter beside the window's battle. *Provisional*: the names, the queries the host
 //! answers, the seat's own numbers (from 1, its commands' and its queries' one sequence), the
-//! battle followed (the first to open in what the host hands over).
+//! battle followed (the last to open in what the host hands over until it is loaded, then that
+//! one: E17 M7 T4, an agent decision; T3b2's followed the first).
 
 use std::collections::BTreeMap;
 
 use h3_protocol::wire::game::{GameCommand, GameRecordHeader};
 use h3_protocol::wire::{Command, Query, Seat, ServerMessage, Target};
-use h3_view::game_record::{Battles, InGame};
+use h3_view::game_record::{Battles, GameBattle, InGame};
 use h3_view::record::Record;
 
 use crate::battle::Remote;
@@ -69,6 +73,11 @@ pub struct GameSeat {
     answers: BTreeMap<u32, Vec<Target>>,
     /// The battle record's length at the last poll.
     polled: usize,
+    /// The battle loaded ([`GameSeat::follow`]), by the order they opened from 0: the seat stays
+    /// on it; none, the last opened.
+    follows: Option<usize>,
+    /// The message right after the battle loaded ended was read: nothing more is.
+    closed: bool,
 }
 
 impl GameSeat {
@@ -85,12 +94,26 @@ impl GameSeat {
             queries: Vec::new(),
             answers: BTreeMap::new(),
             polled: 0,
+            follows: None,
+            closed: false,
         }
     }
 
     /// The player's next message from the host.
     pub fn receive(&mut self, message: &ServerMessage) {
-        self.battles.read(message);
+        // Loaded, the seat reads its battle's messages up to the one right after its end (its
+        // last snapshot), no later battle (E17 M7 T4, R3-3, *provisional*); else it keeps the
+        // battle opened last alone.
+        let read = match self.follows {
+            Some(_) if self.over() => !core::mem::replace(&mut self.closed, true),
+            _ => true,
+        };
+        if read {
+            self.battles.read(message);
+        }
+        if self.follows.is_none() {
+            self.battles.keep_last();
+        }
         // The command answered (a refusal by another code than the battle's too: the record
         // holds none of it) or the battle over: the next turn may be played.
         let answered = match message {
@@ -105,16 +128,30 @@ impl GameSeat {
     }
 
     /// Whether the battle followed opened: the host may load the battle then
-    /// (`crate::battle::Ground::load_game`).
+    /// (`crate::battle::Ground::load_game`). A seat not loaded follows the battle opened last
+    /// (E17 M7 T4, R3-3): fed on past that battle's end, it still has it until another opens.
     #[must_use]
     pub fn opened(&self) -> bool {
-        self.battles.opened() > 0
+        self.followed().is_some()
     }
 
     /// Where the battle followed stands in the game (none before it opened).
     #[must_use]
     pub fn in_game(&self) -> Option<InGame> {
-        self.battles.get(0).map(|b| b.at)
+        self.followed().map(|b| b.at)
+    }
+
+    /// The battle the seat follows: the one loaded, else the one opened last.
+    fn followed(&self) -> Option<&GameBattle> {
+        match self.follows {
+            Some(index) => self.battles.get(index),
+            None => self.battles.last(),
+        }
+    }
+
+    /// The battle followed now stays the seat's (E17 M7 T4, R3-3): `Ground::load_game` loads it.
+    pub(crate) fn follow(&mut self) {
+        self.follows = self.battles.opened().checked_sub(1);
     }
 
     /// What waits for the host, in the order the battle gave it.
@@ -178,7 +215,7 @@ impl Remote for GameSeat {
     }
 
     fn record(&self) -> Option<&Record> {
-        self.battles.get(0).map(|b| &b.record)
+        self.followed().map(|b| &b.record)
     }
 
     /// The battle's turn the game asks the player to play, once every target the turn asked for

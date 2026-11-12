@@ -11,7 +11,7 @@ Read first, then your lane's HANDOFF: the lane index and the few traps that cros
 | town | `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`; the town modules of `h3-adventure`, `h3-game` and `h3-map` (`src/town*`, `import/town*`, `writer/town*`); E09 | [HANDOFF](lanes/town/HANDOFF.md), [QUEUE](lanes/town/QUEUE.md) |
 | ai | `h3-sim`, `h3-ffi`, `python/` | [HANDOFF](lanes/ai/HANDOFF.md), [QUEUE](lanes/ai/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
-| client | battle client: `clients/` (own Cargo workspace) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
+| client | `clients/` (own Cargo workspace): the battle client (E17, closed), then the game shell (E27) | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 | map-client | adventure map client: `clients/crates/h3-map…`, `clients/map/` | [HANDOFF](lanes/map-client/HANDOFF.md), [QUEUE](lanes/map-client/QUEUE.md) |
 
 Shared (own PR, merged first): `h3-kernel`, `h3-contracts`, the core `h3-content`, `h3-pack` (R01), workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common: `OPEN-QUESTIONS.md`, `docs/stubs.toml` (a block per lane), both `Cargo.lock`s, `docs/exe/map.toml`, `structs.toml` (a line per entry), the client foundation and harness, each lane's `QUEUE.md` inbox.

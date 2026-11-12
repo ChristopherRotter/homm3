@@ -1104,6 +1104,22 @@ impl Audio {
         }
     }
 
+    /// Opens the default playback device of SDL's audio driver `driver` (E17 M7 T4: `dummy`, a
+    /// device that plays nothing and takes the samples at their rate, for tests without a sound
+    /// device). The driver is SDL's only while no other [`Audio`] is open.
+    ///
+    /// # Errors
+    /// SDL's error when the driver or the device cannot be opened, or a name with a NUL.
+    pub fn open_driver(driver: &str) -> Result<Self, String> {
+        let name = CString::new(driver).map_err(|e| e.to_string())?;
+        // SAFETY: SDL copies the hint's value; the hint is reset once the device is opened.
+        unsafe { SDL_SetHint(SDL_HINT_AUDIO_DRIVER, name.as_ptr()) };
+        let opened = Self::open();
+        // SAFETY: a plain SDL call.
+        unsafe { SDL_ResetHint(SDL_HINT_AUDIO_DRIVER) };
+        opened
+    }
+
     /// Adds a stream for 16-bit samples of `channels` × `rate`, bound to the device; its index
     /// (a removed stream's, the first free one, since E17 M7 T3c).
     ///

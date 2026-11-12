@@ -112,6 +112,37 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for your M4 T5 and M5**;
+  E17 closes with it): **the hosted battle after M7's review**, design §13.2 to §13.6.
+  (1) **The element borrows** its `Ground` and your game (`Prepared<'g>`, `Hosted<'g>`; the
+  user kept it, R2-4): run each battle in a scope that owns them; tell the client lane if your
+  host needs an owning element. (2) `Prepared::start` returns `Result<Hosted, Box<NotStarted>>`:
+  a failed start hands your lent sound back (`NotStarted::sound`; `From` into `String` keeps
+  `?`), every fallible step before the sound is taken. (3) **One `GameSeat` per battle:** it
+  follows the battle opened last until `Ground::load_game` loads it, then stays on it and reads
+  nothing past the message after its end; make a new seat for the next battle. (4)
+  `Ground::load_battle(source, battle)` plays a `GameBattle` you hold in memory (no temporary
+  file); a battle open when the messages begin (a game restored mid-battle) opens at the
+  `GameSnapshot`. (5) **The sound:** a battle that cannot read its sound archive silences yours
+  (a request for the missing track `""`, so `has_track("")` is true afterwards), services it and
+  passes the focus on: keep calling `Hosted::sound` and `Hosted::focus` every pass; the tracks
+  your sound already has are not decoded again, the battle's stay on it and are reused; a Restart
+  after the end brings the combat music back in both profiles. Additive in the common crates:
+  `h3_ui::music::Music::request_again` and `Queue::request_again` (the pending name replaced
+  whatever the profile's filter), `h3_sdl::Audio::open_driver` (a named SDL driver: the tests'
+  `dummy`). (6) A mouse's hold over a panel button stands the battle only at its timeline's end
+  (a record plays on), and a box opening over it ends the hold. (7) **E17's threads placed with
+  you** (the user, at T4): M6 T5e, the captured artifacts' message after Eagle Eye's
+  (`captured_artifacts_message` 0x4772B0, design §12.21), the client lane builds once your M4 T5
+  tells the winner's owner the adventure's capture list (HER-ART-004); CLT-Q4, the battlefield
+  picture's variants 0 and 1, read from the wire since T3b1, recorded once one of your battles
+  has trees, mountains or dead vegetation around it; `CLT-STUB-4` (no Auto Combat switch in a
+  live game's battle: the computer's choices for the human's side need your state) and
+  `CLT-STUB-5` (a hot-seat battle between two of your humans is not played: the seat's side
+  alone is human; with your M5). Each is a line in the client queue's inbox: tell the client
+  lane when your task reaches it. HD layouts and graphics options are E29 (the backlog), for
+  both clients.
+
 - 2026-11-12 (the adventure lane, E08 T110, branch `adventure/e08-t110`; the capture harness, informational): `h3adv` gains a garrison's exchange as a screen (`garrison`, vtable 0x643890; `garrison_dialogs`, `bar:selected`, `bar:clicks`, `creature_windows`), the battle plan `{ book = "<spell>", then }` (the key C at each side's first stack's turn; `book:<side>`; `h3mem`'s stacks gain `spells`, `battlefield` gains `anti_magic`), a step's `cast` (the adventure book), a list of `hint` tiles (`hints`; an unexplored tile's hint says so), an end-turn step's `to_day`, `skip_quietly`, the hero screen's `morale` and `luck` (items 116, 117) with `popup:lines`, and `garrison:x,y`, `anti_magic`, `fountain:x,y`, `spring:x,y`, `hero:bit:<n>`, `hero:word:<offset>`, `dialog:items|boxes` (`h3mem.garrisons`, `battle_hero`). **Behaviour changed:** `h3drive.gold_bonus` clicks each row's arrow until the memory reads Gold (at most four: a heroless town player has no Artifact); `hint_at` parks the mouse first and reads until two reads agree (at most 3 s); `play_turns` gives no order once the battle is decided; an action's `row:` and `+` fields; a recipe's `+anything odd` kept beside the notes. The harness check passed. `clients/capture/README.md`, "Garrisons and the bonus visitables".
 
 - 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
