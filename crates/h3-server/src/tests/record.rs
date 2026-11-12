@@ -1,6 +1,7 @@
 //! `h3-server record` (E16 M5 T6): every golden adventure replay runs through the whole game's
 //! session to its checkpoints and final hash, and each player's record is its header and the
-//! messages it was sent: one `GameEvents` per command whatever the player may see, a
+//! messages it was sent: one `GameEvents` per command whatever the player may see (and the
+//! start's town events, E16 M5 T11), a
 //! `GameReveal` only after one (E16 M5 T5c), its own commands echoed, no state hash
 //! anywhere (what each message holds is projected for its viewer
 //! by construction, gated in `h3-protocol`'s `game_session` test). A replay that is not its re-run
@@ -14,7 +15,7 @@ use h3_contracts::PlayerId;
 use h3_game::Actor;
 use h3_protocol::RECORD_FORMAT_VERSION;
 use h3_protocol::codec;
-use h3_protocol::wire::game::{GameRecordHeader, MapIdentity};
+use h3_protocol::wire::game::{GameEvent, GameRecordHeader, MapIdentity};
 use h3_protocol::wire::{ServerMessage, WireU64};
 use h3_sim::adventure::replay::Replay;
 
@@ -91,6 +92,13 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
         };
         match message {
             ServerMessage::GameSnapshot { .. } => assert_eq!(i, 0, "{name}: the snapshot first"),
+            // The start's (E16 M5 T11): the player's town events of the build, after its
+            // snapshot; a command's tells more than town events.
+            ServerMessage::GameEvents { events: e, .. }
+                if i == 1
+                    && !e.is_empty()
+                    && e.iter()
+                        .all(|e| matches!(e, GameEvent::TownEventFired { .. })) => {}
             ServerMessage::GameEvents { .. } => events += 1,
             ServerMessage::GameReveal { .. } => {
                 assert!(was, "{name} player {k}: a reveal after a command's events");

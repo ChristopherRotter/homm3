@@ -5,7 +5,9 @@
 //! thread and a seat's join resumes it, also after a restart; a game whose seats stayed empty
 //! pauses at the sweep and goes void; a drain does not wait for a running whole game. The unowned
 //! battle sides (T10): the server's computer plays a wandering monster's side, journaled as the
-//! system actor's; a restart re-runs its commands, and answers for it where a crash cut them.
+//! system actor's; a restart re-runs its commands, and answers for it where a crash cut them. The
+//! queries (T11): a seat asks its hero's moves and moves along a path of the answer, another's
+//! question about it is answered none, and no answer enters the record.
 
 use std::fs;
 
@@ -13,10 +15,11 @@ use h3_contracts::PlayerId;
 use h3_protocol::map::game::manifest;
 use h3_protocol::session::game::{GameEntry, GameOptions, GameSession};
 use h3_protocol::wire::game::{
-    Computer, GameCommand, GameEvent, GameRecordHeader, MapGameInfo, MapOffer,
+    AdventureCommand, Computer, GameAnswer, GameCommand, GameEvent, GameQuery, GameRecordHeader,
+    MapGameInfo, MapOffer,
 };
 use h3_protocol::wire::{
-    ClientMessage, Command, GoodbyeReason, Phase, Refusal, Seat, ServerMessage,
+    ClientMessage, Command, GoodbyeReason, Phase, Query, Refusal, Seat, ServerMessage,
 };
 
 use super::{GAME_TIME, fast, greeted, root};
@@ -385,6 +388,70 @@ async fn started(running: &Running) -> (Client, Client, u32, [String; 2]) {
     })
     .await;
     (a, b, game, [t0, t1])
+}
+
+/// The answer to `client`'s query `query` numbered `seq`, the messages before it skipped.
+async fn asked(client: &mut Client, seq: u32, query: GameQuery) -> GameAnswer {
+    client
+        .send(&ClientMessage::GameQuery { seq, query })
+        .await
+        .unwrap();
+    next(client, |m| match m {
+        ServerMessage::GameAnswer { seq: s, answer, .. } if s == seq => Some(answer),
+        _ => None,
+    })
+    .await
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_seat_asks_the_games_rules_and_moves_by_their_answer() {
+    let config = with_map();
+    let running = start(&config).await.unwrap();
+    let (mut a, mut b, _, _) = started(&running).await;
+    // The first player's hero: the one whose moves it is answered.
+    let mut own = None;
+    for hero in 0..16 {
+        let answer = asked(&mut a, 100 + u32::from(hero), GameQuery::Moves { hero }).await;
+        let GameAnswer::Moves { hero: h, moves } = answer else {
+            panic!("{answer:?}")
+        };
+        assert_eq!(h, hero);
+        own = own.or(moves.map(|moves| (hero, moves)));
+    }
+    let (hero, moves) = own.expect("the first player has a hero that may move");
+    // The other player's question about it is none of its, as its battle's targets.
+    let theirs = asked(&mut b, 1, GameQuery::Moves { hero }).await;
+    assert_eq!(theirs, GameAnswer::Moves { hero, moves: None });
+    let battle = GameQuery::Battle {
+        query: Query::CreatureCastTargets {},
+    };
+    let targets = asked(&mut b, 2, battle).await;
+    assert_eq!(targets, GameAnswer::Battle { targets: vec![] });
+    // The first player moves its hero along the tree's path to a tile it lists.
+    let (to, _) = moves.tiles()[0];
+    let path = moves.path(to).unwrap();
+    let command = GameCommand::Adventure {
+        command: AdventureCommand::MoveHero { hero, path },
+    };
+    a.send(&ClientMessage::GameCommand { seq: 1, command })
+        .await
+        .unwrap();
+    next(&mut a, |m| {
+        matches!(m, ServerMessage::GameAccepted { seq: 1, .. }).then_some(())
+    })
+    .await;
+    // Its record holds the command, no answer.
+    a.send(&ClientMessage::FetchRecord { seq: 2 })
+        .await
+        .unwrap();
+    let record = next(&mut a, |m| match m {
+        ServerMessage::Record { record, .. } => Some(record),
+        _ => None,
+    })
+    .await;
+    assert!(record.contains("GameAccepted"));
+    assert!(!record.contains("GameAnswer"));
+    running.shutdown().await;
 }
 
 /// The goodbye a client gets, the messages before it skipped, then the end of the connection.
