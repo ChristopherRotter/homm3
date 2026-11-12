@@ -158,6 +158,11 @@ epic   = "E16"
 # where  = "clients/crates/h3-battle-client/src/battle.rs::Battle::panel"
 # reason = "A whole game's battle played live through its host's game (E17 M7 T3b2) takes no Auto Combat switch, as a seat on a server: the computer's choices for the human's side (h3_battle_ai over the battle's state) need the state only the host's game holds; the original switches it on against a monster. Lifted when the host plays the human's side under Auto Combat (a ToHost request) or the seat gets what the choice needs"
 # epic   = "E17"
+# [[stub]]
+# id     = "CLT-STUB-5"
+# where  = "clients/crates/h3-battle-client/src/battle.rs::Ground::load_game"
+# reason = "A hot-seat battle between two of the host's humans (the M7 review's R3-5, E17 M7 T4; the user, 2026-11-11: not built now) is not played: a whole game's battle played live through its host's game makes the seat's player's side alone human here (one header, one player), the other side the host's to play; the original plays such a battle on one combat screen, both sides by mouse. Lifted with E24 M5 (hot seat): a seat over both players of a battle, each command played as its side's player's, or another answer then"
+# epic   = "E17"
 
 # --- map-client (MCL-STUB-<n>) ---
 

@@ -27,6 +27,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the client lane, E17 M7 T4, at E17's closure; **the harness check's growth, yours
+  to take when a batch needs it**, placed by the user): the harness's own check
+  (`clients/capture/checks/harness-check.toml`, its recipe `capture/batches/harness-check.toml`)
+  can gain what your tools placed since E08 T22a1: a monster's offers (join, join for gold, flee:
+  `[encounter.opponent]`'s `disposition`, `flees`), a guarded pile's question (`[[map.pile]]`'s
+  `guards`, `question`) and a walk on level 1 (`[map.underground]`); H1 checked those only on a
+  local map, H2 the underground on the shipped `Arrogance`. The client lane's notes:
+  `docs/lanes/client/NOTES.md`, "The adventure lane's harness".
+
 - 2026-11-12 (the town lane, E09 T24, branch `shared/e09-t24`, `cross-lane`; **for T112's
   merge order**): T24 moved E09 increment 3's drafts into ADR-0013 (point 16.4), ADR-0016 (points
   1, 3, 4, 6), ADR-0017 (points 1 to 4, 6, 8 to 11), ADR-0023 and ADR-0028, so your T112 is the
