@@ -13,23 +13,24 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T1a — the catalogue, part 1: the start and the menus
+#### E27 M1 T1a2 — the catalogue, part 1b: Multiplayer, the hot seat's names, High Scores, Credits
 
-- **Scope:** read from `Heroes3.exe` (`docs/exe/map.toml` entries with their confidence) and its
-  assets: the start (the clips before the main menu in order, what skips one, the loading bar's
-  clip and when it shows, where `H3X1intr` plays; design §1), the main menu (its background,
-  buttons and their DEFs, hover, press, hotkeys, sounds, music), New Game's and Load Game's
-  choices (single scenario, multiplayer, campaign, tutorial, back), Multiplayer (its modes, the
-  hot seat's names dialog), High Scores (its tabs, `HSANIM` and `HSLOOP`), Credits (its text
-  table, `Credits.smk`), Quit's question. Per screen: the constructor, its items in order, the
-  assets by name, the texts by table and record (never the text, ADR-0009), the sounds, the
-  entry points and the transitions; observed under the harness where the code is unclear.
-  Into `E27-design.md` §2. The network modes and the tutorial decided (CLT-Q83): a `CLT-Q<n>`
-  each, with a recommendation; every oddity found a question too.
-- **Acceptance:** every screen of the part listed with its addresses, items, assets, texts,
-  sounds and transitions, each reading's confidence stated; the questions filed (asked when the
-  user is present); the Definition of Done (docs).
-- **Depends on:** M0 (done). **Status:** ready.
+- **Scope:** T1a's second half (cut with the user, 2026-11-12, decision 9; T1a1's reading is
+  `E27-design.md` §2, its entry points named there): Multiplayer (`multiplayer_dialog_run`
+  0x4F0590: the dialog 0x50E050, its modes, the hot seat's names dialog; the network modes decided
+  as a `CLT-Q` with a recommendation, CLT-Q83; `ProgressBar`'s use, §2.1, with them), High Scores
+  (`high_scores_show` 0x4E9110: its tabs, `HSANIM` and `HSLOOP`, the high-score manager 0x6993CC),
+  Credits (`credits_screen` 0x4EDDA0: its text table `Credits.txt`, whether a clip plays, the
+  copies of `mainmenu.pcx` around it). Per screen as T1a1: the constructor, its items in order,
+  the assets by name, the texts by table and record (never the text), the sounds, the entry points
+  and the transitions; confidence stated; every oddity a question. Into `E27-design.md` §2 (new
+  subsections after §2.5).
+- **Acceptance:** as T1a1's (every screen listed with its addresses, items, assets, texts, sounds
+  and transitions; the questions filed, asked when the user is present; the map's entries and
+  `check-exe-map`); the Definition of Done (docs).
+- **Depends on:** T1a1 (done). **Status:** ready. The original data: `Heroes3.exe` and the LODs
+  (the text tables in `original-data/extracted/`); `original-data/shell-videos.vid` holds
+  `HSANIM` and `HSLOOP` for their headers.
 
 #### E27 M1 T1b — the catalogue, part 2: a game's setup and the screens around play
 
@@ -42,21 +43,21 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   choice: the `GameSetup` field it fills, or the E10 gap it waits for (decision 6). Into
   `E27-design.md` §3.
 - **Acceptance:** as T1a's; the setup's choices mapped to `GameSetup` or to a named gap.
-- **Depends on:** T1a. **Status:** ready after T1a.
+- **Depends on:** T1a2. **Status:** ready after T1a2.
 
 #### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
 
-- **Scope:** the shell's clips (design §1, as T1a and T1b place them) copied from the user's
-  `Data/VIDEO.VID` and `Data/H3ab_ahd.vid` into `original-data/shell-videos.vid` on the user's
-  computer (reading the installation only, as `battle-videos.vid` was made, E17 M5 T4b1); the
-  harness's `VIDEO.VID` holding both archives' clips (`setup.sh`); the harness's steps to every
+- **Scope:** the shell's clips: `original-data/shell-videos.vid` exists (made on the user's
+  computer at T1a1, design §1: `VIDEO.VID`'s ten shell entries; a clip T1b places beyond them is
+  added the same way, reading the installation only); the harness's `VIDEO.VID` holding both
+  archives' clips (`setup.sh`; `h3ab_ahd.vid` stays whole beside it); the harness's steps to every
   catalogued screen and its probes (the runbook, a section of its own); the reference captures of
   each screen (stills; a clip's frames where a screen plays one), each recorded twice; the start
   with its clips under Wine; the traps into `TRAPS.md`. Cut at its start with the user if it is
   more than half a context.
 - **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
   same or each difference listed; the harness check passes; the Definition of Done.
-- **Depends on:** T1b; the user's computer online for the clips. **Status:** ready after T1b.
+- **Depends on:** T1b (the user's computer only if T1b adds a clip). **Status:** ready after T1b.
 
 #### E27 M1 T3 — M1's closure and M2's refinement
 
