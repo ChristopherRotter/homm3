@@ -53,6 +53,7 @@ use h3_protocol::account::KEY_BYTES;
 use h3_protocol::codec;
 use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
+use h3_protocol::wire::game::GameReject;
 use h3_protocol::wire::{
     ClientMessage, GoodbyeReason, LeaderboardRow, Refusal, RejectCode, ServerMessage, SignedCard,
 };
@@ -935,10 +936,19 @@ fn refused(reason: Refusal) -> Frame {
 }
 
 /// The answer to a game's message from a connection that is in no game: as a game answers a
-/// connection without a seat (`NotSeated`; `Leave` closes).
+/// connection without a seat (`NotSeated`; `Leave` closes). A whole game's join is refused: no
+/// whole game is hosted yet (E16 M5 T8a; T9 hosts them).
 fn unbound(message: &ClientMessage) -> Frame {
     let seq = match message {
         ClientMessage::Leave {} => return goodbye(GoodbyeReason::Left),
+        ClientMessage::GameJoin { .. } => return refused(Refusal::NoSuchGame),
+        ClientMessage::GameCommand { seq, .. } => {
+            return text(codec::encode_text(&ServerMessage::GameRejected {
+                n: 0,
+                seq: *seq,
+                code: GameReject::NotSeated {},
+            }));
+        }
         ClientMessage::Command { seq, .. }
         | ClientMessage::Query { seq, .. }
         | ClientMessage::FetchReplay { seq }

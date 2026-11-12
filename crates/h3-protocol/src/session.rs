@@ -101,6 +101,7 @@ pub mod game;
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
+use crate::wire::game::GameReject;
 use crate::wire::{
     ClientMessage, Command, GoodbyeReason, Manifest, Outcome, Phase, Points, Query, RecordHeader,
     Refusal, RejectCode, Seat, ServerMessage, Side,
@@ -660,7 +661,8 @@ impl<'r> Session<'r> {
 
     /// Handles what connection `conn` sent after its hello; the frames to send go to `out`. The
     /// hello, the ping and the account's requests are the connection's ([`crate::connection`]),
-    /// the lobby's messages the host's ([`crate::lobby`]); they are ignored here.
+    /// the lobby's messages the host's ([`crate::lobby`]); they are ignored here. A whole game's
+    /// join is refused `NoSuchGame` and its command rejected `NotSeated` (E16 M5 T8a).
     pub fn handle(&mut self, conn: ConnId, message: ClientMessage, out: &mut Vec<Outbound>) {
         match message {
             ClientMessage::Join { game, seat, token } => self.join(conn, (game, seat), token, out),
@@ -676,6 +678,9 @@ impl<'r> Session<'r> {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
             }
+            // A whole game's (E16 M5 T8a): a battle is none, nor a seat of one.
+            ClientMessage::GameJoin { .. } => out.push(refused(conn, Refusal::NoSuchGame)),
+            ClientMessage::GameCommand { seq, .. } => out.push(game_unseated(conn, seq)),
             // The connection's (`crate::connection`: the hello, the ping, the account's) and the
             // lobby's (`crate::lobby`), not the game's.
             ClientMessage::Hello { .. }
@@ -1010,9 +1015,7 @@ impl<'r> Session<'r> {
         if let Some(reason) = refusal(claim, token.as_deref(), login.as_deref()) {
             return out.push(refused(conn, reason));
         }
-        // An account's seat is re-taken by the account, so its token is never handed out.
-        let mine = held.account.is_some() || (!held.issued && login.is_some());
-        let token = (!mine).then(|| expected.clone());
+        let token = handed(claim, login.as_deref());
         if let Some(old) = held.holder.replace(conn) {
             out.push(goodbye(old, GoodbyeReason::Replaced));
         }
@@ -1570,6 +1573,17 @@ pub fn refusal(
     }
 }
 
+/// The token a join that [`refusal`] lets take a player's seat hands out, `claim` as there (E16 M3
+/// T3; a whole game's seats too, E16 M5 T8a): none for a seat that is, or becomes, an account's,
+/// which its account re-takes, so its token is never handed out.
+fn handed(
+    (expected, issued, account): (&str, bool, Option<&str>),
+    login: Option<&str>,
+) -> Option<String> {
+    let mine = account.is_some() || (!issued && login.is_some());
+    (!mine).then(|| String::from(expected))
+}
+
 /// An unnumbered message for `conn`.
 fn reply(to: ConnId, message: &ServerMessage) -> Outbound {
     Outbound {
@@ -1592,6 +1606,19 @@ fn unseated(to: ConnId, seq: u32) -> Outbound {
             n: 0,
             seq,
             code: RejectCode::NotSeated,
+        },
+    )
+}
+
+/// `GameRejected { NotSeated }` for a connection that holds no seat of a whole game (E16 M5 T8a):
+/// it is no viewer, so the number is 0.
+fn game_unseated(to: ConnId, seq: u32) -> Outbound {
+    reply(
+        to,
+        &ServerMessage::GameRejected {
+            n: 0,
+            seq,
+            code: GameReject::NotSeated {},
         },
     )
 }

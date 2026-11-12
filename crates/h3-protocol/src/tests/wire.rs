@@ -183,6 +183,21 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::ListPeers { seq: 34, from: 50 },
         // E16 M6 T5.
         ClientMessage::Lists { seq: 35 },
+        // E16 M5 T8a (v45).
+        ClientMessage::GameJoin {
+            game: 4,
+            player: 1,
+            token: None,
+        },
+        ClientMessage::GameJoin {
+            game: 4,
+            player: 7,
+            token: Some("t0k3n".to_string()),
+        },
+        ClientMessage::GameCommand {
+            seq: 36,
+            command: game::GameCommand::EndTurn {},
+        },
     ];
     out.extend(
         commands()
@@ -526,6 +541,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             Refusal::NotQueued,
             Refusal::NoMatch,
             Refusal::NoSuchSeason,
+            Refusal::NoSuchSeat,
         ]
         .map(|reason| ServerMessage::Refused { reason }),
     );
@@ -621,6 +637,17 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             n: 6,
             seq: 10,
             code: game::GameReject::DecisionOpen {},
+        },
+        // E16 M5 T8a (v45): the session's rejections.
+        ServerMessage::GameRejected {
+            n: 0,
+            seq: 11,
+            code: game::GameReject::NotSeated {},
+        },
+        ServerMessage::GameRejected {
+            n: 7,
+            seq: 12,
+            code: game::GameReject::NotStarted {},
         },
         // E16 M5 T5c (v43).
         ServerMessage::GameReveal {
@@ -859,6 +886,36 @@ fn the_json_is_serdes_default_enum_form() {
             code: game::GameReject::DecisionOpen {}
         }),
         r#"{"GameRejected":{"n":9,"seq":3,"code":{"DecisionOpen":{}}}}"#
+    );
+    // E16 M5 T8a (v45): a whole game's seat and its command; the session's rejections.
+    assert_eq!(
+        text(&ClientMessage::GameJoin {
+            game: 4,
+            player: 1,
+            token: Some("t".to_string())
+        }),
+        r#"{"GameJoin":{"game":4,"player":1,"token":"t"}}"#
+    );
+    assert_eq!(
+        text(&ClientMessage::GameCommand {
+            seq: 2,
+            command: game::GameCommand::EndTurn {}
+        }),
+        r#"{"GameCommand":{"seq":2,"command":{"EndTurn":{}}}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::GameRejected {
+            n: 0,
+            seq: 3,
+            code: game::GameReject::NotSeated {}
+        }),
+        r#"{"GameRejected":{"n":0,"seq":3,"code":{"NotSeated":{}}}}"#
+    );
+    assert_eq!(
+        server(&ServerMessage::Refused {
+            reason: Refusal::NoSuchSeat
+        }),
+        r#"{"Refused":{"reason":"NoSuchSeat"}}"#
     );
     // E16 M5 T5c (v43): what a viewer newly sees, its parts as the observation's.
     let mut nothing = reveal();

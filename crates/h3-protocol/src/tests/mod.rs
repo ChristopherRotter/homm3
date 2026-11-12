@@ -13,6 +13,7 @@ mod game_event;
 mod game_fold;
 mod game_manifest;
 mod game_mutation;
+mod game_seats;
 mod game_session;
 mod ladder;
 mod list;

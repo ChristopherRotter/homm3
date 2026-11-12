@@ -222,11 +222,12 @@ impl Connection {
                 Some(login) => Received::Account(AccountRequest::SetListed { seq, login, listed }),
                 None => refused(Refusal::NotLoggedIn),
             },
-            (true, ClientMessage::Join { .. } | ClientMessage::CreateGame { .. })
-                if !self.anonymous && self.account.is_none() =>
-            {
-                refused(Refusal::NotLoggedIn)
-            }
+            (
+                true,
+                ClientMessage::Join { .. }
+                | ClientMessage::GameJoin { .. }
+                | ClientMessage::CreateGame { .. },
+            ) if !self.anonymous && self.account.is_none() => refused(Refusal::NotLoggedIn),
             // One's own row on a leaderboard needs one's account (E16 M4 T4).
             (true, ClientMessage::Standing { .. }) if self.account.is_none() => {
                 refused(Refusal::NotLoggedIn)
