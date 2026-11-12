@@ -65,15 +65,15 @@ impl Owner {
     }
 }
 
-/// The first creature of each dwelling `player` owns on the map, in object order (the static
-/// map's dwellings, ADV-DWL-001: a random one is listed resolved).
+/// The first creature of each dwelling `player` owns on the map, in object order (among the
+/// static map's ownable objects; a random dwelling is listed resolved, ADV-DWL-005).
 fn owned_dwellings<'a>(
     adventure: &'a AdventureState,
     rules: &'a GameRuleset,
     player: PlayerId,
 ) -> impl Iterator<Item = CreatureTypeId> + 'a {
     let map = adventure.map();
-    map.dwellings()
+    map.ownables()
         .iter()
         .filter(move |&&index| adventure.owner(index) == Some(player))
         .filter_map(move |&index| map.objects()[index].object_type)
@@ -183,10 +183,11 @@ fn rewrite(
         .map(TownId::new)
         .zip(inputs)
         .filter_map(|(town, inputs)| {
-            let before = state.towns().get(town)?;
-            let after = step(before, part, core, inputs);
-            (after != *before).then_some((town, after))
+            let before = state.towns().get(town);
+            before.map(|before| (town, before, step(before, part, core, inputs)))
         })
+        .filter(|(_, before, after)| after != *before)
+        .map(|(town, _, after)| (town, after))
         .collect();
     for (town, after) in changed {
         state.towns_mut().write(town, after);
