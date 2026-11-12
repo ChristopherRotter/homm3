@@ -15799,3 +15799,75 @@ user's repo folder (the four LODs, both executables, `maps.tar`, `extracted.tar`
 
 **Versions:** adventure ruleset part v20. The game state hash, the adventure state hash, the map
 import and the replay format unchanged. T113b next.
+
+### Increment 12, round 5: T113b, the import (2026-11-12, `adventure/e08-t113b`)
+
+**The cut** (decision 321; asked at the start, `AskUserQuestion`): whole, one pull request, with
+the garrison's body kept in the setup's `Holds::Garrison` (design §5 had the variant in T114a; the
+import needs a place for it, as T83a's abandoned mines' sets), so adventure state hash v22 here and
+T114a's v23. **Baseline:** `master` 21d6ba0 (#882, T113a's merge; CI green). The setup's baseline
+was lost to a VM restart; CI's green run on the same commit stands for it (the sandbox skill). The
+original data staged from the user's repo folder (the four LODs, both executables, `maps.tar`,
+`extracted.tar`).
+
+- **The import** (`h3-map`'s `import/codes.rs`, `import/mod.rs`; design §4): `GARRISONS` (33:
+  `base:garrison`, `base:anti_magic_garrison`) and `VERTICAL_GARRISONS` (219: the `ab` pack's
+  two) by subclass, past 1 `ImportError::Subclass`; `BONUS_VISITABLES`, the fifteen classes each
+  at subclass 0 (*agent's call*: another subclass `Subclass`, as the garrisons' past 1; every
+  shipped one is 0). A garrison's body (`import::garrison`): the owner by `object_owner`
+  (ADV-OWN-002), the stacks by slot with a count of 0 an empty slot (filtered first, so a random
+  code with no creatures is an empty slot too), the count's 16 bits whole (as ADV-QUIRK-19's;
+  the original sign-extends), the parser's removable flag (true on an RoE map), into
+  `Holds::Garrison { army, removable }`; a random stack then `ImportError::RandomStack` (new;
+  for good, unlike a hero's `Unsupported::RandomStack`: decision 299). 219 in `codes::scenery`'s
+  ownable classes (GAM-BAT-011; 216 to 218 added to the rule's text, T93b's). An owned garrison
+  is revealed around for its owner at the start by the existing `reveal_owned` (ADV-OWN-002, as
+  the original's `setup_map_objects` and `reveal_owned`).
+- **The setup** (`h3-adventure`): `Holds::Garrison`, checked by `check_troops` (none, or valid as
+  an army with no war machine; shared with a reward record's creatures), a garrison holding
+  nothing else and no other kind holding it; hashed with tag 11 (its troops as length and slot,
+  creature and count, then the flag). **Adventure state hash v22.**
+- **The server lane's question** (decision 320, then 322): the census's typed twins (one type on
+  one anchor) are 9 on 5 shipped maps (*Back For Revenge* and *- Allied* 1 each, *Carpe Diem* and
+  *- Allied* 3 each, *Deluge* 1): `sod:fiery_fields`, `sod:magic_clouds` (2), `sod:favorable_winds`
+  and `sod:lucid_pools`, each two pictures of one type differing only in `drawn` (e.g. 8 × 6
+  against 4 × 6 tiles); no other typed twin, none of the nineteen types. Asked (`AskUserQuestion`):
+  kept, and the setup's name check (`AdventureState::new`) now refuses a ground, a ground of the
+  sea or a hole on the type and anchor of an earlier one that differs in any field but `drawn`
+  (`SharedAnchor`). The server lane's inbox has the reading: every object anything names is unique
+  by type and anchor.
+- **The census** (`h3-map`'s `original_data`: `increment_12`, checked against survey §1's tables;
+  `twins` now counts those unlike the first and those of a named kind): all 160 import, validate
+  and build, every earlier count unchanged; the 238 garrisons and 4 085 bonus visitables each typed
+  as its class and subclass with its body, every number as survey §1.1 and §1.2 (by class,
+  subclass, owner and level; the maps; the armies, the flags, the largest stack; each class's most
+  on one map).
+- **Tests:** `the_typed_classes_import_as_their_object_types` with the nineteen cases (the
+  exclusion gone; the blocker case a crater, 118, since the Magic Spring is typed),
+  `the_import_types_increment_12_s_classes` (was `…_as_blockers_until_t113`: the written map's
+  nineteen typed in order, the four garrisons' owners, troops and flags, a count of 0 and a random
+  code without creatures empty, the 16 bits whole, a random stack, an unknown owner, the subclasses
+  past 1 and 0 refused, a war machine refused by the setup, the RoE map's removable garrisons),
+  the scenery case 219; `h3-adventure`'s `a_map_garrison_holds_its_troops_and_removable_flag` (the
+  checks and the hash), the ground twins' cases in the monsters' grounds test, T113a's state test
+  placing its garrison with its holds.
+- **Replays:** the 72 adventure goldens re-recorded from their commands (a scratch script,
+  `h3 adventure run --script` with each header's options): commands, days and line counts
+  unchanged; `import_version`, `adventure_state_hash_version`, the checkpoints and `final_hash`
+  moved (the version is hashed); no fixture map holds one of the seventeen classes. The AI lane's
+  bots tables record only the part's hash: unchanged. `h3-protocol`'s `tests::game_fold`,
+  `tests::game_session` pass on them; `h3-server`'s `tests::record` hardcodes the smallest
+  replay's checkpoint, final hash and import version: updated (`cross-lane`, the user's consent
+  asked with `AskUserQuestion`; the server lane's inbox told).
+- **Docs:** design §4's *As built*, §5's note, §17's rows; decisions 321, 322 and the task's line;
+  `h3m.md`'s import (the classes, the refusals, the census); ADV-GAR-001, ADV-BON-001, ADV-OBJ-002,
+  ADV-OWN-002, GAM-BAT-011 amended; the queue (T113b out, T114 in); `OVERVIEW.md`'s import line;
+  the inboxes of the server lane (the answer), the town lane (the two versions taken) and the map
+  client lane (the nineteen types in the views).
+- **Gates:** the scoped verify with the original data: every step passing but `fmt` (two long
+  `assert_eq!` lines; formatted, then the quick scoped verify's fmt, clippy, the checks and the
+  tests passing); coverage, determinism, bench-check and the original-data checks (the census
+  among them) passed on the first run. `check-lane --cross-lane` for `h3-server`'s test.
+
+**Versions:** map import v22, adventure state hash v22. The game state hash, the ruleset part and
+the replay format unchanged. Round 5 done; T114 next.

@@ -351,7 +351,15 @@ pub(super) fn jump_state(
     );
     let mut setup = world(&rows, levels, heroes);
     for &(k, anchor) in objects {
-        setup.map.objects.push(object(rules, Some(k), anchor, 1));
+        let mut object = object(rules, Some(k), anchor, 1);
+        // E08 T113b: a map garrison holds its troops, here none.
+        if k.contains("garrison") {
+            object.holds = Holds::Garrison {
+                army: Vec::new(),
+                removable: true,
+            };
+        }
+        setup.map.objects.push(object);
     }
     started(rules, &setup).unwrap()
 }

@@ -15,8 +15,8 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xb3a4dc6b011eb1c6",
-    "0xbff55a58702d5fd1",
+    "0xe87bf73d9fca23a9",
+    "0x46251fd7d6f5a537",
 ]
 
 [replay]
@@ -47,14 +47,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 28
-adventure_state_hash_version = 21
+adventure_state_hash_version = 22
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-dwellings-36.h3m"
 hash = "0xbbd135d542e15bc3"
-import_version = 21
+import_version = 22
 
 [result]
 day = 2
-final_hash = "0x1e3a2c29d684be37"
+final_hash = "0x23ed9018916f248a"

@@ -2,11 +2,13 @@
 //! I/O shell around `h3-protocol`'s sans-I/O core: sockets, clock, OS randomness, files,
 //! configuration and the bot seats. M2: the games clients create from the server's offers.
 //!
-//! - [`config`]: the TOML configuration (server, content, limits, the offers);
+//! - [`config`]: the TOML configuration (server, content, limits, the offers, the maps);
 //! - [`game`]: the offers, compiled at start; a game prepared from an offer with secrets from the
 //!   OS, or restored from its journal, run on its own OS thread; the replay written as the CLI's
 //!   file at the end;
-//! - `journal`: each game's write-ahead journal in the data directory (M2 T2);
+//! - [`whole`]: the map offers, compiled at start, and a whole game's thread (E16 M5 T9a);
+//! - `journal`: each game's write-ahead journal in the data directory (M2 T2), a whole game's of
+//!   its own format (E16 M5 T9a);
 //! - `registry`: the lobby and the games' inboxes, shared by the tasks and the games' threads;
 //!   the restore at start; the sweep of abandoned games;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
@@ -57,6 +59,7 @@ mod players;
 pub mod rating;
 pub mod record;
 mod registry;
+pub mod whole;
 
 #[cfg(test)]
 mod tests;
@@ -114,7 +117,8 @@ impl Running {
     /// Drains the server (E16 M2 T5a; `E16-design.md` §7): no game is created any more
     /// (`Refused { Draining }`), a game that waits for its players ends (`Goodbye { Shutdown }`),
     /// the running ones play on and paused ones may resume; [`drained`](Self::drained) resolves
-    /// once none waits or runs.
+    /// once none waits or runs, but for the running whole games (E16 M5 T9b: they never end before
+    /// E10; they play on until the stop, which keeps their journals for the next start).
     pub fn drain(&self) {
         registry::lock(&self.registry).drain();
     }
@@ -135,9 +139,9 @@ impl Running {
         self.ladders.standing(ladder, season, login)
     }
 
-    /// Resolves once no game waits or runs.
+    /// Resolves once no game waits or runs, but for the running whole games (E16 M5 T9b).
     pub async fn drained(&self) {
-        while self.in_play() > 0 {
+        while registry::lock(&self.registry).to_end() > 0 {
             tokio::time::sleep(POLL).await;
         }
     }
@@ -211,6 +215,9 @@ pub(crate) async fn launch(
         .iter()
         .map(|offer| game::Offer::load(offer, &config.content.packs).map(Arc::new))
         .collect::<Result<Vec<_>, _>>()?;
+    let maps = (config.maps.iter())
+        .map(|map| whole::MapOffer::load(map, &config.content.packs).map(Arc::new))
+        .collect::<Result<Vec<_>, _>>()?;
     // Beyond every game the ladders' logs name, should `next-game` be lost (E16 M4 T7).
     let ids = ids::GameIds::open(&config.server.data)?;
     (ids.reach(ladders.last_game())).map_err(|e| {
@@ -227,7 +234,7 @@ pub(crate) async fn launch(
         ids: Arc::new(ids),
     };
     let registry = Arc::new(Mutex::new(Registry::new(
-        offers,
+        (offers, maps),
         &config.limits,
         config.server.clone(),
         stores,

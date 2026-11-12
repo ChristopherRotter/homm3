@@ -11,8 +11,8 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x313b8d8c01f762ed",
-    "0x0c41458aad3af354",
+    "0xd89bae6b81b19ac0",
+    "0xb0c7a380b570d1bc",
 ]
 
 [replay]
@@ -43,14 +43,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 28
-adventure_state_hash_version = 21
+adventure_state_hash_version = 22
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-sea-36.h3m"
 hash = "0x22096c6bf8ae59ca"
-import_version = 21
+import_version = 22
 
 [result]
 day = 2
-final_hash = "0x0c41458aad3af354"
+final_hash = "0xb0c7a380b570d1bc"

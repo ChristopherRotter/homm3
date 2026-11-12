@@ -34,14 +34,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 28
-adventure_state_hash_version = 21
+adventure_state_hash_version = 22
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-rewards-36.h3m"
 hash = "0x776d6b23b0ba2d87"
-import_version = 21
+import_version = 22
 
 [result]
 day = 2
-final_hash = "0x3736de9f4d258f25"
+final_hash = "0xdec4100e202012d0"

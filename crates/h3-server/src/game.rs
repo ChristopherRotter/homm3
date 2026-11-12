@@ -945,16 +945,16 @@ fn seated(session: &Session<'_>, accounts: &Accounts) -> Vec<Seated> {
 /// task. A game `prepare` does not make (it says why in the log) leaves the lobby, and the
 /// connections that came hear `Goodbye { Shutdown }`. A game whose thread panics leaves the lobby
 /// too ([`Panicked`]), its journal kept for the next start.
-pub(crate) fn launch(
+pub(crate) fn launch<P: Hosting>(
     game: u32,
-    prepare: impl FnOnce() -> Option<Prepared> + Send + 'static,
+    prepare: impl FnOnce() -> Option<P> + Send + 'static,
     mut inbox: mpsc::Receiver<ToGame>,
     registry: Shared,
 ) -> Result<(), Error> {
     let run = move || {
         let _panicked = Panicked(game, &registry);
         match prepare() {
-            Some(prepared) => prepared.run(inbox, &registry),
+            Some(prepared) => prepared.host(inbox, &registry),
             None => {
                 lock(&registry).leave(game);
                 turn_away(&mut inbox, GoodbyeReason::Shutdown);
@@ -966,6 +966,18 @@ pub(crate) fn launch(
         .spawn(run)
         .map(|_| ())
         .map_err(|e| Error(format!("game thread: {e}")))
+}
+
+/// A game a thread hosts: a battle ([`Prepared`]) or a whole game (`whole::Prepared`, E16 M5 T9a).
+pub(crate) trait Hosting {
+    /// Runs the game's loop on its thread until it leaves the lobby.
+    fn host(self, inbox: mpsc::Receiver<ToGame>, registry: &Shared);
+}
+
+impl Hosting for Prepared {
+    fn host(self, inbox: mpsc::Receiver<ToGame>, registry: &Shared) {
+        self.run(inbox, registry);
+    }
 }
 
 /// Takes its game out of the registry if the game's thread panics (E16 M2 T5e: the reviewer's
@@ -984,7 +996,11 @@ impl Drop for Panicked<'_> {
 }
 
 /// Every connection in `conns` but those in `closed` hears `reason`, its last frame from the game.
-fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: GoodbyeReason) {
+pub(crate) fn close_all(
+    conns: &BTreeMap<ConnId, Outbox>,
+    closed: &[ConnId],
+    reason: GoodbyeReason,
+) {
     let text = codec::encode_text(&ServerMessage::Goodbye { reason });
     for (conn, to) in conns {
         if !closed.contains(conn) {
@@ -1024,7 +1040,7 @@ fn too_long(
 /// The server stops, or drains and the game never started (E16 M2 T5a): every connection hears it
 /// shuts down, the game leaves the lobby, and the journal of a game that never started goes (one
 /// that started stays for the next start).
-fn shut_down(
+pub(crate) fn shut_down(
     game: u32,
     (conns, started, journal): (&BTreeMap<ConnId, Outbox>, bool, Option<Writer>),
     registry: &Shared,
@@ -1041,14 +1057,14 @@ fn shut_down(
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
 /// leaves the lobby; its journal stays for the next start, and a match its players' ranked game
 /// until then (`Registry::stopped`).
-fn stop(conns: &BTreeMap<ConnId, Outbox>, registry: &Shared, game: u32) {
+pub(crate) fn stop(conns: &BTreeMap<ConnId, Outbox>, registry: &Shared, game: u32) {
     close_all(conns, &[], GoodbyeReason::Shutdown);
     lock(registry).stopped(game, None);
 }
 
 /// The game's thread ends (E16 M2 T3): no connection may come any more, and those already on the
 /// way hear `reason` (the game paused, or it did not resume: the server shuts down for it).
-fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
+pub(crate) fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
     inbox.close();
     let text = codec::encode_text(&ServerMessage::Goodbye { reason });
     while let Ok(event) = inbox.try_recv() {

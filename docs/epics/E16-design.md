@@ -105,18 +105,20 @@ buildings by building index, empty for a faction without a town).
   at start one after another by game id (since M4's review items: finished, unrated ranked games
   are rated in that order), a journal that does not match or re-run moved to `<data>/void/`. A
   game that stops with its journal kept (it no longer writes, its thread panicked) keeps a match's
-  players from another match on its ladder until the next start.
+  players from another match on its ladder until the next start. A whole game's the same since M5 T9b (its
+  journals in `<data>/whole/`, of their own format, re-run after the battles').
 - **Pause and resume** are code since M2 T3 (the record in `E16-log.md`): unranked, the host's
   `Pause` pauses, a paused game is its journal, a seat's join with its token restores it (or as
   the seat's account, M3 T3). Since
   M2 T5a a running game whose seats all stay empty for `[limits] empty_game_ms` pauses, and a
-  paused game nobody resumes within `paused_game_ms` is void. Still to come: ranked, both players
-  agree, within the ladder's limit (M4 T6, §11).
+  paused game nobody resumes within `paused_game_ms` is void; a whole game's alike since M5 T9b.
+  Still to come: ranked, both players agree, within the ladder's limit (M4 T6, §11).
 - **Upgrades.** A drain mode refuses new games and lets open ones finish; the operator then
   upgrades. Code since M2 T5a: the first SIGINT or SIGTERM drains (`Refused { Draining }` for a
   creation, a waiting game ends, running and paused ones go on; a game whose full inbox missed
   the signal asks the registry after its next message), the server stops once none
-  waits or runs, a second signal stops it at once; stopped, the connections hear
+  waits or runs (a running whole game never ends before E10: since M5 T9b the drain does not
+  wait for it, it plays on until the stop), a second signal stops it at once; stopped, the connections hear
   `Goodbye { Shutdown }` and the journals stay for the next start. Games left open across an upgrade whose engine or content identity changed are
   void. When state saves exist (ADR-0004 point 9, an adventure-lane topic for long games), a
   snapshot every M commands can shorten restores; the journal stays the source of truth.

@@ -34,7 +34,10 @@ use std::path::{Path, PathBuf};
 
 use h3_battle::BattleSide;
 use h3_protocol::session::Entry;
+use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
+
+pub(crate) mod whole;
 
 /// The version of the journal's format: bumped when its lines change.
 pub const JOURNAL_FORMAT_VERSION: u32 = 8;
@@ -274,9 +277,14 @@ impl Writer {
     /// Creates the journal of the game `start` describes in `data`, its first line synced, and
     /// its directory entry too. An existing file is never overwritten.
     pub(crate) fn create(data: &Path, start: &Start) -> io::Result<Self> {
-        let dir = dir(data);
-        create_dir(&dir)?;
-        let path = dir.join(format!("{}.journal", start.game));
+        Self::create_in(&dir(data), start.game, start)
+    }
+
+    /// Creates game `game`'s journal in `dir`, its first line `start` synced, and its directory
+    /// entry too (a whole game's too, E16 M5 T9a). An existing file is never overwritten.
+    fn create_in(dir: &Path, game: u32, start: &impl Serialize) -> io::Result<Self> {
+        create_dir(dir)?;
+        let path = dir.join(format!("{game}.journal"));
         let mut options = OpenOptions::new();
         options.write(true).create_new(true);
         #[cfg(unix)]
@@ -287,7 +295,7 @@ impl Writer {
         file.write_all(line.as_bytes())?;
         file.sync_all()?;
         #[cfg(unix)]
-        File::open(&dir)?.sync_all()?;
+        File::open(dir)?.sync_all()?;
         Ok(Self { file, path })
     }
 
@@ -312,10 +320,15 @@ impl Writer {
     /// Appends `entries` as lines and syncs them: the write-ahead before a call's frames are sent.
     /// Nothing happens without entries.
     pub(crate) fn append(&mut self, entries: impl Iterator<Item = Entry>) -> io::Result<()> {
+        self.append_lines(entries.map(Line::of))
+    }
+
+    /// Appends `lines`, each as one JSON document and its end, and syncs them; nothing happens
+    /// without lines.
+    fn append_lines(&mut self, lines: impl Iterator<Item = impl Serialize>) -> io::Result<()> {
         let mut text = String::new();
-        for entry in entries {
-            let line = serde_json::to_string(&Line::of(entry)).map_err(io::Error::other)?;
-            text.push_str(&line);
+        for line in lines {
+            text.push_str(&serde_json::to_string(&line).map_err(io::Error::other)?);
             text.push('\n');
         }
         if text.is_empty() {
@@ -353,32 +366,63 @@ pub(crate) struct Read {
 
 /// Reads the journal at `path`; why it cannot be read, otherwise.
 pub(crate) fn read(path: &Path) -> Result<Read, String> {
+    let (start, entries, complete) =
+        read_as::<Start, _, _>(path, JOURNAL_FORMAT_VERSION, Line::entry)?;
+    Ok(Read {
+        start,
+        entries,
+        complete,
+    })
+}
+
+/// Reads a journal at `path` of the format `version`, whose first line is `S` and whose further
+/// lines are `L`, each an entry `E` (a battle's, or a whole game's, E16 M5 T9a): its first line,
+/// its entries and the length of its complete lines; why it cannot be read otherwise. A last line
+/// without its end is a write a crash cut short, and left out.
+fn read_as<S: DeserializeOwned + Versioned, L: DeserializeOwned, E>(
+    path: &Path,
+    version: u32,
+    entry: impl Fn(L) -> Result<E, String>,
+) -> Result<(S, Vec<E>, u64), String> {
     let text = fs::read_to_string(path).map_err(|e| e.to_string())?;
     let complete = text.rfind('\n').map_or(0, |end| end + 1);
     let mut lines = text[..complete].lines();
-    let start: Start = lines
+    let start: S = lines
         .next()
         .ok_or_else(|| String::from("no first line"))
         .and_then(|line| {
             serde_json::from_str(line).map_err(|e| format!("first line: {}", json(&e)))
         })?;
-    if start.format != JOURNAL_FORMAT_VERSION {
-        return Err(format!("journal format {}", start.format));
+    if start.format() != version {
+        return Err(format!("journal format {}", start.format()));
     }
     let entries = lines
         .enumerate()
         .map(|(i, line)| {
-            serde_json::from_str::<Line>(line)
+            serde_json::from_str::<L>(line)
                 .map_err(|e| json(&e))
-                .and_then(Line::entry)
+                .and_then(&entry)
                 .map_err(|e| format!("line {}: {e}", i + 2))
         })
         .collect::<Result<_, _>>()?;
-    Ok(Read {
-        start,
-        entries,
-        complete: u64::try_from(complete).unwrap_or(u64::MAX),
-    })
+    Ok((start, entries, u64::try_from(complete).unwrap_or(u64::MAX)))
+}
+
+/// A journal's first line names its format.
+trait Versioned {
+    fn format(&self) -> u32;
+}
+
+impl Versioned for Start {
+    fn format(&self) -> u32 {
+        self.format
+    }
+}
+
+impl Versioned for whole::GameStart {
+    fn format(&self) -> u32 {
+        self.format
+    }
 }
 
 /// Why a line does not read, without its text: a line may hold the seats' tokens, which never

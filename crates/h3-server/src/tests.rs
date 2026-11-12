@@ -28,6 +28,7 @@ mod peers;
 mod proxy;
 mod record;
 mod seats;
+mod whole;
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -85,6 +86,7 @@ fn config(limits: Limits) -> Config {
                 bots: vec![BotSeat::Defender],
             },
         ],
+        maps: vec![],
         ladders: vec![],
     }
 }
@@ -149,6 +151,7 @@ async fn listed(running: &Running) -> Vec<GameInfo> {
         seq: 3,
         offers,
         games,
+        ..
     }) = client.recv().await
     else {
         panic!("no list")
@@ -547,7 +550,7 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
             },
             Refusal::NoSuchGame,
         ),
-        // No whole game is hosted yet (E16 M5 T8a).
+        // A battle refuses a whole game's join (E16 M5 T8a); a whole game's are in `tests/whole.rs`.
         (
             ClientMessage::GameJoin {
                 game,

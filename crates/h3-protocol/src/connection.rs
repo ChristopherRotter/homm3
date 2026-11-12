@@ -226,7 +226,8 @@ impl Connection {
                 true,
                 ClientMessage::Join { .. }
                 | ClientMessage::GameJoin { .. }
-                | ClientMessage::CreateGame { .. },
+                | ClientMessage::CreateGame { .. }
+                | ClientMessage::CreateMapGame { .. },
             ) if !self.anonymous && self.account.is_none() => refused(Refusal::NotLoggedIn),
             // One's own row on a leaderboard needs one's account (E16 M4 T4).
             (true, ClientMessage::Standing { .. }) if self.account.is_none() => {

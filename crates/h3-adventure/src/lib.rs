@@ -123,8 +123,9 @@ pub use town::TownReveal;
 /// v20 (E08 T94b): the dwellings' counts and guards as they stand and the Refugee Camps'
 /// creatures and counts. v21 (E09 T8a1): the towns among the ownable objects (their owners in the
 /// owners' block), a town's garrison on its object, a town's formation in the static map's
-/// objects ([`Holds`]' tag 9).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 21;
+/// objects ([`Holds`]' tag 9). v22 (E08 T113b): a map garrison's troops and removable flag in the
+/// static map's objects ([`Holds`]' tag 11).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 22;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

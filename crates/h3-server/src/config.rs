@@ -56,6 +56,15 @@
 //! profile = "synthetic:faithful"     # optional: overrides the scenario's profile
 //! bots = ["defender"]                # the seats the server's bot plays (none by default)
 //!
+//! [[map]]                            # a map a client may create a whole game from (E16 M5 T9a)
+//! id = "duel-map"                    # as `CreateMapGame` names it; distinct from the offers'
+//! file = "maps/duel.h3m"             # the map file
+//! hash = "0x5918efa3271a85e0"        # its content hash: the server refuses to start on another
+//! packs = ["base", "ab", "sod"]      # the packs, in load order
+//! profile = "base:faithful"
+//! difficulty = 1                     # optional: 0 easy to 4 impossible; normal (1) by default
+//! name = "Duel"                      # optional: the lobby's name; the map file's by default
+//!
 //! [[ladder]]                         # a ranked game configuration (E16 M4); none by default
 //! id = "arena"                       # a-z 0-9 _ -, at most 32: its results log's file name
 //! name = "Arena"                     # shown to clients, as a display name
@@ -76,7 +85,8 @@
 //! ```
 //!
 //! The data directory holds `games/<game>.journal` for every game that is not over (its seed and
-//! its seats' tokens: the operator's copy of them; E16 M2 T2), `replays/` for the finished games
+//! its seats' tokens: the operator's copy of them; E16 M2 T2), `whole/<game>.journal` for every
+//! whole game (E16 M5 T9a: the same, a whole game's entries), `replays/` for the finished games
 //! and `void/` for the journals a start could not restore, `players.log`, the accounts (E16 M3
 //! T2a), `ladders/<id>.log`, each ladder's results (E16 M4 T1), and `lock`, which a running server
 //! holds (E16 M3 T2b: one server, or the operator's `rebind`, at a time). It must be readable by the server's user only: on Unix the server creates
@@ -149,8 +159,11 @@ pub struct Config {
     #[serde(rename = "peer", default)]
     pub peers: Vec<Peer>,
     /// What a client may create a game from.
-    #[serde(rename = "offer")]
+    #[serde(rename = "offer", default)]
     pub offers: Vec<Offer>,
+    /// The maps a client may create a whole game from (E16 M5 T9a).
+    #[serde(rename = "map", default)]
+    pub maps: Vec<MapOffer>,
     /// The ranked game configurations (E16 M4 T1; ADR-0019 point 4).
     #[serde(rename = "ladder", default)]
     pub ladders: Vec<Ladder>,
@@ -296,6 +309,34 @@ pub struct Offer {
     /// The seats the server's bot plays.
     #[serde(default)]
     pub bots: Vec<BotSeat>,
+}
+
+/// One `[[map]]` (E16 M5 T9a): a map a client may create a whole game from, every player of
+/// the map a seat.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapOffer {
+    /// The offer's id, as `CreateMapGame` names it.
+    pub id: String,
+    /// The map file.
+    pub file: PathBuf,
+    /// The file's content hash as 16 hex digits after `0x` (an adventure replay's `[map] hash`).
+    pub hash: String,
+    /// The packs, in load order.
+    pub packs: Vec<String>,
+    /// The profile.
+    pub profile: String,
+    /// The game's difficulty (`h3_game::GameSetup::difficulty`).
+    #[serde(default = "normal")]
+    pub difficulty: u8,
+    /// The lobby's name for it; the map file's own by default.
+    #[serde(default)]
+    pub name: Option<String>,
+}
+
+/// The difficulty a `[[map]]` that names none plays at: normal.
+const fn normal() -> u8 {
+    h3_game::DEFAULT_DIFFICULTY
 }
 
 /// One `[[ladder]]` (E16 M4 T1; ADR-0019 points 4–6; `E16-design.md` §11): a ranked game
@@ -618,6 +659,9 @@ impl Config {
         for offer in &mut config.offers {
             offer.scenario = base.join(&offer.scenario);
         }
+        for map in &mut config.maps {
+            map.file = base.join(&map.file);
+        }
         for ladder in &mut config.ladders {
             for scenario in &mut ladder.scenarios {
                 *scenario = base.join(&*scenario);
@@ -717,10 +761,20 @@ impl Config {
         within("cards", discovery.cards, CARDS)
     }
 
-    /// At least one offer; ids present and distinct; a player's seat in each.
+    /// At least one offer or map; ids present and distinct, a map's from every offer's too; a
+    /// player's seat in each offer.
     fn check_offers(&self) -> Result<(), Error> {
-        if self.offers.is_empty() {
-            return Err(Error(String::from("no [[offer]]: a server offers a game")));
+        if self.offers.is_empty() && self.maps.is_empty() {
+            return Err(Error(String::from(
+                "no [[offer]] and no [[map]]: a server offers a game",
+            )));
+        }
+        for (i, map) in self.maps.iter().enumerate() {
+            let taken = self.maps[..i].iter().any(|m| m.id == map.id)
+                || self.offers.iter().any(|o| o.id == map.id);
+            if map.id.is_empty() || taken {
+                return Err(Error(format!("map {i}: its id is empty or taken")));
+            }
         }
         for (i, offer) in self.offers.iter().enumerate() {
             if offer.id.is_empty() || self.offers[..i].iter().any(|o| o.id == offer.id) {

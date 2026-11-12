@@ -13,6 +13,7 @@ use serde::de::DeserializeOwned;
 use super::battle;
 use crate::PROTOCOL_VERSION;
 use crate::map;
+use crate::wire::game::{MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
 use crate::wire::*;
 
 /// One of every command.
@@ -97,6 +98,12 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             offer: "duel".to_string(),
             seat: Seat::Attacker,
             spectators: Some(false),
+        },
+        // E16 M5 T9a: a whole game's creation.
+        ClientMessage::CreateMapGame {
+            seq: 13,
+            offer: "duel".to_string(),
+            player: 1,
         },
         ClientMessage::Pause { seq: 14 },
         ClientMessage::SetSpectators {
@@ -367,6 +374,39 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     ladder: Some("arena".to_string()),
                 },
             ],
+            maps: vec![],
+            map_games: vec![],
+        },
+        // E16 M5 T9a: the map offers and the whole games.
+        ServerMessage::Games {
+            seq: 12,
+            offers: vec![],
+            games: vec![],
+            maps: vec![MapOffer {
+                id: "duel".to_string(),
+                name: "Duel".to_string(),
+                size: 36,
+                levels: 2,
+                players: vec![0, 1],
+                difficulty: 1,
+                packs: vec![],
+                profile: "base:faithful".to_string(),
+                ruleset_hash: WireU64(u64::MAX),
+                map: MapIdentity {
+                    content_hash: WireU64(5),
+                    import_version: 21,
+                },
+            }],
+            map_games: vec![MapGameInfo {
+                game: 5,
+                offer: "duel".to_string(),
+                phase: Phase::Running,
+                open: vec![1],
+                seated: vec![SeatedPlayer {
+                    player: 0,
+                    display: "Alice".to_string(),
+                }],
+            }],
         },
         ServerMessage::GameCreated { seq: 13, game: 3 },
         ServerMessage::PauseAsked {
@@ -747,6 +787,14 @@ fn the_json_is_serdes_default_enum_form() {
             spectators: Some(false),
         }),
         r#"{"CreateGame":{"seq":2,"offer":"duel","seat":"Attacker","spectators":false}}"#
+    );
+    assert_eq!(
+        text(&ClientMessage::CreateMapGame {
+            seq: 2,
+            offer: "duel".to_string(),
+            player: 1,
+        }),
+        r#"{"CreateMapGame":{"seq":2,"offer":"duel","player":1}}"#
     );
     // A creation that does not say takes spectators (E16 M2 T4c).
     assert_eq!(

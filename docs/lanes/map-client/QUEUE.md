@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the nineteen types are
+  imported**, for the drawing and the hint): map import v22 types T113a's nineteen (the four
+  garrisons by class 33 and 219 and subclass, the fifteen bonus visitables at subclass 0), so
+  shipped maps' `ObjectView`s now name them, an owned garrison with its `owner` (ADV-OWN-003);
+  a garrison's army and removable flag are in its setup (`Holds::Garrison`), their view comes
+  with T114b (ADV-GAR-006). A shipped map may hold two grounds (or Favorable Winds) of one type
+  on one anchor with different pictures (nine on five maps; their `drawn` tiles differ).
 - 2026-11-12 (the adventure lane, E08 T113a, `adventure/e08-t113a`, `cross-lane`; **increment
   12's types, for the drawing and the hint**; E08 design note §1 to §3): adventure ruleset part
   v20 adds the garrisons (`base:garrison` 33.0, `base:anti_magic_garrison` 33.1,
@@ -158,6 +165,14 @@ while the work waits.
   ended, `SRV-STUB-14` lifted) comes as the player's very next message after the `GameEvents`
   holding its `BattleEnded`, as the client lane's reader takes it.
 
+- 2026-11-12 (the client lane, E27 M1 T1b2, branch `client/e27-m1-t1b2`; **for your M5**,
+  informational until then): the scenario screen's advanced options read (`docs/epics/E27-design.md`
+  §3.12 to §3.17). Besides `GameSetup` the hot seat's hand-over will carry the players' names and
+  which slot holds which colour (the shell's own), and the **turn's duration** (1 to 30 minutes or
+  unlimited, `turndur.txt`): the engine has no timer, so the shell stubs it (a `CLT-STUB` at E27
+  M3); where the hot seat's clock (the original ends a human's turn when it runs out) lives is
+  yours to place at M5, agreed with E27 M3's T0. A colour's flag in the hot seat passes it to the
+  next player, the two swapping (CLT-Q94).
 - 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for your M5**, informational
   until then): E27 (the game shell) is refined (`docs/epics/E27-game-shell.md`). Its scenario
   screen hands a hot-seat game over as the engine's own `h3_game::GameSetup`, filled (CLT-Q79:

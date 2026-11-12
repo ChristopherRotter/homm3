@@ -100,3 +100,82 @@ Scores, 1 for Credits); no cut needed.
   list.
 - **Not done:** no harness run (T2 confirms, design §2.11). Gates: `scripts/exe.py check`,
   `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
+
+## M1 T1b1 — the catalogue, part 2a: the scenario screen, its list and information panel (2026-11-12)
+
+On `client/e27-m1-t1b1` (docs and the address map), the user present; `master` at `21d6ba0`
+(#881, #882 merged). **T1b cut in three with the user at its start** (decision 11): the scenario
+screen alone is about 80 KB of code in about 110 functions, one dialog for a new game, a load and
+a save; T1b1 the frame, the list and the information panel, T1b2 the players' setup, the random
+map and the begin, T1b3 the system options, the menu in play and the end.
+
+- **Staged at the start**, the user's computer about to go offline: the four LODs one a call, the
+  executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the 40
+  MP3s, `shell-videos.vid`; all checked by SHA-256 against the computer's. Besides, the
+  installation's three saved games (`AUTOSAVE.GM1`, `AUTOSAVE.TGM`, `save1.GM1`, read only) copied
+  into the user's `original-data/games/` and staged, for T2's load and save screens. The end's
+  clips (`LoseGame`, `hsAnim`, `hsloop`) are already in `shell-videos.vid`; `Endgame` is a
+  campaign's (E20), so T1b needs no clip beyond them.
+- **Read** (`E27-design.md` §3; 76 new map entries, 1 updated; `structs.toml` `scenario_dialog`
+  and `scenario_info`): the constructor's items and modes (a call summary per item: the creators'
+  arguments, the conditions by mode), the run, the procedure and its keys, the click handler's
+  cases 107 to 195, the right press's dispatch, the list's panel, build, header read, finish,
+  sort and its six comparisons, filter, the rows' drawing, the information panel's draw,
+  `scenario_select`, the flags, Begin's checks (to the load and the start), the save's name, the
+  delete, the busy cursor's helper thread, the vcdesc and lcdesc loaders, the hints' table. Not
+  read: the map and save header readers (0x513320, 0x4BC750), the load (0x58C290), the teams
+  dialog, the library sort routines beyond their comparisons, and T1b2's parts (the slots, the
+  players' rows, the random map, the start). Checked privately in the staged data (never
+  committed): the PCXs' and DEFs' sizes and frames, GENRLTXT's, `ArrayTxt.txt`'s and `Help.txt`'s
+  records' subjects.
+- **Found:** a new game opens with no left-hand panel (a load and a save open the list); the files
+  are read on the main thread with a helper thread moving the busy cursor; unusable maps and saves
+  stay listed under GENRLTXT 431; the load and save rows show file names; the list starts sorted by
+  the format then the name but records the size's column; four of the six keys leave ties to an
+  unstable sort; a double click is any two row presses within 400 ms; the rating depends only on
+  the chosen difficulty (80 to 200 %); a single load shows no allies' and enemies' flags; the save's
+  extension counts the humans still playing (`.GM<n>`, `.CGM`); the original remembers the last
+  map, save name and difficulty between visits (`Arrogance.h3m` and `NEWGAME` at the start).
+- **Asked and answered:** CLT-Q90 (ties: a stable sort with the name, then the file name), CLT-Q91
+  (both oddities fixed); decision 12. The agent's calls on M1's review list (item 3).
+- **Not done:** no harness run (T2 confirms, design §3.11). Gates: `scripts/exe.py check`,
+  `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
+
+## M1 T1b2 — the catalogue, part 2b: the advanced options, the random map, the begin (2026-11-12)
+
+On `client/e27-m1-t1b2` (docs and the address map), the user present; `master` at `9c1a048`
+(#885 merged). **Kept whole with the user at its start** (about 23 KB of code beside the dialog's
+network handlers, about 10 KB, only noted).
+
+- **Staged at the start**, the user's computer about to go offline: the four LODs one a call, the
+  executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the
+  three saved games, the 40 MP3s, `shell-videos.vid`; all 61 checked by SHA-256 against the
+  computer's. No clip beyond `shell-videos.vid` is needed.
+- **Read** (`E27-design.md` §3.12 to §3.18; 38 new map entries, 16 updated; `structs.toml`
+  `scenario_player`, 16 `scenario_dialog` fields, 3 `game` fields): the slots (new and load), the
+  records and their initialiser, the version from the slots, the rows from the map, the record
+  into the game, the advanced options' show and hide and their items in the constructor, the row's
+  draw and its four helpers, the click cases 207 to 270 and 279 to 352, the flag's press single
+  and in the hot seat, the name's edit, the hero's step and clash, the hover, the right press's
+  popups (their items), the turn duration's bar and texts, the random map's items, toggle, tab
+  state and clicks, Begin's random map to its generator, `new_game_start` and
+  `scenario_dialog_begin` whole, the header's town draw. Not read: the generator and the random
+  map's record in full, the popups' texts' fields, where the name's edit returns its text, the
+  network messages. Checked privately in the staged data (never committed): `ArrayTxt.txt`'s,
+  GENRLTXT's and `turndur.txt`'s records' subjects; the 159 maps' player blocks (no human-only
+  colour; no colour with placed heroes and neither flag nor main hero).
+- **Found:** the human records (any colour) and the computer records (by colour); a human's
+  Random town takes the town drawn at the list's read (a computer's is drawn at Begin), which a
+  single player's row shows first only on a map with a human-only colour (none shipped; CLT-Q95's
+  question overstated it as the general case, corrected after the answer, which stands); single player cannot set a handicap; the hero arrows act
+  for humans only and skip another human's hero (as the engine's `PickTaken`); the bonus skips the
+  Artifact for a colour without a hero and the Resource under a Random town, its popups state the
+  amounts (E10's); on a map with a human-only colour the single player is pinned from it on; the
+  hot seat's flag press leaves the holder colourless; the turn's duration (1 to 30 minutes or
+  unlimited) has no engine field; the random map's Random choices use the C library's `rand`.
+- **Asked and answered:** CLT-Q92 (the tab drawn, Begin a stub), CLT-Q93, CLT-Q94, CLT-Q95 (each
+  fixed, the original's for the comparisons); decision 13. The inboxes told: the map-client lane
+  (the hot seat's hand-over and the turn's clock, for its M5), the adventure lane's E10 note
+  amended (the bonus's details). The agent's calls on M1's review list (item 4).
+- **Not done:** no harness run (T2 confirms, design §3.18). Gates: `scripts/exe.py check`,
+  `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.

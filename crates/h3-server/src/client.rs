@@ -412,6 +412,17 @@ impl Client {
         .await
     }
 
+    /// Creates a whole game of the server's map offer `offer` and takes `player`'s seat in it
+    /// (E16 M5 T9a).
+    pub async fn create_map(&mut self, offer: &str, player: u8) -> Result<(), Error> {
+        self.send(&ClientMessage::CreateMapGame {
+            seq: 0,
+            offer: offer.to_owned(),
+            player,
+        })
+        .await
+    }
+
     /// Re-keys the logged-in account `login` from `old` to `new` (E16 M3 T2b): both sign the
     /// welcome's server id and challenge, the login name and the new key; the server's answer.
     pub async fn rekey(

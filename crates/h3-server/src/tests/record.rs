@@ -195,15 +195,15 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
     let cases = [
         (
             "checkpoint",
-            "0x8ae07e2c947fb467\"]",
-            "0x8ae07e2c947fb460\"]",
-            "checkpoint 0 after command 4: the replay's 0x8ae07e2c947fb460, the session's 0x8ae07e2c947fb467",
+            "0xa9aef9b101c5d41e\"]",
+            "0xa9aef9b101c5d410\"]",
+            "checkpoint 0 after command 4: the replay's 0xa9aef9b101c5d410, the session's 0xa9aef9b101c5d41e",
         ),
         (
             "final-hash",
-            "final_hash = \"0x61ac6cfb11142f24\"",
-            "final_hash = \"0x61ac6cfb11142f20\"",
-            "state hash after 8 commands: expected 0x61ac6cfb11142f20, got 0x61ac6cfb11142f24",
+            "final_hash = \"0x2a808cd0ad8374cd\"",
+            "final_hash = \"0x2a808cd0ad8374c0\"",
+            "state hash after 8 commands: expected 0x2a808cd0ad8374c0, got 0x2a808cd0ad8374cd",
         ),
         ("day", "day = 2", "day = 3", "final day: expected 3, got 2"),
         (
@@ -214,8 +214,8 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "import",
+            "import_version = 22",
             "import_version = 21",
-            "import_version = 20",
             "replay header mismatch: map.import_version",
         ),
         (
@@ -226,7 +226,7 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "checkpoints",
-            "checkpoints = [\"0x8ae07e2c947fb467\"]",
+            "checkpoints = [\"0xa9aef9b101c5d41e\"]",
             "checkpoints = []",
             "checkpoint count does not match the command count",
         ),
@@ -332,7 +332,7 @@ fn each_players_record_is_written_to_its_file() {
     assert_eq!(lines.len(), 1);
     assert!(
         lines[0].ends_with(&format!(
-            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x61ac6cfb11142f24): {}, {}",
+            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x2a808cd0ad8374cd): {}, {}",
             files[0].display(),
             files[1].display()
         )),

@@ -211,6 +211,38 @@ const MONOLITH_ENTRANCES: [&str; 8] = [
     "sod:monolith_entrance_7",
 ];
 
+/// The garrisons (E08 T113b; increment 12's design note §4, ADV-GAR-001) by subclass: 0 the
+/// garrison, 1 the anti-magic one (the only two `Objects.txt` lists, survey
+/// `E08-garrisons-bonuses.md` §1.1; a subclass past 1 is one the class does not define). Class 33
+/// the horizontal ones, the `base` pack's.
+const GARRISONS: [&str; 2] = ["base:garrison", "base:anti_magic_garrison"];
+
+/// Class 219 by subclass (E08 T113b): the vertical garrisons, the `ab` pack's (the original loads
+/// 219 as 33, `object_class_values` 0x63A6E4, keeping the subclass).
+const VERTICAL_GARRISONS: [&str; 2] = ["ab:garrison_vertical", "ab:anti_magic_garrison_vertical"];
+
+/// The fifteen bonus visitables by class (E08 T113b; increment 12's design note §4, ADV-BON-001;
+/// survey `E08-garrisons-bonuses.md` §1.2), each its one type at subclass 0, the only one
+/// `Objects.txt` lists (*agent's call*: a subclass past 0 is one the class does not define, as the
+/// garrisons' past 1). Sorted by class.
+const BONUS_VISITABLES: [(u32, &str); 15] = [
+    (11, "base:buoy"),
+    (14, "base:swan_pond"),
+    (28, "base:faerie_ring"),
+    (30, "base:fountain_of_fortune"),
+    (31, "base:fountain_of_youth"),
+    (38, "base:idol_of_fortune"),
+    (48, "base:magic_spring"),
+    (49, "base:magic_well"),
+    (52, "base:mermaids"),
+    (56, "base:oasis"),
+    (64, "base:rally_flag"),
+    (92, "base:sirens"),
+    (94, "base:stables"),
+    (96, "base:temple"),
+    (110, "base:watering_hole"),
+];
+
 /// Class 44 by subclass (E08 T103b): the one-way exits.
 const MONOLITH_EXITS: [&str; 8] = [
     "base:monolith_exit_0",
@@ -291,12 +323,13 @@ pub(crate) const SPELL_SCROLL: u16 = 1;
 /// `E08-objects.md` §2.5): ownable by the original's `class_is_ownable` (0x40FCA0: the creature
 /// generators 17 and 20, a garrison 33, a lighthouse 42, a mine 53, a random town 77, a shipyard
 /// 87, a town 98; since E08 T83a the abandoned mine 220, which the original makes 53; since E08
-/// T93b the random dwellings 216 to 218, whose class is 17 or 20 from the load on), and the
+/// T93b the random dwellings 216 to 218, whose class is 17 or 20 from the load on; since E08 T113b
+/// the vertical garrison 219, which the original makes 33), and the
 /// decorations 0x41ADB0 counts by its table over classes 114 to 160: trees 114, 115, 135, 137,
 /// 155, 159 and 160, mountains 123, 133, 134, 136, 157 and 158, dead vegetation 119.
 pub(crate) const fn scenery(class: u32) -> Scenery {
     match class {
-        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 | 216 | 217 | 218 | ABANDONED_MINE => {
+        17 | 20 | 33 | 42 | 53 | 77 | 87 | 98 | 216 | 217 | 218 | 219 | ABANDONED_MINE => {
             Scenery::Ownable
         }
         114 | 115 | 135 | 137 | 155 | 159 | 160 => Scenery::Tree,
@@ -531,7 +564,17 @@ pub(crate) fn object_type(class: u32, subclass: u32) -> Option<Option<&'static s
         45 => by_subclass(&TWO_WAY_MONOLITHS),
         103 => Some("base:subterranean_gate"),
         111 => Some("base:whirlpool"),
-        _ => return None,
+        // E08 T113b (increment 12's design note §4): the garrisons by subclass (anti-magic 1),
+        // their army, removable flag and owner the import's body; the fifteen bonus visitables,
+        // none with a body.
+        // rule: ADV-GAR-001
+        33 => by_subclass(&GARRISONS),
+        219 => by_subclass(&VERTICAL_GARRISONS),
+        // rule: ADV-BON-001
+        _ => match BONUS_VISITABLES.binary_search_by_key(&class, |&(c, _)| c) {
+            Ok(i) => by_subclass(&[BONUS_VISITABLES[i].1]),
+            Err(_) => return None,
+        },
     })
 }
 

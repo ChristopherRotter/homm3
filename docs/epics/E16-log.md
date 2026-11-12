@@ -2699,3 +2699,119 @@ finished it (the user: "finish the rest yourself").
   merged in: fmt, clippy, check-arch, -rules, -stubs, -docs, -exe-map, clients-lock, check-lane,
   test, coverage (the first runs found rustfmt, a clippy lint and five uncovered regions: the
   tests above), bench-check, doc-drift; deny, determinism and ffi-smoke skipped by the scope.
+
+### M5 T9a — a whole game hosted live by `h3-server` (2026-11-12)
+
+The task (the epic's "M5 part 2"; T9 split in two by the user, 2026-11-12): a server's map offers
+in its configuration and its lobby, a whole game created from one and joined over the network,
+on its own thread, its journal written ahead. Baseline: `master` 21d6ba0 (#882; the full verify
+passed there in the sandbox). No original data. Branch `claude/hopeful-wright-sdkxc9` (the
+session's). T9b takes the lifecycle (`SRV-STUB-12`).
+
+- **The wire** (protocol **v47**; provisional, the 2a review list): `ServerMessage::Games` gains
+  `maps` (`wire::game::MapOffer`: id, name, size, levels, the players by colour, difficulty,
+  packs, profile, the core hash, the map's identity) and `map_games` (`wire::game::MapGameInfo`:
+  game, offer, phase, the open players, the seats' accounts as `SeatedPlayer { player, display
+  }`); `ClientMessage::CreateMapGame { seq, offer, player }`, answered `GameCreated`, then the
+  join's `GameJoined` and `GameSnapshot`, or `Refused` (`NoSuchOffer`, `NoSuchSeat`,
+  `TooManyGames`, `Draining`); the hello gate asks a login for it as for `CreateGame` where the
+  server is not anonymous. `map::game::map_offer` builds the offer from the rules and the setup.
+  The `Lobby` lists both kinds under one id space and the same limits (`create_map`,
+  `update_map`, `seat_map`; a battle's reports leave a whole game be, and the reverse).
+- **The session's host accessors** (`GameSession`): `holds(conn)`, `seated()`, `phase()`
+  (waiting, running, paused), `open_seats()` (never taken), `accounts()` (each seat's login).
+- **The server:** `[[map]]` (`config::MapOffer`: id, file, hash, packs, profile, difficulty,
+  name; a configuration needs an offer or a map, a map's id distinct from every offer's);
+  `whole::MapOffer::load` reads the file by its pinned content hash, imports it on the packs,
+  sets the difficulty, every player human (each a connection's seat in 2a), checks that the
+  game starts, names it from the configuration or the header (Latin-1, at most 64 characters).
+  `registry::create_map` and `bind_map` (`net.rs` routes `CreateMapGame`, and `GameJoin` to
+  another game than the bound one); `game::launch` runs either kind through the `Hosting` trait.
+  The thread (`whole::Prepared::host`) builds `GameSession::new` with a token per seat from the
+  OS, writes the journal's first line, then takes one message at a time as a battle's thread:
+  the entries synced before the frames, the frames marked `left` for a connection that holds no
+  seat after its message, the lobby told the phase, the open seats and the seats' display names;
+  a game waiting with no seat held is abandoned (its journal goes); a drain plays a started game
+  on and ends one not started, a stop keeps a started game's journal; a journal that does not
+  write stops the game. A paused game keeps its thread; a seat's join resumes it (T8b).
+- **The journal** (`journal/whole.rs`, **its own format 1**, `GAME_JOURNAL_FORMAT_VERSION`: the
+  battles' journals stay valid): `<data>/whole/<game>.journal`, the first line `GameStart` (format,
+  game, offer, origin, the seats' tokens by player, the adventure replay before its first command:
+  header, map, seed, difficulty, checkpoint interval, the start's day and hash), then a line per
+  `GameEntry` (`Command` and `Numbered` in the replay's text form, `Checkpoint`, `Taken` with an
+  account, `Started`, `Paused`, `Resumed`); the battle's writer and reader share the file routines
+  (`Writer::create_in`, `append_lines`, `read_as`). A start reads `games/` alone: a whole game's
+  journal is kept as it is, not restored (`SRV-STUB-12`, T9b); its id counts as handed out
+  through `next-game`.
+- **Not in T9a** (T9b, `SRV-STUB-12`): the restore at start, the sweep (`Tick` is ignored), a
+  paused game off its thread, the record download; the server card names the battle offers'
+  rulesets only (the maps' with T9b or the card's next change).
+- **Tests:** `h3-protocol`: the lobby's whole games (created, listed beside a battle, their reports
+  and seats, the refusals and the shared limits, `tests/lobby.rs`), `map_offer` against the duel
+  map (`tests/game_manifest.rs`), the host accessors through joins, a refusal and the host's pause
+  (`tests/game_seats.rs`), the wire's round trips and `CreateMapGame`'s JSON (`tests/wire.rs`).
+  `h3-server` (`tests/whole.rs`): a map offer loads only its pinned map (a wrong hash, a malformed
+  one, a missing file, unknown packs, a difficulty the rules lack), its configuration (defaults,
+  a taken id, an offer's id, an empty id); two clients over the network: the lobby's map offer,
+  `CreateMapGame` and the waiting game listed with its open seat, the second seat's join starting
+  it (the first player's turn, listed running), a command answered and the other player's turn,
+  a resend answered as the first time; the journal read back (the tokens, the entries in order,
+  the command once) and re-run in-process by `GameSession::reopen` with nothing lacking; a restart
+  keeping the journal byte for byte, listing no whole game, the next id beyond it; the refusals
+  (no such offer, a battle offer's id, no such seat, no such game, a taken seat, a battle's
+  `Join`), the creator's `Leave` abandoning the waiting game and removing its journal.
+
+### M5 T9b — a hosted whole game's lifecycle (2026-11-12)
+
+The task (the epic's "M5 part 2"; the user kept T9b whole, 2026-11-12): the restore at start, the
+sweep, a paused game off its thread, drain and shutdown, the record download; lifts
+`SRV-STUB-12`. Baseline: `master` cb89a8f (#884). No original data. Branch
+`claude/epic-volta-dcs95h` (the session's).
+
+- **The wire** (protocol **v48**): a whole game's seat downloads its record (`FetchRecord`,
+  answered `Record { n, seq, record }` as a battle's, the record's first line a
+  `GameRecordHeader`; `GameRejected { NotSeated }`, numbered 0, without a seat). No new message.
+- **`h3-protocol`:** `GameSession::suspend` pauses a running game no connection holds a seat of
+  (an entry `Paused`, nobody told; a seat's join resumes it), as a battle's `Session::suspend`;
+  `fetch_record`; `Lobby::reopen_map` lists a restored whole game again (the ids after it
+  higher), `Lobby::to_end` counts what a drain waits for (the battles in play and the waiting
+  whole games). Tests: `tests/game_resume.rs` (the suspend before the start, with a seat held,
+  then empty; the record and its refusal), `tests/lobby.rs` (`to_end`, `reopen_map`).
+- **The restore at start** (`registry::restore`): the whole games' journals (`<data>/whole/`)
+  after the battles', by game id (the listing shared, `journals`), each id reached in
+  `next-game`. `whole::Prepared::restored` reads the journal's replay (its parser's errors kept
+  out of the log, the seed in it), checks its header against the offer's rules, its map against
+  the offer's (content hash and import version) and its seats against the map's players, and
+  keeps the journal's seed, difficulty and checkpoint interval (provisional: a changed offer
+  difficulty does not touch a running game). On its thread `GameSession::reopen` re-runs it; a
+  journal that does not re-run is void (`<data>/void/`), one that never started goes, the journal
+  reopened at its complete lines takes what the re-run lacks; a running game is listed again
+  with its seats empty (`Registry::reopen_map`), a paused one listed paused without a thread.
+- **A paused game off its thread:** the host's pause and the sweep's both end the thread
+  (`Goodbye { Paused }` to its connections, the lobby told `Paused`); the registry keeps
+  `Hosted::PausedMap` (the seats' tokens and accounts by player, since when). `bind_map` (the
+  connection's task passes the join's player and token now) checks the claim as the running game
+  would (`session::refusal`: every seat of a paused game was taken; a player the map lacks
+  `NoSuchSeat`), then restores the game on its own thread from its journal
+  (`Registry::restorer_map`), the opening first in its inbox, its join resuming it. A battle's
+  `Join` of a paused whole game is `NoSuchGame`, and a whole game's join of a paused battle.
+- **The sweep:** a running whole game whose seats all stayed empty for `[limits] empty_game_ms`
+  pauses at a tick (`GameSession::suspend`); a paused one nobody resumed within `paused_game_ms`
+  is void, as a battle's (`Registry::sweep`, the whole games' directory).
+- **Drain and shutdown** (provisional, the 2a review list): a running whole game never ends
+  before E10, so the drain does not wait for it (`Running::drained` waits on `to_end`; `in_play`,
+  the card's `games_open`, still counts it): it plays on until the stop, whose `Goodbye {
+  Shutdown }` keeps its journal for the next start, where it is restored running and its seats
+  re-taken. A waiting one ends at the drain, as before.
+- **Left:** the server card names the battle offers' rulesets only (a map offer's info carries no
+  battle ruleset hash; the card's next change).
+- **Tests** (`h3-server`, `tests/whole.rs`): a restart restores a running game (listed running,
+  no seat open), its seats re-taken with their tokens, the first player's resend answered as the
+  first time, the second's command applied, a seat's record downloaded (its header the game's
+  and the player's), the ids after it higher; the host's pause (both seats told, listed paused,
+  the journal ending so), the refusals of a paused game (no token, another token, no such
+  player, a battle's join), a seat's join resuming it, a second pause kept over a restart and
+  resumed there (the journal's pauses and resumes in order); an empty running game paused at the
+  sweep, then void; a drain ending the waiting game and not waiting for the running one, which
+  plays on, its journal kept by the stop; a garbled journal void at a restart beside a restored
+  one, and a journal whose map the server no longer offers void.
