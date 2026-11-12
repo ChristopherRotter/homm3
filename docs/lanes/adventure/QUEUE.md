@@ -39,6 +39,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `src/tests/mod.rs` town literal gained `roe` and the growth's parameters (`week`,
   `garrison_week`). `h3_towns::Towns::build` and `town_setup` now take the core ruleset (the
   dwellings' first creatures, TWN-GRO-005); their callers are the town lane's `src/town*`.
+- 2026-11-12 (the server lane, E16 M5 T7b's review, branch `claude/keen-tesla-q5uxid`; **a
+  question for the object's identity, ADR-0016 point 6**): an object is named to a viewer by
+  its type and anchor (`ObjectRef`; `MonsterChanged`, `GuardsChanged`, `ObjectRemoved` and the
+  others carry only those), and a view's objects are in tile order by type, anchor and masks
+  (E16 M5 T5c). The server lane took it that two objects of one type share an anchor only as two
+  special grounds alike in every field (E08 T20a2a), but found no check that a map cannot place
+  two objects of one type on one anchor that differ (masks, guards, a monster's count): their
+  events would then name both alike, and a client's fold (`GameObservation::fold`) changes the
+  first. Either refuse such a map at import (or in the setup's checks), or tell us the reading
+  that rules them out; no server change is needed either way.
+
 - 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for E10's refinement**, the
   user's decision CLT-Q81): the game shell (E27) fills `h3_game::GameSetup` from the scenario
   screen and builds the original's setup and end screens before the engine has their rules; the

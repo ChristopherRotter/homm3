@@ -97,11 +97,7 @@ fn print_or_fail(command: &str, text: Result<String, h3_server::Error>) -> ExitC
 
 /// The records of adventure replays (E16 M5 T6): one line per replay on standard output.
 fn record(args: &[OsString]) -> ExitCode {
-    let args: Vec<String> = args
-        .iter()
-        .map(|a| a.to_string_lossy().into_owned())
-        .collect();
-    let recorded = h3_server::record::RecordOptions::parse(&args)
+    let recorded = h3_server::record::RecordOptions::parse(args)
         .and_then(|options| h3_server::record::record(&options));
     match recorded {
         Ok(lines) => {

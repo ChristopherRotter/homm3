@@ -377,9 +377,14 @@ pub struct GameReveal {
 pub struct AdventureReveal {
     /// The player it is for.
     pub viewer: u8,
-    /// The tiles whose sight changed (explored, on the fringe or neither), in tile order, each
-    /// with its view now.
-    pub tiles: Vec<RevealedTile>,
+    /// The views the tiles whose sight changed take now, each once, in the order the areas'
+    /// tiles first use them (E16 M5 T7a1: packed as [`Adventure::palette`]; one entry per tile
+    /// made a whole map's reveal 60 times its snapshot).
+    pub palette: Vec<RevealedView>,
+    /// The tiles whose sight changed (explored, on the fringe or neither): for each level that
+    /// has any, by level, the smallest rectangle holding them, each tile's view an index into
+    /// [`Self::palette`].
+    pub areas: Vec<RevealedArea>,
     /// The heroes the viewer sees now on a tile where it did not see heroes, by id: never its own.
     pub heroes: Vec<MapHero>,
     /// The objects still on the map it sees now and did not, in tile order ([`Object::place`]).
@@ -392,17 +397,30 @@ pub struct AdventureReveal {
     pub towns: Vec<u16>,
 }
 
-/// A tile whose sight changed ([`AdventureReveal::tiles`]).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// What a tile whose sight changed is now ([`AdventureReveal::palette`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct RevealedTile {
-    /// The tile.
-    pub pos: Pos,
+pub struct RevealedView {
     /// Whether the viewer has explored it now; a tile not explored whose view is not
     /// [`Tile::Hidden`] is on its fringe (ADV-FOG-005).
     pub explored: bool,
     /// What the viewer sees of it now, as [`Adventure::tile`] shows it.
     pub view: Tile,
+}
+
+/// The tiles of one level whose sight changed ([`AdventureReveal::areas`]): the smallest
+/// rectangle holding them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RevealedArea {
+    /// Its top left tile, on its level.
+    pub corner: Pos,
+    /// Its columns.
+    pub width: u16,
+    /// Its tiles row by row from the corner, as many rows as `width` divides them into: 0 a tile
+    /// whose sight did not change, `n` one whose view is [`AdventureReveal::palette`]'s `n`-th
+    /// (from 1).
+    pub tiles: Vec<u32>,
 }
 
 /// What one player may know of a game (`h3_game::observe`, ADR-0017 points 1 and 2;

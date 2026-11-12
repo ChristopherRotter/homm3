@@ -2,6 +2,170 @@
 
 Moved out of `E16-server.md` on 2026-10-24, verbatim, so that the epic file holds the goals, the decisions, the milestone outline, the autonomy contract and the risks. Order as in the epic: task lists, exit criteria, review lists.
 
+## M5 part 1 tasks (refined 2026-11-09, SRV-Q25; closed 2026-11-12, SRV-Q28)
+
+The user's decisions: the game's types are mapped exhaustively, as the battle's (ADR-0018 point
+5); a viewer's view stays current by a diff of its observation if T1 measures a diff really
+cheap, else by events only, folded by the client; the two battle-wire items of the inbox first
+(the own hero's Eagle Eye picks at the end, the start's events in the record: protocol v38,
+record format v3, done before T0). What the map viewer reads (E24 M4 T3, T4; the queue's inbox,
+2026-10-31) is the target; an object's identity in the map's list is the adventure lane's (its
+inbox, the same day), mapped when it lands.
+
+- **T0 done** (2026-11-09, #799; `E16-log.md`): the crates' edges, ADR-0018 points 5 and 7 amended.
+- **T1 done** (2026-11-09; the design note §14, `E16-log.md`): **events only** (observing and
+  diffing every viewer costs 22 times an `apply` on the golden replays, 730 to 860 times on an XL
+  map with eight players); what a fold lacks is the adventure and town lanes' (SRV-Q26: foldable
+  events and a query for what a viewer sees on the tiles it explored since a given grid).
+- **T2 the observation's wire** (`wire::game`), in two parts (the user, 2026-11-09; one pull request, #805):
+  - **T2a done** (2026-11-09; `E16-log.md`): the adventure map (`wire::game::Adventure`: the
+    planes, the tiles as a palette and an index per tile, heroes, objects, boats, what the viewer
+    knows), `map::game::adventure`; no message yet, no version step.
+  - **T2b done** (2026-11-09; `E16-log.md`): the rest (`wire::game::GameObservation`: the
+    players, the turn group, the month, the treasury, today's timed events, the open decision,
+    the heroes with the owner's details, the towns, the battle as the existing `Observation`) and
+    `map::game::observe`, the one public entry. No diff (T1): the observation is the snapshot.
+- **T3 the commands, answers, rejections and events**, in three parts (the user, 2026-11-09; one
+  pull request after T3c): T3a the commands and rejections, T3b the events, **T3c** the fold
+  and its test (in `h3-protocol`'s tests through `h3-files`, the user's crate for the files, made
+  first); no message and no version step (with T5's session). Projected per viewer (`h3_game::project`); round trips; the
+  exhaustive arms; the fold (`h3-protocol`'s, shared with clients and records) and its test over
+  the golden replays (a snapshot folded with the events equals `observe` after every command, for
+  every viewer), each gap of SRV-Q26 a stub until its lane lands it.
+  - **T3a done** (2026-11-09; `E16-log.md`): the commands both ways and the rejections
+    (`wire::game::{GameCommand, GameReject}`, `map::game::{command, command_to_engine, reject}`).
+  - **T3b done** (2026-11-09; `E16-log.md`): the events, projected for their viewer
+    (`wire::game::GameEvent`, `map::game::events`).
+  - **T3c in two parts** (the user, SRV-Q27; the pull request after T3c2): the game's battle as
+    a battle seat has it (a snapshot when it opens, the last one when it ends, its events between
+    for the battle client; the test compares it at those points); the gaps beyond SRV-Q26's (the
+    decision views, the values the rules derive) treated as SRV-Q26's. **T3c1** the fold of what
+    the events carry (the calendar, the turns, the treasury, the heroes' tiles and boats, the
+    objects, monsters, guards and towns, the heroes' details by their changes, the armies by
+    slot, the decisions whose events hold their view) and a harness over the 55 golden replays
+    (through `h3-files`) reporting per part where the fold and `observe` differ; **T3c2** each
+    gap a stub (`SRV-STUB-<n>`) with its lane's inbox note, the test made the gate (equality but
+    for the stubbed parts).
+  - **T3c1 done** (2026-11-09; `E16-log.md`): the fold (`GameObservation::fold`, in
+    `wire/game/fold.rs`) and the harness (`tests/game_fold.rs`): of 31 parts, 14 equal `observe`
+    after each of the 28 528 viewer-commands, the other 17 differ by SRV-Q26's and SRV-Q27's gaps
+    (the log's table).
+  - **T3c2 done** (2026-11-09; `E16-log.md`): the gaps as `SRV-STUB-1` to `-13` (the adventure
+    lane's 1 to 11, the town lane's 12 and 13, their inbox notes), the harness made the gate: 35
+    parts, 16 exact (the hero details and the decision split so that their folded fields are), 5
+    that only the reveal's stub names differ only with a reveal, a stubbed part still differs.
+  - **T3d done** (2026-11-10; `E16-log.md`; the town lane's E09 T18b2a, #815): its `TownChanged`,
+    `TownStackSeen` and `TownIncomeSeen` mapped and folded (a viewer's town view replaced), which
+    `master` 700bf95 lacked to build; `SRV-STUB-12` and `-13` lifted, the garrisons and owner
+    facts gated but for the reveal and Visions' reach (`TWN-STUB-13`); 36 parts, 17 exact.
+- **T4 the game's manifest and key tables** (done 2026-11-10; `E16-log.md`):
+  `wire::game::GameManifest` and `map::game::manifest(rules, map)`: the adventure replay header's
+  fields with every part's hash (core, battle, adventure, towns) and the three state hash
+  versions, the map by its file's content hash and import version (`MapIdentity`, the caller's),
+  the battlefield, the battle's key tables and the game's (`GameKeyTables`).
+- **T5 the game session in-process**: the players as seats and viewers, the loop over
+  `h3_game::apply` with the trusted actor, the legal commands to whoever must act (decisions, a
+  battle's side outside the turn), the system actor's commands from its caller (computer seats are
+  part 2's), the journal (the adventure replay's commands with their actors), each viewer's record
+  (a game record's header: record format v4); each viewer's last explored grid, and the engine's
+  answer for what it newly sees sent with the events when its count grew (SRV-Q26). In three
+  parts (the user, 2026-11-10):
+  - **T5a done** (2026-11-10; `E16-log.md`): the messages (`GameSnapshot`, `GameEvents`,
+    `GameTurn`, `GameAccepted`, `GameRejected`; protocol v39) and `session::game::GameSession`
+    (sans I/O: the host's player as the actor, the system actor's commands from the host, each
+    player's numbered messages, a battle's `Snapshot` when it opens); `SRV-STUB-14` a battle's
+    last snapshot.
+  - **T5b done** (2026-11-10; `E16-log.md`): the journal (`GameJournal`, the adventure replay
+    in progress, and `GameEntry`, drained by the host), `GameSession::restore` (the re-run, then
+    every player told afresh) and each player's record (`GameSession::record`; record format
+    **v4**: `GameRecordHeader`, the game's manifest and the player), the record shared with the
+    battle's (`session::Record`).
+  - **T5c done** (2026-11-12; `E16-log.md`; in two parts, the user, one pull request):
+    **T5c1** each viewer's explored grid as last told, `GameReveal` (protocol v43) after the
+    events when it grew, `GameObservation::reveal`, a view's objects in tile order
+    (`Object::place`; no index, `docs/06-security.md`), the gate exact on the tiles, objects,
+    boats and towns (`SRV-STUB-1` lifted); **T5c2** a battle's last `Snapshot` right after the
+    events that end it (`Sink::battle_ended`, the client lane's reader; `SRV-STUB-14` lifted).
+- **T6 a golden replay as a record** (done 2026-11-10; `E16-log.md`): `h3-server record
+  <replay>...` runs an adventure replay through the session (checked as `h3 adventure verify`
+  checks it: the header, the map by its hash, every checkpoint, the final hash and day) and
+  writes each player's record (`<stem>.player-<k>.jsonl`; `h3_server::record`); the test over the
+  55 golden replays (one `GameEvents` per command for every player, its own commands echoed, no
+  state hash in any record); the map client lane's inbox note with the record's form.
+- **T7 closure**: mutation tests over the game's messages, the frame and record bounds for large
+  observations, `docs/06-security.md`'s game part, a fresh reviewer, the checkpoint. In three
+  parts (the user, 2026-11-12; one pull request):
+  - **T7a1 done** (2026-11-12; `E16-log.md`): the reveal's tiles packed as a palette and a
+    rectangle per level (protocol v44; a whole XL map's reveal was 60 times its snapshot), a
+    game's record cut only at its snapshots with a fresh one past half its bound, the frames' and
+    records' sizes gated on the XL fixtures (`tests/game_bounds.rs`).
+  - **T7a2 done** (2026-11-12; `E16-log.md`): the mutation tests over the game's messages (a
+    client's decode and fold of a record's frames and every event, the session's play of
+    mutated commands by every kind of actor; `tests/game_mutation.rs`), `docs/06-security.md`'s
+    whole game (`cross-lane`).
+  - **T7b** a fresh reviewer over part 1, its fixes, the exit criteria shown, the checkpoint.
+
+## Review list for the M5 part 1 checkpoint (passed 2026-11-12, SRV-Q28)
+
+**Review list so far** (the autonomy contract's queue, for part 1's checkpoint):
+`Query::CreatureCastTargets {}` (a message shape); the last `Snapshot` before `GameEnded` and the
+start's `Events` (v38); T2a's shapes: a map's tiles as a palette of distinct views and an index
+per tile (lossless, a few views a map; one packed number cannot hold every handle below 2^53), the
+planes' words and an object's masks as `WireU64` strings; T2b's: a decision's parts as struct
+variants holding their own types (`Decision::Offer { offer }`, for T3's events to reuse), a fort
+level as 0 to 3 (as the battle's `Siege`), a town's map name as a string (bounded with the frames
+in T7), a hero's `offered` levels shown to its owner as the engine's observation holds them;
+T3a's: the game's commands and rejections as the engine's one to one in struct variants (a
+command's part named after its kind, `Answer { answer }`, `Manage { manage }`), a battle's command
+and refusal inside them as the battle wire's `Command` and `RejectCode`, a rejection with the
+engine's payload (a path's step, a hero, a slot: what the actor sent or may know), an artifact's
+place and a position as `u16`, a step as `u32`; T3b's: a projected event without its viewer sets
+(`seen_by`, a step's `seen_from` and `seen_to`: the viewer alone, or a `None` end), an
+owner's event keeping its `player` (the viewer itself, as the engine's), a battle's event as the
+battle wire's `Event`, a hero's change's tuple variants as struct variants; T3c1's: the fold as
+a method of the wire's observation (`GameObservation::fold`, `no_std`, for clients and records),
+what it takes from an event's documentation (a built boat's facing 2, a creature month's
+monster's one-tile masks, a group's first turn start ending the group before), a Leave Guards
+dialog's group kept on its mine at the close, `command_to_engine` refusing a building beyond any
+record (64 or more) as `UnknownBuilding` before the engine (E09 T18b1's build, mapped in T3c1);
+T3d's: a town's told view as the engine's three events one to one (its stacks and income lines
+after it, not inside it), a fort and the buildings as the observation's forms; T4's: the game's
+manifest its own message part beside the battle's (`GameManifest`, the battle's `KeyTables` inside
+it and the game's kinds in `GameKeyTables`), the map named by its file's hash and import version
+without its path (the caller computes them; a client draws its own copy only when both match),
+the buildings' keys by faction handle (an empty list for a faction without a town); T5a's: the
+game's messages as `Game*` variants of `ServerMessage` beside the battle's, a game's battle
+opening with the battle's own `Snapshot`, `GameTurn` after every accepted command to every player
+that may act (without the moves; a battle side's castable spells inside it), a system command
+told to nobody but its events, a player outside the game told nothing, the session started by its
+constructor, no client message until part 2's network seats; T5b's: the journal as entries the
+host drains (`GameEntry::Command` with the engine's command and actor, `Checkpoint`; the replay's
+header, map and difficulty the host's), a restore that tells every player its snapshot and turn
+afresh (numbers and records begin again, as the battle's after a restart), a game record's header
+its own type (`GameRecordHeader`: format, the game's id, the player's number, the manifest, the
+first number) beside the battle's, one record format version for both (v4), the host's bound per
+record (`GameOptions::record_bytes`), the session's options as a struct (`GameOptions`); T5c's:
+`GameReveal` a message of its own after the events (not a field of `GameEvents`), the engine's
+reveal one to one, a view's objects in tile order (`Object::place`: no index, which counts the
+objects before it; a client finds an object's entry in the map's file by type and anchor), the
+last snapshot as the battle's own `Snapshot` right after the events that end it and none when
+they open another battle, one protocol step (v43) for both, no record format step (the
+manifest's `protocol` versions the messages); T6's: the command in the server's binary
+(`h3-server record [--packs-dir] [--root] [--out] [--game] <replay.toml>...`, `h3_server::record`),
+the files' names (`<stem>.player-<k>.jsonl`), the game's id 0 unless given, a player's commands
+numbered by its own counter from 1, the records unbounded (the operator's files of a finished
+replay), the map imported from the very bytes whose hash was checked (`h3-map` a dependency of
+`h3-server`); T7a1's: a reveal's tiles as a palette of `{ explored, view }` and a rectangle per
+level with an index per tile (0 unchanged), not one entry per tile nor a fresh snapshot in its
+place (protocol v44), a game's record cut only at its snapshots with a fresh `GameSnapshot` after
+a command's messages once a player was sent half its bound since its last, before its turn, none
+inside a battle, the size gate's bounds (a reveal within the snapshot it brings the view to, a
+snapshot within 512 KiB, any other frame within 64 KiB on the fixtures), `GameTurn` after every
+command kept (60 to 80 % of a town-heavy game's record; part 2 may send it only when it changed);
+T7a2's: every player told how many commands the others play and when (one `GameEvents` per
+command, also empty: T5a's choice, a side channel `docs/06-security.md` names; part 2 may batch or
+pace them).
+
 ## M1 tasks
 
 - **T1 Messages and codec** (done 2026-10-10; `E16-log.md`): `wire`, `codec` and `map` in

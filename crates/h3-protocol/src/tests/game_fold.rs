@@ -416,6 +416,25 @@ pub(super) fn golden(mut each: impl FnMut(&str, &GameRuleset, &GameSetup, &Repla
     }
 }
 
+/// The golden adventure replay `name` (E16 M5 T7a1): its rules, its map's setup at its difficulty
+/// and the replay.
+pub(super) fn one(name: &str) -> (GameRuleset, GameSetup, Replay) {
+    let root = root();
+    let file = root.join(format!("fixtures/replays/adventure/{name}.toml"));
+    let replay = h3_files::adventure::parse_replay(&fs::read_to_string(file).unwrap()).unwrap();
+    let ids: Vec<String> = (replay.header.packs.iter())
+        .map(|(id, _)| id.clone())
+        .collect();
+    let rules =
+        h3_files::adventure::load_rules(&root.join("packs"), &ids, &replay.header.profile).unwrap();
+    let (_, setup) = h3_files::adventure::load_map(&root, &replay.map.path, &rules).unwrap();
+    let setup = GameSetup {
+        difficulty: replay.difficulty,
+        ..setup
+    };
+    (rules, setup, replay)
+}
+
 /// Runs every golden adventure replay and compares each viewer's folded view with `observe`
 /// after every command; returns each part's differences and the viewer-commands run.
 fn run() -> (BTreeMap<&'static str, Differences>, usize) {
@@ -444,7 +463,7 @@ fn run() -> (BTreeMap<&'static str, Differences>, usize) {
                 }
                 // What it newly sees, after the events (E16 M5 T5c).
                 let now = explored(&state, viewer);
-                let revealed = now.count() != grid.count();
+                let revealed = now != *grid;
                 if revealed {
                     view.reveal(&reveal(&state, rules, viewer, grid));
                     *grid = now;
@@ -1636,7 +1655,8 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
     let nothing = GameReveal {
         adventure: AdventureReveal {
             viewer: v.viewer,
-            tiles: Vec::new(),
+            palette: Vec::new(),
+            areas: Vec::new(),
             heroes: Vec::new(),
             objects: Vec::new(),
             boats: Vec::new(),
@@ -1653,10 +1673,11 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
         road: None,
         river: Some(1),
     };
-    let tile = |x, y, explored, view| RevealedTile {
-        pos: at(x, y),
-        explored,
-        view,
+    let tile = |explored, view| RevealedView { explored, view };
+    let area = |x, y, width, tiles: &[u32]| RevealedArea {
+        corner: at(x, y),
+        width,
+        tiles: tiles.to_vec(),
     };
     // Hero 4 is seen already (of heroes 4, 5 and 9), hero 6 is new; town 1 is seen already, town
     // 7 is new.
@@ -1691,12 +1712,21 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
     v.reveal(&GameReveal {
         adventure: AdventureReveal {
             viewer: v.viewer,
-            tiles: vec![
-                // Neither now, explored now, on the fringe now, off the map.
-                tile(0, 0, false, Tile::Hidden {}),
-                tile(1, 0, true, seen(true, false)),
-                tile(2, 1, false, ground),
-                tile(3, 0, true, seen(false, false)),
+            // Neither now, explored now, on the fringe now; off the map.
+            palette: vec![
+                tile(false, Tile::Hidden {}),
+                tile(true, seen(true, false)),
+                tile(false, ground),
+                tile(true, seen(false, false)),
+            ],
+            areas: vec![
+                // (0, 1)'s index names no view: it stays as it was.
+                area(0, 0, 3, &[1, 2, 0, 9, 0, 3]),
+                area(3, 0, 1, &[4]),
+                // Beyond the sides a position holds: the second tile's column, the third's row.
+                area(u16::MAX, u16::MAX, 2, &[4, 4, 4]),
+                // No columns: no tiles.
+                area(0, 0, 0, &[4]),
             ],
             heroes: vec![hero(4, 0), hero(6, 1)],
             objects: vec![new.clone(), flagged.clone()],
@@ -1740,6 +1770,51 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
             (7, newly)
         ]
     );
+}
+
+#[test]
+fn a_view_of_the_largest_sides_folds_its_far_corner_without_a_panic() {
+    // A hostile or corrupt snapshot (E16 M5 T7b's review): sides whose tile count is beyond a
+    // 32-bit `usize`, no tiles, an object in the far corner of the second level.
+    let mut v = view();
+    let corner = Pos {
+        x: u16::MAX - 1,
+        y: u16::MAX - 1,
+        level: 1,
+    };
+    (v.adventure.width, v.adventure.height, v.adventure.levels) = (u16::MAX, u16::MAX, 2);
+    v.adventure.tiles.clear();
+    v.adventure.objects = vec![object(1, corner, 1, 1)];
+    let mut far = v.clone();
+    far.reveal(&GameReveal {
+        adventure: AdventureReveal {
+            viewer: v.viewer,
+            palette: vec![RevealedView {
+                explored: true,
+                view: Tile::Hidden {},
+            }],
+            areas: vec![RevealedArea {
+                corner,
+                width: 1,
+                tiles: vec![1],
+            }],
+            heroes: Vec::new(),
+            objects: Vec::new(),
+            boats: Vec::new(),
+            towns: Vec::new(),
+        },
+        heroes: Vec::new(),
+        towns: Vec::new(),
+    });
+    let removed = adventure(AdventureEvent::ObjectRemoved {
+        object_type: 1,
+        anchor: corner,
+    });
+    far.fold(&removed);
+    // Beyond the view's tiles and planes: nothing to change there but the object.
+    assert!(far.adventure.objects.is_empty());
+    assert_eq!(far.adventure.explored, v.adventure.explored);
+    assert_eq!(far.adventure.tiles.len(), 0);
 }
 
 /// The tile views of `v` in tile order.

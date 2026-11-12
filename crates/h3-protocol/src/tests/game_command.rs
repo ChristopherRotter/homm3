@@ -36,7 +36,7 @@ fn slot(army: ArmyRef, slot: u8) -> ArmySlot {
 }
 
 /// A command of every kind, with every variant of the parts they hold.
-fn every_command() -> Vec<GameCommand> {
+pub(super) fn every_command() -> Vec<GameCommand> {
     let hero = HeroId::new(3);
     let at = h3_adventure::Pos::new(4, 5, 1);
     let mut commands = vec![

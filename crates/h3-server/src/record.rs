@@ -20,6 +20,8 @@
 //! names (`<stem>.player-<k>.jsonl`), the game's id 0 by default, the player's own command
 //! numbers, the unbounded records.
 
+use std::collections::BTreeSet;
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -202,8 +204,9 @@ impl RecordOptions {
     ///
     /// # Errors
     ///
-    /// An unknown option, one without a value, a game id that is not a number, no replay.
-    pub fn parse(args: &[String]) -> Result<Self, Error> {
+    /// An unknown option, one without a value, a game id that is not a number, no replay, two
+    /// replays of one file name (their records would share files; E16 M5 T7b's review).
+    pub fn parse(args: &[OsString]) -> Result<Self, Error> {
         let mut options = Self {
             replays: Vec::new(),
             packs_dir: PathBuf::from("packs"),
@@ -213,27 +216,38 @@ impl RecordOptions {
         };
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
-            let Some(name) = arg.strip_prefix("--") else {
+            // A path as given, also one that is not UTF-8.
+            let Some(name) = arg.to_str().and_then(|a| a.strip_prefix("--")) else {
                 options.replays.push(PathBuf::from(arg));
                 continue;
             };
             let value = rest
                 .next()
-                .ok_or_else(|| Error(format!("`{arg}` needs a value")))?;
+                .ok_or_else(|| Error(format!("`--{name}` needs a value")))?;
             match name {
                 "packs-dir" => options.packs_dir = PathBuf::from(value),
                 "root" => options.root = PathBuf::from(value),
                 "out" => options.out = PathBuf::from(value),
                 "game" => {
-                    options.game = value
-                        .parse()
-                        .map_err(|_| Error(format!("bad game id `{value}`")))?;
+                    options.game =
+                        value.to_str().and_then(|v| v.parse().ok()).ok_or_else(|| {
+                            Error(format!("bad game id `{}`", value.to_string_lossy()))
+                        })?;
                 }
-                _ => return Err(Error(format!("unknown option `{arg}`"))),
+                _ => return Err(Error(format!("unknown option `--{name}`"))),
             }
         }
         if options.replays.is_empty() {
             return Err(Error("no replay given".to_owned()));
+        }
+        let mut stems = BTreeSet::new();
+        for replay in &options.replays {
+            if !stems.insert(stem(replay)) {
+                return Err(Error(format!(
+                    "two replays named `{}`: their records would share files",
+                    stem(replay)
+                )));
+            }
         }
         Ok(options)
     }
@@ -249,9 +263,7 @@ pub fn record(options: &RecordOptions) -> Result<Vec<String>, Error> {
     let mut lines = Vec::new();
     for replay in &options.replays {
         let recorded = record_replay(replay, &options.packs_dir, &options.root, options.game)?;
-        let stem = replay
-            .file_stem()
-            .map_or_else(|| "replay".into(), |s| s.to_string_lossy());
+        let stem = stem(replay);
         let mut files = Vec::new();
         for (k, text) in recorded.records.iter().enumerate() {
             let file = options.out.join(format!("{stem}.player-{k}.jsonl"));
@@ -269,4 +281,11 @@ pub fn record(options: &RecordOptions) -> Result<Vec<String>, Error> {
         ));
     }
     Ok(lines)
+}
+
+/// The name a replay's records take after it: its file's stem.
+fn stem(replay: &Path) -> String {
+    replay
+        .file_stem()
+        .map_or_else(|| "replay".to_owned(), |s| s.to_string_lossy().into_owned())
 }
