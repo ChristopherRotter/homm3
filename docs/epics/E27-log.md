@@ -215,3 +215,35 @@ is 6.3 KB; the end of a scenario is T1b3b.
   settings' readers in play). The agent's calls on M1's review list (item 5).
 - **Not done:** no harness run (T2 captures, design §4.8). Gates: `scripts/exe.py check`,
   `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
+
+## M1 T1b3b — the catalogue, part 2d: the end of a scenario (2026-11-12)
+
+On `client/e27-m1-t1b3b` (docs and the address map), the user present; `master` at `7f9107f`.
+**Kept whole with the user at its start** (decision 16): the cut offered (the screens after play
+against victory and defeat in play, about 4.5 and 7.5 KB of code) was declined.
+
+- **Staged at the start**, the user's computer about to go offline: the four LODs one a call, the
+  executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the
+  three saved games, `shell-videos.vid` (21 files, the MP3s not needed for a reading); all checked
+  by SHA-256 against the computer's. Neither installation has a `HiScore.dat`.
+- **Read** (`E27-design.md` §5; 36 new map entries, 6 updated, ten struct fields):
+  `scenario_condition_met`, `scenario_victory_test` (a summary per case: its texts, its branches
+  on the network byte), `scenario_loss_test`, `game_main` from 0x4EF80B (the campaigns' path only
+  noted), the lost and won screens, the score screen and both scores, `high_score_entry` with its
+  items, procedure and edit, and the helpers (`video_stop_all`, `music_service`,
+  `player_display_name`, `turn_timer_start`). Checked privately in the staged data (never
+  committed): GENRLTXT's records' subjects, `HighName.pcx`'s and `mubchck.def`'s sizes, the clips'
+  sizes and frame counts in `shell-videos.vid`.
+- **Found:** 0x6972B8 is the scenario's end flag (`scenario_ended`; the adventure manager's
+  procedure ends play on it), not a network client's: E08-economy §7.2's reading of `new_day`
+  follows (the adventure lane's inbox told); the score is 200 − (days + 10) / (towns + 5), + 25 for
+  the Grail dug up by the player, + 25 for the standard victory, times 0.8 to 2 by the difficulty;
+  the score screen's five columns; the entry's dialog (no Cancel; an empty name refused); the
+  eleventh row takes every score that misses the ten; GENRLTXT 116 is formatted at every end and
+  read by no code; the victory codes 11 and 12 have the executable's own English texts. **A
+  correction of T1b3a:** clip 34 `LoseGame` has its table's +8 clear, so its Smacker copy always
+  plays (design §1, §4.7; CLT-Q96's entry annotated).
+- **Asked and answered:** CLT-Q99 (the eleventh row: copied); decision 17. The agent's calls on
+  M1's review list (item 6).
+- **Not done:** no harness run (T2 captures, design §5.9). Gates: `scripts/exe.py check`,
+  `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.

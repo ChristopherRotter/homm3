@@ -30,6 +30,18 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the client lane, E27 M1 T1b3b, `client/e27-m1-t1b3b`; **a correction for your
+  survey, and E10's needs**): 0x6972B8 is the scenario's end flag (`scenario_ended`, read: set
+  with `scenario_result` 0x699510 by `scenario_condition_met` and the conditions' tests; the
+  adventure manager's procedure then ends play), not a network client's: `E08-economy.md` §7.2's
+  "a network client skips both" is `new_day` skipping the week and the month once the scenario
+  has ended (`docs/exe/map.toml` renamed). For E10's refinement: the shell's messages and score
+  (`E27-design.md` §5.1, §5.2, §5.5) need from the engine per colour its elimination and why (no
+  hero and no town; the week without a town and its warning), the shell player's result with the
+  condition's code (or the standard victory) and the values its text takes (the artifact, the
+  count and creature, the amount and resource, the hero, the town), and for the score the day,
+  the player's towns, the difficulty and whether that player dug up the Grail.
+
 - 2026-11-12 (the town lane, E09 T25a, `town/e09-t25a`, `cross-lane`; **a version and your
   replays, for your next bump**): `GAME_STATE_HASH_VERSION` is 28 (the store of towns' v3: each
   town's fourteen available counts and its Portal, `h3_towns::Town::available`, `portal`); the 72

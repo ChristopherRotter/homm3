@@ -5,13 +5,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 15). **M1 T1a1 to T1b3a done** (the start, the menus, Multiplayer and the hot seat's names,
+  to 17). **M1 T1a1 to T1b3b done** (the start, the menus, Multiplayer and the hot seat's names,
   High Scores, Credits: `E27-design.md` §2; the scenario screen: §3; the system options, the menu
-  in play, the save from play and the restart: §4; CLT-Q84 to CLT-Q98). **Next: M1 T1b3b** (the
-  end of a scenario; `QUEUE.md`), then T2, T3. The shell's clips are in
-  `original-data/shell-videos.vid` (design §1; 13 clips since T1b3a), so T2 needs the user's
-  computer only for a clip T1b3b adds. Open pull request: `client/e27-m1-t1b3a` (watch it until it
-  merges). E17 done
+  in play, the save from play and the restart: §4; the end of a scenario: §5; CLT-Q84 to
+  CLT-Q99). **Next: M1 T2** (the harness on every screen, the reference captures; `QUEUE.md`),
+  then T3. The shell's clips are all in `original-data/shell-videos.vid` (design §1; 13 clips;
+  T1b3b added none). Open pull request: `client/e27-m1-t1b3b` (watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -25,7 +24,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q99,
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q100,
   CLT-STUB-6.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), and `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
@@ -46,6 +45,15 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-12, E27 M1 T1b3b (done; `client/e27-m1-t1b3b`).** Kept whole with the user
+  (decision 16). The original data staged at once (21 files, checked by SHA-256) while the user's
+  computer was online. Read victory and defeat in play (the eliminations, the conditions' tests and
+  messages per code), `game_main` after play, the lost and won screens, the score and its screen,
+  the high score's entry and `HiScore.dat`'s write: 36 new map entries, 6 updated, ten struct
+  fields. Found: 0x6972B8 is the scenario's end flag (renamed; the adventure lane's inbox told);
+  the score's formula; the eleventh row takes every score that misses the ten; `LoseGame` always
+  plays its Smacker copy (a correction of T1b3a). Asked: CLT-Q99 (decision 17). No harness run.
+  Record: `E27-log.md`, "M1 T1b3b".
 - **2026-11-12, E27 M1 T1b3a (done; `client/e27-m1-t1b3a`).** T1b3 cut in two with the user
   (decision 14). The original data staged at once (61 files, checked by SHA-256); after CLT-Q96,
   `shell-videos.vid` rebuilt on the user's computer with three Smacker copies and staged. Read the
@@ -62,13 +70,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   Random town is the one drawn at the list's read; the bonus, the handicap and the timer have no
   `GameSetup` field; two setup oddities. Asked: CLT-Q92 to CLT-Q95 (decision 13). No harness run.
   Record: `E27-log.md`, "M1 T1b2".
-- **2026-11-12, E27 M1 T1b1 (done; `client/e27-m1-t1b1`).** T1b cut in three with the user
-  (decision 11). The original data staged at once (57 files, checked by SHA-256) and the
-  installation's three saved games copied into `original-data/games/`, while the user's computer
-  was online. Read the scenario screen's constructor (a call summary per item), its run,
-  procedure, clicks 107 to 195, right press, the list's build, header read, sort and comparisons,
-  filter, rows, the information panel, `scenario_select`, the flags, Begin's checks, the save's
-  name and the delete: 76 map entries, two structs. Found: a new game opens with no left panel;
-  ties left to an unstable sort; the size column's first press descending; any two row presses
-  within 400 ms a double click. Asked: CLT-Q90, CLT-Q91 (decision 12). No harness run. Record:
-  `E27-log.md`, "M1 T1b1".
