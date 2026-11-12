@@ -20,6 +20,27 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- (Taken by E16 M5 T11, 2026-11-12: the hall as `GameQuery::TownOffer`, answered
+  `wire::game::TownOffer`; the build's town events in the start's `GameEvents`.)
+- 2026-11-10 (the town lane, E09 T18c, `town/e09-t18c`, `cross-lane`; **your paths changed, and
+  a choice for the game's session**): `h3_game::GameEvent::TownEventFired { player, town, event:
+  u16 }` (a town event fired at its owner's turn start, after the gains and losses it made and
+  before its buildings' `TownBuilt { event: Some(place) }` and their views; the owner's alone) is
+  mapped in `h3-protocol` in the same pull request (`wire::game::GameEvent::TownEventFired`, the
+  fold ignores it, the tests' 36 kinds): **`PROTOCOL_VERSION` 41** (after the adventure lane's
+  v40). Day 1's town events of the first group fire inside the build with no sink, as the map's
+  timed events do: the game keeps them, `GameState::town_events_at_start(player) -> Vec<(TownId,
+  u16)>`, but no observation field carries them (the observation's `events_today` names the
+  map's). If a seat should hear of them, carry them with the game's start (a field of yours, a
+  version). No shipped fixture has town events before E09 T19 (the writer's), so nothing in the
+  golden replays moved.
+
+- 2026-11-10 (the town lane, E09 T18b2b, `town/e09-t18b2b`, `cross-lane`; **for a seat's town
+  screen, when the game's queries reach the wire**): `GameState::town_offer(rules, player, town)
+  -> Option<h3_game::TownOffer { possible, buildable, payable }>` (`BuildingSet`s over the town's
+  faction's record), the owner's hall, `None` for any other viewer; and `legal_commands` lists the
+  payable builds. No event, command or observation field changed.
+
 - (Taken by E16 M5 T10, 2026-11-12: the fair computer by default, the all-seeing one as a map
   offer's `computer`, `wire::game::Computer`.)
 - 2026-11-02 (the battle lane, E26 T5; for E16 M5's unowned sides): a computer seat calls the

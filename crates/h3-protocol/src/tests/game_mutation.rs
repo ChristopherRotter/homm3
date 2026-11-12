@@ -9,7 +9,9 @@
 //! actor, the system actor or a player outside the game, never panics; a rejection leaves the
 //! state and the journal unchanged and is told to its player alone (to nobody for the system and
 //! a player outside the game), an accepted command is journaled so that a restore re-runs it to
-//! the same state.
+//! the same state. A query of every kind (E16 M5 T11), mutated, asked at a point of the replay by
+//! a player of the game or one outside it, is answered without a panic, its answer round-trips
+//! and reads, and nothing changes: the state, the journal, the player's record.
 //!
 //! A longer run: `PROPTEST_CASES=10000 cargo test -p h3-protocol mutat`.
 
@@ -30,8 +32,10 @@ use super::mutation::{Mutation, NUMBERS, STRINGS};
 use crate::codec::{decode, decode_server, encode, encode_text};
 use crate::map::game::{command, events, manifest};
 use crate::session::game::{GameEntry, GameOptions, GameOutbound, GameSession};
-use crate::wire::game::{GameCommand, GameObservation, GameRecordHeader, MapIdentity};
-use crate::wire::{ServerMessage, WireU64};
+use crate::wire::game::{
+    GameAnswer, GameCommand, GameObservation, GameQuery, GameRecordHeader, MapIdentity,
+};
+use crate::wire::{Query, ServerMessage, Target, WireU64};
 
 /// The replay: battles, towns, sieges and reveals for both players.
 static REPLAY: LazyLock<(GameRuleset, GameSetup, Replay)> = LazyLock::new(|| one("towns-s173-d21"));
@@ -104,6 +108,25 @@ static COMMANDS: LazyLock<Vec<Vec<u8>>> = LazyLock::new(|| {
     let every = every_command().into_iter();
     let played = replay.commands.iter().map(|(_, engine)| engine.clone());
     every.chain(played).map(|c| encode(&command(&c))).collect()
+});
+
+/// The queries a mutation starts from (E16 M5 T11): every hero's moves and every town's hall of
+/// the replay's map, and a battle's question of every kind.
+static QUERIES: LazyLock<Vec<Vec<u8>>> = LazyLock::new(|| {
+    let heroes = (0..24).map(|hero| GameQuery::Moves { hero });
+    let towns = (0..8).map(|town| GameQuery::TownOffer { town });
+    let target = Target::Stack { stack: 3 };
+    let battle = [
+        Query::CastTargets { spell: 15 },
+        Query::SecondTargets { spell: 63, target },
+        Query::CreatureCastTargets {},
+    ];
+    let battle = battle.into_iter().map(|query| GameQuery::Battle { query });
+    heroes
+        .chain(towns)
+        .chain(battle)
+        .map(|q| encode(&q))
+        .collect()
 });
 
 /// A change to a frame anywhere in it: the decoder's mutations (`mutation.rs`) over a game's
@@ -283,7 +306,77 @@ fn check_command(
     Ok(Some(accepted))
 }
 
+/// The query `sample` mutated, asked at the replay's command `point` by `who` (0 and 1: a player,
+/// 2: a player outside the game): answered without a panic, the answer round-trips and reads, and
+/// nothing changed (E16 M5 T11). Whether it decoded.
+fn check_query(
+    point: usize,
+    sample: usize,
+    who: u8,
+    mutations: &[Mutation],
+) -> Result<bool, TestCaseError> {
+    let (rules, setup, replay) = &*REPLAY;
+    let point = point % (replay.commands.len() + 1);
+    let mut json = QUERIES[sample % QUERIES.len()].clone();
+    for mutation in mutations {
+        json = mutation.apply(&json);
+    }
+    let Ok(query) = serde_json::from_slice::<GameQuery>(&json) else {
+        return Ok(false);
+    };
+    let mut out = Vec::new();
+    let start = manifest(rules, MAP);
+    let journal = entries(point);
+    let mut session = GameSession::restore(
+        rules,
+        setup,
+        replay.seed,
+        start,
+        OPTIONS,
+        &journal,
+        &mut out,
+    )
+    .unwrap();
+    session.drain_entries().for_each(drop);
+    let player = PlayerId::new(if who < 2 { who } else { 7 });
+    let (hash, records) = (session.state().state_hash(), session.record(player));
+    let answer = session.query(player, query).unwrap();
+    let message = ServerMessage::GameAnswer {
+        n: 1,
+        seq: 1,
+        answer,
+    };
+    prop_assert_eq!(
+        &decode_server(&encode(&message), usize::MAX).unwrap(),
+        &message
+    );
+    if let ServerMessage::GameAnswer {
+        answer: GameAnswer::Moves {
+            moves: Some(moves), ..
+        },
+        ..
+    } = &message
+    {
+        prop_assert!(moves.nodes().is_some());
+    }
+    prop_assert_eq!(session.state().state_hash(), hash);
+    prop_assert_eq!(session.journal().commands.len(), point);
+    prop_assert_eq!(session.drain_entries().count(), 0);
+    prop_assert_eq!(session.record(player), records);
+    Ok(true)
+}
+
 proptest! {
+    #[test]
+    fn mutated_game_queries_are_answered_without_a_trace(
+        point in 0usize..1 << 16,
+        sample in 0usize..1 << 16,
+        who in 0u8..3,
+        mutations in proptest::collection::vec(arb_value_mutation(), 0..4),
+    ) {
+        check_query(point, sample, who, &mutations)?;
+    }
+
     #[test]
     fn mutated_game_frames_decode_and_fold_without_a_panic(
         sample in 0usize..1 << 16,
@@ -377,4 +470,19 @@ fn the_mutations_reach_the_fold_and_the_session() {
         accepted > 0 && rejected > 0,
         "{accepted} accepted, {rejected} rejected"
     );
+    // Every query decodes and is answered at points of the replay, by each player and one outside
+    // the game; with a number replaced, some still decode, some do not (E16 M5 T11).
+    let (mut decoded, mut tried) = (0, 0);
+    for point in (0..replay.commands.len()).step_by(120) {
+        for sample in 0..QUERIES.len() {
+            let who = u8::try_from(sample % 3).unwrap();
+            assert!(check_query(point, sample, who, &[]).unwrap());
+            for to in [0, 3, 9] {
+                let mutation = Mutation::Number { which: point, to };
+                decoded += usize::from(check_query(point, sample, who, &[mutation]).unwrap());
+                tried += 1;
+            }
+        }
+    }
+    assert!(decoded > 0 && decoded < tried, "{decoded} of {tried}");
 }

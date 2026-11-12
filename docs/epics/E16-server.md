@@ -315,16 +315,17 @@ client lane's 2026-11-04 request, when online battles need them).
   - **T9b The lifecycle:** done 2026-11-12, protocol v48 (`E16-log.md`).
 - **T10 The unowned sides played by the server:** done 2026-11-12, protocol v49, after the
   `shared/` change #889 (`E16-log.md`).
-- **T11 The game's queries on the wire:** a hero's moves (`h3_game::legal_moves`; `GameTurn`
-  leaves them out), a town's offer to its owner (`GameState::town_offer`, the town lane's
-  2026-11-10 note), day 1's town events of the first group at the game's start
-  (`GameState::town_events_at_start`, the same lane's note). A protocol step.
+- **T11 The game's queries on the wire:** done 2026-11-12, protocol v50, record format v5, a
+  battle's targets inside a whole game added (the user; `E16-log.md`).
 - **T12 T7b's two findings:** a viewer's open battle known by its identity, so that a second
   battle queued for a player while its first is open does not resend the first's `Snapshot` as
   the second's opening; a player's own rejections inside a battle bounded in its record.
 - **T13 The closure:** an end-to-end test (two clients play a whole game over the network through
   a server restart, a battle against an unowned side on the way); `docs/06-security.md`'s
-  networked whole game; a fresh reviewer agent and the review list; the user's checkpoint.
+  networked whole game (T11's queries with it: answered for the seat's player alone, any other
+  id none, unnumbered and unrecorded; the start's town events the owner's; a moves answer at
+  most 11 KB on the XL fixtures); a fresh reviewer agent and the review list; the user's
+  checkpoint.
 
 **Review list for the 2a checkpoint** (the choices queued under the autonomy contract, filled as
 the tasks land):
@@ -371,6 +372,16 @@ the tasks land):
   after a seat's accepted command, at a resuming join and at the hand-over, a rejected choice
   replaced by the first legal command; its stream a seed drawn from the OS for each hosting
   (never journaled, as the battle server's bots'), `StreamId::AGENT`.
+- T11 (v50, record format v5): one query message and one answer for the game's queries
+  (`GameQuery { seq, query }`, `GameAnswer { n, seq, answer }`), the battle's three questions
+  inside it (`GameQuery::Battle`) rather than the battle's `Query` routed; the answer unnumbered
+  and unrecorded (`n` the player's last message's, as `Record`), a query outside a running game
+  rejected `NotStarted` as a command (numbered, recorded); a hero's moves as a path tree
+  (`wire::game::Moves`: `8 · parent + direction`, the directions clockwise from north, points
+  plus 1 per node, 0 for a pass), its reader in `h3-protocol`, the tree built from the engine's
+  `Reach::path`s, 32 KB its bound on the XL fixtures; the hall as three `WireU64` bit sets; the
+  start's town events as one `GameEvents` between the snapshots and the turns, only to a player
+  that has any, never at a restore or a re-take (record format v5).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

@@ -112,6 +112,15 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T11, branch `claude/vibrant-albattani-ml282o`; **for online
+  play, nothing to do before it**): protocol **v50**, the game's queries: a seat sends `GameQuery {
+  seq, query }` and gets `GameAnswer { n, seq, answer }`, unnumbered (`n` the number of its last
+  message) and not recorded, so your record readers never meet it; a hero's moves come as
+  `GameAnswer::Moves { moves: Option<wire::game::Moves> }`, a path tree read with `Moves::tiles`,
+  `points_left` and `path` (the engine's `Reach`'s), the path one `MoveHero` takes; a town's hall as
+  `GameAnswer::TownOffer` (`possible`, `buildable`, `payable` bit sets). A whole game's start now
+  tells a player its town events of the build (day 1's of the first group) in one `GameEvents` after
+  its `GameSnapshot`, before its turn (record format **v5**).
 - 2026-11-12 (the client lane, E27 M1 T1b3a, `client/e27-m1-t1b3a`; for the adventure screen's
   options, when E24 builds them): the system options (E27's, opened by the adventure screen's
   item 10) set settings that play reads: Walk Speed, Computer Walk Speed and Blackout Computer

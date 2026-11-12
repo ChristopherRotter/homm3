@@ -1601,6 +1601,15 @@ pub enum ClientMessage {
         /// The command.
         command: game::GameCommand,
     },
+    /// A question about a whole game for the seat's player (E16 M5 T11, v50; a battle's `Query`):
+    /// answered `GameAnswer`, which takes no number; `GameRejected { NotSeated }` without a seat,
+    /// `GameRejected { NotStarted }` in a game that does not run.
+    GameQuery {
+        /// The client's sequence number.
+        seq: u32,
+        /// The question.
+        query: game::GameQuery,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -2102,6 +2111,17 @@ pub enum ServerMessage {
         n: u32,
         /// The player that asked: its index among the map's players.
         player: u8,
+    },
+    /// The answer to a seat's `GameQuery` (E16 M5 T11, v50), as the game stood after the
+    /// player's message `n`: it takes no number and is not recorded, as `Record` (a query
+    /// changes nothing the player is told).
+    GameAnswer {
+        /// The number of the player's last message.
+        n: u32,
+        /// The client's sequence number.
+        seq: u32,
+        /// The answer.
+        answer: game::GameAnswer,
     },
 }
 

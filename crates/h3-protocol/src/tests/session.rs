@@ -487,6 +487,19 @@ fn a_whole_games_messages_are_no_battles() {
             code: crate::wire::game::GameReject::NotSeated {}
         }]
     );
+    // A whole game's query too (E16 M5 T11).
+    let query = ClientMessage::GameQuery {
+        seq: 4,
+        query: crate::wire::game::GameQuery::Moves { hero: 0 },
+    };
+    assert_eq!(
+        to(&send(&mut s, A, query), A),
+        [ServerMessage::GameRejected {
+            n: 0,
+            seq: 4,
+            code: crate::wire::game::GameReject::NotSeated {}
+        }]
+    );
     assert_eq!(s.state_hash(), hash);
     assert!(
         drained(&mut s)

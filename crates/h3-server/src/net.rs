@@ -975,7 +975,7 @@ fn refused(reason: Refusal) -> Frame {
 fn unbound(message: &ClientMessage) -> Frame {
     let seq = match message {
         ClientMessage::Leave {} => return goodbye(GoodbyeReason::Left),
-        ClientMessage::GameCommand { seq, .. } => {
+        ClientMessage::GameCommand { seq, .. } | ClientMessage::GameQuery { seq, .. } => {
             return text(codec::encode_text(&ServerMessage::GameRejected {
                 n: 0,
                 seq: *seq,

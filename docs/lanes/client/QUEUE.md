@@ -54,6 +54,15 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T11, branch `claude/vibrant-albattani-ml282o`; **for online
+  play, nothing to do before it**): protocol **v50**, the game's queries: a seat sends `GameQuery {
+  seq, query }` and gets `GameAnswer { n, seq, answer }`, unnumbered (`n` the number of its last
+  message) and not recorded, so your record readers never meet it; a battle inside a whole game asks
+  its cast targets as `GameQuery::Battle { query }` (the battle's `Query`), answered
+  `GameAnswer::Battle { targets }`, as a battle seat's `QueryResult` (CLT-Q46's previews are still
+  the battle lane's and yours, later). A whole game's start now tells a player its town events of
+  the build (day 1's of the first group) in one `GameEvents` after its `GameSnapshot`, before its
+  turn (record format **v5**).
 - 2026-11-12 (the server lane, E16 M5 T7a1, branch `claude/keen-tesla-q5uxid`;
   informational for `h3_view::game_record`): protocol **v44**: a game's player may get a fresh
   `GameSnapshot` after a command's messages (before its `GameTurn`, never while a battle is open

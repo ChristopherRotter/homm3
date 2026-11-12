@@ -4,14 +4,16 @@
 //! server's queue and records by them): a reveal at most the snapshot it brings its viewer's view
 //! to (its tiles packed as the snapshot's: E16 M5 T7a1 measured an unpacked whole map's reveal 60
 //! times its snapshot), a snapshot within [`SNAPSHOT`], every other frame within [`FRAME`]; a
-//! record begins with a snapshot and holds at most [`RECORD`] bytes.
+//! record begins with a snapshot and holds at most [`RECORD`] bytes; a hero's moves answer before
+//! each of its moves within [`MOVES`] (E16 M5 T11).
 
 use std::format;
 use std::sync::Arc;
 use std::vec::Vec;
 
+use h3_adventure::AdventureCommand::MoveHero;
 use h3_contracts::PlayerId;
-use h3_game::{Actor, NoopSink, Viewer};
+use h3_game::{Actor, GameCommand as EngineCommand, NoopSink, Viewer};
 use h3_kernel::rng::{Rng, StreamId};
 use h3_sim::adventure::AdventureEnv;
 use h3_sim::adventure::rollout::choose;
@@ -20,7 +22,7 @@ use super::game::RULES;
 use crate::codec;
 use crate::map::game::{command, manifest, observe};
 use crate::session::game::{GameOptions, GameOutbound, GameSession};
-use crate::wire::game::MapIdentity;
+use crate::wire::game::{GameAnswer, GameQuery, MapIdentity};
 use crate::wire::{ServerMessage, WireU64};
 
 /// The most bytes of a snapshot on the fixtures: the largest measured is 431 KB, a fresh one of a
@@ -30,6 +32,10 @@ const SNAPSHOT: usize = 512 << 10;
 /// The most bytes of any other frame on the fixtures: the largest measured is 22 KB, a command's
 /// events (`e08-xl-144`).
 const FRAME: usize = 64 << 10;
+
+/// The most bytes of a hero's moves answer on the fixtures (E16 M5 T11): the largest measured is
+/// 11 KB, over 1 263 moves of the random play.
+const MOVES: usize = 32 << 10;
 
 /// The players' records' bound: about four of the largest snapshots, so that one with its stretch
 /// of half the bound and a command's messages fits.
@@ -88,6 +94,8 @@ struct Largest {
     other: usize,
     record: usize,
     reveals: usize,
+    moves: usize,
+    queries: usize,
 }
 
 /// Checks the frames a call sent: a reveal against the snapshot its viewer's view now is, the
@@ -117,6 +125,28 @@ fn check(session: &GameSession<'_>, out: &[GameOutbound], at: &str, l: &mut Larg
             }
         }
     }
+}
+
+/// Checks the answer to `player`'s question about its `hero`'s moves before it moves (E16 M5
+/// T11) against [`MOVES`].
+fn moves(session: &GameSession<'_>, (player, hero): (PlayerId, u16), at: &str, l: &mut Largest) {
+    let answer = session.query(player, GameQuery::Moves { hero }).unwrap();
+    assert!(
+        matches!(&answer, GameAnswer::Moves { moves: Some(_), .. }),
+        "{at}"
+    );
+    let frame = codec::encode_text(&ServerMessage::GameAnswer {
+        n: 1,
+        seq: 1,
+        answer,
+    });
+    assert!(
+        frame.len() <= MOVES,
+        "{at}: a moves answer of {} bytes",
+        frame.len()
+    );
+    l.moves = l.moves.max(frame.len());
+    l.queries += 1;
 }
 
 /// Checks every player's record: it begins with a snapshot and keeps within [`RECORD`].
@@ -162,6 +192,16 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
             };
             let action = choose(&env, seat, &mut rng);
             let (_, played) = env.step_decoded(seat, action, &mut NoopSink).unwrap();
+            if let (Actor::Player(player), EngineCommand::Adventure(MoveHero { hero, .. })) =
+                (seat.actor(), &played)
+            {
+                moves(
+                    &session,
+                    (player, hero.raw()),
+                    &format!("{name} command {seq}"),
+                    &mut l,
+                );
+            }
             out.clear();
             match seat.actor() {
                 Actor::Player(player) => session.play(player, seq, command(&played), &mut out),
@@ -183,4 +223,5 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
     assert!(l.reveal > 256 << 10, "{l:?}");
     assert!(l.reveals > 500, "{l:?}");
     assert!(l.record > RECORD / 2, "{l:?}");
+    assert!(l.queries > 1_000, "{l:?}");
 }

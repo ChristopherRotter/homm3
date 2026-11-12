@@ -2860,3 +2860,63 @@ session's, on it).
   journal as the system actor's; the journal cut after the fighter's last command the computer
   answered, a restart (the fair computer now) re-running the earlier ones and answering for it
   before any join.
+
+### M5 T11 — the game's queries on the wire (2026-11-12)
+
+The task (the epic's "M5 part 2"; the user kept T11 whole and added a battle's targets inside a
+whole game, which `GameTurn` lists by spell only and the session ignored, 2026-11-12): a hero's
+moves (`h3_game::legal_moves`), a town's hall to its owner (`GameState::town_offer`, the town
+lane's 2026-11-10 note), day 1's town events of the first group at the game's start
+(`GameState::town_events_at_start`, the same lane's note). Baseline: `master` 6b7b348 (#891; CI
+green, the sandbox's full verify passed). No original data. Branch
+`claude/vibrant-albattani-ml282o`.
+
+- **The wire** (protocol **v50**, record format **v5**): the client message `GameQuery { seq,
+  query }` (`wire::game::GameQuery`: `Moves { hero }`, `TownOffer { town }`, `Battle { query }`
+  with the battle wire's `Query`), the answer `GameAnswer { n, seq, answer }`
+  (`wire::game::GameAnswer`, by kind: the hero's `Option<Moves>`, the town's
+  `Option<TownOffer>`, the battle's `targets`), `n` the number of the player's last message: the
+  answer takes none and is not recorded, as `Record` (a query changes nothing a player is told,
+  and a client asking often never fills its record). `GameRejected { NotSeated }` (numbered 0)
+  without a seat, `NotStarted` (numbered, recorded, as a command's) before the start and while
+  paused; a battle session answers a whole game's query `NotSeated`, as its command, and so does
+  a connection in no game (`net::unbound`).
+- **A hero's moves as a path tree** (`wire::game::Moves`): the hero's tile and points; node `k`
+  from 1 `steps[k - 1] = 8 · parent + d` (`d` in `wire::game::DIRECTIONS`, clockwise from north),
+  a parent always an earlier node; `left[k - 1]` the points left plus 1 on a node a path ends on,
+  0 on one a path passes. `map::game::moves` enters each tile's `Reach::path` into the tree in
+  `Reach::tiles`' order, sharing the steps an earlier path took (a `BTreeMap` by parent and
+  direction), so a flying or water-walking hero's pass nodes come out as nodes no path ends on.
+  The client's reads, `Moves::nodes`, `tiles`, `points_left`, `path`, are the engine's
+  `Reach`'s and refuse a malformed tree (lengths that differ, a parent not earlier, a step off
+  the `u16` range) with `None`. Measured on the XL fixtures (`tests/game_bounds.rs`, 1 263 moves of
+  the random play): the largest answer 11 KB, gated at 32 KB (`MOVES`).
+- **A town's hall** (`wire::game::TownOffer`): `possible`, `buildable`, `payable` as bit sets of
+  the faction's record (`WireU64`, as `TownBuildings`); none unless the player owns the town.
+- **A battle's targets:** `GameQuery::Battle` answers the battle's own `map::query` for the side
+  the player owns in its battle (`OpenBattle::side_of`), none without one.
+- **The start's events** (the battle's CLT-Q20 precedent): `GameSession::start` and the join that
+  holds the last seat post, between the snapshots and the turns, each player's town events of
+  the build as `TownEventFired`s in one `GameEvents` (`GameSession::opening`), only for a player
+  that has any (its own facts alone decide it); a restore, a reopen and a re-taken seat never
+  tell them. Hence record format v5: a whole game's `GameEvents` is no longer always a
+  command's.
+- **`GameSession::query(player, query)`** (in-process too) and `handle`'s `GameQuery`
+  (`GameSession::ask`); both through `map::game::answer`, which asks the engine for the player
+  alone (a player outside the game gets none).
+- **Tests:** `h3-protocol` `tests/game_query.rs`: before every `MoveHero` of the 72 golden
+  replays the moving hero's tree equals its `Reach` (every tile's points and path, the client's
+  reads on a sample, flying and water-walking heroes' passes among them) and is the session's
+  answer; the reader on a hand-built tree and four malformed ones; every town's hall of the
+  builds map for both players (each its own, none of another's or beyond the map); the battle's
+  targets at every battle state of the golden replays until 200 were compared (some aimed); over
+  connections, the unseated and the unstarted rejections, the answer's number and the untouched
+  record, another player's question about the hero, no moves after the turn's end, a paused
+  game's rejection; the builds replay's start telling red its four town events in-process and at
+  the last seat's join, not at a re-take. `tests/game_session.rs`' golden run expects the start's
+  events at the start, none at a restore; `tests/game_mutation.rs` mutates a query of every kind
+  asked at points of a replay by a player or one outside the game: answered, round-tripping,
+  readable, nothing changed; `tests/wire.rs` lists the new messages. `h3-server`
+  `tests/whole.rs`: a seat finds its hero by its moves, the other player's question is answered
+  none, the hero moves along a path of the tree over the network, and the record holds no
+  answer; `tests/record.rs` counts the start's events apart.
