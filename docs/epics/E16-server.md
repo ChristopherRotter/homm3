@@ -312,10 +312,7 @@ client lane's 2026-11-04 request, when online battles need them).
 - **T9 A whole game hosted** (`h3-server`), in two (the user, 2026-11-12):
   - **T9a Live hosting:** done 2026-11-12, protocol v47, the whole game's journal format 1
     (`E16-log.md`).
-  - **T9b The lifecycle:** the restore at start from the journal (`GameSession::reopen`), the
-    sweep of abandoned games (a running game whose seats stayed empty pauses) and a paused game
-    leaving its thread (resumed by a join), drain and shutdown (a running whole game never ends
-    in 2a), the record download (`FetchRecord`); lifts `SRV-STUB-12`.
+  - **T9b The lifecycle:** done 2026-11-12, protocol v48 (`E16-log.md`).
 - **T10 The unowned sides played by the server:** an unowned battle side's command from
   `h3_battle_ai::choose_fair` by default, the all-seeing `choose` as an offer's option (the
   inbox's 2026-11-02 note), its random stream from the game's secrets; each command journaled as
@@ -364,6 +361,13 @@ the tasks land):
   in the replay's text form; a game waiting with no seat held abandoned (its journal gone); a
   draining server's running whole games play on, as a battle's (T9b decides, as they never end);
   `GameSession`'s host accessors (`holds`, `seated`, `phase`, `open_seats`, `accounts`).
+- T9b (v48): a whole game's `FetchRecord` answered `Record` as a battle's (no message of its own;
+  the record's header says its kind); `GameSession::suspend` and `Hosted::PausedMap` as a battle's
+  sweep and pause; the drain not waiting for a running whole game (`Lobby::to_end`: it plays on
+  until the stop, its journal kept), `in_play` and the card still counting it; a restored game at
+  the seed, difficulty and checkpoint interval of its journal, its map checked against the
+  offer's by content hash and import version; the whole games' journals restored after the
+  battles'.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

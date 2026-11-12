@@ -9,11 +9,13 @@
 //! At start, before the server listens, the games whose journals the data directory holds are
 //! restored and listed again (E16 M2 T2). A paused game has no thread: the registry keeps its
 //! seats' tokens and accounts, and a join with a seat's token, or as its account, restores it from
-//! its journal (E16 M2 T3, M3 T3).
+//! its journal (E16 M2 T3, M3 T3). A whole game's the same (E16 M5 T9b: its journals in
+//! `<data>/whole/`, restored after the battles'; paused, [`Hosted::PausedMap`]).
 //!
 //! The server's life (E16 M2 T5a): a sweep ticks every game's thread, which pauses a running game
 //! whose seats stayed empty, and voids a paused game nobody resumed in time; a drain refuses new
-//! games and ends the waiting ones; a stop ends every game's thread, their journals kept.
+//! games and ends the waiting ones (a running whole game plays on, and the drain does not wait for
+//! it: E16 M5 T9b); a stop ends every game's thread, their journals kept.
 //!
 //! The ladders' queues (E16 M4 T2; [`h3_protocol::ladder`]) live here too: a queued connection
 //! hears from its queue through a channel of its own; a match both players accepted becomes a game
@@ -27,7 +29,7 @@
 
 use std::collections::BTreeMap;
 use std::net::{IpAddr, Ipv6Addr};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::time::Duration;
 use std::{fs, io};
@@ -36,7 +38,7 @@ use h3_protocol::codec;
 use h3_protocol::ladder::{Matched, Queues, Told};
 use h3_protocol::lobby::{self, Lobby};
 use h3_protocol::session::{self, ConnId};
-use h3_protocol::wire::game::SeatedPlayer;
+use h3_protocol::wire::game::{MapGameInfo, SeatedPlayer};
 use h3_protocol::wire::{
     ClientMessage, GameInfo, Phase, Refusal, Seat, Seated, ServerMessage, UnqueueReason,
 };
@@ -84,6 +86,14 @@ pub(crate) enum Hosted {
         accounts: [Option<String>; 2],
         since: Instant,
         due: Option<Instant>,
+    },
+    /// A whole game paused (E16 M5 T9b): its journal, the seats' tokens by player that resume it,
+    /// the accounts its seats belong to (an account's seat resumes for the account alone), and
+    /// since when (its deadline).
+    PausedMap {
+        tokens: Vec<String>,
+        accounts: Vec<Option<String>>,
+        since: Instant,
     },
 }
 
@@ -355,6 +365,12 @@ impl Registry {
         self.lobby.in_play()
     }
 
+    /// How many games a draining server waits for (E16 M5 T9b): those in play but the running
+    /// whole games, which never end before E10.
+    pub(crate) fn to_end(&self) -> usize {
+        self.lobby.to_end()
+    }
+
     /// How many games have a thread (E16 M2 T5a): a stopping server waits for none.
     pub(crate) fn live(&self) -> usize {
         let live = |hosted: &&Hosted| matches!(hosted, Hosted::Live { .. });
@@ -382,7 +398,8 @@ impl Registry {
 
     /// The deadlines of abandoned games at `now` (E16 M2 T5a): every game's thread is ticked (it
     /// pauses a running game whose seats stayed empty), and a paused game nobody resumed within
-    /// `paused_game_ms` is void; a game whose agreed pause is over wakes instead (E16 M4 T6).
+    /// `paused_game_ms` is void, a whole game's too (E16 M5 T9b); a game whose agreed pause is over
+    /// wakes instead (E16 M4 T6).
     pub(crate) fn sweep(&mut self, shared: &Shared, now: Instant) {
         self.tell_all(|| ToGame::Tick);
         let woken: Vec<u32> = (self.games.iter())
@@ -399,17 +416,22 @@ impl Registry {
         else {
             return;
         };
-        let expired: Vec<u32> = self
-            .games
-            .iter()
-            .filter(|(_, hosted)| {
-                matches!(hosted, Hosted::Paused { since, due: None, .. }
-                    if now.saturating_duration_since(*since) >= limit)
+        let expired: Vec<(u32, PathBuf)> = (self.games.iter())
+            .filter_map(|(&game, hosted)| {
+                let (since, dir) = match hosted {
+                    Hosted::Paused {
+                        since, due: None, ..
+                    } => (since, journal::dir(&self.server.data)),
+                    Hosted::PausedMap { since, .. } => {
+                        (since, journal::whole::dir(&self.server.data))
+                    }
+                    Hosted::Live { .. } | Hosted::Paused { due: Some(_), .. } => return None,
+                };
+                let expired = now.saturating_duration_since(*since) >= limit;
+                expired.then(|| (game, dir.join(format!("{game}.journal"))))
             })
-            .map(|(&game, _)| game)
             .collect();
-        for game in expired {
-            let path = journal::dir(&self.server.data).join(format!("{game}.journal"));
+        for (game, path) in expired {
             let why = format!("abandoned: paused for {} ms", self.limits.paused_game_ms);
             journal::void(&self.server.data, &path, &game.to_string(), &why);
             self.leave(game);
@@ -459,6 +481,22 @@ impl Registry {
                     None
                 }
             }
+        }
+    }
+
+    /// What restores the paused whole game `game` from its journal on its own thread (E16 M5
+    /// T9b), as [`Registry::restorer`] a battle: a journal that no longer restores is void.
+    fn restorer_map(&self, game: u32) -> impl FnOnce() -> Option<whole::Prepared> + Send + 'static {
+        let path = journal::whole::dir(&self.server.data).join(format!("{game}.journal"));
+        let (maps, server, limits) = (self.maps.clone(), self.server.clone(), self.limits);
+        let stores = self.stores.clone();
+        move || {
+            let prepared = journal::whole::read(&path).and_then(|read| {
+                let offer = found_map(&maps, &read.start.offer)?;
+                whole::Prepared::restored(offer, &path, read, (&server, &limits, stores), None)
+            });
+            let void = |why: String| journal::void(&server.data, &path, &game.to_string(), &why);
+            prepared.map_err(void).ok()
         }
     }
 
@@ -550,6 +588,29 @@ impl Registry {
         }
         self.lobby.reopen(origin, info);
         self.games.insert(game, hosted);
+    }
+
+    /// Lists a whole game a restart restored, as `origin` created it, and hosts it (E16 M5 T9b).
+    pub(crate) fn reopen_map(&mut self, origin: IpAddr, info: MapGameInfo, hosted: Hosted) {
+        let game = info.game;
+        self.lobby.reopen_map(origin, info);
+        self.games.insert(game, hosted);
+    }
+
+    /// The whole game `game` paused (E16 M5 T9b): its thread ends; `tokens`, and `accounts` for
+    /// their seats, by player, resume it.
+    pub(crate) fn pause_map(
+        &mut self,
+        game: u32,
+        (tokens, accounts): (Vec<String>, Vec<Option<String>>),
+    ) {
+        self.lobby.update_map(game, (Phase::Paused, Vec::new()));
+        let paused = Hosted::PausedMap {
+            tokens,
+            accounts,
+            since: Instant::now(),
+        };
+        self.games.insert(game, paused);
     }
 
     /// Game `game` paused (E16 M2 T3): its thread ends; `tokens`, and `accounts` for their seats,
@@ -744,22 +805,53 @@ pub(crate) fn create_map(
     Ok((game, to_game))
 }
 
-/// Binds a connection that joins a seat of the whole game `game` (E16 M5 T9a): the game's inbox,
-/// and the connection's `opening` back for its task to pass (the game's session refuses the join
-/// or takes it), or why not. A paused game has no thread only when it is a battle's (a whole game
-/// keeps its thread while paused until E16 M5 T9b): no such whole game.
+/// Binds a connection that joins `player`'s seat of the whole game `game` with `token` (E16 M5
+/// T9a): the game's inbox, and the connection's `opening` back if its task is to pass it (a game
+/// that runs), or why not. A paused whole game is restored first (E16 M5 T9b, as a battle's
+/// [`bind`]), only for a seat's token or for its account (a missing or another token, another
+/// account, a player the map does not have are refused as the running game refuses them), on its
+/// own thread, the opening its first message. A battle is no whole game (a running one's session
+/// refuses the join).
 pub(crate) fn bind_map(
     shared: &Shared,
-    game: u32,
+    (game, player, token): (u32, u8, Option<&str>),
     opening: Opening,
 ) -> Result<(mpsc::Sender<ToGame>, Option<Opening>), Refusal> {
-    match lock(shared).games.get_mut(&game) {
+    let mut registry = lock(shared);
+    let (tokens, accounts) = match registry.games.get_mut(&game) {
         Some(Hosted::Live { to, bound }) => {
             *bound += 1;
-            Ok((to.clone(), Some(opening)))
+            return Ok((to.clone(), Some(opening)));
         }
-        None | Some(Hosted::Paused { .. }) => Err(Refusal::NoSuchGame),
+        Some(Hosted::PausedMap {
+            tokens, accounts, ..
+        }) => (tokens, accounts),
+        None | Some(Hosted::Paused { .. }) => return Err(Refusal::NoSuchGame),
+    };
+    let index = usize::from(player);
+    let (Some(expected), Some(account)) = (tokens.get(index), accounts.get(index)) else {
+        return Err(Refusal::NoSuchSeat);
+    };
+    // A paused game started, so every seat was taken.
+    let claim = (expected.as_str(), true, account.as_deref());
+    if let Some(reason) = session::refusal(claim, token, opening.login.as_deref()) {
+        return Err(reason);
     }
+    let prepare = registry.restorer_map(game);
+    let (to_game, inbox) = mpsc::channel(GAME_INBOX);
+    opening.first(&to_game);
+    if let Err(e) = game::launch(game, prepare, inbox, Arc::clone(shared)) {
+        eprintln!("h3-server: game {game} not resumed: {e}");
+        return Err(Refusal::NoSuchGame);
+    }
+    registry.games.insert(
+        game,
+        Hosted::Live {
+            to: to_game.clone(),
+            bound: 1,
+        },
+    );
+    Ok((to_game, None))
 }
 
 /// Binds a connection that joins `seat` of game `game` with `token`: the game's inbox, and the
@@ -785,6 +877,8 @@ pub(crate) fn bind(
         Some(Hosted::Paused {
             tokens, accounts, ..
         }) => (tokens, accounts),
+        // A whole game is no battle (E16 M5 T9b; a running one's session refuses the join).
+        Some(Hosted::PausedMap { .. }) => return Err(Refusal::NoSuchGame),
     };
     let index = match seat {
         Seat::Attacker => 0,
@@ -819,11 +913,12 @@ pub(crate) fn bind(
 /// Restores the games whose journals the data directory holds (E16 M2 T2; call before the server
 /// listens): each re-runs on its own thread, which lists it again if it goes on, one after another
 /// by game id (M4's review: finished, unrated ranked games are rated in that order, and Glicko-2
-/// depends on it); this returns once every re-run is done. A journal that does not read, that
-/// names an offer the server no longer has, or whose engine or content identity is not the
-/// offer's, is void. A game thread that does not start stops the server's start. Every journal's
-/// game id counts as handed out (E16 M4 T3b: a journal of a server from before `next-game`); one
-/// that does not record stops the start.
+/// depends on it); the whole games' after the battles' (E16 M5 T9b; none is ranked); this returns
+/// once every re-run is done. A journal that does not read, that names an offer the server no
+/// longer has, or whose engine or content identity is not the offer's, is void. A game thread
+/// that does not start stops the server's start. Every journal's game id counts as handed out
+/// (E16 M4 T3b: a journal of a server from before `next-game`); one that does not record stops the
+/// start.
 pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
     let (data, ids) = {
         let registry = lock(shared);
@@ -832,33 +927,15 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
             Arc::clone(&registry.stores.ids),
         )
     };
-    let dir = journal::dir(&data);
-    let listing = match fs::read_dir(&dir) {
-        Ok(listing) => listing,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(()),
-        Err(e) => return Err(Error(format!("{}: {e}", dir.display()))),
+    let reach = |game: u32| {
+        (ids.reach(game)).map_err(|e| Error(format!("{}: the game's id: {e}", data.display())))
     };
-    let mut paths: Vec<PathBuf> = listing
-        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
-        .filter(|path| path.extension().is_some_and(|e| e == "journal"))
-        .collect();
-    // By game id, not by name ("10" before "9"); a name that is no id last, the path the tie-break.
-    let id = |path: &PathBuf| {
-        let stem = path.file_stem().and_then(|s| s.to_str());
-        stem.and_then(|s| s.parse::<u32>().ok())
-    };
-    paths.sort_by_cached_key(|path| (id(path).is_none(), id(path), path.clone()));
-    for path in paths {
-        let name = path
-            .file_stem()
-            .map(|s| s.to_string_lossy().into_owned())
-            .unwrap_or_default();
+    for path in journals(&journal::dir(&data))? {
         let (to, inbox) = mpsc::channel(GAME_INBOX);
         let (done, finished) = oneshot::channel();
         let read = journal::read(&path);
         if let Ok(read) = &read {
-            let recorded = ids.reach(read.start.game);
-            recorded.map_err(|e| Error(format!("{}: the game's id: {e}", data.display())))?;
+            reach(read.start.game)?;
         }
         let prepared = read.and_then(|read| {
             let registry = lock(shared);
@@ -873,11 +950,65 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
                 prepared.spawn(inbox, Arc::clone(shared))?;
                 let _ = finished.await;
             }
-            Err(why) => journal::void(&data, &path, &name, &why),
+            Err(why) => journal::void(&data, &path, &stem(&path), &why),
+        }
+    }
+    for path in journals(&journal::whole::dir(&data))? {
+        let (to, inbox) = mpsc::channel(GAME_INBOX);
+        let (done, finished) = oneshot::channel();
+        let read = journal::whole::read(&path);
+        if let Ok(read) = &read {
+            reach(read.start.game)?;
+        }
+        let prepared = read.and_then(|read| {
+            let registry = lock(shared);
+            let offer = found_map(&registry.maps, &read.start.offer)?;
+            let host = (&registry.server, &registry.limits, registry.stores.clone());
+            whole::Prepared::restored(offer, &path, read, host, Some((to, done)))
+        });
+        match prepared {
+            Ok(prepared) => {
+                prepared.spawn(inbox, Arc::clone(shared))?;
+                let _ = finished.await;
+            }
+            Err(why) => journal::void(&data, &path, &stem(&path), &why),
         }
     }
     lock(shared).lobby.skip(ids.last());
     Ok(())
+}
+
+/// The journals in `dir`, by game id (not by name: "10" before "9"); a name that is no id last,
+/// the path the tie-break. None when `dir` does not exist.
+fn journals(dir: &Path) -> Result<Vec<PathBuf>, Error> {
+    let listing = match fs::read_dir(dir) {
+        Ok(listing) => listing,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(Error(format!("{}: {e}", dir.display()))),
+    };
+    let mut paths: Vec<PathBuf> = listing
+        .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+        .filter(|path| path.extension().is_some_and(|e| e == "journal"))
+        .collect();
+    let id = |path: &PathBuf| {
+        let stem = path.file_stem().and_then(|s| s.to_str());
+        stem.and_then(|s| s.parse::<u32>().ok())
+    };
+    paths.sort_by_cached_key(|path| (id(path).is_none(), id(path), path.clone()));
+    Ok(paths)
+}
+
+/// A journal's name without its extension, as the void's log names it.
+fn stem(path: &Path) -> String {
+    path.file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default()
+}
+
+/// The map offer `id` of `maps`, or why a journal that names it is void (E16 M5 T9b).
+fn found_map(maps: &[Arc<MapOffer>], id: &str) -> Result<Arc<MapOffer>, String> {
+    let found = maps.iter().find(|m| m.id == id).cloned();
+    found.ok_or_else(|| format!("the server offers no map `{id}` now"))
 }
 
 /// Sweeps the registry for abandoned games (E16 M2 T5a) and the ranked games' absent players (E16

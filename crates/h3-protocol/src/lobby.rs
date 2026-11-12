@@ -89,6 +89,17 @@ impl<O: Ord> Lobby<O> {
         self.games.values().filter(playing).count()
     }
 
+    /// How many listed games a draining server waits for (E16 M5 T9b): the battles in play and
+    /// the whole games that wait. A running whole game never ends before E10: it plays on until
+    /// the server stops, which keeps its journal for the next start.
+    pub fn to_end(&self) -> usize {
+        let ends = |e: &&Entry<O>| match &e.info {
+            Listed::Battle(info) => matches!(info.phase, Phase::Waiting | Phase::Running),
+            Listed::Map(info) => info.phase == Phase::Waiting,
+        };
+        self.games.values().filter(ends).count()
+    }
+
     /// The answer to `ListGames`: the offers and the games, by id; the map offers and the whole
     /// games, by id (E16 M5 T9a).
     pub fn list(&self, seq: u32) -> ServerMessage {
@@ -274,6 +285,15 @@ impl<O: Ord> Lobby<O> {
         let game = info.game;
         self.last = self.last.max(game);
         let info = Listed::Battle(info);
+        self.games.insert(game, Entry { origin, info });
+    }
+
+    /// Lists again a whole game a restart restored from its journal (E16 M5 T9b), as `origin`
+    /// created it, as [`Lobby::reopen`] lists a battle.
+    pub fn reopen_map(&mut self, origin: O, info: MapGameInfo) {
+        let game = info.game;
+        self.last = self.last.max(game);
+        let info = Listed::Map(info);
         self.games.insert(game, Entry { origin, info });
     }
 
