@@ -18,7 +18,7 @@ Bink (`.bik`) and Smacker (`.smk`); the game opens the Bink version first (`vide
 | A network game's save-game transfer (§2.1, §2.6; not the start's loading bar, which is a DEF) | | `ProgressBar` 0.3 |
 | A won scenario's score screen (0x4F3F60, T1b; not the High Scores dialog, §2.8) | | `HSANIM` 4.5, `HSLOOP` 1.8 |
 | The menus' clip 33 (§2.5; nothing drawn, CLT-Q86; its frames time the credits, §2.9) | (`CREDITS.BIK` and `.SMK` in `VIDEO.VID` are 4 × 4 placeholders, found first) | `Credits.smk` 0.03 (`H3ab_ahd.vid`, AB's; reached by edition 1 only) |
-| A scenario's end (T1b; the lost one, clip 34) | `LOSEGAME` 4.0 (its Smacker copy 4.7 with Low video quality, §4) | |
+| A lost scenario's screen (clip 34, §5.4) | `LOSEGAME` 4.0, never played: clip 34's table entry has +8 clear, so its Smacker copy (4.7) always plays (T1b3b's correction of T1b3a's reading) | |
 | The battle's result window (E17: `battle-videos.vid`) | `WIN3`, `LBSTART`, `LBLOOP`, `RTSTART`, `RTLOOP`, `surrender`, `defendall`, `defendloop`, `LOSECSTL`, `LOSECSLP` | |
 | The spell book's page turns (E17: "Animate SpellBook" off in the harness) | | `PGTRNLFT`, `PGTRNRGH` |
 | Campaigns (E20, decision 7): RoE's selection | `CGOOD1`–`3`, `CEVIL1`–`2`, `CNEUTRAL`, `CSECRET` | |
@@ -27,11 +27,11 @@ Bink (`.bik`) and Smacker (`.smk`); the game opens the Bink version first (`vide
 | Elsewhere (a town's, unknown) | `TAVERN`, `TESTING` | |
 
 So the shell (M2 to M4) needs Smacker for the start's first clip and a won scenario's score
-screen (decision 5; the loading bar and the menus' clip are no Smacker clips to play, §2.1, §2.5);
+screen and a lost one's (decision 5; the loading bar and the menus' clip are no Smacker clips to play, §2.1, §2.5);
 `h3-bink` decodes the rest.
 The shell's clips: `original-data/shell-videos.vid` on the user's computer and staged (E27 M1 T1a1,
 2026-11-12, ten entries; rebuilt at M1 T1b3a with the Smacker copies of `H3INTRO`, `LOSEGAME` and
-`NWCLOGO`, which the system options' Low video quality plays, CLT-Q96, §4.7): `VIDEO.VID`'s 13
+`NWCLOGO`, which the system options' Low video quality plays, CLT-Q96, §4.7; `LOSEGAME`'s plays always, §5.4): `VIDEO.VID`'s 13
 entries `3DOLOGO.SMK`, `CREDITS.BIK`, `CREDITS.SMK`, `H3INTRO.BIK`, `H3INTRO.SMK`, `H3X1intr.bik`,
 `HSANIM.SMK`, `HSLOOP.SMK`, `LOSEGAME.BIK`, `LOSEGAME.SMK`, `NWCLOGO.BIK`, `NWCLOGO.SMK`,
 `ProgressBar.smk`, in `VIDEO.VID`'s format and order (the header, then the clips in the table's
@@ -331,12 +331,12 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   installation's `DATA\HiScore.dat` (`high_score_file_name` 0x67F1F0), when it exists, read over
   both tables (0x898 bytes); a non-zero answer would end the game with an initialisation error, it
   always answers 0. +0x8D0 the tab shown first (1 the scenarios; the new entry's dialog writes it,
-  T1b).
+  §5.6).
 - **The run** (`game_main`'s case 103, §2.2): the videos paused; the dialog built on the stack
   (`high_scores_dialog_init` 0x4E9880), drawn once (`high_scores_draw` 0x4E9E50), `modal_loop` with
   `high_scores_proc` 0x4EA1D0; then destroyed; the videos resumed. No clip plays: `HSANIM` and
   `HSLOOP` (clip 35) belong to a won scenario's screen (0x4F3F60, music "Win Scenario", then the
-  new entry 0x4E91D0 with `HighName.pcx`; T1b). No music of its own.
+  new entry 0x4E91D0 with `HighName.pcx`; §5.5, §5.6). No music of its own.
 - **The dialog** (read whole; vtable 0x63EB98, `high_scores_dialog_pointer` 0x6991C0, H3API's
   `H3HiScoreDlg`): 800 × 600 at (0, 0); +0xFC the tab (1 the scenarios, 0 the campaigns) from the
   manager's +0x8D0. Four DEF buttons (42 × 200, four frames; frame 0, click frame 1, not closing,
@@ -1008,7 +1008,7 @@ to the map (CLT-Q98); 30722 nothing. Then the hero lifted again when it was (`mo
 1, called twice: no visible effect) and, when Walk Speed changed, the step sounds `horse00` to `horse10` loaded again (the manager's +0x360; the old +0x388 not
 released). After play `game_main` closes the network unless the request is 107 (0x4EFED4) and its
 menu loop takes the request (§2.2): 102 Load Game's menu (§2.4), 105 the end, 108 the main menu,
-107 the restart (§4.6); the path between is the end of a scenario's (T1b3b).
+107 the restart (§4.6); the path between is the end of a scenario's (§5.3).
 
 ### 4.4 The save from play (`game_save_dialog` 0x418160, its end)
 
@@ -1061,8 +1061,9 @@ the generator is not reset there, so its other draws are new (*inferred*).
 ### 4.7 For the client
 
 - **CLT-Q96** (decision 15): Video Quality honoured: Low plays the Smacker copies where the
-  original does (clips from 28 whose table entry has +8 set: `NWCLogo`, `H3Intro`, `LoseGame` in
-  the shell; the campaigns' are E20's); `shell-videos.vid` now holds the three copies (§1). The
+  original does (clips from 28 whose table entry has +8 set: `NWCLogo`, `H3Intro` in the shell;
+  the campaigns' are E20's; `LoseGame`'s +8 is clear, so its Smacker copy plays at either
+  setting: T1b3b's correction, §5.4); `shell-videos.vid` now holds the three copies (§1). The
   start's first-run case stays out (CLT-Q85): Bink Video is High until the player sets Low.
 - **CLT-Q97** (decision 15): Restart builds a new game from the first game's `GameSetup` with each
   Random town fixed to the town the engine drew for it, and a new seed.
@@ -1082,3 +1083,215 @@ the generator is not reset there, so its other draws are new (*inferred*).
 The dialog over the map with a first run's settings and with each row's other choices; a bar of
 each volume; each box both ways; a right press's popup per item kind; the three questions (579 for
 Load, Main Menu, Quit; 68 for Restart) and the save's message (351); Return and Escape.
+
+## 5. The end of a scenario (M1 T1b3b, 2026-11-12)
+
+Read whole: `scenario_condition_met` 0x4F2CE0, `scenario_victory_test` 0x4F15E0,
+`scenario_loss_test` 0x4F2960, `game_main` from 0x4EF80B (but the campaigns' path, §5.7),
+`scenario_lose_screen` 0x4EE2B0, `scenario_win_screen` 0x4F3F60, `scenario_score_screen` 0x4F3AB0,
+the scores (0x4F3E30, 0x4F3EB0), `high_score_entry` 0x4E91D0 with its items, procedure and edit.
+Who meets a condition, and when, is E10's (the engine): this section is what the player sees.
+T1b3b was kept whole (decision 16).
+
+### 5.1 Victory and defeat in play (`scenario_condition_met` 0x4F2CE0)
+
+- **The call:** ecx 0 a check (most of its 37 call sites: the events, battles, visits, town visits,
+  the turn; E10's), 1 a won game and 2 a lost one (the typed codes, 0x4F43F3 and 0x4F4406; the win's
+  first sets the cheat flag game +0x1F69C and, in a campaign, the campaign's own +0x1F458; 2 also
+  from `hide_whole_map` 0x402822). It returns at once with `conditions_checked_here` 0x697788 clear
+  (1 outside a network game), during a game's setup (0x698400), once `scenario_ended` 0x6972B8 is
+  set, or re-entered (`condition_check_guard` 0x69958C). In a remote turn the viewing player's
+  record is made human for the checks and put back (network; not built).
+- **The eliminations**, per colour 0 to 7 not yet defeated (game +0x1F636): no hero and no town:
+  `player_defeated` 0x4F11A0, then for the viewing player GENRLTXT 96 (its elimination), else
+  GENRLTXT 6 with the colour's player name (`colour_player_name` 0x4CEB60) and its crest (picture
+  type 10: `crest58.def`, the colour's frame and name; a network timeout of 5 s). Heroes but no
+  town: the days without a town (player +0x3D) −1 become 7, with GENRLTXT 7 (the week's warning, the
+  crest) when the colour is a human here whose turn it is; at 0 `player_defeated`, with GENRLTXT 8
+  (the same human) or 9 (any other; both with the crest). A town: −1. The days' count down is E10's
+  (not read). Every box is an OK box (style 1) at the screen's middle.
+- **The scenario's conditions:** the enemies counted (the colours neither defeated nor on the
+  viewing player's team, game +0x1F879); the victory condition (game +0x1F89C, 0x4C bytes) through
+  `scenario_victory_test`, and when it finds nothing the loss condition (game +0x1F8E8, 0x24 bytes)
+  through `scenario_loss_test` (§5.2): a loss sets `scenario_ended` and `scenario_result` 0x699510
+  0, a win `scenario_ended` and 1.
+- **The standard victory** counts when the map has no special one (type 0xFF) or allows the standard
+  one too (+0x1F89D): with no enemy left, `victory_by_conquest` 0x69951C 1, `scenario_ended`, won (a
+  network game sends message 0x436), GENRLTXT 660 in an OK box. This test follows the special
+  conditions', so both boxes can show. Else, with no colour left that is not defeated and a human
+  here: ended, lost (no box beyond 96's). Last the argument: 1 ends the game won, 2 lost.
+- **Play ends** at the adventure manager's next message: with `scenario_ended` set
+  `adventure_manager_procedure` answers 2 with the executive's exit (0x4000, subtype 1; 0x4087CC),
+  so `executive_loop` returns into `game_main` (§5.3). The flag's other readers (the town visit, the
+  turn, `new_day`'s week and month, a message box's build, the computer's turn) stop their work (not
+  read). It is no network client's flag (the name until T1b3b).
+
+### 5.2 The conditions' messages (`scenario_victory_test` 0x4F15E0, `scenario_loss_test` 0x4F2960)
+
+- **The victory's** (ecx the condition, edx the won flag; on the stack the lost flag and a network
+  byte, 0 for the local check, 1 for another computer's message 0x3FB, `network_victory_received` 0x556940): nothing until
+  the condition's met flag (+0x48) is set; +0x49 the colour that met it. On the viewing player's
+  team it is won, else lost (also with no viewing player); code 5 counts only for the viewing
+  player's team (another team's defeat of the hero shows nothing). The local texts (GENRLTXT; an OK
+  box, no picture):
+
+  | Code | Condition | Won | Lost | Formatted with |
+  |---|---|---|---|---|
+  | 0 | an artifact | 281 | 282 | the artifact's name |
+  | 1 | creatures | 277 | 278 | the count and the creature's name (singular for 1) |
+  | 2 | resources | 279 | 280 | the amount and the resource's name |
+  | 3 | a town's upgrade | 283 | 284 | |
+  | 4 | the Grail's building | 285 | 286 | |
+  | 5 | a hero's defeat | 253 | none | the hero's name |
+  | 6 | a town's capture | 250 | 251 | the town's name |
+  | 7 | a monster's defeat | 287 | 288 | |
+  | 8 | the dwellings | 289 | 290 | |
+  | 9 | the mines | 291 | 292 | |
+  | 10 | an artifact's transport | 293 | 294 | |
+  | 11, 12 | (no shipped map: `h3m.md` rejects the codes) | the executable's own English texts, not GENRLTXT; won whoever met them | none | |
+
+  With the network byte the texts name the team (`team_names_text` 0x4F1460: the team's colours'
+  names joined with " & " and ", & "; one player or several choose between two records): 632 to
+  654, a won one for codes 0, 3, 4, 7 and 10 (638, 639, 642, 645, 652); a local check in a network
+  game sends 0x3FB with the condition and sets `scenario_ended` itself. A campaign's code 0 has
+  three scenarios' own texts (714, 764, 738; E20).
+- **The loss's** (the same arguments; a remote one from `network_loss_received` 0x5569A0, message 0x3FC): its met flag
+  +0x22, +0x23 the colour it concerns. Code 0 (a town, its position +4, +8, +0xC) for a colour on
+  the viewing player's team: lost, GENRLTXT 252 with the town's name; 1 (a hero, +0x1C) the same,
+  254 with the hero's name when the colour is the viewing player's, 671 with the colour's player
+  name and the hero's for a teammate; 2 (the time; no team test): lost, 255. An OK box, no picture;
+  in a network game the local check sends 0x3FC and sets `scenario_ended`.
+
+### 5.3 Play's end (`game_main` from 0x4EF80B)
+
+- **Play and Quit** both pass 0x4EF80B (High Scores and Credits return to the loop's top): the
+  menus' pictures freed (`mainmenu.pcx`, `GamSelBk.pcx`), every clip stopped (`video_stop_all`
+  0x5975F0: the pause count undone, Bink's handles paused, Smacker's closed, `video_close`); Quit's
+  flag (0x4EF804) goes to the loop's top and the end (`game_shutdown`); else play (0x4EFC58).
+- **Play:** the window manager's +0x44 1; `conditions_checked_here` chosen (0x41A660: in a network
+  game whether the next human to play is here; not built); the effects stopped (`effects_stop_all`
+  0x599D90); a campaign's own loading (§5.7); the adventure manager added to the executive (a
+  failure: GENRLTXT 1, the game ends); a network game sends Quick Combat (0x3F1); a new game (101),
+  a restart (107) or a campaign's next scenario (`first_day_due` 0x699584) plays `newday.wav` and
+  runs the first day's map and town events; the turn's timer started (`turn_timer_start` 0x557D90;
+  the hot seat's, E24 M5); `executive_loop` until its exit (§5.1, or a request of the system
+  options, §4.3). After it: the sound manager's +0x84 1, `remote_turn` 0, the effects stopped, the
+  adventure manager removed, the window manager's 0x602C50 (1, 4, 0) (a redraw, *inferred*); the
+  network closed unless the request is the restart; a lobby's start ends the game.
+- **The end's path** (0x4EF840): with `scenario_ended` clear, the loop's top (the request, §4.3).
+  Set: the network closed, the view shown (0x6989C0), the arrow cursor; GENRLTXT 116 formatted with
+  the day's number (game +0x1F63E's date) into 0x699294, which no code reads (a leftover: nothing
+  shows it); then by `scenario_result`: 0 the lost screen (§5.4); in a campaign its path (§5.7);
+  else the won screen (§5.5), its entry always setting `high_scores_due` 0x69955C, so "Win Scenario"
+  is asked for again (still playing: dropped, E24-design §3.11). At 0x4EFF2B `scenario_ended` 0;
+  with `high_scores_due` set it is cleared and `high_scores_show` runs (§2.8, on the entry's tab
+  with its row in colour 8); then the menu loop's top (§2.2). "Win Scenario" plays on through the
+  entry and High Scores (neither has music of its own).
+
+### 5.4 The lost scenario (`scenario_lose_screen` 0x4EE2B0)
+
+- Clip 34 `LoseGame` (`video_play_in_dialog` at (0, 0), its own size, not playing on, its frames
+  shown by the clip's tick): its table entry's +8 is clear, so the Smacker copy `LOSEGAME.SMK` (800
+  × 600, 126 frames at 10 a second) plays at either Video Quality and `LOSEGAME.BIK` never does (§1,
+  §4.7). `UltimateLose` once (loop count 1), the effects ended. Three times 500 ms asleep with the
+  music served (`music_service` 0x59A7D0): for 1.5 s input waits; the input flushed, a due frame
+  shown.
+- While the clip plays: the messages, the next input message; a key down but F4, a left press (8) or
+  a right press (0x20) ends it but on the first run (`first_run_setting`, as the start's clips,
+  §2.1); any other message shows a due frame.
+- Then every clip stopped, the window manager's 0x602C50 (1, 4, 0); when the clip ran to its end,
+  the screen waits while the music streams (status 4; served, 100 ms asleep): `UltimateLose` to its
+  end. A skip ends the screen at once. No text, no button.
+
+### 5.5 The won scenario (`scenario_win_screen` 0x4F3F60, `scenario_score_screen` 0x4F3AB0)
+
+- **The call** (ecx 1 a scenario, 0 a campaign: §5.7): the mouse hidden, the window manager's +0x44
+  0.
+- **The score:** the base (`scenario_base_score` 0x4F3E30) 200 − (days + 10) / (towns + 5) by
+  integer division (the screen player's towns, player +0x3E), + 25 when `grail_finder` 0x69950C is
+  the viewing player (set when a human digs up the Grail, 0x40EFF3; −1 by `game_reset`; saved), + 25
+  with `victory_by_conquest`; the final score the base times the difficulty's factor
+  (`difficulty_score_factors` 0x67F558 by game +0x1F6D8: 0.8, 1, 1.3, 1.6, 2; truncated;
+  `scenario_score` 0x4F3EB0 computes the same for a campaign's record); the percent the factor ×
+  100; the land the map's name (game +0x1FB40; empty when none).
+- **The rank's text:** `high_score_creature` (the final score, the tab, §2.8): a creature 0 to 150
+  gives its name (the creature record's +0x14), else empty; with the cheat flag GENRLTXT 261; its
+  first letter upper case.
+- **The clip:** 35 `hsAnim`, its loop `hsloop` (Smacker only; 800 × 600, 135 and 45 frames at 10 a
+  second), at (0, 0), playing on (the loop repeats), its frames not shown by the tick; "Win
+  Scenario" looping (count 0), the effects ended.
+- **The score screen** (`scenario_score_screen`; edx the rank's text, then the base, the final
+  score, the days): `HiScore.fnt`; the labels GENRLTXT 439, 440, 441, 442 and 677; the input
+  flushed, the clip's frame decoded again; per column *i* from 0 to 4 the label in (160 *i*, 450,
+  160, 100) and the value in (160 *i*, 540, 160, 50), colour 0x119, alignment 5: the days, the base,
+  the difficulty's name (`difficulty_names`), the final score, the rank's text; the screen shown.
+  While a clip plays: `adventure_tick`, the messages, the next input message; a key down but F4, or
+  a left or right press or release (8, 0x10, 0x20, 0x40) ends it (no first-run guard); every due
+  frame gets the ten texts drawn again over it before it is shown. The font freed.
+- **Then** every clip stopped; `high_score_entry` with the final score, the days, the percent, the
+  tab and the land (§5.6); the mouse shown, the window manager's +0x44 1 and 0x602C50 (1, 4, 0).
+
+### 5.6 The new entry (`high_score_entry` 0x4E91D0)
+
+- **The rank:** the manager's +0x8D0 takes the tab (High Scores' first, §2.8), the row is the tab's
+  table's (§2.8). With the cheat flag, or in a campaign whose own flag (game +0x1F458's first byte;
+  E20) is set, it is 10; else the first of rows 0 to 9 whose score is below the new one or −1
+  (empty), else 10. Below 10, the rows from it to 9 move down one and row 10 is lost. So row 10, the
+  eleventh, takes every score that misses the ten, whatever it held (CLT-Q99: copied).
+- **The dialog** (`high_score_entry_vtable` 0x63EBBC): the base dialog at (284, 194), 232 × 212,
+  flags 0x12 (centred); its items in order:
+
+  | Id | Item | Place, size | Detail |
+  |---|---|---|---|
+  | 500 | `HighName.pcx` | (0, 0), 232 × 212 | flags 0x800 |
+  | 501 | the name's edit (`high_score_name_edit_create` 0x4E96A0: H3API's `H3DlgEdit`, vtable 0x63EBF4) | (18, 105), 199 × 23 | at most 40 characters, `smalfont.fnt` colour 4, alignment 4, 0x100 and no border (H3API's parameter names) |
+  | −1 | GENRLTXT 97 (the congratulation, the name asked for) | (13, 13), 205 × 100 | `smalfont.fnt` colour 4, alignment 1, flags 8 |
+  | 503 | OK, `mubchck.def` (64 × 32, 4 frames) | (84, 143), 64 × 32 | frame 0, click frame 1, not closing, hotkey Enter (0x1C), flags 2 |
+  | 504 | an empty text | (8, 186), 216 × 18 | `smalfont.fnt` colour 1, alignment 1, flags 8; no item sets it (a status line, *inferred*) |
+
+- **The run:** the arrow cursor shown; the edit focused, its text the screen player's name as
+  `player_display_name` 0x4BADB0 gives it (the record's +0xCC; a human's "Player" or a computer's
+  GENRLTXT 469 becomes the colour's name, written into the record; the first letter upper case);
+  modal with `dialog_proc_default`, whose click goes to `high_score_entry_command` 0x4E9790: OK
+  (503, or its hotkey Enter) ends the dialog (0x7802) when the edit holds a text; an empty name does
+  nothing. No Escape, no Cancel. The edit takes the keys while focused (0x4E9710).
+- **The record** (100 bytes, zeroed first): +0 the name, +0x29 the land (GENRLTXT 261 with the cheat
+  flag), +0x54 the final score, +0x58 the days, +0x5C the percent, +0x60 the cheat flag;
+  `high_score_newest` of the tab the rank; both tables (0x898 bytes from +0x38) written to
+  `.\DATA\HiScore.dat` (opened to write, created, truncated, binary; a failure `file_error_box` with
+  the name); `high_scores_due` 1.
+
+### 5.7 The campaigns' path (noted; E20)
+
+`game_main` 0x4EF8C9 to 0x4EFC56 (a campaign's scenario, its record at game +0x1F458: the next
+scenario, `Endgame` (clip 32) in `IntroRim.pcx` at a campaign's end, the won screen with the
+campaign's score, the campaigns' screens) and 0x4EFC8D to 0x4EFD8E (its loading bar, then
+`scenario_result` 2).
+
+### 5.8 For the client
+
+- The engine decides victory and defeat (E10; until then decision 6's stubs). The shell shows §5.1's
+  and §5.2's local boxes in their order, then the screens; the network's texts and messages (0x3FB,
+  0x3FC, 0x436) are not built.
+- What the shell needs from the engine (the adventure lane's inbox told, for E10): per colour its
+  elimination and why (no hero and no town, the week without a town), the week's warning; the result
+  for the shell's player with the condition's code (or the standard victory) and the values its text
+  takes (the artifact, the count and creature, the amount and resource, the hero, the town); for the
+  score the day, the player's towns, the difficulty and whether the player dug up the Grail.
+- **CLT-Q99** (decision 17): the eleventh row as the original's.
+- The lost screen plays `LOSEGAME.SMK` always (`shell-videos.vid` holds it); skippable after 1.5 s
+  (CLT-Q85: no first run).
+- **The agent's calls** (*provisional*, M1's review list): the scores in the client's own file
+  (§2.8), never `HiScore.dat`; GENRLTXT 116's unread text not copied; the cheat flag, the typed
+  codes and the "Cheater" land not built (the client has no cheats); codes 11 and 12 not built (no
+  map has them); the map's animations under the score screen (`adventure_tick`) not copied (nothing
+  shows); the network's paths not built.
+
+### 5.9 For T2's captures
+
+The eliminations' boxes (96; 6 with the crest; 7, 8 and 9) and each victory and loss text a
+recipe can reach on a shipped map; the standard victory's 660; the lost screen to its end and
+skipped after 1.5 s; the score screen (each column over the clip's loop) and its end by a key and
+by a press; the entry with the player's name, OK with an empty name, Enter; High Scores after it
+with the new row in colour 8; a score that misses the ten (the eleventh row). No clip beyond
+`shell-videos.vid` and `battle-videos.vid` is needed.

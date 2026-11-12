@@ -132,6 +132,14 @@ The user, 2026-11-12 (M1 T1b3's start, and T1b3a; `CLT-Q96` to `CLT-Q98`):
     closes, Cancel keeping it open, as Load, Main Menu and Quit; the original's order for the
     comparisons only.
 
+The user, 2026-11-12 (M1 T1b3b's start and its reading; `CLT-Q99`):
+
+16. **T1b3b kept whole** (about 12 KB of code; the cut offered at the screens after play against
+    victory and defeat in play was declined).
+17. **The high scores' eleventh row as the original's** (CLT-Q99): a won scenario's score is
+    ranked among the first ten rows only; one that misses them always replaces the eleventh row,
+    shown highlighted (design §5.6).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -172,7 +180,7 @@ SoD) the shipped installation decides; E11 owns historical differences.
 - **The system menu in play** (save, load, restart, main menu, quit; over the map client's
   adventure screen, with the map-client lane) and **the end of a scenario** (victory, defeat,
   their clips and messages, the high-score entry; the effects behind E10, decision 6). The system
-  options and the menu in play: design §4 (T1b3a).
+  options and the menu in play: design §4 (T1b3a); the end of a scenario: design §5 (T1b3b).
 - **High scores and credits** (design §2.8, §2.9; the scores in the client's own file, the
   defaults `CampHigh.txt`'s; `HSANIM` and `HSLOOP` at a won scenario's end, T1b).
 - **Sound and music** of the menus (E17's sound decoders).
@@ -210,7 +218,7 @@ tasks are refined here.
 | T1b1 | The catalogue, part 2a: the scenario screen's frame, its list and information panel in its three modes (new, load, save), the difficulty, Begin and Back (decision 11) | done 2026-11-12 (design §3; CLT-Q90, CLT-Q91) |
 | T1b2 | The catalogue, part 2b: the advanced options (the players' setup to `GameSetup` or an E10 gap), the random map's tab, the game's begin | done 2026-11-12 (design §3.12 to §3.18; CLT-Q92 to CLT-Q95) |
 | T1b3a | The catalogue, part 2c: the system options and the menu in play (decision 14) | done 2026-11-12 (design §4; CLT-Q96 to CLT-Q98) |
-| T1b3b | The catalogue, part 2d: the end of a scenario (victory, defeat, their clips and messages, the win screen and its score, the high score's entry) | ready |
+| T1b3b | The catalogue, part 2d: the end of a scenario (victory, defeat, their clips and messages, the win screen and its score, the high score's entry) | done 2026-11-12 (design §5; CLT-Q99, decisions 16, 17) |
 | T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was; done at T1a1 and T1b3a, design §1); the harness on every catalogued screen; the reference captures; the traps | after T1b3b |
 | T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
 
@@ -234,6 +242,10 @@ tasks are refined here.
    combat options' (one set, the volumes and Animate SpellBook shared); Autosave kept there, on,
    with no item; the network paths and the tutorial's disabled boxes not built; the step sounds'
    reload and the second hero lift not copied.
+6. T1b3b (design §5.8): the scores in the client's own file; GENRLTXT 116's unread text, the cheat
+   flag, the typed codes and their "Cheater" land, the victory codes 11 and 12 (no map) and the
+   map's animations under the score screen not built; the network's texts and messages (0x3FB,
+   0x3FC, 0x436) not built.
 
 ## Dependencies and boundaries
 
@@ -256,7 +268,7 @@ tasks are refined here.
   runs a clip or a network probe may behave differently.
 - **`VIDEO.VID` is 629 MB**, over the staging limit: the shell's clips are copied into an
   archive of their own on the user's computer (done: `shell-videos.vid`, design §1), the computer
-  online for it; a clip T1b3b finds beyond it needs the computer again.
+  online for it; T1b3b found no clip beyond it (design §5.9).
 - **The engine imports 8 of the 160 shipped maps whole** (2026-11-12): the scenario list either
   shows maps that cannot start yet or differs from the original's (decision 8: M3's T0).
 - **Unknown size:** the screens are listed from the code at M1; M2 to M4 are a sketch until then.
