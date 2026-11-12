@@ -321,11 +321,22 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     assert_eq!(map_games(&lobby), [running, waiting(3)]);
     let battle = &games(&lobby)[0];
     assert_eq!((battle.phase, battle.seated.len()), (Phase::Waiting, 0));
+    // A drain waits for the battles and the waiting whole games, not a running one (E16 M5 T9b).
+    assert_eq!((lobby.in_play(), lobby.to_end()), (3, 2));
     // A paused whole game is not in play; a removed one leaves the list.
     lobby.update_map(3, (Phase::Paused, vec![]));
-    assert_eq!(lobby.in_play(), 2);
+    assert_eq!((lobby.in_play(), lobby.to_end()), (2, 1));
     lobby.remove(1);
     assert_eq!(map_games(&lobby).len(), 1);
+    // A restored whole game is listed again, the ids handed out after it higher (E16 M5 T9b).
+    let restored = MapGameInfo {
+        phase: Phase::Running,
+        open: vec![],
+        ..waiting(7)
+    };
+    lobby.reopen_map(2, restored.clone());
+    assert_eq!(map_games(&lobby)[1..], [restored]);
+    assert_eq!(lobby.create_map(2, "duel", 0), Ok((8, 0)));
 }
 
 #[test]

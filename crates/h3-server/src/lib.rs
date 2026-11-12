@@ -117,7 +117,8 @@ impl Running {
     /// Drains the server (E16 M2 T5a; `E16-design.md` §7): no game is created any more
     /// (`Refused { Draining }`), a game that waits for its players ends (`Goodbye { Shutdown }`),
     /// the running ones play on and paused ones may resume; [`drained`](Self::drained) resolves
-    /// once none waits or runs.
+    /// once none waits or runs, but for the running whole games (E16 M5 T9b: they never end before
+    /// E10; they play on until the stop, which keeps their journals for the next start).
     pub fn drain(&self) {
         registry::lock(&self.registry).drain();
     }
@@ -138,9 +139,9 @@ impl Running {
         self.ladders.standing(ladder, season, login)
     }
 
-    /// Resolves once no game waits or runs.
+    /// Resolves once no game waits or runs, but for the running whole games (E16 M5 T9b).
     pub async fn drained(&self) {
-        while self.in_play() > 0 {
+        while registry::lock(&self.registry).to_end() > 0 {
             tokio::time::sleep(POLL).await;
         }
     }

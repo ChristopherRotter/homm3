@@ -758,9 +758,12 @@ impl Link {
                     }
                 }
             }
-            ClientMessage::GameJoin { game, .. }
-                if self.bound.as_ref().is_none_or(|bound| bound.game != game) =>
-            {
+            ClientMessage::GameJoin {
+                game,
+                player,
+                ref token,
+            } if self.bound.as_ref().is_none_or(|bound| bound.game != game) => {
+                let token = token.clone();
                 let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
                 let opening = Opening {
                     conn: self.conn,
@@ -768,7 +771,8 @@ impl Link {
                     login,
                     join: message,
                 };
-                match registry::bind_map(&self.registry, game, opening) {
+                let asked = (game, player, token.as_deref());
+                match registry::bind_map(&self.registry, asked, opening) {
                     Err(reason) => Routed::Reply(refused(reason)),
                     Ok((to_game, opening)) => {
                         self.switch(game, (to_game, from_game), opening, None).await

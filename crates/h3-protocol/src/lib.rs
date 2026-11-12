@@ -109,8 +109,10 @@ pub mod wire;
 /// `GamePauseAsked`, rejected `AlreadyAsked` once asked; a paused game rejects `NotStarted`). v47
 /// (E16 M5 T9a): whole games in the lobby: `Games` lists the server's map offers
 /// (`wire::game::MapOffer`) and its whole games (`wire::game::MapGameInfo`), the client message
-/// `CreateMapGame` creates one and takes a player's seat in it.
-pub const PROTOCOL_VERSION: u32 = 47;
+/// `CreateMapGame` creates one and takes a player's seat in it. v48 (E16 M5 T9b): a whole game's
+/// seat downloads its record (`FetchRecord`, answered `Record` with the seat's player's record, its
+/// first line a `wire::game::GameRecordHeader`; `GameRejected { NotSeated }` without a seat).
+pub const PROTOCOL_VERSION: u32 = 48;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

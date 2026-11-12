@@ -99,13 +99,6 @@ impl GameLine {
         }
     }
 
-    #[cfg_attr(
-        not(test),
-        expect(
-            dead_code,
-            reason = "E16 M5 T9b's restore at start reads it (SRV-STUB-12)"
-        )
-    )]
     fn entry(self) -> Result<GameEntry, String> {
         let parse =
             |text: &str| h3_files::adventure::parse_command(text).map_err(|e| e.to_string());
@@ -160,13 +153,6 @@ impl Writer {
 }
 
 /// A whole game's journal as read back.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "E16 M5 T9b's restore at start reads it (SRV-STUB-12)"
-    )
-)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct GameRead {
     /// Its first line.
@@ -178,13 +164,6 @@ pub(crate) struct GameRead {
 }
 
 /// Reads the whole game's journal at `path`; why it cannot be read, otherwise.
-#[cfg_attr(
-    not(test),
-    expect(
-        dead_code,
-        reason = "E16 M5 T9b's restore at start reads it (SRV-STUB-12)"
-    )
-)]
 pub(crate) fn read(path: &Path) -> Result<GameRead, String> {
     let (start, entries, complete) =
         read_as::<GameStart, _, _>(path, GAME_JOURNAL_FORMAT_VERSION, GameLine::entry)?;

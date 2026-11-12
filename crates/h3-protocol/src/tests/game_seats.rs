@@ -397,7 +397,7 @@ fn a_join_or_a_command_out_of_place_changes_nothing() {
     assert_eq!(to(&send(&mut s, A, defend), A), [rejected]);
     for message in [
         ClientMessage::Ping { nonce: 1 },
-        ClientMessage::FetchRecord { seq: 4 },
+        ClientMessage::FetchReplay { seq: 4 },
     ] {
         assert!(send(&mut s, A, message).is_empty());
     }
