@@ -719,6 +719,14 @@ fn an_army_command_names_a_map_garrison_by_its_object_index() {
         ..garrison(&rules, "t:garrison", p(6, 0), None, &[])
     };
     let mut state = corridor(&rules, vec![own, blocker]);
+    // The removable flag is the map's; none for a blocker or past the objects.
+    let removable: Vec<Option<bool>> = (0..3).map(|i| state.garrison_removable(i)).collect();
+    assert_eq!(removable, [Some(true), None, None]);
+    let fixed = fixed(&rules, ("t:garrison", ENTRANCE), Some(RED), &GNOLLS, false);
+    assert_eq!(
+        corridor(&rules, vec![fixed]).garrison_removable(0),
+        Some(false)
+    );
     for index in [1, 2, u32::MAX] {
         let command = ArmyCommand::Move {
             from: at(RED_ARMY, 0),
