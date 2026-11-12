@@ -9,7 +9,7 @@ use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::{ArmyStack, FortLevel};
-use h3_kernel::Rng;
+use h3_kernel::{Rng, order};
 
 use crate::record::Town;
 use crate::ruleset::{MAX_CREATURE_LEVELS, TownRuleset};
@@ -150,7 +150,8 @@ pub fn garrison_week(
     }
     let count32 = u32::from(count);
     let mut stacks = garrison.to_vec();
-    stacks.sort_by_key(|s| s.slot);
+    // An army holds one stack per slot, so the slot is a unique key.
+    let _ = order::sort_by_unique_key(&mut stacks, |s| s.slot);
     let value = |c: CreatureTypeId, count: u32| {
         u64::from(info(c).map_or(0, |c| c.ai_value)) * u64::from(count)
     };
