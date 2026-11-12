@@ -100,3 +100,43 @@ Scores, 1 for Credits); no cut needed.
   list.
 - **Not done:** no harness run (T2 confirms, design §2.11). Gates: `scripts/exe.py check`,
   `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
+
+## M1 T1b1 — the catalogue, part 2a: the scenario screen, its list and information panel (2026-11-12)
+
+On `client/e27-m1-t1b1` (docs and the address map), the user present; `master` at `21d6ba0`
+(#881, #882 merged). **T1b cut in three with the user at its start** (decision 11): the scenario
+screen alone is about 80 KB of code in about 110 functions, one dialog for a new game, a load and
+a save; T1b1 the frame, the list and the information panel, T1b2 the players' setup, the random
+map and the begin, T1b3 the system options, the menu in play and the end.
+
+- **Staged at the start**, the user's computer about to go offline: the four LODs one a call, the
+  executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the 40
+  MP3s, `shell-videos.vid`; all checked by SHA-256 against the computer's. Besides, the
+  installation's three saved games (`AUTOSAVE.GM1`, `AUTOSAVE.TGM`, `save1.GM1`, read only) copied
+  into the user's `original-data/games/` and staged, for T2's load and save screens. The end's
+  clips (`LoseGame`, `hsAnim`, `hsloop`) are already in `shell-videos.vid`; `Endgame` is a
+  campaign's (E20), so T1b needs no clip beyond them.
+- **Read** (`E27-design.md` §3; 76 new map entries, 1 updated; `structs.toml` `scenario_dialog`
+  and `scenario_info`): the constructor's items and modes (a call summary per item: the creators'
+  arguments, the conditions by mode), the run, the procedure and its keys, the click handler's
+  cases 107 to 195, the right press's dispatch, the list's panel, build, header read, finish,
+  sort and its six comparisons, filter, the rows' drawing, the information panel's draw,
+  `scenario_select`, the flags, Begin's checks (to the load and the start), the save's name, the
+  delete, the busy cursor's helper thread, the vcdesc and lcdesc loaders, the hints' table. Not
+  read: the map and save header readers (0x513320, 0x4BC750), the load (0x58C290), the teams
+  dialog, the library sort routines beyond their comparisons, and T1b2's parts (the slots, the
+  players' rows, the random map, the start). Checked privately in the staged data (never
+  committed): the PCXs' and DEFs' sizes and frames, GENRLTXT's, `ArrayTxt.txt`'s and `Help.txt`'s
+  records' subjects.
+- **Found:** a new game opens with no left-hand panel (a load and a save open the list); the files
+  are read on the main thread with a helper thread moving the busy cursor; unusable maps and saves
+  stay listed under GENRLTXT 431; the load and save rows show file names; the list starts sorted by
+  the format then the name but records the size's column; four of the six keys leave ties to an
+  unstable sort; a double click is any two row presses within 400 ms; the rating depends only on
+  the chosen difficulty (80 to 200 %); a single load shows no allies' and enemies' flags; the save's
+  extension counts the humans still playing (`.GM<n>`, `.CGM`); the original remembers the last
+  map, save name and difficulty between visits (`Arrogance.h3m` and `NEWGAME` at the start).
+- **Asked and answered:** CLT-Q90 (ties: a stable sort with the name, then the file name), CLT-Q91
+  (both oddities fixed); decision 12. The agent's calls on M1's review list (item 3).
+- **Not done:** no harness run (T2 confirms, design §3.11). Gates: `scripts/exe.py check`,
+  `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
