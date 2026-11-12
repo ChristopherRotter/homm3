@@ -1396,7 +1396,8 @@ pub enum ClientMessage {
         nonce: u32,
     },
     /// Ask to pause the running game (E16 M2 T3): the host's ask (the seat its creator took)
-    /// pauses it, another seat's is told to every viewer (`PauseAsked`).
+    /// pauses it, another seat's is told to every viewer (`PauseAsked`; a whole game's
+    /// `GamePauseAsked`, E16 M5 T8b, v46, its rejections `GameRejected`).
     Pause {
         /// The client's sequence number.
         seq: u32,
@@ -1577,7 +1578,11 @@ pub enum ClientMessage {
         token: Option<String>,
     },
     /// A command to the whole game, as the seat's player (E16 M5 T8a, v45); `seq` is the client's
-    /// own counter, echoed in the answer (`GameAccepted` or `GameRejected`).
+    /// own counter, echoed in the answer (`GameAccepted` or `GameRejected`). Since v46 (E16 M5
+    /// T8b) a seat's accepted commands take strictly increasing numbers, gaps allowed: one at or
+    /// below the last taken (`GameJoined::last`) is a resend, applied no more, answered as the
+    /// first time if the session keeps that answer, else `GameRejected { Stale }`. A rejected
+    /// command takes no number.
     GameCommand {
         /// The client's sequence number.
         seq: u32,
@@ -2067,6 +2072,18 @@ pub enum ServerMessage {
         token: Option<String>,
         /// What the game is made of.
         manifest: game::GameManifest,
+        /// The number of the seat's last accepted command, its client's (E16 M5 T8b, v46): a
+        /// command numbered at or below it is a resend and applies nothing; none before the
+        /// seat's first.
+        last: Option<u32>,
+    },
+    /// A player asked to pause the whole game (E16 M5 T8b, v46; a battle's `PauseAsked`): told
+    /// to every player, for the host to decide; the host's ask pauses it (`Goodbye { Paused }`).
+    GamePauseAsked {
+        /// The viewer's message number.
+        n: u32,
+        /// The player that asked: its index among the map's players.
+        player: u8,
     },
 }
 

@@ -2639,3 +2639,63 @@ fingerprint; the scoped verify passed). No original data. Branch `server/e16-m5-
 - **The bench:** `benches/server/` measures the battle session (`serve_frame`), not
   `GameSession`; the scoped verify's bench-check passed (the battle's `join` only calls the
   shared `handed`).
+
+### M5 T8b — the whole game's command numbers, the host's pause, a game reopened with its seats (2026-11-12)
+
+The task (the epic's "M5 part 2", SRV-Q29): each seat numbers its commands, and a number the
+session already took is answered as it was the first time, applying nothing; the host's pause and
+resume, as a battle's; the restore with the seats taken, none held. Baseline: `server/e16-m5-t8a`
+7595985 (T8a; the scoped verify passed there). No original data. Branch `server/e16-m5-t8b`,
+stacked on T8a's pull request (#878), its head merged in. A worker agent built the session's part
+and was stopped by a restart before its tests (its work-in-progress commit 1aa9f0d); the runner
+finished it (the user: "finish the rest yourself").
+
+- **Numbers** (protocol **v46**; provisional, the 2a review list): a seat's accepted commands take
+  strictly increasing numbers (`GameCommand`'s `seq`, the client's), gaps allowed. A number at or
+  below the seat's last taken one is a resend: nothing applied or journaled, answered
+  `GameAccepted` with the first echo (numbered on, recorded) while the seat keeps that answer (its
+  last `KEPT_ANSWERS` = 16 accepted commands, a `VecDeque` per seat), else `GameRejected { Stale }`
+  (a skipped number, or one older than the kept). A rejected command takes no number: sent again
+  above the last it is judged afresh, before and after a restart alike. `GameJoined` gains
+  `last`, the seat's last number (none before its first). The in-process host's `play` numbers
+  nothing (it vouches for its commands; its `seq` is only echoed).
+- **Pause** (as a battle's): the host is the seat taken first (a created game's creator); its
+  `Pause` in a running game pauses it: `GameEntry::Paused`, every holder `Goodbye { Paused }` and
+  closed, `GameSession::paused()`; another seat's ask is told to every player (`GamePauseAsked {
+  n, player }`), once until the game moves on (any accepted command; again `GameRejected {
+  AlreadyAsked }`); before the start `NotStarted`. A paused game rejects every command
+  `NotStarted`, the system actor's too; a seat's join resumes it (`GameEntry::Resumed`).
+- **The journal of seats:** `GameEntry` gains `Numbered(player, seq, command)` (a seat's command,
+  beside the host's `Command(actor, command)`), `Taken(player)` (a seat first taken, its token
+  handed out), `TakenBy(player, login)` (first taken by an account, which alone re-takes it),
+  `Started`, `Paused`, `Resumed`. `GameSession::reopen(rules, setup, seed, manifest, options,
+  token, entries)` hosts a game of connections again from them, as `new` with the host's tokens
+  (kept with the journal): the seats taken (the host's the first), the start, the pauses and the
+  commands with their numbers (so a resend after a restart is answered as before), no seat held;
+  a started game's players get their snapshot and turn into their records, sent to nobody. The
+  in-process `restore` and `reopen` share the re-run (`rerun`); a journal of seats does not
+  restore in-process (the host holds every seat: `Diverged`). The battle's `ProposePause` and
+  `AnswerPause` (no whole game is ranked), `Query`, `FetchReplay`, `FetchRecord` (T9) and
+  `SetSpectators` (2c) are still ignored by a whole game.
+- **Tests** (`tests/game_resume.rs`): a resend answered as the first time to its seat alone,
+  nothing applied or journaled; a gap's number stale; a rejected number judged afresh; the kept
+  answers' bound (an older resend stale, the oldest kept still answered); the pause before the
+  start, from no seat, another seat's ask told to every player once until a command, the host's
+  pause (the entry, both holders' goodbyes), the paused game rejecting a seat's command and the
+  system actor's, a join resuming it with its last number; a game of connections reopened from
+  its journal (the exact entries of two seats, a command each, two pauses and a resume): the same
+  hash and journal, paused, no entry lacking, its records begun again, the account's seat
+  re-taken by its account alone and the anonymous one by its token, a resend after the restart
+  answered as the first time; a journal of a game never started reopened unstarted; a journal of
+  seats refused in-process, a seat's numbered command re-run in-process as its player's, a setup
+  that starts no game and a journal the game rejects reopening none, the host's pause with a seat
+  not held told to the host alone. `tests/game_seats.rs`'s twin test reopens its game of connections
+  from its journal (the hash and journal equal the twin's); the wire's JSON form of `GameJoined`
+  with `last` (`tests/game_manifest.rs`); the session's two new rejections in the inverse's list
+  (`tests/game_command.rs`).
+- **The bench:** `benches/server/` measures the battle session; T8b changed only the whole
+  game's session (and the battle `Pause`'s doc comment): not applicable.
+- **Gates:** the scoped verify (`--scope server`) with no failing step after `master` (#873) was
+  merged in: fmt, clippy, check-arch, -rules, -stubs, -docs, -exe-map, clients-lock, check-lane,
+  test, coverage (the first runs found rustfmt, a clippy lint and five uncovered regions: the
+  tests above), bench-check, doc-drift; deny, determinism and ffi-smoke skipped by the scope.
