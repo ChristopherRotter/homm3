@@ -1259,6 +1259,19 @@ proptest! {
     }
 }
 
+// covers: TWN-GRO-002
+#[test]
+fn a_setup_says_whether_its_map_is_a_restoration_of_erathia_one() {
+    // E09 T26a2 (map import v23): the format alone; a creature's week then names only RoE's
+    // town records' creatures.
+    assert!(!import(&map(), &SOD).unwrap().roe);
+    for (version, roe) in [(Version::RoE, true), (Version::Ab, false)] {
+        let mut m = map();
+        m.header.version = version;
+        assert_eq!(import(&m, &SOD).unwrap().roe, roe, "{version:?}");
+    }
+}
+
 /// The test map's hero body.
 // covers: GAM-SET-002
 #[test]

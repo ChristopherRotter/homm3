@@ -964,6 +964,8 @@ fn check_told(
     let mut day = before.day;
     // E08 T85b: the month's kind, public, told by its start.
     let mut month = before.month;
+    // E09 T26a2: and the week's kind.
+    let mut week = before.week;
     let mut acting: Vec<bool> = before.players.iter().map(|p| p.acting).collect();
     // The turn group: the players whose turns start after the last turn that ended, if any did.
     let mut group = before.turn_group.clone();
@@ -1619,7 +1621,10 @@ fn check_told(
                 today.push(event);
             }
             // E08 T85b: a week and a month start only on a new day, told to every viewer.
-            GameEvent::WeekStarted { .. } => prop_assert!(day != before.day),
+            GameEvent::WeekStarted { kind, .. } => {
+                prop_assert!(day != before.day);
+                week = kind;
+            }
             GameEvent::MonthStarted { kind, .. } => {
                 prop_assert!(day != before.day);
                 month = kind;
@@ -1705,6 +1710,7 @@ fn check_told(
         }
     }
     prop_assert_eq!(after.month, month);
+    prop_assert_eq!(after.week, week);
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
@@ -2641,6 +2647,18 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::MonthStarted { .. }))
             };
             if month(&ta) || month(&tb) {
+                break;
+            }
+            // E09 T26a2: a week's kind is a public draw of the towns' stream (TWN-GRO-002), whose
+            // seed the other game's changes: the comparison ends at a week's start whose kinds
+            // differ, as at a month's (with the same seed the two weeks are the same draw).
+            let week = |events: &[GameEvent]| {
+                events.iter().find_map(|e| match *e {
+                    GameEvent::WeekStarted { kind, .. } => Some(kind),
+                    _ => None,
+                })
+            };
+            if week(&ta) != week(&tb) {
                 break;
             }
             // E08 T106b2: a visit of a teleporter of the viewer's own shows it where the jump
