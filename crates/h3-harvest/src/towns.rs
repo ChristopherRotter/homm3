@@ -16,8 +16,12 @@
 //! `docs/rules/surveys/E09-construction.md` §5, §6): each building's `requires`, its direct
 //! requirements in the faction's list order; its `cost` from `Building.txt` as
 //! `building_costs_load` 0x5C14C0 reads it ([`cost_row`]; the zero columns dropped, the Village
-//! Hall's 1 gold kept); the role `shipyard` on the building [`SHIPYARD`]. Not harvested: the
-//! hordes' growth (increment 3).
+//! Hall's 1 gold kept); the role `shipyard` on the building [`SHIPYARD`]. Since E09 T25a (design
+//! §38; survey `docs/rules/surveys/E09-growth.md` §1): each horde's role `horde` from the horde
+//! table (its level by its creature's, upgraded for the upgrades' buildings), its growth checked
+//! equal to its creature's `horde_growth`, which the engine reads (one fact, held once); the gap-fill's
+//! roles `portal` and `week_of`; `roe = false` on the `ab` pack's records; the growth's
+//! parameters from the gap-fill.
 //!
 //! The files are compiled with `h3-pack-towns` on the harvested core files in every allowed
 //! combination before they are returned.
@@ -82,13 +86,16 @@ const LEVELS: u8 = 7;
 /// `Dwelling.txt`'s rows a faction.
 pub const DWELLING_ROWS: usize = 2 * LEVELS as usize;
 /// The role fields, in the order a building's record writes them (`h3-pack-towns`' table).
-const ROLES: [&str; 12] = [
+const ROLES: [&str; 15] = [
     "hall",
     "fort",
     "tavern",
     "silo",
     "grail",
     "shipyard",
+    "horde",
+    "portal",
+    "week_of",
     "dwelling",
     "morale",
     "luck",
@@ -166,6 +173,8 @@ struct Ctx<'a> {
     factions: &'a [String],
     /// A creature id's key and pack.
     creatures: BTreeMap<u16, (String, &'static str)>,
+    /// A creature id's horde growth (`CRTRAITS.TXT`), which a horde's record must match.
+    horde_growth: BTreeMap<u16, u16>,
     /// The resources' keys, in `RESTYPES.TXT`'s order (the silo's).
     resources: Vec<String>,
     /// The merged roles by faction (index) and building.
@@ -207,7 +216,13 @@ pub fn harvest_towns(
         return Err("towns: the hordes' buildings are not four".into());
     }
     let ab_creatures: BTreeSet<&str> = gap.ab.creatures.iter().map(String::as_str).collect();
-    let creatures = creature_rows(&inputs.sod_creatures)?
+    let rows = creature_rows(&inputs.sod_creatures)?;
+    let horde_growth = rows
+        .iter()
+        .enumerate()
+        .filter_map(|(id, r)| Some((u16::try_from(id).ok()?, r.horde_growth)))
+        .collect();
+    let creatures = rows
         .iter()
         .enumerate()
         .filter(|(_, r)| !r.name.starts_with("NOT USED"))
@@ -241,7 +256,9 @@ pub fn harvest_towns(
             None => (0..factions.len()).collect(),
         };
         for (name, value) in &role.roles {
-            if !ROLES.contains(&name.as_str()) || name == "dwelling" || name == "shipyard" {
+            if !ROLES.contains(&name.as_str())
+                || ["dwelling", "shipyard", "horde"].contains(&name.as_str())
+            {
                 return Err(format!(
                     "gapfill: towns: building {}: `{name}` is not a role it may give",
                     role.building
@@ -267,6 +284,7 @@ pub fn harvest_towns(
         data,
         factions: &factions,
         creatures,
+        horde_growth,
         resources,
         roles,
     };
@@ -294,7 +312,7 @@ pub fn harvest_towns(
         .map(|&(id, _)| (id, texts.remove(id).unwrap_or_default()))
         .collect();
     check(packs, &files)?;
-    report.push("towns: the hordes' growth not harvested (E09 increment 3)".into());
+    report.push("towns: the hordes' growth checked against the creatures' (E09 T25a)".into());
     Ok(files)
 }
 
@@ -341,6 +359,9 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
         })
         .collect::<Result<Vec<_>, _>>()?;
     let [h1, h2, h3, h4] = p.hall_gold;
+    let g = &ctx.spec.growth;
+    let w = &g.garrison_week;
+    let weights: Vec<String> = w.weights.iter().map(u8::to_string).collect();
     Ok(format!(
         "\n[town_params]\n\
          gold = {}\n\
@@ -351,7 +372,10 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
          neutral_garrison = [\n{},\n]\n\
          capitol_demoted_to = {}\n\
          visions_factor = {}\n\
-         visions_min_radius = {}\n",
+         visions_min_radius = {}\n\
+         week_creature_chance = [{}, {}]\n\
+         week_creature_bonus = {}\n\
+         garrison_week = {{ odds = [{}, {}], out_of = {}, weights = [{}], weeks = {}, upgrade = {} }}\n",
         quote(gold),
         p.grail_gold,
         p.reveal_radius,
@@ -360,6 +384,15 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
         quote(&demoted),
         ctx.spec.visions.factor,
         ctx.spec.visions.min_radius,
+        g.week_creature_chance[0],
+        g.week_creature_chance[1],
+        g.week_creature_bonus,
+        w.odds[0],
+        w.odds[1],
+        w.out_of,
+        weights.join(", "),
+        w.weeks,
+        w.upgrade,
     ))
 }
 
@@ -565,10 +598,13 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
         }
     }
     // The hordes: a horde supersedes its level's dwelling; its upgrade is forbidden with it and
-    // built with it and the level's upgraded dwelling (decision 29).
+    // built with it and the level's upgraded dwelling (decision 29). Each grows at its level's
+    // index, the upgrade's at the upgrade's (E09 T25a; survey `E09-growth.md` §1 step 5), its
+    // record's growth its creature's horde growth.
     if t.creatures.len() != TOWN_CREATURES || t.hordes.len() != HORDE_RECORDS {
         return Err(err(String::from("the creatures or hordes do not fit")));
     }
+    let mut horde_roles: BTreeMap<u8, (u8, bool)> = BTreeMap::new();
     for pair in [0, 2] {
         let (horde, upgrade) = (hordes[pair], hordes[pair + 1]);
         if !buildings.contains_key(&horde) {
@@ -591,9 +627,16 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
                 "horde {horde} does not supersede its level's dwelling {dwelling}"
             )));
         }
+        if ctx.horde_growth.get(&creature) != Some(&t.hordes[pair].growth) {
+            return Err(err(format!(
+                "horde {horde}'s growth is not its creature's horde growth"
+            )));
+        }
+        horde_roles.insert(horde, (level + 1, false));
         if let Some(b) = buildings.get_mut(&upgrade) {
             b.forbidden_with = Some(horde);
             b.auto_with = vec![horde, UPGRADED_DWELLING + level];
+            horde_roles.insert(upgrade, (level + 1, true));
         }
     }
     // The creatures by level, the silo, the siege's fields.
@@ -631,6 +674,9 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
         let _ = writeln!(out, "silo = {{ {} }}", silo.join(", "));
     }
     let _ = writeln!(out, "creatures = [\n  {},\n]", levels.join(",\n  "));
+    if pack == "ab" {
+        out.push_str("roe = false\n");
+    }
     // The buildings, by id.
     let key = |id: &u8| quote(&buildings[id].key);
     let mut given: BTreeSet<u8> = BTreeSet::new();
@@ -673,6 +719,15 @@ fn record(ctx: &Ctx<'_>, f: usize, t: &FactionTowns, pack: &str) -> Result<Strin
         }
         if id == SHIPYARD {
             roles.insert("shipyard".into(), toml::Value::Boolean(true));
+        }
+        if let Some(&(level, upgraded)) = horde_roles.get(&id) {
+            roles.insert(
+                "horde".into(),
+                toml::Value::Array(vec![
+                    toml::Value::Integer(i64::from(level)),
+                    toml::Value::Boolean(upgraded),
+                ]),
+            );
         }
         if (DWELLING..DWELLING + 2 * LEVELS).contains(&id) {
             let upgraded = id >= UPGRADED_DWELLING;

@@ -23,6 +23,7 @@ creatures = [
   ["psychic_elemental", "magic_elemental"],
   ["firebird", "phoenix"],
 ]
+roe = false
 
   [[town.building]]
   key = "mage_guild_level_1"
@@ -169,6 +170,7 @@ creatures = [
   supersedes = ["magic_lantern"]
   requires = ["magic_lantern"]
   cost = { "base:gold" = 1000 }
+  horde = [1, false]
 
   [[town.building]]
   key = "upg_garden_of_life"
@@ -178,6 +180,7 @@ creatures = [
   auto_with = ["garden_of_life", "upg_magic_lantern"]
   requires = ["upg_magic_lantern"]
   cost = { "base:gold" = 1000 }
+  horde = [1, true]
 
   [[town.building]]
   key = "magic_university"

@@ -2,8 +2,10 @@
 //! no pack adapter as a dev-dependency): a core of three resources and three factions, a town part
 //! with the Keep's full record (every role of increment 1, the Castle's and the Rampart's roles
 //! side by side, map slots, four levels of creatures, a horde and its upgrade; increment 2's
-//! requirements, costs and Shipyard, E09 T17b), the Marsh's small one (a silo that pays gold, one
-//! level of creatures, free buildings without requirements) and no record for the Wild.
+//! requirements, costs and Shipyard, E09 T17b; increment 3's horde roles, Portal and week's
+//! building, E09 T25a), the Marsh's small one (a silo that pays gold, one level of creatures, free
+//! buildings without requirements, not a Restoration of Erathia record) and no record for the
+//! Wild; the core's creatures by handle, with the Keep's and the Marsh's growths.
 
 extern crate std;
 
@@ -11,16 +13,16 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    ContentKey, ContentPack, CreatureTypeId, FactionDef, FactionId, PackManifest, ProfileDef,
-    ResourceDef, ResourceId, Ruleset,
+    ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionDef, FactionId,
+    PackManifest, ProfileDef, ResourceDef, ResourceId, Ruleset,
 };
 use h3_contracts::Moat;
 
 use crate::building::{BuildingId, BuildingSet};
 use crate::record::Town;
 use crate::ruleset::{
-    Building, BuildingRoles, CreatureLevel, DefenderBonus, Dwelling, GarrisonRow, Reveal,
-    TownParams, TownRecord, TownRuleset,
+    Building, BuildingRoles, CreatureLevel, DefenderBonus, Dwelling, GarrisonRow,
+    GarrisonWeekParams, Horde, Reveal, TownParams, TownRecord, TownRuleset, WeekParams,
 };
 use crate::setup::SlotSet;
 
@@ -47,7 +49,8 @@ pub(crate) const TAVERN: usize = 7;
 /// The Brotherhood of the Sword: `tavern`, morale +2, superseding the Tavern.
 pub(crate) const BROTHERHOOD: usize = 8;
 pub(crate) const SILO: usize = 9;
-/// The Grail: `grail`, the defender's attack and defense +10 and mana +150, reveals all.
+/// The Grail: `grail`, the defender's attack and defense +10 and mana +150, reveals all; every
+/// week level 1's (`week_of`, E09 T25a).
 pub(crate) const GRAIL: usize = 10;
 /// The Lookout Tower: reveals 20.
 pub(crate) const LOOKOUT: usize = 11;
@@ -65,14 +68,15 @@ pub(crate) const DWELLING_1: usize = 17;
 /// The upgraded level-1 dwelling, superseding the dwelling.
 pub(crate) const UPG_DWELLING_1: usize = 18;
 pub(crate) const DWELLING_2: usize = 19;
-/// The level-1 horde, superseding the level-1 dwelling.
+/// The level-1 horde, superseding the level-1 dwelling: `horde = [1, false]`.
 pub(crate) const HORDE_1: usize = 20;
 /// The upgraded level-1 horde (no slot): forbidden with the horde, built once the horde and the
-/// upgraded dwelling are, superseding both (and the dwelling).
+/// upgraded dwelling are, superseding both (and the dwelling): `horde = [1, true]`.
 pub(crate) const UPG_HORDE_1: usize = 21;
 /// The fixture's own shrine (no slot; no original's building is one): forbidden with the upgraded
 /// horde and built once it is, so that both closures take two steps; automatic with the upgraded
-/// horde without superseding it, so the hall never offers it in the upgraded horde's place.
+/// horde without superseding it, so the hall never offers it in the upgraded horde's place. The
+/// Portal of Summoning (E09 T25a).
 pub(crate) const SHRINE: usize = 22;
 /// The Shipyard: `shipyard`, requiring nothing (as the original's, E09 survey
 /// `E09-construction.md` §6).
@@ -169,6 +173,23 @@ pub(crate) const fn creature(raw: u16) -> CreatureTypeId {
     CreatureTypeId::from_raw(raw)
 }
 
+/// The core's creatures' handles: `0` to `CREATURES - 1`.
+const CREATURES: u16 = 52;
+
+/// The core's weekly growth and horde growth of the creature of handle `raw` (E09 T25a): the
+/// Keep's level 1 14 (its horde 8, for the base and the upgrade), level 2 9, level 3 7, level 4 4
+/// (each upgrade as its base), the Marsh's 6; every other creature 0.
+pub(crate) const fn growths(raw: u16) -> (u16, u16) {
+    match raw {
+        10 | 11 => (14, 8),
+        20 | 21 => (9, 0),
+        30 => (7, 0),
+        40 | 41 => (4, 0),
+        50 => (6, 0),
+        _ => (0, 0),
+    }
+}
+
 /// The set of the Keep's buildings at `indices`.
 pub(crate) fn set(indices: &[usize]) -> BuildingSet {
     indices.iter().fold(BuildingSet::EMPTY, |set, &i| {
@@ -197,8 +218,8 @@ fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
 }
 
-/// The core: the resources `t:wood`, `t:ore`, `t:gold` and the factions `t:keep`, `t:marsh`,
-/// `t:wild`.
+/// The core: the resources `t:wood`, `t:ore`, `t:gold`, the factions `t:keep`, `t:marsh`,
+/// `t:wild` and the creatures `t:c0` to `t:c51` (handles 0 to 51), with [`growths`].
 pub(crate) fn core() -> Ruleset {
     let resource = |k: &str| ResourceDef {
         key: key(k),
@@ -209,9 +230,22 @@ pub(crate) fn core() -> Ruleset {
         name: "Faction".into(),
         native_terrain: None,
     };
+    let creature = |raw: u16| {
+        let (growth, horde_growth) = growths(raw);
+        CreatureDef {
+            key: key(&std::format!("t:c{raw}")),
+            speed: 1,
+            info: CreatureInfoDef {
+                growth,
+                horde_growth,
+                ..CreatureInfoDef::default()
+            },
+        }
+    };
     let pack = ContentPack {
         resources: vec![resource("t:wood"), resource("t:ore"), resource("t:gold")],
         factions: vec![faction("t:keep"), faction("t:marsh"), faction("t:wild")],
+        creatures: (0..CREATURES).map(creature).collect(),
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -285,6 +319,7 @@ fn keep() -> TownRecord {
                     mana: 150,
                 };
                 r.reveal = Some(Reveal::All);
+                r.week_of = Some(1);
             }),
         ),
         building(
@@ -327,20 +362,24 @@ fn keep() -> TownRecord {
                 });
             }),
         ),
-        building("horde_1", &[DWELLING_1], BuildingRoles::default()),
+        building(
+            "horde_1",
+            &[DWELLING_1],
+            roles(|r| r.horde = Some(horde(false))),
+        ),
         Building {
             forbidden_with: BuildingId::from_index(HORDE_1),
             auto_with: set(&[HORDE_1, UPG_DWELLING_1]),
             ..building(
                 "upg_horde_1",
                 &[HORDE_1, UPG_DWELLING_1, DWELLING_1],
-                BuildingRoles::default(),
+                roles(|r| r.horde = Some(horde(true))),
             )
         },
         Building {
             forbidden_with: BuildingId::from_index(UPG_HORDE_1),
             auto_with: set(&[UPG_HORDE_1]),
-            ..building("shrine", &[], BuildingRoles::default())
+            ..building("shrine", &[], roles(|r| r.portal = true))
         },
         building("shipyard", &[], roles(|r| r.shipyard = true)),
     ];
@@ -370,7 +409,13 @@ fn keep() -> TownRecord {
         ],
         buildings,
         capitol_demoted_to: BuildingId::from_index(CITY_HALL).unwrap(),
+        roe: true,
     }
+}
+
+/// The level-1 horde, upgraded or not.
+const fn horde(upgraded: bool) -> Horde {
+    Horde { level: 1, upgraded }
 }
 
 /// The Marsh's record: its Village Hall (0), a silo (1) that pays 250 gold and a Citadel (2), no
@@ -391,6 +436,7 @@ fn marsh() -> TownRecord {
             building("citadel", &[], roles(|r| r.fort = Some(2))),
         ],
         capitol_demoted_to: BuildingId::from_index(0).unwrap(),
+        roe: false,
     }
 }
 
@@ -410,6 +456,17 @@ fn params() -> TownParams {
         visions_factor: 3,
         visions_min_radius: 3,
         visions_creatures: Vec::new(),
+        week: WeekParams {
+            creature_chance: [1, 4],
+            creature_bonus: 5,
+        },
+        garrison_week: GarrisonWeekParams {
+            odds: [40, 80],
+            out_of: 101,
+            weights: vec![2, 3, 4, 5, 4, 3],
+            weeks: 8,
+            upgrade: 5,
+        },
     }
 }
 

@@ -1,7 +1,7 @@
 //! Tests of the town pack format (E09 T5a1), on the synthetic packs' files (E09 T5b2a).
 
 use h3_content::FactionId;
-use h3_towns::{Building, BuildingId, BuildingSet, TownRecord};
+use h3_towns::{Building, BuildingId, BuildingSet, Horde, TownRecord};
 
 use super::*;
 
@@ -81,6 +81,30 @@ fn the_synthetic_record_compiles_with_its_override() {
     assert_eq!((params.visions_factor, params.visions_min_radius), (2, 4));
     let lurker = core.creature_by_key("synthetic-ext:lurker").unwrap();
     assert_eq!(params.visions_creatures, [lurker]);
+    // E09 T25a: the growth's parameters.
+    assert_eq!(
+        params.week,
+        WeekParams {
+            creature_chance: [1, 3],
+            creature_bonus: 4,
+        }
+    );
+    assert_eq!(
+        params.garrison_week,
+        GarrisonWeekParams {
+            odds: [30, 70],
+            out_of: 100,
+            weights: vec![2, 3, 4],
+            weeks: 6,
+            upgrade: 10,
+        }
+    );
+    // A record's `roe` as written.
+    let text = VALE.replace(
+        r#"creatures = [["spearman"], ["synthetic:brute"]]"#,
+        "creatures = [[\"spearman\"], [\"synthetic:brute\"]]\nroe = false",
+    );
+    assert!(!parse(&text).unwrap().towns[0].roe);
 }
 
 #[test]
@@ -135,6 +159,23 @@ fn the_roles_parse() {
         record.building(record.capitol_demoted_to).unwrap().key,
         "city_hall"
     );
+    // Increment 3's (E09 T25a): the horde of level 2 (its upgrade has no role: `vale` has no
+    // upgrades), the Lookout the Portal of Summoning, the Grail every week level 1's, `roe`.
+    assert_eq!(
+        building(record, "horde").roles.horde,
+        Some(Horde {
+            level: 2,
+            upgraded: false,
+        })
+    );
+    assert_eq!(horde_up.roles.horde, None);
+    assert!(building(record, "lookout").roles.portal);
+    assert_eq!(
+        record.buildings.iter().filter(|b| b.roles.portal).count(),
+        1
+    );
+    assert_eq!(grail.week_of, Some(1));
+    assert!(record.roe);
     assert!(
         record
             .building(BuildingId::from_index(63).unwrap())
@@ -311,6 +352,23 @@ fn the_parser_is_strict() {
         &VALE.replace("cost = { coin = 2500 }", "cost = 2500")
     ));
     assert!(syntax(&VALE.replace("shipyard = true", "shipyard = 1")));
+    // Increment 3's fields (E09 T25a).
+    assert!(syntax(&VALE.replace("horde = [2, false]", "horde = [2]")));
+    assert!(syntax(&VALE.replace("portal = true", "portal = 1")));
+    assert!(syntax(&VALE.replace("week_of = 1", "week_of = \"imp\"")));
+    assert!(syntax(
+        &VALE.replace("moat = \"harmless\"", "moat = \"harmless\"\nroe = 1")
+    ));
+    assert!(syntax(
+        &VALE.replace("week_creature_bonus = 4", "week_creature_bonus = -4")
+    ));
+    assert!(syntax(&VALE.replace(", weeks = 6", "")));
+    assert!(syntax(&VALE.replace("weeks = 6", "weeks = 6, bogus = 1")));
+    assert!(syntax(&VALE.replace("weights = [2, 3, 4]", "weights = 2")));
+    assert!(syntax(&VALE.replace(
+        "week_creature_chance = [1, 3]",
+        "week_creature_chance = [1]"
+    )));
     let key = |text: &str| matches!(parse(text), Err(TownPackError::Key(_)));
     assert!(key(
         &VALE.replace("faction = \"vale\"", "faction = \"Vale\"")
@@ -517,6 +575,83 @@ fn the_original_packs_compile_with_every_faction() {
     let conflux = sod.town(faction("ab:conflux")).unwrap();
     assert!(building(conflux, "aurora_borealias").roles.grail);
     the_original_requirements_costs_and_shipyards(&sod, &core);
+    the_original_growth_roles(&sod, &core);
+    // The growth's parameters (E09 T25a, design §38).
+    assert_eq!(
+        params.week,
+        WeekParams {
+            creature_chance: [1, 4],
+            creature_bonus: 5,
+        }
+    );
+    assert_eq!(
+        params.garrison_week,
+        GarrisonWeekParams {
+            odds: [40, 80],
+            out_of: 101,
+            weights: vec![2, 3, 4, 5, 4, 3],
+            weeks: 8,
+            upgrade: 5,
+        }
+    );
+}
+
+/// E09 T25a's harvest in the shipped packs (design §38; survey `E09-growth.md` §1, §2, §5): the
+/// eleven hordes, each with its upgrade, at their levels, their creatures' horde growth as the
+/// original's horde table (the harvest checks it equal); the Dungeon's Portal of Summoning and the
+/// Inferno's Deity of Fire alone; every record a Restoration of Erathia one but Conflux's.
+fn the_original_growth_roles(sod: &TownRuleset, core: &Ruleset) {
+    let hordes = [
+        ("base:castle", "griffin_bastion", 3, 3),
+        ("base:rampart", "miners_guild", 2, 4),
+        ("base:rampart", "dendroid_saplings", 5, 2),
+        ("base:tower", "sculptors_wings", 2, 4),
+        ("base:inferno", "birthing_pools", 1, 8),
+        ("base:inferno", "cages", 3, 3),
+        ("base:necropolis", "unearthed_graves", 1, 6),
+        ("base:dungeon", "mushroom_rings", 1, 7),
+        ("base:stronghold", "mess_hall", 1, 8),
+        ("base:fortress", "captains_quarters", 1, 6),
+        ("ab:conflux", "garden_of_life", 1, 10),
+    ];
+    for (faction, key, level, growth) in hordes {
+        let record = sod.town(core.faction_by_key(faction).unwrap()).unwrap();
+        let creatures = record.creatures[usize::from(level) - 1];
+        for (key, upgraded, creature) in [
+            (key.to_owned(), false, creatures.base),
+            (std::format!("upg_{key}"), true, creatures.upgrade.unwrap()),
+        ] {
+            let roles = building(record, &key).roles;
+            assert_eq!(roles.horde, Some(Horde { level, upgraded }), "{key}");
+            assert_eq!(
+                core.creature(creature).unwrap().horde_growth,
+                growth,
+                "{key}"
+            );
+        }
+    }
+    let count = |role: fn(&BuildingRoles) -> bool| {
+        sod.towns()
+            .iter()
+            .map(|r| r.buildings.iter().filter(|b| role(&b.roles)).count())
+            .sum::<usize>()
+    };
+    assert_eq!(count(|r| r.horde.is_some()), 2 * hordes.len());
+    let dungeon = sod
+        .town(core.faction_by_key("base:dungeon").unwrap())
+        .unwrap();
+    assert!(building(dungeon, "portal_of_summoning").roles.portal);
+    let inferno = sod
+        .town(core.faction_by_key("base:inferno").unwrap())
+        .unwrap();
+    let deity = building(inferno, "deity_of_fire").roles;
+    assert!(deity.grail && deity.week_of == Some(1));
+    assert_eq!(count(|r| r.portal), 1);
+    assert_eq!(count(|r| r.week_of.is_some()), 1);
+    let conflux = core.faction_by_key("ab:conflux").unwrap();
+    for record in sod.towns() {
+        assert_eq!(record.roe, record.faction != conflux);
+    }
 }
 
 /// E09 T16b's harvest in the shipped packs (design §25): every closure inside its record, never

@@ -10,11 +10,12 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_content::{CreatureTypeId, FactionId, ResourceId};
+use h3_content::{CreatureTypeId, FactionId, ResourceId, Ruleset};
 use h3_contracts::{ArmyStack, PlayerId};
 use h3_kernel::Rng;
 
 use crate::building::{BuildingId, BuildingSet, MAX_BUILDINGS};
+use crate::growth::first_creatures;
 use crate::record::{Town, TownEvent, TownStatic};
 use crate::ruleset::{
     BUILDING_SLOTS, Building, Dwelling, MAX_CREATURE_LEVELS, TownParams, TownRecord, TownRuleset,
@@ -457,7 +458,9 @@ fn town_event(record: &TownRecord, event: &TownEventSetup) -> TownEvent {
 /// `faction` by the game, owned by a player when `owned`, with `part`'s record of the faction and
 /// its parameters, drawing from `draws` (the setup stream): the garrison's draws first
 /// ([`town_garrison`]), then the buildings' ([`town_buildings_setup`]), the original's order;
-/// its name and its events, their slots resolved to the faction's buildings.
+/// each dwelling ever built gives its first creatures, the growths read in `core` (TWN-GRO-005,
+/// E09 design §40: the original's `town_build` in id order); its name and its events, their
+/// slots resolved to the faction's buildings.
 ///
 /// # Errors
 ///
@@ -468,6 +471,7 @@ pub fn town_setup(
     faction: FactionId,
     owned: bool,
     part: &TownRuleset,
+    core: &Ruleset,
     draws: &mut Rng,
 ) -> Result<BuiltTown, TownSetupError> {
     let (record, params) = part
@@ -476,6 +480,9 @@ pub fn town_setup(
         .ok_or(TownSetupError::NoTownRecord(faction))?;
     let garrison = town_garrison(record, params, setup.garrison.as_deref(), owned, draws);
     let town = town_buildings_setup(record, params, &setup.buildings, owned, draws);
+    let built = town.built();
+    // rule: TWN-GRO-005
+    let town = first_creatures(town, record, core, built);
     let town_static = TownStatic {
         name: setup.name.clone(),
         events: setup

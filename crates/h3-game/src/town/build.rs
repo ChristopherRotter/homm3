@@ -80,7 +80,7 @@ pub(crate) fn build_towns(
         .filter_map(|((town, owner), faction)| {
             faction.and_then(|faction| {
                 let owned = owner.is_some();
-                h3_towns::town_setup(town, faction, owned, rules.towns(), draws).ok()
+                h3_towns::town_setup(town, faction, owned, rules.towns(), rules.core(), draws).ok()
             })
         })
         .collect()

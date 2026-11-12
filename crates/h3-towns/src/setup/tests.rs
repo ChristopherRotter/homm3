@@ -421,7 +421,11 @@ fn the_whole_town_draws_its_garrison_then_its_buildings() {
         let mut reference = rng.clone();
         let garrison = town_garrison(record, params, None, owned, &mut reference);
         let town = town_buildings_setup(record, params, &setup.buildings, owned, &mut reference);
-        let built = town_setup(&setup, KEEP, owned, &part, &mut rng).unwrap();
+        // Each dwelling ever built gives its first creatures (TWN-GRO-005): both of a neutral
+        // town, an owned one's level-1 with its Fort.
+        let town = first_creatures(town.clone(), record, &core(), town.built());
+        assert_eq!(town.available(0), 14);
+        let built = town_setup(&setup, KEEP, owned, &part, &core(), &mut rng).unwrap();
         assert_eq!((&built.town, &built.garrison), (&town, &garrison));
         assert_eq!(rng, reference);
         assert_eq!(built.town_static.name.as_deref(), Some("Keepstead"));
@@ -452,10 +456,26 @@ fn the_whole_town_draws_its_garrison_then_its_buildings() {
     }]);
     setup.buildings = custom(&[TAVERN], &[]);
     setup.name = None;
-    let built = town_setup(&setup, KEEP, false, &part, &mut draws(14)).unwrap();
+    let built = town_setup(&setup, KEEP, false, &part, &core(), &mut draws(14)).unwrap();
     assert_eq!(built.garrison, [stack(4, 41, 9)]);
     assert_eq!(built.town.built(), set(&[VILLAGE_HALL, TAVERN]));
+    assert_eq!(*built.town.available_all(), [0; crate::CREATURE_INDEXES]);
     assert!(built.town_static.name.is_none());
+    // covers: TWN-GRO-005
+    // A custom set's upgraded dwelling, with the dwelling it supersedes: the upgrade's index
+    // holds the base's growth, as the original's `town_build` in id order leaves it.
+    setup.buildings = custom(&[UPG_DWELLING_1, DWELLING_2], &[]);
+    let built = town_setup(&setup, KEEP, true, &part, &core(), &mut draws(14)).unwrap();
+    let town = &built.town;
+    assert!(
+        town.built()
+            .contains(BuildingId::from_index(DWELLING_1).unwrap())
+    );
+    assert_eq!(
+        (town.available(0), town.available(7), town.available(1)),
+        (0, 14, 9)
+    );
+    assert_eq!(town.portal(), None);
 }
 
 #[test]
@@ -523,17 +543,17 @@ fn a_faction_without_a_town_record_or_parameters_cannot_be_set_up() {
     };
     let mut rng = draws(15);
     let before = rng.clone();
-    let error = town_setup(&setup, WILD, false, &part(), &mut rng).unwrap_err();
+    let error = town_setup(&setup, WILD, false, &part(), &core(), &mut rng).unwrap_err();
     assert_eq!(error, TownSetupError::NoTownRecord(WILD));
     assert_eq!(
         error.to_string(),
         "faction 2 has no town record in the town part"
     );
     // The empty part, and a part of records without parameters (only built so in tests).
-    let empty = town_setup(&setup, KEEP, false, &empty_part(), &mut rng);
+    let empty = town_setup(&setup, KEEP, false, &empty_part(), &core(), &mut rng);
     assert_eq!(empty, Err(TownSetupError::NoTownRecord(KEEP)));
     let unparametrised = TownRuleset::new(&core(), None, part().towns().to_vec());
-    let none = town_setup(&setup, KEEP, false, &unparametrised, &mut rng);
+    let none = town_setup(&setup, KEEP, false, &unparametrised, &core(), &mut rng);
     assert_eq!(none, Err(TownSetupError::NoTownRecord(KEEP)));
     assert_eq!(rng, before);
 }

@@ -1295,6 +1295,17 @@ fn a_town_needs_its_siege() {
             capitol_demoted_to: "b2".into(),
             visions_factor: 3,
             visions_min_radius: 3,
+            week: h3_towns::WeekParams {
+                creature_chance: [1, 4],
+                creature_bonus: 5,
+            },
+            garrison_week: h3_towns::GarrisonWeekParams {
+                odds: [40, 80],
+                out_of: 101,
+                weights: vec![2, 3, 4, 5, 4, 3],
+                weeks: 8,
+                upgrade: 5,
+            },
         }),
         towns: vec![TownDef {
             faction: key("t:town"),
@@ -1312,6 +1323,7 @@ fn a_town_needs_its_siege() {
                 },
             ],
             buildings,
+            roe: true,
         }],
         ..TownPack::new(manifest())
     };

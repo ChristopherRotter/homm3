@@ -1,20 +1,40 @@
 //! A town's own record (ADR-0028 point 2; E09 increment 1's design note §4): [`Town`], what the
-//! rules change (its faction, the buildings ever built and forbidden, the day's mark), and
+//! rules change (its faction, the buildings ever built and forbidden, the day's mark; increment
+//! 3's available creatures and Portal of Summoning, design §40), and
 //! [`TownStatic`], what the map gives and nothing changes (its name, its events). The store ([`crate::Towns`]) holds
 //! both by `h3_contracts::TownId`.
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use h3_content::{FactionId, ResourceId};
+use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::PlayerId;
 
 use crate::building::BuildingSet;
 use crate::ruleset::{MAX_CREATURE_LEVELS, TownRecord};
 
+/// A town's creature indexes (E09 design §40): index `level - 1` the level's creature, `level - 1 +
+/// 7` its upgrade (the original's +0x16).
+pub const CREATURE_INDEXES: usize = 2 * MAX_CREATURE_LEVELS;
+
+/// The most creatures of an index a town holds available, and the most a Portal of Summoning
+/// holds (E09 design §40, `TWN-QUIRK-8`): every count saturates here, where the original's 16-bit
+/// adds and doubles wrap (T-10, fixed).
+pub const MAX_AVAILABLE: u16 = 32_767;
+
+/// The creatures a Portal of Summoning holds (TWN-GRO-007; the original's +0x3C and +0x40).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Summoned {
+    /// The creature, one of a dwelling's on the map.
+    pub creature: CreatureTypeId,
+    /// How many, at most [`MAX_AVAILABLE`].
+    pub count: u16,
+}
+
 /// A town's record: its faction and the buildings ever built and forbidden, each a set over its
-/// faction's town record's buildings ([`TownRecord::buildings`]), and whether it was built in
-/// today (the day's mark, E09 design §26).
+/// faction's town record's buildings ([`TownRecord::buildings`]), whether it was built in today
+/// (the day's mark, E09 design §26), its available creatures by index and its Portal of
+/// Summoning's (E09 design §40).
 ///
 /// `built` is **every building ever built**, the superseded ones too (the original's every-built
 /// set +0x158; E09 survey §16.5); the buildings **standing** are derived from it
@@ -26,40 +46,66 @@ pub struct Town {
     built: BuildingSet,
     forbidden: BuildingSet,
     built_today: bool,
+    available: [u16; CREATURE_INDEXES],
+    portal: Option<Summoned>,
 }
 
 impl Town {
     /// A town of `faction` with the buildings `built` ever built and `forbidden` forbidden, each
     /// a set over the faction's town record (the build's setup gives them, E09 T6c), not built in
-    /// today.
+    /// today, without available creatures, its Portal empty.
     pub const fn new(faction: FactionId, built: BuildingSet, forbidden: BuildingSet) -> Self {
         Self {
             faction,
             built,
             forbidden,
             built_today: false,
+            available: [0; CREATURE_INDEXES],
+            portal: None,
         }
     }
 
-    /// The town with the buildings `built` ever built and the day's mark `built_today`, its
-    /// faction and forbidden set kept (the store's writes, E09 design §26).
+    /// The town with the buildings `built` ever built and the day's mark `built_today`, the rest
+    /// kept (the store's writes, E09 design §26).
     pub(crate) const fn rebuilt(&self, built: BuildingSet, built_today: bool) -> Self {
         Self {
-            faction: self.faction,
             built,
-            forbidden: self.forbidden,
             built_today,
+            ..*self
         }
     }
 
-    /// The town with the buildings `built` ever built and `forbidden` forbidden, its faction and
-    /// day's mark kept (a Shipyard without water, [`crate::without_water`], E09 T18a).
+    /// The town with the buildings `built` ever built and `forbidden` forbidden, the rest kept (a
+    /// Shipyard without water, [`crate::without_water`], E09 T18a).
     pub(crate) const fn reset(&self, built: BuildingSet, forbidden: BuildingSet) -> Self {
         Self {
-            faction: self.faction,
             built,
             forbidden,
-            built_today: self.built_today,
+            ..*self
+        }
+    }
+
+    /// The town with `count` creatures available at `index`, at most [`MAX_AVAILABLE`] (an index
+    /// past [`CREATURE_INDEXES`]: the town unchanged), the rest kept (E09 design §40).
+    #[must_use]
+    pub fn with_available(&self, index: usize, count: u16) -> Self {
+        let mut town = self.clone();
+        if let Some(slot) = town.available.get_mut(index) {
+            *slot = count.min(MAX_AVAILABLE);
+        }
+        town
+    }
+
+    /// The town with its Portal of Summoning holding `portal` (its count at most
+    /// [`MAX_AVAILABLE`]; none: empty), the rest kept (E09 design §40).
+    #[must_use]
+    pub fn with_portal(&self, portal: Option<Summoned>) -> Self {
+        Self {
+            portal: portal.map(|p| Summoned {
+                count: p.count.min(MAX_AVAILABLE),
+                ..p
+            }),
+            ..self.clone()
         }
     }
 
@@ -83,6 +129,22 @@ impl Town {
     /// from a team without a human by one with one, never by a town event (E09 design §26, §30).
     pub const fn built_today(&self) -> bool {
         self.built_today
+    }
+
+    /// The creatures available at `index` (index `level - 1` the level's creature, `level - 1 + 7`
+    /// its upgrade, [`CREATURE_INDEXES`]); 0 past them. At most [`MAX_AVAILABLE`].
+    pub fn available(&self, index: usize) -> u16 {
+        self.available.get(index).copied().unwrap_or(0)
+    }
+
+    /// The creatures available by index.
+    pub const fn available_all(&self) -> &[u16; CREATURE_INDEXES] {
+        &self.available
+    }
+
+    /// What its Portal of Summoning holds, if anything (TWN-GRO-007).
+    pub const fn portal(&self) -> Option<Summoned> {
+        self.portal
     }
 
     /// The buildings standing: those ever built less every building an ever-built one supersedes
@@ -192,6 +254,7 @@ mod tests {
                 building("upg_dwelling_1", &[4]),
             ],
             capitol_demoted_to: id(2),
+            roe: true,
         }
     }
 
@@ -209,6 +272,61 @@ mod tests {
             (set(&[0, 1, 4]), set(&[5]))
         );
         assert!(rebuilt.built_today());
+    }
+
+    // TWN-QUIRK-8's regression test (T-10 fixed: a count saturates).
+    #[test]
+    fn twn_quirk_8_a_town_s_counts_saturate_at_the_bound() {
+        let town = Town::new(FactionId::from_raw(2), set(&[0]), set(&[5]));
+        assert_eq!(*town.available_all(), [0; CREATURE_INDEXES]);
+        assert_eq!(
+            (town.available(0), town.available(99), town.portal()),
+            (0, 0, None)
+        );
+        // Each index apart, saturating at the bound (T-10 fixed); past the indexes nothing.
+        let counted = town
+            .with_available(0, 7)
+            .with_available(13, u16::MAX)
+            .with_available(14, 5);
+        assert_eq!(
+            (counted.available(0), counted.available(13)),
+            (7, MAX_AVAILABLE)
+        );
+        assert_eq!(counted.available_all()[1..13], [0; 12]);
+        assert_eq!(
+            counted.with_available(0, MAX_AVAILABLE).available(0),
+            MAX_AVAILABLE
+        );
+        let imp = CreatureTypeId::from_raw(4);
+        let summoned = counted.with_portal(Some(Summoned {
+            creature: imp,
+            count: 40_000,
+        }));
+        assert_eq!(
+            summoned.portal(),
+            Some(Summoned {
+                creature: imp,
+                count: MAX_AVAILABLE
+            })
+        );
+        assert_eq!(summoned.with_portal(None).portal(), None);
+        // The store's writes keep them, and the faction, sets and mark.
+        let rebuilt = summoned
+            .rebuilt(set(&[0, 1]), true)
+            .reset(set(&[0, 2]), set(&[3]));
+        assert_eq!(
+            (rebuilt.available(0), rebuilt.portal()),
+            (7, summoned.portal())
+        );
+        assert_eq!(
+            (
+                rebuilt.faction(),
+                rebuilt.built(),
+                rebuilt.forbidden(),
+                rebuilt.built_today()
+            ),
+            (FactionId::from_raw(2), set(&[0, 2]), set(&[3]), true)
+        );
     }
 
     #[test]

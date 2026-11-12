@@ -126,6 +126,17 @@ fn params() -> TownParamsDef {
         capitol_demoted_to: "city_hall".into(),
         visions_factor: 3,
         visions_min_radius: 2,
+        week: WeekParams {
+            creature_chance: [1, 4],
+            creature_bonus: 5,
+        },
+        garrison_week: GarrisonWeekParams {
+            odds: [40, 80],
+            out_of: 101,
+            weights: vec![2, 3, 4, 5, 4, 3],
+            weeks: 8,
+            upgrade: 5,
+        },
     }
 }
 
@@ -179,12 +190,20 @@ fn dwelling(level: u8, upgraded: bool) -> BuildingRoles {
     }
 }
 
+fn horde(level: u8, upgraded: bool) -> BuildingRoles {
+    BuildingRoles {
+        horde: Some(Horde { level, upgraded }),
+        ..BuildingRoles::default()
+    }
+}
+
 /// A valid record of `faction` with these creatures: the four halls and three forts, each
 /// superseding and requiring the one below (the Town Hall requiring the Tavern, the Capitol the
 /// Castle too), the Tavern, the silo, the Grail, the two dwellings (the second requiring the
 /// first), the Lookout Tower, a horde requiring the level-2 dwelling and its upgrade requiring
 /// it, forbidden with it and built with it and the level-2 dwelling, and the Shipyard requiring
-/// the Tavern; the Town Hall, the City Hall and the Shipyard cost resources (E09 T16a).
+/// the Tavern; the Town Hall, the City Hall and the Shipyard cost resources (E09 T16a); the horde
+/// of level 2, the Lookout the Portal of Summoning, the Grail every week level 1's (E09 T25a).
 fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDef {
     let buildings = vec![
         BuildingDef {
@@ -241,6 +260,7 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
                     mana: 150,
                 },
                 reveal: Some(Reveal::All),
+                week_of: Some(1),
                 ..BuildingRoles::default()
             },
         ),
@@ -250,10 +270,11 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
             "lookout",
             BuildingRoles {
                 reveal: Some(Reveal::Radius(20)),
+                portal: true,
                 ..BuildingRoles::default()
             },
         ),
-        needs(building("horde", BuildingRoles::default()), &["dwelling_2"]),
+        needs(building("horde", horde(2, false)), &["dwelling_2"]),
         BuildingDef {
             forbidden_with: Some("horde".into()),
             auto_with: vec!["horde".into(), "dwelling_2".into()],
@@ -286,12 +307,13 @@ fn town(faction: &str, creatures: &[(&str, Option<&str>)], moat: Moat) -> TownDe
             })
             .collect(),
         buildings,
+        roe: true,
     }
 }
 
 /// The packs: `t` the parameters, the records of `t:keep` (harmless, its upgraded level-1
-/// dwelling too) and `t:wild` (absent) and the Visions creature `t:wisp`, `u` the record of
-/// `u:marsh` (harmless), overrides of `t:keep` (damaging) and of its own record (natural
+/// dwelling and horde too) and `t:wild` (absent) and the Visions creature `t:wisp`, `u` the
+/// record of `u:marsh` (harmless, not a Restoration of Erathia record), overrides of `t:keep` (damaging) and of its own record (natural
 /// obstacles) and the Visions creatures `u:toad` and `u:frog`, `v` and `w` empty.
 fn packs() -> Vec<TownPack> {
     let mut keep = town(
@@ -301,6 +323,13 @@ fn packs() -> Vec<TownPack> {
     );
     keep.buildings
         .push(building("dwelling_1_up", dwelling(1, true)));
+    keep.buildings.push(building("horde_1_up", horde(1, true)));
+    let mut marsh = town(
+        "u:marsh",
+        &[("u:frog", None), ("u:toad", None)],
+        Moat::Harmless,
+    );
+    marsh.roe = false;
     let t = TownPack {
         params: Some(params()),
         towns: vec![
@@ -311,11 +340,7 @@ fn packs() -> Vec<TownPack> {
         ..TownPack::new(manifest("t", &[]))
     };
     let u = TownPack {
-        towns: vec![town(
-            "u:marsh",
-            &[("u:frog", None), ("u:toad", None)],
-            Moat::Harmless,
-        )],
+        towns: vec![marsh],
         overrides: vec![
             TownOverride {
                 faction: key("t:keep"),
@@ -396,6 +421,41 @@ fn the_records_compile_in_faction_order_with_the_overrides_applied() {
     assert_eq!(p.level_2_dwelling_chance, 30);
     assert_eq!(p.neutral_garrison[3].count, [1, 3]);
     assert_eq!(p.capitol_demoted_to, "city_hall");
+    // Increment 3's (E09 T25a): the growth's parameters, each record's `roe`.
+    assert_eq!(p.week, params().week);
+    assert_eq!(p.garrison_week, params().garrison_week);
+    assert!(keep.roe && wild.roe && !marsh.roe);
+}
+
+#[test]
+fn the_growth_roles_compile_as_given() {
+    let (core, part) = compiled();
+    let keep = part.town(core.faction_by_key("t:keep").unwrap()).unwrap();
+    let roles = |k: &str| {
+        keep.building(keep.building_by_key(k).unwrap())
+            .unwrap()
+            .roles
+    };
+    assert_eq!(
+        roles("horde").horde,
+        Some(Horde {
+            level: 2,
+            upgraded: false
+        })
+    );
+    assert_eq!(
+        roles("horde_1_up").horde,
+        Some(Horde {
+            level: 1,
+            upgraded: true
+        })
+    );
+    assert_eq!(roles("horde_up").horde, None);
+    assert!(roles("lookout").portal && !roles("grail").portal);
+    assert_eq!(
+        (roles("grail").week_of, roles("lookout").week_of),
+        (Some(1), None)
+    );
 }
 
 #[test]
@@ -522,9 +582,12 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The fourth encoding (v4): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0xcb0d02cf9d6eb150);
-    assert_eq!(TownRuleset::empty(&core).content_hash(), 0x985b2cc3d2245173);
+    // The fifth encoding (v5): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0x84b4_0449_24d2_2388);
+    assert_eq!(
+        TownRuleset::empty(&core).content_hash(),
+        0x04f0_d766_3d89_5b60
+    );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
     let other = TownRuleset::compile(&core, &changed).unwrap();
@@ -551,6 +614,36 @@ fn the_hash_is_pinned_and_follows_the_content() {
         |p| keep_building(p, "town_hall").cost[0].1 = 2000,
         |p| drop(keep_building(p, "city_hall").cost.pop()),
         |p| keep_building(p, "shipyard").roles.shipyard = false,
+    ];
+    for change in changes {
+        let mut changed = packs();
+        change(&mut changed);
+        let other = TownRuleset::compile(&core, &changed).unwrap();
+        assert_ne!(other.content_hash(), part.content_hash());
+    }
+    // The fifth (v5): the roles `horde`, `portal`, `week_of`, a record's `roe`, the growth's
+    // parameters.
+    let changes: [fn(&mut Vec<TownPack>); 13] = [
+        |p| keep_building(p, "horde").roles.horde = None,
+        |p| {
+            keep_building(p, "horde_1_up").roles.horde = Some(Horde {
+                level: 1,
+                upgraded: false,
+            });
+        },
+        |p| keep_building(p, "lookout").roles.portal = false,
+        |p| keep_building(p, "grail").roles.week_of = Some(2),
+        |p| keep(p).roe = false,
+        |p| p[0].params.as_mut().unwrap().week.creature_chance = [1, 5],
+        |p| p[0].params.as_mut().unwrap().week.creature_bonus = 4,
+        |p| p[0].params.as_mut().unwrap().garrison_week.odds = [40, 81],
+        |p| p[0].params.as_mut().unwrap().garrison_week.out_of = 100,
+        |p| {
+            p[0].params.as_mut().unwrap().garrison_week.weights.pop();
+        },
+        |p| p[0].params.as_mut().unwrap().garrison_week.weights[0] = 1,
+        |p| p[0].params.as_mut().unwrap().garrison_week.weeks = 7,
+        |p| p[0].params.as_mut().unwrap().garrison_week.upgrade = 6,
     ];
     for change in changes {
         let mut changed = packs();
@@ -737,6 +830,38 @@ fn the_parameters_are_checked() {
         refused(|p| p[3].visions.push(key("t:wisp"))),
         E::InvalidParams("a Visions creature is named twice")
     );
+    let chance = E::InvalidParams("the week's creature chance needs 1 <= numerator <= denominator");
+    assert_eq!(param(|d| d.week.creature_chance = [0, 4]), chance);
+    assert_eq!(param(|d| d.week.creature_chance = [5, 4]), chance);
+    let odds = E::InvalidParams("the garrison week's odds need 0 <= odds <= out_of, out_of >= 1");
+    assert_eq!(param(|d| d.garrison_week.odds = [40, 102]), odds);
+    assert_eq!(param(|d| d.garrison_week.odds = [102, 80]), odds);
+    assert_eq!(
+        param(|d| {
+            d.garrison_week.odds = [0, 0];
+            d.garrison_week.out_of = 0;
+        }),
+        odds
+    );
+    let weights = E::InvalidParams("the garrison week has one to six level weights");
+    assert_eq!(param(|d| d.garrison_week.weights.clear()), weights);
+    assert_eq!(param(|d| d.garrison_week.weights.push(1)), weights);
+    assert_eq!(
+        param(|d| d.garrison_week.upgrade = 101),
+        E::InvalidParams("the garrison week's upgrade chance is above 100")
+    );
+    // At the bounds: a chance of 1 in 1, both odds the denominator, one weight, a sure upgrade.
+    let mut at_bounds = packs();
+    let p = at_bounds[0].params.as_mut().unwrap();
+    p.week.creature_chance = [1, 1];
+    p.garrison_week = GarrisonWeekParams {
+        odds: [101, 101],
+        out_of: 101,
+        weights: vec![0],
+        weeks: 0,
+        upgrade: 100,
+    };
+    assert!(TownRuleset::compile(&core(), &at_bounds).is_ok());
     assert_eq!(
         param(|d| d.capitol_demoted_to = "town_hall".into()),
         town_error(
@@ -863,6 +988,31 @@ fn the_roles_across_a_record_are_checked() {
     let dwellings = town_error("t:keep", "needs the level-1 and level-2 dwellings");
     assert_eq!(reason(|t| t.buildings[11].roles.dwelling = None), dwellings);
     assert_eq!(reason(|t| t.buildings[10].roles.dwelling = None), dwellings);
+    // Increment 3's (E09 T25a): each index's horde once (a level's base and upgrade apart), one
+    // Portal of Summoning, one week's building.
+    assert_eq!(
+        reason(|t| t.buildings.push(building("horde_b", horde(2, false)))),
+        town_error("t:keep", "has a horde of one index twice")
+    );
+    let one = town_error(
+        "t:keep",
+        "has more than one Portal of Summoning or week's building",
+    );
+    let second = |roles: BuildingRoles| {
+        move |t: &mut TownDef| {
+            t.buildings.push(building("second", roles));
+        }
+    };
+    let portal = BuildingRoles {
+        portal: true,
+        ..BuildingRoles::default()
+    };
+    let week = BuildingRoles {
+        week_of: Some(2),
+        ..BuildingRoles::default()
+    };
+    assert_eq!(refused(|p| second(portal)(keep(p))), one);
+    assert_eq!(refused(|p| second(week)(keep(p))), one);
 }
 
 #[test]
@@ -921,6 +1071,21 @@ fn a_building_is_checked() {
         })),
         building_error("horde", dwelling)
     );
+    // Increment 3's (E09 T25a): a horde's level and upgrade, a week's level.
+    let hordes = "a horde's level, or its upgrade, is not the faction's";
+    for (level, upgraded) in [(0, false), (3, false), (2, true)] {
+        let error = refused(|p| {
+            keep_building(p, "horde").roles.horde = Some(Horde { level, upgraded });
+        });
+        assert_eq!(error, building_error("horde", hordes));
+    }
+    for level in [0, 3] {
+        let error = refused(|p| keep_building(p, "grail").roles.week_of = Some(level));
+        assert_eq!(
+            error,
+            building_error("grail", "a week's level is not the faction's")
+        );
+    }
     let mood = "morale and luck are -3 to 3";
     assert_eq!(
         reason("tavern", |b| b.roles.morale = 4),

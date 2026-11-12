@@ -90,7 +90,7 @@ pub(crate) fn build_told<S: Sink>(
     let told = Told::before::<S>(state, rules, &[town], every);
     let _before = state
         .towns_mut()
-        .build(town, building, part, event.is_none());
+        .build(town, building, part, rules.core(), event.is_none());
     sink.emit(GameEvent::TownBuilt {
         player,
         town,

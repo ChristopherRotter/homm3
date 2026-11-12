@@ -1275,6 +1275,15 @@ still change at `TWN-Q14` (decision 78 lists them).
   harvested" goes.
 - **The synthetic pack:** a horde and its upgrade, a Portal and a `week_of` building in its
   records, so `h3-towns`' tests and the scripted replays reach each role without original data.
+- *As built (T25a, `town/e09-t25a`):* as above; `Horde { level, upgraded }`, `WeekParams {
+  creature_chance, creature_bonus }`, `GarrisonWeekParams { odds, out_of, weights, weeks, upgrade }`
+  (`u16` chances, `u8` weights, one to six of them); the refusals `InvalidBuilding` "a horde's
+  level, or its upgrade, is not the faction's" and "a week's level is not the faction's",
+  `InvalidTown` "has a horde of one index twice" and "has more than one Portal of Summoning or
+  week's building", four `InvalidParams`; part hash v5 pinned (`0x84b4_0449_24d2_2388`). The
+  harvest also refuses a horde record whose growth is not its creature's `horde_growth` (all
+  eleven hordes match) and a gap-fill `horde`; `vale`'s upgraded horde has no role (no upgrade
+  in its levels), its Lookout is the Portal and its Grail the week's building.
 
 ### 39. The core: two hero effects, two quirk flags, the towns' stream (`shared/` and `cross-lane`)
 
@@ -1320,6 +1329,13 @@ still change at `TWN-Q14` (decision 78 lists them).
   (§6; VCMI's first day agrees). A Portal is drawn for an owned town only (§45); a neutral town's
   (one shipped map's) stays empty until owned.
 - **A capture** keeps the counts and the Portal (`town_change_owner` writes neither).
+- *As built (T25a):* `CREATURE_INDEXES` (14) and `MAX_AVAILABLE` at the crate's root,
+  `Summoned`, `Town::available`, `available_all`, `portal`, `with_available`, `with_portal`
+  (each saturating); the store's `set_available`, `set_portal` and `write(town, Town)` (its
+  closure write now `update`); the setup's first creatures through §46's rule over the
+  ever-built set (`town_setup` takes the core); no Portal drawn yet (§45 is T25b's). Store hash
+  v3 pinned (`0xFA14_A109_A1EC_2745`), game state hash v28 (§47's table: the week's kind is then
+  v29).
 
 ### 41. A dwelling's growth (TWN-GRO-001; `h3-towns`' `growth.rs`, the inputs from `h3-game`'s `src/town*`)
 
@@ -1342,6 +1358,9 @@ still change at `TWN-Q14` (decision 78 lists them).
   `Vec` by creature handle), not per town.
 - **Not modelled:** the original's stored counts +0x118 (derived here from the owners: one fact
   once); the growth panel (§7).
+- *As built (T25a):* `h3_towns::growth` with `GrowthInputs` (`NEUTRAL` its default) and
+  `index_creature`, summed in `u64` (a share past 10 000 overflows nothing); batch TWN-3's row 2
+  (66 and 48) is a unit test on the fixture.
 
 ### 42. The week (TWN-GRO-002, -003; GAM-CAL-002 amended; `h3-game`'s `src/town/week.rs`, `state.rs` and `state/day.rs` `cross-lane`)
 
@@ -1449,6 +1468,9 @@ still change at `TWN-Q14` (decision 78 lists them).
   event's buildings, each level's count added (saturating) at the upgraded dwelling's index when
   it is ever built, else at the dwelling's, else lost. `TWN-STUB-10` lifted (`h3-game`'s
   `town/events.rs`; its test's "creatures alone" case then adds them).
+- *As built (T25a):* the first creatures in `h3-towns`' `growth.rs` (crate-private), applied by
+  `Towns::build` (a command's and an event's build; it takes the core) and `town_setup`; the
+  events' creatures are T26a's.
 
 ### 47. Growth's day, views, versions, ids and gates
 
@@ -1472,7 +1494,7 @@ still change at `TWN-Q14` (decision 78 lists them).
   | town ruleset part v5 | `horde`, `portal`, `week_of`, `roe`, the week's and garrison week's parameters | town |
   | pack format v52 | `town_growth`, `owner_town_growth`; two quirk flags | `shared/` (`h3-content`) |
   | kernel streams | `StreamId::TOWNS` | `shared/` (`h3-kernel`) |
-  | game state hash v28 (after E08's v27) | the week's kind, the towns' stream (and the store's v3) | adventure, `cross-lane` |
+  | game state hash v28 (after E08's v27) | the store's v3 (T25a, as built); the week's kind and the towns' stream then v29 (T26a) | adventure, `cross-lane` |
   | map import v22 | the setup's `roe` | adventure, `cross-lane` |
   | protocol v42 | `WeekStarted`'s kind, the observation's week, the owner's counts and Portal | server, `cross-lane` |
   | adventure replay format, env encodings | none (no growth command; no flat adventure observation, E08 decision 187) | — |

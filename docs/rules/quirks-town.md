@@ -97,3 +97,15 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Regression test: `crates/h3-towns/src/build.rs`, `twn_quirk_7_an_events_bits_past_the_maps_slots_build_nothing`
 - Decided by / date: the user, 2026-11-07 (TWN-Q10; decision 51); entered by E09 T17b, 2026-11-09
 
+### TWN-QUIRK-8 — A town's 16-bit counts wrap
+- Class: fix, no flag (state-corrupting: a count past 32 767 turns negative; quirk candidate T-10; fixed by proposal, the epic's decision 73, accepted at TWN-Q12 and TWN-Q14)
+- Context / rules affected: town, TWN-GRO-001 (a dwelling's growth), TWN-GRO-005 (the first creatures); the week's growth, the month's doubling, the town events' creatures and the Portal's count to come (TWN-GRO-003, -004, -007, TWN-EVT-004; E09 T25b, T26a)
+- Original behavior: a town's available creatures (+0x16, fourteen i16) are added to by the week (`town_week_growth` 0x5BFDD0) and the events, and doubled by a creature's month (`new_month` 0x4C8F40), without a cap: past 32 767 they wrap negative, and the town screen and the hire read the wrapped count. `town_dwelling_growth` (0x5BFB60) sums on an i16 too. Reachable only in very long games (survey `E09-growth.md` §13: a neutral town's level 1 with a Castle grows 14 a week).
+- Intended/expected behavior: every count and every growth is held at `h3_towns::MAX_AVAILABLE` (32 767): sums in wider integers, then saturated; below the bound nothing differs. The Portal's count too.
+- Impact: none below the bound (every shipped map's first months); a very long game keeps its counts at the bound instead of wrapping.
+- Community status: unknown (survey §13 found no report; VCMI 1.7.5 and the wiki say nothing of the bound).
+- Sources: code reading of `town_dwelling_growth` 0x5BFB60 and `town_week_growth` 0x5BFDD0 (E09 T21; survey `docs/rules/surveys/E09-growth.md` §1, §2, §13).
+- Flag: none (fixed in every profile)
+- Defaults: faithful = fixed, strict-fixed = fixed
+- Regression test: `crates/h3-towns/src/record.rs`, `twn_quirk_8_a_town_s_counts_saturate_at_the_bound`; `crates/h3-towns/src/growth/tests.rs`, `a_growth_is_held_at_the_bound`
+- Decided by / date: the agent's proposal (decision 73), the user at TWN-Q12 and TWN-Q14, 2026-11-11; entered by E09 T25a, 2026-11-12

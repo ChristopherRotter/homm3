@@ -82,7 +82,10 @@ pub(super) fn towns_core_pack(elf: bool) -> ContentPack {
         };
         pack.creatures.push(ent);
     }
-    // The imp, the gog, the cart (none) and the elf.
+    // The imp, the gog, the cart (none) and the elf; the imp's and the gog's dwellings grow 15 and
+    // 8 a week (E09 T25a: a dwelling's first creatures).
+    pack.creatures[0].info.growth = 15;
+    pack.creatures[1].info.growth = 8;
     let levels = [
         Some(("t:town", 1)),
         Some(("t:town", 2)),
@@ -253,6 +256,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
             },
         ],
         buildings,
+        roe: true,
     };
     let mut towns = vec![town.clone()];
     if elf {
@@ -278,6 +282,17 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
             capitol_demoted_to: "b2".into(),
             visions_factor: 3,
             visions_min_radius: 3,
+            week: h3_towns::WeekParams {
+                creature_chance: [1, 4],
+                creature_bonus: 5,
+            },
+            garrison_week: h3_towns::GarrisonWeekParams {
+                odds: [40, 80],
+                out_of: 101,
+                weights: vec![2, 3, 4, 5, 4, 3],
+                weeks: 8,
+                upgrade: 5,
+            },
         }),
         towns,
         ..TownPack::new(manifest())

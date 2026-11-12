@@ -30,6 +30,8 @@ pub(super) const CAPITOL: usize = 3;
 pub(super) const FORT: usize = 4;
 pub(super) const CITADEL: usize = 5;
 pub(super) const SILO: usize = 10;
+/// [`town_pack`]'s level-1 dwelling (`b7`, free; the imp's, which grows 15).
+const DWELLING_1: usize = 7;
 
 /// The game's rules with [`town_pack`]'s record priced and with one requirement (the rest free
 /// and without one).
@@ -133,6 +135,22 @@ fn an_owner_builds_in_its_turn_and_pays_the_price() {
         }]
     );
     assert_eq!(gold(&game, BLUE), 2000);
+}
+
+// covers: TWN-GRO-005
+#[test]
+fn a_built_dwelling_gives_its_first_creatures_in_the_game() {
+    let rules = priced();
+    let mut game = GameState::new(&rules, &setup(&rules), 7).unwrap();
+    // Blue's standard town has its Fort and its level-1 dwelling from the start (its level-2 one
+    // drawn too at this seed), with their first creatures; red's custom one has no dwelling.
+    let blue = game.towns().get(T1).unwrap();
+    assert!(blue.built().contains(building(DWELLING_1)));
+    assert!(blue.built().contains(building(DWELLING_1 + 1)));
+    assert_eq!((blue.available(0), blue.available(1)), (15, 8));
+    assert_eq!(*game.towns().get(T0).unwrap().available_all(), [0; 14]);
+    run(&rules, &mut game, RED, build(T0, DWELLING_1)).unwrap();
+    assert_eq!(game.towns().get(T0).unwrap().available(0), 15);
 }
 
 pub(super) fn end_turn(rules: &GameRuleset, game: &mut GameState, player: PlayerId) {

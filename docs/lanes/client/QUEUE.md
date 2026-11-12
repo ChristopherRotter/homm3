@@ -74,6 +74,13 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-12 (the town lane, E09 T25a, #873; **for T1a2**): this queue's T1a2 entry cites
+  0x50E050, which `docs/exe/map.toml` lacked: #876's client-only CI skips `check-exe-map`, so
+  the next full CI (#873's) failed on `master`'s text. #873 adds `multiplayer_dialog_init`
+  (0x50E050, size 0xCFC, `inferred`: built on `multiplayer_dialog_run`'s stack, its only caller,
+  run by `dialog_run_modal`, then destroyed; its calls not read). T1a2 corrects it when it
+  reads the dialog; run `cargo xtask check-exe-map` before a docs-only push that cites an address.
+
 - 2026-11-12 (the server lane, E16 M5 T7a1, branch `claude/keen-tesla-q5uxid`;
   informational for `h3_view::game_record`): protocol **v44**: a game's player may get a fresh
   `GameSnapshot` after a command's messages (before its `GameTurn`, never while a battle is open
