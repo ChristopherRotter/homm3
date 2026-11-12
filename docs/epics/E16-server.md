@@ -307,13 +307,7 @@ client lane's 2026-11-04 request, when online battles need them).
 **2a's tasks** (about half a context each; the numbers go on from part 1's T7):
 
 - **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
-  - **T8a Seats and connections:** `GameSession` takes connections as the battle's `Session`
-    does: a seat per player of the map, taken by account (by token in the anonymous mode),
-    re-taken after a disconnect with a fresh `GameSnapshot` and its `GameTurn` if it may act (its
-    record goes on while no connection holds the seat); the game started when every seat is
-    held; a connection's commands applied as its seat's player, anything from an unseated one
-    rejected; the whole game's client messages on the wire (a seat's join, its commands). The
-    battle's seat logic shared where it fits (provisional). A protocol step.
+  - **T8a Seats and connections:** done 2026-11-12, protocol v45 (`E16-log.md`).
   - **T8b Numbers, pause, restore:** each seat numbers its commands, and a number the session
     already took is answered as it was the first time, applying nothing (a resend after a
     reconnect; ADR-0018's per-viewer sequence numbers); the host's pause and resume, as a
@@ -342,7 +336,17 @@ client lane's 2026-11-04 request, when online battles need them).
   networked whole game; a fresh reviewer agent and the review list; the user's checkpoint.
 
 **Review list for the 2a checkpoint** (the choices queued under the autonomy contract, filled as
-the tasks land): none yet.
+the tasks land):
+
+- T8a (v45): the whole game's seat messages of their own (`GameJoin { game, player, token }`,
+  `GameCommand { seq, command }`, the answer `GameJoined { game, player, token, manifest }`), not
+  the battle's `Join` and `Command` widened (the client lanes match `Seat` exhaustively); the
+  refusal `NoSuchSeat`; the session's rejections `NotSeated` and `NotStarted` inside
+  `GameReject` (an unseated connection's numbered 0); a battle answers a whole game's join
+  `NoSuchGame` and its command `NotSeated`, and the reverse; a whole game ignores the battle's
+  other messages until T8b and T9 take what it needs (the record's download, the pause); the
+  host's tokens through a closure (`GameSession::new`), the in-process host holding every seat
+  (`start`, `restore`); `GameSession::route` public for the system actor's frames (T10).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

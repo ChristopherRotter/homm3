@@ -417,7 +417,7 @@ fn the_golden_replays_run_through_the_session() {
 }
 
 /// A game on a fixture map: its rules and setup.
-fn duel() -> (&'static GameRuleset, GameSetup) {
+pub(super) fn duel() -> (&'static GameRuleset, GameSetup) {
     let rules = &*RULES;
     let map = include_bytes!("../../../../fixtures/maps/e08-duel-36.h3m");
     let m = h3_map::read(map, &h3_map::Limits::default()).unwrap();

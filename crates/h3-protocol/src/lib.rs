@@ -98,8 +98,12 @@ pub mod wire;
 /// unchanged, its order is new. v44 (E16 M5 T7a1): a reveal's tiles packed
 /// (`wire::game::AdventureReveal`: a palette of their views and one rectangle per level, an index
 /// per tile, no longer a list of tiles each with its view); a game's player may get a fresh
-/// `GameSnapshot` after a command (`session::game`: its record is cut at its snapshots).
-pub const PROTOCOL_VERSION: u32 = 44;
+/// `GameSnapshot` after a command (`session::game`: its record is cut at its snapshots). v45 (E16
+/// M5 T8a): a whole game's seats over the wire: the client messages `GameJoin` (a player's seat,
+/// taken by account or token as a battle's) and `GameCommand`, the answer `GameJoined`, the
+/// refusal `NoSuchSeat`, the session's rejections `NotSeated` and `NotStarted` (`GameRejected`,
+/// numbered 0 for a connection without a seat); a re-taken seat gets a fresh `GameSnapshot`.
+pub const PROTOCOL_VERSION: u32 = 45;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
