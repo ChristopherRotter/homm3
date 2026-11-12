@@ -13,7 +13,7 @@ use h3_heroes::ArtifactInstance;
 
 use super::*;
 use crate::observe::Viewer;
-use crate::{MonthKind, observe, project};
+use crate::{MonthKind, WeekKind, observe, project};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -209,13 +209,25 @@ fn a_weeks_first_day_runs_the_week_step_and_pays_the_weekly_resources_once() {
     // with blue's gogs' 3 gold once for its two stacks.
     let events = until(&mut state, &rules, 8);
     assert_eq!(events[3], GameEvent::DayStarted { day: 8 });
-    assert_eq!(events[4], GameEvent::WeekStarted { week: 2 });
+    assert_eq!(
+        events[4],
+        GameEvent::WeekStarted {
+            week: 2,
+            kind: WeekKind::Normal,
+        }
+    );
     assert_eq!(state.adventure().monster_count(monster), Some(11));
     assert_eq!(gold(&events), [2500, 1003]);
     // Day 9 pays no weekly resource; day 15 starts week 3, no month yet.
     assert_eq!(gold(&until(&mut state, &rules, 9)), [2500, 1000]);
     let events = until(&mut state, &rules, 15);
-    assert_eq!(events[4], GameEvent::WeekStarted { week: 3 });
+    assert_eq!(
+        events[4],
+        GameEvent::WeekStarted {
+            week: 3,
+            kind: WeekKind::Normal,
+        }
+    );
     assert_eq!(gold(&events), [2500, 1003]);
     assert!(
         !events
@@ -235,7 +247,10 @@ fn a_months_first_day_draws_its_kind_and_a_creatures_month_adds_its_monsters() {
     assert_eq!(
         events[4..6],
         [
-            GameEvent::WeekStarted { week: 5 },
+            GameEvent::WeekStarted {
+                week: 5,
+                kind: WeekKind::Normal,
+            },
             GameEvent::MonthStarted {
                 month: 2,
                 kind: MonthKind::Normal,
@@ -283,7 +298,10 @@ fn a_months_first_day_draws_its_kind_and_a_creatures_month_adds_its_monsters() {
         let viewer = Viewer::Player(viewer);
         assert_eq!(observe(&state, &rules, viewer).month, imps);
         assert_eq!(project(&started, viewer), Some(started));
-        let week = GameEvent::WeekStarted { week: 5 };
+        let week = GameEvent::WeekStarted {
+            week: 5,
+            kind: WeekKind::Normal,
+        };
         assert_eq!(project(&week, viewer), Some(week));
     }
 }
@@ -314,7 +332,10 @@ fn the_next_month_starts_four_weeks_later_on_day_57() {
     assert_eq!(
         events[4..6],
         [
-            GameEvent::WeekStarted { week: 9 },
+            GameEvent::WeekStarted {
+                week: 9,
+                kind: WeekKind::Normal,
+            },
             GameEvent::MonthStarted {
                 month: 3,
                 kind: MonthKind::Normal,

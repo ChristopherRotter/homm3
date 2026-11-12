@@ -23,7 +23,7 @@ use h3_heroes::{
 };
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
-use h3_towns::Towns;
+use h3_towns::{Towns, WeekKind};
 
 use crate::command::{
     Actor, AdventureSink, Answer, Consent, GameCommandError, GameEvent, HireAnswer, Sink,
@@ -261,6 +261,13 @@ pub struct GameState {
     /// The month's kind (GAM-CAL-003, E08 T85b): drawn on each month's first day after the
     /// first; a normal one until then.
     month: MonthKind,
+    /// The week's kind (TWN-GRO-002, E09 T26a2; design note `E09-design.md` §42): drawn on each
+    /// week's first day after the first from the towns' stream; a normal one until then. Public,
+    /// as the month's.
+    week: WeekKind,
+    /// Whether the map is a Restoration of Erathia one ([`GameSetup::roe`], E09 T26a2): read only
+    /// by the week's draw.
+    roe: bool,
     /// The map's timed events and, since E09 T18c, the towns' events' facts ([`Calendar`]):
     /// static, shared by forks; none for a map with neither, so a fork of one counts no reference
     /// (`bench-check`, fork-sea-xl-144: the month and this block cost a fork 15 Ir, +0.4 %; an
@@ -269,6 +276,9 @@ pub struct GameState {
     calendar: Option<Arc<Calendar>>,
     /// The game's own stream (the day advance; ADR-0017 point 4).
     rng: Rng,
+    /// The towns' stream (`StreamId::TOWNS`, E09 T26a2; ADR-0017 point 4, E09 decision 75): the
+    /// week's kind (TWN-GRO-002), so that a town's draw never moves the game's stream.
+    towns_rng: Rng,
     /// The store of heroes (GAM-HER-001, E08 T18b): every hero's details by id, each shared
     /// between forks and copied on its first write (ADR-0017 point 1). The list too is shared, so
     /// a fork costs one reference count (`bench-check`: a list per fork cost the XL fork
@@ -386,8 +396,11 @@ impl GameState {
             group: 0,
             day: 1,
             month: MonthKind::Normal,
+            week: WeekKind::Normal,
+            roe: setup.roe,
             calendar: Calendar::new(setup, &towns),
             rng: Rng::for_stream(seed, StreamId::GAME),
+            towns_rng: Rng::for_stream(seed, StreamId::TOWNS),
             heroes,
             pool: Arc::new(pool),
             towns,
@@ -1227,6 +1240,11 @@ impl GameState {
         self.month
     }
 
+    /// The week's kind (TWN-GRO-002, E09 T26a2): public, as the original's week's message.
+    pub const fn week(&self) -> WeekKind {
+        self.week
+    }
+
     /// The map's timed events in the map's order (GAM-CAL-004, E08 T85b): the setup's, static.
     pub fn events(&self) -> &[TimedEventSetup] {
         self.calendar.as_deref().map_or(&[], |c| &c.events)
@@ -1421,7 +1439,9 @@ impl CanonicalHash for GameState {
     /// T19a's, v7 T20b1's, v8 T21a's, v9 T27's, v10 T29's, v11 T30's, v12 T49a's, v13 T51b's, v14
     /// T54's, v15 T60a's, v16 T62a's, v17 T62b1's, v18 T63a's, v19 T63b's, v20 T72's, v21
     /// T84a's, v22 T85b's, v23 E09 T7b1's): version; the master seed; the day; since v22 the month's kind
-    /// ([`MonthKind`]'s encoding) and the map's timed events (length, then each: [`hash_event`]);
+    /// ([`MonthKind`]'s encoding); since v29 (E09 T26a2) the week's kind ([`WeekKind`]'s
+    /// encoding) and whether the map is RoE's; the map's timed events (length, then each:
+    /// [`hash_event`]);
     /// the running group's index; the schedule (groups as
     /// length + player ids); the players (colour, since v14 whether it counts as human, acting,
     /// stream state); since v2 the treasuries (the
@@ -1450,7 +1470,7 @@ impl CanonicalHash for GameState {
     /// whether a guard's visit waits; since v25 (E08 T95b) 7 a hire dialog: its owner, its target
     /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v19 (E08
     /// T63b) the rests in holding order, as length
-    /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes
+    /// and entries ([`Held`]'s encoding); the game's stream; since v29 the towns' stream; since v5 the store of heroes
     /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
     /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
     /// and the colour, 2 a prisoner's, 3 out, and its colour mask); since v24 (E09 T7b2a) the
@@ -1465,6 +1485,8 @@ impl CanonicalHash for GameState {
         h.write_u64(self.seed);
         h.write_u32(self.day);
         self.month.hash_into(h);
+        self.week.hash_into(h);
+        h.write_bool(self.roe);
         let events = self.events();
         h.write_len(events.len());
         for event in events {
@@ -1648,6 +1670,7 @@ impl CanonicalHash for GameState {
             held.hash_into(h);
         }
         self.rng.hash_into(h);
+        self.towns_rng.hash_into(h);
         h.write_len(self.heroes.len());
         for details in self.heroes.iter() {
             hash_details(details, h);

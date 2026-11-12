@@ -117,9 +117,9 @@ fn details<T: PartialEq>(
 /// the gaps that let the fold differ there (SRV-Q26, SRV-Q27 (2)): the gate (E16 M5 T3c2).
 const PARTS: &[Part] = &[
     Part {
-        name: "day and month",
+        name: "day, week and month",
         stubs: &[],
-        agree: |a, b| (a.day, a.month) == (b.day, b.month),
+        agree: |a, b| (a.day, a.week, a.month) == (b.day, b.week, b.month),
     },
     Part {
         name: "turns",
@@ -631,7 +631,13 @@ fn the_fold_keeps_the_calendar_the_turns_and_the_treasury() {
             GameEvent::TurnEnded { player: 1 },
             GameEvent::TurnEnded { player: 9 },
             GameEvent::DayStarted { day: 31 },
-            GameEvent::WeekStarted { week: 5 },
+            GameEvent::WeekStarted {
+                week: 5,
+                kind: Week::Of {
+                    creatures: [Some(42), Some(43)],
+                    bonus: 15,
+                },
+            },
             GameEvent::MonthStarted {
                 month: 2,
                 kind: Month::Plague {},
@@ -671,6 +677,11 @@ fn the_fold_keeps_the_calendar_the_turns_and_the_treasury() {
         ],
     );
     assert_eq!((v.day, v.month), (31, Month::Plague {}));
+    let deity = Week::Of {
+        creatures: [Some(42), Some(43)],
+        bonus: 15,
+    };
+    assert_eq!(v.week, deity);
     let acting: Vec<bool> = v.players.iter().map(|p| p.acting).collect();
     assert_eq!(acting, [true, true]);
     assert_eq!(v.turn_group, [0, 1]);

@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireTarget, Month};
+use super::{ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireTarget, Month, Week};
 use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings};
 use crate::wire::{Event, Outcome};
 
@@ -27,6 +27,7 @@ pub enum GameEvent {
     },
     WeekStarted {
         week: u32,
+        kind: Week,
     },
     MonthStarted {
         month: u32,
