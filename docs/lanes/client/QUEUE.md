@@ -43,6 +43,13 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T12, branch `claude/confident-knuth-subyc4`; **check
+  your readers, nothing to build**): protocol **v51**. A whole game's fresh `GameSnapshot` (past
+  half a record's bound) now comes inside a battle too, holding the battle's view in
+  `observation.battle`, with no battle `Snapshot` after it: `h3_view::game_record` already reads
+  it as a later snapshot of the open battle (R3-1); a live seat must not take it as a new battle
+  or a reconnect. A battle's own `Snapshot` opens only a battle the player does not hold yet
+  (unchanged on every reachable path).
 - 2026-11-12 (the server lane, E16 M5 T11, branch `claude/vibrant-albattani-ml282o`; **for online
   play, nothing to do before it**): protocol **v50**, the game's queries: a seat sends `GameQuery {
   seq, query }` and gets `GameAnswer { n, seq, answer }`, unnumbered (`n` the number of its last
