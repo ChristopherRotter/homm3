@@ -3458,7 +3458,9 @@ growth with every week a normal one; T26a2 the week's kind.
 - **No version moved.** Nine adventure replays re-recorded (`builds-events-s1`, `builds-s262-d14`,
   `-s271-d14`, `-s290-d14`, `builds-week-s1`, `towns-income-s1`, `towns-s173-d21`, `-s1702-d21`,
   `-s3435-d21`): only checkpoints and final hashes, each first differing at day 8's start; the
-  other 63 unchanged. The bot reports unchanged.
+  other 63 unchanged. The bot reports unchanged. `master` merged in after E08's T113b (map
+  import v22) and the server's T9b: the nine taken from `master` and re-recorded again, the same
+  nine moving the same way; `h3-protocol`'s and `h3-server`'s golden-replay tests pass.
 - **Bench** (callgrind, `master` built in the same sandbox): the towns' week is new work in the
   two town day-start workloads. Its first build, one `growth` call per index (each reading the
   town's buildings again), cost `day-start-builds-36` +199 % and `day-start-towns-36` +89 %. So

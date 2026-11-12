@@ -21,7 +21,7 @@ decision 89; **T26a1** done, `E09-log.md`): **T26a2** the week's kind and the to
 kind, game state hash v29, `WeekStarted` with it and `GameObservation::week`, the protocol's
 mapping, `cross-lane`, the global trap), the draw on a week's first day before `WeekStarted`
 (the eligible creatures by the setup's `roe`: `GameSetup`'s new field, every struct literal in
-`h3-cli`'s and `h3-map`'s files, map import v22 or the next free after E08's T113b), the kind
+`h3-cli`'s and `h3-map`'s files, map import v23: E08's T113b took v22), the kind
 passed to `town::growth::grow_week` and `grow_month` (T26a1's `WeekKind::Normal` replaced), the
 month after a `week_of` week (§43; GAM-CAL-003 amended: `MonthKind::Creature` of the level's base
 creature without the creature's draw), the stream's isolation tested (a town week leaves the

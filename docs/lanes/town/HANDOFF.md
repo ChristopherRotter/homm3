@@ -11,15 +11,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   TWN-GRO-001, -005, `TWN-QUIRK-8`), T25b1 (decision 87: `WeekKind`, TWN-GRO-003, -004,
   `TWN-QUIRK-9`, `-10`), T25b2 (decision 88: `garrison_week`, `summon`, TWN-GRO-006, -007),
   **T26a1** (decision 89: T26a in two; the inputs, the week and the month in the day, the events'
-  creatures, `TWN-STUB-10` lifted). **Next: T26a2** (the week's kind, `cross-lane`; map import
-  v22 or the next free after E08's T113b), then T26b (`QUEUE.md`), then T27 to T30
+  creatures, `TWN-STUB-10` lifted). **Next: T26a2** (the week's kind, `cross-lane`; game state
+  hash v29, map import v23, protocol v49: E08's T113b and the server's T9b took the others), then
+  T26b (`QUEUE.md`), then T27 to T30
   (design §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is
   increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T26a1's (branch `town/e09-t26a1`, `cross-lane`) and its `shared/` one
-  (#886, `shared/e09-t26a1-quirk-marks`, comments only; merges first); watch both until they
-  merge.
+- **Open pull requests:** T26a1's (branch `town/e09-t26a1`, `cross-lane`; its `shared/` half
+  #886 merged); watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -54,7 +54,8 @@ cut in two (the user, decision 89; recommended). The user's computer was connect
 only: the original data staged then (17 files), used for the scoped verify. `cross-lane`:
 `h3-heroes`' Legion effects, `h3-game`'s day order, nine adventure replays (hash lines only),
 `game.toml`, comments in `h3-map`, `h3-cli`, the harvester and `packs/base/core.toml`; `shared/`
-#886 (two flag docs). No version moved; the bench inside its gates. T26a2 and T26b queued.
+#886 (two flag docs, merged). No version moved; two town day-start workloads re-baselined (the
+towns' week, +57 % and +41 %). `master` merged in after E08's T113b. T26a2 and T26b queued.
 
 ### 2026-11-12 — T25b2: a neutral town's garrison week and the Portal's draw
 
