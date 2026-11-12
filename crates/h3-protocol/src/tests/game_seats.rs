@@ -10,7 +10,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_contracts::PlayerId;
-use h3_game::Actor;
+use h3_game::{Actor, GameSetup, GameSetupError};
 
 use super::game_fold::one;
 use super::game_session::duel;
@@ -269,6 +269,13 @@ fn a_seat_is_taken_by_token_or_account_and_retaken_with_a_fresh_snapshot() {
 #[test]
 fn a_join_or_a_command_out_of_place_changes_nothing() {
     let (rules, setup) = duel();
+    // A setup that starts no game hosts none.
+    let none = GameSetup {
+        difficulty: 200,
+        ..setup.clone()
+    };
+    let hosted = GameSession::new(rules, &none, 3, manifest(rules, MAP), OPTIONS, token);
+    assert_eq!(hosted.map(|_| ()), Err(GameSetupError::Difficulty(200)));
     let mut s = GameSession::new(rules, &setup, 3, manifest(rules, MAP), OPTIONS, token).unwrap();
     let hash = s.state().state_hash();
     let refused = |reason| vec![ServerMessage::Refused { reason }];
