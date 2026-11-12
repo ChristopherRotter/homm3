@@ -1,6 +1,6 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **draft** (the user, 2026-11-03; not refined, no task started) · Lane: **client**, assigned once E17 closes
+Status: **draft** (the user, 2026-11-03; not refined, no task started) · Lane: **client** (E17 closed 2026-11-12)
 (E24's hot seat, M5, consumes the scenario screens; the map-client lane is consulted) ·
 Follows E17 (the battle client: its compositor, SDL adapter, string catalogue and capture harness)
 
@@ -18,10 +18,10 @@ recreation**; the lobby, the ladder and the server browser come later (below).
 1. **A new epic**, not a milestone of E17 or E24: the screens outside play have no home in
    either (E17's "Later" lists the client's options and video; E24's M5 only the handover and
    the hero, town and kingdom screens "as play needs them").
-2. **Assigned to the client lane once E17 closes** (after M6, and M7's own decision).
+2. **Assigned to the client lane once E17 closes** (E17 closed at its M7 T4, 2026-11-12).
 3. **Faithful recreation first.** Lobby, ladder and server browser integrations are a later
-   increment, after this epic's screens exist (E17 M7 and E21 build on them). Their look is new
-   design, as E17's "Later" already says.
+   increment, after this epic's screens exist (E28 and E21 build on them). Their look is new
+   design (E28).
 
 ## Scope (to be read from the original at T1; names are the original's as far as known)
 
@@ -29,8 +29,9 @@ Each screen is read from `Heroes3.exe` and its assets (`docs/exe/map.toml`), cap
 the harness as a reference, and compared at the pixel. Where the editions differ (RoE, AB,
 SoD) the shipped installation decides; E11 owns historical differences.
 
-- **The start:** the logo and intro videos (video is E17's "Later"; here only the decision of
-  what the client plays), the main menu and its buttons.
+- **The start:** the logo and intro videos (E17's "Later" placed video here at its M7 T4: the
+  video archives, `VIDEO.VID`, E17 research item 4; the result window's clips are decoded
+  already, E17 M6), the main menu and its buttons.
 - **New Game:** the choice of single scenario, campaign, multiplayer, and the tutorial's place.
 - **Scenario selection:** the list with its filters and sort, the scenario's information, the
   difficulty, the players' setup (colour, hero, town, starting bonus, handicap, teams), the
@@ -44,20 +45,26 @@ SoD) the shipped installation decides; E11 owns historical differences.
   are E20's, so here only their screens, behind E20.
 - **High scores and credits.**
 - **Options:** the system options dialog (volumes, speeds, the original's settings), the same
-  reached from the main menu and from play's system menu.
+  reached from the main menu and from play's system menu. From E17 (placed at its M7 T4): the
+  volume settings (0x5996C0) and a track resuming where it stopped (0x59AA82), the client's own
+  options beside the original's (CLT-Q25's step of a two-hex stack one hex back by the mouse, a
+  gameplay option off by default); `lanes/client/NOTES.md`, "Options and layouts".
+- **Start-up loading** (E17's CLT-Q2, placed at its M7 T4): the archive set read by the LODs'
+  tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), `h3-view
+  gate` measuring it; `lanes/client/NOTES.md`, "Assets and archives".
 - **The system menu in play** (save, load, restart, main menu, quit) and **the end of a
   scenario** (victory, defeat, the statistics and the high-score entry).
 - **Sound and music** of the menus (E17's sound decoders).
 
 ## Non-goals
 
-- Lobby, accounts, ladder, server browser, the pause by agreement: E17 M7, E16 M2 and E21, after
-  this epic's faithful screens (decision 3).
+- Lobby, accounts, ladder, server browser, the pause by agreement: E28 (refined after this
+  epic), E16 M2 and E21, after this epic's faithful screens (decision 3).
 - The map editor and its screens (`h3maped.exe`).
 - The campaigns' rules and scripts (E20); the original's save-file import (E19).
 - Playing a game: the adventure map (E24), the battle (E17), the town and hero screens (E24 M5,
   E09).
-- HD layouts and graphics options beyond `faithful` (E17's "Later").
+- HD layouts and graphics options beyond `faithful` (E29).
 
 ## Milestones (sketch; refined when the lane takes the epic)
 
@@ -72,7 +79,7 @@ SoD) the shipped installation decides; E11 owns historical differences.
 
 ## Dependencies and boundaries
 
-- **E17 closes first**: the compositor, SDL adapter, fonts and string catalogue are used as
+- **E17 closed** (2026-11-12): the compositor, SDL adapter, fonts and string catalogue are used as
   they are; this epic adds screens, not a second renderer.
 - **E24 M5 (hot seat)** needs the scenario setup's output: the setup's type is a shared
   contract between this lane and the map-client lane, agreed at M0, `cross-lane`.
@@ -88,7 +95,7 @@ SoD) the shipped installation decides; E11 owns historical differences.
 2. Which saves: the engine's own record only, or also the original's `.GM1`/`.GM2` import (E19)?
 3. Where does the shell's state live between screens: a client-side state machine, or the same
    session type the server's lobby will later use?
-4. Are the intro videos played, skipped, or replaced (E17's video decision)?
+4. Are the intro videos played, skipped, or replaced (E17 left video to this epic)?
 5. Which editions' menus are built: the installation's only, or each of RoE, AB and SoD?
 
 ## Risks and known gaps
