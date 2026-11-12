@@ -673,15 +673,20 @@ def gold_bonus(game, players=2):
 
     The choice is checked in the game's memory (E17 M5 T8b2, R7-8: `h3mem.starting_bonuses`):
     exactly `players` rows Gold and none Artifact or Resource, else the run stops (a lost click
-    would have left Artifact)."""
+    would have left Artifact). Since E08 T110 (batch E12b's Blue, a town and no hero: no Artifact
+    in its row, so Random, Gold, Resource) each row's arrow is clicked until the memory reads
+    Gold, at most four times."""
     import h3mem
 
     game.click(*ADVANCED_OPTIONS, 1.0)
     x, y, step = BONUS_RIGHT
+    mem = h3mem.Mem()
     for row in range(players):
-        for _ in range(2):
+        for _ in range(4):
             game.click(x, y + step * row, 0.5)
-    bonuses = h3mem.starting_bonuses(h3mem.Mem())
+            if h3mem.starting_bonuses(mem)[row] == h3mem.BONUS_GOLD:
+                break
+    bonuses = h3mem.starting_bonuses(mem)
     wrong = {h3mem.BONUS_ARTIFACT, h3mem.BONUS_RESOURCE} & set(bonuses)
     if bonuses.count(h3mem.BONUS_GOLD) != players or wrong:
         raise RuntimeError(f"the starting bonuses read {bonuses} (1 Gold, 0 Artifact, 2 Resource, "

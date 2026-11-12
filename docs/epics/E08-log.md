@@ -15534,3 +15534,95 @@ view does not hold added to the fold's unchanged-view test); `h3-protocol`'s, `h
 `h3-sim`'s tests, the golden replays (`h3-cli`), `cargo check --workspace --all-targets`, clippy
 with `-D warnings` on the touched crates. The first scoped run met a hygiene property case that
 fails on `master` too (`b99004…`, the town lane's inbox; not committed as a regression line).
+
+### Increment 12, round 3: T110, batch E12's harness, recipes and runs (2026-11-12, `adventure/e08-t110`)
+
+Baseline: `master` c89bdee (#861 merged at the start; the setup's full baseline passed fmt to
+test and was stopped in its coverage step to free the CPUs for the game; CI on `master` stands
+for it). Staged: the executables, the five DLLs, the four LODs, both `.snd`, `H3ab_ahd.vid`,
+`battle-videos.vid`, `maps.tar`, `extracted.tar`. **The cut** (decision 316): whole.
+
+**The harness** (`clients/capture/h3adv.py`, `h3mem.py`, `h3drive.py`, common; README "Garrisons
+and the bonus visitables"): a garrison's exchange a screen of its own (`garrison`, vtable 0x643890
+over the army dialog's base, `read`), its actions and OK, its bars as it opened
+(`garrison_dialogs`); the bars' selected slot (state 0x6, observed: `bar:selected[:before]`,
+`bar:clicks`), a creature window a click opens closed and noted; `garrison:x,y[:part]`
+(`h3mem.garrisons`, game +0x4E3AC); a battle's `anti_magic` (+0x53C4); the battle plan `{ book,
+then }` (the key C at each side's first stack's turn, the spell aimed at the stack, then Defend;
+`book:<side>`, a stack's spells from +0x198); a step's `cast` (the adventure book, View Earth's
+view closed); `fountain:x,y`, `spring:x,y`, `hero:bit:<n>`, `hero:word:<offset>`; a list of
+`hint` tiles (`hints`: the parts named by XTRAINFO and GENRLTXT 353, 354; an unexplored tile says
+so); the hero screen's `morale` and `luck` (items 116, 117, observed) with `popup:lines` (ARRAYTXT
+and GENRLTXT by line); an end-turn step's `to_day`; `skip_quietly`; an action's `row:` and `+`
+fields; `dialog:items|boxes`; a recipe's `+anything odd` kept beside the notes; the scenario
+list's Gold clicked until the memory reads it (a heroless town player has no Artifact: batch
+E12b's Blue); `play_turns` gives no order once the battle is decided (a dead attacker named
+active until the result window: the third E12a run). The harness check passed (23 steps).
+
+**The recipes** `clients/capture/batches/E08-batch-12a.toml` (17 steps) and `-12b.toml` (84
+steps, days 1 to 8, 15 and 22) and **three runs of each**: E12a's second and third agree in all 74
+records; E12b's second and third in all but the Fountains' first-week values (a new game's draws)
+and two reads fixed before the third. A fourth run of each after merging `master` (the town lane's
+T23 harness, xdd.dll rebuilt) agrees with the third in every record (74, 144), the harness check too. The templates filled from the third runs
+(`experiments/results/E08-batch-12a.md`, `-12b.md`), with the agent's lines in E12-14's, E12-11's
+and E12-7's last lines.
+
+**Raw observations, E12a** (unscored; T111 scores them, survey §15): the records at the start as
+the spec's (V1, G2, G3, G4, G5, G6 the indices 0 to 5 in the writer's order; G3 removable 0, the
+rest 1; G2 and G6 owner none). **E12-5:** (30, 28), (33, 31), (32, 33) explored, (30, 27), (34,
+31), (33, 33) not. **E12-1:** the path to D1 7,3 8,3 9,3 10,3 (green), walked with no dialog, on
+(10, 3) with 1 600, V1 unchanged; onto (8, 3) 1 400, the exchange (upper Pikeman 2, lower
+Archangel 10); the take into slot 1 made (V1 empty after). **E12-2:** no path to D2; onto (19, 6)
+no battle, the exchange (upper empty), G2 Red's, empty, 1 800. **E12-3:** onto (29, 6) 1 360;
+(a) the move made (G3 Pikeman 5, Archer 5), the selection cleared; (c) and (d) the takes
+refused, the selection kept on the upper stack each time; (b) the merge refused (the lower
+Pikemen selected, then the upper); no message, no creature window; after OK G3 Pikeman 5, Archer
+5, removable 0; E12-3 Pikeman 10, Griffin 2. **E12-6:** the path 23,20 23,21 23,22, no question,
+the battle at once: the defender one stack of 20 Pikemen, the flag clear, won with no loss; the
+exchange (upper empty); G6 Red's, empty; on (23, 22) with 1 700, 200 experience. GENRLTXT 7 (the
+townless warning) among the walk's messages. **E12-4:** onto (9, 22) 1 759, the exchange (upper
+Pikeman 3); battle 2 (Red attacking E12-4b at (9, 21)): the flag clear, Red Archangel 10 alone,
+both books opened (0x641DCC), Bless cast by both (20 then 15, 10 then 5), won; E12-4 on (9, 22)
+with **1 659** (the attack's step paid), 15 spell points. Battle 1 (Blue's E12-4a attacking it):
+**the flag set**, Red's side E12-4's Archangel 10 alone (G4's Pikemen not in it), **both books
+refused with GENRLTXT 685** (no cast, the points kept), won by Red; G4 unchanged.
+
+**Raw observations, E12b:** **E12-12:** the Fountains' words through the weeks: week 1 one value
+each, unchanged days 1 to 7 (+2 and +2 in the third run); day 8 +3 and +3, day 15 +2 and +2, day
+22 +1 and +3 (the same in all four runs); the team bits none throughout. **E12-17:** gold 0,
++0x7B 0; the hint over S2 before: the name, "not visited", no bonus line; onto S1 ADVEVENT 160, no
+question, on (51, 22) with 1 618, attack and defense 1, +0x7B 0, gold 0; after (on (52, 23),
+1 477) over S2 and S1: the name, **the bonus line (XTRAINFO 10)**, "not visited". **E12-14:**
+**the hero stood on W1** after its visit (the Wells and the Idol are entered, unlike the spec's
+"visited from a neighbour"); W1 full ADVEVENT 79, 20, bit 0 clear; View Earth 20 then 18; W1
+again (Space) ADVEVENT 77, 20, bit 0 set; the cast 18; W2 ADVEVENT 78, 18, on (10, 5); day 2 19,
+bit 0 clear, W2 (Space) 77, 20, bit 0 set. **E12-9:** L and R full; onto L 74, 40, R full; the
+cast 38; onto R 74, 40, L emptied; the cast 38; onto L 75, 38; off both emptied; day 8 on (17, 6)
+with 38, both full; the cast 36, onto R 74, 40, L full; the cast 38, onto L 74, 40, R emptied.
+**E12-10:** 1 560 each; E12-10 onto ST 137, 1 719 / 1 960, bit 1; the exchange (Cavalier 3, 3
+into slots 1, 2), E12-10 on (39, 6) with **1 437** (the meeting's step paid); E12-10b onto ST
+137, 1 619 / 1 960, off to (37, 6) 1 478; day 2 both 1 960 / 1 960, bit 1 set; the exchange back
+(E12-10b on (38, 6), 1 760); **E12-10 onto ST again 138, Champion 3, 1 819 / 1 960 (no points)**;
+**E12-10b 138, Champion 3, 1 660 / 1 960**; day 8 both bit 1 clear, 1 560 / 1 560, the Champions
+kept. **E12-11:** day 1 the Idol 62, bit 4, luck 1; P1 won at (47, 8): the bits and bytes cleared;
+day 2 the Idol 62, bit 25, morale 1; P2 cleared; day 6 the Temple 140, bit 8, morale 1; P3
+cleared; day 7 the Idol bits 4 and 25, morale 1, luck 1; the Temple bit 26, morale 3; the hero
+screen's morale picture frame 6, luck 4, the lists ending ARRAYTXT 68|93 and 97 (morale), 68|93
+(luck). **E12-13:** O1 95, 2 659 / 2 800, bit 7, morale 1; WH 166, 2 577 / 3 200, bit 6, morale
+2; SW 29, **0 / 3 200**, bit 3, luck 2; day 2 2 000 / 2 000, the bits kept (0xC8); F1 49, luck 3;
+R1 111, 731 / 2 400 (+400 to both), morale 3, luck 4; Y1 57, 749 / 2 800, morale 4; the hints
+over the twins before "not visited" alone, after with E12-13 selected the bonus lines (XTRAINFO
+16, 17, 13) and "visited", with E12-17 selected the bonus lines and "not visited". **E12-15:**
+1 560 / 1 560; O2 95, 2 219 / 2 360; the shore 1 937; **boarded 2 335 / 3 000** (1 837, the
+shore's 1 937 less the step, x 3 000 / 2 360 truncated: the reading's). **E12-7:** the Sirens from (46, 34): ADVEVENT 132, Pikeman 62,
+Archer 7, Griffin 1, 310 experience, bit 20, 1 671. **E12-8:** M8 won at (46, 36), bit 20
+cleared (+0x105 0x40000), 311; the Sirens again 132: 43, 4, 1, 531 experience. **E12-16, water:**
+B1 from (50, 34) ADVEVENT 21, 589, morale 1; M1 from (52, 34) ADVEVENT 83, 248, luck 1; M2's
+entrance unexplored at the hints before (no hint); after, E12-7 selected: the bonus lines
+(XTRAINFO 0, 16) and "visited"; E12-17 selected: the lines and "not visited".
+
+**For T111:** the experiments README's "Increment 12's objects" says the Wells, the Idol and the
+Fountains are visited from a neighbour; the Wells and the Idol were stood on (their tiles
+entrances, not blocked: `access`), the water objects visited from the neighbouring water.
+
+**Versions:** none moved (the harness, two recipes, two filled templates, docs).

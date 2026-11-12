@@ -62,6 +62,13 @@ hero:in_boat (the README's "Teleporters and Replay Opponent Turn"). Since E09 T1
 a walk's `actions` on the town screen, the actions `hall = true` and `slot = <building id>`, the
 hall and a building's dialog as screens (`click = ["build"]`), and the observations
 town:x,y:mark, hall:slot:<id>, build:button, build:text and screen (the README's "Towns").
+Since E08 T110 (batches E12a, E12b): a garrison's exchange as a screen (`garrison`), an action's
+`row:` and `+` fields, the battle plan `{ book = "<spell>", then }`, a step's `cast`, a list of
+`hint` tiles, `skip_quietly`, an end-turn step's `to_day`, the hero screen's `morale` and `luck`,
+and the observations garrison:x,y[:part], garrison_dialogs, bar:selected[:before], bar:clicks,
+creature_windows, anti_magic, book:<side>, fountain:x,y, spring:x,y, hero:bit:<n>,
+hero:word:<offset>, cast, hints, popup:lines and dialog:items|boxes (the README's "Garrisons and
+the bonus visitables").
 
 Library use: to_hot_seat, dismiss, end_turn, select, centre, hover, walk, observe,
 open_hero_screen, equip; since E08 T47a screen_kind, click_item, right_click, run_actions,
@@ -533,7 +540,9 @@ def strike(game, mem, active, aim):
                 late = f", pass {attempt + 1}" if attempt else ""
                 return (f"attacks {mem.creature_name(aim['creature'])} at hex {target} from the "
                         f"{direction} (cursor frame {cursor[1]}{late})")
-    raise RuntimeError(f"no attack cursor over hexes {hexes} (cursor frames {seen})")
+    game.dump(game.out / "no-attack-cursor.xwd")
+    raise RuntimeError(f"no attack cursor over hexes {hexes} (cursor frames {seen}; the display: "
+                       f"{game.out / 'no-attack-cursor.xwd'})")
 
 
 def play_turns(game, mem, order, done, end, what):
@@ -554,6 +563,11 @@ def play_turns(game, mem, order, done, end, what):
             time.sleep(0.1)
             continue
         time.sleep(TURN_SETTLE)  # an order right at the turn's start may be lost
+        if mem.globals()["decided"]:
+            # E08 T110 (batch E12a's third run: a retaliation ended the battle, the dead
+            # attacker still named active until the result window opened): decided, no order.
+            time.sleep(0.1)
+            continue
         if mem.globals()["active"] != active:
             # E09 T3b (batch TWN-1's 3b, the Archangels' blow that killed the Griffins): the
             # striker named the active stack again while it turns back after its attack (the
@@ -698,6 +712,138 @@ def play_waiting(game, mem, end, patience=2.0):
     return turns
 
 
+# E08 T110 (batch E12a's E12-4): the spell book in a battle of two humans. The book's key C is
+# its button's (hero_book_button 0x59E900 behind both, E17 design §7.16), which refuses with a
+# message without a hero, after the round's cast, at an anti-magic garrison (+0x53C4) or with the
+# Orb of Inhibition; else the book dialog (0x59BDF0, 620 x 595 at (90, 2)) opens over the battle.
+BOOK_KEY, BOOK_WAIT, CAST_WAIT = "c", 1.0, 6.0
+DEBUG_DUMPS = False  # True: each book turn's screen after its cast, <out>/book-<side>.xwd
+
+
+def spell_id(mem, name):
+    """A spell's id by its name in the game's spell table (E08 T110)."""
+    for k in range(70):
+        if mem.spell_name(k) == name:
+            return k
+    raise ValueError(f"no spell named {name!r}")
+
+
+def book_turn(game, mem, active, stack, spell, place):
+    """At the active stack's turn (E08 T110): the spell book's key; a refusal's message noted and
+    closed; an open book's place `place` clicked and its spell aimed at the active stack's own hex
+    (Bless's target), the cast waited for; then Defend. Returns the turn's record: the creature
+    and count, the book (`opened`, `refused` with the message's record, `nothing`), the cast
+    (`made`, `refused` with its record, `not tried`), the side's hero's spell points before and
+    after, the spells on the stack after."""
+    side = active[0]
+    hero = mem.battle_hero(side)
+    points = (lambda: mem.hero(hero)["spell_points"]) if hero is not None else (lambda: None)
+    record = {"creature": stack["creature"], "count": stack["count"], "hero": hero,
+              "points_before": points(), "cast": "not tried"}
+    game.key(BOOK_KEY, BOOK_WAIT)
+    kind = screen_kind(mem)
+    if kind == "message":
+        record["book"] = f"refused: {message_record(mem)}"
+        click_item(game, mem, "ok", {})
+    elif kind == "battle":
+        record["book"] = "nothing (no dialog)"
+    else:
+        shown = mem.dialog()
+        record["book"] = f"opened ({kind if kind != 'other' else hex(shown['vtable'])})"
+        game.move(*h3drive.book_place(place))
+        time.sleep(0.3)
+        game.click(*h3drive.book_place(place), settle=0.8)
+        kind = screen_kind(mem)
+        if kind == "message":
+            record["cast"] = f"refused: {message_record(mem)}"
+            click_item(game, mem, "ok", {})
+            if screen_kind(mem) not in ("battle", None):
+                game.key("Escape", 0.8)  # the book left open after the refusal
+        elif kind != "battle":
+            record["cast"] = f"the book stays open ({kind})"
+            game.key("Escape", 0.8)
+        else:
+            x, y = h3drive.hex_point(stack["hex"])
+            game.move(x, y)
+            time.sleep(0.4)
+            game.click(x, y, 0.5)
+            target = [stack["side"], stack["record"]]
+            try:
+                wait_for(lambda: spell in next(s["spells"] for s in mem.stacks()
+                                               if [s["side"], s["record"]] == target)
+                         or points() != record["points_before"], "the cast", CAST_WAIT)
+            except TimeoutError:
+                pass
+            # The cast's animation (a stack's +0x20 set while it plays; E17 design §7.15).
+            settled = time.monotonic() + CAST_WAIT
+            while time.monotonic() < settled and (mem.globals()["active"] is None
+                                                  or any(s["magic"] for s in mem.stacks())):
+                time.sleep(0.1)
+            time.sleep(0.5)
+            record["cast"] = "made" if points() != record["points_before"] else "not made"
+            if DEBUG_DUMPS:
+                game.dump(game.out / f"book-{SIDES[side]}.xwd")
+    record["points_after"] = points()
+    record["spells"] = next((s["spells"] for s in mem.stacks()
+                             if [s["side"], s["record"]] == [stack["side"], stack["record"]]), {})
+    if screen_kind(mem) == "message":
+        record["cast"] += f"; then {message_record(mem)}"
+        click_item(game, mem, "ok", {})
+    game.move(*BATTLE_PARK)
+    time.sleep(0.3)
+    if mem.globals()["active"] == active:
+        game.key("d", 0.3)
+        record["then"] = "defends"
+    else:
+        record["then"] = "its turn over"
+    return record
+
+
+def book_turns(game, mem, plan, end):
+    """E08 T110 (batch E12a's E12-4, both sides human): at each side's first stack's turn (not a
+    war machine) book_turn with the plan's `book` spell (its place in the book `place`, default 0:
+    the hero's only spell), every later stack of a side already done defending, until both sides
+    had theirs or the battle ends. Returns {side: the turn's record}."""
+    spell = spell_id(mem, plan["book"])
+    done = {}
+    while len(done) < 2 and not find_button(game, "battle_ok"):
+        if time.monotonic() > end:
+            raise TimeoutError("the book's turns: the battle goes on")
+        active = mem.globals()["active"]
+        stack = next((s for s in mem.stacks() if [s["side"], s["record"]] == active), None) \
+            if active else None
+        if stack is None or stack["creature"] in MACHINES:
+            time.sleep(0.1)
+            continue
+        time.sleep(TURN_SETTLE)
+        if mem.globals()["active"] != active:
+            continue
+        if active[0] in done:
+            game.key("d", 0.3)
+        else:
+            done[active[0]] = book_turn(game, mem, active, stack, spell, int(plan.get("place", 0)))
+            print(f"book: {SIDES[active[0]]} {done[active[0]]}", file=sys.stderr, flush=True)
+        try:
+            wait_for(lambda a=active: mem.globals()["active"] != a or find_button(game, "battle_ok"),
+                     "the next stack's turn", 30)
+        except TimeoutError:
+            game.dump(game.out / "book-stalled.xwd")
+            raise
+    return done
+
+
+def book_text(mem, turn):
+    """A side's spell-book turn (E08 T110): `10 Archangels: the book opened (0x...); cast made;
+    spell points 20 then 15; Bless on it (1 round)`; `no turn`."""
+    if turn is None:
+        return "no turn"
+    spells = ", ".join(f"{mem.spell_name(k)} ({r} round{'s' if r != 1 else ''})"
+                       for k, r in sorted(turn["spells"].items())) or "no spell"
+    return (f"{turn['count']} {mem.creature_name(turn['creature'], turn['count'])}: the book "
+            f"{turn['book']}; cast {turn['cast']}; spell points {turn['points_before']} then "
+            f"{turn['points_after']}; on the stack after: {spells}; then {turn['then']}")
+
+
 def end_tactics_phase(game, mem, end):
     """Ends a battle's tactics phase (E08 T47a): the message that opens it (GENRLTXT 373) closed
     with its OK, then the battle's Start button (item 30722, "Start Combat") clicked, until the
@@ -733,7 +879,13 @@ def fight(game, mem, plan, limit=300.0):
     Ballistics) is waited out: the side's first stack that is not a machine retreats."""
     if plan is None:
         raise RuntimeError("a battle the step does not plan (`battle`)")
-    if isinstance(plan, dict):
+    if isinstance(plan, dict) and "book" in plan:
+        # E08 T110 (batch E12a's E12-4): `{ book = "Bless", then = "attack" }`, optionally
+        # `place = <k>` (book_turns).
+        if set(plan) - {"book", "then", "place"} or plan.get("then") not in ("auto", "attack"):
+            raise ValueError(f"unknown battle plan `{plan}`")
+        action, side = "book", 0
+    elif isinstance(plan, dict):
         if set(plan) != {"attack", "by", "then"} or plan["by"] not in SIDES \
                 or plan["then"] not in ("auto", "attack") \
                 or not isinstance(plan["attack"], (str, list)) or plan["attack"] == []:
@@ -763,7 +915,15 @@ def fight(game, mem, plan, limit=300.0):
     record["tactics"] = mem.tactics_phase()
     if record["tactics"]:
         end_tactics_phase(game, mem, end)
-    if action == "first":
+    if action == "book":
+        record["books"] = book_turns(game, mem, plan, end)
+        if find_button(game, "battle_ok"):
+            pass
+        elif plan["then"] == "auto":
+            auto_combat(game, mem, end)
+        else:
+            attack_to_the_end(game, mem, end)
+    elif action == "first":
         if isinstance(plan["attack"], str):
             attack_until_gone(game, mem, side, plan["attack"], end)
         for creature in plan["attack"] if isinstance(plan["attack"], list) else []:
@@ -890,7 +1050,7 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
     end = time.monotonic() + 600
     while time.monotonic() < end:
         kind = screen_kind(mem)
-        if kind in ("exchange", "army", "boat", "hire"):
+        if kind in ("exchange", "army", "garrison", "boat", "hire"):
             # E08 T79a (batch E9a): also a mine's Leave Guards (the army dialog) and a
             # Shipyard's boat dialog. E08 T90 (batches E10a, E10b): the hire dialog, read as it
             # opens (`hires`: `opening`, before any click) and as the actions leave it (`after`,
@@ -904,11 +1064,19 @@ def settle(game, mem, index, answer=None, battle=None, level_up="left", actions=
                 shows = screen_heroes(mem, kind, index)
                 events.setdefault("exchanges", []).append(
                     {side: mem.hero(shows[side])["name"] for side in ("left", "right")})
+            if kind == "garrison":
+                # E08 T110 (batch E12a): where the hero stands as a garrison's exchange opens and
+                # both bars then (the record by that entrance, the hero's army).
+                hero = mem.hero(index)
+                found = garrison_at(mem, *hero["tile"])
+                events.setdefault("garrison_dialogs", []).append(
+                    {"at": hero["tile"], "upper": found["army"] if found else None,
+                     "lower": hero["slots"]})
             if actions and not events["actions"]:
                 events["actions"] = run_actions(game, mem, index, actions)
             if kind == "hire":
                 events["hires"][-1]["after"] = mem.recruit_dialog()
-            if (now := screen_kind(mem)) in ("exchange", "army", "boat", "hire"):
+            if (now := screen_kind(mem)) in ("exchange", "army", "garrison", "boat", "hire"):
                 close_screen(game, mem, now, screen_heroes(mem, now, index))
             last, since, known = None, time.monotonic(), time.monotonic()
             continue
@@ -1438,6 +1606,53 @@ SLOT_PLACES = {
 }
 
 
+def cast_on_map(game, mem, name, plan):
+    """E08 T110 (batch E12b's E12-14, E12-9): the selected hero's spell book on the adventure map
+    (its key C, the panel's book button's), the book's place `place` (default 0: the hero's only
+    adventure spell) clicked, the view the spell opens (View Earth's) closed with Escape, every
+    message's OK clicked (its record kept). `plan`: the spell's name, or { spell, place }.
+    Returns the observation: the book (`opened`, `refused` with the message's record), the screen
+    the cast showed, the spell points before and after."""
+    spell, place = (plan, 0) if isinstance(plan, str) else (plan["spell"], plan.get("place", 0))
+    index = mem.hero_named(name)["index"]
+    obs = {"hero": name, "messages": [], "cast": {"spell": spell,
+                                                  "before": mem.hero(index)["spell_points"]}}
+    game.move(*PARK)
+    game.key(BOOK_KEY, BOOK_WAIT)
+    kind = screen_kind(mem)
+    if kind == "message":
+        obs["cast"]["book"] = f"refused: {message_record(mem)}"
+        click_item(game, mem, "ok", None)
+    elif kind in ("map", None):
+        obs["cast"]["book"] = "nothing (no dialog)"
+    else:
+        obs["cast"]["book"] = "opened"
+        game.move(*h3drive.book_place(place))
+        time.sleep(0.3)
+        game.click(*h3drive.book_place(place), settle=1.5)
+        shown = mem.dialog()
+        kind = screen_kind(mem)
+        obs["cast"]["view"] = (kind if kind not in ("other", None) else
+                               hex(shown["vtable"]) if shown else "none")
+        for _ in range(4):
+            kind = screen_kind(mem)
+            if kind in ("map", None):
+                break
+            if kind == "message":
+                obs["messages"].append(message_record(mem))
+                click_item(game, mem, "ok", None)
+            else:
+                game.key("Escape", 1.0)
+        if screen_kind(mem) not in ("map", None):
+            game.dump(game.out / "cast-stuck.xwd")
+            raise RuntimeError(f"the cast's view does not close (the display: "
+                               f"{game.out / 'cast-stuck.xwd'})")
+    game.move(*PARK)
+    quiet_screen(game, 0.5)
+    obs["cast"]["after"] = mem.hero(index)["spell_points"]
+    return obs
+
+
 def open_hero_screen(game, mem, name):
     """Selects the hero and opens its hero screen by a click on it on the map."""
     hero = select(game, mem, name)
@@ -1514,6 +1729,13 @@ SCREEN_KINDS[h3mem.RECRUIT_DIALOG] = "hire"
 HALL_VTABLE, BUILD_VTABLE = 0x6437A0, 0x643944
 SCREEN_KINDS[HALL_VTABLE] = "hall"
 SCREEN_KINDS[BUILD_VTABLE] = "build"
+# E08 T110 (batch E12a): a garrison's exchange (garrison_exchange_create 0x5D0E00 writes the vtable
+# 0x643890 over garrison_dialog_create 0x5CE830, the army dialog's base, `read`): the garrison's
+# army the upper bar, the hero's the lower, the army dialog's items (garrison_dialog_create builds
+# them for both). A walk plays the step's `actions` in it and closes it with its OK, as the army
+# dialog's; `garrison_dialogs` notes the bars as it opened.
+GARRISON_VTABLE = 0x643890
+SCREEN_KINDS[GARRISON_VTABLE] = "garrison"
 HALL_BUILDINGS, HALL_SLOT, HALL_BAR = range(10, 14), 700, 400
 HALL_LOOKS = ("built", "buildable", "not now", "never")
 # E09 T23 (batch TWN-3): the town screen's two portraits' boxes' top-left corners (58 x 64), the
@@ -1530,7 +1752,9 @@ BUILD_TEXT, BUILD_GREYED = 5, 0x28
 # the five shown); a range's first id here. The hero screen (`hero_screen_proc` 0x4DD2D0): army
 # slots 68-74, worn positions 2-20, backpack places 40-44, its arrows 77 (left: the last becomes
 # the first) and 78 (right: the first becomes the last), loose 122, tight 124, the tactics
-# formation 126, split 127, close 30720. The exchange (`swap_manager_proc` 0x5AFDF0; left the
+# formation 126, split 127, close 30720; since E08 T110 the morale and luck pictures 116 and 117
+# (observed under Wine: 44 x 44 at (246, 191) and (304, 191), frame 3 neutral; a right click
+# shows their lists). The exchange (`swap_manager_proc` 0x5AFDF0; left the
 # visitor, right the visited): armies 13-19 and 20-26, worn positions 27-45 and 46-64, backpack
 # places 89-93 and 94-98, their arrows 99 and 101, 100 and 102, the split buttons 103 and 104,
 # close 30720. The army dialog (0x5D0910): the group's slots (upper) 115-121, the hero's army
@@ -1544,13 +1768,15 @@ BUILD_TEXT, BUILD_GREYED = 5, 0x28
 # (army_dialog_with 0x5D12B0: the mine's guards upper, the hero's army lower).
 SCREEN_ITEMS = {
     "hero": {"army": 68, "worn": 2, "backpack": 40, "backpack left": 77, "backpack right": 78,
-             "loose": 122, "tight": 124, "tactics": 126, "split": 127, "close": 30720},
+             "loose": 122, "tight": 124, "tactics": 126, "split": 127, "close": 30720,
+             "morale": 116, "luck": 117},
     "exchange": {"left army": 13, "right army": 20, "left worn": 27, "right worn": 46,
                  "left backpack": 89, "right backpack": 94, "left backpack left": 99,
                  "left backpack right": 101, "right backpack left": 100,
                  "right backpack right": 102, "left split": 103, "right split": 104,
                  "close": 30720},
     "army": {"upper": 115, "lower": 140, "split": 154, "ok": 30722},
+    "garrison": {"upper": 115, "lower": 140, "split": 154, "ok": 30722},
     "creature": {"dismiss": 30723, "ok": 30722},
     "split": {"ok": 30722, "cancel": 30721},
     "message": {"ok": 30722, "yes": 30725, "no": 30726, "left": 30729, "right": 30730},
@@ -1564,7 +1790,8 @@ SCREEN_ITEMS = {
 # The counts each screen shows under its army slots (text items, first id): the hero screen's
 # 61-67, the exchange's 65-71 and 72-78, the army dialog's 108-114 and 133-139.
 SHOWN_COUNTS = {("hero", "army"): 61, ("exchange", "left army"): 65,
-                ("exchange", "right army"): 72, ("army", "upper"): 108, ("army", "lower"): 133}
+                ("exchange", "right army"): 72, ("army", "upper"): 108, ("army", "lower"): 133,
+                ("garrison", "upper"): 108, ("garrison", "lower"): 133}
 SPLIT_SLIDER, SPLIT_COUNTS = 6, (4, 5)
 SHOWN = 0x4  # an item's state bit while it is drawn (an empty slot's count, an empty place: clear)
 QUESTION = (30725, 30726)  # a message's yes and no
@@ -1784,6 +2011,32 @@ def answer_question(game, mem, answer, heroes):
     return record
 
 
+# E08 T110 (batch E12b's E12-11: the hero screen's morale and luck windows): the lines of the
+# last right click's window, each by the records that format it (popup_lines).
+LAST_POPUP = []
+LINE_TABLES = ("ARRAYTXT.TXT", "GENRLTXT.TXT")
+
+
+def popup_lines(text):
+    """A window's text line by line, each named by the records of LINE_TABLES that format it
+    (`ARRAYTXT:96`; several `ARRAYTXT:68|93`), else `[other: n characters]` (ADR-0009: names,
+    not the text)."""
+    out = []
+    for line in (line.strip() for line in text.split("\n")):
+        if not line:
+            continue
+        found = []
+        for name in LINE_TABLES:
+            try:
+                hits = h3lod.matches(name, line)
+            except (KeyError, OSError):
+                continue
+            if hits:
+                found.append(f"{name.split('.')[0]}:{'|'.join(hits)}")
+        out.append(", ".join(found) or f"[other: {len(line)} characters]")
+    return out
+
+
 def right_click(game, mem, name, heroes, answer):
     """A right click on the item `name` (E08 T47a): the button held while the screen is read. A
     question (the assembly's, GENRLTXT 733) stays after the release and is answered; a window
@@ -1799,6 +2052,8 @@ def right_click(game, mem, name, heroes, answer):
     shown = mem.dialog()
     opened = shown is not None and shown["at"] != before
     record = (h3lod.identify(mem.dialog_text()) or "?") if opened else None
+    # E08 T110 (batch E12b's E12-11): the window's text line by line (popup_lines).
+    LAST_POPUP[:] = popup_lines(mem.dialog_text()) if opened else []
     asked = question_record(mem) if opened else None
     h3drive.run("xdotool", "mouseup", "3")
     game.move(*PARK)
@@ -1882,6 +2137,25 @@ def shown_backpack(mem):
     return ", ".join(mem.artifact_name(a) if a > 0 else "empty" for a in hero_items)
 
 
+# E08 T110 (batch E12a's E12-3, observed under Wine): the army dialog's and a garrison exchange's
+# bar slots (upper 115-121, lower 140-146) have the state 0x2, a selected (highlighted) slot 0x6;
+# a click on a stack selects it, a move clears it, a refused move or take leaves it.
+BAR_SELECTED = 0x4
+
+
+def bar_selection(mem):
+    """The bar slot a garrison exchange or army dialog shows selected (E08 T110): `upper 0`,
+    `lower 1`, `none`; None on another screen."""
+    kind = screen_kind(mem)
+    if kind not in ("army", "garrison"):
+        return None
+    items = SCREEN_ITEMS[kind]
+    states = {i["id"]: i["state"] for i in mem.dialog_items()}
+    found = [f"{part} {k}" for part in ("upper", "lower") for k in range(7)
+             if states.get(items[part] + k, 0) & BAR_SELECTED]
+    return ", ".join(found) or "none"
+
+
 def run_actions(game, mem, step_hero, actions):
     """Plays a step's `actions` in the screens showing (E08 T47a): each action one `click` (a list
     of item names, clicked in order on whichever screen shows at each), `right` (an item's name)
@@ -1901,16 +2175,31 @@ def run_actions(game, mem, step_hero, actions):
         if len(kinds) > 1 or set(action) - {*SCREEN_ACTIONS, "answer", "record", "note"}:
             raise ValueError(f"an action does one of {', '.join(SCREEN_ACTIONS)}: {action}")
         obs = {"action": action, "questions": [], "messages": [],
-               "before": snapshot(mem, step_hero)}
+               "before": snapshot(mem, step_hero),
+               # E08 T110 (batch E12a's E12-3): the bars' selected slot before the clicks.
+               "selected_before": bar_selection(mem), "creature_windows": []}
         names = action.get("click", [])
-        for name in [names] if isinstance(names, str) else names:
+        names = [names] if isinstance(names, str) else names
+        for k, name in enumerate(names):
             heroes = screen_heroes(mem, screen_kind(mem), step_hero)
+            was = screen_kind(mem)
             click_item(game, mem, name, heroes)
             pass_dialogs(game, mem, obs, action.get("answer"), heroes)
+            if was in ("army", "garrison"):
+                obs.setdefault("clicks", []).append((name, bar_selection(mem)))
+            following = names[k + 1].partition(":")[0] if k + 1 < len(names) else None
+            if was in ("army", "garrison") and screen_kind(mem) == "creature" \
+                    and following not in SCREEN_ITEMS["creature"]:
+                # E08 T110 (batch E12a's E12-3): a second click on a selected stack opens the
+                # creature's window: noted (after which click) and closed with its OK, unless the
+                # action's next click is the window's own (the harness check's dismissal).
+                obs["creature_windows"].append(name)
+                click_item(game, mem, "ok", heroes)
         if "right" in action:
             heroes = screen_heroes(mem, screen_kind(mem), step_hero)
             obs["shown"], asked = right_click(game, mem, action["right"], heroes,
                                               action.get("answer"))
+            obs["popup_lines"] = list(LAST_POPUP)  # E08 T110
             if asked is not None:
                 obs["questions"].append({"record": asked, "kind": "other",
                                          "answer": action["answer"]})
@@ -1934,7 +2223,8 @@ def run_actions(game, mem, step_hero, actions):
             slider_max(game, mem)
         obs["screen"] = screen_kind(mem)
         obs["after"] = snapshot(mem, step_hero)
-        obs["record"] = {field: value(obs, what, mem)
+        # E08 T110 (batch E12a's E12-3): a `row:<table>` field adds a table row (record_value).
+        obs["record"] = {field: record_value(obs, field, what, mem)
                          for field, what in action.get("record", {}).items()}
         obs["notes"] = [f"{label}: {got}" for label, what in action.get("note", {}).items()
                         if (got := value(obs, what, mem)) != "none"]
@@ -2093,7 +2383,8 @@ def close_screen(game, mem, kind, heroes):
     """Closes a hero screen, exchange or army dialog an action left open (its close or OK; since
     E08 T79a a boat dialog by its cancel: nothing built)."""
     if screen_kind(mem) == kind:
-        click_item(game, mem, {"army": "ok", "boat": "cancel"}.get(kind, "close"), heroes)
+        click_item(game, mem, {"army": "ok", "garrison": "ok", "boat": "cancel"}.get(kind, "close"),
+                   heroes)
 
 
 def close_town_screen(game, mem):
@@ -2232,6 +2523,14 @@ def hero_value(mem, hero, field):
         return str(hero[field])
     if field == "status":
         return f"{hero['status']:#x}"
+    # E08 T110 (batch E12b): one bit of the status (`bit:<n>`: set, clear) and a u32 of the
+    # record read live (`word:<offset>`, hex: the School of War bits +0x7B).
+    if m := re.match(r"bit:(\d+)$", field):
+        return "set" if hero["status"] >> int(m.group(1)) & 1 else "clear"
+    if m := re.match(r"word:(0x[0-9a-fA-F]+|\d+)$", field):
+        offset = int(m.group(1), 0)
+        address = mem.game() + h3mem.HEROES + h3mem.HERO_SIZE * hero["index"] + offset
+        return f"{mem.u32(address):#010x}"
     # E08 T100a (batch E11a): whether the hero is in a boat (status bit 18, h3mem.IN_BOAT).
     if field == "in_boat":
         return "yes" if hero["status"] & h3mem.IN_BOAT else "no"
@@ -2364,6 +2663,53 @@ def mine_text(mem, x, y, z=0):
             f"abandoned {mine['abandoned']}; guards {guards}")
 
 
+def bonus_word_text(mem, kind, x, y, z=0):
+    """E08 T110 (batch E12b): a Fountain of Fortune's tile word, `value +2; team bits none (word
+    0x00004000)` (its bits 13 to 16 signed, survey E08-garrisons-bonuses §10.6; the team bits 5 to
+    12 by colour), or a Magic Spring's entrance, `full (bit 6 set; word 0x00000040)`; ` (under
+    <hero>)` when a hero stands there (the word under it)."""
+    tile = mem.tile_word(x, y, z)
+    word = tile["under_word"] if "hero" in tile else tile["word"]
+    under = f" (under {mem.hero(tile['hero'])['name']})" if "hero" in tile else ""
+    if kind == "spring":
+        return (f"{'full (bit 6 set' if word >> 6 & 1 else 'emptied (bit 6 clear'}; word "
+                f"{word:#010x}){under}")
+    value = word >> 13 & 0xF
+    value -= 16 * (value > 7)
+    teams = ", ".join(COLOURS[k] for k in range(8) if word >> (5 + k) & 1) or "none"
+    return f"value {value:+d}; team bits {teams} (word {word:#010x}){under}"
+
+
+def garrison_at(mem, x, y, z=0):
+    """E08 T110 (batch E12a): the garrison's record whose entrance is (x, y, z) (h3mem.garrisons),
+    None for none."""
+    return next((g for g in mem.garrisons() if g["entrance"] == [x, y, z]), None)
+
+
+def army_slots_text(mem, slots):
+    """An army's slots as a bar shows them, slot by slot (`0: 2 Pikemen, 1: 10 Archangels`; a
+    count without a creature `2: 5 (no creature)`), `empty` for none (E08 T110)."""
+    return ", ".join(f"{k}: {c} " + (mem.creature_name(t, c) if t >= 0 else "(no creature)")
+                     for k, (t, c) in enumerate(slots) if t >= 0 or c) or "empty"
+
+
+def garrison_text(mem, x, y, z=0, part=None):
+    """A garrison's record by its entrance (E08 T110, batch E12a; h3mem.garrisons, game +0x4E3AC):
+    `record 2; owner red; stacks 0: 5 Pikemen; removable 0; entrance 29,6` (`stacks empty`);
+    `garrison:x,y[,level]:owner|stacks|removable|entrance|index` one field of it; `none` without
+    a record there."""
+    found = garrison_at(mem, x, y, z)
+    if found is None:
+        return "none"
+    fields = {"index": str(found["index"]), "owner": colour_name(found["owner"]),
+              "stacks": army_slots_text(mem, found["army"]),
+              "removable": str(found["removable"]), "entrance": tile_name(found["entrance"])}
+    if part:
+        return fields[part]
+    return (f"record {fields['index']}; owner {fields['owner']}; stacks {fields['stacks']}; "
+            f"removable {fields['removable']}; entrance {fields['entrance']}")
+
+
 def dwelling_text(mem, x, y, z=0, part=None):
     """A dwelling's record by its entrance (E08 T90, batches E10a, E10b; h3mem.dwellings, game
     +0x4E39C): `record 3; class 20.1; owner none; creatures 0: 14 Pikemen (the slots with a
@@ -2477,6 +2823,16 @@ def text_parts(mem, text, tile):
                        mem.owned_name(dwelling["owner"])))
     for colour in range(8):
         pieces.append((f"owned-by text of {COLOURS[colour]}", mem.owned_name(colour)))
+    # E08 T110 (batch E12b's E12-16, E12-17): the visit marks (GENRLTXT 353 visited, 354 not
+    # visited) and the bonus lines (XTRAINFO's records, E24 design §4.11) by their records.
+    for name, rows in (("GENRLTXT", (353, 354)), ("XTRAINFO", None)):
+        try:
+            found = h3lod.table(f"{name}.TXT")
+        except (KeyError, OSError):
+            continue
+        for row in range(len(found)) if rows is None else rows:
+            if row < len(found) and found[row]:
+                pieces.append((f"{name} {row}", found[row][0]))
     pieces = [(label, piece.strip()) for label, piece in pieces if piece and piece.strip()]
     out, rest = [], text
     while rest:
@@ -2494,18 +2850,38 @@ def text_parts(mem, text, tile):
                    for part in out).replace("\n", " / ")
 
 
+HINT_WAIT = 3.0
+
+
 def hint_at(game, mem, x, y, level=0):
     """The status bar's hint with the mouse on tile (x, y) (E08 T90, E10-10; h3mem.status_bar,
     the adventure dialog's item 200 and the message buffer 0x6973D8), after the clock's quiet
     pause: {bar, buffer, parts}, parts by `text_parts`."""
+    # E08 T110 (batch E12b's first run: one hint read empty, one the tile before's): the mouse
+    # parked first, then the text read until it is not empty and two reads 0.3 s apart agree (at
+    # most HINT_WAIT seconds).
+    game.move(*PARK)
+    time.sleep(0.3)
     try:
         hover(game, mem, x, y, level)
     except ValueError:
         centre(game, mem, x, y, level)
         hover(game, mem, x, y, level)
     quiet_screen(game, 0.5)
-    shown = mem.status_bar()
+    shown, end = mem.status_bar(), time.monotonic() + HINT_WAIT
+    while time.monotonic() < end:
+        time.sleep(0.3)
+        again = mem.status_bar()
+        if again == shown and (again["bar"] or again["buffer"]):
+            break
+        shown = again
     text = shown["bar"] if shown["bar"] else shown["buffer"] or ""
+    if not mem.explored(x, y, level):
+        # E08 T110 (batch E12b's E12-16: the Mermaids' entrance before): over a tile the current
+        # player has not explored the mouse-over shows no hint (adventure_mouse_move 0x40E360:
+        # the arrow alone), so the bar keeps the text before.
+        return {**shown, "parts": "the tile is not explored: no hint (the bar kept the text "
+                                  f"before: {text_parts(mem, text, (x, y, level))})"}
     return {**shown, "parts": text_parts(mem, text, (x, y, level))}
 
 
@@ -2999,6 +3375,28 @@ def value(obs, what, mem):
         return (h3lod.identify(mem.dialog_text()) or "?") if mem.dialog() else "none"
     if what == "split:counts":
         return split_counts(mem)
+    # E08 T110 (batch E12a's E12-3): the bars' selected slot after an action (`bar:selected`) and
+    # before its clicks (`bar:selected:before`), the creature windows its clicks opened.
+    if what in ("bar:selected", "bar:selected:before"):
+        got = obs.get("selected_before") if what.endswith("before") else bar_selection(mem)
+        return got or "no bars"
+    if what == "popup:lines":
+        # E08 T110: the lines of an action's right-click window, each by its records.
+        return " / ".join(obs.get("popup_lines", [])) or "none"
+    if what == "bar:clicks":
+        # E08 T110: each click of the action with the slot selected after it (`lower:1: lower 1
+        # selected, upper:1: none selected`).
+        return ", ".join(f"{n}: {sel} selected" for n, sel in obs.get("clicks", [])) or "none"
+    if what == "creature_windows":
+        return ", ".join(f"after the click on {n} (closed with its OK)"
+                         for n in obs.get("creature_windows", [])) or "none"
+    if m := re.match(r"dialog:(items|boxes)(?::(\d+)-(\d+))?$", what):
+        # E08 T110: the topmost dialog's items (`id:state:frame`; `boxes` also each box and
+        # vtable), those of an id range only: a probe for a new screen's items.
+        low, high = (int(m.group(2)), int(m.group(3))) if m.group(2) else (0, 1 << 16)
+        return " ".join(f"{i['id']}:{i['state']:#x}:{i['frame']}"
+                        + (f":{i['box']}:{i['vtable']:#x}" if m.group(1) == "boxes" else "")
+                        for i in mem.dialog_items() if low <= i["id"] <= high) or "none"
     if what == "shown:backpack":
         return shown_backpack(mem)
     if what.startswith("shown:"):
@@ -3037,6 +3435,18 @@ def value(obs, what, mem):
         return boat_value(mem, hero, what)
     if what == "drawn":
         return drawn_text(mem, after["hero"])
+    # E08 T110 (batch E12a's E12-4): the last battle's anti-magic flag at its opening (+0x53C4:
+    # `set (1)`, `clear (0)`) and a side's spell-book turn (`book:attacker`, `book:defender`:
+    # book_text).
+    if what == "anti_magic":
+        if not battles:
+            return "no battle"
+        flag = battles[-1]["field"]["anti_magic"]
+        return f"{'set' if flag else 'clear'} ({flag})"
+    if m := re.match(r"book:(attacker|defender)$", what):
+        if not battles:
+            return "no battle"
+        return book_text(mem, battles[-1].get("books", {}).get(SIDES.index(m.group(1))))
     if what in ("opening:field", "battlefield:ship", "blocked"):
         if not battles:
             return "no battle"
@@ -3125,6 +3535,24 @@ def value(obs, what, mem):
                              m.group(4))
     if what == "teams":
         return teams_text(mem)
+    # E08 T110 (batch E12b): a Fountain of Fortune's tile word (`fountain:x,y`: the value, bits
+    # 13 to 16 signed, and the team bits 5 to 12) and a Magic Spring's entrance (`spring:x,y`:
+    # bit 6 full), each the tile's own word (h3mem.tile_word; under a hero standing there).
+    if m := re.match(r"(fountain|spring):(\d+),(\d+)(?:,(\d))?$", what):
+        return bonus_word_text(mem, m.group(1), int(m.group(2)), int(m.group(3)),
+                               int(m.group(4) or 0))
+    # E08 T110 (batch E12a): a garrison's record by its entrance (`garrison:x,y[,level][:part]`,
+    # garrison_text), live; the bars of each garrison exchange the step's walk opened, as it
+    # opened (`at 8,3: upper 0: 2 Pikemen; lower 0: 10 Archangels`).
+    if m := re.match(r"garrison:(\d+),(\d+)(?:,(\d))?(?::(owner|stacks|removable|entrance|"
+                     r"index))?$", what):
+        return garrison_text(mem, int(m.group(1)), int(m.group(2)), int(m.group(3) or 0),
+                             m.group(4))
+    if what == "garrison_dialogs":
+        return "; ".join(f"at {tile_name(d['at'])}: upper "
+                         f"{'no record' if d['upper'] is None else army_slots_text(mem, d['upper'])}"
+                         f"; lower {army_slots_text(mem, d['lower'])}"
+                         for d in obs.get("garrison_dialogs", [])) or "none"
     if m := re.match(r"(objects|access):(\d+),(\d+):(\d+),(\d+)(?:,(\d))?$", what):
         x0, y0, x1, y1 = (int(m.group(k)) for k in range(2, 6))
         return (objects_text if m.group(1) == "objects" else access_text)(
@@ -3143,6 +3571,19 @@ def value(obs, what, mem):
         found = obs[what]
         return found["parts"] if what == "hint" else (
             f"{found['record']}: {found['parts']}" if found["opened"] else "no window")
+    if what == "cast":
+        # E08 T110 (batch E12b): a `cast` step's book and spell points (`the book opened; View
+        # Earth: the view 0x...; spell points 20 then 18`).
+        cast = obs.get("cast")
+        if not cast:
+            return "none"
+        view = f"; the view {cast['view']}" if "view" in cast else ""
+        return (f"the book {cast['book']}; {cast['spell']}{view}; spell points {cast['before']} "
+                f"then {cast['after']}")
+    if what == "hints":
+        # E08 T110 (batch E12b): each hint of the step's list, `x,y: <parts>`.
+        return "; ".join(f"{tile_name(h['tile'])}: {h['parts']}"
+                         for h in obs.get("hints", [])) or "none"
     if what == "hint:raw":
         found = obs.get("hint")
         return "none" if not found else ("same" if found["bar"] == found["buffer"]
@@ -3221,6 +3662,12 @@ def value(obs, what, mem):
     if what == "unknown_screens":
         return ", ".join(obs.get("unknown_screens", [])) or "none"
     raise ValueError(f"unknown observation `{what}`")
+
+
+def absolute_day(mem):
+    """The game's day from 1 (E08 T110): (month - 1) x 28 + (week - 1) x 7 + the day."""
+    month, week, day = mem.date()
+    return (month - 1) * 28 + (week - 1) * 7 + day
 
 
 def player_colour(obs, named, mem):
@@ -3306,7 +3753,12 @@ def fill(template, values, notes, header):
             continue
         if section is not None:
             m = re.match(r"- (.+): ?$", line)
-            if m and (section, m.group(1)) in values:
+            if m and m.group(1) == "anything odd" and (section, m.group(1)) in values \
+                    and notes.get(section):
+                # E08 T110: a recipe's own `+anything odd` lines and the notes, both kept.
+                line = (f"- anything odd: {values.pop((section, m.group(1)))}; "
+                        f"{'; '.join(notes.pop(section))}")
+            elif m and (section, m.group(1)) in values:
                 line = f"- {m.group(1)}: {values.pop((section, m.group(1)))}"
             elif m and m.group(1) == "anything odd" and notes.get(section):
                 line = f"- anything odd: {'; '.join(notes.pop(section))}"
@@ -3585,6 +4037,16 @@ def batch(recipe_path, map_path=None, out=None):
                 # player's resources after it, for the step's `record` and `note`.
                 obs = {"end_turn": True, "messages": [], "message_pictures": []}
                 obs["player"] = end_turn(game, mem, obs)
+                # E08 T110 (batch E12b): `to_day = <n>` ends turns until the recipe's first
+                # player's turn of the game's day n (from 1; month, week and day: 28 a month);
+                # the messages of every turn passed kept.
+                first = COLOURS.index(recipe["players"][0].lower())
+                while step.get("to_day") and not (
+                        obs["player"] == first and absolute_day(mem) == int(step["to_day"])):
+                    if absolute_day(mem) > int(step["to_day"]):
+                        raise RuntimeError(f"`to_day = {step['to_day']}`: day "
+                                           f"{absolute_day(mem)} passed it")
+                    obs["player"] = end_turn(game, mem, obs)
                 obs["after"] = {"resources": {COLOURS[c]: mem.player(c)["resources"]
                                               for c in range(8) if mem.player(c)["heroes"]}}
             elif step.get("look"):
@@ -3609,7 +4071,7 @@ def batch(recipe_path, map_path=None, out=None):
                 index = select(game, mem, step["hero"])["index"]
                 before = snapshot(mem, index)
                 pre = pre_read(step, before, mem)
-                acts = ("walk", "equip", "screen", "key", "replay")
+                acts = ("walk", "equip", "screen", "key", "replay", "cast")
                 if sum(k in step for k in acts) > 1 or (
                         ("hint" in step or "popup" in step) and any(k in step for k in acts)):
                     raise ValueError("a step walks, equips, opens a screen, presses a key "
@@ -3666,8 +4128,14 @@ def batch(recipe_path, map_path=None, out=None):
                     # status bar's text) and a right click on a tile (`popup = [x, y]`: the
                     # window it shows), in that order; the observations `hint` and `popup`.
                     obs = {"hero": step["hero"]}
-                    if "hint" in step:
+                    if "hint" in step and isinstance(step["hint"][0], list):
+                        # E08 T110 (batch E12b): several tiles' hints in order (`hints`).
+                        obs["hints"] = [{**hint_at(game, mem, *tile), "tile": tile}
+                                        for tile in step["hint"]]
+                        obs["hint"] = obs["hints"][0]
+                    elif "hint" in step:
                         obs["hint"] = hint_at(game, mem, *step["hint"])
+                        obs["hints"] = [{**obs["hint"], "tile": step["hint"]}]
                     if "popup" in step:
                         obs["popup"] = popup_at(game, mem, *step["popup"])
                 elif "key" in step and "repeat" in step:
@@ -3680,6 +4148,8 @@ def batch(recipe_path, map_path=None, out=None):
                                 step.get("battle"), step.get("level_up", "left"))
                 elif "replay" in step:
                     obs = replay(game, mem, step["hero"], step["replay"])
+                elif "cast" in step:
+                    obs = cast_on_map(game, mem, step["hero"], step["cast"])  # E08 T110
                 elif "equip" in step:
                     obs = equip(game, mem, step["hero"], step["equip"])
                 elif "screen" in step:
@@ -3702,12 +4172,23 @@ def batch(recipe_path, map_path=None, out=None):
             # after the step.
             obs["record"] = {}
             for done in obs.get("actions", []):
-                obs["record"].update(done["record"])
+                for field, got in done["record"].items():
+                    # E08 T110: the actions' rows of one table all kept, in order, and a `+`
+                    # field's values joined.
+                    if field.startswith("row:") and field in obs["record"]:
+                        obs["record"][field] = obs["record"][field] + got
+                    elif field.startswith("+") and field in obs["record"]:
+                        obs["record"][field] = f"{obs['record'][field]}; {got}"
+                    else:
+                        obs["record"][field] = got
                 notes.setdefault(step["encounter"], []).extend(done["notes"])
-            obs["record"].update({field: ([[obs["skipped"]]] if field.startswith("row:")
-                                          else obs["skipped"]) if obs.get("skipped")
-                                  else record_value(obs, field, what, mem)
-                                  for field, what in step.get("record", {}).items()})
+            # E08 T110 (batch E12a's E12-1): a step `skip_quietly = true` that is not played
+            # records nothing (a branch of a row that rarely plays).
+            quiet = obs.get("skipped") and step.get("skip_quietly")
+            obs["record"].update({} if quiet else {
+                field: ([[obs["skipped"]]] if field.startswith("row:") else obs["skipped"])
+                if obs.get("skipped") else record_value(obs, field, what, mem)
+                for field, what in step.get("record", {}).items()})
             steps.append(obs)
             log.write(json.dumps(obs) + "\n")
             log.flush()
@@ -3734,7 +4215,7 @@ def batch(recipe_path, map_path=None, out=None):
                 notes.setdefault(step["encounter"], []).append(note)
             # E08 T32b2: `note` reads like `record`, under "anything odd" unless it reads `none`
             # (batch E4: a worn artifact, the starting bonus's trap).
-            for label, what in step.get("note", {}).items():
+            for label, what in ({} if quiet else step.get("note", {})).items():
                 if (got := value(obs, what, mem)) != "none":
                     notes.setdefault(step["encounter"], []).append(f"{label}: {got}")
     finally:

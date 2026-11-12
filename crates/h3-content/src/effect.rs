@@ -733,7 +733,31 @@ pub enum HeroEffect<C, K, S, F, L, R> {
     /// combination (the Sea Captain's Hat, so the Admiral's Hat through its part: tested as
     /// `hero_wears_artifact` 0x4D91F0 with 123; VCMI's `WHIRLPOOL_PROTECTION`).
     WhirlpoolProtection,
+    /// Creatures added to a town's growth of `level` a week while the hero is that town's
+    /// garrison hero or visitor (pack format v52, E09 increment 3; ADR-0013 point 16.4,
+    /// TWN-GRO-001): each worn artifact type once, worn or a part of a worn combination (the
+    /// Legs, Loins, Torso, Arms and Head of Legion: +5, +4, +3, +2, +1 at levels 2 to 6;
+    /// `town_legion_growth` 0x5BF900 with `hero_wears_artifact` 0x4D91F0). One per level in a
+    /// list.
+    TownGrowth {
+        /// The creature level (1 to [`TOWN_GROWTH_LEVELS`]).
+        level: u8,
+        /// Creatures a week (≥ 1).
+        amount: u16,
+    },
+    /// Every town of the hero's owner grows by this share of its growth a week (pack format v52,
+    /// E09 increment 3; ADR-0013 point 16.4, TWN-GRO-001): the highest of the owner's heroes on
+    /// the map and in its towns' garrisons, each worn artifact type once (the Statue of Legion
+    /// 5 000, half; `player_hero_wears_artifact` 0x4BACB0).
+    OwnerTownGrowth {
+        /// The share in basis points (1..=10 000).
+        bp: u16,
+    },
 }
+
+/// The creature levels of [`HeroEffect::TownGrowth`]: a town's dwelling levels (`h3-towns`'
+/// `MAX_CREATURE_LEVELS`).
+pub const TOWN_GROWTH_LEVELS: u8 = 7;
 
 /// The highest [`HeroEffect::DailyResource`] amount: a treasury's bound (GAM-RES-001, the
 /// adventure's `MAX_GAIN`), so one source never overflows a sum of a few.
@@ -752,7 +776,7 @@ pub type CompiledHeroEffect =
 
 impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 61] = [
+    pub const NAMES: [&'static str; 63] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -814,6 +838,8 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
         "extra_mana_regain",
         "full_mana",
         "whirlpool_protection",
+        "town_growth",
+        "owner_town_growth",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -880,6 +906,8 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
             Self::ExtraManaRegain { .. } => 58,
             Self::FullMana => 59,
             Self::WhirlpoolProtection => 60,
+            Self::TownGrowth { .. } => 61,
+            Self::OwnerTownGrowth { .. } => 62,
         }
     }
 
@@ -1091,6 +1119,11 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
             Self::ExtraManaRegain { points } => HeroEffect::ExtraManaRegain { points: *points },
             Self::FullMana => HeroEffect::FullMana,
             Self::WhirlpoolProtection => HeroEffect::WhirlpoolProtection,
+            Self::TownGrowth { level, amount } => HeroEffect::TownGrowth {
+                level: *level,
+                amount: *amount,
+            },
+            Self::OwnerTownGrowth { bp } => HeroEffect::OwnerTownGrowth { bp: *bp },
         })
     }
 
@@ -1222,6 +1255,13 @@ impl<C, K, S, F, L, R> HeroEffect<C, K, S, F, L, R> {
             {
                 Some("mana_regain and extra_mana_regain points must be 1..=999")
             }
+            Self::TownGrowth { level, .. } if !(1..=TOWN_GROWTH_LEVELS).contains(level) => {
+                Some("town_growth level must be 1..=7")
+            }
+            Self::TownGrowth { amount: 0, .. } => Some("town_growth amount must be at least 1"),
+            Self::OwnerTownGrowth { bp } if !(1..=FULL_BP).contains(bp) => {
+                Some("owner_town_growth bp must be 1..=10000")
+            }
             _ => None,
         }
     }
@@ -1232,7 +1272,8 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq, R: PartialEq> HeroEffect<C,
     /// luck (and their caps) for different sides, creature-selecting kinds for different
     /// creatures (or statistics), school masteries for different schools, spell-damage
     /// bonuses for different scopes and spell grants, masteries, immunities and opening spells
-    /// for different spells, daily resources for different resources.
+    /// for different spells, daily resources for different resources, town growth for different
+    /// levels.
     fn collides(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
@@ -1280,6 +1321,7 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq, R: PartialEq> HeroEffect<C,
             (Self::DailyResource { resource: a, .. }, Self::DailyResource { resource: b, .. }) => {
                 a == b
             }
+            (Self::TownGrowth { level: a, .. }, Self::TownGrowth { level: b, .. }) => a == b,
             _ => self.code() == other.code(),
         }
     }
@@ -1495,6 +1537,11 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u32(*amount);
             }
             Self::ManaRegain { points } | Self::ExtraManaRegain { points } => h.write_u16(*points),
+            Self::TownGrowth { level, amount } => {
+                h.write_u8(*level);
+                h.write_u16(*amount);
+            }
+            Self::OwnerTownGrowth { bp } => h.write_u16(*bp),
             Self::Raises { priority, creature } => {
                 h.write_u8(*priority);
                 creature.hash_into(h);
@@ -1651,6 +1698,11 @@ mod tests {
             E::ExtraManaRegain { points: 3 },
             E::FullMana,
             E::WhirlpoolProtection,
+            E::TownGrowth {
+                level: 2,
+                amount: 5,
+            },
+            E::OwnerTownGrowth { bp: 5000 },
         ]
     }
 
@@ -1701,6 +1753,15 @@ mod tests {
         incomes.push(daily(3));
         assert_eq!(
             list_error(&incomes, false),
+            Some("an effect is listed twice")
+        );
+        // Town growth collides only for the same level (E09 increment 3).
+        let growth = |level| E::TownGrowth { level, amount: 1 };
+        let mut levels = std::vec![growth(1), growth(7)];
+        assert_eq!(list_error(&levels, false), None);
+        levels.push(growth(7));
+        assert_eq!(
+            list_error(&levels, false),
             Some("an effect is listed twice")
         );
         // Morale and luck collide only for the same side.
@@ -2002,6 +2063,20 @@ mod tests {
             E::ManaRegain { points: 1000 },
             E::ExtraManaRegain { points: 0 },
             E::ExtraManaRegain { points: 1000 },
+            E::TownGrowth {
+                level: 0,
+                amount: 1,
+            },
+            E::TownGrowth {
+                level: 8,
+                amount: 1,
+            },
+            E::TownGrowth {
+                level: 7,
+                amount: 0,
+            },
+            E::OwnerTownGrowth { bp: 0 },
+            E::OwnerTownGrowth { bp: 10_001 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

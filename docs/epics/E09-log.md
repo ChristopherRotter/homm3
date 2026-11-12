@@ -3167,3 +3167,65 @@ calls; rebuild it with `setup.sh`). No version moved. Ids: questions next 15, de
 
 **Verify:** no engine code: `scripts/verify-once.sh engine --base origin/master` (the light gates),
 `cargo xtask check-lane --cross-lane`; CI on the pull request is the record.
+
+### T24 — `shared/`: increment 3's ADRs, the towns' stream, the Legion's effects and the town flags (2026-11-12)
+
+One session, the user present at the start; branch `shared/e09-t24`, `cross-lane` (decision 83's
+plan: the packs and the harvester are the battle lane's, the golden replays the battle and
+adventure lanes', the bot reports the AI lane's, one test literal the server lane's). Starting
+point: `master` at 8679604 (#860, T23's, merged; CI's green run on it stands for the setup's
+baseline, which a shallow clone could not match to CI's fingerprint). The user's computer was
+connected at the start only: the original data staged then (21 files, the four LODs one per call).
+**Kept whole** (decision 85; the agent recommended two parts, code first).
+
+- **`h3-kernel`:** `StreamId::TOWNS = Self(7)` in the closed list (decision 75), the two tests'
+  named lists extended.
+- **`h3-content`:** `HeroEffect::TownGrowth { level, amount }` (code 61, `town_growth`; level
+  1..=`TOWN_GROWTH_LEVELS` (7), amount ≥ 1, one per level in a list) and
+  `HeroEffect::OwnerTownGrowth { bp }` (62, `owner_town_growth`; 1..=10 000) with `try_map`, the
+  parameter errors, the collision, the hash and the every-kind tests; `quirk.town.creature_month_exact`
+  (`QuirkFlag(39)`, `CREATURE_MONTH_EXACT`, T-13, planned `TWN-QUIRK-10`) and
+  `quirk.town.neutral_plague_full_growth` (40, `NEUTRAL_PLAGUE_FULL_GROWTH`, T-12, planned
+  `TWN-QUIRK-9`), read from T25b; **core ruleset hash v53** (golden base `0x9649_783d_4639_ded0`).
+- **`h3-pack`:** **pack format v52** (the two kinds); the tests
+  `the_legion_growth_parses_and_is_harvested` (the syntax, the refusals, the five pieces by level
+  in every expansion, the SoD Statue's share alone, its five parts) and
+  `the_harvested_flags_of_e09_increment_3` (on in `faithful`, off in `strict-fixed`).
+- **The harvester** (battle-owned): three sources (`exe-legion-growth`: 0x5BFB60, 0x5BF900,
+  0x4BACB0, 0x4D91F0 and batch TWN-3's TWN-3-1, -2; `vcmi-legion-growth`: VCMI 1.7.5's
+  `config/artifacts.json`, as survey §11 read it; `wiki-legion-growth`: the growth page's shoutwiki
+  copy, search snippets), the six artifacts' effects, the pending list down to the Grail; both
+  profiles name the flags. `base` and `sod` re-harvested from the staged installation: the five
+  pieces' and the Statue's lines (their "pending" comments gone) and the profiles' lines only.
+  `synthetic-ext`'s Storm Regalia carries both kinds (the every-kind check: the Wayfarer Sash's
+  list is full); `packs/README.md`'s two rows.
+- **Replays and records:** the 82 golden replays (10 battle, 72 adventure) keep commands and state
+  hashes; only `ruleset_hash` moved (synthetic faithful `0x876dc0d92f71fae2`, base faithful
+  `0x437388440d9286a3`, strict-fixed `0xb0c378a75ff70a5b`; read from a recording of each with the
+  CLI, every replay then verified with `h3 verify` and `h3 adventure verify`). The AI lane's
+  `bots-report-v1.json` and `bots-neutral-v1.json` regenerated: only `engine.core` moved.
+  `h3-server`'s tamper test's `ruleset_hash` line (the server lane's).
+- **The ADRs:** ADR-0013 point 16.4; ADR-0016 points 1 (a neutral garrison's week, growth's inputs,
+  the garrison hero's record), 3 (the garrison hero, the army references, the hire dialog's town
+  sources and target; at the point's end, before E08's increment 12 text once T112 adds it), 4 (a
+  town with a garrison hero, T-5), 6 (its views); ADR-0017 points 1 (the commands, the week's
+  kind, the towns' stream, the setup's RoE flag), 2 (the views), 3 (the day's order; the garrison
+  heroes' turn start, income and weekly resources: the draft's anchor sentence is not in the
+  ADR, so after the town events), 4 (the towns' stream and the Portal's draws), 6
+  (the hire dialog's town source, the rows without a decision), 8, 9, 10, 11; ADR-0023 points 1
+  and 3 (the status line, the ADR has no history section); ADR-0028 points 2, 5, 6, 9, the
+  Consequences and the header's amendments; each history entry; the index's status and Read-when
+  cells. Each with the batch row that confirmed it (survey §17); a throwaway script found every
+  draft sentence in its target but the reworded ones (the decisions' references, the verdicts
+  added, the anchors). The drafts deleted; the design note's §37 and §48 heads and §39's *As
+  built*.
+- **Also:** `docs/03-domain.md`'s terms (available creatures, the week's kind, the Portal of
+  Summoning, the garrison hero, the upper bar); `docs/06-security.md`'s section "A town's growth,
+  recruitment and the army rows (E09 increment 3)"; the battle and adventure lanes' HANDOFF
+  version lines; the adventure lane's inbox (T112's merge order).
+
+**The queue:** T24 out; T25 queued in full (design §56 round 4). Ids: decisions next 86.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
+check-lane --cross-lane`, `cargo check --workspace --all-targets`; CI on the pull request is the
+record.

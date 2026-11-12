@@ -659,6 +659,8 @@ different creatures or statistics.
 | `full_mana` | — | since v50: the day's spell points fill to the hero's maximum when below it (the Wizard's Well) |
 | `free_boarding` | — | since v49: a boarding or a landing converts the hero's points left to the new surface's instead of setting them to 0; only the artifact type that carries it counts, not its parts worn apart (the Admiral's Hat, 0x4A1010, 0x49E670; HER-ADV-009) |
 | `whirlpool_protection` | — | since v51 (E08 T102; read from E08 T103a, `h3_heroes::whirlpool_protection`): a Whirlpool's visit takes nothing from the hero's army; any source, a worn artifact type or a part of a worn combination (the Sea Captain's Hat, so the Admiral's Hat through its part: `hero_wears_artifact` 0x4D91F0 with 123; HER-ADV-009, ADV-TEL-006) |
+| `town_growth` | `level` (1..=7), `amount` (≥ 1) | since v52 (E09 T24; read from E09 increment 3's growth): creatures a week added to the growth of a town's creature `level` while the hero is that town's garrison hero or visitor; each worn artifact type once, a worn combination's parts too; one per level in a list (the Legs, Loins, Torso, Arms and Head of Legion: +5, +4, +3, +2, +1 at levels 2 to 6; `town_legion_growth` 0x5BF900; TWN-GRO-001) |
+| `owner_town_growth` | `bp` (1..=10 000) | since v52 (E09 T24): every town of the hero's owner grows by this share of its base and castle's growth a week; the highest of the owner's heroes on the map and in its towns' garrisons (the Statue of Legion 5 000; `player_hero_wears_artifact` 0x4BACB0; TWN-GRO-001) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

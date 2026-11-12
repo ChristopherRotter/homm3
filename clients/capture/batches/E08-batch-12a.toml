@@ -1,0 +1,176 @@
+# E08 batch E12a played by the capture harness (E08 T110; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-12a.toml as steps, on Easy, the starting bonus gold, with T110's
+# reads (README, "Garrisons and the bonus visitables"). Hot seat, Red and Blue human. In the
+# spec's order: day 1, Red: E12-5's reads, E12-1, E12-2, E12-3, E12-6, E12-4's Red part (its
+# step onto G4, battle 2); Blue: E12-4's battle 1.
+#
+# A garrison's record is read by its entrance (`garrison:x,y`, live); the bars as a garrison's
+# exchange opened (`garrison_dialogs`); the exchange's moves are a walk's `actions` (each action's
+# records read right after its clicks: the record's army, the hero's, the counts the bars show,
+# the slot shown selected before and after). The battles between the two heroes play the spell
+# book at each side's first stack's turn (`battle = { book = "Bless", then = "attack" }`).
+
+spec = "experiments/specs/E08-batch-12a.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: E12-5's reads (before any hero moves) ---------------------------------------------
+
+[[step]]
+encounter = "E12-6"
+hero = "E12-6"
+record = { "E12-5: Red's explored bits: (30, 28); (30, 27); (33, 31); (34, 31); (32, 33); (33, 33)" = ["text:(30, 28): ", "explored:30,28:red", "text:(30, 27): ", "explored:30,27:red", "text:(33, 31): ", "explored:33,31:red", "text:(34, 31): ", "explored:34,31:red", "text:(32, 33): ", "explored:32,33:red", "text:(33, 33): ", "explored:33,33:red"], "row:garrison" = { rows = [
+    ["text:G5", "garrison:30,31:entrance", "garrison:30,31:owner", "garrison:30,31:stacks", "garrison:30,31:removable"],
+    ["text:V1", "garrison:8,3:entrance", "garrison:8,3:owner", "garrison:8,3:stacks", "garrison:8,3:removable"],
+    ["text:G2", "garrison:19,6:entrance", "garrison:19,6:owner", "garrison:19,6:stacks", "garrison:19,6:removable"],
+    ["text:G3", "garrison:29,6:entrance", "garrison:29,6:owner", "garrison:29,6:stacks", "garrison:29,6:removable"],
+    ["text:G4", "garrison:9,22:entrance", "garrison:9,22:owner", "garrison:9,22:stacks", "garrison:9,22:removable"],
+    ["text:G6", "garrison:23,22:entrance", "garrison:23,22:owner", "garrison:23,22:stacks", "garrison:23,22:removable"],
+] } }
+note = { "the date at the start" = "date", "the game's version" = "map_kind", "the difficulty" = "difficulty", "E12-5: the record order (index by entrance)" = ["text:G5: ", "garrison:30,31:index", "text:V1: ", "garrison:8,3:index", "text:G2: ", "garrison:19,6:index", "text:G3: ", "garrison:29,6:index", "text:G4: ", "garrison:9,22:index", "text:G6: ", "garrison:23,22:index"] }
+
+# --- Day 1, Red: E12-1 ---------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-1"
+hero = "E12-1"
+record = { "E12-1 before: points; V1's record (owner, stacks)" = ["text:points: ", "hero:points", "text:V1: ", "garrison:8,3"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+# The path to D1 beyond V1: clicked again only if one showed. A garrison's exchange that opens on
+# the way is closed with its OK (its bars noted); a walk that stops short goes on in the next step.
+[[step]]
+encounter = "E12-1"
+hero = "E12-1"
+walk = [10, 3]
+again_if = { marks = "any" }
+battle = "auto"
+record = { "the path to D1 (10, 3) (its tiles, or none)" = "path_tiles", "the walk to D1: dialogs and messages on the way; where it stopped; E12-1's tile; points; V1's record" = ["text:clicked again: ", "again", "text:dialogs: ", "screens", "text:the exchanges' bars as they opened: ", "garrison_dialogs", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:V1: ", "garrison:8,3"] }
+note = { "the walk to D1: the marks' colours" = "mark" }
+
+[[step]]
+encounter = "E12-1"
+hero = "E12-1"
+only_if = { at = [8, 3] }
+skip_quietly = true
+walk = [10, 3]
+battle = "auto"
+record = { "+the walk to D1: dialogs and messages on the way; where it stopped; E12-1's tile; points; V1's record" = ["text:stopped on V1's entrance, D1 clicked twice more: dialogs: ", "screens", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-1"
+hero = "E12-1"
+walk = [8, 3]
+battle = "auto"
+actions = [
+    { click = ["upper:0", "lower:1"], record = { "the take of V1's Pikemen into slot 1: both bars after" = ["text:upper (V1's record): ", "garrison:8,3:stacks", "text:lower (E12-1's army): ", "hero:slots", "text:the upper bar shows: ", "shown:upper", "text:the lower bar shows: ", "shown:lower", "text:selected before: ", "bar:selected:before", "text:the clicks: ", "bar:clicks", "text:messages: ", "messages", "text:creature windows: ", "creature_windows"] } },
+]
+record = { "the step onto V1's entrance (8, 3): dialogs and messages (the exchange's bars); E12-1's tile; points" = ["text:dialogs: ", "screens", "text:the bars as it opened: ", "garrison_dialogs", "text:messages: ", "messages", "text:the path: ", "path_tiles", "text:tile: ", "hero:tile", "text:points: ", "hero:points"], "after OK: V1's record (owner, stacks); E12-1's army" = ["text:V1: ", "garrison:8,3", "text:E12-1's army: ", "hero:slots"] }
+
+# --- Day 1, Red: E12-2 ---------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-2"
+hero = "E12-2"
+record = { "E12-2 before: points; G2's record (owner, stacks)" = ["text:points: ", "hero:points", "text:G2: ", "garrison:19,6"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-2"
+hero = "E12-2"
+walk = [19, 8]
+again_if = { marks = "any" }
+battle = "auto"
+record = { "the path to D2 (19, 8) (its tiles, or none); if one showed, the walk: dialogs and messages, where it stopped" = ["text:the path: ", "path_tiles", "text:clicked again: ", "again", "text:dialogs: ", "screens", "text:the exchanges' bars as they opened: ", "garrison_dialogs", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:G2: ", "garrison:19,6"] }
+note = { "the walk to D2: the marks' colours" = "mark" }
+
+[[step]]
+encounter = "E12-2"
+hero = "E12-2"
+only_if = { at = [19, 4] }
+walk = [19, 6]
+battle = "auto"
+record = { "the path to G2's entrance (19, 6) (its tiles)" = "path_tiles", "the step onto (19, 6): battles, dialogs and messages in order (the exchange's bars)" = ["text:battles: ", "battles", "text:dialogs: ", "screens", "text:the bars as it opened: ", "garrison_dialogs", "text:messages: ", "messages"], "after OK: G2's record (owner, stacks); E12-2's tile; points" = ["text:G2: ", "garrison:19,6", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E12-3 ---------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-3"
+hero = "E12-3"
+record = { "E12-3 before: points; G3's record (owner, stacks, removable)" = ["text:points: ", "hero:points", "text:G3: ", "garrison:29,6"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+# The four tries in the order a, c, d, b (the spec: each try's first click off the stack the one
+# before left selected). Each row: the try, the slot selected before its first click, both bars
+# after (the records' armies; the counts the bars show), the messages and creature windows.
+[[step]]
+encounter = "E12-3"
+hero = "E12-3"
+walk = [29, 6]
+battle = "auto"
+actions = [
+    { click = ["lower:1", "upper:1"], record = { "row:try (a, c, d, b)" = ["text:(a) a move: E12-3's Archers (lower 1) to G3's empty slot 1 (upper 1)", "bar:selected:before", ["text:G3: ", "garrison:29,6:stacks", "text:shows: ", "shown:upper", "text:the clicks: ", "bar:clicks"], ["text:E12-3: ", "hero:slots", "text:shows: ", "shown:lower"], ["messages", "creature_windows"]] } },
+    { click = ["upper:0", "lower:3"], record = { "row:try (a, c, d, b)" = ["text:(c) a take: G3's Pikemen (upper 0) to E12-3's empty slot 3 (lower 3)", "bar:selected:before", ["text:G3: ", "garrison:29,6:stacks", "text:shows: ", "shown:upper", "text:the clicks: ", "bar:clicks"], ["text:E12-3: ", "hero:slots", "text:shows: ", "shown:lower"], ["messages", "creature_windows"]] } },
+    { click = ["upper:1", "lower:4"], record = { "row:try (a, c, d, b)" = ["text:(d) a take back: the Archers in G3's slot 1 (upper 1) to E12-3's empty slot 4 (lower 4)", "bar:selected:before", ["text:G3: ", "garrison:29,6:stacks", "text:shows: ", "shown:upper", "text:the clicks: ", "bar:clicks"], ["text:E12-3: ", "hero:slots", "text:shows: ", "shown:lower"], ["messages", "creature_windows"]] } },
+    { click = ["lower:0", "upper:0"], record = { "row:try (a, c, d, b)" = ["text:(b) a merge: E12-3's Pikemen (lower 0) onto G3's Pikemen (upper 0)", "bar:selected:before", ["text:G3: ", "garrison:29,6:stacks", "text:shows: ", "shown:upper", "text:the clicks: ", "bar:clicks"], ["text:E12-3: ", "hero:slots", "text:shows: ", "shown:lower"], ["messages", "creature_windows"]] } },
+]
+record = { "the step onto (29, 6): dialogs and messages (the exchange's bars); E12-3's tile; points" = ["text:dialogs: ", "screens", "text:the bars as it opened: ", "garrison_dialogs", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points"], "after OK: G3's record (stacks); E12-3's army" = ["text:G3: ", "garrison:29,6", "text:E12-3's army: ", "hero:slots"] }
+
+# --- Day 1, Red: E12-6 ---------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-6"
+hero = "E12-6"
+record = { "E12-6 before: points; experience; army; G6's record (owner, stacks)" = ["text:points: ", "hero:points", "text:experience: ", "hero:experience", "text:army: ", "hero:slots", "text:G6: ", "garrison:23,22"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-6"
+hero = "E12-6"
+walk = [23, 22]
+answer = "yes"
+battle = "auto"
+expect = { dialogs = true }
+record = { "E12-6, the walk: questions, dialogs and messages before the battle (in order)" = ["text:the path: ", "path_tiles", "text:questions: ", "questions", "text:messages: ", "messages", "text:battles: ", "battles"], "E12-6, as the battle opens: the defender's stacks (creature, count each); the attacker's; anti-magic flag (+0x53C4)" = ["text:defender: ", "opening:stacks:defender", "text:attacker: ", "opening:stacks:attacker", "text:anti-magic flag: ", "anti_magic", "text:sides: ", "opening:sides"], "E12-6: the battle's result" = ["text:winner: ", "winner", "text:the attacker at the end: ", "stacks:end:attacker", "text:the defender at the end: ", "stacks:end:defender"], "E12-6 after it: dialogs (the exchange's bars)" = ["text:dialogs: ", "screens", "text:the bars as it opened: ", "garrison_dialogs", "text:level-ups: ", "level_up_dialogs"], "E12-6 after OK: G6's record (owner, stacks); E12-6's tile; points; experience; army" = ["text:G6: ", "garrison:23,22", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:experience: ", "hero:experience", "text:army: ", "hero:slots"] }
+note = { "E12-6: the battlefield" = "battlefield:terrain" }
+
+# --- Day 1, Red: E12-4's Red part ----------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-4"
+hero = "E12-4"
+record = { "E12-4 before: points; spell points; G4's record (owner, stacks)" = ["text:points: ", "hero:points", "text:spell points: ", "hero:spell_points", "text:G4: ", "garrison:9,22"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E12-4b's and E12-4a's spell points" = ["text:E12-4b: ", "hero[E12-4b]:spell_points", "text:E12-4a: ", "hero[E12-4a]:spell_points"] }
+
+[[step]]
+encounter = "E12-4"
+hero = "E12-4"
+walk = [9, 22]
+battle = "auto"
+record = { "the step onto (9, 22): dialogs and messages (the exchange's bars); E12-4's tile; points" = ["text:the path: ", "path_tiles", "text:dialogs: ", "screens", "text:the bars as it opened: ", "garrison_dialogs", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-4"
+hero = "E12-4"
+walk = [9, 21]
+expect = { dialogs = true }
+battle = { book = "Bless", then = "attack" }
+record = { "battle 2 as it opens: the anti-magic flag (+0x53C4); Red's stacks; Blue's stacks" = ["text:anti-magic flag: ", "anti_magic", "text:Red's (attacker): ", "opening:stacks:attacker", "text:Blue's (defender): ", "opening:stacks:defender", "text:the hero's tile as it opened: ", "battle:tile"], "battle 2, Red's first turn: the spell book (opened, or the message); Bless cast?" = "book:attacker", "battle 2, Blue's first turn: the spell book (opened, or the message); Bless cast?" = "book:defender", "battle 2: the result; then E12-4's tile; points; spell points" = ["text:winner: ", "winner", "text:Red at the end: ", "stacks:end:attacker", "text:messages: ", "messages", "text:level-ups: ", "level_up_dialogs", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:spell points: ", "hero:spell_points"] }
+note = { "battle 2: the battlefield" = "opening:field" }
+
+[[step]]
+end_turn = true
+encounter = "E12-4"
+note = { "Blue's turn: its messages" = "messages" }
+
+# --- Day 1, Blue: E12-4's battle 1 ---------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-4"
+hero = "E12-4a"
+walk = [9, 22]
+expect = { dialogs = true }
+battle = { book = "Bless", then = "attack" }
+record = { "battle 1 as it opens: the anti-magic flag (+0x53C4); Red's stacks (G4's Pikemen among them?); Blue's stacks" = ["text:anti-magic flag: ", "anti_magic", "text:Red's (defender): ", "opening:stacks:defender", "text:Blue's (attacker): ", "opening:stacks:attacker", "text:E12-4's tile: ", "hero[E12-4]:tile"], "battle 1, Red's first turn: the spell book (opened, or the message); Bless cast?" = "book:defender", "battle 1, Blue's first turn: the spell book (opened, or the message); Bless cast?" = "book:attacker", "battle 1: the result; G4's record after (owner, stacks)" = ["text:winner: ", "winner", "text:Red at the end: ", "stacks:end:defender", "text:messages: ", "messages", "text:G4: ", "garrison:9,22", "text:E12-4's tile: ", "hero[E12-4]:tile", "text:E12-4's spell points: ", "hero[E12-4]:spell_points"] }
+note = { "battle 1: the battlefield" = "opening:field", "E12-4a before: points; spell points" = ["before:hero:points", "before:hero:spell_points"] }
