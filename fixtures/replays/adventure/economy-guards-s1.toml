@@ -38,13 +38,13 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x5ae67c4a994e3ea9",
-    "0xa45d62a931a4de23",
-    "0x8bd4fd481667aeb3",
-    "0x336157b18eb57d6e",
-    "0x3ced5314c55ca344",
-    "0x5246508f9f77620a",
-    "0x320792e58e67f278",
+    "0x804ffb59a47e691a",
+    "0x5c11ac5e33aaf1df",
+    "0x03372bcd5edb42ec",
+    "0xed938f69f57692d5",
+    "0xfd50b4882e01d44b",
+    "0xd2cb639d8513a901",
+    "0x7ec50e3826014bb9",
 ]
 
 [replay]
@@ -75,14 +75,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 28
-adventure_state_hash_version = 21
+adventure_state_hash_version = 22
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-economy-36.h3m"
 hash = "0x0d7ea287c88b7469"
-import_version = 21
+import_version = 22
 
 [result]
 day = 4
-final_hash = "0x1d860e6cd0ee8954"
+final_hash = "0x7cc44750c28fbd02"

@@ -126,7 +126,7 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b; E09 T7a1, T8a1, T11; `MAP_IMPORT_VERSION` 21)
+## Import (E08 T5a, T6a, T12a, T13a, T18b, T19a, T20a2a, T21a, T29, T49a, T49b, T54, T61a, T61b, T72, T83a, T93b, T97b1, T103b, T113b; E09 T7a1, T8a1, T11; `MAP_IMPORT_VERSION` 22)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
@@ -293,6 +293,19 @@ content and draws nothing; it rejects what the current increment cannot represen
   surface (`SetupError::TeleporterSurface`, A-42, ADV-QUIRK-44: a monolith's or a gate's on water
   or rock, a Whirlpool's on land or rock; none of the shipped maps) and makes the channels and the
   gates' pairs (ADV-TEL-002).
+- **Increment 12's objects** (v22, E08 T113b, increment 12's design note §4; ADV-OBJ-002,
+  ADV-GAR-001, ADV-BON-001): the garrisons 33 (`base:garrison`, `base:anti_magic_garrison`) and
+  219 (`ab:garrison_vertical`, `ab:anti_magic_garrison_vertical`) by subclass, 1 the anti-magic
+  one; the body (the row "33, 219 garrison" above) into `Holds::Garrison`: the owner (a colour
+  nobody plays refused, `ObjectOwner`; an owned one revealed around at the start, ADV-OWN-002), the
+  seven stacks by slot (a count of 0 an empty slot, a random code's too; the count's 16 bits
+  whole, which the original sign-extends, as ADV-QUIRK-19's), the removable flag (true on an RoE
+  map), the 8 unused bytes dropped. The fifteen bonus visitables (11, 14, 28, 30, 31, 38, 48, 49,
+  52, 56, 64, 92, 94, 96, 110) at subclass 0, no body. Refused: a random stack in a garrison
+  (`ImportError::RandomStack`, for good: the original resolves none; decision 299), a garrison's
+  subclass past 1 and a bonus visitable's past 0 (`Subclass`). The setup checks a garrison's
+  troops as an army with no war machine, none at all allowed. 219 is ownable among a battle's
+  surroundings (GAM-BAT-011).
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -528,6 +541,16 @@ entrances and exits, the two-way ones by size, the Whirlpools' 1 344 tiles and t
 Whirlpools: all as T103b and T104 found them), and each class's most on one map (8 one-way
 entrances, 8 exits, 17 two-way monoliths, 26 gates, 19 Whirlpools; 4 one-way and 6 two-way
 channels), the teleporters XL map's numbers (survey §1).
+
+E08 T113b's census (import v22, seed 0): all 160 import, validate and build, every other count
+unchanged. The 238 garrisons are typed with their bodies (checked): by class and subclass, owner
+and level as survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1.1 (33.0 109 neutral and 31
+owned on 42 maps, 33.1 23 and 5 on 21, 219.0 50 and 3 on 23, 219.1 17 neutral on 4; 40 of class
+33 and 5 of 219 underground; 82 neutral and 12 owned ones empty, 7 neutral and 4 owned not
+removable, the largest stack 200; 16 of class 33 and 11 of 219 the most on one map); the 4 085
+bonus visitables on 159 maps by class, level, maps and most on one map as its §1.2. Typed twins
+(one type on one anchor): 9 on 5 maps, every one a ground or Favorable Winds of two pictures,
+alike but in the tiles they lie on (decision 322: the setup refuses any other difference).
 
 E09 T19c2's census (the same import, seed 0; exit criterion 6 of the town epic's increment 2):
 all 160 import, validate, build and play by `EndTurn` alone (a week; the 29 maps with town

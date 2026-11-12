@@ -160,6 +160,11 @@ fn rules() -> Rules {
                         ObjectKindDef::Lighthouse { sea_points: 500 },
                     )
                 },
+                // E08 T113b: a map garrison, entered.
+                ObjectTypeDef {
+                    visit: Visit::Enter,
+                    ..ty("t:garrison", ObjectKindDef::Garrison { anti_magic: false })
+                },
                 ty(
                     "t:chest",
                     ObjectKindDef::Chest(ChestDef {
@@ -543,6 +548,67 @@ fn an_abandoned_mine_holds_its_resources_and_an_ownable_its_owner() {
         built(&rules, vec![blocker]).err(),
         Some(SetupError::ObjectOwner(0))
     );
+}
+
+// covers: ADV-GAR-001
+#[test]
+fn a_map_garrison_holds_its_troops_and_removable_flag() {
+    // E08 T113b (increment 12's design note §4, §5): none at all or an army's stacks with no war
+    // machine, checked when the game is built and kept in the static map; an owner of the game
+    // (an ownable kind); the hash sees both parts.
+    let rules = rules();
+    let garrison = |army: Vec<ArmyStack>, removable| {
+        object(&rules, 3, "t:garrison", Holds::Garrison { army, removable })
+    };
+    let army = vec![stack(0, PIKEMAN, 10), stack(6, PEASANT, 200)];
+    let state = built(&rules, vec![garrison(army.clone(), false)]).unwrap();
+    assert_eq!(
+        state.map().objects()[0].holds,
+        Holds::Garrison {
+            army: army.clone(),
+            removable: false
+        }
+    );
+    assert!(built(&rules, vec![garrison(Vec::new(), true)]).is_ok());
+    let owned = ObjectSetup {
+        owner: Some(PlayerId::new(1)),
+        ..garrison(Vec::new(), true)
+    };
+    assert!(built(&rules, vec![owned]).is_ok());
+    for troops in [
+        vec![stack(0, PIKEMAN, 1), stack(0, PEASANT, 1)],
+        vec![stack(7, PIKEMAN, 1)],
+        vec![stack(0, PIKEMAN, 0)],
+        vec![stack(0, CART, 1)],
+        vec![stack(0, CreatureTypeId::from_raw(99), 1)],
+    ] {
+        assert_eq!(
+            built(&rules, vec![garrison(troops.clone(), true)]).err(),
+            Some(SetupError::Holds(0)),
+            "{troops:?}"
+        );
+    }
+    // A garrison holds its troops and nothing else; no other kind holds them.
+    assert_eq!(
+        built(&rules, vec![object(&rules, 3, "t:garrison", Holds::Nothing)]).err(),
+        Some(SetupError::Holds(0))
+    );
+    let mine = object(
+        &rules,
+        3,
+        "t:sawmill",
+        Holds::Garrison {
+            army: Vec::new(),
+            removable: true,
+        },
+    );
+    assert_eq!(built(&rules, vec![mine]).err(), Some(SetupError::Holds(0)));
+    let hash = |army, removable| hash_of(&built(&rules, vec![garrison(army, removable)]).unwrap());
+    let reference = hash(army.clone(), true);
+    assert_ne!(reference, hash(army.clone(), false));
+    assert_ne!(reference, hash(army[..1].to_vec(), true));
+    assert_ne!(reference, hash(vec![stack(0, PIKEMAN, 11), army[1]], true));
+    assert_ne!(reference, hash(Vec::new(), true));
 }
 
 // covers: ADV-OBJ-002

@@ -417,7 +417,12 @@ impl StaticMap {
         // special grounds, which nothing names (never visited, offered or removed): 5 maps stack
         // two of one type on one anchor (E08 T20a2a), so grounds are left out of the check.
         // Each name with the first object that takes it (a random dwelling may take one twice).
+        // Since E08 T113b (decision 321, the server lane's question) a ground, a ground of the sea
+        // or a hole on the anchor of an earlier one of its type differs from it only in the tiles
+        // it lies on (the shipped maps' nine such pairs: two pictures of one type), so that
+        // whatever might name it one day finds the two alike.
         let mut named = BTreeMap::new();
+        let mut grounds = BTreeMap::new();
         for (index, object) in setup.objects.iter().enumerate() {
             if object.anchor.level >= map.levels {
                 return Err(SetupError::ObjectLevel(index));
@@ -485,6 +490,18 @@ impl StaticMap {
                     ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole
                 )
             });
+            // rule: ADV-OBJ-002
+            if let Some(name) = object.object_type.filter(|_| ground) {
+                let earlier = *grounds.entry((name, object.anchor)).or_insert(index);
+                if earlier != index
+                    && (ObjectSetup {
+                        drawn: object.drawn,
+                        ..setup.objects[earlier].clone()
+                    }) != *object
+                {
+                    return Err(SetupError::SharedAnchor(index));
+                }
+            }
             for name in dwellings::names(part, object, ground) {
                 if named
                     .insert(name, index)

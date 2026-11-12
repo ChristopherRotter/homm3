@@ -100,6 +100,7 @@ struct Peaks(
     Teleporters,
     ChannelCensus,
     TownEvents,
+    Increment12,
 );
 
 /// The census of the channels the game's build gives (E08 T104, [`built_channels`]; ADV-TEL-002,
@@ -196,6 +197,65 @@ struct Teleporters(
     BTreeMap<u32, usize>,
     BTreeMap<usize, usize>,
 );
+
+/// The census of increment 12's objects (E08 T113b, [`increment_12`]; survey
+/// `docs/rules/surveys/E08-garrisons-bonuses.md` §1): the objects by class and subclass, on the
+/// surface and underground; the maps holding each class and subclass (the key `(class, u32::MAX)`
+/// for a class of the fifteen, `(0, 0)` for any garrison, `(0, 1)` for any of the fifteen); the
+/// garrisons' counts by owner, army and removable flag; each class's most on one map.
+#[derive(Default)]
+struct Increment12(
+    BTreeMap<(u32, u32), [usize; 2]>,
+    BTreeMap<(u32, u32), usize>,
+    BTreeMap<&'static str, usize>,
+    BTreeMap<u32, usize>,
+);
+
+/// The survey's garrisons by class and subclass, neutral and owned (§1.1: 238 on 61 maps), with
+/// the maps holding each.
+const SURVEY_GARRISONS: [((u32, u32), [usize; 2], usize); 4] = [
+    ((33, 0), [109, 31], 42),
+    ((33, 1), [23, 5], 21),
+    ((219, 0), [50, 3], 23),
+    ((219, 1), [17, 0], 4),
+];
+/// The survey's garrisons underground, by class (§1.1).
+const SURVEY_GARRISONS_UNDERGROUND: [(u32, usize); 2] = [(33, 40), (219, 5)];
+/// The survey's garrisons' armies and flags (§1.1): the census's keys ([`increment_12`]) with the
+/// counts.
+const SURVEY_GARRISON_COUNTS: [(&str, usize); 6] = [
+    ("neutral garrisons empty", 82),
+    ("neutral garrisons armed", 117),
+    ("owned garrisons empty", 12),
+    ("owned garrisons armed", 27),
+    ("neutral garrisons not removable", 7),
+    ("owned garrisons not removable", 4),
+];
+/// The survey's largest garrison stack (§1.1).
+const SURVEY_LARGEST_GARRISON_STACK: usize = 200;
+/// The survey's bonus visitables by class (§1.2: 4 085 on 159 maps), each its type's key: the
+/// objects on the surface and underground, the maps holding them and the most on one map.
+const SURVEY_BONUSES: [(u32, &str, [usize; 2], usize, usize); 15] = [
+    (11, "base:buoy", [199, 10], 56, 17),
+    (14, "base:swan_pond", [174, 9], 73, 8),
+    (28, "base:faerie_ring", [237, 18], 102, 12),
+    (30, "base:fountain_of_fortune", [354, 31], 115, 11),
+    (31, "base:fountain_of_youth", [253, 19], 101, 13),
+    (38, "base:idol_of_fortune", [446, 117], 133, 15),
+    (48, "base:magic_spring", [66, 4], 39, 8),
+    (49, "base:magic_well", [768, 147], 145, 32),
+    (52, "base:mermaids", [129, 4], 59, 9),
+    (56, "base:oasis", [51, 4], 37, 4),
+    (64, "base:rally_flag", [271, 60], 91, 19),
+    (92, "base:sirens", [103, 4], 57, 9),
+    (94, "base:stables", [128, 15], 65, 10),
+    (96, "base:temple", [354, 55], 117, 22),
+    (110, "base:watering_hole", [48, 7], 43, 4),
+];
+/// The survey's most garrisons of each class on one map (§1.1).
+const SURVEY_GARRISONS_MOST: [(u32, usize); 2] = [(33, 16), (219, 11)];
+/// The survey's maps holding a garrison, and a bonus visitable (§1.1, §1.2).
+const SURVEY_INCREMENT_12_MAPS: (usize, usize) = (61, 159);
 
 /// The census of the dwellings the game's build gives (E08 T94a, [`built_dwellings`]): its
 /// counts, and the resolved random dwellings by faction (the core's index) and level.
@@ -408,6 +468,7 @@ fn main() -> ExitCode {
     }
     // E08 T106c: the rest of the survey's census (§1).
     failures += teleporter_differences(&peaks);
+    failures += increment_12_differences(&peaks.11);
     failures += town_event_differences(&peaks.10);
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
@@ -554,14 +615,19 @@ fn check(
     if !stacked.is_empty() {
         peaks.3.insert(name.to_owned(), stacked);
     }
-    let twins = twins(&setup.map);
+    let (twins, unlike, other) = twins(&setup.map, rules);
     if twins > 0 {
         peaks.4.insert(name.to_owned(), twins);
     }
+    // E08 T113b (decision 320, the server lane's question): a twin unlike the first, or of a kind
+    // something names (not a ground, a ground of the sea or a hole), the setup refuses.
+    *peaks.5.entry(TWINS_UNLIKE).or_default() += unlike;
+    *peaks.5.entry(TWINS_NAMED).or_default() += other;
     census(&map, &setup.map, rules, &mut peaks.5);
     for (class, n) in teleporters(&map, &setup.map, rules, &mut peaks.8)? {
         peaks.note(most_of(class), n, name);
     }
+    increment_12(&map, &setup.map, rules, &mut peaks.11)?;
     if map.header.version == Version::RoE {
         let counts = &mut peaks.5;
         roe(&map, base, &mut |what, n| {
@@ -1397,6 +1463,209 @@ fn teleporters(
         *census.2.entry(whirlpools).or_default() += 1;
     }
     Ok(classes)
+}
+
+/// Counts increment 12's objects (E08 T113b; ADV-GAR-001, ADV-BON-001, increment 12's design note
+/// §4) into the census. Checked (an error fails the map): each object of classes 33 and 219
+/// imports as its class and subclass's garrison (anti-magic for subclass 1, 219's the AB pack's
+/// vertical ones) holding its troops and removable flag, an owned one its owner; each of the
+/// fifteen bonus classes as its type, holding nothing.
+fn increment_12(
+    raw: &RawMap,
+    setup: &MapSetup,
+    rules: &GameRuleset,
+    census: &mut Increment12,
+) -> Result<(), String> {
+    let part = rules.adventure();
+    let mut classes = BTreeMap::<(u32, u32), usize>::new();
+    for ((placed, class), object) in placed(raw).zip(&setup.objects) {
+        let bonus = SURVEY_BONUSES.iter().find(|b| b.0 == class);
+        if !matches!(class, 33 | 219) && bonus.is_none() {
+            continue;
+        }
+        let subclass = usize::try_from(placed.template)
+            .ok()
+            .and_then(|i| raw.templates.get(i))
+            .map_or(u32::MAX, |t| t.subclass);
+        let ty = object.object_type.and_then(|id| part.object_type(id));
+        let key = ty.map_or("", |ty| ty.key.as_str());
+        let expected = match (class, subclass, bonus) {
+            (33, 0, _) => "base:garrison",
+            (33, 1, _) => "base:anti_magic_garrison",
+            (219, 0, _) => "ab:garrison_vertical",
+            (219, 1, _) => "ab:anti_magic_garrison_vertical",
+            (_, 0, Some(bonus)) => bonus.1,
+            _ => "",
+        };
+        let fits = match (ty.map(|ty| &ty.kind), &object.holds) {
+            (Some(ObjectKind::Garrison { anti_magic }), Holds::Garrison { .. }) => {
+                *anti_magic == (subclass == 1)
+            }
+            (Some(_), Holds::Nothing) => bonus.is_some() && object.owner.is_none(),
+            _ => false,
+        };
+        if key != expected || !fits {
+            return Err(format!(
+                "an object of class {class} subclass {subclass} at {:?} imports as {key:?} \
+                 holding {:?}",
+                object.anchor, object.holds
+            ));
+        }
+        let level = usize::from(object.anchor.level > 0);
+        census.0.entry((class, subclass)).or_default()[level] += 1;
+        *classes.entry((class, subclass)).or_default() += 1;
+        if let Holds::Garrison { army, removable } = &object.holds {
+            let owner = if object.owner.is_some() { "owned" } else { "neutral" };
+            let mut add = |what: &str| {
+                let key = match (owner, what) {
+                    ("owned", "empty") => "owned garrisons empty",
+                    ("owned", "armed") => "owned garrisons armed",
+                    ("owned", _) => "owned garrisons not removable",
+                    (_, "empty") => "neutral garrisons empty",
+                    (_, "armed") => "neutral garrisons armed",
+                    _ => "neutral garrisons not removable",
+                };
+                *census.2.entry(key).or_default() += 1;
+            };
+            add(if army.is_empty() { "empty" } else { "armed" });
+            if !removable {
+                add("fixed");
+            }
+            let owned = usize::from(object.owner.is_some());
+            *census.2.entry(GARRISON_OWNERS[owned]).or_default() += 1;
+            let largest = army.iter().map(|s| s.count).max().unwrap_or(0);
+            let peak = census.2.entry(LARGEST_GARRISON_STACK).or_default();
+            *peak = (*peak).max(usize::try_from(largest).unwrap_or(usize::MAX));
+            let by = match (class, subclass, owned) {
+                (33, 0, 0) => "neutral 33.0",
+                (33, 0, _) => "owned 33.0",
+                (33, _, 0) => "neutral 33.1",
+                (33, _, _) => "owned 33.1",
+                (_, 0, 0) => "neutral 219.0",
+                (_, 0, _) => "owned 219.0",
+                (_, _, 0) => "neutral 219.1",
+                _ => "owned 219.1",
+            };
+            *census.2.entry(by).or_default() += 1;
+        }
+    }
+    let mut most = BTreeMap::<u32, usize>::new();
+    for (&(class, subclass), &n) in &classes {
+        *census.1.entry((class, subclass)).or_default() += 1;
+        *most.entry(class).or_default() += n;
+    }
+    for (&class, &n) in &most {
+        let peak = census.3.entry(class).or_default();
+        *peak = (*peak).max(n);
+    }
+    if classes.keys().any(|&(class, _)| matches!(class, 33 | 219)) {
+        *census.1.entry((0, 0)).or_default() += 1;
+    }
+    if classes.keys().any(|&(class, _)| !matches!(class, 33 | 219)) {
+        *census.1.entry((0, 1)).or_default() += 1;
+    }
+    Ok(())
+}
+
+/// The census's keys of the garrisons by owner, neutral then owned ([`increment_12`]).
+const GARRISON_OWNERS: [&str; 2] = ["neutral garrisons", "owned garrisons"];
+/// The census's key of the largest garrison stack ([`increment_12`]).
+const LARGEST_GARRISON_STACK: &str = "largest garrison stack";
+
+/// Increment 12's census against the survey's (§1; E08 T113b): the garrisons by class, subclass,
+/// owner and level, their maps, armies and flags; the bonus visitables by class and level, their
+/// maps and each class's most on one map. Prints each difference and the census; returns how many
+/// differences there are.
+fn increment_12_differences(census: &Increment12) -> usize {
+    let mut differences = 0;
+    let mut differ = |what: &str, found: usize, survey: usize| {
+        if found != survey {
+            println!("h3-map: the census's {what} ({found}) is not the survey's ({survey})");
+            differences += 1;
+        }
+    };
+    let get = |key: &str| census.2.get(key).copied().unwrap_or(0);
+    for ((class, subclass), [neutral, owned], maps) in SURVEY_GARRISONS {
+        let both = census.0.get(&(class, subclass)).copied().unwrap_or([0; 2]);
+        let what = format!("{class}.{subclass}");
+        differ(
+            &format!("{what} garrisons"),
+            both[0] + both[1],
+            neutral + owned,
+        );
+        differ(
+            &format!("neutral {what} garrisons"),
+            get(&format!("neutral {what}")),
+            neutral,
+        );
+        differ(
+            &format!("owned {what} garrisons"),
+            get(&format!("owned {what}")),
+            owned,
+        );
+        let found = census.1.get(&(class, subclass)).copied().unwrap_or(0);
+        differ(&format!("maps with {what} garrisons"), found, maps);
+    }
+    for (class, underground) in SURVEY_GARRISONS_UNDERGROUND {
+        let found = census
+            .0
+            .range((class, 0)..=(class, u32::MAX))
+            .map(|(_, n)| n[1])
+            .sum();
+        differ(&format!("class {class} underground"), found, underground);
+    }
+    for (what, n) in SURVEY_GARRISON_COUNTS {
+        differ(what, get(what), n);
+    }
+    differ(
+        LARGEST_GARRISON_STACK,
+        get(LARGEST_GARRISON_STACK),
+        SURVEY_LARGEST_GARRISON_STACK,
+    );
+    for (class, most) in SURVEY_GARRISONS_MOST {
+        let found = census.3.get(&class).copied().unwrap_or(0);
+        differ(&format!("most of class {class} on one map"), found, most);
+    }
+    for (class, key, levels, maps, most) in SURVEY_BONUSES {
+        let found = census.0.get(&(class, 0)).copied().unwrap_or([0; 2]);
+        differ(&format!("{key} on the surface"), found[0], levels[0]);
+        differ(&format!("{key} underground"), found[1], levels[1]);
+        let on = census.1.get(&(class, 0)).copied().unwrap_or(0);
+        differ(&format!("maps with {key}"), on, maps);
+        let peak = census.3.get(&class).copied().unwrap_or(0);
+        differ(&format!("most {key} on one map"), peak, most);
+    }
+    let maps = |key| census.1.get(&key).copied().unwrap_or(0);
+    differ(
+        "maps with a garrison",
+        maps((0, 0)),
+        SURVEY_INCREMENT_12_MAPS.0,
+    );
+    differ(
+        "maps with a bonus visitable",
+        maps((0, 1)),
+        SURVEY_INCREMENT_12_MAPS.1,
+    );
+    let objects = |garrisons: bool| -> usize {
+        census
+            .0
+            .iter()
+            .filter(|((class, _), _)| matches!(class, 33 | 219) == garrisons)
+            .map(|(_, n)| n[0] + n[1])
+            .sum()
+    };
+    println!(
+        "  increment 12 (checked): {} garrisons on {} maps, {} bonus visitables on {} maps; \
+         garrisons {} neutral, {} owned, largest stack {}",
+        objects(true),
+        maps((0, 0)),
+        objects(false),
+        maps((0, 1)),
+        get(GARRISON_OWNERS[0]),
+        get(GARRISON_OWNERS[1]),
+        get(LARGEST_GARRISON_STACK),
+    );
+    differences
 }
 
 /// The census's key for a teleporter class's most on one map (E08 T106c, [`teleporters`]).
@@ -2409,19 +2678,42 @@ fn stacked(map: &RawMap, setup: &MapSetup) -> (usize, Vec<Vec<u32>>) {
     (visitable, stacked)
 }
 
+/// The census's keys of the twins unlike the first of their type and anchor, and of those of a
+/// kind something names (E08 T113b, [`twins`]).
+const TWINS_UNLIKE: &str = "typed objects of one type on one anchor unlike the first";
+const TWINS_NAMED: &str = "typed objects of one type on one anchor not a ground, sea ground or hole";
+
 /// How many typed objects of the static layer share their type and anchor with an earlier one (a
-/// random resource counted by its random type, before the draw).
-fn twins(setup: &MapSetup) -> usize {
-    let mut seen = BTreeMap::<_, usize>::new();
+/// random resource counted by its random type, before the draw); since E08 T113b (decision 320)
+/// also how many of them differ from the first in any field (masks, drawn tiles, holds), and how
+/// many are of a kind other than the grounds, the grounds of the sea and the holes (which nothing
+/// names: `SetupError::SharedAnchor` refuses the rest).
+fn twins(setup: &MapSetup, rules: &GameRuleset) -> (usize, usize, usize) {
+    let mut first = BTreeMap::<_, &h3_adventure::ObjectSetup>::new();
+    let (mut twins, mut unlike, mut named) = (0, 0, 0);
     for object in &setup.objects {
         if let Some(object_type) = object.object_type {
             let anchor = object.anchor;
-            *seen
-                .entry((object_type, anchor.level, anchor.y, anchor.x))
-                .or_default() += 1;
+            let key = (object_type, anchor.level, anchor.y, anchor.x);
+            match first.get(&key) {
+                None => {
+                    first.insert(key, object);
+                }
+                Some(earlier) => {
+                    twins += 1;
+                    unlike += usize::from(*earlier != object);
+                    let ground = rules.adventure().object_type(object_type).is_some_and(|ty| {
+                        matches!(
+                            ty.kind,
+                            ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole
+                        )
+                    });
+                    named += usize::from(!ground);
+                }
+            }
         }
     }
-    seen.values().map(|n| n - 1).sum()
+    (twins, unlike, named)
 }
 
 fn note(map: &RawMap, peaks: &mut Peaks, name: &str) {

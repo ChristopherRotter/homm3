@@ -282,7 +282,7 @@ fn pile_body(amount: u32, message: Option<Message>) -> Body {
     Body::Resource { message, amount }
 }
 
-// covers: ADV-OBJ-002, ADV-MIN-001, ADV-TEL-001
+// covers: ADV-OBJ-002, ADV-MIN-001, ADV-TEL-001, ADV-GAR-001, ADV-BON-001
 #[test]
 fn the_typed_classes_import_as_their_object_types() {
     let colours = [
@@ -420,6 +420,31 @@ fn the_typed_classes_import_as_their_object_types() {
     }
     cases.push((103, 0, "base:subterranean_gate".into()));
     cases.push((111, 0, "base:whirlpool".into()));
+    // E08 T113b: the garrisons by subclass (1 the anti-magic one; 219 the AB pack's vertical
+    // ones) and the fifteen bonus visitables.
+    for (class, pack, way) in [(33, "base", ""), (219, "ab", "_vertical")] {
+        cases.push((class, 0, format!("{pack}:garrison{way}")));
+        cases.push((class, 1, format!("{pack}:anti_magic_garrison{way}")));
+    }
+    for (class, key) in [
+        (11, "buoy"),
+        (14, "swan_pond"),
+        (28, "faerie_ring"),
+        (30, "fountain_of_fortune"),
+        (31, "fountain_of_youth"),
+        (38, "idol_of_fortune"),
+        (48, "magic_spring"),
+        (49, "magic_well"),
+        (52, "mermaids"),
+        (56, "oasis"),
+        (64, "rally_flag"),
+        (92, "sirens"),
+        (94, "stables"),
+        (96, "temple"),
+        (110, "watering_hole"),
+    ] {
+        cases.push((class, 0, format!("base:{key}")));
+    }
     let part = SOD.adventure();
     for (class, subclass, key) in &cases {
         let body = match class {
@@ -441,6 +466,11 @@ fn the_typed_classes_import_as_their_object_types() {
             53 if *subclass < 7 => Body::Mine { owner: 0xFF },
             53 => Body::AbandonedMine(Bits(vec![1, 0, 0, 0])),
             42 | 87 => Body::Owned { owner: 0xFF },
+            33 | 219 => Body::Garrison {
+                owner: 0xFF,
+                army: vec![None; 7],
+                removable: true,
+            },
             _ => Body::None,
         };
         let setup = import(&typed_map(*class, *subclass, body), &SOD).unwrap();
@@ -453,9 +483,8 @@ fn the_typed_classes_import_as_their_object_types() {
     }
     // Every object type of the original packs has its class, but increment 10's dwellings, Refugee
     // Camp and random dwelling (E08 T93a's content), whose classes the import types from T93b
-    // (`dwellings.rs`; since E08 T103b increment 11's teleporters are among the cases), and
-    // increment 12's garrisons and bonus visitables (E08 T113a's nineteen), which the import types
-    // from T113b.
+    // (`dwellings.rs`; since E08 T103b increment 11's teleporters and since E08 T113b increment
+    // 12's garrisons and bonus visitables are among the cases).
     let typed = part
         .object_types()
         .iter()
@@ -465,18 +494,11 @@ fn the_typed_classes_import_as_their_object_types() {
                 h3_adventure::ObjectKind::Dwelling { .. }
                     | h3_adventure::ObjectKind::RandomDwelling
                     | h3_adventure::ObjectKind::RefugeeCamp { .. }
-                    | h3_adventure::ObjectKind::Garrison { .. }
-                    | h3_adventure::ObjectKind::Bonus { .. }
-                    | h3_adventure::ObjectKind::FountainOfFortune { .. }
-                    | h3_adventure::ObjectKind::MagicWell
-                    | h3_adventure::ObjectKind::MagicSpring
-                    | h3_adventure::ObjectKind::Stables { .. }
-                    | h3_adventure::ObjectKind::Sirens { .. }
             )
         })
         .count();
     assert_eq!(cases.len(), typed);
-    assert_eq!(part.object_types().len() - typed, 82 + 2 + 19);
+    assert_eq!(part.object_types().len() - typed, 82 + 2);
     let town = import(&typed_map(98, 0, Body::None), &SOD).unwrap();
     assert_eq!(
         (town.map.objects[0].owner, &town.map.objects[0].holds),
@@ -505,9 +527,9 @@ fn the_typed_classes_import_as_their_object_types() {
             part.object_type_by_key(key)
         );
     }
-    // A class without a type stays a blocker (since E08 T83a the Mystical Garden is typed: a
-    // Magic Spring, 48, a later increment's, here).
-    let other = import(&typed_map(48, 0, Body::None), &SOD).unwrap();
+    // A class without a type stays a blocker (since E08 T83a the Mystical Garden is typed, since
+    // E08 T113b the Magic Spring: a crater, 118, here).
+    let other = import(&typed_map(118, 0, Body::None), &SOD).unwrap();
     assert_eq!(other.map.objects[0].object_type, None);
     // E08 T83a: SoD's abandoned mine (220.7); since E08 T103b class 220 by the mines' table, as the
     // original loads it as 53 with its subclass (a crafted 220.0 a Sawmill with its owner; E08
@@ -1539,6 +1561,8 @@ fn a_maps_player_kinds_and_object_classes_carry_over() {
         (217, Scenery::Ownable),
         (218, Scenery::Ownable),
         (78, Scenery::Other),
+        // E08 T113b: the vertical garrison is 33 from the load on.
+        (219, Scenery::Ownable),
     ];
     for (class, scenery) in kinds {
         let mut m = map();

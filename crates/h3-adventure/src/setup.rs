@@ -191,6 +191,18 @@ pub enum Holds {
         /// The garrison's formation.
         formation: Formation,
     },
+    /// A map garrison's (ADV-GAR-001, E08 T113b; increment 12's design note §4, §5): its army as
+    /// the map gives it, stacks by slot (a count of 0 an empty slot, so none at all is an empty
+    /// garrison), valid as an army's but for none at all, no war machine; and whether its troops
+    /// may be taken out (the map's byte from AB on, true on an RoE map; the original keeps it
+    /// through a capture, survey `E08-garrisons-bonuses.md` §5). The game writes the army on its
+    /// object when it is built (T114a); its owner is the object's ([`ObjectSetup::owner`]).
+    Garrison {
+        /// The troops.
+        army: Vec<ArmyStack>,
+        /// Whether the troops may be taken out.
+        removable: bool,
+    },
 }
 
 /// A reward record (ADV-RWD-001, E08 T61a; survey `E08-rewards.md` §7.1, increment 7's design note
@@ -480,7 +492,9 @@ pub enum SetupError {
     /// [`crate::MAX_PICKUP_AMOUNT`].
     ObjectAmount(usize),
     /// The object at this index has the type and anchor of an earlier typed object (a player
-    /// names a typed object by both).
+    /// names a typed object by both): a ground, a ground of the sea or a hole only when it differs
+    /// from the earlier one in more than the tiles it lies on (E08 T113b, decision 321; nothing
+    /// names one, and the shipped maps hold nine such pairs of two pictures).
     SharedAnchor(usize),
     /// The object at this index is a monster without valid monster data, or has monster data and
     /// is no monster (ADV-MON-001): a creature missing for a fixed monster, given for a random

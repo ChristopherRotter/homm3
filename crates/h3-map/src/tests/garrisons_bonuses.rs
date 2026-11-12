@@ -2,15 +2,19 @@
 //! design note §18, survey `docs/rules/surveys/E08-garrisons-bonuses.md` §1, §2): the garrisons
 //! (33 and AB's 219, subclass 1 the anti-magic garrison) with their owners, armies and removable
 //! flags, and the fifteen bonus visitables without a body, read back as written in SoD and RoE,
-//! their templates' masks as the game's; what the writer refuses; and the import as it reads them
-//! until T113 (each a blocker with its picture's tiles, untyped).
+//! their templates' masks as the game's; what the writer refuses; and since E08 T113b the import's
+//! types of the seventeen classes (ADV-GAR-001, ADV-BON-001), a garrison's body.
 
 use super::import::{ROE, SOD};
 use super::limits;
 use crate::import::codes;
 use crate::model::{Body, RawMap, Stack};
 use crate::writer as w;
-use crate::{import, read};
+use crate::{ImportError, import, read};
+use h3_adventure::{Holds, SetupError};
+use h3_content::CreatureTypeId;
+use h3_contracts::{ArmyStack, PlayerId};
+use h3_game::GameSetupError;
 
 /// The game's `Objects.txt` lines of the garrisons: horizontal (33.0), horizontal anti-magic
 /// (33.1), vertical (219.0) and vertical anti-magic (219.1).
@@ -346,25 +350,182 @@ fn the_writer_refuses_a_garrison_the_game_cannot_load() {
     w::write(&map).unwrap();
 }
 
-// covers: ADV-OBJ-002
+/// The creature type of an original creature code in SoD's rules.
+fn creature(code: u16) -> CreatureTypeId {
+    let i = codes::CREATURES
+        .binary_search_by_key(&code, |&(id, _)| id)
+        .unwrap();
+    SOD.core().creature_by_key(codes::CREATURES[i].1).unwrap()
+}
+
+/// The troops of `stacks` (code, count) in slots from 0.
+fn troops(stacks: &[(u16, u32)]) -> Vec<ArmyStack> {
+    stacks
+        .iter()
+        .zip(0u8..)
+        .map(|(&(code, count), slot)| ArmyStack {
+            slot,
+            creature: creature(code),
+            count,
+        })
+        .collect()
+}
+
+// covers: ADV-OBJ-002, ADV-GAR-001, ADV-BON-001
 #[test]
-fn the_import_reads_increment_12_s_classes_as_blockers_until_t113() {
-    // No class of the seventeen has a type yet (T113b types them: increment 12's design note
-    // §4): each imports as a blocker on its picture's tiles, holding nothing.
-    for class in [33, 219].iter().chain(&w::BONUS_OBJECTS) {
-        assert_eq!(codes::object_type(*class, 0), None, "class {class}");
-    }
-    assert_eq!(codes::object_type(33, 1), None);
-    assert_eq!(codes::object_type(219, 1), None);
+fn the_import_types_increment_12_s_classes() {
+    // E08 T113b (increment 12's design note §4): each of the seventeen classes imports as its
+    // type, a garrison with its owner, troops and removable flag; the setup validates.
     let raw = read_back(&w::write(&increment_12_map()).unwrap());
     let setup = import(&raw, &SOD).unwrap();
     setup.validate(&SOD).unwrap();
-    assert_eq!(setup.map.objects.len(), raw.objects.len() - 1);
-    assert!(setup.map.objects.iter().all(|o| o.object_type.is_none()));
-    // An RoE map's horizontal garrisons and bonus visitables import under RoE's rules alike.
+    let part = SOD.adventure();
+    let keys: Vec<&str> = setup
+        .map
+        .objects
+        .iter()
+        .map(|o| part.object_type(o.object_type.unwrap()).unwrap().key.as_str())
+        .collect();
+    assert_eq!(
+        keys,
+        [
+            "base:garrison",
+            "base:anti_magic_garrison",
+            "ab:garrison_vertical",
+            "ab:anti_magic_garrison_vertical",
+            "base:swan_pond",
+            "base:faerie_ring",
+            "base:fountain_of_fortune",
+            "base:fountain_of_youth",
+            "base:idol_of_fortune",
+            "base:magic_spring",
+            "base:magic_well",
+            "base:oasis",
+            "base:rally_flag",
+            "base:stables",
+            "base:temple",
+            "base:watering_hole",
+            "base:buoy",
+            "base:mermaids",
+            "base:sirens",
+        ]
+    );
+    let red = Some(PlayerId::new(0));
+    let blue = Some(PlayerId::new(1));
+    let seven = [(0, 1), (2, 2), (4, 3), (6, 4), (8, 5), (10, 6), (144, 200)];
+    let garrisons: Vec<_> = setup.map.objects[..4]
+        .iter()
+        .map(|o| (o.owner, o.holds.clone()))
+        .collect();
+    let held = |stacks: &[(u16, u32)], removable| Holds::Garrison {
+        army: troops(stacks),
+        removable,
+    };
+    assert_eq!(
+        garrisons,
+        [
+            (red, held(&[(0, 10), (2, 5)], true)),
+            (None, held(&[], true)),
+            (blue, held(&[(4, 3)], false)),
+            (None, held(&seven, false)),
+        ]
+    );
+    // The fifteen hold nothing and have no owner.
+    assert!(
+        setup.map.objects[4..]
+            .iter()
+            .all(|o| o.holds == Holds::Nothing && o.owner.is_none())
+    );
+    // A count of 0 is an empty slot, a random stack's too; the count's 16 bits are read whole
+    // (the setup's army rules then bound it).
+    let mut edited = raw.clone();
+    let Body::Garrison { army, .. } = &mut edited.objects[1].body else {
+        unreachable!()
+    };
+    army[0] = Some(Stack {
+        creature: 0,
+        count: 0,
+    });
+    army[2] = Some(Stack {
+        creature: 0xFFFE,
+        count: 0,
+    });
+    army[3] = Some(Stack {
+        creature: 6,
+        count: u16::MAX,
+    });
+    let setup = import(&edited, &SOD).unwrap();
+    assert_eq!(
+        setup.map.objects[0].holds,
+        Holds::Garrison {
+            army: vec![
+                ArmyStack {
+                    slot: 1,
+                    creature: creature(2),
+                    count: 5,
+                },
+                ArmyStack {
+                    slot: 3,
+                    creature: creature(6),
+                    count: u32::from(u16::MAX),
+                },
+            ],
+            removable: true,
+        }
+    );
+    // A random stack is refused for good (decision 299; RoE's codes are a byte's).
+    let Body::Garrison { army, .. } = &mut edited.objects[1].body else {
+        unreachable!()
+    };
+    army[2] = Some(Stack {
+        creature: 0xFFFE,
+        count: 1,
+    });
+    assert_eq!(import(&edited, &SOD).err(), Some(ImportError::RandomStack(1)));
+    // An owner nobody plays is refused (ADV-OWN-002), the garrison's subclass past 1 and a bonus
+    // visitable's past 0 are none their classes define.
+    let mut edited = raw.clone();
+    let Body::Garrison { owner, .. } = &mut edited.objects[1].body else {
+        unreachable!()
+    };
+    *owner = 5;
+    assert_eq!(import(&edited, &SOD).err(), Some(ImportError::ObjectOwner(1)));
+    for (index, subclass) in [(1, 2), (4, 2), (5, 1), (19, 1)] {
+        let mut edited = raw.clone();
+        let template = usize::try_from(edited.objects[index].template).unwrap();
+        edited.templates[template].subclass = subclass;
+        assert_eq!(
+            import(&edited, &SOD).err(),
+            Some(ImportError::Subclass(index)),
+            "{index}"
+        );
+    }
+    // A war machine in a garrison is an army no garrison holds (the setup's check).
+    let mut edited = raw.clone();
+    let Body::Garrison { army, .. } = &mut edited.objects[1].body else {
+        unreachable!()
+    };
+    army[0] = Some(Stack {
+        creature: 146,
+        count: 1,
+    });
+    assert_eq!(
+        import(&edited, &SOD).unwrap().validate(&SOD),
+        Err(GameSetupError::Adventure(SetupError::Holds(0)))
+    );
+    // An RoE map's horizontal garrisons (removable, the byte absent) and bonus visitables import
+    // under RoE's rules alike.
     let mut map = increment_12_map();
     map.objects.drain(3..5);
     let raw = read_back(&w::write_in(&map, w::Format::RoE).unwrap());
     let setup = import(&raw, &ROE).unwrap();
-    assert!(setup.map.objects.iter().all(|o| o.object_type.is_none()));
+    setup.validate(&ROE).unwrap();
+    assert!(setup.map.objects.iter().all(|o| o.object_type.is_some()));
+    assert_eq!(
+        setup.map.objects[1].holds,
+        Holds::Garrison {
+            army: Vec::new(),
+            removable: true
+        }
+    );
 }

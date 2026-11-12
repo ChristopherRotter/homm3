@@ -341,7 +341,7 @@ fn ground(
     }
 }
 
-// covers: ADV-GRD-001, GAM-BAT-001
+// covers: ADV-GRD-001, GAM-BAT-001, ADV-OBJ-002
 #[test]
 fn a_ground_sets_the_battlefield_of_the_tiles_it_lies_on() {
     let (core, part) = monster_rules();
@@ -376,10 +376,19 @@ fn a_ground_sets_the_battlefield_of_the_tiles_it_lies_on() {
     // Underground: the underground's terrain, the ground's field; not on another level.
     assert_eq!(field(1, 1, 1), (SWAMP, hallow));
     assert_eq!(field(0, 1, 1), (SWAMP, None));
-    // Grounds of one type may share an anchor (nothing names them); monsters may not.
+    // Grounds of one type may share an anchor (nothing names them); monsters may not. Since E08
+    // T113b (decision 321) such a ground differs from the earlier one only in the tiles it lies on.
     let mut twins = setup.clone();
     twins.map.objects.push(ground(HALLOW, (3, 1, 0), (1, 1)));
     AdventureState::new(&core, &part, &twins, &mut draws()).unwrap();
+    let mut unlike = twins.clone();
+    unlike.map.objects[3].visitable = TileMask::from_bits(1);
+    assert_eq!(
+        AdventureState::new(&core, &part, &unlike, &mut draws()),
+        Err(SetupError::SharedAnchor(3))
+    );
+    unlike.map.objects[3] = ground(BARRENS, (3, 1, 0), (1, 1));
+    AdventureState::new(&core, &part, &unlike, &mut draws()).unwrap();
     let monsters = with(vec![
         object_at(0, MONSTER, Some(fixed(PIKEMAN, 5, 2))),
         object_at(0, MONSTER, Some(fixed(GNOLL, 5, 2))),

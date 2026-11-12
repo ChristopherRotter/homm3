@@ -399,21 +399,21 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x4161b0f028077fda",
-    "0x830ff208700294e9",
-    "0x184a5365018db611",
-    "0x3ee4ccfdf6961c08",
-    "0xf3f779a8c09d1ba3",
-    "0x5c6beb7368059517",
-    "0x2d4ebda65b924161",
-    "0xf74f26d7512192b7",
-    "0x5302f4e7fa5a5b73",
-    "0x561ad9047b526969",
-    "0xc4ac68eb11d7a2b8",
-    "0x3a812b1c9c6ec0f4",
-    "0x901b968334c2991d",
-    "0xcb514680ff53e746",
-    "0x69943e2393e0de15",
+    "0x7dbca5fc94886ecc",
+    "0x83e82c9889edab7d",
+    "0x2cf588e8473d0b46",
+    "0x5399a1c657ec6b8d",
+    "0x8e581c9418100668",
+    "0xbc4a92ebaffbf7b0",
+    "0xdef1c17a899012a0",
+    "0x313abf41279aeeb8",
+    "0xc062d4b683144b3f",
+    "0xaa777950b4b83af1",
+    "0x293dcea069107150",
+    "0x9fd2b219ce43c739",
+    "0x7b34a86260bc2e72",
+    "0x18344b273da05ce0",
+    "0xee73f8938ebf7de0",
 ]
 
 [replay]
@@ -444,14 +444,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 28
-adventure_state_hash_version = 21
+adventure_state_hash_version = 22
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 21
+import_version = 22
 
 [result]
 day = 29
-final_hash = "0xa86348d53175b265"
+final_hash = "0x8ae52fb862855ac6"
