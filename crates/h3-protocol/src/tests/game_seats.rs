@@ -16,7 +16,7 @@ use super::game_fold::one;
 use super::game_session::duel;
 use crate::codec;
 use crate::map::game::{command, manifest, observe};
-use crate::session::game::{GameOptions, GameOutbound, GameSession};
+use crate::session::game::{GameEntry, GameOptions, GameOutbound, GameSession};
 use crate::session::{ConnId, Outbound};
 use crate::wire::game::{GameCommand, GameReject, MapIdentity};
 use crate::wire::{
@@ -24,13 +24,13 @@ use crate::wire::{
 };
 
 /// A map's identity for the manifest (the session only carries it).
-const MAP: MapIdentity = MapIdentity {
+pub(super) const MAP: MapIdentity = MapIdentity {
     content_hash: WireU64(7),
     import_version: 1,
 };
 
 /// Game 9, no checkpoints, every record unbounded.
-const OPTIONS: GameOptions = GameOptions {
+pub(super) const OPTIONS: GameOptions = GameOptions {
     game: 9,
     checkpoint_every: 0,
     record_bytes: usize::MAX,
@@ -43,12 +43,12 @@ const D: ConnId = ConnId(4);
 const F: ConnId = ConnId(6);
 
 /// The token the host drew for `player`'s seat.
-fn token(player: PlayerId) -> String {
+pub(super) fn token(player: PlayerId) -> String {
     std::format!("token-{}", player.raw())
 }
 
 /// `GameJoin` of game 9's `player` with `token`.
-fn join(player: u8, token: Option<&str>) -> ClientMessage {
+pub(super) fn join(player: u8, token: Option<&str>) -> ClientMessage {
     ClientMessage::GameJoin {
         game: 9,
         player,
@@ -57,7 +57,7 @@ fn join(player: u8, token: Option<&str>) -> ClientMessage {
 }
 
 /// `GameCommand` `EndTurn` numbered `seq`.
-const fn end_turn(seq: u32) -> ClientMessage {
+pub(super) const fn end_turn(seq: u32) -> ClientMessage {
     ClientMessage::GameCommand {
         seq,
         command: GameCommand::EndTurn {},
@@ -65,27 +65,38 @@ const fn end_turn(seq: u32) -> ClientMessage {
 }
 
 /// What `conn` sends, and the frames that come out.
-fn send(s: &mut GameSession<'_>, conn: ConnId, message: ClientMessage) -> Vec<Outbound> {
+pub(super) fn send(s: &mut GameSession<'_>, conn: ConnId, message: ClientMessage) -> Vec<Outbound> {
     let mut out = Vec::new();
     s.handle(conn, message, &mut out);
     out
 }
 
 /// The messages in `out` for `conn`, decoded, in order.
-fn to(out: &[Outbound], conn: ConnId) -> Vec<ServerMessage> {
+pub(super) fn to(out: &[Outbound], conn: ConnId) -> Vec<ServerMessage> {
     let frames = out.iter().filter(|o| o.to == conn);
     frames
         .map(|o| codec::decode_server(o.frame.as_bytes(), usize::MAX).unwrap())
         .collect()
 }
 
-/// `GameJoined` for game 9's `player` with `token`.
+/// `GameJoined` for game 9's `player` with `token`, its seat's last number none.
 fn joined(s: &GameSession<'_>, player: u8, token: Option<String>) -> ServerMessage {
+    joined_after(s, player, token, None)
+}
+
+/// `GameJoined` for game 9's `player` with `token`, its seat's last number `last` (E16 M5 T8b).
+pub(super) fn joined_after(
+    s: &GameSession<'_>,
+    player: u8,
+    token: Option<String>,
+    last: Option<u32>,
+) -> ServerMessage {
     ServerMessage::GameJoined {
         game: 9,
         player,
         token,
         manifest: s.manifest().clone(),
+        last,
     }
 }
 
@@ -176,6 +187,17 @@ fn connections_hear_what_the_in_process_hosts_players_hear() {
     for player in (0..=u8::MAX).take(players).map(PlayerId::new) {
         assert_eq!(net.record(player), twin.record(player));
     }
+    // Its journal, the seats' entries and the numbered commands, restores the game with its seats
+    // taken, none held (E16 M5 T8b).
+    let entries: Vec<GameEntry> = net.drain_entries().collect();
+    let numbered = entries.iter().filter(|e| matches!(e, GameEntry::Numbered(..)));
+    assert_eq!(numbered.count(), replay.commands.len() - systems);
+    let manifest = manifest(&rules, MAP);
+    let back = GameSession::reopen(&rules, &setup, seed, manifest, OPTIONS, token, &entries);
+    let back = back.unwrap();
+    assert!(back.started() && !back.paused());
+    assert_eq!(back.state().state_hash(), twin.state().state_hash());
+    assert_eq!(back.journal(), twin.journal());
 }
 
 #[test]
@@ -253,7 +275,7 @@ fn a_seat_is_taken_by_token_or_account_and_retaken_with_a_fresh_snapshot() {
         }
     );
     let told = to(&out, F);
-    assert_eq!(told[0], joined(&s, acting.raw(), None));
+    assert_eq!(told[0], joined_after(&s, acting.raw(), None, Some(1)));
     assert!(matches!(told[1..], [ServerMessage::GameSnapshot { .. }]));
     // Leaving frees the seat and closes; its command then comes from no seat.
     let left = send(&mut s, F, ClientMessage::Leave {});
@@ -300,8 +322,11 @@ fn a_join_or_a_command_out_of_place_changes_nothing() {
         }]
     };
     assert_eq!(to(&send(&mut s, A, end_turn(1)), A), unseated(1));
-    // A seat taken before the start: one seat a connection, and no command yet.
+    // A seat taken before the start: one seat a connection, and no command yet; its first take
+    // an entry (E16 M5 T8b).
     assert_eq!(to(&send(&mut s, A, join(0, None)), A).len(), 2);
+    let taken: Vec<GameEntry> = s.drain_entries().collect();
+    assert_eq!(taken, [GameEntry::Taken(PlayerId::new(0))]);
     assert_eq!(
         to(&send(&mut s, A, join(1, None)), A),
         refused(Refusal::AlreadyJoined)

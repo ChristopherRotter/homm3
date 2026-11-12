@@ -333,8 +333,8 @@ pub enum ArtifactPlace {
     },
 }
 
-/// Why the game rejected a command (`h3_game::GameCommandError`, and the session's last two, E16
-/// M5 T8a); a rejected command changed nothing. The text is the client's.
+/// Why the game rejected a command (`h3_game::GameCommandError`, and the session's last four, E16
+/// M5 T8a and T8b); a rejected command changed nothing. The text is the client's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum GameReject {
@@ -401,8 +401,17 @@ pub enum GameReject {
     /// The session's, not the engine's (E16 M5 T8a, v45): the connection holds no seat of the
     /// game.
     NotSeated {},
-    /// The session's (E16 M5 T8a, v45): the game has not started, not every seat was held yet.
+    /// The session's (E16 M5 T8a, v45): the game does not run: not every seat was held yet, or
+    /// (E16 M5 T8b, v46) it is paused.
     NotStarted {},
+    /// The session's (E16 M5 T8b, v46): the seat asked for a pause already since the game last
+    /// moved on.
+    AlreadyAsked {},
+    /// The session's (E16 M5 T8b, v46): the command's number is at or below the last its seat's
+    /// accepted commands took, and the session keeps no answer for it (a number rejected or
+    /// skipped, or one older than the seat's last [`crate::session::game::KEPT_ANSWERS`]
+    /// accepted): a resend, nothing applied.
+    Stale {},
 }
 
 /// Why a town command was refused (`h3_towns::TownCommandError`).

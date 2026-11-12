@@ -102,8 +102,12 @@ pub mod wire;
 /// M5 T8a): a whole game's seats over the wire: the client messages `GameJoin` (a player's seat,
 /// taken by account or token as a battle's) and `GameCommand`, the answer `GameJoined`, the
 /// refusal `NoSuchSeat`, the session's rejections `NotSeated` and `NotStarted` (`GameRejected`,
-/// numbered 0 for a connection without a seat); a re-taken seat gets a fresh `GameSnapshot`.
-pub const PROTOCOL_VERSION: u32 = 45;
+/// numbered 0 for a connection without a seat); a re-taken seat gets a fresh `GameSnapshot`. v46
+/// (E16 M5 T8b): a seat's commands numbered against resends (`GameCommand`'s `seq` strictly
+/// increasing, a resend answered as the first time or rejected `Stale`), `GameJoined`'s `last`, the
+/// seat's last number; the host's pause of a whole game (`Pause`, another seat's ask told as
+/// `GamePauseAsked`, rejected `AlreadyAsked` once asked; a paused game rejects `NotStarted`).
+pub const PROTOCOL_VERSION: u32 = 46;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

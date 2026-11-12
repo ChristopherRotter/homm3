@@ -12,6 +12,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
+- **In progress (2026-11-12): T8b** on `server/e16-m5-t8b` (stacked on T8a's local head, before `master` was merged into `server/e16-m5-t8a` for #878): a work-in-progress commit, its worker stopped by a restart. Built: the seat's command numbers (strictly increasing, a resend answered as the first time or `Stale`, `KEPT_ANSWERS`, `GameEntry::Numbered`, `GameJoined::last`), the host's pause (`GamePauseAsked`, `Goodbye { Paused }`, resume by a join), `GameSession::reopen` with the seats taken; `PROTOCOL_VERSION` 46. The library builds; the tests do not: `tests/mod.rs` declares `game_resume`, not yet written. Left: that test file, coverage, the scoped verify, merging `origin/server/e16-m5-t8a` in, the docs (log, epic line, review list, HANDOFF, QUEUE next T9).
+
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
 - **Agent decides, marked provisional:** the inner structure of the server crates, names, test layout, error texts, log format; anything a later task can change without touching another crate. Mark it `provisional` (code comment or epic log).
