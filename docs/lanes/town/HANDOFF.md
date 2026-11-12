@@ -13,12 +13,12 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T26a1 (decision 89: the inputs, the week and the month in the day, the events' creatures,
   `TWN-STUB-10` lifted), **T26a2** (decision 90, whole: the week's kind TWN-GRO-002 from the
   towns' stream, the setup's `roe`, the month after a `week_of` week, the telling and the wire;
-  game state hash v29, map import v23, protocol v50). **Next:**
+  game state hash v29, map import v23, protocol v51). **Next:**
   T26b (`QUEUE.md`), then T27 to T30
   (design §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is
   increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
-  `TWN-STUB-2` (the victory conditions). The protocol's v50 is T26a2's (T26b's views take the next).
+  `TWN-STUB-2` (the victory conditions). The protocol's v51 is T26a2's (T26b's views take the next).
 - **Open pull requests:** T26a2's (branch `town/e09-t26a2`, `cross-lane`); watch it until it
   merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
@@ -55,7 +55,7 @@ disk, CI's run on `master` stands for it). T26a2 whole (the user, decision 90; t
 was recommended). The user's computer was connected at the start only: the original data staged
 then (17 files, SHA-256 checked), used for the scoped verify. First the inbox's hygiene note,
 classified: the property plan's fault (a visited town drew a dwelling its owner sees), fixed in
-`h3-map`'s `view.rs`. `cross-lane`: game state hash v29, map import v23, protocol v50, the 72
+`h3-map`'s `view.rs`. `cross-lane`: game state hash v29, map import v23, protocol v51 (the server's T11 took v50), the 72
 adventure replays, four fork workloads re-baselined (+0.8 % to +1.1 % against `master`),
 `h3-server`'s record literals, a `h3-view` test literal. Notes in the adventure's and the
 server's inboxes. T26b next.

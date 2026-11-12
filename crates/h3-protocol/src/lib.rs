@@ -114,17 +114,25 @@ pub mod wire;
 /// first line a `wire::game::GameRecordHeader`; `GameRejected { NotSeated }` without a seat). v49
 /// (E16 M5 T10): a map offer names the computer that plays a whole game's unowned battle sides
 /// (`wire::game::MapOffer`'s `computer`, `wire::game::Computer`), whose commands the session
-/// tells as the system actor's. v50 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s
-/// `kind` and the game observation's `week` (`wire::game::Week`), the fold keeping it.
-pub const PROTOCOL_VERSION: u32 = 50;
+/// tells as the system actor's. v50 (E16 M5 T11): a whole game's queries, the client message
+/// `GameQuery` (`wire::game::GameQuery`: a hero's moves, a town's hall, a battle's targets), the
+/// answer `GameAnswer` (unnumbered, not recorded; `wire::game::Moves`, a path tree), and at the
+/// game's start each player's town events that fired at its turn start inside the build, in a
+/// `GameEvents` before any turn: the message is unchanged, its order is new.
+/// v51 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s `kind` and the game
+/// observation's `week` (`wire::game::Week`), the fold keeping it.
+pub const PROTOCOL_VERSION: u32 = 51;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
 /// its first command's, and the last `Snapshot` before `GameEnded`; an `Events` message is no
 /// longer always a command's. v4 (E16 M5 T5b): a whole game's record, its header
 /// `wire::game::GameRecordHeader` (the game's manifest and the player), every further line one
-/// numbered message the player was sent (`session::game`); a battle's record is unchanged.
-pub const RECORD_FORMAT_VERSION: u32 = 4;
+/// numbered message the player was sent (`session::game`); a battle's record is unchanged. v5
+/// (E16 M5 T11, as v3 for a battle): a whole game's record may hold the start's `GameEvents` (its
+/// player's town events that fired inside the build) before its first command's; a `GameEvents`
+/// message is no longer always a command's.
+pub const RECORD_FORMAT_VERSION: u32 = 5;
 
 #[cfg(test)]
 mod tests;

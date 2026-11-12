@@ -1408,7 +1408,7 @@ still change at `TWN-Q14` (decision 78 lists them).
   (`GameState::week`), `roe` and the towns' stream (`StreamId::TOWNS`; game state hash v29, both
   after the month's kind, the stream after the game's); `GameSetup::roe` from the import's format
   (map import v23); `WeekStarted { week, kind }`, `GameObservation::week`, the wire's `Week` and
-  the fold (protocol v50). `h3-game` re-exports `WeekKind`.
+  the fold (protocol v51; the server lane's E16 M5 T11 took v50). `h3-game` re-exports `WeekKind`.
 
 ### 43. The month (TWN-GRO-004; GAM-CAL-003 amended)
 

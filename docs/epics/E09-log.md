@@ -3518,7 +3518,8 @@ recommended).
   `WeekKind`.
 - **The telling:** `GameEvent::WeekStarted { week, kind }`, `GameObservation::week`; the wire's
   `Week` (`Normal`, `Creature`, `Of`), the mapping, the fold (`self.week = kind`), protocol
-  **v50**; the fold gate's part "day, week and month".
+  **v51** (the server lane's E16 M5 T11 took v50, merged during this task: `master` merged in);
+  the fold gate's part "day, week and month".
 - **Tests:** `h3-towns`: the lists, `building_week`, the draw's chance and stream positions over
   400 seeds, no draw on a month's first, `roe`, the building's week over the draw. `h3-game`'s
   `town/tests/growth.rs`: a creature's week drawn on day 8 as the towns' stream of seed 7 says,
