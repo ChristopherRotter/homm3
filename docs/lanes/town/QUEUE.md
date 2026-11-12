@@ -8,31 +8,33 @@ Epic: `docs/epics/E09-towns.md` (increment 3: growth, recruitment and the army r
 T20, `TWN-Q11`, decisions 64 to 67); done tasks in `E09-log.md`; increments 1 and 2 (closed by T10
 and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 (`TWN-Q12`), the
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
-the drafts accepted), batch TWN-3 (T23, decision 84). The building rounds follow the cut of design
-note §56 (decision 83): the `shared/` task (T24), then the build, E08's increment 12 merging in
+the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
+ADRs, the stream, the effects and flags). The building rounds follow the cut of design note §56
+(decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T24 — `shared/`: increment 3's ADRs and core changes** (decision 83; design note §56 round 3):
-the five accepted drafts (`adr-drafts/*-increment-3.md`) into ADR-0028, -0017, -0016, -0013,
--0023 with T23's verdicts; `StreamId::TOWNS` (`h3-kernel`); `h3-content`'s `HeroEffect::TownGrowth`
-and `OwnerTownGrowth` and the two quirk flags (pack format v52), the packs' six artifacts
-(`cross-lane`); `docs/03-domain.md`'s terms (available creatures, the week's kind, the Portal of
-Summoning, the upper bar, the garrison hero); `docs/06-security.md`'s town lines. In merge order
-with E08's T112 (both amend ADR-0013, -0016, -0017: the second rebases). T23's verdicts (survey
-`E09-growth.md` §17): every row as the reading, the drafts stand. **Status:** next.
+**E09 T25 — growth's town side** (decision 83; design note §56 round 4; the town lane's paths and
+the harvest, so it waits on no E08 merge): **T25a** the town part's roles `horde`, `portal`,
+`week_of`, each record's `roe` and the week's and garrison week's parameters (§38; part v5; the
+original packs' `towns.toml` by the harvester's gap-fill, `cross-lane` as decision 23's route), the
+record's fourteen counts and the Portal with the store's writes (§40; town state hash v3;
+`MAX_AVAILABLE`, T-10 fixed as planned `TWN-QUIRK-8`), TWN-GRO-001 (§41: the inputs as plain values,
+the Legion's from T24's two effects) and -005 (§46: the first creatures); **T25b** TWN-GRO-003, -004
+(§42, §43; with T24's two flags, `TWN-QUIRK-9` and `-10` in `quirks-town.md`), -006, -007 (§44, §45)
+as pure functions over the draws given. The rule ids in `town.toml` with their sources (survey
+`E09-growth.md`, batch TWN-3's rows in §17) and tests. **At its start:** confirm the cut (two parts,
+as planned). **Depends on:** T24 (merged). **Status:** next.
 
-**E09 T25 to T30 — the build** (decision 83; design note §56 rounds 4 to 8, each cut confirmed at
-its start, the agent queues each in full when the one before it ends): **T25** growth's town side
-(T25a the part v5, the record's counts and Portal, TWN-GRO-001, -005, `TWN-QUIRK-8`; T25b
-TWN-GRO-003, -004, -006, -007 with `TWN-QUIRK-9`, `-10`; the town lane's paths only); **T26**
+**E09 T26 to T30 — the rest of the build** (decision 83; design note §56 rounds 5 to 8, each cut
+confirmed at its start, the agent queues each in full when the one before it ends): **T26**
 growth in the game (`cross-lane`; T26a the week's kind, the stream, the day's order, the inputs,
 the week and month, the first and the events' creatures, `TWN-STUB-10` lifted, map import `roe`;
 T26b the neutral week, the Portal's draws, the views and the protocol, the replays, the bench);
 **T27** recruitment (`cross-lane`; §49 to §51, the env's v10); **T28** the rows (`cross-lane`,
 after E08's T114a and T115a merged; T28a §52, §53's record and moves, the env's v11; T28b §53's
 day and income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, increment 4
-refined. **Depends on:** T24 (T25 on T24's core changes). **Status:** waiting.
+refined. **Depends on:** T25. **Status:** waiting.
 
 ## Inbox
 

@@ -638,6 +638,15 @@ enum EffectDto {
     /// Pack format v51 (E08 T102, increment 11): the Sea Captain's Hat's protection at a
     /// Whirlpool.
     WhirlpoolProtection {},
+    /// Pack format v52 (E09 T24, increment 3): the Legion's town growth, the pieces' by level and
+    /// the Statue's owner's share.
+    TownGrowth {
+        level: u8,
+        amount: u16,
+    },
+    OwnerTownGrowth {
+        bp: u16,
+    },
 }
 
 /// A creature's ability outside battle, as files write it (pack format v50, E08 T81b):
@@ -926,6 +935,8 @@ impl EffectDto {
             Self::ExtraManaRegain { points } => HeroEffect::ExtraManaRegain { points },
             Self::FullMana {} => HeroEffect::FullMana,
             Self::WhirlpoolProtection {} => HeroEffect::WhirlpoolProtection,
+            Self::TownGrowth { level, amount } => HeroEffect::TownGrowth { level, amount },
+            Self::OwnerTownGrowth { bp } => HeroEffect::OwnerTownGrowth { bp },
         })
     }
 }

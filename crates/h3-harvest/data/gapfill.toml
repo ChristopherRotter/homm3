@@ -2019,6 +2019,28 @@ ref = "Whirlpool - Heroes 3 wiki: a hero wearing the Sea Captain's Hat or the Ad
 url = "https://heroes.thelazy.net/index.php/Whirlpool"
 retrieved = "2026-11-05"
 
+# The Legion's town growth (E09 T24, pack format v52; survey E09-growth.md §1, §11, §17).
+[[source]]
+id = "exe-legion-growth"
+kind = "original-data"
+ref = "Heroes3.exe code reading (E09 T21; docs/exe/map.toml 0x5BFB60, 0x5BF900, 0x4BACB0, 0x4D91F0): town_legion_growth adds +5, +4, +3, +2, +1 at creature levels 2 to 6 for the pieces 118 to 122 (Legs, Loins, Torso, Arms, Head of Legion), once for each of the town's garrison hero and visitor wearing one (hero_wears_artifact, a yes or no that looks into combinations); town_dwelling_growth adds half of the base and castle's growth in every town of an owner any of whose heroes wears the Statue of Legion (133; player_hero_wears_artifact); batch TWN-3's TWN-3-1 and TWN-3-2 (E09 T23) observed both"
+url = "docs/rules/surveys/E09-growth.md"
+retrieved = "2026-11-11"
+
+[[source]]
+id = "vcmi-legion-growth"
+kind = "vcmi"
+ref = "config/artifacts.json (1.7.5): the Legs, Loins, Torso, Arms and Head of Legion have CREATURE_GROWTH 5, 4, 3, 2, 1 for the levels 2 to 6, propagated to the hero's town; the Statue of Legion has CREATURE_GROWTH_PERCENT 50, propagated to the player, and the five as its components"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+retrieved = "2026-11-11"
+
+[[source]]
+id = "wiki-legion-growth"
+kind = "wiki"
+ref = "Growth - Heroes 3 wiki (the shoutwiki copy, search snippets; a fetch is refused): the parts of the Legion artifacts and the Statue of Legion affect the growth, the Statue multiplying the basic growth (on the base and the castle's: batch TWN-3's TWN-3-2, survey E09-growth.md §17)"
+url = "https://heroes.shoutwiki.com/wiki/Growth"
+retrieved = "2026-11-11"
+
 # The day's income and spell points (E08 T81b, pack format v50; survey E08-economy.md §8, §12;
 # batch E9's E9-7 and E9-12, scored in §19).
 [[source]]
@@ -2965,6 +2987,39 @@ sources = [
     "exe-whirlpool-protection", "vcmi-whirlpool-protection", "wiki-whirlpool-protection",
 ]
 
+# The Legion's town growth (E09 T24, pack format v52; ADR-0013 point 16.4, TWN-GRO-001): the
+# pieces' amounts by level for the town's garrison hero and visitor, the Statue's owner's share for
+# every town of its wearer's owner (its parts' amounts come through them, worn as a combination).
+[[artifacts.effects]]
+artifacts = ["Legs of Legion"]
+effects = [{ kind = "town_growth", level = 2, amount = 5 }]
+sources = ["exe-legion-growth", "vcmi-legion-growth", "wiki-legion-growth"]
+
+[[artifacts.effects]]
+artifacts = ["Loins of Legion"]
+effects = [{ kind = "town_growth", level = 3, amount = 4 }]
+sources = ["exe-legion-growth", "vcmi-legion-growth", "wiki-legion-growth"]
+
+[[artifacts.effects]]
+artifacts = ["Torso of Legion"]
+effects = [{ kind = "town_growth", level = 4, amount = 3 }]
+sources = ["exe-legion-growth", "vcmi-legion-growth", "wiki-legion-growth"]
+
+[[artifacts.effects]]
+artifacts = ["Arms of Legion"]
+effects = [{ kind = "town_growth", level = 5, amount = 2 }]
+sources = ["exe-legion-growth", "vcmi-legion-growth", "wiki-legion-growth"]
+
+[[artifacts.effects]]
+artifacts = ["Head of Legion"]
+effects = [{ kind = "town_growth", level = 6, amount = 1 }]
+sources = ["exe-legion-growth", "vcmi-legion-growth", "wiki-legion-growth"]
+
+[[artifacts.effects]]
+artifacts = ["Statue of Legion"]
+effects = [{ kind = "owner_town_growth", bp = 5000 }]
+sources = ["exe-legion-growth", "vcmi-legion-growth", "wiki-legion-growth"]
+
 # Armageddon at Expert while worn (0x4E5080; HER-SPL-003); its stacks immune to it (T8b2).
 [[artifacts.effects]]
 artifacts = ["Armageddon's Blade"]
@@ -3251,15 +3306,12 @@ artifacts = ["Catapult"]
 # `free_boarding`): the Necklace of Ocean Guidance, the Sea Captain's Hat, the Admiral's Hat. The
 # day's income and spell points left it in E08 T81b (`daily_resource`, `extra_mana_regain`,
 # `full_mana`): the resource and gold artifacts, the Cornucopia, the mana artifacts, the Wizard's
-# Well (Titan's Thunder's book left in E08 T45, `gives_spell_book`).
+# Well (Titan's Thunder's book left in E08 T45, `gives_spell_book`). The Legion's growth left it in
+# E09 T24 (`town_growth`, `owner_town_growth`): the five pieces and the Statue.
 [[artifacts.pending]]
 epic = "E08-E10"
-what = "adventure map: growth, the Grail"
-artifacts = [
-    "The Grail",
-    "Legs of Legion", "Loins of Legion", "Torso of Legion", "Arms of Legion", "Head of Legion",
-    "Statue of Legion",
-]
+what = "adventure map: the Grail"
+artifacts = ["The Grail"]
 
 # What spells do in battle beyond what the executable's flag word gives (E04b T2a; pack format
 # v4). The harvester derives `target` and the `damage` effect from the flags (installation.md

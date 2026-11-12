@@ -94,8 +94,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      ownable index with the mines', the owners at load the setup's. A town's **garrison** is its
      army on objects (the table increment 3 made, a mine's guards' since increment 9): the
      setup's (its random stacks resolved when the game is built, ADR-0017 point 4) until a rule
-     writes it. No other town state is the adventure's: its record (faction, buildings) is
-     `h3-towns`', which the game composes with it.
+     writes it: **from E09's increment 3** a neutral town's garrison week (the game writes the
+     stacks `h3-towns`' rule returns, through the town module's writer; TWN-GRO-006; batch
+     TWN-3's TWN-3-4 confirmed the reading, E09 T23). No other town state is the adventure's: its
+     record (faction, buildings) is `h3-towns`', which the game composes with it.
      **E09's increment 2** (E09 decision 46) gives a town object's static part its **boat
      spot**, fixed when the game is built with the Shipyards' boat tiles (ADV-SHY-001's step,
      after every object is placed) and never moved: from the town's entrance, the first of the
@@ -106,6 +108,16 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
      every town, whatever its faction; the game reads it at the build (ADR-0017 point 4: a
      Shipyard forbidden without it) and for the town events' Shipyard; increment 5's town boat
      is built on it. No other town state becomes the adventure's.
+     **E09's increment 3** (E09 decisions 73, 81): the game reads, for a town's growth and its
+     Portal, **each dwelling's owner and its kind's creatures** in object order
+     (`StaticMap::dwellings`, `AdventureState::owner`; ADR-0028 point 6): the external dwellings
+     count by their first creature (the original's record +4, `town_change_owner` 0x4C62B5), the
+     Portal draws one of the owner's dwellings (classes 17 and 20; never a Refugee Camp), then one
+     of its kind's creatures. No adventure state is added for growth. A town's record holds its
+     **garrison hero**, if one stands: the whole record of the hero on the map (point 3) moved
+     into the town's (`Holds::Town`), its tile the entrance's, unread while it stands there. The
+     town's garrison is empty while a garrison hero stands (the hero took it in, point 3);
+     recruits and a neutral week never reach such a town's own garrison.
    - **Increment 10's dwellings and Refugee Camps** (E08 decision 231):
      - **Owners:** the dwellings are ownable objects (point 4), their owners in the owners' block
        by ownable index with the mines', the owners at load the setup's.
@@ -218,6 +230,36 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    its points and the day's maximum are kept, and a hero in a boat jumps with its boat (an aboard
    boat's record keeps the tile it was boarded on). A Whirlpool's loss lowers or empties one stack
    of the army and never empties the army.
+   **E09's increment 3, the garrison hero** (TWN-ROW-002 to -005; survey `E09-growth.md` §9, §10;
+   after E08 increment 12's text once E08's T112 adds it): a hero of the town's owner moved into a
+   town's garrison **keeps its whole record** (its army, its points and day's maximum, its
+   formation and tactics flag, and from E08's increment 12 its battle bonuses and timed marks: the
+   original keeps the hero record whole, `town_visitor_to_garrison` 0x4B9FC0; batch TWN-3's
+   TWN-3-6 saw its points refilled at its owner's turn, E09 T23); the record leaves the heroes on
+   the map for the town's (point 1), so it has no tile, reach, meeting or visit, is not the town's
+   visitor (TWN-VIS-002) and is not among a player's heroes on the map (their most, the part's 8,
+   counts only those). E08 decision 307's drop "when a hero leaves the map" does not apply: the
+   record moves, it is not dropped. Three moves, each the town owner's in its turn (the
+   adventure's town module checks the town, the game the turn): **the visitor enters** the
+   garrison when none stands (the town's garrison joins the hero's army all or nothing, by
+   `army_absorb` 0x44B620's steps: each garrison stack in slot order onto the hero's stack of its
+   creature, else into the first empty slot, else the hero's own two stacks of one creature
+   merged, the later into the earlier, and the slot tried again; refused, typed, when none frees a
+   slot, so when the two armies' creatures counted once exceed the slots); **the garrison hero
+   leaves** onto a free entrance, refused while the owner has its most heroes on the map or its
+   army holds no stack; **the two swap** (both the owner's), each keeping its army. **The army
+   references** (agreed with E08's increment 12; its decision 305): a town's **upper bar** is
+   `ArmyRef::Garrison(town)` without a garrison hero and `ArmyRef::Hero(the garrison hero)` with
+   one, its lower bar the visitor's `ArmyRef::Hero`; `ArmyRef::Hero` resolves to a garrison
+   hero's army too. **The one owner rule** (E08's) takes a town's garrison's bar owner as its
+   town's owner; a garrison hero's is its owner, so its last stack never leaves its army (the
+   original's town screen keeps it, 0x5C7436). `ArmyCommandError::Garrison` stays for a town's
+   garrison the game does not admit (ADR-0017 point 6). **The hire dialog's** source and target
+   gain a town's (E08 T95b built them to be extended): `HireSource::Town { town, index }`,
+   `HireSource::Portal { town }` and `HireTarget::Garrison(town)`, the town's upper bar's army
+   (batch TWN-3's TWN-3-6: a purchase joins the garrison hero's army); the adventure gives the
+   room of the target (the room rule ADV-ARM-007, ADV-HIR-002) and joins the creatures into it,
+   the counts being the town's (ADR-0028 point 6).
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
@@ -507,7 +549,18 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
        with the town), else against the garrison as an army without a hero (E08's
        `Defender::Garrison`), the defending side the town's owner's (the neutral seat for none).
        A siege of a town whose visitor is an ally's hero is a **typed refusal**, a stub until
-       E10 (E09 decision 16);
+       E10 (E09 decision 16).
+       **From E09's increment 3** a town with a **garrison hero** (survey `E09-towns.md` §9.1;
+       TWN-SIE-001 amended): with a visitor too, the visit is **a battle against the visitor, not
+       a siege** (the gate tile's battlefield, no town bonuses; ADR-0023 point 1), the garrison
+       not merged, and the town is never taken by it (the attacker stays outside; a beaten
+       visitor leaves the map); without a visitor, a **siege against the garrison hero** with its
+       own army; a win captures the town and sends the beaten garrison hero to the pool. The
+       garrison's merge into a lone visitor's army (TD-7, TWN-SIE-002) happens only without a
+       garrison hero. **T-5** (`TWN-QUIRK-11`, the original's, E09 decision 12): a garrison hero
+       whose army is empty (a defence won by summoned creatures alone) does not defend: the
+       first visitor of another team enters and captures the town without a battle, the garrison
+       hero back to the pool with its artifacts, no experience given;
      - an **undefended** town of another team or none is **entered and captured**.
      - **Capture** (a town is never flagged; ADV-OWN-001's flagging is the other ownable kinds'):
        the owner changes, the garrison is emptied, the reveal of point 5; `h3-towns`' part of it
@@ -722,6 +775,10 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    shows them, changing with a build. The boat spot is told to no one in increment 2 (whether
    the town may build a Shipyard is in its owner's buildings). The game composes these views
    (ADR-0017 point 2); `docs/06-security.md` lists them (E09 T15).
+   **From E09 increment 3** a town's view at the level that shows its garrison's army
+   (TWN-VEW-001, level 3) shows a garrison hero and its army as the garrison; its owner sees its
+   garrison heroes among its own heroes, each with its town in place of a tile, and nobody sees
+   one on the map.
    From increment 10 every viewer that sees a **dwelling** sees its type (so its name and
    creatures; a random dwelling's drawn type, footprint and moved anchor, as the original draws
    it) and its owner; **never its counts or guards** (the original's hint and popup show neither,
@@ -996,3 +1053,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   lifted); no visit rule for a build; a town's buildings its owner's and an ally visitor's, its
   day's mark public where it is seen. Drafted in E09 T13 (design note `E09-design.md` §28, §31);
   batch TWN-2 (T14c, survey `E09-construction.md` §13) changed nothing here.
+- 2026-11-12 (E09 T24 `shared/`; E09 decisions 73, 80 to 83, `TWN-Q14`; E08 decision 305): points
+  1, 3, 4 and 6 amended for E09 increment 3 (growth's inputs, the garrison hero, the army
+  references, the hire dialog's town sources, the visit of a town with a garrison hero). Drafted
+  in E09 T22a and T22b; batch TWN-3's verdicts (E09 T23) cited. E08's T112 adds its increment 12
+  text to points 1, 3, 4 and 6 before this (merge order, the second rebases).
