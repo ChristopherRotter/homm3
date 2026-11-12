@@ -75,6 +75,7 @@ pub(super) fn rules() -> Rules {
                 name: "Object".into(),
                 visit: Visit::Enter,
                 from_above: false,
+                kind_mark: false,
                 kind,
             };
             for level in 1..=7 {

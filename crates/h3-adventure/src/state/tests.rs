@@ -905,6 +905,7 @@ mod dwellings;
 mod economy;
 mod events;
 mod flight;
+mod garrisons;
 mod hiring;
 mod holds;
 mod mines;

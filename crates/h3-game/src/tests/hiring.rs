@@ -58,6 +58,7 @@ fn rules_months(months: Option<MonthParamsDef>) -> GameRuleset {
         core.creatures[1].info.cost = vec![(key("t:gem"), 2), (key("t:gold"), 100)];
         part.object_types.push(ObjectTypeDef {
             from_above: false,
+            kind_mark: false,
             ..entered("t:camp", ObjectKindDef::RefugeeCamp { levels: [2, 2] })
         });
     })

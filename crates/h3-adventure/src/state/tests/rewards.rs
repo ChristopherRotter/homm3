@@ -78,6 +78,7 @@ pub(super) fn rules(faithful: bool) -> Rules {
                 name: "Object".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
+                kind_mark: false,
                 kind,
             };
             let gift = |gives, prices: Vec<Vec<(ContentKey, u32)>>, admits, leave| {

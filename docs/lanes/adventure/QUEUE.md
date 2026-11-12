@@ -4,29 +4,35 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 done (`adventure/e08-t111`, whole, docs only: survey §15, every row as read; the visit modes by the class lists, the checkpoint ADV-Q51, decision 317); round 3 done. Round 4: T112 done (`shared/e08-t112`, `cross-lane`, whole: decision 318; the three drafts in ADR-0013, -0016, -0017 with batch E12's rows, the glossary, the security lines, `EffectSource::Visit`'s doc comment, the experiments README's visit modes); round 4 done. Round 5: T113 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 done (`adventure/e08-t111`, whole, docs only: survey §15, every row as read; the visit modes by the class lists, the checkpoint ADV-Q51, decision 317); round 3 done. Round 4: T112 done (`shared/e08-t112`, `cross-lane`, whole: decision 318; the three drafts in ADR-0013, -0016, -0017 with batch E12's rows, the glossary, the security lines, `EffectSource::Visit`'s doc comment, the experiments README's visit modes); round 4 done. Round 5: T113a done (`adventure/e08-t113a`, `cross-lane`, alone: decision 319; the kinds, the packs, `kind_mark`, the check against the original data; part v20); T113b next (with the server lane's anchor question, decision 320). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T113 — the content and the import** (design note §1 to §4, §17, §19; decisions 295,
-299, 302, 311, 317; then **T114**)
+**E08 T113b — the import** (design note §4, §17, §19; decisions 295, 299, 319, 320; then **T114**)
 
-- **Scope:** the build's first round (design §19's round 5; its cut confirmed at its start, the
-  table's T113a and T113b). **T113a** the kinds and the packs (§1 to §3; adventure ruleset part
-  v20): `ObjectKind::Garrison { anti_magic }` (ownable, entered, visitable from above; 33.0,
-  33.1 in the base pack, 219.0, 219.1 in the AB pack) and the six bonus kinds (`bonus`,
-  `fountain_of_fortune`, `magic_well`, `magic_spring`, `stables`, `sirens`; the fifteen in the
-  base pack, their visit modes by the class lists: the Buoy, the Mermaids and the Sirens from a
-  neighbour, the Buoy from above too, the twelve others entered, decision 317), the amounts as
-  parameters, the type flag `kind_mark` (§3's list), the names' harvest check against
-  `ObjNames.txt`, `Objects.txt` and the class lists; 219 in the battle background's ownable
-  classes. **T113b** the import (§4; map import v22): the garrison's body (owner, seven stacks, a
-  count of 0 empty, the removable byte from AB, true on RoE), `ImportError::RandomStack`, the
-  fifteen typed by class with no body; the census as the import's test with original data. A step
-  onto any of them refused as any unbuilt visit's until T114 and T115.
-- **Inputs:** design §1 to §4, §17 (versions, rule ids); survey `E08-garrisons-bonuses.md` §1,
-  §2, §9.3, §13; ADR-0016 point 4 (as T112 applied it); `docs/formats/h3m.md`'s row "33, 219
-  garrison"; the adventure lane's `TRAPS.md` (kinds, import).
-- **Depends on:** T112 (done). **Status:** ready (original data for the census and the harvest
-  check; the scoped verify with `--with-original-data`).
+- **Scope:** the build's first round's second part (design §19's round 5; T113a done, decision 319;
+  its cut confirmed at its start). The import (§4; map import v22): the garrison's body (owner,
+  seven stacks, a count of 0 empty, the 16-bit count read whole, the removable byte from AB, true
+  on RoE; the 8 unused bytes dropped), `ImportError::RandomStack`, 33 and 219 by subclass to
+  T113a's four types (`base:garrison`, `base:anti_magic_garrison`, `ab:garrison_vertical`,
+  `ab:anti_magic_garrison_vertical`), the fifteen typed by class with no body (`base:buoy` …
+  `base:watering_hole`, the keys of `packs/base/adventure.toml`); 219 in `codes::scenery`'s
+  ownable classes (GAM-BAT-011); the census as the import's test with original data (design §1's
+  numbers: 238 garrisons on 61 maps, 4 085 bonus visitables on 159). `h3-map`'s
+  `the_typed_classes_import_as_their_object_types` excludes T113a's seven kinds from its count
+  until then: add their cases. A step onto any of them stays refused as any unbuilt visit's until
+  T114 and T115 (T113a's state test). The replays re-recorded (the import version and the maps
+  holding these classes). **Also (decision 320)** the server lane's question (its inbox note of
+  2026-11-12, archived in `QUEUE-ARCHIVE.md`): two objects of one type on one anchor that differ.
+  Found at T113a: the setup already refuses two typed objects of one type on one anchor
+  (`SetupError::SharedAnchor`, `AdventureState::new` through `dwellings::names`; ADV-OBJ-002's
+  summary: none in the shipped maps) but for the grounds, the grounds of the sea and the holes
+  (nothing names them), and untyped blockers are named by nothing; answer the server lane with
+  that reading, and refuse at the import (or the setup) what the census shows can still differ
+  (a shipped map with such a pair goes back to the user).
+- **Inputs:** design §4, §17; survey `E08-garrisons-bonuses.md` §1, §2, §9.3; `docs/formats/h3m.md`'s
+  row "33, 219 garrison"; ADR-0016 point 4; T113a's record in `E08-log.md`; the server lane's
+  note (`QUEUE-ARCHIVE.md`, 2026-11-12).
+- **Depends on:** T113a (merged). **Status:** ready (original data for the census; the scoped
+  verify with `--with-original-data`).
 
 ## Inbox
 
@@ -47,17 +53,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `h3-game`'s and `h3-adventure`'s projections. Each pull request names its rule ids and tests and
   asks your lane's review; nothing for you to build. 2a (whole games over the network) changes
   none of your paths.
-
-- 2026-11-12 (the server lane, E16 M5 T7b's review, branch `claude/keen-tesla-q5uxid`; **a
-  question for the object's identity, ADR-0016 point 6**): an object is named to a viewer by
-  its type and anchor (`ObjectRef`; `MonsterChanged`, `GuardsChanged`, `ObjectRemoved` and the
-  others carry only those), and a view's objects are in tile order by type, anchor and masks
-  (E16 M5 T5c). The server lane took it that two objects of one type share an anchor only as two
-  special grounds alike in every field (E08 T20a2a), but found no check that a map cannot place
-  two objects of one type on one anchor that differ (masks, guards, a monster's count): their
-  events would then name both alike, and a client's fold (`GameObservation::fold`) changes the
-  first. Either refuse such a map at import (or in the setup's checks), or tell us the reading
-  that rules them out; no server change is needed either way.
 
 - 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for E10's refinement**, the
   user's decision CLT-Q81): the game shell (E27) fills `h3_game::GameSetup` from the scenario

@@ -96,6 +96,7 @@ fn rules() -> Rules {
                 name: "Object".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
+                kind_mark: false,
                 kind,
             };
             part.object_types.extend([
@@ -643,6 +644,7 @@ fn dwelling_rules() -> Rules {
                 name: "Object".into(),
                 visit: Visit::Enter,
                 from_above: false,
+                kind_mark: false,
                 kind,
             };
             part.object_types.extend((1..=7).map(|level| {

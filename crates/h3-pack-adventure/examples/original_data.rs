@@ -17,8 +17,15 @@
 //! `Objects.txt` lists it too and in `sod` otherwise, named `ObjNames.txt`'s row with the
 //! channel; classes 103 and 111 their one base type each, named by their rows; each teleporter
 //! type entered and visited from above as the executable's class lists say
-//! (`object_classes_not_entered`, `object_classes_from_above`). Fails with the mismatches of the
-//! first check that has any.
+//! (`object_classes_not_entered`, `object_classes_from_above`). Since E08 T113a the garrisons and
+//! the bonus visitables (increment 12's design note §1 to §3; survey
+//! `docs/rules/surveys/E08-garrisons-bonuses.md` §1, §2, §10.2): each subclass of classes 33 and
+//! 219 and of the fifteen bonus classes that SoD's `Objects.txt` lists, listed by AB's too, has
+//! exactly one type of its kind (a garrison anti-magic for subclass 1; 33's and the fifteen's in
+//! `base`, 219's in `ab`), named `ObjNames.txt`'s row, entered and visited from above as the class
+//! lists say; the Stables' points `movement.txt`'s Stables row; and the types with a kind mark
+//! exactly the twelve bonus classes' and increment 7's fourteen that the original's
+//! `kinds_visited` holds. Fails with the mismatches of the first check that has any.
 //!
 //! `cargo run -p h3-pack-adventure --example original_data -- original-data/install`
 //!
@@ -67,8 +74,49 @@ const MONOLITHS: [(u32, MonolithWay, &str); 3] = [
     (45, MonolithWay::TwoWay, "monolith_two_way"),
 ];
 
+/// The fifteen bonus visitables' classes, their base types' keys and whether a visit sets the
+/// team's kind mark (E08 T113a; survey `E08-garrisons-bonuses.md` §10.2's k).
+const BONUS_CLASSES: [(u32, &str, bool); 15] = [
+    (11, "buoy", true),
+    (14, "swan_pond", true),
+    (28, "faerie_ring", true),
+    (30, "fountain_of_fortune", false),
+    (31, "fountain_of_youth", true),
+    (38, "idol_of_fortune", true),
+    (48, "magic_spring", true),
+    (49, "magic_well", true),
+    (52, "mermaids", true),
+    (56, "oasis", true),
+    (64, "rally_flag", true),
+    (92, "sirens", false),
+    (94, "stables", false),
+    (96, "temple", true),
+    (110, "watering_hole", true),
+];
+/// Increment 7's base types whose visit sets the team's kind mark, by class (E08 T113a, increment
+/// 12's design note §3: `kinds_visited` game +0x4E344 + k, `docs/exe/structs.toml`).
+const KIND_MARKED: [(u32, &str); 14] = [
+    (23, "marletto_tower"),
+    (32, "garden_of_revelation"),
+    (41, "library_of_enlightenment"),
+    (47, "school_of_magic"),
+    (51, "mercenary_camp"),
+    (61, "star_axis"),
+    (88, "shrine_of_magic_incantation"),
+    (89, "shrine_of_magic_gesture"),
+    (90, "shrine_of_magic_thought"),
+    (100, "learning_stone"),
+    (102, "tree_of_knowledge"),
+    (104, "university"),
+    (107, "school_of_war"),
+    (113, "witch_hut"),
+];
+
 /// An original object class and subclass.
 type Class = (u32, u32);
+
+/// Whether a type's kind is the one its class wants (check 6).
+type KindTest = Box<dyn Fn(&ObjectKind) -> bool>;
 
 fn main() -> ExitCode {
     let Some(install) = std::env::args().nth(1) else {
@@ -85,6 +133,7 @@ fn main() -> ExitCode {
         texts.join("CrGen4.txt"),
         sod_texts.join("Objects.txt"),
         sod_texts.join("ObjNames.txt"),
+        sod_texts.join("movement.txt"),
     ];
     if let Some(missing) = files.iter().find(|f| !f.is_file()) {
         println!(
@@ -108,7 +157,7 @@ fn main() -> ExitCode {
 }
 
 /// Runs the checks; the summary, or the first check's mismatches.
-fn check(files: &[PathBuf; 6]) -> Result<String, Vec<String>> {
+fn check(files: &[PathBuf; 7]) -> Result<String, Vec<String>> {
     let read = |path: &PathBuf| {
         std::fs::read(path).map_err(|e| vec![format!("{} does not read: {e}", path.display())])
     };
@@ -326,17 +375,29 @@ fn check(files: &[PathBuf; 6]) -> Result<String, Vec<String>> {
     let not_entered = table(OBJECT_CLASSES_NOT_ENTERED, 42, "object_classes_not_entered")?;
     let from_above = table(OBJECT_CLASSES_FROM_ABOVE, 42, "object_classes_from_above")?;
     let names = lines(&files[5])?;
+    let sod_objects = lines(&files[4])?;
     let teleporters = teleporters(
         &part,
-        [&objects, &lines(&files[4])?],
+        [&objects, &sod_objects],
         &names,
         [&not_entered, &from_above],
+    )?;
+
+    // 6. The garrisons and the bonus visitables (E08 T113a).
+    let stables = stables_points(&lines(&files[6])?)?;
+    let bonuses = garrisons_and_bonuses(
+        &core,
+        &part,
+        [&objects, &sod_objects],
+        &names,
+        [&not_entered, &from_above],
+        stables,
     )?;
 
     Ok(format!(
         "{} dwelling types match {} CrGen1 + {} CrGen4 rows, their Objects.txt footprints and \
          the executable's creatures; the {} factions' random dwelling tables match the \
-         original's derivation ({} outcomes); {teleporters}",
+         original's derivation ({} outcomes); {teleporters}; {bonuses}",
         types.len(),
         rows[0].1.len(),
         rows[1].1.len(),
@@ -448,6 +509,163 @@ fn teleporters(
         checked.len(),
         sod.len(),
         ab.len()
+    ))
+}
+
+/// The Stables' points: `movement.txt`'s item bonus named "Stables" (E08 T113a; the original
+/// copies it into `movement_bonus_stables` 0x698A94).
+fn stables_points(lines: &[String]) -> Result<u32, Vec<String>> {
+    lines
+        .iter()
+        .find_map(|line| {
+            let fields = line.split('\t').map(str::trim).collect::<Vec<_>>();
+            (fields.get(4) == Some(&"Stables"))
+                .then(|| fields.get(5)?.parse().ok())
+                .flatten()
+        })
+        .ok_or_else(|| vec!["movement.txt has no Stables row with its points".to_owned()])
+}
+
+/// Check 6 (E08 T113a): the garrison and bonus types against AB's and SoD's `Objects.txt`
+/// (`objects`), SoD's `ObjNames.txt`, the executable's class lists (`lists`: not entered, from
+/// above) and the Stables' points; then the kind marks.
+fn garrisons_and_bonuses(
+    core: &Ruleset,
+    part: &AdventureRuleset,
+    objects: [&[String]; 2],
+    names: &[String],
+    lists: [&[i32]; 2],
+    stables: u32,
+) -> Result<String, Vec<String>> {
+    let classes = [33, 219]
+        .into_iter()
+        .chain(BONUS_CLASSES.iter().map(|b| b.0))
+        .collect::<BTreeSet<u32>>();
+    let listed = |lines: &[String]| {
+        lines
+            .iter()
+            .filter_map(|line| {
+                let fields = line.split_whitespace().collect::<Vec<_>>();
+                let (class, sub) = (fields.get(5)?.parse().ok()?, fields.get(6)?.parse().ok()?);
+                classes.contains(&class).then_some((class, sub))
+            })
+            .collect::<BTreeSet<Class>>()
+    };
+    let [ab, sod] = objects.map(listed);
+    let creature = |k: &str| core.creature_by_key(k);
+    let mut mismatches = Vec::new();
+    let mut checked = Vec::new();
+    for &(class, sub) in &sod {
+        if !ab.contains(&(class, sub)) {
+            mismatches.push(format!(
+                "class {class} subclass {sub} is in SoD's Objects.txt, not AB's"
+            ));
+        }
+        // The kind by class: a garrison's flag by subclass, a bonus class's own kind.
+        let (key, kind_ok): (String, KindTest) = match class {
+            33 | 219 => {
+                let anti_magic = sub == 1;
+                let (pack, suffix) = if class == 33 {
+                    ("base", "")
+                } else {
+                    ("ab", "_vertical")
+                };
+                let prefix = if anti_magic { "anti_magic_" } else { "" };
+                (
+                    format!("{pack}:{prefix}garrison{suffix}"),
+                    Box::new(move |k| *k == ObjectKind::Garrison { anti_magic }),
+                )
+            }
+            _ => {
+                let &(_, key, _) = BONUS_CLASSES.iter().find(|b| b.0 == class).expect("listed");
+                let (from, to) = (creature("base:cavalier"), creature("base:champion"));
+                (
+                    format!("base:{key}"),
+                    Box::new(move |k| match class {
+                        30 => matches!(k, ObjectKind::FountainOfFortune { .. }),
+                        48 => *k == ObjectKind::MagicSpring,
+                        49 => *k == ObjectKind::MagicWell,
+                        92 => matches!(k, ObjectKind::Sirens { .. }),
+                        94 => {
+                            matches!(k, ObjectKind::Stables { points, from: f, to: t }
+                                if *points == stables && Some(*f) == from && Some(*t) == to)
+                        }
+                        _ => matches!(k, ObjectKind::Bonus { .. }),
+                    }),
+                )
+            }
+        };
+        let Some(ty) = part
+            .object_type_by_key(&key)
+            .and_then(|id| part.object_type(id))
+        else {
+            mismatches.push(format!("class {class} subclass {sub} has no type {key}"));
+            continue;
+        };
+        let name = names.get(class as usize).map_or("", |n| n.trim());
+        let class = i32::try_from(class).expect("a class fits");
+        let visit = if lists[0].contains(&class) {
+            Visit::Neighbour
+        } else {
+            Visit::Enter
+        };
+        let expected = (name, visit, lists[1].contains(&class));
+        if !kind_ok(&ty.kind) || (ty.name.as_str(), ty.visit, ty.from_above) != expected {
+            mismatches.push(format!(
+                "{key}: {:?} {:?} {:?} from above {} in the pack, {expected:?} in the original \
+                 (its kind as class {class}'s, the Stables' points {stables})",
+                ty.kind, ty.name, ty.visit, ty.from_above
+            ));
+        }
+        checked.push(ty.key.as_str().to_owned());
+    }
+    // No other type of these kinds.
+    for ty in part.object_types() {
+        let new = matches!(
+            ty.kind,
+            ObjectKind::Garrison { .. }
+                | ObjectKind::Bonus { .. }
+                | ObjectKind::FountainOfFortune { .. }
+                | ObjectKind::MagicWell
+                | ObjectKind::MagicSpring
+                | ObjectKind::Stables { .. }
+                | ObjectKind::Sirens { .. }
+        );
+        if new && !checked.iter().any(|k| k == ty.key.as_str()) {
+            mismatches.push(format!(
+                "{} is a garrison or bonus type of no listed class and subclass",
+                ty.key.as_str()
+            ));
+        }
+    }
+    // The kind marks: exactly the listed bonus classes' and increment 7's.
+    let wanted = BONUS_CLASSES
+        .iter()
+        .filter(|b| b.2)
+        .map(|b| b.1)
+        .chain(KIND_MARKED.iter().map(|k| k.1))
+        .map(|key| format!("base:{key}"))
+        .collect::<BTreeSet<_>>();
+    let marked = part
+        .object_types()
+        .iter()
+        .filter(|t| t.kind_mark)
+        .map(|t| t.key.as_str().to_owned())
+        .collect::<BTreeSet<_>>();
+    for key in wanted.symmetric_difference(&marked) {
+        mismatches.push(format!(
+            "{key}: its kind mark is {} in the pack, not the original's",
+            marked.contains(key)
+        ));
+    }
+    done(mismatches)?;
+    Ok(format!(
+        "{} garrison and bonus types match SoD's {} listed classes and subclasses (all in AB's), \
+         ObjNames.txt, the executable's class lists and movement.txt's Stables; {} types set a \
+         kind mark",
+        checked.len(),
+        sod.len(),
+        marked.len()
     ))
 }
 

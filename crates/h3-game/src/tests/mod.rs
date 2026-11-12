@@ -385,6 +385,7 @@ fn reward(k: &str, kind: ObjectKindDef) -> ObjectTypeDef {
         name: "Reward".into(),
         visit: Visit::Neighbour,
         from_above: true,
+        kind_mark: false,
         kind,
     }
 }
@@ -457,6 +458,7 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 name: "Pile".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
+                kind_mark: false,
                 kind: ObjectKindDef::Pickup(PickupDef::Resource {
                     resource: key("t:gold"),
                     amount: [5, 10],
@@ -468,6 +470,7 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 name: "Chart".into(),
                 visit: Visit::Enter,
                 from_above: false,
+                kind_mark: false,
                 kind: ObjectKindDef::RevealTerrain {
                     terrains: vec![key("t:grass")],
                     price: vec![(key("t:gold"), 2500)],
@@ -479,6 +482,7 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 name: "Tent".into(),
                 visit: Visit::Enter,
                 from_above: false,
+                kind_mark: false,
                 kind: ObjectKindDef::KeyTent { key: 0 },
             },
             ObjectTypeDef {
@@ -486,6 +490,7 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 name: "Guard".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
+                kind_mark: false,
                 kind: ObjectKindDef::KeyGuard { key: 0 },
             },
             // A special ground fought on the battlefield `t:holy` (E08 T20a2a).
@@ -494,6 +499,7 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 name: "Holy ground".into(),
                 visit: Visit::Enter,
                 from_above: true,
+                kind_mark: false,
                 kind: ObjectKindDef::Ground {
                     battlefield: key("t:holy"),
                     no_native: false,
@@ -505,6 +511,7 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
                 name: "Monster".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
+                kind_mark: false,
                 kind: ObjectKindDef::Monster { levels: None },
             },
             // E08 T62a: increment 7's pickups, teachers and finds (`rewards.rs`).

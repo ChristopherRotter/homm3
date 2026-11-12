@@ -114,6 +114,7 @@ fn object_types() -> Vec<ObjectTypeDef> {
         name: "Object".into(),
         visit,
         from_above: visit == Visit::Neighbour,
+        kind_mark: false,
         kind,
     };
     let pile = |resource: &str, amount, multiplier| {
@@ -161,6 +162,7 @@ fn object_types() -> Vec<ObjectTypeDef> {
         ty("t:chart", Visit::Enter, chart()),
         ObjectTypeDef {
             from_above: true,
+            kind_mark: false,
             ..ty("t:open_chart", Visit::Enter, chart())
         },
         ty("t:tent", Visit::Enter, ObjectKindDef::KeyTent { key: 0 }),

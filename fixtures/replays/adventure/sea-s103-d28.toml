@@ -345,19 +345,19 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xf5a9e86f32791a7e",
-    "0xb45f17a983b347d5",
-    "0x2070401e62a32fcb",
-    "0x1124f0e3cfe9e618",
-    "0x30d12be195fb4f74",
-    "0x9f357d9fb122a37b",
-    "0x2e4e5e00119e12ac",
-    "0xbf9dc88fa59664e9",
-    "0x68f1c23969e53e4c",
-    "0x290795bd04c7cf95",
-    "0xe4a20f6c97b05ffd",
-    "0xc2ce9c3fbf3734af",
-    "0x72d014991e14cb25",
+    "0x3664ba08f7773648",
+    "0x18470af0d4b7e69a",
+    "0x80b23b5763c6d89d",
+    "0x55ae93c7943c70de",
+    "0x0f7be7a6ff08248d",
+    "0xcea5ebc37775f482",
+    "0xad30458a72f4876e",
+    "0x8048988186297d9f",
+    "0x840222c579342052",
+    "0x228ba83bd627c263",
+    "0xbd06e0012f50247b",
+    "0xf5b246465e855f9d",
+    "0xd1e3a8021309a361",
 ]
 
 [replay]
@@ -381,7 +381,7 @@ packs = [
 ]
 profile = "base:faithful"
 ruleset_hash = "0x437388440d9286a3"
-adventure_ruleset_hash = "0xcd7ea0d574adc88a"
+adventure_ruleset_hash = "0x505f48af68ec73ca"
 town_ruleset_hash = "0x4ded73a0d357e245"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
@@ -398,4 +398,4 @@ import_version = 21
 
 [result]
 day = 29
-final_hash = "0x90f2d9c63e0ba809"
+final_hash = "0xf2d037d068fd8b51"

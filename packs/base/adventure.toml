@@ -707,6 +707,7 @@ id = "marletto_tower"
 name = "Marletto Tower"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { primary = [0, 1, 0, 0] } }
 
 [[object_type]]
@@ -714,6 +715,7 @@ id = "garden_of_revelation"
 name = "Garden of Revelation"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { primary = [0, 0, 0, 1] } }
 
 [[object_type]]
@@ -721,6 +723,7 @@ id = "library_of_enlightenment"
 name = "Library of Enlightenment"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { primary = [2, 2, 2, 2] }, admits = 10 }
 
 [[object_type]]
@@ -728,6 +731,7 @@ id = "mercenary_camp"
 name = "Mercenary Camp"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { primary = [1, 0, 0, 0] } }
 
 [[object_type]]
@@ -735,6 +739,7 @@ id = "star_axis"
 name = "Star Axis"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { primary = [0, 0, 1, 0] } }
 
 # ADV-TCH-002: the School of Magic (47, 0x4A33E0) and the School of War (107, 0x4A7A40): 1 000
@@ -745,6 +750,7 @@ id = "school_of_magic"
 name = "School of Magic"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { choice = { skills = ["power", "knowledge"], amount = 1 } }, prices = [{ gold = 1000 }], leave = true }
 
 [[object_type]]
@@ -752,6 +758,7 @@ id = "school_of_war"
 name = "School of War"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { choice = { skills = ["attack", "defense"], amount = 1 } }, prices = [{ gold = 1000 }], leave = true }
 
 # ADV-TCH-003: the Learning Stone (100, 0x4A6330) 1 000 experience times Learning; the Tree of
@@ -762,6 +769,7 @@ id = "learning_stone"
 name = "Learning Stone"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = { experience = 1000 } }
 
 [[object_type]]
@@ -769,6 +777,7 @@ id = "tree_of_knowledge"
 name = "Tree of Knowledge"
 visit = "enter"
 from_above = false
+kind_mark = true
 gift = { gives = "level", prices = [{}, { gold = 2000 }, { gems = 10 }] }
 
 # ADV-TCH-004: the Shrines of Magic Incantation (88), Gesture (89) and Thought (90): a spell of
@@ -779,6 +788,7 @@ id = "shrine_of_magic_incantation"
 name = "Shrine of Magic Incantation"
 visit = "enter"
 from_above = false
+kind_mark = true
 shrine = { level = 1 }
 
 [[object_type]]
@@ -786,6 +796,7 @@ id = "shrine_of_magic_gesture"
 name = "Shrine of Magic Gesture"
 visit = "enter"
 from_above = false
+kind_mark = true
 shrine = { level = 2 }
 
 [[object_type]]
@@ -793,6 +804,7 @@ id = "shrine_of_magic_thought"
 name = "Shrine of Magic Thought"
 visit = "enter"
 from_above = false
+kind_mark = true
 shrine = { level = 3 }
 
 # ADV-TCH-005: the Witch Hut (113): a skill drawn among the map's mask; an RoE map has none, and
@@ -804,6 +816,7 @@ id = "witch_hut"
 name = "Witch Hut"
 visit = "enter"
 from_above = false
+kind_mark = true
 witch_hut = { roe = ["pathfinding", "archery", "logistics", "scouting", "diplomacy", "navigation", "wisdom", "mysticism", "luck", "ballistics", "eagle_eye", "estates", "fire_magic", "air_magic"], roe_fixed = ["pathfinding", "archery", "logistics", "scouting", "diplomacy", "navigation", "wisdom", "mysticism", "luck", "ballistics", "eagle_eye", "estates", "fire_magic", "air_magic", "water_magic", "earth_magic", "scholar", "tactics", "artillery", "learning", "offense", "armorer", "intelligence", "sorcery", "resistance", "first_aid"] }
 
 # ADV-TCH-006: the Scholar (81): a primary skill, a secondary skill or a spell, the map's or drawn
@@ -822,6 +835,7 @@ id = "university"
 name = "University"
 visit = "enter"
 from_above = false
+kind_mark = true
 university = { offers = 4, price = { gold = 2000 } }
 
 # ADV-PIK-009 to -012: the finds (survey section 6.9). The Corpse (22, 0x4C1131): 20 % a treasure
@@ -1712,6 +1726,199 @@ name = "Whirlpool"
 visit = "enter"
 from_above = true
 whirlpool = { divisor = 2 }
+
+# ADV-GAR-001 (E08 T113a, increment 12's design note section 1; survey E08-garrisons-bonuses.md
+# sections 1.1 and 2): the garrisons of class 33 by subclass (ObjNames.txt row 33; Objects.txt
+# AVCgar10 for 0, AVCgar20 for 1, both horizontal, the entrance the middle of three blocked tiles),
+# ownable and entered (33 is not in object_classes_not_entered 0x63AA58), visitable from above (it
+# is in object_classes_from_above 0x63AB00: entered from the three tiles above and the three
+# below). Subclass 1 is the anti-magic garrison, which stands on RoE-format maps too (9 of the 160
+# shipped maps' objects; E08 decision 299): a battle on its entrance has no casts (ADV-GAR-005).
+# The army, its removable flag and the owner are the map's (the import, T113b); the vertical ones
+# (class 219) are the ab pack's. Their visits come with T114a.
+[[object_type]]
+id = "garrison"
+name = "Garrison"
+visit = "enter"
+from_above = true
+garrison = {}
+
+[[object_type]]
+id = "anti_magic_garrison"
+name = "Garrison"
+visit = "enter"
+from_above = true
+garrison = { anti_magic = true }
+
+# ADV-BON-001 (E08 T113a, increment 12's design note sections 2 and 3; survey
+# E08-garrisons-bonuses.md sections 1.2, 10.1 and 10.2): the fifteen bonus visitables, one type
+# each (subclass 0; no body in the file), their names ObjNames.txt's rows, all in Objects.txt of AB
+# and SoD (H3ab_bmp.lod's and H3bitmap.lod's) and on RoE-format maps. Visited from a neighbour the
+# Buoy, the Mermaids and the Sirens (object_classes_not_entered 0x63AA58), the Buoy also from above
+# (object_classes_from_above 0x63AB00); the twelve others entered, none from above (E08 decision
+# 317, batch E12's E12-7, E12-11, E12-14, E12-16). The amounts are the visit handlers' immediates
+# (survey section 10.2's last paragraph), as parameters; the once-marks 2 to 13 follow the
+# original's status bits in order (design note part C section 12.2: bits 2 to 8, 13 to 16, 20).
+# kind_mark: the visit sets kinds_visited (game +0x4E344 + k) for the visitor's team, as all but
+# the Fountain of Fortune (its tile's team bits instead), the Stables and the Sirens do (section
+# 10.1). Increment 7's types whose visit sets one carry the flag too (k: the Garden of Revelation
+# 4, the Learning Stone 5, the Library 6, the Marletto Tower 7, the Mercenary Camp 8, the Schools
+# of Magic 9 and War 10, the Star Axis 11, the Witch Hut 12, the Tree of Knowledge 18, the Shrines
+# 19 to 21, the University 24; docs/exe/structs.toml's kinds_visited, read by the map hint 0x40B150;
+# design note section 3). Their visits come with T115b.
+#
+# The Buoy (class 11; case 11 of visit_object 0x4A88FA): +1 morale (status bit 2; k 0).
+[[object_type]]
+id = "buoy"
+name = "Buoy"
+visit = "neighbour"
+from_above = true
+kind_mark = true
+bonus = { mark = 2, morale = 1 }
+
+# The Swan Pond (class 14; case 14 at 0x4A8BB1): +2 luck, the points left set to 0, the day's
+# maximum kept (bit 3; k 1).
+[[object_type]]
+id = "swan_pond"
+name = "Swan Pond"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 3, luck = 2, drain = true }
+
+# The Faerie Ring (class 28; case 28 at 0x4A8ED6): +1 luck (bit 13; k 2).
+[[object_type]]
+id = "faerie_ring"
+name = "Faerie Ring"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 9, luck = 1 }
+
+# The Fountain of Fortune (class 30; visit_fountain_of_fortune 0x4A2480): the luck of the
+# fountain's value, drawn among -1, +1, +2 and +3 with equal chances when the game is built and at
+# each week's start (setup_map_objects 0x4C0CC0 case 30 at 0x4C1479, new_day_week_events 0x4C8780
+# case 30 at 0x4C8C9F; bits 5, 27, 28, 29 by the value; survey section 10.6). No kind mark: the
+# hint reads the tile's team bits.
+[[object_type]]
+id = "fountain_of_fortune"
+name = "Fountain of Fortune"
+visit = "enter"
+from_above = false
+fountain_of_fortune = { mark = 5, values = [-1, 1, 2, 3] }
+
+# The Fountain of Youth (class 31; visit_fountain_of_youth 0x4A25F0): +1 morale, +400 to the
+# points left and the day's maximum (the immediate at 0x4A26D7; bit 14; k 13).
+[[object_type]]
+id = "fountain_of_youth"
+name = "Fountain of Youth"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 10, morale = 1, points = 400 }
+
+# The Idol of Fortune (class 38; visit_idol_of_fortune 0x4A12F0): by the day of the week (game
+# +0x1F63E, 1 to 7) +1 luck on an odd day, +1 morale on an even one, both on day 7 (bits 4 and 25;
+# k 22).
+[[object_type]]
+id = "idol_of_fortune"
+name = "Idol of Fortune"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 4, days = [[0, 1], [1, 0], [0, 1], [1, 0], [0, 1], [1, 0], [1, 1]] }
+
+# The Magic Spring (class 48; visit_magic_spring 0x4A3590): the spell points to twice the hero's
+# maximum, each of its two entrances once a week (setup_map_objects case 48 at 0x4C17C9,
+# new_day_week_events case 48 at 0x4C8B9C; D-62; k 15, on every visit).
+[[object_type]]
+id = "magic_spring"
+name = "Magic Spring"
+visit = "enter"
+from_above = false
+kind_mark = true
+magic_spring = {}
+
+# The Magic Well (class 49; visit_magic_well 0x4A3730): the spell points to the hero's maximum,
+# once a day for every Well (bit 0, cleared by new_day 0x4C7FE0; k 25, also when the hero is full).
+[[object_type]]
+id = "magic_well"
+name = "Magic Well"
+visit = "enter"
+from_above = false
+kind_mark = true
+magic_well = {}
+
+# The Mermaids (class 52; case 52 at 0x4A968E): +1 luck (bit 15; k 16).
+[[object_type]]
+id = "mermaids"
+name = "Mermaids"
+visit = "neighbour"
+from_above = false
+kind_mark = true
+bonus = { mark = 11, luck = 1 }
+
+# The Oasis (class 56; visit_oasis 0x4A3CA0): +1 morale, +800 to the points left and the day's
+# maximum (the immediate at 0x4A3D84; bit 7; k 26).
+[[object_type]]
+id = "oasis"
+name = "Oasis"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 7, morale = 1, points = 800 }
+
+# The Rally Flag (class 64; visit_rally_flag 0x4A44C0): +1 morale, +1 luck, +400 to the points
+# left and the day's maximum (the immediate at 0x4A45AA; bit 16; k 17).
+[[object_type]]
+id = "rally_flag"
+name = "Rally Flag"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 12, morale = 1, luck = 1, points = 400 }
+
+# The Sirens (class 92; visit_sirens 0x4A5980, sirens_losses 0x527EC0): each stack above one
+# creature keeps trunc(count x 0.7), the f64 constant 0x63E688 as 7 / 10 (D-64; design note
+# section 9), the lost hit points the experience (bit 20; no kind mark).
+[[object_type]]
+id = "sirens"
+name = "Sirens"
+visit = "neighbour"
+from_above = false
+sirens = { mark = 13, keep = [7, 10] }
+
+# The Stables (class 94; visit_stables 0x4A60A0): at the week's first visit +400 to the points left
+# and the day's maximum and to every day's land points until the week ends
+# (movement_bonus_stables 0x698A94, movement.txt row 6; hero_max_land_movement 0x4E4990 while bit 1
+# holds); at every visit every Cavalier slot made Champions (army_count_type 0x4E2340,
+# army_replace_type 0x4E2370 with 10 and 11; D-63). No kind mark.
+[[object_type]]
+id = "stables"
+name = "Stables"
+visit = "enter"
+from_above = false
+stables = { points = 400, from = "cavalier", to = "champion" }
+
+# The Temple (class 96; visit_temple 0x4A6200): +1 morale on days 1 to 6, +2 on day 7 (bits 8 and
+# 26; k 23).
+[[object_type]]
+id = "temple"
+name = "Temple"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 8, days = [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [2, 0]] }
+
+# The Watering Hole (class 110; visit_watering_hole 0x4A7EA0): +1 morale, +400 to the points left
+# and the day's maximum (the immediate at 0x4A7F85; bit 6; k 27).
+[[object_type]]
+id = "watering_hole"
+name = "Watering Hole"
+visit = "enter"
+from_above = false
+kind_mark = true
+bonus = { mark = 6, morale = 1, points = 400 }
 
 # ADV-DWL-005 (E08 T93a, increment 10's design note section 2): what a random dwelling of level n
 # of the faction becomes. The original derives it (random_dwellings_resolve 0x502B60 steps 3 and

@@ -3573,3 +3573,69 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Subterranean_Gate"
   retrieved  = "2026-11-05"
   confidence = "medium"
+
+[[rule]]
+id       = "ADV-GAR-001"
+title    = "The garrisons' kind"
+context  = "adventure"
+status   = "implemented"
+summary  = "One ownable, entered kind, the garrison (increment 12's design note sections 1 and 3), with its anti-magic flag: a battle on the entrance of an anti-magic garrison is fought without casts (ADV-GAR-005, T114a). Four types: classes 33 (horizontal) and 219 (vertical, AB on) by subclass, 0 a garrison, 1 an anti-magic one; each entered (not in the original's object_classes_not_entered 0x63AA58) and visitable from above (both in object_classes_from_above 0x63AB00: a horizontal one is entered from the three tiles above and the three below, a vertical one from its left and right columns), a type of an ownable kind entered as every one. Not weekly, no draw, no parameter beyond the flag: the army, its removable flag and the owner are the map's. The packs: base 33.0 `garrison` and 33.1 `anti_magic_garrison` (the anti-magic one stands on RoE-format maps too, E08 decision 299), ab 219.0 `garrison_vertical` and 219.1 `anti_magic_garrison_vertical` (the original loads 219 as 33, object_class_values 0x63A6E4), sod none; each named ObjNames.txt's row 33 or 219, 'Garrison'. E08 T113a: `ObjectKind::Garrison { anti_magic }`, the packs' `garrison` table, adventure ruleset part v20, the check against the original data (`h3-pack-adventure`'s `original_data` example, check 6: each type against both Objects.txt, ObjNames.txt and the executable's class lists). Its visit (the exchange, the battle, the capture: ADV-GAR-002, -003) comes with T114a; until then a step onto its entrance is refused as any unbuilt visit's (`Visit`, ADV-OBJ-003) and the reach ends before it. The import of its body (the owner, the seven stacks, the removable byte; a random stack refused) comes with T113b (map import v22), 219 among the battle background's ownable classes with it (GAM-BAT-011)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md sections 1.1, 2 and 9.2): object_classes_not_entered 0x63AA58 (neither 33 nor 219), object_classes_from_above 0x63AB00 (both), object_class_values 0x63A6E4 (219 loaded as 33), load_garrison_body 0x502A00; Objects.txt (H3ab_bmp.lod's and H3bitmap.lod's) AVCgar10 33.0, AVCgar20 33.1, AVCvgr 219.0, avcvgarm 219.1; ObjNames.txt rows 33 and 219"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects (GARRISON, GARRISON2, the antiMagic subtype), lib/mapping/MapFormatH3M.cpp readGarrison (VCMI 1.7.5, survey E08-garrisons-bonuses.md section 9.1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFormatH3M.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Garrison and Anti-Magic Garrison (survey E08-garrisons-bonuses.md section 9.1): horizontal ones from RoE, vertical ones from AB; the anti-magic one blocks every cast"
+  url        = "https://heroes.thelazy.net/index.php/Anti-Magic_Garrison"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12a.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-1 to E12-6, heroes entering horizontal and vertical garrisons on their entrances, from above and below; E12-4 the anti-magic garrison's battle without casts"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-BON-001"
+title    = "The bonus visitables' kinds"
+context  = "adventure"
+status   = "implemented"
+summary  = "Six kinds for the fifteen bonus visitables (increment 12's design note sections 2 and 3), none ownable or weekly, each type subclass 0 with no body: `bonus` (ten classes) with a once-mark, the morale and luck by the day of the week (seven pairs, day 1 first; a pack writes one pair for every day, or the seven), the movement added to the points left and the day's maximum, or the points left drained (not both); `fountain_of_fortune` with a once-mark and the values its draw picks among (distinct, none 0, at least one); `magic_well` (its day mark the type); `magic_spring` (per entrance); `stables` with the week's points (from 1) and the upgrade's two distinct creatures, neither a war machine; `sirens` with a once-mark and the part of a count kept (numerator at most the denominator, the denominator from 1). A part whose week has more days than a bonus names (seven) is refused. A type's kind mark (`kind_mark`): whether its visit sets the visitor's team's kind mark (the original's kinds_visited, game +0x4E344 + k, which the map hint reads; ADV-BON-009, T115b). The packs: base's fifteen, ab and sod none, the names ObjNames.txt's rows, the amounts the visit handlers' immediates as parameters, the marks 2 to 13 in the original's status bit order: the Buoy (11; mark 2, +1 morale), the Swan Pond (14; 3, +2 luck, drained), the Faerie Ring (28; 9, +1 luck), the Fountain of Fortune (30; 5, -1, +1, +2, +3), the Fountain of Youth (31; 10, +1 morale, +400), the Idol of Fortune (38; 4, +1 luck on an odd day, +1 morale on an even one, both on day 7), the Magic Spring (48), the Magic Well (49), the Mermaids (52; 11, +1 luck), the Oasis (56; 7, +1 morale, +800), the Rally Flag (64; 12, +1 morale and luck, +400), the Sirens (92; 13, keep 7 / 10), the Stables (94; 400, Cavaliers to Champions), the Temple (96; 8, +1 morale, +2 on day 7), the Watering Hole (110; 6, +1 morale, +400). Visited from a neighbour the Buoy, the Mermaids and the Sirens, the Buoy also from above; the twelve others entered, none from above (the original's class lists; E08 decision 317). The kind mark on the twelve but the Fountain of Fortune, the Stables and the Sirens, and on increment 7's fourteen whose visit sets one (the Garden of Revelation, the Learning Stone, the Library, the Marletto Tower, the Mercenary Camp, the Schools of Magic and War, the Star Axis, the Witch Hut, the Tree of Knowledge, the three Shrines, the University). E08 T113a: `ObjectKind::{Bonus, FountainOfFortune, MagicWell, MagicSpring, Stables, Sirens}`, `ObjectType::kind_mark`, the packs' tables and `kind_mark`, adventure ruleset part v20; the check against the original data (`h3-pack-adventure`'s `original_data` example, check 6: each type against both Objects.txt, ObjNames.txt, the executable's class lists and, for the Stables' points, movement.txt; the kind marks against the reading's list). Their visits come with T115b (ADV-BON-002 to -009); until then a step onto one is refused as any unbuilt visit's (`Visit`, ADV-OBJ-003) and the reach ends before it. The import (each class typed, no body) comes with T113b (map import v22)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md sections 1.2, 10.1 and 10.2): visit_object 0x4A84F0's cases 11, 14, 28 and 52, visit_fountain_of_fortune 0x4A2480, visit_fountain_of_youth 0x4A25F0, visit_idol_of_fortune 0x4A12F0, visit_magic_spring 0x4A3590, visit_magic_well 0x4A3730, visit_oasis 0x4A3CA0, visit_rally_flag 0x4A44C0, visit_sirens 0x4A5980 with sirens_losses 0x527EC0, visit_stables 0x4A60A0, visit_temple 0x4A6200, visit_watering_hole 0x4A7EA0 (their amounts immediates); object_classes_not_entered 0x63AA58 (11, 52, 92), object_classes_from_above 0x63AB00 (11); kinds_visited game +0x4E344 + k (docs/exe/structs.toml); Objects.txt (H3ab_bmp.lod's and H3bitmap.lod's), ObjNames.txt, movement.txt's Stables 400"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableBonusing.json (eleven of the fifteen: the bonuses, ONE_BATTLE, the Idol's and the Temple's dayOfWeek limiters, the Stables' ONE_WEEK), magicSpring.json, magicWell.json, generic.json (sirens), lib/mapObjects/MiscObjects.cpp CGSirens (VCMI 1.7.5, survey E08-garrisons-bonuses.md section 10.8)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/objects"
+  retrieved  = "2026-11-11"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the fifteen objects' pages (survey E08-garrisons-bonuses.md section 10.8): the Idol's odd and even days, the Temple's day 7, the Swan Pond's lost points, the Fountain of Fortune's -1 to +3"
+  url        = "https://heroes.thelazy.net/index.php/Idol_of_Fortune"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-7 to E12-17, the hero standing on the Magic Wells (E12-14) and the Idol (E12-11) and visiting the Sirens, the Buoy and the Mermaids from the neighbouring water (E12-7, E12-16)"
+  retrieved  = "2026-11-12"
+  confidence = "high"

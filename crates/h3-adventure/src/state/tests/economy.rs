@@ -49,6 +49,7 @@ pub(super) fn rules_with(offsets: &[(i8, i8)], radius: u8) -> Rules {
                 name: "Object".into(),
                 visit: Visit::Enter,
                 from_above: false,
+                kind_mark: false,
                 kind,
             };
             part.object_types.extend([

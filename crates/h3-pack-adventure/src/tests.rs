@@ -390,10 +390,11 @@ fn the_base_pack_types_the_objects_of_increment_2() {
     // E08 T83a: increment 9's thirteen (seven mines, the abandoned mine, the Lighthouse, the
     // Shipyard and the three weekly objects); E08 T93a: increment 10's 64 (the 62 RoE dwellings,
     // the Refugee Camp, the random dwelling); E09 T8a1: the town; E08 T103a: increment 11's
-    // eleven (nine monoliths, the Subterranean Gate, the Whirlpool).
+    // eleven (nine monoliths, the Subterranean Gate, the Whirlpool); E08 T113a: increment 12's
+    // seventeen (two garrisons, the fifteen bonus visitables).
     assert_eq!(
         part.object_types().len(),
-        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11
+        7 + 1 + 1 + 3 + 2 + 8 + 8 + 9 + 2 + 31 + 5 + 13 + 64 + 1 + 11 + 17
     );
     // E09 T8a1: one type for the classes 77 and 98, ownable and entered, not from above; E09
     // T18a: the original's two boat offsets (town_buildings_setup 0x5C08C0).
@@ -969,8 +970,12 @@ fn the_expansions_add_the_border_gates() {
     let (sod_core, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
     assert_ne!(ab.content_hash(), base.content_hash());
     assert_ne!(sod.content_hash(), ab.content_hash());
-    // AB's eight Border Gates and, since E08 T93a, its twenty dwellings.
-    assert_eq!(ab.object_types().len(), base.object_types().len() + 8 + 20);
+    // AB's eight Border Gates and, since E08 T93a, its twenty dwellings; since E08 T113a its two
+    // vertical garrisons.
+    assert_eq!(
+        ab.object_types().len(),
+        base.object_types().len() + 8 + 20 + 2
+    );
     assert_eq!(
         ab.object_types()[..base.object_types().len()],
         *base.object_types()
@@ -1247,6 +1252,105 @@ fn parses_the_teleporters() {
             "{bad}"
         );
     }
+}
+
+// E08 T113a: increment 12's kind tables and the kind mark (ADV-GAR-001, ADV-BON-001).
+// covers: ADV-GAR-001, ADV-BON-001
+#[test]
+fn parses_the_garrisons_and_the_bonus_kinds() {
+    let ty = |table: &str| {
+        let text = format!(
+            "[[object_type]]\nid = \"o\"\nname = \"O\"\nvisit = \"enter\"\nfrom_above = false\n{table}"
+        );
+        parse(&text).unwrap().object_types.remove(0)
+    };
+    let kind = |table: &str| ty(table).kind;
+    assert_eq!(
+        kind("garrison = {}"),
+        ObjectKindDef::Garrison { anti_magic: false }
+    );
+    assert_eq!(
+        kind("garrison = { anti_magic = true }"),
+        ObjectKindDef::Garrison { anti_magic: true }
+    );
+    // A constant pair is every day's; left out, 0; points and drain 0 and false.
+    assert_eq!(
+        kind("bonus = { mark = 3, luck = 2, drain = true }"),
+        ObjectKindDef::Bonus {
+            mark: 3,
+            days: [(0, 2); 7],
+            points: 0,
+            drain: true,
+        }
+    );
+    assert_eq!(
+        kind("bonus = { mark = 12, morale = 1, luck = -1, points = 400 }"),
+        ObjectKindDef::Bonus {
+            mark: 12,
+            days: [(1, -1); 7],
+            points: 400,
+            drain: false,
+        }
+    );
+    // Seven pairs by the day, day 1 first.
+    assert_eq!(
+        kind(
+            "bonus = { mark = 4, days = [[0, 1], [1, 0], [0, 1], [1, 0], [0, 1], [1, 0], [1, 1]] }"
+        ),
+        ObjectKindDef::Bonus {
+            mark: 4,
+            days: [(0, 1), (1, 0), (0, 1), (1, 0), (0, 1), (1, 0), (1, 1)],
+            points: 0,
+            drain: false,
+        }
+    );
+    assert_eq!(
+        kind("fountain_of_fortune = { mark = 5, values = [-1, 1, 2, 3] }"),
+        ObjectKindDef::FountainOfFortune {
+            mark: 5,
+            values: vec![-1, 1, 2, 3],
+        }
+    );
+    assert_eq!(kind("magic_well = {}"), ObjectKindDef::MagicWell);
+    assert_eq!(kind("magic_spring = {}"), ObjectKindDef::MagicSpring);
+    assert_eq!(
+        kind("stables = { points = 400, from = \"cavalier\", to = \"base:champion\" }"),
+        ObjectKindDef::Stables {
+            points: 400,
+            from: ContentKey::parse("p:cavalier").unwrap(),
+            to: ContentKey::parse("base:champion").unwrap(),
+        }
+    );
+    assert_eq!(
+        kind("sirens = { mark = 13, keep = [7, 10] }"),
+        ObjectKindDef::Sirens {
+            mark: 13,
+            keep: (7, 10),
+        }
+    );
+    // The kind mark is the type's, false when left out.
+    assert!(!ty("magic_well = {}").kind_mark);
+    assert!(ty("kind_mark = true\nmagic_well = {}").kind_mark);
+    // A constant pair and the days together, six days, a missing mark, a malformed key and an
+    // unknown field are errors.
+    for bad in [
+        "bonus = { mark = 2, morale = 1, days = [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]] }",
+        "bonus = { mark = 2, days = [[1, 0], [1, 0], [1, 0], [1, 0], [1, 0], [1, 0]] }",
+        "bonus = { morale = 1 }",
+        "garrison = { anti_magic = true, removable = true }",
+        "magic_spring = { refill = 7 }",
+        "sirens = { mark = 13, keep = [7] }",
+        "fountain_of_fortune = { values = [1] }",
+    ] {
+        assert!(
+            matches!(kind_error(bad), AdventurePackError::Syntax(_)),
+            "{bad}"
+        );
+    }
+    assert!(matches!(
+        kind_error("stables = { points = 400, from = \"a:b:c\", to = \"champion\" }"),
+        AdventurePackError::Key(_)
+    ));
 }
 
 // E08 T93a (increment 10's design note §2, "Costs"): every creature a dwelling of the packs offers
@@ -2496,5 +2600,194 @@ fn the_packs_type_the_teleporters_of_increment_11() {
         ) {
             assert!(!t.kind.ownable() && !t.kind.weekly(), "{}", t.key.as_str());
         }
+    }
+}
+
+// covers: ADV-GAR-001, ADV-BON-001
+#[test]
+fn the_packs_type_the_garrisons_and_the_bonus_visitables_of_increment_12() {
+    // E08 T113a (increment 12's design note §1 to §3): base's two garrisons of class 33 and the
+    // fifteen bonus visitables, ab's two vertical garrisons of class 219, sod none.
+    let (core, base) = compile(&ORIGINAL_PACKS[..1], PROFILE).unwrap();
+    let (_, ab) = compile(&ORIGINAL_PACKS[..2], PROFILE).unwrap();
+    let (_, sod) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    let new = |part: &AdventureRuleset| {
+        part.object_types()
+            .iter()
+            .filter(|t| {
+                matches!(
+                    t.kind,
+                    ObjectKind::Garrison { .. }
+                        | ObjectKind::Bonus { .. }
+                        | ObjectKind::FountainOfFortune { .. }
+                        | ObjectKind::MagicWell
+                        | ObjectKind::MagicSpring
+                        | ObjectKind::Stables { .. }
+                        | ObjectKind::Sirens { .. }
+                )
+            })
+            .map(|t| t.key.as_str().to_owned())
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(new(&base).len(), 17);
+    assert_eq!(
+        new(&ab),
+        [
+            new(&base),
+            vec![
+                "ab:garrison_vertical".into(),
+                "ab:anti_magic_garrison_vertical".into()
+            ]
+        ]
+        .concat()
+    );
+    assert_eq!(new(&sod), new(&ab));
+    let ty = |key: &str| {
+        let id = ab.object_type_by_key(key).unwrap();
+        ab.object_type(id).unwrap()
+    };
+    // The garrisons: ownable, entered and from above, named "Garrison".
+    for (key, anti_magic) in [
+        ("base:garrison", false),
+        ("base:anti_magic_garrison", true),
+        ("ab:garrison_vertical", false),
+        ("ab:anti_magic_garrison_vertical", true),
+    ] {
+        let t = ty(key);
+        assert_eq!(t.kind, ObjectKind::Garrison { anti_magic }, "{key}");
+        assert_eq!(
+            (t.name.as_str(), t.visit, t.from_above, t.kind_mark),
+            ("Garrison", Visit::Enter, true, false),
+            "{key}"
+        );
+        assert!(t.kind.ownable());
+    }
+    // The ten bonus kinds by their parameters (mark, the day 1 and day 7 pairs, points, drain),
+    // the visit, from above, the kind mark.
+    let n = Visit::Neighbour;
+    let e = Visit::Enter;
+    for (key, mark, first, seventh, points, drain, visit, from_above) in [
+        ("buoy", 2, (1, 0), (1, 0), 0, false, n, true),
+        ("swan_pond", 3, (0, 2), (0, 2), 0, true, e, false),
+        ("faerie_ring", 9, (0, 1), (0, 1), 0, false, e, false),
+        (
+            "fountain_of_youth",
+            10,
+            (1, 0),
+            (1, 0),
+            400,
+            false,
+            e,
+            false,
+        ),
+        ("idol_of_fortune", 4, (0, 1), (1, 1), 0, false, e, false),
+        ("mermaids", 11, (0, 1), (0, 1), 0, false, n, false),
+        ("oasis", 7, (1, 0), (1, 0), 800, false, e, false),
+        ("rally_flag", 12, (1, 1), (1, 1), 400, false, e, false),
+        ("temple", 8, (1, 0), (2, 0), 0, false, e, false),
+        ("watering_hole", 6, (1, 0), (1, 0), 400, false, e, false),
+    ] {
+        let t = ty(&format!("base:{key}"));
+        let ObjectKind::Bonus {
+            mark: m,
+            days,
+            points: p,
+            drain: d,
+        } = t.kind
+        else {
+            panic!("{key}: {:?}", t.kind);
+        };
+        assert_eq!(
+            (
+                m,
+                days[0],
+                days[6],
+                p,
+                d,
+                t.visit,
+                t.from_above,
+                t.kind_mark
+            ),
+            (mark, first, seventh, points, drain, visit, from_above, true),
+            "{key}"
+        );
+    }
+    // The Idol by the day's parity, the Temple +1 on days 1 to 6.
+    let days = |key: &str| match ty(key).kind {
+        ObjectKind::Bonus { days, .. } => days,
+        _ => unreachable!(),
+    };
+    assert_eq!(
+        days("base:idol_of_fortune"),
+        [(0, 1), (1, 0), (0, 1), (1, 0), (0, 1), (1, 0), (1, 1)]
+    );
+    assert_eq!(days("base:temple")[..6], [(1, 0); 6]);
+    let creature = |k: &str| core.creature_by_key(k).unwrap();
+    for (key, kind, visit, kind_mark) in [
+        (
+            "fountain_of_fortune",
+            ObjectKind::FountainOfFortune {
+                mark: 5,
+                values: vec![-1, 1, 2, 3],
+            },
+            e,
+            false,
+        ),
+        ("magic_well", ObjectKind::MagicWell, e, true),
+        ("magic_spring", ObjectKind::MagicSpring, e, true),
+        (
+            "stables",
+            ObjectKind::Stables {
+                points: 400,
+                from: creature("base:cavalier"),
+                to: creature("base:champion"),
+            },
+            e,
+            false,
+        ),
+        (
+            "sirens",
+            ObjectKind::Sirens {
+                mark: 13,
+                keep: (7, 10),
+            },
+            n,
+            false,
+        ),
+    ] {
+        let t = ty(&format!("base:{key}"));
+        assert_eq!(
+            (&t.kind, t.visit, t.from_above, t.kind_mark),
+            (&kind, visit, false, kind_mark),
+            "{key}"
+        );
+    }
+    // The once-marks 2 to 13, one per kind (design note part C §12.2).
+    let marks = base
+        .object_types()
+        .iter()
+        .filter_map(|t| match t.kind {
+            ObjectKind::Bonus { mark, .. }
+            | ObjectKind::FountainOfFortune { mark, .. }
+            | ObjectKind::Sirens { mark, .. } => Some(mark),
+            _ => None,
+        })
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(marks, (2..=13).collect());
+    // The kind marks: twelve of the fifteen and increment 7's fourteen (design note §3).
+    let marked = sod
+        .object_types()
+        .iter()
+        .filter(|t| t.kind_mark)
+        .map(|t| t.key.as_str())
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(marked.len(), 12 + 14);
+    for key in [
+        "base:marletto_tower",
+        "base:witch_hut",
+        "base:shrine_of_magic_thought",
+        "base:university",
+    ] {
+        assert!(marked.contains(key), "{key}");
     }
 }
