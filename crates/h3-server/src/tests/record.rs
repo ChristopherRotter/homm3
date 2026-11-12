@@ -221,8 +221,8 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "rules",
-            "ruleset_hash = \"0xe5ac723212bdce02\"",
-            "ruleset_hash = \"0xe5ac723212bdce00\"",
+            "ruleset_hash = \"0x437388440d9286a3\"",
+            "ruleset_hash = \"0x437388440d9286a0\"",
             "replay header mismatch: ruleset_hash",
         ),
         (

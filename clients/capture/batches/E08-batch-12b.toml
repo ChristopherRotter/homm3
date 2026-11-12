@@ -1,0 +1,626 @@
+# E08 batch E12b played by the capture harness (E08 T110; h3adv.py batch): the procedure of
+# experiments/specs/E08-batch-12b.toml as steps, on Easy, the starting bonus gold, with T110's
+# reads (README, "Garrisons and the bonus visitables"). Hot seat, Red and Blue human; Blue only
+# ends its turns. In the spec's order: day 1, Red: E12-12's reads, E12-17, E12-14, E12-9, E12-10,
+# E12-11, E12-13, E12-7 (E12-15, E12-7, E12-8, E12-16's water part); day 2: E12-12, E12-14,
+# E12-10, E12-11, E12-13 (E12-16's land part); days 3 to 5: E12-12; days 6 and 7: E12-12,
+# E12-11; day 8: E12-12, E12-9, E12-10's reads; days 15 and 22: E12-12.
+#
+# Each day's E12-12 row is read as Red's turn starts (an end-turn step `to_day = <n>`: the turns
+# ended until Red's turn of day n). A Fountain's word (`fountain:x,y`: its value, bits 13 to 16
+# signed, and the team bits) and a Spring's entrance (`spring:x,y`: bit 6) are the tile's own
+# word; a hero's status bit (`hero:bit:<n>`, +0x105), its visits' morale and luck bytes
+# (`hero:morale_bonus`, `hero:luck_bonus`, +0x11A, +0x11B) and a u32 of its record
+# (`hero:word:0x7B`, the School of War bits). A `cast` step opens the selected hero's spell book on
+# the map and casts View Earth (its only adventure spell), its view closed. A hint step's list of
+# tiles (`hint = [[x, y], ...]`) reads each tile's status bar text with the step's hero selected
+# (the view centred by the minimap when the tile is out of it), named by its records (`hints`).
+
+spec = "experiments/specs/E08-batch-12b.toml"
+players = ["Red", "Blue"]
+difficulty = "easy"
+gold = true
+
+# --- Day 1, Red: E12-12's reads, E12-17 ----------------------------------------------------------------
+
+[[step]]
+encounter = "E12-17"
+hero = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"], "E12-17 before: Red's gold; E12-17's points; +0x7B" = ["text:gold: ", "resource:gold:red", "text:points: ", "hero:points", "text:+0x7B: ", "hero:word:0x7B"] }
+note = { "the game's version" = "map_kind", "the difficulty" = "difficulty", "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-17"
+hero = "E12-17"
+hint = [51, 26]
+record = { "the hint over S2 (51, 26) before" = "hints" }
+
+[[step]]
+encounter = "E12-17"
+hero = "E12-17"
+walk = [51, 22]
+answer = "no"
+expect = { dialogs = true }
+record = { "the step onto S1 (51, 22): messages and dialogs (texts)" = ["text:questions: ", "answers", "text:messages: ", "messages", "text:pictures: ", "message_pictures", "text:dialogs: ", "screens"], "after it: E12-17's tile; points; attack; defense; +0x7B; Red's gold" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:primary: ", "hero:primary", "text:+0x7B: ", "hero:word:0x7B", "text:gold: ", "resource:gold:red"] }
+
+[[step]]
+encounter = "E12-17"
+hero = "E12-17"
+walk = [52, 23]
+record = { "+anything odd" = ["text:the step off S1 to (52, 23): tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-17"
+hero = "E12-17"
+hint = [[51, 26], [51, 22]]
+record = { "the hints after (E12-17 on (52, 23)): over S2 (51, 26); over S1 (51, 22); E12-17's points" = ["hints", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E12-14 ----------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+record = { "day 1 before: spell points; +0x105" = ["text:spell points: ", "hero:spell_points", "text:+0x105: ", "hero:status"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+walk = [6, 5]
+expect = { dialogs = true }
+record = { "W1, full: messages; spell points; bit 0" = ["text:messages: ", "messages", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+cast = "View Earth"
+record = { "+the cast: spell points; W1 again: messages; spell points; bit 0" = ["text:the cast: ", "cast"] }
+
+# W1 again: the first run found E12-14 standing on W1 after its visit (the Well entered, not
+# visited from a neighbour: the hero's record and the click on (6, 5) opening the hero screen), so
+# the visit again is the original's Space there (a branch each: on W1, Space; beside it, a walk).
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+only_if = { at = [6, 5] }
+skip_quietly = true
+key = "space"
+expect = { dialogs = true }
+record = { "+the cast: spell points; W1 again: messages; spell points; bit 0" = ["text:W1 again (standing on it: Space): messages: ", "messages", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+only_if = { at = [6, 6] }
+skip_quietly = true
+walk = [6, 5]
+expect = { dialogs = true }
+record = { "+the cast: spell points; W1 again: messages; spell points; bit 0" = ["text:W1 again (from (6, 6)): messages: ", "messages", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+cast = "View Earth"
+record = { "+the cast: spell points; W2: messages; E12-14's tile; spell points; bit 0" = ["text:the cast: ", "cast"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+walk = [10, 5]
+expect = { dialogs = true }
+record = { "+the cast: spell points; W2: messages; E12-14's tile; spell points; bit 0" = ["text:W2: messages: ", "messages", "text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0"] }
+
+# --- Day 1, Red: E12-9 -----------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+record = { "day 1 before: spell points; L's word (bit 6); R's word (bit 6)" = ["text:spell points: ", "hero:spell_points", "text:L: ", "spring:17,5", "text:R: ", "spring:18,5"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+walk = [17, 5]
+expect = { dialogs = true }
+record = { "onto L: messages; spell points; R's bit 6" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:R: ", "spring:18,5", "text:L (under the hero): ", "spring:17,5"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+cast = "View Earth"
+record = { "+the cast: spell points; onto R: messages; spell points; L's bit 6" = ["text:the cast: ", "cast"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+walk = [18, 5]
+expect = { dialogs = true }
+record = { "+the cast: spell points; onto R: messages; spell points; L's bit 6" = ["text:onto R: messages: ", "messages", "text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:L: ", "spring:17,5", "text:R (under the hero): ", "spring:18,5"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+cast = "View Earth"
+record = { "+the cast: spell points; onto L again: messages; spell points; R's bit 6" = ["text:the cast: ", "cast"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+walk = [17, 5]
+expect = { dialogs = true }
+record = { "+the cast: spell points; onto L again: messages; spell points; R's bit 6" = ["text:onto L again: messages: ", "messages", "text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:R: ", "spring:18,5", "text:L (under the hero): ", "spring:17,5"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+walk = [17, 6]
+record = { "off to (17, 6): L's bit 6; R's bit 6" = ["text:tile: ", "hero:tile", "text:L: ", "spring:17,5", "text:R: ", "spring:18,5"] }
+
+# --- Day 1, Red: E12-10 ----------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+record = { "day 1 before: E12-10's points, maximum, +0x105, army; E12-10b's the same" = ["text:E12-10's points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:+0x105: ", "hero:status", "text:army: ", "hero:slots", "text:E12-10b's points: ", "hero[E12-10b]:points", "text:maximum: ", "hero[E12-10b]:day_points", "text:+0x105: ", "hero[E12-10b]:status", "text:army: ", "hero[E12-10b]:slots"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment", "E12-10b worn at the start" = "hero[E12-10b]:equipment" }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+walk = [38, 5]
+expect = { dialogs = true }
+record = { "E12-10 onto ST: messages; points; maximum; bit 1; army" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:bit 1: ", "hero:bit:1", "text:army: ", "hero:slots"] }
+
+# The meeting: E12-10 (the visitor, left) takes E12-10b's (right) two Cavalier stacks into its
+# empty slots 1 and 2.
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+walk = [40, 7]
+actions = [
+    { click = ["right army:0", "left army:1"] },
+    { click = ["right army:1", "left army:2"] },
+]
+record = { "the exchange: both armies after; E12-10's tile; points" = ["text:E12-10: ", "hero:slots", "text:E12-10b: ", "hero[E12-10b]:slots", "text:the meeting: ", "exchange", "text:E12-10's tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10b"
+walk = [38, 5]
+expect = { dialogs = true }
+record = { "E12-10b onto ST: messages; points; maximum; bit 1; army; its tile after stepping off" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:bit 1: ", "hero:bit:1", "text:army: ", "hero:slots"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10b"
+walk = [37, 6]
+record = { "+E12-10b onto ST: messages; points; maximum; bit 1; army; its tile after stepping off" = ["text:stepped off: tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+# --- Day 1, Red: E12-11 ----------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+record = { "day 1 before: date (day of the week); +0x105; +0x11A; +0x11B" = ["date", "text:+0x105: ", "hero:status", "text:+0x11A: ", "hero:morale_bonus", "text:+0x11B: ", "hero:luck_bonus"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [48, 5]
+expect = { dialogs = true }
+record = { "row:day" = ["date", "text:the Idol (48, 5)", "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [46, 9]
+battle = "auto"
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the battle with P1: ", "battles", "text:tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+note = { "E12-11's level-ups (P1)" = "level_up_dialogs" }
+
+# --- Day 1, Red: E12-13 ----------------------------------------------------------------------------------
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+record = { "day 1 before: +0x4D; +0x49; +0x105; +0x11A; +0x11B" = ["text:+0x4D: ", "hero:points", "text:+0x49: ", "hero:day_points", "text:+0x105: ", "hero:status", "text:+0x11A: ", "hero:morale_bonus", "text:+0x11B: ", "hero:luck_bonus"] }
+note = { "worn at the start (the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [43, 16]
+expect = { dialogs = true }
+record = { "row:visit" = [["text:O1 (43, 16), day 1; tile: ", "hero:tile"], "messages", "hero:points", "hero:day_points", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [47, 16]
+expect = { dialogs = true }
+record = { "row:visit" = [["text:WH (47, 16), day 1; tile: ", "hero:tile"], "messages", "hero:points", "hero:day_points", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [51, 17]
+record = { "+anything odd" = ["text:the walk to (51, 17): points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [55, 16]
+expect = { dialogs = true }
+record = { "row:visit" = [["text:SW (55, 16), day 1; tile: ", "hero:tile"], "messages", "hero:points", "hero:day_points", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+# --- Day 1, Red: E12-15, E12-7, E12-8, E12-16's water part -----------------------------------------------
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+record = { "E12-15 before: points; day's maximum; experience; army; +0x105" = ["text:points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:experience: ", "hero:experience", "text:army: ", "hero:slots", "text:+0x105: ", "hero:status"] }
+note = { "worn at the start (the Admiral's Hat; the starting bonus)" = "hero:equipment" }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [41, 27]
+expect = { dialogs = true }
+record = { "E12-15, O2: messages; points; day's maximum" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:maximum: ", "hero:day_points"] }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [43, 29]
+record = { "E12-15, on the shore (43, 29): points" = ["text:tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [43, 30]
+record = { "E12-15, after boarding: points; day's maximum" = ["text:in a boat: ", "hero:in_boat", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:maximum: ", "hero:day_points"] }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [47, 33]
+expect = { dialogs = true }
+record = { "E12-7, the Sirens: messages (texts); army; experience; level; +0x105; points" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:+0x105: ", "hero:status", "text:points: ", "hero:points"] }
+note = { "E12-7's level-ups (the Sirens)" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [47, 37]
+battle = "auto"
+expect = { dialogs = true }
+record = { "E12-8, the battle: result; E12-7's tile; army; experience; +0x105" = ["text:battles: ", "battles", "text:messages: ", "messages", "text:tile: ", "hero:tile", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:+0x105: ", "hero:status"] }
+note = { "E12-7's level-ups (M8)" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+hint = [[51, 38], [52, 37]]
+record = { "E12-16, the hints before (E12-7 selected): B2; M2" = "hints" }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [47, 33]
+expect = { dialogs = true }
+record = { "E12-8, the Sirens again: messages (texts); army; experience; level; +0x105" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:army: ", "hero:slots", "text:experience: ", "hero:experience", "text:level: ", "hero:level", "text:+0x105: ", "hero:status", "text:points: ", "hero:points"] }
+note = { "E12-7's level-ups (the Sirens again)" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [51, 33]
+expect = { dialogs = true }
+record = { "E12-16, B1: messages; tile; points; +0x105; +0x11A" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:+0x105: ", "hero:status", "text:+0x11A: ", "hero:morale_bonus"] }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+walk = [53, 33]
+expect = { dialogs = true }
+record = { "E12-16, M1: messages; points; +0x105; +0x11B" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:+0x105: ", "hero:status", "text:+0x11B: ", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-7"
+hint = [[51, 38], [52, 37]]
+record = { "E12-16, the hints after, E12-7 selected: B2; M2" = "hints" }
+
+[[step]]
+encounter = "E12-7"
+hero = "E12-17"
+hint = [[51, 38], [52, 37]]
+record = { "E12-16, the hints after, E12-17 selected: B2; M2" = "hints" }
+
+# --- Day 2, Red: E12-12, E12-14, E12-10, E12-11, E12-13 (E12-16's land part) ------------------------------
+
+[[step]]
+end_turn = true
+to_day = 2
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+note = { "the turns' messages to day 2" = "messages" }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+record = { "day 2 before: spell points; bit 0" = ["text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+only_if = { at = [10, 5] }
+skip_quietly = true
+key = "space"
+expect = { dialogs = true }
+record = { "+W2 on day 2: messages; spell points; bit 0" = ["text:standing on W2: Space: messages: ", "messages", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+only_if = { at = [9, 5] }
+skip_quietly = true
+walk = [10, 5]
+expect = { dialogs = true }
+record = { "+W2 on day 2: messages; spell points; bit 0" = ["text:from (9, 5): messages: ", "messages", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-14"
+hero = "E12-14"
+only_if = { at = [9, 6] }
+skip_quietly = true
+walk = [10, 5]
+expect = { dialogs = true }
+record = { "+W2 on day 2: messages; spell points; bit 0" = ["text:from (9, 6): messages: ", "messages", "text:spell points: ", "hero:spell_points", "text:bit 0: ", "hero:bit:0", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+record = { "day 2 before: E12-10's points, maximum, bit 1, army; E12-10b's the same" = ["text:E12-10's points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:bit 1: ", "hero:bit:1", "text:army: ", "hero:slots", "text:tile: ", "hero:tile", "text:E12-10b's points: ", "hero[E12-10b]:points", "text:maximum: ", "hero[E12-10b]:day_points", "text:bit 1: ", "hero[E12-10b]:bit:1", "text:army: ", "hero[E12-10b]:slots", "text:tile: ", "hero[E12-10b]:tile"] }
+
+# The meeting back: E12-10b (the visitor, left) takes E12-10's (right) Cavaliers of slot 2 into
+# its empty slot 0.
+[[step]]
+encounter = "E12-10"
+hero = "E12-10b"
+walk = [39, 6]
+actions = [
+    { click = ["right army:2", "left army:0"] },
+]
+record = { "the exchange back: both armies after" = ["text:E12-10: ", "hero[E12-10]:slots", "text:E12-10b: ", "hero:slots", "text:the meeting: ", "exchange", "text:E12-10b's tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+walk = [38, 5]
+expect = { dialogs = true }
+record = { "E12-10 onto ST again: messages; points; maximum; army" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:army: ", "hero:slots"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+walk = [39, 5]
+record = { "+anything odd" = ["text:E12-10 stepped off east: tile: ", "hero:tile", "text:points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10b"
+walk = [38, 5]
+expect = { dialogs = true }
+record = { "E12-10b onto ST again: messages; points; maximum; army" = ["text:messages: ", "messages", "text:tile: ", "hero:tile", "text:points: ", "hero:points", "text:maximum: ", "hero:day_points", "text:army: ", "hero:slots"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [48, 5]
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the Idol (48, 5); tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [51, 9]
+battle = "auto"
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the battle with P2: ", "battles", "text:tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+note = { "E12-11's level-ups (P2)" = "level_up_dialogs" }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+record = { "day 2 before: +0x4D; +0x49; +0x105" = ["text:+0x4D: ", "hero:points", "text:+0x49: ", "hero:day_points", "text:+0x105: ", "hero:status", "text:tile: ", "hero:tile"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [58, 19]
+record = { "+anything odd" = ["text:day 2's walks: to (58, 19): points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [60, 22]
+record = { "+anything odd" = ["text:to (60, 22): points: ", "hero:points"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+hint = [[57, 24], [61, 24], [64, 24]]
+record = { "day 2, the hints before (E12-13 selected): F2; R2; Y2" = "hints" }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [57, 20]
+expect = { dialogs = true }
+record = { "row:visit" = [["text:F1 (57, 20), day 2; tile: ", "hero:tile"], "messages", "hero:points", "hero:day_points", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [61, 20]
+expect = { dialogs = true }
+record = { "row:visit" = [["text:R1 (61, 20), day 2; tile: ", "hero:tile"], "messages", "hero:points", "hero:day_points", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+walk = [64, 20]
+expect = { dialogs = true }
+record = { "row:visit" = [["text:Y1 (64, 20), day 2; tile: ", "hero:tile"], "messages", "hero:points", "hero:day_points", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-13"
+hint = [[57, 24], [61, 24], [64, 24]]
+record = { "the hints after, E12-13 selected: F2; R2; Y2" = "hints" }
+
+[[step]]
+encounter = "E12-13"
+hero = "E12-17"
+hint = [[57, 24], [61, 24], [64, 24]]
+record = { "the hints after, E12-17 selected: F2; R2; Y2" = "hints" }
+
+# --- Days 3 to 5: E12-12 ---------------------------------------------------------------------------------
+
+[[step]]
+end_turn = true
+to_day = 3
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+
+[[step]]
+end_turn = true
+to_day = 4
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+
+[[step]]
+end_turn = true
+to_day = 5
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+
+# --- Day 6: E12-12, E12-11 -------------------------------------------------------------------------------
+
+[[step]]
+end_turn = true
+to_day = 6
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [53, 5]
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the Temple (53, 5); tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [56, 9]
+battle = "auto"
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the battle with P3: ", "battles", "text:tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+note = { "E12-11's level-ups (P3)" = "level_up_dialogs" }
+
+# --- Day 7: E12-12, E12-11 -------------------------------------------------------------------------------
+
+[[step]]
+end_turn = true
+to_day = 7
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [48, 5]
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the Idol (48, 5); tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+walk = [53, 5]
+expect = { dialogs = true }
+record = { "row:day" = ["date", ["text:the Temple (53, 5); tile: ", "hero:tile"], "messages", "hero:status", "hero:morale_bonus", "hero:luck_bonus"] }
+
+# The hero screen's morale and luck pictures (items 116 and 117: their frames, 3 neutral) and the
+# lists a right click on each shows, line by line by their records.
+[[step]]
+encounter = "E12-11"
+hero = "E12-11"
+screen = "hero"
+actions = [
+    { right = "morale", record = { "+day 7: the hero screen's morale and luck lists" = ["text:morale: the picture (id:state:frame): ", "dialog:items:116-116", "text:the lines: ", "popup:lines"] } },
+    { right = "luck", record = { "+day 7: the hero screen's morale and luck lists" = ["text:luck: the picture (id:state:frame): ", "dialog:items:117-117", "text:the lines: ", "popup:lines"] } },
+]
+
+# --- Day 8: E12-12, E12-9, E12-10's reads ----------------------------------------------------------------
+
+[[step]]
+end_turn = true
+to_day = 8
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+note = { "the turns' messages to day 8 (the new week)" = "messages" }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+record = { "day 8 before: E12-9's tile; spell points; L's bit 6; R's bit 6" = ["text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:L: ", "spring:17,5", "text:R: ", "spring:18,5"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+cast = "View Earth"
+record = { "+day 8, the cast: spell points; onto R: messages; spell points; L's bit 6" = ["text:the cast: ", "cast"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+walk = [18, 5]
+expect = { dialogs = true }
+record = { "+day 8, the cast: spell points; onto R: messages; spell points; L's bit 6" = ["text:onto R: messages: ", "messages", "text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:L: ", "spring:17,5", "text:R (under the hero): ", "spring:18,5"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+cast = "View Earth"
+record = { "+day 8, the cast: spell points; onto L: messages; spell points; R's bit 6" = ["text:the cast: ", "cast"] }
+
+[[step]]
+encounter = "E12-9"
+hero = "E12-9"
+walk = [17, 5]
+expect = { dialogs = true }
+record = { "+day 8, the cast: spell points; onto L: messages; spell points; R's bit 6" = ["text:onto L: messages: ", "messages", "text:tile: ", "hero:tile", "text:spell points: ", "hero:spell_points", "text:R: ", "spring:18,5", "text:L (under the hero): ", "spring:17,5"] }
+
+[[step]]
+encounter = "E12-10"
+hero = "E12-10"
+record = { "day 8: E12-10's maximum, points, bit 1, army; E12-10b's the same" = ["text:E12-10's maximum: ", "hero:day_points", "text:points: ", "hero:points", "text:bit 1: ", "hero:bit:1", "text:army: ", "hero:slots", "text:E12-10b's maximum: ", "hero[E12-10b]:day_points", "text:points: ", "hero[E12-10b]:points", "text:bit 1: ", "hero[E12-10b]:bit:1", "text:army: ", "hero[E12-10b]:slots"] }
+
+# --- Days 15 and 22: E12-12 ------------------------------------------------------------------------------
+
+[[step]]
+end_turn = true
+to_day = 15
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }
+
+[[step]]
+end_turn = true
+to_day = 22
+encounter = "E12-17"
+record = { "row:day" = ["date", "fountain:26,4", "fountain:30,4"] }

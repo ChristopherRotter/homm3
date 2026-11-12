@@ -65,10 +65,11 @@ effects = [{ kind = "opening_spell", mastery = 3, power = 50, spell = "base:slow
 parts = ["base:blackshard_of_the_dead_knight", "base:shield_of_the_yawning_dead", "base:skull_helmet", "base:rib_cage"]
 
 [[artifact]]
-id = "statue_of_legion"  # original id 133; pending: E08-E10
+id = "statue_of_legion"  # original id 133
 name = "Statue of Legion"
 class = "relic"
 slot = "base:misc"
+effects = [{ kind = "owner_town_growth", bp = 5000 }]
 parts = ["base:legs_of_legion", "base:loins_of_legion", "base:torso_of_legion", "base:arms_of_legion", "base:head_of_legion"]
 
 [[artifact]]

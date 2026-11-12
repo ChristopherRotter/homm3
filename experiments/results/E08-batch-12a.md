@@ -1,5 +1,9 @@
 # E08 batch E12a — results
 
+> Played by the capture harness on 2026-11-12 (`clients/capture/h3adv.py batch clients/capture/batches/E08-batch-12a.toml`): the same Complete 4.0 `Heroes3.exe` under Wine, without the HD mod; hot seat, difficulty Easy, the starting bonus gold, Show Route on; read from the game's memory.
+
+> E08 T110: four runs of the map; the second, the third (this one) and the fourth (the harness merged with `master`'s) agree in all 74 filled records, the first only in one label (the recipe's since).
+
 Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an agent records the results (`docs/experiments/README.md`).
 
 **Stamp `d2c37714`.** The map's description in the scenario list starts with "Stamp d2c37714.": compare the two before you play. If they differ, the map is not this template's build: do not play it, ask for the map again.
@@ -27,24 +31,24 @@ Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E12-5: Red's explored bits: (30, 28); (30, 27); (33, 31); (34, 31); (32, 33); (33, 33): 
+- E12-5: Red's explored bits: (30, 28); (30, 27); (33, 31); (34, 31); (32, 33); (33, 33): (30, 28): yes; (30, 27): no; (33, 31): yes; (34, 31): no; (32, 33): yes; (33, 33): no
 
 | garrison | entrance | owner | stacks | removable |
 |---|---|---|---|---|
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
+| G5 | 30,31 | red | empty | 1 |
+| V1 | 8,3 | red | 0: 2 Pikemen | 1 |
+| G2 | 19,6 | none | empty | 1 |
+| G3 | 29,6 | red | 0: 5 Pikemen | 0 |
+| G4 | 9,22 | red | 0: 3 Pikemen | 1 |
+| G6 | 23,22 | none | 0: 20 Pikemen | 1 |
 
-- E12-6 before: points; experience; army; G6's record (owner, stacks): 
-- E12-6, the walk: questions, dialogs and messages before the battle (in order): 
-- E12-6, as the battle opens: the defender's stacks (creature, count each); the attacker's; anti-magic flag (+0x53C4): 
-- E12-6: the battle's result: 
-- E12-6 after it: dialogs (the exchange's bars): 
-- E12-6 after OK: G6's record (owner, stacks); E12-6's tile; points; experience; army: 
-- anything odd: 
+- E12-6 before: points; experience; army; G6's record (owner, stacks): points: 2000; experience: 0; army: 0: 10 Archangels; G6: record 5; owner none; stacks 0: 20 Pikemen; removable 1; entrance 23,22
+- E12-6, the walk: questions, dialogs and messages before the battle (in order): the path: 23,20 23,21 23,22; questions: none; messages: GENRLTXT:7; battles: 1. at 23,22,0: defender 20 Pikemen, winner attacker
+- E12-6, as the battle opens: the defender's stacks (creature, count each); the attacker's; anti-magic flag (+0x53C4): defender: slot 0: 20 Pikemen; attacker: slot 0: 10 Archangels; anti-magic flag: clear (0); sides: attacker red (human 1, here 1); defender none (human 0, here 0)
+- E12-6: the battle's result: winner: attacker; the attacker at the end: 10 Archangels; the defender at the end: none
+- E12-6 after it: dialogs (the exchange's bars): dialogs: garrison; the bars as it opened: at 23,22: upper empty; lower 0: 10 Archangels; level-ups: none
+- E12-6 after OK: G6's record (owner, stacks); E12-6's tile; points; experience; army: G6: record 5; owner red; stacks empty; removable 1; entrance 23,22; tile: 23,22,0; points: 1700; experience: 200; army: 0: 10 Archangels
+- anything odd: the date at the start: month 1, week 1, day 1; the game's version: SoD; the difficulty: easy; E12-5: the record order (index by entrance): G5: 4; V1: 0; G2: 1; G3: 2; G4: 3; G6: 5; E12-6: the battlefield: grass
 
 ## E12-1 — A move through Red's own vertical garrison to a tile beyond it; then the garrison as the move's end (D-59, ADV-GAR-004, ADV-GAR-003, GAM-DEC-004)
 
@@ -57,13 +61,13 @@ Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E12-1 before: points; V1's record (owner, stacks): 
-- the path to D1 (10, 3) (its tiles, or none): 
-- the walk to D1: dialogs and messages on the way; where it stopped; E12-1's tile; points; V1's record: 
-- the step onto V1's entrance (8, 3): dialogs and messages (the exchange's bars); E12-1's tile; points: 
-- the take of V1's Pikemen into slot 1: both bars after: 
-- after OK: V1's record (owner, stacks); E12-1's army: 
-- anything odd: 
+- E12-1 before: points; V1's record (owner, stacks): points: 2000; V1: record 0; owner red; stacks 0: 2 Pikemen; removable 1; entrance 8,3
+- the path to D1 (10, 3) (its tiles, or none): 7,3 8,3 9,3 10,3
+- the walk to D1: dialogs and messages on the way; where it stopped; E12-1's tile; points; V1's record: clicked again: yes; dialogs: none; the exchanges' bars as they opened: none; messages: none; tile: 10,3,0; points: 1600; V1: record 0; owner red; stacks 0: 2 Pikemen; removable 1; entrance 8,3
+- the step onto V1's entrance (8, 3): dialogs and messages (the exchange's bars); E12-1's tile; points: dialogs: garrison; the bars as it opened: at 8,3: upper 0: 2 Pikemen; lower 0: 10 Archangels; messages: none; the path: 8,3 9,3; tile: 8,3,0; points: 1400
+- the take of V1's Pikemen into slot 1: both bars after: upper (V1's record): empty; lower (E12-1's army): 0: 10 Archangels, 1: 2 Pikemen; the upper bar shows: none; the lower bar shows: 0: 10, 1: 2; selected before: none; the clicks: upper:0: upper 0 selected, lower:1: none selected; messages: none; creature windows: none
+- after OK: V1's record (owner, stacks); E12-1's army: V1: record 0; owner red; stacks empty; removable 1; entrance 8,3; E12-1's army: 0: 10 Archangels, 1: 2 Pikemen
+- anything odd: the walk to D1: the marks' colours: green
 
 ## E12-2 — An empty neutral garrison on the way: a path beyond it, the path to it, its visit (D-59, ADV-GAR-002, ADV-GAR-004, ADV-MOV-008)
 
@@ -75,11 +79,11 @@ Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E12-2 before: points; G2's record (owner, stacks): 
-- the path to D2 (19, 8) (its tiles, or none); if one showed, the walk: dialogs and messages, where it stopped: 
-- the path to G2's entrance (19, 6) (its tiles): 
-- the step onto (19, 6): battles, dialogs and messages in order (the exchange's bars): 
-- after OK: G2's record (owner, stacks); E12-2's tile; points: 
+- E12-2 before: points; G2's record (owner, stacks): points: 2000; G2: record 1; owner none; stacks empty; removable 1; entrance 19,6
+- the path to D2 (19, 8) (its tiles, or none); if one showed, the walk: dialogs and messages, where it stopped: the path: none; clicked again: no; dialogs: none; the exchanges' bars as they opened: none; messages: none; tile: 19,4,0; points: 2000; G2: record 1; owner none; stacks empty; removable 1; entrance 19,6
+- the path to G2's entrance (19, 6) (its tiles): 19,5 19,6
+- the step onto (19, 6): battles, dialogs and messages in order (the exchange's bars): battles: none; dialogs: garrison; the bars as it opened: at 19,6: upper empty; lower 0: 10 Archangels; messages: none
+- after OK: G2's record (owner, stacks); E12-2's tile; points: G2: record 1; owner red; stacks empty; removable 1; entrance 19,6; tile: 19,6,0; points: 1800
 - anything odd: 
 
 ## E12-3 — Red's own garrison not removable: a move into an empty slot, a merge onto its stack, two takes (D-61, ADV-GAR-003, GAM-DEC-004)
@@ -92,17 +96,17 @@ Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E12-3 before: points; G3's record (owner, stacks, removable): 
-- the step onto (29, 6): dialogs and messages (the exchange's bars); E12-3's tile; points: 
+- E12-3 before: points; G3's record (owner, stacks, removable): points: 1560; G3: record 2; owner red; stacks 0: 5 Pikemen; removable 0; entrance 29,6
+- the step onto (29, 6): dialogs and messages (the exchange's bars); E12-3's tile; points: dialogs: garrison; the bars as it opened: at 29,6: upper 0: 5 Pikemen; lower 0: 10 Pikemen, 1: 5 Archers, 2: 2 Griffins; messages: none; tile: 29,6,0; points: 1360
 
 | try (a, c, d, b) | highlighted before | the upper bar after | the lower bar after | messages |
 |---|---|---|---|---|
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
-|   |   |   |   |   |
+| (a) a move: E12-3's Archers (lower 1) to G3's empty slot 1 (upper 1) | none | G3: 0: 5 Pikemen, 1: 5 Archers; shows: 0: 5, 1: 5; the clicks: lower:1: lower 1 selected, upper:1: none selected | E12-3: 0: 10 Pikemen, 2: 2 Griffins; shows: 0: 10, 2: 2 | none; none |
+| (c) a take: G3's Pikemen (upper 0) to E12-3's empty slot 3 (lower 3) | none | G3: 0: 5 Pikemen, 1: 5 Archers; shows: 0: 5, 1: 5; the clicks: upper:0: upper 0 selected, lower:3: upper 0 selected | E12-3: 0: 10 Pikemen, 2: 2 Griffins; shows: 0: 10, 2: 2 | none; none |
+| (d) a take back: the Archers in G3's slot 1 (upper 1) to E12-3's empty slot 4 (lower 4) | upper 0 | G3: 0: 5 Pikemen, 1: 5 Archers; shows: 0: 5, 1: 5; the clicks: upper:1: upper 1 selected, lower:4: upper 1 selected | E12-3: 0: 10 Pikemen, 2: 2 Griffins; shows: 0: 10, 2: 2 | none; none |
+| (b) a merge: E12-3's Pikemen (lower 0) onto G3's Pikemen (upper 0) | upper 1 | G3: 0: 5 Pikemen, 1: 5 Archers; shows: 0: 5, 1: 5; the clicks: lower:0: lower 0 selected, upper:0: upper 0 selected | E12-3: 0: 10 Pikemen, 2: 2 Griffins; shows: 0: 10, 2: 2 | none; none |
 
-- after OK: G3's record (stacks); E12-3's army: 
+- after OK: G3's record (stacks); E12-3's army: G3: record 2; owner red; stacks 0: 5 Pikemen, 1: 5 Archers; removable 0; entrance 29,6; E12-3's army: 0: 10 Pikemen, 2: 2 Griffins
 - anything odd: 
 
 ## E12-4 — A hero in Red's anti-magic garrison: attacking out of it (Red's turn), attacked in it (Blue's turn) (D-60, ADV-GAR-005, BAT-TER-002, GAM-BAT-004)
@@ -119,14 +123,14 @@ Map file: `E08-batch-12a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- E12-4 before: points; spell points; G4's record (owner, stacks): 
-- the step onto (9, 22): dialogs and messages (the exchange's bars); E12-4's tile; points: 
-- battle 2 as it opens: the anti-magic flag (+0x53C4); Red's stacks; Blue's stacks: 
-- battle 2, Red's first turn: the spell book (opened, or the message); Bless cast?: 
-- battle 2, Blue's first turn: the spell book (opened, or the message); Bless cast?: 
-- battle 2: the result; then E12-4's tile; points; spell points: 
-- battle 1 as it opens: the anti-magic flag (+0x53C4); Red's stacks (G4's Pikemen among them?); Blue's stacks: 
-- battle 1, Red's first turn: the spell book (opened, or the message); Bless cast?: 
-- battle 1, Blue's first turn: the spell book (opened, or the message); Bless cast?: 
-- battle 1: the result; G4's record after (owner, stacks): 
-- anything odd: 
+- E12-4 before: points; spell points; G4's record (owner, stacks): points: 2000; spell points: 20; G4: record 3; owner red; stacks 0: 3 Pikemen; removable 1; entrance 9,22
+- the step onto (9, 22): dialogs and messages (the exchange's bars); E12-4's tile; points: the path: 8,21 9,22; dialogs: garrison; the bars as it opened: at 9,22: upper 0: 3 Pikemen; lower 0: 10 Archangels; messages: none; tile: 9,22,0; points: 1759
+- battle 2 as it opens: the anti-magic flag (+0x53C4); Red's stacks; Blue's stacks: anti-magic flag: clear (0); Red's (attacker): slot 0: 10 Archangels; Blue's (defender): slot 0: 1 Pikeman; the hero's tile as it opened: 9,22,0
+- battle 2, Red's first turn: the spell book (opened, or the message); Bless cast?: 10 Archangels: the book opened (0x641dcc); cast made; spell points 20 then 15; on the stack after: Bless (1 round); then defends
+- battle 2, Blue's first turn: the spell book (opened, or the message); Bless cast?: 1 Pikeman: the book opened (0x641dcc); cast made; spell points 10 then 5; on the stack after: Bless (1 round); then defends
+- battle 2: the result; then E12-4's tile; points; spell points: winner: attacker; Red at the end: 10 Archangels; messages: none; level-ups: none; tile: 9,22,0; points: 1659; spell points: 15
+- battle 1 as it opens: the anti-magic flag (+0x53C4); Red's stacks (G4's Pikemen among them?); Blue's stacks: anti-magic flag: set (1); Red's (defender): slot 0: 10 Archangels; Blue's (attacker): slot 0: 1 Pikeman; E12-4's tile: 9,22,0
+- battle 1, Red's first turn: the spell book (opened, or the message); Bless cast?: 10 Archangels: the book refused: GENRLTXT:685; cast not tried; spell points 15 then 15; on the stack after: no spell; then defends
+- battle 1, Blue's first turn: the spell book (opened, or the message); Bless cast?: 1 Pikeman: the book refused: GENRLTXT:685; cast not tried; spell points 10 then 10; on the stack after: no spell; then defends
+- battle 1: the result; G4's record after (owner, stacks): winner: defender; Red at the end: 10 Archangels; messages: none; G4: record 3; owner red; stacks 0: 3 Pikemen; removable 1; entrance 9,22; E12-4's tile: 9,22,0; E12-4's spell points: 15
+- anything odd: E12-4b's and E12-4a's spell points: E12-4b: 10; E12-4a: 10; battle 2: the battlefield: terrain grass, special field none, ship flag 0, blocked hexes 42, 43, 44, 45, 60, 61, 62, 63; Blue's turn: its messages: GENRLTXT:14, ?; battle 1: the battlefield: terrain grass, special field none, ship flag 0, blocked hexes 21, 22, 23, 24, 38, 39, 40, 41, 56, 57, 97, 98; E12-4a before: points; spell points: 1560; 10

@@ -6,7 +6,8 @@
   BAT-Q33; E23 T7); points 2 and 5 and the Consequences amended 2026-11-03 (user, TWN-Q2 to
   TWN-Q4, E09 decisions 14, 15, 20, 21; E09 T4a: the town context derives the facts, the packs
   decide the moat); point 2 amended 2026-11-03 (user, CLT-Q40, BAT-Q64: the morale and luck by
-  building, public)
+  building, public); points 1 and 3 amended 2026-11-12 (user, TWN-Q14, E09 decisions 81, 83;
+  E09 T24: a garrison hero at a town's battle)
 - Date: 2026-10-13
 - Deciders: user; battle lane session (E04c T4, T5)
 - Working detail: the survey [`docs/rules/surveys/E04c-sieges.md`](../rules/surveys/E04c-sieges.md),
@@ -31,6 +32,9 @@ the adventure lane derives the battlefield (ADR-0022).
    with or without a fort (the original's: no surrender, no retreat without the Escape Tunnel for
    its defender, +500 experience for the attacker, the town's terrain; survey D-7). Public but for
    the Escape Tunnel (point 2). `None` elsewhere; every existing constructor takes `None`.
+   **But one** (E09 increment 3; survey `E09-towns.md` §9.1, the original's town argument 0): the
+   battle against a town's **visitor beside a garrison hero** is not a siege (`siege: None`): it
+   is fought on the gate tile's battlefield as any hero's battle, and the town is not taken by it.
 2. **`Siege` carries derived facts, not the town's buildings.** Whoever starts a battle at a town
    derives them: **`h3-towns`** (E09; ADR-0028 points 5 and 7), from the town (its faction and
    built buildings) and its faction's town record, for every battle at a town, by the readings of
@@ -68,6 +72,9 @@ the adventure lane derives the battlefield (ADR-0022).
    Stormclouds) are applied to its `BattleHero` before the seam, like its other bonuses (ADR-0013
    point 6). The battle never restores them; the orchestrator keeps the hero's own skills and, as
    the original, sets the mana after the battle to the smaller of the mana left and the mana before.
+   **From E09 increment 3** the defending hero of a siege is the visitor (the garrison merged
+   into its army first) or, without one, **the garrison hero** with its own army; either gets the
+   town bonuses. The visitor beside a garrison hero (point 1) gets none.
 4. **No outcome field.** The original writes nothing about the walls back to the town; a capture
    follows the result and is the adventure lane's. ADR-0013 point 5's reserved `siege` outcome
    field is dropped.

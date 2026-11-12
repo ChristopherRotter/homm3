@@ -175,7 +175,7 @@ impl Host {
     }
 
     /// The player's record as the game kept it, read by `h3_view::game_record`.
-    pub(crate) fn battles(&self) -> Vec<h3_view::game_record::GameBattle> {
+    pub(crate) fn battles(&self) -> Vec<GameBattle> {
         let text = self.session.record(PLAYER).unwrap();
         h3_view::game_record::parse(&text).unwrap().battles()
     }
@@ -244,6 +244,79 @@ fn a_host_s_game_s_battle_is_played_through_the_seat_to_its_end() {
 }
 
 #[test]
+fn a_seat_follows_the_battle_opened_last_and_once_loaded_stays_on_it() {
+    // E17 M7 T4 (R3-3, *provisional*): a seat handed a game's messages from its start follows the
+    // last battle that opened in them, the battles done before it not kept; loaded, it stays on
+    // its battle, reading up to its last snapshot right after its end and no later battle.
+    let host = Host::sea_monster();
+    let observation = (host.inbox.iter())
+        .find_map(|m| match m {
+            ServerMessage::Snapshot { observation, .. } => Some(observation.clone()),
+            _ => None,
+        })
+        .unwrap();
+    let tile = h3_protocol::wire::game::Pos {
+        x: 1,
+        y: 2,
+        level: 0,
+    };
+    let result = Outcome::Victory {
+        side: h3_protocol::wire::Side::Attacker,
+    };
+    let started = |n, hero| ServerMessage::GameEvents {
+        n,
+        events: vec![GameEvent::BattleStarted {
+            heroes: [Some(hero), None],
+            tile,
+        }],
+    };
+    let snapshot = |n| ServerMessage::Snapshot {
+        n,
+        observation: observation.clone(),
+    };
+    let ended = |n| ServerMessage::GameEvents {
+        n,
+        events: vec![GameEvent::BattleEnded {
+            heroes: [Some(1), None],
+            result,
+        }],
+    };
+    // Fed from the game's start: the second battle's, the first gone.
+    let mut seat = GameSeat::new(&host.header());
+    for message in [
+        started(1, 1),
+        snapshot(2),
+        ended(3),
+        started(4, 2),
+        snapshot(5),
+    ] {
+        seat.receive(&message);
+    }
+    assert!(seat.opened());
+    assert_eq!(
+        seat.in_game().map(|at| (at.heroes, at.opened)),
+        Some(([Some(2), None], 5))
+    );
+    assert_eq!(seat.record().map(|r| r.messages.len()), Some(1));
+    assert_eq!((seat.battles.opened(), seat.battles.get(0)), (2, None));
+    // Loaded at its opening, it keeps the first: its end, its last snapshot, then no more.
+    let mut seat = GameSeat::new(&host.header());
+    seat.receive(&started(1, 1));
+    seat.receive(&snapshot(2));
+    seat.follow();
+    for message in [ended(3), snapshot(4), started(5, 2), snapshot(6)] {
+        seat.receive(&message);
+    }
+    assert!(seat.over());
+    assert_eq!(
+        seat.in_game().map(|at| (at.heroes, at.ended)),
+        Some(([Some(1), None], Some((3, result))))
+    );
+    assert_eq!(seat.record().and_then(Record::ended), Some(&observation));
+    assert_eq!(seat.battles.opened(), 1);
+}
+
+#[test]
 fn a_host_s_window_plays_its_game_s_battle_live_and_gets_its_outcome() {
     // E17 M7 T3b2: the element over the seat (`Ground::load_game`), its human side the player's
     // pressed by the unattended presses (the seat's plain choice), the host's game the other
@@ -260,6 +333,16 @@ fn a_host_s_window_plays_its_game_s_battle_live_and_gets_its_outcome() {
             .contains("not opened")
     );
     host.serve(&mut seat);
+    // E17 M7 T4 (R3-7): the game's packs absent here are refused, as a server's game's.
+    let empty = std::env::temp_dir().join(format!("h3-view-no-packs-{}", std::process::id()));
+    std::fs::create_dir_all(&empty).unwrap();
+    let absent = crate::battle::Source {
+        packs: empty.clone(),
+        ..source.clone()
+    };
+    let refused = crate::battle::Ground::load_game(&absent, seat.clone()).unwrap_err();
+    assert!(refused.contains("packs do not compile"), "{refused}");
+    std::fs::remove_dir(&empty).unwrap();
     let ground = crate::battle::Ground::load_game(&source, seat).unwrap();
     assert_eq!(ground.content(), Some(h3_view::remote::Content::Same));
     assert!(ground.game_seat().is_some() && ground.online().is_none());

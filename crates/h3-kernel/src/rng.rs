@@ -63,6 +63,11 @@ impl StreamId {
     /// starts (ADR-0025 point 4, E05 T5b): apart from `SETUP`, from which a batch draws the
     /// episode's scenario.
     pub const ENCOUNTER: Self = Self(6);
+    /// The towns' weekly randomness (E09 increment 3, decision 75; ADR-0017 point 4): a new
+    /// week's kind, each neutral town's garrison week and each owned Portal of Summoning's pick,
+    /// and a town event's Portal; apart from the game's stream, which keeps the month's kind, the
+    /// weekly objects and the spawns.
+    pub const TOWNS: Self = Self(7);
     /// First id of the per-player streams; ids below it are the named streams above.
     const PLAYER_BASE: u64 = 0x100;
     /// First id of the per-seat streams, after the players'.
@@ -324,6 +329,7 @@ mod tests {
             StreamId::GAME,
             StreamId::SETUP,
             StreamId::ENCOUNTER,
+            StreamId::TOWNS,
         ];
         let players: Vec<StreamId> = (0..=u8::MAX).map(StreamId::player).collect();
         assert!(players.iter().all(|p| !named.contains(p)));
@@ -338,7 +344,7 @@ mod tests {
     // covers: KER-RNG-001
     #[test]
     fn seat_and_env_streams_are_distinct_from_every_other_stream() {
-        let named = [1, 2, 3, 4, 5, 6].map(StreamId);
+        let named = [1, 2, 3, 4, 5, 6, 7].map(StreamId);
         let players = (0..=u8::MAX).map(StreamId::player);
         let seats: Vec<StreamId> = (0..=u8::MAX).map(StreamId::seat).collect();
         let envs = [0, 1, 2, u32::MAX - 1, u32::MAX].map(StreamId::env);

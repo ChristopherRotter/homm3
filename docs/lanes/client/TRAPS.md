@@ -21,8 +21,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - The harness's `actions` are the viewer's mouse (`pointer::inputs`, design §9.10): a new action
   kind needs both; `hex_point` and `PARK` mirror `h3drive.py`'s; a `key:` right after a `cast:`
   acts at the cast's end in both (T7b-1). `key-down:`/`key-up:` (E17 M7 T1c) are the stills'
-  only (`spellbook::still`; `pointer::answering` refuses them); a still with `sound` shows the
-  options dialog's effects' bars at the run's volume 5, which the viewer's stills draw at 0.
+  only (`spellbook::still`; `pointer::answering` refuses them; while one holds a button, another
+  hotkey's `key:` or a `click:` on an enabled panel button is an error, M7 T4); a still with
+  `sound` shows the options dialog's effects' bars at the run's volume 5, which the viewer's
+  stills draw at 0. A failed or killed capture lets go of the keys and buttons it held
+  (`h3drive.Game.stop`, and `start` before the game; `capture/test_h3drive.py`, which needs numpy
+  and runs outside `check.sh`).
 - A press's command is `h3_view::mouse::click`'s, by the cursor's kind (E17 M5 T2a): a new kind
   or a changed one needs its press there too; `h3-view`'s `clicks` test checks the presses
   against the engine's legal lists over every scenario's turns (CLT-Q25's walk the one gap).
@@ -117,8 +121,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `message_open()` true: compare its buttons (`box_shown`).
 - A DEF button the mouse holds runs its own loop (E17 M7 T2, design §13.1): over the battle
   `window::mouse_holds` drops every key but the viewer's own and the right press, keeps the moves
-  from the battle and makes it stand (`next_frame`'s `holding`); a new key, popup or input to the
-  battle checks it first. Only an enabled panel button is held (`Battle::enabled`). In a dialog
+  from the battle and makes it stand once the shown time is at its timeline's end (`next_frame`'s
+  `holding`: a record and a Restart's replay play on, M7 T4); a box or dialog opening over it
+  ends the hold without its click (`Hosted::before`); a new key, popup or input to the battle
+  checks it first. Only an enabled panel button is held (`Battle::enabled`). In a dialog
   `message::Open::holds_mouse` says the same (no description, no hint, the stats dialog's
   creature held in `Open::holds`).
 - The result window (E17 M5 T4b1) is a message box (`Asked::Result`): modal, its OK (Enter,
@@ -246,6 +252,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   uncovered until a test calls it at run time.
 
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
+- **The sound tests** (E17 M7 T4): the battle client's tests open SDL's dummy audio driver
+  (`h3_sdl::Audio::open_driver`) through `audio::tests::dummy`, which holds one lock for the
+  test: a new sound test takes it, or two devices race. `window::tests::NO_FRAMES` (a test's
+  thread-local) makes `frame_at` fail, for a start that fails after the sound was lent.
 - **A worktree's linked data** (E17 M7 T3b2): `drawn` and the staged-data tests read the
   repository's own `original-data/` and `clients/target/release/`, so a worktree links both to
   the main clone's; `.gitignore`'s `original-data/` matches a directory, not a link, so

@@ -412,7 +412,8 @@ struct Asking {
 /// one after another (E17 M6 T5c), the screen darkened behind them. A move to the park point after
 /// a click is a move as the harness's is. `key-down:` and `key-up:` hold a panel button by its
 /// hotkey while a dialog opens and takes the release (E17 M7 T1c, CLT-Q71): drawn pressed as
-/// the original's profile leaves it. `down:<x>,<y>` (E17 M7 T2, CLT-Q72 (a)) moves the mouse
+/// the original's profile leaves it; another panel hotkey or a press on an enabled panel button
+/// between them, which would replace it, is an error (E17 M7 T4, R1-1). `down:<x>,<y>` (E17 M7 T2, CLT-Q72 (a)) moves the mouse
 /// there and holds the left button down over an enabled panel button (the battle taking that
 /// move), the stats dialog's OK or cast button, or a DEF button of the combat options dialog:
 /// its own loop runs, so only `move:` (the button's alone: it follows the mouse on and off, the
@@ -702,6 +703,18 @@ pub fn still(
                     false,
                 );
                 let command = keys.command(context, false, &key);
+                // Another panel hotkey over the battle replaces the button a `key-down:` holds
+                // (the window's `held`, the original's, CLT-Q71), which a still does not model
+                // (E17 M7 T4, R1-1, *provisional*): an error, as anything else T1c's model lacks.
+                if held_key.is_some()
+                    && context == Context::Battle
+                    && matches!(command, Some(Do::Button(_)))
+                {
+                    return Err(format!(
+                        "`{action}`: another panel hotkey while a `key-down:` holds one (its \
+                         replacement is not modelled)"
+                    ));
+                }
                 // The keys C, S, R and O keep the army info windows in the original's profile
                 // (CLT-Q49; the client's hides them, `Hover::key`).
                 if let (Some(a), Context::Battle, Some(Do::Button(_))) = (army, context, command) {
@@ -794,6 +807,20 @@ pub fn still(
             }
             "click" => {
                 let to = point(arg)?;
+                // A press on an enabled panel button over the battle replaces the button a
+                // `key-down:` holds (the window's `held`), not modelled in a still (E17 M7 T4,
+                // R1-1, *provisional*): an error.
+                if held_key.is_some()
+                    && result.is_none()
+                    && asking.is_none()
+                    && still.open.is_none()
+                    && boxes.and_then(|b| (b.button)(to)).is_some()
+                {
+                    return Err(format!(
+                        "`{action}`: a panel button pressed while a `key-down:` holds one (its \
+                         replacement is not modelled)"
+                    ));
+                }
                 moved(&mut still, &mut memory, to);
                 // Over the battle (no box, no book): its move, then the left press over the
                 // battlefield hiding the army info windows, the hex kept (E17 M6 T4b2b1).
@@ -1839,6 +1866,73 @@ pub(crate) mod tests {
         assert!(played(&["down:5,5"]).is_err());
         // Without the hold the right button holds the help.
         assert!(played(&["right:700,570"]).unwrap().held);
+    }
+
+    #[test]
+    fn a_key_s_held_button_is_never_replaced_in_a_still() {
+        // E17 M7 T4 (R1-1): a `key-down:` holds Defend until a dialog takes its release (a
+        // turret's box here, as `stats-held`'s stats dialog); another panel hotkey (O) or a press
+        // on an enabled panel button (the Options) would replace the hold in the window and the
+        // original, which a still does not model: an error, not Defend drawn pressed after.
+        let battle = parse_battle(include_str!("../../../layouts/battle.toml")).unwrap();
+        let catalogue = Catalogue::default();
+        let panel = [700, 570];
+        let options = |at: Option<[i32; 2]>, _: (u8, Shades)| {
+            at.is_none_or(|p| p == panel).then(|| {
+                h3_view::options::Open::new(
+                    &battle.options,
+                    &catalogue,
+                    h3_view::options::Settings::CAPTURE,
+                    (0, false, h3_render::Bugs::Original),
+                )
+            })
+        };
+        let tell = |_: &str, _, _: Option<&Picture>| Some(one_button(0));
+        let turret = |point: [i32; 2], right: bool| {
+            (point == [300, 300] && !right).then(|| String::from("turret"))
+        };
+        let button = |point: [i32; 2]| (point == panel).then_some(h3_view::panel::OPTIONS);
+        let boxes = Boxes {
+            tell: &tell,
+            leave: Leave::default(),
+            refusal: &|_| None,
+            pictures: (String::new(), [0, 0]),
+            result: &|_| None,
+            opening: None,
+            look: &|_, _| None,
+            acting: &|_, _| None,
+            held: &|_, _| None,
+            turret: &turret,
+            help: &|_| None,
+            button: &button,
+            hero_info: &|_| None,
+            options: &options,
+            army: None,
+        };
+        let played = |actions: &[&str]| {
+            let actions: Vec<String> = actions.iter().map(|a| (*a).to_owned()).collect();
+            still(
+                &actions,
+                crate::pointer::PARK,
+                || None,
+                (&layout(), &catalogue),
+                Some(&boxes),
+            )
+        };
+        let taken = played(&["key-down:d", "click:300,300", "key-up:d"]).unwrap();
+        assert_eq!(taken.pressed, Some(h3_view::panel::DEFEND));
+        assert!(taken.message.is_some());
+        for replaced in [
+            ["key-down:d", "key:o", "key-up:d", "key:Return"],
+            ["key-down:d", "click:700,570", "key-up:d", "key:Return"],
+        ] {
+            let refused = played(&replaced).unwrap_err();
+            assert!(refused.contains("not modelled"), "{refused}");
+        }
+        // Without a key held both open the dialog.
+        for opens in [["key:o"], ["click:700,570"]] {
+            assert!(played(&opens).unwrap().options.is_some());
+        }
     }
 
     #[test]

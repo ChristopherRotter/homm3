@@ -27,6 +27,7 @@ adventure).
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
+| `test_h3drive.py` | Checks of the driver's parts that need no game, Wine or display, its commands recorded (E17 M7 T4: a key or button an action holds let go at the game's stop and start): `python3 -m unittest test_h3drive` from here. |
 | `screens.toml` | The screens the driver recognises: 12 probes `[x, y, 5-6-5 value]` each (numbers only). |
 | `h3cap.py` | `diff` (our render against a capture, with masks) and `find` (the original's obstacles in a capture); `compare` and `boxes_at` for the frame check. |
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
@@ -906,6 +907,62 @@ harness's last scroll: read it with `before:` in a `look` and again after. The d
 run of presses differ from run to run (the game runs in real time between them), unlike batch
 E11a's few. The hot-seat turn's second OK in a townless game is the countdown, ARRAYTXT 128
 (`?`: h3lod's tables leave ARRAYTXT out).
+
+**Garrisons and the bonus visitables** (E08 T110, batches E12a and E12b;
+`docs/rules/surveys/E08-garrisons-bonuses.md` §12). **A garrison's exchange** is a screen of its
+own (`garrison`: `garrison_exchange_create` 0x5D0E00 writes the vtable 0x643890 over
+`garrison_dialog_create` 0x5CE830, the army dialog's base; `read`): the army dialog's items (the
+garrison's bar `upper:<n>` 115-121, the hero's `lower:<n>` 140-146, OK 30722); a walk plays the
+step's `actions` in it and closes it with its OK, and notes each one as it opened, before the
+actions (`garrison_dialogs`: `at 8,3: upper 0: 2 Pikemen; lower 0: 10 Archangels`). A bar's
+selected slot has the state 0x6, the others 0x2 (observed): `bar:selected` after an action,
+`bar:selected:before` before its clicks, `bar:clicks` each click with the slot selected after it
+(`upper:0: upper 0 selected, lower:3: upper 0 selected`: a refused take leaves the selection); a
+second click on a selected stack opens the creature's window, closed with its OK and noted
+(`creature_windows`). An action's `row:<table>` field adds a row (several actions' rows all
+kept), a `+<field>` joins. `garrison:x,y[,level][:index|owner|stacks|removable|entrance]` a
+garrison's record by its entrance (game +0x4E3AC, 0x40 bytes: `h3mem.garrisons`). A battle's
+`anti_magic` (+0x53C4 at its opening: `set (1)`, `clear (0)`). **The spell book in a battle of
+two humans:** `battle = { book = "Bless", then = "attack" }` (or `"auto"`; `place = <k>` the
+spell's place in the book, default 0) presses the book's key C (its button's: `hero_book_button`
+0x59E900 behind both) at each side's first stack's turn: a refusal's message is noted and closed
+(an anti-magic garrison's: GENRLTXT 685); an open book (vtable 0x641DCC) has the place clicked
+and the spell aimed at the stack's own hex, the cast waited for (a stack's +0x20 while its
+animation plays); then Defend; every later stack of a side done defends until both sides had
+theirs, then `then` plays the rest. `book:attacker`, `book:defender`: `10 Archangels: the book
+opened (0x641dcc); cast made; spell points 20 then 15; on the stack after: Bless (1 round); then
+defends` (a stack's spells: `h3mem`'s `spells`, its rounds per spell id at +0x198).
+
+The bonus visitables' reads: `fountain:x,y` a Fountain of Fortune's tile word (`value +2; team
+bits none (word 0xfffe401f)`: bits 13 to 16 signed, the team bits 5 to 12), `spring:x,y` a Magic
+Spring's entrance (`full (bit 6 set; word 0xffffffe0)`), each the tile's own word, under a hero
+standing there (`(under <hero>)`); `hero:bit:<n>` a status bit (+0x105: `set`, `clear`),
+`hero:word:<offset>` a u32 of the hero's record (hex, read live: the School of War bits +0x7B).
+A step `cast = "View Earth"` (or `{ spell, place }`) opens the selected hero's spell book on the
+adventure map (the key C), clicks the place (default 0: the hero's only adventure spell), closes
+the spell's view (View Earth's vtable 0x643C54, observed) with Escape: `cast` (`the book opened;
+View Earth; the view 0x643c54; spell points 20 then 18`). A step's `hint = [[x, y], ...]` reads
+each tile's status bar text in order with the step's hero selected (the mouse parked first, the
+text read until two reads 0.3 s apart agree; the view centred by the minimap for a tile out of
+it): `hints`, each named by its parts (`57,24: [class 28 name] [XTRAINFO 16] [GENRLTXT 353]`:
+the bonus line by its XTRAINFO record, visited 353, not visited 354); over a tile the current
+player has not explored the mouse-over shows no hint and the bar keeps its text (batch E12b's
+E12-16 before: the Mermaids' entrance), so the read says so. An end-turn step's `to_day
+= <n>` ends turns until the recipe's first player's turn of day n (28 days a month). The hero
+screen's morale and luck pictures are items 116 and 117 (observed; frame 3 neutral): an action
+`right = "morale"` holds the right button on it, `popup:lines` the window's lines each by the
+ARRAYTXT or GENRLTXT records that format it (`ARRAYTXT:97`, several `ARRAYTXT:68|93`; `[other: n
+characters]`). `dialog:items[:<lo>-<hi>]` and `dialog:boxes[:<lo>-<hi>]` list the topmost
+dialog's items (id, state, frame; the box and vtable), a probe for a new screen. A step
+`skip_quietly = true` whose `only_if` does not hold records nothing (a row's rare branch). The
+scenario list's starting bonus: each row's arrow is clicked until the memory reads Gold (a
+player with a town and no hero has no Artifact: Random, Gold, Resource; batch E12b's Blue).
+
+Observed (E12a and E12b, two runs each): the garrison's dialog opens on the entrance only (a walk
+through an own garrison opens none); the hero screen opens on a click on the selected hero's own
+tile (a Magic Well's or the Idol's: the hero **stands on** them after the visit, unlike the
+Buoy, the Mermaids and the Sirens at sea, visited from the neighbouring water tile), so a visit
+again there is Space.
 
 **A new screen** (another recipe): get there by hand once with `Game.click`/`key`, then
 `python3 capture/h3drive.py learn <name> --in x0,y0,x1,y1 [--avoid …] [--also other-state.xwd]`
