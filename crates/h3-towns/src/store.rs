@@ -4,6 +4,7 @@
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use h3_content::Ruleset;
 use h3_contracts::{FortLevel, TownId};
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -11,7 +12,8 @@ use crate::TOWN_STATE_HASH_VERSION;
 use crate::build::built_with;
 use crate::building::BuildingId;
 use crate::capture::{capitol_limit, standing_capitol};
-use crate::record::{Town, TownEvent, TownStatic};
+use crate::growth::first_creatures;
+use crate::record::{CREATURE_INDEXES, Summoned, Town, TownEvent, TownStatic};
 use crate::ruleset::TownRuleset;
 use crate::siege::fort_level;
 
@@ -120,24 +122,38 @@ impl Towns {
 
     /// Builds `building` in `town` (E09 design §26, §27): its ever-built set becomes
     /// [`built_with`]'s, and its day's mark is set when `mark` (a build of its owner's) and kept
-    /// otherwise (a town event's never sets or clears it); its public facts before the build,
-    /// so that the game tells their change. No test of the hall's: the game checks the building
-    /// first (`check_build`, E09 T17b) or builds a town event's without one. `None` for a town the
-    /// store lacks or a building outside its faction's record, which changes nothing (never in
-    /// play: the game checked both). Copies only the one town (ADR-0028 point 4).
+    /// otherwise (a town event's never sets or clears it); each dwelling it makes ever built gives
+    /// its first creatures, the growths read in `core` (TWN-GRO-005, design §46); its public facts
+    /// before the build, so that the game tells their change. No test of the hall's: the game
+    /// checks the building first (`check_build`, E09 T17b) or builds a town event's without one.
+    /// `None` for a town the store lacks or a building outside its faction's record, which changes
+    /// nothing (never in play: the game checked both). Copies only the one town (ADR-0028 point
+    /// 4).
     // rule: TWN-BLD-004
     // rule: TWN-BLD-005
+    // rule: TWN-GRO-005
     pub fn build(
         &mut self,
         town: TownId,
         building: BuildingId,
         part: &TownRuleset,
+        core: &Ruleset,
         mark: bool,
     ) -> Option<TownFacts> {
-        let (before, built) = self
-            .get(town)
-            .and_then(|t| Some((TownFacts::of(t, part), built_with(t, part, building)?)))?;
-        self.write(town, |t| t.rebuilt(built, t.built_today() || mark));
+        let (before, built, new, record) = self.get(town).and_then(|t| {
+            let built = built_with(t, part, building)?;
+            let record = part.town(t.faction())?;
+            Some((
+                TownFacts::of(t, part),
+                built,
+                built.difference(t.built()),
+                record,
+            ))
+        })?;
+        self.update(town, |t| {
+            let rebuilt = t.rebuilt(built, t.built_today() || mark);
+            first_creatures(rebuilt, record, core, new)
+        });
         Some(before)
     }
 
@@ -168,7 +184,7 @@ impl Towns {
     pub fn captured(&mut self, town: TownId, clear_mark: bool) -> bool {
         let clear = clear_mark && self.get(town).is_some_and(Town::built_today);
         if clear {
-            self.write(town, |t| t.rebuilt(t.built(), false));
+            self.update(town, |t| t.rebuilt(t.built(), false));
         }
         clear
     }
@@ -190,15 +206,50 @@ impl Towns {
             .filter(|(built, limited)| built != limited);
         change
             .iter()
-            .for_each(|&(_, limited)| self.write(town, |t| t.rebuilt(limited, t.built_today())));
+            .for_each(|&(_, limited)| self.update(town, |t| t.rebuilt(limited, t.built_today())));
         change.is_some()
+    }
+
+    /// Sets the creatures available at `index` of `town` to `count`, at most
+    /// [`crate::MAX_AVAILABLE`] (E09 design §40: a hire's, increment 3's recruitment); whether
+    /// the store holds the town and the index is one of [`crate::CREATURE_INDEXES`]. Copies only
+    /// the one town; otherwise nothing changes.
+    pub fn set_available(&mut self, town: TownId, index: usize, count: u16) -> bool {
+        let held = self.get(town).is_some() && index < CREATURE_INDEXES;
+        if held {
+            self.update(town, |t| t.with_available(index, count));
+        }
+        held
+    }
+
+    /// Sets what `town`'s Portal of Summoning holds (E09 design §40: a hire's and a draw's; none
+    /// empties it), its count at most [`crate::MAX_AVAILABLE`]; whether the store holds the town.
+    /// Copies only the one town.
+    pub fn set_portal(&mut self, town: TownId, portal: Option<Summoned>) -> bool {
+        let held = self.get(town).is_some();
+        if held {
+            self.update(town, |t| t.with_portal(portal));
+        }
+        held
+    }
+
+    /// Writes `record` as `town`'s (E09 design §40: the result of a rule over the town's own
+    /// record, a week's, a month's, a garrison week's, the Portal's draw, increment 3's §42 to
+    /// §46); whether the store holds the town. Copies only the one town; a town the store lacks
+    /// changes nothing.
+    pub fn write(&mut self, town: TownId, record: Town) -> bool {
+        let held = self.get(town).is_some();
+        if held {
+            self.update(town, |_| record.clone());
+        }
+        held
     }
 
     /// Writes `town`'s record as `change` makes it of the old one (only the rules write it,
     /// design note §4): the first write of a fork copies the list of references, then the one town
     /// gets a new record; every other town and the static parts stay shared. A town the store
     /// lacks changes nothing (and copies nothing).
-    pub(crate) fn write(&mut self, town: TownId, change: impl Fn(&Town) -> Town) {
+    pub(crate) fn update(&mut self, town: TownId, change: impl Fn(&Town) -> Town) {
         let at = town.index();
         self.0
             .iter_mut()
@@ -209,10 +260,11 @@ impl Towns {
 }
 
 impl CanonicalHash for Towns {
-    /// Encoding v2 (E09 T17a; v1 E09 T6a, the first): version; the number of towns; each town in
-    /// `TownId` order: its faction's handle, the bits of its ever-built and forbidden sets, its
-    /// day's mark (v2); then each town's static part in `TownId` order: its name (0 for none,
-    /// else 1 and the text), its events (length, then each: `hash_event`).
+    /// Encoding v3 (E09 T25a; v2 E09 T17a; v1 E09 T6a, the first): version; the number of towns;
+    /// each town in `TownId` order: its faction's handle, the bits of its ever-built and forbidden
+    /// sets, its day's mark (v2), its fourteen available counts and its Portal (0 empty, else 1,
+    /// the creature's handle and the count; v3); then each town's static part in `TownId` order:
+    /// its name (0 for none, else 1 and the text), its events (length, then each: `hash_event`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(TOWN_STATE_HASH_VERSION);
         let (towns, statics) = self.parts();
@@ -222,6 +274,15 @@ impl CanonicalHash for Towns {
             h.write_u64(town.built().bits());
             h.write_u64(town.forbidden().bits());
             h.write_bool(town.built_today());
+            town.available_all().iter().for_each(|&n| h.write_u16(n));
+            match town.portal() {
+                None => h.write_u8(0),
+                Some(p) => {
+                    h.write_u8(1);
+                    p.creature.hash_into(h);
+                    h.write_u16(p.count);
+                }
+            }
         }
         for part in statics {
             match &part.name {
@@ -274,10 +335,11 @@ mod tests {
     use h3_kernel::hash::hash_of;
 
     use super::*;
+    use crate::MAX_AVAILABLE;
     use crate::building::{BuildingId, BuildingSet};
     use crate::fixture::{
-        CAPITOL, CASTLE, CITADEL, CITY_HALL, FORT, GOLD, KEEP, ORE, SILO, TAVERN, TOWN_HALL,
-        VILLAGE_HALL, WILD, WOOD, part, town, town_of,
+        CAPITOL, CASTLE, CITADEL, CITY_HALL, DWELLING_1, DWELLING_2, FORT, GOLD, KEEP, ORE, SILO,
+        TAVERN, TOWN_HALL, UPG_DWELLING_1, VILLAGE_HALL, WILD, WOOD, core, part, town, town_of,
     };
     use crate::{daily_income, has_tavern, siege};
 
@@ -359,14 +421,18 @@ mod tests {
     fn the_hash_covers_every_town_and_static_part() {
         let base = hash_of(&Towns::new(towns()).unwrap());
         // Pinned: a change of the encoding bumps `TOWN_STATE_HASH_VERSION` and this value.
-        assert_eq!(base, 0x1F7C_E05E_64B8_2246);
+        assert_eq!(base, 0xFA14_A109_A1EC_2745);
         assert_eq!(
             hash_of(&Towns::default()),
             hash_of(&Towns::new(Vec::new()).unwrap())
         );
-        let changed: [fn(&mut Parts); 16] = [
+        let changed: [fn(&mut Parts); 19] = [
             |t| t[1].0 = Town::new(FactionId::from_raw(7), set(&[0]), BuildingSet::EMPTY),
             |t| t[1].0 = t[1].0.rebuilt(set(&[0]), true),
+            // The counts and the Portal (v3).
+            |t| t[1].0 = t[1].0.with_available(13, 1),
+            |t| t[0].0 = t[0].0.with_available(0, 2),
+            |t| t[1].0 = t[1].0.with_portal(Some(imp(4, 1))),
             |t| t[1].0 = Town::new(FactionId::from_raw(8), set(&[0, 1]), BuildingSet::EMPTY),
             |t| t[1].0 = Town::new(FactionId::from_raw(8), set(&[0]), set(&[2])),
             |t| t[1].1.name = Some("Tirlan".into()),
@@ -390,6 +456,24 @@ mod tests {
         let mut one = towns();
         one.pop();
         assert_ne!(hash_of(&Towns::new(one).unwrap()), base);
+        // The Portal's creature and count each.
+        let with = |portal| {
+            let mut t = towns();
+            t[1].0 = t[1].0.with_portal(portal);
+            hash_of(&Towns::new(t).unwrap())
+        };
+        let portals = [None, Some(imp(4, 1)), Some(imp(4, 2)), Some(imp(5, 1))].map(with);
+        for (i, a) in portals.iter().enumerate() {
+            assert!(portals[i + 1..].iter().all(|b| b != a), "portal {i}");
+        }
+    }
+
+    /// The Portal holding `count` of the creature of handle `raw`.
+    const fn imp(raw: u16, count: u16) -> Summoned {
+        Summoned {
+            creature: h3_content::CreatureTypeId::from_raw(raw),
+            count,
+        }
     }
 
     const HALLS: [usize; 4] = [VILLAGE_HALL, TOWN_HALL, CITY_HALL, CAPITOL];
@@ -465,12 +549,12 @@ mod tests {
         assert!(!fork.apply_capitol_limit(TownId::new(0), &part, false));
         assert!(!fork.apply_capitol_limit(TownId::new(2), &part, true));
         assert!(!fork.apply_capitol_limit(TownId::new(3), &part, true));
-        fork.write(TownId::new(3), Town::clone);
+        fork.update(TownId::new(3), Town::clone);
         let (old, new) = stores(&store, &fork);
         assert!(Arc::ptr_eq(old, new));
         let mut empty = Towns::default();
         assert!(!empty.apply_capitol_limit(TownId::new(0), &part, true));
-        empty.write(TownId::new(0), Town::clone);
+        empty.update(TownId::new(0), Town::clone);
         assert_eq!(empty, Towns::default());
     }
 
@@ -495,7 +579,7 @@ mod tests {
         let mut fork = store.clone();
         let third = TownId::new(2);
         // The facts before the build; after it, its ever-built set and its mark.
-        let before = fork.build(third, id(TOWN_HALL), &part, true);
+        let before = fork.build(third, id(TOWN_HALL), &part, &core(), true);
         assert_eq!(before, Some(facts(FortLevel::None, false, false)));
         assert_eq!(
             fork.get(third),
@@ -516,7 +600,7 @@ mod tests {
         assert_ne!(hash_of(&fork), hash_of(&store));
         // A later build of the same fork copies no list again.
         let list = Arc::as_ptr(stores(&fork, &fork).0);
-        let first = fork.build(TownId::new(0), id(FORT), &part, true);
+        let first = fork.build(TownId::new(0), id(FORT), &part, &core(), true);
         assert_eq!(first, Some(facts(FortLevel::None, true, false)));
         assert_eq!(Arc::as_ptr(stores(&fork, &fork).0), list);
     }
@@ -528,12 +612,12 @@ mod tests {
         let mut towns = keep_towns();
         let first = TownId::new(0);
         // Unmarked, an event's build leaves the mark clear (the day's build free).
-        let before = towns.build(first, id(FORT), &part, false);
+        let before = towns.build(first, id(FORT), &part, &core(), false);
         assert_eq!(before, Some(facts(FortLevel::None, true, false)));
         assert_eq!(towns.get(first).map(Town::built_today), Some(false));
         // Marked by the owner's build, an event's build keeps it set.
-        towns.build(first, id(CITADEL), &part, true);
-        let before = towns.build(first, id(CASTLE), &part, false);
+        towns.build(first, id(CITADEL), &part, &core(), true);
+        let before = towns.build(first, id(CASTLE), &part, &core(), false);
         assert_eq!(before, Some(facts(FortLevel::Citadel, true, true)));
         assert_eq!(
             towns.facts(first, &part),
@@ -541,11 +625,77 @@ mod tests {
         );
         // The store tests nothing: the second town's forbidden Fort is built.
         let second = TownId::new(1);
-        towns.build(second, id(FORT), &part, false);
+        towns.build(second, id(FORT), &part, &core(), false);
         let built = towns
             .get(second)
             .map(|t| (t.built().contains(id(FORT)), t.forbidden()));
         assert_eq!(built, Some((true, set(&[FORT]))));
+    }
+
+    // covers: TWN-GRO-005
+    #[test]
+    fn a_built_dwelling_gives_its_first_creatures_in_the_store() {
+        let (part, core) = (part(), core());
+        let mut towns =
+            Towns::new(vec![(town(&[VILLAGE_HALL, FORT]), TownStatic::default())]).unwrap();
+        let at = TownId::new(0);
+        let counts = |towns: &Towns| {
+            let t = towns.get(at).unwrap();
+            (t.available(0), t.available(7), t.available(1))
+        };
+        // A command's build and an event's give them alike; a building without a dwelling none.
+        towns.build(at, id(DWELLING_1), &part, &core, true);
+        assert_eq!(counts(&towns), (14, 0, 0));
+        towns.build(at, id(TAVERN), &part, &core, false);
+        towns.build(at, id(DWELLING_2), &part, &core, false);
+        assert_eq!(counts(&towns), (14, 0, 9));
+        // The upgraded dwelling takes the base's count; the Portal and the mark are kept.
+        towns.set_portal(at, Some(imp(4, 3)));
+        towns.set_available(at, 0, 20);
+        towns.build(at, id(UPG_DWELLING_1), &part, &core, false);
+        assert_eq!(counts(&towns), (0, 20, 9));
+        let town = towns.get(at).unwrap();
+        assert_eq!((town.portal(), town.built_today()), (Some(imp(4, 3)), true));
+        // Building an ever-built dwelling again gives nothing new.
+        towns.build(at, id(DWELLING_2), &part, &core, false);
+        assert_eq!(counts(&towns), (0, 20, 9));
+    }
+
+    #[test]
+    fn the_counts_the_portal_and_a_record_are_written_to_one_town() {
+        let store = keep_towns();
+        let mut fork = store.clone();
+        let (first, third) = (TownId::new(0), TownId::new(2));
+        assert!(fork.set_available(third, 13, 40_000));
+        assert_eq!(
+            fork.get(third).map(|t| t.available(13)),
+            Some(MAX_AVAILABLE)
+        );
+        assert!(fork.set_portal(third, Some(imp(4, 6))));
+        assert_eq!(fork.get(third).and_then(Town::portal), Some(imp(4, 6)));
+        // Only the one town is copied; the old store keeps its own.
+        let (old, new) = stores(&store, &fork);
+        assert!(
+            Arc::ptr_eq(&old.towns[0], &new.towns[0]) && !Arc::ptr_eq(&old.towns[2], &new.towns[2])
+        );
+        assert_eq!(store.get(third), Some(&town(&[VILLAGE_HALL])));
+        // A whole record, a rule's result, replaces the town's.
+        let record = town(&HALLS).with_available(0, 5);
+        assert!(fork.write(first, record.clone()));
+        assert_eq!(fork.get(first), Some(&record));
+        // An index past the fourteen, a town the store lacks, a store without towns: nothing.
+        let before = fork.clone();
+        assert!(!fork.set_available(first, CREATURE_INDEXES, 1));
+        assert!(!fork.set_available(TownId::new(3), 0, 1));
+        assert!(!fork.set_portal(TownId::new(3), None));
+        assert!(!fork.write(TownId::new(3), record.clone()));
+        assert_eq!(fork, before);
+        let (old, new) = stores(&before, &fork);
+        assert!(Arc::ptr_eq(old, new));
+        let mut empty = Towns::default();
+        assert!(!empty.set_available(first, 0, 1) && !empty.set_portal(first, None));
+        assert!(!empty.write(first, record));
+        assert_eq!(empty, Towns::default());
     }
 
     #[test]
@@ -554,16 +704,28 @@ mod tests {
         let store = keep_towns();
         let mut fork = store.clone();
         // A town the store lacks; a building the Keep's record lacks.
-        assert_eq!(fork.build(TownId::new(3), id(FORT), &part, true), None);
-        assert_eq!(fork.build(TownId::new(0), id(40), &part, true), None);
+        assert_eq!(
+            fork.build(TownId::new(3), id(FORT), &part, &core(), true),
+            None
+        );
+        assert_eq!(
+            fork.build(TownId::new(0), id(40), &part, &core(), true),
+            None
+        );
         let (old, new) = stores(&store, &fork);
         assert!(Arc::ptr_eq(old, new));
         assert_eq!(fork.facts(TownId::new(3), &part), None);
         // A faction without a record; a store without towns.
         let mut wild = Towns::new(vec![(town_of(WILD, &[]), TownStatic::default())]).unwrap();
-        assert_eq!(wild.build(TownId::new(0), id(0), &part, true), None);
+        assert_eq!(
+            wild.build(TownId::new(0), id(0), &part, &core(), true),
+            None
+        );
         let mut empty = Towns::default();
-        assert_eq!(empty.build(TownId::new(0), id(0), &part, true), None);
+        assert_eq!(
+            empty.build(TownId::new(0), id(0), &part, &core(), true),
+            None
+        );
         assert_eq!(empty, Towns::default());
     }
 
@@ -572,8 +734,8 @@ mod tests {
         // covers: TWN-BLD-004
         let part = part();
         let mut towns = keep_towns();
-        towns.build(TownId::new(0), id(FORT), &part, true);
-        towns.build(TownId::new(2), id(TOWN_HALL), &part, true);
+        towns.build(TownId::new(0), id(FORT), &part, &core(), true);
+        towns.build(TownId::new(2), id(TOWN_HALL), &part, &core(), true);
         let store = towns.clone();
         towns.start_day();
         assert!((0..3).all(|i| towns.get(TownId::new(i)).is_some_and(|t| !t.built_today())));
@@ -600,7 +762,7 @@ mod tests {
         let part = part();
         let mut towns = keep_towns();
         let first = TownId::new(0);
-        towns.build(first, id(FORT), &part, true);
+        towns.build(first, id(FORT), &part, &core(), true);
         let store = towns.clone();
         // Kept (a human's town taken by a human): nothing is written.
         assert!(!towns.captured(first, false));
@@ -633,11 +795,11 @@ mod tests {
         let read = |towns: &Towns| towns.get(at).cloned().unwrap();
         // A Town Hall: the day's gold.
         assert_eq!(daily_income(&read(&towns), &part), [(GOLD, 500)]);
-        towns.build(at, id(TOWN_HALL), &part, true);
+        towns.build(at, id(TOWN_HALL), &part, &core(), true);
         assert_eq!(daily_income(&read(&towns), &part), [(GOLD, 1000)]);
         // A Citadel: the Fort with it, the record's moat in the siege.
         assert_eq!(siege(&read(&towns), &part).moat, Moat::Absent);
-        towns.build(at, id(CITADEL), &part, true);
+        towns.build(at, id(CITADEL), &part, &core(), true);
         let walls = siege(&read(&towns), &part);
         assert_eq!(
             (walls.fort, walls.moat),
@@ -645,15 +807,15 @@ mod tests {
         );
         // A Tavern: its owner's view level of the other towns (TWN-VEW-002).
         assert!(!has_tavern(&read(&towns), &part));
-        towns.build(at, id(TAVERN), &part, true);
+        towns.build(at, id(TAVERN), &part, &core(), true);
         assert!(has_tavern(&read(&towns), &part));
         // A silo: its resources beside the hall's gold.
-        towns.build(at, id(SILO), &part, true);
+        towns.build(at, id(SILO), &part, &core(), true);
         let paid = [(WOOD, 1), (ORE, 1), (GOLD, 1000)];
         assert_eq!(daily_income(&read(&towns), &part), paid);
         // The Capitol: public at once, the City Hall with it.
         assert!(!towns.capitol(at, &part));
-        towns.build(at, id(CAPITOL), &part, true);
+        towns.build(at, id(CAPITOL), &part, &core(), true);
         assert!(towns.capitol(at, &part));
         assert_eq!(daily_income(&read(&towns), &part)[2], (GOLD, 4000));
     }
