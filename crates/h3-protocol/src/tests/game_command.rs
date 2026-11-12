@@ -360,10 +360,12 @@ fn manage_back(error: w::ManageReject) -> ManageError {
     }
 }
 
-fn reject_back(reject: w::GameReject) -> GameCommandError {
+/// The engine's error of a rejection; none for the session's own (E16 M5 T8a).
+fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
     use GameCommandError as E;
     use w::GameReject as R;
-    match reject {
+    Some(match reject {
+        R::NotSeated {} | R::NotStarted {} => return None,
         R::UnknownPlayer { player } => E::UnknownPlayer(PlayerId::new(player)),
         R::NotYourTurn { player } => E::NotYourTurn(PlayerId::new(player)),
         R::DecisionOpen {} => E::DecisionOpen,
@@ -402,7 +404,7 @@ fn reject_back(reject: w::GameReject) -> GameCommandError {
             }
             w::TownReject::BuiltToday {} => TownCommandError::BuiltToday,
         }),
-    }
+    })
 }
 
 /// The battle's engine error of a code: the one the battle's one-to-one mapping gives it.
@@ -458,7 +460,13 @@ fn every_rejection_maps_back_and_round_trips() {
     for e in errors {
         let wire = reject(e);
         round_trips(&wire);
-        assert_eq!(reject_back(wire), e);
+        assert_eq!(reject_back(wire), Some(e));
+    }
+    // The session's own (E16 M5 T8a) are no engine error's.
+    for code in [w::GameReject::NotSeated {}, w::GameReject::NotStarted {}] {
+        round_trips(&code);
+        assert!(!wire.contains(&kinds(&code)));
+        assert_eq!(reject_back(code), None);
     }
 }
 
@@ -589,7 +597,7 @@ fn check_played(map: &[u8], seed: u64, steps: usize, met: &mut BTreeSet<String>)
             let mut state = env.state().clone();
             if let Err(e) = h3_game::apply(&mut state, rules, actor, played.clone(), &mut NoopSink)
             {
-                assert_eq!(reject_back(reject(e)), e, "step {step}");
+                assert_eq!(reject_back(reject(e)), Some(e), "step {step}");
                 met.insert(kinds(&e));
                 checked += 1;
             }

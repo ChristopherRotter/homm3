@@ -1,6 +1,7 @@
 //! The whole game's manifest (E16 M5 T4): it names what an adventure replay's header names, with
 //! the battle part's hash and the map a replay names; its key tables follow the ruleset's
-//! handles; it round-trips, and so does a game record's header (T5b) holding it.
+//! handles; it round-trips, and so do a game record's header (T5b) and a seat's `GameJoined`
+//! (T8a) holding it.
 
 use std::string::String;
 use std::vec::Vec;
@@ -13,8 +14,8 @@ use h3_sim::adventure::replay::map_content_hash;
 use super::game::{RULES, round_trips};
 use crate::map;
 use crate::map::game::{key_tables, manifest};
-use crate::wire::WireU64;
 use crate::wire::game::{GameRecordHeader, MapIdentity};
+use crate::wire::{ServerMessage, WireU64};
 
 /// A golden adventure replay's map, as the manifest names it.
 fn golden_map() -> MapIdentity {
@@ -158,5 +159,24 @@ fn a_game_records_header_round_trips_in_serdes_default_form() {
     assert_eq!(
         text,
         format!(r#"{{"format":4,"game":4,"player":1,"manifest":{manifest},"first":3}}"#)
+    );
+}
+
+/// E16 M5 T8a (v45): a seat's `GameJoined` carries the game's manifest, as its record's header.
+#[test]
+fn a_seats_joined_round_trips_in_serdes_default_form() {
+    let manifest = manifest(&RULES, golden_map());
+    let joined = ServerMessage::GameJoined {
+        game: 4,
+        player: 1,
+        token: Some("t".into()),
+        manifest: manifest.clone(),
+    };
+    round_trips(&joined);
+    let text = serde_json::to_string(&joined).unwrap();
+    let manifest = serde_json::to_string(&manifest).unwrap();
+    assert_eq!(
+        text,
+        format!(r#"{{"GameJoined":{{"game":4,"player":1,"token":"t","manifest":{manifest}}}}}"#)
     );
 }

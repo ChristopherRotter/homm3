@@ -1564,6 +1564,26 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// Take a player's seat in a whole game, or re-take it after a disconnect (E16 M5 T8a, v45):
+    /// as a battle's `Join`, with its token or as the account it belongs to. Answered
+    /// `GameJoined`, then the player's `GameSnapshot` (and its `GameTurn` if it may act), or
+    /// `Refused`.
+    GameJoin {
+        /// The game.
+        game: u32,
+        /// The player whose seat is asked for: its index among the map's players.
+        player: u8,
+        /// The seat's token, to re-take a seat that belongs to no account.
+        token: Option<String>,
+    },
+    /// A command to the whole game, as the seat's player (E16 M5 T8a, v45); `seq` is the client's
+    /// own counter, echoed in the answer (`GameAccepted` or `GameRejected`).
+    GameCommand {
+        /// The client's sequence number.
+        seq: u32,
+        /// The command.
+        command: game::GameCommand,
+    },
 }
 
 /// Why a join, a game's creation or an account's request was refused; the connection stays open.
@@ -1613,6 +1633,8 @@ pub enum Refusal {
     NoMatch,
     /// The ladder has no season of this number yet (E16 M4 T4): its seasons count from 1.
     NoSuchSeason,
+    /// The whole game has no such player (E16 M5 T8a, v45): its seats are the map's players.
+    NoSuchSeat,
 }
 
 /// Why the server closes the connection.
@@ -2024,6 +2046,7 @@ pub enum ServerMessage {
         command: game::GameCommand,
     },
     /// The player's command to the whole game was rejected; nothing changed (E16 M5 T5a, v39).
+    /// Numbered 0 for a connection that holds no seat of the game (v45): it is no viewer.
     GameRejected {
         /// The viewer's message number.
         n: u32,
@@ -2031,6 +2054,19 @@ pub enum ServerMessage {
         seq: u32,
         /// Why.
         code: game::GameReject,
+    },
+    /// The connection holds a player's seat in a whole game now (E16 M5 T8a, v45): the answer to
+    /// `GameJoin`, before the player's `GameSnapshot`.
+    GameJoined {
+        /// The game.
+        game: u32,
+        /// The player whose seat it holds.
+        player: u8,
+        /// The token that re-takes the seat after a disconnect: none for a seat that belongs to an
+        /// account, which its account re-takes.
+        token: Option<String>,
+        /// What the game is made of.
+        manifest: game::GameManifest,
     },
 }
 

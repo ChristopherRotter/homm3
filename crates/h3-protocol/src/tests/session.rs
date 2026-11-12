@@ -457,6 +457,44 @@ fn a_connection_without_a_seat_is_no_actor() {
     }
 }
 
+/// E16 M5 T8a: a battle is no whole game, a seat of it none of one; nothing changes.
+#[test]
+fn a_whole_games_messages_are_no_battles() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    join(&mut s, A, Seat::Attacker, None);
+    let hash = s.state_hash();
+    let seat = ClientMessage::GameJoin {
+        game: 1,
+        player: 0,
+        token: None,
+    };
+    assert_eq!(
+        to(&send(&mut s, A, seat), A),
+        [ServerMessage::Refused {
+            reason: Refusal::NoSuchGame
+        }]
+    );
+    let command = ClientMessage::GameCommand {
+        seq: 3,
+        command: crate::wire::game::GameCommand::EndTurn {},
+    };
+    assert_eq!(
+        to(&send(&mut s, A, command), A),
+        [ServerMessage::GameRejected {
+            n: 0,
+            seq: 3,
+            code: crate::wire::game::GameReject::NotSeated {}
+        }]
+    );
+    assert_eq!(s.state_hash(), hash);
+    assert!(
+        drained(&mut s)
+            .iter()
+            .all(|e| !matches!(e, Entry::Command(..)))
+    );
+}
+
 #[test]
 fn joins_are_refused_with_their_reason() {
     let r = ruleset();
