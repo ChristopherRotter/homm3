@@ -15790,7 +15790,12 @@ user's repo folder (the four LODs, both executables, `maps.tar`, `extracted.tar`
   queue (T113 out, T113b in with the server lane's question and the reading found: the setup's
   `SharedAnchor` already refuses typed objects of one type on one anchor but the grounds, the
   grounds of the sea and the holes); the server lane's note archived; `OVERVIEW.md`'s part line;
-  the map client's and the AI lane's inboxes.
+  the map client's inbox (the nineteen types, the kind marks).
+- **Gates:** the scoped verify with the original data: every step but `check-lane` (`cross-lane`
+  by design; `check-lane --cross-lane` passes), clippy and coverage passing (determinism,
+  bench-check and the original-data checks, check 6 among them, too); the first run's clippy met
+  the check's boxed closure's type (an alias) and coverage an unknown `from` creature's error
+  path (a test case), both fixed and rerun alone. `cargo check --workspace --all-targets` clean.
 
 **Versions:** adventure ruleset part v20. The game state hash, the adventure state hash, the map
 import and the replay format unchanged. T113b next.

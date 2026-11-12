@@ -180,14 +180,12 @@ fn the_bonus_kinds_parameters_are_checked() {
             "a Stables' creature is a war machine"
         );
     }
-    assert_eq!(
-        compile_err(&kind_packs(
-            Visit::Enter,
-            false,
-            stables("t:imp", "t:nobody")
-        )),
-        AdventureCompileError::UnknownCreature("t:nobody".into())
-    );
+    for (from, to) in [("t:nobody", "t:imp"), ("t:imp", "t:nobody")] {
+        assert_eq!(
+            compile_err(&kind_packs(Visit::Enter, false, stables(from, to))),
+            AdventureCompileError::UnknownCreature("t:nobody".into())
+        );
+    }
     for keep in [(1, 0), (11, 10)] {
         assert_eq!(
             refused(ObjectKindDef::Sirens { mark: 13, keep }),

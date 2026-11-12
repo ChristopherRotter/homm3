@@ -115,6 +115,9 @@ const KIND_MARKED: [(u32, &str); 14] = [
 /// An original object class and subclass.
 type Class = (u32, u32);
 
+/// Whether a type's kind is the one its class wants (check 6).
+type KindTest = Box<dyn Fn(&ObjectKind) -> bool>;
+
 fn main() -> ExitCode {
     let Some(install) = std::env::args().nth(1) else {
         eprintln!("usage: original_data <installation copy>");
@@ -559,7 +562,7 @@ fn garrisons_and_bonuses(
             ));
         }
         // The kind by class: a garrison's flag by subclass, a bonus class's own kind.
-        let (key, kind_ok): (String, Box<dyn Fn(&ObjectKind) -> bool>) = match class {
+        let (key, kind_ok): (String, KindTest) = match class {
             33 | 219 => {
                 let anti_magic = sub == 1;
                 let (pack, suffix) = if class == 33 {
