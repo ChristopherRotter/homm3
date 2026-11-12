@@ -631,7 +631,8 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
     out
 }
 
-/// A reveal of one tile, an object, a boat and a town (E16 M5 T5c).
+/// A reveal of two tiles of a row, one of them changed, an object, a boat and a town (E16 M5
+/// T5c, T7a1).
 fn reveal() -> game::GameReveal {
     let at = game::Pos {
         x: 2,
@@ -645,10 +646,14 @@ fn reveal() -> game::GameReveal {
     game::GameReveal {
         adventure: game::AdventureReveal {
             viewer: 1,
-            tiles: vec![game::RevealedTile {
-                pos: at,
+            palette: vec![game::RevealedView {
                 explored: true,
                 view: game::Tile::Hidden {},
+            }],
+            areas: vec![game::RevealedArea {
+                corner: at,
+                width: 2,
+                tiles: vec![1, 0],
             }],
             heroes: view.adventure.heroes[..1].to_vec(),
             objects: view.adventure.objects[..1].to_vec(),
@@ -868,7 +873,7 @@ fn the_json_is_serdes_default_enum_form() {
             n: 10,
             reveal: nothing
         }),
-        r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"tiles":[{"pos":{"x":2,"y":1,"level":0},"explored":true,"view":{"Hidden":{}}}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[]}}}"#
+        r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"palette":[{"explored":true,"view":{"Hidden":{}}}],"areas":[{"corner":{"x":2,"y":1,"level":0},"width":2,"tiles":[1,0]}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[]}}}"#
     );
     // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
     assert_eq!(

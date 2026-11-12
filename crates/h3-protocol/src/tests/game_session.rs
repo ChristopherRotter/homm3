@@ -17,7 +17,7 @@ use h3_game::{
 };
 
 use super::game::RULES;
-use super::game_fold::golden;
+use super::game_fold::{golden, one};
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
@@ -243,7 +243,7 @@ fn check(
         assert_ne!(now, grid, "a reveal only when the explored tiles grew");
         let viewer = Viewer::Player(player);
         assert_eq!(*reveal, map::game::reveal(state, rules, viewer, grid));
-        assert!(!reveal.adventure.tiles.is_empty());
+        assert!(!reveal.adventure.areas.is_empty());
         seen.reveals += 1;
         rest.remove(0);
     } else {
@@ -647,27 +647,136 @@ fn a_journal_cut_short_is_completed() {
     assert_eq!(back.journal().commands.len(), 5);
 }
 
+/// Whether a frame is a whole game's snapshot.
+fn snapshot(frame: &str) -> bool {
+    frame.starts_with(r#"{"GameSnapshot":"#)
+}
+
 #[test]
-fn a_record_keeps_its_newest_lines_within_its_bound() {
-    let (rules, setup) = duel();
-    let mut out = Vec::new();
+fn a_record_is_cut_at_its_snapshots_within_its_bound() {
+    const BOUND: usize = 48 << 10;
+    let (rules, setup, replay) = one("towns-s173-d21");
     let bounded = GameOptions {
-        record_bytes: 1,
+        record_bytes: BOUND,
         ..options(0)
     };
+    let mut out = Vec::new();
+    let mut session = GameSession::start(
+        &rules,
+        &setup,
+        replay.seed,
+        manifest(&rules, MAP),
+        bounded,
+        &mut out,
+    )
+    .unwrap();
+    let players = session.state().players();
+    let ids: Vec<PlayerId> = (0..=u8::MAX).take(players).map(PlayerId::new).collect();
+    let mut sent = vec![Vec::new(); players];
+    frames(&out, &mut sent);
+    // The bytes each player was sent since its last snapshot.
+    let mut since = vec![0; players];
+    let (mut fresh, mut held_back) = (0, 0);
+    for (seq, (actor, engine)) in replay.commands.iter().enumerate() {
+        let seq = u32::try_from(seq).unwrap();
+        out.clear();
+        match *actor {
+            Actor::Player(player) => session.play(player, seq, command(engine), &mut out),
+            Actor::System => session.system(command(engine), &mut out),
+        }
+        .unwrap();
+        let mut now = vec![Vec::new(); players];
+        frames(&out, &mut now);
+        for (&player, frames) in ids.iter().zip(&now) {
+            let i = player.index();
+            // The turns come after the session's look at its bound.
+            let turns = frames.iter().filter(|f| f.starts_with(r#"{"GameTurn":"#));
+            let turns: usize = turns.map(|f| f.len() + 1).sum();
+            for (k, frame) in frames.iter().enumerate() {
+                if !snapshot(frame) {
+                    since[i] += frame.len() + 1;
+                    continue;
+                }
+                // A fresh snapshot only past half the bound, as observed, outside a battle,
+                // after the command's other messages but the turn.
+                assert!(since[i] > BOUND / 2, "{seq}");
+                let observation = observe(session.state(), &rules, Viewer::Player(player));
+                assert!(observation.battle.is_none(), "{seq}");
+                let message = ServerMessage::GameSnapshot {
+                    n: number(&codec::decode_server(frame.as_bytes(), usize::MAX).unwrap()),
+                    observation,
+                };
+                assert_eq!(*frame, codec::encode_text(&message), "{seq}");
+                assert!(
+                    frames[k + 1..]
+                        .iter()
+                        .all(|f| f.starts_with(r#"{"GameTurn":"#))
+                );
+                since[i] = 0;
+                fresh += 1;
+            }
+            // Past half the bound without one: a battle is open in the view.
+            if since[i] - turns > BOUND / 2 {
+                let o = observe(session.state(), &rules, Viewer::Player(player));
+                assert!(o.battle.is_some(), "{seq}");
+                held_back += 1;
+            }
+            sent[i].extend(frames.iter().cloned());
+            // The record: from a snapshot on, every frame since; within the bound unless it
+            // begins with the newest snapshot, the earlier one beyond it.
+            let lines = &sent[i];
+            let begins = |at: usize| lines[at..].iter().map(|l| l.len() + 1).sum::<usize>();
+            let snapshots: Vec<usize> = (0..lines.len()).filter(|&k| snapshot(&lines[k])).collect();
+            let start = snapshots
+                .iter()
+                .copied()
+                .find(|&k| begins(k) <= BOUND)
+                .unwrap_or(*snapshots.last().unwrap());
+            if let Some(&earlier) = snapshots.iter().rev().find(|&&k| k < start) {
+                assert!(begins(earlier) > BOUND);
+            }
+            let first = u32::try_from(start).unwrap() + 1;
+            let expected = record(&session, player, first, &lines[start..]);
+            assert_eq!(session.record(player), Some(expected), "{seq}");
+        }
+    }
+    assert!(fresh > 10, "{fresh}");
+    assert!(held_back > 0, "{held_back}");
+}
+
+#[test]
+fn a_players_own_rejections_keep_its_record_within_its_bound() {
+    // E16 M5 T7b's review: rejections fill a record as the events do.
+    let (rules, setup) = duel();
+    let mut out = Vec::new();
+    let session =
+        GameSession::start(rules, &setup, 3, manifest(rules, MAP), options(0), &mut out).unwrap();
+    let acting = session.state().turn_group()[0];
+    let waiting = PlayerId::new(u8::from(acting.raw() == 0));
+    let snapshot = out.iter().find(|o| o.to == waiting).unwrap().frame.len();
+    let bound = 2 * snapshot + (4 << 10);
+    let bounded = GameOptions {
+        record_bytes: bound,
+        ..options(0)
+    };
+    out.clear();
     let mut session =
         GameSession::start(rules, &setup, 3, manifest(rules, MAP), bounded, &mut out).unwrap();
-    let acting = session.state().turn_group()[0];
-    session
-        .play(acting, 0, GameCommand::EndTurn {}, &mut out)
-        .unwrap();
-    // Each player's record holds its newest frame alone, numbered as its last.
-    let mut sent = vec![Vec::new(); session.state().players()];
-    frames(&out, &mut sent);
-    for (index, lines) in sent.iter().enumerate() {
-        let player = PlayerId::new(u8::try_from(index).unwrap());
-        let last = u32::try_from(lines.len()).unwrap();
-        let expected = record(&session, player, last, &lines[lines.len() - 1..]);
-        assert_eq!(session.record(player), Some(expected));
+    let (mut fresh, hash) = (0, session.state().state_hash());
+    for seq in 0..2_000 {
+        out.clear();
+        let refused = session.play(waiting, seq, GameCommand::EndTurn {}, &mut out);
+        assert!(refused.is_err());
+        // Its rejection, then a fresh snapshot past half the bound, to it alone.
+        assert!(out.iter().all(|o| o.to == waiting));
+        assert!(out[0].frame.starts_with(r#"{"GameRejected":"#));
+        fresh += out.len() - 1;
+        let record = session.record(waiting).unwrap();
+        let mut lines = record.lines().skip(1);
+        assert!(lines.next().unwrap().starts_with(r#"{"GameSnapshot":"#));
+        let bytes: usize = record.lines().skip(1).map(|l| l.len() + 1).sum();
+        assert!(bytes <= bound, "{seq}: {bytes} of {bound}");
     }
+    assert!(fresh >= 2, "{fresh}");
+    assert_eq!(session.state().state_hash(), hash);
 }

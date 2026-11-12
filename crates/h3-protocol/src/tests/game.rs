@@ -762,13 +762,29 @@ fn inverse_reveal(r: &GameReveal) -> h3_game::GameReveal {
     h3_game::GameReveal {
         adventure: h3_game::AdventureReveal {
             viewer: PlayerId::new(a.viewer),
+            // The areas by level, each row by row: the tiles in tile order (E16 M5 T7a1).
             tiles: a
-                .tiles
+                .areas
                 .iter()
-                .map(|t| h3_game::RevealedTile {
-                    pos: pos_back(t.pos),
-                    explored: t.explored,
-                    view: tile_back(t.view),
+                .flat_map(|area| {
+                    let width = usize::from(area.width);
+                    area.tiles
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, n)| **n > 0)
+                        .map(move |(i, &n)| {
+                            let view = a.palette[usize::try_from(n).unwrap() - 1];
+                            let at = area.corner;
+                            h3_game::RevealedTile {
+                                pos: pos_back(Pos {
+                                    x: at.x + u16::try_from(i % width).unwrap(),
+                                    y: at.y + u16::try_from(i / width).unwrap(),
+                                    level: at.level,
+                                }),
+                                explored: view.explored,
+                                view: tile_back(view.view),
+                            }
+                        })
                 })
                 .collect(),
             heroes: a.heroes.iter().map(hero_back).collect(),
@@ -795,16 +811,7 @@ fn every_part_of_a_reveal_maps_back_and_round_trips() {
     let engine = h3_game::GameReveal {
         adventure: h3_game::AdventureReveal {
             viewer: o.viewer,
-            tiles: a
-                .tiles
-                .iter()
-                .zip(0..)
-                .map(|(&view, x)| h3_game::RevealedTile {
-                    pos: h3_adventure::Pos::new(x, 0, 0),
-                    explored: x % 2 == 0,
-                    view,
-                })
-                .collect(),
+            tiles: tiles(&a.tiles),
             heroes: a.heroes.clone(),
             objects: a.objects.clone(),
             boats: a.boats.clone(),
@@ -816,10 +823,35 @@ fn every_part_of_a_reveal_maps_back_and_round_trips() {
     let wire = crate::map::game::reveal_view(&engine);
     assert_eq!(inverse_reveal(&wire), sorted_reveal(&engine));
     round_trips(&wire);
+    // Packed (E16 M5 T7a1): each view once, one rectangle per level, 0 for an unchanged tile.
+    let a = &wire.adventure;
     assert_eq!(
-        text(&wire.adventure.tiles[0]),
-        r#"{"pos":{"x":0,"y":0,"level":0},"explored":true,"view":{"Hidden":{}}}"#
+        text(&a.palette[0]),
+        r#"{"explored":true,"view":{"Hidden":{}}}"#
     );
+    assert_eq!(a.areas.len(), 2);
+    assert!(a.palette.len() < engine.adventure.tiles.len(), "{a:?}");
+    assert_eq!(
+        text(&a.areas[1]),
+        r#"{"corner":{"x":0,"y":0,"level":1},"width":7,"tiles":[0,0,0,0,0,0,2,4,0,0,0,0,0,0,0,6,0,0,0,0,0]}"#
+    );
+}
+
+/// A reveal's tiles of the views `views` in tile order: spread over both levels with gaps, a
+/// view used twice, explored and not.
+fn tiles(views: &[TileView]) -> Vec<h3_game::RevealedTile> {
+    let mut tiles: Vec<h3_game::RevealedTile> = views
+        .iter()
+        .chain(views)
+        .zip(0..)
+        .map(|(&view, i)| h3_game::RevealedTile {
+            pos: h3_adventure::Pos::new(i * 2 % 7, i % 3, u8::from(i % 4 == 3)),
+            explored: i % 2 == 0,
+            view,
+        })
+        .collect();
+    tiles.sort_by_key(|t| (t.pos.level, t.pos.y, t.pos.x));
+    tiles
 }
 
 /// The wire's observation back in the engine's types, with `battle` for the battle's part.

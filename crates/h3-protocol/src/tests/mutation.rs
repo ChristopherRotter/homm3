@@ -39,7 +39,7 @@ static FULL: LazyLock<(BattleRuleset, BattleSetup)> = LazyLock::new(full);
 
 /// Numbers a mutation puts in place of one in the frame: plausible ones (an id or a hex out of
 /// range) and extreme ones.
-const NUMBERS: [&str; 17] = [
+pub(super) const NUMBERS: [&str; 17] = [
     "1",
     "2",
     "7",
@@ -60,7 +60,7 @@ const NUMBERS: [&str; 17] = [
 ];
 
 /// Strings a mutation puts in place of one in the frame (their JSON text, without the quotes).
-const STRINGS: [&str; 7] = [
+pub(super) const STRINGS: [&str; 7] = [
     "",
     "\\u0000",
     "\\ud800",
@@ -72,7 +72,7 @@ const STRINGS: [&str; 7] = [
 
 /// One change to a frame; positions are taken modulo the frame's length.
 #[derive(Debug, Clone)]
-enum Mutation {
+pub(super) enum Mutation {
     /// The byte at `at` XOR `mask` (not 0).
     Flip { at: usize, mask: u8 },
     /// `len` bytes from `at` removed.
@@ -148,7 +148,7 @@ fn runs(frame: &[u8], strings: bool) -> Vec<(usize, usize)> {
 
 impl Mutation {
     /// The frame changed.
-    fn apply(&self, frame: &[u8]) -> Vec<u8> {
+    pub(super) fn apply(&self, frame: &[u8]) -> Vec<u8> {
         let at = |i: usize| if frame.is_empty() { 0 } else { i % frame.len() };
         let mut out = frame.to_vec();
         match self {

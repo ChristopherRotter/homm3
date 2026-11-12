@@ -95,8 +95,11 @@ pub mod wire;
 /// (`wire::game::Object::place`), no longer the map's: the field is unchanged, its order is new;
 /// a game's battle's last `Snapshot`, as each owner's side saw it when it ended (SRV-Q27 (1),
 /// `h3_game::Sink::battle_ended`), right after the `GameEvents` that end it: the message is
-/// unchanged, its order is new.
-pub const PROTOCOL_VERSION: u32 = 43;
+/// unchanged, its order is new. v44 (E16 M5 T7a1): a reveal's tiles packed
+/// (`wire::game::AdventureReveal`: a palette of their views and one rectangle per level, an index
+/// per tile, no longer a list of tiles each with its view); a game's player may get a fresh
+/// `GameSnapshot` after a command (`session::game`: its record is cut at its snapshots).
+pub const PROTOCOL_VERSION: u32 = 44;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

@@ -6,6 +6,7 @@
 //! by construction, gated in `h3-protocol`'s `game_session` test). A replay that is not its re-run
 //! records nothing; the files are written per player.
 
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -257,7 +258,7 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
 
 #[test]
 fn the_options_parse() {
-    let words = |text: &str| -> Vec<String> { text.split(' ').map(str::to_owned).collect() };
+    let words = |text: &str| -> Vec<OsString> { text.split(' ').map(OsString::from).collect() };
     let options = RecordOptions::parse(&words("a.toml")).unwrap();
     assert_eq!(
         options,
@@ -288,6 +289,10 @@ fn the_options_parse() {
         ("--out", "`--out` needs a value"),
         ("--game x a.toml", "bad game id `x`"),
         ("--seed 1 a.toml", "unknown option `--seed`"),
+        (
+            "a/x.toml b/x.toml",
+            "two replays named `x`: their records would share files",
+        ),
     ] {
         let args = if args.is_empty() {
             Vec::new()
@@ -295,6 +300,14 @@ fn the_options_parse() {
             words(args)
         };
         assert_eq!(RecordOptions::parse(&args).unwrap_err().0, error);
+    }
+    // A path that is not UTF-8 stays as given (E16 M5 T7b's review).
+    #[cfg(unix)]
+    {
+        use std::os::unix::ffi::OsStringExt;
+        let odd = OsString::from_vec(b"r\xff.toml".to_vec());
+        let options = RecordOptions::parse(std::slice::from_ref(&odd)).unwrap();
+        assert_eq!(options.replays, [PathBuf::from(odd)]);
     }
 }
 

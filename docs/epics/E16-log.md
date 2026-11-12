@@ -2419,3 +2419,160 @@ only if the client cannot draw without it; below).
   to one, a view's objects in tile order, the last snapshot as the battle's own `Snapshot` right
   after the events that end it and none when they open another battle, one protocol step (v43)
   for both.
+
+### M5 T7a1 — the reveal packed, a game's record cut at its snapshots, the frames' sizes (2026-11-12)
+
+T7's split (the user, 2026-11-12; one pull request): T7a1 the bounds, T7a2 the mutation tests and
+`docs/06-security.md`'s game part, T7b the reviewer and the checkpoint. T7a1 grew from the
+measurement (the user agreed to its three changes). Baseline: `master` 35fc648 (#868, T5c; CI
+green; the setup's light gates on CI's fingerprint). No original data.
+
+- **The measurement** (a scratch test, release; not kept): the eight 144-tile fixtures played 28
+  days at random through the session (two players each, as imported), every frame by kind. A
+  starting snapshot 50 to 150 KB; a command's events at most 22 KB, a turn 5.6 KB, a battle's
+  snapshot 8.6 KB; but **a reveal up to 6.5 MB** (`e08-xl-144`, seed 5: 34 101 tiles at once, a
+  whole map's), as each tile went with its whole view, against the snapshot's palette: 60 times
+  that map's snapshot. The reveals were 30 to 90 % of each record's bytes, the records up to
+  8 MB a player; the turns most of the rest in the town-heavy maps (1.5 to 1.7 MB of 2 MB in 28
+  days). And a bounded record dropped its oldest lines, its snapshot first: a game's record
+  within the server's 512 KiB could no longer be folded.
+- **The reveal packed** (protocol **v44**; `wire::game::AdventureReveal`): `palette:
+  Vec<RevealedView { explored, view }>` (each once, in first use) and `areas:
+  Vec<RevealedArea { corner, width, tiles }>` (per level that has any, by level, the smallest
+  rectangle holding the changed tiles, row by row, 0 an unchanged tile, `n` the palette's `n`-th
+  from 1), no longer `tiles: Vec<RevealedTile>`. `map::game::revealed` packs the engine's tiles;
+  the fold reads the areas (`revealed`: an index beyond the palette, a tile beyond a position's
+  sides or off the map, an area without columns: none). The whole map's reveal is 390 KB with its
+  2 523 objects, about the snapshot it brings the view to; a step's a few hundred bytes (all 28
+  days' reveals on `e08-xl-144`: 7.3 MB to 0.67 MB).
+- **A game's record cut at its snapshots** (`session::Record::push(frame, start)`: the oldest
+  lines go up to the next one a record may begin with; every battle message may, a game's
+  `GameSnapshot` alone): a player sent more than half its record's bound since its last snapshot
+  gets a fresh `GameSnapshot` after a command's messages, before its `GameTurn`, unless a battle
+  is open in its view (its own `Snapshot` opens it). A record holds one to two such stretches; a
+  command's messages or a battle's may take it beyond its bound. `usize::MAX` (`h3-server
+  record`, the golden replays' test): one snapshot. The battle's records are unchanged.
+- **Tests:** `tests/game_bounds.rs` (new, 25 s in a debug build): the eight fixtures 28 days at
+  random through the session with a 2 MiB record bound: a reveal at most the snapshot it brings
+  its viewer to, a snapshot within 512 KiB (431 KB at most: a fresh one after the whole map's
+  reveal), every other frame within 64 KiB (22 KB), every record from a snapshot and within its
+  bound (2.04 MB at most), the whole map's reveal met. `tests/game_session.rs`'s
+  `a_record_is_cut_at_its_snapshots_within_its_bound` (in place of the one-byte record's test):
+  `towns-s173-d21` with a 48 KiB bound, each fresh snapshot only past half the bound, equal to
+  `observe`, outside a battle, followed only by turns, a player past half without one in a
+  battle, every record the longest stretch from a snapshot within the bound (or the newest).
+  The fold's reveal test covers each branch of the areas; the inverse (`tests/game.rs`) unpacks
+  the areas into the engine's tiles in tile order (a hand-built reveal over both levels with
+  gaps; every reveal of the fixture games); the wire's JSON form pinned.
+- **The inboxes:** the map client lane's (the reveal's form, the fresh snapshot, a bounded
+  record's start), the client lane's (informational, `h3_view::game_record`).
+- **For part 2** (sizes the network seats need): a game's record and the outbound queue hold a
+  whole map's snapshot (431 KB on the XL fixtures; it grows with the objects a player saw, up to
+  the map reader's 65 536); the server's 512 KiB record and 2 MiB queue are a battle's.
+- **For the review list:** the reveal's tiles as a palette and a rectangle per level (not one
+  entry per tile; not a fresh snapshot in its place), a game's record cut only at its snapshots
+  with a fresh one past half the bound (not a synthetic snapshot the player was never sent), none
+  inside a battle, the bounds of the size gate (provisional), the turns left as they are (a
+  `GameTurn` after every command is 60 to 80 % of a town-heavy record: part 2 may send it only
+  when it changed).
+
+### M5 T7a2 — the game's messages mutated, `docs/06-security.md`'s whole game (2026-11-12)
+
+Baseline: T7a1 (`claude/keen-tesla-q5uxid`, the scoped verify passed). No original data.
+
+- **The mutation tests** (`tests/game_mutation.rs`; the decoder's of M2 T5d for the game, its
+  `Mutation` reused, over a game's longer frames and any of their values): the frames are player
+  0's record of `towns-s173-d21` played through the session (its header, snapshot, events,
+  reveals, turns, echoes and battles' snapshots) and a `GameEvents` of each kind of event (the
+  hand-built `every_event`, player 0's view). Mutated in their bytes or values, each decodes or
+  not without a panic (the header as a `GameRecordHeader`), round-trips when it decodes, and a
+  client folds it in place of the frame it was with the rest of the record after it (a snapshot
+  replaces the view, the events and a reveal fold into it) without a panic. The commands are one
+  of every kind (`every_command`) and the replay's, mutated in their values and played into a
+  session restored at any point of the replay by player 0 or 1, the replay's next actor, the
+  system actor or a player outside the game: never a panic; a rejection leaves the state's hash
+  and the journal as they were, drains no entry and is told to its player alone as a
+  `GameRejected` (to nobody for the system and an outsider); an accepted command drains its one
+  entry, and a restore with it re-runs to the same state. A deterministic test shows the
+  mutations reach both: a third or more of the frames with a number replaced still fold, the
+  replay's own commands are accepted from their actor and refused from an outsider, and replaced
+  numbers make both accepted and rejected commands. 100 000 cases of each property passed
+  (release, 35 s); the default 256 take under 2 s in a debug build.
+- **`docs/06-security.md`** (a shared path, `cross-lane` in this pull request, the user's choice
+  of 2026-11-12, as at the earlier closures): "Hosted games" gains the whole game (the host's
+  player, the mapping before the engine, a rejection's silence, the projection of every message,
+  objects named without an index, the shared fold, no seed or hash in messages or records, the
+  record cut at snapshots, the bounds and the mutation tests); "Not covered yet": in-process only
+  (seats, timers and the level-up hold are part 2's), every player learning how many commands the
+  others play and when (one `GameEvents` per command), a snapshot's size bounded only by the map
+  reader's limits.
+- **For the review list:** the count and timing of every other player's commands told to every
+  player (one `GameEvents` per command, T5a's choice; part 2 may batch or pace them).
+
+### M5 part 1's reviewer agent (2026-11-12, in T7b)
+
+- **The review**: a fresh, read-only agent over everything part 1 changed in the two crates
+  (`14e5335e..76140f4`, about 7 100 lines of code and 6 000 of tests); two major findings, four
+  minor, no leak. Found sound: `play`'s viewer index (every engine path refuses a player outside
+  the game first); the battle events and the session's flags seen only by the battle's owners;
+  projection by construction (the snapshot, events, reveal and battle snapshots take the viewer,
+  a rejection echoes only the actor's own values, a town's ownership checked before its
+  buildings, the manifest without seed, stream or state hash, objects in tile order without an
+  index, the reveal's packing matched by the fold); the fold on 64 bits (every index checked,
+  every count saturating, allocations proportional to the message); the record's cut and `first`,
+  `since` reset by a snapshot, none inside a battle; the restore equal to the live game (a
+  divergence or a misplaced checkpoint caught, a missing last one re-made); `command_to_engine`;
+  `h3-server record`'s checks (the header first, the map's path below the root without `..`,
+  its hash and import version and the checkpoints' count before it is parsed).
+- **Fixed** (*provisional* in their shape; the rejections' test fails with its fix taken out, at
+  the 258th rejection; the 32-bit overflow is the arithmetic's, no 32-bit target being installed;
+  the grids' comparison changes no outcome while explored tiles only grow):
+  - **Major: the fold's indices overflowed a 32-bit `usize`** (a wasm client): a hostile
+    snapshot's sides of 65 535 with two levels made `Adventure::index` and a reveal's plane word
+    beyond `u32`, a panic with overflow checks on. Both are computed in `u64` now and taken only
+    if they fit (`game_fold.rs`'s `a_view_of_the_largest_sides_folds_its_far_corner_...`, which
+    on 64 bits checks the far corner's bounds).
+  - **Major: a player's own rejections escaped its record's bound**: `GameRejected` went into
+    the record with no look at the bound, so a player sending refused commands grew its record
+    without a fresh snapshot. A rejection now runs the same check (`Viewer::refresh`;
+    `game_session.rs`'s `a_players_own_rejections_keep_its_record_within_its_bound`: 2 000
+    refused end-of-turns, the record from a snapshot and within its bound throughout). Inside a
+    battle there is still no fresh snapshot: part 2's (below).
+  - **A reveal by the grid, not its count**: a command hiding as many tiles as it explored (Cover
+    of Darkness, once E09 brings it) would have sent none. The session and the fold's gate
+    compare the grids now (as cheap: their copies share blocks).
+  - **`h3-server record`**: two replays of one file name refused (the second overwrote the
+    first's records), the arguments kept as given (`OsString`; a path that is not UTF-8 was
+    changed by a lossy conversion).
+- **Left**, with the reason: a second battle queued for a player while its first is open would
+  resend the first's `Snapshot` as the second's opening (the session knows only whether a
+  battle is open), unreachable while a turn group is one player: part 2's concurrent battles
+  (the epic's part 2). A player's own rejections inside a battle are still recorded beyond the
+  bound until the battle ends: part 2's turn timers (`docs/06-security.md`, "Not covered yet").
+  Two objects of one type on one anchor that differ would be named alike by the engine's events:
+  a question for the adventure lane (its inbox), no server change either way.
+
+### M5 T7b — part 1's closure (2026-11-12)
+
+- **The start.** T7a1 and T7a2 on `claude/keen-tesla-q5uxid` (the scoped verify passed); `master`
+  still 35fc648. The reviewer agent's review and fixes: above.
+- **Part 1's scope, each shown** (the user's order of 2026-10-31 and SRV-Q25; no exit criteria
+  were written at the refinement, so these are its own points): the whole game's types mapped
+  exhaustively, a new engine variant or field failing `h3-protocol`'s build (`map::game`'s
+  patterns without `..`, the inverses in `tests/game.rs`, `game_command.rs`, `game_event.rs`);
+  every message projected per viewer by construction, the fold equal to `observe` after every
+  command for every viewer over the 72 golden replays but for the stubbed parts
+  (`tests/game_fold.rs`: 36 parts, 23 exact, the rest named by `SRV-STUB-3` to `-11` and
+  `TWN-STUB-13`); the session hosting one game in-process, every golden replay's command accepted
+  as its actor's with the engine's hashes, each player's messages in order and numbered, the
+  journal the replay's, a restore halfway equal to the live game (`tests/game_session.rs`); each
+  player's record, a golden replay as records with no state hash in any form
+  (`h3-server record`, its `tests/record.rs` over the 72 replays); and from T7: the frames' and
+  records' sizes gated (`tests/game_bounds.rs`), the mutation tests (`tests/game_mutation.rs`),
+  `docs/06-security.md`'s whole game, the reviewer's major findings fixed; the full verify is
+  CI's on the pull request (`h3-protocol` at 100 % in the scoped verify's coverage gate).
+- **The docs:** the epic's part 1 (scope, tasks, review list) moved verbatim to `E16-archive.md`,
+  the queue's to `QUEUE-ARCHIVE.md`; the epic keeps part 2's list, with T7b's two left findings.
+- **The checkpoint**: the user's, SRV-Q28, passed 2026-11-12 (the agent's recommendations): the
+  review list as built, the left findings as described, next M5 part 2's refinement with the
+  user.

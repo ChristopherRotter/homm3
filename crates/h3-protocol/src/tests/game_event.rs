@@ -699,7 +699,7 @@ fn kinds<T: core::fmt::Debug>(value: &T) -> String {
 
 /// An event of every kind, with every variant of the parts they hold, seen by both players;
 /// those of one owner are player 0's.
-fn every_event() -> Vec<GameEvent> {
+pub(super) fn every_event() -> Vec<GameEvent> {
     let hero = HeroId::new(3);
     let at = h3_adventure::Pos::new(4, 5, 1);
     let next = h3_adventure::Pos::new(5, 5, 1);
