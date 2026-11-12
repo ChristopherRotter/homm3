@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the client lane, E27 M1 T1b3a, `client/e27-m1-t1b3a`; for the adventure screen's
+  options, when E24 builds them): the system options (E27's, opened by the adventure screen's
+  item 10) set settings that play reads: Walk Speed, Computer Walk Speed and Blackout Computer
+  (5, the enemy's moves not shown), Window Scroll Speed, Show Route, Move Reminder (End Turn's
+  question with a hero able to move), Quick Combat (battles not shown), Town Outlines (the town
+  screen), the volumes; Autosave has no item (`E27-design.md` §4.5: each one's readers). The
+  shell keeps them in the user's `settings.toml` beside the combat options' (*provisional*,
+  M4); Load, Main Menu, Quit and Restart end play through the shell's request (§4.3).
 - 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the nineteen types are
   imported**, for the drawing and the hint): map import v22 types T113a's nineteen (the four
   garrisons by class 33 and 219 and subclass, the fifteen bonus visitables at subclass 0), so

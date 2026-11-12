@@ -2932,7 +2932,7 @@ BAT-MAG-052, `installation.md` §7.19).
   the stack in +0x13438 and set +0x13460: Sacrifice's victim, a summoned stack or clone, flag
   0x10000000 or 0x400000; from `strike_animation` 0x469316, `round_start` 0x47614D,
   `mass_damage_handler` 0x5A51D3 and `mass_spell_animation` 0x5A6C59): skipped in a hidden or
-  quick battle (game +0x1F69D, the network's case, `battle_tactics_global`); the marked stacks
+  quick battle (game +0x1F69D, the network's case, `option_quick_combat`, the setting Quick Combat); the marked stacks
   (an arrow tower its own flags) measured, then taken off their hexes (+0x1DC, +0x1DD, the second
   hex of a two-hex one), the rectangle saved, `battle_redraw` (0, 0, 1, 0, 1, 0) unseen and the
   dissolve with trunc(150 F) a step (0x4670EF). At a strike's end it comes after the deaths and
@@ -7448,7 +7448,7 @@ Blow, Ice Bolt's explosion, the Familiars' channel, the Ogre Magi's Bloodlust gl
 (0x465548 to the end), `stack_round_start` 0x447120's tail (0x447220 to the end),
 `next_stack_to_act` 0x465080's pick (0x465209 to 0x465312), `round_start` 0x475ED0's calls and its
 end (0x4761E9, 0x4761EE). Each effect is skipped in a hidden or quick battle (`battle_is_hidden`,
-or for the drain game +0x1F69D, the network's case, `battle_tactics_global`, as §10's dissolve).
+or for the drain game +0x1F69D, the network's case, `option_quick_combat`, the setting Quick Combat, as §10's dissolve).
 
 - **The pick's order** (`next_stack_to_act`): outside the wait phase `stack_turn_start`
   (0x46521D), then the blind, petrified and paralysed stacks passed over (0x465222), the bad

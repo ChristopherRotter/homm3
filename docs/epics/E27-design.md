@@ -18,7 +18,7 @@ Bink (`.bik`) and Smacker (`.smk`); the game opens the Bink version first (`vide
 | A network game's save-game transfer (§2.1, §2.6; not the start's loading bar, which is a DEF) | | `ProgressBar` 0.3 |
 | A won scenario's score screen (0x4F3F60, T1b; not the High Scores dialog, §2.8) | | `HSANIM` 4.5, `HSLOOP` 1.8 |
 | The menus' clip 33 (§2.5; nothing drawn, CLT-Q86; its frames time the credits, §2.9) | (`CREDITS.BIK` and `.SMK` in `VIDEO.VID` are 4 × 4 placeholders, found first) | `Credits.smk` 0.03 (`H3ab_ahd.vid`, AB's; reached by edition 1 only) |
-| A scenario's end (T1b) | `LOSEGAME` 4.0 | |
+| A scenario's end (T1b; the lost one, clip 34) | `LOSEGAME` 4.0 (its Smacker copy 4.7 with Low video quality, §4) | |
 | The battle's result window (E17: `battle-videos.vid`) | `WIN3`, `LBSTART`, `LBLOOP`, `RTSTART`, `RTLOOP`, `surrender`, `defendall`, `defendloop`, `LOSECSTL`, `LOSECSLP` | |
 | The spell book's page turns (E17: "Animate SpellBook" off in the harness) | | `PGTRNLFT`, `PGTRNRGH` |
 | Campaigns (E20, decision 7): RoE's selection | `CGOOD1`–`3`, `CEVIL1`–`2`, `CNEUTRAL`, `CSECRET` | |
@@ -30,11 +30,14 @@ So the shell (M2 to M4) needs Smacker for the start's first clip and a won scena
 screen (decision 5; the loading bar and the menus' clip are no Smacker clips to play, §2.1, §2.5);
 `h3-bink` decodes the rest.
 The shell's clips: `original-data/shell-videos.vid` on the user's computer and staged (E27 M1 T1a1,
-2026-11-12; `VIDEO.VID`'s ten entries `3DOLOGO.SMK`, `CREDITS.BIK`, `CREDITS.SMK`, `H3INTRO.BIK`,
-`H3X1intr.bik`, `HSANIM.SMK`, `HSLOOP.SMK`, `LOSEGAME.BIK`, `NWCLOGO.BIK`, `ProgressBar.smk`, in
-`VIDEO.VID`'s format and order, 106 901 444 bytes, SHA-256 `f04fbb39…`; `h3ab_ahd.vid` goes to the
-harness whole, its `Credits.smk` and `VIDEO.VID`'s `CREDITS.SMK` being one name ignoring case). The
-Smacker copies of `NWCLOGO` and `H3INTRO` are left out: with `Bink Video` on (CLT-Q85) they never play.
+2026-11-12, ten entries; rebuilt at M1 T1b3a with the Smacker copies of `H3INTRO`, `LOSEGAME` and
+`NWCLOGO`, which the system options' Low video quality plays, CLT-Q96, §4.7): `VIDEO.VID`'s 13
+entries `3DOLOGO.SMK`, `CREDITS.BIK`, `CREDITS.SMK`, `H3INTRO.BIK`, `H3INTRO.SMK`, `H3X1intr.bik`,
+`HSANIM.SMK`, `HSLOOP.SMK`, `LOSEGAME.BIK`, `LOSEGAME.SMK`, `NWCLOGO.BIK`, `NWCLOGO.SMK`,
+`ProgressBar.smk`, in `VIDEO.VID`'s format and order (the header, then the clips in the table's
+order), 184 001 948 bytes, SHA-256 `825b64d8…` (the first version's ten clips byte for byte the
+same); `h3ab_ahd.vid` goes to the harness whole, its `Credits.smk` and `VIDEO.VID`'s `CREDITS.SMK`
+being one name ignoring case.
 
 ## 2. The start and the menus (M1 T1a1, 2026-11-12)
 
@@ -105,13 +108,14 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
   back buffer; the cursor the arrow (0, 0).
 - **The screen asked for** (`screen_request` 0x6976D8): −1 or 108 the main menu; any other id its
   case at once. Its writers in play: `adventure_key_down` 101, 102, 108 and 107,
-  `adventure_command` and one more site 107; `game_samples_load` the start's (T1b).
+  `adventure_command` and one more site 107, `system_options_open` 102, 105, 107 and 108 (§4.3);
+  `game_samples_load` the start's (T1b).
 - **The main menu's result** (the window manager's +0x38; switch 0x4EEC0D): 101 New Game, 102 Load
   Game (§2.4), 103 High Scores (videos paused, 0x4E9110: §2.8; resumed; `GamSelBk.pcx` copied
   whole; the top), 104 Credits (`mainmenu.pcx` copied, 0x4EDDA0: §2.9; the top), 105 Quit
-  (both pictures freed, the clip closed, the end by 0x4F3690 with no text: *not read*), 107 the case
-  at 0x4EF1BC (the restart, presumably: it holds E09's sites of `chosen_heroes` and `new_game_load`;
-  *not read*), any other: play (0x4EF80B: both pictures freed, the clip closed; T1b).
+  (both pictures freed, the clip closed, the end by 0x4F3690 with no text: *not read*), 107 the
+  restart at 0x4EF1BC (§4.6), any other: play (0x4EF80B: both pictures freed, the clip closed;
+  T1b).
 - **After play:** the high scores' dialog when one is due (0x4E9110), then the top.
 - A DirectPlay lobby's start (`lobby_launched` 0x69D80C) takes another path (0x4EE903: the main
   menu, then the scenario screen straight away); not built (§2.10).
@@ -925,3 +929,156 @@ handicap's three captions, the flags' hover and a press (single, the hot seat: t
 read), the name's edit; the four popups; the duration's eleven texts; the random map's tab with
 each choice and the disabled counts; Begin's loading bar to the first adventure frame. A Random
 town's outcome is not compared (CLT-Q95).
+
+## 4. The system options and the menu in play (M1 T1b3a, 2026-11-12)
+
+Read whole: `system_options_open` 0x41AC00, `system_options_create` 0x5B1790,
+`system_options_run` 0x5B30B0, `system_options_proc` 0x5B3140, the rest of `game_save_dialog`
+0x418160; read in part: the restart (`game_main`'s case 107, 0x4EF1BC) and the settings' readers.
+T1b3 was cut in two (decision 14): the end of a scenario is T1b3b's.
+
+### 4.1 The opening and the dialog
+
+- **Opened** by the adventure screen's System Options button (`adventure_command`'s item 10,
+  0x409D03); the command's out byte takes the result, set when play is to end. `system_options_open`:
+  a call not read (the ambient sounds', presumably), the arrow cursor (0, 0), Walk Speed kept, the
+  manager's lifted-hero byte +0x20C kept and the hero put back (`adventure_hero_stop` 0, 1); built,
+  run, destroyed (`system_options_destroy` 0x5B3040).
+- **The dialog** (`system_options_vtable` 0x642468, `system_options_dialog` in `structs.toml`):
+  the base dialog at (159, 56), 481 × 487, flags 0x12 (centred on 800 × 600); +0x60 (anything
+  changed) 0, +0x64 Quick Combat as it opens. Its items in the constructor's order:
+
+  | Ids | Item | Place (x, y), size | Detail |
+  |---|---|---|---|
+  | 200 | `SysOpBck.pcx` | (0, 0), 481 × 487 | flags 0x800, in the viewing player's colours |
+  | 102, 106, 107, 108, 105, 30722 | `soload`, `sosave`, `sorstrt`, `somain`, `soquit`, `soretrn.def` (2 frames: 0 pressed, 1 up) | (246, 298), (357, 298), (246, 357), (357, 357), (246, 415), (357, 415); 100 × 48 | Load, Save, Restart, Main Menu, Quit, Return; frame 1, click frame 0, a click does not close, flags 2; hotkeys L (0x26), S (0x1F), R (0x13), M (0x32), Q (0x10), Escape (1) |
+  | 201 to 210 | `syslb.def` DEF items (18 × 36, 10 frames) | (29 + 19 *i*, 359) | the music bars; flags 0x10 |
+  | 211 to 220 | the same | (29 + 19 *i*, 425) | the effects bars |
+  | 224 to 227 | `sysopb1` to `sysopb4.def` (46 × 32, 3 frames) | (28 + 48 *i*, 77) | Hero Speed: Walk Speed 1 to 4 |
+  | 228 to 231 | `sysopb5` to `sysopb8.def` | (28 + 48 *i*, 144) | Enemy Speed: Computer Walk Speed 2 to 5 (5 the enemy's moves not shown) |
+  | 232 to 234 | `sysopb9`, `sysob10`, `sysob11.def` (62 × 32) | (28 + 64 *i*, 210) | Map Scroll Speed: Window Scroll Speed 0 to 2 |
+  | 240, 239 | `sysob12.def` (High), `sysob13.def` (Low) (94 × 32) | (28, 276), (124, 276) | Video Quality: Bink Video 1, 0 |
+  | 235 to 238, 241, 242 | `sysopchk.def` DEF items (32 × 24; frame 0 the cross, 1 the tick) | (246, 55 + 32 *k*) | Show Route, Move Reminder, Quick Combat, Video Subtitles, Town Outlines, Animate SpellBook; flags 0x10 |
+  | −1 | texts | | GENRLTXT 569 (the title) `bigfont.fnt` colour 7 align 5 at (26, 19, 432, 28); the rows' names `medfont.fnt` colour 7 align 5 at (26, *y*, 193, 20): 570 *y* 56, 571 122, 572 188, 21 254, 395 339, 396 406; the boxes' names `medfont.fnt` colour 1 align 4 at (282, 55 + 32 *k*, 182, 24): 573 to 578 |
+
+  The speed, scroll and quality buttons: frame 0, click frame 1, no hotkey, flags 2. Recomposed
+  from the reading over `SysOpBck.pcx`, every item sits in its box of the picture.
+- **Their states at the build** (0x5B2C7B on): every bar hidden (state 4 cleared) but the one at
+  each volume, shown with the volume as its frame (`syslb.def` frame *v* marks bar *v*); each
+  row's buttons enabled and its chosen one disabled (state 0x1000: frame 2, the chosen look):
+  223 + Walk Speed, 226 + Computer Walk Speed, 232 + Window Scroll Speed, 239 + Bink Video; each
+  box's frame its setting. In the tutorial (game +0x1F69D) Move Reminder and Quick Combat show
+  frame 0, disabled and inactive (state 2 cleared); in a network game Restart and Load are
+  disabled (a message to id 0 among them reaches no item). No item has a hint.
+
+### 4.2 The procedure and the run
+
+- `system_options_proc` 0x5B3140 (vtable +0x24), as the combat options' (E17-design §12.12):
+  `adventure_tick` first (the map's animations go on); a right press (0xC or 0xE with the right
+  button's flag 0x200) on 102, 105 to 108, 30722 or 201 to 242 shows a popup (style 4) of
+  `system_options_help` 0x6A7580's right-click text: Help.txt 320 to 325 for Main Menu, Load, Save,
+  Restart, Quit and Return, 326 + (id − 201) for an id 201 to 242 (the bars, the speeds' names,
+  the boxes, Low 364 and High 365; 346 to 348 have no item); a left press (0x200/0xC) on 235 to 242
+  plays `button_sample` (volume 0x40, once, category 3), and the DEF buttons (the two quality
+  buttons among them) play their own press sample too.
+- **A click** (0x200/0xD) by id (switch 0x5B328C):
+  - 102 Load, 108 Main Menu, 105 Quit: GENRLTXT 579 (style 2); OK (0x7805) closes the dialog
+    with the id (the window manager's +0x38, the message 0x200/10, 2), Cancel keeps it open.
+  - 106 Save, 107 Restart, 30722 Return: closed with the id at once.
+  - 201 to 210: Music Volume = id − 201, 211 to 220: Sound Volume and Last Sound Volume = id − 211;
+    but at volume 0 without the sound manager's digital driver (+0x3C) GENRLTXT 151 (OK) and
+    nothing else; the bars set as at the build; `music_volume_apply` 0x59A1B0 or
+    `effects_volume_apply` 0x59A0C0 with the manager's +0x84 at 1 for the call.
+  - 224 to 227 Walk Speed = id − 223; 228 to 231 Computer Walk Speed = id − 226 and Blackout
+    Computer = (it is 5); 232 to 234 Window Scroll Speed = id − 232; 239, 240 Bink Video =
+    id − 239: the row's buttons enabled (state 8 cleared), the new one disabled.
+  - 235 Show Route, 236 Move Reminder, 237 Quick Combat, 238 Video Subtitles, 241 Town Outlines,
+    242 Animate SpellBook: toggled, the box's frame set.
+  - Each of these sets +0x60 and redraws the whole dialog.
+- **The run** (`system_options_run` 0x5B30B0): modal; then with +0x60 set: a network game whose
+  Quick Combat changed writes it into the screen player's +0xE4 and sends message 0x3F1 (not
+  built); `settings_save` 0x50C1B0 (all settings to the registry, §4.5).
+
+### 4.3 The results (`system_options_open` after the run)
+
+By the id (switch 0x41AC8D): 102 Load, 105 Quit, 108 Main Menu set `screen_request` 0x6976D8 to
+it and end play; 106 Save calls `game_save_dialog` (§4.4) and play goes on; 107 Restart asks
+GENRLTXT 68 (style 2) with the dialog gone: OK sets the request 107 and ends play, Cancel returns
+to the map (CLT-Q98); 30722 nothing. Then the hero lifted again when it was (`mobilize_hero` 0, 0,
+1, called twice: no visible effect) and, when Walk Speed changed, the step sounds `horse00` to `horse10` loaded again (the manager's +0x360; the old +0x388 not
+released). After play `game_main` closes the network unless the request is 107 (0x4EFED4) and its
+menu loop takes the request (§2.2): 102 Load Game's menu (§2.4), 105 the end, 108 the main menu,
+107 the restart (§4.6); the path between is the end of a scenario's (T1b3b).
+
+### 4.4 The save from play (`game_save_dialog` 0x418160, its end)
+
+After the scenario screen in its save mode (§3.6) with a name: the extension appended
+(`save_extension`); in a network game the current player is the viewing one for the save;
+`game_save` 0x4BEEA0 (H3API's `H3Main::SaveGame`: the name, the tutorial flag; *not read*); the current player
+back; on success the name cut at its first full stop and GENRLTXT 351 formatted with it in an OK
+box. Play goes on.
+
+### 4.5 Where the settings live
+
+The registry key under HKEY_LOCAL_MACHINE named by `settings_names` 0x63FF74's first entry (the
+game's `1.0` key), a DWORD per value name: read at the start (`settings_load`: zeroed,
+`settings_read`, `settings_check`'s ranges, a first run's `settings_first_run`), written whole by
+`settings_write` through `settings_save` (this dialog at its close when anything changed; the
+combat options' likewise, E17-design §12.12). This dialog's:
+
+| Setting (value name) | Global | Range, else | First run | Read in play by |
+|---|---|---|---|---|
+| Walk Speed | 0x69875C | 1 to 4, 2 | 2 | the human's walk (E24-design §3.4) |
+| Computer Walk Speed | 0x698758 | 2 to 5, 3 | 3 | the computer's walks (E24-design §3.4) |
+| Blackout Computer | 0x698790 | 0 or 1 | 0 | the enemy's moves not shown: `hero_select`, `hero_move_step`, the covered view and others (E24's; *not read*) |
+| Window Scroll Speed | 0x69878C | 0 to 2, 1 | 1 | `view_scroll` |
+| Music Volume, Sound Volume | 0x698760, 0x698764 | 0 to 9, 5 | 5 | the sound manager (E24-design §3.11) |
+| Show Route | 0x698774 | 0 or 1 | 1 | the walk (E24-design §3.7) |
+| Move Reminder | 0x698778 | 0 or 1 | 1 | End Turn's question with a hero able to move (`adventure_command` 0x409D31) |
+| Quick Combat | 0x69877C | 0 or 1 | 0 | `battle_is_hidden`: the battle not shown, both players' +0xE4 in a network game |
+| Video Subtitles | 0x698780 | 0 or 1 | 1 | a clip's dialog (`option_video_subtitles`' readers; *not read*) |
+| Town Outlines | 0x698784 | 0 or 1 | 1 | the town screen (`option_town_outlines`' reader; *not read*) |
+| Animate SpellBook | 0x698788 | 0 or 1 | 1 | the spell book's page turns (E17) |
+| Bink Video | 0x6987A8 | | the speed test | the clip players (§2.1) |
+
+Autosave (0x698770, 1 at a first run; `next_player_turn` reads it, 0x4C70B1) has no item here.
+The combat options' values, Main Game Show Menu, X, Y and Full Screen, the tests' and Network
+Default Name are no part of this dialog.
+
+### 4.6 The restart (`game_main`'s case 107, 0x4EF1BC; read in part)
+
+The busy cursor; the loading screen as `loading_screen_open`'s and its steps as
+`load_progress_step`'s, inline; the eight player records and the chosen factions (game +0x1F6B0)
+copied aside; `game_reload_reset` 0x4CECB0 (each player record reset, `game_reset`, the map's
+header read again, two calls not read); a campaign takes its own path (`campaign_game`; E20, not read); per colour the
+copied faction back when the map allows it, with `chosen_heroes` from the colour's first hero
+(+0x1F844), the name (+0xCC) and both human flags (+0xE1, +0xE2) back, `scenario_bonus_choices`
+from game +0x1F864; `current_player_first`; `new_game_load` with the map's file name (+0x1F7D4,
++0x1F6D9) and the version; the bar's last steps; then play (0x4EF80B). So a restart keeps the
+players' setup, the towns as drawn at the first begin included (§3.17), and reads the map again;
+the generator is not reset there, so its other draws are new (*inferred*).
+
+### 4.7 For the client
+
+- **CLT-Q96** (decision 15): Video Quality honoured: Low plays the Smacker copies where the
+  original does (clips from 28 whose table entry has +8 set: `NWCLogo`, `H3Intro`, `LoseGame` in
+  the shell; the campaigns' are E20's); `shell-videos.vid` now holds the three copies (§1). The
+  start's first-run case stays out (CLT-Q85): Bink Video is High until the player sets Low.
+- **CLT-Q97** (decision 15): Restart builds a new game from the first game's `GameSetup` with each
+  Random town fixed to the town the engine drew for it, and a new seed.
+- **CLT-Q98** (decision 15): Restart asks its question (GENRLTXT 68) inside the dialog, as Load,
+  Main Menu and Quit ask theirs; Cancel keeps the dialog open; the original's order for the
+  comparisons only.
+- **The agent's calls** (*provisional*, M1's review list): the settings in the user's
+  `settings.toml` beside the combat options' (one set of the registry's values, the volumes and
+  Animate SpellBook shared), written whole at the close when anything changed; Autosave kept there,
+  on, with no item; the network paths (Quick Combat's message, Load and Restart disabled) and the
+  tutorial's disabled boxes not built (CLT-Q84); the step sounds' reload and the second hero lift
+  not copied (nothing visible). The settings' effects in play are the map client's and the battle
+  client's (the map-client lane's inbox told).
+
+### 4.8 For T2's captures
+
+The dialog over the map with a first run's settings and with each row's other choices; a bar of
+each volume; each box both ways; a right press's popup per item kind; the three questions (579 for
+Load, Main Menu, Quit; 68 for Restart) and the save's message (351); Return and Escape.
