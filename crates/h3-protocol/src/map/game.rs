@@ -5,7 +5,8 @@
 //! projected by construction: [`observe`] takes the viewer and calls the engine's `observe`.
 //! The commands both ways and the rejections: [`command`], [`command_to_engine`], [`reject`]
 //! (T3a, `game/command.rs`); the events, projected for their viewer: [`events`] (T3b,
-//! `game/event.rs`).
+//! `game/event.rs`); a seat's queries, answered for its player: [`answer`], a hero's moves as a
+//! path tree [`moves`] (M5 T11, `game/query.rs`).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
@@ -45,10 +46,12 @@ use crate::wire::game::{
 mod command;
 mod event;
 mod manifest;
+mod query;
 
 pub use command::{command, command_to_engine, reject};
 pub use event::events;
 pub use manifest::{key_tables, manifest, map_offer};
+pub use query::{answer, moves};
 
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).
 pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameObservation {

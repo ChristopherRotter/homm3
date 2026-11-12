@@ -15949,7 +15949,7 @@ executables, `maps.tar`, `extracted.tar`.
   `Close` through `close_exchange` (closes only), `GameState::exchange`, `DecisionView::Exchange`,
   `legal_management`'s stationary army (the group's or the garrison's own commands after the
   hero's), `stack_at`. No `Rest::Exchange` (*agent's call*: the won battle's rest's outcome).
-- **The wire** (`cross-lane`, protocol v50): `ArmyRef::MapGarrison { garrison }`,
+- **The wire** (`cross-lane`, protocol v51, after the server lane's T11 took v50): `ArmyRef::MapGarrison { garrison }`,
   `ArmyReject::{NoGarrison, NotOwn, OnlyEmpty}`, `Decision::Exchange`, `GameEvent::ExchangeOpened`,
   both ways; the fold opens the exchange and keeps its army from the `StackChanged`s. The
   round-trip lists (104 rejections, 37 event kinds, two exchange views) and a fold case.
@@ -15986,5 +15986,5 @@ executables, `maps.tar`, `extracted.tar`.
   decision 324 and the task's line; the queue (T114b), `OVERVIEW.md`, `TRAPS.md` (a stationary
   army's arms, `ArmyRef`'s size); the town and server lanes' inboxes.
 
-**Versions:** game state hash v29, adventure replay format v13, protocol v50 (the server lane's,
+**Versions:** game state hash v29, adventure replay format v13, protocol v51 (the server lane's,
 `cross-lane`). The adventure state hash, the part and the map import unchanged. T114b next.

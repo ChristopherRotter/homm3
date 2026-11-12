@@ -682,7 +682,9 @@ impl<'r> Session<'r> {
             }
             // A whole game's (E16 M5 T8a): a battle is none, nor a seat of one.
             ClientMessage::GameJoin { .. } => out.push(refused(conn, Refusal::NoSuchGame)),
-            ClientMessage::GameCommand { seq, .. } => out.push(game_unseated(conn, seq)),
+            ClientMessage::GameCommand { seq, .. } | ClientMessage::GameQuery { seq, .. } => {
+                out.push(game_unseated(conn, seq));
+            }
             // The connection's (`crate::connection`: the hello, the ping, the account's) and the
             // lobby's (`crate::lobby`), not the game's.
             ClientMessage::Hello { .. }

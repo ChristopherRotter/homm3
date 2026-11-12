@@ -3,8 +3,9 @@
 //! ([`Adventure`]) and its battle (the battle's [`super::Observation`]); what it commands
 //! ([`GameCommand`]) and why a command was rejected ([`GameReject`], T3a); what happened, as it
 //! sees it ([`GameEvent`], T3b); how a viewer keeps its observation current by its events
-//! ([`GameObservation::fold`], T3c) and by what it newly sees ([`GameReveal`], T5c); and what the
-//! game is made of ([`GameManifest`], T4).
+//! ([`GameObservation::fold`], T3c) and by what it newly sees ([`GameReveal`], T5c); what the
+//! game is made of ([`GameManifest`], T4); and what a seat asks of the server's rules
+//! ([`GameQuery`], [`GameAnswer`], M5 T11).
 //!
 //! The same rules as [`super`]'s: the protocol's own types, translated by [`crate::map::game`]
 //! with every engine field named; serde's default enum form with `deny_unknown_fields`; content
@@ -27,6 +28,7 @@ mod event;
 mod fold;
 mod lobby;
 mod manifest;
+mod query;
 
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
@@ -37,6 +39,7 @@ pub use command::{
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
 pub use manifest::{GameKeyTables, GameManifest, GameRecordHeader, MapIdentity};
+pub use query::{DIRECTIONS, GameAnswer, GameQuery, Moves, TownOffer};
 
 /// A tile of the adventure map: its column, its row and its level (0 the surface, 1 the
 /// underground).

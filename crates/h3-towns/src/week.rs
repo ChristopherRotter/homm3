@@ -8,7 +8,7 @@
 use h3_content::{CREATURE_MONTH_EXACT, CreatureTypeId, NEUTRAL_PLAGUE_FULL_GROWTH, Ruleset};
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use crate::growth::{GrowthInputs, growth, index_creature, level_of};
+use crate::growth::{GrowthInputs, TownGrowth, index_creature, level_of};
 use crate::record::{CREATURE_INDEXES, MAX_AVAILABLE, Town};
 use crate::ruleset::{TownRecord, TownRuleset};
 
@@ -97,13 +97,13 @@ pub enum MonthGrowth {
 /// original's loops over the indexes, `town_week_growth` 0x5BFDD0 and `new_month` 0x4C8F40).
 fn each_growing(
     town: &Town,
-    part: &TownRuleset,
+    growths: &TownGrowth<'_>,
     core: &Ruleset,
     inputs: &GrowthInputs,
     f: impl Fn(usize, u32, u32) -> u32,
 ) -> Town {
     (0..CREATURE_INDEXES).fold(town.clone(), |next, index| {
-        let g = growth(town, part, core, index, inputs);
+        let g = growths.at(core, index, inputs);
         if g == 0 {
             return next;
         }
@@ -130,11 +130,11 @@ pub fn week_growth(
     kind: &WeekKind,
     inputs: &GrowthInputs,
 ) -> Town {
-    let Some(record) = part.town(town.faction()) else {
+    let Some(growths) = TownGrowth::of(town, part) else {
         return town.clone();
     };
-    let bonus = u32::from(kind.bonus(part));
-    each_growing(town, part, core, inputs, |index, count, g| {
+    let (record, bonus) = (growths.record(), u32::from(kind.bonus(part)));
+    each_growing(town, &growths, core, inputs, |index, count, g| {
         let named = index_creature(record, index).is_some_and(|c| kind.names(c));
         let added = if named { g + bonus } else { g };
         count + if inputs.owned { added } else { added / 2 }
@@ -180,16 +180,16 @@ pub fn month(
     week: &WeekKind,
     inputs: &GrowthInputs,
 ) -> Town {
-    let Some(record) = part.town(town.faction()) else {
+    let Some(growths) = TownGrowth::of(town, part) else {
         return town.clone();
     };
-    let quirks = core.quirks();
+    let (record, quirks) = (growths.record(), core.quirks());
     match month {
         MonthGrowth::Normal => town.clone(),
         MonthGrowth::Creature(_) if matches!(week, WeekKind::Of { .. }) => town.clone(),
         MonthGrowth::Creature(creature) => {
             let exact = quirks.is_enabled(CREATURE_MONTH_EXACT);
-            each_growing(town, part, core, inputs, |index, count, _| {
+            each_growing(town, &growths, core, inputs, |index, count, _| {
                 if doubles(record, index, creature, exact) {
                     count * 2
                 } else {
@@ -199,7 +199,7 @@ pub fn month(
         }
         MonthGrowth::Plague => {
             let full = inputs.owned || quirks.is_enabled(NEUTRAL_PLAGUE_FULL_GROWTH);
-            each_growing(town, part, core, inputs, |_, count, g| {
+            each_growing(town, &growths, core, inputs, |_, count, g| {
                 count.saturating_sub(if full { g } else { g / 2 }) / 2
             })
         }

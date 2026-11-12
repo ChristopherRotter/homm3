@@ -1470,7 +1470,8 @@ pub(super) fn town() -> impl Strategy<Value = TownPlan> {
 /// colours, kinds, days and resources) with none to three of the 41 map slots of a custom set as
 /// its buildings (the hall's tests do not apply: a Capitol, a Grail's building, a Shipyard
 /// without water, a building standing or another of its event's supersedes among them,
-/// TWN-EVT-003, T-8) and creatures by level (none placed, `TWN-STUB-10`).
+/// TWN-EVT-003, T-8) and creatures by level (TWN-EVT-004, E09 T26a1: added to the counts, which
+/// no view shows before E09 T26b).
 fn town_events() -> impl Strategy<Value = Vec<TownEvent>> {
     let event = (timed_event(), vec(0u8..41, 0..=3), vec(0u16..=20, 7)).prop_map(
         |(event, slots, creatures)| {
@@ -5591,7 +5592,7 @@ fn town_id(place: usize) -> TownId {
 /// 0, `TownEventFired` with its place, then each building that `h3_towns::event_buildings` gives
 /// of the town as the turn starts (with the Shipyard's water, TWN-SET-011) and that does not
 /// stand by its turn (an earlier building or event brought it), a `TownBuilt` with the event's
-/// place, in index order; its creatures none (`TWN-STUB-10`). The views a build tells after its
+/// place, in index order; its creatures no event (TWN-EVT-004). The views a build tells after its
 /// `TownBuilt` are the told-views property's (`view.rs`), left out of the comparison.
 fn check_timed(
     rules: &GameRuleset,
@@ -6873,7 +6874,27 @@ fn check_towns(
                 town
             );
         }
-        if old != new {
+        // E09 T26a1: a town's counts move with a week's start (its growth, the month's after it;
+        // TWN-GRO-003, -004), a build's first creatures (TWN-GRO-005) and a town event's
+        // creatures (TWN-EVT-004) only, told by nothing until the owner's view shows them (E09
+        // T26b); the rest of the record as before.
+        if old.available_all() != new.available_all() {
+            let week = events
+                .iter()
+                .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
+            let fired = events
+                .iter()
+                .any(|e| matches!(*e, GameEvent::TownEventFired { town: t, .. } if t == town));
+            prop_assert!(
+                week || !built.is_empty() || fired,
+                "{:?}'s counts moved without a week, a build or an event",
+                town
+            );
+        }
+        let with_old_counts = (0..h3_towns::CREATURE_INDEXES).fold(new.clone(), |t, index| {
+            t.with_available(index, old.available(index))
+        });
+        if *old != with_old_counts {
             let cleared = day_started && old.built_today();
             prop_assert!(
                 !captured.is_empty() || !built.is_empty() || cleared,

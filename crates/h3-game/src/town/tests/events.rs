@@ -252,7 +252,7 @@ fn a_town_event_builds_without_the_hall_s_tests_or_the_mark() {
     let mut setup = with_events(
         &rules,
         vec![
-            // The creatures alone: it fires, nothing else changes (`TWN-STUB-10`).
+            // The creatures alone, the town without a dwelling: it fires, they are lost.
             TownEventSetup {
                 creatures: [3, 0, 0, 0, 0, 0, 0],
                 ..event(&[RED], 2, 0, 0, &[])

@@ -3,7 +3,8 @@
 //! [`pool`] (E09 T7b1); the towns' draws, the store of towns and the start's reveal in [`build`]
 //! (E09 T7b2a); the main towns' heroes in [`heroes`] (E09 T7b2b); the step onto a town and its
 //! capture in [`capture`] (E09 T8a2); the towns' income in [`income`] and their views in
-//! [`view`] (E09 T8c1); the town context's commands in [`command`] (E09 T18b1).
+//! [`view`] (E09 T8c1); the town context's commands in [`command`] (E09 T18b1); the towns'
+//! growth in the day in [`growth`] (E09 T26a1).
 
 use alloc::format;
 use alloc::string::ToString;
@@ -12,7 +13,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::num::{NonZeroU8, NonZeroU16};
 
-use h3_adventure::{AdventureRuleset, Holds, ObjectSetup, Pos, Scenery, TileMask};
+use h3_adventure::{AdventurePack, AdventureRuleset, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use h3_content::{
     ContentPack, CreatureDef, FactionDef, FactionId, Formation, HeroClassDef, HeroTypeDef,
     HeroTypeId, Ruleset,
@@ -318,6 +319,28 @@ fn towns_rules_on(elf: bool, side: u16) -> GameRuleset {
 /// The game's rules of [`towns_rules_on`] on `core` and the town part of `towns` (E09 T8b1: a
 /// faction's native terrain, a defender's bonus).
 pub(super) fn rules_of(core: Ruleset, towns: &TownPack, elf: bool, side: u16) -> GameRuleset {
+    rules_edited(core, towns, elf, side, |_| ())
+}
+
+/// The game's rules of [`towns_rules`] on `core`'s pack and the town part of `towns`, with
+/// `edit` made to the adventure pack before it compiles (E09 T26a1: a dwelling, the months).
+pub(super) fn rules_with_adventure(
+    core: ContentPack,
+    towns: &TownPack,
+    edit: impl FnOnce(&mut AdventurePack),
+) -> GameRuleset {
+    let core = Ruleset::compile(&[core], "t:faithful").unwrap();
+    rules_edited(core, towns, false, 4, edit)
+}
+
+/// [`rules_of`] with `edit` made to the adventure pack before it compiles.
+fn rules_edited(
+    core: Ruleset,
+    towns: &TownPack,
+    elf: bool,
+    side: u16,
+    edit: impl FnOnce(&mut AdventurePack),
+) -> GameRuleset {
     let core = Arc::new(core);
     let factions: &[&str] = if elf {
         &["t:town", "t:other"]
@@ -349,6 +372,7 @@ pub(super) fn rules_of(core: Ruleset, towns: &TownPack, elf: bool, side: u16) ->
     let params = adventure.params.as_mut().unwrap();
     params.max_map_size = NonZeroU16::new(side).unwrap();
     params.max_levels = NonZeroU8::new(2).unwrap();
+    edit(&mut adventure);
     GameRuleset::new(
         Arc::clone(&core),
         Arc::new(AdventureRuleset::compile(&core, &[adventure]).unwrap()),
@@ -995,6 +1019,7 @@ mod build;
 mod capture;
 mod command;
 mod events;
+mod growth;
 mod heroes;
 mod income;
 mod offer;
