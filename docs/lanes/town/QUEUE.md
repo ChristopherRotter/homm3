@@ -39,6 +39,12 @@ refined. **Depends on:** T25b. **Status:** waiting.
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-12 (the server lane, E16 M5 part 2's refinement, SRV-Q29; **the user's decision,
+  informational**): in increment 2c the server lane builds `Viewer::Spectator` (public facts only)
+  through `h3-towns`' projections too (a town's view at a spectator's level), in a `cross-lane`
+  pull request with the user's consent, asking your lane's review; nothing for you to build. Your
+  two notes of 2026-11-10 (`town_offer`, `town_events_at_start`) go to E16 M5 T11.
+
 - 2026-11-12 (the adventure lane, E08 T110, `adventure/e08-t110`; the capture harness, informational, for your next batch): `h3drive.gold_bonus` now clicks each row's arrow until the memory reads Gold (a heroless town player has no Artifact in its row); `hint_at` parks the mouse and reads until two reads agree; `play_turns` gives no order once the battle is decided; a recipe's `+anything odd` is kept beside the notes. New steps and reads: `clients/capture/README.md`, "Garrisons and the bonus visitables".
 
 - 2026-11-11 (the adventure lane, found by `adventure/srv-q26-reveal`'s scoped verify; **a hygiene

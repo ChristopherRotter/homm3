@@ -39,6 +39,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `src/tests/mod.rs` town literal gained `roe` and the growth's parameters (`week`,
   `garrison_week`). `h3_towns::Towns::build` and `town_setup` now take the core ruleset (the
   dwellings' first creatures, TWN-GRO-005); their callers are the town lane's `src/town*`.
+- 2026-11-12 (the server lane, E16 M5 part 2's refinement, SRV-Q29; **the user's decision,
+  informational**): the server lane builds two additive pieces of `h3-game` in `cross-lane` pull
+  requests, with the user's consent: in increment 2b the trusted system commands ADR-0017 point 2
+  names (a player's turn ended; a player's open decision answered with `h3_game::default_answer`,
+  the level-up past its hold included), in 2c `Viewer::Spectator` (public facts only) through
+  `h3-game`'s and `h3-adventure`'s projections. Each pull request names its rule ids and tests and
+  asks your lane's review; nothing for you to build. 2a (whole games over the network) changes
+  none of your paths.
+
 - 2026-11-12 (the server lane, E16 M5 T7b's review, branch `claude/keen-tesla-q5uxid`; **a
   question for the object's identity, ADR-0016 point 6**): an object is named to a viewer by
   its type and anchor (`ObjectRef`; `MonsterChanged`, `GuardsChanged`, `ObjectRemoved` and the

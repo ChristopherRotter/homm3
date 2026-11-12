@@ -6,7 +6,8 @@ crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12);
 T5), its checkpoint passed the same day (SRV-Q18); M4 refined 2026-10-12 (SRV-Q19), done
 2026-10-12 (T1 to T7 with T5b and SRV-Q20), its checkpoint passed the same day (SRV-Q22), T8 after
 it; M6 refined 2026-10-13 (SRV-Q23), done the same day (T1 to T6), its checkpoint passed the
-same day (SRV-Q24); M5 part 1 refined 2026-11-09, SRV-Q25). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+same day (SRV-Q24); M5 part 1 refined 2026-11-09, SRV-Q25, done 2026-11-12, SRV-Q28; part 2
+refined 2026-11-12, SRV-Q29). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement, its ladder points decided at M4's); [ADR-0021](../adr/0021-server-discovery.md)
 (discovery, accepted at the M6 refinement). Working detail (messages, flows, journals, the ladder sketch):
@@ -248,8 +249,8 @@ M0 starts now, while E04b finishes (SRV-Q7).
   state saves measured. **In two parts** (the user's order of 2026-10-31, the map client lane's
   note; SRV-Q25): part 1 the whole game's wire, a session hosting one game in-process and its
   per-viewer record, so that a golden adventure replay becomes a record (done 2026-11-12, its
-  checkpoint passed the same day, SRV-Q28; `E16-archive.md`); part 2, refined after part 1's
-  checkpoint, the rest (below).
+  checkpoint passed the same day, SRV-Q28; `E16-archive.md`); part 2 the rest, refined
+  2026-11-12 into three increments (SRV-Q29, below).
 - **M6 Discovery** (refined 2026-10-13, SRV-Q23, ADR-0021; done 2026-10-13, its checkpoint passed
   the same day, SRV-Q24; `E16-log.md`): the server keypair and the signed
   welcome, the server card and `Describe`, peers in the configuration, the peer fetch with its TLS
@@ -268,19 +269,80 @@ M0 starts now, while E04b finishes (SRV-Q7).
 
 Moved to `E16-archive.md` (verbatim; the checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24 and -Q28 passed; the done tasks in full: `E16-log.md`): the task lists of M1, M2, M3, M4, M6 and M5 part 1, their exit criteria, and the review lists of their checkpoints. Read a review list when a decision cites it (`git grep -n 'F-4' docs/epics/E16-archive.md`). M5's part 2 is below.
 
-## M5 part 2 (to be refined with the user, after part 1's checkpoint)
+## M5 part 2 (refined 2026-11-12, SRV-Q29)
 
 Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisions, tasks and review list are in `E16-archive.md` ("M5 part 1 tasks", "Review list for the M5 part 1 checkpoint"), the done tasks in full in `E16-log.md`.
 
-**Part 2** (refined after part 1's checkpoint): network seats for whole games (a lobby's map
-offers, players as seats), turn groups, timers and the level-up hold (system commands, E08
-decision 8; the inbox's 2026-10-21 note, SRV-Q19), computer seats for the unowned sides
-(`h3_battle_ai::choose_fair`, the inbox's 2026-11-02 note), concurrent battles, sequence numbers
-against duplicates, long journals measured, spectators once `h3_game::Viewer` has one; from T7b's
-review: a viewer's open battle known by its identity, so that a second battle queued for a player
-while its first is open does not resend the first's `Snapshot` as the second's opening (not
-reachable while a turn group is one player), and a player's own rejections inside a battle
-bounded (its record gets no fresh snapshot there: the turn timers end a stalled battle).
+**Three increments**, each closed by a fresh reviewer agent and the user's checkpoint (SRV-Q29):
+
+- **2a Whole games over the network**, with no engine change: a lobby's map offers; **every
+  player of the map a seat**, the game starting when every seat is held (no computer player on
+  the map before E13, no seat left empty before 2b); seats by account, or by token in the
+  anonymous mode, as a battle's; the game on its own thread with its journal file and its restore
+  at start; reconnects with a fresh snapshot; the unowned battle sides played by the server
+  (`h3_battle_ai::choose_fair` by default, the inbox's 2026-11-02 note); a command resent after a
+  reconnect never applied twice; a hero's moves on the wire; T7b's two findings.
+- **2b Time:** `h3-game`'s trusted system commands, **built by the server lane** in a
+  `cross-lane` pull request (ADR-0017 point 2 names them: a player's turn ended, a player's open
+  decision answered with `h3_game::default_answer`, the level-up past its hold included); the
+  turn timers (an offer's turn duration; the original's options and what its timer does in a
+  battle surveyed first, SRV-Q19); the level-up hold online (the inbox's 2026-10-21 note: the
+  waiting players' timers paused, the owner's limited time, then the default answer; others learn
+  only that the game waits); a disconnected player's turns ended (SRV-Q19's grace and total
+  reused); a battle whose player is gone (its default decided at 2b's refinement). Tasks refined
+  at 2a's checkpoint.
+- **2c Spectators and long journals:** `Viewer::Spectator` (public facts only) through
+  `h3-game`'s, `h3-adventure`'s and `h3-towns`' projections, **built by the server lane** in
+  `cross-lane` pull requests; spectators on the whole game's wire (a battle's rules: the game's
+  limit, the host's setting, nothing journaled); long journals measured (an XL game's restore and
+  verification after many days) and the case for state saves (ADR-0004 point 9) written down.
+  Tasks refined at 2b's checkpoint.
+
+**Not in part 2** (SRV-Q29): concurrent battles (they need simultaneous turns, which ADR-0017
+point 7 designs for and does not build; 2a keeps only T7b's open battle by identity), removing a
+player and a game's end (E10's victory and defeat), computer players on the map (E13), ranked
+whole games (a ladder of maps, after E28's ranked battles), the attack and shot previews (the
+client lane's 2026-11-04 request, when online battles need them).
+
+**2a's tasks** (about half a context each; the numbers go on from part 1's T7):
+
+- **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
+  - **T8a Seats and connections:** `GameSession` takes connections as the battle's `Session`
+    does: a seat per player of the map, taken by account (by token in the anonymous mode),
+    re-taken after a disconnect with a fresh `GameSnapshot` and its `GameTurn` if it may act (its
+    record goes on while no connection holds the seat); the game started when every seat is
+    held; a connection's commands applied as its seat's player, anything from an unseated one
+    rejected; the whole game's client messages on the wire (a seat's join, its commands). The
+    battle's seat logic shared where it fits (provisional). A protocol step.
+  - **T8b Numbers, pause, restore:** each seat numbers its commands, and a number the session
+    already took is answered as it was the first time, applying nothing (a resend after a
+    reconnect; ADR-0018's per-viewer sequence numbers); the host's pause and resume, as a
+    battle's (entries); the restore with the seats taken, none held. A protocol step if the
+    wire changes.
+- **T9 A whole game hosted** (`h3-server`): the map offers in the configuration (a map file by
+  its hash, packs and profile, difficulty; checked at start), listed in the lobby with the map's
+  name, size and players; `CreateGame` from one; the game on its own thread with its journal file
+  (each `GameEntry` durable before the call's frames), its restore at start, the sweep of
+  abandoned games, drain and shutdown; the record download. A journal format step.
+- **T10 The unowned sides played by the server:** an unowned battle side's command from
+  `h3_battle_ai::choose_fair` by default, the all-seeing `choose` as an offer's option (the
+  inbox's 2026-11-02 note), its random stream from the game's secrets; each command journaled as
+  the system actor's, so that a restore re-runs no AI (a policy's new version voids no game).
+  `h3-battle-ai` is not among `h3-server`'s allowed crates (`arch.toml`): through `h3-sim`'s
+  policy, or a `shared/` change first.
+- **T11 The game's queries on the wire:** a hero's moves (`h3_game::legal_moves`; `GameTurn`
+  leaves them out), a town's offer to its owner (`GameState::town_offer`, the town lane's
+  2026-11-10 note), day 1's town events of the first group at the game's start
+  (`GameState::town_events_at_start`, the same lane's note). A protocol step.
+- **T12 T7b's two findings:** a viewer's open battle known by its identity, so that a second
+  battle queued for a player while its first is open does not resend the first's `Snapshot` as
+  the second's opening; a player's own rejections inside a battle bounded in its record.
+- **T13 The closure:** an end-to-end test (two clients play a whole game over the network through
+  a server restart, a battle against an unowned side on the way); `docs/06-security.md`'s
+  networked whole game; a fresh reviewer agent and the review list; the user's checkpoint.
+
+**Review list for the 2a checkpoint** (the choices queued under the autonomy contract, filled as
+the tasks land): none yet.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
