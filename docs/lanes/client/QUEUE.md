@@ -13,17 +13,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T1b2 — the catalogue, part 2b: the players' setup, the random map, the begin
-
-- **Scope:** the advanced options (the players' rows: colour, human or computer, the hot seat's
-  names `hot_seat_names` 0x69CA50, town, hero (`scenario_hero_lists` 0x583890, read by E09),
-  starting bonus, handicap; the turn's duration), the random map's tab (decided as a `CLT-Q`: the
-  engine has no generator), the game's begin (`scenario_dialog_begin` 0x588330, `new_game_start`
-  0x58C570, the loading bar). Per setup choice: the `GameSetup` field it fills, or the E10 gap it
-  waits for (decision 6). Into `E27-design.md` §3.
-- **Acceptance:** as T1a's; the setup's choices mapped to `GameSetup` or to a named gap.
-- **Depends on:** T1b1 (done: design §3, its §3.9 lists what T1b2 takes over). **Status:** ready.
-
 #### E27 M1 T1b3 — the catalogue, part 2c: the system options, the menu in play, the end
 
 - **Scope:** the system options (`SysOpBck.pcx`, 0x5B1790 from 0x41AC5A: every setting, where
@@ -32,7 +21,7 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   messages; the win screen `scenario_win_screen` 0x4F3F60 with `HSANIM`, `HSLOOP` and the score;
   the new entry `high_score_entry` 0x4E91D0 with `HighName.pcx`; the lost one 0x4EE2B0 with
   `UltimateLose`, *inferred*). Into `E27-design.md` §4.
-- **Acceptance:** as T1a's. **Depends on:** T1b2. **Status:** ready after T1b2.
+- **Acceptance:** as T1a's. **Depends on:** T1b2 (done: design §3.12 to §3.18). **Status:** ready.
 
 #### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
 
@@ -46,7 +35,7 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   more than half a context.
 - **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
   same or each difference listed; the harness check passes; the Definition of Done.
-- **Depends on:** T1b3 (the user's computer only if T1b adds a clip). **Status:** ready after T1b3.
+- **Depends on:** T1b3 (the user's computer only if T1b3 adds a clip). **Status:** ready after T1b3.
 
 #### E27 M1 T3 — M1's closure and M2's refinement
 
