@@ -175,15 +175,15 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
     let cases = [
         (
             "checkpoint",
-            "0x9d60dde7cc4d591f\"]",
-            "0x9d60dde7cc4d5910\"]",
-            "checkpoint 0 after command 4: the replay's 0x9d60dde7cc4d5910, the session's 0x9d60dde7cc4d591f",
+            "0x8ae07e2c947fb467\"]",
+            "0x8ae07e2c947fb460\"]",
+            "checkpoint 0 after command 4: the replay's 0x8ae07e2c947fb460, the session's 0x8ae07e2c947fb467",
         ),
         (
             "final-hash",
-            "final_hash = \"0x033379ef1388bfae\"",
-            "final_hash = \"0x033379ef1388bfa0\"",
-            "state hash after 8 commands: expected 0x033379ef1388bfa0, got 0x033379ef1388bfae",
+            "final_hash = \"0x61ac6cfb11142f24\"",
+            "final_hash = \"0x61ac6cfb11142f20\"",
+            "state hash after 8 commands: expected 0x61ac6cfb11142f20, got 0x61ac6cfb11142f24",
         ),
         ("day", "day = 2", "day = 3", "final day: expected 3, got 2"),
         (
@@ -206,7 +206,7 @@ fn a_replay_that_is_not_its_rerun_records_nothing() {
         ),
         (
             "checkpoints",
-            "checkpoints = [\"0x9d60dde7cc4d591f\"]",
+            "checkpoints = [\"0x8ae07e2c947fb467\"]",
             "checkpoints = []",
             "checkpoint count does not match the command count",
         ),
@@ -300,7 +300,7 @@ fn each_players_record_is_written_to_its_file() {
     assert_eq!(lines.len(), 1);
     assert!(
         lines[0].ends_with(&format!(
-            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x033379ef1388bfae): {}, {}",
+            ": fixtures/maps/e08-army-12.h3m (8 commands, day 2, final hash 0x61ac6cfb11142f24): {}, {}",
             files[0].display(),
             files[1].display()
         )),
