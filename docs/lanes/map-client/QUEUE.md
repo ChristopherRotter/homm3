@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the nineteen types are
+  imported**, for the drawing and the hint): map import v22 types T113a's nineteen (the four
+  garrisons by class 33 and 219 and subclass, the fifteen bonus visitables at subclass 0), so
+  shipped maps' `ObjectView`s now name them, an owned garrison with its `owner` (ADV-OWN-003);
+  a garrison's army and removable flag are in its setup (`Holds::Garrison`), their view comes
+  with T114b (ADV-GAR-006). A shipped map may hold two grounds (or Favorable Winds) of one type
+  on one anchor with different pictures (nine on five maps; their `drawn` tiles differ).
 - 2026-11-12 (the adventure lane, E08 T113a, `adventure/e08-t113a`, `cross-lane`; **increment
   12's types, for the drawing and the hint**; E08 design note §1 to §3): adventure ruleset part
   v20 adds the garrisons (`base:garrison` 33.0, `base:anti_magic_garrison` 33.1,

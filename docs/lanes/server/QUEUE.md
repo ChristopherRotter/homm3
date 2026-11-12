@@ -6,12 +6,31 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 Epic: `docs/epics/E16-server.md`; M0 to M4, M6 and M5 part 1 are closed (checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24, -Q28; M6 is discovery, ADR-0021, detail in `E16-design.md` §12); the done tasks are in `E16-log.md`, the milestone chronicle in `QUEUE-ARCHIVE.md`. Work under the autonomy contract (`HANDOFF.md`). Wire changes bump `PROTOCOL_VERSION`, journal changes `JOURNAL_FORMAT_VERSION` (current values: `HANDOFF.md`). The inbox after M6 was done 2026-10-19 (`E16-log.md`).
 
-**M5 part 1 closed 2026-11-12** (SRV-Q28: the review list as built; the tasks T0 to T7 in `QUEUE-ARCHIVE.md` and `E16-archive.md`, done in full in `E16-log.md`). **M5 part 2 refined 2026-11-12** (SRV-Q29): three increments, 2a whole games over the network (no engine change), 2b time (the server lane builds `h3-game`'s system commands, `cross-lane`), 2c spectators (the server lane builds `Viewer::Spectator`, `cross-lane`) and long journals; each with a reviewer and a checkpoint. **2a's tasks T8 to T13** are in the epic's "M5 part 2" (scope, the inbox notes each takes); T8a (the seats and connections, protocol v45) done 2026-11-12 (`E16-log.md`); T8b done 2026-11-12 (#880 merged); T9 split in two (the user, 2026-11-12): T9a live hosting done 2026-11-12 (protocol v47); **next: T9b, a hosted whole game's lifecycle** (the restore at start, the sweep, a paused game off its thread, drain and shutdown, the record download). The inbox's notes go with them: the 2026-11-02 one to T10, the town lane's two of 2026-11-10 to T11, the 2026-10-21 one and SRV-Q19's turn timer to 2b.
+**M5 part 1 closed 2026-11-12** (SRV-Q28: the review list as built; the tasks T0 to T7 in `QUEUE-ARCHIVE.md` and `E16-archive.md`, done in full in `E16-log.md`). **M5 part 2 refined 2026-11-12** (SRV-Q29): three increments, 2a whole games over the network (no engine change), 2b time (the server lane builds `h3-game`'s system commands, `cross-lane`), 2c spectators (the server lane builds `Viewer::Spectator`, `cross-lane`) and long journals; each with a reviewer and a checkpoint. **2a's tasks T8 to T13** are in the epic's "M5 part 2" (scope, the inbox notes each takes); T8a (the seats and connections, protocol v45) done 2026-11-12 (`E16-log.md`); T8b done 2026-11-12 (#880 merged); T9 split in two (the user, 2026-11-12): T9a live hosting done 2026-11-12 (protocol v47), T9b the lifecycle done 2026-11-12 (protocol v48); **next: T10, the unowned battle sides played by the server**. The inbox's notes go with them: the 2026-11-02 one to T10, the town lane's two of 2026-11-10 to T11, the 2026-10-21 one and SRV-Q19's turn timer to 2b.
 
 The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
 ## Inbox
 
+- 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the answer to your
+  question of one type on one anchor**, E16 M5 T7b's review; E08 decisions 320, 322): every
+  typed object a command, an offer or an event can name is unique by its type and anchor: the
+  setup refuses a second one (`SetupError::SharedAnchor`, `AdventureState::new`'s name check;
+  a random dwelling by every outcome it may take). The exceptions are the special grounds, the
+  grounds of the sea (Favorable Winds) and the holes, which nothing names (never visited,
+  offered, flagged or removed); untyped blockers are in no view. The census of the 160 shipped
+  maps: 9 such twins on 5 maps (*Back For Revenge* and its allied version, *Carpe Diem* and its
+  allied version, *Deluge*), each a ground or Favorable Winds of two pictures that differ only
+  in `drawn`; the user kept them, and since T113b the setup refuses a ground, a ground of the
+  sea or a hole that differs from an earlier one of its type and anchor in anything else. So a
+  view may hold two `ObjectView`s of one type and anchor (in tile order by masks, as yours) that
+  no event names; nothing else. Also: map import v22 and adventure state hash v22 (your
+  manifests read the constants); the import types the garrisons (33, 219, with their owners)
+  and the fifteen bonus visitables, so shipped maps' views show those nineteen types (no golden
+  replay holds one). No server change is needed beyond one made for you, with the user's
+  consent (`cross-lane`): the 72 golden replays' hashes moved (the adventure state hash version
+  is hashed), so `h3-server`'s `tests/record.rs` has the smallest replay's new checkpoint, final
+  hash and import version (`army-dialog-s1`); nothing else of yours changed.
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the
   setup and its first activation (its inbox), the session holds the battle before its start

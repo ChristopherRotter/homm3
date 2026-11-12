@@ -161,12 +161,28 @@ the Sirens, the Buoy and the Mermaids from the neighbouring water.
   allows neither; the passage decides who reaches it).
 - `MAP_IMPORT_VERSION` 22 (E09 T11 took 20, T103b 21). The census's numbers (§1) are the import's
   test on the shipped maps (`--with-original-data`).
+- *As built* (T113b, `adventure/e08-t113b`; decisions 321, 322): `codes.rs`' `GARRISONS`,
+  `VERTICAL_GARRISONS` (past subclass 1 `Subclass`) and `BONUS_VISITABLES` (each at subclass 0;
+  *agent's call*: another subclass `Subclass`, as the garrisons' past 1); `import::garrison` into
+  **`Holds::Garrison { army, removable }`**, which §5 had for T114a: the import needs a place for
+  the body, so the setup's variant, its check (`check_troops`: none, or an army with no war
+  machine; shared with a reward's creatures) and its hash (tag 11) came here, adventure state hash
+  **v22** (decision 321, as T83a's abandoned mines' sets); a count of 0 is filtered before the
+  random-stack test, so a random code with no creatures is an empty slot; `ImportError::RandomStack`.
+  219 in `codes::scenery`. An owned garrison is revealed around at the start by the existing
+  `reveal_owned` (ADV-OWN-002). The census in `h3-map`'s `original_data` (`increment_12`, checked
+  against survey §1's tables): every number as §1. **The server lane's question** (decision 322):
+  9 typed twins on 5 shipped maps, each a ground or Favorable Winds of two pictures differing only
+  in `drawn`; kept, and the setup (`AdventureState::new`'s name check) refuses a ground, a ground
+  of the sea or a hole that differs from an earlier one of its type and anchor in anything else
+  (`SharedAnchor`); the server lane's inbox has the reading.
 
 ###### 5. The state (`h3-adventure`; adventure state hash v22)
 
 - **A garrison's army** is written on its object when the game is built (`army_left`, the
   persistent table, as a town's garrison since E09 T8a1: `Holds::Garrison { army, removable }` in
-  the object's setup, checked by the army rules; an empty army written empty), its owner in the
+  the object's setup, checked by the army rules, built by T113b with the import, §4; an empty army
+  written empty), its owner in the
   ownable objects' block (`owners`, ADV-OWN-002), its **removable flag** static: the object's
   (`garrison_set_owner` keeps it, survey §5), so the static map's, which its hash covers. No new
   per-game block for garrisons.
@@ -523,8 +539,9 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 | Version | From | To | By |
 |---|---|---|---|
 | adventure ruleset part | v19 | **v20** | T113a: the six bonus kinds, `garrison`, `kind_mark` (done) |
-| map import | v21 | **v22** | T113b: the seventeen classes, the garrison's body |
-| adventure state hash | v21 | **v22** | T114a, T115a, T115b: the heroes' bonuses and timed marks, the fortunes, the springs, the kind marks |
+| map import | v21 | **v22** | T113b: the seventeen classes, the garrison's body (done) |
+| adventure state hash | v21 | **v22** | T113b: `Holds::Garrison` in the static map (done; decision 321) |
+| adventure state hash | v22 | **v23** | T114a, T115a, T115b: the heroes' bonuses and timed marks, the fortunes, the springs, the kind marks |
 | game state hash | v27 | **v28** | T114a (`Exchange`, `Rest::Exchange`), T115a (the details lose the bonuses) |
 | adventure replay format | v12 | **v13** | T114b: `MapGarrison` in management lines |
 | env action encoding | v8 | v8 | none (§16) |

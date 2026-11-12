@@ -1,18 +1,21 @@
 //! Whole games over the network (E16 M5 T9a): a map offer in the lobby, a whole game created from
-//! it and joined by two clients, its commands answered once, its journal written ahead and kept as
-//! it is over a restart (T9b restores it), the refusals, an abandoned game.
+//! it and joined by two clients, its commands answered once, its journal written ahead, the
+//! refusals, an abandoned game. Their life (T9b): a restart restores a whole game, its seats
+//! re-taken with their numbers kept and a seat's record downloaded; a paused game leaves its
+//! thread and a seat's join resumes it, also after a restart; a game whose seats stayed empty
+//! pauses at the sweep and goes void; a drain does not wait for a running whole game.
 
 use std::fs;
 
 use h3_contracts::PlayerId;
 use h3_protocol::map::game::manifest;
 use h3_protocol::session::game::{GameEntry, GameOptions, GameSession};
-use h3_protocol::wire::game::{GameCommand, MapGameInfo, MapOffer};
+use h3_protocol::wire::game::{GameCommand, GameRecordHeader, MapGameInfo, MapOffer};
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Phase, Refusal, Seat, ServerMessage};
 
-use super::{fast, greeted, root};
+use super::{GAME_TIME, fast, greeted, root};
 use crate::client::Client;
-use crate::config::{self, Config};
+use crate::config::{self, Config, Limits};
 use crate::journal::whole as journal;
 use crate::{Running, start, whole};
 
@@ -251,7 +254,7 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         (read.start.offer.as_str(), read.start.game),
         ("duel-map", game)
     );
-    assert_eq!(read.start.tokens, [t0.clone(), t1]);
+    assert_eq!(read.start.tokens, [t0.clone(), t1.clone()]);
     let p = PlayerId::new;
     let end = h3_game::GameCommand::EndTurn;
     assert_eq!(
@@ -260,7 +263,7 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
             GameEntry::Taken(p(0)),
             GameEntry::Taken(p(1)),
             GameEntry::Started,
-            GameEntry::Numbered(p(0), 1, end),
+            GameEntry::Numbered(p(0), 1, end.clone()),
         ]
     );
     let replay = h3_files::adventure::parse_replay(&read.start.replay).unwrap();
@@ -284,15 +287,54 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
     .unwrap();
     assert!(reopened.started() && reopened.drain_entries().next().is_none());
     assert_eq!(reopened.journal().commands.len(), 1);
-    // A restart keeps the whole game's journal as it is, and lists no game of it until T9b.
-    let before = fs::read(&path).unwrap();
+    // A restart restores it: listed running, its seats empty and none open.
     for client in [a, b] {
         client.close().await;
     }
     running.shutdown().await;
     let again = start(&config).await.unwrap();
-    assert!(map_listed(&again).await.1.is_empty());
-    assert_eq!(fs::read(&path).unwrap(), before);
+    let restored = MapGameInfo {
+        phase: Phase::Running,
+        open: vec![],
+        ..waiting
+    };
+    assert_eq!(map_listed(&again).await.1, [restored]);
+    // Its seats re-taken with their tokens, the numbers kept: the first player's resend is answered
+    // as the first time, the second player acts.
+    let mut b = greeted(&again).await;
+    b.send(&join(1, Some(t1.clone()))).await.unwrap();
+    let back = |m| match m {
+        ServerMessage::GameJoined { last, .. } => Some(last),
+        _ => None,
+    };
+    assert_eq!(next(&mut b, back).await, None);
+    next(&mut b, turn).await;
+    let mut a = greeted(&again).await;
+    a.send(&join(0, Some(t0.clone()))).await.unwrap();
+    assert_eq!(next(&mut a, back).await, Some(1));
+    a.send(&end_turn).await.unwrap();
+    assert_eq!(next(&mut a, accepted).await, 1);
+    b.send(&end_turn).await.unwrap();
+    assert_eq!(next(&mut b, accepted).await, 1);
+    next(&mut a, turn).await;
+    // A seat downloads its record: its header names the game and the seat's player.
+    a.send(&ClientMessage::FetchRecord { seq: 9 })
+        .await
+        .unwrap();
+    let record = |m| match m {
+        ServerMessage::Record { seq: 9, record, .. } => Some(record),
+        _ => None,
+    };
+    let record = next(&mut a, record).await;
+    let header: GameRecordHeader = serde_json::from_str(record.lines().next().unwrap()).unwrap();
+    assert_eq!((header.game, header.player), (game, 0));
+    assert!(record.lines().count() > 1);
+    let read = journal::read(&path).unwrap();
+    assert_eq!(
+        read.entries.last(),
+        Some(&GameEntry::Numbered(p(1), 1, end))
+    );
+    // The ids handed out after it are higher.
     let mut c = greeted(&again).await;
     c.create_map("duel-map", 1).await.unwrap();
     let created = c.recv().await;
@@ -301,6 +343,199 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         "{created:?}"
     );
     again.shutdown().await;
+}
+
+/// A whole game of the duel map created and joined by two clients (the creator the first
+/// player's seat, the host's), up to the first player's turn: both clients, the game and the
+/// seats' tokens.
+async fn started(running: &Running) -> (Client, Client, u32, [String; 2]) {
+    let mut a = greeted(running).await;
+    a.create_map("duel-map", 0).await.unwrap();
+    let Some(ServerMessage::GameCreated { game, .. }) = a.recv().await else {
+        panic!("not created")
+    };
+    let t0 = game_joined(&mut a, game, 0).await;
+    let mut b = greeted(running).await;
+    let join = ClientMessage::GameJoin {
+        game,
+        player: 1,
+        token: None,
+    };
+    b.send(&join).await.unwrap();
+    let t1 = game_joined(&mut b, game, 1).await;
+    next(&mut a, |m| {
+        matches!(m, ServerMessage::GameTurn { .. }).then_some(())
+    })
+    .await;
+    (a, b, game, [t0, t1])
+}
+
+/// The goodbye a client gets, the messages before it skipped, then the end of the connection.
+async fn goodbye_after(client: &mut Client) -> GoodbyeReason {
+    let reason = next(client, |m| match m {
+        ServerMessage::Goodbye { reason } => Some(reason),
+        _ => None,
+    })
+    .await;
+    assert_eq!(client.recv().await, None, "closed after the goodbye");
+    reason
+}
+
+/// Waits until the lobby lists the whole game `game` in `phase`, or no more (`None`).
+async fn map_listed_as(running: &Running, game: u32, phase: Option<Phase>) {
+    listed_until(running, |games| {
+        games.iter().find(|g| g.game == game).map(|g| g.phase) == phase
+    })
+    .await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_paused_whole_game_leaves_its_thread_and_a_seat_resumes_it_also_after_a_restart() {
+    let config = with_map();
+    let running = start(&config).await.unwrap();
+    let (mut a, mut b, game, [t0, t1]) = started(&running).await;
+    // The host pauses it: both seats hear it, the lobby lists it paused, its journal ends so.
+    a.send(&ClientMessage::Pause { seq: 1 }).await.unwrap();
+    assert_eq!(goodbye_after(&mut a).await, GoodbyeReason::Paused);
+    assert_eq!(goodbye_after(&mut b).await, GoodbyeReason::Paused);
+    map_listed_as(&running, game, Some(Phase::Paused)).await;
+    let path = journal::dir(&config.server.data).join(format!("{game}.journal"));
+    let read = journal::read(&path).unwrap();
+    assert_eq!(read.entries.last(), Some(&GameEntry::Paused));
+    // A join without the seat's token, with another, of a player the map lacks, or a battle's
+    // join, is refused as the running game refuses it.
+    let mut c = greeted(&running).await;
+    let join = |player, token| ClientMessage::GameJoin {
+        game,
+        player,
+        token,
+    };
+    let battle_join = ClientMessage::Join {
+        game,
+        seat: Seat::Attacker,
+        token: None,
+    };
+    for (message, reason) in [
+        (join(1, None), Refusal::SeatTaken),
+        (join(1, Some(String::from("x"))), Refusal::BadToken),
+        (join(5, Some(t1.clone())), Refusal::NoSuchSeat),
+        (battle_join, Refusal::NoSuchGame),
+    ] {
+        c.send(&message).await.unwrap();
+        assert_eq!(c.recv().await, Some(ServerMessage::Refused { reason }));
+    }
+    // A seat's join with its token resumes it on a thread of its own.
+    c.send(&join(1, Some(t1.clone()))).await.unwrap();
+    let joined = |m| matches!(m, ServerMessage::GameJoined { player: 1, .. }).then_some(());
+    next(&mut c, joined).await;
+    map_listed_as(&running, game, Some(Phase::Running)).await;
+    // Paused again by its host, it stays paused over a restart, and a join resumes it there.
+    let mut a = greeted(&running).await;
+    a.send(&join(0, Some(t0.clone()))).await.unwrap();
+    next(&mut a, |m| {
+        matches!(m, ServerMessage::GameJoined { player: 0, .. }).then_some(())
+    })
+    .await;
+    a.send(&ClientMessage::Pause { seq: 2 }).await.unwrap();
+    assert_eq!(goodbye_after(&mut a).await, GoodbyeReason::Paused);
+    assert_eq!(goodbye_after(&mut c).await, GoodbyeReason::Paused);
+    map_listed_as(&running, game, Some(Phase::Paused)).await;
+    running.shutdown().await;
+    let again = start(&config).await.unwrap();
+    map_listed_as(&again, game, Some(Phase::Paused)).await;
+    let mut a = greeted(&again).await;
+    a.send(&join(0, Some(t0))).await.unwrap();
+    let last = |m| match m {
+        ServerMessage::GameJoined {
+            player: 0, last, ..
+        } => Some(last),
+        _ => None,
+    };
+    assert_eq!(next(&mut a, last).await, None);
+    map_listed_as(&again, game, Some(Phase::Running)).await;
+    let read = journal::read(&path).unwrap();
+    let pauses = |entry: &GameEntry| matches!(entry, GameEntry::Paused | GameEntry::Resumed);
+    let pauses: Vec<_> = read.entries.into_iter().filter(pauses).collect();
+    assert_eq!(
+        pauses,
+        [
+            GameEntry::Paused,
+            GameEntry::Resumed,
+            GameEntry::Paused,
+            GameEntry::Resumed,
+        ]
+    );
+    again.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_whole_game_whose_seats_stayed_empty_pauses_then_goes_void() {
+    let limits = Limits {
+        empty_game_ms: 200,
+        paused_game_ms: 400,
+        ..fast()
+    };
+    let config = Config {
+        maps: vec![duel_map()],
+        ..super::config(limits)
+    };
+    let running = start(&config).await.unwrap();
+    let (a, b, game, _) = started(&running).await;
+    // Its players gone, the running game pauses at its deadline, its journal so.
+    for client in [a, b] {
+        client.close().await;
+    }
+    map_listed_as(&running, game, Some(Phase::Paused)).await;
+    let path = journal::dir(&config.server.data).join(format!("{game}.journal"));
+    let read = journal::read(&path).unwrap();
+    assert_eq!(read.entries.last(), Some(&GameEntry::Paused));
+    // Nobody resumes it: it goes void, its journal moved aside.
+    map_listed_as(&running, game, None).await;
+    assert!(!path.exists());
+    let void: Vec<_> = fs::read_dir(config.server.data.join("void"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        void.iter()
+            .any(|name| name.starts_with(&format!("{game}-"))),
+        "{void:?}"
+    );
+    running.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_draining_server_does_not_wait_for_a_running_whole_game() {
+    let config = with_map();
+    let running = start(&config).await.unwrap();
+    let (mut a, mut b, game, _) = started(&running).await;
+    let mut c = greeted(&running).await;
+    c.create_map("duel-map", 0).await.unwrap();
+    let Some(ServerMessage::GameCreated { game: waiting, .. }) = c.recv().await else {
+        panic!("not created")
+    };
+    game_joined(&mut c, waiting, 0).await;
+    // The drain ends the waiting game and does not wait for the running one, which plays on.
+    running.drain();
+    assert_eq!(goodbye_after(&mut c).await, GoodbyeReason::Shutdown);
+    tokio::time::timeout(GAME_TIME, running.drained())
+        .await
+        .unwrap();
+    assert_eq!(running.in_play(), 1);
+    let end_turn = ClientMessage::GameCommand {
+        seq: 1,
+        command: GameCommand::EndTurn {},
+    };
+    a.send(&end_turn).await.unwrap();
+    let accepted = |m| matches!(m, ServerMessage::GameAccepted { seq: 1, .. }).then_some(());
+    next(&mut a, accepted).await;
+    // The stop ends it, its journal kept for the next start.
+    running.shutdown().await;
+    assert_eq!(goodbye_after(&mut b).await, GoodbyeReason::Shutdown);
+    let path = journal::dir(&config.server.data).join(format!("{game}.journal"));
+    assert!(path.is_file());
+    let waiting_path = journal::dir(&config.server.data).join(format!("{waiting}.journal"));
+    assert!(!waiting_path.exists());
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -368,4 +603,51 @@ async fn whole_games_refuse_out_of_place_and_go_when_abandoned() {
     listed_until(&running, <[MapGameInfo]>::is_empty).await;
     assert!(!path.exists());
     running.shutdown().await;
+}
+
+/// The names of the journals in `data`'s void.
+fn voided(data: &std::path::Path) -> Vec<String> {
+    let names = fs::read_dir(data.join("void")).into_iter().flatten();
+    let names = names.map(|e| e.unwrap().file_name().to_string_lossy().into_owned());
+    names.collect()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn whole_journals_that_do_not_restore_are_void() {
+    let config = with_map();
+    let running = start(&config).await.unwrap();
+    let (_, _, kept, _) = started(&running).await;
+    let (_, _, garbled, _) = started(&running).await;
+    running.shutdown().await;
+    // A journal with a line that does not read is void; the other is restored.
+    let path = |game: u32| journal::dir(&config.server.data).join(format!("{game}.journal"));
+    let mut text = fs::read_to_string(path(garbled)).unwrap();
+    text.push_str("{\"Nothing\":{}}\n");
+    fs::write(path(garbled), text).unwrap();
+    let again = start(&config).await.unwrap();
+    let listed: Vec<u32> = map_listed(&again).await.1.iter().map(|g| g.game).collect();
+    assert_eq!(listed, [kept]);
+    assert!(!path(garbled).exists());
+    let void = voided(&config.server.data);
+    assert!(
+        void.iter()
+            .any(|name| name.starts_with(&format!("{garbled}-"))),
+        "{void:?}"
+    );
+    again.shutdown().await;
+    // A server that no longer offers its map voids it.
+    let without = Config {
+        server: config.server.clone(),
+        ..super::config(fast())
+    };
+    let last = start(&without).await.unwrap();
+    assert!(map_listed(&last).await.1.is_empty());
+    assert!(!path(kept).exists());
+    let void = voided(&config.server.data);
+    assert!(
+        void.iter()
+            .any(|name| name.starts_with(&format!("{kept}-"))),
+        "{void:?}"
+    );
+    last.shutdown().await;
 }

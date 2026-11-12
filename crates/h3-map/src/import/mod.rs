@@ -146,6 +146,11 @@ pub enum ImportError {
     /// The random town at this index has an alignment byte from 8 to 254, past the colours (T-1,
     /// `TWN-QUIRK-1`; E09 T7a1).
     Alignment(usize),
+    /// The garrison at this index has a random stack (ADV-GAR-001, E08 T113b; decision 299): the
+    /// original resolves none, neither at the load nor at a new game's setup (survey
+    /// `E08-garrisons-bonuses.md` §2, §9.2), so it is refused for good, unlike a placed hero's
+    /// ([`Unsupported::RandomStack`]); none of the shipped maps has one.
+    RandomStack(usize),
 }
 
 impl fmt::Display for ImportError {
@@ -206,6 +211,9 @@ impl fmt::Display for ImportError {
             }
             Self::Alignment(object) => {
                 write!(f, "random town {object} has an alignment past the colours")
+            }
+            Self::RandomStack(object) => {
+                write!(f, "garrison {object} has a random stack")
             }
         }
     }
@@ -379,13 +387,16 @@ fn skill_set(rules: &GameRuleset, bits: &Bits) -> Result<Vec<SkillId>, ImportErr
 /// E08 T97b1), and classes 18 and 19 are refused. Since E09 T8a1
 /// the towns (77 and 98) are typed, each with its owner and its garrison's formation
 /// ([`Holds::Town`]). Since E08 T97b1 a dwelling or a random dwelling entered from water is no
-/// longer refused (the whole [`import`] keeps refusing the other ownable kinds there).
+/// longer refused (the whole [`import`] keeps refusing the other ownable kinds there). Since E08
+/// T103b the teleporters are typed; since E08 T113b the garrisons (33 and 219), each with its
+/// owner, troops and removable flag ([`Holds::Garrison`]), and the fifteen bonus visitables.
 ///
 /// # Errors
 ///
 /// The first [`ImportError`] found: the map's size, the tiles, then the objects' templates,
-/// types, owners, sets and, since E08 T93b, random dwellings' factions and levels and the boats'
-/// tiles and types in the map's order.
+/// types, owners, sets and, since E08 T93b, random dwellings' factions and levels, since E08 T113b
+/// a garrison's random stack ([`ImportError::RandomStack`]), and the boats' tiles and types in the
+/// map's order.
 pub fn import_map(map: &RawMap, rules: &GameRuleset) -> Result<MapSetup, ImportError> {
     static_layer(map, rules, &colours(map)).map(|(setup, _)| setup)
 }
@@ -460,7 +471,8 @@ fn static_layer(
 /// stack, kept unguarded, or a reward's creatures with a random stack or beyond an army's slots,
 /// kept without them ([`record`]). Since E08 T93b classes 18 and 19 are refused; since E09 T11 a
 /// random dwelling tied to a town of the map (`towns`, its identifiers' `TownId`s) holds its town
-/// ([`random_dwelling`]).
+/// ([`random_dwelling`]); since E08 T113b a garrison holds its owner, troops and removable flag
+/// ([`garrison`]).
 // rule: ADV-OBJ-002
 fn typed(
     rules: &GameRuleset,
@@ -556,6 +568,16 @@ fn typed(
         Body::AbandonedMine(set) => {
             setup.holds = Holds::Resources(mine_resources(rules, index, set)?);
         }
+        // E08 T113b (increment 12's design note §4): a garrison's owner, troops and removable
+        // flag.
+        Body::Garrison {
+            owner,
+            army,
+            removable,
+        } => {
+            setup.owner = object_owner(colours, index, *owner)?;
+            setup.holds = garrison(rules, version, index, army, *removable)?;
+        }
         _ => {}
     }
     if let Some((owner, holds)) = dwelling {
@@ -578,6 +600,38 @@ fn typed(
     }
     setup.object_type = Some(object_type);
     Ok((setup, unsupported))
+}
+
+/// A garrison's troops and removable flag (ADV-GAR-001, E08 T113b; increment 12's design note §4;
+/// survey `E08-garrisons-bonuses.md` §2): its stacks by slot, a count of 0 an empty slot as a
+/// slot without a creature is (decision 299), the count's 16 bits read whole (the original
+/// sign-extends them, `load_garrison_body` 0x502A00, as `ADV-QUIRK-19`'s; no shipped garrison
+/// holds more than 200); the map's removable flag (the parser's, true on an RoE map). Then a
+/// random stack is refused for good ([`ImportError::RandomStack`]: the original resolves none,
+/// decision 299; a random code with a count of 0 is an empty slot like any other).
+// rule: ADV-GAR-001
+fn garrison(
+    rules: &GameRuleset,
+    version: Version,
+    index: usize,
+    army: &Army,
+    removable: bool,
+) -> Result<Holds, ImportError> {
+    let troops: Vec<Option<Stack>> = army
+        .iter()
+        .map(|stack| stack.filter(|s| s.count != 0))
+        .collect();
+    if troops
+        .iter()
+        .flatten()
+        .any(|s| random_stack(version, s.creature))
+    {
+        return Err(ImportError::RandomStack(index));
+    }
+    Ok(Holds::Garrison {
+        army: stacks(rules, &troops)?,
+        removable,
+    })
 }
 
 /// A boat (ADV-SEA-001, E08 T72; survey `E08-sea.md` §2): its template's one visitable tile and

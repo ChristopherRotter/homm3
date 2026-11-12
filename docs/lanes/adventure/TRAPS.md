@@ -34,7 +34,10 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   `h3-server`'s `tests/record.rs`; grep both crates for `the golden adventure replays`), and the
   scoped verify runs none of them: bump each in the same pull request (`cross-lane`, the user's
   consent; their inbox told) and run `cargo test -p h3-protocol --lib -- tests::game_fold
-  tests::game_session` and `cargo test -p h3-server --lib -- tests::record`.
+  tests::game_session` and `cargo test -p h3-server --lib -- tests::record`. A bump of the
+  adventure state hash or the map import moves every golden's hash lines, and `tests/record.rs`
+  hardcodes `army-dialog-s1`'s checkpoint, final hash and `import_version` (E08 T113b): update
+  them in the same pull request (`cross-lane`, the user's consent).
 - Counting increment 10's events (E08 T96a): a purchase's joins are `CreaturesJoined`, as the free creatures' are; tell them apart by the answer before (the hire question's accept, or a `Buy`). A refusal cannot stand in a golden replay: `Replay::record_commands` stops at the first command the game rejects, so a script shows a refusal as the legal set without that `Buy` and checks the error on a copy in its probe.
 - The capture harness's hire dialog (E08 T90): the topmost dialog's vtable is 0x640C4C, not the manager's 0x640C70 that `docs/exe/map.toml` names; the manager (the most +0xAC, the amount +0xB8) is 0x80 after the dialog, else found by a scan (`h3mem.recruit_manager`). A settle that does not know a screen returns with it open and the next step's key fails.
 - A computer player's turn is not shown as the current player (E08 T90, batch E10a's Tan): `end_turn` polled Blue then Red, Tan never; read the computer's own state (`treasury:tan`, its hero) before and after instead of `ai_turns`.

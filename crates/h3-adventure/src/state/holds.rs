@@ -5,6 +5,7 @@
 use alloc::collections::BTreeSet;
 
 use h3_content::{ArtifactTypeId, CreatureFlag, Formation, Ruleset, SpellCategory, SpellId};
+use h3_contracts::ArmyStack;
 use h3_heroes::{ArtifactInstance, ScholarGift, validate_artifact};
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -21,7 +22,9 @@ use crate::setup::{EventSetup, Holds, RewardRecord};
 /// `[[random_dwelling]]` table, in the core's order without repeats, and levels within 1 to
 /// [`DWELLING_LEVELS`], the lowest not above the highest; since E09 T11 a random dwelling tied to a
 /// town such levels (its town is checked against the map's towns as the static map is built);
-/// since E09 T8a1 a town its garrison's formation; every other kind nothing.
+/// since E09 T8a1 a town its garrison's formation; since E08 T113b a map garrison its troops, none
+/// or valid as an army with no war machine ([`check_troops`]), and its removable flag; every other
+/// kind nothing.
 pub(super) fn check_holds(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -72,6 +75,10 @@ pub(super) fn check_holds(
             levels_fit(*levels)
         }
         (Some(ObjectKind::Town { .. }), Holds::Town { .. }) => true,
+        // rule: ADV-GAR-001
+        (Some(ObjectKind::Garrison { .. }), Holds::Garrison { army, .. }) => {
+            check_troops(core, part, army)
+        }
         (
             Some(
                 ObjectKind::Artifact { classes: None }
@@ -83,12 +90,25 @@ pub(super) fn check_holds(
                 | ObjectKind::Event
                 | ObjectKind::AbandonedMine { .. }
                 | ObjectKind::RandomDwelling
-                | ObjectKind::Town { .. },
+                | ObjectKind::Town { .. }
+                | ObjectKind::Garrison { .. },
             ),
             _,
         ) => false,
         (_, holds) => *holds == Holds::Nothing,
     }
+}
+
+/// Creatures an object holds as the map gives them, a reward's or a garrison's (ADV-RWD-001,
+/// ADV-GAR-001): none at all, or valid as an army with no war machine.
+fn check_troops(core: &Ruleset, part: &AdventureRuleset, troops: &[ArmyStack]) -> bool {
+    troops.is_empty()
+        || check_army(core, part, troops).is_ok_and(|army| {
+            army.iter().all(|stack| {
+                core.creature(stack.creature)
+                    .is_some_and(|c| !c.flags.contains(CreatureFlag::WarMachine))
+            })
+        })
 }
 
 /// A random dwelling's levels (ADV-DWL-005): from 1 to [`DWELLING_LEVELS`], the lowest not above
@@ -119,13 +139,7 @@ fn check_record(core: &Ruleset, part: &AdventureRuleset, record: &RewardRecord) 
         .iter()
         .map(|(resource, _)| resource)
         .collect::<BTreeSet<_>>();
-    let creatures = record.creatures.is_empty()
-        || check_army(core, part, &record.creatures).is_ok_and(|army| {
-            army.iter().all(|stack| {
-                core.creature(stack.creature)
-                    .is_some_and(|c| !c.flags.contains(CreatureFlag::WarMachine))
-            })
-        });
+    let creatures = check_troops(core, part, &record.creatures);
     hero.skills
         .iter()
         .all(|&(skill, level)| core.skill(skill).is_some() && (1..=3).contains(&level))
@@ -148,7 +162,9 @@ impl CanonicalHash for Holds {
     /// abandoned mine's resources as length and handles; since E08 T93b, 8 a random dwelling's
     /// factions as length and handles, then its lowest and highest level: since E08 T94a no
     /// built object holds it, a random dwelling holding nothing once it resolved; since adventure
-    /// state hash v21, E09 T8a1, 9 a town's formation, 0 loose, 1 tight).
+    /// state hash v21, E09 T8a1, 9 a town's formation, 0 loose, 1 tight; 10 a random dwelling tied
+    /// to a town, its town and levels; since adventure state hash v22, E08 T113b, 11 a map
+    /// garrison's troops as length and slot, creature and count each, then its removable flag).
     fn hash_into(&self, h: &mut StateHasher) {
         match self {
             Self::Nothing => h.write_u8(0),
@@ -217,6 +233,16 @@ impl CanonicalHash for Holds {
                 h.write_u16(town.raw());
                 h.write_u8(levels.0);
                 h.write_u8(levels.1);
+            }
+            Self::Garrison { army, removable } => {
+                h.write_u8(11);
+                h.write_len(army.len());
+                for stack in army {
+                    h.write_u8(stack.slot);
+                    stack.creature.hash_into(h);
+                    h.write_u32(stack.count);
+                }
+                h.write_bool(*removable);
             }
         }
     }

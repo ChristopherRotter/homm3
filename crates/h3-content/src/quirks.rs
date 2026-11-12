@@ -322,17 +322,19 @@ pub const ROE_WITCH_HUT_MASK: QuirkFlag = QuirkFlag(37);
 /// `h3-heroes` and the adventure's visits from E08 T60.
 pub const FULL_BACKPACK_REFUSES: QuirkFlag = QuirkFlag(38);
 
-/// Planned TWN-QUIRK-10 (T-13, TD-13, E09 decision 69; survey `E09-growth.md` §3, batch TWN-3's
+/// TWN-QUIRK-10 (T-13, TD-13, E09 decision 69; survey `E09-growth.md` §3, batch TWN-3's
 /// TWN-3-1): a creature's month doubles only the town counts whose creature is the month's
 /// (`new_month` 0x4C8F5E's loop), so a level's upgrade or base creature beside it keeps its
 /// count. Off: the level's counts whichever of its two creatures is the month's (VCMI 1.7.5's
-/// rule). Class `fix-optional`; read by `h3-towns`' month from E09 T25b.
+/// rule). Class `fix-optional`; read by `h3-towns`' month from E09 T25b1, which the game's day
+/// runs from E09 T26a1.
 pub const CREATURE_MONTH_EXACT: QuirkFlag = QuirkFlag(39);
 
-/// Planned TWN-QUIRK-9 (T-12, TD-14, E09 decision 70; survey `E09-growth.md` §3, batch TWN-3's
+/// TWN-QUIRK-9 (T-12, TD-14, E09 decision 70; survey `E09-growth.md` §3, batch TWN-3's
 /// TWN-3-3): the Plague takes a neutral town's whole growth g from a count its week grew by half
 /// of it, then halves, so the town keeps max(0, before − ⌈g ÷ 2⌉) ÷ 2 of its count before the
-/// week. Off: every town keeps half of its count before the week. Class `fix-optional`; read by `h3-towns`' month from E09 T25b.
+/// week. Off: every town keeps half of its count before the week. Class `fix-optional`; read by
+/// `h3-towns`' month from E09 T25b1, which the game's day runs from E09 T26a1.
 pub const NEUTRAL_PLAGUE_FULL_GROWTH: QuirkFlag = QuirkFlag(40);
 
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and

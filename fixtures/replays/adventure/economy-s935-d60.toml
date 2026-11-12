@@ -924,42 +924,42 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xd96a85a53948b81a",
-    "0x67e4673a94cbe0e0",
-    "0xfb5b92f33ec459e0",
-    "0xb5e0984df7bf268f",
-    "0x7a528794969ed58e",
-    "0x719206805bacc552",
-    "0x6950e6fbd70dac09",
-    "0x16759cd87fb278ce",
-    "0xe66acda2f9ea9549",
-    "0x2bda3c77df452439",
-    "0x0524f1dbce242503",
-    "0x581dbb3cc4915e46",
-    "0xe5ee429761f48b54",
-    "0xa214ec185329063b",
-    "0x8f82b5d64965cb17",
-    "0x3cf0bda7fb98c942",
-    "0x8c9bbe8b4c4e98b0",
-    "0x7b5052bff0aa17f5",
-    "0x1c968d459927a8b6",
-    "0x2cad29e746b2977d",
-    "0x81dc8743b3b68bcf",
-    "0xe8c32ddafd51abd0",
-    "0xe4cf6ef3ea05f5eb",
-    "0xebbdfc71faf6945d",
-    "0x2e45addf52740474",
-    "0x04d39a64fb8c4e94",
-    "0x79dd2b6006d38b28",
-    "0x8e99e24af34e9be9",
-    "0x3c9d98c8439c0797",
-    "0x130401bd3168eb90",
-    "0xb59ef4231675fa29",
-    "0x01703ee243a86426",
-    "0xa18bc277863f4582",
-    "0xad4e348cbed3a76b",
-    "0x38dd159c866c6e06",
-    "0x2f22d5de75d2cc93",
+    "0xee297b251ba405d3",
+    "0x1f18383b371c9981",
+    "0xb28f63f3e1151281",
+    "0x4da540a8b2a7c4ea",
+    "0xd274ae9653a389b7",
+    "0x1f1f86efe6f46cfb",
+    "0xb38f83e744dc9bcc",
+    "0x96454c885caa3877",
+    "0x5f9a483c0e83678c",
+    "0xc60d31d6486a1e7c",
+    "0x002b3dd102736a2f",
+    "0xf37883104cf7c43c",
+    "0xc880e2fda5619b00",
+    "0x02365ca1d894a947",
+    "0x8362ec8940434508",
+    "0x2954ea8481da7f46",
+    "0x53830e40ac9e0fc1",
+    "0xdd16f2cde89cb096",
+    "0x310318a73cea2eb0",
+    "0xef0f626f7ace705c",
+    "0x4e981115e6bfb71e",
+    "0xe6ed7320b4da7c36",
+    "0x3fcabcfe4729aa2b",
+    "0xa4a1e954aa2cb2c6",
+    "0x2fe512badf3d87e0",
+    "0x0278c486f6210f0a",
+    "0x1bb6d85787d66686",
+    "0x26527981cd15c51d",
+    "0x430918427f0ae7f1",
+    "0x8302e1b802c4645a",
+    "0xf944373e507ed4fb",
+    "0x8cb15f70f3ea8b10",
+    "0x043376c6aa75f254",
+    "0x15215422ea71ecad",
+    "0xe37056377ac04b90",
+    "0x4221b7105e0e5958",
 ]
 
 [replay]
@@ -990,14 +990,14 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 28
-adventure_state_hash_version = 21
+adventure_state_hash_version = 22
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-economy-36.h3m"
 hash = "0x0d7ea287c88b7469"
-import_version = 21
+import_version = 22
 
 [result]
 day = 61
-final_hash = "0x24de06acbcc2f09c"
+final_hash = "0xdbb9c56457692e4d"

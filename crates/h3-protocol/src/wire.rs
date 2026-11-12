@@ -1808,9 +1808,10 @@ pub enum ServerMessage {
         replay: String,
     },
     /// The viewer's record: its own message log, not re-runnable. Its first line is a
-    /// [`RecordHeader`], then one line per numbered message the viewer was sent, in order, from
-    /// message [`RecordHeader::first`] to message `n`: the record keeps a viewer's latest messages
-    /// within a bound in bytes (E16 M2 T5c), its oldest go first.
+    /// [`RecordHeader`] (a whole game's seat's: a [`game::GameRecordHeader`], E16 M5 T9b), then
+    /// one line per numbered message the viewer was sent, in order, from message
+    /// [`RecordHeader::first`] to message `n`: the record keeps a viewer's latest messages within a
+    /// bound in bytes (E16 M2 T5c), its oldest go first.
     Record {
         /// The number of the viewer's last numbered message (this one takes none).
         n: u32,

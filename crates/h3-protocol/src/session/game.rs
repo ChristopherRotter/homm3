@@ -37,7 +37,8 @@
 //!   { AlreadyAsked }`). A pause is an entry; every holder gets `Goodbye { Paused }`, and the host
 //!   may then drop the session: a paused game is its journal ([`GameSession::paused`]). A seat's
 //!   join resumes it, an entry too; meanwhile a command, the system actor's too, is rejected
-//!   `NotStarted`.
+//!   `NotStarted`. The host pauses a running game no connection holds a seat of too
+//!   ([`GameSession::suspend`], E16 M5 T9b: its seats stayed empty), as a battle's.
 //! - **The system actor** (`h3_game::Actor::System`, E08 T20b2): its commands come from the host
 //!   ([`GameSession::system`]; its legal ones [`GameSession::system_legal`]): an unowned battle
 //!   side's, a wandering monster's. No player is told its acceptance or its rejection; its events
@@ -75,12 +76,12 @@
 //!   two such stretches; one command's messages, or a battle's (its own rejections there too), may
 //!   take it beyond its bound. [`GameSession::record`] gives it with
 //!   its header line ([`GameRecordHeader`]: the game's manifest and the player), as a record file
-//!   holds it.
+//!   holds it; a seat downloads its player's with `FetchRecord` (E16 M5 T9b: answered `Record`,
+//!   which takes no number, as a battle's).
 //! - **Not here yet:** a hero's moves, which
-//!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`, T11); the
-//!   journal's file, the sweep of abandoned games and the hosting over the network (T9); a
-//!   battle's `ProposePause`, `AnswerPause` (no whole game is ranked), `Query`, `FetchReplay`,
-//!   `FetchRecord` (T9) and `SetSpectators` (2c), ignored here.
+//!   `GameTurn` leaves out as `h3_game::legal_commands` does (`h3_game::legal_moves`, T11); a
+//!   battle's `ProposePause`, `AnswerPause` (no whole game is ranked), `Query`, `FetchReplay` (no
+//!   whole game ends before E10) and `SetSpectators` (2c), ignored here.
 //!
 //! Provisional (E16 M5 T5a, T5b, T8a, T8b; the epic's review list): the names, the start as the
 //! constructor, the message order, a `GameTurn` after every accepted command to every player that
@@ -93,7 +94,7 @@
 //! game's), the host's tokens drawn through a closure (T8a); the numbering rule, the answers kept,
 //! a resend's answer numbered and recorded, `GameJoined`'s `last`, the pause's messages and
 //! entries, `reopen` with the host's tokens, a restored started game's snapshots and turns into
-//! its records (T8b).
+//! its records (T8b); the empty game's pause, the record's download answered as a battle's (T9b).
 
 use alloc::collections::{BTreeMap, VecDeque};
 use alloc::string::String;
@@ -618,9 +619,9 @@ impl<'r> GameSession<'r> {
     /// player's unless it is a resend (E16 M5 T8b: the module's numbers), `Pause` is the host's
     /// pause or another seat's ask (T8b), `Leave` frees the seat and closes. A battle's `Join` is
     /// refused `NoSuchGame` and its `Command` rejected `NotSeated`; the hello, the ping and the
-    /// account's requests are the connection's ([`crate::connection`]), the lobby's the host's,
-    /// a battle's other messages none of a whole game's yet (T9 takes the record's download):
-    /// they are ignored here.
+    /// account's requests are the connection's ([`crate::connection`]), the lobby's the host's;
+    /// `FetchRecord` gives the seat's record (E16 M5 T9b); a battle's other messages are none of
+    /// a whole game's yet: they are ignored here.
     pub fn handle(&mut self, conn: ConnId, message: ClientMessage, out: &mut Vec<Outbound>) {
         match message {
             ClientMessage::GameJoin {
@@ -630,6 +631,7 @@ impl<'r> GameSession<'r> {
             } => self.join(conn, (game, player), token.as_deref(), out),
             ClientMessage::GameCommand { seq, command } => self.command(conn, seq, command, out),
             ClientMessage::Pause { seq } => self.pause(conn, seq, out),
+            ClientMessage::FetchRecord { seq } => self.fetch_record(conn, seq, out),
             ClientMessage::Leave {} => {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
@@ -660,7 +662,6 @@ impl<'r> GameSession<'r> {
             | ClientMessage::Lists { .. }
             | ClientMessage::Query { .. }
             | ClientMessage::FetchReplay { .. }
-            | ClientMessage::FetchRecord { .. }
             | ClientMessage::ProposePause { .. }
             | ClientMessage::AnswerPause { .. }
             | ClientMessage::SetSpectators { .. } => {}
@@ -696,6 +697,17 @@ impl<'r> GameSession<'r> {
     /// seat was taken since: the host may drop the session, the journal is the game.
     pub const fn paused(&self) -> bool {
         self.paused
+    }
+
+    /// Pauses the running game if no connection holds a seat of it (E16 M5 T9b, as a battle's
+    /// `Session::suspend`: the host's sweep, its seats stayed empty), an entry: whether it paused.
+    /// A seat's join resumes it.
+    pub fn suspend(&mut self, out: &mut Vec<Outbound>) -> bool {
+        if self.phase() != Phase::Running || self.seated() {
+            return false;
+        }
+        self.halt(out);
+        true
     }
 
     /// Whether the connection `conn` holds a seat (E16 M5 T9a): one that does not, after its
@@ -878,6 +890,18 @@ impl<'r> GameSession<'r> {
             }
         }
         self.route(frames, out);
+    }
+
+    /// `FetchRecord` (E16 M5 T9b): the seat's player's record ([`GameSession::record`]), answered
+    /// `Record` with the number of its last message (the answer takes none, as a battle's).
+    fn fetch_record(&self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
+        let Some(player) = self.seat_of(conn) else {
+            return out.push(game_unseated(conn, seq));
+        };
+        // Every seat's player is a viewer of the game.
+        let (n, record) = (self.viewers[player.index()].n, self.record(player));
+        let record = record.unwrap_or_default();
+        out.push(reply(conn, &ServerMessage::Record { n, seq, record }));
     }
 
     /// Pauses the game (E16 M5 T8b): an entry, and every holder hears `Goodbye { Paused }`.

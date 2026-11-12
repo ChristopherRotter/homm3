@@ -3,7 +3,8 @@
 //! else `Stale`, and a rejected command takes no number; the host pauses a running game, another
 //! seat's ask is told to every player once until the game moves on, and a seat's join resumes it;
 //! a game of connections reopens from its journal with its seats taken, none held, its numbers
-//! kept.
+//! kept; the host pauses a running game no seat is held of, and a seat downloads its record (E16
+//! M5 T9b).
 
 use std::string::ToString;
 use std::vec::Vec;
@@ -330,4 +331,43 @@ fn a_game_of_connections_reopens_with_its_seats_taken_and_its_numbers_kept() {
         hosted,
         Err(GameRestoreError::Rejected { at: 0, .. })
     ));
+}
+
+#[test]
+fn an_empty_running_game_suspends_and_a_seat_downloads_its_record() {
+    let (rules, setup) = duel();
+    let mut s = GameSession::new(rules, &setup, 3, manifest(rules, MAP), OPTIONS, token).unwrap();
+    let acting = s.state().turn_group()[0];
+    let waiting = other(acting);
+    let mut out = Vec::new();
+    // A waiting game never suspends, nor a running one whose seat a connection holds.
+    assert!(!s.suspend(&mut out));
+    send(&mut s, A, join(waiting.raw(), None));
+    send(&mut s, C, join(acting.raw(), None));
+    assert!(s.started());
+    s.disconnected(A);
+    assert!(!s.suspend(&mut out));
+    // A seat's record: its header and its messages, the number of its last; none without a seat.
+    let fetch = |seq| ClientMessage::FetchRecord { seq };
+    let record = s.record(acting).unwrap();
+    assert!(record.lines().count() > 1);
+    assert!(matches!(
+        &to(&send(&mut s, C, fetch(4)), C)[..],
+        [ServerMessage::Record { n, seq: 4, record: r }] if *n > 0 && *r == record
+    ));
+    assert!(rejected(
+        &to(&send(&mut s, D, fetch(5)), D),
+        5,
+        GameReject::NotSeated {}
+    ));
+    // Every seat empty: the game pauses, an entry, nobody told; a seat's join resumes it.
+    drop(s.drain_entries());
+    s.disconnected(C);
+    assert!(s.suspend(&mut out));
+    assert!(out.is_empty() && s.paused());
+    assert_eq!(s.drain_entries().collect::<Vec<_>>(), [GameEntry::Paused]);
+    assert!(!s.suspend(&mut out));
+    send(&mut s, E, join(acting.raw(), Some(&token(acting))));
+    assert!(!s.paused());
+    assert_eq!(s.drain_entries().collect::<Vec<_>>(), [GameEntry::Resumed]);
 }
