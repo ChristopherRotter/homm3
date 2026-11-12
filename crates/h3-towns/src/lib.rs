@@ -23,9 +23,9 @@
 //! [`check_build`]), the town command ([`TownCommand`], [`TownCommandError`]) and a town event's
 //! buildings ([`event_buildings`]; E09 T17b). Increment 3 (growth, E09 design Part E): a
 //! dwelling's growth ([`growth`] with the game's [`GrowthInputs`]; E09 T25a), the week's kind and
-//! growth and the month's ([`WeekKind`], [`week_growth`], [`MonthGrowth`], [`month`]; E09 T25b1).
-//! What comes next: a neutral town's garrison week and the Portal's draw (E09 T25b2), then the
-//! game's growth (E09 T26).
+//! growth and the month's ([`WeekKind`], [`week_growth`], [`MonthGrowth`], [`month`]; E09 T25b1),
+//! a neutral town's garrison week and the Portal's draw ([`garrison_week`], [`summon`]; E09
+//! T25b2). What comes next: the game's growth (E09 T26).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -54,8 +54,10 @@ mod command;
 mod derive;
 #[cfg(test)]
 mod fixture;
+mod garrison;
 mod growth;
 mod income;
+mod portal;
 mod record;
 mod ruleset;
 mod setup;
@@ -68,10 +70,12 @@ pub use build::{buildable, built_with, check_build, event_buildings, possible};
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 pub use capture::{capitol_limit, reveal};
 pub use command::{TownCommand, TownCommandError};
+pub use garrison::{GarrisonWeek, garrison_week};
 pub use growth::{GrowthInputs, growth, index_creature};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;
 pub use income::{daily_income, hall_level};
+pub use portal::summon;
 pub use record::{CREATURE_INDEXES, MAX_AVAILABLE, Summoned, Town, TownEvent, TownStatic};
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,
