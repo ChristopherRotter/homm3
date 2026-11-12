@@ -622,8 +622,42 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             seq: 10,
             code: game::GameReject::DecisionOpen {},
         },
+        // E16 M5 T5c (v43).
+        ServerMessage::GameReveal {
+            n: 7,
+            reveal: reveal(),
+        },
     ]);
     out
+}
+
+/// A reveal of one tile, an object, a boat and a town (E16 M5 T5c).
+fn reveal() -> game::GameReveal {
+    let at = game::Pos {
+        x: 2,
+        y: 1,
+        level: 0,
+    };
+    let view = map::game::observation(&super::game::every_game_part(
+        None,
+        h3_game::MonthKind::Normal,
+    ));
+    game::GameReveal {
+        adventure: game::AdventureReveal {
+            viewer: 1,
+            tiles: vec![game::RevealedTile {
+                pos: at,
+                explored: true,
+                view: game::Tile::Hidden {},
+            }],
+            heroes: view.adventure.heroes[..1].to_vec(),
+            objects: view.adventure.objects[..1].to_vec(),
+            boats: view.adventure.boats.clone(),
+            towns: vec![view.towns[0].town],
+        },
+        heroes: view.heroes[..1].to_vec(),
+        towns: view.towns[..1].to_vec(),
+    }
 }
 
 fn round_trips<T: Serialize + DeserializeOwned + PartialEq + core::fmt::Debug>(message: &T) {
@@ -820,6 +854,21 @@ fn the_json_is_serdes_default_enum_form() {
             code: game::GameReject::DecisionOpen {}
         }),
         r#"{"GameRejected":{"n":9,"seq":3,"code":{"DecisionOpen":{}}}}"#
+    );
+    // E16 M5 T5c (v43): what a viewer newly sees, its parts as the observation's.
+    let mut nothing = reveal();
+    nothing.adventure.heroes.clear();
+    nothing.adventure.objects.clear();
+    nothing.adventure.boats.clear();
+    nothing.adventure.towns.clear();
+    nothing.heroes.clear();
+    nothing.towns.clear();
+    assert_eq!(
+        server(&ServerMessage::GameReveal {
+            n: 10,
+            reveal: nothing
+        }),
+        r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"tiles":[{"pos":{"x":2,"y":1,"level":0},"explored":true,"view":{"Hidden":{}}}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[]}}}"#
     );
     // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
     assert_eq!(

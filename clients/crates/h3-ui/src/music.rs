@@ -10,7 +10,9 @@
 //!   the original's behind [`Bugs::Original`]): the track opened last asked for again while
 //!   another is pending is not dropped: during its fade-out it becomes the pending one (it comes
 //!   back where its fade began), before (its fade-in, its opening) the pending one is dropped (it
-//!   plays on; the thread waiting finds no pending name, 0x59A883).
+//!   plays on; the thread waiting finds no pending name, 0x59A883). A viewer's own request, one
+//!   the original never makes, takes the client's filter in both profiles
+//!   ([`Music::request_again`]: E17 M7 T4, the battle's music at a Restart after its end).
 //! - **A thread** (`music_thread`) holds the manager's lock (+0xA8) from its start through the
 //!   new track's fade-in, so a thread started meanwhile waits for it. It fades the track playing
 //!   out (`music_stop_fade`: its place kept first, 0x59B146 to 0x59B1A8; then 9 steps of 100 ms
@@ -194,8 +196,21 @@ impl Music {
         self.ask(name, true)
     }
 
-    /// A request of `name`, played `once` or looping.
+    /// `name` (a looping track) asked for through the client's filter whatever the profile's (E17
+    /// M7 T4, R4-2, the user: a viewer's own request the original never makes, the battle's
+    /// combat music at a Restart after its end): fading out, it becomes the pending one and comes
+    /// back where its fade began; fading in or being opened, the one pending is dropped.
+    pub fn request_again(&mut self, name: &str) -> Request {
+        self.ask_as(name, false, Bugs::Fixed)
+    }
+
+    /// A request of `name`, played `once` or looping, through the profile's filter.
     fn ask(&mut self, name: &str, once: bool) -> Request {
+        self.ask_as(name, once, self.bugs)
+    }
+
+    /// A request of `name`, played `once` or looping, through the filter `bugs` names (MCL-Q12).
+    fn ask_as(&mut self, name: &str, once: bool, bugs: Bugs) -> Request {
         if self.pending.as_deref() == Some(name) {
             return Request::Pending;
         }
@@ -204,7 +219,7 @@ impl Music {
             Stream::Opening | Stream::Playing { .. } | Stream::Fading { .. }
         );
         if plays && self.playing.as_deref() == Some(name) {
-            match (self.bugs, &self.stream) {
+            match (bugs, &self.stream) {
                 // Fading out: it becomes the pending one, below.
                 (Bugs::Fixed, Stream::Fading { .. }) => {}
                 (Bugs::Fixed, _) if self.pending.is_some() => {
@@ -224,7 +239,7 @@ impl Music {
     /// status 4: being opened, fading in, playing; one fading out already is faded by its own
     /// thread) is faded out by the stub once the lock is free. Regained (`music_resume`
     /// 0x59AC00): the track the thread opened last asked for again, the one pending replaced (a
-    /// stream held since its opening closed, its place kept).
+    /// stream held since its opening closed, a looping track's place kept).
     pub fn focus(&mut self, active: bool) {
         if active == self.active {
             return;
@@ -360,8 +375,8 @@ impl Music {
                         once,
                     };
                 }
-                // A thread with a track to open, the stream held: its place kept (the fade of a
-                // stream never started is silent), closed.
+                // A thread with a track to open, the stream held: a looping track's place kept
+                // (the fade of a stream never started is silent), closed.
                 Stream::Held { at, once, .. } => {
                     if self.pending.is_none() {
                         return;
@@ -484,6 +499,22 @@ impl Queue {
     ) -> Request {
         self.hear(queued, tracks);
         let request = self.heard.request_once(name);
+        if request.changed() {
+            self.cleared();
+        }
+        request
+    }
+
+    /// `name` asked for through the client's filter whatever the profile's
+    /// ([`Music::request_again`]) while the stream holds `queued` frames; as [`Queue::request`].
+    pub fn request_again(
+        &mut self,
+        name: &str,
+        queued: u64,
+        tracks: &impl Fn(&str) -> Track,
+    ) -> Request {
+        self.hear(queued, tracks);
+        let request = self.heard.request_again(name);
         if request.changed() {
             self.cleared();
         }

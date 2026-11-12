@@ -4,32 +4,29 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **E17 M0–M6 done** (M6 closed at T7c on 2026-11-10; M6's record: `E17-archive.md`,
-  `E17-log.md`). **M7, the battle client's last steps** (refined at T7c with the user; the tasks
-  in QUEUE): **T1, T2, T3 done** (T3: the battle as an element a host's window runs, for the map
-  client's E24 M4 T5; T3c, the last, kept whole with the user: the sound on the host's,
-  `audio::HostSound`, the music through `h3_ui::music` with a track played once, the focus, the
-  frame widened by `Widening`; design §13.6; branch `client/e17-m7-t3c`, its pull request open).
-  **Next:** **T4**, M7's and E17's closure, **which closes E17** (a fresh reviewer, the captures
-  where M7 changed the battle screen, the review list's items 1 to 9 with the user, the epic's
-  open threads placed, the backlog's row by a `shared/` PR). Watch T3c's pull request (its
-  branch's) until it merges.
+- **E27, the game shell, refined** (2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
+  decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips `E27-design.md` §1). **Next: M1 T1a** (the
+  catalogue's first part; M1's tasks in `QUEUE.md`). The setup is the engine's `GameSetup` (E10
+  adds the starting bonus, the handicap, victory and defeat: stubbed until then, the adventure
+  lane's inbox told); a Smacker decoder in M2; the campaign screens moved to E20. Open pull
+  requests: M0's (`client/e27-m0`, docs) and the `shared/` one (`shared/e27-m0`: BACKLOG's E27
+  in progress, E20 with the campaign screens); watch both until they merge. E17 done
+  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
+  queue's inbox). E28 and E29 are backlog sketches.
   Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts
-  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§12; records in
+  in `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§13; records in
   `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
-- The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*` and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
+- The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
 - **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** none of the lane's
-  questions. Answered, waiting on other lanes: CLT-Q63 (a) (the automatic war machines' turns,
-  the battle lane), CLT-Q65 (b) (a whole game's learned spells), CLT-Q69 (a) (the start split,
-  the battle and server lanes; their inboxes, 2026-11-10).
-  `CLT-STUB-1` (T5a, G1: a server's seat lacks the other hero's Orb and Cloak; the user requires
-  parity with local play, asked of the battle and server lanes) is commented in
-  `docs/stubs.toml` until `check-stubs` scans `clients/` (a `shared/` change), as `CLT-STUB-4`
-  (T3b2: a live game's battle takes no Auto Combat switch). An engine change the lane needs goes as a small cross-lane PR with the user's consent
-  (#739 and #745 were). Next ids:
-  CLT-Q79, CLT-STUB-5.
+  questions. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+  "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
+  `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
+  battle between two of the host's humans) are commented in `docs/stubs.toml` until
+  `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q84,
+  CLT-STUB-6.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -49,22 +46,24 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-12, E27 M0 (done; `client/e27-m0`, `shared/e27-m0`).** The refinement with the
+  user, docs only (no original data staged; `VIDEO.VID`'s table listed on the user's computer,
+  read only). Found: `GameSetup` holds most of a setup; the starting bonus, the handicap and
+  victory and defeat are E10's; 8 of 160 maps import whole; Smacker-only clips at the start, the
+  loading bar, the high scores and the credits. The user: the setup is `GameSetup`, stubbed
+  until E10, no new crate (CLT-Q79); FFmpeg's Smacker decoder ported (CLT-Q80); the screens
+  built, the effects stubbed (CLT-Q81); four milestones, campaigns to E20 (CLT-Q82); the agent's
+  defaults kept (CLT-Q83). M1's tasks queued; the adventure and map-client lanes' inboxes told.
+- **2026-11-12, E17 M7 T4 (done; `client/e17-m7-t4`, `shared/e17-closure`); E17 closed.** Kept
+  whole by the user, the session a coordinator: four read-only reviewers (R1 to R4, two at a
+  time on a worktree of `master`) and two fixers on the branch; 21 findings (five medium), all
+  fixed, R2-4, R3-5, R4-2 and R4-3 by the user's decision. The original data staged at once (57
+  files); the baseline's `check.sh` lost to a VM restart in coverage (CI's `master` run stood
+  for it). The captures where M7 changed the battle screen afresh; items 1 to 15 accepted; the
+  threads placed (E27, E24 M4 T5 and M5, E28, E29, the inboxes). Record: `E17-log.md`, "M7 T4".
 - **2026-11-11, E17 M7 T3c (done; `client/e17-m7-t3c`).** Kept whole with the user (the agent
   proposed a cut in two). The original data staged at once (57 files; `H3sprite.lod` failed once,
   then staged); the baseline found `master`'s client code verified (light gates only). The sound
   on the host's, one music for host and battle, the end's tune 900 ms after the end (measured with
   SDL's `disk` driver: nine fade steps, then the tune), the focus, `Widening` (3.5 → 0.33 ms a
   frame). The map client lane's inbox told the API. M7 review item 9. Record: `E17-log.md`.
-- **2026-11-11, E17 M7 T3b2 (done; #854, #851 merged).** Kept whole with the
-  user, who agreed the `shared/` PR of `clients.yml`'s paths (#851) and answered CLT-Q78 (b)
-  (the original draws a hero by its type's sex, never a map's). The original data staged at
-  once (57 files); the baseline's `check.sh` on `master` lost to a VM restart in coverage and
-  passed when run again. The live battle through a host's game (a test host's real game, the
-  seat's record equal to the game's), the picture by sex (the asset tables' 18 records).
-  M7 review items 7 and 8. Record: `E17-log.md`.
-- **2026-11-11, E17 M7 T3a2's checks and T3b1 (done; #849, `client/e17-m7-t3b1`).** The
-  original data staged at once (57 files); the baseline's `check.sh` on the branch was lost to a
-  VM restart in coverage and passed when run again. T3a2's checks (the windowless host test, the
-  gate, `window --check` here and on a record, `drawn`) all passed: #849. T3b cut in two with
-  the user; T3b1 checked on two golden replays' game records (`h3-server record`), every frame
-  exact. M7 review item 6. Record: `E17-log.md`.

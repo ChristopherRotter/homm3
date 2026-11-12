@@ -426,8 +426,10 @@ async fn two_players_queue_accept_and_play_their_match() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_decline_an_expiry_or_a_departure_puts_the_other_back() {
-    // A short lobby deadline: a queued connection outlasts it.
-    let config = laddered(300);
+    // A short lobby deadline, below the match's 1 000 ms to accept: a queued connection outlasts
+    // it (Cid's expiry alone does). Not too short for a newcomer's login and queue: under CI's
+    // instrumented build 300 ms once ran out before Dee's queue was answered (2026-11-11).
+    let config = laddered(900);
     let running = start(&config).await.unwrap();
     let (mut ann, mut bob) = (
         player(&running, "ann", 1).await,

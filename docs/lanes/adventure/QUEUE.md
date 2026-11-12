@@ -4,26 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronicle of the rounds T1 to T107 (cuts, pull requests, decisions) is in `QUEUE-ARCHIVE.md`. Increments 1 to 11 are closed (2026-10-12, -13, -20, -21, -23, -26, -28, -30, -11-03, -11-05, -11-11; increment 11, the teleporters, by T107's audit). **Increment 12, garrisons and the bonus visitables**, refined with the user at T107 (ADV-Q48; decisions 295, 296): round 1 done: T108a in two (decision 297): T108a1 (`adventure/e08-t108a`: survey §0 to §9, the census of all seventeen classes and the garrisons), T108a2 (`adventure/e08-t108a2`, whole: decision 298; survey §10 to §14, the checkpoint ADV-Q49, decisions 299–303); T108b (`adventure/e08-t108b`, whole: decision 304; the design note and the three drafts, the checkpoint ADV-Q50, decisions 305–309, the cut T109 to T117). Round 2: T109 in two at the code's seam (decision 310): T109a done (`adventure/e08-t109a`, `cross-lane`: the writer's seventeen classes, the spec's garrisons; no spell points, decision 311); T109b done (`adventure/e08-t109b`, `cross-lane`, whole: decision 312; the specs E12a and E12b, the School of War in the writer, decision 313; E12-5 on the start's reveal, decision 314); round 2 done. Round 3: T110 done (`adventure/e08-t110`, whole: decision 316; the harness's reads and steps, the recipes `E08-batch-12a` and `-12b`, three runs each, the templates filled); T111 done (`adventure/e08-t111`, whole, docs only: survey §15, every row as read; the visit modes by the class lists, the checkpoint ADV-Q51, decision 317); round 3 done. Round 4: T112 next. Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E08 T111 — batch E12 scored** (decisions 299 to 303, 309, 312 to 314, 316; then **T112**)
+**E08 T112 — the `shared/` task** (decisions 305 to 309, 317; then **T113**)
 
-- **Scope:** as T101 for increment 11: score T110's two filled templates against survey
-  `E08-garrisons-bonuses.md`'s readings and the specs' predictions, row by row (E12-1 to E12-17),
-  in a new survey §15 (each row: as read, or not, with the reading or source it settles; D-59 to
-  D-64, A-44, A-45 where a row decides one); fold the verdicts for T112 (the three drafts'
-  points they confirm or change) and checkpoint with the user where a row goes against the
-  reading (ADV-Q51). Beyond the rows (T110's log): the Magic Wells and the Idol were **stood
-  on** (entrances, not visited from a neighbour as the experiments README's "Increment 12's
-  objects" and the design's §1 say; the water objects were visited from the neighbouring water):
-  decide what the build takes and where the README is corrected (battle-owned: T112's
-  `cross-lane`); a visit's or meeting's or attack's step paid (E12-4's 1 659, E12-10's 1 437);
-  the Fountains' weekly values the same in three runs (the new game's not); the hint over an
-  unexplored entrance (none).
-- **Inputs:** `experiments/results/E08-batch-12a.md`, `-12b.md` (the third runs) and T110's
-  record in `E08-log.md` (the raw observations, the runs' differences); the specs' predictions
-  (`experiments/specs/E08-batch-12a.toml`, `-12b`); T101's record as the form.
-- **Depends on:** T110 (done). **Status:** ready (docs only; no original data needed).
+- **Scope:** as T102 for increment 11 (`shared/e08-t112`, `cross-lane` with the user's consent):
+  the three accepted drafts (`adr-drafts/0013-`, `0016-`, `0017-increment-12.md`) into ADR-0013,
+  ADR-0016 and ADR-0017 with batch E12's outcome (survey `E08-garrisons-bonuses.md` §15, "For
+  T112": every tested point as drafted; ADR-0016 point 4's visit modes as T111 corrected them,
+  decision 317), each ADR's consequences, alternatives and revision history; the drafts deleted.
+  After the town lane's E09 T24 (the inbox's note below: ADR-0016 point 3's text before E09's
+  garrison hero paragraph, its clause dropped; ADR-0017 point 3's before E09's garrison heroes').
+  `docs/03-domain.md`'s terms (design §19); `docs/06-security.md`'s lines (design §10);
+  `EffectSource::Visit`'s doc comment (`h3-contracts`). The experiments README's "Increment 12's
+  objects" (battle-owned): the Mermaids and the Sirens visited from a neighbouring water tile, not
+  entered; the Fountain of Fortune, the Idol and the Magic Wells entered at `at`; the Buoy from any
+  neighbour (decision 317).
+- **Inputs:** the drafts; design §10, §19; survey §15; the ADRs as they stand (E09 T24's text in).
+- **Depends on:** T111 (done). **Status:** ready (docs and a doc comment; no original data; CI's
+  full verify, `cargo xtask check-lane --cross-lane`).
 
 ## Inbox
 
@@ -36,6 +35,26 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `src/tests/mod.rs` town literal gained `roe` and the growth's parameters (`week`,
   `garrison_week`). `h3_towns::Towns::build` and `town_setup` now take the core ruleset (the
   dwellings' first creatures, TWN-GRO-005); their callers are the town lane's `src/town*`.
+- 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for E10's refinement**, the
+  user's decision CLT-Q81): the game shell (E27) fills `h3_game::GameSetup` from the scenario
+  screen and builds the original's setup and end screens before the engine has their rules; the
+  user (CLT-Q79): **E10 adds what is missing to `GameSetup`**, the shell stubs it until then (no
+  engine change ahead of E10). What the shell will need: a player's **starting bonus** (the
+  original's gold, resource or artifact choice, or random) and its draw; the **handicap**; the
+  **victory and defeat** conditions and a scenario's end (the end screens, the high score's
+  numbers); later the computer players' turns (E13). Its readings of the original's setup (E27
+  M1 T1b, `docs/epics/E27-design.md` §3) map each choice to a `GameSetup` field or to one of
+  these gaps; nothing to do before E10, the order is yours. Also (CLT-Q83): a saved game is your
+  adventure record (`h3-files`' replay format); what it lacks of a setup's choices is settled
+  with you at E27 M4's T0.
+- 2026-11-12 (the client lane, E17 M7 T4, at E17's closure; **the harness check's growth, yours
+  to take when a batch needs it**, placed by the user): the harness's own check
+  (`clients/capture/checks/harness-check.toml`, its recipe `capture/batches/harness-check.toml`)
+  can gain what your tools placed since E08 T22a1: a monster's offers (join, join for gold, flee:
+  `[encounter.opponent]`'s `disposition`, `flees`), a guarded pile's question (`[[map.pile]]`'s
+  `guards`, `question`) and a walk on level 1 (`[map.underground]`); H1 checked those only on a
+  local map, H2 the underground on the shipped `Arrogance`. The client lane's notes:
+  `docs/lanes/client/NOTES.md`, "The adventure lane's harness".
 
 - 2026-11-12 (the town lane, E09 T24, branch `shared/e09-t24`, `cross-lane`; **for T112's
   merge order**): T24 moved E09 increment 3's drafts into ADR-0013 (point 16.4), ADR-0016 (points

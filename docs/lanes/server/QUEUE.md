@@ -10,48 +10,11 @@ Epic: `docs/epics/E16-server.md`; M0 to M4 and M6 are closed (checkpoints SRV-Q1
 
 - T0 (#799) and T1 done 2026-11-09 (`E16-log.md`): **events only** (the design note §14); what a client cannot fold yet is in the adventure and town lanes' inboxes (SRV-Q26: foldable events and a query for what a viewer newly sees).
 - **T2** the observation's wire (the snapshot; no diff), in two parts (the user), both done 2026-11-09 in #805 (`E16-log.md`). **T3** the commands, answers, rejections and events, the fold (`h3-protocol`'s) and its test over the golden replays, SRV-Q26's gaps as stubs, in three parts (the user, the epic; one pull request after T3c): T3a (the commands and rejections) and T3b (the events) done 2026-11-09 (`E16-log.md`), **T3c** the fold and its test in two parts (SRV-Q27: the battle by snapshots, the further gaps as SRV-Q26's): **T3c1** the fold and a harness over the golden replays and **T3c2** the stubs (`SRV-STUB-1` to `-13`), the inbox notes and the gate (both done 2026-11-09, `E16-log.md`); **T3d** the town lane's told views (E09 T18b2a) mapped and folded, `SRV-STUB-12` and `-13` lifted (done 2026-11-10, `E16-log.md`); **T4** the game's manifest and key tables (done 2026-11-10, `E16-log.md`: `GameManifest`, the map by its file's hash and import version).
-- **T5** the game session in-process with its journal and records (record format v4), each viewer's newly seen tiles with the events (SRV-Q26), in three parts (the user, 2026-11-10): **T5a** the messages (protocol v39) and the sans-I/O session (done 2026-11-10, `E16-log.md`; one pull request with T4), **T5b** the journal, the restore and each viewer's record (record format v4; done 2026-11-10, `E16-log.md`), **T5c** the newly seen tiles once the adventure lane's SRV-Q26 query lands (`SRV-STUB-1` until then); **T6** a golden replay as a record (`h3-server record`), the map client lane's note (done 2026-11-10, `E16-log.md`); **T7** closure and the checkpoint.
+- **T5** the game session in-process with its journal and records (record format v4), each viewer's newly seen tiles with the events (SRV-Q26), in three parts (the user, 2026-11-10): **T5a** the messages (protocol v39) and the sans-I/O session (done 2026-11-10, `E16-log.md`; one pull request with T4), **T5b** the journal, the restore and each viewer's record (record format v4; done 2026-11-10, `E16-log.md`), **T5c** the newly seen tiles and a battle's last snapshot, in two parts (the user, 2026-11-12; done 2026-11-12, `E16-log.md`: `GameReveal`, protocol v43, `SRV-STUB-1` and `-14` lifted); **T6** a golden replay as a record (`h3-server record`), the map client lane's note (done 2026-11-10, `E16-log.md`); **T7** closure and the checkpoint.
 
 Part 2 is refined after part 1's checkpoint (the epic). The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
 ## Inbox
-
-- 2026-11-11 (the adventure lane, `adventure/srv-q26-reveal`, `cross-lane` with the user's consent;
-  **T5c's blockers landed, and two more of the fold's gaps**): (1) **SRV-Q26 (a)'s query**:
-  `h3_game::reveal(state, rules, Viewer, since: &BitGrid) -> GameReveal`: what the viewer sees
-  through its grid now and did not through `since` (`state.adventure().explored(player)`, cheap
-  to keep: its copies share their blocks), each as `observe` shows it: `adventure:
-  AdventureReveal { viewer, tiles: Vec<RevealedTile { pos, explored, view: TileView }> (every
-  tile whose sight changed, in tile order; a tile not explored whose view is not `Hidden` is on
-  the fringe), heroes (never the viewer's own, by id), objects (map order), boats (tile order),
-  towns: Vec<TownId> }`, `heroes: Vec<HeroInfo>` (their types), `towns: Vec<TownView>` (the newly
-  explored towns' views; under `ADV-QUIRK-1` a town's object may have shown through the older
-  grid's fringe, so it is in `towns` and not in `objects`). A grid of other dimensions counts as
-  nothing explored. Checked over the 72 golden replays with a throwaway test beside your fold
-  gate: each of the 1 969 viewer-commands whose explored count grew had a non-empty answer and
-  the others an empty one; every difference of the fold from `observe` in the parts `SRV-STUB-1`
-  alone names lay inside the answer's keys (no miss), and each entry equals `observe`'s. Cost
-  (release): on `e08-xl-144` a step's reveal (about 20 tiles) 27 µs against `observe`'s 380 µs a
-  viewer, on `e08-economy-144` 19 against 300. Map it with the events (your T5c) and lift
-  `SRV-STUB-1`. (2) **SRV-STUB-14**: `h3_game::Sink::battle_ended(&mut self, battle:
-  &OpenBattle)`, a provided method (the default ignores it): the command that ends a battle gives
-  the sink the battle as it ended (state, owners, heroes, tile) when it closes it, before the
-  outcome's events (`BattleEnded` first). The session's sink keeps it (or each owner's
-  `h3_battle::observe(battle.state(), rules.battle(), side)` at once) for its last `Snapshot`.
-  Not the state field your note suggested: kept in `GameState` until the next command, it cost
-  each fork 9 Ir, and 60 where a battle had just ended (`fork-rewards-36` +2.25 %, over its gate). (3) **SRV-Q26 (b) mapped here: protocol v42**: the adventure event
-  `MovementChanged { hero, movement, max_movement }`, told once a command after its other events
-  to the hero's owner alone for every hero whose points or day's maximum the command changed (a
-  sink that keeps events only); `wire::game::AdventureEvent::MovementChanged`, its fold sets the
-  own hero's two values, `SRV-STUB-2` lifted from the gate's "movement" part and the registry.
-
-- 2026-11-11 (the adventure lane, E08 T107; **a flaky test, for you**): CI's full verify on `master`
-  5613da6 (run 42976907057, the coverage step) failed once in `h3-server`'s
-  `tests::ladders::a_decline_an_expiry_or_a_departure_puts_the_other_back`: at line 463 Dee's
-  `queue("arena")` was answered `Goodbye { reason: IdleTimeout }` instead of `Queued { seq: 2 }`,
-  the lobby's deadline running out under the instrumented build; the pull requests' runs of the
-  same code passed, and the failed job's re-run passed. A deadline the test controls (or a longer
-  one for it) would keep it from timing.
 
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the

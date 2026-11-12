@@ -4,7 +4,8 @@
   visit marks on the hero on the map by decisions 306 and 307), to be applied by T112. Drafted by
   E08 T108b (2026-11-11) from the survey `docs/rules/surveys/E08-garrisons-bonuses.md` and the
   user's answers at ADV-Q48 and ADV-Q49 (E08 decisions 295, 299–303), then into ADR-0016 through
-  the round's `shared/` pull request (T112) with batch E12's outcome.
+  the round's `shared/` pull request (T112) with batch E12's outcome. Point 4's visit modes
+  corrected by T111 with that outcome (survey §15; ADV-Q51, E08 decision 317).
 - Amends: ADR-0016 points 1, 3, 4, 5 and 6 (each text below goes in after the point's increment 11
   part, and after E09's where a point has one); its consequences, alternatives and revision
   history.
@@ -70,7 +71,7 @@ Each refusal is typed and changes nothing. The Sirens' visit lowers stacks and n
 slot; the Stables' changes a slot's creature, its count kept.
 
 **Point 4** (kinds), a part **Increment 12's kinds** (the import maps 33 and 219 by subclass and
-the fifteen bonus classes; none of the fifteen visitable from above):
+the fifteen bonus classes; of the fifteen only the Buoy visitable from above):
 
 - **The garrison** (`garrison { anti_magic }`; ADV-GAR-001): ownable, entered, visitable from above
   (the original's class list: a horizontal one entered from above and below, a vertical one from
@@ -92,9 +93,9 @@ the fifteen bonus classes; none of the fifteen visitable from above):
 - **The anti-magic battle** (ADV-GAR-005; D-60 the original): a battle whose tile is an anti-magic
   garrison's entrance, its own or a hero's standing on it, is fought without magic (the battle's
   setup flag, ADR-0017 point 11).
-- **The bonus kinds** (ADV-BON-001; all in the base pack; the Buoy, the Fountain of Fortune, the
-  Idol and the Magic Well visited from a neighbour, the eleven others entered; the Buoy, the
-  Mermaids and the Sirens on water, reached from a boat): **`bonus`** (ten classes: a once-mark,
+- **The bonus kinds** (ADV-BON-001; all in the base pack; by the original's class lists the Buoy,
+  the Mermaids and the Sirens visited from a neighbour, the Buoy from above too, the twelve others
+  entered, none from above; the three on water, reached from a boat; E08 decision 317, batch E12): **`bonus`** (ten classes: a once-mark,
   the morale and luck by the day of the week, the movement added to the points left and the day's
   maximum or the points drained, the kind mark), **`fountain_of_fortune`** (a once-mark and the
   luck values its weekly draw picks among, equal chances), **`magic_well`** (a day mark),
@@ -152,7 +153,8 @@ the Sirens' revisit reproduced with no flag or always fixed (A-44); the kind mar
 garrison's exchange as the Leave Guards dialog's copied group instead of a direct reference; the
 Springs by the original's counter; one kind per bonus class instead of six; the visit marks
 in the hero's details as the original's records keep them (a fixed set of 32 once-marks with their
-amounts, the day's and the week's marks beside them).
+amounts, the day's and the week's marks beside them); the fifteen's visit modes from the
+templates' blocked tiles (ADV-Q51).
 
 **Revision history**, a line: points 1, 3, 4, 5 and 6 amended for E08 increment 12, garrisons and
 the bonus visitables: a garrison's army, owner and static removable flag, the Fountains' values,

@@ -91,7 +91,7 @@ use h3_view::mouse::track::Input;
 use h3_view::options::Settings;
 use h3_view::scene::Draw;
 use h3_view::shades::{Options as Shades, Toggle};
-use h3_view::sound::Tune;
+use h3_view::sound::{MUSIC_VOLUME, Tune};
 
 use crate::assets;
 use crate::audio::{HostSound, Library, Player};
@@ -561,6 +561,10 @@ fn after(
 
 /// The frame of the change at `t`.
 fn frame_at(battle: &mut Battle<'_>, t: u32) -> Result<Frame, String> {
+    #[cfg(test)]
+    if tests::NO_FRAMES.with(core::cell::Cell::get) {
+        return Err("no frame made (a test's)".into());
+    }
     let list = battle.list_at(t)?;
     let screen = battle.compose(t, &list)?;
     let xrgb = battle.widen(&screen);
@@ -582,7 +586,10 @@ fn next_frame(
     // While the mouse holds a panel button the battle stands still too (E17 M7 T2, CLT-Q72 (a),
     // *provisional*): the button's own loop runs no idle step of the battle (`def_button_message`
     // 0x45641C, as read for the adventure map's, E24 design §4.13); only an input changes it.
-    if holding {
+    // Only its idle steps, past its timeline's end (E17 M7 T4, R2-1, *provisional*): a record
+    // plays on under the hold, and a replay from a Restart during it, as before T2 (the
+    // original's battle under the loop waits for its human).
+    if holding && shown.t >= battle.timeline().end {
         return Ok(None);
     }
     // Behind the open spell book, a message box or the combat options dialog the battle stands
@@ -616,8 +623,12 @@ fn next_frame(
                 held,
             }));
         }
-        // Past the end of a still battle only the idle steps come, each drawing the same.
-        if !battle.playing() && next > battle.timeline().end && battle.timeline().still() {
+        // Past the end of a still battle only the idle steps come, each drawing the same; under
+        // the mouse's hold none (above).
+        if !battle.playing()
+            && next > battle.timeline().end
+            && (holding || battle.timeline().still())
+        {
             return Ok(None);
         }
         let list = battle.list_at(next)?;
@@ -752,18 +763,23 @@ impl<'g> Prepared<'g> {
 
     /// The battle started by `setup`, the clock at `ticks_ns`' time (the host's, in ns), the
     /// sound's report in `lines`: the sound decoded and played on the host's (none without it;
-    /// an archive that cannot be read costs the sound, noted, the host's handed back all the
-    /// same), the battle waiting for its samples when it plays them, the settings set, the
+    /// an archive that cannot be read costs the sound, noted, the host's music then falling
+    /// silent and its sound kept serviced and told the focus until it is handed back all the
+    /// same, E17 M7 T4), the battle waiting for its samples when it plays them, the settings set, the
     /// opening's start sound playing while the clock waits (from the battle's start only).
+    ///
+    /// # Errors
+    /// The battle remade or its first frame failing ([`NotStarted`], E17 M7 T4, R4-1): with the
+    /// host's sound handed back, its battle's streams removed and nothing asked of its music.
     pub fn start(
         self,
         setup: Setup,
         ticks_ns: &dyn Fn() -> u64,
         lines: &mut Vec<String>,
-    ) -> Result<Hosted<'g>, String> {
+    ) -> Result<Hosted<'g>, Box<NotStarted>> {
         let Self {
             ground,
-            mut battle,
+            battle,
             cursors,
         } = self;
         // The sound: decoded now, played on the host's; none without it.
@@ -775,11 +791,14 @@ impl<'g> Prepared<'g> {
             // The stacks' sounds and the battle's own its cues name (the heal's, E17 M3 T3b; the
             // casts', T7b-1).
             let sounds = (battle.stack_sounds(), battle.battle_sounds());
+            // The tracks the host's sound has already (an earlier battle's) are its (E17 M7 T4,
+            // R4-4, *provisional*): not decoded again.
+            let kept = |name: &str| setup.sound.as_ref().is_some_and(|s| s.has_track(name));
             Library::load(
                 &setup.install,
                 (opening, &battle.layout().options.sound),
                 sounds,
-                &TUNES,
+                (&TUNES, &kept),
                 lines,
             )
             .map_err(|e| lines.push(format!("sound: {e}; no sound")))
@@ -802,30 +821,34 @@ impl<'g> Prepared<'g> {
                 None
             }
         };
-        // With its sound playing, the battle waits for its samples as the original does on a
-        // computer with sound (E17 M5 T5b2, design §8.3): made again with their lengths.
-        if let (Some(_), Some(lib)) = (player.as_ref(), library.as_ref()) {
-            ground.play_sounds(lib.lengths());
-            battle = Battle::new(ground)?;
-            load_cursors(&mut battle)?;
-        }
-        // The settings the combat options dialog shows, against the audio device opened or not (its
-        // no-sound box; E17 M6 T4a); its volumes on the sound.
-        let settings = setup.settings;
-        battle.settings = settings;
-        battle.audio = player.is_some();
+        // Every step that may fail runs before the host's sound is played on: one failing hands it
+        // back with its error (E17 M7 T4, R4-1), the battle's streams removed, nothing asked of
+        // its music.
+        let lengths = (player.as_ref().and(library.as_ref())).map(Library::lengths);
+        let audio = player.is_some();
+        let begun = begin(ground, battle, lengths, (setup.settings, audio, setup.from));
+        let Begun {
+            battle,
+            start,
+            cue,
+            changes,
+            next,
+        } = match begun {
+            Ok(begun) => begun,
+            Err(error) => {
+                let sound = player.map(Player::close).or(spare);
+                return Err(Box::new(NotStarted { error, sound }));
+            }
+        };
+        // The settings' volumes on the sound.
+        let settings = battle.settings;
         if let Some(p) = player.as_mut() {
             p.set_volumes(settings.music, settings.effects);
         }
-        // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
-        // before the window joined is not played again.
-        let start = if ground.online().is_some() {
-            setup.from.max(battle.timeline().end)
-        } else {
-            setup.from
-        };
-        let cue = battle.timeline().cue_from(start);
-        let mut changes = Changes::new(&battle);
+        // A battle that plays no sound on the host's falls silent (E17 M7 T4, R4-3, the user).
+        if let Some(s) = spare.as_mut() {
+            s.fall_silent();
+        }
         let mut clock = Clock::new(ticks_ns(), start);
         // The opening: the clock waits while the start sound plays (from the battle's start only).
         let mut opening_until = None;
@@ -839,8 +862,7 @@ impl<'g> Prepared<'g> {
                 p.start_music();
             }
         }
-        let from = changes.latest(&mut battle, start)?;
-        let next = Some(frame_at(&mut battle, from)?);
+        let next = Some(next);
         // The mouse's moves, the log's scrolls and the button held (E17 M3 T6c-2). Creature Info's
         // level from the settings at the opening (E17 M6 T4b2a), kept by every Restart, and the
         // level the hints read now: a change (F5, the options dialog) is an input at its time.
@@ -909,6 +931,73 @@ impl<'g> Prepared<'g> {
             moved: false,
         })
     }
+}
+
+/// A battle that did not start ([`Prepared::start`]; E17 M7 T4, R4-1): why, and the host's sound
+/// handed back (its battle's streams removed, nothing asked of its music); none if it lent none.
+#[derive(Debug)]
+pub struct NotStarted {
+    /// Why.
+    pub error: String,
+    /// The host's sound lent.
+    pub sound: Option<HostSound>,
+}
+
+impl From<Box<NotStarted>> for String {
+    fn from(not: Box<NotStarted>) -> Self {
+        not.error
+    }
+}
+
+/// The battle as [`Prepared::start`] begins it before its sound plays (E17 M7 T4, R4-1): every
+/// step of the start that may fail.
+struct Begun<'g> {
+    battle: Battle<'g>,
+    /// The battle's time the clock starts at.
+    start: u32,
+    /// The timeline's first cue from there.
+    cue: usize,
+    changes: Changes,
+    /// The first frame.
+    next: Frame,
+}
+
+/// `battle` begun over `ground`: made again to wait for its samples' `lengths` when its sound
+/// plays (E17 M5 T5b2, design §8.3: as the original on a computer with sound), the `settings`
+/// the combat options dialog shows set, against the `audio` device opened or not (its no-sound
+/// box; E17 M6 T4a), its first frame at the time `from` (a seat on a server's at its record's
+/// end at the latest).
+fn begin<'g>(
+    ground: &'g Ground,
+    mut battle: Battle<'g>,
+    lengths: Option<h3_view::sound::Lengths>,
+    (settings, audio, from): (Settings, bool, u32),
+) -> Result<Begun<'g>, String> {
+    if let Some(lengths) = lengths {
+        ground.play_sounds(lengths);
+        battle = Battle::new(ground)?;
+        load_cursors(&mut battle)?;
+    }
+    battle.settings = settings;
+    battle.audio = audio;
+    // A seat on a server starts where its record stands (E17 M5 T6b2, *provisional*): what came
+    // before the window joined is not played again.
+    let start = if ground.online().is_some() {
+        from.max(battle.timeline().end)
+    } else {
+        from
+    };
+    let cue = battle.timeline().cue_from(start);
+    let mut changes = Changes::new(&battle);
+    let latest = changes.latest(&mut battle, start)?;
+    let next = frame_at(&mut battle, latest)?;
+    Ok(Begun {
+        battle,
+        start,
+        cue,
+        changes,
+        next,
+    })
 }
 
 /// A pass of the host's loop as the battle reads it (E17 M7 T3a2: the loop's locals until then):
@@ -1173,6 +1262,21 @@ impl<'g> Hosted<'g> {
                 }
                 self.pass.mouse_changed = true;
             }
+        }
+        // A box or dialog that opened over the battle as the pass started (the result window, a
+        // notice, a server's question) ends the mouse's hold of a panel button, without its
+        // click (E17 M7 T4, R2-2, *provisional*: the original's loop blocks its battle, so no box
+        // opens under it; the client's record plays on under a hold, R2-1). The box takes the
+        // left release, its keys and the right button's, the result window's clip plays, and
+        // the button is drawn up behind it. No hold starts while one is open.
+        if (self.battle.message_open()
+            || self.battle.stats_open()
+            || self.battle.options_open()
+            || self.battle.book_open()
+            || self.battle.aiming())
+            && self.held.take_if(|h| h.key.is_none()).is_some()
+        {
+            self.pass.mouse_changed = true;
         }
         // The input queue is emptied as a box opens (the modal loop 0x602520; design §7.19): the
         // presses and key-downs that come with the input that opened it, or after the box opened
@@ -1451,9 +1555,10 @@ impl<'g> Hosted<'g> {
                                 self.cue = self.battle.timeline().cue_from(self.from);
                                 if let Some(p) = self.player.as_mut() {
                                     p.silence();
-                                    // The end's tune gives way to the battle's music again.
+                                    // The end's tune gives way to the battle's music again,
+                                    // in both profiles (E17 M7 T4, R4-2).
                                     if self.ended {
-                                        p.start_music();
+                                        p.restart_music();
                                     }
                                 }
                                 self.ended = false;
@@ -1928,40 +2033,21 @@ impl<'g> Hosted<'g> {
         // come, and under Auto Combat the turn waiting, play by them (a close by the pass's last
         // event; one before it counted before the next event, above).
         self.pass.grew |= self.battle.boxes_closed(self.clock.ms(ticks_ns()))?;
-        // The options dialog's close composes the background again with its options, without the
-        // cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52).
-        let options_closed = self.options_open && !self.battle.options_open();
-        if options_closed {
-            self.inputs.push(Input::Shades {
-                at: self.clock.ms(ticks_ns()),
-                options: Shades::of(&self.battle.settings),
-                keyed: false,
-            });
-            self.pass.mouse_changed = true;
-        }
-        self.options_open = self.battle.options_open();
+        // The options dialog's close, the level it set, the mouse posted (`options_closing`).
         // An aim with both shadows on turns the movement shadow off as it starts and on again as
         // it ends in the mouse's follow alone (`mouse::track`, `Options::aiming`; E17 M6 T4c,
         // design §12.16): the settings and their file keep the player's (E17 M6 T7b, R7-2:
         // *provisional*, the original's saves the switch each time, oddity 8, which a window
         // closed inside the aim would leave in the file). The block that copied it never ran: it
         // read the turn's aims, whose original numbers only `pointer::legal` names.
-        // The options dialog set Creature Info's level (E17 M6 T4b2a): the hints read it from now.
-        if self.battle.settings.army_info != self.army_info {
-            self.army_info = self.battle.settings.army_info;
-            self.inputs.push(Input::ArmyInfo {
-                at: self.clock.ms(ticks_ns()),
-                level: self.army_info,
-            });
-            self.pass.mouse_changed = true;
-        }
-        // Then the mouse posted where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a):
-        // the cursor, the line (at the level just set) and the shade those of the hex under it at
-        // once, where the original's leave the dialog's arrow and the old hex's until the mouse
-        // moves (oddity 10, the stills').
-        if options_closed {
-            post_mouse(&mut self.inputs, self.clock.ms(ticks_ns()), self.pointer);
-        }
+        let options_closed = self.options_open && !self.battle.options_open();
+        self.options_open = self.battle.options_open();
+        self.pass.mouse_changed |= options_closing(
+            &mut self.inputs,
+            (self.clock.ms(ticks_ns()), self.pointer),
+            (options_closed, &self.battle.settings),
+            &mut self.army_info,
+        );
         // The mouse, a button held, the log scrolled (E17 M3 T6c-2), a command given (E17 M5
         // T2b): the battle follows them and the frame now is made again.
         if self.pass.mouse_changed || self.pass.grew || self.pass.book_changed {
@@ -2063,15 +2149,25 @@ impl<'g> Hosted<'g> {
             }
             p.service(lib);
         }
+        // The host's sound the battle plays none on (E17 M7 T4, R4-3): its music, falling silent,
+        // kept queued at the music's setting.
+        if let Some(s) = self.spare.as_mut() {
+            let volume = h3_view::options::sound_volume(MUSIC_VOLUME, self.battle.settings.music);
+            s.service(volume);
+        }
         battle_ms
     }
 
     /// The host's window lost or regained the focus (E17 M7 T3c; the original's WM_ACTIVATEAPP,
     /// E24 design §4.15): every effect playing held where it is and the music faded out, or
-    /// played on and faded in. A host tells each change in order.
+    /// played on and faded in. A host tells each change in order; a battle that plays no sound on
+    /// the host's passes it on to it (E17 M7 T4, R4-3), so that it stands right at the hand-back.
     pub fn focus(&mut self, on: bool) {
         if let Some(p) = self.player.as_mut() {
             p.focus(on);
+        }
+        if let Some(s) = self.spare.as_mut() {
+            s.focus(on);
         }
     }
 
@@ -2484,6 +2580,42 @@ fn post_mouse(inputs: &mut Vec<Input>, at: u32, pointer: Option<(i32, i32)>) {
         inputs.push(Input::Move { at, to: [x, y] });
     }
     inputs.push(Input::Cancel { at });
+}
+
+/// A pass's end at `at`, the mouse at `pointer` (factored at E17 M7 T4, R1-3), in this order: the
+/// combat options dialog `closed` composes the background again with `settings`' options,
+/// without the cursor shadow's call (E17 M6 T4c, design §12.16: oddity 2, CLT-Q52); Creature
+/// Info's level the dialog set (`settings`' against `army_info`, the hints' until now, which it
+/// becomes) read by the hints from now (E17 M6 T4b2a); then, the dialog closed, the mouse posted
+/// where it rests (CLT-Q43 (3), the client's profile; E17 M7 T1a): the cursor, the line (at the
+/// level just set) and the shade those of the hex under it at once, where the original's leave
+/// the dialog's arrow and the old hex's until the mouse moves (oddity 10, the stills'). Whether
+/// it gave the battle an input.
+fn options_closing(
+    inputs: &mut Vec<Input>,
+    (at, pointer): (u32, Option<(i32, i32)>),
+    (closed, settings): (bool, &Settings),
+    army_info: &mut u8,
+) -> bool {
+    if closed {
+        inputs.push(Input::Shades {
+            at,
+            options: Shades::of(settings),
+            keyed: false,
+        });
+    }
+    let level = settings.army_info != *army_info;
+    if level {
+        *army_info = settings.army_info;
+        inputs.push(Input::ArmyInfo {
+            at,
+            level: *army_info,
+        });
+    }
+    if closed {
+        post_mouse(inputs, at, pointer);
+    }
+    closed || level
 }
 
 /// What the spell book `did` at `at` (E17 M5 T3a): a change to draw, the cast it closed on
@@ -3449,6 +3581,60 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn the_options_dialog_s_close_composes_then_sets_the_level_then_posts_the_mouse() {
+        // E17 M7 T4 (R1-3; T1a, CLT-Q43 (3)): the shades first, the level the dialog set next,
+        // then the mouse posted where it rests, so that the line it writes is at the new level;
+        // the level alone without a close (none posted), nothing when neither changed.
+        let settings = Settings {
+            army_info: 2,
+            grid: true,
+            ..Settings::CAPTURE
+        };
+        let shades = Input::Shades {
+            at: 40,
+            options: Shades::of(&settings),
+            keyed: false,
+        };
+        let (mut inputs, mut level) = (Vec::new(), 0);
+        let at = (40, Some((5, 6)));
+        assert!(options_closing(
+            &mut inputs,
+            at,
+            (true, &settings),
+            &mut level
+        ));
+        let moved = Input::Move { at: 40, to: [5, 6] };
+        let army_info = Input::ArmyInfo { at: 40, level: 2 };
+        let cancel = Input::Cancel { at: 40 };
+        assert_eq!(inputs, [shades, army_info, moved, cancel]);
+        assert_eq!(level, 2);
+        inputs.clear();
+        assert!(options_closing(
+            &mut inputs,
+            at,
+            (true, &settings),
+            &mut level
+        ));
+        assert_eq!(inputs, [shades, moved, cancel]);
+        inputs.clear();
+        assert!(!options_closing(
+            &mut inputs,
+            at,
+            (false, &settings),
+            &mut level
+        ));
+        assert!(inputs.is_empty());
+        level = 1;
+        assert!(options_closing(
+            &mut inputs,
+            at,
+            (false, &settings),
+            &mut level
+        ));
+        assert_eq!((inputs.as_slice(), level), ([army_info].as_slice(), 2));
+    }
+
+    #[test]
     fn the_keys_c_f_s_r_and_o_hide_the_army_info_windows_over_the_battlefield_only() {
         // E17 M6 T7b (R6-3, CLT-Q49's fix): the panel's buttons whose default hotkeys are C, S,
         // R and O hide first; A, D, W, Space and the tactics phase's not.
@@ -3898,6 +4084,103 @@ pub(crate) mod tests {
             "median 5.0, p95 9.5, max 10.0 (100 frames)"
         );
     }
+    thread_local! {
+        /// A test's frames that cannot be made (E17 M7 T4, R4-1: a battle whose start fails once
+        /// the host's sound was taken).
+        pub(super) static NO_FRAMES: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    }
+
+    #[test]
+    fn a_battle_that_fails_to_start_hands_the_host_s_sound_back() {
+        // E17 M7 T4 (R4-1): a step of the start that fails once the battle took the host's sound
+        // (here its first frame) hands the sound back with its error: the battle's streams
+        // removed, the host's music as it left it (no combat music asked for).
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let Some((_lock, mut sound)) = crate::audio::tests::dummy(Bugs::Fixed) else {
+            return;
+        };
+        sound.add_track("HOST", Some(crate::audio::tests::track(2)));
+        let _ = sound.request("HOST", false);
+        let install = crate::audio::tests::bare_install("not-started");
+        let ground = Ground::load(&source).unwrap();
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-not-started-settings.toml"),
+            from: 0,
+            sound: Some(sound),
+            install: install.clone(),
+            seed: source.seed,
+            unattended: true,
+            presses: None,
+        };
+        let prepared = Prepared::new(&ground).unwrap();
+        NO_FRAMES.with(|no| no.set(true));
+        let failed = prepared.start(setup, &|| 0, &mut Vec::new()).unwrap_err();
+        NO_FRAMES.with(|no| no.set(false));
+        assert!(failed.error.contains("no frame made"), "{}", failed.error);
+        let sound = failed.sound.unwrap();
+        assert!(format!("{sound:?}").contains("streams: 1"), "{sound:?}");
+        assert_eq!(sound.queue().heard().pending(), Some("HOST"));
+        assert_eq!(
+            String::from(Box::new(NotStarted {
+                error: "e".into(),
+                sound: None
+            })),
+            "e"
+        );
+        drop(sound);
+        fs::remove_dir_all(&install).unwrap();
+    }
+
+    #[test]
+    fn a_battle_without_its_own_sound_silences_the_host_s_and_passes_the_focus_on() {
+        // E17 M7 T4 (R4-3, the user): the host's sound lent, the battle's sound archive
+        // unreadable: the battle plays none on it. The host's track fades out (asked for at once,
+        // after its fade-in) and nothing follows; the host's sound is serviced meanwhile and gets
+        // the focus's changes, so that it stands as its window does at the hand-back.
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let Some((_lock, mut sound)) = crate::audio::tests::dummy(Bugs::Fixed) else {
+            return;
+        };
+        sound.add_track("HOST", Some(crate::audio::tests::track(5)));
+        let _ = sound.request("HOST", false);
+        sound.service(127);
+        assert_eq!(sound.playing(), Some("HOST"));
+        let install = crate::audio::tests::bare_install("spare-sound");
+        fs::create_dir_all(install.join("Data")).unwrap();
+        fs::write(install.join("Data/Heroes3.snd"), b"no archive").unwrap();
+        let ground = Ground::load(&source).unwrap();
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-spare-sound-settings.toml"),
+            from: 0,
+            sound: Some(sound),
+            install: install.clone(),
+            seed: source.seed,
+            unattended: true,
+            presses: None,
+        };
+        let mut lines = Vec::new();
+        let prepared = Prepared::new(&ground).unwrap();
+        let mut hosted = prepared.start(setup, &|| 0, &mut lines).unwrap();
+        assert!(lines.iter().any(|l| l.ends_with("; no sound")), "{lines:?}");
+        assert!(hosted.player.is_none());
+        hosted.focus(false);
+        let _ = hosted.sound(0);
+        let sound = hosted.take_sound().unwrap();
+        let music = sound.queue().heard();
+        assert_eq!((music.pending(), music.active()), (Some(""), false));
+        assert!(sound.queued() > 0);
+        drop(sound);
+        fs::remove_dir_all(&install).unwrap();
+    }
+
     /// A host without a window (E17 M7 T3a2): the element alone, its host a loop of its own: a
     /// clock it moves by each pass's timeout as a wait with no input would, no window, no sound;
     /// the unattended presses' OK closing the result window. The element after its close (or
@@ -3970,6 +4253,205 @@ pub(crate) mod tests {
         assert!(shown > 1 && hosted.shown().is_some());
         assert!(hosted.outcome().is_some());
         assert_eq!(ground.in_game(), None);
+    }
+
+    /// A host without a window whose human plays (E17 M7 T4, R2-3): the element started at the
+    /// battle's opening over `ground`, no sound, no unattended presses, at the host's time
+    /// `ticks`.
+    fn attended<'g>(ground: &'g Ground, source: &Source, ticks: &dyn Fn() -> u64) -> Hosted<'g> {
+        let setup = Setup {
+            keys: Keys::original(),
+            settings: Settings::read(None).unwrap().0,
+            settings_path: std::env::temp_dir().join("h3-view-attended-test-settings.toml"),
+            from: 0,
+            sound: None,
+            install: source.install.clone(),
+            seed: source.seed,
+            unattended: false,
+            presses: None,
+        };
+        let mut lines = Vec::new();
+        let prepared = Prepared::new(ground).unwrap();
+        prepared.start(setup, ticks, &mut lines).unwrap()
+    }
+
+    /// One pass of the host's loop at its time `ticks` with the inputs `events` (as
+    /// [`hosted_to_close`]'s): what the element answered to each, and whether a frame was
+    /// presented.
+    fn pass(
+        hosted: &mut Hosted<'_>,
+        ticks: &dyn Fn() -> u64,
+        events: &[Event],
+    ) -> (Vec<Took>, bool) {
+        let mut lines = Vec::new();
+        assert_eq!(hosted.before(ticks, &mut lines), Ok(Flow::On));
+        let took = (events.iter())
+            .map(|&e| hosted.event(e, ticks).unwrap())
+            .collect();
+        hosted.after(ticks).unwrap();
+        let ms = hosted.sound(ticks());
+        let frame = hosted.due(ms).unwrap();
+        let shown = frame.is_some();
+        if let Some(frame) = frame {
+            hosted.showed(frame).unwrap();
+        }
+        (took, shown)
+    }
+
+    /// [`pass`]es without input `step` ms apart while `go_on` holds (at most 2 000): the
+    /// frames presented.
+    fn passes(
+        hosted: &mut Hosted<'_>,
+        clock: &std::cell::Cell<u64>,
+        step: u64,
+        mut go_on: impl FnMut(&Hosted<'_>) -> bool,
+    ) -> usize {
+        let ticks = || clock.get();
+        let (mut shown, mut n) = (0, 0);
+        while go_on(hosted) {
+            assert!(n < 2_000, "{n} passes");
+            shown += usize::from(pass(hosted, &ticks, &[]).1);
+            clock.set(clock.get() + step * 1_000_000);
+            n += 1;
+        }
+        shown
+    }
+
+    #[test]
+    fn a_panel_button_the_mouse_holds_drops_the_keys_and_the_right_press_and_stands_the_battle() {
+        // E17 M7 T4 (R2-3, the window's routing of T2 through the element's `event`): on the
+        // human's turn (the Wolf Riders', after the Angels' action) the mouse holds Defend; the
+        // right press opens no help, T no stats dialog, and the waiting battle runs no idle step,
+        // which it does without the hold; the right button's release gives Defend's command.
+        // R2-1: a Restart during the hold replays the opening's action under it, standing again
+        // at its end.
+        let Some(source) = crate::battle::tests::staged("seq-melee.toml", [false, true]) else {
+            return;
+        };
+        let ground = Ground::load(&source).unwrap();
+        let clock = std::cell::Cell::new(0_u64);
+        let ticks = || clock.get();
+        let mut hosted = attended(&ground, &source, &ticks);
+        passes(&mut hosted, &clock, 50, |h| {
+            !h.battle().takes(h.ms(clock.get()))
+        });
+        let end = hosted.battle().timeline().end;
+        assert!(end > 0 && hosted.battle().waiting());
+        // Unheld, the waiting battle idles (the outline's pulse, the flags).
+        let at = hosted.ms(clock.get());
+        assert!(passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) < at + 1_000) > 0);
+        let at = hosted.ms(clock.get());
+        let defend = h3_view::panel::DEFEND;
+        assert!(hosted.battle().enabled(at, defend));
+        let [x, y] = button_centre(hosted.battle().panel_at(at), defend).unwrap();
+        let press = [
+            Event::Pointer(Some((x, y))),
+            Event::Click {
+                down: true,
+                at: (x, y),
+            },
+        ];
+        pass(&mut hosted, &ticks, &press);
+        assert!(mouse_holds(hosted.held));
+        assert_eq!(hosted.battle().pressed, Some(defend));
+        let (took, _) = pass(&mut hosted, &ticks, &[Event::Key(Key::RightButton)]);
+        assert_eq!(took, [Took::Nothing]);
+        assert!(!hosted.battle().popup_held());
+        pass(
+            &mut hosted,
+            &ticks,
+            &[Event::Key(Key::T), Event::KeyUp(Key::T)],
+        );
+        assert!(!hosted.battle().stats_open() && mouse_holds(hosted.held));
+        let at = hosted.ms(clock.get());
+        assert_eq!(
+            passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) < at + 1_000),
+            0
+        );
+        // Restart under the hold: the opening's action plays again, the button still held.
+        let restart = [
+            Event::Key(Key::LeftCtrl),
+            Event::Key(Key::F7),
+            Event::KeyUp(Key::F7),
+            Event::KeyUp(Key::LeftCtrl),
+        ];
+        pass(&mut hosted, &ticks, &restart);
+        assert!(hosted.ms(clock.get()) < end && mouse_holds(hosted.held));
+        let replayed = passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) <= end + 200);
+        assert!(replayed > 10, "{replayed} frames replayed");
+        let at = hosted.ms(clock.get());
+        assert_eq!(
+            passes(&mut hosted, &clock, 50, |h| h.ms(clock.get()) < at + 1_000),
+            0
+        );
+        assert_eq!(hosted.battle().pressed, Some(defend));
+        pass(&mut hosted, &ticks, &[Event::KeyUp(Key::RightButton)]);
+        assert!(hosted.held.is_none() && hosted.battle().pressed.is_none());
+        assert!(hosted.inputs.iter().any(|i| matches!(i, Input::Act { .. })));
+    }
+
+    #[test]
+    fn a_record_plays_on_under_a_hold_and_its_result_window_ends_the_hold() {
+        // E17 M7 T4 (R2-1, R2-2): a whole game's battle from its record (`seq-end`'s, as
+        // `a_host_gets_a_whole_game_s_battle_back_with_its_outcome`'s), the mouse holding Defend
+        // from the Archangel's strike: the strike plays on under the hold; the result window
+        // opens at the battle's end and ends the hold without its click, so that the left
+        // release does nothing and its key closes it.
+        let Some(mut source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let (ruleset, setup) =
+            crate::scenario::battle(&source.input, &source.packs, source.seed).unwrap();
+        let players = ([false, false], Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, source.seed, players).unwrap();
+        while live.next().unwrap().is_some() {}
+        let fought = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let tile = h3_protocol::wire::game::Pos {
+            x: 4,
+            y: 7,
+            level: 0,
+        };
+        let (text, _, _) = game_record(&fought, ([Some(3), None], tile));
+        let path =
+            std::env::temp_dir().join(format!("h3-view-held-record-{}.jsonl", std::process::id()));
+        fs::write(&path, text).unwrap();
+        source.input = path.clone();
+        let ground = Ground::load(&source).unwrap();
+        let clock = std::cell::Cell::new(0_u64);
+        let ticks = || clock.get();
+        let mut hosted = attended(&ground, &source, &ticks);
+        passes(&mut hosted, &clock, 20, |h| h.ms(clock.get()) < 100);
+        let end = hosted.battle().timeline().end;
+        let at = hosted.ms(clock.get());
+        let defend = h3_view::panel::DEFEND;
+        assert!(at < end && hosted.battle().enabled(at, defend));
+        let [x, y] = button_centre(hosted.battle().panel_at(at), defend).unwrap();
+        let press = [
+            Event::Pointer(Some((x, y))),
+            Event::Click {
+                down: true,
+                at: (x, y),
+            },
+        ];
+        pass(&mut hosted, &ticks, &press);
+        assert!(mouse_holds(hosted.held));
+        let played = passes(&mut hosted, &clock, 20, |h| h.ms(clock.get()) <= end);
+        assert!(played > 10, "{played} frames played under the hold");
+        passes(&mut hosted, &clock, 20, |h| !h.battle().result_open());
+        assert!(hosted.held.is_none() && hosted.battle().pressed.is_none());
+        let release = Event::Click {
+            down: false,
+            at: (x, y),
+        };
+        pass(&mut hosted, &ticks, &[release]);
+        assert!(!hosted.closed());
+        pass(
+            &mut hosted,
+            &ticks,
+            &[Event::Key(Key::Return), Event::KeyUp(Key::Return)],
+        );
+        assert!(hosted.closed());
+        fs::remove_file(&path).unwrap();
     }
 
     /// The whole game's record of a test host's game whose battle is `fought` (a spectator's
@@ -4103,5 +4585,46 @@ pub(crate) mod tests {
         let refused = Ground::load(&source).unwrap_err();
         assert!(refused.contains("no battle 2"), "{refused}");
         fs::remove_file(&path).unwrap();
+    }
+
+    #[test]
+    fn a_host_plays_a_whole_game_s_battle_it_holds_in_memory() {
+        // E17 M7 T4 (R3-4): the battle a host read itself from a game's record
+        // (`GameRecord::battles`; `a_host_gets_a_whole_game_s_battle_back_with_its_outcome`'s),
+        // loaded with `Ground::load_battle`, plays as the record file's: where it stands, its
+        // result window, the outcome. A human's side is refused: a record's battle is watched.
+        let Some(source) = crate::battle::tests::staged("seq-end.toml", [false, false]) else {
+            return;
+        };
+        let (ruleset, setup) =
+            crate::scenario::battle(&source.input, &source.packs, source.seed).unwrap();
+        let players = ([false, false], Computer::Greedy);
+        let mut live = crate::live::Live::new(&ruleset, setup, source.seed, players).unwrap();
+        while live.next().unwrap().is_some() {}
+        let fought = h3_view::record::parse(&live.record().unwrap()).unwrap();
+        let tile = h3_protocol::wire::game::Pos {
+            x: 4,
+            y: 7,
+            level: 0,
+        };
+        let (text, result, ended) = game_record(&fought, ([Some(3), None], tile));
+        let battle = h3_view::game_record::parse(&text)
+            .unwrap()
+            .battles()
+            .remove(0);
+        let at = battle.at;
+        assert_eq!(at.ended, Some((ended, result)));
+        let human = Source {
+            humans: [true, false],
+            ..source.clone()
+        };
+        let refused = Ground::load_battle(&human, battle.clone()).unwrap_err();
+        assert!(refused.contains("not a record's"), "{refused}");
+        let ground = Ground::load_battle(&source, battle).unwrap();
+        assert_eq!(ground.in_game(), Some(at));
+        assert_eq!(ground.content(), Some(h3_view::remote::Content::Same));
+        let (hosted, shown) = hosted_to_close(&ground, &source);
+        assert!(shown > 1);
+        assert_eq!(hosted.outcome(), Some(result));
     }
 }

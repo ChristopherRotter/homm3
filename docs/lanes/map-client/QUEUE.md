@@ -112,6 +112,65 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **for
+  your M4 T3, T4**): a whole game's record and wire, protocol **v43**: (1) after a command's
+  `GameEvents` (and a battle's last `Snapshot`) a player whose explored tiles grew gets
+  `GameReveal { n, reveal }`: the tiles whose sight changed with their views, the heroes (with
+  their types), objects, empty boats and towns it newly sees; fold it after the events with
+  `GameObservation::reveal`, and the view equals `observe`'s on the tiles, objects, boats and
+  towns (`SRV-STUB-1` lifted; `h3-server record` writes it). (2) **A view's objects are in tile
+  order** (`wire::game::Object::place`: the anchor's level, row and column, then the type and the
+  masks), no longer the map's, and carry **no index**: `docs/06-security.md` rules one out in a
+  view ("an index counts the objects before it, seen or not"; a creature month's monster would
+  also tell how many it added elsewhere). The user's condition was an index only if your draw
+  order needs it; it does not, by our reading of your design §2.1 (the draw lists follow the map
+  file's object order): find a seen object's entry in the file by its type and anchor, unique
+  among typed objects but for two special grounds of one type with the same masks on one anchor
+  (E08 T20a2a), which are alike in every field (a random object's drawn type: your request (2)
+  to the adventure lane). If that holds for you, your request (1) to the adventure lane (an
+  object identity in each `ObjectView`) can be withdrawn; if it does not, tell us why and we ask
+  the user again. (3) A battle's last `Snapshot` (the battle as the player's side saw it as it
+  ended, `SRV-STUB-14` lifted) comes as the player's very next message after the `GameEvents`
+  holding its `BattleEnded`, as the client lane's reader takes it.
+
+- 2026-11-12 (the client lane, E27 M0, branch `client/e27-m0`; **for your M5**, informational
+  until then): E27 (the game shell) is refined (`docs/epics/E27-game-shell.md`). Its scenario
+  screen hands a hot-seat game over as the engine's own `h3_game::GameSetup`, filled (CLT-Q79:
+  no new crate, no new type for it); what else the hand-over carries (the hot seat's names, the
+  map's file) is agreed with you at E27 M3's T0 within the existing crates. The system menu in
+  play (save, load, restart, main menu, quit) draws over your adventure screen at E27 M4, agreed
+  with you then. The campaign screens moved to E20 (CLT-Q82).
+- 2026-11-12 (the client lane, E17 M7 T4, branch `client/e17-m7-t4`; **for your M4 T5 and M5**;
+  E17 closes with it): **the hosted battle after M7's review**, design §13.2 to §13.6.
+  (1) **The element borrows** its `Ground` and your game (`Prepared<'g>`, `Hosted<'g>`; the
+  user kept it, R2-4): run each battle in a scope that owns them; tell the client lane if your
+  host needs an owning element. (2) `Prepared::start` returns `Result<Hosted, Box<NotStarted>>`:
+  a failed start hands your lent sound back (`NotStarted::sound`; `From` into `String` keeps
+  `?`), every fallible step before the sound is taken. (3) **One `GameSeat` per battle:** it
+  follows the battle opened last until `Ground::load_game` loads it, then stays on it and reads
+  nothing past the message after its end; make a new seat for the next battle. (4)
+  `Ground::load_battle(source, battle)` plays a `GameBattle` you hold in memory (no temporary
+  file); a battle open when the messages begin (a game restored mid-battle) opens at the
+  `GameSnapshot`. (5) **The sound:** a battle that cannot read its sound archive silences yours
+  (a request for the missing track `""`, so `has_track("")` is true afterwards), services it and
+  passes the focus on: keep calling `Hosted::sound` and `Hosted::focus` every pass; the tracks
+  your sound already has are not decoded again, the battle's stay on it and are reused; a Restart
+  after the end brings the combat music back in both profiles. Additive in the common crates:
+  `h3_ui::music::Music::request_again` and `Queue::request_again` (the pending name replaced
+  whatever the profile's filter), `h3_sdl::Audio::open_driver` (a named SDL driver: the tests'
+  `dummy`). (6) A mouse's hold over a panel button stands the battle only at its timeline's end
+  (a record plays on), and a box opening over it ends the hold. (7) **E17's threads placed with
+  you** (the user, at T4): M6 T5e, the captured artifacts' message after Eagle Eye's
+  (`captured_artifacts_message` 0x4772B0, design §12.21), the client lane builds once your M4 T5
+  tells the winner's owner the adventure's capture list (HER-ART-004); CLT-Q4, the battlefield
+  picture's variants 0 and 1, read from the wire since T3b1, recorded once one of your battles
+  has trees, mountains or dead vegetation around it; `CLT-STUB-4` (no Auto Combat switch in a
+  live game's battle: the computer's choices for the human's side need your state) and
+  `CLT-STUB-5` (a hot-seat battle between two of your humans is not played: the seat's side
+  alone is human; with your M5). Each is a line in the client queue's inbox: tell the client
+  lane when your task reaches it. HD layouts and graphics options are E29 (the backlog), for
+  both clients.
+
 - 2026-11-12 (the adventure lane, E08 T110, branch `adventure/e08-t110`; the capture harness, informational): `h3adv` gains a garrison's exchange as a screen (`garrison`, vtable 0x643890; `garrison_dialogs`, `bar:selected`, `bar:clicks`, `creature_windows`), the battle plan `{ book = "<spell>", then }` (the key C at each side's first stack's turn; `book:<side>`; `h3mem`'s stacks gain `spells`, `battlefield` gains `anti_magic`), a step's `cast` (the adventure book), a list of `hint` tiles (`hints`; an unexplored tile's hint says so), an end-turn step's `to_day`, `skip_quietly`, the hero screen's `morale` and `luck` (items 116, 117) with `popup:lines`, and `garrison:x,y`, `anti_magic`, `fountain:x,y`, `spring:x,y`, `hero:bit:<n>`, `hero:word:<offset>`, `dialog:items|boxes` (`h3mem.garrisons`, `battle_hero`). **Behaviour changed:** `h3drive.gold_bonus` clicks each row's arrow until the memory reads Gold (at most four: a heroless town player has no Artifact); `hint_at` parks the mouse first and reads until two reads agree (at most 3 s); `play_turns` gives no order once the battle is decided; an action's `row:` and `+` fields; a recipe's `+anything odd` kept beside the notes. The harness check passed. `clients/capture/README.md`, "Garrisons and the bonus visitables".
 
 - 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness

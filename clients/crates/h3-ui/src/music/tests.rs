@@ -751,6 +751,60 @@ fn a_track_played_once_without_the_focus() {
     assert_eq!(line(&m.advance(20, &tracks)), fade_in("A", 0)[..2].to_vec());
 }
 
+/// E17 M7 T4 (R4-2, the user): a viewer's own request takes the client's filter in both
+/// profiles: the battle's music asked for again after the end's tune was asked for (a Restart)
+/// comes back where its fade began during its fade-out, plays on during its fade-in, and the
+/// tune never opens; the original's filter would drop it and play the tune instead.
+#[test]
+fn a_request_again_takes_the_client_s_filter_in_both_profiles() {
+    for bugs in [Bugs::Original, Bugs::Fixed] {
+        // Fading out for the tune: A comes back where its fade began.
+        let mut m = playing_a_with(200, bugs);
+        assert_eq!(m.request_once("C"), Request::Taken);
+        let _ = m.advance(15, &tracks);
+        assert_eq!(m.request_again("A"), Request::Taken, "{bugs:?}");
+        let runs = m.advance(75 + 20, &tracks);
+        let mut want = vec![("A", 215, 5, FADE_OUT[1])];
+        want.extend(fade_out("A", 200).into_iter().skip(2));
+        want.extend(fade_in("A", 200).into_iter().take(2));
+        assert_eq!(line(&runs), join(want), "{bugs:?}");
+        assert_eq!((m.playing(), m.pending()), (Some("A"), None), "{bugs:?}");
+        // Fading in, the tune pending: it is dropped and A plays on.
+        let mut m = playing_a_with(45, bugs);
+        assert_eq!(m.request_once("C"), Request::Taken);
+        assert_eq!(m.request_again("A"), Request::Kept, "{bugs:?}");
+        let _ = m.advance(45 + 90 + 20, &tracks);
+        assert_eq!((m.playing(), m.pending()), (Some("A"), None), "{bugs:?}");
+        // Pending or playing with nothing pending, dropped as any request.
+        assert_eq!(m.request_again("A"), Request::Playing, "{bugs:?}");
+        assert_eq!(m.request("B"), Request::Taken);
+        assert_eq!(m.request_again("B"), Request::Pending, "{bugs:?}");
+    }
+    // The original's filter alone drops it, and the tune follows.
+    let mut m = playing_a_with(200, Bugs::Original);
+    m.request_once("C");
+    let _ = m.advance(15, &tracks);
+    assert_eq!(m.request("A"), Request::Playing);
+    let _ = m.advance(75 + 20, &tracks);
+    assert_eq!(m.playing(), Some("C"));
+}
+
+/// The queue's request again lands at the frames heard as any other, and takes the stream back.
+#[test]
+fn the_queue_asks_again_through_the_client_s_filter() {
+    let (mut q, mut s) = (Queue::new(RATE, Bugs::Original), Device::default());
+    cue(&mut q, &mut s, "A");
+    run(&mut q, &mut s, 200, 20);
+    assert_eq!(q.request_once("C", s.queued(), &tracks), Request::Taken);
+    s.queue.clear();
+    run(&mut q, &mut s, 20, 20);
+    assert_eq!(q.request_again("A", s.queued(), &tracks), Request::Taken);
+    s.queue.clear();
+    run(&mut q, &mut s, 200, 20);
+    assert!(s.heard.iter().all(|r| r.name == "A"));
+    assert_eq!(q.request_again("A", s.queued(), &tracks), Request::Playing);
+}
+
 /// The queue's request of a track played once lands at the frames heard as any other.
 #[test]
 fn the_queue_plays_a_track_once() {

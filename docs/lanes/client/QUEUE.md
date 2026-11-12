@@ -4,76 +4,111 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12, M1 2026-10-13, M2 2026-10-14, M3
-2026-10-23, M4 2026-10-27, M5 2026-10-31, M6 2026-11-10; ADR-0020, ADR-0024; the battle
-client since the split of 2026-10-23, the adventure map client being the map-client lane's
-E24). M7 (the battle client's last steps) refined at M6's closure (T7c, 2026-11-10, with the
-user): M6's answers built, the panel buttons' own loop, the battle as an entry a host's window
-runs, then the closure, **which closes E17** (the user: ranked play, the pause and the server
-browser wait for E27 and a refinement after it). Its tasks below, in order, each cut with the
-user at its start when it outgrows half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the
-user's computer must be online); never from the installation. The captures need the five DLLs,
-`Heroes3.snd`, `H3ab_ahd.snd` and `H3ab_ahd.vid` too; the harness's runbook:
-`clients/capture/README.md`. The client's gates: `clients/scripts/check.sh` (the full local
-check; CI's job runs the same), the real-asset gate `cargo run -p h3-battle-client -- gate` from
-`clients/`. An asset fix gets its mechanism (ADR-0020 point 6: the entry's flag, the
-`faithful`/`fixed` profile) with the first one a task finds.
+**E27, the game shell** (refined 2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
+decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 (reading and captures)
+below; M2 to M4 are refined at their T0s. The original files: stage them from the user's
+`original-data/install/` (one large file per staging call; the user's computer must be online);
+never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd`
+and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates:
+`clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
+`cargo run -p h3-battle-client -- gate` from `clients/`.
 
-### E17 M7 T4 — M7's and E17's closure
+#### E27 M1 T1a — the catalogue, part 1: the start and the menus
 
-- **Scope:** a fresh reviewer; the captures where M7 changed the battle screen; the review list
-  with the user; E17's open threads placed (the epic's "Later": HD layouts, graphics options,
-  the client's options, video, M6 T5e; this inbox's waiting entries; ranked play's notes for the
-  refinement after E27); E17 closed (`docs/BACKLOG.md`'s row, and E27's draft, which still names
-  E17 M7 for the lobby and the browser, by a `shared/` pull request).
-- **Acceptance:** the review list accepted; every open thread placed; E17 done.
-- **Depends on:** T1 to T3 (done 2026-11-11). **Status:** next.
+- **Scope:** read from `Heroes3.exe` (`docs/exe/map.toml` entries with their confidence) and its
+  assets: the start (the clips before the main menu in order, what skips one, the loading bar's
+  clip and when it shows, where `H3X1intr` plays; design §1), the main menu (its background,
+  buttons and their DEFs, hover, press, hotkeys, sounds, music), New Game's and Load Game's
+  choices (single scenario, multiplayer, campaign, tutorial, back), Multiplayer (its modes, the
+  hot seat's names dialog), High Scores (its tabs, `HSANIM` and `HSLOOP`), Credits (its text
+  table, `Credits.smk`), Quit's question. Per screen: the constructor, its items in order, the
+  assets by name, the texts by table and record (never the text, ADR-0009), the sounds, the
+  entry points and the transitions; observed under the harness where the code is unclear.
+  Into `E27-design.md` §2. The network modes and the tutorial decided (CLT-Q83): a `CLT-Q<n>`
+  each, with a recommendation; every oddity found a question too.
+- **Acceptance:** every screen of the part listed with its addresses, items, assets, texts,
+  sounds and transitions, each reading's confidence stated; the questions filed (asked when the
+  user is present); the Definition of Done (docs).
+- **Depends on:** M0 (done). **Status:** ready.
+
+#### E27 M1 T1b — the catalogue, part 2: a game's setup and the screens around play
+
+- **Scope:** as T1a for scenario selection (the list, its filters and sort, the information
+  panel, the difficulty, the players' setup: colour, human or computer, town, hero, starting
+  bonus, handicap; the advanced options; the random map's tab, decided as a `CLT-Q`), Load's and
+  Save's dialogs (the list, the file name's entry), the system options (every setting, where the
+  original reaches the dialog, where it keeps a setting), the system menu in play, and the end
+  of a scenario (victory, defeat, their clips, messages and the high score's entry). Per setup
+  choice: the `GameSetup` field it fills, or the E10 gap it waits for (decision 6). Into
+  `E27-design.md` §3.
+- **Acceptance:** as T1a's; the setup's choices mapped to `GameSetup` or to a named gap.
+- **Depends on:** T1a. **Status:** ready after T1a.
+
+#### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
+
+- **Scope:** the shell's clips (design §1, as T1a and T1b place them) copied from the user's
+  `Data/VIDEO.VID` and `Data/H3ab_ahd.vid` into `original-data/shell-videos.vid` on the user's
+  computer (reading the installation only, as `battle-videos.vid` was made, E17 M5 T4b1); the
+  harness's `VIDEO.VID` holding both archives' clips (`setup.sh`); the harness's steps to every
+  catalogued screen and its probes (the runbook, a section of its own); the reference captures of
+  each screen (stills; a clip's frames where a screen plays one), each recorded twice; the start
+  with its clips under Wine; the traps into `TRAPS.md`. Cut at its start with the user if it is
+  more than half a context.
+- **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
+  same or each difference listed; the harness check passes; the Definition of Done.
+- **Depends on:** T1b; the user's computer online for the clips. **Status:** ready after T1b.
+
+#### E27 M1 T3 — M1's closure and M2's refinement
+
+- **Scope:** a fresh reviewer on the catalogue and the recipes, its findings fixed or listed;
+  M1's review list and the open questions with the user; M2 T0: M2's tasks into this queue (the
+  Smacker decoder, the start, the menus, the shell's state machine and its headless driver,
+  CLT-Q2's loading; where the shell's code lives, CLT-Q79).
+- **Acceptance:** the review list accepted by the user; M2's tasks queued; the Definition of
+  Done (docs).
+- **Depends on:** T2. **Status:** ready after T2.
 
 ## Inbox
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T5c, branch `claude/optimistic-meitner-j73r89`; **your
+  rule followed, your docs to update**): a game's battle's last `Snapshot` is sent as your note
+  of 2026-11-12 asked (protocol v43): the player's very next message after the `GameEvents`
+  holding `BattleEnded`, none when those events open another battle for it; `SRV-STUB-14` is
+  lifted, so `h3_view::game_record`'s doc ("the game sends no last snapshot yet") is stale. A new
+  message `GameReveal` (what the player newly sees on the map) comes after it when the player's
+  explored tiles grew; your reader's wildcard skips it.
+
 - 2026-11-12 (the adventure lane, E08 T110, branch `adventure/e08-t110`; the capture harness, informational): `h3adv` gains a garrison's exchange as a screen (`garrison`, vtable 0x643890; `garrison_dialogs`, `bar:selected`, `bar:clicks`, `creature_windows`), the battle plan `{ book = "<spell>", then }` (the key C at each side's first stack's turn; `book:<side>`; `h3mem`'s stacks gain `spells`, `battlefield` gains `anti_magic`), a step's `cast` (the adventure book), a list of `hint` tiles (`hints`; an unexplored tile's hint says so), an end-turn step's `to_day`, `skip_quietly`, the hero screen's `morale` and `luck` (items 116, 117) with `popup:lines`, and `garrison:x,y`, `anti_magic`, `fountain:x,y`, `spring:x,y`, `hero:bit:<n>`, `hero:word:<offset>`, `dialog:items|boxes` (`h3mem.garrisons`, `battle_hero`). **Behaviour changed:** `h3drive.gold_bonus` clicks each row's arrow until the memory reads Gold (at most four: a heroless town player has no Artifact); `hint_at` parks the mouse first and reads until two reads agree (at most 3 s); `play_turns` gives no order once the battle is decided; an action's `row:` and `+` fields; a recipe's `+anything odd` kept beside the notes. The harness check passed. `clients/capture/README.md`, "Garrisons and the bonus visitables".
 
-- 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
-  changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
-  town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
-  `week_creature`, `month_kind`, `month_creature`; eight logged: the neutral garrisons' and the
-  Portal's draws), so `h3drive.ROLLS` and `LOGGED` hold 30 calls: a battle sequence checks that
-  xdd.dll redirected all 30, and a stale `xdd.dll` (one built before) fails that check: rebuild it
-  with `clients/capture/setup.sh`. `h3adv` gains a recipe's and a step's `rolls`, `roll` and
-  `date`, the reads `draws`, `turn_draws`, `kinds`, the town parts `counts`, `count:<i>`,
-  `dwellings`, `portal`, `garrison_hero`, `hire:creatures`, the town screen actions `hero_in` and
-  `building`; `h3mem`'s town record gains `recruits`, `portal`, `dwellings`. Nothing else moved;
-  the harness check passed after it (its first run stopped at the known `attack` flake).
+**E17's leftovers** (placed at its closure, M7 T4, with the user): each waits for the work named;
+the battle client's code is this lane's, so the lane builds it then.
 
-- 2026-10-27 (the map client lane, E24 M2 T3b; for you when a translucent DEF of encoding 3
-  appears): `draw_frame_blend` 0x47D4F0 is read (`docs/exe/map.toml`; E24 design §3.8): it blends
-  encoding 3's literal pixels half and half with the screen as 0x47EF60 blends encoding 1's, and
-  skips its runs (both callers pass no colour). `h3_render::blit`'s `Drawer::Translucent` still
-  draws encoding 3 plain (*provisional*: no magic animation has it); the map view blends with its
-  own drawer (`h3_map_view::draw::blend`), so nothing in the foundation changed.
-
-- 2026-10-19 (E17 H1, H2; the adventure lane, E08 T22a1): the harness's check
-  (`capture/checks/harness-check.toml`) can gain a monster's offers, a pile's question and a walk
-  below: the tools are in. NOTES, "The adventure lane's harness".
-
-- CLT-Q2 (2026-10-12, 2026-10-19): the table-only LOD reader is in `h3-formats`: switch the
-  archive set to the directories and a batch's ranges, `h3-view gate` measuring it. NOTES,
-  "Assets and archives".
-
-- CLT-Q4: the background variants 0 and 1 (read from the wire since E17 M7 T3b1; not recorded:
-  a situation needs trees, mountains or dead vegetation around the battle). NOTES,
-  "Battlefields and boats".
-
-- Later (placed at E17 M7 T4): graphics options (the user, at M1), an HD layout's origin and viewport.
-  NOTES, "Options and layouts". (The adventure map's object draw order, research item 9, went to
-  the map-client lane at the split, 2026-10-23.)
-
-- The live client (the server lane, 2026-10-09 to 13): M5 T6 and T7 took the record file, the
-  content check, a server restart and accounts; the ladders, the pause by agreement and the
-  server browser are not E17's (the user, 2026-11-10: after E27, by a refinement of their own;
-  the first ranked play through the website, E21). NOTES, "The live client".
+- **With E24 M4 T5** (the map client's battles; its inbox told, 2026-11-12): M6 T5e, the captured
+  artifacts' message after Eagle Eye's (deferred by the user, 2026-11-07;
+  `captured_artifacts_message` 0x4772B0, design §12.21: GENRLTXT 31, eight artifact pictures a
+  box through `h3_view::message::pictures`, a pickup sound each), its list the adventure's
+  capture (HER-ART-004) told to the winner's owner, a server's seat with it; CLT-Q4, the
+  background variants 0 and 1 (read from the wire since M7 T3b1; recorded once a battle has trees,
+  mountains or dead vegetation around it; NOTES, "Battlefields and boats"); `CLT-STUB-4` (a live
+  game's battle takes no Auto Combat switch: the computer's choices for the human's side need the
+  host's state).
+- **With E24 M5** (hot seat): `CLT-STUB-5`, a hot-seat battle between two of the host's humans
+  (design §13.4).
+- **Waiting on other lanes** (their inboxes, 2026-11-05 and 2026-11-10): CLT-Q63 (a) (the
+  automatic war machines' turns, the battle lane), CLT-Q65 (b) (a whole game's learned spells),
+  CLT-Q69 (a) (the start split, the battle and server lanes), `CLT-STUB-1` (a server's seat
+  lacks the other hero's Orb and Cloak: the battle and server lanes); the client's side follows
+  each.
+- **The battle screen's unbuilt gaps** (read in part, not recorded; NOTES, "The battle screen"):
+  the other pending spells of a melee strike, regeneration, the mana drain, Death Blow and
+  Poison's damage, the Faerie Dragon's draw line, Fire Wall's burn and Land Mine's blast, the
+  shot cursor's half damage, the "no free hex" message (an engine event first); taken when a
+  recording needs one.
+- **E28** (the backlog): ranked play in the native client, refined after E27 (the first ranked
+  play through the website, E21); NOTES, "The live client". **E29** (the backlog): HD layouts and
+  graphics options for both clients; NOTES, "Options and layouts".
 
 Archive of the lane's finished and informational entries: `QUEUE-ARCHIVE.md` (grep it for an id or a task a doc cites). Keep this file to what is open: a done task leaves it, a notice nobody has to act on goes to the archive at once (`docs/08-work-process.md`, "Keeping the start-of-session reading small").

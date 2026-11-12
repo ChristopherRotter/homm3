@@ -1,8 +1,10 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **draft** (the user, 2026-11-03; not refined, no task started) · Lane: **client**, assigned once E17 closes
-(E24's hot seat, M5, consumes the scenario screens; the map-client lane is consulted) ·
-Follows E17 (the battle client: its compositor, SDL adapter, string catalogue and capture harness)
+Status: **refined** (2026-11-12, M0, with the user); next **M1 T1a** (`docs/lanes/client/QUEUE.md`).
+Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
+map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
+catalogue and capture harness). Working detail (readings, the clips, layouts):
+[`E27-design.md`](E27-design.md); done tasks in full: [`E27-log.md`](E27-log.md).
 
 ## Goal
 
@@ -11,91 +13,147 @@ frame, as E17 does for the battle and E24 for the adventure map: from the first 
 the start, through the main menu and the screens it opens, to a game's begin and, after play,
 the way back. A player starts the client, picks a scenario, sets up a hot-seat game and plays it
 (E24 M5), with no tool from the harness in between. The scope here is the **faithful
-recreation**; the lobby, the ladder and the server browser come later (below).
+recreation**; the lobby, the ladder and the server browser come later (E28), the campaigns'
+screens with the campaigns (E20).
 
-## Decisions (the user, 2026-11-03)
+## Decisions
+
+The user, 2026-11-03 (the draft):
 
 1. **A new epic**, not a milestone of E17 or E24: the screens outside play have no home in
    either (E17's "Later" lists the client's options and video; E24's M5 only the handover and
    the hero, town and kingdom screens "as play needs them").
-2. **Assigned to the client lane once E17 closes** (after M6, and M7's own decision).
+2. **Assigned to the client lane once E17 closes** (E17 closed at its M7 T4, 2026-11-12).
 3. **Faithful recreation first.** Lobby, ladder and server browser integrations are a later
-   increment, after this epic's screens exist (E17 M7 and E21 build on them). Their look is new
-   design, as E17's "Later" already says.
+   increment, after this epic's screens exist (E28 and E21 build on them). Their look is new
+   design (E28).
 
-## Scope (to be read from the original at T1; names are the original's as far as known)
+The user, 2026-11-12 (M0; the questions `CLT-Q79` to `CLT-Q83`, `lanes/client/QUESTIONS-ANSWERED.md`):
+
+4. **The setup is the engine's `h3_game::GameSetup`** (CLT-Q79): the scenario screen fills the
+   setup the map's import gives, through the engine's own functions (`GameSetup::offer`, the
+   faction choice, `validate`); what it lacks today (the starting bonus, the handicap, victory and
+   defeat) E10 adds to `GameSetup`, and the shell stubs it until then. No new crate for the setup
+   and no engine change ahead of E10. The shell's state between screens is the client's; where
+   its code lives (an existing crate) is settled at M2's T0.
+5. **The clips are played, Smacker included** (CLT-Q80): the start's first clip (the 3DO logo),
+   the high scores' animation, the loading bar and the credits' clip exist only as Smacker, so a
+   port of FFmpeg's Smacker decoder (LGPL-2.1-or-later, as `h3-bink` is FFmpeg's Bink: CLT-Q29),
+   in a crate of its own, checked frame for frame against the game's `SMACKW32.DLL` under Wine
+   (as `bink-check.sh` checks `BINKW32.DLL`), in M2. The original's order holds: a clip's Bink
+   version where both exist (`video_open` 0x44D5A0).
+6. **What the engine lacks: the screens built, the effect stubbed** (CLT-Q81): the starting
+   bonus, the handicap, victory and defeat (the end screens, the high scores' entry) and the
+   computer players (no adventure AI: E13) are drawn and chosen as the original's, recorded in
+   the setup where it has a field, each missing effect a `CLT-STUB-<n>` until E10 (E13 for the
+   computer's turns); the adventure lane's inbox has the list (2026-11-12).
+7. **Four milestones after M0; no campaigns** (CLT-Q82): the campaign selection, the in-between
+   screens and the campaign clips move to E20 with the campaigns' rules. New Game's and Load
+   Game's Campaign entries are drawn and lead to a stub until E20.
+8. **The agent's defaults, kept** (CLT-Q83): the installation's (Complete's) menus only, RoE's and
+   AB's are E11's; the saves are the engine's own adventure record (`h3-files`' replay format: the
+   map, the difficulty, the seed and the commands; a load replays it; what it lacks of a setup's
+   choices is settled at M4's T0 with the adventure lane), the original's `.GM1`
+   saves not listed (E19); the original's entries the client cannot serve (the network modes, the
+   tutorial) are decided at T1a from the reading, each a `CLT-Q`; which maps the scenario list
+   shows (8 of the 160 shipped maps import whole today) is decided at M3's T0.
+
+E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
+exhaustive, automated diffs against the original's captures under Wine; the original's drawing
+bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
+string catalogue; every oddity of the original an open question (the lane HANDOFF's autonomy
+contract).
+
+## Scope (read from the original at M1; names are the original's as far as known)
 
 Each screen is read from `Heroes3.exe` and its assets (`docs/exe/map.toml`), captured under
 the harness as a reference, and compared at the pixel. Where the editions differ (RoE, AB,
 SoD) the shipped installation decides; E11 owns historical differences.
 
-- **The start:** the logo and intro videos (video is E17's "Later"; here only the decision of
-  what the client plays), the main menu and its buttons.
-- **New Game:** the choice of single scenario, campaign, multiplayer, and the tutorial's place.
+- **The start:** the clips before the main menu (the 3DO and NWC logos, the intro: `3DOLOGO`,
+  `NWCLOGO`, `H3INTRO`; where `H3X1intr` plays is read at T1a), skipping them, the loading bar
+  (`ProgressBar.smk`), the main menu and its buttons, its music. The clips: design §1.
+- **Start-up loading** (E17's CLT-Q2, placed at its M7 T4): the archive set read by the LODs'
+  tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), `h3-view
+  gate` measuring it; `lanes/client/NOTES.md`, "Assets and archives".
+- **New Game and Load Game:** the choice of single scenario, multiplayer, campaign (a stub until
+  E20) and the tutorial's place (T1a).
+- **Multiplayer's hot seat:** the names' dialog; the other modes are listed and decided at T1a,
+  not built.
 - **Scenario selection:** the list with its filters and sort, the scenario's information, the
-  difficulty, the players' setup (colour, hero, town, starting bonus, handicap, teams), the
-  advanced options, the map's description and the preview. The E17 design's hot-seat flow
-  (design §6.3) is the start of the reading.
-- **Multiplayer's hot seat:** the names' dialog; the other modes (direct connection, modem)
-  are listed and decided at T1, not built.
-- **Load Game and Save Game:** the list, the dialogs, the engine's own save/replay record as
-  the file (E19, the original's save-file import, stays apart and low priority).
-- **Campaigns:** the campaign selection screen and the in-between screens; the campaign rules
-  are E20's, so here only their screens, behind E20.
-- **High scores and credits.**
-- **Options:** the system options dialog (volumes, speeds, the original's settings), the same
-  reached from the main menu and from play's system menu.
-- **The system menu in play** (save, load, restart, main menu, quit) and **the end of a
-  scenario** (victory, defeat, the statistics and the high-score entry).
+  difficulty, the players' setup (colour, human or computer, town, hero, starting bonus,
+  handicap, as the original offers them), the advanced options, the map's description, and a
+  game's begin: the filled `GameSetup` handed to the hot seat (E24 M5). The random map's tab is
+  read and decided at T1b (the engine has no generator). The E17 design's hot-seat flow (design
+  §6.3) is the start of the reading.
+- **Load Game and Save Game:** the lists, the dialogs, the engine's adventure record as the file
+  (decision 8).
+- **Options:** the system options dialog (volumes, speeds, the original's settings), wherever the
+  original reaches it (T1b). From E17 (placed at its M7 T4): the volume settings (0x5996C0) and a
+  track resuming where it stopped (0x59AA82), the client's own options beside the original's
+  (CLT-Q25's step of a two-hex stack one hex back by the mouse, a gameplay option off by
+  default); `lanes/client/NOTES.md`, "Options and layouts". The settings in the client's own
+  file, never in the installation.
+- **The system menu in play** (save, load, restart, main menu, quit; over the map client's
+  adventure screen, with the map-client lane) and **the end of a scenario** (victory, defeat,
+  their clips and messages, the high-score entry; the effects behind E10, decision 6).
+- **High scores and credits** (`HSANIM`, `HSLOOP`; `Credits.smk` of `H3ab_ahd.vid`).
 - **Sound and music** of the menus (E17's sound decoders).
 
 ## Non-goals
 
-- Lobby, accounts, ladder, server browser, the pause by agreement: E17 M7, E16 M2 and E21, after
-  this epic's faithful screens (decision 3).
-- The map editor and its screens (`h3maped.exe`).
-- The campaigns' rules and scripts (E20); the original's save-file import (E19).
+- Lobby, accounts, ladder, server browser, the pause by agreement: E28 (refined after this
+  epic), E16 M2 and E21, after this epic's faithful screens (decision 3).
+- The campaigns' screens, clips, rules and scripts (E20, decision 7); the original's save-file
+  import (E19).
+- The map editor and its screens (`h3maped.exe`); a random map generator.
 - Playing a game: the adventure map (E24), the battle (E17), the town and hero screens (E24 M5,
-  E09).
-- HD layouts and graphics options beyond `faithful` (E17's "Later").
+  E09); the computer players' turns (E13).
+- HD layouts and graphics options beyond `faithful` (E29).
 
-## Milestones (sketch; refined when the lane takes the epic)
+## Milestones
+
+Each milestone is refined at its own T0 with the user (its tasks into the lane's queue); M1's
+tasks are refined here.
 
 | M | Scope |
 |---|---|
-| M0 | Refinement with the user: the screens' list as read, the cut into milestones, the lane's ownership of the shell's state machine (below), the `CLT-Q` questions |
-| M1 | **T1 reading and captures:** the catalogue of the original's screens, each with its entry points, assets and its capture; the string catalogue's menu texts; the traps list |
-| M2 | The main menu and New Game screens: drawn, the buttons' hover, press and sound, exact against the captures; the shell's state machine in a library with a headless driver (the text client first, E17's pattern) |
-| M3 | Scenario selection and a hot-seat game's setup, ending in a game record E24 M5 starts from; Options |
-| M4 | Load and Save; the system menu in play; the scenario's end screens; high scores and credits |
-| M5 | Campaign screens, once E20 has the rules; the shell's hooks for the lobby and ladder (later increment) |
+| M0 | Refinement with the user (done 2026-11-12: decisions 4 to 8, CLT-Q79 to CLT-Q83) |
+| M1 | **Reading and captures:** the catalogue of the original's screens, each with its entry points, transitions, assets, texts (table and record) and sounds; the clips cut from the user's `VIDEO.VID`; the harness on every screen and its captures; the traps list; the questions the reading finds |
+| M2 | **The start and the menus:** the Smacker decoder (decision 5); the clips at start, the loading bar; start-up loading by the LODs' tables (CLT-Q2); the main menu, New Game, Load Game's choice, Multiplayer and the hot seat's names, Quit's question, their hover, press, sounds and music, exact against the captures; the shell's state machine with a headless driver (the text client first, E17's pattern) |
+| M3 | **A game's setup:** scenario selection, the players' setup, the advanced options, the game's begin (the filled `GameSetup` to E24 M5; the stubs of decision 6); Options |
+| M4 | **Around play:** Save and Load (the engine's record), the system menu in play (with the map-client lane), the end of a scenario's screens, high scores, credits |
+
+### M1 — reading and captures (refined 2026-11-12, M0)
+
+| Task | Scope | Status |
+|---|---|---|
+| T1a | The catalogue, part 1: the start (the clips' order and skipping, the loading bar), the main menu, New Game's and Load Game's choices, Multiplayer and the hot seat's names, High Scores, Credits, Quit | ready |
+| T1b | The catalogue, part 2: scenario selection and the players' setup, the advanced options, the random map's tab, Load's and Save's dialogs, the system options, the system menu in play, the end of a scenario | after T1a |
+| T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was); the harness on every catalogued screen; the reference captures; the traps | after T1b |
+| T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
 
 ## Dependencies and boundaries
 
-- **E17 closes first**: the compositor, SDL adapter, fonts and string catalogue are used as
-  they are; this epic adds screens, not a second renderer.
-- **E24 M5 (hot seat)** needs the scenario setup's output: the setup's type is a shared
-  contract between this lane and the map-client lane, agreed at M0, `cross-lane`.
-- **The engine and the server** own what a game is: the shell builds a game configuration and
-  hands it to the engine (ADR-0009's boundary); no rule lives in the shell.
-- **Maps and campaigns** are read through `h3-formats` and the installation; the shell never
-  writes to the user's installation.
-
-## Open questions for the refinement (to be filed as `CLT-Q<n>`)
-
-1. Is the main menu's list of dead or unreachable entries (the original's multiplayer modes
-   without a network, the tutorial) shown greyed, hidden, or wired to our own equivalents?
-2. Which saves: the engine's own record only, or also the original's `.GM1`/`.GM2` import (E19)?
-3. Where does the shell's state live between screens: a client-side state machine, or the same
-   session type the server's lobby will later use?
-4. Are the intro videos played, skipped, or replaced (E17's video decision)?
-5. Which editions' menus are built: the installation's only, or each of RoE, AB and SoD?
+- **E17 closed** (2026-11-12): the compositor, SDL adapter, fonts and string catalogue are used as
+  they are; this epic adds screens, not a second renderer. `h3-bink` decodes the Bink clips.
+- **E24 M5 (hot seat)** starts its game from the filled `GameSetup` (decision 4); what else the
+  hand-over carries (the hot seat's names, the map's file) is agreed with the map-client lane at
+  M3's T0 within the existing crates. The system menu in play (M4) draws over E24's screen.
+- **E10** (adventure lane) adds the starting bonus, the handicap and victory and defeat to the
+  engine; **E13** the computer players; until then the stubs of decision 6.
+- **The engine and the server** own what a game is: the shell builds a game's setup and hands
+  it to the engine (ADR-0009's boundary); no rule lives in the shell.
+- **Maps** are read through `h3-map` and the installation copy; the shell never writes to the
+  user's installation.
 
 ## Risks and known gaps
 
 - **Wine is not Windows** (E17's risk): the captures of menus run on Wine's DirectDraw; the
   menu is the screen E17 already proved exact on, so the risk is small, but a screen that
-  runs a video or a network probe may behave differently.
-- **Unknown size:** the original's screens have not been listed from the code yet; the
-  milestones above are a sketch until T1's catalogue exists.
-- **Campaign screens depend on E20**, which is `todo`; M5 may stay open past this epic's rest.
+  runs a clip or a network probe may behave differently.
+- **`VIDEO.VID` is 629 MB**, over the staging limit: the shell's clips are copied into an
+  archive of their own on the user's computer (T2), the computer online for it.
+- **The engine imports 8 of the 160 shipped maps whole** (2026-11-12): the scenario list either
+  shows maps that cannot start yet or differs from the original's (decision 8: M3's T0).
+- **Unknown size:** the screens are listed from the code at M1; M2 to M4 are a sketch until then.

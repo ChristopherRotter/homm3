@@ -1,7 +1,8 @@
 //! `h3-server record` (E16 M5 T6): every golden adventure replay runs through the whole game's
 //! session to its checkpoints and final hash, and each player's record is its header and the
-//! messages it was sent: one `GameEvents` per command whatever the player may see, its own
-//! commands echoed, no state hash anywhere (what each message holds is projected for its viewer
+//! messages it was sent: one `GameEvents` per command whatever the player may see, a
+//! `GameReveal` only after one (E16 M5 T5c), its own commands echoed, no state hash
+//! anywhere (what each message holds is projected for its viewer
 //! by construction, gated in `h3-protocol`'s `game_session` test). A replay that is not its re-run
 //! records nothing; the files are written per player.
 
@@ -60,8 +61,8 @@ fn number(line: &str) -> u64 {
     body["n"].as_u64().unwrap()
 }
 
-/// Checks player `k`'s record of `replay`, recorded as game `game`.
-fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) {
+/// Checks player `k`'s record of `replay`, recorded as game `game`; returns its reveals.
+fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize {
     let mut lines = text.lines();
     let header: GameRecordHeader =
         codec::decode(lines.next().unwrap().as_bytes(), usize::MAX).unwrap();
@@ -74,13 +75,26 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) {
     };
     assert_eq!(header.manifest.map, map, "{name}");
     assert_eq!(header.first, 1, "{name}: every message kept");
-    let (mut events, mut seqs) = (0, Vec::new());
+    let (mut events, mut reveals, mut seqs) = (0, 0, Vec::new());
+    let mut after_events = false;
     for (i, line) in lines.enumerate() {
         let message = codec::decode_server(line.as_bytes(), usize::MAX).unwrap();
         assert_eq!(number(line), i as u64 + 1, "{name} player {k}: numbered on");
+        // A battle's last snapshot may come between the events and the reveal.
+        let was = match message {
+            ServerMessage::Snapshot { .. } => after_events,
+            _ => core::mem::replace(
+                &mut after_events,
+                matches!(message, ServerMessage::GameEvents { .. }),
+            ),
+        };
         match message {
             ServerMessage::GameSnapshot { .. } => assert_eq!(i, 0, "{name}: the snapshot first"),
             ServerMessage::GameEvents { .. } => events += 1,
+            ServerMessage::GameReveal { .. } => {
+                assert!(was, "{name} player {k}: a reveal after a command's events");
+                reveals += 1;
+            }
             ServerMessage::GameAccepted { seq, .. } => seqs.push(seq),
             ServerMessage::GameTurn { .. } | ServerMessage::Snapshot { .. } => {}
             other => panic!("{name} player {k}: {other:?}"),
@@ -110,6 +124,7 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) {
             );
         }
     }
+    reveals
 }
 
 #[test]
@@ -118,12 +133,12 @@ fn the_golden_replays_record_through_the_session() {
     assert_eq!(files.len(), 72, "the golden adventure replays");
     let threads = std::thread::available_parallelism().map_or(1, usize::from);
     let chunk = files.len().div_ceil(threads);
-    let players: usize = std::thread::scope(|scope| {
+    let players: (usize, usize) = std::thread::scope(|scope| {
         let runs: Vec<_> = files
             .chunks(chunk)
             .map(|files| {
                 scope.spawn(move || {
-                    let mut players = 0;
+                    let (mut players, mut reveals) = (0, 0);
                     for file in files {
                         let name = file.file_stem().unwrap().to_string_lossy().into_owned();
                         let text = fs::read_to_string(file).unwrap();
@@ -135,17 +150,21 @@ fn the_golden_replays_record_through_the_session() {
                         assert_eq!(recorded.final_hash, replay.final_hash, "{name}");
                         assert!(recorded.records.len() >= 2, "{name}");
                         for (k, text) in recorded.records.iter().enumerate() {
-                            check(&name, &replay, 7, k, text);
+                            reveals += check(&name, &replay, 7, k, text);
                         }
                         players += recorded.records.len();
                     }
-                    players
+                    (players, reveals)
                 })
             })
             .collect();
-        runs.into_iter().map(|run| run.join().unwrap()).sum()
+        runs.into_iter()
+            .map(|run| run.join().unwrap())
+            .fold((0, 0), |(p, r), (q, s)| (p + q, r + s))
     });
+    let (players, reveals) = players;
     assert!(players >= 110, "{players} records");
+    assert!(reveals > 1_000, "{reveals} reveals");
 }
 
 #[test]

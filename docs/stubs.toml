@@ -78,12 +78,6 @@ epic   = "E08"
 # --- server (SRV-STUB-<n>) ---
 
 [[stub]]
-id     = "SRV-STUB-1"
-where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
-reason = "A reveal's content (SRV-Q26 (a)): a step's reveal has no event and an object's TilesRevealed only a count, so the fold keeps the viewer's explored tiles, tile views, objects, towns, empty boats, heroes, garrisons and owner facts in sight as they were. The adventure lane's query has landed (2026-11-11: h3_game::reveal(state, rules, viewer, since) -> GameReveal, what the viewer sees through its grid now and did not through since); lifted by T5c, whose session keeps each viewer's last grid and sends the answer with the events when the viewer's explored count grew; the fold gate (h3-protocol's tests/game_fold.rs) lets the parts this alone names differ only where the explored tiles grew"
-epic   = "E16"
-
-[[stub]]
 id     = "SRV-STUB-3"
 where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold_adventure"
 reason = "A hero coming into the viewer's sight without a reveal (SRV-Q26 (c)): HeroStepped gives its id and tiles, not its owner, type or boat, so the fold cannot add it (179 viewer-commands of the golden replays with steps alone). The adventure lane's inbox (2026-11-09)"
@@ -137,12 +131,6 @@ where  = "crates/h3-protocol/src/wire/game/fold.rs::GameObservation::fold"
 reason = "A Cartographer's type (Adventure::bought, ADV-VIS-001): OfferAnswered does not name the offer's kind, so the fold cannot add the type bought. The adventure lane's inbox (2026-11-09)"
 epic   = "E16"
 
-[[stub]]
-id     = "SRV-STUB-14"
-where  = "crates/h3-protocol/src/session/game.rs::GameSession::tell"
-reason = "A game's battle's last snapshot when it ends (SRV-Q27 (1); the battle session's last Snapshot, v38, CLT-STUB-3): the command that ends a battle closes it in h3_game, so the session does not yet observe the battle as it ended; each owner's view ends at BattleEnded. Since 2026-11-11 h3-game gives the sink each battle as it ended, when the command closes it (h3_game::Sink::battle_ended, the adventure lane); lifted when the session's sink keeps it and the session sends each owner its side's last Snapshot from it"
-epic   = "E16"
-
 # --- client (CLT-STUB-<n>) ---
 
 # CLT-STUB-1 is kept as a comment until `cargo xtask check-stubs` also scans `clients/crates/`
@@ -157,6 +145,11 @@ epic   = "E16"
 # id     = "CLT-STUB-4"
 # where  = "clients/crates/h3-battle-client/src/battle.rs::Battle::panel"
 # reason = "A whole game's battle played live through its host's game (E17 M7 T3b2) takes no Auto Combat switch, as a seat on a server: the computer's choices for the human's side (h3_battle_ai over the battle's state) need the state only the host's game holds; the original switches it on against a monster. Lifted when the host plays the human's side under Auto Combat (a ToHost request) or the seat gets what the choice needs"
+# epic   = "E17"
+# [[stub]]
+# id     = "CLT-STUB-5"
+# where  = "clients/crates/h3-battle-client/src/battle.rs::Ground::load_game"
+# reason = "A hot-seat battle between two of the host's humans (the M7 review's R3-5, E17 M7 T4; the user, 2026-11-11: not built now) is not played: a whole game's battle played live through its host's game makes the seat's player's side alone human here (one header, one player), the other side the host's to play; the original plays such a battle on one combat screen, both sides by mouse. Lifted with E24 M5 (hot seat): a seat over both players of a battle, each command played as its side's player's, or another answer then"
 # epic   = "E17"
 
 # --- map-client (MCL-STUB-<n>) ---
