@@ -1970,7 +1970,9 @@ pub enum ServerMessage {
     },
     /// The whole game as the viewer sees it (E16 M5 T5a, v39): when the game starts. A battle
     /// inside the game comes as the battle's own `Snapshot` when it opens for the viewer
-    /// (SRV-Q27 (1)), after the `GameEvents` that open it.
+    /// (SRV-Q27 (1)), after the `GameEvents` that open it, and as its last `Snapshot` (the battle
+    /// as the viewer's side saw it when it ended, v43) right after the `GameEvents` that end it,
+    /// unless they open another battle for the viewer.
     GameSnapshot {
         /// The viewer's message number.
         n: u32,
@@ -1986,6 +1988,17 @@ pub enum ServerMessage {
         n: u32,
         /// The events, in order.
         events: Vec<game::GameEvent>,
+    },
+    /// What the viewer sees now that it did not see when it was last told its explored tiles (E16
+    /// M5 T5c, v43; SRV-Q26 (a)): after a command's `GameEvents` (and a battle's last `Snapshot`)
+    /// to each viewer whose explored tiles grew with it, before a battle's opening `Snapshot` and
+    /// the turns. The viewer folds
+    /// it after the events ([`game::GameObservation::reveal`]).
+    GameReveal {
+        /// The viewer's message number.
+        n: u32,
+        /// What it newly sees.
+        reveal: game::GameReveal,
     },
     /// The player may act in the whole game (E16 M5 T5a, v39): its legal commands but its moves
     /// (`h3_game::legal_commands`: in its turn, an open decision's answers, its battle side's
