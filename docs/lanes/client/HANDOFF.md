@@ -52,7 +52,7 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   was online. Read the scenario screen's constructor (a call summary per item), its run,
   procedure, clicks 107 to 195, right press, the list's build, header read, sort and comparisons,
   filter, rows, the information panel, `scenario_select`, the flags, Begin's checks, the save's
-  name and the delete: 74 map entries, two structs. Found: a new game opens with no left panel;
+  name and the delete: 76 map entries, two structs. Found: a new game opens with no left panel;
   ties left to an unstable sort; the size column's first press descending; any two row presses
   within 400 ms a double click. Asked: CLT-Q90, CLT-Q91 (decision 12). No harness run. Record:
   `E27-log.md`, "M1 T1b1".

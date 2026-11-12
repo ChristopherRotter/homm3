@@ -116,7 +116,7 @@ map and the begin, T1b3 the system options, the menu in play and the end.
   into the user's `original-data/games/` and staged, for T2's load and save screens. The end's
   clips (`LoseGame`, `hsAnim`, `hsloop`) are already in `shell-videos.vid`; `Endgame` is a
   campaign's (E20), so T1b needs no clip beyond them.
-- **Read** (`E27-design.md` §3; 74 new map entries, 1 updated; `structs.toml` `scenario_dialog`
+- **Read** (`E27-design.md` §3; 76 new map entries, 1 updated; `structs.toml` `scenario_dialog`
   and `scenario_info`): the constructor's items and modes (a call summary per item: the creators'
   arguments, the conditions by mode), the run, the procedure and its keys, the click handler's
   cases 107 to 195, the right press's dispatch, the list's panel, build, header read, finish,
