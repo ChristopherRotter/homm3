@@ -2576,3 +2576,66 @@ Baseline: T7a1 (`claude/keen-tesla-q5uxid`, the scoped verify passed). No origin
 - **The checkpoint**: the user's, SRV-Q28, passed 2026-11-12 (the agent's recommendations): the
   review list as built, the left findings as described, next M5 part 2's refinement with the
   user.
+
+### M5 T8a — the whole game's seats and connections (2026-11-12)
+
+The task (the epic's "M5 part 2", SRV-Q29): `GameSession` takes connections as the battle's
+`Session` does: a seat per player of the map, taken by account (by token in the anonymous mode),
+re-taken after a disconnect with a fresh `GameSnapshot` and its `GameTurn` if it may act (its
+record going on while no connection holds the seat); the game started when every seat is held; a
+connection's commands applied as its seat's player, anything from an unseated one rejected; the
+whole game's client messages on the wire; the battle's seat logic shared where it fits. Baseline:
+`claude/gifted-franklin-4lkqk3` 944f72a (#877, part 2's refinement; the setup's light gates on its
+fingerprint; the scoped verify passed). No original data. Branch `server/e16-m5-t8a`, stacked on
+#877.
+
+- **The wire** (protocol **v45**; provisional, the 2a review list): the client messages
+  `GameJoin { game, player, token }` (the player's index among the map's players) and
+  `GameCommand { seq, command }`, the answer `GameJoined { game, player, token, manifest }` (the
+  game's `GameManifest`, as its record's header holds it), the refusal `NoSuchSeat`, the
+  session's rejections `GameReject::NotSeated {}` and `NotStarted {}` (a connection without a
+  seat hears `GameRejected` numbered 0, as a battle's `Rejected`). Messages of their own, not the
+  battle's `Join` and `Command` widened: the client lanes match `Seat` exhaustively and build
+  `Join` literals. The connection's gate refuses `GameJoin` `NotLoggedIn` on a server without
+  anonymous play, as `Join`.
+- **The session** (`session::game`): `GameSession::new(rules, setup, seed, manifest, options,
+  token)` hosts the game for connections, a seat per player with the token `token(player)` the
+  host draws (a closure: the host knows the players from the setup, no count to mismatch);
+  nothing is sent until a join. `handle(conn, message, out)` takes `GameJoin` (the battle's
+  claim: `super::refusal`, and `super::handed`, the token a join hands out, now shared by both
+  sessions; a re-take replaces the holder with `Goodbye { Replaced }`), `GameCommand` (applied
+  through `play` as the seat's player), `Leave`; `logged_in` and `disconnected` as the battle's;
+  `started()`. A join gets `GameJoined`, its `GameSnapshot` (its view's battle and explored grid
+  start afresh from it) and, once started, its `GameTurn` if it may act; the last seat held
+  starts the game, every player that may act told its turn, so each player's messages are those
+  the in-process start sends it. Before the start `apply` rejects `NotStarted` (`play` and
+  `system`). The session still posts every frame to its player's viewer (numbered, recorded);
+  `route` sends each to the connection that holds the seat, none to a seat no one holds (public:
+  the host routes the system actor's frames, T10). The in-process host holds every seat at once
+  (`Seats::Host`: `start`, `restore`), so part 1's uses (`h3-server record`, the fold gate, the
+  session, bounds and mutation tests, the client lane's `game_seat` tests) run unchanged; a
+  connection's join there is refused `SeatTaken`. A battle's `Join` to a whole game is refused
+  `NoSuchGame` and its `Command` rejected `NotSeated`, the battle session answers a whole game's
+  the same way (two arms; its tests unchanged); other battle messages are ignored by a whole
+  game until T8b and T9 take what it needs. `h3-server`'s answer to a connection in no game:
+  `GameJoin` refused `NoSuchGame` (no whole game is hosted before T9), `GameCommand` rejected
+  `NotSeated`.
+- **Not in T8a** (T8b): the seats' entries (a restore with the seats taken, none held; today's
+  `restore` is the in-process host's), the commands' numbers against resends, the host's pause.
+- **Tests** (`tests/game_seats.rs`): a golden replay (`towns-s173-d21`, its system actor's
+  commands routed by the host) through a game of connections beside its in-process twin: the
+  game starts at the last seat's join, then every connection's frames equal the twin's player's,
+  frame for frame after every command, the hashes, journals and records equal; a seat by token
+  and one by account (no token handed out, its token refused), a disconnected seat's record
+  going on, its re-take refused without its token or with another, then a fresh snapshot
+  numbered on and its turn, an account's second connection replacing the first, `Leave`; the
+  joins and commands out of place (no such game, no such seat, already joined, unseated,
+  before the start, the system actor before the start, a battle's join and command, the
+  connection's messages; the in-process host's seats) refused or rejected with nothing changed.
+  The battle session's answer to a whole game's messages (`tests/session.rs`), the gate's login
+  (`tests/connection.rs`), the wire's round trips and JSON forms (`tests/wire.rs`,
+  `tests/game_manifest.rs`), the test-only inverse of the rejections (none for the session's
+  two), `h3-server`'s answers without a game (`tests.rs`).
+- **The bench:** `benches/server/` measures the battle session (`serve_frame`), not
+  `GameSession`; the scoped verify's bench-check passed (the battle's `join` only calls the
+  shared `handed`).
