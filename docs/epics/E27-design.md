@@ -42,8 +42,8 @@ Read from `Heroes3.exe` (the map's entries of the task); every item **read** unl
 *inferred* or *not read*. Texts by table and record (a record counted from 0 with the header, as
 `general_text`'s rows; `Help.txt`'s by `help_text_load`'s groups); never the text. Positions are
 (x, y, width, height) on the 800 × 600 screen. T1a2 read Multiplayer, the hot seat's names, High
-Scores and Credits (§2.6 to §2.9); T1b the scenario screen (new and load), the system options and
-the end.
+Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and information panel
+(§3), T1b2 its players' setup and random map, T1b3 the system options and the end (§4).
 
 ### 2.1 The start (`win_main` 0x4F7A30; `game_main` 0x4EE3E0 to 0x4EE834)
 
@@ -405,3 +405,267 @@ dialog (over which screen, its stage 1, hover hints in its status line, a right 
 hot seat's names (the first name, OK disabled until two names, Tab's ring); High Scores on both
 tabs with the creatures' steps (the defaults: the harness has no `HiScore.dat`), Reset's question;
 the credits' scroll from start to end (its speed, the closing text, a key ending it).
+
+## 3. The scenario screen (M1 T1b1, 2026-11-12)
+
+Read from `Heroes3.exe` (the map's entries of the task), every item **read** unless marked; the
+human player's single and hot-seat paths followed, the network ones (a host relaying clicks and
+setups, a guest waiting for the host's headers, the chat) only noted. Texts by table and record
+(GENRLTXT's, `ArrayTxt.txt`'s and `Help.txt`'s records as §2's); positions (x, y, width, height)
+on the 800 × 600 screen. T1b2 adds the advanced options, the random map's tab and the game's
+begin (§3.9 names what it takes over); T1b3 the system options, the menu in play and the end (§4).
+
+### 3.1 The dialog and its modes (`scenario_dialog_create` 0x579960)
+
+- **One dialog, three modes**, its argument: 0 a new game (`scenario_new` 0x4F0490), 1 a load
+  (`scenario_load` 0x4F0610), 2 a save from play (`game_save_dialog` 0x418160, T1b3); also the
+  lobby's start (0x4EE9CC, not built). It is built on the caller's stack (0x1970 bytes, H3API's
+  layout; `structs.toml` `scenario_dialog`), vtable 0x641CAC: +0x18 the run
+  (`scenario_dialog_run` 0x584BF0), +0x24 the procedure (`scenario_dialog_proc` 0x587D00), +0x2C
+  the right press (`scenario_dialog_right_click` 0x5822D0); `select_scenario_dialog_pointer`
+  0x69FBE8. The record's +0x64 is the load mode, +0x65 the save mode.
+- **Rows:** `scenario_rows` 0x69FDC8 is 18, 16 in the save mode (its name's strip below them).
+- **The campaign's saves** (`campaign_saves_flag` 0x69FD90): 1 when the menu that opened the
+  screen ended with 101 (Load Game's Campaign, §2.4) or `campaign_game` is set; it picks the
+  campaigns' pattern (§3.3; E20).
+- **The busy cursor:** while the files are read, a helper thread (`busy_cursor_thread` 0x577740,
+  started by the constructor and by `busy_cursor_start` 0x577790, stopped by `busy_cursor_stop`
+  0x577810) polls the mouse every 41 ms so the busy cursor (1, 1) moves; the arrow comes back at
+  the stop. The client reads on its own terms (not built, §3.10).
+- **The background:** `random_between(1, 100)` below 51 gives `gamselb1.pcx`, else `gamselb0.pcx`
+  (800 × 600, 16-bit, item 100 at (0, 0)), copied into the screen at once; `GSelPop1.pcx` (370 ×
+  585, item 100 at (396, 6), the right-hand panel) drawn into it too. The draw is the client's own
+  randomness (a look, no rule).
+- **Kept between visits** (statics, not saved across runs): the last map's file name
+  (`scenario_last_map` 0x683238, `Arrogance.h3m` at the start), the last save's name
+  (`scenario_last_save` 0x68333C, `NEWGAME.gm1` at the start, cut at its first full stop to
+  `NEWGAME` by the constructor's `strtok`) and the last difficulty (`scenario_last_difficulty`
+  0x683454). The list selects the entry of that name when it is built (§3.3).
+- **At the end of the constructor:** load mode, the players' slots from the save (0x57F330); new
+  game, the slots from the hot seat's names or the player's name (0x57F740; both T1b2); the
+  players' rows (0x584C40, T1b2); then by mode: a load (not a network one) and a save open the list (§3.3);
+  a new game (and a network load) opens with no left-hand panel (the background shows there)
+  until a button opens one; the three panel buttons and the difficulty shown
+  (`scenario_buttons_show` 0x57FB90); hints (§3.8); `chosen_heroes` 0x69FB24 all −1 and 0x69FBF8's
+  eight values 3 (T1b2); in the save mode the name's edit takes the focus and,
+  with an empty list, `scenario_select`(−1); in the load and save modes the five difficulty buttons
+  are disabled (they show the saved game's).
+
+### 3.2 The items (the constructor's order; hidden ones marked)
+
+| Id | Item | Rectangle | Notes |
+|---|---|---|---|
+| 101 | `SCSelBck.pcx` (575 × 585) | (3, 6, 575, 585) | the list's panel, hidden; its right part lies under `GSelPop1.pcx` (*inferred*: index 0 transparent there; T2) |
+| 361 | text, `medfont.fnt`, colour 8, align 5 | (25, 23, 367, 23) | the title by mode: `ArrayTxt.txt` 229 new, 230 load, 231 save (`scenario_titles` 0x6A8098, filled by `arraytxt_load`); hidden with the list |
+| 102, 103 | `AdvOptBk.pcx`, `RanMapBk.pcx` (575 × 585) | (3, 6, 557, 585) | the advanced options' and the random map's panels, hidden; only for a new game or a network or hot-seat load (T1b2) |
+| 132 | text "%s:" GENRLTXT 493 (the player's difficulty) | (414, 435, 334, 19) | `smalfont.fnt`, colour 2, align 5 |
+| 133 | "%s:" GENRLTXT 219 (the rating) | (665, 435, 84, 19) | as 132 |
+| 134 | GENRLTXT 495 (the map's difficulty) | (414, 435, 90, 19) | as 132; over 132's place (which shows is not read: T2) |
+| 100 | GENRLTXT 496 (the name's label) | (422, 27, 278, 18) | colour 2, align 4 |
+| 105 | GENRLTXT 497 (the description's label) | (422, 137, 278, 18) | as 100 |
+| — | scrollable text, `smalfont.fnt`, colour 4 | (422, 155, 319, 115) | the description (the record's +0x196C) |
+| 100 | GENRLTXT 498, 499 (victory's and loss's labels) | (422, 288, 278, 18), (422, 344, 278, 18) | as 100 |
+| 131 | caption button `gspbut2.def` (128 × 20) | (622, 81, 128, 20) | network games only: the chat's switch (not built) |
+| 189 | `scnrmpsz.def` (29 × 23, 5 frames) | (714, 28, 29, 23) | the map's size: frame 0 to 3 for 36, 72, 108, 144, else 4 |
+| 100, 386 | "%s:" GENRLTXT 391 (allies), 392 (enemies) | (414, 403, 44, 23), (579, 403, 58, 23) | colour 4, align 6 |
+| 112–119, 120–127 | `itgflags.def` (15 × 20, 8 colours) | (460 + 15 i, 405), (640 + 15 i, 405) | the allies' and the enemies' flags, hidden (§3.5) |
+| 387 | an area (0x575220) | (456, 402, 310, 25) | the flags' strip, its right press (§3.8); new game or network or hot-seat load |
+| 142–159 | text rows, `smalfont.fnt` | (57, 122 + 25 i, 314, 25) | `scenario_rows` of them, hidden; the list draws its own rows (§3.4) |
+| 388 | `gsstrip.pcx` (399 × 65) | (3, below the rows, 399, 65) | save mode only |
+| 160 | edit, max 61, `smalfont.fnt`, colour 4, align 4 | (35, 542, 342, 21) | save mode only: the name (`NEWGAME` first; the record's +0x380) |
+| 137–141 | `scsmbut`, `scmdbut`, `sclgbut`, `scxlbut`, `scalbut.def` (44 × 33) | (161 + 47 i, 52) | the size filters S, M, L, XL, All; hidden with the list |
+| 190–195 | `scbutt1`, `scbutt2`, `ScButCp`, `scbutt3`, `scbutt4`, `scbutt5.def` | (26, 92, 31, 28), (58, 92, 32, 28), (91, 92, 32, 28), (124, 92, 184, 28), (309, 92, 32, 28), (342, 92, 32, 28) | the columns: players, size, version, name, victory, loss; hidden with the list |
+| 337 | scroll bar (`scenario_list_scrolled` 0x57C990) | (375, 92, 16, by the rows) | the list's; the record's +0x183C |
+| 338 … 352 | the turn's duration bar, the players' rows, headers | — | T1b2 |
+| 179–182, 336, 389 | the chat's text, edit, plug, bar (`ircentry.pcx`, `CHATPLUG.pcx`, `selslide.pcx`) | — | network games (not built) |
+| 128 | caption button `gspbutt.def` (200 × 20), GENRLTXT 501 (show the scenarios), 656 in the load mode (show the saved games) | (414, 81, 200, 20) | hotkey S; new game or network or hot-seat load only |
+| 130 | as 128, GENRLTXT 760 (the random map) | (414, 105, 200, 20) | hotkey R; editions 1 and 3 only (AB and Complete) |
+| 129 | as 128, GENRLTXT 502 (show the advanced options) | (414, 509, 200, 20) | hotkey A |
+| 107–111 | `gspbut3` … `gspbut7.def` (30 × 46) | (506 + 32 i, 456) | the difficulty, easy to impossible |
+| 186 | `scnrbeg.def`, `scnrlod.def` (load), `scnrsav.def` (save) (166 × 40) | (414, 535, 166, 40) | Begin, Load or Save; hotkey Enter |
+| 188 | `scnrback.def` (166 × 40, 2 frames) | (584, 535, 166, 40) | Back; closes; Escape (a campaign's variant: E20) |
+
+Loaded with the screen: `ScSelC.def` (the list's version marks: RoE, AB, SoD), `scnrvict.def` (12
+victory marks), `scnrloss.def` (4 loss marks), `ScnrStar.def`, `itpa.def`, `un44.def`, the heroes'
+small portraits, `hpsrand.pcx`, `hpsrand0`, `1`, `6.pcx`, `adop%cpnl.pcx`, `adopflg%c.pcx` (the
+last ones the players' rows', T1b2).
+
+### 3.3 The list: its panel, its files, its order
+
+- **The panel** (`scenario_list_toggle` 0x580A70, button 128): a toggle; shown, a press hides it
+  (`scenario_list_hide` 0x5819A0); else it hides the advanced options and the random map, clears
+  the random map's choice (+0x37F), shows 101, 361, the rows, the bar, the filters and the columns
+  (a network guest's disabled), and the first time (+0x1864 clear) builds the list with the busy
+  cursor, the screen redrawn and GENRLTXT 503 (reading the map files) drawn at (123, 122, 184, 25)
+  meanwhile. Its argument picks the list's kind (+0x66): 0 the files, 1 the random maps' (T1b2).
+- **The files** (`scenario_list_build` 0x582B40): the folder `maps` (new), `games` (load and
+  save) or `random_maps` (the kind 1); the pattern by `scenario_file_patterns` 0x683458: `*.h3m`
+  (new), `*.gm?` (load, save), `*.cgm` (the campaign's saves), `*.tut` and `*.tgm` (the tutorial's
+  new and saved); up to 5 000 names from `_findfirst`/`_findnext` in the folder's order; each read
+  by `scenario_header_read` 0x583170 into a record of 0xCA4 bytes (`structs.toml`
+  `scenario_info`): a map's header (`sub_513320`, *not read*) or a save's (`sub_4BC750`, *not
+  read*), the name (60 characters) and description (300), the file's last-write time. A file that
+  fails to read is left out; in a network or hot-seat game a map for fewer than 2 players is left
+  out (the record's +8 below 2, *inferred*: the human players).
+- **Unusable files stay listed:** a map whose format is not RoE's (0x0E), AB's (0x15) or SoD's
+  (0x1C) gets the name GENRLTXT 431 (an old format) and the description 506 (save it in the
+  editor), its victory, loss and difficulty cleared; a map with no players (+4 clear) the
+  description 507 (not playable); a save of another version (+0x708 below 25 and not 16 to 18)
+  the name 431 and the description 505 (a broken file). A save whose file name begins with
+  GENRLTXT 77's text (the autosave's) shows that text as its name.
+- **After the read** (`scenario_list_finish` 0x582E90): the selection 0, the bar's range (count −
+  rows + 1); a load with no files sets `no_saves_notice` 0x69FDA0, and the procedure's next call
+  shows GENRLTXT 686 (no saved games) once and disables Begin; the list sorted by key 2 (the
+  version, then the name) while the current key is recorded as 1 (the size's: CLT-Q91, §3.4); the entry
+  whose file name is the kept one (§3.1; 0x58D3E0, *not read*) selected; a save with no match:
+  no selection and the current game's header shown (0x577530, *not read*).
+- **The shown list** (+0x1050) is the full list (+0x1030, or the random maps' +0x1040) less the
+  entries of another size than the filter (+0x1860, 0 all), in the full list's order.
+
+### 3.4 The rows, the columns, the filters, the keys
+
+- **Drawn by** `scenario_dialog_redraw` 0x584550 (H3API's Redraw) when the list is shown:
+  GENRLTXT 511 (the sizes' label) at (25, 52, 132, 32) colour 2 align 5; then for each visible row
+  *i* (top + *i*, *y* = 123 + 25 *i*), in colour 5 for the selection and 4 otherwise, all
+  `smalfont.fnt` centred: the players "%d/%d" of the record's +6 and +8 (*inferred*: the players
+  and the humans) at (26, *y* − 1, 30, 25); the size's letter GENRLTXT 512 to 515 (36, 72, 108,
+  other) at (59, *y* − 1, 30, 25); the version's mark `ScSelC.def` frame 0 RoE, 1 AB, 2 SoD (none
+  for another; in the load and save modes from the save's +0xBE8 when +0xBE0 is set, *not read*)
+  at (91, *y*); the name (`scenario_entry_name` 0x584010: a map's name, GENRLTXT 509 when empty,
+  508 past the list; in the load and save modes the file's name, as `save1.GM1`) at (125, *y* − 1,
+  184, 25); the victory mark `scnrvict.def` frame of the type (+0x30, 0 to 11; 11 for none) at
+  (309, *y*); the loss mark `scnrloss.def` (+0x7C; 3 for none) at (342, *y*).
+- **The columns** (190 to 195) sort by keys 3, 1, 2, 0, 4, 5 (`scenario_list_sort` 0x585050): a
+  press on the current key's column flips the order (+0x36C), another column sets it ascending;
+  the selection and the top go to 0, then `scenario_select`(0). The comparisons: key 0 the names
+  case-insensitively (`scenario_compare_name` 0x5903B0; in the load and save modes a file whose
+  name begins `AUTOSAVE.` compares as a space and its file name, so it leads), key 1 the size
+  (+0x18, inlined in 0x591310), key 2 the format (+0, RoE < AB < SoD), then as key 0
+  (`scenario_compare_version` 0x591190), key 3 ten times +6 plus +8
+  (`scenario_compare_players` 0x590E00), key 4 the victory's type (signed +0x30,
+  `scenario_compare_victory` 0x591CB0), key 5 the loss's (+0x7C, `scenario_compare_loss`
+  0x592030). The sorts are the library's (unstable): keys 1, 3, 4, 5 leave ties in an order of the
+  folder's listing and the algorithm (CLT-Q90: the client sorts stably, the name then the file
+  name breaking ties). The recorded key after the read is 1 while the list is sorted by 2, so the
+  original's first size press sorts descending (CLT-Q91: the client records the key it sorted by;
+  decision 12). A pending network transfer blocks the columns.
+- **The filters** (137 to 141, `scenario_list_filter` 0x585D90): 36, 72, 108, 144, all; the
+  shown list rebuilt, the top and the selection 0, the size mark set, the bar's range,
+  `scenario_select`(0, or −1 when empty), the screen redrawn.
+- **A row** (142 to 159, the row *r*): in the save mode `scenario_select`(top + *r*) (the name's
+  edit takes the file's name) and the row kept (+0x68); else, within the list, a second press
+  within 400 ms of the last row press (or of the screen's opening: +0x60) starts Begin (§3.6) with
+  the selection as it is, else the time kept and (single or a network host) `scenario_select`(top
+  + *r*). CLT-Q91: the client's double click needs the same row (decision 12).
+- **Keys** (with the list shown): Up and Down move the selection by one (not in the save mode),
+  the top following; Page Up and Page Down move the top by rows − 1 (clamped), the selection
+  keeping its row; then the screen redrawn and `scenario_select`. Delete in the load and save modes
+  (`saved_game_delete` 0x58DFB0): GENRLTXT 688 (delete this file?) with the file's name, style 2;
+  OK deletes it from `games`, removes it, sorts by key 2 again and selects the first (or none).
+- **The bar** moves the top and redraws through `scenario_select` (0x57C990).
+
+### 3.5 The information panel
+
+- **`scenario_select`** 0x585500 (H3API's UpdateForSelectedScenario; the index and a redraw
+  flag): an index past the list does nothing; it records the selection and whether it changed;
+  −1 (no random map): in the save mode the current game's header and description, else an empty
+  description; else the record of the shown list (or the random map's own, +0x38C). The save mode
+  copies the file's name, cut at its first full stop, into the edit; the load mode keeps the
+  file's name and takes the save's turn duration; a new game keeps the map's file name (§3.1); the
+  map into the game (0x583580, T1b2) and the players' rows (0x584C40, `scenario_hero_lists`; T1b2).
+  Then the size mark, the flags (§ below), Begin enabled (a new game: the format is RoE's, AB's or
+  SoD's; a load: the list is not empty; a save: always), the load and save modes' difficulty
+  buttons showing the game's, and the redraw (the whole screen when the selection changed, else
+  the list's items).
+- **Drawn** by `scenario_info_draw` 0x5840F0 (from the redraw): the name in `bigfont.fnt` colour 8
+  at (422, 45, 324, 30); in the load and save modes with a selection the file's local time
+  "%d/%d/%d - %d:%02d" at (422, 27, 278, 18) colour 4 align 6 (its fields' order *not read*); the
+  map's difficulty, `ArrayTxt.txt`'s difficulty names (0x6A77EC) by the record's +5, at (414, 454,
+  89, 48) colour 4 align 5; the rating "%d%%" of `scenario_ratings` 0x683440 by the chosen
+  difficulty (80, 100, 130, 160, 200: the map's difficulty plays no part) at (666, 454, 83, 48);
+  unless the chat is shown: the victory text `vcdesc.txt`'s record of the type + 1 (0 the
+  standard; `victory_texts` 0x69FB70, `victory_texts_load` 0x577A50), joined "%s %s %s" with
+  GENRLTXT 5 (or) and record 0 when the map also allows the standard victory (*inferred*: the
+  record's +1), at (456, 305, 288, 32) colour 4 align 4; the loss text (`lcdesc.txt`'s alike,
+  `loss_texts` 0x69FC1C, *inferred*) at (456, 364, 288, 32); the marks `scnrvict.def` (type, 11 for
+  none) at (420, 308) and `scnrloss.def` (type, 3 for none) at (420, 365).
+- **The flags** (`scenario_team_flags` 0x585300; not in the save mode, nor in a single load): the
+  local colour (the hot seat's first record's; else the network seat's); each colour that plays
+  (game +0x1F6D0 not negative) of the local colour's team (game +0x1F879 by colour; itself
+  included) shows the next allies' flag (112 onward) with its colour's frame, any other the next
+  enemies' (120 onward); the strip (456, 402, 290, 25) redrawn over a kept copy of its background.
+- **The difficulty** (107 to 111): game +0x1F6D8 (0 easy … 4 impossible) and
+  `scenario_last_difficulty` set; the five lose state 0x10, the chosen gains it (its frame 3); a
+  network host sends the setup; the screen redrawn.
+
+### 3.6 Begin, Back and the save's name
+
+- **Back** (188): the result 0x7801 and the close; a network or hot-seat game (not the save mode)
+  closes the network session (`network_close` 0x5544B0); the save mode clears the save's name
+  (`save_name` 0x69FC2C).
+- **Begin** (186; Enter; `scenario_begin` 0x58BCE0, continued past 0x58BFC0 by a jump): in the
+  save mode, the save's name (below); else, in order: a random map chosen, it is made (T1b2); a new
+  game whose map's format is not RoE's, AB's or SoD's does nothing; the edition's allowed formats
+  (`0x699240` by edition, a bit per format) refuse a map or a save with GENRLTXT 745 or 744 (this
+  needs AB or SoD: 746, 747; never on Complete); Begin disabled does nothing; no maps and no
+  random map: GENRLTXT 530 (no maps); a new game whose local record has no colour: 531 (pick your
+  place); a network or hot-seat game with fewer than two placed players: 83 (two players needed);
+  then the busy cursor, `loading_screen_open`, and the load (`scenario_load_begin` 0x58C290, *not
+  read*) or `new_game_start` (T1b2).
+- **The save's name** (`save_name_confirm` 0x577360, from Begin or Enter with the edit's text):
+  free space below 1 MB gives GENRLTXT 709 and stays; the name cut at its first full stop, empty
+  stays; the file name is the name and `save_extension` 0x691268 (`game_save_dialog` writes
+  `.GM` and the count of humans still playing, or `.CGM` in a campaign); when it exists in `games`,
+  GENRLTXT 494 (overwrite?) style 2; OK (or no file) copies the name to `save_name`, closes with
+  the busy cursor; the caller saves (T1b3).
+
+### 3.7 The procedure and the run
+
+`scenario_dialog_run`: in a new game or a network or hot-seat load, the turn duration's bar set
+(T1b2); then the modal loop (0x6027A0 with 0x58E2D0, *not read*). `scenario_dialog_proc`: the
+adventure tick first; the load's notice (§3.3); the save mode through the base procedure
+0x41B1C0, the others through `dialog_proc_default` 0x5FF820 and the network messages; a key down
+(§3.4; Enter in the save mode §3.6); a command (0x200/13) to `scenario_dialog_click` 0x5865B0 (its
+switch: the cases of §3.4 to §3.6 here, 207 to 352 T1b2's); a move hovers items 263
+to 270 (`scenario_hovered` 0x683470; *inferred*: the players' rows, T1b2); a close through the vtable's +0x38.
+
+### 3.8 Right press and hints
+
+`dialog_items_set_hints` gives items 104 to 344 `Help.txt`'s pairs from `scenario_hints`
+0x6A6CA0: item *i* gets record *i* − 83 (107 → 24, the easy difficulty's; 128 → 45; 137 → 54; 186
+→ 103 Begin's; 188 → 105; 190 → 107 to 195 → 112, the columns'). A right press on a list row shows
+nothing; on 362 to 385 the players' popups (T1b2); on 387 a dialog of the teams (0x576540, *not
+read*; a new game's variant); on any other item its hint's right-click text (`dialog_right_click`),
+then the screen redrawn.
+
+### 3.9 To `GameSetup` (decision 4)
+
+| Choice | Where the original keeps it | `GameSetup` |
+|---|---|---|
+| the map (a row, the kept name) | game +0x1F6D9 (the file), +0x1F86C (the header) | `GameSetup` from the map's import (`h3-map`'s model: `Header`, `victory`, `loss`, `teams`); the list's columns need only the header, victory, loss and teams (a header-only read: M3's T0) |
+| the difficulty (107 to 111) | game +0x1F6D8, `scenario_last_difficulty` | `difficulty` (0 to 4) |
+| the rating | shown only | none |
+| a saved game (load) | the file | the engine's adventure record (decision 8), its own list |
+| the save's name | `save_name`, `.GM<n>`/`.CGM` | the record's file name (decision 8; the extension M4's T0) |
+
+T1b2 takes: the players' slots and rows (0x57F330, 0x57F740, 0x584C40, 0x583580), the turn
+duration (+0x378, item 338), the advanced options' and the random map's items and clicks (207 to
+352), the hover of 263 to 270, Begin's random map and the game's start.
+
+### 3.10 Not built (the agent's calls, *provisional*; M1's review list)
+
+The network paths (the host's relays, the guest's wait with GENRLTXT 510, the chat 131, 179 to
+182, the transfers that block the columns); the busy cursor's helper thread (the client reads off
+its loop); the edition's format check (one edition); the original's saves (`games/*.gm?`, decision
+8: the client lists its own records, the autosave's naming kept by its file name); the lobby's
+path.
+
+### 3.11 For T2's captures
+
+The screen in each mode (new: no left panel; a single load: the list; a save: the list with the
+name's strip); both backgrounds; the list's rows (colours, marks, a long name), each column's sort
+and its flip, each filter, the keys, the bar; the notice with no saved games; the information
+panel for maps with each victory and loss mark, the flags, the difficulty and the rating; which of
+items 132 and 134 shows; Begin's messages; Delete's question; a save's overwrite question; the
+right press on the panel buttons and the columns. The list's order among ties is not compared
+(CLT-Q90).

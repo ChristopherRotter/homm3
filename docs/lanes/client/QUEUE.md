@@ -13,17 +13,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T1b1 — the catalogue, part 2a: the scenario screen, its list and information panel
-
-- **Scope** (decision 11: T1b cut in three): as T1a for the scenario screen
-  (`scenario_dialog_create` 0x579960, its argument 0 a new game, 1 a load, 2 a save from play at
-  0x418207): its frame and items, the switching of its right-hand panels, its procedure's
-  dispatch; the list (its sources by mode, the filters, the sort, scrolling, the selection), the
-  information panel (the map's name, description, victory and defeat, size, the difficulty and
-  the rating), the load and save modes (the saved games, the file name's entry, an overwrite),
-  Begin and Back. The map and the difficulty to `GameSetup` (decision 4). Into `E27-design.md` §3.
-- **Acceptance:** as T1a's. **Depends on:** T1a2 (done). **Status:** ready.
-
 #### E27 M1 T1b2 — the catalogue, part 2b: the players' setup, the random map, the begin
 
 - **Scope:** the advanced options (the players' rows: colour, human or computer, the hot seat's
@@ -33,7 +22,7 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   0x58C570, the loading bar). Per setup choice: the `GameSetup` field it fills, or the E10 gap it
   waits for (decision 6). Into `E27-design.md` §3.
 - **Acceptance:** as T1a's; the setup's choices mapped to `GameSetup` or to a named gap.
-- **Depends on:** T1b1. **Status:** ready after T1b1.
+- **Depends on:** T1b1 (done: design §3, its §3.9 lists what T1b2 takes over). **Status:** ready.
 
 #### E27 M1 T1b3 — the catalogue, part 2c: the system options, the menu in play, the end
 
