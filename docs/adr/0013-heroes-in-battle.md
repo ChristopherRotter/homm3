@@ -34,29 +34,36 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    (HER-ART-004); within one slot it is the original's numbering; across slots the war machines
    and the spell book, which no walk takes, sit before the fifth misc position in the original
    and after it here, which no rule can tell apart. The import keeps the map's positions. From E08
-   increment 7 the details hold the hero's **battle bonuses**: a morale bonus and a luck bonus
-   (each an `i8`, added to and held saturating: the original's byte wraps past 127, A-9's class,
-   fixed) and a small set of **once-marks** (the original's status bits: the Warrior's Tomb's, the
-   Pyramid's). They last until the end of the hero's next battle (point 15.1). The once-per-hero
-   marks of map objects are not the details' but the adventure's (ADR-0016 point 1).
+   increment 7 a hero has **battle bonuses** (a morale and a luck bonus, each held saturating: the
+   original's byte wraps past 127, A-9's class, fixed; and its **once-marks**, the original's
+   status bits), which last until the end of its next battle (point 15.1). **From increment 12
+   they are the hero on the map's** (ADR-0016 point 3), with its day's and week's marks, **not the
+   details'** (increment 7 held them in the details, a small set of marks; E08 decisions 306,
+   307): no visit's effect carries over to a hero that leaves the map. The once-marks are a short
+   list, each the mark (a `u8` the adventure's content names) with the morale and the luck its
+   visit gave, sorted by mark and unique, no fixed count; the morale and luck bonuses are the part
+   no once-mark names (a Pandora's Box's, an event's). Batch E12 read them so (E12-8, E12-10,
+   E12-11: the status bits set by each visit, cleared by a battle, the week's bit the visitor's
+   alone). The once-per-hero marks of map objects stay the adventure's (ADR-0016 point 1).
 2. **Crates.** `h3-heroes` is the **hero model**: a logic crate in the shared layer beneath the
    contexts (kernel, content, contracts only) with `HeroDetails`, its validation, the translations
    (`derive_battle_hero`, `war_machines`) and the typed hero changes (`HeroChange`: experience,
    spell points, a spell, an artifact; from E08 increment 4 a level-up: the level, its primary
-   skill, the learned skill, the counters; from increment 7 a primary skill gain, each value above
-   0 added and saturating at `primary_max`, A-9's class; a skill raised to a level, never lowered,
-   a new skill only below the most; a bonus, morale and luck added with an optional once-mark, a
-   marked bonus taken only while its mark is clear, then setting it; clearing the bonuses, both to
-   0 and every mark clear) with their checks; no commands, no map, game or battle state. The adventure, the game and later the
-   towns depend on it; `h3-battle` never does and sees only `BattleHero` (points 4 and 5). **What
-   a hero has from its details in every context is derived here once** (BAT-Q19): its available
-   spells (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
+   skill, the learned skill, the counters; from increment 7 a primary skill gain, each value above 0
+   added and saturating at `primary_max`, A-9's class; a skill raised to a level, never lowered, a
+   new skill only below the most; a bonus, morale and luck added with an optional once-mark, a
+   marked bonus taken only while its mark is clear, then setting it; clearing the bonuses, both to 0
+   and every mark clear; from increment 12 the bonus and the clear are **no longer hero changes**,
+   the adventure changing its hero on the map, point 1; the list keeps every other change) with
+   their checks; no commands, no map, game or battle state. The adventure, the game and later the
+   towns depend on it; `h3-battle` never does and sees only `BattleHero` (points 4 and 5). **What a
+   hero has from its details in every context is derived here once** (BAT-Q19): its available spells
+   (learned, worn scrolls, the spell-giving artifacts) and its mastery of a spell
    (`h3_heroes::available_spells`, `spell_masteries`), from E08 increment 3 the adventure's Attack
    and Defense, Diplomacy's join bonus, the maximum spell points, Necromancy and Learning, from
-   increment 4 progression (point 12), from increment 5 its movement and scouting (point 13),
-   from increment 6 its artifact moves (point 14), from increment 7 its rewards (point 15); no
-   context keeps its own copy, and no adventure profile seam copies them (E08 decision 5
-   withdrawn).
+   increment 4 progression (point 12), from increment 5 its movement and scouting (point 13), from
+   increment 6 its artifact moves (point 14), from increment 7 its rewards (point 15); no context
+   keeps its own copy, and no adventure profile seam copies them (E08 decision 5 withdrawn).
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
    `BattleEffect` enum in contracts. Its morale and luck kinds and alignment groups carry their
@@ -174,7 +181,13 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        hero's land movement rates (Logistics 10, 20, 30 %; a Logistics specialist's rate grown by
        5 % of itself per level) and rounded down, then the flat points added (Boots of Speed 600,
        Equestrian's Gloves 300). The rate follows Q-0005's flag: the original's single-precision
-       rate and x87 product in `faithful`, exact in `strict-fixed` (D-22).
+       rate and x87 product in `faithful`, exact in `strict-fixed` (D-22). From E08 increment 12
+       they take **the week's land points** as an input (the adventure's: the points of the kinds
+       whose week marks the hero on the map holds, the Stables' 400), added last, after the
+       growth and the worn artifacts' points, saturating (the original's
+       `hero_max_land_movement` 0x4E4990 adds the Stables' 400 while bit 1 holds; batch E12's
+       E12-10: day 2's 1 960 for each visitor, 1 560 once the week ended), as the sea's points
+       take the Lighthouses' (item 6; HER-ADV-003 amended); the sea's points never read them.
     2. **A creature's speed for the day's points**: the creature table's speed, one faster for the
        hero's creature specialty's creature and its upgrades; no speed artifact counts (the code
        and the wiki). The army stays the adventure's, an argument.
@@ -238,10 +251,19 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 15. **Rewards are `h3-heroes`' rules** (E08 increment 7; pure functions of the details, the
     ruleset and explicit inputs; the adventure reads them through these functions and returns the
     changes, the game applies them, point 12's pattern):
-    1. **The battle bonuses reach the battle as the hero's own effects**: `derive_battle_hero`
-       adds the morale bonus to the hero's own-side morale effects and the luck bonus to its luck
-       effects (point 6's side modifiers; the battle's own bounds apply). No seam changes. The
-       game clears them for every hero of a battle when it ends (ADR-0017 point 11).
+    1. **The battle bonuses reach the battle as the hero's own effects**: from E08 increment 12
+       `derive_battle_hero` takes them as an explicit input beside the details (the game reads
+       them from the hero on the map; increment 7 read them from the details), and adds the
+       unmarked morale and luck as the temporary source and each once-mark's non-zero morale and
+       luck as its own source (`EffectSource::Visit { mark }`; point 6's side modifiers; the
+       battle sums them and its own bounds apply); a mark with no amount (the Sirens') adds
+       nothing. The input is `h3-heroes`' plain type (the unmarked pair and the (mark, morale,
+       luck) entries), so the crate still knows no object. No seam changes. The adventure clears
+       both heroes' bonuses when a battle ends (ADR-0017 point 11; increment 7's game cleared them
+       in the details), keeping the once-marks its part names as outliving a battle under the
+       profile (A-44's flag off: the Sirens' mark; E08 decision 308). Batch E12 read the clear
+       (E12-8: the Sirens' bit cleared by a won battle, the boat's kept; E12-11: each battle
+       clears the Idol's and the Temple's bits and bytes).
     2. **The reward record's hero half** (Pandora's Box, events), in the original's order against
        the details as each part leaves them: the experience amount computed first, with the
        hero's Learning before the record's skills (HER-EXP-001's factor, truncated); the primary
@@ -251,7 +273,9 @@ are computed before the seam (03-domain). The seam must change once for E04a and
        says and **lost** when refused; the spells, each learned only with a worn spell book, of a
        level at most the learnable level (HER-SPL-005) and not known, the map's bans not tested;
        the experience **last**. Resources and creatures are the adventure's and the game's
-       (ADR-0016 point 4, ADR-0017 point 6).
+       (ADR-0016 point 4, ADR-0017 point 6). From E08 increment 12 its bonuses are added by the
+       adventure to the hero on the map (point 1), in the same place of the order (after the spell
+       points, before the artifacts).
     3. **What a teacher may teach** is derived here: a Witch Hut's skill (not known, below the
        most skills; no class test); a University's slot (not known, below the most, and the
        class's level-up weight above 0); a Scholar's spell (as point 15.2's), skill (a known one
@@ -359,6 +383,12 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   parameters (core ruleset hash, pack format; the harvester's gap-fill carries the thirteen
   specialties, `cross-lane` with the shared task); two derivations; 13.6 gains an input. No seam
   changes.
+- The bonus visitables (points 1, 2, 13.1 and 15, increment 12): the battle bonuses move out of
+  the details (the game state hash v28 without them; the adventure state hash v22 with them on
+  the hero on the map); increment 7's Warrior's Tomb, Pyramid, Pandora's Box and events change the
+  hero on the map instead of returning a hero change; `derive_battle_hero` and the land points
+  take an input more; the battle names each visit's morale and luck by its mark, which the client
+  lane's lines read. No seam changes (`EffectSource::Visit { mark: u8 }` stays).
 
 ## Alternatives considered
 
@@ -399,6 +429,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   not a level into the sea table (the original's `sea_movement_by_navigation` 0x698AEC, four
   entries from `movement.txt`, and the Pathfinding level's precedent; both give 1 500, 2 250,
   3 000, 3 750).
+- The bonus visitables (E08 ADV-Q50): the battle bonuses kept in the details with a fixed set of
+  32 once-marks and their amounts, and the day's and the week's marks beside them (the original's
+  records keep them for a hero off the map); the original's several bits per kind (the
+  Fountain's four, the Idol's and the Temple's two) with the amounts from content (a table passed
+  in, the unmarked part only by subtraction); the mark widened to `u16` with the seam.
 
 ## Revision history
 
@@ -479,3 +514,10 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - 2026-11-12 (E09 T24 `shared/`; E09 decision 76, `TWN-Q13`): point 16.4 added, a hero's town
   growth (E09 increment 3; pack format v52). Drafted in E09 T22a, accepted at `TWN-Q14`; batch
   TWN-3's verdicts (E09 T23) cited.
+- 2026-11-12 (E08 T112 `shared/`; the user at ADV-Q50, E08 decisions 306–308): points 1, 2,
+  13.1, 15.1 and 15.2 amended for E08 increment 12, the bonus visitables: the battle bonuses
+  moved to the hero on the map as a short list of once-marks with their amounts and the unmarked
+  sums, no longer hero changes; the land points' week input; each visit's battle source from the
+  bonuses passed in; the clear's kept marks. Drafted in E08 T108b (survey
+  `E08-garrisons-bonuses.md` §10); batch E12's outcome (T111, survey §15) folded in: every tested
+  point as drafted.

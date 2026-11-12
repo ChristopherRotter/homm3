@@ -151,6 +151,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    needs no command; no command names an exit (D-53, confirmed by E11-15). The setup gains
    nothing: the channels are the static map's, built with the game from its objects (ADR-0016
    point 1).
+   **Increment 12** (garrisons and the bonus visitables; E08 decision 295) adds **no command**: a
+   garrison is visited by `MoveHero`'s last step or `Revisit` and crossed by a path of its team
+   (batch E12's E12-1: no dialog on the way); its exchange is the management commands'
+   (`Manage::Army`), naming the hero's army and **`ArmyRef::MapGarrison(object)`**, a sibling of a
+   town's `ArmyRef::Garrison(town)`. The adventure's command application takes **the day of the
+   week** (1 to 7, the calendar's) beside the acting player's stream: every caller passes it.
 2. **Actors and viewers.** `Actor::Player(PlayerId)` for every player command, also a bot's;
    `Actor::System` for the trusted layer that hosts the game only (the server's session layer,
    the env), never for a player, with its own closed set of commands (end a player's turn,
@@ -179,6 +185,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    `docs/06-security.md`'s town section). A town's **garrison hero** is seen in its town's view
    at the level that shows the garrison's army (TWN-VEW-001, level 3) and by its owner among its
    own heroes (ADR-0016 point 6); the hire dialog's view is its owner's, as on the map.
+   From increment 12 the observation adds to each **map garrison** a viewer sees (by object: type
+   and anchor) its army at the viewer's level, which the game derives as a town's garrison's (the
+   owner's team, a hero with Visions at level 3 within reach of the entrance, else the viewer's
+   towns with a Tavern, at most 2), and its removable flag to the owner's team; and the types
+   whose kind the viewer's team has marked (ADR-0016 point 6).
 3. **Turn groups.** A day is a schedule: an ordered list of turn groups, each a set of players
    who act together. A group's turn starts with each context's start-of-turn step for its
    players and ends when each of them has ended its turn or left the game. After the last group
@@ -250,6 +261,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    or cost test; T-8's second Capitol stands), then its creatures are kept for increment 3's
    recruits (`TWN-STUB-10`: lost until then). Day 1's fire with the first group's turn inside the
    build, as the timed events'.
+   From increment 12 the adventure's **day step** drops every hero on the map's day marks, its
+   **week step** every hero's week marks (before the turn's points), refills every Magic Spring's
+   entrance and draws each Fountain of Fortune's value (in the weekly objects' pass below, point
+   4). Batch E12 read each so: day 2 the Well's bit clear (E12-14), day 8 the Stables' bit clear
+   and the day's maximum without its 400 (E12-10), both Spring entrances full (E12-9), the
+   Fountains' values new and unchanged within a week (E12-12).
    **From E09 increment 3** (ADV-MOV-002 amended; TWN-ROW-005) at its owner's turn start each
    **garrison hero** gets its day's maximum and points too, after the player's heroes on the map,
    in `TownId` order (the original's `next_player_turn` 0x4C7486: the towns' +0xC heroes; batch
@@ -363,6 +380,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    from the C runtime's one `rand()` stream, which no profile reproduces (batch E11's E11-15 and
    E11-17: uniform over the candidates, the sequence the game's). No setup placeholder is added
    and none moves (the channels and the gates' pairs are built without a draw).
+   **Increment 12's draws**: a Fountain of Fortune's value is drawn when the game is built from
+   the setup stream in the first week's walk, and at each week's start from the game's stream in
+   the weekly objects' pass, each in object order with the Windmills, the Gardens and the camps
+   (one uniform draw among the kind's values each). No visit of increment 12 draws. Batch E12's
+   E12-12 saw the original's values new only at a week's start; its later weeks alike in every
+   run, so the original's draw does not follow the new game's seed, which no profile reproduces
+   (as E11-15's `rand()`): the engine draws from its own streams.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
    observation or event, never seeded from client data; the observation-hygiene and
@@ -519,6 +543,22 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 
    **E09's increment 2 adds no decision kind**: a build is a command (point 1), the town events
    need no answer (their messages are events).
+
+   **Increment 12 adds one decision kind, the exchange** (GAM-DEC-009; the original's
+   `garrison_exchange_dialog` 0x5D1130): the visiting hero and the garrison, its owner's alone,
+   holding no one else, closed by its owner's `Close` and blocking its `EndTurn` until then. While
+   it stands its owner's management commands may name the hero's army and the garrison's (a third
+   pair of armies held together, beside a meeting's two heroes and an army dialog's hero and
+   group); each command changes the armies at once, by the adventure's one owner rule (ADR-0016
+   point 3: a non-removable garrison takes stacks only into its empty slots; batch E12's E12-3,
+   D-61 the original), so the close writes nothing back. It opens at a visit of a team's garrison
+   and at the capture of one, and **after a won garrison battle as a sixth visit's rest**
+   (GAM-DEC-007), given once the winner's levels are answered, as the original's order; nothing
+   when the winner left the map (E12-1, E12-2, E12-6: the exchange at a move's end, after a flag
+   and after a won battle). Its view (the owner's): the garrison by type and anchor, its army by
+   slot, its removable flag. The town's rows reuse its armies held together, not the kind (E09
+   decisions 67 and 80, the town's two rows above), with `ArmyRef::Garrison(town)` or the
+   garrison hero's army as the stationary bar. The bonus visitables ask nothing.
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
@@ -642,6 +682,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    action encoding (point 8) and the protocol (the commands, `HireOpened`'s and the view's
    source, the garrison hero's events and views), each `cross-lane` and in merge order with
    E08's increment 12 (the numbers are the next at merge; the second to merge bumps again).
+   **Increment 12** bumps the game state hash (v28: the exchange, its rest, the battle bonuses
+   leaving the details), the adventure state hash (v22), the adventure ruleset part (v20), the
+   map import (v22) and the adventure replay format (v13: the map garrison's reference in a
+   management line); the env's action encoding stays v8 (the exchange is answered by the close
+   role). The numbers are the next at merge, after E09's increment 3 where it merges first.
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -713,6 +758,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     adventure (its `StackChanged` to the owner, the town's viewers told the upper bar's change at
     their level). **The hero moves** are the adventure's own changes (ADR-0016 point 3), told as
     heroes leaving and entering the map are, and the town's change to its viewers.
+    **Increment 12's outcomes:** the exchange is an outcome the game opens (or holds after a
+    battle); a movement gain, the Sirens' losses and the Stables' upgrade, the battle bonuses and
+    the timed marks are the adventure's own changes of the hero on the map and its army (E08
+    decision 307: the bonuses no longer a hero change, ADR-0013 point 2); the spell points and the
+    Sirens' experience are hero changes the game applies through `h3-heroes`, the experience's
+    levels given as every gain's (batch E12's E12-7: 310 experience for the lost hit points). No
+    price, no gain of resources.
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -748,7 +800,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     the object); the Pyramid's as a monster battle with a second creature (ADR-0016 point 4),
     whose losses are not kept (the next fight is against the full guards). When a battle ends
     every hero in it loses its battle bonuses (ADR-0013 point 15.1), as the original's
-    `battle_end`.
+    `battle_end` (from increment 12 cleared by the adventure on the hero on the map, below).
     **Increment 8's battles** (GAM-BAT-001 amended): before the underground, a battle in which
     **either** hero is in a boat is fought on water's battle terrain with the ship's **deck**;
     when **both** are, on the **two boats** (their fixed blocked hexes, the battle part's); a
@@ -801,6 +853,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     Won: the defender leaves the map, the winner's levels, then the held jump (point 6). Lost,
     retreated or surrendered: the mover leaves the map (in a boat with it), the jump dropped; a
     draw, both leave.
+    **Increment 12's battles** (GAM-BAT-001 amended): a garrison's army defends on its entrance
+    unsplit, as an owned mine's guards (its owner's side without a hero, played outside its turn)
+    or a guarded object's (unowned, the neutral seat's); its end writes the survivors back, a win
+    flags it and holds the exchange (batch E12's E12-6: no question, one stack, unowned). **A
+    battle whose tile is an anti-magic garrison's entrance** (the garrison's own, or a hero's
+    standing in it attacked) sets the setup's anti-magic flag (BAT-TER-002; D-60 the original:
+    E12-4, the flag set for the defender's tile, clear for an attack out of it). A hero standing
+    in a garrison is fought as any hero, the garrison's army not in its side (E12-4). The battle's
+    setup derives each hero's side with **its bonuses on the map** as `derive_battle_hero`'s
+    input (ADR-0013 point 15.1); the battle's end has the adventure clear both heroes' battle
+    bonuses but the once-marks the part names as outliving a battle under the profile
+    (GAM-BAT-014 amended; the Sirens' with `ADV-QUIRK-46` off: A-44, decision 308; E12-8).
 
 ## Consequences
 
@@ -886,6 +950,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   lane's); the space key's revisit repeats at no points, so the env's rollout needs a step cap.
   The guard first (decision 279) moves every entered kind's visit on a guarded tile to a rest
   after the guard's battle, so the golden replays with such a visit change with it.
+- Increment 12: one decision kind and its rest (game state hash v28), the exchange's direct army
+  reference (adventure replay format v13), the day of the week in the adventure's command
+  application (every caller), the Fountains' draws in the week's pass, the battle bonuses read
+  from the hero on the map for a battle's setup and cleared by the adventure; the env's encoding
+  stays v8. Each new event, the decision's view, the reference and the fields moved from the
+  details to the hero on the map break `h3-protocol`'s build until mapped (`cross-lane`).
 
 ## Alternatives considered
 
@@ -965,6 +1035,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   teleporters only, or later as a stub (decision 268); the revisit with the guard's test; one env
   entry for the selected hero instead of one per slot; a jump dropping the entrance's guard, or
   the guard first for the teleporters only (decision 279).
+- Increment 12 (ADV-Q50): the exchange as the Leave Guards dialog's copied group, written back at
+  the close (one rule fewer to share with the town's rows, but views stale until the close); the
+  exchange without a decision (any management command naming a garrison the hero stands in,
+  which the original's modal dialog does not allow); a new action for the exchange in the env;
+  the day of the week kept in the adventure's state; the day's and the week's clears for every
+  hero of the store (the marks in the details).
 
 ## Revision history
 
@@ -1076,3 +1152,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   hire dialog's town sources and the rows without a decision, the env's entries, the versions,
   the applications, a town's battle with a garrison hero. Drafted in E09 T22a and T22b; batch
   TWN-3's verdicts (E09 T23) cited.
+- 2026-11-12 (E08 T112 `shared/`; the user at ADV-Q48 to ADV-Q50, E08 decisions 295, 299–303,
+  305–309): points 1, 2, 3, 4, 6, 9, 10 and 11 amended for E08 increment 12, garrisons and the
+  bonus visitables: no command, `ArmyRef::MapGarrison` and the day of the week in the adventure's
+  application; a map garrison's view by the viewer's level and the kind marks in the
+  observation; the day's and the week's drops, the Springs' refill and the Fountains' draws (in
+  point 3 before E09's garrison heroes' turn start); the exchange as a decision kind and a
+  visit's rest, the town's rows reusing its armies held together; the versions; the outcomes; a
+  garrison's battle and the anti-magic flag, the bonuses from the hero on the map, the clear's
+  kept marks. Drafted in E08 T108b (survey `E08-garrisons-bonuses.md`); batch E12's outcome
+  (T111, §15: every row as read) folded in.

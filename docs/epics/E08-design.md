@@ -6,8 +6,8 @@ increments 9's and 10's beside it (moved by T87c and T97c); the code's comments 
 "increment N's design note §M".
 
 A handover, not binding (`docs/adr/README.md`): the working detail behind increment 12's
-amendments, drafted in the lane's `adr-drafts/` (`0013-increment-12.md`, `0016-increment-12.md`,
-`0017-increment-12.md`, all by T108b); written from T108a's survey and the answers at ADV-Q48 and
+amendments, drafted in the lane's `adr-drafts/` by T108b and applied to ADR-0013, ADR-0016 and
+ADR-0017 by T112 with batch E12's outcome (the drafts then deleted); written from T108a's survey and the answers at ADV-Q48 and
 ADV-Q49 (the epic's decisions 295, 299–303). A building task adds an *As built* line to the section
 it builds; the note moves to `E08-log.md` when the increment closes. Facts and sources: survey
 `docs/rules/surveys/E08-garrisons-bonuses.md` (§ numbers are the survey's unless they name this
@@ -554,6 +554,13 @@ the town lane's (the army reference agreed, now: §13; the versions' order; the 
 weekday in `apply`, the new decision answered by its close role), the client lane's (CLT-Q40's
 amounts, T115a), the map client lane's (the seventeen types, the garrison's view, the kind marks
 for the hint, T113a and T115b).
+*As built* (T112, `shared/e08-t112`, `cross-lane`; decision 318): the three drafts in ADR-0013
+(points 1, 2, 13.1, 15.1, 15.2), ADR-0016 (points 1, 3, 4, 5, 6) and ADR-0017 (points 1, 2, 3, 4,
+6, 9, 10, 11), each with batch E12's rows cited, and deleted; the index's Read-when cells; the
+glossary's terms (a Fountain's value and a Spring's entrance among them, the battle bonuses' line
+amended); `docs/06-security.md`'s increment 12 section (§10's lines and the exchange's
+validation); `EffectSource::Visit`'s doc comment; the experiments README's visit modes (decision
+317). No version moved.
 
 **The building tasks**, in rounds of one or two (ids continue the epic's; each task's cut
 confirmed at its start). **Batch E12 runs before the build and before the shared task** (decision
