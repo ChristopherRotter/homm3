@@ -2687,9 +2687,15 @@ finished it (the user: "finish the rest yourself").
   hash and journal, paused, no entry lacking, its records begun again, the account's seat
   re-taken by its account alone and the anonymous one by its token, a resend after the restart
   answered as the first time; a journal of a game never started reopened unstarted; a journal of
-  seats refused in-process. `tests/game_seats.rs`'s twin test reopens its game of connections
+  seats refused in-process, a seat's numbered command re-run in-process as its player's, a setup
+  that starts no game and a journal the game rejects reopening none, the host's pause with a seat
+  not held told to the host alone. `tests/game_seats.rs`'s twin test reopens its game of connections
   from its journal (the hash and journal equal the twin's); the wire's JSON form of `GameJoined`
   with `last` (`tests/game_manifest.rs`); the session's two new rejections in the inverse's list
   (`tests/game_command.rs`).
 - **The bench:** `benches/server/` measures the battle session; T8b changed only the whole
   game's session (and the battle `Pause`'s doc comment): not applicable.
+- **Gates:** the scoped verify (`--scope server`) with no failing step after `master` (#873) was
+  merged in: fmt, clippy, check-arch, -rules, -stubs, -docs, -exe-map, clients-lock, check-lane,
+  test, coverage (the first runs found rustfmt, a clippy lint and five uncovered regions: the
+  tests above), bench-check, doc-drift; deny, determinism and ffi-smoke skipped by the scope.
