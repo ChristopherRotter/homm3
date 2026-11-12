@@ -13,25 +13,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T1a2 — the catalogue, part 1b: Multiplayer, the hot seat's names, High Scores, Credits
-
-- **Scope:** T1a's second half (cut with the user, 2026-11-12, decision 9; T1a1's reading is
-  `E27-design.md` §2, its entry points named there): Multiplayer (`multiplayer_dialog_run`
-  0x4F0590: the dialog 0x50E050, its modes, the hot seat's names dialog; the network modes decided
-  as a `CLT-Q` with a recommendation, CLT-Q83; `ProgressBar`'s use, §2.1, with them), High Scores
-  (`high_scores_show` 0x4E9110: its tabs, `HSANIM` and `HSLOOP`, the high-score manager 0x6993CC),
-  Credits (`credits_screen` 0x4EDDA0: its text table `Credits.txt`, whether a clip plays, the
-  copies of `mainmenu.pcx` around it). Per screen as T1a1: the constructor, its items in order,
-  the assets by name, the texts by table and record (never the text), the sounds, the entry points
-  and the transitions; confidence stated; every oddity a question. Into `E27-design.md` §2 (new
-  subsections after §2.5).
-- **Acceptance:** as T1a1's (every screen listed with its addresses, items, assets, texts, sounds
-  and transitions; the questions filed, asked when the user is present; the map's entries and
-  `check-exe-map`); the Definition of Done (docs).
-- **Depends on:** T1a1 (done). **Status:** ready. The original data: `Heroes3.exe` and the LODs
-  (the text tables in `original-data/extracted/`); `original-data/shell-videos.vid` holds
-  `HSANIM` and `HSLOOP` for their headers.
-
 #### E27 M1 T1b — the catalogue, part 2: a game's setup and the screens around play
 
 - **Scope:** as T1a for scenario selection (the list, its filters and sort, the information
@@ -41,9 +22,11 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   original reaches the dialog, where it keeps a setting), the system menu in play, and the end
   of a scenario (victory, defeat, their clips, messages and the high score's entry). Per setup
   choice: the `GameSetup` field it fills, or the E10 gap it waits for (decision 6). Into
-  `E27-design.md` §3.
+  `E27-design.md` §3. From T1a2 (design §2.7, §2.8): the hot seat's names (`hot_seat_names`
+  0x69CA50) in the players' setup; a won scenario's screen `scenario_win_screen` 0x4F3F60
+  (`HSANIM`, `HSLOOP`, the score) and the new entry `high_score_entry` 0x4E91D0 (`HighName.pcx`).
 - **Acceptance:** as T1a's; the setup's choices mapped to `GameSetup` or to a named gap.
-- **Depends on:** T1a2. **Status:** ready after T1a2.
+- **Depends on:** T1a2 (done). **Status:** ready.
 
 #### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
 
@@ -73,13 +56,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
-
-- 2026-11-12 (the town lane, E09 T25a, #873; **for T1a2**): this queue's T1a2 entry cites
-  0x50E050, which `docs/exe/map.toml` lacked: #876's client-only CI skips `check-exe-map`, so
-  the next full CI (#873's) failed on `master`'s text. #873 adds `multiplayer_dialog_init`
-  (0x50E050, size 0xCFC, `inferred`: built on `multiplayer_dialog_run`'s stack, its only caller,
-  run by `dialog_run_modal`, then destroyed; its calls not read). T1a2 corrects it when it
-  reads the dialog; run `cargo xtask check-exe-map` before a docs-only push that cites an address.
 
 - 2026-11-12 (the server lane, E16 M5 T7a1, branch `claude/keen-tesla-q5uxid`;
   informational for `h3_view::game_record`): protocol **v44**: a game's player may get a fresh

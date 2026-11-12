@@ -1,6 +1,6 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); M1 T1a1 done; next **M1 T1a2**
+Status: **refined** (2026-11-12, M0, with the user); M1 T1a1 and T1a2 done; next **M1 T1b**
 (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
@@ -71,6 +71,19 @@ The user, 2026-11-12 (M1 T1a1; `CLT-Q84` to `CLT-Q86`):
    found that the loading bar is no clip (`loadbar.pcx`, `loadprog.def`) and `ProgressBar` a
    network transfer's (design §2.1), so decision 5's Smacker serves `3DOLOGO` and the high scores.
 
+The user, 2026-11-12 (M1 T1a2; `CLT-Q87` to `CLT-Q89`):
+
+10. **The network modes drawn, a stub** (CLT-Q87): Multiplayer's first stage is drawn as the
+    original's with its six buttons; Hot Seat works; IPX, TCP/IP, Modem, Direct Connect and Online
+    lead to one stub (a message) and the dialog stays on its first stage; the second stage (Host,
+    Join, Search, the session list, their dialogs) and `ProgressBar`'s transfer are not built, and
+    E28 decides how the project's network play enters the shell; Online never ends the client.
+    **The credits' clock** (CLT-Q88): the client steps the credits ten times a second (Complete's
+    placeholder clip's rate) with no clip. **Two oddities as the original's** (CLT-Q89): the
+    Multiplayer Cancel's item 64 × 48 over its 64 × 32 picture; no check box in the hot seat's
+    names (its assets unused). The reading also found that `HSANIM` and `HSLOOP` play at a won
+    scenario's score screen (T1b), not in High Scores (design §2.8).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -92,8 +105,8 @@ SoD) the shipped installation decides; E11 owns historical differences.
   gate` measuring it; `lanes/client/NOTES.md`, "Assets and archives".
 - **New Game and Load Game:** the choice of single scenario, multiplayer, campaign (a stub until
   E20) and the tutorial's place (T1a1: drawn, a stub, CLT-Q84).
-- **Multiplayer's hot seat:** the names' dialog; the other modes are listed and decided at T1a2,
-  not built.
+- **Multiplayer's hot seat:** the names' dialog; the other modes drawn and stubbed (decision 10;
+  design §2.6, §2.7).
 - **Scenario selection:** the list with its filters and sort, the scenario's information, the
   difficulty, the players' setup (colour, human or computer, town, hero, starting bonus,
   handicap, as the original offers them), the advanced options, the map's description, and a
@@ -111,7 +124,8 @@ SoD) the shipped installation decides; E11 owns historical differences.
 - **The system menu in play** (save, load, restart, main menu, quit; over the map client's
   adventure screen, with the map-client lane) and **the end of a scenario** (victory, defeat,
   their clips and messages, the high-score entry; the effects behind E10, decision 6).
-- **High scores and credits** (`HSANIM`, `HSLOOP`; `Credits.smk` of `H3ab_ahd.vid`).
+- **High scores and credits** (design §2.8, §2.9; the scores in the client's own file, the
+  defaults `CampHigh.txt`'s; `HSANIM` and `HSLOOP` at a won scenario's end, T1b).
 - **Sound and music** of the menus (E17's sound decoders).
 
 ## Non-goals
@@ -143,16 +157,20 @@ tasks are refined here.
 | Task | Scope | Status |
 |---|---|---|
 | T1a1 | The catalogue, part 1a: the start (the clips' order and skipping, the loading bar), the main menu, New Game's and Load Game's menus, Quit | done 2026-11-12 (design §2; CLT-Q84 to CLT-Q86) |
-| T1a2 | The catalogue, part 1b: Multiplayer (its modes, decided as a `CLT-Q`) and the hot seat's names, High Scores, Credits | ready |
-| T1b | The catalogue, part 2: scenario selection and the players' setup, the advanced options, the random map's tab, Load's and Save's dialogs, the system options, the system menu in play, the end of a scenario | after T1a2 |
+| T1a2 | The catalogue, part 1b: Multiplayer (its modes, decided as a `CLT-Q`) and the hot seat's names, High Scores, Credits | done 2026-11-12 (design §2.6 to §2.9; CLT-Q87 to CLT-Q89) |
+| T1b | The catalogue, part 2: scenario selection and the players' setup, the advanced options, the random map's tab, Load's and Save's dialogs, the system options, the system menu in play, the end of a scenario | ready |
 | T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was); the harness on every catalogued screen; the reference captures; the traps | after T1b |
 | T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
 
 **M1's review list** (the agent's calls, *provisional*, for T3):
 
-1. Not built (T1a1, design §2.6): the CD status, its notices and the menus without Single,
+1. Not built (T1a1, design §2.10): the CD status, its notices and the menus without Single,
    Campaign and Tutorial; the free disk space check; a DirectPlay lobby's start; the single
    instance; F4's window mode (E29).
+2. T1a2 (design §2.10): the high scores in the client's own file, never the installation's
+   `HiScore.dat` (not imported), the defaults read from `CampHigh.txt`; the player's name
+   (`Network Default Name`, the registry's) a client setting; the leftover `RMT*SC.BIN`'s deletion
+   not built.
 
 ## Dependencies and boundaries
 

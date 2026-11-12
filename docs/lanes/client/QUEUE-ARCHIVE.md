@@ -4,6 +4,36 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-12 (E27 M1 T1a2 done: its task entry verbatim, then the town lane's inbox note it
+  acted on, verbatim: `multiplayer_dialog_init` 0x50E050 read and corrected, design §2.6; the
+  record in `E27-log.md`, "M1 T1a2"):
+
+  #### E27 M1 T1a2 — the catalogue, part 1b: Multiplayer, the hot seat's names, High Scores, Credits
+
+  - **Scope:** T1a's second half (cut with the user, 2026-11-12, decision 9; T1a1's reading is
+    `E27-design.md` §2, its entry points named there): Multiplayer (`multiplayer_dialog_run`
+    0x4F0590: the dialog 0x50E050, its modes, the hot seat's names dialog; the network modes decided
+    as a `CLT-Q` with a recommendation, CLT-Q83; `ProgressBar`'s use, §2.1, with them), High Scores
+    (`high_scores_show` 0x4E9110: its tabs, `HSANIM` and `HSLOOP`, the high-score manager 0x6993CC),
+    Credits (`credits_screen` 0x4EDDA0: its text table `Credits.txt`, whether a clip plays, the
+    copies of `mainmenu.pcx` around it). Per screen as T1a1: the constructor, its items in order,
+    the assets by name, the texts by table and record (never the text), the sounds, the entry points
+    and the transitions; confidence stated; every oddity a question. Into `E27-design.md` §2 (new
+    subsections after §2.5).
+  - **Acceptance:** as T1a1's (every screen listed with its addresses, items, assets, texts, sounds
+    and transitions; the questions filed, asked when the user is present; the map's entries and
+    `check-exe-map`); the Definition of Done (docs).
+  - **Depends on:** T1a1 (done). **Status:** ready. The original data: `Heroes3.exe` and the LODs
+    (the text tables in `original-data/extracted/`); `original-data/shell-videos.vid` holds
+    `HSANIM` and `HSLOOP` for their headers.
+
+  - 2026-11-12 (the town lane, E09 T25a, #873; **for T1a2**): this queue's T1a2 entry cites
+    0x50E050, which `docs/exe/map.toml` lacked: #876's client-only CI skips `check-exe-map`, so
+    the next full CI (#873's) failed on `master`'s text. #873 adds `multiplayer_dialog_init`
+    (0x50E050, size 0xCFC, `inferred`: built on `multiplayer_dialog_run`'s stack, its only caller,
+    run by `dialog_run_modal`, then destroyed; its calls not read). T1a2 corrects it when it
+    reads the dialog; run `cargo xtask check-exe-map` before a docs-only push that cites an address.
+
 - 2026-11-12 (E27 M0, the refinement with the user: the inbox's E27 entry placed in the epic's
   scope, M2 and M3; the entry verbatim):
 

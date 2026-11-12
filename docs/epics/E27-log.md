@@ -58,5 +58,45 @@ Credits).
 - **Asked and answered:** CLT-Q84 (the tutorial: drawn, a stub; BACKLOG's line), CLT-Q85 (no
   first-run case), CLT-Q86 (the menus' clip: nothing drawn). The agent's calls (not built: the CD
   paths, the disk check, the lobby, the single instance, F4) on M1's review list.
-- **Not done:** no harness run (the code was clear; T2 confirms the start's clips, §2.7). Gates:
+- **Not done:** no harness run (the code was clear; T2 confirms the start's clips, §2.11). Gates:
   `scripts/exe.py check`, `cargo xtask check-exe-map`, `check-docs`, `check-lane`.
+
+## M1 T1a2 — the catalogue, part 1b: Multiplayer, the hot seat's names, High Scores, Credits (2026-11-12)
+
+On `client/e27-m1-t1a2` (docs and the address map), the user present; `master` at `a396c3f` (#873,
+#875, #876 merged). Judged one task at its start (about 5 KB of code for Multiplayer, 5 for High
+Scores, 1 for Credits); no cut needed.
+
+- **Staged at the start**, the user's computer about to go offline: the four LODs one a call, the
+  executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the 40
+  MP3s, `shell-videos.vid`; besides, from the SoD folder (read only) its small `VIDEO.VID`,
+  `H3bitmap.lod` and `Heroes3.exe`, and Complete's three manuals (unused). Complete's and SoD's
+  `VIDEO.VID` tables listed on the computer: SoD's `CREDITS.SMK` and `.BIK` are a real clip (556 ×
+  100, 12 frames at 6 a second), Complete's placeholders.
+- **Read** (`E27-design.md` §2.6 to §2.9; 66 new map entries, 7 updated): `multiplayer_dialog_run`
+  and `multiplayer_dialog_init` whole (the items, the two stages 0x50EFC0 and 0x50EEF0, the click
+  handler 0x50F4E0 and its switch, the procedure 0x50F940); the default dialog procedure and its
+  mouse move and right press (0x5FF820, 0x5FF6E0, 0x5FF790: H3API's names confirmed); the hot seat
+  (0x511D40, the names dialog 0x511E20 whole, its edits' keys and ring, OK's rule, the names'
+  record 0x69CA50); the network paths (TCP/IP, Host, Join, Search, the DirectPlay wrapper) only by
+  their entry points, texts and pictures; `ProgressBar` a network game's save transfer
+  (0x4CAFD0, 0x4CBD40). High Scores: the manager (its constructor, its load of `HiScore.dat`, the
+  defaults from `CampHigh.txt`, `ResetScores`), the dialog, its draw and its procedure whole, the
+  creature table 0x67F1FC. Credits whole (the scroll's three phases, its clock, `Credits.txt`'s two
+  records, `video_playing`). Checked privately in the staged data (never committed): the PCXs' and
+  DEFs' sizes, `Help.txt`'s and GENRLTXT's records' subjects, `CampHigh.txt`'s and `Credits.txt`'s
+  layouts, the clips' headers.
+- **Found:** the Multiplayer dialog has two stages (the six connection types; Host, Join, Search
+  and a session list); Hot Seat only without the CD notice; Online runs `online\autorun.exe` and
+  ends the game; the hot seat's OK needs two names and the names are packed; `HSANIM` and `HSLOOP`
+  are a won scenario's (0x4F3F60, T1b), the High Scores screen plays no clip; the creatures are
+  the adventure map's monster DEFs by score (a campaign's divided by 5), stepping every 200 ms; the
+  scores live in the installation's `DATA\HiScore.dat`; the credits move 2 px per frame of the
+  menus' clip and end at once without one; unused assets (`muhotchk.pcx`, `mudiaddr.pcx`,
+  `mupuaddr.pcx`, `Help.txt` 558).
+- **Asked and answered:** CLT-Q87 (the network modes drawn, a stub), CLT-Q88 (the credits ten
+  steps a second, no clip), CLT-Q89 (Cancel's item and no check box, as the original's); decision
+  10. The agent's calls (the scores' file, the name's setting, the leftover file) on M1's review
+  list.
+- **Not done:** no harness run (T2 confirms, design §2.11). Gates: `scripts/exe.py check`,
+  `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
