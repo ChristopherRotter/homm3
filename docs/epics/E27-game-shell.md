@@ -1,7 +1,7 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); M1 T1a1, T1a2 and T1b1 done (T1b cut in
-three, decision 11); next **M1 T1b2** (`docs/lanes/client/QUEUE.md`).
+Status: **refined** (2026-11-12, M0, with the user); M1 T1a1, T1a2, T1b1 and T1b2 done (T1b cut
+in three, decision 11); next **M1 T1b3** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -103,6 +103,20 @@ The user, 2026-11-12 (M1 T1b1; `CLT-Q90`, `CLT-Q91`):
     sorts ascending (the client records the key it sorted by), and a double click needs the same
     row twice; the original's rules are kept for the comparisons only.
 
+The user, 2026-11-12 (M1 T1b2; `CLT-Q92` to `CLT-Q95`; T1b2 kept whole at its start):
+
+13. **The random map's tab drawn, Begin a stub** (CLT-Q92): its choices as the original's; Begin
+    with a random map chosen shows a stub's message; Show Random Maps lists the client's own
+    `random_maps` (empty); no generator (the non-goals). **Three oddities fixed**, the original's
+    rules kept for the comparisons only: single player on a map with a human-only colour, only
+    the other human-only colours become the computer's and the player may return to its start
+    (CLT-Q93; no shipped map has one); the hot seat's flag passes the colour to the next player
+    after its holder in the slots' order, the two exchanging colours, after the last the
+    computer's (CLT-Q94); a human's Random town stays Random, drawn by the engine at the build
+    (CLT-Q95; the original takes the town drawn at the list's read). The reading also found that
+    the bonus, the handicap and the turn's duration have no `GameSetup` field (design §3.9: the
+    first two E10's, the timer the hot seat's, E24 M5).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -178,8 +192,8 @@ tasks are refined here.
 | T1a1 | The catalogue, part 1a: the start (the clips' order and skipping, the loading bar), the main menu, New Game's and Load Game's menus, Quit | done 2026-11-12 (design §2; CLT-Q84 to CLT-Q86) |
 | T1a2 | The catalogue, part 1b: Multiplayer (its modes, decided as a `CLT-Q`) and the hot seat's names, High Scores, Credits | done 2026-11-12 (design §2.6 to §2.9; CLT-Q87 to CLT-Q89) |
 | T1b1 | The catalogue, part 2a: the scenario screen's frame, its list and information panel in its three modes (new, load, save), the difficulty, Begin and Back (decision 11) | done 2026-11-12 (design §3; CLT-Q90, CLT-Q91) |
-| T1b2 | The catalogue, part 2b: the advanced options (the players' setup to `GameSetup` or an E10 gap), the random map's tab, the game's begin | ready |
-| T1b3 | The catalogue, part 2c: the system options and the system menu in play, the end of a scenario (victory, defeat, their clips and messages, the win screen, the high score's entry) | after T1b2 |
+| T1b2 | The catalogue, part 2b: the advanced options (the players' setup to `GameSetup` or an E10 gap), the random map's tab, the game's begin | done 2026-11-12 (design §3.12 to §3.18; CLT-Q92 to CLT-Q95) |
+| T1b3 | The catalogue, part 2c: the system options and the system menu in play, the end of a scenario (victory, defeat, their clips and messages, the win screen, the high score's entry) | ready |
 | T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was); the harness on every catalogued screen; the reference captures; the traps | after T1b3 |
 | T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
 
@@ -195,6 +209,10 @@ tasks are refined here.
 3. T1b1 (design §3.10): the scenario screen's network paths (the host's relays, a guest's wait,
    the chat), the busy cursor's helper thread and the edition's format check not built; the
    original's saves not listed (decision 8), the autosave's naming kept by the client's file name.
+4. T1b2 (design §3.10): the advanced options' network paths and the random map's generator not
+   built; the bonus, the handicap and the turn's duration drawn and chosen with their effects
+   stubbed (a `CLT-STUB` each at M3); the hot seat's swap of CLT-Q94 in its detail (a taker without
+   a colour, the computer after the last player) provisional until M3 builds it.
 
 ## Dependencies and boundaries
 
