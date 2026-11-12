@@ -3297,7 +3297,9 @@ data staged then (17 files: the four LODs one per call, the executables, the fiv
   from their own commands (a scratch script, 3 s in release): only `town_ruleset_hash`
   (`0x8477f2008d862e55` to `0x4ded73a0d357e245`), `game_state_hash_version`, the checkpoints and
   `final_hash` moved; each verified with `h3 adventure verify`. The battle replays and the bot
-  reports record neither hash: untouched. `h3-game`'s two test literals (one the adventure lane's
+  reports record neither hash: untouched. `h3-server`'s record tests' two literals (the server
+  lane's: `army-dialog-s1`'s checkpoint and final hash, found by `cargo test --workspace`; the
+  scoped verify does not run them). `h3-game`'s two test literals (one the adventure lane's
   `src/tests/mod.rs`) gained the parameters and `roe`; its town modules pass the core to the
   store's build and the setup. The adventure lane's inbox and HANDOFF versions line told.
 - **Agent's calls (change freely):** decision 86's list; the refusals' wording; the parameters'
@@ -3305,6 +3307,8 @@ data staged then (17 files: the four LODs one per call, the executables, the fiv
 
 **The queue:** T25a out of T25's entry; T25b next (unchanged scope).
 
-**Verify:** `cargo xtask verify --scope town --summary --with-original-data`, `cargo xtask
-check-lane --cross-lane`, `cargo check --workspace --all-targets`; CI on the pull request is the
-record.
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data` (every step but
+`check-lane`, by design, and coverage's one region, fixed and run again alone; the bench gate
+passed), `cargo xtask check-lane --cross-lane`, `cargo test --workspace --exclude xtask
+--all-targets`; `master` merged in (#868, #869), `h3-protocol`, `h3-server` and `h3-game` again;
+CI on the pull request is the record.
