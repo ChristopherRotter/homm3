@@ -4,15 +4,69 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-**E17 closed** (2026-11-12, M7 T4: M0 to M7; the epic `docs/epics/E17-clients.md`, its record
-`E17-log.md`, its closed milestones `E17-archive.md`). **Next: E27, the game shell** (the main
-menu and every screen outside play; the draft `docs/epics/E27-game-shell.md`, the lane's since
-E17 closed): its refinement (M0) with the user. The original files: stage them from the user's
+**E27, the game shell** (refined 2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
+decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 (reading and captures)
+below; M2 to M4 are refined at their T0s. The original files: stage them from the user's
 `original-data/install/` (one large file per staging call; the user's computer must be online);
 never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd`
 and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates:
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
+
+#### E27 M1 T1a — the catalogue, part 1: the start and the menus
+
+- **Scope:** read from `Heroes3.exe` (`docs/exe/map.toml` entries with their confidence) and its
+  assets: the start (the clips before the main menu in order, what skips one, the loading bar's
+  clip and when it shows, where `H3X1intr` plays; design §1), the main menu (its background,
+  buttons and their DEFs, hover, press, hotkeys, sounds, music), New Game's and Load Game's
+  choices (single scenario, multiplayer, campaign, tutorial, back), Multiplayer (its modes, the
+  hot seat's names dialog), High Scores (its tabs, `HSANIM` and `HSLOOP`), Credits (its text
+  table, `Credits.smk`), Quit's question. Per screen: the constructor, its items in order, the
+  assets by name, the texts by table and record (never the text, ADR-0009), the sounds, the
+  entry points and the transitions; observed under the harness where the code is unclear.
+  Into `E27-design.md` §2. The network modes and the tutorial decided (CLT-Q83): a `CLT-Q<n>`
+  each, with a recommendation; every oddity found a question too.
+- **Acceptance:** every screen of the part listed with its addresses, items, assets, texts,
+  sounds and transitions, each reading's confidence stated; the questions filed (asked when the
+  user is present); the Definition of Done (docs).
+- **Depends on:** M0 (done). **Status:** ready.
+
+#### E27 M1 T1b — the catalogue, part 2: a game's setup and the screens around play
+
+- **Scope:** as T1a for scenario selection (the list, its filters and sort, the information
+  panel, the difficulty, the players' setup: colour, human or computer, town, hero, starting
+  bonus, handicap; the advanced options; the random map's tab, decided as a `CLT-Q`), Load's and
+  Save's dialogs (the list, the file name's entry), the system options (every setting, where the
+  original reaches the dialog, where it keeps a setting), the system menu in play, and the end
+  of a scenario (victory, defeat, their clips, messages and the high score's entry). Per setup
+  choice: the `GameSetup` field it fills, or the E10 gap it waits for (decision 6). Into
+  `E27-design.md` §3.
+- **Acceptance:** as T1a's; the setup's choices mapped to `GameSetup` or to a named gap.
+- **Depends on:** T1a. **Status:** ready after T1a.
+
+#### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
+
+- **Scope:** the shell's clips (design §1, as T1a and T1b place them) copied from the user's
+  `Data/VIDEO.VID` and `Data/H3ab_ahd.vid` into `original-data/shell-videos.vid` on the user's
+  computer (reading the installation only, as `battle-videos.vid` was made, E17 M5 T4b1); the
+  harness's `VIDEO.VID` holding both archives' clips (`setup.sh`); the harness's steps to every
+  catalogued screen and its probes (the runbook, a section of its own); the reference captures of
+  each screen (stills; a clip's frames where a screen plays one), each recorded twice; the start
+  with its clips under Wine; the traps into `TRAPS.md`. Cut at its start with the user if it is
+  more than half a context.
+- **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
+  same or each difference listed; the harness check passes; the Definition of Done.
+- **Depends on:** T1b; the user's computer online for the clips. **Status:** ready after T1b.
+
+#### E27 M1 T3 — M1's closure and M2's refinement
+
+- **Scope:** a fresh reviewer on the catalogue and the recipes, its findings fixed or listed;
+  M1's review list and the open questions with the user; M2 T0: M2's tasks into this queue (the
+  Smacker decoder, the start, the menus, the shell's state machine and its headless driver,
+  CLT-Q2's loading; where the shell's code lives, CLT-Q79).
+- **Acceptance:** the review list accepted by the user; M2's tasks queued; the Definition of
+  Done (docs).
+- **Depends on:** T2. **Status:** ready after T2.
 
 ## Inbox
 
@@ -53,9 +107,6 @@ the battle client's code is this lane's, so the lane builds it then.
   Poison's damage, the Faerie Dragon's draw line, Fire Wall's burn and Land Mine's blast, the
   shot cursor's half damage, the "no free hex" message (an engine event first); taken when a
   recording needs one.
-- **E27** (in its draft since M7 T4): the client's options (the volume settings 0x5996C0, a track
-  resuming 0x59AA82, CLT-Q25's step back), video (the intro videos, the video archives), CLT-Q2's
-  archive set by the LODs' tables (NOTES, "Assets and archives", "Options and layouts").
 - **E28** (the backlog): ranked play in the native client, refined after E27 (the first ranked
   play through the website, E21); NOTES, "The live client". **E29** (the backlog): HD layouts and
   graphics options for both clients; NOTES, "Options and layouts".
