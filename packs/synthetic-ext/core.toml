@@ -66,6 +66,10 @@ effects = [
     { kind = "ballistics", level = 2 },
     # Format v40 (E08 T19a2b): the highest spell level learnable grows (Wisdom).
     { kind = "learn_level", levels = 1 },
+    # Format v52 (E09 T24): the Legion's kinds, a town's growth by level and the owner's share, read
+    # by the town's growth from E09 increment 3 (a combination's own, as the Statue of Legion's).
+    { kind = "town_growth", level = 3, amount = 2 },
+    { kind = "owner_town_growth", bp = 2500 },
 ]
 
 # Format v46 (E08 T35b): the hero's movement and scouting, kinds only the adventure reads (its own

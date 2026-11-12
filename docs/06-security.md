@@ -170,6 +170,42 @@ it with builds.
   income lines; E09 T18b2a, SRV-Q26), so a viewer learns what its own view shows and nothing of
   another viewer's level. A change of Visions' reach is not told yet (`TWN-STUB-13`).
 
+### A town's growth, recruitment and the army rows (E09 increment 3)
+
+ADR-0028 points 2 and 6, ADR-0017 points 1 to 6, 8 and 10, ADR-0016 points 3 and 6 (E09
+decisions 71, 75, 77, 80 to 83; the design note `epics/E09-design.md` §46, §47 and §55; rules
+TWN-VEW-001, -004). The build tasks (E09 T25 to T28) implement it; `h3-game`'s view tests and the
+hygiene and told-views properties check it with growth, recruits and garrison heroes.
+
+- **Public:** the week's kind (`WeekStarted`, the observation's calendar), as the month's.
+- **The owner's alone:** a town's available creatures and its Portal of Summoning (its creature
+  and count), in the owner part of the town view beside its buildings; the hire dialog's view and
+  `HireOpened` for a town's source. Another player learns a town's counts only by what its own
+  view's level shows of the garrison.
+- **The towns' stream is server-only** (ADR-0017 point 5): the week's kind is told once drawn;
+  a neutral town's garrison week and a Portal's pick are told only as their results, never their
+  draws. A Portal's other draws come from the acting player's stream after every check, so a
+  refused command draws nothing.
+- **Recruitment is the owner's** (`GameCommand::Town(TownCommand::Recruit { town, building })`):
+  the actor must own the town and be in its turn with no open decision; the source is a standing
+  building of the town; the creature and the amount are checked against the town's stock in the
+  store, the room in the target army by the adventure and the price, the core's, against the
+  actor's own treasury; the command names neither price nor target. The target is the town's
+  **upper bar** (the garrison hero's army when one stands, else the town's garrison), never the
+  visitor's army (batch TWN-3's TWN-3-6). A refused recruit or purchase changes nothing.
+- **The garrison hero's moves are the owner's** (`TownHeroes { town, change }`: enter, leave,
+  swap): the town's owner in its turn, the heroes its own; an ally's visitor moves nothing (TD-17,
+  the original's). **The rows** (army commands naming a town's upper bar, alone or with its
+  visitor's army) are admitted only for the actor's own town, by E08's one owner rule; they open
+  no decision and draw nothing.
+- **A garrison hero** is seen in its town's view at the level that shows the garrison's army
+  (level 3) as the garrison, and by its owner among its own heroes with its town in place of a
+  tile; nobody sees it on the map.
+- **Events:** the week's and the month's writes told to each town's owner as its whole view
+  (`TownChanged`), a neutral town's grown garrison to each viewer at its level; a purchase's
+  `StackChanged` to the owner and the upper bar's change to the town's viewers at their level; the
+  hero moves as heroes leaving and entering the map, and the town's change to its viewers.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).

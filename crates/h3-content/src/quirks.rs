@@ -126,6 +126,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.raise_by_rear_hex",
     "quirk.adventure.roe_witch_hut_mask",
     "quirk.adventure.full_backpack_refuses",
+    "quirk.town.creature_month_exact",
+    "quirk.town.neutral_plague_full_growth",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -320,6 +322,19 @@ pub const ROE_WITCH_HUT_MASK: QuirkFlag = QuirkFlag(37);
 /// `h3-heroes` and the adventure's visits from E08 T60.
 pub const FULL_BACKPACK_REFUSES: QuirkFlag = QuirkFlag(38);
 
+/// Planned TWN-QUIRK-10 (T-13, TD-13, E09 decision 69; survey `E09-growth.md` §3, batch TWN-3's
+/// TWN-3-1): a creature's month doubles only the town counts whose creature is the month's
+/// (`new_month` 0x4C8F5E's loop), so a level's upgrade or base creature beside it keeps its
+/// count. Off: the level's counts whichever of its two creatures is the month's (VCMI 1.7.5's
+/// rule). Class `fix-optional`; read by `h3-towns`' month from E09 T25b.
+pub const CREATURE_MONTH_EXACT: QuirkFlag = QuirkFlag(39);
+
+/// Planned TWN-QUIRK-9 (T-12, TD-14, E09 decision 70; survey `E09-growth.md` §3, batch TWN-3's
+/// TWN-3-3): the Plague takes a neutral town's whole growth g from a count its week grew by half
+/// of it, then halves, so the town keeps max(0, before − ⌈g ÷ 2⌉) ÷ 2 of its count before the
+/// week. Off: every town keeps half of its count before the week. Class `fix-optional`; read by `h3-towns`' month from E09 T25b.
+pub const NEUTRAL_PLAGUE_FULL_GROWTH: QuirkFlag = QuirkFlag(40);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -362,7 +377,14 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 39);
+        assert_eq!(REGISTRY.len(), 41);
+        assert_eq!(
+            [
+                REGISTRY.lookup("quirk.town.creature_month_exact"),
+                REGISTRY.lookup("quirk.town.neutral_plague_full_growth"),
+            ],
+            [Some(CREATURE_MONTH_EXACT), Some(NEUTRAL_PLAGUE_FULL_GROWTH)]
+        );
         assert_eq!(
             [
                 REGISTRY.lookup("quirk.adventure.roe_witch_hut_mask"),
@@ -538,7 +560,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 39);
+        assert_eq!(REGISTRY.len(), 41);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -552,7 +574,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..39).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..41).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));

@@ -126,6 +126,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    typed and changes nothing. **The setup gains nothing**: the requirements and costs are the
    part's, the forbidden sets and the town events the map's (already in the towns' setups), the
    boat spot the adventure's (ADR-0016 point 1).
+   **E09's increment 3** (growth, recruitment and the army rows; E09 decisions 65 to 83) adds
+   **`TownCommand::Recruit { town, building }`** (ADR-0028 point 6: opens the hire dialog, point
+   6) and the adventure's **`AdventureCommand::TownHeroes { town, change }`** (`Enter`, `Leave`,
+   `Swap`: the garrison hero's moves, ADR-0016 point 3), each its town's owner's, in its turn,
+   with no decision open (GAM-DEC-001), a typed refusal changing nothing. **The state:**
+   `GameState` holds **the week's kind** beside the month's (E09 decision 77): normal, a
+   creature's week (one creature, the parameters' bonus) or the week of a `week_of` building
+   (its level's two creatures of its faction, the base creature's growth as the bonus), and
+   **the towns' stream** (point 4). **The setup** gains **whether the map is RoE's** (the
+   import's format), which only the week's draw reads.
    **Increment 10** (dwellings and hiring; E08 decision 231) adds no command: a dwelling's or a
    Refugee Camp's visit is a step of `MoveHero` (both kinds are entered), and the free creatures
    and the purchases are answers (point 6). The setup gains nothing beyond ADR-0016's (the
@@ -163,7 +173,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    increment 2 the observation gives the **owner** of a town its buildings (ever built,
    forbidden, standing) and its day's mark, and every viewer that sees the town whether it was
    built in today (E09 decision 47, ADR-0016 point 6); a player whose hero enters an ally's town
-   is told its buildings by the step (E10's teams).
+   is told its buildings by the step (E10's teams). **E09's increment 3:** the week's kind is
+   public (`WeekStarted`, the observation's calendar, as the month's); a town's available
+   creatures and its Portal are its owner's (the town view's owner part, TWN-VEW-004's level;
+   `docs/06-security.md`'s town section). A town's **garrison hero** is seen in its town's view
+   at the level that shows the garrison's army (TWN-VEW-001, level 3) and by its owner among its
+   own heroes (ADR-0016 point 6); the hire dialog's view is its owner's, as on the map.
 3. **Turn groups.** A day is a schedule: an ordered list of turn groups, each a set of players
    who act together. A group's turn starts with each context's start-of-turn step for its
    players and ends when each of them has ended its turn or left the game. After the last group
@@ -198,14 +213,29 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    here).
    The **month's kind** is game state: normal (the first month's), a creature's month (one of the
    parameters' twelve creatures) or the Plague; drawn at each new month as the parameters' odds
-   (5, 4 and 1 in 10). The Plague changes nothing before the towns (E09). **The week's kind** (a
-   week of a creature) and its towns' effects come with E09 (E08 decision 197). The month's and
-   the week's names (the original draws one for its message) are not drawn: a name is the
-   client's, and no draw of ours is the original's.
+   (5, 4 and 1 in 10); its and the week's effects on the towns are E09 increment 3's (below). The
+   month's and the week's names (the original draws one for its message) are not drawn: a name
+   is the client's, and no draw of ours is the original's.
+   **From E09 increment 3** (GAM-CAL-002 amended; E09 decisions 69 to 77): on the first day of a
+   week, before `WeekStarted`, **the week's kind** is drawn (TWN-GRO-002: on a month's first day
+   no creature's week; else 1 in 4 a creature's, uniform over the town records' creatures, on an
+   RoE map those of the records with `roe`; then a standing `week_of` building in any town, the
+   first in `TownId` order, makes it that level's week whatever was drawn) and `WeekStarted`
+   carries it; then **every town's week** in `TownId` order (TWN-GRO-003); then the adventure's
+   week step as before; then **each neutral town's garrison week** (TWN-GRO-006) and **each
+   owned town's Portal** (TWN-GRO-007), each in `TownId` order (the original's: after the map's
+   weekly objects). On the first day of a month the month's kind is drawn as before but, in a
+   month whose first week is a `week_of` week, it becomes that level's base creature's month
+   without the creature's draw (GAM-CAL-003 amended; `new_month` 0x4C8F63: its doubling skipped,
+   its monsters spawned); then **every town's month** in `TownId` order (TWN-GRO-004: a
+   creature's month doubles the exact creature's counts, the Plague's neutral subtraction, with
+   their flags, `TWN-QUIRK-10` and `-9`), before the adventure's month step. The game's first
+   week is normal. The towns' day (the marks, the views told) follows, as increment 2's, and
+   tells each owner the towns whose counts or Portal the week or the month moved. Batch TWN-3
+   confirmed the readings (E09 T23: TWN-3-1 to -5).
    From E09 each town pays its owner at the day's start, from day 2, with the income
    (GAM-RES-004's path): the day's income `h3-towns` derives (the gold by its highest hall and
-   the Grail's, the Resource Silo's resources; E09 decision 10); a neutral town pays nobody. The
-   Plague and the week's creature stay E09 increment 3's.
+   the Grail's, the Resource Silo's resources; E09 decision 10); a neutral town pays nobody.
    From E09's increment 2 **the day's start** clears every town's day's mark (the original's
    `new_day` towns' loop; GAM-CAL-002 amended; one a town a day for every player, E09 decision
    43: the computer's every other day on Easy and Normal comes with the computer player). **At
@@ -220,6 +250,17 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    or cost test; T-8's second Capitol stands), then its creatures are kept for increment 3's
    recruits (`TWN-STUB-10`: lost until then). Day 1's fire with the first group's turn inside the
    build, as the timed events'.
+   **From E09 increment 3** (ADV-MOV-002 amended; TWN-ROW-005) at its owner's turn start each
+   **garrison hero** gets its day's maximum and points too, after the player's heroes on the map,
+   in `TownId` order (the original's `next_player_turn` 0x4C7486: the towns' +0xC heroes; batch
+   TWN-3's TWN-3-6); the day's spell points reach every hero as now; the adventure's day and week
+   starts drop a garrison hero's day and week marks as a hero on the map's (E08's increment 12;
+   the original's every hero record, `new_day` 0x4C80CF, 0x4C8D2A). A garrison hero's **income**
+   (`h3_heroes::daily_income`: its Estates and its worn resource artifacts) and its army's
+   **weekly resources** (GAM-RES-005: the Crystal Dragons in an owned town's upper bar, a
+   garrison hero's army or else the town's garrison) count with its owner's (GAM-RES-003
+   amended), once: the original takes a garrison hero out of its owner's list
+   (`town_visitor_to_garrison`), so nothing counts twice.
    From increment 10 **the adventure's week step** first refills **every dwelling**, owned or not
    (each count its creature's growth, set; the guards the kind's full guards; no week's or month's
    kind), then draws the weekly objects' contents and **the camps' creatures** in one pass in
@@ -286,6 +327,22 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    forbidden and, if the setup built it, unbuilt (TWN-SET-011; E09 decision 46; `TWN-STUB-2`'s
    Shipyard half lifted; its Grail half stays with increment 6 and E10's victory conditions): a
    write of the store before the first turn, after every draw, so no stream position moves.
+   **E09's increment 3** draws from **the towns' stream** (`StreamId::TOWNS`, a named kernel
+   stream, E09 decision 75): at a new week its kind (one draw of four unless it is a month's
+   first week, then the creature's), then each neutral town's garrison week (its odds; when it
+   grows, three for the level, then for a base creature that found room one for the upgrade),
+   then each owned Portal's (a dwelling, then one of its creatures), in that order. The month's
+   kind stays the game's stream's; after a `week_of` week its creature is not drawn. **The
+   Portal's other draws** (E09 decision 71): at its build by a command from the builder's
+   stream, after the build is checked (a refused build draws nothing); at a town event's build
+   from the towns' stream; at the setup from the setup stream after every existing placeholder
+   (a town that starts with a Portal and an owner); when its owner flags a dwelling while it has
+   none, from the visitor's stream after the visit's own draws (each such Portal in `TownId`
+   order); **at a capture** that finds a standing Portal empty, from the capturer's stream after
+   the capture's own draws (E09 decision 82: a human's capture opens the town screen, which
+   draws at once). No other command of growth draws: the counts, the first creatures and the
+   events' creatures are draw-free. The towns' stream is server-only (point 5) and hashed with
+   the state.
    **Increment 10's setup placeholders**: in the static map's placement walk, in object order,
    each **random dwelling's faction** (uniform among its set) then **level** (uniform in its
    range), after E09's placeholders and **before every other existing one** (the drawn type's
@@ -431,6 +488,22 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
      each creature's count and cost. An ally's dwelling (E10's teams) opens it **read-only**,
      `Close` alone (E10-6). E09's recruitment reuses the kind, with a town's dwelling as its
      source and the hero's or the garrison's army as its target.
+     **E09 increment 3** opens the hire dialog from `TownCommand::Recruit` with **a town's
+     source** (an index's dwelling or horde, or the Portal of Summoning) and **the town's upper
+     bar as its target** (the garrison hero's army when one stands, else the town's garrison:
+     the original's `town_garrison_army`; never the visitor's, survey `E09-growth.md` §8; batch
+     TWN-3's TWN-3-6), opened whatever the count (0 too, the original's dialog); a Portal with
+     nothing summoned is refused instead. The dialog's rules are the map's: the legal answers
+     each creature's most, `Close`; it stays open while it offers two creatures (an upgraded
+     index: the upgrade and its base from one count) and closes after the purchase of a
+     one-creature source. Its view and `HireOpened` name the town and the index or the Portal in
+     place of an object's type and anchor.
+     **The town's two rows open no decision** (TWN-ROW-001; E09 decision 80): in its turn with no
+     decision open, the owner's army commands (`Manage::Army`) may name an own town's upper bar
+     alone or with that town's visitor's army, as the original's town screen, which opens at
+     will and needs no answer; the game admits the pair as it admits a meeting's two heroes
+     (GAM-MAN-001 amended), by E08's one owner rule. E08's `Exchange` (GAM-DEC-009) stays the map
+     garrison's, opened by a visit. Neither the hero moves (point 1) nor the rows' commands draw.
 
    **Increment 11 adds no decision kind.** A battle at a teleporter's exit is a hero battle
    (point 11), a hero of the team on a gate's pair is increment 6's **meeting** (its owner's
@@ -523,6 +596,13 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    entry, **build**, with the tile head naming the town's entrance and a **building head** over
    the record's buildings (`h3_towns::MAX_BUILDINGS`), masked by the legal builds; the AI lane's
    version and layout, `cross-lane` in its paths.
+   **E09's increment 3** appends two entries' groups (`cross-lane`, the AI lane's paths, E09
+   decision 7): **recruitment** (one entry: the town by its entrance in the tile head, the
+   building in the building head, one action per `Recruit` the legal commands list; encoding
+   v10), whose purchases are the hire dialog's four entries unchanged (a town's source offers at
+   most two creatures), and **the hero moves** (`Enter`, `Leave`, `Swap`, each the town by its
+   entrance in the tile head; encoding v11, or with v10 when they land together). The env plays
+   no army management (no entry before or after), so the rows' stack moves are a client's.
 9. **Versions owned by the adventure lane** (T2 adds the rows): the game state hash (`h3-game`),
    the adventure state and ruleset-part hashes (`h3-adventure`), the import version (`h3-map`),
    the adventure replay format (`h3-sim`'s `replay.rs`), and until increment 6 the action
@@ -552,6 +632,16 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    state hash (the store's v2 folded in, the town command), the adventure ruleset part (the kind
    `Town`'s offsets) and the adventure replay format (the town command), each `cross-lane`; the
    town lane's part v4 and state hash v2 (ADR-0028 point 9); the action encoding the AI lane's.
+   **E09's increment 3's growth** bumps the game state hash (the week's kind, the towns' stream,
+   the store's v3; `cross-lane`), the protocol (`WeekStarted`'s kind, the observation's week, the
+   owner's town view; the server lane's, `cross-lane`) and re-records the adventure replays; no
+   command of growth, so neither the replay format nor the env's action encoding moves. **Its
+   recruitment and rows** bump the game state hash (the hire dialog's town sources and target),
+   the adventure state hash (a town's garrison hero; ADR-0016 point 1), the adventure replay
+   format (`town recruit`, the hero moves, management lines naming a town's bar), the env's
+   action encoding (point 8) and the protocol (the commands, `HireOpened`'s and the view's
+   source, the garrison hero's events and views), each `cross-lane` and in merge order with
+   E08's increment 12 (the numbers are the next at merge; the second to merge bumps again).
 10. **Gains and costs cross by outcome.** A context's `apply` returns an outcome: the resources
     its command gains for the actor and the offers it opens, each with its price. The context
     never sees a treasury. The game adds the gains after the context applied (gains cannot fail,
@@ -615,6 +705,14 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     town event's** resources are a timed event's (gains saturating, losses floored at 0, each told
     to the player); its buildings are told as a build's, its firing by the town and the event's
     place in the town's list (the message is the client's).
+    **E09's increment 3:** a neutral town's garrison week returns the garrison as stacks with
+    the town's lowered counts; the game writes both, the army into the adventure (ADR-0016 point
+    1) and the counts into the store, in one infallible application. **Its recruitment**
+    (TWN-REC-001): a purchase's application is infallible and in this order: the price paid, the
+    source's count lowered in the store, the creatures joined into the target army by the
+    adventure (its `StackChanged` to the owner, the town's viewers told the upper bar's change at
+    their level). **The hero moves** are the adventure's own changes (ADR-0016 point 3), told as
+    heroes leaving and entering the map are, and the town's change to its viewers.
 11. **Battles through the game** (increment 3; ADR-0013 point 5). The game builds the
     `BattleSetup`: the armies from the adventure (a monster's stacks by its split), each hero's
     `BattleHero` and war machines from `h3-heroes`, the battlefield from the tile in the
@@ -679,6 +777,12 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
     win captures the town (point 10) with the attacker outside; the survivors stay in the armies
     that fought; a beaten hero leaves the map and goes back to the pool. A siege of an ally's
     visitor is refused by the step (a typed refusal, a stub until E10).
+    **From E09 increment 3** (GAM-BAT-001, TWN-SIE-001 amended): a town with a garrison hero and
+    a visitor is defended by **the visitor in a battle that is not a siege** (`siege: None`, the
+    gate tile's battlefield as any hero's battle, no town bonuses), after which the town stays
+    its owner's whatever the outcome; a garrison hero alone defends **the siege** with its own
+    army and its town bonuses (ADR-0023 point 3), and a beaten one goes back to the pool as a
+    beaten hero; an empty garrison hero yields the town without a battle (T-5, `TWN-QUIRK-11`).
     **Increment 10's battles** (GAM-BAT-001 amended): a dwelling's guards defend on its entrance
     as an army without a hero, unsplit and **unowned**, played by the neutral seat whoever owns
     the dwelling (D-51 as the original, E08 decision 238; an owned mine's guards stay their
@@ -965,3 +1069,10 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   build entry; the versions; a build's and a town event's outcome, the capture's mark. Drafted in
   E09 T13 (design note `E09-design.md` §29 to §32); batch TWN-2 (T14c, survey
   `E09-construction.md` §13) confirmed point 1's owner test (TD-11) and decision 41 (TD-9).
+- 2026-11-12 (E09 T24 `shared/`; E09 decisions 65 to 83, `TWN-Q13`, `TWN-Q14`; E08 decision 305):
+  points 1 to 4, 6, 8 to 11 amended for E09 increment 3: the week's kind and the towns' stream
+  (`StreamId::TOWNS`), the day's order with the towns' week and month, the garrison heroes' turn
+  start, income and weekly resources, `TownCommand::Recruit` and the garrison hero's moves, the
+  hire dialog's town sources and the rows without a decision, the env's entries, the versions,
+  the applications, a town's battle with a garrison hero. Drafted in E09 T22a and T22b; batch
+  TWN-3's verdicts (E09 T23) cited.

@@ -27,6 +27,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-12 (the town lane, E09 T24, branch `shared/e09-t24`, `cross-lane`; **for T112's
+  merge order**): T24 moved E09 increment 3's drafts into ADR-0013 (point 16.4), ADR-0016 (points
+  1, 3, 4, 6), ADR-0017 (points 1 to 4, 6, 8 to 11), ADR-0023 and ADR-0028, so your T112 is the
+  second and rebases (E09 design note §56): put increment 12's text in ADR-0016 point 3 before the
+  paragraph "**E09's increment 3, the garrison hero**" (it says "after E08 increment 12's text
+  once E08's T112 adds it": drop that clause then), and in ADR-0017 point 3 the turn start's maximum
+  and points before E09's garrison heroes' paragraph (the draft's anchor, "the maximum and the
+  points left of each of its heroes", was not in the ADR). Shared versions now: core ruleset hash
+  v53, pack format v52 (`town_growth`, `owner_town_growth`, unread until E09 T25 and T26), quirk
+  flags 41 (`quirk.town.*`, on in `faithful`); your 72 replays kept commands and state hashes,
+  only `ruleset_hash` moved.
 - 2026-11-11 (the town lane, E09 T23, branch `town/e09-t23`, `cross-lane`; **the capture harness
   changed**; `clients/capture/README.md`, "Forced rolls" and "Growth, the garrison hero and a
   town's hire"): xdd.dll's table gains twelve adventure-map sites (four forced: `week_chance`,
