@@ -1,8 +1,8 @@
 //! A town's growth (E09 increment 3, design note §41, §46; survey `E09-growth.md` §1, §6): a
 //! dwelling's growth a week (TWN-GRO-001) from the town and the inputs the game computes
-//! ([`GrowthInputs`]), and a dwelling's first creatures when it is built (TWN-GRO-005). The week
-//! and the month read them (`week.rs`, E09 T25b1), a neutral town's garrison week and the
-//! Portal's draw too (T25b2).
+//! ([`GrowthInputs`]), a dwelling's first creatures when it is built (TWN-GRO-005) and since E09
+//! T26a1 a town event's creatures (TWN-EVT-004). The week and the month read them (`week.rs`,
+//! E09 T25b1), a neutral town's garrison week and the Portal's draw too (T25b2).
 
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::FortLevel;
@@ -12,7 +12,7 @@ use crate::derive::Roles;
 use crate::record::{CREATURE_INDEXES, MAX_AVAILABLE, Town};
 use crate::ruleset::{Dwelling, Horde, MAX_CREATURE_LEVELS, TownRecord, TownRuleset};
 use crate::setup::indexed;
-use crate::siege::fort_level;
+use crate::siege::fort;
 
 /// What a town's growth reads beside the town (E09 design §41), computed by the game once per
 /// town and step: its owner's share of the Statue of Legion, its heroes' Legion pieces, its owner's
@@ -66,6 +66,102 @@ pub fn index_creature(record: &TownRecord, index: usize) -> Option<CreatureTypeI
     }
 }
 
+/// The bit of a creature index ([`CREATURE_INDEXES`]) of `level`, from 1, and its upgrade flag, in
+/// a set of indexes (one bit each); none for a level past [`MAX_CREATURE_LEVELS`].
+fn index_bit(level: u8, upgraded: bool) -> u16 {
+    const LEVELS: u32 = MAX_CREATURE_LEVELS as u32;
+    let at = u32::from(level.wrapping_sub(1));
+    u16::from(at < LEVELS) << (at.min(LEVELS - 1) + u32::from(upgraded) * LEVELS)
+}
+
+/// The creature indexes whose dwelling (a building of role `dwelling`) is ever built in `roles`'
+/// town, a bit per index.
+fn ever_dwellings(roles: &Roles<'_>) -> u16 {
+    roles
+        .built_roles()
+        .filter_map(|(_, r)| r.dwelling)
+        .fold(0, |set, d| set | index_bit(d.level, d.upgraded))
+}
+
+/// What a town's growth reads of the town, read once for its fourteen indexes (E09 T26a1: one pass
+/// over its buildings, where a pass per index cost the day's step of a week's start 2 to 3 times
+/// over, `day-start-builds-36`).
+pub(crate) struct TownGrowth<'a> {
+    /// The faction's record.
+    record: &'a TownRecord,
+    /// The indexes whose dwelling is ever built.
+    dwellings: u16,
+    /// The indexes with a horde ever built.
+    hordes: u16,
+    /// Whether a `grail` building is ever built.
+    grail: bool,
+    /// The standing fort level.
+    fort: FortLevel,
+}
+
+impl<'a> TownGrowth<'a> {
+    /// `town` read with its faction's record in `part`; none without one.
+    pub(crate) fn of(town: &Town, part: &'a TownRuleset) -> Option<Self> {
+        let roles = Roles::of(town, part);
+        let record = roles.record()?;
+        let (mut dwellings, mut hordes, mut grail) = (0, 0, false);
+        for (_, r) in roles.built_roles() {
+            if let Some(Dwelling { level, upgraded }) = r.dwelling {
+                dwellings |= index_bit(level, upgraded);
+            }
+            if let Some(Horde { level, upgraded }) = r.horde {
+                hordes |= index_bit(level, upgraded);
+            }
+            grail |= r.grail;
+        }
+        Some(Self {
+            record,
+            dwellings,
+            hordes,
+            grail,
+            fort: fort(&roles),
+        })
+    }
+
+    /// The growth at `index` ([`growth`]'s rule) with `inputs` and the growths in `core`.
+    pub(crate) fn at(&self, core: &Ruleset, index: usize, inputs: &GrowthInputs) -> u16 {
+        let Some((level, upgraded)) = level_of(index) else {
+            return 0;
+        };
+        let bit = |upgraded| index_bit(level, upgraded);
+        if self.dwellings & bit(upgraded) == 0 || (!upgraded && self.dwellings & bit(true) != 0) {
+            return 0;
+        }
+        let Some(info) = index_creature(self.record, index).and_then(|c| core.creature(c)) else {
+            return 0;
+        };
+        let g = u64::from(info.growth);
+        let castle = match self.fort {
+            FortLevel::Castle => g,
+            FortLevel::Citadel => g / 2,
+            FortLevel::None | FortLevel::Fort => 0,
+        };
+        let mut sum = g + castle;
+        if inputs.owned {
+            let legion = inputs.legion[usize::from(level) - 1];
+            sum += (g + castle) * u64::from(inputs.share_bp) / 10_000 + u64::from(legion);
+        }
+        if self.hordes & bit(upgraded) != 0 {
+            sum += u64::from(info.horde_growth);
+        }
+        sum += u64::from(inputs.dwellings[index]);
+        if self.grail {
+            sum += sum / 2;
+        }
+        u16::try_from(sum.min(u64::from(MAX_AVAILABLE))).unwrap_or(MAX_AVAILABLE)
+    }
+
+    /// The faction's record.
+    pub(crate) const fn record(&self) -> &'a TownRecord {
+        self.record
+    }
+}
+
 /// What the dwelling at `index` of `town` grows a week (TWN-GRO-001; E09 design §41, survey
 /// `E09-growth.md` §1, the original's `town_dwelling_growth`), with the town's faction's record in
 /// `part`, the creatures' growths in `core` and the game's `inputs`, summed in the original's
@@ -92,40 +188,7 @@ pub fn growth(
     index: usize,
     inputs: &GrowthInputs,
 ) -> u16 {
-    let roles = Roles::of(town, part);
-    let (Some(record), Some((level, upgraded))) = (roles.record(), level_of(index)) else {
-        return 0;
-    };
-    let ever =
-        |pick: &dyn Fn(&crate::BuildingRoles) -> bool| roles.built_roles().any(|(_, r)| pick(r));
-    let dwelling = |upgraded| Some(Dwelling { level, upgraded });
-    if !ever(&|r| r.dwelling == dwelling(upgraded))
-        || (!upgraded && ever(&|r| r.dwelling == dwelling(true)))
-    {
-        return 0;
-    }
-    let Some(info) = index_creature(record, index).and_then(|c| core.creature(c)) else {
-        return 0;
-    };
-    let g = u64::from(info.growth);
-    let castle = match fort_level(town, part) {
-        FortLevel::Castle => g,
-        FortLevel::Citadel => g / 2,
-        FortLevel::None | FortLevel::Fort => 0,
-    };
-    let mut sum = g + castle;
-    if inputs.owned {
-        let legion = inputs.legion[usize::from(level) - 1];
-        sum += (g + castle) * u64::from(inputs.share_bp) / 10_000 + u64::from(legion);
-    }
-    if ever(&|r| r.horde == Some(Horde { level, upgraded })) {
-        sum += u64::from(info.horde_growth);
-    }
-    sum += u64::from(inputs.dwellings[index]);
-    if ever(&|r| r.grail) {
-        sum += sum / 2;
-    }
-    u16::try_from(sum.min(u64::from(MAX_AVAILABLE))).unwrap_or(MAX_AVAILABLE)
+    TownGrowth::of(town, part).map_or(0, |g| g.at(core, index, inputs))
 }
 
 /// `town` with the first creatures of the dwellings among `new`, buildings just made ever built
@@ -157,6 +220,39 @@ pub(crate) fn first_creatures(
         town.with_available(index + MAX_CREATURE_LEVELS, town.available(index))
             .with_available(index, 0)
     })
+}
+
+/// `town` with a town event's `creatures` by level, from level 1 (TWN-EVT-004; E09 design §46,
+/// survey `E09-construction.md` §8.4, the original's `town_events_apply` 0x5BFEB0, after the
+/// event's buildings), with its faction's record in `part`: each level's count added at the
+/// upgrade's index when the level's upgraded dwelling is ever built, else at the level's index
+/// when its dwelling is, else lost; held at [`MAX_AVAILABLE`] (`TWN-QUIRK-8`: the original's
+/// 16-bit add wraps). The week's growth is not involved; a faction without a record in `part`
+/// keeps its counts.
+// rule: TWN-EVT-004
+pub fn event_creatures(
+    town: &Town,
+    part: &TownRuleset,
+    creatures: &[u16; MAX_CREATURE_LEVELS],
+) -> Town {
+    if creatures.iter().all(|&count| count == 0) {
+        return town.clone();
+    }
+    let ever = ever_dwellings(&Roles::of(town, part));
+    (1..=u8::MAX)
+        .zip(creatures)
+        .fold(town.clone(), |next, (level, &count)| {
+            let at = usize::from(level) - 1;
+            let index = if ever & index_bit(level, true) != 0 {
+                at + MAX_CREATURE_LEVELS
+            } else if ever & index_bit(level, false) != 0 {
+                at
+            } else {
+                return next;
+            };
+            let added = next.available(index).saturating_add(count);
+            next.with_available(index, added)
+        })
 }
 
 #[cfg(test)]

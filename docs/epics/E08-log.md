@@ -15871,3 +15871,53 @@ original data staged from the user's repo folder (the four LODs, both executable
 
 **Versions:** map import v22, adventure state hash v22. The game state hash, the ruleset part and
 the replay format unchanged. Round 5 done; T114 next.
+
+### Increment 12, round 6: T114a1, the garrisons' visit, battle and passage (2026-11-12, `adventure/e08-t114a1`)
+
+**The cut** (decision 323; asked at T114's start, `AskUserQuestion`, after the measure: T114a
+about twice T84a): T114a in two at the exchange; T114a1 the garrisons' army, visit, battle,
+capture, survivors, anti-magic and passage, the exchange a stub (`ADV-STUB-17`); T114a2 the
+exchange (decision, rest, `ArmyRef::MapGarrison`, the owner rule, game state hash v29).
+**Baseline:** `master` acd9863 (#888; CI green on it, which stands for the setup's baseline: the
+local full run was stopped to keep the disk, 12 GB in `llvm-cov-target` with 13 GB left). Staged
+from the user's repo folder: the four LODs, both executables, `maps.tar`, `extracted.tar`.
+
+- **The army** (`h3-adventure`'s new `state/garrisons.rs`; design §5's *As built*):
+  `AdventureState::garrison_army`, `army_left` else the map's `Holds::Garrison` army (as a mine's
+  and a pile's guards), so nothing is written at the build (*agent's call*, against §5's first
+  bullet): no version moved, the 72 replays unchanged (no fixture map holds a garrison).
+- **The visit** (`Effect::Garrison`, `visit_garrison`; design §6): a team's garrison opens nothing
+  yet (`ADV-STUB-17`); another's or a neutral one holding a creature is fought at once with no
+  question (`garrison_battle`: `Defender::Garrison { owner, army }` or `Defender::Guards`,
+  unsplit, `battle_at` on the entrance); an empty one is flagged (`flag`: `ObjectFlagged`, the
+  reveal of `flag_radius`). The battle's end (`end_unowned_battle`'s garrison arm,
+  `end_garrison_battle`): the survivors by slot as its army, or none and `reward_after` after a
+  win; `give_won`'s garrison arm flags it after the levels (`flag_won`, as a mine's).
+- **The passage** (design §7's *As built*): `visit_at`'s `pass` for a garrison of the owner's team
+  (`allied`); `StepVisit::visited_at_end` (not passed, or a garrison): `move_hero` visits a
+  passed garrison on its last step, walking or flying, and `visit_held` asks it in place of
+  `!pass`; the reach and the passage table unchanged; `Revisit` still filters `!pass` (T114a2).
+- **Anti-magic** (design §14's *As built*): `AdventureState::anti_magic(part, tile)`, the tile an
+  anti-magic garrison's entrance; `h3-game`'s `start_battle` sets `BattleSetup.anti_magic` from
+  it with the start's tile, the defender's (*agent's call*: a query, not a `BattleStart` field, so
+  no literal of the town lane's siege or tests and nothing of the server lane's mapping changes).
+- **The reach measured against `master`** right after the first build (`bench-check`, master
+  acd9863 in the same clone first): reach-xl-144 462 407 873 → 462 460 875 Ir (+0.011 %),
+  reach-lifted-xl-144 827 630 240 → 827 678 551 (+0.006 %), reach-sea-xl-144 4 251 554 398 →
+  4 251 555 789, reach-teleporters-xl-144 1 183 783 302 → 1 183 788 705, reach-towns-36
+  868 922 767 → 868 910 263: flat, no workload re-baselined.
+- **Tests:** `h3-adventure`'s `state/tests/garrisons.rs` (a corridor between rock):
+  `a_garrison_of_the_mover_s_team_is_crossed_and_every_other_is_a_destination`,
+  `another_s_or_a_neutral_garrison_holding_creatures_is_fought_at_once_unsplit`,
+  `an_empty_garrison_of_another_team_is_flagged_with_its_reveal`,
+  `a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels`,
+  `a_battle_on_an_anti_magic_garrison_s_entrance_is_fought_without_magic`; T113a's refusal test
+  without the garrison; the ruleset test's effect. `h3-game`'s `tests/garrisons.rs` (two garrison
+  types in the test part): the neutral anti-magic garrison fought without magic and flagged after
+  the win, an owned one as blue's side keeping its survivors, a hero standing in an anti-magic
+  garrison attacked without magic.
+- **Rules:** ADV-GAR-002, -004, -005 written (`implemented`; the survey's readings, batch E12's
+  E12-1, -2, -4 to -6, the wiki, VCMI for the passage); ADV-GAR-001, ADV-OBJ-003, ADV-OWN-001 and
+  GAM-BAT-001 amended. `ADV-STUB-17` registered.
+- **Docs:** design §5, §6, §7, §14 *As built*; decision 323 and the task's line; the queue's
+  entry (T114a2 and T114b), `OVERVIEW.md`, a trap (`pass` and `visited_at_end`).

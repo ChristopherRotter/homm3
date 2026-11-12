@@ -4,6 +4,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 ## Working in the adventure lane's crates
 
+- **Never build `xtask` of another worktree into the main clone's target dir** (E09 T26a1): the
+  binary keeps its worktree's root, so a later `cargo xtask` in the clone runs every step
+  (verify, bench-check, check-docs) on the other tree without a word. Run a worktree's `xtask`
+  with its own target dir; if it happened, `cargo clean -p xtask` in the clone.
+
 - **Ownership is by the longest match** (`lanes.toml`): only files whose path starts with `crates/h3-adventure/src/town`, `crates/h3-game/src/town`, `crates/h3-map/src/import/town` or `crates/h3-map/src/writer/town` are this lane's. A `mod town;` line in a `lib.rs`, a field in a state struct, a hash, a version constant, a replay or a bot report is the adventure lane's: such a pull request is `cross-lane` (the label at once), and `cargo xtask check-lane --cross-lane` is its local check.
 - **Merge in order:** before a task starts and before a pull request opens, look at the adventure lane's open pull requests (its HANDOFF). When both lanes bump the same version, the second rebases and bumps again, and re-records the replays a second time (skill `homm3-rerecord-replays`).
 - **The adventure lane's traps apply** to its crates (forks without deep copies, server-only RNG seeds, template masks, staging the shipped maps): its `TRAPS.md`.
@@ -19,6 +24,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   workload with the reason in its description.
 
 ## The property plans (`h3-map` `src/tests/play.rs`, `view.rs`; the adventure lane's files)
+
+- **A town's counts move without a told view** (E09 T26a1): `check_towns` lets the counts change
+  only with a week's start, a build or a town event of the town, and compares the rest of the
+  record as before. When T26b shows the counts in the owner's view, a count's change must be
+  told too (add it to the `TownChanged` check there).
 
 - **A plan's town has no `KINDS` entry** (E09 T9b1): `towns_laid_out` lays the plan's towns
   (`TownPlan`) out after every other object but the boats, each with a template appended after
@@ -93,3 +103,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 - **A setup's towns match its map's** (E09 T8a1, `GameSetupError::TownCount`): a `GameSetup` whose static map has objects of the type `town` needs one `TownSetup` per such object, in object order; a test or tool that builds a game from a static layer alone gives each a neutral town record (`h3-map`'s census example and `h3-cli`'s `src/ai/census.rs` do).
 - **An `AdventureSetup` with towns gives one garrison and one faction per town** (`SetupError::Garrisons`, since E09 T11 `TownFactions`, checked first): a test that builds the adventure alone with towns sets both (`state/tests/towns.rs`' `town_setup`, `reach/tests.rs`); the game gives step 2's factions.
+- **The game's town tests give the part's dwellings and forts no map slot** (`town/tests.rs`'
+  `town_pack`; E09 T26a1): a `BuildingsSetup::Custom` cannot build them; build them after
+  `GameState::new` with `towns_mut().build(town, building, part, core, false)` (the first
+  creatures come with it). An adventure object type a test needs (a dwelling, the months) goes
+  through `rules_with_adventure`'s edit.

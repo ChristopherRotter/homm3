@@ -1,16 +1,18 @@
 //! What a hero brings to the day's start (E08 T82; ADR-0013 point 16; survey
 //! `docs/rules/surveys/E08-economy.md` §8, §12): its income (GAM-RES-004) and its day's spell
-//! points (HER-MAN-002). Pure functions of the details and the core ruleset; when the game calls
-//! them and what it does with the result is the game's (ADR-0017 point 3: the income paid to the
-//! owner's treasury, the points applied as a hero change). No artifact or skill is read by name
-//! (ADR-0016 point 4): the effect kinds `daily_resource`, `mana_regain`, `extra_mana_regain` and
-//! `full_mana`, a skill specialty's growth, the hero parameters' `base_mana_regain` and
+//! points (HER-MAN-002); since E09 T26a1 what it adds to a town's growth a week (ADR-0013 point
+//! 16.4, TWN-GRO-001's inputs: [`town_growth`], [`owner_town_growth`]). Pure functions of the
+//! details and the core ruleset; when the game calls them and what it does with the result is the
+//! game's (ADR-0017 point 3: the income paid to the owner's treasury, the points applied as a hero
+//! change). No artifact or skill is read by name (ADR-0016 point 4): the effect kinds
+//! `daily_resource`, `mana_regain`, `extra_mana_regain`, `full_mana`, `town_growth` and
+//! `owner_town_growth`, a skill specialty's growth, the hero parameters' `base_mana_regain` and
 //! `regain_specialist_bonus`.
 
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{CompiledHeroEffect, HeroEffect, Ruleset};
+use h3_content::{CompiledHeroEffect, HeroEffect, Ruleset, TOWN_GROWTH_LEVELS};
 
 use crate::derive::{
     Count, Growth, artifact_effects, effects, grown_skill_effects, max_mana, specialty,
@@ -121,4 +123,43 @@ pub fn day_mana(details: &HeroDetails, core: &Ruleset) -> u16 {
     };
     let regained = points.saturating_add(regain).saturating_add(extra);
     points.max(regained.min(max))
+}
+
+/// What a hero adds to a town's growth a week by creature level, from level 1 (TWN-GRO-001's
+/// inputs, E09 T26a1; ADR-0013 point 16.4, by level): the `town_growth` amounts of its sources
+/// summed per level, each worn artifact type once whether worn or a part of a worn combination (the
+/// original's `town_legion_growth` 0x5BF900 with `hero_wears_artifact` 0x4D91F0: the Legs, Loins,
+/// Torso, Arms and Head of Legion +5, +4, +3, +2, +1 at levels 2 to 6; a worn Statue of Legion
+/// gives its parts'). The game adds the visitor's and the garrison hero's to their town, nobody
+/// else's. Saturating; a level outside 1 to [`TOWN_GROWTH_LEVELS`] (refused by the compile) counts
+/// for nothing.
+pub fn town_growth(details: &HeroDetails, core: &Ruleset) -> [u16; TOWN_GROWTH_LEVELS as usize] {
+    // rule: TWN-GRO-001
+    let mut levels = [0_u16; TOWN_GROWTH_LEVELS as usize];
+    for effect in effects(details, core, Count::OncePerType) {
+        if let HeroEffect::TownGrowth { level, amount } = *effect
+            && let Some(entry) = usize::from(level)
+                .checked_sub(1)
+                .and_then(|at| levels.get_mut(at))
+        {
+            *entry = entry.saturating_add(amount);
+        }
+    }
+    levels
+}
+
+/// The share of a town's growth a hero gives every town of its owner a week, in basis points
+/// (TWN-GRO-001's inputs, E09 T26a1; ADR-0013 point 16.4, the owner's share): the highest
+/// `owner_town_growth` of its sources, each worn artifact type once (the Statue of Legion's 5 000,
+/// half), 0 without one. The game takes the highest of the owner's heroes (the original's
+/// `player_hero_wears_artifact` 0x4BACB0).
+pub fn owner_town_growth(details: &HeroDetails, core: &Ruleset) -> u16 {
+    // rule: TWN-GRO-001
+    effects(details, core, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::OwnerTownGrowth { bp } => Some(bp),
+            _ => None,
+        })
+        .max()
+        .unwrap_or(0)
 }

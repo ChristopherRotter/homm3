@@ -179,3 +179,39 @@ network handlers, about 10 KB, only noted).
   amended (the bonus's details). The agent's calls on M1's review list (item 4).
 - **Not done:** no harness run (T2 confirms, design §3.18). Gates: `scripts/exe.py check`,
   `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
+
+## M1 T1b3a — the catalogue, part 2c: the system options and the menu in play (2026-11-12)
+
+On `client/e27-m1-t1b3a` (docs and the address map), the user present; `master` at `c7f41ee`.
+**T1b3 cut in two with the user at its start** (decision 14): the system options' constructor alone
+is 6.3 KB; the end of a scenario is T1b3b.
+
+- **Staged at the start**, the user's computer about to go offline: the four LODs one a call, the
+  executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both tars, the
+  three saved games, the 40 MP3s, `shell-videos.vid`; all 61 checked by SHA-256 against the
+  computer's. The end's clips (34 `LoseGame`, 35 `hsAnim`) are in `shell-videos.vid`; 32
+  `Endgame` is a campaign's (E20). Neither installation has a `HiScore.dat`; the GOG script sets
+  only `First Time`. After CLT-Q96's answer, with the computer still online,
+  **`shell-videos.vid` rebuilt there** with the three Smacker copies (13 entries, 184 001 948
+  bytes, SHA-256 `825b64d8…`; the ten old clips byte for byte the same; the installation read
+  only) and staged.
+- **Read** (`E27-design.md` §4; 13 new map entries, 16 updated; `structs.toml`
+  `system_options_dialog`, the player record's +0xE4): `system_options_open`, `system_options_create`
+  (a call summary; its items recomposed over `SysOpBck.pcx` in the sandbox, every item in its
+  box), `system_options_run`, `system_options_proc`, the destructor, `game_save_dialog`'s end, the
+  restart in part (`game_main`'s case 107, `game_reload_reset`), `settings_read`'s pairs of names
+  and globals, each setting's readers. Checked privately in the staged data (never committed):
+  GENRLTXT's and Help.txt's records' subjects, the DEFs' frames.
+- **Found:** the dialog's 59 items (the picture, six buttons, twenty volume bars, eleven speed buttons, two
+  quality buttons, six boxes, thirteen texts); the six bottom DEFs hold the pressed look in frame
+  0; a chosen speed shows as a disabled button; `battle_tactics_global` is the setting Quick
+  Combat (renamed `option_quick_combat`; the player record's +0xE4 a network player's copy);
+  five more settings named (Autosave, which has no item, Move Reminder, Video Subtitles, Town
+  Outlines, Blackout Computer, the last set with Computer Walk Speed 5); Load, Main Menu and Quit
+  ask inside the dialog, Restart after it; the settings are saved only when something changed;
+  the restart keeps the players' setup and the towns as first drawn and reads the map again.
+- **Asked and answered:** CLT-Q96 (Low honoured), CLT-Q97 (the restart as the original's),
+  CLT-Q98 (Restart asks inside the dialog); decision 15. The map-client lane's inbox told (the
+  settings' readers in play). The agent's calls on M1's review list (item 5).
+- **Not done:** no harness run (T2 captures, design §4.8). Gates: `scripts/exe.py check`,
+  `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.

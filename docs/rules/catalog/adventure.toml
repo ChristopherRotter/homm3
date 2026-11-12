@@ -742,7 +742,7 @@ id       = "ADV-OBJ-003"
 title    = "Visit modes: an object's visitable tile is entered, or visited from the tile before"
 context  = "adventure"
 status   = "implemented"
-summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`); a border gate whose key the player holds is no visit (ADV-VIS-005, E08 T15b: the mode is per player, its tile crossed as any). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a player without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Any other type is entered: the step onto the tile is priced as a step (ADV-MOV-003 to ADV-MOV-006), the hero stands there, and the visit runs. Which object a tile visits: the last in map order still on the map that is visited from it, for both modes (one object per tile, as the original's map tile records; VCMI takes the last for an entered tile, the first for a neighbour visit); its type decides the mode. No shipped map has a tile visited from two objects (E08 T14a, T21b: 0 of 100 311 visitable tiles over the 160 shipped maps). A visit runs only once its kind's is built (`ObjectKind::effect`; ADR-0016 point 4); any other visitable tile is refused (`Visit`): a blocker's (every typed kind's is built since E08 T15b). E08 T13b: the neighbour mode for pickups; T14a: the entered mode, built for the Cartographer (no effect until T14b's offer), the order, and the reachable-tiles query's destinations in both modes (never a tile on the way). E08 T105a1 (increment 11's design note section 9, D-58 as the original): a monolith's and a Subterranean Gate's tile is an entered visit's, so a destination with the points left after the step and never a tile on the way (no path goes through a teleporter, nor to its exits); since T105a2 a Whirlpool's tile likewise, a destination of a boat's reach."
+summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`); a border gate whose key the player holds is no visit (ADV-VIS-005, E08 T15b: the mode is per player, its tile crossed as any). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a player without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Any other type is entered: the step onto the tile is priced as a step (ADV-MOV-003 to ADV-MOV-006), the hero stands there, and the visit runs. Which object a tile visits: the last in map order still on the map that is visited from it, for both modes (one object per tile, as the original's map tile records; VCMI takes the last for an entered tile, the first for a neighbour visit); its type decides the mode. No shipped map has a tile visited from two objects (E08 T14a, T21b: 0 of 100 311 visitable tiles over the 160 shipped maps). A visit runs only once its kind's is built (`ObjectKind::effect`; ADR-0016 point 4); any other visitable tile is refused (`Visit`): a blocker's (every typed kind's is built since E08 T15b). E08 T13b: the neighbour mode for pickups; T14a: the entered mode, built for the Cartographer (no effect until T14b's offer), the order, and the reachable-tiles query's destinations in both modes (never a tile on the way). E08 T105a1 (increment 11's design note section 9, D-58 as the original): a monolith's and a Subterranean Gate's tile is an entered visit's, so a destination with the points left after the step and never a tile on the way (no path goes through a teleporter, nor to its exits); since T105a2 a Whirlpool's tile likewise, a destination of a boat's reach. E08 T114a1 (increment 12's design note section 7, D-59 as the original): a garrison of the mover's team is passed as a border gate by its key's holder, a tile like any other on the way and at the end (the reach goes on from it in every direction), and visited where the move ends (ADV-GAR-004); every other garrison is an entered visit's tile, a destination."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2578,7 +2578,7 @@ id       = "ADV-OWN-001"
 title    = "Flagging an ownable object"
 context  = "adventure"
 status   = "implemented"
-summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); E08 T84b1: the Lighthouses (`AdventureState::visit_lighthouse`: no guards, no question; ADV-OWN-005); E08 T84b2: the Shipyards (`AdventureState::visit_shipyard`: the flag, then the boat offer; ADV-SHY-002). E08 T95a1 (increment 10's design note §7): the dwellings (`AdventureState::visit_dwelling`: one of the visitor's team is not flagged; a neutral one or another team's without guards standing is flagged, then asks the hire question; ADV-DWL-004), never a Refugee Camp (ADV-RFG-001)."
+summary  = "A visit flags a neutral ownable object, or another team's (the player alone until E10's teams), for its visitor's owner; never an own or allied one; nothing is paid. The new owner is told with every player that sees the object (`ObjectFlagged`, by type and anchor), then the tiles within the part's flag radius (3, `flag_radius`, E08 decision 217) of its entrance are explored for the new owner (ADV-FOG-002's disk), told to it alone with the number it had not explored (`TilesRevealed`). A hero standing on an owned entrance is met or fought there instead, as any hero (ADR-0016 point 3); a hero does not revisit the object it stands on. E08 T84a (increment 9's design note §7): the mines and abandoned mines (`AdventureState::flag`; ADV-MIN-002 says when a mine's visit flags it); E08 T84b1: the Lighthouses (`AdventureState::visit_lighthouse`: no guards, no question; ADV-OWN-005); E08 T84b2: the Shipyards (`AdventureState::visit_shipyard`: the flag, then the boat offer; ADV-SHY-002). E08 T95a1 (increment 10's design note §7): the dwellings (`AdventureState::visit_dwelling`: one of the visitor's team is not flagged; a neutral one or another team's without guards standing is flagged, then asks the hire question; ADV-DWL-004), never a Refugee Camp (ADV-RFG-001). E08 T114a1 (increment 12's design note section 6): the map garrisons (`AdventureState::visit_garrison`, ADV-GAR-002: one of another team or neutral is flagged when it holds no creature, else after its army is beaten, after the winner's levels; one of the visitor's team is not flagged), with the flag's reveal of the part's `flag_radius` around the entrance."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3579,7 +3579,7 @@ id       = "ADV-GAR-001"
 title    = "The garrisons' kind"
 context  = "adventure"
 status   = "implemented"
-summary  = "One ownable, entered kind, the garrison (increment 12's design note sections 1 and 3), with its anti-magic flag: a battle on the entrance of an anti-magic garrison is fought without casts (ADV-GAR-005, T114a). Four types: classes 33 (horizontal) and 219 (vertical, AB on) by subclass, 0 a garrison, 1 an anti-magic one; each entered (not in the original's object_classes_not_entered 0x63AA58) and visitable from above (both in object_classes_from_above 0x63AB00: a horizontal one is entered from the three tiles above and the three below, a vertical one from its left and right columns), a type of an ownable kind entered as every one. Not weekly, no draw, no parameter beyond the flag: the army, its removable flag and the owner are the map's. The packs: base 33.0 `garrison` and 33.1 `anti_magic_garrison` (the anti-magic one stands on RoE-format maps too, E08 decision 299), ab 219.0 `garrison_vertical` and 219.1 `anti_magic_garrison_vertical` (the original loads 219 as 33, object_class_values 0x63A6E4), sod none; each named ObjNames.txt's row 33 or 219, 'Garrison'. E08 T113a: `ObjectKind::Garrison { anti_magic }`, the packs' `garrison` table, adventure ruleset part v20, the check against the original data (`h3-pack-adventure`'s `original_data` example, check 6: each type against both Objects.txt, ObjNames.txt and the executable's class lists). Its visit (the exchange, the battle, the capture: ADV-GAR-002, -003) comes with T114a; until then a step onto its entrance is refused as any unbuilt visit's (`Visit`, ADV-OBJ-003) and the reach ends before it. E08 T113b (design note section 4; map import v22, adventure state hash v22): the import types 33 and 219 by subclass (past 1 none their classes define, `ImportError::Subclass`) and reads the body: the owner (ADV-OWN-002: a colour nobody plays refused, 0xFF neutral; an owned one is revealed around for its owner at the start as every owned object), the seven stacks by slot (a count of 0 an empty slot, the count's 16 bits read whole where the original sign-extends them, as ADV-QUIRK-19's; a random stack refused for good, `ImportError::RandomStack`: the original resolves none, decision 299), the removable byte from AB on (non-zero true; true on an RoE map), the 8 unused bytes dropped, into `Holds::Garrison { army, removable }`, which the setup checks (none, or valid as an army with no war machine; a garrison holds nothing else). 219 among the battle background's ownable classes (GAM-BAT-011). The census of the 160 shipped maps (`h3-map`'s `original_data`): 238 garrisons on 61 maps by class, subclass, owner and level, their armies (82 neutral and 12 owned empty), the 11 not removable and the largest stack 200 as survey section 1.1, every one importing and validating."
+summary  = "One ownable, entered kind, the garrison (increment 12's design note sections 1 and 3), with its anti-magic flag: a battle on the entrance of an anti-magic garrison is fought without casts (ADV-GAR-005, T114a). Four types: classes 33 (horizontal) and 219 (vertical, AB on) by subclass, 0 a garrison, 1 an anti-magic one; each entered (not in the original's object_classes_not_entered 0x63AA58) and visitable from above (both in object_classes_from_above 0x63AB00: a horizontal one is entered from the three tiles above and the three below, a vertical one from its left and right columns), a type of an ownable kind entered as every one. Not weekly, no draw, no parameter beyond the flag: the army, its removable flag and the owner are the map's. The packs: base 33.0 `garrison` and 33.1 `anti_magic_garrison` (the anti-magic one stands on RoE-format maps too, E08 decision 299), ab 219.0 `garrison_vertical` and 219.1 `anti_magic_garrison_vertical` (the original loads 219 as 33, object_class_values 0x63A6E4), sod none; each named ObjNames.txt's row 33 or 219, 'Garrison'. E08 T113a: `ObjectKind::Garrison { anti_magic }`, the packs' `garrison` table, adventure ruleset part v20, the check against the original data (`h3-pack-adventure`'s `original_data` example, check 6: each type against both Objects.txt, ObjNames.txt and the executable's class lists). Its visit (the battle, the capture: ADV-GAR-002; the passage: ADV-GAR-004; the exchange: ADV-GAR-003) came with T114a1, the exchange comes with T114a2; until T114a1 a step onto its entrance was refused as any unbuilt visit's (`Visit`, ADV-OBJ-003) and the reach ended before it. E08 T113b (design note section 4; map import v22, adventure state hash v22): the import types 33 and 219 by subclass (past 1 none their classes define, `ImportError::Subclass`) and reads the body: the owner (ADV-OWN-002: a colour nobody plays refused, 0xFF neutral; an owned one is revealed around for its owner at the start as every owned object), the seven stacks by slot (a count of 0 an empty slot, the count's 16 bits read whole where the original sign-extends them, as ADV-QUIRK-19's; a random stack refused for good, `ImportError::RandomStack`: the original resolves none, decision 299), the removable byte from AB on (non-zero true; true on an RoE map), the 8 unused bytes dropped, into `Holds::Garrison { army, removable }`, which the setup checks (none, or valid as an army with no war machine; a garrison holds nothing else). 219 among the battle background's ownable classes (GAM-BAT-011). The census of the 160 shipped maps (`h3-map`'s `original_data`): 238 garrisons on 61 maps by class, subclass, owner and level, their armies (82 neutral and 12 owned empty), the 11 not removable and the largest stack 200 as survey section 1.1, every one importing and validating."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3606,6 +3606,84 @@ numeric  = "integer"
   ref        = "experiments/results/E08-batch-12a.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-1 to E12-6, heroes entering horizontal and vertical garrisons on their entrances, from above and below; E12-4 the anti-magic garrison's battle without casts"
   retrieved  = "2026-11-12"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-GAR-002"
+title    = "A garrison's visit: the battle at once, the capture, the survivors"
+context  = "adventure"
+status   = "implemented"
+summary  = "The step onto a garrison's entrance (entered, so the move ends there; a guard beside it met first, E08 decision 279) visits it with the hero's owner (increment 12's design note sections 5 and 6, E08 T114a1): a garrison of the visitor's team opens the exchange (ADV-GAR-003, T114a2: until then nothing, `ADV-STUB-17`); another team's or a neutral one holding a creature (any slot) is fought at once with no question, its army as it stands and unsplit, even one stack (an owned one's as its owner's side without a hero, `Defender::Garrison`; a neutral one's unowned, `Defender::Guards`; GAM-BAT-001), on the entrance as any battle there; one holding none is flagged for the visitor's owner at once (ADV-OWN-001, the flag radius's reveal), then the exchange (T114a2). The battle's end: won, the army is gone and the garrison is flagged after the winner's levels (the visit's rest, GAM-DEC-007), then the exchange (T114a2); lost or fled, the defender's survivors stay as its army by slot (none after a draw), the owner unchanged. A garrison's army is the map's (`Holds::Garrison`) until a battle leaves another (`army_left`): `AdventureState::garrison_army`. A garrison's army changes only by its battles and its exchange. A defeated player's garrisons becoming neutral with their armies (the original's player_defeated 0x4F11A0) is E10's."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md sections 3 to 5): visit_object 0x4A84F0 case 33 at 0x4A9061 (the team test, army_has_creatures 0x4496A0, adventure_battle 0x4AD470 with the record's army and owner, no question), garrison_set_owner 0x4C6960 (the owner written, the reveal of 3 around the entrance), hero_level_up 0x4DA720 after the capture"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12a.md (the capture harness, SoD 4.0, 2026-11-12; survey section 15): E12-2 (an empty neutral garrison taken by walking in, flagged), E12-5 (the radius 3 reveal), E12-6 (no question, one stack of 20 Pikemen unsplit and unowned, flagged after the win, the hero on the entrance)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Garrison (survey section 9.1): a garrison's troops fight any hero of another player who enters it; an empty one is captured by walking in"
+  url        = "https://heroes.thelazy.net/index.php/Garrison"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-GAR-004"
+title    = "The passage through garrisons"
+context  = "adventure"
+status   = "implemented"
+summary  = "A garrison of the mover's team is crossed by a path and a move without a visit, as a border gate by its key's holder (ADV-VIS-005): the reach treats its entrance as a tile like any other, on the way or at the end, and goes on from it in every direction its kind allows (increment 12's design note section 7, E08 T114a1, D-59 as the original); a move whose last step ends on it visits it there (its exchange, ADV-GAR-003), a guard beside it first (ADV-MON-006). Every other garrison (another team's, a neutral one, armed or empty) is an entered visit's tile: the search reaches it and goes no further, the move ends there and visits it (ADV-GAR-002). Every player's path as a human's (the original's mouse mode; the computer's paths through other garrisons and its visits on the way are E10's). A hero standing on an entrance is met or fought there as any hero (GAM-BAT-004, GAM-MET-001), the garrison's army not joining it. One read of the garrison's owner in the reach's visitable branch (`AdventureState::visit_at`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 7): pathfinder_pass_through 0x56AB40 (case 33 at 0x56ACAE: the path goes on through a garrison whose owner is of the hero's team, in every mode; the mouse mode answers no for every other class but 33 and 212), hero_move_step 0x4805E0 (case 33 at 0x48154B: a human's visit of its team's garrison cleared unless the tile is the hero's planned destination)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12a.md (survey section 15): E12-1 (a path through Red's own garrison, walked with no dialog, the exchange only at a move's end on it), E12-2 (no path beyond an empty neutral garrison, the path to it ending there)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder (VCMI 1.7.5, survey section 9.1): a hero's path stops at its own garrison and crosses an empty neutral one, flagging it; the original's D-59 is kept (decision 299)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/lib/pathfinder"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-GAR-005"
+title    = "The anti-magic battle"
+context  = "adventure"
+status   = "implemented"
+summary  = "A battle whose tile is an anti-magic garrison's entrance is fought without magic: the garrison's own battle, and that of a hero standing in it whom another attacks (the battle's tile is the defender's); a hero attacking out of one fights with magic (increment 12's design note section 14, E08 T114a1, D-60 as the original). The adventure answers it (`AdventureState::anti_magic`: the tile's object is a garrison of the kind's anti-magic flag), the game sets the battle's setup flag from it (`BattleSetup.anti_magic`, BAT-TER-002, BAT-TER-004: neither side casts; ADR-0022 point 6: public). The garrison gives no walls, moat or towers."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 4): battle_setup_battlefield 0x4643B0, tile_special_ground 0x4FCE20 (33 for an anti-magic garrison's entrance or a hero standing on one: the battle's +0x53C4), side_may_use_magic 0x41F890"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12a.md (survey section 15): E12-4 (attacked standing in the anti-magic garrison: the flag set, both books refused; attacking out of it: the flag clear, both sides cast Bless)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Anti-Magic Garrison: no spells may be cast in a battle there"
+  url        = "https://heroes.thelazy.net/index.php/Anti-Magic_Garrison"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
 
 [[rule]]
 id       = "ADV-BON-001"

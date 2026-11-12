@@ -1361,6 +1361,13 @@ still change at `TWN-Q14` (decision 78 lists them).
 - *As built (T25a):* `h3_towns::growth` with `GrowthInputs` (`NEUTRAL` its default) and
   `index_creature`, summed in `u64` (a share past 10 000 overflows nothing); batch TWN-3's row 2
   (66 and 48) is a unit test on the fixture.
+- *As built (T26a1):* `h3_heroes::town_growth` (by level) and `owner_town_growth` (the highest
+  share) in `h3-heroes`' `day.rs`, over the hero's sources with each worn type once; `h3-game`'s
+  `town/growth.rs` `inputs`, by `TownId`, once a week before the towns' week and kept for the
+  month of the same day: the owner the adventure's, a per-player table built at its first town
+  (the share over its heroes on the map; its dwellings' first creatures, a `Vec` by creature
+  handle), the visitor's Legion, a base dwelling counting at the upgrade's index only where the
+  level has an upgrade. The garrison hero's share and Legion: T28b.
 
 ### 42. The week (TWN-GRO-002, -003; GAM-CAL-002 amended; `h3-game`'s `src/town/week.rs`, `state.rs` and `state/day.rs` `cross-lane`)
 
@@ -1390,7 +1397,10 @@ still change at `TWN-Q14` (decision 78 lists them).
   §44, then §45.
 - *As built (T25b1):* `h3_towns::WeekKind` with `names` and `bonus` (a creature's week the
   part's `creature_bonus`) and its hash; `week_growth(town, part, core, &kind, &inputs) -> Town`.
-  The draw (TWN-GRO-002) is T26a's.
+  The draw (TWN-GRO-002) is T26a2's (decision 89).
+- *As built (T26a1):* the towns' week (`town::growth::grow_week`) after `WeekStarted` and before
+  the adventure's week step, each town written only where it changes; every week `Normal` until
+  T26a2 draws the kind.
 
 ### 43. The month (TWN-GRO-004; GAM-CAL-003 amended)
 
@@ -1414,6 +1424,10 @@ still change at `TWN-Q14` (decision 78 lists them).
   with the town crate's `MonthGrowth { Normal, Creature, Plague }` (the game's `MonthKind` stays
   the game's and is mapped to it, T26a); the flags read from the core's quirks; batch TWN-3's
   rows 1 and 3 are unit tests on the fixture (its growths 14 and 9 are the rows' towns').
+- *As built (T26a1):* `town::growth::grow_month` after `MonthStarted` and before the adventure's
+  month step, `MonthKind` mapped one to one (a normal month writes nothing), the week's inputs
+  reused; `advance_day`'s month block sits inside its week block. The month after a `week_of`
+  week (GAM-CAL-003 amended) is T26a2's.
 
 ### 44. A neutral town's garrison week (TWN-GRO-006; `h3-towns`' `garrison.rs`, `h3-adventure`'s `src/town.rs`)
 
@@ -1486,6 +1500,10 @@ still change at `TWN-Q14` (decision 78 lists them).
 - *As built (T25a):* the first creatures in `h3-towns`' `growth.rs` (crate-private), applied by
   `Towns::build` (a command's and an event's build; it takes the core) and `town_setup`; the
   events' creatures are T26a's.
+- *As built (T26a1):* `h3_towns::event_creatures(town, part, &creatures) -> Town` (`growth.rs`),
+  each level's count added and held at `MAX_AVAILABLE`, applied by `h3-game`'s `town/events.rs`
+  after the event's buildings, written only where it changes, told by no event (the counts are
+  in no view before T26b); `TWN-STUB-10` lifted.
 
 ### 47. Growth's day, views, versions, ids and gates
 

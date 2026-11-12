@@ -574,7 +574,7 @@
 //! - `builds-events-s1`: both players end their turns to day 8: red's day-1 events fire as the
 //!   game is built (the Harbour's Marketplace and Blacksmith, the Keep's Resource Silo without the
 //!   Shipyard; 3 wood, 3 ore and 6 000 gold), the every-day gift each day, the creatures on day 3
-//!   (no dwelling stands; not added until increment 3, `TWN-STUB-10`), the weekly gift on day 8;
+//!   (no dwelling stands, so they are lost, TWN-EVT-004), the weekly gift on day 8;
 //!   the Spire's Capitol on day 2 beside the Nexus' (T-8, TWN-EVT-003), so that blue's halls pay
 //!   8 000 gold a day from day 3; the Keep's event of blue's never fires (red's town).
 //!

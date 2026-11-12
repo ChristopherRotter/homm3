@@ -122,6 +122,20 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     stack's most add nothing (after the sums); `summon` checks the standing Portal itself (no
     draw without one) and empties the Portal without a dwelling (no draw); the fixture's AI values
     (ten times a handle) and `part_changed`.
+89. **T26a in two** (the user at T26's start, asked; recommended): **T26a1** the towns' growth in
+    the day with every week a normal one (each town's inputs with the Legion's two effects from
+    `h3-heroes`, the week and the month in the day's order, the events' creatures with
+    `TWN-STUB-10` lifted, the quirk flags' "planned" marks), no version moved; **T26a2** the week's
+    kind (the towns' stream, the game state's week and hash v29, the draw with the setup's `roe`
+    and map import v22 or the next free after E08's T113b, `WeekStarted`'s kind, the observation
+    and the protocol, the month after a `week_of` week, the inbox's T97a note). Not chosen: T26a
+    whole; the week's kind first (it races T113b for map import v22). *Agent's calls* (change
+    freely): `h3_heroes::town_growth` and `owner_town_growth` beside the day's income in
+    `day.rs`; the game's `town/growth.rs` with `inputs` (once a week, kept for the month of the
+    same day), `grow_week`, `grow_month`; the month's block inside the week's in `advance_day`
+    (a month's first day is a week's); a base dwelling counts at its upgrade's index only where
+    the level has an upgrade; an event's creatures held at the counts' bound (`TWN-QUIRK-8`) and
+    told by no event until T26b's views.
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
@@ -130,7 +144,7 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
 - **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66), in two halves (decision 74): **T22a** growth's: done 2026-11-11 (`TWN-Q13`, decisions 74–78). **T22b** recruitment's and the rows', the cut, the exit criteria: done 2026-11-11 (whole, decision 79; `TWN-Q14`, decisions 80–83; the five drafts `adr-drafts/*-increment-3.md` accepted; Part E §48 to §58; no version moved; `E09-log.md`).
 - **T23** batch TWN-3 (survey §14, row 6 with design §55's record; decision 74). Done 2026-11-11, whole (decision 84): two runs of each part, every row as the reading (survey §17; `E09-log.md`).
 - **T24** `shared/` (`cross-lane`): done 2026-11-12, whole (decision 85): the five drafts in `docs/adr/` with T23's verdicts, `StreamId::TOWNS`, the Legion's two effects and the two town flags (pack format v52, core ruleset hash v53), the packs' six artifacts, the 82 replays' and the bot reports' core hash, the glossary, `docs/06-security.md` (`E09-log.md`).
-- **T25** growth's town side: **T25a** done 2026-11-12, whole (decision 86): the part's roles `horde`, `portal`, `week_of`, `roe` and the growth's parameters (part v5; the packs re-harvested, `cross-lane`), each town's fourteen counts and Portal (store v3, `TWN-QUIRK-8`), TWN-GRO-001, TWN-GRO-005; game state hash v28 and the 72 adventure replays (`cross-lane`; `E09-log.md`). **T25b** in two (decision 87): **T25b1** done 2026-11-12: `WeekKind`, TWN-GRO-003, -004, `TWN-QUIRK-9`, `-10` (no version moved; `E09-log.md`); **T25b2** done 2026-11-12, whole (decision 88): `garrison_week`, `summon`, TWN-GRO-006, -007 (no version moved; `E09-log.md`). **T26** growth in the game (T26a, T26b; `cross-lane`); **T27** recruitment (`cross-lane`); **T28** the rows (T28a, T28b; `cross-lane`; after E08's T114a and T115a); **T29** the gates; **T30** the audit and the closure (design note §56).
+- **T25** growth's town side: **T25a** done 2026-11-12, whole (decision 86): the part's roles `horde`, `portal`, `week_of`, `roe` and the growth's parameters (part v5; the packs re-harvested, `cross-lane`), each town's fourteen counts and Portal (store v3, `TWN-QUIRK-8`), TWN-GRO-001, TWN-GRO-005; game state hash v28 and the 72 adventure replays (`cross-lane`; `E09-log.md`). **T25b** in two (decision 87): **T25b1** done 2026-11-12: `WeekKind`, TWN-GRO-003, -004, `TWN-QUIRK-9`, `-10` (no version moved; `E09-log.md`); **T25b2** done 2026-11-12, whole (decision 88): `garrison_week`, `summon`, TWN-GRO-006, -007 (no version moved; `E09-log.md`). **T26** growth in the game (`cross-lane`), T26a in two (decision 89): **T26a1** done 2026-11-12: the inputs (`h3_heroes::town_growth`, `owner_town_growth`), the towns' week and month in the day (TWN-GRO-001, -003, -004 in the game; GAM-CAL-002), the events' creatures (TWN-EVT-004, `TWN-STUB-10` lifted), no version moved (`E09-log.md`); **T26a2** the week's kind; **T26b**; **T27** recruitment (`cross-lane`); **T28** the rows (T28a, T28b; `cross-lane`; after E08's T114a and T115a); **T29** the gates; **T30** the audit and the closure (design note §56).
 
 ### Exit criteria
 

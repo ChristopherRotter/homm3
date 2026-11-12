@@ -1,10 +1,10 @@
 //! The game's day advance (ADR-0017 point 3; E08 T85b, increment 9's design note §14; survey
 //! `E08-economy.md` §7.2 to §7.4, §8, §12, the original's `new_day` 0x4C7FE0): the calendar, the
-//! week's and the month's steps on their first days, the month's kind, the players' income and
-//! the heroes' spell points, then the adventure's start-of-day step. Day 1 runs none of it: the
-//! build calls the adventure's start-of-day step only (the original's start runs no new day,
-//! survey §7.1). At each player's turn start, the map's timed events (GAM-CAL-004; survey §7.5,
-//! §11), day 1's too.
+//! week's and the month's steps on their first days (the towns' growth since E09 T26a1), the
+//! month's kind, the players' income and the heroes' spell points, then the adventure's
+//! start-of-day step. Day 1 runs none of it: the build calls the adventure's start-of-day step
+//! only (the original's start runs no new day, survey §7.1). At each player's turn start, the
+//! map's timed events (GAM-CAL-004; survey §7.5, §11), day 1's too.
 
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -52,13 +52,16 @@ impl GameState {
     ///
     /// 1. the day + 1, [`GameEvent::DayStarted`];
     /// 2. on a week's first day (days 8, 15, …: `(day − 1) % week_days == 0`),
-    ///    [`GameEvent::WeekStarted`], then the adventure's week step with the game's stream
+    ///    [`GameEvent::WeekStarted`], then the towns' week (E09 T26a1, TWN-GRO-003: every town's
+    ///    counts grown with its inputs, `town::growth`, TWN-GRO-001; the towns' draws nothing),
+    ///    then the adventure's week step with the game's stream
     ///    (`h3_adventure::AdventureState::start_week`: the weekly objects refilled, the monsters
     ///    grown);
     /// 3. on a month's first day (days 29, 57, …: every `month_weeks`-th week's), the month's
     ///    kind drawn from the game's stream ([`Self::draw_month`]), [`GameEvent::MonthStarted`],
-    ///    then in a creature's month the adventure's month step with the game's stream
-    ///    (`start_month`: its monsters added on free land tiles);
+    ///    then the towns' month (E09 T26a1, TWN-GRO-004: a creature's month doubles, the Plague
+    ///    halves, with the week's inputs), then in a creature's month the adventure's month step
+    ///    with the game's stream (`start_month`: its monsters added on free land tiles);
     /// 4. the towns' day (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
     ///    cleared, TWN-BLD-004; the original's `new_day` towns' loop 0x4C8067, before its
     ///    income; since E09 T18b2a the views of the towns built in the day before told to their
@@ -67,9 +70,10 @@ impl GameState {
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
     ///
-    /// The week's kind and creature (the towns' growth, E09) are not drawn: decision 197 gives
-    /// them a stream of their own when they come, so the game's stream stays as it is.
-    // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004
+    /// The week's kind and creature are not drawn yet (TWN-GRO-002, E09 T26a2: from the towns'
+    /// stream, E09 decision 75, so the game's stream stays as it is): every week is a normal one.
+    // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-003
+    // rule: TWN-GRO-004
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -83,23 +87,27 @@ impl GameState {
             sink.emit(GameEvent::WeekStarted {
                 week: since / week_days + 1,
             });
+            let inputs = town::growth::inputs(self, rules);
+            town::growth::grow_week(self, rules, &inputs);
             self.adventure
                 .start_week(core, part, &mut self.rng, &mut AdventureSink(sink));
-        }
-        if since.is_multiple_of(month_days) {
-            self.month = self.draw_month(rules);
-            sink.emit(GameEvent::MonthStarted {
-                month: since / month_days + 1,
-                kind: self.month,
-            });
-            if let MonthKind::Creature(creature) = self.month {
-                self.adventure.start_month(
-                    core,
-                    part,
-                    creature,
-                    &mut self.rng,
-                    &mut AdventureSink(sink),
-                );
+            // A month's first day is a week's.
+            if since.is_multiple_of(month_days) {
+                self.month = self.draw_month(rules);
+                sink.emit(GameEvent::MonthStarted {
+                    month: since / month_days + 1,
+                    kind: self.month,
+                });
+                town::growth::grow_month(self, rules, self.month, &inputs);
+                if let MonthKind::Creature(creature) = self.month {
+                    self.adventure.start_month(
+                        core,
+                        part,
+                        creature,
+                        &mut self.rng,
+                        &mut AdventureSink(sink),
+                    );
+                }
             }
         }
         town::start_day(self, rules, sink);

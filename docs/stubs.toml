@@ -75,6 +75,12 @@ where  = "crates/h3-adventure/src/state/passage.rs::AdventureState::passage"
 reason = "The original's class 85 (the Shipwreck) is the one object whose water tile a flight passes and a walker steps onto from land (0x4B26D6, 0x481D0D; survey E08-sea.md §15); it is an untyped blocker in the engine, so its water tile is closed to a flight as every other object's (D-46, ADV-MOV-009) until creature banks type it (the sketch's item 10)"
 epic   = "E08"
 
+[[stub]]
+id     = "ADV-STUB-17"
+where  = "crates/h3-adventure/src/state/garrisons.rs::AdventureState::visit_garrison"
+reason = "A map garrison's exchange (ADV-GAR-003, GAM-DEC-009; increment 12's design note §13, E08 decision 305) comes with T114a2, the cut of T114a (the user at T114's start): until then the visit of a garrison of the visitor's team, the capture of an empty one and a won battle's flag after the levels (AdventureState::give_won) open nothing, and Revisit (ADV-TEL-008) leaves a garrison of the hero's team out (it is passed, not visited)"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 [[stub]]
@@ -172,12 +178,6 @@ epic   = "E09"
 id     = "TWN-STUB-8"
 where  = "crates/h3-game/src/town/siege.rs::siege_setup"
 reason = "A walled town whose faction's record draws natural obstacles in a siege (TWN-SIE-005, h3_towns::siege_obstacles: the base pack's Stronghold with a Citadel or a Castle, as RoE and AB play it; the SoD pack's override clears it, so the full pack set never meets it) gets none (E09 T8b1): the battle's generator (generate_setup_obstacles) places none at a town with a fort, and generate_battlefield_obstacles knows no walls, while the original's placement (0x466010) keeps every obstacle hex off a blocked hex (the walls) and takes a branch for a siege of town type 6 on the game's version that is not read (0x466147 to 0x466194; docs/formats/installation.md section 7.26). Lifted by a siege-aware draw in h3-battle (the battle lane's inbox) after that branch is read"
-epic   = "E09"
-
-[[stub]]
-id     = "TWN-STUB-10"
-where  = "crates/h3-game/src/town/events.rs::fire_events"
-reason = "A town event's creatures are not added (TWN-EVT-004; E09 T18c): the event fires and gives its resources and buildings, but its counts by level go to no town's recruits, since the towns have none before increment 3 (the town's recruitment; the original adds them to the level's upgraded dwelling's recruits, else its dwelling's, else loses them). 56 shipped town events add creatures (survey E09-construction.md section 10). Lifted by increment 3"
 epic   = "E09"
 
 [[stub]]

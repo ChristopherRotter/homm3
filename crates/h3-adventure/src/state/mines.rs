@@ -257,8 +257,9 @@ impl AdventureState {
     }
 
     /// The flag of the mine at object index `index`, of type `object_type`, its guards beaten by
-    /// the hero `hero` (ADV-MIN-002, E08 T84a; [`Self::give_won`], after the winner's levels):
-    /// flagged for the hero's owner. Nothing when the hero is no longer on the map.
+    /// the hero `hero` (ADV-MIN-002, E08 T84a; [`Self::give_won`], after the winner's levels;
+    /// since E08 T114a1 a map garrison's, ADV-GAR-002): flagged for the hero's owner. Nothing
+    /// when the hero is no longer on the map.
     pub(super) fn flag_won<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset),
