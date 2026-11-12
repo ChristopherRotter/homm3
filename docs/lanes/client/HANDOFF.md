@@ -5,13 +5,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 12). **M1 T1a1, T1a2 and T1b1 done** (the start, the menus, Quit, Multiplayer and the hot
-  seat's names, High Scores, Credits: `E27-design.md` §2; the scenario screen's frame, list and
-  information panel: §3; CLT-Q84 to CLT-Q91). T1b was cut in three (decision 11). **Next: M1
-  T1b2** (the players' setup, the random map, the begin; `QUEUE.md`), then T1b3, T2, T3. The
-  shell's clips are in `original-data/shell-videos.vid` (design §1), so T2 needs the user's
-  computer only for a clip T1b adds (none so far). Open pull request: `client/e27-m1-t1b1` (watch
-  it until it merges). E17 done
+  to 13). **M1 T1a1, T1a2, T1b1 and T1b2 done** (the start, the menus, Quit, Multiplayer and the
+  hot seat's names, High Scores, Credits: `E27-design.md` §2; the scenario screen: §3, its
+  players' setup, random map and begin §3.12 to §3.18; CLT-Q84 to CLT-Q95). **Next: M1 T1b3**
+  (the system options, the menu in play, the end; `QUEUE.md`), then T2, T3. The shell's clips
+  are in `original-data/shell-videos.vid` (design §1), so T2 needs the user's computer only for a
+  clip T1b3 adds (none so far). Open pull request: `client/e27-m1-t1b2` (watch it until it
+  merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -25,7 +25,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q92,
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q96,
   CLT-STUB-6.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 107 MB, a call of its own), and `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
@@ -46,6 +46,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-12, E27 M1 T1b2 (done; `client/e27-m1-t1b2`).** Kept whole with the user. The
+  original data staged at once (61 files, checked by SHA-256) while the user's computer was
+  online. Read the players' slots and records, the advanced options, a row's draw and presses,
+  the popups, the hover, the turn's duration, the random map's tab and Begin to the game's start
+  (`new_game_start`, `scenario_dialog_begin`): 38 new map entries, a struct. Found: a human's
+  Random town is the one drawn at the list's read; the bonus, the handicap and the timer have no
+  `GameSetup` field; two setup oddities. Asked: CLT-Q92 to CLT-Q95 (decision 13). No harness run.
+  Record: `E27-log.md`, "M1 T1b2".
 - **2026-11-12, E27 M1 T1b1 (done; `client/e27-m1-t1b1`).** T1b cut in three with the user
   (decision 11). The original data staged at once (57 files, checked by SHA-256) and the
   installation's three saved games copied into `original-data/games/`, while the user's computer
@@ -64,10 +72,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   Found: `HSANIM` and `HSLOOP` are a won scenario's, the credits run on the menus' clip's
   frames, Online quits the game. Asked: CLT-Q87 to CLT-Q89 (decision 10). No harness run.
   Record: `E27-log.md`, "M1 T1a2".
-- **2026-11-12, E27 M1 T1a1 (done; `client/e27-m1-t1a1`, `shared/e27-m1-t1a1`).** T1a cut with
-  the user (decision 9). The original data staged at once (57 files), then `shell-videos.vid` made
-  on the user's computer and staged before it went offline. Read `game_main` (renamed), the clip
-  players, the main menu and the game-type menu whole: 59 map entries. Found the clips' chain and
-  first-run rules, Bink only with `Bink Video`, the loading bar a DEF, the menus' 4 × 4 clip.
-  Asked: CLT-Q84 (tutorial a stub), CLT-Q85 (no first-run case), CLT-Q86 (no menu clip). No
-  harness run. Record: `E27-log.md`, "M1 T1a1".

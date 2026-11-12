@@ -407,8 +407,10 @@ fields = [
   { offset = 0x1F63E, name = "date", type = "u16[3]", summary = "the day of the week (1-7), the week (1-4) and the month (H3API's date): the day number (4 x month + week - 5) x 7 + day (town_timed_events 0x4CDA1B)", confidence = "read", refs = ["rules/surveys/E08-economy.md §7.1", "rules/surveys/E09-construction.md §8.2"] },
   { offset = 0x1F698, name = "map_kind", type = "i32", summary = "H3API's mapKind, 0 RoE, 1 AB, 2 SoD: the game's version for the rules that test it (the siege's moat and its damage, the Tower's mines, the elementals' faction); restored by the saved-game loader (0x4BCDA0); at a new game new_game_heroes writes it (0x4BFF09) from new_game_start's scenario dialog version (0x58C593), a campaign's by its index (E09 T1b1)", confidence = "inferred", refs = ["installation.md §7.27", "rules/surveys/E09-towns.md §9.4"] },
   { offset = 0x1F69D, name = "flagged_start", type = "u8", summary = "read by the end-turn button and the battle start; set, a human starts with 0x6779C8's resources (probably the tutorial)", confidence = "inferred", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0x1F6A8, name = "handicaps", type = "i8[8]", summary = "per colour the handicap chosen (H3API playersInfo.handicap): 0 for a playing colour and -1 for another at the header's read, the record's +0x78 at the begin (scenario_dialog_begin 0x5886F1); its effect E10's", confidence = "read", refs = ["epics/E27-design.md §3"] },
   { offset = 0x1F6B0, name = "chosen_factions", type = "i32[8]", summary = "per colour the faction it plays (H3API playersInfo.townType, playersInfo at +0x1F6A0): written when the game begins (scenario_dialog_begin 0x588330, a Random choice drawn there), read by load_town_body for a random town of that owner or alignment", confidence = "read", refs = ["rules/surveys/E09-towns.md §2.2"] },
   { offset = 0x1F6D8, name = "difficulty", type = "i8", summary = "the game's difficulty, 0 easy to 4 impossible: the starting resources' row", confidence = "read", refs = ["rules/surveys/E08-objects.md §7.2"] },
+  { offset = 0x1F843, name = "turn_duration", type = "i8", summary = "the turn's duration, 0 to 10 (turn_duration_texts; H3API playersInfo.turnDuration): the scenario screen's +0x378", confidence = "read", refs = ["epics/E27-design.md §3"] },
   { offset = 0x1F844, name = "first_heroes", type = "i32[8]", summary = "per colour the first hero it was given at a new game: the chosen hero (new_game_heroes 0x4BFF96), its first placed or random hero (load_hero_body 0x502372), its main town's (main_town_heroes 0x4CA188), each only while -1 (H3API playersInfo.heroMaybe); its readers not followed", confidence = "inferred", refs = ["rules/surveys/E09-towns.md §4.1"] },
   { offset = 0x1F877, name = "level_limit", type = "u8", summary = "the scenario's hero level limit, 0 none; the one instruction naming it is hero_gain_experience's read (0x4E33DD); inside H3API's mapInfo (+0x1F86C), whose port names +0xB hasTeams; its setter not found (E08 T24a1)", confidence = "read", refs = ["rules/surveys/E08-progression.md §1.3"] },
   { offset = 0x1F879, name = "teams", type = "i8[8]", summary = "team per colour: a reveal sets the bits of every player of the revealer's team", confidence = "read", refs = ["rules/surveys/E08-adventure-core.md §2"] },
@@ -927,7 +929,7 @@ fields = [
 [[struct]]
 name = "scenario_dialog"
 size = 0x1970
-summary = "The scenario screen (scenario_dialog_create 0x579960; on the caller's stack): the fields E27 M1 T1b1 read; the players' rows (+0x1064, +0x1444) and the random map's are T1b2's"
+summary = "The scenario screen (scenario_dialog_create 0x579960; on the caller's stack): the fields E27 M1 T1b1 and T1b2 read"
 refs = ["epics/E27-design.md §3"]
 h3api = "H3SelectScenarioDialog"
 fields = [
@@ -939,10 +941,10 @@ fields = [
   { offset = 0x36C, name = "descending", type = "u8", summary = "the list's order flipped (the columns' presses; scenario_list_sort 0x585050)", confidence = "read" },
   { offset = 0x370, name = "top", type = "i32", summary = "the list's first visible entry", confidence = "read" },
   { offset = 0x374, name = "selection", type = "i32", summary = "the selected entry of the shown list, -1 none (scenario_select 0x585500)", confidence = "read" },
-  { offset = 0x378, name = "turn_duration", type = "i32", summary = "the turn's duration setting (10 for a new game; a save's +0x4A7; T1b2)", confidence = "inferred" },
-  { offset = 0x37C, name = "advanced_shown", type = "u8", summary = "the advanced options' panel shown (T1b2)", confidence = "inferred" },
+  { offset = 0x378, name = "turn_duration", type = "i32", summary = "the turn's duration, 0 to 10 (turn_duration_texts; 10 unlimited for a new game; a save's +0x4A7): the bar 338 sets it (scenario_duration_scrolled 0x57C7F0), scenario_to_game copies it to game +0x1F843", confidence = "read" },
+  { offset = 0x37C, name = "advanced_shown", type = "u8", summary = "the advanced options' panel shown (scenario_advanced_toggle 0x581100, scenario_advanced_hide 0x581B20)", confidence = "read" },
   { offset = 0x37D, name = "list_shown", type = "u8", summary = "the list's panel shown (scenario_list_toggle); the keys act only then", confidence = "read" },
-  { offset = 0x37E, name = "random_shown", type = "u8", summary = "the random map's panel shown (T1b2)", confidence = "inferred" },
+  { offset = 0x37E, name = "random_shown", type = "u8", summary = "the random map's panel shown (random_map_toggle 0x57FEB0, random_map_hide 0x581D80)", confidence = "read" },
   { offset = 0x37F, name = "random_chosen", type = "u8", summary = "a random map chosen: Begin makes it (scenario_begin 0x58BCE0); cleared by the list's toggle", confidence = "read" },
   { offset = 0x380, name = "save_edit", type = "ptr", summary = "the save mode's name edit (item 160)", confidence = "read" },
   { offset = 0x388, name = "network_transfers", type = "ptr", summary = "a network game's eight pending transfers (not the save mode); a column press waits for none", confidence = "inferred" },
@@ -951,6 +953,10 @@ fields = [
   { offset = 0x1040, name = "random_list", type = "vector<scenario_info>", summary = "the random maps' records (the list's kind 1)", confidence = "read" },
   { offset = 0x1050, name = "shown_list", type = "vector<scenario_info>", summary = "the full (or random) list less the other sizes (+0x1860), in its order", confidence = "read" },
   { offset = 0x1060, name = "selected_info", type = "scenario_info*", summary = "the selected record", confidence = "read" },
+  { offset = 0x1064, name = "human_records", type = "scenario_player[8]", summary = "the human players' records, a slot each (scenario_slot_add 0x577BE0), any colour (+0x70); a colour's record is the one holding it, else its computer record", confidence = "read" },
+  { offset = 0x1444, name = "computer_records", type = "scenario_player[8]", summary = "the computer players' records by colour (their town, bonus and handicap)", confidence = "read" },
+  { offset = 0x1824, name = "cycle_colour", type = "i32", summary = "the hot seat's colour pressed last (hot_seat_colour_cycle 0x577AE0), -1 after scenario_advanced_hide", confidence = "read" },
+  { offset = 0x1830, name = "cycle_left_colour", type = "i32", summary = "the colour the last taker left (hot_seat_colour_cycle), -1 none", confidence = "read" },
   { offset = 0x1834, name = "list_ready", type = "u8", summary = "set by scenario_list_finish 0x582E90", confidence = "read" },
   { offset = 0x183C, name = "list_bar", type = "ptr", summary = "the list's scroll bar (item 337)", confidence = "read" },
   { offset = 0x1840, name = "duration_bar", type = "ptr", summary = "the turn duration's bar (item 338; T1b2)", confidence = "read" },
@@ -959,8 +965,37 @@ fields = [
   { offset = 0x1860, name = "size_filter", type = "i32", summary = "36, 72, 108, 144 or 0 all (scenario_list_filter 0x585D90)", confidence = "read" },
   { offset = 0x1864, name = "list_read", type = "u8", summary = "the files read once (scenario_list_toggle)", confidence = "read" },
   { offset = 0x1870, name = "flags_background", type = "ptr", summary = "the flags' strip's kept background, 310 x 25 (scenario_team_flags 0x585300)", confidence = "read" },
-  { offset = 0x1898, name = "edition", type = "i32", summary = "the edition (edition_pointer) at the construction", confidence = "read" },
+  { offset = 0x1898, name = "edition", type = "i32", summary = "the edition (edition_pointer) at the construction, then the version: the highest format the slots' editions allow (scenario_version_from_slots 0x58E700); new_game_start 2 or 3 SoD, 1 AB, else RoE", confidence = "read" },
+  { offset = 0x189C, name = "town_header_id", type = "i32", summary = "the town column's header item: 341, or 342 on the editions 1 and 3 (AB, Complete), so its hint", confidence = "read" },
+  { offset = 0x18A0, name = "random_size", type = "i32", summary = "the random map's size: 36, 72, 108, 144 (items 281 to 284)", confidence = "read" },
+  { offset = 0x18A4, name = "random_levels", type = "i32", summary = "the random map's levels, 1 or 2 (item 285)", confidence = "read" },
+  { offset = 0x18A8, name = "random_players", type = "i32", summary = "the human or computer players, 1 to 8, -1 Random (287 to 295)", confidence = "read" },
+  { offset = 0x18AC, name = "random_teams", type = "i32", summary = "their teams, 0 to 7, -1 Random (297 to 305)", confidence = "read" },
+  { offset = 0x18B0, name = "random_computers", type = "i32", summary = "the computer only players, 0 to 7, -1 Random (307 to 315)", confidence = "read" },
+  { offset = 0x18B4, name = "random_computer_teams", type = "i32", summary = "their teams, 0 to 6, -1 Random (317 to 324)", confidence = "read" },
+  { offset = 0x18B8, name = "random_water", type = "i32", summary = "the water: 0 none, 1 normal, 2 islands, 3 Random (326 to 329)", confidence = "read" },
+  { offset = 0x18BC, name = "random_monsters", type = "i32", summary = "the monsters: 0 weak, 1 normal, 2 strong, -1 Random (331 to 334)", confidence = "read" },
   { offset = 0x196C, name = "description_text", type = "ptr", summary = "the description's scrollable text (422, 155, 319, 115)", confidence = "read" },
+]
+
+[[struct]]
+name = "scenario_player"
+size = 0x7C
+summary = "A player's record of the scenario screen (scenario_player_init 0x57C790; the dialog's +0x1064 and +0x1444): its slot, colour and starting choices (E27 M1 T1b2)"
+refs = ["epics/E27-design.md §3"]
+h3api = "H3ScenarioPlayer"
+fields = [
+  { offset = 0x0, name = "slot", type = "i32", summary = "the slot's id, 0 free (a computer record's 0): local_slot's id marks the local player's", confidence = "read" },
+  { offset = 0x4, name = "name", type = "char[24]", summary = "the player's name: the hot seat's, network_default_name single; into the game player at the begin", confidence = "read" },
+  { offset = 0x1C, name = "edition", type = "i32", summary = "the slot's edition (scenario_version_from_slots)", confidence = "read" },
+  { offset = 0x20, name = "hero", type = "i32", summary = "the starting hero: an index into +0x2C, -1 Random (scenario_hero_step 0x58AF20)", confidence = "read" },
+  { offset = 0x24, name = "town", type = "i32", summary = "the starting town, -1 Random (the town arrows)", confidence = "read" },
+  { offset = 0x28, name = "hero_count", type = "i32", summary = "the heroes offered, at most 16 (scenario_hero_lists 0x583890)", confidence = "read" },
+  { offset = 0x2C, name = "heroes", type = "i32[16]", summary = "the hero types offered, in type order", confidence = "read" },
+  { offset = 0x6C, name = "bonus", type = "i32", summary = "the starting bonus: 0 artifact, 1 gold, 2 resource, 3 Random (the bonus arrows)", confidence = "read" },
+  { offset = 0x70, name = "colour", type = "i32", summary = "the colour it plays, -1 none", confidence = "read" },
+  { offset = 0x74, name = "cycle_index", type = "i32", summary = "-1 (scenario_player_init); hot_seat_colour_cycle searches from it + 1; written only by network copies (inferred)", confidence = "inferred" },
+  { offset = 0x78, name = "handicap", type = "i8", summary = "0 none, 1 mild, 2 severe (handicap_names); into game +0x1F6A8 at the begin", confidence = "read" },
 ]
 
 [[struct]]
