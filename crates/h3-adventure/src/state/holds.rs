@@ -5,8 +5,8 @@
 use alloc::collections::BTreeSet;
 
 use h3_content::{ArtifactTypeId, CreatureFlag, Formation, Ruleset, SpellCategory, SpellId};
-use h3_heroes::{ArtifactInstance, ScholarGift, validate_artifact};
 use h3_contracts::ArmyStack;
+use h3_heroes::{ArtifactInstance, ScholarGift, validate_artifact};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::check_army;

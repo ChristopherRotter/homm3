@@ -1515,7 +1515,11 @@ fn increment_12(
         census.0.entry((class, subclass)).or_default()[level] += 1;
         *classes.entry((class, subclass)).or_default() += 1;
         if let Holds::Garrison { army, removable } = &object.holds {
-            let owner = if object.owner.is_some() { "owned" } else { "neutral" };
+            let owner = if object.owner.is_some() {
+                "owned"
+            } else {
+                "neutral"
+            };
             let mut add = |what: &str| {
                 let key = match (owner, what) {
                     ("owned", "empty") => "owned garrisons empty",
@@ -2681,7 +2685,8 @@ fn stacked(map: &RawMap, setup: &MapSetup) -> (usize, Vec<Vec<u32>>) {
 /// The census's keys of the twins unlike the first of their type and anchor, and of those of a
 /// kind something names (E08 T113b, [`twins`]).
 const TWINS_UNLIKE: &str = "typed objects of one type on one anchor unlike the first";
-const TWINS_NAMED: &str = "typed objects of one type on one anchor not a ground, sea ground or hole";
+const TWINS_NAMED: &str =
+    "typed objects of one type on one anchor not a ground, sea ground or hole";
 
 /// How many typed objects of the static layer share their type and anchor with an earlier one (a
 /// random resource counted by its random type, before the draw); since E08 T113b (decision 320)
@@ -2702,12 +2707,17 @@ fn twins(setup: &MapSetup, rules: &GameRuleset) -> (usize, usize, usize) {
                 Some(earlier) => {
                     twins += 1;
                     unlike += usize::from(*earlier != object);
-                    let ground = rules.adventure().object_type(object_type).is_some_and(|ty| {
-                        matches!(
-                            ty.kind,
-                            ObjectKind::Ground { .. } | ObjectKind::SeaGround | ObjectKind::Hole
-                        )
-                    });
+                    let ground = rules
+                        .adventure()
+                        .object_type(object_type)
+                        .is_some_and(|ty| {
+                            matches!(
+                                ty.kind,
+                                ObjectKind::Ground { .. }
+                                    | ObjectKind::SeaGround
+                                    | ObjectKind::Hole
+                            )
+                        });
                     named += usize::from(!ground);
                 }
             }

@@ -384,7 +384,12 @@ fn the_import_types_increment_12_s_classes() {
         .map
         .objects
         .iter()
-        .map(|o| part.object_type(o.object_type.unwrap()).unwrap().key.as_str())
+        .map(|o| {
+            part.object_type(o.object_type.unwrap())
+                .unwrap()
+                .key
+                .as_str()
+        })
         .collect();
     assert_eq!(
         keys,
@@ -481,7 +486,10 @@ fn the_import_types_increment_12_s_classes() {
         creature: 0xFFFE,
         count: 1,
     });
-    assert_eq!(import(&edited, &SOD).err(), Some(ImportError::RandomStack(1)));
+    assert_eq!(
+        import(&edited, &SOD).err(),
+        Some(ImportError::RandomStack(1))
+    );
     // An owner nobody plays is refused (ADV-OWN-002), the garrison's subclass past 1 and a bonus
     // visitable's past 0 are none their classes define.
     let mut edited = raw.clone();
@@ -489,7 +497,10 @@ fn the_import_types_increment_12_s_classes() {
         unreachable!()
     };
     *owner = 5;
-    assert_eq!(import(&edited, &SOD).err(), Some(ImportError::ObjectOwner(1)));
+    assert_eq!(
+        import(&edited, &SOD).err(),
+        Some(ImportError::ObjectOwner(1))
+    );
     for (index, subclass) in [(1, 2), (4, 2), (5, 1), (19, 1)] {
         let mut edited = raw.clone();
         let template = usize::try_from(edited.objects[index].template).unwrap();

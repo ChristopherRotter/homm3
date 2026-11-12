@@ -417,7 +417,7 @@ impl StaticMap {
         // special grounds, which nothing names (never visited, offered or removed): 5 maps stack
         // two of one type on one anchor (E08 T20a2a), so grounds are left out of the check.
         // Each name with the first object that takes it (a random dwelling may take one twice).
-        // Since E08 T113b (decision 321, the server lane's question) a ground, a ground of the sea
+        // Since E08 T113b (decision 322, the server lane's question) a ground, a ground of the sea
         // or a hole on the anchor of an earlier one of its type differs from it only in the tiles
         // it lies on (the shipped maps' nine such pairs: two pictures of one type), so that
         // whatever might name it one day finds the two alike.

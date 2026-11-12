@@ -27,7 +27,10 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   no event names; nothing else. Also: map import v22 and adventure state hash v22 (your
   manifests read the constants); the import types the garrisons (33, 219, with their owners)
   and the fifteen bonus visitables, so shipped maps' views show those nineteen types (no golden
-  replay holds one). No server change is needed.
+  replay holds one). No server change is needed beyond one made for you, with the user's
+  consent (`cross-lane`): the 72 golden replays' hashes moved (the adventure state hash version
+  is hashed), so `h3-server`'s `tests/record.rs` has the smallest replay's new checkpoint, final
+  hash and import version (`army-dialog-s1`); nothing else of yours changed.
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the
   setup and its first activation (its inbox), the session holds the battle before its start

@@ -493,7 +493,7 @@ pub enum SetupError {
     ObjectAmount(usize),
     /// The object at this index has the type and anchor of an earlier typed object (a player
     /// names a typed object by both): a ground, a ground of the sea or a hole only when it differs
-    /// from the earlier one in more than the tiles it lies on (E08 T113b, decision 321; nothing
+    /// from the earlier one in more than the tiles it lies on (E08 T113b, decision 322; nothing
     /// names one, and the shipped maps hold nine such pairs of two pictures).
     SharedAnchor(usize),
     /// The object at this index is a monster without valid monster data, or has monster data and

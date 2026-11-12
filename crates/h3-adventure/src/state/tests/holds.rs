@@ -590,7 +590,11 @@ fn a_map_garrison_holds_its_troops_and_removable_flag() {
     }
     // A garrison holds its troops and nothing else; no other kind holds them.
     assert_eq!(
-        built(&rules, vec![object(&rules, 3, "t:garrison", Holds::Nothing)]).err(),
+        built(
+            &rules,
+            vec![object(&rules, 3, "t:garrison", Holds::Nothing)]
+        )
+        .err(),
         Some(SetupError::Holds(0))
     );
     let mine = object(

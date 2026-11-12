@@ -377,7 +377,7 @@ fn a_ground_sets_the_battlefield_of_the_tiles_it_lies_on() {
     assert_eq!(field(1, 1, 1), (SWAMP, hallow));
     assert_eq!(field(0, 1, 1), (SWAMP, None));
     // Grounds of one type may share an anchor (nothing names them); monsters may not. Since E08
-    // T113b (decision 321) such a ground differs from the earlier one only in the tiles it lies on.
+    // T113b (decision 322) such a ground differs from the earlier one only in the tiles it lies on.
     let mut twins = setup.clone();
     twins.map.objects.push(ground(HALLOW, (3, 1, 0), (1, 1)));
     AdventureState::new(&core, &part, &twins, &mut draws()).unwrap();
