@@ -189,7 +189,7 @@ fn a_game_records_header_round_trips_in_serdes_default_form() {
     let manifest = serde_json::to_string(&manifest).unwrap();
     assert_eq!(
         text,
-        format!(r#"{{"format":4,"game":4,"player":1,"manifest":{manifest},"first":3}}"#)
+        format!(r#"{{"format":5,"game":4,"player":1,"manifest":{manifest},"first":3}}"#)
     );
 }
 

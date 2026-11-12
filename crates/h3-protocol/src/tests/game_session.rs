@@ -84,37 +84,48 @@ fn record(session: &GameSession<'_>, player: PlayerId, first: u32, lines: &[Stri
     record
 }
 
-/// Checks what a game's start or restore told each player in `out` against the engine's state
-/// `state`: its snapshot, then its turn if it may act. Returns each player's last number and
-/// whether its view holds a battle.
+/// Checks what a game's start (`start`) or restore told each player in `out` against the
+/// engine's state `state`: its snapshot, at the start the town events that fired at its turn
+/// start inside the build in one `GameEvents` if any (E16 M5 T11; a restore tells none), then its
+/// turn if it may act. Returns each player's last number, whether its view holds a battle and how
+/// many start's events it was told.
 fn opened(
     out: &[GameOutbound],
-    state: &GameState,
+    (state, start): (&GameState, bool),
     rules: &GameRuleset,
     name: &str,
-) -> (Vec<u32>, Vec<bool>) {
+) -> (Vec<u32>, Vec<bool>, usize) {
     let players = state.players();
     let (mut next, mut battle) = (vec![0u32; players], vec![false; players]);
+    let mut fired = 0;
     for (index, messages) in told(out, players).into_iter().enumerate() {
         let player = PlayerId::new(u8::try_from(index).unwrap());
         let observation = observe(state, rules, Viewer::Player(player));
         battle[index] = observation.battle.is_some();
-        assert_eq!(
-            messages[0],
-            ServerMessage::GameSnapshot { n: 1, observation }
-        );
-        let rest: Vec<ServerMessage> = messages[1..].to_vec();
-        let expected = turn(state, rules, player).map(|(legal, castable)| {
-            vec![ServerMessage::GameTurn {
-                n: 2,
-                legal,
-                castable,
-            }]
-        });
-        assert_eq!(rest, expected.unwrap_or_default(), "{name}");
+        let mut expected = vec![ServerMessage::GameSnapshot { n: 1, observation }];
+        let at_start: Vec<h3_game::GameEvent> = state
+            .town_events_at_start(player)
+            .into_iter()
+            .filter(|_| start)
+            .map(|(town, event)| h3_game::GameEvent::TownEventFired {
+                player,
+                town,
+                event,
+            })
+            .collect();
+        if !at_start.is_empty() {
+            fired += at_start.len();
+            let events = events(&at_start, Viewer::Player(player));
+            expected.push(ServerMessage::GameEvents { n: 2, events });
+        }
+        if let Some((legal, castable)) = turn(state, rules, player) {
+            let n = u32::try_from(expected.len()).unwrap() + 1;
+            expected.push(ServerMessage::GameTurn { n, legal, castable });
+        }
+        assert_eq!(messages, expected, "{name}");
         next[index] = u32::try_from(messages.len()).unwrap();
     }
-    (next, battle)
+    (next, battle, fired)
 }
 
 /// Each player's messages in `out`, decoded, in order.
@@ -172,6 +183,7 @@ struct Seen {
     restores: usize,
     reveals: usize,
     last_snapshots: usize,
+    start_events: usize,
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
@@ -306,8 +318,9 @@ fn the_golden_replays_run_through_the_session() {
         let ids: Vec<PlayerId> = (0..=u8::MAX).take(players).map(PlayerId::new).collect();
         let mut sent = vec![Vec::new(); players];
         frames(&out, &mut sent);
-        // The start: each player's snapshot, then its turn.
-        let (mut next, mut battle) = opened(&out, &shadow, rules, name);
+        // The start: each player's snapshot, its start's events, then its turn.
+        let (mut next, mut battle, fired) = opened(&out, (&shadow, true), rules, name);
+        seen.start_events += fired;
         let mut grids: Vec<BitGrid> = ids
             .iter()
             .map(|&p| shadow.adventure().explored(p).unwrap().clone())
@@ -376,7 +389,7 @@ fn the_golden_replays_run_through_the_session() {
                 .unwrap();
                 assert_eq!(restored.state().state_hash(), shadow.state_hash(), "{name}");
                 assert_eq!(*restored.journal(), *session.journal(), "{name}");
-                opened(&told_again, &shadow, rules, name);
+                opened(&told_again, (&shadow, false), rules, name);
                 let mut again = vec![Vec::new(); players];
                 frames(&told_again, &mut again);
                 for (&player, lines) in ids.iter().zip(&again) {
@@ -413,6 +426,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.casts > 0, "{seen:?}");
     assert!(seen.reveals > 1_000, "{seen:?}");
     assert!(seen.last_snapshots > 0, "{seen:?}");
+    assert!(seen.start_events > 0, "{seen:?}");
     assert_eq!(seen.restores, 72, "{seen:?}");
 }
 

@@ -124,7 +124,9 @@ use super::{
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
-use crate::wire::game::{GameCommand, GameEvent, GameManifest, GameRecordHeader, GameReject};
+use crate::wire::game::{
+    GameAnswer, GameCommand, GameEvent, GameManifest, GameQuery, GameRecordHeader, GameReject,
+};
 use crate::wire::{ClientMessage, GoodbyeReason, Observation, Phase, Refusal, ServerMessage};
 
 /// A frame for a player: the host delivers it to the player's client.
@@ -432,7 +434,7 @@ impl<'r> GameSession<'r> {
         out: &mut Vec<GameOutbound>,
     ) -> Result<Self, GameSetupError> {
         let mut session = Self::build(rules, setup, seed, manifest, options)?;
-        session.open(out);
+        session.open_with(Self::opening, out);
         Ok(session)
     }
 
@@ -608,10 +610,44 @@ impl<'r> GameSession<'r> {
     /// Every player gets its `GameSnapshot` of the game as it stands, then each that may act its
     /// `GameTurn`.
     fn open(&mut self, out: &mut Vec<GameOutbound>) {
+        self.open_with(|_, _| {}, out);
+    }
+
+    /// [`Self::open`] with `between` the snapshots and the turns.
+    fn open_with(
+        &mut self,
+        between: impl FnOnce(&mut Self, &mut Vec<GameOutbound>),
+        out: &mut Vec<GameOutbound>,
+    ) {
         for player in players().take(self.viewers.len()) {
             self.snapshot(player, out);
         }
+        between(self, out);
         self.turns(out);
+    }
+
+    /// The game's start's events (E16 M5 T11, as a battle's start's, CLT-Q20): each player whose
+    /// town events fired at its turn start inside the build (day 1's of the first group's
+    /// players, for the towns they owned at the start: `h3_game::GameState::town_events_at_start`,
+    /// whose turn starts there with no sink) gets them, in the order they fired, in one
+    /// `GameEvents`, after its `GameSnapshot` (which shows what they made) and before any turn.
+    /// Only the game's start tells them, once: a restore and a re-taken seat never do. Whether a
+    /// player gets one depends on its own events alone (the owner's, `docs/06-security.md`).
+    fn opening(&mut self, out: &mut Vec<GameOutbound>) {
+        for (player, viewer) in players().zip(&mut self.viewers) {
+            let fired = self.state.town_events_at_start(player);
+            let fired: Vec<_> = (fired.into_iter())
+                .map(|(town, event)| h3_game::GameEvent::TownEventFired {
+                    player,
+                    town,
+                    event,
+                })
+                .collect();
+            if !fired.is_empty() {
+                let events = map::game::events(&fired, EngineViewer::Player(player));
+                viewer.post(player, |n| ServerMessage::GameEvents { n, events }, out);
+            }
+        }
     }
 
     /// `player`'s `GameSnapshot` of the game as it stands: its view starts afresh from it.
@@ -633,8 +669,9 @@ impl<'r> GameSession<'r> {
     /// pause or another seat's ask (T8b), `Leave` frees the seat and closes. A battle's `Join` is
     /// refused `NoSuchGame` and its `Command` rejected `NotSeated`; the hello, the ping and the
     /// account's requests are the connection's ([`crate::connection`]), the lobby's the host's;
-    /// `FetchRecord` gives the seat's record (E16 M5 T9b); a battle's other messages are none of
-    /// a whole game's yet: they are ignored here.
+    /// `FetchRecord` gives the seat's record (E16 M5 T9b), `GameQuery` the server's answer for
+    /// the seat's player (T11); a battle's other messages are none of a whole game's yet: they
+    /// are ignored here (its `Query` is the whole game's `GameQuery::Battle`).
     pub fn handle(&mut self, conn: ConnId, message: ClientMessage, out: &mut Vec<Outbound>) {
         match message {
             ClientMessage::GameJoin {
@@ -643,6 +680,7 @@ impl<'r> GameSession<'r> {
                 token,
             } => self.join(conn, (game, player), token.as_deref(), out),
             ClientMessage::GameCommand { seq, command } => self.command(conn, seq, command, out),
+            ClientMessage::GameQuery { seq, query } => self.ask(conn, seq, query, out),
             ClientMessage::Pause { seq } => self.pause(conn, seq, out),
             ClientMessage::FetchRecord { seq } => self.fetch_record(conn, seq, out),
             ClientMessage::Leave {} => {
@@ -824,6 +862,7 @@ impl<'r> GameSession<'r> {
         } else if held {
             self.started = true;
             self.entries.push(GameEntry::Started);
+            self.opening(&mut frames);
             self.turns(&mut frames);
         }
         self.route(frames, out);
@@ -919,6 +958,42 @@ impl<'r> GameSession<'r> {
         let (n, record) = (self.viewers[player.index()].n, self.record(player));
         let record = record.unwrap_or_default();
         out.push(reply(conn, &ServerMessage::Record { n, seq, record }));
+    }
+
+    /// `GameQuery` (E16 M5 T11): the server's answer for the seat's player ([`Self::query`]),
+    /// `GameAnswer` with the number of its last message (the answer takes none and is not
+    /// recorded, as `Record`), or its rejection, told as a command's.
+    fn ask(&mut self, conn: ConnId, seq: u32, query: GameQuery, out: &mut Vec<Outbound>) {
+        let Some(player) = self.seat_of(conn) else {
+            return out.push(game_unseated(conn, seq));
+        };
+        match self.query(player, query) {
+            Ok(answer) => {
+                // Every seat's player is a viewer of the game.
+                let n = self.viewers[player.index()].n;
+                out.push(reply(conn, &ServerMessage::GameAnswer { n, seq, answer }));
+            }
+            Err(code) => {
+                let mut frames = Vec::new();
+                self.reject(player, seq, code, &mut frames);
+                self.route(frames, out);
+            }
+        }
+    }
+
+    /// The answer to `player`'s `query` in the running game (E16 M5 T11; in-process too): what the
+    /// engine's own queries give the player now ([`map::game::answer`]: its hero's moves, its
+    /// town's hall, its battle's targets), nothing of another player's (none for a player outside
+    /// the game); it changes nothing.
+    ///
+    /// # Errors
+    ///
+    /// `NotStarted` before the game started and while it is paused, as a command.
+    pub fn query(&self, player: PlayerId, query: GameQuery) -> Result<GameAnswer, GameReject> {
+        if !self.started || self.paused {
+            return Err(GameReject::NotStarted {});
+        }
+        Ok(map::game::answer(&self.state, self.rules, player, query))
     }
 
     /// Pauses the game (E16 M5 T8b): an entry, and every holder hears `Goodbye { Paused }`.

@@ -205,6 +205,21 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 36,
             command: game::GameCommand::EndTurn {},
         },
+        // E16 M5 T11 (v50).
+        ClientMessage::GameQuery {
+            seq: 37,
+            query: game::GameQuery::Moves { hero: 3 },
+        },
+        ClientMessage::GameQuery {
+            seq: 38,
+            query: game::GameQuery::TownOffer { town: 2 },
+        },
+        ClientMessage::GameQuery {
+            seq: 39,
+            query: game::GameQuery::Battle {
+                query: Query::CastTargets { spell: 15 },
+            },
+        },
     ];
     out.extend(
         commands()
@@ -695,8 +710,67 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             n: 7,
             reveal: reveal(),
         },
+        // E16 M5 T11 (v50).
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 13,
+            answer: game::GameAnswer::Moves {
+                hero: 3,
+                moves: Some(moves()),
+            },
+        },
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 14,
+            answer: game::GameAnswer::Moves {
+                hero: 4,
+                moves: None,
+            },
+        },
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 15,
+            answer: game::GameAnswer::TownOffer {
+                town: 2,
+                offer: Some(game::TownOffer {
+                    possible: WireU64(u64::MAX),
+                    buildable: WireU64(6),
+                    payable: WireU64(2),
+                }),
+            },
+        },
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 16,
+            answer: game::GameAnswer::TownOffer {
+                town: 3,
+                offer: None,
+            },
+        },
+        ServerMessage::GameAnswer {
+            n: 7,
+            seq: 17,
+            answer: game::GameAnswer::Battle {
+                targets: vec![Target::Stack { stack: 2 }, Target::Hex { hex: 40 }],
+            },
+        },
     ]);
     out
+}
+
+/// A hero's moves (E16 M5 T11): east, then from there south-east, and one tile it passes north
+/// of its own on the way to the north-east.
+pub(super) fn moves() -> game::Moves {
+    game::Moves {
+        origin: game::Pos {
+            x: 5,
+            y: 5,
+            level: 0,
+        },
+        points: 1500,
+        steps: vec![2, 8 + 3, 0, 3 * 8 + 2],
+        left: vec![1401, 1201, 0, 1301],
+    }
 }
 
 /// A reveal of two tiles of a row, one of them changed, an object, a boat and a town (E16 M5
@@ -796,6 +870,30 @@ fn the_json_is_serdes_default_enum_form() {
             player: 1,
         }),
         r#"{"CreateMapGame":{"seq":2,"offer":"duel","player":1}}"#
+    );
+    // E16 M5 T11 (v50): a whole game's query and its answer.
+    assert_eq!(
+        text(&ClientMessage::GameQuery {
+            seq: 3,
+            query: game::GameQuery::Moves { hero: 2 },
+        }),
+        r#"{"GameQuery":{"seq":3,"query":{"Moves":{"hero":2}}}}"#
+    );
+    assert_eq!(
+        serde_json::to_string(&ServerMessage::GameAnswer {
+            n: 5,
+            seq: 3,
+            answer: game::GameAnswer::Moves {
+                hero: 2,
+                moves: Some(moves()),
+            },
+        })
+        .unwrap(),
+        concat!(
+            r#"{"GameAnswer":{"n":5,"seq":3,"answer":{"Moves":{"hero":2,"moves":{"#,
+            r#""origin":{"x":5,"y":5,"level":0},"points":1500,"steps":[2,11,0,26],"#,
+            r#""left":[1401,1201,0,1301]}}}}}"#
+        )
     );
     // A creation that does not say takes spectators (E16 M2 T4c).
     assert_eq!(
