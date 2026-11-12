@@ -3406,3 +3406,67 @@ the start only: the original data staged then (17 files, as T25b1's), used for t
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T26a1 — the towns' growth in the day (2026-11-12)
+
+One session, the user present at the start; branch `town/e09-t26a1`, `cross-lane` (the adventure
+lane's `h3-heroes`, `h3-game`'s `state/day.rs`, the catalog's `game.toml`, nine adventure
+replays, comments in `h3-map`'s and `h3-cli`'s files; the battle lane's `packs/base/core.toml` and
+harvester comment), with the `shared/` pull request `shared/e09-t26a1-quirk-marks` (#886: the
+quirk flags' doc comments in `h3-content`, a test comment in `h3-pack`). Starting point: `master`
+at 4724477 (#883 merged; the setup's baseline found CI's fingerprint, the light gates). The
+user's computer was connected at the start only: the original data staged then (17 files, as
+T25b2's), used for the scoped verify. **T26a in two** (decision 89, recommended): this part the
+growth with every week a normal one; T26a2 the week's kind.
+
+- **The Legion's effects** (`h3-heroes`' `day.rs`; ADR-0013 point 16.4): `town_growth(details,
+  core) -> [u16; 7]` (each level's `town_growth` summed over the hero's sources, each worn type
+  once, a combination's parts counting, saturating) and `owner_town_growth(details, core) -> u16`
+  (the highest `owner_town_growth`, 0 without). A test on the day pack: a piece, two copies of a
+  type, two types at a level, a combination with its part worn beside it and a part needing a
+  skill, the saturation, a specialty's share.
+- **The inputs** (TWN-GRO-001; `h3-game`'s new `town/growth.rs`, design §41): `inputs(state,
+  rules) -> Vec<GrowthInputs>` by `TownId`: a neutral town's `NEUTRAL`; an owned town's owner's
+  share (the highest over its heroes on the map), the visitor's Legion, per index the owner's
+  dwellings on the map whose kind's first creature is the index's (a base one at its upgrade's
+  index too, only where the level has an upgrade), a per-player table built at its first town.
+- **The week and the month in the day** (TWN-GRO-003, -004; GAM-CAL-002): `grow_week` after
+  `WeekStarted` and before the adventure's week step, `grow_month` after `MonthStarted` and before
+  the adventure's month step with the week's inputs (`MonthKind` mapped to `MonthGrowth`, a
+  normal month writing nothing), each town written only where it changes; `advance_day`'s month
+  block now inside its week block. Every week `WeekKind::Normal` (TWN-GRO-002 is T26a2's).
+- **The events' creatures** (TWN-EVT-004; design §46): `h3_towns::event_creatures(town, part,
+  &creatures)` (`growth.rs`: the upgraded dwelling's index when it is ever built, else the
+  dwelling's, else lost, held at 32 767, `TWN-QUIRK-8`), applied by `town/events.rs` after the
+  event's buildings; no event tells it (the counts join the owner's view with T26b).
+  `TWN-STUB-10` lifted (`docs/stubs.toml`; the comments in `h3-map`'s plans, its census example's
+  label and `h3-cli`'s replay doc).
+- **Tests:** `h3-towns`' event creatures (no dwelling, a dwelling, the upgraded one, the bound,
+  a faction without a record); `h3-game`'s `town/tests/growth.rs` on four towns (red's with its
+  visitor wearing the Legs and the Statue, blue's, red's without a visitor, a neutral one) and
+  three huts (red's, blue's, a neutral one): the inputs whole; the week on days 8, 15, 22 and 29
+  (43 and 20, 31, 38, 22 on day 8), nothing between; a gogs' month (T0's gogs 56 to 112) and the
+  Plague (each count less its growth, halved; the neutral town less half, the profile's flag
+  off); a town event's imps added on day 2 and its gogs lost. The town tests' `rules_with_adventure`
+  (an adventure pack edited before it compiles).
+- **The quirk marks:** `TWN-QUIRK-9` and `-10` no longer "planned" in `h3-content`'s flag docs and
+  `h3-pack`'s test (#886, `shared/`) and in the harvester's profile comment and the base pack's
+  `core.toml` (this pull request; comments only, no hash moved).
+- **Catalog:** TWN-GRO-001, -003, -004 and TWN-EVT-004 say where the game runs them; GAM-CAL-002
+  the towns' week and month in the order. The design note's §41 to §43 and §46 carry *As built
+  (T26a1)* lines.
+- **No version moved.** Nine adventure replays re-recorded (`builds-events-s1`, `builds-s262-d14`,
+  `-s271-d14`, `-s290-d14`, `builds-week-s1`, `towns-income-s1`, `towns-s173-d21`, `-s1702-d21`,
+  `-s3435-d21`): only checkpoints and final hashes, each first differing at day 8's start; the
+  other 63 unchanged. The bot reports unchanged.
+- **Bench** (callgrind, against `master` built in `target/wt-master`): `day-start-builds-36`
+  +0.42 % (the towns' week: 361 745 to 363 281 Ir), `day-start-towns-36` +0.14 % against its
+  baseline, `day-start-dwellings-xl-144` −0.45 %, `month-start-xl-144` and `day-start-xl-144`
+  within 0.01 % and +0.40 % of their baselines; every workload inside its gate (`master` itself
+  sits at +1.6 % and +1.69 % of the two XL baselines), none re-baselined.
+- **Agent's calls (change freely):** decision 89's list.
+
+**The queue:** T26a2 and T26b queued (T26a2 next, its cut confirmed at its start).
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

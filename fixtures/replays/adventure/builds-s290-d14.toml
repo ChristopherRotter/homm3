@@ -92,10 +92,10 @@ checkpoints = [
     "0x49b632484f8478fd",
     "0xaa5215de80452369",
     "0x5fd700c356ff76cb",
-    "0xb5844f795962eab9",
-    "0xffc2c01e1e3c7b1b",
-    "0xd6b7bf6027da6550",
-    "0x472ac91edb3ed285",
+    "0x03420473c5d0eb1b",
+    "0x5f56beb288586929",
+    "0x5fb64630ae26871a",
+    "0x4efdade6063adfe3",
 ]
 
 [replay]
@@ -136,4 +136,4 @@ import_version = 21
 
 [result]
 day = 15
-final_hash = "0x9d520947b120b6a5"
+final_hash = "0xd3dfeb6735e089e0"

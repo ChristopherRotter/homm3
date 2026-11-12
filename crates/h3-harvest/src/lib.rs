@@ -992,7 +992,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.roe_witch_hut_mask\" = true, \
          \"quirk.adventure.full_backpack_refuses\" = true, \
          \"quirk.town.creature_month_exact\" = true, \
-         \"quirk.town.neutral_plague_full_growth\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, TWN-QUIRK-9, TWN-QUIRK-10 (planned)\n",
+         \"quirk.town.neutral_plague_full_growth\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, TWN-QUIRK-9, TWN-QUIRK-10\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -1032,7 +1032,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.adventure.roe_witch_hut_mask\" = false, \
          \"quirk.adventure.full_backpack_refuses\" = false, \
          \"quirk.town.creature_month_exact\" = false, \
-         \"quirk.town.neutral_plague_full_growth\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, TWN-QUIRK-9, TWN-QUIRK-10 (planned)\n",
+         \"quirk.town.neutral_plague_full_growth\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-3 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-13, BAT-QUIRK-19, BAT-QUIRK-23, BAT-QUIRK-24, BAT-QUIRK-25, BAT-QUIRK-27 to BAT-QUIRK-30, ADV-QUIRK-1 to ADV-QUIRK-6, ADV-QUIRK-9, ADV-QUIRK-10, ADV-QUIRK-17, ADV-QUIRK-18, ADV-QUIRK-21, ADV-QUIRK-22, TWN-QUIRK-9, TWN-QUIRK-10\n",
     );
 
     // ab
