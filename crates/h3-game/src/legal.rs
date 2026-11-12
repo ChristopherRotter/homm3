@@ -47,10 +47,10 @@ use crate::{GameRuleset, GameState, OpenBattle};
 /// hall offers whose price the treasury holds, in the record's order (TWN-BLD-001:
 /// `GameState::town_offer`'s payable set; none for a town built in today, TWN-BLD-004). Empty for
 /// a player whose turn is not running or who is not in the game, by `apply`'s own checks
-/// (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's and an army dialog's
-/// management commands [`legal_management`]'s.
+/// (ADR-0017's consequence). The moves are [`legal_moves`]; a meeting's, an army dialog's and an
+/// exchange's management commands [`legal_management`]'s.
 // rule: GAM-DEC-001, GAM-DEC-002, GAM-DEC-003, GAM-DEC-004, GAM-DEC-005, GAM-DEC-006, GAM-BAT-001
-// rule: GAM-DEC-008, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001
+// rule: GAM-DEC-008, GAM-DEC-009, ADV-SHY-003, ADV-TEL-008, TWN-BLD-001
 pub fn legal_commands(state: &GameState, rules: &GameRuleset, actor: Actor) -> Vec<GameCommand> {
     if state.check_held(actor).is_err() {
         return Vec::new();
@@ -160,13 +160,14 @@ fn answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<Answ
             .chain([Answer::Hire(HireAnswer::Close)])
             .collect();
     }
-    // The other decisions but a battle: a meeting or an army dialog.
+    // The other decisions but a battle: a meeting, an army dialog or an exchange.
     vec![Answer::Close]
 }
 
 /// The system actor's default answer to `player`'s first open decision (ADR-0017 points 2 and 6;
 /// E08 T30, T63a), which the hosting layer gives when the player does not answer (the server
-/// lane's M5): an offer's `Decline`; a meeting's and an army dialog's `Close` (E08 T51b); a
+/// lane's M5): an offer's `Decline`; a meeting's and an army dialog's `Close` (E08 T51b), an
+/// exchange's (E08 T114a2); a
 /// chest's `Gold` (the original's plain OK), the Arena's `Attack` (its Cancel), a School's and a
 /// University's `Leave`, a hire dialog's `Close` (the original's Close, E08 T95b); for a level-up
 /// the offer the original's choice takes (HER-LVL-006, the original's when the dialog's time runs
@@ -266,14 +267,16 @@ pub fn legal_moves(
 /// E08 T51a, T51b; ADR-0017 point 6: listed per hero, as its moves are), each as `apply` accepts
 /// it: its army's commands ([`h3_adventure::AdventureState::army_commands`]: each stack's moves
 /// onto the army's other slots, then onto the other army's slots, a meeting's other hero's or an
-/// army dialog's group's, then its dismissals; with an army dialog open the group's own after
-/// them: its stacks' moves onto its other slots and onto the hero's, its dismissals), both
+/// army dialog's group's or an exchange's garrison's, then its dismissals; with an army dialog or
+/// an exchange open the group's or the garrison's own after them, by the one owner rule
+/// (ADV-GAR-003; E08 T114a2): its stacks' moves onto its other slots and onto the hero's, its
+/// dismissals), both
 /// formations and both values of the flag, each artifact's moves onto every place of the hero
 /// and then, with a meeting open, of the other hero that takes it (`h3_heroes::check_move`: the
 /// sources and the targets in position order, then by backpack index, a target up to the
 /// backpack's length), then the assemblies and the disassemblies by position. Empty when the
-/// actor's turn is not running, it has another open decision or a meeting or an army dialog that
-/// does not hold the hero, by `apply`'s own checks, or the hero is not its on the map. A split's
+/// actor's turn is not running, it has another open decision or a meeting, an army dialog or an
+/// exchange that does not hold the hero, by `apply`'s own checks, or the hero is not its on the map. A split's
 /// counts are [`split_range`]'s.
 // rule: GAM-MAN-002
 pub fn legal_management(
@@ -302,18 +305,21 @@ pub fn legal_management(
         Together::Meeting([visitor, visited]) => {
             Some(if visitor == hero { visited } else { visitor })
         }
-        Together::Alone | Together::Dialog(_) => None,
+        Together::Alone | Together::Dialog(_) | Together::Exchange { .. } => None,
     };
-    let toward = match together {
-        Together::Meeting(_) => other.map(ArmyRef::Hero),
+    // The army held with the hero without a hero of its own: an army dialog's group, an
+    // exchange's stationary army (E08 T114a2).
+    let stationary = match together {
         Together::Dialog(_) => Some(ArmyRef::Group),
-        Together::Alone => None,
+        Together::Exchange { army, .. } => Some(army),
+        Together::Alone | Together::Meeting(_) => None,
     };
+    let toward = other.map(ArmyRef::Hero).or(stationary);
     let own_army = ArmyRef::Hero(hero);
     let adventure = state.adventure();
     let army = adventure.army_commands(part, player, (own_army, toward), group);
-    let grouped = group.map_or_else(Vec::new, |_| {
-        adventure.army_commands(part, player, (ArmyRef::Group, Some(own_army)), group)
+    let grouped = stationary.map_or_else(Vec::new, |stationary| {
+        adventure.army_commands(part, player, (stationary, Some(own_army)), group)
     });
     let formations =
         [Formation::Loose, Formation::Tight].map(|formation| Manage::Formation { hero, formation });
@@ -368,7 +374,8 @@ pub fn legal_management(
 /// [`h3_adventure::AdventureState::split_range`], with the open army dialog's group. `None` when
 /// the actor may not give the split now (its turn, its open decision: `apply`'s checks), the two
 /// slots' armies are not together (one army outside a decision, a meeting's two heroes, an army
-/// dialog's hero and group), or no split is possible there.
+/// dialog's hero and group, an exchange's hero and garrison), or no split is possible there (the
+/// one owner rule included, ADV-GAR-003).
 // rule: GAM-MAN-002
 pub fn split_range(
     state: &GameState,

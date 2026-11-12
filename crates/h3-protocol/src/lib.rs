@@ -114,8 +114,11 @@ pub mod wire;
 /// first line a `wire::game::GameRecordHeader`; `GameRejected { NotSeated }` without a seat). v49
 /// (E16 M5 T10): a map offer names the computer that plays a whole game's unowned battle sides
 /// (`wire::game::MapOffer`'s `computer`, `wire::game::Computer`), whose commands the session
-/// tells as the system actor's.
-pub const PROTOCOL_VERSION: u32 = 49;
+/// tells as the system actor's. v50 (E08 T114a2, the adventure lane's, `cross-lane`): a map
+/// garrison's exchange (`wire::game::Decision::Exchange`, the event `ExchangeOpened`), its army in
+/// the army commands (`wire::game::ArmyRef::MapGarrison`) and the one owner rule's refusals
+/// (`wire::game::ArmyReject`'s `NoGarrison`, `NotOwn`, `OnlyEmpty`).
+pub const PROTOCOL_VERSION: u32 = 50;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

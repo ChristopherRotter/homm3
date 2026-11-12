@@ -538,6 +538,20 @@ pub enum Decision {
         /// The dialog.
         hire: Hire,
     },
+    /// A map garrison's exchange (GAM-DEC-009, E08 T114a2), closed by the viewer; meanwhile it
+    /// manages the hero's army and the garrison's, also between them, by the one owner rule.
+    Exchange {
+        /// The visiting hero, on the garrison's entrance.
+        hero: u16,
+        /// The garrison's object index, which the army commands name ([`ArmyRef::MapGarrison`]).
+        garrison: u32,
+        /// The garrison by type and anchor.
+        object: ObjectRef,
+        /// Whether the viewer may take its troops back (its removable flag).
+        removable: bool,
+        /// The garrison's stacks, by slot.
+        army: Vec<ArmyStack>,
+    },
 }
 
 /// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 point 6), its

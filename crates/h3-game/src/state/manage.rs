@@ -1,8 +1,9 @@
 //! The management commands (GAM-MAN-001; E08 T51a, T51b; increment 6's design note §10 in
 //! `E08-log.md`): a player's commands on its heroes on the map in its turn, outside a decision one
 //! hero at a time; a command between two armies needs them together, a meeting's two heroes
-//! (GAM-DEC-003) or a hero and its army dialog's group (GAM-DEC-004), and while one is open the
-//! commands name only what it holds. The game checks the actor, the turn and the decision, which
+//! (GAM-DEC-003), a hero and its army dialog's group (GAM-DEC-004) or, since E08 T114a2, a hero
+//! and the map garrison of its exchange (GAM-DEC-009), and while one is open the commands name
+//! only what it holds. The game checks the actor, the turn and the decision, which
 //! armies are together, then the context's rules (the adventure's for armies, ADR-0016 point 3;
 //! `h3-heroes`' for artifacts, ADR-0013 point 14) before anything changes, then tells the owner
 //! alone.
@@ -25,7 +26,9 @@ impl GameState {
     /// `Manage`: a management command of `player` (GAM-MAN-001; E08 T51a, T51b): in its turn, on
     /// its heroes on the map, without an open decision one hero at a time; with a meeting open on
     /// its two heroes, also between them; with an army dialog open on its hero and the group, also
-    /// between them ([`Self::check_managing`], [`Together::admits`]). The army commands
+    /// between them; with an exchange open on its hero and a map garrison, also between them (E08
+    /// T114a2, the one owner rule the adventure's) ([`Self::check_managing`],
+    /// [`Together::admits`]). The army commands
     /// change the adventure's armies and the group, each slot named told (`StackChanged`); the
     /// formation and the flag the hero on the map (`FormationSet`, `TacticsSet`); the artifact
     /// commands the heroes' details through `h3-heroes`' changes, each told (`HeroChanged`). Seen
@@ -165,8 +168,9 @@ impl GameState {
         Ok(())
     }
 
-    /// The stack at `at`: in its hero's army on the map, in `player`'s open army dialog's group, or
-    /// since E09 T8b2b in a town's garrison (the slots of the garrison's merge, TWN-SIE-002).
+    /// The stack at `at`: in its hero's army on the map, in `player`'s open army dialog's group,
+    /// since E09 T8b2b in a town's garrison (the slots of the garrison's merge, TWN-SIE-002), or
+    /// since E08 T114a2 in a map garrison's army (its exchange's commands).
     pub(crate) fn stack_at(&self, player: PlayerId, at: ArmySlot) -> Option<ArmyStack> {
         let army = match at.army {
             ArmyRef::Hero(hero) => self.adventure.hero(hero).map(|h| &h.army[..]),
@@ -176,6 +180,7 @@ impl GameState {
                 .map()
                 .town_object(town)
                 .and_then(|index| self.adventure.town_garrison(index)),
+            ArmyRef::MapGarrison(index) => Some(self.adventure.garrison_army(index)),
         };
         army.and_then(|army| army.iter().find(|s| s.slot == at.slot))
             .copied()
@@ -212,7 +217,7 @@ impl GameState {
 
 impl Together {
     /// Checks that a command may name `heroes` (E08 T51b): any outside a decision (each one's
-    /// owner checked after), else only heroes the open meeting or army dialog holds.
+    /// owner checked after), else only heroes the open meeting, army dialog or exchange holds.
     ///
     /// # Errors
     ///
@@ -224,7 +229,7 @@ impl Together {
         let held = |hero: HeroId| match self {
             Self::Alone => true,
             Self::Meeting(held) => held.contains(&hero),
-            Self::Dialog(held) => held == hero,
+            Self::Dialog(held) | Self::Exchange { hero: held, .. } => held == hero,
         };
         if heroes.all(held) {
             Ok(())
@@ -235,14 +240,16 @@ impl Together {
 
     /// Checks that an army command's armies (`ArmyCommand::armies`) may meet (ADR-0017 point 6;
     /// E08 T51a, T51b): outside a decision one hero's army (the group alone is `NoGroup`, two
-    /// armies `NotTogether`); in a meeting its two heroes' (the group is `NoGroup`); in an army
-    /// dialog its hero's and the group; then that the open decision holds each hero named
-    /// ([`Self::admits_heroes`]).
+    /// armies `NotTogether`, since E08 T114a2 a map garrison alone `NotTogether` too); in a
+    /// meeting its two heroes' (the group is `NoGroup`); in an army dialog its hero's and the
+    /// group; in an exchange (GAM-DEC-009, E08 T114a2) its hero's and its stationary army (the
+    /// group is `NoGroup`); a map garrison the open decision does not hold is `DecisionOpen`; then
+    /// that the open decision holds each hero named ([`Self::admits_heroes`]).
     ///
     /// # Errors
     ///
     /// `Manage(Army(NoGroup))`, `Manage(NotTogether)` or `DecisionOpen`.
-    // rule: GAM-MAN-001
+    // rule: GAM-MAN-001, GAM-DEC-009
     pub(crate) fn admits(
         self,
         (from, to): (ArmyRef, Option<ArmyRef>),
@@ -254,17 +261,29 @@ impl Together {
                 Some(ManageError::Army(ArmyCommandError::Garrison(town)))
             }
             (Self::Alone, (ArmyRef::Hero(_), None)) | (Self::Dialog(_), _) => None,
-            (Self::Alone, (_, Some(_))) => Some(ManageError::NotTogether),
-            (Self::Alone | Self::Meeting(_), (ArmyRef::Group, _) | (_, Some(ArmyRef::Group))) => {
-                Some(no_group)
+            (Self::Alone, (_, Some(_)) | (ArmyRef::MapGarrison(_), None)) => {
+                Some(ManageError::NotTogether)
             }
-            (Self::Meeting(_), _) => None,
+            (
+                Self::Alone | Self::Meeting(_) | Self::Exchange { .. },
+                (ArmyRef::Group, _) | (_, Some(ArmyRef::Group)),
+            ) => Some(no_group),
+            (Self::Meeting(_) | Self::Exchange { .. }, _) => None,
         };
         error.map_or(Ok(()), |error| Err(GameCommandError::Manage(error)))?;
-        let heroes = [Some(from), to].into_iter().flatten();
-        self.admits_heroes(heroes.filter_map(|army| match army {
+        let named = [Some(from), to].into_iter().flatten();
+        // E08 T114a2: a map garrison only in its own exchange.
+        let held =
+            |army: ArmyRef| matches!(self, Self::Exchange { army: held, .. } if held == army);
+        if named
+            .clone()
+            .any(|army| matches!(army, ArmyRef::MapGarrison(_)) && !held(army))
+        {
+            return Err(GameCommandError::DecisionOpen);
+        }
+        self.admits_heroes(named.filter_map(|army| match army {
             ArmyRef::Hero(hero) => Some(hero),
-            ArmyRef::Group | ArmyRef::Garrison(_) => None,
+            ArmyRef::Group | ArmyRef::Garrison(_) | ArmyRef::MapGarrison(_) => None,
         }))
     }
 }

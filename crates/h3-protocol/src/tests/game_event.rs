@@ -80,6 +80,7 @@ fn slot_back(s: w::ArmySlot) -> ArmySlot {
             w::ArmyRef::Hero { hero } => ArmyRef::Hero(HeroId::new(hero)),
             w::ArmyRef::Group {} => ArmyRef::Group,
             w::ArmyRef::Garrison { town } => ArmyRef::Garrison(TownId::new(town)),
+            w::ArmyRef::MapGarrison { garrison } => ArmyRef::MapGarrison(garrison as usize),
         },
         slot: s.slot,
     }
@@ -548,6 +549,21 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             object_type: ty(object_type),
             anchor: pos_back(anchor),
         },
+        G::ExchangeOpened {
+            player,
+            hero,
+            garrison,
+            object_type,
+            anchor,
+            removable,
+        } => GameEvent::ExchangeOpened {
+            player: p(player),
+            hero: id(hero),
+            garrison: garrison as usize,
+            object_type: ty(object_type),
+            anchor: pos_back(anchor),
+            removable,
+        },
         G::ChoiceOpened {
             player,
             hero,
@@ -811,6 +827,14 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             },
             stack: None,
         },
+        GameEvent::StackChanged {
+            player: P0,
+            at: ArmySlot {
+                army: ArmyRef::MapGarrison(41),
+                slot: 3,
+            },
+            stack: Some(stack),
+        },
         GameEvent::FormationSet {
             player: P0,
             hero,
@@ -840,6 +864,14 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             hero,
             object_type: ty,
             anchor: at,
+        },
+        GameEvent::ExchangeOpened {
+            player: P0,
+            hero,
+            garrison: 41,
+            object_type: ty,
+            anchor: at,
+            removable: true,
         },
         GameEvent::ChoiceOpened {
             player: P0,

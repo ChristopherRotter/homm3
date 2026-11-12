@@ -671,6 +671,22 @@ fn decision_back(d: &Decision) -> DecisionView {
                 })
                 .collect(),
         }),
+        Decision::Exchange {
+            hero,
+            garrison,
+            object,
+            removable,
+            army,
+        } => DecisionView::Exchange {
+            hero: HeroId::new(*hero),
+            garrison: *garrison as usize,
+            object: (
+                Handle::from_raw(object.object_type),
+                pos_back(object.anchor),
+            ),
+            removable: *removable,
+            army: army_back(army),
+        },
     }
 }
 
@@ -1001,6 +1017,21 @@ fn every_decision() -> Vec<DecisionView> {
             cost: price(),
         }],
     }));
+    // E08 T114a2: a map garrison's exchange, armed and removable, and empty and not.
+    out.push(DecisionView::Exchange {
+        hero,
+        garrison: 41,
+        object: (object_type, anchor),
+        removable: true,
+        army: stacks(3),
+    });
+    out.push(DecisionView::Exchange {
+        hero,
+        garrison: 7,
+        object: (object_type, anchor),
+        removable: false,
+        army: Vec::new(),
+    });
     out
 }
 

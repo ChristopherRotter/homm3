@@ -92,6 +92,11 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         Manage::Army(ArmyCommand::Dismiss {
             at: slot(ArmyRef::Hero(hero), 6),
         }),
+        // E08 T114a2: a map garrison's army in its exchange.
+        Manage::Army(ArmyCommand::Move {
+            from: slot(ArmyRef::Hero(hero), 1),
+            to: slot(ArmyRef::MapGarrison(41), 5),
+        }),
         Manage::Formation {
             hero,
             formation: EngineFormation::Loose,
@@ -198,6 +203,9 @@ fn every_rejection() -> Vec<GameCommandError> {
                 A::OtherCreature,
                 A::SplitCount(0),
                 A::Garrison(TownId::new(5)),
+                A::NoGarrison(12),
+                A::NotOwn,
+                A::OnlyEmpty,
             ]
             .map(|error| E::Manage(ManageError::Army(error))),
         );
@@ -339,6 +347,9 @@ fn manage_back(error: w::ManageReject) -> ManageError {
                 R::OtherCreature {} => A::OtherCreature,
                 R::SplitCount { count } => A::SplitCount(count),
                 R::Garrison { town } => A::Garrison(TownId::new(town)),
+                R::NoGarrison { garrison } => A::NoGarrison(garrison as usize),
+                R::NotOwn {} => A::NotOwn,
+                R::OnlyEmpty {} => A::OnlyEmpty,
             }
         }),
         w::ManageReject::Artifact { error } => ManageError::Artifact(match error {

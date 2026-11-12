@@ -197,6 +197,25 @@ impl GameObservation {
                     }),
                 });
             }
+            GameEvent::ExchangeOpened {
+                player: _,
+                hero,
+                garrison,
+                object_type,
+                anchor,
+                removable,
+            } => {
+                self.decision = Some(Decision::Exchange {
+                    hero,
+                    garrison,
+                    object: ObjectRef {
+                        object_type,
+                        anchor,
+                    },
+                    removable,
+                    army: Vec::new(),
+                });
+            }
             GameEvent::DecisionClosed { player: _ } => self.close_decision(),
             // Told after its dialog closed, with its group.
             GameEvent::GroupLost { .. } => {}
@@ -599,6 +618,16 @@ impl GameObservation {
             ArmyRef::Garrison { town } => self
                 .town_mut(town)
                 .and_then(|view| view.garrison.army.as_mut()),
+            // E08 T114a2: the open exchange's garrison (its stacks at the opening, then its
+            // commands' changes); the other viewers' view of a map garrison is T114b's.
+            ArmyRef::MapGarrison { garrison } => match &mut self.decision {
+                Some(Decision::Exchange {
+                    garrison: open,
+                    army,
+                    ..
+                }) if *open == garrison => Some(army),
+                _ => None,
+            },
         };
         if let Some(held) = held {
             set_slot(held, slot, stack);

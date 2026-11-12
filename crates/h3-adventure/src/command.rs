@@ -245,6 +245,13 @@ pub struct AdventureOutcome {
     /// T84a): the game opens the army dialog between the hero's army and the mine's guards, whose
     /// group its owner's `Close` keeps on the mine ([`crate::AdventureState::set_guards`]).
     pub garrison: Option<Garrison>,
+    /// The exchange a map garrison's visit opens (ADV-GAR-003, GAM-DEC-009; E08 T114a2,
+    /// increment 12's design note §13): at a garrison of the visitor's team, at an empty one the
+    /// visit flags, and after a won battle's flag once the winner's levels are given
+    /// ([`crate::AdventureState::give_won`]). The game opens it as the player's decision; while
+    /// it stands the player's army commands name the hero's army and the garrison's
+    /// ([`crate::ArmyRef::MapGarrison`]) by the one owner rule.
+    pub exchange: Option<Exchange>,
     /// What the visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): the artifacts,
     /// spells, skills, primary skills, spell points, bonuses and experience of a pickup, a
     /// teacher or a find, checked against the details the visit read; the game applies them.
@@ -540,6 +547,24 @@ pub struct Garrison {
     pub anchor: Pos,
     /// Its guards as they stand, by slot ([`crate::AdventureState::mine_guards`]).
     pub guards: Vec<ArmyStack>,
+}
+
+/// A map garrison's exchange (ADV-GAR-003, GAM-DEC-009; E08 T114a2, increment 12's design note
+/// §13; survey `E08-garrisons-bonuses.md` §6, the original's `garrison_exchange_dialog` 0x5D1130):
+/// the visiting hero and the garrison, named by its object index for the army commands
+/// ([`crate::ArmyRef::MapGarrison`]) and by type and anchor for its owner's view. The garrison's
+/// army and removable flag are read from the adventure while it stands
+/// ([`crate::AdventureState::garrison_army`], [`crate::AdventureState::garrison_removable`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Exchange {
+    /// The visiting hero, on the garrison's entrance.
+    pub hero: HeroId,
+    /// The garrison's object index.
+    pub garrison: usize,
+    /// The garrison's type.
+    pub object_type: ObjectTypeId,
+    /// The garrison's anchor.
+    pub anchor: Pos,
 }
 
 /// A battle a visit starts (ADR-0017 points 10 and 11; GAM-BAT-001, E08 T19a): its two sides as

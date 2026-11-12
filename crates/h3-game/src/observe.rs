@@ -118,6 +118,22 @@ pub enum DecisionView {
     /// A hire dialog (GAM-DEC-008, E08 T95b): its army, its source and the source's creatures
     /// with their counts and costs, answered `Hire`.
     Hire(HireView),
+    /// A map garrison's exchange (GAM-DEC-009, E08 T114a2; increment 12's design note §13),
+    /// closed with `Close`; meanwhile the viewer manages the hero's army and the garrison's, also
+    /// between them, by the one owner rule (ADV-GAR-003).
+    Exchange {
+        /// The visiting hero, on the garrison's entrance.
+        hero: HeroId,
+        /// The garrison's object index, which the army commands name
+        /// (`h3_adventure::ArmyRef::MapGarrison`).
+        garrison: usize,
+        /// The garrison by type and anchor.
+        object: (ObjectTypeId, Pos),
+        /// Whether the viewer may take its troops back (its removable flag).
+        removable: bool,
+        /// The garrison's stacks, by slot.
+        army: Vec<ArmyStack>,
+    },
 }
 
 impl DecisionView {
@@ -258,6 +274,18 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
             .or_else(|| {
                 let dialog = state.hire_dialog(player)?;
                 Some(DecisionView::Hire(state.hire_view(rules, dialog)))
+            })
+            .or_else(|| {
+                let exchange = state.exchange(player)?;
+                let garrison = exchange.garrison;
+                let adventure = state.adventure();
+                Some(DecisionView::Exchange {
+                    hero: exchange.hero,
+                    garrison,
+                    object: (exchange.object_type, exchange.anchor),
+                    removable: adventure.garrison_removable(garrison).unwrap_or_default(),
+                    army: adventure.garrison_army(garrison).to_vec(),
+                })
             }),
         heroes: hero_infos(state, &adventure.heroes),
         adventure,
@@ -389,6 +417,7 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::MeetingOpened { player: owner, .. }
         | GameEvent::ArmyDialogOpened { player: owner, .. }
         | GameEvent::LeaveGuardsOpened { player: owner, .. }
+        | GameEvent::ExchangeOpened { player: owner, .. }
         | GameEvent::ChoiceOpened { player: owner, .. }
         | GameEvent::UniversityOpened { player: owner, .. }
         | GameEvent::HireOpened { player: owner, .. }

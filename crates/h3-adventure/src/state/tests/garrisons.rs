@@ -4,12 +4,17 @@
 //! §14) the garrisons: a garrison of the mover's team crossed on the way, any other a
 //! destination; another's or a neutral one fought at once, unsplit, an empty one flagged; the
 //! battle's end keeping the survivors or flagging it after the levels; the anti-magic battle.
+//! Since E08 T114a2 (design note §13) the exchange: opened at a team's garrison where a move ends
+//! or by a revisit, after an empty one's flag and after a won battle's levels; its army commands
+//! by the one owner rule.
 
 use std::sync::Arc;
 
+use super::revisits::{revisit, revisitable};
 use super::teleporters::{BLUE, HERO, ONTO, RED, Rules, jump_state, p, stack, walk};
 use super::*;
-use crate::command::{BattleStart, Defender};
+use crate::army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
+use crate::command::{BattleStart, Defender, Exchange};
 use crate::ruleset::{BONUS_DAYS, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
     GNOLL, PIKEMAN, WOLF, hero_at, hero_details, key, movement_rules_with, started, stream, world,
@@ -149,6 +154,17 @@ fn garrison(
     owner: Option<PlayerId>,
     army: &[ArmyStack],
 ) -> ObjectSetup {
+    fixed(rules, (k, at), owner, army, true)
+}
+
+/// [`garrison`] with its removable flag `removable`.
+fn fixed(
+    rules: &Rules,
+    (k, at): (&str, Pos),
+    owner: Option<PlayerId>,
+    army: &[ArmyStack],
+    removable: bool,
+) -> ObjectSetup {
     ObjectSetup {
         scenery: Scenery::default(),
         anchor: at,
@@ -161,9 +177,23 @@ fn garrison(
         guards: None,
         holds: Holds::Garrison {
             army: army.to_vec(),
-            removable: true,
+            removable,
         },
         owner,
+    }
+}
+
+/// The exchange of red's hero [`HERO`] with the garrison at object index 0 on [`ENTRANCE`], of
+/// type `k`.
+fn exchange(rules: &Rules, k: &str) -> AdventureOutcome {
+    AdventureOutcome {
+        exchange: Some(Exchange {
+            hero: HERO,
+            garrison: 0,
+            object_type: rules.1.object_type_by_key(k).unwrap(),
+            anchor: ENTRANCE,
+        }),
+        ..AdventureOutcome::default()
     }
 }
 
@@ -223,13 +253,13 @@ fn a_garrison_of_the_mover_s_team_is_crossed_and_every_other_is_a_destination() 
         (state.owner(0), state.garrison_army(0)),
         (Some(RED), &GNOLLS[..])
     );
-    // A move that ends on it visits it (its exchange: T114a2, `ADV-STUB-17`); a border gate its
-    // key's holder passes is never visited.
+    // A move that ends on it visits it: its exchange (ADV-GAR-003), nothing else told; a border
+    // gate its key's holder passes is never visited.
     let mut ending = before.clone();
     let (outcome, events) = walk(&mut ending, &rules, &east(3), &mut stream()).unwrap();
     assert_eq!(
         (outcome, after_steps(&events)),
-        (AdventureOutcome::default(), vec![])
+        (exchange(&rules, "t:garrison"), vec![])
     );
     assert_eq!(ending.hero(HERO).unwrap().pos, ENTRANCE);
     let visit = ending.visit_at(&rules.1, RED, ENTRANCE).unwrap();
@@ -321,8 +351,8 @@ fn an_empty_garrison_of_another_team_is_flagged_with_its_reveal() {
             vec![garrison(&rules, "t:garrison", ENTRANCE, owner, &[])],
         );
         let (outcome, events) = walk(&mut state, &rules, &east(3), &mut stream()).unwrap();
-        // The flag and its reveal around the entrance; the exchange comes with T114a2.
-        assert_eq!(outcome, AdventureOutcome::default());
+        // The flag and its reveal around the entrance, then the exchange (ADV-GAR-003).
+        assert_eq!(outcome, exchange(&rules, "t:garrison"));
         assert_eq!(state.owner(0), Some(RED));
         let told = after_steps(&events);
         assert_eq!(
@@ -386,12 +416,14 @@ fn a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels() {
         assert_eq!(events, []);
         assert_eq!((fought.owner(0), fought.garrison_army(0)), (owner, &[][..]));
         let mut events = Vec::new();
+        let mut gone = fought.clone();
         let given = fought.give_won(
             (&rules.0, &rules.1, &details[..]),
             (HERO, ENTRANCE),
             &mut events,
         );
-        assert_eq!(given, AdventureOutcome::default());
+        // Then the exchange (ADV-GAR-003), for a winner still on the map.
+        assert_eq!(given, exchange(&rules, "t:garrison"));
         assert_eq!(fought.owner(0), Some(RED));
         assert_eq!(
             events[0].kind,
@@ -401,6 +433,13 @@ fn a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels() {
                 owner: RED,
             }
         );
+        gone.heroes.retain(|h| h.id != HERO);
+        let given = gone.give_won(
+            (&rules.0, &rules.1, &details[..]),
+            (HERO, ENTRANCE),
+            &mut Vec::new(),
+        );
+        assert_eq!(given, AdventureOutcome::default());
     }
 }
 
@@ -421,4 +460,287 @@ fn a_battle_on_an_anti_magic_garrison_s_entrance_is_fought_without_magic() {
     assert!(!state.anti_magic(&rules.1, p(2, 1)));
     assert!(!state.anti_magic(&rules.1, p(7, 1)));
     assert!(!state.anti_magic(&rules.1, p(5, 1)));
+}
+
+// covers: ADV-GAR-003, ADV-GAR-004, ADV-TEL-008
+#[test]
+fn a_passed_garrison_of_the_hero_s_team_is_revisited_into_its_exchange() {
+    let rules = garrison_rules();
+    let own = garrison(&rules, "t:garrison", ENTRANCE, Some(RED), &GNOLLS);
+    let mut state = corridor(&rules, vec![own]);
+    // On the way to (5, 1) the hero passes it; standing on (5, 1) nothing is revisited.
+    walk(&mut state, &rules, &east(5), &mut stream()).unwrap();
+    assert_eq!(revisitable(&state, &rules, RED), []);
+    // Standing on its entrance (a walk back), the revisit is its exchange (the original's space
+    // key over the hero's own garrison), with no step and no points spent.
+    let back = [p(4, 1), ENTRANCE];
+    let (outcome, _) = walk(&mut state, &rules, &back, &mut stream()).unwrap();
+    assert_eq!(outcome, exchange(&rules, "t:garrison"));
+    assert_eq!(revisitable(&state, &rules, RED), [HERO]);
+    let points = state.hero(HERO).unwrap().movement;
+    let (outcome, events) = revisit(&mut state, &rules, (RED, HERO), &mut stream()).unwrap();
+    assert_eq!((outcome, events), (exchange(&rules, "t:garrison"), vec![]));
+    assert_eq!(state.hero(HERO).unwrap().movement, points);
+}
+
+/// A slot of `army`.
+const fn at(army: ArmyRef, slot: u8) -> ArmySlot {
+    ArmySlot { army, slot }
+}
+
+/// Red's hero's army.
+const RED_ARMY: ArmyRef = ArmyRef::Hero(HERO);
+
+/// The garrison at object index 0.
+const GARRISON: ArmyRef = ArmyRef::MapGarrison(0);
+
+/// Red's army command `command` on `state`, the hero's army and the garrison's after it (or the
+/// error, the state unchanged).
+fn manage(
+    state: &mut AdventureState,
+    rules: &Rules,
+    command: ArmyCommand,
+) -> Result<(Vec<ArmyStack>, Vec<ArmyStack>), ArmyCommandError> {
+    let before = state.clone();
+    let result = state.manage_army(&rules.1, RED, &command, None);
+    if result.is_err() {
+        assert_eq!(*state, before);
+    }
+    result.map(|()| {
+        let hero = state.hero(HERO).unwrap().army.clone();
+        (hero, state.garrison_army(0).to_vec())
+    })
+}
+
+// covers: ADV-GAR-003, ADV-ARM-001, ADV-ARM-002, ADV-ARM-003, ADV-ARM-004
+#[test]
+fn an_own_removable_garrison_takes_the_army_dialog_s_full_rules() {
+    let rules = garrison_rules();
+    let own = garrison(&rules, "t:garrison", ENTRANCE, Some(RED), &GNOLLS);
+    let mut state = corridor(&rules, vec![own]);
+    let before = state.clone();
+    // Its stack into the hero's army (a move), back by a split, merged, swapped, dismissed: the
+    // garrison may be emptied, the state hash moves with its army.
+    let hero = |army: &[(u8, CreatureTypeId, u32)]| -> Vec<ArmyStack> {
+        army.iter().map(|&(slot, c, n)| stack(slot, c, n)).collect()
+    };
+    let moved = ArmyCommand::Move {
+        from: at(GARRISON, 2),
+        to: at(RED_ARMY, 3),
+    };
+    assert_eq!(
+        manage(&mut state, &rules, moved),
+        Ok((hero(&[(0, PIKEMAN, 1), (3, GNOLL, 30)]), vec![]))
+    );
+    assert_ne!(state.state_hash(), before.state_hash());
+    let split = ArmyCommand::Split {
+        from: at(RED_ARMY, 3),
+        to: at(GARRISON, 6),
+        count: 10,
+    };
+    assert_eq!(
+        manage(&mut state, &rules, split),
+        Ok((
+            hero(&[(0, PIKEMAN, 1), (3, GNOLL, 20)]),
+            hero(&[(6, GNOLL, 10)])
+        ))
+    );
+    let merged = ArmyCommand::Move {
+        from: at(GARRISON, 6),
+        to: at(RED_ARMY, 3),
+    };
+    assert_eq!(
+        manage(&mut state, &rules, merged),
+        Ok((hero(&[(0, PIKEMAN, 1), (3, GNOLL, 30)]), vec![]))
+    );
+    let back = ArmyCommand::Move {
+        from: at(RED_ARMY, 3),
+        to: at(GARRISON, 0),
+    };
+    manage(&mut state, &rules, back).unwrap();
+    let swapped = ArmyCommand::Move {
+        from: at(RED_ARMY, 0),
+        to: at(GARRISON, 0),
+    };
+    assert_eq!(
+        manage(&mut state, &rules, swapped),
+        Ok((hero(&[(0, GNOLL, 30)]), hero(&[(0, PIKEMAN, 1)])))
+    );
+    let dismissed = ArmyCommand::Dismiss {
+        at: at(GARRISON, 0),
+    };
+    assert_eq!(
+        manage(&mut state, &rules, dismissed),
+        Ok((hero(&[(0, GNOLL, 30)]), vec![]))
+    );
+    // The hero's last stack never leaves it (ADV-ARM-002).
+    let last = ArmyCommand::Move {
+        from: at(RED_ARMY, 0),
+        to: at(GARRISON, 1),
+    };
+    assert_eq!(
+        manage(&mut state, &rules, last),
+        Err(ArmyCommandError::LastStack)
+    );
+    // The listing and the split's range follow the same rules.
+    let listed = state.army_commands(&rules.1, RED, (RED_ARMY, Some(GARRISON)), None);
+    assert!(listed.iter().all(|c| matches!(c, ArmyCommand::Move { .. })));
+    assert_eq!(listed.len(), 6, "{listed:?}");
+    let range = state.split_range(&rules.1, RED, (at(RED_ARMY, 0), at(GARRISON, 4)), None);
+    assert_eq!(range, Some(1..=29));
+}
+
+// covers: ADV-GAR-003
+#[test]
+fn a_bar_not_the_player_s_only_takes_stacks_into_its_empty_slots() {
+    let rules = garrison_rules();
+    let army = [stack(0, PIKEMAN, 5), stack(2, GNOLL, 30)];
+    let refusals = |state: &mut AdventureState| {
+        let commands = [
+            // Nothing leaves it: a move, a split, a dismissal, a move within it.
+            ArmyCommand::Move {
+                from: at(GARRISON, 2),
+                to: at(RED_ARMY, 4),
+            },
+            ArmyCommand::Split {
+                from: at(GARRISON, 2),
+                to: at(RED_ARMY, 4),
+                count: 1,
+            },
+            ArmyCommand::Dismiss {
+                at: at(GARRISON, 2),
+            },
+            ArmyCommand::Move {
+                from: at(GARRISON, 2),
+                to: at(GARRISON, 5),
+            },
+        ];
+        for command in commands {
+            assert_eq!(
+                manage(state, &rules, command),
+                Err(ArmyCommandError::NotOwn),
+                "{command:?}"
+            );
+        }
+        // Into it only an empty slot: no merge, no swap, no split onto a stack there.
+        let commands = [
+            ArmyCommand::Move {
+                from: at(RED_ARMY, 0),
+                to: at(GARRISON, 0),
+            },
+            ArmyCommand::Move {
+                from: at(RED_ARMY, 0),
+                to: at(GARRISON, 2),
+            },
+            ArmyCommand::Split {
+                from: at(RED_ARMY, 0),
+                to: at(GARRISON, 0),
+                count: 1,
+            },
+        ];
+        for command in commands {
+            assert_eq!(
+                manage(state, &rules, command),
+                Err(ArmyCommandError::OnlyEmpty),
+                "{command:?}"
+            );
+        }
+        // A slot past the army's is still the plan's.
+        let past = ArmyCommand::Move {
+            from: at(RED_ARMY, 0),
+            to: at(GARRISON, 7),
+        };
+        assert_eq!(
+            manage(state, &rules, past),
+            Err(ArmyCommandError::NoSlot(7))
+        );
+    };
+    // An own non-removable garrison (its bar owner nobody, D-61), another player's and a
+    // neutral one.
+    for (owner, removable) in [(Some(RED), false), (Some(BLUE), true), (None, true)] {
+        let held = fixed(&rules, ("t:garrison", ENTRANCE), owner, &army, removable);
+        let mut state = corridor(&rules, vec![held]);
+        state.heroes[0].army = vec![stack(0, PIKEMAN, 4), stack(1, WOLF, 2)];
+        refusals(&mut state);
+        // A move and a split into an empty slot stay; they are never taken back.
+        let moved = ArmyCommand::Move {
+            from: at(RED_ARMY, 1),
+            to: at(GARRISON, 6),
+        };
+        let (hero, garrison) = manage(&mut state, &rules, moved).unwrap();
+        assert_eq!(hero, [stack(0, PIKEMAN, 4)]);
+        assert_eq!(garrison, [army[0], army[1], stack(6, WOLF, 2)]);
+        let split = ArmyCommand::Split {
+            from: at(RED_ARMY, 0),
+            to: at(GARRISON, 4),
+            count: 3,
+        };
+        let (hero, garrison) = manage(&mut state, &rules, split).unwrap();
+        assert_eq!(hero, [stack(0, PIKEMAN, 1)]);
+        assert_eq!(garrison[2], stack(4, PIKEMAN, 3));
+        let back = ArmyCommand::Move {
+            from: at(GARRISON, 6),
+            to: at(RED_ARMY, 1),
+        };
+        assert_eq!(
+            manage(&mut state, &rules, back),
+            Err(ArmyCommandError::NotOwn)
+        );
+        // The listing: the hero's moves into the garrison's empty slots alone (its last stack
+        // stays), none of the garrison's own; no split from it or onto its stacks.
+        assert_eq!(
+            state.army_commands(&rules.1, RED, (GARRISON, Some(RED_ARMY)), None),
+            []
+        );
+        let listed = state.army_commands(&rules.1, RED, (RED_ARMY, Some(GARRISON)), None);
+        assert!(listed.iter().all(|c| matches!(
+            c,
+            ArmyCommand::Move { from, to } if from.army == RED_ARMY
+                && (to.army == RED_ARMY || [1, 3, 5].contains(&to.slot))
+        )));
+        let range = |from, to| state.split_range(&rules.1, RED, (from, to), None);
+        assert_eq!(range(at(GARRISON, 2), at(RED_ARMY, 3)), None);
+        assert_eq!(range(at(RED_ARMY, 0), at(GARRISON, 0)), None);
+        let mut more = state.clone();
+        more.heroes[0].army = vec![stack(0, PIKEMAN, 4)];
+        let range = more.split_range(&rules.1, RED, (at(RED_ARMY, 0), at(GARRISON, 1)), None);
+        assert_eq!(range, Some(1..=3));
+    }
+}
+
+// covers: ADV-GAR-003
+#[test]
+fn an_army_command_names_a_map_garrison_by_its_object_index() {
+    let rules = garrison_rules();
+    let own = garrison(&rules, "t:garrison", ENTRANCE, Some(RED), &GNOLLS);
+    let blocker = ObjectSetup {
+        object_type: None,
+        holds: Holds::Nothing,
+        ..garrison(&rules, "t:garrison", p(6, 0), None, &[])
+    };
+    let mut state = corridor(&rules, vec![own, blocker]);
+    for index in [1, 2, usize::MAX] {
+        let command = ArmyCommand::Move {
+            from: at(RED_ARMY, 0),
+            to: at(ArmyRef::MapGarrison(index), 0),
+        };
+        assert_eq!(
+            manage(&mut state, &rules, command),
+            Err(ArmyCommandError::NoGarrison(index))
+        );
+        let range = state.split_range(
+            &rules.1,
+            RED,
+            (at(GARRISON, 2), at(ArmyRef::MapGarrison(index), 0)),
+            None,
+        );
+        assert_eq!(range, None);
+    }
+    assert_eq!(
+        ArmyCommandError::NoGarrison(1).to_string(),
+        "object 1 is no map garrison"
+    );
+    for error in [ArmyCommandError::NotOwn, ArmyCommandError::OnlyEmpty] {
+        assert!(!error.to_string().is_empty());
+    }
 }
