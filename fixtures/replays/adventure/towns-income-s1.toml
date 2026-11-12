@@ -15,8 +15,8 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xf20794432b985ad3",
-    "0xc8ffe784535a8516",
+    "0x7a0672bbaa83169c",
+    "0x8e43674941ecce2d",
 ]
 
 [replay]
@@ -46,15 +46,15 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 28
+game_state_hash_version = 29
 adventure_state_hash_version = 22
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e09-towns-36.h3m"
 hash = "0x2f996b94548f5ae2"
-import_version = 22
+import_version = 23
 
 [result]
 day = 8
-final_hash = "0x7d5a6211e3d6bffb"
+final_hash = "0x5576d380f73896bc"

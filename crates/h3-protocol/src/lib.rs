@@ -114,8 +114,9 @@ pub mod wire;
 /// first line a `wire::game::GameRecordHeader`; `GameRejected { NotSeated }` without a seat). v49
 /// (E16 M5 T10): a map offer names the computer that plays a whole game's unowned battle sides
 /// (`wire::game::MapOffer`'s `computer`, `wire::game::Computer`), whose commands the session
-/// tells as the system actor's.
-pub const PROTOCOL_VERSION: u32 = 49;
+/// tells as the system actor's. v50 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s
+/// `kind` and the game observation's `week` (`wire::game::Week`), the fold keeping it.
+pub const PROTOCOL_VERSION: u32 = 50;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

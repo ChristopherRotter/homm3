@@ -3483,3 +3483,66 @@ growth with every week a normal one; T26a2 the week's kind.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T26a2 — the week's kind (2026-11-12)
+
+One session, the user present at the start; branch `town/e09-t26a2`, `cross-lane` (the adventure
+lane's `h3-game` state, day, command and observation files, `h3-map`'s import and tests, the 72
+adventure replays and four fork workloads; the server lane's `h3-protocol` and `h3-server`; a
+client test literal in `h3-view`). Starting point: `master` at 7f9107f (#892, #893, #894 merged);
+the setup's full baseline was stopped in its coverage step for the disk (12 GB in
+`target/llvm-cov-target`, 13 GB left): CI's run on `master` stands for it. The user's computer was
+connected at the start only: the original data staged then (17 files, SHA-256 checked against the
+PC's), used for the scoped verify. **T26a2 whole** (decision 90, the user; the engine-now cut was
+recommended).
+
+- **The inbox's 2026-11-11 hygiene note, classified first** (the user's choice): the property
+  plan's fault, no leak. A neutral plan's town visited at load is its visitor's owner's
+  (`towns_laid_out`), so `hygienic_town`, which made only an owned plan's standard set with a Fort
+  the one without, let it draw its level-2 dwelling (TWN-SET-003) that its new owner sees, and the
+  other game's seed drew another. `hygienic_town` counts a visited town as owned; the case's
+  `cc` line is committed (`h3-map`'s `proptest-regressions/tests/view.txt`). The adventure lane's
+  file, in this pull request.
+- **The draw** (TWN-GRO-002; `h3-towns`' `week.rs`, design §42): `draw_week(towns, part, core,
+  roe, month_first, draws)`: unless a month's first, `below(denominator) < numerator` of the
+  part's `creature_chance`, then `below(n)` of `week_creatures(part, roe)`; then the first town in
+  `TownId` order whose `building_week` is some overwrites it. The part derives the two creature
+  lists and the records' `week_of` buildings when it is built (`WeekDraw`, not hashed): a walk
+  each week cost `day-start-builds-36` +7.8 % against `master`.
+- **The game** (`state.rs`, `state/day.rs`): `GameState`'s `week`, `roe` and `towns_rng`
+  (`StreamId::TOWNS`), game state hash **v29** (the week and `roe` after the month, the stream
+  after the game's); the draw before `WeekStarted`, its kind into `grow_week` and `grow_month`;
+  `draw_month` after a building's week gives its base creature's month, the kind's draw made,
+  the creature's not (GAM-CAL-003). `GameSetup::roe` (every literal in `h3-game`'s, `h3-map`'s
+  and `h3-cli`'s files) from the import's format, map import **v23**. `h3-game` re-exports
+  `WeekKind`.
+- **The telling:** `GameEvent::WeekStarted { week, kind }`, `GameObservation::week`; the wire's
+  `Week` (`Normal`, `Creature`, `Of`), the mapping, the fold (`self.week = kind`), protocol
+  **v50**; the fold gate's part "day, week and month".
+- **Tests:** `h3-towns`: the lists, `building_week`, the draw's chance and stream positions over
+  400 seeds, no draw on a month's first, `roe`, the building's week over the draw. `h3-game`'s
+  `town/tests/growth.rs`: a creature's week drawn on day 8 as the towns' stream of seed 7 says,
+  told to both players and grown (+5, halved in the neutral town), the map's huts at their growth
+  (the adventure lane's E08 T97a note: here, as `hiring.rs`' rules have no town part); the stream's
+  isolation (eight seeds: the month and the adventure's state the same whether the weeks draw a
+  creature); a Grail as level 1's `week_of`: every week the imps' (+15), day 29's month theirs by
+  a normal month's odds and by a creature month's, nothing doubled, their monsters on the map.
+  `h3-map`: the import's `roe`; the hygiene property ends its comparison at a week's start whose
+  kinds differ (the other game's seed), `check_told` follows the observation's week.
+  `h3-protocol`: every week kind mapped and inverted, the fold. The calendar tests name the kind.
+- **Replays:** the 72 adventure replays re-recorded from their commands: only the version lines
+  (game state hash, map import), checkpoints and final hashes moved. `h3-server`'s record test
+  literals follow (`army-dialog-s1`'s hashes, the import version). The bot reports unchanged (no
+  part hash moved).
+- **Bench** (`master` built in the same sandbox): `day-start-builds-36` 574 701 against 572 026
+  (+0.5 %), `day-start-towns-36` 1 222 360 against 1 219 378 (+0.2 %), both inside their gates.
+  The forks copy the three new fields (`AdventureEnv::fork` +19 Ir, memcpy +12 Ir a fork):
+  `fork-economy-xl-144`, `fork-meeting-xl-144`, `fork-sea-xl-144` +0.8 % and `fork-rewards-36`
+  +1.1 % against `master`, which measures 1.3 % to 1.8 % above their old baselines here; the four
+  re-baselined with the reason in their descriptions. Every other workload passes.
+- **Agent's calls (change freely):** decision 90's list.
+- **Not built here:** the clients' `h3-battle-client` could not be checked (its SDL build fails in
+  the sandbox; it uses the import's setup with a spread, no wire week); CI's Clients run checks it.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s and
+`h3-server`'s tests run on their own; CI on the pull request is the record.
