@@ -107,5 +107,31 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Sources: code reading of `town_dwelling_growth` 0x5BFB60 and `town_week_growth` 0x5BFDD0 (E09 T21; survey `docs/rules/surveys/E09-growth.md` §1, §2, §13).
 - Flag: none (fixed in every profile)
 - Defaults: faithful = fixed, strict-fixed = fixed
-- Regression test: `crates/h3-towns/src/record.rs`, `twn_quirk_8_a_town_s_counts_saturate_at_the_bound`; `crates/h3-towns/src/growth/tests.rs`, `a_growth_is_held_at_the_bound`
+- Regression test: `crates/h3-towns/src/record.rs`, `twn_quirk_8_a_town_s_counts_saturate_at_the_bound`; `crates/h3-towns/src/growth/tests.rs`, `a_growth_is_held_at_the_bound`; `crates/h3-towns/src/week/tests.rs`, `a_week_s_count_is_held_at_the_bound_and_a_town_without_a_record_grows_nothing` and the month's doubling in `a_creature_s_month_doubles_its_creature_s_counts_after_the_week` (E09 T25b1)
 - Decided by / date: the agent's proposal (decision 73), the user at TWN-Q12 and TWN-Q14, 2026-11-11; entered by E09 T25a, 2026-11-12
+
+### TWN-QUIRK-9 — The Plague takes a neutral town's whole growth
+- Class: fix-optional (the user, 2026-11-11, TWN-Q12, TD-14 and T-12: "fix-optional"; the epic's decision 70)
+- Context / rules affected: town, TWN-GRO-004 (a town's month of growth; E09 T25b1), TWN-GRO-003 (the week a neutral town grows half)
+- Original behavior: `new_month` (0x4C8F40) in the Plague takes each growing index's whole growth g (`town_dwelling_growth` 0x5BFB60, unhalved) off the count, at least 0, then halves it; the week before (`town_week_growth` 0x5BFDD0) added only g ÷ 2 to a town without an owner, so a neutral town keeps max(0, before − ⌈g ÷ 2⌉) ÷ 2 of its count before the week, an owned one half of it.
+- Intended/expected behavior: with the flag off a town without an owner loses g ÷ 2 (what its week added), so every town keeps half of its count before the week.
+- Impact: gameplay, small: a neutral town's creatures for the month after a Plague (a smaller population to fight or, once captured, to hire).
+- Community status: VCMI 1.7.5 and the fandom page halve the count after the week for every town (refuted for the original by batch TWN-3's row 3).
+- Sources: code reading of `new_month` 0x4C8F40 and `town_week_growth` 0x5BFDD0 (E09 T21; survey `docs/rules/surveys/E09-growth.md` §2, §3, §13 TD-14, T-12); batch TWN-3's row TWN-3-3 (`experiments/results/E09-batch-3a.md`, `-3a-run2.md`: N1 17 and 10 from 42 and 25 before the week; survey §17).
+- Flag: `quirk.town.neutral_plague_full_growth` (registry position 40, E09 T24)
+- Defaults: faithful = on (the whole growth), strict-fixed = off (half of the count before the week)
+- Regression test: `crates/h3-towns/src/week/tests.rs`, `the_plague_takes_the_growth_then_halves` (on) and `twn_quirk_9_off_every_town_keeps_half_its_count_before_the_week` (off)
+- Decided by / date: the user, 2026-11-11 (TWN-Q12; decision 70); the flag added by E09 T24; entered by E09 T25b1, 2026-11-12
+
+### TWN-QUIRK-10 — A creature's month doubles the exact creature only
+- Class: fix-optional (the user, 2026-11-11, TWN-Q12, TD-13 and T-13: "fix-optional flag"; the epic's decision 69)
+- Context / rules affected: town, TWN-GRO-004 (a town's month of growth; E09 T25b1)
+- Original behavior: `new_month` (0x4C8F40) in a creature's month doubles a growing index's count only when the index's creature is the month's: a base creature's month misses every town whose dwelling of that level is upgraded (its base index grows nothing, its upgrade's creature is another), and an upgrade's month doubles only upgraded dwellings.
+- Intended/expected behavior: with the flag off the count doubles when the month's creature is either of the index's level's creatures (VCMI 1.7.5's rule): a Griffin's month doubles the Royal Griffins too.
+- Impact: gameplay: every creature month with an upgraded dwelling of the month's base creature (most shipped maps' mid-game; survey §13).
+- Community status: the wiki's growth page and VCMI's forum say the exact creature (an upgraded dwelling gets no bonus for its base creature's month); VCMI 1.7.5's code doubles the level.
+- Sources: code reading of `new_month` 0x4C8F40 (E09 T21; survey `docs/rules/surveys/E09-growth.md` §3, §11, §13 TD-13); batch TWN-3's row TWN-3-1 (`experiments/results/E09-batch-3a.md`, `-3a-run2.md`: K1's Royal Griffins 47 kept, K2's Griffins 47 doubled to 94; survey §17).
+- Flag: `quirk.town.creature_month_exact` (registry position 39, E09 T24)
+- Defaults: faithful = on (the exact creature), strict-fixed = off (the level)
+- Regression test: `crates/h3-towns/src/week/tests.rs`, `a_creature_s_month_doubles_its_creature_s_counts_after_the_week` (on) and `twn_quirk_10_off_a_creature_s_month_doubles_either_form_of_its_level` (off)
+- Decided by / date: the user, 2026-11-11 (TWN-Q12; decision 69); the flag added by E09 T24; entered by E09 T25b1, 2026-11-12

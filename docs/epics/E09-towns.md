@@ -1,6 +1,6 @@
 # E09 — Towns
 
-Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts accepted (T22a, T22b; TWN-Q13, TWN-Q14), batch TWN-3 run and scored (T23), its `shared/` task done (T24: the ADRs, the core changes), T25a done (the part v5, the store v3, TWN-GRO-001 and -005), T25b next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
+Status: **in progress** (refined 2026-10-31 with the user, TWN-Q1; the town lane opened the same day). Increment 1 (towns on the map) closed on 2026-11-06 (T10; its scope, decisions 8–35 and tasks in `E09-archive.md`), increment 2 (construction with the town events) on 2026-11-11 (T20; decisions 36–63, `E09-archive.md`); increment 3 (growth, recruitment and the army rows) refined the same day (TWN-Q11), its survey done (T21, TWN-Q12), its drafts accepted (T22a, T22b; TWN-Q13, TWN-Q14), batch TWN-3 run and scored (T23), its `shared/` task done (T24: the ADRs, the core changes), T25a done (the part v5, the store v3, TWN-GRO-001 and -005), T25b1 done (the week and the month, TWN-GRO-003, -004), T25b2 next; the position and the next task are in `docs/lanes/town/HANDOFF.md` and `QUEUE.md`. The record of every done task: `E09-log.md`.
 
 ## Goal
 
@@ -108,6 +108,12 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     `horde_growth`; the synthetic `vale`'s upgraded horde without a role (its levels have no
     upgrade), its Portal the Lookout's and its week's building the Grail's (no new building, so
     no synthetic id or legal command moves); the garrison week's weights one to six.
+87. **T25b in two** (the user at T25b's start, asked; recommended): **T25b1** the week and the
+    month (`WeekKind`, TWN-GRO-003, -004, `TWN-QUIRK-9`, `-10`), which draw nothing; **T25b2** a
+    neutral town's garrison week and the Portal's draw (TWN-GRO-006, -007). Not chosen: T25b
+    whole; T25b1 with the inbox's hygiene failure. *Agent's calls* (change freely): the month's
+    kind as the towns read it the town crate's `MonthGrowth` (the game's `MonthKind` mapped to it
+    by T26a); `WeekKind::names` and `bonus` public; the fixture's `core_with` (a profile's flags).
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 
@@ -116,7 +122,7 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
 - **T22** the ADR amendment drafts, the design note's Part E and the cut (decision 66), in two halves (decision 74): **T22a** growth's: done 2026-11-11 (`TWN-Q13`, decisions 74–78). **T22b** recruitment's and the rows', the cut, the exit criteria: done 2026-11-11 (whole, decision 79; `TWN-Q14`, decisions 80–83; the five drafts `adr-drafts/*-increment-3.md` accepted; Part E §48 to §58; no version moved; `E09-log.md`).
 - **T23** batch TWN-3 (survey §14, row 6 with design §55's record; decision 74). Done 2026-11-11, whole (decision 84): two runs of each part, every row as the reading (survey §17; `E09-log.md`).
 - **T24** `shared/` (`cross-lane`): done 2026-11-12, whole (decision 85): the five drafts in `docs/adr/` with T23's verdicts, `StreamId::TOWNS`, the Legion's two effects and the two town flags (pack format v52, core ruleset hash v53), the packs' six artifacts, the 82 replays' and the bot reports' core hash, the glossary, `docs/06-security.md` (`E09-log.md`).
-- **T25** growth's town side: **T25a** done 2026-11-12, whole (decision 86): the part's roles `horde`, `portal`, `week_of`, `roe` and the growth's parameters (part v5; the packs re-harvested, `cross-lane`), each town's fourteen counts and Portal (store v3, `TWN-QUIRK-8`), TWN-GRO-001, TWN-GRO-005; game state hash v28 and the 72 adventure replays (`cross-lane`; `E09-log.md`). **T25b** next. **T26** growth in the game (T26a, T26b; `cross-lane`); **T27** recruitment (`cross-lane`); **T28** the rows (T28a, T28b; `cross-lane`; after E08's T114a and T115a); **T29** the gates; **T30** the audit and the closure (design note §56).
+- **T25** growth's town side: **T25a** done 2026-11-12, whole (decision 86): the part's roles `horde`, `portal`, `week_of`, `roe` and the growth's parameters (part v5; the packs re-harvested, `cross-lane`), each town's fourteen counts and Portal (store v3, `TWN-QUIRK-8`), TWN-GRO-001, TWN-GRO-005; game state hash v28 and the 72 adventure replays (`cross-lane`; `E09-log.md`). **T25b** in two (decision 87): **T25b1** done 2026-11-12: `WeekKind`, TWN-GRO-003, -004, `TWN-QUIRK-9`, `-10` (no version moved; `E09-log.md`); **T25b2** next (TWN-GRO-006, -007). **T26** growth in the game (T26a, T26b; `cross-lane`); **T27** recruitment (`cross-lane`); **T28** the rows (T28a, T28b; `cross-lane`; after E08's T114a and T115a); **T29** the gates; **T30** the audit and the closure (design note §56).
 
 ### Exit criteria
 

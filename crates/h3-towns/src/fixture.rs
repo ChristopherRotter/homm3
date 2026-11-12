@@ -219,8 +219,14 @@ fn key(text: &str) -> ContentKey {
 }
 
 /// The core: the resources `t:wood`, `t:ore`, `t:gold`, the factions `t:keep`, `t:marsh`,
-/// `t:wild` and the creatures `t:c0` to `t:c51` (handles 0 to 51), with [`growths`].
+/// `t:wild` and the creatures `t:c0` to `t:c51` (handles 0 to 51), with [`growths`]; its profile
+/// enables no quirk flag.
 pub(crate) fn core() -> Ruleset {
+    core_with(&[])
+}
+
+/// [`core`] with its profile enabling the quirk flags named in `quirks` (E09 T25b1).
+pub(crate) fn core_with(quirks: &[&str]) -> Ruleset {
     let resource = |k: &str| ResourceDef {
         key: key(k),
         name: "Resource".into(),
@@ -248,7 +254,7 @@ pub(crate) fn core() -> Ruleset {
         creatures: (0..CREATURES).map(creature).collect(),
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
-            quirks: vec![],
+            quirks: quirks.iter().map(|q| ((*q).into(), true)).collect(),
         }],
         ..ContentPack::new(PackManifest {
             id: "t".into(),

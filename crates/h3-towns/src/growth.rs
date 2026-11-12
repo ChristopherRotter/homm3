@@ -1,8 +1,8 @@
 //! A town's growth (E09 increment 3, design note §41, §46; survey `E09-growth.md` §1, §6): a
 //! dwelling's growth a week (TWN-GRO-001) from the town and the inputs the game computes
-//! ([`GrowthInputs`]), and a dwelling's first creatures when it is built (TWN-GRO-005). The week,
-//! the month, a neutral town's garrison week and the Portal's draw read them (increment 3's
-//! later tasks).
+//! ([`GrowthInputs`]), and a dwelling's first creatures when it is built (TWN-GRO-005). The week
+//! and the month read them (`week.rs`, E09 T25b1), a neutral town's garrison week and the
+//! Portal's draw too (T25b2).
 
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::FortLevel;
@@ -44,7 +44,7 @@ impl GrowthInputs {
 }
 
 /// The level, from 1, and whether it is the upgrade, of a creature index ([`CREATURE_INDEXES`]).
-fn level_of(index: usize) -> Option<(u8, bool)> {
+pub(crate) fn level_of(index: usize) -> Option<(u8, bool)> {
     (index < CREATURE_INDEXES).then(|| {
         let level = index % MAX_CREATURE_LEVELS;
         (

@@ -1388,6 +1388,9 @@ still change at `TWN-Q14` (decision 78 lists them).
   week's kind, ADV-DWL-003: the inbox's E08 T97a note asks the building task to extend
   `a_month_s_kind_never_reaches_a_dwelling_or_a_camp` with a week of the hut's creature), then
   §44, then §45.
+- *As built (T25b1):* `h3_towns::WeekKind` with `names` and `bonus` (a creature's week the
+  part's `creature_bonus`) and its hash; `week_growth(town, part, core, &kind, &inputs) -> Town`.
+  The draw (TWN-GRO-002) is T26a's.
 
 ### 43. The month (TWN-GRO-004; GAM-CAL-003 amended)
 
@@ -1407,6 +1410,10 @@ still change at `TWN-Q14` (decision 78 lists them).
     `TWN-QUIRK-9`).
   The fifteenth index of the original (building 44's bit, never set) is nothing. The Portal and
   the garrisons are untouched.
+- *As built (T25b1):* `h3_towns::month(town, part, core, MonthGrowth, &week, &inputs) -> Town`
+  with the town crate's `MonthGrowth { Normal, Creature, Plague }` (the game's `MonthKind` stays
+  the game's and is mapped to it, T26a); the flags read from the core's quirks; batch TWN-3's
+  rows 1 and 3 are unit tests on the fixture (its growths 14 and 9 are the rows' towns').
 
 ### 44. A neutral town's garrison week (TWN-GRO-006; `h3-towns`' `garrison.rs`, `h3-adventure`'s `src/town.rs`)
 

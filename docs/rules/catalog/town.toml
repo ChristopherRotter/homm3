@@ -1034,6 +1034,68 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-GRO-003"
+title    = "A town's week of growth"
+context  = "town"
+status   = "implemented"
+quirks   = ["TWN-QUIRK-8"]
+summary  = "On a week's first day (the month's first too, before the month), every town's indexes whose growth g (TWN-GRO-001) is above 0 gain g, + the week's bonus when the index's creature is one of the week's (a creature's week: that creature alone, the part's `creature_bonus`, the original's 5; a `week_of` building's week: either creature of its level, the level's base creature's core growth, the Imp's 15), halved (truncated, after the bonus) in a town without an owner, the count held at 32 767 (TWN-QUIRK-8); a normal week names no creature. The Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 42): `h3_towns::week_growth(town, part, core, &WeekKind, &GrowthInputs)` and the week's kind `h3_towns::WeekKind` (`Normal`, `Creature`, `Of`, hashed 0, 1 and the creature, 2 and its two creatures and the bonus); the game draws the kind (TWN-GRO-002) and calls it in `TownId` order (E09 T26a)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 2): new_day_week_events (0x4C8780) sets the week's kind 0 with the bonus 5, a creature's week (kind 1) with its creature, the Deity of Fire's (kind 2) with the Imp and the Familiar and the Imp's growth (+0x44 of record 42) as the bonus; town_week_growth (0x5BFDD0, read whole) adds, for each index 0 to 13 whose town_dwelling_growth is above 0, the growth + the bonus when the index's creature is either of the week's two (-1 none), halved when the town has no owner, after the bonus (an i16 add without a cap, T-10)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 rows TWN-3-1 to TWN-3-3 (the capture harness, 2026-11-11, every week forced normal; scored in survey E09-growth.md section 17): an owned town's indexes grew their whole growth a week (K1, K2 7 on day 1, 37 at month 1 week 4; G1 14, 9, 7 to 80, 57, 43 at week 2), a neutral town's half (N1 42 and 25 to 49 and 29 at growths 14 and 9)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 11: the week's creature + 5 on the exact creature (BONUS_GROWTH on cre->getId(), CREATURES_ADDITIONAL_WEEKLY_GROWTH_SPECIAL_WEEK 5), the Deity's level + its bonus, a neutral town half the growth after the week's bonus"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 42 (E09 decisions 77 and 78): the week's kind the town crate's type, its value the game's beside the month's, the hash's encoding"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-GRO-004"
+title    = "A town's month of growth"
+context  = "town"
+status   = "implemented"
+quirks   = ["TWN-QUIRK-8", "TWN-QUIRK-9", "TWN-QUIRK-10"]
+summary  = "On a month's first day, after the week's growth (TWN-GRO-003) and the month's kind (GAM-CAL-003), every town's indexes whose growth g (TWN-GRO-001, unhalved, no week's bonus) is above 0: in a creature's month of c, unless the week is a `week_of` building's (the month is then its level's base creature's, which spawns on the map and doubles no town's count), the count doubles, held at 32 767 (TWN-QUIRK-8), when the index's creature is c, and with `quirk.town.creature_month_exact` off when c is either creature of the index's level (TWN-QUIRK-10); in the Plague the count less g (at least 0), then halved (truncated), and with `quirk.town.neutral_plague_full_growth` off a town without an owner loses g / 2 (what its week added), so every town keeps half of its count before the week (TWN-QUIRK-9). A normal month, the Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 43): `h3_towns::month(town, part, core, MonthGrowth, &WeekKind, &GrowthInputs)`, the month's kind as the towns read it `h3_towns::MonthGrowth` (`Normal`, `Creature`, `Plague`; the game maps its own to it, E09 T26a)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 3): new_month (0x4C8F40) after the month's kind loops over every town's indexes 0 to 14 (the fifteenth reads building 44's bit, never set) whose town_dwelling_growth is above 0: a creature's month (kind 1) doubles the count (a 16-bit shift) when the week was not the Deity's and the index's creature is the month's; the Plague (kind 2) takes the growth (unhalved, no bonus) off the count, at least 0, then halves it; the Deity's week makes the month the Imp's without the creature's draw (0x4C8F5E draws, 0x4C8F63 to 0x4C8F82 overwrites)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3a.md and E09-batch-3a-run2.md, batch TWN-3 rows TWN-3-1 and TWN-3-3 (the capture harness, 2026-11-11, the second month forced the Griffin's and the third the Plague; scored in survey E09-growth.md section 17): the Griffin's month left the Royal Griffins' 47 (K1) and doubled the Griffins' 47 to 94 (K2), the exact creature after the week's growth; the Plague left an owned town 53 and 30 (half of 106 and 61 before the week) and a neutral one 17 and 10 (max(0, 42 + 7 - 14) / 2, max(0, 25 + 4 - 9) / 2); VCMI's level rule and doubled growth and VCMI's and the wiki's halving after the week refuted"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 11: a creature's month doubles (count + the week's growth) for the level holding the creature, base or upgrade (the flag's off behaviour, TWN-QUIRK-10); the Plague halves the count with no growth"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 43 (E09 decisions 69, 70 and 78): the two fix-optional flags, a week_of week's month without the doubling"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-GRO-005"
 title    = "A dwelling's first creatures"
 context  = "town"
