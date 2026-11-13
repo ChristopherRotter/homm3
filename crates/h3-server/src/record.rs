@@ -112,6 +112,7 @@ pub fn record_replay(
         game,
         checkpoint_every: replay.checkpoint_every,
         record_bytes: usize::MAX,
+        clock: h3_protocol::session::game::Clock::UNLIMITED,
     };
     // Every frame stays in the session's records; the host delivers none here.
     let mut out = Vec::new();

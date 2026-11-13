@@ -3095,3 +3095,59 @@ v14 and protocol v56, the whole game's journal format left at 1 (additive).
   a seat's system command refused and told to it alone, the system's end of a turn not its
   player's refused, and the system's end of a turn told to every player as the player's own (but
   the echo), journaled as the system actor's.
+
+### M5 T16 — the clock in the session (2026-11-13)
+
+The task (the epic's "M5 part 2", 2b): the whole game's clock in `h3-protocol`'s session, sans
+I/O. Baseline: `master` 999bb0e (#904, T14, protocol v56; its code verified). No original data
+(T15's survey waits for them). Branch `claude/charming-edison-866oew`. The user's choices at the
+start (SRV-Q32): all of T16 in one go (not the agent's T16a/T16b cut); Fischer's chess clock (a
+base per battle and an increment after each of the side's accepted battle commands, no chess
+clock under an unlimited turn duration); the attacker's turn timer stopped during a battle
+between players, resuming with its time left; every turn timer stopped while a level-up holds
+the game, the owner's too. VCMI's timers read as a reference (`TurnTimerHandler.cpp`: a turn, a
+base, a battle and a unit timer; a timed-out side Defends in a battle between players).
+
+- **The options** (`session::game::Clock` in `GameOptions::clock`): the turn's duration
+  (`None`: unlimited, no turn timer and no chess clock), the level-up's time (`None`: the game
+  waits), the battle's `Allowance` (`base_ms`, `increment_ms`); `Clock::UNLIMITED`,
+  `Clock::DEFAULT_LEVEL_UP_MS` (60 s), `Allowance::DEFAULT` (3 min, 10 s). `h3-server` builds its
+  games with `Clock::UNLIMITED` until T17's offers.
+- **The timers** (`session/game/clock.rs`, `Timers`): a turn's timer per player, started afresh
+  when its turn begins (by its day); it runs while the game runs, the player acts, no level-up
+  holds the game and it fights no other player's hero. The level-up's time runs alone while one
+  holds the game, afresh after each command the hold admits. A battle between two players'
+  heroes (both owners players; its key the T12 `BattleKey`) gets two clocks at the base; the side
+  to act's runs; an accepted battle command of a side adds the increment unless its clock ran out.
+- **The host's clock** (`GameSession::elapse(now, out)`, before every call; its first reading
+  counts nothing, a clock that goes back is ignored): the running timers count in steps to the
+  next end; at an end the time is journaled and the system's due steps are taken
+  (`GameSession::drive`, replacing T10's `unowned`): a level-up's default answer when its time or
+  its owner's turn ran out (nothing else moves while held); an unowned side by the computer; a
+  side to act whose player's turn or chess clock ran out by the computer (`SystemCommand::Battle`;
+  Defend, then the legal commands, without a computer: in-process); a timed-out player outside a
+  battle its first decision's default answer, else its turn's end. Each is the system actor's
+  command, journaled and told as every command's; `system` and every accepted command drive too.
+  `GameSession::deadline`: the next end of a running timer, or the next journaling, whichever
+  first; none while nothing runs.
+- **The journal**: `GameEntry::Elapsed(ms)`, the time counted, before the next accepted command
+  (when time counted), before a pause, at a timer's end and at the latest after
+  `ELAPSED_EVERY_MS` (15 s); the re-run counts it again, so a restore keeps the time left and the
+  downtime never counts; a step a crash cut off after its `Elapsed` is taken at the first
+  reading. `h3-server`'s `journal/whole.rs` writes it as `{"Elapsed":{"ms":…}}`, the format
+  still 1.
+- **The wire** (protocol v58, after the adventure lane's T115a took v57): `ServerMessage::GameClock { n, clock }` with `wire::game::GameClock`
+  (`turn`, `battle: Option<Duel>` with the attacker's and the defender's `Timer`, `level_up`,
+  `waits`), each `Timer` the milliseconds left (32 bits) and whether it runs. A player is told its
+  own timers and whether the game waits for another's level-up; told when that changes otherwise
+  than by counting down (a running timer's end time compared), after a command's other messages
+  and before the turns, at the end of `elapse`, and after every snapshot that leaves something to
+  tell (a join's, a restore's, a record's fresh one). In an untimed game only `waits` is ever told.
+- **Tests:** `tests/game_clock.rs` (a turn run out and ended, its journaling and deadlines; a
+  restore keeping the time left, a cut journal's step at the first reading; the level-up's hold,
+  with and without a limit; a battle against a monster played out by a striking computer at the
+  turn's end; a battle between players' heroes: the attacker's increments, the defender's clock
+  run out and its side Defending, the attacker's turn time untouched; a paused game and one not
+  started counting nothing, the time journaled before the pause); `tests/game_session.rs`' golden
+  gate checks each `GameClock` (`waits`) against the engine; `tests/wire.rs` round-trips and a
+  JSON literal.

@@ -4,7 +4,11 @@
 //! (the game's `BINKW32.DLL`'s since E17 M6 T6c1, read as it reads with `--original`:
 //! `clients/scripts/bink-check.sh`; FFmpeg's before). The synthetic samples
 //! (`h3_bink::build::sample`) go the same way, so that the reference checks the block types the
-//! game's clips may not use.
+//! game's clips may not use. With `--smacker` (E27 M2 T1) the Smacker clips the same way through
+//! `h3-smacker` (default archive `original-data/shell-videos.vid`), each written as its frames'
+//! colour indices and palettes (`<stem>.pal8`, `h3_smacker::check::raw`) and as the original's
+//! 5-6-5 copy of them (`<stem>.565`, `check::original_16`), both compared with the game's
+//! `SMACKW32.DLL`'s (`clients/scripts/smacker-check.sh`).
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -12,8 +16,26 @@ use std::process::ExitCode;
 
 use h3_assets::vid::VidArchive;
 use h3_bink::{Clip, Decoder, Frame, Reading};
+use h3_smacker::check::{Format, original_16};
 
 use crate::connect::printable;
+
+/// The clips' format the command decodes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Kind {
+    Bink,
+    /// `--smacker` (E27 M2 T1).
+    Smacker,
+}
+
+impl Kind {
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Bink => "bik",
+            Self::Smacker => "smk",
+        }
+    }
+}
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -23,18 +45,20 @@ pub struct Options {
     out: PathBuf,
     reference: Option<PathBuf>,
     samples: Vec<u64>,
-    /// `--original`: the residues read as the DLL reads them (CLT-Q68).
+    /// `--original`: the residues read as the DLL reads them (CLT-Q68; Bink's only).
     reading: Reading,
+    kind: Kind,
 }
 
 impl Options {
     /// Parses `[<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
-    /// [--original]`.
+    /// [--original] [--smacker]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let (mut vid, mut out, mut reference) = (None, None, None);
         let (mut names, mut samples) = (Vec::new(), Vec::new());
         let mut reading = Reading::Fixed;
+        let mut kind = Kind::Bink;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -47,6 +71,7 @@ impl Options {
                 "--out" => out = Some(PathBuf::from(value()?)),
                 "--reference" => reference = Some(PathBuf::from(value()?)),
                 "--original" => reading = Reading::Original,
+                "--smacker" => kind = Kind::Smacker,
                 "--sample" => {
                     let v = value()?;
                     samples.push(v.parse().map_err(|_| format!("video: bad seed `{v}`"))?);
@@ -57,23 +82,29 @@ impl Options {
                 name => names.push(name.to_owned()),
             }
         }
+        let archive = match kind {
+            Kind::Bink => "original-data/battle-videos.vid",
+            Kind::Smacker => "original-data/shell-videos.vid",
+        };
         Ok(Self {
             names,
-            vid: vid.unwrap_or_else(|| repo.join("original-data/battle-videos.vid")),
+            vid: vid.unwrap_or_else(|| repo.join(archive)),
             out: out.unwrap_or_else(|| repo.join("clients/out/video")),
             reference,
             samples,
             reading,
+            kind,
         })
     }
 
-    /// Whether the archive's entry `name` is asked for: a Bink file, by its name or stem when
-    /// names are given (ignoring case), every one when none is and no sample either.
+    /// Whether the archive's entry `name` is asked for: a file of the format decoded, by its
+    /// name or stem when names are given (ignoring case), every one when none is and no sample
+    /// either.
     fn wants(&self, name: &str) -> bool {
         let Some((stem, extension)) = name.rsplit_once('.') else {
             return false;
         };
-        if !extension.eq_ignore_ascii_case("bik") {
+        if !extension.eq_ignore_ascii_case(self.kind.extension()) {
             return false;
         }
         if self.names.is_empty() {
@@ -152,16 +183,49 @@ fn decode(name: &str, bytes: &[u8], reading: Reading) -> Result<(Vec<Frame>, boo
     Ok((frames, clean))
 }
 
-/// Compares `ours` with the reference's bytes frame by frame; prints the verdict.
-fn compare(name: &str, frames: &[Frame], ours: &[u8], reference: &[u8]) -> bool {
+/// Decodes one Smacker file; prints its line and each failing frame; the frames decoded.
+fn decode_smacker(name: &str, bytes: &[u8]) -> Result<(Vec<h3_smacker::Frame>, bool), String> {
     let name = printable(name);
-    let size = ours.len() / frames.len().max(1);
+    let clip = h3_smacker::Clip::parse(bytes).map_err(|e| format!("{name}: {e:?}"))?;
+    let mut decoder = h3_smacker::Decoder::new(&clip).map_err(|e| format!("{name}: {e:?}"))?;
+    let mut frames = Vec::new();
+    let mut clean = true;
+    for (n, packet) in clip.reader().enumerate() {
+        match packet.and_then(|packet| decoder.decode(&packet).cloned()) {
+            Ok(frame) => frames.push(frame),
+            Err(e) => {
+                eprintln!("{name}: frame {n}: {e:?}");
+                clean = false;
+            }
+        }
+    }
+    // The frame time: negative in 10 µs, else in ms.
+    let micros = if clip.rate < 0 {
+        -i64::from(clip.rate) * 10
+    } else {
+        i64::from(clip.rate) * 1000
+    };
+    println!(
+        "{name}: {}x{}, {} of {} frames, {micros} µs a frame, hash {:016x}",
+        clip.width,
+        clip.height,
+        frames.len(),
+        clip.frames(),
+        h3_smacker::check::hash(&frames)
+    );
+    Ok((frames, clean))
+}
+
+/// Compares `ours` (`count` frames) with the reference's bytes frame by frame; prints the
+/// verdict.
+fn compare(name: &str, count: usize, ours: &[u8], reference: &[u8]) -> bool {
+    let name = printable(name);
+    let size = ours.len() / count.max(1);
     if ours.len() != reference.len() || size == 0 {
         println!(
-            "{name}: {} bytes, the reference {} ({} frames of {size})",
+            "{name}: {} bytes, the reference {} ({count} frames of {size})",
             ours.len(),
             reference.len(),
-            frames.len()
         );
         return ours == reference;
     }
@@ -175,13 +239,12 @@ fn compare(name: &str, frames: &[Frame], ours: &[u8], reference: &[u8]) -> bool 
         }
     }
     if differing.is_empty() {
-        println!("{name}: as the reference, all {} frames", frames.len());
+        println!("{name}: as the reference, all {count} frames");
         return true;
     }
     println!(
-        "{name}: {} of {} frames differ from the reference ({pixels} bytes), the first {:?}",
+        "{name}: {} of {count} frames differ from the reference ({pixels} bytes), the first {:?}",
         differing.len(),
-        frames.len(),
         &differing[..differing.len().min(8)]
     );
     false
@@ -211,10 +274,20 @@ fn video(options: &Options) -> Result<bool, String> {
         }
     }
     for &seed in &options.samples {
-        files.push((format!("sample-{seed}.bik"), h3_bink::build::sample(seed)));
+        files.push(match options.kind {
+            Kind::Bink => (format!("sample-{seed}.bik"), h3_bink::build::sample(seed)),
+            Kind::Smacker => (
+                format!("sample-{seed}.smk"),
+                h3_smacker::build::sample(seed),
+            ),
+        });
     }
     if files.is_empty() {
-        return Err(String::from("no Bink file asked for is in the archive"));
+        let format = match options.kind {
+            Kind::Bink => "Bink",
+            Kind::Smacker => "Smacker",
+        };
+        return Err(format!("no {format} file asked for is in the archive"));
     }
     fs::create_dir_all(&options.out).map_err(|e| format!("{}: {e}", options.out.display()))?;
     let mut good = !refused;
@@ -224,14 +297,34 @@ fn video(options: &Options) -> Result<bool, String> {
             fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))
         };
         write(options.out.join(name), bytes)?;
-        let (frames, clean) = decode(name, bytes, options.reading)?;
-        good &= clean;
-        let ours = raw(&frames);
-        write(options.out.join(format!("{stem}.yuv")), &ours)?;
-        if let Some(dir) = &options.reference {
-            let path = dir.join(format!("{stem}.yuv"));
-            let reference = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            good &= compare(name, &frames, &ours, &reference);
+        // Each output: its extension, its bytes, the frames it holds.
+        let (outputs, count) = match options.kind {
+            Kind::Bink => {
+                let (frames, clean) = decode(name, bytes, options.reading)?;
+                good &= clean;
+                (vec![("yuv", raw(&frames))], frames.len())
+            }
+            Kind::Smacker => {
+                let (frames, clean) = decode_smacker(name, bytes)?;
+                good &= clean;
+                let outputs = vec![
+                    ("pal8", h3_smacker::check::raw(&frames)),
+                    ("565", original_16(&frames, Format::Rgb565)),
+                ];
+                (outputs, frames.len())
+            }
+        };
+        for (extension, ours) in outputs {
+            write(options.out.join(format!("{stem}.{extension}")), &ours)?;
+            if let Some(dir) = &options.reference {
+                let path = dir.join(format!("{stem}.{extension}"));
+                let reference = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+                let label = match options.kind {
+                    Kind::Bink => name.clone(),
+                    Kind::Smacker => format!("{name} ({extension})"),
+                };
+                good &= compare(&label, count, &ours, &reference);
+            }
         }
     }
     Ok(good)
@@ -282,6 +375,11 @@ mod tests {
         assert!(Options::parse(&args(&["--sample", "x"])).is_err());
         assert!(Options::parse(&args(&["--vid"])).is_err());
         assert!(Options::parse(&args(&["--what"])).is_err());
+        let smacker = Options::parse(&args(&["--smacker", "HSLOOP"])).unwrap();
+        assert!(smacker.vid.ends_with("original-data/shell-videos.vid"));
+        assert_eq!(smacker.kind, Kind::Smacker);
+        assert!(smacker.wants("HSLOOP.SMK") && !smacker.wants("HSANIM.SMK"));
+        assert!(!smacker.wants("hsloop.bik"));
     }
 
     #[test]
@@ -294,6 +392,7 @@ mod tests {
             reference: None,
             samples: vec![3],
             reading: Reading::Fixed,
+            kind: Kind::Bink,
         };
         assert_eq!(video(&options), Ok(true));
         let ours = fs::read(dir.join("sample-3.yuv")).unwrap();
@@ -308,8 +407,40 @@ mod tests {
         let mut wrong = ours.clone();
         wrong[frame + 5] ^= 1;
         let frames = h3_bink::check::frames(&h3_bink::build::sample(3)).unwrap();
-        assert!(!compare("x", &frames, &ours, &wrong));
-        assert!(!compare("x", &frames, &ours, &wrong[1..]));
+        assert!(!compare("x", frames.len(), &ours, &wrong));
+        assert!(!compare("x", frames.len(), &ours, &wrong[1..]));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_smacker_sample_is_written_and_compared() {
+        let dir = std::env::temp_dir().join(format!("h3-view-smacker-{}", std::process::id()));
+        let options = Options {
+            names: Vec::new(),
+            vid: dir.join("none.vid"),
+            out: dir.clone(),
+            reference: None,
+            samples: vec![5],
+            reading: Reading::Fixed,
+            kind: Kind::Smacker,
+        };
+        assert_eq!(video(&options), Ok(true));
+        let frames = h3_smacker::check::frames(&h3_smacker::build::sample(5)).unwrap();
+        let pal8 = fs::read(dir.join("sample-5.pal8")).unwrap();
+        assert_eq!(pal8, h3_smacker::check::raw(&frames));
+        let sixteen = fs::read(dir.join("sample-5.565")).unwrap();
+        assert_eq!(sixteen, original_16(&frames, Format::Rgb565));
+        let reference = Options {
+            reference: Some(dir.clone()),
+            ..options
+        };
+        assert_eq!(video(&reference), Ok(true));
+        // A damaged file: its failing frames are printed and the run fails.
+        let mut bytes = h3_smacker::build::sample(5);
+        let last = bytes.len() - 1;
+        bytes.truncate(last);
+        assert!(matches!(decode_smacker("x", &bytes), Ok((_, false))));
+        assert!(decode_smacker("x", b"BIKb").is_err());
         let _ = fs::remove_dir_all(&dir);
     }
 
@@ -349,6 +480,7 @@ mod tests {
             reference: None,
             samples: Vec::new(),
             reading: Reading::Original,
+            kind: Kind::Bink,
         };
         assert_eq!(video(&options), Ok(false));
         assert!(out.join("\u{1b}[2Jgood.bik").exists());

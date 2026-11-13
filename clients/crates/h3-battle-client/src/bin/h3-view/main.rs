@@ -169,7 +169,7 @@ commands:
           the repository's packs/); prints the gaps. The committed tables (clients/assets) are
           source edited by hand: diff a fresh harvest against them, never overwrite them.
   video [<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
-        [--original]
+        [--original] [--smacker]
           decodes the Bink clips of a video archive (default the repository's
           original-data/battle-videos.vid; a game's Data/VIDEO.VID) with h3-bink, the named ones
           (by name or stem) or all, and the synthetic samples of the seeds given (h3_bink's
@@ -177,7 +177,11 @@ commands:
           frames as <stem>.yuv (raw YUV 4:2:0, as FFmpeg's rawvideo yuv420p), prints each
           clip's size, frames and hash; --reference compares each with <dir>/<stem>.yuv (exit 1
           on a difference); --original reads as the game's BINKW32.DLL reads (CLT-Q68).
-          clients/scripts/bink-check.sh runs it against the DLL.
+          clients/scripts/bink-check.sh runs it against the DLL. --smacker: the Smacker clips
+          (default archive original-data/shell-videos.vid) and samples with h3-smacker, each
+          frame's colour indices and palette as <stem>.pal8 and the original's 5-6-5 copy as
+          <stem>.565, both compared; clients/scripts/smacker-check.sh runs it against
+          SMACKW32.DLL.
   connect <ws://… | wss://…> (--game <id> | --create <offer>) --seat attacker|defender|spectator
           [--token <t>] [--name <display>] [--pins <file>] [--packs <dir>] [--out <file>]
           [--drop <n>]

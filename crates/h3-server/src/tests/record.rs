@@ -106,6 +106,12 @@ fn check(name: &str, replay: &Replay, game: u32, k: usize, text: &str) -> usize 
             }
             ServerMessage::GameAccepted { seq, .. } => seqs.push(seq),
             ServerMessage::GameTurn { .. } | ServerMessage::Snapshot { .. } => {}
+            // E16 M5 T16: an untimed game tells only that it waits for another's level-up.
+            ServerMessage::GameClock { clock, .. } => assert_eq!(
+                (clock.turn, clock.battle, clock.level_up),
+                (None, None, None),
+                "{name} player {k}"
+            ),
             other => panic!("{name} player {k}: {other:?}"),
         }
     }

@@ -296,6 +296,7 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         game,
         checkpoint_every: config.server.checkpoint_every,
         record_bytes: config.limits.record_bytes,
+        clock: h3_protocol::session::game::Clock::UNLIMITED,
     };
     let tokens = read.start.tokens.clone();
     let mut reopened = GameSession::reopen(
@@ -1175,6 +1176,7 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
         game,
         checkpoint_every: config.server.checkpoint_every,
         record_bytes: config.limits.record_bytes,
+        clock: h3_protocol::session::game::Clock::UNLIMITED,
     };
     let tokens = read.start.tokens.clone();
     let reopened = GameSession::reopen(

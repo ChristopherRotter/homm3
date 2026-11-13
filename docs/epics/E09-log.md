@@ -3627,7 +3627,8 @@ stands for it. The user's computer was connected at the start only: the original
 then (17 files, SHA-256 checked against the PC's), used for the scoped verify. **T27 whole**
 (decision 92, the user; two parts were recommended, the env apart). `master` merged in twice,
 after the server lane's #904 (protocol v56, replay format v14 taken first) and after E08 T115a's
-#906 (game state hash v31, protocol v57; the replays re-recorded a second time).
+#906 (game state hash v31, protocol v57; the replays re-recorded a second time); the server
+lane's #907 (protocol v58) merged in after the pull request opened.
 
 - **The town's rules** (`h3-towns`' `recruit.rs`; design §49 to §51): `RecruitSource::{Index,
   Portal}`; `recruit_source` (UnknownBuilding, NotRecruiting, NotStanding with a base index whose
@@ -3650,7 +3651,7 @@ after the server lane's #904 (protocol v56, replay format v14 taken first) and a
   `HireOpened`'s type and anchor. The legal recruitments after each own town's builds
   (`town/offer.rs`). Game state hash **v32** (the target's tag 1, the sources' tags 1 and 2;
   E08 T115a's #906 took v31 while this task ran).
-- **The wire** (protocol **v58**; #904 took v56, #906 v57): `TownCommand::Recruit`, three `TownReject`s,
+- **The wire** (protocol **v59**; #904 took v56, #906 v57, #907 v58): `TownCommand::Recruit`, three `TownReject`s,
   `HireTarget::Garrison`, `HireSeen` in `Hire` and `HireOpened`; mapped, inverted, round-tripped.
   Replay format **v15** (`town recruit <town> <building>`). The env's encoding **v10**: `RECRUIT`
   (entry 31) with `BUILD`'s tile and building heads; a dialog's creatures from

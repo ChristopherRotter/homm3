@@ -237,6 +237,7 @@ impl Prepared {
             game,
             checkpoint_every: server.checkpoint_every,
             record_bytes: limits.record_bytes,
+            clock: h3_protocol::session::game::Clock::UNLIMITED,
         };
         Ok(Self {
             difficulty: offer.setup.difficulty,
@@ -289,6 +290,7 @@ impl Prepared {
             game,
             checkpoint_every: replay.checkpoint_every,
             record_bytes: limits.record_bytes,
+            clock: h3_protocol::session::game::Clock::UNLIMITED,
         };
         let computer_seed = os_u64().map_err(|e| e.0)?;
         #[cfg(test)]

@@ -97,6 +97,18 @@
 //!   (in-process at [`GameSession::start`], for connections at the join that holds the last seat),
 //!   each player whose town events fired at its turn start inside the build gets them in one
 //!   `GameEvents` after its `GameSnapshot`, before the turns; a restore and a re-taken seat never.
+//! - **The clock** (E16 M5 T16; SRV-Q31, SRV-Q32; [`clock`]'s own text). The host passes in its
+//!   clock ([`GameSession::elapse`], before every other call) and wakes the session at its next
+//!   deadline ([`GameSession::deadline`]); the options say how it runs ([`GameOptions::clock`]):
+//!   a turn's timer per player, the level-up's time while one holds the game, the chess clocks of
+//!   a battle between two players' heroes. When a timer runs out the system acts for its player,
+//!   each step a journaled command of the system actor (`h3_game::SystemCommand`) told as every
+//!   command's: a turn's end answers each open decision by its default, plays the player's battle
+//!   side by the host's computer, then ends the turn; a level-up's answers it by its default; a
+//!   chess clock's hands its side to the computer for the rest of the battle. Each player is told
+//!   what it may see of the clock (`GameClock`) whenever that changes otherwise than by counting
+//!   down, after a command's other messages and before the turns, and after a snapshot that
+//!   leaves something to tell; the time counted is journaled ([`GameEntry::Elapsed`]).
 //! - **Not here yet:** a battle's `ProposePause`, `AnswerPause` (no whole game is ranked),
 //!   `FetchReplay` (no whole game ends before E10) and `SetSpectators` (2c), ignored here; its
 //!   `Query` too (a whole game's is `GameQuery::Battle`).
@@ -116,7 +128,9 @@
 //! the computer handed over after the construction, playing at once, a rejected choice replaced
 //! by the first legal command (T10); one query message for the game's queries, its answer
 //! unnumbered and unrecorded, a query outside a running game rejected as a command, the start's
-//! events only to a player that has any (T11).
+//! events only to a player that has any (T11); `GameClock` after the other messages and after a
+//! snapshot, the system's steps in the order the module says, the computer's or else Defend for
+//! a timed-out side in-process (T16).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -129,20 +143,25 @@ use h3_battle::{BattleSide, LegalCommands};
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
     Actor, BitGrid, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState, NoopSink,
-    OpenBattle, Sink, Viewer as EngineViewer,
+    OpenBattle, Sink, SystemCommand, Viewer as EngineViewer,
 };
 
 use super::{
     Bot, ConnId, Outbound, Record, game_unseated, goodbye, handed, refusal, refused, reply,
     unseated,
 };
+
+mod clock;
+
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::wire::game::{
-    GameAnswer, GameCommand, GameEvent, GameManifest, GameQuery, GameRecordHeader, GameReject,
+    GameAnswer, GameClock, GameCommand, GameEvent, GameManifest, GameQuery, GameRecordHeader,
+    GameReject,
 };
 use crate::wire::{ClientMessage, GoodbyeReason, Observation, Phase, Refusal, ServerMessage};
+pub use clock::{Allowance, Clock, ELAPSED_EVERY_MS};
 
 /// A frame for a player: the host delivers it to the player's client.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,6 +184,8 @@ pub struct GameOptions {
     /// of it since its last snapshot a player gets a fresh one (E16 M5 T7a1). `usize::MAX`: the
     /// whole game, one snapshot.
     pub record_bytes: usize,
+    /// How the game's clock runs (E16 M5 T16): [`Clock::UNLIMITED`] for none.
+    pub clock: Clock,
 }
 
 /// The journal (E16 M5 T5b): the adventure replay in progress but for what the host names (the
@@ -227,6 +248,10 @@ pub enum GameEntry {
     Paused,
     /// A seat was taken in the paused game: it runs again (E16 M5 T8b).
     Resumed,
+    /// The running timers counted this many milliseconds of the host's clock since the last
+    /// such entry (E16 M5 T16): journaled before the next entry that may change what runs, at a
+    /// timer's end and at the latest after [`ELAPSED_EVERY_MS`]; a restore counts it again.
+    Elapsed(u64),
 }
 
 /// Why a journal does not restore its game.
@@ -287,6 +312,9 @@ struct Viewer {
     explored: Option<BitGrid>,
     /// The bytes of the lines its record got since its last snapshot (E16 M5 T7a1).
     since: usize,
+    /// Its clock as it was last told it, with the host's clock then (E16 M5 T16; none before
+    /// its first reading).
+    clock: (GameClock, Option<u64>),
 }
 
 impl Viewer {
@@ -315,16 +343,39 @@ impl Viewer {
     /// `state` (E16 M5 T7a1), where its record may be cut; inside a battle too (E16 M5 T12): the
     /// snapshot holds the battle's view (`GameObservation::battle`), as a join's mid-battle does,
     /// so that a player's own rejections there stay within its bound.
+    /// Whether it sent one.
     fn refresh(
         &mut self,
         to: PlayerId,
         state: &GameState,
         rules: &GameRuleset,
         out: &mut Vec<GameOutbound>,
-    ) {
-        if self.since > self.record.limit() / 2 {
+    ) -> bool {
+        let due = self.since > self.record.limit() / 2;
+        if due {
             let observation = map::game::observe(state, rules, EngineViewer::Player(to));
             self.post(to, |n| ServerMessage::GameSnapshot { n, observation }, out);
+        }
+        due
+    }
+
+    /// Tells the viewer `to` its clock `now` (the host's clock `at`) if it is not what it was
+    /// last told (E16 M5 T16): after a snapshot (`fresh`), unless there is nothing to tell.
+    fn tell_clock(
+        &mut self,
+        to: PlayerId,
+        (clock, at): (GameClock, Option<u64>),
+        fresh: bool,
+        out: &mut Vec<GameOutbound>,
+    ) {
+        if fresh {
+            self.clock = (GameClock::default(), at);
+        }
+        let (told, then) = self.clock;
+        let (then, now) = (then.unwrap_or_default(), at.unwrap_or_default());
+        if !clock::same(&told, then, &clock, now) {
+            self.post(to, |n| ServerMessage::GameClock { n, clock }, out);
+            self.clock = (clock, at);
         }
     }
 }
@@ -430,8 +481,11 @@ pub struct GameSession<'r> {
     paused: bool,
     /// The login names of the logged-in connections, as the host said (E16 M5 T8a).
     logins: BTreeMap<ConnId, String>,
-    /// The host's computer, which plays the unowned battle sides (E16 M5 T10).
+    /// The host's computer, which plays the unowned battle sides (E16 M5 T10) and the timed-out
+    /// players' (T16).
     computer: Option<Box<dyn Bot + Send>>,
+    /// The game's timers (E16 M5 T16).
+    clock: clock::Timers,
 }
 
 impl<'r> GameSession<'r> {
@@ -570,6 +624,12 @@ impl<'r> GameSession<'r> {
                     self.entries.push(entry.clone());
                     continue;
                 }
+                // Counted while the game ran, as the re-run's state stands.
+                GameEntry::Elapsed(ms) => {
+                    self.clock.advance(*ms, &self.state);
+                    self.entries.push(entry.clone());
+                    continue;
+                }
                 // The re-run's own follows its command; the two are compared below.
                 GameEntry::Checkpoint(_) => continue,
             };
@@ -602,7 +662,10 @@ impl<'r> GameSession<'r> {
             record: Record::new(options.record_bytes),
             explored: None,
             since: 0,
+            clock: (GameClock::default(), None),
         };
+        let mut clock = clock::Timers::new(options.clock, state.players());
+        clock.sync(&state, None);
         Ok(Self {
             rules,
             viewers: vec![viewer; state.players()],
@@ -622,6 +685,7 @@ impl<'r> GameSession<'r> {
             paused: false,
             logins: BTreeMap::new(),
             computer: None,
+            clock,
         })
     }
 
@@ -679,6 +743,10 @@ impl<'r> GameSession<'r> {
             |n| ServerMessage::GameSnapshot { n, observation },
             out,
         );
+        let clock = self
+            .clock
+            .view(&self.state, player, self.started && !self.paused);
+        viewer.tell_clock(player, (clock, self.clock.at), true, out);
     }
 
     /// Handles what connection `conn` sent after its hello (E16 M5 T8a); the frames to send go to
@@ -872,9 +940,9 @@ impl<'r> GameSession<'r> {
         }
         self.snapshot(player, &mut frames);
         if self.started {
-            // A resumed game may be the computer's to play (E16 M5 T10); its commands' turns
-            // are every player's, the joiner's too.
-            if !self.unowned(&mut frames) {
+            // A resumed game may be the computer's to play (E16 M5 T10), or the system's (T16);
+            // their commands' turns are every player's, the joiner's too.
+            if !self.drive(&mut frames) {
                 self.turn(player, &mut frames);
             }
         } else if held {
@@ -935,7 +1003,7 @@ impl<'r> GameSession<'r> {
                     |n| ServerMessage::GameAccepted { n, seq, command },
                     out,
                 );
-                viewer.refresh(player, &self.state, self.rules, out);
+                self.refresh(player, out);
             }
             None => self.reject(player, seq, GameReject::Stale {}, out),
         }
@@ -1016,6 +1084,7 @@ impl<'r> GameSession<'r> {
 
     /// Pauses the game (E16 M5 T8b): an entry, and every holder hears `Goodbye { Paused }`.
     fn halt(&mut self, out: &mut Vec<Outbound>) {
+        self.flush();
         self.paused = true;
         self.entries.push(GameEntry::Paused);
         for seat in self.taken_mut() {
@@ -1109,7 +1178,7 @@ impl<'r> GameSession<'r> {
                     out,
                 );
                 self.tell(told, out);
-                self.unowned(out);
+                self.drive(out);
                 Ok(())
             }
         }
@@ -1131,12 +1200,25 @@ impl<'r> GameSession<'r> {
                 out,
             );
             // Its own rejections fill its record too (E16 M5 T7b's review).
-            viewer.refresh(player, &self.state, self.rules, out);
+            self.refresh(player, out);
+        }
+    }
+
+    /// `player`'s fresh snapshot when its record needs one ([`Viewer::refresh`]), then its clock
+    /// if there is one to tell (E16 M5 T16).
+    fn refresh(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
+        let viewer = &mut self.viewers[player.index()];
+        if viewer.refresh(player, &self.state, self.rules, out) {
+            let clock = self
+                .clock
+                .view(&self.state, player, self.started && !self.paused);
+            viewer.tell_clock(player, (clock, self.clock.at), true, out);
         }
     }
 
     /// The system actor's command (`Actor::System`), from the host: applied, then its events and
-    /// the turns told as a player's command's are.
+    /// the turns told as a player's command's are, then the system's steps that are due (E16 M5
+    /// T16: [`Self::drive`]).
     ///
     /// # Errors
     ///
@@ -1148,6 +1230,7 @@ impl<'r> GameSession<'r> {
     ) -> Result<(), GameReject> {
         let (_, told) = self.apply(Origin::Host(Actor::System), command)?;
         self.tell(told, out);
+        self.drive(out);
         Ok(())
     }
 
@@ -1170,44 +1253,159 @@ impl<'r> GameSession<'r> {
     pub fn computer(&mut self, computer: Box<dyn Bot + Send>, out: &mut Vec<Outbound>) {
         self.computer = Some(computer);
         let mut frames = Vec::new();
-        self.unowned(&mut frames);
+        self.drive(&mut frames);
         self.route(frames, out);
     }
 
-    /// The computer's commands while an unowned battle side is to act in the running game (E16
-    /// M5 T10), each told; whether it played any. A choice the engine rejects is replaced by the
-    /// side's first legal command it accepts, as a battle's bot's (`super::Session`): it accepts
-    /// every legal command, so the computer plays until a player is to act or no battle is its.
-    /// None without a computer, before the start and while the game is paused.
-    fn unowned(&mut self, out: &mut Vec<GameOutbound>) -> bool {
-        let (mut legal, mut played, mut moved) = (LegalCommands::new(), false, true);
-        while moved && self.started && !self.paused {
-            let Some(computer) = self.computer.as_mut() else {
+    /// The system's commands while one is due in the running game, each told (E16 M5 T10, T16):
+    /// whether it played any. In order, while the game runs, until none is due:
+    ///
+    /// 1. While a level-up holds the game, its default answer when the owner's time or turn ran
+    ///    out; nothing else moves then.
+    /// 2. An unowned battle side to act, by the host's computer (none without one: the
+    ///    in-process host plays the system actor itself).
+    /// 3. A battle side to act that is the computer's, a player's whose turn or chess clock ran
+    ///    out: by the computer, or Defend (else the first legal command) without one.
+    /// 4. A player whose turn ran out and who fights no battle: its first open decision's
+    ///    default answer, or its turn's end when it has none.
+    ///
+    /// A battle choice the engine rejects is replaced by the side's first legal command it
+    /// accepts, as a battle's bot's (`super::Session`): it accepts every legal command.
+    fn drive(&mut self, out: &mut Vec<GameOutbound>) -> bool {
+        let (mut played, mut moved) = (false, true);
+        while moved && self.live() {
+            let Some(candidates) = self.due() else {
                 break;
             };
-            // An unowned battle has a side to act.
-            let to_act = self.state.unowned_battle();
-            let to_act = to_act.and_then(|b| b.state().side_to_act().map(|side| (b, side)));
-            let Some((battle, side)) = to_act else {
-                break;
-            };
-            let ruleset = self.rules.battle();
-            h3_battle::legal_commands(battle.state(), ruleset, side, &mut legal);
-            let choice = computer.command(battle.state(), ruleset, side, &legal);
-            let mut choices = core::iter::once(choice).chain(legal.iter().copied());
-            moved = choices.any(|command| {
-                let mut told = Told {
-                    rules: self.rules,
-                    events: Vec::new(),
-                    ended: Vec::new(),
-                };
-                let command = h3_game::GameCommand::Battle(command);
-                let applied = self.execute(Origin::Host(Actor::System), command, &mut told);
-                applied.map(|()| self.tell(told, out)).is_ok()
-            });
+            moved = (candidates.into_iter()).any(|command| self.act(command, out));
             played |= moved;
         }
         played
+    }
+
+    /// The system's next due step (the order [`Self::drive`] gives): its commands, the first the
+    /// engine accepts to be applied (a battle's: the computer's choice, then the side's legal
+    /// commands).
+    fn due(&mut self) -> Option<Vec<h3_game::GameCommand>> {
+        let state = &self.state;
+        let system = |command| vec![h3_game::GameCommand::System(command)];
+        if let Some(owner) = state.waiting_for() {
+            let out = self.clock.hold_out() || self.clock.turn_out(state, owner);
+            return out.then(|| system(SystemCommand::Answer { player: owner }));
+        }
+        if let Some(computer) = self.computer.as_mut()
+            && let Some(battle) = state.unowned_battle()
+            && let Some(side) = battle.state().side_to_act()
+        {
+            let choices = choices(Some(computer), battle, self.rules, side);
+            return Some(
+                choices
+                    .into_iter()
+                    .map(h3_game::GameCommand::Battle)
+                    .collect(),
+            );
+        }
+        let players = players().take(self.viewers.len());
+        for player in players.clone() {
+            if let Some((battle, side)) = own_battle(state, player)
+                && battle.state().side_to_act() == Some(side)
+                && (self.clock.turn_out(state, player) || self.clock.side_out(battle, side))
+            {
+                let computer = self.computer.as_mut();
+                let choices = choices(computer, battle, self.rules, side);
+                let command = |command| SystemCommand::Battle { player, command };
+                let commands =
+                    (choices.into_iter()).map(|c| h3_game::GameCommand::System(command(c)));
+                return Some(commands.collect());
+            }
+        }
+        let mut out = players.filter(|player| self.clock.turn_out(state, *player));
+        out.find(|player| state.battle(*player).is_none())
+            .map(|player| {
+                system(if state.has_decision(player) {
+                    SystemCommand::Answer { player }
+                } else {
+                    SystemCommand::EndTurn { player }
+                })
+            })
+    }
+
+    /// The system's `command` applied and told; whether the engine accepted it.
+    fn act(&mut self, command: h3_game::GameCommand, out: &mut Vec<GameOutbound>) -> bool {
+        let mut told = Told {
+            rules: self.rules,
+            events: Vec::new(),
+            ended: Vec::new(),
+        };
+        let applied = self.execute(Origin::Host(Actor::System), command, &mut told);
+        applied.map(|()| self.tell(told, out)).is_ok()
+    }
+
+    /// Whether the game runs: started and not paused (its timers count, the system acts).
+    const fn live(&self) -> bool {
+        self.started && !self.paused
+    }
+
+    /// The host's clock reads `now`, in milliseconds (E16 M5 T16; one that goes back is ignored):
+    /// call it before every other call, at the session's construction (its first reading counts
+    /// nothing: a restore's downtime never counts) and at its [`GameSession::deadline`]. While
+    /// the game runs its running timers count the time since the last reading; each that runs out
+    /// has the system act for its player (the module's clock), its frames to `out` (a game of
+    /// connections' host routes them, [`GameSession::route`]); whatever changed in a player's
+    /// clock otherwise is told to it. A step due when the game was restored (a crash between a
+    /// timer's end and its steps) is taken now.
+    pub fn elapse(&mut self, now: u64, out: &mut Vec<GameOutbound>) {
+        let target = self.clock.at.map_or(now, |at| at.max(now));
+        let mut at = *self.clock.at.get_or_insert(target);
+        for viewer in &mut self.viewers {
+            viewer.clock.1.get_or_insert(at);
+        }
+        self.drive(out);
+        while at < target && self.live() {
+            let Some(end) = self.clock.next_end(&self.state) else {
+                break;
+            };
+            let step = end.min(target - at);
+            self.clock.advance(step, &self.state);
+            self.clock.pending = self.clock.pending.saturating_add(step);
+            at += step;
+            self.clock.at = Some(at);
+            if step == end {
+                self.flush();
+                self.drive(out);
+            } else if self.clock.pending >= ELAPSED_EVERY_MS {
+                self.flush();
+            }
+        }
+        self.clock.at = Some(target);
+        self.tell_clocks(out);
+    }
+
+    /// When the host's clock should next read (E16 M5 T16): the next end of a running timer, or
+    /// the time counted reaching [`ELAPSED_EVERY_MS`] first; none while no timer runs (the game
+    /// waits for a command, or is not running) and before the clock's first reading.
+    pub fn deadline(&self) -> Option<u64> {
+        let at = self.clock.at.filter(|_| self.live())?;
+        let end = self.clock.next_end(&self.state)?;
+        let journaled = ELAPSED_EVERY_MS.saturating_sub(self.clock.pending).max(1);
+        Some(at.saturating_add(end.min(journaled)))
+    }
+
+    /// The time counted since the last `Elapsed` entry, as one (none for none).
+    fn flush(&mut self) {
+        let pending = core::mem::take(&mut self.clock.pending);
+        if pending > 0 {
+            self.entries.push(GameEntry::Elapsed(pending));
+        }
+    }
+
+    /// Each player told its clock if it changed otherwise than by counting down.
+    fn tell_clocks(&mut self, out: &mut Vec<GameOutbound>) {
+        let live = self.live();
+        for (player, viewer) in players().zip(&mut self.viewers) {
+            let clock = self.clock.view(&self.state, player, live);
+            viewer.tell_clock(player, (clock, self.clock.at), false, out);
+        }
     }
 
     /// The game's state (the host's: the hashes, the end).
@@ -1278,7 +1476,22 @@ impl<'r> GameSession<'r> {
         sink: &mut impl Sink,
     ) -> Result<(), GameCommandError> {
         let actor = origin.actor();
+        // The side a battle command commands, for its chess clock's increment (E16 M5 T16).
+        let commander = match (&command, actor) {
+            (h3_game::GameCommand::Battle(_), Actor::Player(player)) => Some(player),
+            (h3_game::GameCommand::System(SystemCommand::Battle { player, .. }), _) => {
+                Some(*player)
+            }
+            _ => None,
+        };
+        let commanded = commander
+            .and_then(|player| own_battle(&self.state, player))
+            .map(|own| (BattleKey::of(own), own.1));
         h3_game::apply(&mut self.state, self.rules, actor, command.clone(), sink)?;
+        // The time counted so far precedes the command, which may change what runs; it counted
+        // in the state before it.
+        self.flush();
+        self.clock.sync(&self.state, commanded);
         for seat in self.taken_mut() {
             seat.asked = false;
         }
@@ -1343,7 +1556,11 @@ impl<'r> GameSession<'r> {
                 viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
             viewer.battle = key;
-            viewer.refresh(player, &self.state, self.rules, out);
+            let fresh = viewer.refresh(player, &self.state, self.rules, out);
+            let clock = self
+                .clock
+                .view(&self.state, player, self.started && !self.paused);
+            viewer.tell_clock(player, (clock, self.clock.at), fresh, out);
         }
         self.turns(out);
     }
@@ -1396,6 +1613,25 @@ impl BattleKey {
     }
 }
 
+/// The commands the computer plays for `side` of `battle`, to act: its choice (Defend without a
+/// computer: the in-process host's), then the side's legal commands, for a choice the engine
+/// rejects.
+fn choices(
+    computer: Option<&mut Box<dyn Bot + Send>>,
+    battle: &OpenBattle,
+    rules: &GameRuleset,
+    side: BattleSide,
+) -> Vec<h3_battle::Command> {
+    let (ruleset, mut legal) = (rules.battle(), LegalCommands::new());
+    h3_battle::legal_commands(battle.state(), ruleset, side, &mut legal);
+    let choice = computer.map_or(h3_battle::Command::Defend, |computer| {
+        computer.command(battle.state(), ruleset, side, &legal)
+    });
+    core::iter::once(choice)
+        .chain(legal.iter().copied())
+        .collect()
+}
+
 /// `player`'s battle, its first open decision's, with the side it owns there (it owns one: the
 /// decision is its own).
 fn own_battle(state: &GameState, player: PlayerId) -> Option<(&OpenBattle, BattleSide)> {
@@ -1410,6 +1646,6 @@ fn explored(state: &GameState, player: PlayerId) -> Option<BitGrid> {
 }
 
 /// The players by index, as many as the game has (at most 256: `PlayerId`'s range).
-fn players() -> impl Iterator<Item = PlayerId> {
+fn players() -> impl Iterator<Item = PlayerId> + Clone {
     (0..=u8::MAX).map(PlayerId::new)
 }
