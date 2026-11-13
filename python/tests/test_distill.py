@@ -164,6 +164,32 @@ def test_every_committed_bench_config_is_valid() -> None:
     assert kinds == ["mlp", "mlp", "mlp", "hexconv", "hexformer", "entity"]
 
 
+def test_increment_8s_architecture_bench_is_t26bs_with_three_arms_beside_its_control() -> None:
+    # E25 T32 (the user, 2026-11-13): T26b's sweep on the same teacher, samples, seed and
+    # held-out set, its winner the control, each arm one change from it, T27's ladders at the end.
+    folder = Path(__file__).parents[1] / "configs" / "distill"
+    arch = load_bench((folder / "e25-arch.toml").read_text(encoding="utf-8"))
+    sweep = load_bench((folder / "e25-structure.toml").read_text(encoding="utf-8"))
+    clone = load_bench((folder / "e25-clone-3.toml").read_text(encoding="utf-8"))
+    assert replace(arch, students={}, ladder=[], ladder_per_kind=0) == replace(
+        sweep, students={}, ladder=[], ladder_per_kind=0
+    )
+    assert (arch.ladder, arch.ladder_per_kind) == (clone.ladder, clone.ladder_per_kind)
+    control = sweep.students["hexconv-n-96x6-a"]
+    assert control == clone.students["hexconv-n-96x6-a"]
+    changes = {
+        name: {k: v for k, v in keys.items() if control.get(k) != v}
+        for name, keys in arch.students.items()
+    }
+    assert changes == {
+        "hexconv-n-96x6-a": {},
+        "hexconv-n-96x6-lr2": {"lr": 2e-3},
+        "hexconv-n-128x6": {"width": 128},
+        "hexconv-n-64x10": {"width": 64, "layers": 10},
+    }
+    assert all(set(keys) == set(control) for keys in arch.students.values())
+
+
 def test_every_committed_bench_report_is_complete() -> None:
     # `records/distill/<bench>.json` (E25 T7c): a bench's `report.json`, every evaluation scoring
     # every student, the bench's settings loadable.

@@ -250,3 +250,9 @@ its `parent`.
   each `--init-from` `e25-structure-1` #2): 2 M samples each, no promotion (their own gate
   rejected the learner); measured after the run (`continue/`): 0.494, 0.478 and 0.493 head to
   head against #2 (`docs/epics/E25-log.md` T33). Their networks are on the user's machine.
+- `e25-continue-anneal-1` (E25 T33's round 2, 2026-11-12; `configs/e25-continue-anneal.toml`,
+  `--init-from` `e25-structure-1` #2): round 1's quarter rate annealed to #2's floor over its
+  2 M samples, no promotion (its own gate rejected the learner); measured after the run
+  (`continue/`): 0.503 ± 0.002 head to head against #2, 0.513 and 0.508 against the fair and
+  the all-seeing system actor, the neutral set +0.304: #2's plateau (`docs/epics/E25-log.md`
+  T33). Its network is on the user's machine.

@@ -30,18 +30,18 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   margin beyond the interval). **T30 done** (`E25-log.md` T30): the margin lies in the hero
   battles (#2 keeps more army there but wins as often as the fair actor), sharpening gains
   +0.011 (temperature 0.5), no encoding change asked. **T31 done** (`E25-log.md` T31): cuDNN's
-  autotuner in the update (`[device] cudnn_autotune`, on), `[ppo] chunk_align`; a `hexconv` run
-  sets `accumulate = 4`, `chunk_align = 32`: 958 to 649 µs a sample-pass, 98 to 67 s an update
-  on the GTX 1070; `gpu.cap` now passes the card's index (every CUDA entry point since T28
-  stopped there). **T33 in progress** (`QUEUE.md`): round 1 done (`E25-log.md` T33): no arm
-  gains, head to head against #2 the bonus at 0 0.494, a quarter of the rate 0.493, the
-  imitation loss held 0.478 (± 0.002), the ladders inside #2's interval; each ran at 5 to 20
-  times #2's final rate, and the entropy rose without the bonus. Round 2 prepared (the user's
-  choice): `e25-continue-anneal-1`, the quarter rate annealed to #2's floor over 2 M; **next: the
-  user runs it** (about 2 hours; the commands in `QUEUE.md`), then its read closes T33 and says
-  whether T35's long run starts from #2 or from T32's clone; then T32.
-- **Open pull requests:** the one of `ai/e25-t33-round1` (T33's round 1 and round 2's
-  preparation). Merged: #829 (T30), #835 (T31), #843 (T33's preparation).
+  autotuner in the update, `[ppo] chunk_align`; a `hexconv` run sets `accumulate = 4`,
+  `chunk_align = 32`: 98 to 67 s an update on the GTX 1070. **T33 done** (`E25-log.md` T33):
+  no continuation from #2 gains; head to head against #2 the bonus at 0 0.494, a quarter of the
+  rate 0.493, the imitation loss held 0.478, that rate annealed to #2's floor 0.503 (± 0.002,
+  level), the ladders inside #2's interval: **#2 sits at this setup's plateau**, so T35's long
+  run starts from T32's best clone. **T32 prepared** (`QUEUE.md`; the arms the user's: the
+  control `hexconv` 96 × 6, it at 2e-3, 128 × 6, 64 × 10, 4 M each on T26b's bench with T27's
+  ladders, `configs/distill/e25-arch.toml`): **next: the user runs it** (about 7 hours in parts
+  under 2 hours; the commands in `QUEUE.md`), then its read names the long run's network; then
+  T34, T35.
+- **Open pull requests:** the one of `claude/e25-continuation-e2ydg6` (T33's close, T32's
+  preparation). Merged: #835 (T31), #843 (T33's preparation), #862 (T33's round 1).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -54,6 +54,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and replays, what `--scope ai` skips), **Environment** (what an agent sees, the batch, the pool's `unsafe`, benchmarks, the census, the encounter sampler, bots' tables) and **Python** (the trainer's resumable state, uv, PyTorch's pinned build, the sandbox's network).
 
 ## Recent sessions
+
+### 2026-11-13 — E25 T33 closed, T32 prepared
+
+- #862 merged. No computer folder linked: the user uploaded round 2's `record.json`,
+  `metrics.jsonl` and the three measures (the measures with CRLF, stripped on commit; the
+  update records read from `metrics.jsonl`, not committed). The user chose T32's arms. No setup
+  script run: cargo-llvm-cov, llvm-tools and llvm-20 installed by hand for the scoped verify,
+  `origin/master` fetched first (`check-lane` read a stale base); `uv sync --group train` for
+  T32's config test.
 
 ### 2026-11-11 — E25 T33 (round 1 read, round 2 prepared)
 
@@ -70,12 +79,3 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
   worktree, its tests on the main clone's venv (`H3_LIBRARY`). Built `[ppo] imitation_floor`, the
   gate's `--fixed` and `--json`, round 1's configs; a CPU smoke of the imitation arm (stopped by
   a timeout, resumed, its end gate); the scoped verify, the Python suite 258 (2.6 minutes).
-
-### 2026-11-10 — E25 T31
-
-- #829 merged; the branch started from `master` (the setup's baseline only the light gates);
-  `cargo build --release -p h3-ffi` 56 s, `uv sync --group train` about 30 minutes (3 MB/s).
-  Built `h3env.train.speed`; the user ran it five times (about 6 minutes each): the first
-  stopped at `gpu.cap` (fixed), then the variants, the sweep by rows (its autotuner column void:
-  cuDNN's cache, `TRAPS.md`), the sweep again, the confirmation. The Python suite 254 (2.4
-  minutes).
