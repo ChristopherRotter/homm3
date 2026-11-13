@@ -11,9 +11,9 @@ use h3_contracts::ArmyStack;
 use h3_kernel::{Rng, StreamId};
 use h3_towns::{BuildingDef, BuildingId, BuildingRoles, GrowthInputs};
 
-use super::command::RED;
+use super::command::{BLUE, RED};
 use super::growth::{T0, T3, built_seeded, rules_on, setup, to_day_told};
-use crate::{GameEvent, GameRuleset};
+use crate::{Actor, GameCommand, GameEvent, GameRuleset, NoopSink, apply};
 
 /// A building `key` of the test town's record on map slot `slot`, with `roles`, free and without
 /// requirements.
@@ -131,4 +131,29 @@ fn a_neutral_town_whose_week_fails_its_odds_keeps_its_garrison() {
         &garrison[..]
     );
     assert_eq!(game.towns().get(T3).unwrap().available(0), 15 + 15 / 2);
+}
+
+// covers: TWN-GRO-006, TWN-VEW-004
+#[test]
+fn a_week_told_to_nobody_grows_the_same() {
+    // The week's views are taken only for a sink that keeps events: a game played with one that
+    // keeps nothing reaches the same state.
+    let rules = rules_garrison([101, 101]);
+    let mut told = built_seeded(&rules, &setup(&rules), 3);
+    let mut quiet = told.clone();
+    let _ = to_day_told(&rules, &mut told, 8);
+    while quiet.day() < 8 {
+        for player in [RED, BLUE] {
+            let command = GameCommand::EndTurn;
+            apply(
+                &mut quiet,
+                &rules,
+                Actor::Player(player),
+                command,
+                &mut NoopSink,
+            )
+            .unwrap();
+        }
+    }
+    assert_eq!(quiet.state_hash(), told.state_hash());
 }
