@@ -19,7 +19,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
-- **Open pull requests:** T26b's (branch `town/e09-t26b`, `cross-lane`); watch it until it
+- **Open pull requests:** #903, T26b's (branch `town/e09-t26b`, `cross-lane`); watch it until it
   merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
@@ -57,7 +57,7 @@ only: the original data staged then (17 files, SHA-256 checked), used for the sc
 and day, `h3-map`'s plans (the hygiene property ends at every week's start), four towns replays
 (hash lines), `day-start-builds-36` (+1.86 %) and `day-start-towns-36` (+8.10 %, the garrison
 week) re-baselined against `master`, `h3-protocol` (v54). Notes in the adventure's and the
-server's inboxes. T27 queued.
+server's inboxes. T27 queued. PR #903 (`master` merged in after the server lane's #901).
 
 ### 2026-11-12 — T26a2: the week's kind
 
