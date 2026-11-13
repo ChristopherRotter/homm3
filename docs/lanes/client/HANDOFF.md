@@ -5,18 +5,19 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 22). **M1 closed** (2026-11-13, T3: two fresh reviewers, 57 findings fixed or listed; the
-  review list accepted; M1's tasks in `E27-archive.md`; the catalogue `E27-design.md` §1 to §6,
-  §6.4 what M2 to M4 still read or record). **M2 refined** at M1 T3: eight tasks (the epic's M2
-  table, `QUEUE.md`). **Next: M2 T1** (the Smacker decoder) or **T3** (the shell's frame; the two are
-  independent). Decisions to carry: the dialogs' input one implementation shared with the
-  battle's (20); the shell's code as the battle's: `h3-view` and `h3-battle-client`, `h3-smacker`,
-  the clips' sound exact against the DLLs, the score the engine's (21); decision 22's fixes. Open
-  pull request: **#905** (`client/e27-m1-t3`, docs only; watch it until it merges). E17 done
-  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
-  queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
-  gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
-  `clients/capture/README.md`; design §3–§13; records in `E17-log.md`.
+  to 24). **M1 closed** (2026-11-13, T3; M1's tasks in `E27-archive.md`; the catalogue
+  `E27-design.md` §1 to §6, §6.4 what M2 to M4 still read or record). **M2 T1 done** (2026-11-13:
+  `h3-smacker`, `video --smacker`, `smackprobe.exe`, `smacker-check.sh`; every frame the DLL's;
+  design §7; decisions 23, 24). **Next: M2 T2** (the clips' sound) or **T3** (the shell's frame;
+  the two are independent). Decisions to carry: the dialogs' input one implementation shared with
+  the battle's (20); the shell's code as the battle's, the clips' sound exact against the DLLs, the
+  score the engine's (21); decision 22's fixes; a Smacker clip's every pixel through its palette,
+  the DLL's 16-bit copy for the comparisons only (24). Open pull request: **`client/e27-m2-t1`**
+  (watch it until it merges). E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
+  epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches. Workspace
+  `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
+  `adr-drafts/`), ADR-0024; the harness `clients/capture/README.md`; design §3–§13; records in
+  `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
@@ -26,7 +27,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q119,
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q120,
   CLT-STUB-6.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
@@ -47,6 +48,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-13, E27 M2 T1 (done; `client/e27-m2-t1`).** Kept whole with the user (decision 23).
+  The original data staged at once (64 files, checked by SHA-256); the baseline lost to a VM
+  restart, CI's green `master` stood for it. Built `h3-smacker` (FFmpeg 6.1.1's Smacker ported,
+  100 % covered), `video --smacker`, `smackprobe.exe`, `smacker-dll.py`, `smacker-check.sh`. Checked
+  against FFmpeg and `SMACKW32.DLL`: the shell's eight clips, AB's `Credits.smk` and 150 samples,
+  every frame, palette and 16-bit copy byte for byte. Found: the DLL's 16-bit copy keeps a skipped
+  block's colours after a palette change (CLT-Q119, fixed: decision 24); the DLL faults on a byte
+  tree left out and on a key-frame mark (samples avoid both). Record: `E27-log.md`, "M2 T1".
 - **2026-11-13, E27 M1 T3 (done; `client/e27-m1-t3`).** Kept whole with the user (decision 19),
   sub-agents for the long parts. The original data staged at once (64 files, checked by SHA-256).
   Every recipe but the two full starts recorded again: all as kept. Two fresh reviewers (the
@@ -62,12 +71,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   Smacker clock, the clips' reads, `BinkGetSummary` guarded). Recorded 84 recipes, 864 shots, 27
   clips, all the same twice but one listed 10 ms shift. Asked: CLT-Q100 to CLT-Q102. The VM
   restarted twice (an agent's report lost). Record: `E27-log.md`, "M1 T2".
-- **2026-11-12, E27 M1 T1b3b (done; `client/e27-m1-t1b3b`).** Kept whole with the user
-  (decision 16). The original data staged at once (21 files, checked by SHA-256) while the user's
-  computer was online. Read victory and defeat in play (the eliminations, the conditions' tests and
-  messages per code), `game_main` after play, the lost and won screens, the score and its screen,
-  the high score's entry and `HiScore.dat`'s write: 36 new map entries, 6 updated, ten struct
-  fields. Found: 0x6972B8 is the scenario's end flag (renamed; the adventure lane's inbox told);
-  the score's formula; the eleventh row takes every score that misses the ten; `LoseGame` always
-  plays its Smacker copy (a correction of T1b3a). Asked: CLT-Q99 (decision 17). No harness run.
-  Record: `E27-log.md`, "M1 T1b3b".

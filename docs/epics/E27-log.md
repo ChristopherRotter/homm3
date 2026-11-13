@@ -324,3 +324,37 @@ groups again, two fresh reviewers, one applied the doc fixes.
 - **M2 refined** (M2 T0): eight tasks (the epic's M2 table, the queue), the loading bar moved to M3.
 - **Change freely** (the agent's): the contact sheets and the crop tool (`/home/claude/tools/`,
   outside the repo); the review list's wording.
+
+## M2 T1 — the Smacker decoder (2026-11-13)
+
+On `client/e27-m2-t1`, the user present; `master` at `202aa3f` (#905 merged). **Kept whole with the
+user** (decision 23).
+
+- **Staged at the start**: the 64 files of M1 T3, all checked by SHA-256 against the computer's.
+  The sandbox's baseline was lost to a VM restart (the coverage step running); CI's green run on
+  `master` (`999bb0e`) stood for it.
+- **`h3-smacker`** (pure, `no_std`, no dependency): `Clip` (the header, the frame table, the
+  trees; FFmpeg's demuxer's checks), `Reader` (the frames in order: each palette change applied to
+  the palette before, the audio packets skipped as FFmpeg skips a discarded stream's, a failed
+  frame followed by the next from where its size ends it), `Decoder` and `Frame` (the trees, the
+  cache, the four block types and `SMK4`'s two modes; `Frame::written`, the blocks a frame wrote),
+  `build` (the writer: shapes, trees, palette operations, files, `Video`'s codes, `sample`),
+  `check` (`frames`, `raw`, `hash`, `original_16`). 47 tests and four property tests; 100 % of
+  lines and regions. FFmpeg's handling of malformed data kept (bits past a frame's end, a palette
+  change failing midway, a size-0 palette change, audio packets' sizes); the `ffmpeg` command
+  line's stop at a demuxer error and `avio_feof`'s end are not (the crate's header).
+- **`h3-view video --smacker`** (`h3-battle-client`): a video archive's Smacker clips (default
+  `shell-videos.vid`) and samples, written as `<stem>.pal8` and `<stem>.565`, compared with a
+  reference. **`smackprobe.exe`** (`capture/smackprobe.c`, built by `setup.sh`), **`smacker-dll.py`**
+  and **`smacker-check.sh`** (the shell's clips, AB's `Credits.smk` when staged, samples 1 to 8).
+- **Checked:** against FFmpeg 6.1.1 (design §7.1); against the DLL, every frame, palette and
+  5-6-5 copy of the shell's eight clips and AB's `Credits.smk`, the 5-5-5 copy of `NWCLOGO` and
+  `HSLOOP`, and samples 1 to 150, byte for byte. The queue's "seven clips" were eight
+  (`CREDITS.SMK`, 4 × 4, counted).
+- **Found** (design §7): the DLL's 16-bit copy converts only the blocks a frame writes (CLT-Q119,
+  asked and answered: fixed, decision 24); the DLL is `SMK2` only and fails on a byte tree left out
+  and on a frame's key-frame mark, which the first samples had (the samples changed: every byte tree
+  present, no mark); the trees' sizes are RAD's four bytes an entry plus three; the handle's palette
+  at +0x6C is FFmpeg's levels.
+- **The agent's calls** (*provisional*, M2's review list): items 1 to 4.
+

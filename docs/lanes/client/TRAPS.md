@@ -246,6 +246,13 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   8 spare bytes (it never reads a file's last 8: `build::TAIL`) and keeps its vectors inside the
   plane (the DLL reads memory outside it); a residue from 128 is CLT-Q68's (`Reading`). FFmpeg's
   old check (E17 M5 T4b2a) needed each frame released before the next and 256-pixel rows.
+- The Smacker decoder (`h3-smacker`) is checked against the game's `SMACKW32.DLL` since E27 M2 T1
+  (`clients/scripts/smacker-check.sh`, `smacker-dll.py`: `smackprobe frames` with the buffer
+  types 0 and C0000000; design §7). The DLL reads `SMK2` only, and a synthetic clip for it keeps
+  every byte tree and marks no frame a key frame in its size: on either the DLL faults or decodes
+  other pixels (design §7.3; FFmpeg's handling stays the unit tests'). Its 16-bit copy keeps a
+  skipped block's colours after a palette change (CLT-Q119: `check::original_16` is the
+  comparisons' copy, never the shell's).
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is

@@ -1503,3 +1503,73 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   §3.16); Begin after `tab-again` (§3.16); `scn-begin-none`'s `what` line (530 is a filter's,
   §3.6); GENRLTXT 503 (reading the map files, §3.3) in no shot; Delete of the last save not
   recorded (§3.4).
+
+## 7. The Smacker clips' decoding (M2 T1, 2026-11-13)
+
+`h3-smacker` is FFmpeg 6.1.1's Smacker demuxer and video decoder ported (decision 5); this section
+holds what the check against the game's `SMACKW32.DLL` found (`clients/scripts/smacker-check.sh`,
+`clients/capture/smackprobe.c`), for T2 and T5.
+
+### 7.1 The port and FFmpeg
+
+- Ported: the header, the frame table and the trees (`smacker_read_header`), the frames in order
+  with the palette's changes and the audio packets skipped (`smacker_read_packet`, the audio
+  streams discarded), the four header trees and the codes' cache (`smacker_decode_*`,
+  `smk_get_code`), the blocks of both versions (`decode_frame`). The byte trees are walked bit by
+  bit (FFmpeg builds lookup tables from the leaves' lengths: a tree read depth first is complete,
+  so its codes are its paths). `H3INTRO.SMK` (2 426 frames of 640 × 360) decodes in 4 s in
+  release.
+- Checked against FFmpeg 6.1.1's command line (`ffmpeg -i <clip> -map 0:v -f rawvideo -pix_fmt
+  pal8`, Ubuntu's 6.1.1 build; not committed): the shell's eight clips, AB's `Credits.smk` and 120
+  samples of each version, every frame and palette the same.
+- The trees' sizes in the header are RAD's: four bytes an entry and three more for the cache, in
+  every one of the game's clips (`TreeSpec::size`). All the game's clips are `SMK2`, without
+  key-frame marks, with every byte tree present.
+
+### 7.2 The DLL as the probe runs it
+
+- `SMACKW32.DLL` is RAD's of 1994 to 1997 and knows `SMK2` only (no `SMK4` in it): the `SMK4`
+  samples are FFmpeg's check only.
+- The probe opens a clip as `smacker_open` 0x598790 does (`SmackOpen` on the archive's handle at
+  the entry's offset, the flags | 0x1140, the extra buffer −1) but with no sound track, then
+  `SmackToBuffer` (left 0, top 0, the pitch, the height, the buffer, the type: 0 for 8 bits, the
+  game's 0x80000000 or 0xC0000000 for 5-5-5 or 5-6-5, `smacker_open_in_dialog` 0x598AF0), then per
+  frame `SmackDoFrame` and `SmackNextFrame`.
+- The handle's fields read: width +4, height +8, frames +0xC (the ring frame not counted), the
+  ring flag in +0x14, a new palette +0x68, the palette +0x6C (768 bytes: the 6-bit levels as 8-bit
+  ones, FFmpeg's `smk_pal` values exactly), the frame's number +0x374. After the last frame
+  `SmackNextFrame` gives the ring frame (`HSLOOP`'s 46th, `CREDITS.SMK`'s second).
+- The game's Smacker tick (0x598EB0) is `SmackWait`, `SmackDoFrame`, `SmackNextFrame` and
+  `video_show`; nothing redraws a clip on a palette change.
+
+### 7.3 Where the DLL reads otherwise than FFmpeg (no game clip has either)
+
+- **A byte tree left out** (a header tree's low or high bytes, its bit 0; FFmpeg reads the bytes
+  as 0): the DLL faults on memory outside its tables or decodes other pixels.
+- **Bit 0 of a frame's size** (FFmpeg's key-frame mark): the frames after it are read from
+  elsewhere (a sample's next palette came one byte off), decode other pixels or fault.
+- The samples (`build::sample`) keep to the rest; repeated values and escapes in a tree read as
+  FFmpeg reads them (60 samples). FFmpeg's handling of both cases stays the decoder's (the unit
+  tests), as `h3-bink` keeps FFmpeg's on malformed data.
+
+### 7.4 The 16-bit copy (CLT-Q119, decision 24)
+
+With a 16-bit type the DLL writes, for each block a frame writes (mono, full, fill), its pixels
+through the frame's palette (each 8-bit level's top bits: red and blue >> 3, green >> 2 in 5-6-5,
+>> 3 in 5-5-5); a skipped block keeps its 16-bit pixels, so after a palette change it keeps the
+old colours. `h3_smacker::check::original_16` makes the same copy from `Frame::written`: every
+frame of the nine clips in 5-6-5 and of `NWCLOGO` and `HSLOOP` in 5-5-5 the DLL's. The clips with
+more than one palette: `HSLOOP` 16 of 46 frames with stale pixels (at most 88 509), `NWCLOGO` 164
+of 195 (at most 317 998), `H3INTRO` 1 892 of 2 426 (at most 102 208); the worst pixel 112 levels
+off in a channel (`NWCLOGO`'s frame 30, its fade). The shell converts every pixel (decision 24).
+Which type the game passes is the screen's format (0x598BE5's test, *not read*; the harness's
+screen is 5-6-5).
+
+### 7.5 For T2 and T5
+
+- The audio tracks: the game's clips have track 0 at 22 050 Hz, flags 0xF0 (packed, present,
+  16-bit, stereo; `Track`); the reader skips their packets (a decoded size first, FFmpeg's
+  `duration_size`). The probe opens no track: T2's DLL reading of the sound starts there.
+- The frame time: −6666 (`3DOLOGO`, `NWCLOGO`, `H3INTRO`) is 66.66 ms, −10000 (`HSANIM`,
+  `HSLOOP`, `LOSEGAME`) 100 ms, −11111 AB's `Credits.smk`, 100 (`ProgressBar`, `CREDITS.SMK`)
+  100 ms.
