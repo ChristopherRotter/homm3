@@ -271,31 +271,42 @@ Moved to `E16-archive.md` (verbatim; the checkpoints SRV-Q12, -Q16, -Q18, -Q22, 
 
 ## M5 part 2 (refined 2026-11-12, SRV-Q29)
 
-Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisions, tasks and review list are in `E16-archive.md` ("M5 part 1 tasks", "Review list for the M5 part 1 checkpoint"), the done tasks in full in `E16-log.md`.
+Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisions, tasks and review list are in `E16-archive.md` ("M5 part 1 tasks", "Review list for the M5 part 1 checkpoint"), the done tasks in full in `E16-log.md`. **2a closed 2026-11-13** (SRV-Q30: the review list as built, the reviewer's major finding into 2b and 2c): its scope, tasks and review list are in `E16-archive.md` ("M5 part 2a", "Review list for the M5 2a checkpoint").
 
-**Three increments**, each closed by a fresh reviewer agent and the user's checkpoint (SRV-Q29):
+**Three increments** (2a closed, above), each closed by a fresh reviewer agent and the user's checkpoint (SRV-Q29):
 
-- **2a Whole games over the network**, with no engine change: a lobby's map offers; **every
-  player of the map a seat**, the game starting when every seat is held (no computer player on
-  the map before E13, no seat left empty before 2b); seats by account, or by token in the
-  anonymous mode, as a battle's; the game on its own thread with its journal file and its restore
-  at start; reconnects with a fresh snapshot; the unowned battle sides played by the server
-  (`h3_battle_ai::choose_fair` by default, the inbox's 2026-11-02 note); a command resent after a
-  reconnect never applied twice; a hero's moves on the wire; T7b's two findings.
-- **2b Time:** `h3-game`'s trusted system commands, **built by the server lane** in a
-  `cross-lane` pull request (ADR-0017 point 2 names them: a player's turn ended, a player's open
-  decision answered with `h3_game::default_answer`, the level-up past its hold included); the
-  turn timers (an offer's turn duration; the original's options and what its timer does in a
-  battle surveyed first, SRV-Q19); the level-up hold online (the inbox's 2026-10-21 note: the
-  waiting players' timers paused, the owner's limited time, then the default answer; others learn
-  only that the game waits); a disconnected player's turns ended (SRV-Q19's grace and total
-  reused); a battle whose player is gone (its default decided at 2b's refinement). Tasks refined
-  at 2a's checkpoint.
+- **2b Time** (refined 2026-11-13, SRV-Q31): `h3-game`'s trusted system commands, **built by the
+  server lane** in a `cross-lane` pull request (ADR-0017 point 2: a player's turn ended, a
+  player's open decision answered with `h3_game::default_answer`, the level-up past its hold
+  included; amended there so the system actor also plays a timed-out player's battle side); the
+  turn timers; the level-up hold online; a seat's commands per turn bounded (2a's reviewer,
+  SRV-Q30). **The user's decisions** (SRV-Q31):
+  - **The clock is the original's turn duration:** one per map offer, one of the original's
+    eleven (1, 2, 4, 6, 8, 10, 15, 20, 25, 30 minutes, unlimited; `turn_duration_texts`), not a
+    chess clock (a later offer option at most). At its end the server ends the player's turn:
+    each open decision answered by its default, a battle played out (below), then the turn ended,
+    every step a journaled command of the system actor.
+  - **A battle does not stop the clock:** the turn's timer runs on in a battle; at its end the
+    server's computer plays the player's side for the rest of the battle (`choose_fair`), then
+    the turn ends. **A battle between two players' heroes runs a chess timer:** each side its own
+    clock, the side to act's running; a side whose clock runs out is played by the computer for
+    the rest of the battle (each side's allowance, and the attacker's turn timer meanwhile,
+    settled in T16 and confirmed there by the user).
+  - **A disconnected player has the turn timer only:** no grace or total of its own (SRV-Q19's
+    stay the ranked battles'); its turn runs out as anyone's, its battle sides are played by
+    the computer when its time does; an unlimited duration waits for it (the host's pause and the
+    sweep as in 2a). No player is removed (part 2).
+  - **The level-up hold:** the owner's time an offer's setting (60 s by default; the survey may
+    give the original's dialog time as the default), then `default_answer`; the waiting players'
+    timers stopped meanwhile; the others learn only that the game waits.
 - **2c Spectators and long journals:** `Viewer::Spectator` (public facts only) through
   `h3-game`'s, `h3-adventure`'s and `h3-towns`' projections, **built by the server lane** in
   `cross-lane` pull requests; spectators on the whole game's wire (a battle's rules: the game's
   limit, the host's setting, nothing journaled); long journals measured (an XL game's restore and
-  verification after many days) and the case for state saves (ADR-0004 point 9) written down.
+  verification after many days) and the case for state saves (ADR-0004 point 9) written down,
+  with the restart's cost (every whole journal re-run before the server listens) and the
+  session's in-memory copy of a game's commands, which a game of connections never reads (2a's
+  reviewer, SRV-Q30).
   Tasks refined at 2b's checkpoint.
 
 **Not in part 2** (SRV-Q29): concurrent battles (they need simultaneous turns, which ADR-0017
@@ -304,87 +315,45 @@ player and a game's end (E10's victory and defeat), computer players on the map 
 whole games (a ladder of maps, after E28's ranked battles), the attack and shot previews (the
 client lane's 2026-11-04 request, when online battles need them).
 
-**2a's tasks** (about half a context each; the numbers go on from part 1's T7):
+**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged):
 
-- **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
-  - **T8a Seats and connections:** done 2026-11-12, protocol v45 (`E16-log.md`).
-  - **T8b Numbers, pause, restore:** done 2026-11-12, protocol v46 (`E16-log.md`).
-- **T9 A whole game hosted** (`h3-server`), in two (the user, 2026-11-12):
-  - **T9a Live hosting:** done 2026-11-12, protocol v47, the whole game's journal format 1
-    (`E16-log.md`).
-  - **T9b The lifecycle:** done 2026-11-12, protocol v48 (`E16-log.md`).
-- **T10 The unowned sides played by the server:** done 2026-11-12, protocol v49, after the
-  `shared/` change #889 (`E16-log.md`).
-- **T11 The game's queries on the wire:** done 2026-11-12, protocol v50, record format v5, a
-  battle's targets inside a whole game added (the user; `E16-log.md`).
-- **T12 T7b's two findings:** done 2026-11-12, protocol v51 (`E16-log.md`).
-- **T13 The closure:** an end-to-end test (two clients play a whole game over the network through
-  a server restart, a battle against an unowned side on the way); `docs/06-security.md`'s
-  networked whole game (its "Not covered yet" sentence on rejections inside a battle dropped,
-  T12 bounded them; T11's queries with it: answered for the seat's player alone, any other
-  id none, unnumbered and unrecorded; the start's town events the owner's; a moves answer at
-  most 11 KB on the XL fixtures); a fresh reviewer agent and the review list; the user's
-  checkpoint.
+- **T14 The system commands** (`h3-game`, `cross-lane`, the server lane builds; the adventure
+  lane's crate, its traps first): `Actor::System`'s closed set beyond an unowned side's battle
+  commands: a player's turn ended, its first open decision answered by `default_answer` (the
+  level-up past its hold), a battle command for a timed-out player's side; each refused unless it
+  applies (the player's turn group current, a decision open, the side the player's); ADR-0017
+  point 2 amended in a `shared:` commit; rule IDs (`GAM-*`, `game.toml`) with the user's
+  decisions as their source; the adventure replay's text form (its format step, the adventure
+  lane's version) and the wire's mapping (protocol step); the golden replays unchanged.
+- **T15 The survey of the original's turn timer** (where the original data are staged; the
+  code reading of `turn_timer_poll` 0x557AF0 and `turn_timer_start` 0x557D90 and their callers,
+  the manual's text, VCMI's chess clock as a reference): what ends a turn at its end (open
+  dialogs, a moving hero), the warnings (`turn_timer_start`'s half and quarter), what the clock
+  does in a battle and in a level-up's dialog (its time, if any: the hold's default), the "your
+  turn" window; `docs/exe/map.toml` entries; a question to the user where the original differs
+  from SRV-Q31's decisions.
+- **T16 The clock in the session** (`h3-protocol`, sans-I/O): the host's time passed in
+  (`GameSession` never reads a clock), an offer's turn duration and level-up time; the turn's
+  timer started per player of the turn group, stopped while a level-up holds the game (the
+  owner's own limit meanwhile), running in a battle, the chess timer in a battle between two
+  players (its allowances settled here with the user); at an end the system's commands as the
+  decisions say; the wire: each player told the timers it may see and that the game waits
+  (protocol step); the journal: what a restart needs to give the running turn its time left (the
+  server's downtime never counts).
+- **T17 The clock hosted** (`h3-server`): `[[map]] turn_duration` (the eleven values) and the
+  level-up time, the game thread's wake-up at the next deadline, a restore with the time left;
+  end to end: a turn ended at its end, a battle played out by the computer after it, a chess
+  timer's side taken over, a level-up answered at its limit.
+- **T18 A seat's commands per turn** (SRV-Q30): `[limits]`'s bound of a seat's accepted commands
+  in one of its turns (its default from the golden replays' and the XL fixtures' largest), beyond
+  it a new rejection but for ending the turn and answering its decisions (protocol step).
+- **T19 2b's closure:** an end-to-end test (two clients, a turn run out, a battle against the
+  other player's hero under the chess timer, a level-up held and answered, through a restart);
+  `docs/06-security.md` (the whole game's clock, its "Not covered yet": the turn timer, the
+  missing command limit); a fresh reviewer agent; the user's checkpoint.
 
-**Review list for the 2a checkpoint** (the choices queued under the autonomy contract, filled as
-the tasks land):
-
-- T8a (v45): the whole game's seat messages of their own (`GameJoin { game, player, token }`,
-  `GameCommand { seq, command }`, the answer `GameJoined { game, player, token, manifest }`), not
-  the battle's `Join` and `Command` widened (the client lanes match `Seat` exhaustively); the
-  refusal `NoSuchSeat`; the session's rejections `NotSeated` and `NotStarted` inside
-  `GameReject` (an unseated connection's numbered 0); a battle answers a whole game's join
-  `NoSuchGame` and its command `NotSeated`, and the reverse; a whole game ignores the battle's
-  other messages until T8b and T9 take what it needs (the record's download, the pause); the
-  host's tokens through a closure (`GameSession::new`), the in-process host holding every seat
-  (`start`, `restore`); `GameSession::route` public for the system actor's frames (T10).
-- T8b (v46): a seat's accepted commands numbered strictly increasing, gaps allowed; a resend
-  answered `GameAccepted` with the first echo while the seat keeps it (its last `KEPT_ANSWERS` =
-  16), numbered and recorded, else `GameRejected { Stale }`; a rejected command takes no number;
-  `GameJoined`'s `last`; the host the seat taken first, its `Pause` pausing, another seat's ask
-  told as `GamePauseAsked`, once until a command (`AlreadyAsked`), a paused game rejecting
-  `NotStarted`, any seat's join resuming it; the journal's seat entries (`Numbered`, `Taken`,
-  `TakenBy`, `Started`, `Paused`, `Resumed`) and `GameSession::reopen` with the host's tokens, a
-  restored started game's snapshots and turns into its records.
-- T9a (v47, whole game journal format 1): the lobby's whole games beside the battles (`Games`'s
-  `maps` and `map_games`, `wire::game::MapOffer`, `MapGameInfo`, `SeatedPlayer`), one id space and
-  the same limits; `CreateMapGame { seq, offer, player }`, not `CreateGame` widened (its `seat` is a
-  battle's); a `[[map]]` pinned by its file's content hash, with packs, profile, difficulty
-  (normal by default) and a name (the map header's as Latin-1, at most 64 characters, by
-  default); every seat's player `human` (no computer player in 2a); the journal
-  `<data>/whole/<game>.journal` of its own format (`GAME_JOURNAL_FORMAT_VERSION`, so the battles'
-  journals stay valid), its first line the adventure replay before its first command, commands
-  in the replay's text form; a game waiting with no seat held abandoned (its journal gone); a
-  draining server's running whole games play on, as a battle's (T9b decides, as they never end);
-  `GameSession`'s host accessors (`holds`, `seated`, `phase`, `open_seats`, `accounts`).
-- T9b (v48): a whole game's `FetchRecord` answered `Record` as a battle's (no message of its own;
-  the record's header says its kind); `GameSession::suspend` and `Hosted::PausedMap` as a battle's
-  sweep and pause; the drain not waiting for a running whole game (`Lobby::to_end`: it plays on
-  until the stop, its journal kept), `in_play` and the card still counting it; a restored game at
-  the seed, difficulty and checkpoint interval of its journal, its map checked against the
-  offer's by content hash and import version; the whole games' journals restored after the
-  battles'.
-- T10 (v49): the computer named by the map offer alone (`MapOffer`'s `computer`, not the
-  manifest or the record's header), `[[map]] computer = "fair" | "all-seeing"`; the battle
-  session's `Bot` trait reused, handed over after the construction (`GameSession::computer`,
-  which plays at once for a cut journal) rather than a constructor's argument; the computer asked
-  after a seat's accepted command, at a resuming join and at the hand-over, a rejected choice
-  replaced by the first legal command; its stream a seed drawn from the OS for each hosting
-  (never journaled, as the battle server's bots'), `StreamId::AGENT`.
-- T11 (v50, record format v5): one query message and one answer for the game's queries
-  (`GameQuery { seq, query }`, `GameAnswer { n, seq, answer }`), the battle's three questions
-  inside it (`GameQuery::Battle`) rather than the battle's `Query` routed; the answer unnumbered
-  and unrecorded (`n` the player's last message's, as `Record`), a query outside a running game
-  rejected `NotStarted` as a command (numbered, recorded); a hero's moves as a path tree
-  (`wire::game::Moves`: `8 · parent + direction`, the directions clockwise from north, points
-  plus 1 per node, 0 for a pass), its reader in `h3-protocol`, the tree built from the engine's
-  `Reach::path`s, 32 KB its bound on the XL fixtures; the hall as three `WireU64` bit sets; the
-  start's town events as one `GameEvents` between the snapshots and the turns, only to a player
-  that has any, never at a restore or a re-take (record format v5).
-- T12 (v51): a viewer's open battle known by its heroes and tile (`BattleKey`), not a battle
-  id from the engine (none exists; a hero is in one battle at a time); the fresh `GameSnapshot`
-  inside a battle too, holding the battle's view (as a join's mid-battle), rather than no
-  snapshot there until the turn timers (2b) or rejections dropped from the record.
+**Review list for the 2b checkpoint** (the choices queued under the autonomy contract, filled as
+the tasks land): none yet.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

@@ -29,6 +29,17 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-13 (the server lane, E16 M5 T13; **the review of your v52 change to its paths**): the
+  mapping both ways and the fold are sound. One point against `docs/06-security.md` ("a view
+  names an object by its type and anchor, never by its index, which counts the objects before
+  it, seen or not"): `ArmyRef::MapGarrison`, `Decision::Exchange` and `GameEvent::ExchangeOpened`
+  name the garrison by its object index. Harmless today (objects are only appended, so a
+  garrison's index is fixed at the setup and tells only the map's order), and the doc now names
+  the exception. Proposal, for your next wire step (T114b's `GarrisonChanged` is one): name it on
+  the wire by its `ObjectRef` alone (unique by type and anchor, your T113b answer), the server's
+  `command_to_engine` resolving the index; or keep the index and say so in your decisions. No
+  server change is needed either way unless you take the proposal.
+
 - 2026-11-13 (the town lane, E09 T26a2, #899, `cross-lane`; **three versions taken after
   yours, for your T114b**): game state hash **v30** (the week's kind and `roe` after the month's
   kind, the towns' stream after the game's; after your T114a2's v29), map import **v23**

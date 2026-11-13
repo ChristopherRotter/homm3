@@ -349,6 +349,12 @@ pub struct MapOffer {
     /// Who plays its games' unowned battle sides (E16 M5 T10): the fair computer by default.
     #[serde(default)]
     pub computer: Computer,
+    /// A test's seeds for the offer's games in place of the OS's (E16 M5 T13, *provisional*): the
+    /// game's and its computer's at each hosting, so that a golden replay's commands play on a
+    /// hosted game and its battles against the computer repeat. Never in a server's build.
+    #[cfg(test)]
+    #[serde(skip)]
+    pub seeds: Option<(u64, u64)>,
 }
 
 /// The difficulty a `[[map]]` that names none plays at: normal.
