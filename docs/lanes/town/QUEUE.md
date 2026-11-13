@@ -10,30 +10,31 @@ and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
 ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87),
-T25b2 (decision 88), T26a1 (decision 89) and T26a2 (decision 90). The building rounds follow the cut of design note §56
+T25b2 (decision 88), T26a1 (decision 89), T26a2 (decision 90) and T26b (decision 91). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T26 — growth in the game** (decision 83; design note §56 round 5, `cross-lane`; T26a in two,
-decision 89; **T26a1** and **T26a2** done, decision 90, `E09-log.md`): **T26b** the neutral
-garrison week (T25b2's `garrison_week`, written by `AdventureState::set_town_garrison` in
-`h3-adventure`'s `src/town.rs`, the adventure part's army rules passed), the Portal's draws
-(T25b2's `summon`: each week, at its build, a flagged dwelling, a capture, decisions 71 and 82,
-each from its stream: the week's from the towns' stream `GameState` holds since T26a2), the views
-(§47: the owner's counts and Portal; `TownChanged` told after the week, the month and an event's
-creatures; the week's kind is told since T26a2) and the protocol (`cross-lane`, the server lane's
-fold gate; v53 or the next at merge), the replays re-recorded (skill `homm3-rerecord-replays`),
-the bench (skill `homm3-bench-regression`). Each part's rule ids, sources and tests; the merge
-order with E08's increment 12 (each `cross-lane` number the next at merge). **At its start:**
-confirm the cut. **Depends on:** T26a2 (its pull request merged). **Status:** next.
+**E09 T27 — recruitment** (decision 83; design note §56 round 6, `cross-lane`; §49 to §51): the
+town command `TownCommand::Recruit { town, building }` and `h3_towns::recruit_source` (a standing
+dwelling, horde or Portal; refusals typed), the game's `src/town/recruit.rs` (the owner, its turn,
+no open decision; a Portal with nothing summoned refused, no draw) opening E08's hire dialog with a
+town's `HireSource` and the target the town's garrison until T28a (`HireTarget`), the purchase
+across the store, the adventure's room and the treasury (§50; an upgraded index selling both
+creatures from one count; every refusal changing nothing), the Portal's hire (§51, TWN-REC-002),
+the legal commands, `HireSeen` in the view and the event, the protocol (`cross-lane`, the server
+lane's fold gate; v54 is T26b's, so the next at merge), `town recruit` in the CLI, the env's
+`RECRUIT` (encoding v10, the AI lane's `cross-lane` consent), the replays re-recorded (skill
+`homm3-rerecord-replays`), the bench (skill `homm3-bench-regression`). Rules TWN-REC-001, -002 with
+sources and tests; GAM-DEC-008 amended. A count bought is a change of the owner's view (T26b's
+`check_towns` asks the owner's `TownChanged`: teach it the hire). **At its start:** confirm the
+cut. **Depends on:** T26b (its pull request merged). **Status:** next.
 
-**E09 T27 to T30 — the rest of the build** (decision 83; design note §56 rounds 6 to 8, each cut
-confirmed at its start, the agent queues each in full when the one before it ends): **T27**
-recruitment (`cross-lane`; §49 to §51, the env's v10); **T28** the rows (`cross-lane`, after E08's
+**E09 T28 to T30 — the rest of the build** (decision 83; design note §56 rounds 7 and 8, each cut
+confirmed at its start, the agent queues each in full when the one before it ends): **T28** the rows (`cross-lane`, after E08's
 T114a and T115a merged; T28a §52, §53's record and moves, the env's v11; T28b §53's day and
 income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, increment 4 refined.
-**Depends on:** T26. **Status:** waiting.
+**Depends on:** T27. **Status:** waiting.
 
 ## Inbox
 

@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **a protocol version
+  taken**): protocol **v54**: `wire::game::TownBuildings` (the owner's) gains `available`
+  (`[u16; 14]`, the counts) and `portal` (`Option<Summoned { creature, count }>`) (TWN-VEW-004,
+  TWN-GRO-007); the fold replaces the set whole, so nothing new there. More `TownChanged` are told:
+  after the week, the month, a neutral garrison's week, each Portal's draw and a town event's
+  creatures. `game_session.rs`' golden finals follow the four re-recorded towns replays.
+  Informational.
 - 2026-11-12 (the town lane, E09 T26a2, `town/e09-t26a2`, `cross-lane`; **a protocol version
   taken**): protocol **v53** is the week's kind (after the adventure lane's v52) (TWN-GRO-002): `wire::game::Week` (`Normal`,
   `Creature`, `Of`), `GameEvent::WeekStarted`'s `kind`, `GameObservation`'s `week`, the fold

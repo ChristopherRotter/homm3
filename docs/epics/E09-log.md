@@ -3548,3 +3548,62 @@ recommended).
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s and
 `h3-server`'s tests run on their own; CI on the pull request is the record.
+
+### T26b — the neutral garrison week, the Portal's draws, the owner's counts and Portal (2026-11-13)
+
+One session, the user present at the start; branch `town/e09-t26b`, `cross-lane` (the adventure
+lane's `h3-adventure` outcome and dwelling visit, `h3-game`'s state, day and lib files, `h3-map`'s
+property plans, four adventure replays and two day-start workloads; the server lane's
+`h3-protocol`). Starting point: `master` at effc66d (#899 merged); the setup's baseline found CI's
+fingerprint (the light gates). The user's computer was connected at the start only: the original
+data staged then (17 files, SHA-256 checked against the PC's), used for the scoped verify. **T26b
+whole** (decision 91, the user; two parts were recommended).
+
+- **The neutral garrison week** (TWN-GRO-006; design §44): `h3-game`'s `town/garrison.rs`
+  (`garrison_weeks`) after the adventure's week step, `weeks` the day less one over the week's
+  days, each neutral town's `h3_towns::garrison_week` with the adventure part's army slots and
+  most from the towns' stream; the garrison written by `AdventureState::set_town_garrison` (the
+  town lane's `src/town.rs`), the town into the store. The state's `town_draws(Draws)` gives the
+  adventure, the store and the stream a draw takes at once.
+- **The Portal's draws** (TWN-GRO-007; design §45, decisions 71, 82): `town/portal.rs`: each week
+  after the garrisons (the towns' stream); a build that makes the Portal stand (`build_told`: a
+  command's from the builder's stream, a town event's from the towns' stream); the setup's after
+  the levels at load (the setup stream's last draws); a visit that flags a dwelling
+  (`AdventureOutcome::flagged_dwelling`, set by the adventure's `enter_dwelling`, read by
+  `settle_outcome` after the capture) draws each of the player's towns' Portals that hold nothing,
+  in `TownId` order, from its stream; a capture one that holds nothing, from the capturer's.
+  `h3_towns::has_portal` reads the part's derived Portal set before the standing set
+  (`TownRuleset`'s `portals`, not hashed), `BuildingSet::intersects`; the offer is
+  `town::growth::owned_dwellings` (an iterator; the growth's inputs read its first creatures).
+- **The views** (TWN-VEW-004; design §47): `TownBuildingsView::available` and `portal` (the owner's
+  alone; `h3-game` re-exports `CREATURE_INDEXES`, `Summoned`); the day takes every viewer's views
+  of every town before the week's growth (a recording sink only) and the towns' day tells the
+  changed ones after the marks; an event's creatures with their own `Told`; a build's and a
+  capture's draws inside their `Told`, a flag's with one of its own. On the wire
+  `TownBuildings`' `available` and `portal` (`Summoned`), protocol **v54**; the fold unchanged
+  (the whole set replaced).
+- **Tests:** `h3-towns`: `has_portal`, `intersects`. `h3-adventure`: the flag named in the
+  outcome (`dwelling_visits.rs`), `set_town_garrison` (`towns.rs`). `h3-game`'s
+  `town/tests/garrison.rs` (16 seeds: the game's garrison and counts as the pure function over a
+  replica of the towns' stream, told to a Tavern's level where the creatures change; the odds'
+  draw alone) and `town/tests/portal.rs` (each moment against a replica of its stream: the week,
+  a command's build, an event's, the setup's as the last draws, a flag of two empty Portals in
+  `TownId` order, a capture; a held Portal kept; blue's and a neutral town's never drawn); the
+  growth tests' rules without the garrison week (odds 0). `h3-map`'s plans: `check_towns` lets
+  the Portal move only with a week, a build, a capture or a dwelling's flag, and wants the
+  owner's `TownChanged` for a moved count or Portal; the view model shows them; the hygiene
+  property ends at every week's start (the garrisons' and Portals' draws follow the week's, at
+  positions an unseen town moves). `h3-protocol`: the two fields mapped, inverted and folded.
+- **Replays:** of the 72 adventure replays the four on the towns map (`towns-income-s1`,
+  `towns-s173-d21`, `towns-s1702-d21`, `towns-s3435-d21`) re-recorded from their commands, only
+  checkpoints and final hashes moved (a neutral garrison's week); no version moved but the
+  protocol's. The bot reports unchanged (no part hash moved).
+- **Bench** (`master` built in the same sandbox): `day-start-builds-36` 587 773 against 577 013
+  (+1.86 %), `day-start-towns-36` 1 328 306 against 1 228 742 (+8.10 %: `garrison_week` and its
+  draws and writes); both re-baselined with the reason. First build: +6.8 % and +10.0 %, of it
+  `has_portal`'s standing set for every owned town each week (cut by the part's Portal set) and
+  the offer collected for the growth's inputs (an iterator again). Every other workload passes.
+- **Agent's calls (change freely):** decision 91's list.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s and
+`h3-server`'s tests run on their own; CI on the pull request is the record.

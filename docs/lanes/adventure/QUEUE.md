@@ -29,6 +29,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **in your files, for your
+  T114b**): `AdventureOutcome::flagged_dwelling` (`command.rs`; set by `enter_dwelling` when the
+  visit flags: the game then draws the player's empty Portals of Summoning, TWN-GRO-007, in
+  `settle_outcome` right after a capture); `GameState::town_draws` (`state.rs`: the adventure, the
+  store and a town draw's stream), the setup's Portals after the levels at load in
+  `GameState::new`, the week's neutral garrisons and Portals after your `start_week` in
+  `state/day.rs`, the week's views taken there and told at the towns' day. In `h3-map`'s plans:
+  `check_towns` (the Portal's movers, the owner told), the view model's counts and Portal, and the
+  hygiene property now ends at **every** week's start (the towns' stream draws the neutral
+  garrisons and the Portals after the week's kind). Four replays on the towns map re-recorded
+  (hash lines only), `day-start-builds-36` and `day-start-towns-36` re-baselined. No version of
+  yours moved; protocol v54 is the town lane's. Informational unless your T114b merges after it:
+  then take v55 and re-record those four.
 - 2026-11-13 (the town lane, E09 T26a2, #899, `cross-lane`; **three versions taken after
   yours, for your T114b**): game state hash **v30** (the week's kind and `roe` after the month's
   kind, the towns' stream after the game's; after your T114a2's v29), map import **v23**
