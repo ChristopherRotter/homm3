@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the two are independent). Decisions to carry: the dialogs' input one implementation shared with
   the battle's (20); the shell's code as the battle's, the clips' sound exact against the DLLs, the
   score the engine's (21); decision 22's fixes; a Smacker clip's every pixel through its palette,
-  the DLL's 16-bit copy for the comparisons only (24). Open pull request: **`client/e27-m2-t1`**
+  the DLL's 16-bit copy for the comparisons only (24). Open pull request: **#908** (`client/e27-m2-t1`)
   (watch it until it merges). E17 done (`E17-archive.md`, `E17-log.md`; its open threads: the
   epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog sketches. Workspace
   `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in
