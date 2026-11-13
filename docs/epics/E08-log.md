@@ -16029,9 +16029,13 @@ the census moved.
   Visions from the entrance, an unexplored one, the build's told view). `h3-adventure`'s outcomes
   with `garrison_flagged`. `h3-map`'s `check_told` folds and checks the told garrison views as the
   towns' (the plans meet garrisons with T116).
-- **The gates:** the scoped verify (no original data): `bench-check` passed (no workload moved
-  past its threshold), the determinism replays unchanged, coverage after `tell_all`'s implicit
-  `else` went; `check-lane --cross-lane`, `cargo check --workspace --all-targets` and the client
+- **The gates:** the scoped verify (no original data): the determinism replays unchanged,
+  coverage after `tell_all`'s implicit `else` went; `bench-check` passed before `master`'s merge,
+  after it `day-start-builds-36` +2.17 % on its file: `master` (5e366dc, in `target/wt-master`)
+  was +1.68 % already (E09 T26a2's week's kind) and `day-start-towns-36` +1.85 %; per function
+  the branch's own cost was `town::Told::tell` called for a `NoopSink` (672 Ir) and the heap's
+  layout (`AdventureOutcome` 584 to 592 bytes); `tell` now returns at once for a sink that keeps
+  nothing (+0.23 % on `master` left), both re-baselined with the reason; `check-lane --cross-lane`, `cargo check --workspace --all-targets` and the client
   workspace's check.
 - **Rules:** ADV-GAR-006 written (`implemented`; the survey's §8 reading, the town popup's).
   Docs: design §15's *As built*, §17's row; decision 325 and the task's line; the queue (T115),

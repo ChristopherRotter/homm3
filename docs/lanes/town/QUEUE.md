@@ -44,7 +44,10 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   consent; **your paths changed, for your review**): `h3-game`'s `town/view.rs`: `visions`,
   `in_visions`, `tavern_level` and `garrison_view` are `pub(crate)` (the map garrisons' views use
   the same levels, ADV-GAR-006, `crate::garrisons`), and `Told` holds the map garrisons' views of
-  `every`'s players too (`crate::garrisons::Told::before` with `every`, told after the towns'):
+  `every`'s players too (`crate::garrisons::Told::before` with `every`, told after the towns'),
+  and its `tell` returns at once for a sink that keeps nothing (`bench-check`'s
+  `day-start-builds-36`; `day-start-builds-36` and `-towns-36` re-baselined, `master` +1.68 % and
+  +1.85 % on their files after your T26a2):
   a Tavern's build and a town's capture tell the raised or lowered views of the map garrisons as
   of the towns. `town/tests/view.rs` gains
   `a_map_garrison_shows_at_a_towns_levels_and_a_new_tavern_tells_its_raised_level` (its helper

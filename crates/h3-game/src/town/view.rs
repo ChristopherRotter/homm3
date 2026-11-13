@@ -395,6 +395,11 @@ impl Told {
     pub(crate) fn tell<S: Sink>(self, state: &GameState, rules: &GameRuleset, sink: &mut S) {
         // stub: TWN-STUB-13 (a change of Visions' reach, a hero's step or army or Power, is not
         // told: only these changes are)
+        // E08 T114b: nothing for a sink that keeps nothing (its `before` held nothing either), so
+        // the day's start of a `NoopSink` pays no call (`bench-check`: day-start-builds-36).
+        if !S::RECORDS {
+            return;
+        }
         let adventure = state.adventure();
         let Self(towns, garrisons) = self;
         for (viewer, views) in towns {
