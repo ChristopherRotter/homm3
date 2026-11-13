@@ -128,6 +128,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.full_backpack_refuses",
     "quirk.town.creature_month_exact",
     "quirk.town.neutral_plague_full_growth",
+    "quirk.adventure.sirens_again_after_battle",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -337,6 +338,14 @@ pub const CREATURE_MONTH_EXACT: QuirkFlag = QuirkFlag(39);
 /// `h3-towns`' month from E09 T25b1, which the game's day runs from E09 T26a1.
 pub const NEUTRAL_PLAGUE_FULL_GROWTH: QuirkFlag = QuirkFlag(40);
 
+/// ADV-QUIRK-46 (A-44, E08 decisions 301, 308; survey `E08-garrisons-bonuses.md` §10.5, batch
+/// E12's E12-8): the Sirens' mark (the original's status bit 20) is a battle bonus's, which
+/// `hero_battle_bonuses_clear` clears at the hero's next battle's end, so the hero visits any
+/// Sirens again after each battle and loses the creatures again. Off: the battle's end keeps the
+/// mark, so a hero visits Sirens once (the one mark for every Sirens, decision 308). Class
+/// `fix-optional`; read by the adventure's battle clear from E08 T115b.
+pub const SIRENS_AGAIN_AFTER_BATTLE: QuirkFlag = QuirkFlag(41);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -379,7 +388,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 41);
+        assert_eq!(REGISTRY.len(), 42);
         assert_eq!(
             [
                 REGISTRY.lookup("quirk.town.creature_month_exact"),
@@ -393,6 +402,10 @@ mod tests {
                 REGISTRY.lookup("quirk.adventure.full_backpack_refuses"),
             ],
             [Some(ROE_WITCH_HUT_MASK), Some(FULL_BACKPACK_REFUSES)]
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.sirens_again_after_battle"),
+            Some(SIRENS_AGAIN_AFTER_BATTLE)
         );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.computer_morale_let_off"),
@@ -562,7 +575,7 @@ mod tests {
         }
         // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
-        assert_eq!(REGISTRY.len(), 41);
+        assert_eq!(REGISTRY.len(), 42);
         assert_eq!(
             [
                 REGISTRY.names[9],
@@ -576,7 +589,7 @@ mod tests {
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..41).filter(|i| ![9, 10, 14, 30].contains(i)))
+                .eq((0..42).filter(|i| ![9, 10, 14, 30].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
