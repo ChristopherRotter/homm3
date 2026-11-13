@@ -82,14 +82,13 @@ pub(crate) fn stock(
     rules: &GameRuleset,
     (town, source): (TownId, RecruitSource),
 ) -> Option<Vec<(CreatureTypeId, u32)>> {
-    let record = state.towns().get(town)?;
-    let stock = h3_towns::recruit_stock(record, rules.towns(), source);
-    Some(
+    state.towns().get(town).map(|record| {
+        let stock = h3_towns::recruit_stock(record, rules.towns(), source);
         stock
             .into_iter()
             .map(|(creature, count)| (creature, u32::from(count)))
-            .collect(),
-    )
+            .collect()
+    })
 }
 
 /// A town's hire dialog's purchase of `amount` `creature`s (TWN-REC-001, -002; E09 design §50,
@@ -150,15 +149,17 @@ pub(crate) fn buy<S: Sink>(
     state.pay_price(player, purchase.price(), sink);
     let _changed = state.towns_mut().write(town, bought);
     let (adventure, _) = state.adventure_with_heroes();
-    if let Some(at) = adventure.hire(purchase, &mut AdventureSink(sink)) {
-        let stack = state
-            .adventure()
-            .map()
-            .town_object(town)
-            .and_then(|index| state.adventure().town_garrison(index))
-            .and_then(|army| army.iter().find(|s| s.slot == at.slot).copied());
+    // A garrison's purchase names its slot (a hero's army none: the garrison hero's, E09 T28a).
+    let joined = adventure.hire(purchase, &mut AdventureSink(sink));
+    let adventure = state.adventure();
+    let garrison = adventure
+        .map()
+        .town_object(town)
+        .and_then(|index| adventure.town_garrison(index));
+    joined.into_iter().for_each(|at| {
+        let stack = garrison.and_then(|army| army.iter().find(|s| s.slot == at.slot).copied());
         sink.emit(GameEvent::StackChanged { player, at, stack });
-    }
+    });
     told.tell(state, rules, sink);
     Ok(())
 }

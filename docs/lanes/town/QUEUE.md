@@ -10,31 +10,36 @@ and T20) in `E09-archive.md`. Increment 3's first round is done: the survey T21 
 drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`; decisions 74 to 83;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
 ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87),
-T25b2 (decision 88), T26a1 (decision 89), T26a2 (decision 90) and T26b (decision 91). The building rounds follow the cut of design note §56
+T25b2 (decision 88), T26a1 (decision 89), T26a2 (decision 90), T26b (decision 91) and T27
+(decision 92). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T27 — recruitment** (decision 83; design note §56 round 6, `cross-lane`; §49 to §51): the
-town command `TownCommand::Recruit { town, building }` and `h3_towns::recruit_source` (a standing
-dwelling, horde or Portal; refusals typed), the game's `src/town/recruit.rs` (the owner, its turn,
-no open decision; a Portal with nothing summoned refused, no draw) opening E08's hire dialog with a
-town's `HireSource` and the target the town's garrison until T28a (`HireTarget`), the purchase
-across the store, the adventure's room and the treasury (§50; an upgraded index selling both
-creatures from one count; every refusal changing nothing), the Portal's hire (§51, TWN-REC-002),
-the legal commands, `HireSeen` in the view and the event, the protocol (`cross-lane`, the server
-lane's fold gate; v55 is T26b's, so the next at merge), `town recruit` in the CLI, the env's
-`RECRUIT` (encoding v10, the AI lane's `cross-lane` consent), the replays re-recorded (skill
-`homm3-rerecord-replays`), the bench (skill `homm3-bench-regression`). Rules TWN-REC-001, -002 with
-sources and tests; GAM-DEC-008 amended. A count bought is a change of the owner's view (T26b's
-`check_towns` asks the owner's `TownChanged`: teach it the hire). **At its start:** confirm the
-cut. **Depends on:** T26b (its pull request merged). **Status:** next.
+**E09 T28 — the rows** (decision 83; design note §56 round 7, `cross-lane`; §52 to §54): **T28a**
+the town's two bars under E08's one owner rule, admitted without a decision in the owner's turn
+(TWN-ROW-001; GAM-MAN-001, -002 amended: the upper bar alone or with the town's visitor, the
+listings), the garrison hero's record (the hero on the map's whole record moved into the town,
+adventure state hash, `cross-lane`; the lookups of `ArmyRef::Hero`), the moves
+`AdventureCommand::TownHeroes { town, change }` `Enter`, `Leave`, `Swap` (TWN-ROW-002 to -004,
+each refusal typed and changing nothing), the hire's target into the garrison hero's army
+(T27's `HireTarget::Garrison` resolves to it, design §49), the events and views
+(`GarrisonHeroChanged`, the own hero view's place), the replay format (`town heroes <town>
+enter|leave|swap`, management lines naming a town's bar), the env's `TOWN_HEROES` + 3 (encoding
+v11, the AI lane's `cross-lane` consent), the protocol (the server lane's fold gate); **T28b**
+what a garrison hero changes: its day and income (TWN-ROW-005; ADV-MOV-002, GAM-RES-003, -005),
+growth's inputs with it (§41's open point), rows 1 and 3 of a visit of another team (TWN-SIE-001,
+-002, TWN-CAP-003, GAM-BAT-001; T-5, `TWN-QUIRK-11`), level 3's view of it (TWN-VEW-001). Each
+part's replays re-recorded (skill `homm3-rerecord-replays`) and bench (skill
+`homm3-bench-regression`). **At its start:** confirm the cut (the design's two parts, each
+possibly cut again). **Depends on:** T27 (its pull request merged); E08's T115a (#906, the visit
+marks on `HeroOnMap`, which the garrison hero's record carries) merged. **Status:** next.
 
-**E09 T28 to T30 — the rest of the build** (decision 83; design note §56 rounds 7 and 8, each cut
-confirmed at its start, the agent queues each in full when the one before it ends): **T28** the rows (`cross-lane`, after E08's
-T114a and T115a merged; T28a §52, §53's record and moves, the env's v11; T28b §53's day and
-income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, increment 4 refined.
-**Depends on:** T27. **Status:** waiting.
+**E09 T29, T30 — the rest of the build** (decision 83; design note §56 round 8, each cut
+confirmed at its start, the agent queues each in full when the one before it ends): **T29** the
+gates (§55, §47: the scripted replays on the builds map, growth through a month, a purchase at an
+upgraded dwelling and at the Portal, the rows; the census, the properties, the benchmarks); **T30**
+the audit, the closure, increment 4 refined. **Depends on:** T28. **Status:** waiting.
 
 ## Inbox
 

@@ -17,6 +17,14 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   T18b1): `h3-map`'s property tests (`play.rs`' `as_move`, `view.rs`' told views), `h3-sim`'s
   action entries, `h3-files`' replay words; the scoped verify builds `h3-map`'s tests only in its
   clippy and coverage steps. Run `cargo check --workspace --all-targets` right after adding one.
+- **A new town command in the legal set changes every random game with an owned town** (E09
+  T19c1, T27): the env's agent draws it, so `h3-sim`'s town-map tests (`tests/towns.rs`: the
+  play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a
+  throwaway `#[ignore]` test in release, its `CARGO_TARGET_DIR` outside the worktree: only
+  `/target` is ignored, and `git add -A` took a `target-rel/` (E09 T27).
+- **A hire dialog's creatures for the env come from `GameState::hire_stock`** (E09 T27): a new
+  source served elsewhere leaves its `Buy`s without an entry, and the random agent falls back on
+  `EndTurn`, which the game refuses (`DecisionOpen`).
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's
   `_int_malloc` alone (E09 T8c2). Compare per function with `master` built in the same sandbox

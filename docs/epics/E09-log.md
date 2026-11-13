@@ -3614,3 +3614,70 @@ whole** (decision 91, the user; two parts were recommended).
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s and
 `h3-server`'s tests run on their own; CI on the pull request is the record.
+
+### T27 — recruitment (2026-11-13)
+
+One session, the user present at the start; branch `town/e09-t27`, `cross-lane` (the adventure
+lane's `h3-adventure` hire types and purchase, `h3-game`'s hire decision, state hash, observation
+and events, `h3-map`'s property plans, `h3-files`' replay line, the 72 adventure replays and two
+town-map workloads; the server lane's `h3-protocol` and `h3-server`'s record literals; the AI
+lane's `h3-sim` env, with the user's consent). Starting point: `master` at 202aa3f (#903 merged);
+the setup's full baseline was lost to a VM restart, CI's green run on `master` (999bb0e, #904)
+stands for it. The user's computer was connected at the start only: the original data staged
+then (17 files, SHA-256 checked against the PC's), used for the scoped verify. **T27 whole**
+(decision 92, the user; two parts were recommended, the env apart). `master` merged in once,
+after the server lane's #904 (protocol v56, replay format v14 taken first).
+
+- **The town's rules** (`h3-towns`' `recruit.rs`; design §49 to §51): `RecruitSource::{Index,
+  Portal}`; `recruit_source` (UnknownBuilding, NotRecruiting, NotStanding with a base index whose
+  level's upgraded dwelling was ever built, NothingSummoned for an empty Portal), `recruiting`
+  (the legal set, one pass over the standing buildings), `recruit_stock` (an upgraded index's two
+  creatures from one count, the upgrade first), `check_recruit` (`RecruitError::{NotOffered,
+  Amount}`), `recruit` (saturating; the Portal's creature kept). `TownCommand::Recruit` and the
+  three refusals in `command.rs`.
+- **The adventure's side** (E08 T95b's reuse): `HireTarget::Garrison(TownId)`,
+  `HireSource::{Town { town, index }, Portal { town }}`; `hire_stock` none for a town's source,
+  `hire_room` over a garrison; `check_join` (the target's room and the price) under `check_hire`;
+  `HirePurchase` names its army (`Joining`) and the map's count to lower (none for a town's);
+  `hire` returns the garrison's changed slot.
+- **The game** (`town/recruit.rs`; TWN-REC-001, -002, GAM-DEC-008 amended): `open` behind
+  `town::command` (the store, the owner, `recruit_source`; `HireOpened` to the owner alone),
+  `buy` (the town's tests, the room, the treasury, then the price, the store's write, the join,
+  `StackChanged` of the garrison's slot to the owner, the town's changed views by `Told`);
+  `GameState::hire` hands a town's source to it and closes a one-creature dialog after either;
+  `GameState::hire_stock` public (any source; the env's). `HireSeen` replaces `HireView`'s and
+  `HireOpened`'s type and anchor. The legal recruitments after each own town's builds
+  (`town/offer.rs`). Game state hash **v31** (the target's tag 1, the sources' tags 1 and 2).
+- **The wire** (protocol **v57**): `TownCommand::Recruit`, three `TownReject`s,
+  `HireTarget::Garrison`, `HireSeen` in `Hire` and `HireOpened`; mapped, inverted, round-tripped.
+  Replay format **v15** (`town recruit <town> <building>`). The env's encoding **v10**: `RECRUIT`
+  (entry 31) with `BUILD`'s tile and building heads; a dialog's creatures from
+  `GameState::hire_stock` (from the adventure's stock alone, a listed town `Buy` encoded to
+  nothing and the random agent fell back on `EndTurn`, which the game refused: the protocol's
+  played games and the town map's env tests found it).
+- **Tests:** `h3-towns` (11: every source, refusal and stock, the one count, the Portal's,
+  `recruiting` against `recruit_source` over all 64 buildings); `h3-adventure` (a garrison's
+  purchase, room and slot); `h3-game`'s `town/tests/recruit.rs` (7: the dialog the owner's alone
+  and its answers, every refused recruitment and purchase changing nothing, a purchase's events
+  and counts, the Portal bought out and still listed, an upgraded index's two creatures from one
+  count and the dialog kept open, the hash naming the source, the legal order); the offer tests
+  leave recruitments out. `h3-map`'s plans: `hire_stock`, `hire_most` and `check_hire` read a
+  town's source and garrison (the town's told views between the slot's `StackChanged` and the
+  close), `town_builds` probes each town's recruitments after its builds against `recruited`'s
+  independent reading, `check_towns` lets a purchase lower one count or the Portal's, the open
+  dialogs tracked by `HireSeen` in `view.rs`. `h3-sim`: the town map's play on seed 70 alone
+  (a search over 1 to 399: the first seed meeting every feature, recruitments and purchases now
+  among them), the fork test on seed 46 (a siege on day 1).
+- **Replays:** the 72 adventure replays re-recorded from their commands, only the format, the hash
+  version and the hash lines moved; `h3-server`'s record literals. The bot reports unchanged.
+- **Bench** (`master` built in the same sandbox): `legal-towns-36` 12 594 903 against 8 153 291
+  (+54.48 %: the agent's recruitments, 1 755 listings for 1 172; `recruiting` with its
+  `source_of` 12 %, about 850 Ir a listing) and `reach-towns-36` 1 291 602 865 against
+  868 496 571 (+48.72 %: 4 031 queries for 1 850, the same code) re-baselined with the reasons; a
+  single pass for the upgraded levels measured worse and was dropped. Every other workload within
+  its gate (`day-start-builds-36` +1.41 %, `day-start-dwellings-xl-144` +1.63 %,
+  `month-start-xl-144` +1.61 %).
+- **Agent's calls (change freely):** decision 92's list.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s,
+`h3-server`'s and `h3-sim`'s tests run on their own; CI on the pull request is the record.

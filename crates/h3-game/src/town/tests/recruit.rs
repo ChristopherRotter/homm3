@@ -10,10 +10,12 @@
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{HireError, HireSource, HireTarget};
+use h3_adventure::{HireDialog, HireError, HireSource, HireTarget};
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::{ArmyStack, PlayerId, TownId};
-use h3_towns::{BuildingId, BuildingRoles, Dwelling, Summoned, TownCommand, TownCommandError};
+use h3_towns::{
+    BuildingId, BuildingRoles, Dwelling, RecruitSource, Summoned, TownCommand, TownCommandError,
+};
 
 use super::command::{BLUE, RED, end_turn, run};
 use super::garrison::building;
@@ -431,6 +433,36 @@ fn an_upgraded_index_sells_both_creatures_from_one_count() {
     run(&rules, &mut game, RED, recruit(T0, B13)).unwrap();
     run(&rules, &mut other, RED, recruit(T2, DWELLING_1)).unwrap();
     assert_ne!(game.state_hash(), other.state_hash());
+}
+
+// covers: TWN-REC-001
+#[test]
+fn a_dialog_of_a_town_the_store_lacks_sells_nothing() {
+    // Defensive: nothing removes a town while its dialog is open.
+    let rules = rules();
+    let mut game = game(&rules, 5_000);
+    let imp = creature(&rules, "t:imp");
+    let gone = TownId::new(9);
+    let source = (gone, RecruitSource::Index(0));
+    assert_eq!(crate::town::recruit::stock(&game, &rules, source), None);
+    let dialog = HireDialog {
+        target: HireTarget::Garrison(gone),
+        source: HireSource::Town {
+            town: gone,
+            index: 0,
+        },
+    };
+    let mut events = Vec::new();
+    let refused = crate::town::recruit::buy(
+        &mut game,
+        &rules,
+        RED,
+        (&dialog, source),
+        (imp, 1),
+        &mut events,
+    );
+    assert_eq!(refused, Err(GameCommandError::Hire(HireError::NoSource)));
+    assert!(events.is_empty());
 }
 
 // covers: TWN-REC-001, TWN-REC-002, GAM-DEC-001

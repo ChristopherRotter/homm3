@@ -142,10 +142,13 @@ mod tests {
             town: TownId::new(2),
             building,
         };
-        let TownCommand::Build { town, building: b } = command else {
-            panic!("{command:?}");
-        };
-        assert_eq!((town, b), (TownId::new(2), building));
+        assert_eq!(
+            command,
+            TownCommand::Build {
+                town: TownId::new(2),
+                building
+            }
+        );
         let recruit = TownCommand::Recruit {
             town: TownId::new(3),
             building,
