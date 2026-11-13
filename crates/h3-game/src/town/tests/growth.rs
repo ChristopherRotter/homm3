@@ -28,12 +28,12 @@ use crate::{
     apply, observe,
 };
 
-const T0: TownId = TownId::new(0);
-const T1: TownId = TownId::new(1);
-const T2: TownId = TownId::new(2);
-const T3: TownId = TownId::new(3);
+pub(super) const T0: TownId = TownId::new(0);
+pub(super) const T1: TownId = TownId::new(1);
+pub(super) const T2: TownId = TownId::new(2);
+pub(super) const T3: TownId = TownId::new(3);
 /// The part's level 1 and level 2 dwellings (the imps' growth 15, the gogs' 8).
-const DWELLING_1: usize = 7;
+pub(super) const DWELLING_1: usize = 7;
 const DWELLING_2: usize = 8;
 
 /// The towns' rules with the Legs of Legion (`t:legs`, +5 at level 1), the Statue (`t:statue`,
@@ -45,8 +45,11 @@ fn rules(odds: [u8; 3]) -> GameRuleset {
 
 /// [`rules`] with the town part edited by `edit` (E09 T26a2: the week's chance, a `week_of`
 /// building).
-fn rules_on(odds: [u8; 3], edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
+pub(super) fn rules_on(odds: [u8; 3], edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
     let mut towns = town_pack(false);
+    // E09 T26b: the neutral T3's garrison never grows here (its week draws its odds alone; the
+    // garrison week is `garrison.rs`' tests').
+    towns.params.as_mut().unwrap().garrison_week.odds = [0, 0];
     edit(&mut towns);
     let mut core = towns_core_pack(false);
     for (k, effect) in [
@@ -126,7 +129,7 @@ fn hut(rules: &GameRuleset, (x, y): (u16, u16), owner: Option<PlayerId>) -> Obje
 /// its visitor red's hero wearing the Legs and the Statue; blue's T1 on (3, 0); red's T2 on
 /// (0, 3); the neutral T3 on (2, 0). A hut of red's on (3, 2) and two neutral ones on (0, 2) and
 /// (2, 3).
-fn setup(rules: &GameRuleset) -> GameSetup {
+pub(super) fn setup(rules: &GameRuleset) -> GameSetup {
     let castle = faction(rules, "t:town");
     let mut setup = towns_setup(rules);
     let bare = TownSetup {
@@ -164,8 +167,13 @@ fn setup(rules: &GameRuleset) -> GameSetup {
 
 /// The game of [`setup`] with the level 1 dwelling built in every town and the level 2 one in
 /// T0 (the build's first creatures: 15 imps, 8 gogs).
-fn built(rules: &GameRuleset, setup: &GameSetup) -> GameState {
-    let mut game = GameState::new(rules, setup, 7).unwrap();
+pub(super) fn built(rules: &GameRuleset, setup: &GameSetup) -> GameState {
+    built_seeded(rules, setup, 7)
+}
+
+/// [`built`] with the master seed `seed` (E09 T26b).
+pub(super) fn built_seeded(rules: &GameRuleset, setup: &GameSetup, seed: u64) -> GameState {
+    let mut game = GameState::new(rules, setup, seed).unwrap();
     let dwellings = [(T0, DWELLING_1), (T0, DWELLING_2), (T1, DWELLING_1)]
         .into_iter()
         .chain([T2, T3].map(|town| (town, DWELLING_1)));
@@ -178,7 +186,7 @@ fn built(rules: &GameRuleset, setup: &GameSetup) -> GameState {
 }
 
 /// The game's day `day` started: both players' turns ended until then.
-fn to_day(rules: &GameRuleset, game: &mut GameState, day: u32) {
+pub(super) fn to_day(rules: &GameRuleset, game: &mut GameState, day: u32) {
     while game.day() < day {
         end_turn(rules, game, RED);
         end_turn(rules, game, BLUE);
@@ -311,7 +319,7 @@ fn rules_creature_weeks(odds: [u8; 3]) -> GameRuleset {
 }
 
 /// The game's day `day` started, the events every player was told on the way.
-fn to_day_told(rules: &GameRuleset, game: &mut GameState, day: u32) -> Vec<GameEvent> {
+pub(super) fn to_day_told(rules: &GameRuleset, game: &mut GameState, day: u32) -> Vec<GameEvent> {
     let mut events = Vec::new();
     while game.day() < day {
         for player in [RED, BLUE] {

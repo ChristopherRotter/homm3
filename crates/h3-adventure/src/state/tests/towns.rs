@@ -216,6 +216,24 @@ fn the_static_map_lists_the_towns_with_their_owners_and_garrisons() {
     assert_ne!(hash_of(&state), 0);
 }
 
+// covers: TWN-GRO-006
+#[test]
+fn a_neutral_garrison_s_week_is_written_on_its_town() {
+    // E09 T26b: the game writes a garrison week's stacks by slot; a `TownId` the map lacks
+    // changes nothing.
+    let rules = town_rules();
+    let setup = town_setup(objects(&rules), vec![garrison(), vec![]]);
+    let mut state = started(&rules, &setup).unwrap();
+    let grown = vec![stack(1, PIKEMAN, 7)];
+    let before = state.clone();
+    state.set_town_garrison(TownId::new(2), grown.clone());
+    assert_eq!(state, before);
+    state.set_town_garrison(TownId::new(1), grown.clone());
+    assert_eq!(state.town_garrison(2), Some(&grown[..]));
+    assert_eq!(state.town_garrison(1), before.town_garrison(1));
+    assert_ne!(state.state_hash(), before.state_hash());
+}
+
 // covers: TWN-SET-011, ADV-SHY-001
 #[test]
 fn a_town_fixes_its_spot_when_the_game_is_built() {

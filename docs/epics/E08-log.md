@@ -16091,7 +16091,7 @@ the census moved.
   `MovementChanged` by `OwnHeroes` (was `Movements`; the block's pointer kept before the command)
   in the order: marks dropped, the sums, marks gained (a mark of other amounts counts as another);
   a hero new on the map against none. The owner's view `OwnHeroView::bonuses` and `::timed`.
-- **The wire** (`cross-lane`, protocol v55): `OwnMapHero::bonuses` (`Bonuses` with
+- **The wire** (`cross-lane`, protocol v56; the town lane's T26b, #903, took v55 first): `OwnMapHero::bonuses` (`Bonuses` with
   `once: Vec<VisitBonus>`) and `::timed`; `HeroDetails::bonuses`, `HeroChange::Bonus` and
   `ClearBonuses` gone; the three events both ways and folded (a mark held or not held already:
   nothing); the fold gate's part "battle bonuses and timed marks" without a stub; a fold case.
@@ -16115,6 +16115,6 @@ the census moved.
   decision 326 and the task's line, design §12's *As built*, the queue (T115b), `TRAPS.md`; the
   client, server, town, AI and battle lanes' inboxes.
 
-**Versions:** adventure state hash v23, game state hash v31, protocol v55 (the server lane's,
+**Versions:** adventure state hash v23, game state hash v31, protocol v56 (the server lane's,
 `cross-lane`). The part, the map import, the replay format and the env's encoding unchanged.
 T115b next.

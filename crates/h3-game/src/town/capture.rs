@@ -9,8 +9,8 @@ use h3_adventure::AdventureState;
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::{TownRuleset, Towns};
 
-use super::adventure_reveal;
 use super::view::Told;
+use super::{adventure_reveal, portal};
 use crate::command::{AdventureSink, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -22,14 +22,16 @@ use crate::{GameRuleset, GameState};
 /// not human or the town was neutral, and `player` is; otherwise it is kept, so a town built in
 /// today by a human is not built in again today by the human who took it), then the Capitol's
 /// limit on the store of towns ([`Towns::apply_capitol_limit`]) with whether `player` owns another
-/// town (by the adventure's owners) with a standing Capitol ([`holds_capitol`]), then each view
-/// the capture changed told to its viewer (E09 T18b2a, [`Told`]: the town's by every player that
+/// town (by the adventure's owners) with a standing Capitol ([`holds_capitol`]), then a standing
+/// Portal of Summoning that holds nothing drawn for `player` from its stream (TWN-GRO-007, E09
+/// T26b, decision 82: [`portal::at_capture`]), then each view the capture changed told to its
+/// viewer (E09 T18b2a, [`Told`]: the town's by every player that
 /// sees it, its owner, mark, Capitol and garrison; for a town with a standing Tavern, the old and
 /// the new owner's of every town, whose garrison levels it counts, TWN-VEW-002; E09 T8a2 told the
 /// Capitol's limit alone). One infallible application: the step checked it; a town the store or
 /// the map lacks changes nothing (the store holds every town of the map). A team is its player
 /// alone until E10 (`h3_adventure::allied`).
-// rule: TWN-CAP-001, TWN-CAP-002, TWN-BLD-004, TWN-VEW-002
+// rule: TWN-CAP-001, TWN-CAP-002, TWN-BLD-004, TWN-VEW-002, TWN-GRO-007
 pub(crate) fn capture<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -72,6 +74,8 @@ pub(crate) fn capture<S: Sink>(
     state
         .towns_mut()
         .apply_capitol_limit(town, part, holds_another);
+    // rule: TWN-GRO-007
+    portal::at_capture(state, rules, town, player);
     told.tell(state, rules, sink);
 }
 

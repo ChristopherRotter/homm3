@@ -211,7 +211,7 @@ const PARTS: &[Part] = &[
         stubs: &[],
         agree: |a, b| own(a, b, |o| (o.formation, o.tactics)),
     },
-    // E08 T115a (v55): the hero on the map's battle bonuses and timed marks.
+    // E08 T115a (v56): the hero on the map's battle bonuses and timed marks.
     Part {
         name: "battle bonuses and timed marks",
         stubs: &[],
@@ -1304,7 +1304,7 @@ fn the_fold_applies_a_heros_changes() {
 
 #[test]
 fn the_fold_keeps_the_own_heroes_battle_bonuses_and_timed_marks() {
-    // E08 T115a (v55): hero 4's own view holds −3 morale and +2 luck, the once-marks 0 (−3
+    // E08 T115a (v56): hero 4's own view holds −3 morale and +2 luck, the once-marks 0 (−3
     // morale) and 13, the timed marks 48 and 94 (`every_game_part`'s).
     let mut v = view();
     let hero = 4;
@@ -1450,6 +1450,11 @@ fn town_changed(town: u16, hall: Option<u8>) -> GameEvent {
         buildings: hall.map(|_| TownBuildings {
             built: WireU64(0b101),
             forbidden: WireU64(1 << 40),
+            available: [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+            portal: Some(Summoned {
+                creature: 12,
+                count: 3,
+            }),
         }),
     }
 }
@@ -1530,6 +1535,11 @@ fn the_fold_replaces_a_towns_view_by_its_told_one() {
             buildings: Some(TownBuildings {
                 built: WireU64(0b101),
                 forbidden: WireU64(1 << 40),
+                available: [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+                portal: Some(Summoned {
+                    creature: 12,
+                    count: 3,
+                }),
             }),
         }
     );

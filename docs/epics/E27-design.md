@@ -8,14 +8,16 @@ number or a name; never read it whole once it grows.
 Listed on the user's computer from the installation's `Data/VIDEO.VID` (173 entries, 629 MB)
 and `Data/H3ab_ahd.vid` (7 entries, 1.6 MB), read only: a `u32` count, then per entry a 40-byte
 name and a `u32` offset; an entry's size is up to the next offset. Many clips ship twice, as
-Bink (`.bik`) and Smacker (`.smk`); the game opens the Bink version first (`video_open`
-0x44D5A0), so a clip's Smacker copy plays only where no Bink one exists. Sizes rounded, in MB.
+Bink (`.bik`) and Smacker (`.smk`); which copy plays is the clip table's (§2.1): below index 28
+always Bink, from 28 Bink only when the table's +8 is set and `Bink Video` is on, else Smacker
+(so `LoseGame`'s Smacker copy always plays, §5.4; M0's "the Bink version first", `video_open`
+0x44D5A0, corrected). Sizes rounded, in MB.
 
 | Use (as known at M0; T1a and T1b read where each plays) | Bink | Smacker only |
 |---|---|---|
 | The start (§2.1) | `NWCLOGO` 4.2, `H3INTRO` 54.5 | `3DOLOGO` 0.9 |
 | Not at the start (§2.1): AB's intro, by no constant index (a campaign's prologue, presumably: E20) | `H3X1intr` 31.8 | |
-| A network game's save-game transfer (§2.1, §2.6; not the start's loading bar, which is a DEF) | | `ProgressBar` 0.3 |
+| A network game's save-game transfer (§2.1, §2.6; not a game's loading bar, which is a DEF) | | `ProgressBar` 0.3 |
 | A won scenario's score screen (0x4F3F60, T1b; not the High Scores dialog, §2.8) | | `HSANIM` 4.5, `HSLOOP` 1.8 |
 | The menus' clip 33 (§2.5; nothing drawn, CLT-Q86; its frames time the credits, §2.9) | (`CREDITS.BIK` and `.SMK` in `VIDEO.VID` are 4 × 4 placeholders, found first) | `Credits.smk` 0.03 (`H3ab_ahd.vid`, AB's; reached by edition 1 only) |
 | A lost scenario's screen (clip 34, §5.4) | `LOSEGAME` 4.0, never played: clip 34's table entry has +8 clear, so its Smacker copy (4.7) always plays (T1b3b's correction of T1b3a's reading) | |
@@ -86,18 +88,22 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
      dialog at (80, 187) in its own size (640 × 360), not playing on, not shown by the tick; the
      rim copied whole onto the back buffer; the screen shown; each frame due (`video_frame_ready`
      0x597930) shown (`video_show`) until the clip's end or a skip; the clip closed, the rim freed.
-   - The clips (their headers): `3DOLogo` Smacker, 81 frames at 15 a second; `NWCLogo` Bink, 195
-     frames at 15, sound; `H3Intro` Bink, 2 426 frames at 15, sound.
+   - The clips (their headers): `3DOLogo` Smacker, 640 × 480, 81 frames at 15 a second; `NWCLogo`
+     Bink, 400 × 300, 195 frames at 15, sound; `H3Intro` Bink, 640 × 360, 2 426 frames at 15, sound.
+     Their Smacker copies (read at M1 T3 from `shell-videos.vid`): `NWCLOGO.SMK` 800 × 600 (full
+     screen, where the Bink one is 400 × 300), 195 frames; `H3INTRO.SMK` 640 × 360, 2 426 frames;
+     both, as `3DOLOGO.SMK`, at a rate of −6666 (66.66 ms a frame, 15 a second).
 5. Then the high-score manager's start (0x6993CC's vtable +0), the cursor shown, the menu loop.
 - **Not at the start:** clip 31 `H3x1intr` (AB's intro) is played by no constant index anywhere:
   a campaign's prologue by its movie number, presumably (H3API's `H3CmpPrologue`; E20, *not
   read*); clip 32 `Endgame` plays framed by `IntroRim.pcx` after a campaign's end (0x4EF9B1; E20).
 - **The loading bar is no clip:** `loading_screen_open` 0x4ED350 copies `loadbar.pcx` (800 × 600)
   to (0, 0) and draws `loadprog.def` (16 × 16, 20 frames) by `load_progress_step` (E24-design §1.6:
-  frame *i* at (395 + 18 *i*, 548)); here at the tutorial's load (§2.4), the scenario's begin at T1b.
-  Clip 63 `ProgressBar` (Smacker, 160 × 160, 20 frames) is opened only by `progress_clip_open`
-  0x557480, its frame driven by a fraction, from two functions whose callers include
-  `next_player_turn`, the network turn, `new_game_start` and `network_map_redraw` (DirectPlay's
+  frame *i* at (395 + 18 *i*, 548)); it shows only when a game loads: the tutorial's (§2.4), the
+  scenario's begin (§3.17) and the restart (§4.6), never at the start (so M3's begin builds it,
+  not M2's start). Clip 63 `ProgressBar` (Smacker, 160 × 160, 20 frames at 10 a second) is opened
+  only by `progress_clip_open` 0x557480, its frame driven by a fraction, from two functions whose
+  callers include `next_player_turn`, the network turn, `new_game_start` and `network_map_redraw` (DirectPlay's
   "guaranteed" sends nearby): a network game's save-game transfer (§2.6).
 
 ### 2.2 The menu loop (`game_main` from 0x4EE842)
@@ -109,7 +115,7 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
 - **The screen asked for** (`screen_request` 0x6976D8): −1 or 108 the main menu; any other id its
   case at once. Its writers in play: `adventure_key_down` 101, 102, 108 and 107,
   `adventure_command` and one more site 107, `system_options_open` 102, 105, 107 and 108 (§4.3);
-  `game_samples_load` the start's (T1b).
+  `game_samples_load` the start's (*not read*; M2's start task).
 - **The main menu's result** (the window manager's +0x38; switch 0x4EEC0D): 101 New Game, 102 Load
   Game (§2.4), 103 High Scores (videos paused, 0x4E9110: §2.8; resumed; `GamSelBk.pcx` copied
   whole; the top), 104 Credits (`mainmenu.pcx` copied, 0x4EDDA0: §2.9; the top), 105 Quit
@@ -174,7 +180,9 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
 - **The run:** "MainMenu" asked for again (the track already playing goes on: E24-design §3.11),
   `modal_loop`. **Hover** as the main menu's (`game_type_menu_hovered` 0x6780F0; with the CD notice
   only 102 and 104 cleared); the redraw: items 100 to 105, (526, 7, 250, 560) and the picture's
-  (114, 312, 300, 48) shown, `video_show`. **A press** and **its command** as the main menu's: 100
+  (114, 312, 300, 48) shown, `video_show`. The rectangle misses Single's top rows 4 to 6 and Back's bottom
+  rows 567 to 569 (recorded, M1 T3: `menu-new`, `menu-load`: from the first redraw of Single's or
+  Back's frame those rows keep the last frame shown, a faint highlight; CLT-Q118). **A press** and **its command** as the main menu's: 100
   to 104 end the menu with the id. **A right press:** Help.txt record 10 + (id − 100)
   (`game_type_menu_help` 0x6A6BF8: the file's order is the ids'), Load Game's the same records.
 - **New Game's results** (switch 0x4EECF5; before the menu, 0x4EEC14 resets a game's globals, `campaign_game` 0 among them, *not read*): 100 the
@@ -215,8 +223,9 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
 (add (173, 55) for the screen's).
 
 - **The dialog** (built on the caller's stack, vtable 0x6400A0, `multiplayer_dialog_pointer`
-  0x69CA28): (173, 55, 454, 490) over the screen as the game-type menu left it (*inferred*: no
-  background of its own beyond its picture; T2 confirms), run by `dialog_run_modal`; its
+  0x69CA28): (173, 55, 454, 490) over the screen as the game-type menu left it (no background of
+  its own beyond its picture: recorded over New Game's and Load Game's menus, §6.1), run by
+  `dialog_run_modal`; its
   procedure (below) ends in the default one (`dialog_proc_default` 0x5FF820: a mouse move to
   `dialog_mouse_move` 0x5FF6E0, which writes the hovered item's hint, `Help.txt`'s first field,
   into the status item and sets the arrow cursor; a right press to `dialog_right_click` 0x5FF790,
@@ -288,6 +297,9 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   `network_game_send` 0x4CAFD0 (from `next_player_turn`, `next_player_turn_network`,
   `new_game_start` and one more) and `network_game_receive` 0x4CBD40 (`network_map_redraw` and one
   more): it goes with the network modes (CLT-Q87: not built).
+- **For the client** (decision 20, CLT-Q101): the status line drawn again at a stage's change (the
+  original keeps the last hint after Escape from stage 2 until the pointer moves, §6.3); the
+  original's for the comparisons only.
 
 ### 2.7 The hot seat's names (`hot_seat_run` 0x511D40, `hot_seat_dialog_init` 0x511E20)
 
@@ -301,7 +313,10 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
     characters, empty (vtable 0x640210), each with `Help.txt` 559 (group 15, records 558 to 565);
     linked in a ring (+0x70 the next, +0x74 the previous, the eighth's next the first);
   - 519 OK `mubchck.def` (64 × 32, four frames) at (95, 338, 64, 32), Enter (0x1C), `Help.txt` 560,
-    disabled at the open (`dialog_item_enable` 0x5FE940: state 0x20, frame 2);
+    disabled at the open (`dialog_item_enable` 0x5FE940: state 0x20, frame 2; the DEF button's
+    drawer shows frame 2 for state bit 8 or 0x20, E17-design §9.7, where §4.1's speeds set bit 8 by
+    `SendCommand` 5 with 0x1000; whether 0x20 is the state bit or a value: to settle when the
+    shared dialog code is built, decision 20);
   - 520 Cancel `mubcanc.def` (64 × 32) at (205, 338, 64, 32), Escape, `Help.txt` 561;
   - 518 the status line (`smalfont.fnt`, colour 1, centred, background 0x20) at (10, 382, 343, 18);
     the dialog's +0x34 (0x512530) names its +0x70 (*inferred*: the status line).
@@ -312,6 +327,9 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   when more than one edit holds a name (`hot_seat_edit_check` 0x50DEE0 counts the same, vtable
   +0x2C, *inferred*: at a focus change) and the dialog redrawn. Hover and right press as §2.6's
   default.
+- *Recorded (T2, §6.3):* OK is enabled by the key that makes the second name and disabled by its
+  removal (not at a focus change); a disabled OK still shows its hint and popup; Enter in an edit
+  moves to the next edit, never presses OK.
 - **The click handler** (`hot_seat_dialog_click` 0x512420): 519 `hot_seat_names_store` 0x512470:
   a record of 0xAC bytes (`hot_seat_names` 0x69CA50: a count and eight names of 21 bytes) holds the
   non-empty edits in their order, the dialog closes with 0x7802; 520 closes with 0x7801. The names
@@ -361,9 +379,10 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   0x3EA the scenarios, 0x3E9 the campaigns (the creatures swapped), redrawn and shown. 0x3EB Reset:
   GENRLTXT 667 (style 2); OK (0x7805) resets both tables to the defaults, writes `HiScore.dat` into
   the installation's `DATA` (0x898 bytes; a failure `file_error_box` 0x4F3A60, GENRLTXT 11 with
-  the name) and sets every creature's DEF again. Any other message: every 200 ms the tab's eleven
-  creatures step one frame (their group 0's count wraps, +0xA4's counters), the table redrawn and
-  shown. No hint line (the dialog's +0x10 is empty) and no right press's popup (*inferred*).
+  the name) and sets every creature's DEF again. Any other message: once more than 200 ms have
+  passed (recorded, §6.3: every 210 ms on 10 ms steps) the tab's eleven creatures step one frame
+  (their group 0's count wraps, +0xA4's counters), the table redrawn and shown. No hint line (the
+  dialog's +0x10 is empty) and no right press's popup (*inferred*).
 - **Where the scores live:** the client keeps them in its own file, never the installation's
   (the epic's rule for settings); the defaults from `CampHigh.txt` (M1's review list).
 
@@ -382,14 +401,17 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   next input message: a key down but F4 (0x3E), a left or a right press end it. On each frame of
   the clip due (Complete's `CREDITS.SMK`: one frame at 10 a second): the background put back at
   (460, 10); the text moved 2 px: first in from the window's bottom (580 px), then up until its end
-  reaches the window's bottom, then out at the top; while the text's visible part is under 435 px,
+  reaches the window's bottom, then out at the top; near the end, once the text's end has risen to
+  about 435 px (recorded, §6.3; the reading's "while the text's visible part is under 435 px"
+  refuted: never at the start; the exact test: M4's credits task, from the kept frames),
   `Credits.txt`'s record 2 (`credits_closing_text` 0x6A7704) in `smalfont.fnt`, colour 0xD,
   alignment 8 (the window's bottom) over it; (460, 10, 328, 580) shown, the clip shown. When the
   text has left, the screen ends. No music change, no sound. CLT-Q88: the client steps it ten
   times a second with no clip.
 
 - *Recorded (M1 T2, §6.3; a correction):* the closing text shows only near the end, once the
-  text's end has risen to about 435 px; the frames' times as §6.3 lists.
+  text's end has risen to about 435 px (first at 244.6 s); the first frame 1 100 ms after the
+  screen opens, then one every 100 ms of 2 px; the last at 265.2 s, the main menu at 266.5 s.
 
 ### 2.10 Not built (the agent's calls, *provisional*; M1's review list)
 
@@ -467,7 +489,7 @@ begin (§3.12 to §3.18); T1b3 the system options, the menu in play and the end 
 | 102, 103 | `AdvOptBk.pcx`, `RanMapBk.pcx` (575 × 585) | (3, 6, 557, 585) | the advanced options' and the random map's panels, hidden; only for a new game or a network or hot-seat load (§3.13, §3.16) |
 | 132 | text "%s:" GENRLTXT 493 (the player's difficulty) | (414, 435, 334, 19) | `smalfont.fnt`, colour 2, align 5 |
 | 133 | "%s:" GENRLTXT 219 (the rating) | (665, 435, 84, 19) | as 132 |
-| 134 | GENRLTXT 495 (the map's difficulty) | (414, 435, 90, 19) | as 132; over 132's place (which shows is not read: T2) |
+| 134 | GENRLTXT 495 (the map's difficulty) | (414, 435, 90, 19) | as 132; in 132's place, but both show, "Map Diff:" on the left and 132's "Player Difficulty:" centred, neither covering the other (recorded, M1 T3: `scn-difficulty`, `scn-right` map-difficulty-label and rating-label) |
 | 100 | GENRLTXT 496 (the name's label) | (422, 27, 278, 18) | colour 2, align 4 |
 | 105 | GENRLTXT 497 (the description's label) | (422, 137, 278, 18) | as 100 |
 | — | scrollable text, `smalfont.fnt`, colour 4 | (422, 155, 319, 115) | the description (the record's +0x196C) |
@@ -486,7 +508,7 @@ begin (§3.12 to §3.18); T1b3 the system options, the menu in play and the end 
 | 199 … 385, 338 … 344 | the players' rows, the headers, the turn's duration | — | §3.13 |
 | 179–182, 336, 389 | the chat's text, edit, plug, bar (`ircentry.pcx`, `CHATPLUG.pcx`, `selslide.pcx`) | — | network games (not built) |
 | 128 | caption button `gspbutt.def` (200 × 20), GENRLTXT 501 (show the scenarios), 656 in the load mode (show the saved games) | (414, 81, 200, 20) | hotkey S; new game or network or hot-seat load only |
-| 130 | as 128, GENRLTXT 760 (the random map) | (414, 105, 200, 20) | hotkey R; editions 1 and 3 only (AB and Complete) |
+| 130 | as 128, GENRLTXT 760 (the random map) | (414, 105, 200, 20) | hotkey R; editions 1 and 3 only (AB and Complete); shown in a hot-seat load too (recorded, M1 T3: `adv-load` screen; §3.16) |
 | 129 | as 128, GENRLTXT 502 (show the advanced options) | (414, 509, 200, 20) | hotkey A |
 | 107–111 | `gspbut3` … `gspbut7.def` (30 × 46) | (506 + 32 i, 456) | the difficulty, easy to impossible |
 | 186 | `scnrbeg.def`, `scnrlod.def` (load), `scnrsav.def` (save) (166 × 40) | (414, 535, 166, 40) | Begin, Load or Save; hotkey Enter |
@@ -524,8 +546,11 @@ last ones the players' rows', §3.13, §3.14).
   rows + 1); a load with no files sets `no_saves_notice` 0x69FDA0, and the procedure's next call
   shows GENRLTXT 686 (no saved games) once and disables Begin; the list sorted by key 2 (the
   version, then the name) while the current key is recorded as 1 (the size's: CLT-Q91, §3.4); the entry
-  whose file name is the kept one (§3.1; 0x58D3E0, *not read*) selected; a save with no match:
-  no selection and the current game's header shown (0x577530, *not read*).
+  whose file name is the kept one (§3.1; 0x58D3E0, *not read*) selected, the list scrolled so
+  that it is on the top row, the thumb mid-bar (recorded, M1 T3: `scn-list-keys` list); a save
+  with no match: no selection and the current game's header shown (0x577530, *not read*; with
+  saves listed the panel shows the current game's name but a saved game's description, recorded,
+  M1 T3: `scn-save` screen, where `scn-save-none` shows the game's own; CLT-Q108, §3.5).
 - **The shown list** (+0x1050) is the full list (+0x1030, or the random maps' +0x1040) less the
   entries of another size than the filter (+0x1860, 0 all), in the full list's order.
 
@@ -566,17 +591,21 @@ last ones the players' rows', §3.13, §3.14).
   + *r*). CLT-Q91: the client's double click needs the same row (decision 12).
 - **Keys** (with the list shown): Up and Down move the selection by one (not in the save mode),
   the top following; Page Up and Page Down move the top by rows − 1 (clamped), the selection
-  keeping its row; then the screen redrawn and `scenario_select`. Delete in the load and save modes
+  keeping its row; then the screen redrawn and `scenario_select`. Delete in the load mode
   (`saved_game_delete` 0x58DFB0): GENRLTXT 688 (delete this file?) with the file's name, style 2;
   OK deletes it from `games`, removes it, sorts by key 2 again and selects the first (or none).
+  In the save mode Delete goes to the name's edit and asks nothing (recorded, M1 T3: `scn-save`
+  delete): 688 is the load mode's alone.
 - **The bar** moves the top and redraws through `scenario_select` (0x57C990).
 
 ### 3.5 The information panel
 
 - **`scenario_select`** 0x585500 (H3API's UpdateForSelectedScenario; the index and a redraw
   flag): an index past the list does nothing; it records the selection and whether it changed;
-  −1 (no random map): in the save mode the current game's header and description, else an empty
-  description; else the record of the shown list (or the random map's own, +0x38C). The save mode
+  −1 (no random map): in the save mode the current game's header and description (as read; with
+  saves listed the description is a saved game's, recorded, M1 T3: `scn-save` screen; CLT-Q108),
+  else an empty description; else the record of the shown list (or the random map's own, +0x38C).
+  The save mode
   copies the file's name, cut at its first full stop, into the edit; the load mode keeps the
   file's name and takes the save's turn duration; a new game keeps the map's file name (§3.1); the
   map into the game (0x583580) and the players' rows (0x584C40, `scenario_hero_lists`; §3.12).
@@ -615,8 +644,14 @@ last ones the players' rows', §3.13, §3.14).
   game whose map's format is not RoE's, AB's or SoD's does nothing; the edition's allowed formats
   (`0x699240` by edition, a bit per format) refuse a map or a save with GENRLTXT 745 or 744 (this
   needs AB or SoD: 746, 747; never on Complete); Begin disabled does nothing; no maps and no
-  random map: GENRLTXT 530 (no maps); a new game whose local record has no colour: 531 (pick your
-  place); a network or hot-seat game with fewer than two placed players: 83 (two players needed);
+  random map: GENRLTXT 530 (no maps; recorded, M1 T3: reached only through a filter that empties
+  the list, `scn-begin-filter` begin; with no maps at all Begin looks enabled and does nothing,
+  `scn-begin-none` begin; CLT-Q114); a new game whose local record has no colour: 531 (pick your
+  place; recorded, M1 T3: in the hot seat only when the first player has no colour,
+  `adv-hotseat-begin` begin-1); a network or hot-seat game with fewer than two placed players: 83
+  (two players needed); a named player left without a colour is dropped at Begin without a
+  message (recorded, M1 T3: `adv-hotseat-begin` flag-red-3, turn: the game starts with A and C;
+  CLT-Q109);
   then the busy cursor, `loading_screen_open`, and the load (`scenario_load_begin` 0x58C290, *not
   read*) or `new_game_start` (§3.17).
 - **The save's name** (`save_name_confirm` 0x577360, from Begin or Enter with the edit's text):
@@ -768,7 +803,9 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
   records 0 to 10: 1, 2, 4, 6, 8, 10, 15, 20, 25, 30 minutes, unlimited; `turn_durations_load`
   0x577AB0) small colour 4 align 5 at (256, 556, 134, 18); every row (§3.14). The bar sets +0x378
   and game +0x1F843 (a host sends it) and redraws the screen. Hints: items up to 344 as §3.8; the
-  names, the edits and the areas have none.
+  names, the edits and the areas have none. But the single player's disabled handicap gives no
+  popup, where the hot seat's caption does (recorded, M1 T3: `adv-single-rest` popup-handicap,
+  `adv-hotseat-rows` handicap-popup).
 
 ### 3.14 A row (`scenario_player_row_draw` 0x58D510) and its presses
 
@@ -826,24 +863,38 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
     **CLT-Q94** (decision 13): the client passes the colour to the next player after its holder in
     the slots' order, the two exchanging colours (a taker without a colour leaves its holder with
     none); with no holder the first player takes it, leaving its own to the computer; after the
-    last player the computer (*provisional* in its detail until M3 builds it).
+    last player the computer (*provisional* in its detail until M3 builds it). Recorded, M1 T3,
+    for the comparisons beside CLT-Q94 (`adv-hotseat-two` flag-red-2, flag-green-2): with two
+    players the second press on red leaves both colours to the computer; the last shot has only
+    A placed, on green. In a hot-seat load a flag press can turn a saved human's colour into
+    Computer (recorded, M1 T3: `adv-load` pressed; CLT-Q110).
   - then the whole screen redrawn.
 - **The name** (345 to 352, `scenario_name_click` 0x58B620): single only, the own colour: the edit
   shown over the name with the record's name, the name hidden, the focus to it (`dialog_set_focus`
-  0x5FF490). Where the edit's text returns to the record: *not read* (T2).
+  0x5FF490). Where the edit's text returns to the record: *not read*; recorded, M1 T3: Return
+  closes the edit and shows the name ("Zed"), which moves with the player to another colour
+  (`adv-single-rest` name-enter, name-after-flag).
 
 ### 3.15 Right press and the hover
 
 - **362 to 369, the hero** (`scenario_dialog_right_click`): a hero shown: `scenario_hero_popup`
-  0x575A90 (300 × 256 at (250, 172): the name in `medfont.fnt`, the portrait, "%s - %s" in small
+  0x575A90 (320 × 256 at (250, 172), recorded, M1 T3: `adv-single-hero` hero-popup-1, not the
+  reading's 300: the name in `medfont.fnt`, the portrait, "%s - %s" in small
   (*not read*: the class and level), GENRLTXT 78 and 79's headings, the specialty's picture and
-  text); a Random one: `scenario_info_popup` 0x5757E0 (200 × 150 at (300, 225): a title, a
-  picture, two small texts) with GENRLTXT 102, 523 and 103; none: no popup (*inferred*).
+  text); a Random one: `scenario_info_popup` 0x5757E0 (256 × 192 at (300, 225), recorded, M1 T3:
+  `adv-single-hero` hero-popup-random, not the reading's 200 × 150: a title, a picture, two small
+  texts) with GENRLTXT 102, 523 and 103; none: no popup (*inferred*; recorded, M1 T3, for some
+  rows only: Rebellion's human None shows none, `adv-single-maps` map-1-hero-popup, but on
+  Adventures of Jared Haret the computer's row showing None gives the Random Hero popup,
+  map-2-computer-hero-popup; CLT-Q112). Each popup's changed block is 8 px wider and taller (a
+  shadow, *inferred*).
 - **370 to 377, the town:** Random: `scenario_info_popup` with 104, 523 and 105; a town:
-  `scenario_town_popup` 0x575E60 (H3API's town alignment dialog; 256 × 320 at (272, 140): GENRLTXT
+  `scenario_town_popup` 0x575E60 (H3API's town alignment dialog; 256 × 320 at (272, 140), recorded,
+  M1 T3: `adv-single-town` town-popup-9; GENRLTXT
   81's heading, the town's picture and name, 80's heading, its creatures in `cprsmall.def` 32 × 32
   in two rows at y 159 and 235 of the popup, their names in tiny below).
-- **378 to 385, the bonus** (`scenario_bonus_popup` 0x5754F0, 200 × 150 at (300, 225)):
+- **378 to 385, the bonus** (`scenario_bonus_popup` 0x5754F0, 256 × 192 at (300, 225), recorded,
+  M1 T3: `adv-single-town` bonus-popup-1, not the reading's 200 × 150):
   artifact GENRLTXT 84, frame 9, 91; gold 85, frame 8, 88 and 93; resource 86, the town's frame and
   by the faction 693 to 696 or 90 (Castle, Necropolis, Stronghold, Fortress wood and ore; Rampart
   crystal; Tower gems; Inferno, Conflux mercury; Dungeon sulfur) with 689 to 692 or 94; Random 87,
@@ -854,7 +905,9 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
 
 ### 3.16 The random map (button 130, `random_map_toggle` 0x57FEB0)
 
-- **Opens** in a new game only; shown, a press hides it (`random_map_hide` 0x581D80: 103, 280 to
+- **Opens** in a new game only (as read; its button 130 shows in a hot-seat load too, recorded,
+  M1 T3: `adv-load` screen; no recipe presses it there: M3); shown, a press hides it
+  (`random_map_hide` 0x581D80: 103, 280 to
   335, +0x37E cleared); else the list and the advanced options hidden, 103 `RanMapBk.pcx` and 280
   to 335 shown, the record into the game, +0x37E set, and the first time +0x37F (a random map
   chosen) and `random_map_info_build` 0x580430: the screen's own record (+0x38C) from the choices
@@ -894,6 +947,11 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
   reading's; GENRLTXT 749 after a generation): *not read*.
 - **CLT-Q92** (decision 13): the tab drawn and chosen as the original's; Begin with a random map
   chosen shows a stub's message; Show Random Maps lists the client's own `random_maps` (empty).
+- *Recorded (M1 T3):* after Show Random Maps (an empty list) and the tab toggled back, the panel's
+  name, conditions and rating blank, the description and the seven flags stale, Begin drawn
+  enabled (`adv-random` random-maps, tab-again, tab-hidden; CLT-Q111). The size mark (189, §3.2)
+  stays on S in the tab whatever the size, and over an empty list; its frame 4 is never seen
+  (`adv-random` size-xl, `scn-load-none` screen; CLT-Q115).
 
 ### 3.17 The game's begin
 
@@ -968,7 +1026,8 @@ T1b3 was cut in two (decision 14): the end of a scenario is T1b3b's.
   from the reading over `SysOpBck.pcx`, every item sits in its box of the picture.
 - **Their states at the build** (0x5B2C7B on): every bar hidden (state 4 cleared) but the one at
   each volume, shown with the volume as its frame (`syslb.def` frame *v* marks bar *v*); each
-  row's buttons enabled and its chosen one disabled (state 0x1000: frame 2, the chosen look):
+  row's buttons enabled and its chosen one disabled (`SendCommand` 5 with 0x1000 sets state bit 8,
+  E17-design §9.7: frame 2, the chosen look):
   223 + Walk Speed, 226 + Computer Walk Speed, 232 + Window Scroll Speed, 239 + Bink Video; each
   box's frame its setting. In the tutorial (game +0x1F69D) Move Reminder and Quick Combat show
   frame 0, disabled and inactive (state 2 cleared); in a network game Restart and Load are
@@ -983,7 +1042,9 @@ T1b3 was cut in two (decision 14): the end of a scenario is T1b3b's.
   Restart, Quit and Return, 326 + (id − 201) for an id 201 to 242 (the bars, the speeds' names,
   the boxes, Low 364 and High 365; 346 to 348 have no item); a left press (0x200/0xC) on 235 to 242
   plays `button_sample` (volume 0x40, once, category 3), and the DEF buttons (the two quality
-  buttons among them) play their own press sample too.
+  buttons among them) play their own press sample too: High and Low (239, 240, inside 235 to 242)
+  read as clicking twice (as the combat options' speeds, CLT-Q74: a DEF button's own loop swallows
+  the press, so likely one click; checked when M4 builds the dialog, with a sound recording).
 - **A click** (0x200/0xD) by id (switch 0x5B328C):
   - 102 Load, 108 Main Menu, 105 Quit: GENRLTXT 579 (style 2); OK (0x7805) closes the dialog
     with the id (the window manager's +0x38, the message 0x200/10, 2), Cancel keeps it open.
@@ -991,10 +1052,12 @@ T1b3 was cut in two (decision 14): the end of a scenario is T1b3b's.
   - 201 to 210: Music Volume = id − 201, 211 to 220: Sound Volume and Last Sound Volume = id − 211;
     but at volume 0 without the sound manager's digital driver (+0x3C) GENRLTXT 151 (OK) and
     nothing else; the bars set as at the build; `music_volume_apply` 0x59A1B0 or
-    `effects_volume_apply` 0x59A0C0 with the manager's +0x84 at 1 for the call.
+    `effects_volume_apply` 0x59A0C0 with the manager's +0x84 at 1 for the call. The GENRLTXT 151
+    guard is the combat options' (E17-design §12.12; the client never refuses a bar, CLT-Q44 (c),
+    §4.7).
   - 224 to 227 Walk Speed = id − 223; 228 to 231 Computer Walk Speed = id − 226 and Blackout
     Computer = (it is 5); 232 to 234 Window Scroll Speed = id − 232; 239, 240 Bink Video =
-    id − 239: the row's buttons enabled (state 8 cleared), the new one disabled.
+    id − 239: the row's buttons enabled (state bit 8 cleared), the new one disabled (bit 8 set).
   - 235 Show Route, 236 Move Reminder, 237 Quick Combat, 238 Video Subtitles, 241 Town Outlines,
     242 Animate SpellBook: toggled, the box's frame set.
   - Each of these sets +0x60 and redraws the whole dialog.
@@ -1073,6 +1136,11 @@ the generator is not reset there, so its other draws are new (*inferred*).
 - **CLT-Q98** (decision 15): Restart asks its question (GENRLTXT 68) inside the dialog, as Load,
   Main Menu and Quit ask theirs; Cancel keeps the dialog open; the original's order for the
   comparisons only.
+- **CLT-Q102** (decision 20): the boxes and bars act on a release over them alone, as the combat
+  options' already do (CLT-Q43 (2)); the GENRLTXT 151 guard as theirs (CLT-Q44 (c): the client
+  never refuses a bar); both carried by the one implementation of a dialog's buttons, boxes and
+  bars shared by the battle's and the shell's dialogs (`h3_view::options` the battle's); the
+  original's for the comparisons only.
 - **The agent's calls** (*provisional*, M1's review list): the settings in the user's
   `settings.toml` beside the combat options' (one set of the registry's values, the volumes and
   Animate SpellBook shared), written whole at the close when anything changed; Autosave kept there,
@@ -1111,8 +1179,11 @@ T1b3b was kept whole (decision 16).
   type 10: `crest58.def`, the colour's frame and name; a network timeout of 5 s). Heroes but no
   town: the days without a town (player +0x3D) −1 become 7, with GENRLTXT 7 (the week's warning, the
   crest) when the colour is a human here whose turn it is; at 0 `player_defeated`, with GENRLTXT 8
-  (the same human) or 9 (any other; both with the crest). A town: −1. The days' count down is E10's
-  (not read). Every box is an OK box (style 1) at the screen's middle.
+  (the same human) or 9 (any other; both with the crest); GENRLTXT 7 and 8 take the player's name
+  first (", you" when it is empty, as a single scenario's human's is, §6.3; CLT-Q100). A computer's
+  name is its colour's (recorded, M1 T3: `end-conquest` purple-6, "Purple has been vanquished!",
+  the crest captioned Purple). A town: −1.
+  The days' count down is E10's (not read). Every box is an OK box (style 1) at the screen's middle.
 - **The scenario's conditions:** the enemies counted (the colours neither defeated nor on the
   viewing player's team, game +0x1F879); the victory condition (game +0x1F89C, 0x4C bytes) through
   `scenario_victory_test`, and when it finds nothing the loss condition (game +0x1F8E8, 0x24 bytes)
@@ -1257,7 +1328,10 @@ T1b3b was kept whole (decision 16).
 
 - **The run:** the arrow cursor shown; the edit focused, its text the screen player's name as
   `player_display_name` 0x4BADB0 gives it (the record's +0xCC; a human's "Player" or a computer's
-  GENRLTXT 469 becomes the colour's name, written into the record; the first letter upper case);
+  GENRLTXT 469 becomes the colour's name, written into the record, as read; but a single
+  scenario's human holds an empty name, which stays empty: recorded, §6.3, the edit starts empty;
+  CLT-Q100 gives the client's player name, the colour's name when that is empty; the first letter
+  upper case);
   modal with `dialog_proc_default`, whose click goes to `high_score_entry_command` 0x4E9790: OK
   (503, or its hotkey Enter) ends the dialog (0x7802) when the edit holds a text; an empty name does
   nothing. No Escape, no Cancel. The edit takes the keys while focused (0x4E9710).
@@ -1288,6 +1362,13 @@ campaign's score, the campaigns' screens) and 0x4EFC8D to 0x4EFD8E (its loading 
   takes (the artifact, the count and creature, the amount and resource, the hero, the town); for the
   score the day, the player's towns, the difficulty and whether the player dug up the Grail.
 - **CLT-Q99** (decision 17): the eleventh row as the original's.
+- **CLT-Q105** (decision 21): the score is the engine's (E10 computes and reports it with the
+  victory); the shell shows it, a `CLT-STUB` until E10. **CLT-Q106** (decision 21): a turn that
+  meets a special victory and the standard one shows the first box alone; the original's two for
+  the comparisons only.
+- **CLT-Q100** (decision 20): a single scenario's player takes the client's player name, the
+  colour's name when that is empty (GENRLTXT 7 and 8, the entry's edit); the original's empty name
+  for the comparisons only.
 - The lost screen plays `LOSEGAME.SMK` always (`shell-videos.vid` holds it); skippable after 1.5 s
   (CLT-Q85: no first run).
 - **The agent's calls** (*provisional*, M1's review list): the scores in the client's own file
@@ -1315,7 +1396,7 @@ clock frozen from the game's first read, the digests in `shell/kept/<group>.txt`
 
 | Group | Catalogue | Recipes | Kept shots, clips | Notes |
 |---|---|---|---|---|
-| `start` | §2.1 | 6 | 9, 3 | the clips with Bink Video 1 and 0, a skip of each by a key, a left and a right press |
+| `start` | §2.1 | 6 | 9, 3 | Show Intro off; the clips with Bink Video 1 and 0; one skip way per recipe: 3DOLogo by a key (Space), NWCLogo by a left press, H3Intro by a right press |
 | `menus` | §2.3 to §2.5 | 5 | 88, 1 | each button's hover, press, release off it, popup; Quit's question; the tutorial's load |
 | `multiplayer` | §2.6, §2.7 | 8 | 129, 3 | stage 1 over New and Load Game's menus, the hot seat's names, the other modes' stage 2 |
 | `scores` | §2.8, §2.9 | 4 | 43, 8 | both tabs and the creatures' steps, Reset, the credits' scroll whole and ended early |
@@ -1351,6 +1432,13 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
 
 - **The start** (§2.1): the main menu shows at 0 ms with Show Intro off; 3DOLogo's first frame at
   350 ms; the clips' frames as their headers say; each skip ends the sequence, the main menu next.
+  The lengths: `start-bink`'s menu at 180.48 s is 350 ms and the headers' 5.40 + 13.00 + 161.73 s;
+  the Smacker copies have the same frames and rate (§2.1), so `start-smacker`'s 9.1 s more (189.6 s)
+  are the steps': its frames are due from the last one shown (§6.2), at 10 ms steps every 70 ms,
+  not 66.66 (2 702 × 70 ms + 350 ms = 189.5 s; Bink's own pacing keeps its rate; *inferred*).
+  Not settled by T2 (the recipes keep digests, not these measures): NWCLogo's placement, the
+  end-of-clip screen call, the screen before 3DOLogo's first frame (350 ms) and between the clips:
+  M2's start task, from `start-bink`'s frames.
 - **Credits** (§2.9, a correction): the closing text (record 2) shows only near the end, once the
   text's end has risen to about 435 px (first at 244.6 s into the scroll), not while little text
   is shown at the start; the first frame comes 1 100 ms after the screen opens, then one every
@@ -1363,7 +1451,8 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   Enter in an edit moves to the next edit, never presses OK. Stage 1's scroll bar has no hint
   (the map's picture covers it); after Escape from stage 2 the status line keeps the last hint
   until the pointer moves (CLT-Q101).
-- **The system options** (§4): GENRLTXT 151 shows only when the volume pressed from is 0; boxes
+- **The system options** (§4): GENRLTXT 151 shows only when the volume pressed from is 0 (the
+  harness runs with no sound driver: `opt-bars` and `opt-questions` show it from volume 0); boxes
   and bars act on a release off the item, buttons do not (CLT-Q102); in the questions Escape
   cancels and Return confirms (Quit by Return ends the game).
 - **The end** (§5, corrections of §5.4 and §5.6): a single scenario's human has an empty name, so
@@ -1378,3 +1467,39 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   codes 11 and 12 (no shipped map), 261 (the cheat flag), a special victory's box followed by 660.
 - The `scenario` and `advanced` groups' notes are in their recipes' `what` lines; their agent's
   list of oddities was lost with a sandbox restart, so M1 T3's reviewer goes over their shots.
+
+### 6.4 Left for M2 to M4 (M1 T3's review, 2026-11-13)
+
+- **No sound recorded** (all of §2 to §5): h3shell has no sound mode and `Game.start` writes
+  Sound Volume 0; the screens' sound sequences and the waits a real sound driver makes (the lost
+  screen's `UltimateLose` wait among them, §5.4) are recorded by the task that builds each screen,
+  after h3shell gains h3drive's `sound`.
+- **The fades** (§5.3 to §5.5): 0x602C50 (1, 4, 0) is read as a redraw (*inferred*), but
+  `opt-restart`'s `fade` clip and `end-conquest`'s `to-scores` record fades: M4 reads it.
+- **The edit field** (§2.6, §2.7: typing 0x5BAC50, the caret, the limit; *not read*): M2's hot
+  seat names task reads it, with the `hotseat-*` shots.
+- **The names' length** (§2.7): 21 characters against 21 bytes each (0xAC = 4 + 8 × 21), so a
+  name of 21 letters may lack its terminator; M2's hot seat task records two 21-letter names first
+  and asks a CLT-Q if they join.
+- **The requests** (§2.2): `adventure_key_down`'s 101, 102, 107, 108 and `adventure_command`'s
+  107: M4 reads them with the map-client lane.
+- **The lost screen's first frame** (§5.4): shown 700 ms before the second, maybe the frozen clock
+  against the real-time 1.5 s sleep: M4 settles it before copying.
+- **`difficulty_names`' text source** (§5.5): M3.
+- **High Scores' creatures** (§2.8): "the map's last monster template" at the main menu: M4,
+  captured after a played map.
+- **The score** (§5.5; the engine's, CLT-Q105, decision 21: E10 computes it): the f32 factor
+  against x87 at the boundaries, no recipe at another difficulty, the Grail's +25, an empty rank
+  text: M4 records them, for E10's test and the shell's screen.
+- **Not reached or not recorded** (the task that builds each records it): past a special
+  victory's or a special loss's box (§5.1, §5.2, §6.3); a 40-character name (§5.6, its clipping
+  unread); the system options in another colour than Red (§4.1); the hotkeys' press frames (§2.3,
+  §4.1); a skip of a Smacker copy (§2.1); a hot-seat restart (§4.6).
+- **Recipes for M3** (M1 T3's shot review): the date's field order (§3.5: `scn-load`'s
+  `games-time` gives day = month, and Wine's time zone enters the digest: a day above 12 and a
+  pinned TZ); `up-past-top` never reaches the list's first row (§3.4: Page Up first);
+  `popup-hero-arrow` pressed a computer row (§3.13's hints: row 2's arrow); `scn-load` size-1
+  changes nothing (both saves XL: a save of another size); the Random Map button in a load (`adv-load`,
+  §3.16); Begin after `tab-again` (§3.16); `scn-begin-none`'s `what` line (530 is a filter's,
+  §3.6); GENRLTXT 503 (reading the map files, §3.3) in no shot; Delete of the last save not
+  recorded (§3.4).

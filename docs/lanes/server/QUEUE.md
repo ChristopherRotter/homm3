@@ -13,8 +13,8 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 ## Inbox
 
 - 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
-  consent; **your paths changed, for your review**): protocol **v55**: the battle bonuses are the
-  hero on the map's, `wire::game::OwnMapHero::bonuses` (`Bonuses { morale, luck, once:
+  consent; **your paths changed, for your review**): protocol **v56** (after the town lane's T26b's
+  v55): the battle bonuses are the hero on the map's, `wire::game::OwnMapHero::bonuses` (`Bonuses { morale, luck, once:
   Vec<VisitBonus> }`, `wire::game::VisitBonus`) and `::timed` (object type handles, sorted);
   `HeroDetails::bonuses` and the changes `HeroChange::Bonus`, `ClearBonuses` are gone; the
   adventure events `BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged` (owner alone, after
@@ -23,6 +23,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   `h3-server`'s `tests/record.rs` holds `army-dialog-s1`'s new checkpoint and final hash (the 72
   replays re-recorded: hash lines only). Nothing for you to build.
 
+- 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **a protocol version
+  taken**): protocol **v55** (after the adventure lane's T114b's v54): `wire::game::TownBuildings` (the owner's) gains `available`
+  (`[u16; 14]`, the counts) and `portal` (`Option<Summoned { creature, count }>`) (TWN-VEW-004,
+  TWN-GRO-007); the fold replaces the set whole, so nothing new there. More `TownChanged` are told:
+  after the week, the month, a neutral garrison's week, each Portal's draw and a town event's
+  creatures. `game_session.rs`' golden finals follow the four re-recorded towns replays.
+  Informational.
 - 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): protocol **v54** (after the town lane's v53): `wire::game::MapGarrison`
   (type, anchor, owner, the town's `Garrison` at the viewer's level, `removable` to the owner's

@@ -226,10 +226,10 @@ pub struct OwnMapHero {
     pub tactics: bool,
     /// The objects it holds the once-per-hero mark of (ADV-VIS-006), in the map's order.
     pub marks: Vec<ObjectRef>,
-    /// The bonuses it holds until the end of its next battle (HER-ADV-008; v55).
+    /// The bonuses it holds until the end of its next battle (HER-ADV-008; v56).
     pub bonuses: Bonuses,
     /// Its timed marks: the object types (handles) whose day's or week's mark it holds, sorted
-    /// (v55).
+    /// (v56).
     pub timed: Vec<u16>,
 }
 
@@ -862,7 +862,7 @@ pub struct Artifact {
     pub spell: Option<u16>,
 }
 
-/// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v55, E08
+/// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v56, E08
 /// T115a: the hero on the map's, `h3_adventure::HeroBonuses`, no longer its details').
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -875,7 +875,7 @@ pub struct Bonuses {
     pub once: Vec<VisitBonus>,
 }
 
-/// A visit's battle bonus under its once-mark (`h3_heroes::VisitBonus`; v55).
+/// A visit's battle bonus under its once-mark (`h3_heroes::VisitBonus`; v56).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VisitBonus {
@@ -953,7 +953,8 @@ pub struct Town {
 
 /// A town's buildings as its owner sees them (TWN-VEW-004), each set a bit per building of its
 /// faction's town record (bit `i` the building of index `i`, a decimal string as every 64-bit
-/// value): the standing ones derive from the first with the town part.
+/// value): the standing ones derive from the first with the town part. Since v55 (E09 T26b) its
+/// available creatures and its Portal of Summoning, the town screen's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TownBuildings {
@@ -961,6 +962,21 @@ pub struct TownBuildings {
     pub built: WireU64,
     /// The buildings the map forbids it.
     pub forbidden: WireU64,
+    /// Its available creatures at each of its fourteen indexes: the seven levels' dwellings, then
+    /// their upgrades (`h3_game::CREATURE_INDEXES`).
+    pub available: [u16; h3_game::CREATURE_INDEXES],
+    /// What its Portal of Summoning holds; none while it holds nothing (or stands not).
+    pub portal: Option<Summoned>,
+}
+
+/// What a Portal of Summoning holds (TWN-GRO-007): a creature of one of its owner's dwellings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Summoned {
+    /// The creature's handle.
+    pub creature: u16,
+    /// How many.
+    pub count: u16,
 }
 
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003): by the viewer's level, its stacks

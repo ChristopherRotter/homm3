@@ -45,6 +45,14 @@ fn a_town_without_a_standing_portal_draws_nothing() {
 }
 
 #[test]
+fn a_portal_stands_with_its_building() {
+    // covers: TWN-GRO-007
+    assert!(has_portal(&portal_town(&[]), &part()));
+    assert!(!has_portal(&town(&[DWELLING_1]), &part()));
+    assert!(!has_portal(&portal_town(&[]), &empty_part()));
+}
+
+#[test]
 fn a_portal_without_dwellings_is_emptied_with_no_draw() {
     // covers: TWN-GRO-007
     let mut rng = draws(2);

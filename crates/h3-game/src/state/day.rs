@@ -59,7 +59,9 @@ impl GameState {
     ///    town's counts grown with its inputs and the week's kind, `town::growth`, TWN-GRO-001),
     ///    then the adventure's week step with the game's stream
     ///    (`h3_adventure::AdventureState::start_week`: the weekly objects refilled, the monsters
-    ///    grown; the map's dwellings read no week's kind, ADV-DWL-003);
+    ///    grown; the map's dwellings read no week's kind, ADV-DWL-003), then the neutral towns'
+    ///    garrison week and the Portals of Summoning, both from the towns' stream (E09 T26b,
+    ///    TWN-GRO-006, TWN-GRO-007: `town::garrison`, `town::portal`);
     /// 3. on a month's first day (days 29, 57, …: every `month_weeks`-th week's), the month's
     ///    kind drawn from the game's stream ([`Self::draw_month`]: after a building's week its
     ///    level's base creature's, E09 T26a2), [`GameEvent::MonthStarted`], then the towns' month
@@ -69,12 +71,14 @@ impl GameState {
     /// 4. the towns' day (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
     ///    cleared, TWN-BLD-004; the original's `new_day` towns' loop 0x4C8067, before its
     ///    income; since E09 T18b2a the views of the towns built in the day before told to their
-    ///    viewers, `town::start_day`), then every player's income ([`Self::pay_income`]);
+    ///    viewers, `town::start_day`; since E09 T26b on a week's first day every view that the
+    ///    week, the month or the day changed, TWN-VEW-004), then every player's income
+    ///    ([`Self::pay_income`]);
     /// 5. every hero's spell points ([`Self::regain_mana`]);
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
     // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-002
-    // rule: TWN-GRO-003, TWN-GRO-004
+    // rule: TWN-GRO-003, TWN-GRO-004, TWN-GRO-006, TWN-GRO-007, TWN-VEW-004
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -84,6 +88,7 @@ impl GameState {
         let month_days = week_days.saturating_mul(u32::from(calendar.month_weeks.get()));
         let since = self.day - 1;
         let week_start = since.is_multiple_of(week_days);
+        let mut week = None;
         if week_start {
             // A month's first day is a week's.
             let month_start = since.is_multiple_of(month_days);
@@ -99,10 +104,21 @@ impl GameState {
                 week: since / week_days + 1,
                 kind: self.week,
             });
+            // E09 T26b: every viewer's views of every town before the week's growth, told with
+            // the towns' day (TWN-VEW-004); none for a sink that keeps nothing.
+            if S::RECORDS {
+                let all: Vec<PlayerId> = (0..=u8::MAX)
+                    .take(self.players.len())
+                    .map(PlayerId::new)
+                    .collect();
+                week = Some(town::Told::before::<S>(self, rules, &[], &all));
+            }
             let inputs = town::growth::inputs(self, rules);
             town::growth::grow_week(self, rules, &inputs);
             self.adventure
                 .start_week(core, part, &mut self.rng, &mut AdventureSink(sink));
+            town::garrison::garrison_weeks(self, rules, since / week_days);
+            town::portal::weekly(self, rules);
             if month_start {
                 self.month = self.draw_month(rules);
                 sink.emit(GameEvent::MonthStarted {
@@ -121,7 +137,7 @@ impl GameState {
                 }
             }
         }
-        town::start_day(self, rules, sink);
+        town::start_day(self, rules, week, sink);
         self.pay_income(rules, week_start, sink);
         self.regain_mana(rules);
         self.adventure.start_day(core, part, &self.heroes);

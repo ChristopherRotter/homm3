@@ -11,6 +11,7 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingSet, MAX_CREATURE_LEVELS, TownEvent};
 
 use super::command::build_told;
+use super::view::Told;
 use crate::command::{GameEvent, Sink};
 use crate::setup::Timing;
 use crate::{GameRuleset, GameState};
@@ -37,12 +38,12 @@ use crate::{GameRuleset, GameState};
 /// 3. its creatures (TWN-EVT-004; E09 T26a1, design note §46): each level's count added to the
 ///    town's count of the level's upgraded dwelling when it is ever built (by now: an earlier
 ///    step's building counts), else of its dwelling, else lost ([`h3_towns::event_creatures`]);
-///    nothing told (the counts are the owner's, shown with E09 T26b).
+///    since E09 T26b the owner's view told where they change it ([`Told`], TWN-VEW-004).
 ///
 /// The events fire at the turn start of the town's owner only, whatever player they name, so a
 /// captured town's fire for its new owner when they name it. Day 1's fire inside the game's build
 /// for the first group, which keeps what fired ([`GameState::town_events_at_start`]).
-// rule: TWN-EVT-001, TWN-EVT-002, TWN-EVT-003, TWN-EVT-004
+// rule: TWN-EVT-001, TWN-EVT-002, TWN-EVT-003, TWN-EVT-004, TWN-VEW-004
 pub(crate) fn fire_events<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -73,7 +74,10 @@ pub(crate) fn fire_events<S: Sink>(
             .map(|town| h3_towns::event_creatures(town, rules.towns(), &fired.creatures))
             .filter(|after| state.towns().get(fired.town) != Some(after));
         if let Some(after) = added {
+            // rule: TWN-VEW-004
+            let told = Told::before::<S>(state, rules, &[fired.town], &[]);
             state.towns_mut().write(fired.town, after);
+            told.tell(state, rules, sink);
         }
     }
 }

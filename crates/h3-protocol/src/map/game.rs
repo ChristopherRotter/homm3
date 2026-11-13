@@ -39,8 +39,8 @@ use crate::wire::game::{
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
     HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
     MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
-    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState, Tile,
-    Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
+    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState,
+    Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -415,7 +415,7 @@ fn hero_details(d: &EngineDetails) -> HeroDetails {
     }
 }
 
-/// A hero on the map's battle bonuses on the wire (v55, E08 T115a).
+/// A hero on the map's battle bonuses on the wire (v56, E08 T115a).
 fn bonuses(b: &HeroBonuses) -> Bonuses {
     Bonuses {
         morale: b.morale,
@@ -424,7 +424,7 @@ fn bonuses(b: &HeroBonuses) -> Bonuses {
     }
 }
 
-/// A visit's battle bonus on the wire (v55).
+/// A visit's battle bonus on the wire (v56).
 pub(crate) const fn visit_bonus(b: EngineVisitBonus) -> VisitBonus {
     VisitBonus {
         mark: b.mark,
@@ -546,12 +546,22 @@ pub(crate) const fn garrison_stack(
 }
 
 /// A town's buildings as its owner sees them, on the wire.
-pub(crate) const fn town_buildings(
-    TownBuildingsView { built, forbidden }: TownBuildingsView,
+pub(crate) fn town_buildings(
+    TownBuildingsView {
+        built,
+        forbidden,
+        available,
+        portal,
+    }: TownBuildingsView,
 ) -> TownBuildings {
     TownBuildings {
         built: WireU64(built.bits()),
         forbidden: WireU64(forbidden.bits()),
+        available,
+        portal: portal.map(|summoned| Summoned {
+            creature: summoned.creature.raw(),
+            count: summoned.count,
+        }),
     }
 }
 

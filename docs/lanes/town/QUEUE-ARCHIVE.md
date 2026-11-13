@@ -3,6 +3,30 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-13 — E08 T114b's view changes: reviewed at E09 T26b's merge
+
+Reviewed when T26b merged `master` in after #902: nothing to change. T26b's week takes every
+viewer's views before its growth with `every` all the players, so its `Told` holds every map
+garrison's views too (told after the towns' at the towns' day; no map garrison changes at a week,
+so none is told); the setup's, a build's, a capture's and a flag's Portal draws sit inside
+`Told`s as built. T26b took protocol v55 after T114b's v54 and re-baselined `day-start-towns-36`
+again (+8.10 % against the new `master`); `day-start-builds-36` stays at T114b's baseline (+1.60 %).
+
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): `h3-game`'s `town/view.rs`: `visions`,
+  `in_visions`, `tavern_level` and `garrison_view` are `pub(crate)` (the map garrisons' views use
+  the same levels, ADV-GAR-006, `crate::garrisons`), and `Told` holds the map garrisons' views of
+  `every`'s players too (`crate::garrisons::Told::before` with `every`, told after the towns'),
+  and its `tell` returns at once for a sink that keeps nothing (`bench-check`'s
+  `day-start-builds-36`; `day-start-builds-36` and `-towns-36` re-baselined, `master` +1.68 % and
+  +1.85 % on their files after your T26a2):
+  a Tavern's build and a town's capture tell the raised or lowered views of the map garrisons as
+  of the towns. `town/tests/view.rs` gains
+  `a_map_garrison_shows_at_a_towns_levels_and_a_new_tavern_tells_its_raised_level` (its helper
+  `map_garrison`). `TWN-STUB-13`'s text names the map garrisons too (Visions' reach untold for
+  them as for towns). `h3_adventure::AdventureOutcome` gains `garrison_flagged` (default false).
+  No version of yours moved; protocol v54 (the server lane's, after your v53).
+
 ## 2026-11-12 — E09 T26a2: the versions taken, the hygiene note classified, the hut's week tested
 
 The first note's map import v22 was T113b's: T26a2 took v23 (and game state hash v30, after E08 T114a2's v29). The

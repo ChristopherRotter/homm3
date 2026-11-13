@@ -14,7 +14,8 @@
 //! it tells each viewer the views a change made ([`view::Told`]); since E09 T18b2b it gives the
 //! hall's offer and the legal builds ([`offer`]); since E09 T18c it fires the town events at a
 //! player's turn start ([`events`]); since E09 T26a1 it grows the towns' counts each week and
-//! month ([`growth`]).
+//! month ([`growth`]); since E09 T26b it grows the neutral towns' garrisons each week
+//! ([`garrison`]) and draws the Portals of Summoning ([`portal`]).
 
 use alloc::vec::Vec;
 
@@ -30,11 +31,13 @@ pub(crate) mod capture;
 pub(crate) mod command;
 pub(crate) mod day;
 pub(crate) mod events;
+pub(crate) mod garrison;
 pub(crate) mod growth;
 pub(crate) mod heroes;
 pub(crate) mod income;
 pub(crate) mod offer;
 pub(crate) mod pool;
+pub(crate) mod portal;
 pub(crate) mod siege;
 pub(crate) mod view;
 
@@ -47,6 +50,7 @@ pub(crate) use heroes::main_town_heroes;
 pub(crate) use income::add_income;
 pub(crate) use offer::legal_builds;
 pub(crate) use pool::{HeroPool, draw_heroes};
+pub(crate) use portal::Draws;
 pub(crate) use siege::{mana_after, merge, siege_experience, siege_setup};
 pub(crate) use view::Told;
 

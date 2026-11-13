@@ -348,7 +348,9 @@ impl GameState {
     /// built the static map), the store of towns (E09 T7b2a) with each town's garrison written
     /// into the adventure, the
     /// levels at load of each hero with a custom experience in hero id order (GAM-SET-002: its
-    /// levels' draws from the setup stream in `strict-fixed`), the adventure's start of the game
+    /// levels' draws from the setup stream in `strict-fixed`), then each owned town's Portal of
+    /// Summoning that the setup built, in `TownId` order (TWN-GRO-007, E09 T26b: the setup
+    /// stream's last draws), the adventure's start of the game
     /// after them (the heroes' day's points and reveals from their details, E08 T40; each owned
     /// town's reveal by its own radius, TWN-CAP-001), a stream
     /// and the difficulty's human row of starting resources per player (GAM-RES-002), sequential
@@ -381,7 +383,7 @@ impl GameState {
             .collect();
         // Step 4 builds `MAX_TOWNS` towns at most (`town::build_towns`), so the store is never
         // refused here (the adventure refused a map with more, `SetupError::Towns`).
-        let towns = Towns::new(towns).unwrap_or_default();
+        let mut towns = Towns::new(towns).unwrap_or_default();
         let progression = Progression::new(
             setup.level_limit,
             &setup.banned_skills,
@@ -395,6 +397,9 @@ impl GameState {
                 progression.levels_at_load(rules.core(), hero, experience, shares, &mut draws);
             }
         }
+        // rule: TWN-GRO-007
+        // E09 T26b: the Portals of Summoning the setup built, after every other placeholder.
+        town::portal::at_setup(&adventure, &mut towns, rules, &mut draws);
         let heroes: Arc<Vec<Arc<HeroDetails>>> =
             Arc::new(heroes.into_iter().map(Arc::new).collect());
         // ADR-0017 point 1 (E08 T40): the adventure's start of the game after the levels at
@@ -545,7 +550,9 @@ impl GameState {
 
     /// Applies what the adventure left of a command of `player` or of its answer (ADR-0017
     /// point 10): first the capture of the undefended town the step entered (TWN-CAP-001,
-    /// TWN-CAP-002, E09 T8a2: [`town::capture`]), at once; then the visit of the entered object
+    /// TWN-CAP-002, E09 T8a2: [`town::capture`]), at once; after a visit that flagged a dwelling
+    /// the player's empty Portals of Summoning drawn from its stream (TWN-GRO-007, E09 T26b:
+    /// `town::portal::on_flag`); then the visit of the entered object
     /// whose tile's guard the outcome visits, held as a rest of the visit
     /// (`AdventureOutcome::visit_after`, ADV-MON-006, GAM-DEC-007; E08 T103d), so that it waits
     /// for whatever the guard's visit opens, a won guards' battle's reward
@@ -566,7 +573,7 @@ impl GameState {
     /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
     /// room, the choice, the University and the hire dialog.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
-    // rule: TWN-SIE-002, GAM-DEC-009
+    // rule: TWN-SIE-002, GAM-DEC-009, TWN-GRO-007
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -579,6 +586,10 @@ impl GameState {
             // rule: TWN-CAP-001, TWN-CAP-002
             if let Some(captured) = outcome.capture {
                 town::capture(self, rules, (captured, player), sink);
+            }
+            // rule: TWN-GRO-007
+            if outcome.flagged_dwelling {
+                town::portal::on_flag(self, rules, player, sink);
             }
             if let Some(hero) = outcome.visit_after {
                 self.hold(player, hero, Rest::Visit);
@@ -1509,6 +1520,21 @@ impl GameState {
     ) -> (&mut AdventureState, &[Arc<HeroDetails>], &mut Rng) {
         let stream = &mut self.players[player.index()].rng;
         (&mut self.adventure, &self.heroes, stream)
+    }
+
+    /// The adventure state and the store of towns to change, with the stream a town's draw takes
+    /// (E09 T26b, the town epic's design note §44, §45: a neutral garrison's week and a Portal of
+    /// Summoning's draw): the towns' stream ([`town::Draws::Towns`], ADR-0017 point 4, E09
+    /// decision 75) or a player's ([`town::Draws::Player`]: a command's build, a flag, a capture).
+    pub(crate) fn town_draws(
+        &mut self,
+        draws: town::Draws,
+    ) -> (&mut AdventureState, &mut Towns, &mut Rng) {
+        let stream = match draws {
+            town::Draws::Towns => &mut self.towns_rng,
+            town::Draws::Player(player) => &mut self.players[player.index()].rng,
+        };
+        (&mut self.adventure, &mut self.towns, stream)
     }
 
     /// The canonical state hash (ADR-0003 point 12): content only. It covers the seed and the
