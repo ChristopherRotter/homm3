@@ -388,6 +388,9 @@ scenario screen (New Game) or the load (Load Game) to follow. Positions here are
   text has left, the screen ends. No music change, no sound. CLT-Q88: the client steps it ten
   times a second with no clip.
 
+- *Recorded (M1 T2, §6.3; a correction):* the closing text shows only near the end, once the
+  text's end has risen to about 435 px; the frames' times as §6.3 lists.
+
 ### 2.10 Not built (the agent's calls, *provisional*; M1's review list)
 
 The CD status, its notices and the menus without Single, Campaign and Tutorial (the client has no
@@ -1203,6 +1206,9 @@ T1b3b was kept whole (decision 16).
   the screen waits while the music streams (status 4; served, 100 ms asleep): `UltimateLose` to its
   end. A skip ends the screen at once. No text, no button.
 
+- *Recorded (M1 T2, §6.3; a correction):* the 1.5 s wait is real time, not the game's clock; the
+  clip shows its first frame 700 ms before the second.
+
 ### 5.5 The won scenario (`scenario_win_screen` 0x4F3F60, `scenario_score_screen` 0x4F3AB0)
 
 - **The call** (ecx 1 a scenario, 0 a campaign: §5.7): the mouse hidden, the window manager's +0x44
@@ -1261,6 +1267,9 @@ T1b3b was kept whole (decision 16).
   `.\DATA\HiScore.dat` (opened to write, created, truncated, binary; a failure `file_error_box` with
   the name); `high_scores_due` 1.
 
+- *Recorded (M1 T2, §6.3; a correction):* a single scenario's human has an empty name: the edit
+  starts empty, OK and Enter do nothing until a name is typed (CLT-Q100); the hot seat's names show.
+
 ### 5.7 The campaigns' path (noted; E20)
 
 `game_main` 0x4EF8C9 to 0x4EFC56 (a campaign's scenario, its record at game +0x1F458: the next
@@ -1295,3 +1304,77 @@ skipped after 1.5 s; the score screen (each column over the clip's loop) and its
 by a press; the entry with the player's name, OK with an empty name, Enter; High Scores after it
 with the new row in colour 8; a score that misses the ten (the eleventh row). No clip beyond
 `shell-videos.vid` and `battle-videos.vid` is needed.
+
+## 6. The captures (M1 T2, 2026-11-13)
+
+The harness's recipes for every catalogued screen: `clients/capture/h3shell.py` and
+`clients/capture/shell/` (the runbook, "The shell's screens"), each recipe recorded twice on a
+clock frozen from the game's first read, the digests in `shell/kept/<group>.txt`.
+
+### 6.1 The groups
+
+| Group | Catalogue | Recipes | Kept shots, clips | Notes |
+|---|---|---|---|---|
+| `start` | §2.1 | 6 | 9, 3 | the clips with Bink Video 1 and 0, a skip of each by a key, a left and a right press |
+| `menus` | §2.3 to §2.5 | 5 | 88, 1 | each button's hover, press, release off it, popup; Quit's question; the tutorial's load |
+| `multiplayer` | §2.6, §2.7 | 8 | 129, 3 | stage 1 over New and Load Game's menus, the hot seat's names, the other modes' stage 2 |
+| `scores` | §2.8, §2.9 | 4 | 43, 8 | both tabs and the creatures' steps, Reset, the credits' scroll whole and ended early |
+| `scenario` | §3.1 to §3.11 | 13 | 178, 2 | new, load and save modes; the list, sorts, filters, the panel's marks, Begin's messages |
+| `advanced` | §3.12 to §3.18 | 11 | 205, 2 | single and hot seat (two to eight), every row's arrows, the popups, the random map's tab, the begin |
+| `options` | §4 | 7 | 161, 1 | the dialog over the map, every row and box, the bars, the popups, the questions |
+| `end` | §5 | 30 | 51, 7 | the eliminations' boxes, 660, the victory and loss texts below, the lost screen, the score screen, the entry, the eleventh row |
+
+In all, 84 recipes, 864 shots and 27 clips. Two recordings the same in every recipe but one: `start-smacker`'s 2 586 frames are the same
+frames in the same order in both runs, but from H3Intro's first frame on the second run's times
+are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept line keeps both).
+
+### 6.2 The harness's findings (the runbook and `TRAPS.md` hold the rules)
+
+- `SMACKW32.DLL` reads `timeGetTime` itself (now on the virtual clock); in a full-screen Bink clip
+  the game's loop reads no clock (only `BinkWait`); `BinkGetSummary` (the game asks it at a
+  clip's end) divides the bytes read × 1000 by the read time + 1, which a frozen clock leaves 0:
+  a clip of 4 MB or more overflows (`xdd.dll` guards the call).
+- The game draws its cursor at the pointer only on a later clock tick (some 50 ms); a step given
+  while the game is still loading or has not yet taken an input moves the following times by a
+  step (the tool waits for the game's idle loop and, for an input that starts a load, a `settle`).
+- A clip's frames are due from the last one shown, so their times depend on the step (the 3DO
+  logo at 1 ms, the rest at 10 ms); one long step advances a clip one frame.
+- The loading bar's steps, the lost screen's 1.5 s wait and Restart's bar run while the game reads
+  no clock or by real time: their shots show the bar full, and a key inside the wait cannot be
+  timed.
+- Wine: after a network mode is tried, its stage 2's Host, Join and Search and stage 1's modes
+  (Hot Seat included) are disabled until the dialog reopens, likely Wine's DirectPlay (not built,
+  §2.10); TCP/IP's stage 2 shows the sandbox's address (those digests are the machine's); Online
+  ends the game.
+
+### 6.3 What the recordings add to or correct in the readings
+
+- **The start** (§2.1): the main menu shows at 0 ms with Show Intro off; 3DOLogo's first frame at
+  350 ms; the clips' frames as their headers say; each skip ends the sequence, the main menu next.
+- **Credits** (§2.9, a correction): the closing text (record 2) shows only near the end, once the
+  text's end has risen to about 435 px (first at 244.6 s into the scroll), not while little text
+  is shown at the start; the first frame comes 1 100 ms after the screen opens, then one every
+  100 ms of 2 px (20 px a second); the last at 265.2 s, the main menu at 266.5 s. A pointer move
+  does not end it; Space, a left and a right press do.
+- **High Scores** (§2.8): the creatures step every 210 ms on 10 ms steps (a test of "more than
+  200"); a right press gives no popup; C and S switch the tabs; Escape, Enter and Exit return.
+- **The hot seat's names** (§2.7): OK is enabled by the key that makes the second name (not at a
+  focus change) and disabled again by its removal; a disabled OK still shows its hint and popup;
+  Enter in an edit moves to the next edit, never presses OK. Stage 1's scroll bar has no hint
+  (the map's picture covers it); after Escape from stage 2 the status line keeps the last hint
+  until the pointer moves (CLT-Q101).
+- **The system options** (§4): GENRLTXT 151 shows only when the volume pressed from is 0; boxes
+  and bars act on a release off the item, buttons do not (CLT-Q102); in the questions Escape
+  cancels and Return confirms (Quit by Return ends the game).
+- **The end** (§5, corrections of §5.4 and §5.6): a single scenario's human has an empty name, so
+  GENRLTXT 7 and 8 begin with ", you" and the entry's edit starts empty, OK and Enter doing nothing
+  until a name is typed (the player's name only in the hot seat; CLT-Q100); the lost screen's
+  1.5 s wait is real time, and its clip shows its first frame 700 ms before the second.
+- **Reached** (`end`, the conditions met by writing the game's memory, then the game's own turn
+  and boxes): the eliminations 96, 6 (with the crest), 7, 8, 9; the standard victory 660; victory
+  won/lost 281/282, 277/278, 279/280, 283/284, 285/286, 250/251, 287/288, 289/290, 291/292,
+  293/294 and 253 (code 5 has no lost text); loss 252, 254, 255. **Not reached:** 671 (neither
+  shipped map with the hero's loss has teams), 632 to 654 (network), 714, 764, 738 (campaigns),
+  codes 11 and 12 (no shipped map), 261 (the cheat flag), a special victory's box followed by 660.
+- The `scenario` and `advanced` groups' notes are in their recipes' `what` lines; their agent's
+  list of oddities was lost with a sandbox restart, so M1 T3's reviewer goes over their shots.

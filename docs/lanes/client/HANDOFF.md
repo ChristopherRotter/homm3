@@ -5,28 +5,28 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 17). **M1 T1a1 to T1b3b done** (the start, the menus, Multiplayer and the hot seat's names,
-  High Scores, Credits: `E27-design.md` §2; the scenario screen: §3; the system options, the menu
-  in play, the save from play and the restart: §4; the end of a scenario: §5; CLT-Q84 to
-  CLT-Q99). **Next: M1 T2** (the harness on every screen, the reference captures; `QUEUE.md`),
-  then T3. The shell's clips are all in `original-data/shell-videos.vid` (design §1; 13 clips;
-  T1b3b added none). Open pull request: `client/e27-m1-t1b3b` (watch it until it merges). E17 done
-  (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
+  to 18). **M1 T1a1 to T1b3b done** (the catalogue: `E27-design.md` §2 to §5) and **T2 done**
+  (2026-11-13: the shell's captures, design §6; `clients/capture/h3shell.py`, its recipes and kept
+  digests under `clients/capture/shell/`, the runbook's "The shell's screens"). **Next: M1 T3**
+  (M1's closure: a fresh reviewer on the catalogue and the recipes, the `scenario` and `advanced`
+  groups' shots included; the review list and CLT-Q100 to CLT-Q102 with the user; M2's
+  refinement; `QUEUE.md`). Open pull request: `client/e27-m1-t2` (watch it until it merges). E17
+  done (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
   `clients/capture/README.md`; design §3–§13; records in `E17-log.md`.
 - **Captures** (the user, 2026-10-20): `h3drive.py drawn` first (no Wine); capture what it lists or the task changes, all at a milestone's closure or a harness change (runbook); a capture not as recorded leaves `kept/` (T9b: record, then `--reuse`); later tasks' detail in `NOTES.md`.
 - **The user's requirements** (epic, "Decisions"): a string catalogue (JSON packs, no committed translation, CLT-Q7); graphics options (`faithful` default); exhaustive diffs; drawing bugs fixed, the original's only for comparisons (`Bugs`).
 - The lane owns `clients/` but the map-client lane's paths and the common ones (`lanes.toml`: the foundation, `text/`, the harness; an additive change freely, a change in behaviour into the map-client lane's inbox), plus `docs/epics/E17*`, `E27*` (since E17 closed: #866) and this folder; branches `client/<task>`; ids `CLT-Q<n>`, `CLT-QUIRK-<n>` (asset fixes), `CLT-STUB-<n>`; ADR drafts in `adr-drafts/`, numbered when accepted.
-- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** none of the lane's
-  questions. Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
+- **Checkpoints** per milestone (below), a fresh reviewer agent first. **Open:** CLT-Q100 to
+  CLT-Q102 (T2's recordings; for T3). Answered, waiting on other lanes: CLT-Q63 (a), Q65 (b), Q69 (a) (the queue's inbox,
   "E17's leftovers"). `CLT-STUB-1` (a server's seat lacks the other hero's Orb and Cloak),
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q100,
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q103,
   CLT-STUB-6.
-- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), and `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens); `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
+- Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
 
@@ -45,6 +45,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-13, E27 M1 T2 (done; `client/e27-m1-t2`).** Kept whole with the user (decision 18);
+  the user asked for sub-agents used efficiently: the tool and two groups by the session, six by
+  three sub-agents on Wine instances of their own. The original data staged at once (61 files,
+  checked by SHA-256). Built `h3shell.py` (recipes on a clock frozen from the first read, each
+  recorded twice, digests kept) and the harness's changes (both clip archives in `VIDEO.VID`, the
+  Smacker clock, the clips' reads, `BinkGetSummary` guarded). Recorded 84 recipes, 864 shots, 27
+  clips, all the same twice but one listed 10 ms shift. Asked: CLT-Q100 to CLT-Q102. The VM
+  restarted twice (an agent's report lost). Record: `E27-log.md`, "M1 T2".
 - **2026-11-12, E27 M1 T1b3b (done; `client/e27-m1-t1b3b`).** Kept whole with the user
   (decision 16). The original data staged at once (21 files, checked by SHA-256) while the user's
   computer was online. Read victory and defeat in play (the eliminations, the conditions' tests and
@@ -62,11 +70,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   struct. Found: `battle_tactics_global` is Quick Combat (renamed); Autosave has no item; Restart
   asks after the dialog closed. Asked: CLT-Q96 to CLT-Q98 (decision 15). No harness run.
   Record: `E27-log.md`, "M1 T1b3a".
-- **2026-11-12, E27 M1 T1b2 (done; `client/e27-m1-t1b2`).** Kept whole with the user. The
-  original data staged at once (61 files, checked by SHA-256) while the user's computer was
-  online. Read the players' slots and records, the advanced options, a row's draw and presses,
-  the popups, the hover, the turn's duration, the random map's tab and Begin to the game's start
-  (`new_game_start`, `scenario_dialog_begin`): 38 new map entries, a struct. Found: a human's
-  Random town is the one drawn at the list's read; the bonus, the handicap and the timer have no
-  `GameSetup` field; two setup oddities. Asked: CLT-Q92 to CLT-Q95 (decision 13). No harness run.
-  Record: `E27-log.md`, "M1 T1b2".

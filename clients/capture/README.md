@@ -1220,9 +1220,12 @@ python3 h3shell.py list
 - **A recipe** (`shell/<group>.toml`, `[[recipe]]`): `id`, `what` (the catalogue's section),
   `registry` (dwords over the base settings), `maps` (`"all"`, the default: the 160 shipped maps;
   or a list), `games` (files of `original-data/games/`), `input_step` and `steps` (the docstring's
-  `STEPS`: `until`, `check`, `step`, `move`, `click`, `down`/`up`, `right`/`right-up`, `key`,
-  `type`, `press`/`point` a dialog's button by its probes, `until-button`, `shot`, `clip`,
-  `clip-until`). Each run starts afresh: the settings key removed and written again from
+  `STEPS`: `until`, `check`, `step` (in increments: `step:<ms>:<by>`), `move`, `click`,
+  `down`/`up`, `right`/`right-up`, `key`, `type`, `press`/`point` a dialog's button by its probes,
+  `until-button`, `shot`, `clip`, `clip-until`; for a load, `settle` (the next input's real-time
+  pause), `click-wait` and `wait`; `games-time` (the saves' file times); `poke` (bytes into the
+  game's memory, only to bring about what the original then shows itself: an end's condition
+  met). Each run starts afresh: the settings key removed and written again from
   `setup.sh`'s `h3.reg` with `First Time` 0 and `Bink Video` 1 (the Bink copies of the start's
   clips; a recipe sets 0 for the Smacker ones), then the recipe's values; no `HiScore.dat`; the
   recipe's maps and saves; the pointer parked at (400, 300).
@@ -1248,8 +1251,15 @@ python3 h3shell.py list
   `screens.toml`'s and the buttons' (`[button.ok]`, `[button.cancel]`) are shared.
 - **Two instances:** `H3_RUN`, `WINEPREFIX` and `H3_DISPLAY` as for `h3drive.py` (each instance's
   `setup.sh` first); a run ends its own instance's wineserver at each start.
-- **Limits:** the loading bar's steps (`loadprog.def`) are drawn while the game reads no clock, so
-  a shot taken once it is idle shows the bar full; the loading screen's fade is kept.
+- **Before the first step** the run waits for the game's idle loop and for the first screen to
+  stay unchanged for a second of real time (the main menu shows at 0 ms; a first step given before
+  it was drawn showed it at 10 ms).
+- **Limits:** the loading bar's steps (`loadprog.def`), Restart's bar and the lost screen's 1.5 s
+  wait run while the game reads no clock or by real time: a shot taken once it is idle shows the
+  bar full, and a key inside the wait cannot be timed. `Game.start` writes `Sound Volume` 0 after
+  the recipe's settings (`sound_settings`): a recipe that needs another writes the game's setting
+  in memory. TCP/IP's stage 2 shows the sandbox's address, so those digests are the machine's.
+  The recorded groups and what they cover: `docs/epics/E27-design.md` §6.
 
 ## The recipes' coordinates (800 × 600)
 

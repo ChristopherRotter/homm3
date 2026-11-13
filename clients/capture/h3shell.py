@@ -266,6 +266,22 @@ class Run:
         raise TimeoutError(f"the game did not wait on the clock within {timeout} s (ack "
                            f"{self.game.ack()}){self.game.crash_note()}")
 
+    def start_drawn(self, quiet=1.0, timeout=30.0):
+        """The first screen drawn at the frozen time before the recipe's first step: the display
+        unchanged for `quiet` seconds of real time (the main menu shows at 0 ms; a first step
+        given before it was drawn showed it at 10 ms in one run of two, `menu-tutorial`)."""
+        end = time.monotonic() + timeout
+        last = self.game.settled()
+        since = time.monotonic()
+        while time.monotonic() < end:
+            time.sleep(0.1)
+            pix = self.game.settled()
+            if not np.array_equal(pix, last):
+                last, since = pix, time.monotonic()
+            elif time.monotonic() - since >= quiet:
+                return
+        raise TimeoutError(f"the first screen kept changing for {timeout} s")
+
     def tick(self, command, timeout=30.0):
         """A clock command applied, then the game waiting on the clock again (`busy_wait`)."""
         g = self.game
@@ -507,6 +523,7 @@ class Run:
         self.game.start(None)
         try:
             self.busy_wait()
+            self.start_drawn()
             for step in self.recipe["steps"]:
                 self.do(step)
         except Exception:

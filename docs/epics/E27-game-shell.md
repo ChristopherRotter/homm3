@@ -1,8 +1,8 @@
 # E27 — The game shell: main menu and the screens outside play
 
-Status: **refined** (2026-11-12, M0, with the user); M1 T1a1, T1a2, T1b1, T1b2 and T1b3a done
-(T1b cut in three, decision 11; T1b3 in two, decision 14); next **M1 T1b3b**
-(`docs/lanes/client/QUEUE.md`).
+Status: **refined** (2026-11-12, M0, with the user); M1 T1a1 to T1b3b and T2 done (T1b cut in
+three, decision 11; T1b3 in two, decision 14; T2 kept whole, decision 18); next **M1 T3**, M1's
+closure (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -225,7 +225,7 @@ tasks are refined here.
 | T1b2 | The catalogue, part 2b: the advanced options (the players' setup to `GameSetup` or an E10 gap), the random map's tab, the game's begin | done 2026-11-12 (design §3.12 to §3.18; CLT-Q92 to CLT-Q95) |
 | T1b3a | The catalogue, part 2c: the system options and the menu in play (decision 14) | done 2026-11-12 (design §4; CLT-Q96 to CLT-Q98) |
 | T1b3b | The catalogue, part 2d: the end of a scenario (victory, defeat, their clips and messages, the win screen and its score, the high score's entry) | done 2026-11-12 (design §5; CLT-Q99, decisions 16, 17) |
-| T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was; done at T1a1 and T1b3a, design §1); the harness on every catalogued screen; the reference captures; the traps | after T1b3b |
+| T2 | The shell's clips cut from the user's `VIDEO.VID` (on the user's computer, as `battle-videos.vid` was; done at T1a1 and T1b3a, design §1); the harness on every catalogued screen; the reference captures; the traps | done 2026-11-13 (design §6: 84 recipes, each recorded twice; CLT-Q100 to CLT-Q102; decision 18) |
 | T3 | M1's closure: a fresh reviewer, the review list and the questions with the user, M2's refinement (M2 T0) | after T2 |
 
 **M1's review list** (the agent's calls, *provisional*, for T3):
@@ -252,6 +252,14 @@ tasks are refined here.
    flag, the typed codes and their "Cheater" land, the victory codes 11 and 12 (no map) and the
    map's animations under the score screen not built; the network's texts and messages (0x3FB,
    0x3FC, 0x436) not built.
+
+7. T2 (design §6, the runbook's "The shell's screens"): the shell's recipes on a clock frozen
+   from the game's first read, each recorded twice, their digests kept per group
+   (`clients/capture/shell/kept/`), not yet compared with ours (M2 to M4 draw them); the ends
+   reached by writing the game's memory (`poke`), the boxes and screens after it the game's own;
+   `start-smacker`'s second run 10 ms earlier from H3Intro's first frame (listed, its frames the
+   same); TCP/IP's stage 2 shots the sandbox's address; the `scenario` and `advanced` groups'
+   oddities not reported (their agent's report lost with a sandbox restart): for T3's reviewer.
 
 ## Dependencies and boundaries
 

@@ -87,5 +87,5 @@ menu-load back-left t2900 53392d47a85ccaed
 menu-load back-popup t3000 3c479e8d6f3a2215
 menu-load back-closed t3100 ff4b9d0da3fc1465
 menu-load back t3200 da1e62ee2ec92b93
-menu-tutorial load clip 6@410-660 0ca36142683bf82d differs clip 5@400-600 ece518461bea9511
-menu-tutorial map t2410 f43a92381a5a218f differs t2400 f43a92381a5a218f
+menu-tutorial load clip 5@400-600 ece518461bea9511
+menu-tutorial map t2400 f43a92381a5a218f
