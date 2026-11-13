@@ -261,7 +261,11 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   one in any instance's run directory fails every run (rerun `setup.sh`, or copy the new
   `xdd.dll` into each instance). A shot and a clip of one recipe never share a name (their kept
   lines collide). The sandbox's VM restarts end every run and agent: `--record` keeps each recipe
-  as it ends; check `uptime` before trusting a wait.
+  as it ends; check `uptime` before trusting a wait. An agent's report dies with it (twice, M1 T2
+  and T3): brief a sub-agent to write its results to a file as it goes (a run's log, a findings
+  file), so a restart loses only the step in progress. A reviewer of many shots reads them as
+  contact sheets (six a sheet at half scale, the changed box marked) with full-size crops on
+  demand, not shot by shot (M1 T3: 383 shots in 76 sheets).
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
 - **The sound tests** (E17 M7 T4): the battle client's tests open SDL's dummy audio driver
   (`h3_sdl::Audio::open_driver`) through `audio::tests::dummy`, which holds one lock for the
