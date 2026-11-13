@@ -16115,6 +16115,14 @@ the census moved.
   decision 326 and the task's line, design §12's *As built*, the queue (T115b), `TRAPS.md`; the
   client, server, town, AI and battle lanes' inboxes.
 
+- **The merge** (after the town lane's T26b, #903, and the client lane's M1 T3, #905): protocol
+  v56 (T26b took v55); the four towns replays re-recorded again (hash lines only); `bench-check`
+  within its gates. CI on the merge found a case of `every_step_keeps_the_commands_invariants`
+  that fails on `master` 202aa3f too: a town event's creatures tell `TownChanged` without a build
+  since T26b (TWN-VEW-004), and the turn's town-event oracle dropped views only after a
+  `TownBuilt`; now after a `TownEventFired` too (`check_told` checks their content), the case in
+  `proptest-regressions/tests/play.txt`.
+
 **Versions:** adventure state hash v23, game state hash v31, protocol v56 (the server lane's,
 `cross-lane`). The part, the map import, the replay format and the env's encoding unchanged.
 T115b next.

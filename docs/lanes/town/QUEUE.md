@@ -55,6 +55,10 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   bonuses beside the details (`h3_heroes::BattleBonuses`; your `town/tests/siege.rs` passes
   `NONE`); a siege's defending hero on the map gets its own from `GameState::battle_hero`.
   Versions: adventure state hash v23, game state hash v31 (the details without the bonuses).
+  Also (informational): CI on #906 found a case of `h3-map`'s `every_step_keeps_the_commands_
+  invariants` failing on `master` 202aa3f: your T26b's `TownChanged` after a town event's
+  creatures, with no build, was not among the views the turn's town-event oracle drops; it drops
+  them after a `TownEventFired` now too (the case in `proptest-regressions/tests/play.txt`).
 
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
   taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the

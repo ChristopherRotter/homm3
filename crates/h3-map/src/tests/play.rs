@@ -5730,13 +5730,18 @@ fn check_timed(
             }
         }
     }
-    // The views a town event's build tells, after its `TownBuilt`; the turn's points restored,
-    // told last (SRV-Q26 (b): `check_told` reads them).
+    // The views a town event's build tells, after its `TownBuilt`, and since E09 T26b those its
+    // creatures tell (the owner's counts, TWN-VEW-004), after its `TownEventFired`; the turn's
+    // points restored, told last (SRV-Q26 (b)), and since E08 T115a the bonuses' and marks':
+    // `check_told` reads them all.
     let mut built = false;
     let told: Vec<GameEvent> = events[turn..]
         .iter()
         .filter(|e| {
-            built |= matches!(e, GameEvent::TownBuilt { .. });
+            built |= matches!(
+                e,
+                GameEvent::TownBuilt { .. } | GameEvent::TownEventFired { .. }
+            );
             let moved = matches!(
                 e,
                 GameEvent::Adventure(AdventureEvent {
