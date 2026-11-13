@@ -83,7 +83,34 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Client lane (`CLT-Q<n>`)
 
-(no open questions)
+#### CLT-Q100 — A single scenario's player has no name: the eliminations' texts and the high score's entry (E27 M1 T2)
+
+**Context.** Recorded at E27 M1 T2 (`docs/epics/E27-design.md` §6.3, recipes `end-week`,
+`end-lost-week`, `end-conquest`): a single scenario's human has an empty name, so GENRLTXT 7 and 8
+(a player's elimination, the name first) begin with ", you", and the high score's entry (§5.6)
+opens with an empty edit, OK and Enter doing nothing until a name is typed; in the hot seat the
+names typed at its start show. **Options:** (a) copy; (b) fix in the client's profile: a single
+scenario's player takes the client's player name (the setting of M1's review item 2), the colour's
+name when that is empty, so the texts read whole and the entry opens filled; the original's for
+the comparisons only. **Recommendation:** (b). Built as the original's until answered.
+
+#### CLT-Q101 — The multiplayer dialog's stale hint after Escape (E27 M1 T2)
+
+**Context.** Recorded (design §6.3, recipes `mp-tcp`, `mp-modem`): after Escape from a mode's
+stage 2 back to stage 1, the status line keeps stage 2's last hint until the pointer moves (stage
+1's scroll bar never shows its hint either: the map's picture covers it). Stage 1 is built (the
+hot seat's way in, decision 10), the other modes' stage 2 drawn and stubbed. **Options:** (a) copy;
+(b) fix: the status line redrawn at the stage's change (the hint of the item under the pointer,
+or none). **Recommendation:** (b) for the stale hint; the covered bar's hint stays as it is.
+
+#### CLT-Q102 — The system options' boxes and bars act on a release off the item (E27 M1 T2)
+
+**Context.** Recorded (design §6.3, recipe `opt-first`: `box-left`, `bar-left`): a box pressed and
+released off it toggles all the same (Show Route turned off), and a volume bar pressed and released
+off it sets its volume (the music to 3), while a button released off does nothing (§4.2). **Options:**
+(a) copy; (b) fix: a box acts only on a release over it, as a button (a press dragged off cancels);
+the bars as the original's; (c) both boxes and bars only on a release over them. **Recommendation:**
+(b). Built as the original's until answered.
 
 ### Map client lane (`MCL-Q<n>`)
 

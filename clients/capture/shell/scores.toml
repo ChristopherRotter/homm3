@@ -1,0 +1,54 @@
+# E27 M1 T2: High Scores' and the credits' recipes (design §2.8, §2.9, §2.11; h3shell.py, the
+# runbook's "The shell's screens"). Coordinates are the original's 800 × 600 screen; a button's
+# point is the middle of its rectangle. Every run starts with no HiScore.dat (CampHigh.txt's
+# defaults); Reset's OK writes one into the run directory's Data only (h3shell's `prepare`
+# removes it before the next run).
+
+[[recipe]]
+id = "scores-tabs"
+what = "§2.8: High Scores: the scenarios' tab and the campaigns', their creatures' steps, the buttons' hover and press, the keys, the ends"
+steps = [
+  "until:main_menu", "click:643,304", "shot:scenarios", "clip:scenarios-anim:3000",
+  "move:51,445", "shot:standard-hover", "down:51,445", "shot:standard-press", "move:400,560", "up", "shot:standard-left",
+  "move:51,213", "shot:campaign-hover", "down:51,213", "shot:campaign-press", "move:400,560", "up", "shot:campaign-left",
+  "move:746,213", "shot:reset-hover", "down:746,213", "shot:reset-press", "move:400,560", "up", "shot:reset-left",
+  "move:746,445", "shot:exit-hover", "down:746,445", "shot:exit-press", "move:400,560", "up", "shot:exit-left",
+  "right:51,213", "shot:campaign-popup", "right-up", "right:681,58", "shot:creature-popup", "right-up",
+  "right:300,58", "shot:row-popup", "right-up", "shot:popups-closed",
+  "click:51,213", "shot:campaigns", "clip:campaigns-anim:3000",
+  "click:51,445", "shot:scenarios-again",
+  "key:c", "shot:campaigns-key", "key:s", "shot:scenarios-key", "key:c",
+  "key:Escape", "check:main_menu", "shot:escaped",
+  "key:h", "shot:reopened", "key:Return", "check:main_menu", "shot:entered",
+  "click:643,304", "shot:opened", "click:746,445", "check:main_menu", "shot:exited",
+]
+
+[[recipe]]
+id = "scores-reset"
+what = "§2.8: Reset's question (GENRLTXT 667) on each tab: Cancel keeps the tables, OK resets them"
+steps = [
+  "until:main_menu", "click:643,304", "shot:scenarios",
+  "click:746,213", "shot:question", "until-button:ok", "point:ok", "shot:ok-hover", "point:cancel", "shot:cancel-hover",
+  "press:cancel", "shot:cancelled",
+  "click:746,213", "until-button:ok", "press:ok", "shot:reset",
+  "click:51,213", "shot:campaigns", "click:746,213", "shot:question-campaigns", "until-button:ok", "press:ok", "shot:reset-campaigns",
+  "key:Escape", "check:main_menu", "shot:menu",
+]
+
+[[recipe]]
+id = "credits-scroll"
+what = "§2.9: the credits from start to end: the first frames at 10 ms steps, the scroll at 100 ms (the clip's frames fall on its 100 ms grid), the closing text, the end at 10 ms, the main menu"
+steps = [
+  "until:main_menu", "move:300,560", "key:c", "shot:opened",
+  "clip:start:3000:10", "clip:scroll:261000:100", "clip-until:end:main_menu:10:20000", "shot:menu",
+]
+
+[[recipe]]
+id = "credits-end"
+what = "§2.9: a key, a left press and a right press end the credits early; a move does not"
+steps = [
+  "until:main_menu", "move:300,560", "key:c", "clip:before-key:3000:100", "move:200,200", "shot:moved",
+  "key:space", "until:main_menu", "shot:key-ended",
+  "move:300,560", "key:c", "clip:before-left:3000:100", "click:300,560", "until:main_menu", "shot:left-ended",
+  "key:c", "clip:before-right:3000:100", "right:300,560", "until:main_menu", "shot:right-ended", "right-up", "shot:menu",
+]

@@ -1,0 +1,217 @@
+# E27 M1 T2: the scenario screen's recipes (design §3.1 to §3.11; h3shell.py, the runbook's "The
+# shell's screens"). Coordinates are the original's 800 × 600 screen (design §3.2's table): the
+# panel buttons Show Scenarios (514, 91), Random Map (514, 115), Advanced Options (514, 519), Begin
+# (497, 555), Back (667, 555); the columns players (41, 106), size (74, 106), version (107, 106),
+# name (216, 106), victory (325, 106), loss (358, 106); the filters (183 + 47 i, 68); a row i
+# (216, 135 + 25 i); the bar's arrows (383, 99), (383, 562); the difficulty i (521 + 32 i, 478).
+# A row press comes 500 ms after the last one or the screen's opening (a second within 400 ms
+# begins, §3.4). The saves' time is fixed by `games-time` (the list shows it, §3.5). Each recipe
+# first moves the pointer to its park (the main menu came at 0 or 10 ms when the first `until`
+# looked too early, the machine busy), and a move comes before each later `until` (the same).
+# A press that loads a game is a `click-wait` (the load's bar fills in real time on the frozen
+# clock: the input step waits for its end; a clip shows the frames from there).
+
+[[recipe]]
+id = "scn-new"
+what = "§3.1, §3.2, §3.8: a new game's screen (no list), both backgrounds; the panel buttons' hover, press, popup; the list's toggle"
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "move:790,300", "shot:screen",
+  "move:514,91", "shot:list-hover", "down:514,91", "shot:list-press", "move:790,300", "up", "shot:list-left",
+  "right:514,91", "shot:list-popup", "right-up", "shot:list-closed",
+  "move:514,115", "shot:random-hover", "down:514,115", "shot:random-press", "move:790,300", "up", "shot:random-left",
+  "right:514,115", "shot:random-popup", "right-up", "shot:random-closed",
+  "move:514,519", "shot:advanced-hover", "down:514,519", "shot:advanced-press", "move:790,300", "up", "shot:advanced-left",
+  "right:514,519", "shot:advanced-popup", "right-up", "shot:advanced-closed",
+  "move:497,555", "shot:begin-hover", "down:497,555", "shot:begin-press", "move:790,300", "up", "shot:begin-left",
+  "right:497,555", "shot:begin-popup", "right-up", "shot:begin-closed",
+  "move:667,555", "shot:back-hover", "down:667,555", "shot:back-press", "move:790,300", "up", "shot:back-left",
+  "right:667,555", "shot:back-popup", "right-up", "shot:back-closed",
+  "click:514,91", "move:790,300", "shot:list-shown", "click:514,91", "move:790,300", "shot:list-hidden",
+  "click:667,555", "move:790,300", "until:new_game_menu", "click:649,65", "move:790,300", "until:scenario_list", "move:790,300", "shot:screen-2",
+  "click:667,555", "move:790,300", "until:new_game_menu", "click:649,65", "move:790,300", "until:scenario_list", "move:790,300", "shot:screen-3",
+  "key:Escape", "move:790,300", "until:new_game_menu", "shot:escaped",
+]
+
+[[recipe]]
+id = "scn-list-keys"
+what = "§3.3, §3.4: the list as built (the kept map selected, at the top); the keys; the bar's arrows, track and thumb; a row press"
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,91", "move:790,300", "shot:list",
+  "key:Down", "shot:down", "key:Up", "shot:up", "key:Up", "shot:up-past-top",
+  "key:Next", "shot:page-down", "key:Next", "shot:page-down-2", "key:Prior", "shot:page-up",
+  "click:383,562", "shot:bar-down", "click:383,99", "shot:bar-up",
+  "click:383,540", "shot:track-below", "click:383,120", "shot:track-above",
+  "down:383,99", "shot:arrow-held", "up",
+  "step:500", "click:216,235", "move:790,300", "shot:row-4",
+  "step:500", "click:216,560", "move:790,300", "shot:row-17",
+]
+
+[[recipe]]
+id = "scn-sort"
+what = "§3.4: each column's sort and its flip (the size's first press descending, CLT-Q91), a held column"
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,91", "move:790,300",
+  "down:74,106", "shot:size-held", "up", "move:790,300", "shot:size-1", "click:74,106", "move:790,300", "shot:size-2",
+  "click:41,106", "move:790,300", "shot:players-1", "click:41,106", "move:790,300", "shot:players-2",
+  "click:107,106", "move:790,300", "shot:version-1", "click:107,106", "move:790,300", "shot:version-2",
+  "click:216,106", "move:790,300", "shot:name-1", "click:216,106", "move:790,300", "shot:name-2",
+  "click:325,106", "move:790,300", "shot:victory-1", "click:325,106", "move:790,300", "shot:victory-2",
+  "click:358,106", "move:790,300", "shot:loss-1", "click:358,106", "move:790,300", "shot:loss-2",
+]
+
+[[recipe]]
+id = "scn-filter"
+what = "§3.4: each size filter (S, M, L, XL, All), a held one, a sort under a filter"
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,91", "move:790,300",
+  "down:183,68", "shot:small-held", "up", "move:790,300", "shot:small",
+  "click:230,68", "move:790,300", "shot:medium", "click:277,68", "move:790,300", "shot:large",
+  "click:324,68", "move:790,300", "shot:extra-large", "click:216,106", "move:790,300", "shot:extra-large-name",
+  "click:371,68", "move:790,300", "shot:all",
+]
+
+[[recipe]]
+id = "scn-info"
+what = "§3.5: the information panel for maps with each victory (0 to 10, with and without the standard) and loss (0 to 2) mark, the flags (allies), a long name; sorted by name"
+maps = [
+  "Adventures of Jared Haret.h3m", "Arrogance.h3m", "Back For Revenge.h3m", "Buried Treasure.h3m",
+  "Dwarven Gold.h3m", "For Sale.h3m", "Fort Noxis.h3m", "Goblins in the Pantry.h3m",
+  "Good Witch, Bad Witch.h3m", "Heroes of Might not Magic Allied.h3m", "Hold the middle.h3m",
+  "Manifest Destiny.h3m", "Middletown.h3m", "Rebellion.h3m", "Serpents Treasure.h3m",
+  "Thousand Islands.h3m", "Treasure Hunt.h3m", "Vial of Life.h3m",
+]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "move:790,300", "shot:screen", "click:514,91", "move:790,300", "shot:list",
+  "click:216,106", "move:790,300", "shot:row-00",
+  "key:Down", "shot:row-01", "key:Down", "shot:row-02", "key:Down", "shot:row-03",
+  "key:Down", "shot:row-04", "key:Down", "shot:row-05", "key:Down", "shot:row-06",
+  "key:Down", "shot:row-07", "key:Down", "shot:row-08", "key:Down", "shot:row-09",
+  "key:Down", "shot:row-10", "key:Down", "shot:row-11", "key:Down", "shot:row-12",
+  "key:Down", "shot:row-13", "key:Down", "shot:row-14", "key:Down", "shot:row-15",
+  "key:Down", "shot:row-16", "key:Down", "shot:row-17", "key:Down", "shot:row-17-down",
+]
+
+[[recipe]]
+id = "scn-difficulty"
+what = "§3.5, §3.2: the five difficulties (the rating), a held one; items 132 and 134"
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "move:790,300",
+  "move:521,478", "shot:easy-hover", "down:521,478", "shot:easy-held", "up", "move:790,300", "shot:easy",
+  "click:553,478", "move:790,300", "shot:normal", "click:585,478", "move:790,300", "shot:hard",
+  "click:617,478", "move:790,300", "shot:expert", "click:649,478", "move:790,300", "shot:impossible",
+  "click:514,91", "move:790,300", "shot:impossible-list",
+]
+
+[[recipe]]
+id = "scn-right"
+what = "§3.8: the right press on the columns, the filters, a row (nothing), the flags' strip (the teams), the size mark, the difficulties, the texts"
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,91", "move:790,300",
+  "right:41,106", "shot:players", "right-up", "right:74,106", "shot:size", "right-up",
+  "right:107,106", "shot:version", "right-up", "right:216,106", "shot:name", "right-up",
+  "right:325,106", "shot:victory", "right-up", "right:358,106", "shot:loss", "right-up",
+  "right:183,68", "shot:small", "right-up", "right:230,68", "shot:medium", "right-up",
+  "right:277,68", "shot:large", "right-up", "right:324,68", "shot:extra-large", "right-up",
+  "right:371,68", "shot:all", "right-up",
+  "right:216,160", "shot:row", "right-up", "right:383,300", "shot:bar", "right-up",
+  "right:600,414", "shot:flags", "right-up", "shot:flags-closed",
+  "right:728,39", "shot:map-size", "right-up",
+  "right:521,478", "shot:easy", "right-up", "right:553,478", "shot:normal", "right-up",
+  "right:585,478", "shot:hard", "right-up", "right:617,478", "shot:expert", "right-up",
+  "right:649,478", "shot:impossible", "right-up",
+  "right:459,444", "shot:map-difficulty-label", "right-up", "right:707,444", "shot:rating-label", "right-up",
+  "right:459,478", "shot:map-difficulty", "right-up", "right:707,478", "shot:rating", "right-up",
+  "right:580,200", "shot:description", "right-up", "right:580,57", "shot:name-text", "right-up",
+  "right:580,320", "shot:victory-text", "right-up", "right:580,377", "shot:loss-text", "right-up",
+  "shot:closed",
+]
+
+[[recipe]]
+id = "scn-begin-none"
+what = "§3.3, §3.6: no maps: the empty list; Begin's message (GENRLTXT 530)"
+maps = []
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "step:500", "move:790,300", "shot:screen", "click:514,91", "move:790,300", "shot:list",
+  "click:497,555", "shot:begin", "key:Return", "shot:closed",
+]
+
+[[recipe]]
+id = "scn-begin-filter"
+what = "§3.4, §3.6: a filter that leaves the list empty, Begin then; a row's double press begins (the loading bar to the map)"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,91", "move:790,300", "shot:list",
+  "click:324,68", "move:790,300", "shot:extra-large", "click:497,555", "shot:begin", "key:Return", "shot:after",
+  "click:371,68", "move:790,300", "shot:all",
+  "step:500", "click:216,135", "shot:row-first", "click-wait:216,135:3000",
+  "clip-until:load:adventure", "shot:map",
+]
+
+[[recipe]]
+id = "scn-load"
+what = "§3.1, §3.3 to §3.6: a single load's screen (the saves, the autosave's name, a save's time and difficulty), keys, sorts, Delete's question both ways, Load's popup, the load to the map (its bar filled in real time: the clip from the load's end)"
+games = ["AUTOSAVE.GM1", "AUTOSAVE.TGM", "save1.GM1"]
+steps = [
+  "move:400,300", "until:main_menu", "games-time:1000000000", "click:645,192", "check:load_game_menu", "click:649,65",
+  "step:500", "move:790,300", "shot:screen",
+  "key:Down", "shot:down", "key:Up", "shot:up",
+  "step:500", "click:216,160", "move:790,300", "shot:row-1", "step:500", "click:216,260", "move:790,300", "shot:row-past",
+  "click:216,106", "move:790,300", "shot:name-1", "click:216,106", "move:790,300", "shot:name-2",
+  "click:74,106", "move:790,300", "shot:size-1",
+  "right:514,91", "shot:no-list-button", "right-up",
+  "move:497,555", "shot:load-hover", "right:497,555", "shot:load-popup", "right-up",
+  "right:521,478", "shot:easy-popup", "right-up", "click:521,478", "move:790,300", "shot:easy-pressed",
+  "key:Delete", "shot:delete", "press:cancel", "shot:delete-cancelled",
+  "key:Delete", "shot:delete-2", "press:ok", "shot:deleted",
+  "click-wait:497,555:5000", "clip-until:load:adventure:10:120000", "shot:map",
+]
+
+[[recipe]]
+id = "scn-load-none"
+what = "§3.3: a load with no saved games: the notice (GENRLTXT 686) once, Load disabled"
+games = []
+steps = [
+  "move:400,300", "until:main_menu", "click:645,192", "check:load_game_menu", "click:649,65",
+  "step:500", "shot:notice", "key:Return", "move:790,300", "shot:screen",
+  "click:497,555", "shot:load-pressed", "key:Return", "shot:enter",
+  "key:Escape", "move:790,300", "until:load_game_menu", "click:649,65", "step:500", "shot:again",
+]
+
+[[recipe]]
+id = "scn-save"
+what = "§3.1, §3.4, §3.6, §4.4: the save from play (the system options' Save): the list with the name's strip, rows to the name, keys, Delete (the edit's: no question), the overwrite question both ways, a new name, the message"
+games = ["AUTOSAVE.GM1", "save1.GM1"]
+steps = [
+  "move:400,300", "until:main_menu", "games-time:1000000000", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click-wait:497,555:3000", "move:790,300", "until:adventure", "press:ok", "move:790,300",
+  "key:o", "key:s", "step:500", "shot:screen",
+  "key:Down", "shot:down",
+  "click:216,135", "move:790,300", "shot:row-0", "click:216,160", "move:790,300", "shot:row-1",
+  "move:497,555", "shot:save-hover", "right:497,555", "shot:save-popup", "right-up",
+  "move:790,300", "key:Delete", "shot:delete",
+  "key:Return", "shot:overwrite", "press:cancel", "shot:overwrite-cancelled",
+  "click:497,555", "shot:overwrite-2", "press:ok", "step:500", "shot:saved", "press:ok", "shot:map",
+  "games-time:1000000000", "key:o", "key:s", "step:500", "shot:screen-2",
+  "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "key:BackSpace", "shot:name-cleared",
+  "type:T2 name", "shot:name-typed", "key:Return", "step:500", "shot:saved-new", "press:ok", "shot:map-2",
+]
+
+[[recipe]]
+id = "scn-save-none"
+what = "§3.1, §3.5: the save with no saved games: no selection, the current game's header; Back"
+games = []
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click-wait:497,555:3000", "move:790,300", "until:adventure", "press:ok", "move:790,300",
+  "key:o", "key:s", "step:500", "shot:screen",
+  "move:667,555", "shot:back-hover", "click:667,555", "move:790,300", "shot:back",
+]

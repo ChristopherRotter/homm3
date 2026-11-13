@@ -251,6 +251,17 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is
   uncovered until a test calls it at run time.
 
+- **The shell's captures** (E27 M1 T2; `clients/capture/h3shell.py`, the runbook's "The shell's
+  screens"): the clock is frozen from the game's first read, so a step given while the game is
+  still loading, or before it took an input, moves every later time by a step: never wait with
+  `h3drive`'s 20 reads alone (`Run.busy_wait`: the game's reads and the clips', still growing
+  20 ms later); an input that starts a load takes a `settle`. The game draws its cursor at the
+  pointer only on a later tick (every input steps the clock). A clip shows at most one frame a
+  step: step long waits in increments (`step:<ms>:<by>`). `xdd.dll`'s ack has 13 fields: a stale
+  one in any instance's run directory fails every run (rerun `setup.sh`, or copy the new
+  `xdd.dll` into each instance). A shot and a clip of one recipe never share a name (their kept
+  lines collide). The sandbox's VM restarts end every run and agent: `--record` keeps each recipe
+  as it ends; check `uptime` before trusting a wait.
 - **Sandbox routines as a skill:** GitHub (pull requests and CI by REST), waiting for long jobs, worktrees for concurrent fixers, VM restarts: the skill `homm3-sandbox-session`.
 - **The sound tests** (E17 M7 T4): the battle client's tests open SDL's dummy audio driver
   (`h3_sdl::Audio::open_driver`) through `audio::tests::dummy`, which holds one lock for the

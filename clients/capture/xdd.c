@@ -17,6 +17,9 @@
       <H3CLOCK>\ack as "<seq> <time> <calls>": the last applied command, the clock's time and how
       many times the game read the clock since that command (a game that keeps reading a stopped
       clock is idle: it has drawn everything up to that time). Without H3CLOCK nothing changes.
+      With H3FROZEN set as well, to a number of milliseconds (E27 M1 T2: the shell's recipes),
+      the clock stands at that time from the game's first read, before any command, so every
+      time of a run (a clip's frames, a screen's opening) is the same in each run.
    3. Forced rolls (E17 M3 T7b-2b-1, *provisional*; the runbook, "Forced rolls"): with H3CLOCK
       set, the calls of the battle's rolls in `sites` (morale, fear, luck, the creatures'
       strike abilities; the wall shots', E17 M4 T2b) go through
@@ -39,7 +42,21 @@
    5. The clips' clock (E17 M5 T4b2b, *provisional*): BINKW32.DLL reads WINMM's timeGetTime
       itself to pace a clip (`BinkWait`), so its import slot is pointed at the same clock
       (bink_time, which does not count as the game's reads); the ack's eighth field is 1 when
-      it is. Without it a clip ran in real time while the game's clock stood still.
+      it is. Without it a clip ran in real time while the game's clock stood still. SMACKW32.DLL
+      reads it as well (E27 M1 T2: the start's 3DO logo, the score screen's and the lost
+      screen's clips are Smacker ones), so its slot points at bink_time too; the ack's eleventh
+      field is 1 when it does. Its timeSetEvent timers stay in real time (none paces a frame
+      the game draws: Smacker's own sound, which the harness never plays). The clips' reads of
+      that clock are counted apart, the ack's twelfth field (since the last command): in a
+      full-screen Bink clip the game's loop leaves the waiting to BinkWait and reads no clock
+      itself, so the harness takes these for the game being idle there.
+      BinkGetSummary (E27 M1 T2): the game asks a full-screen clip's summary at its end (did it
+      run through), and the DLL divides the bytes it read x 1000 by its read time + 1 (the
+      handle's +0x10C and +0x110, 0x100061C4): on a frozen clock that time is 0 ms, and a clip of
+      4 MB or more overflows the division (Wine: "division by zero", the game stops). Heroes3.exe's
+      import of it goes through summary_hook, which raises the read time to the least that fits
+      for the call and puts it back after; the summary's read speed is the only field it
+      changes. The ack's thirteenth field is 1 when the import is hooked.
    6. Sounds on the virtual clock (E17 M5 T5b2, *provisional*): with H3SOUND set as well (the
       harness's `sound` runs, which give Wine an audio device and the game an effects volume),
       Heroes3.exe's Miles imports that start, end and ask after a sample go through the hooks
@@ -66,6 +83,7 @@
       otherwise). */
 #include <windows.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 typedef DWORD(WINAPI *time_fn)(void);
@@ -175,6 +193,8 @@ static int frozen;
 static DWORD stopped_at;   /* the time while frozen */
 static DWORD shift;        /* running: the time is real_time() + shift */
 static volatile LONG reads; /* the game's reads since the last command */
+/* The clips' reads (bink_time) since the last command (E27 M1 T2: the ack's twelfth field). */
+static volatile LONG clip_reads;
 static char ctl_path[MAX_PATH], ack_path[MAX_PATH], tmp_path[MAX_PATH], draws_path[MAX_PATH];
 
 static DWORD now(void)
@@ -199,6 +219,7 @@ static DWORD WINAPI virtual_time(void)
 static DWORD WINAPI bink_time(void)
 {
     DWORD t;
+    InterlockedIncrement(&clip_reads);
     EnterCriticalSection(&lock);
     t = now();
     LeaveCriticalSection(&lock);
@@ -219,6 +240,7 @@ static void apply(const char *command, long ms)
         frozen = 0;
     }
     InterlockedExchange(&reads, 0);
+    InterlockedExchange(&clip_reads, 0);
     LeaveCriticalSection(&lock);
 }
 
@@ -334,6 +356,7 @@ static void force(const char *command, const char *name, const char *value, long
     if (!matched)
         refused++;
     InterlockedExchange(&reads, 0);
+    InterlockedExchange(&clip_reads, 0);
     LeaveCriticalSection(&lock);
 }
 
@@ -374,6 +397,21 @@ static int redirect(void)
 
 static int redirected;
 static int bink_clock; /* 5.: BINKW32.DLL's clock redirected */
+static int smack_clock; /* 5.: SMACKW32.DLL's (E27 M1 T2) */
+/* 5.: BinkGetSummary through summary_hook (E27 M1 T2). */
+typedef void(WINAPI *summary_fn)(void *, void *);
+static summary_fn real_summary;
+static int summary_hooked;
+
+static void WINAPI summary_hook(void *bink, void *summary)
+{
+    DWORD *field = (DWORD *)((BYTE *)bink + 0x110), held = *field;
+    DWORD bytes = *(DWORD *)((BYTE *)bink + 0x10C), least = bytes / 4294967u + 1;
+    if (held < least)
+        *field = least;
+    real_summary(bink, summary);
+    *field = held;
+}
 
 /* 6. Sounds on the virtual clock. */
 typedef void(WINAPI *ail0_fn)(void);
@@ -720,9 +758,10 @@ static DWORD WINAPI control(LPVOID unused)
         LeaveCriticalSection(&lock);
         f = fopen(tmp_path, "w");
         if (f) {
-            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld\n", applied, (unsigned long)t,
-                    (long)reads, (long)forced_draws, waiting, redirected, (long)refused,
-                    bink_clock, sound_hooks, (long)unfollowed);
+            fprintf(f, "%lu %lu %ld %ld %ld %d %ld %d %d %ld %d %ld %d\n", applied,
+                    (unsigned long)t, (long)reads, (long)forced_draws, waiting, redirected,
+                    (long)refused, bink_clock, sound_hooks, (long)unfollowed, smack_clock,
+                    (long)clip_reads, summary_hooked);
             fclose(f);
             MoveFileExA(tmp_path, ack_path, MOVEFILE_REPLACE_EXISTING);
         }
@@ -765,6 +804,43 @@ static int hook(HMODULE module, time_fn clock)
     return 0;
 }
 
+/* Points a module's import of `name` from `dll` (by name) at `replacement`; the original
+   function, or NULL when the module imports no such name (5., BinkGetSummary). */
+static FARPROC hook_by_name(HMODULE module, const char *dll, const char *name,
+                            FARPROC replacement)
+{
+    BYTE *base = (BYTE *)module;
+    IMAGE_NT_HEADERS32 *nt;
+    IMAGE_DATA_DIRECTORY dir;
+    IMAGE_IMPORT_DESCRIPTOR *d;
+    if (!base)
+        return NULL;
+    nt = (IMAGE_NT_HEADERS32 *)(base + ((IMAGE_DOS_HEADER *)base)->e_lfanew);
+    dir = nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT];
+    d = (IMAGE_IMPORT_DESCRIPTOR *)(base + dir.VirtualAddress);
+    for (; d->Name; d++) {
+        DWORD *slot = (DWORD *)(base + d->FirstThunk);
+        DWORD *names = (DWORD *)(base + (d->OriginalFirstThunk ? d->OriginalFirstThunk
+                                                                : d->FirstThunk));
+        if (lstrcmpiA((const char *)(base + d->Name), dll))
+            continue;
+        for (; *names; names++, slot++) {
+            DWORD old;
+            FARPROC original;
+            if (*names & 0x80000000u
+                || strcmp((const char *)(base + *names + 2), name))
+                continue;
+            if (!VirtualProtect(slot, sizeof *slot, PAGE_READWRITE, &old))
+                return NULL;
+            original = (FARPROC)*slot;
+            *slot = (DWORD)replacement;
+            VirtualProtect(slot, sizeof *slot, old, &old);
+            return original;
+        }
+    }
+    return NULL;
+}
+
 BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
 {
     char dir[MAX_PATH - 8];
@@ -790,10 +866,22 @@ BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID reserved)
             fclose(f);
     }
     InitializeCriticalSection(&lock);
+    {
+        char at[16];
+        DWORD m = GetEnvironmentVariableA("H3FROZEN", at, sizeof at);
+        if (m > 0 && m < sizeof at) {
+            stopped_at = (DWORD)strtoul(at, NULL, 10);
+            frozen = 1;
+        }
+    }
     if (hook(GetModuleHandleA(NULL), virtual_time)) {
         redirected = redirect();
         /* Heroes3.exe imports BINKW32.DLL, so it is mapped and bound before this runs. */
         bink_clock = hook(GetModuleHandleA("BINKW32.DLL"), bink_time);
+        smack_clock = hook(GetModuleHandleA("SMACKW32.DLL"), bink_time);
+        real_summary = (summary_fn)hook_by_name(GetModuleHandleA(NULL), "binkw32.dll",
+                                                "_BinkGetSummary@8", (FARPROC)summary_hook);
+        summary_hooked = real_summary != NULL;
         if (GetEnvironmentVariableA("H3SOUND", NULL, 0)) {
             hook_sounds();
             /* DllMain runs on the process's first thread, the game's main one. */
