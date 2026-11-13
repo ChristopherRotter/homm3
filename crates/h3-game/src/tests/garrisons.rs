@@ -270,6 +270,8 @@ fn a_team_s_garrison_opens_the_exchange_whose_commands_name_both_armies() {
     });
     assert!(listed.contains(&from_garrison) && !listed.contains(&to_garrison));
     let events = play(&mut state, &rules, RED, GameCommand::Manage(from_garrison)).unwrap();
+    // Then red's changed view of the garrison (E08 T114b, ADV-GAR-006: empty now); blue's, at
+    // level 0, did not change.
     assert_eq!(
         events,
         [
@@ -282,6 +284,15 @@ fn a_team_s_garrison_opens_the_exchange_whose_commands_name_both_armies() {
                 player: RED,
                 at: at(RED_ARMY, 0),
                 stack: Some(imp(0, 20)),
+            },
+            GameEvent::GarrisonChanged {
+                player: RED,
+                object_type: ty,
+                anchor,
+                owner: Some(RED),
+                level: OWNER_LEVEL,
+                slots: true,
+                removable: Some(true),
             },
         ]
     );
@@ -405,6 +416,23 @@ fn an_empty_garrison_s_capture_opens_the_exchange_after_its_flag() {
                 kind: AdventureEventKind::TilesRevealed { .. },
                 ..
             }),
+            // E08 T114b (ADV-GAR-006): every viewer's view, its owner changed.
+            GameEvent::GarrisonChanged {
+                player: RED,
+                owner: Some(RED),
+                level: OWNER_LEVEL,
+                slots: true,
+                removable: Some(true),
+                ..
+            },
+            GameEvent::GarrisonChanged {
+                player: BLUE,
+                owner: Some(RED),
+                level: 0,
+                slots: false,
+                removable: None,
+                ..
+            },
             GameEvent::ExchangeOpened {
                 player: RED,
                 garrison: 0,
@@ -419,4 +447,200 @@ fn an_empty_garrison_s_capture_opens_the_exchange_after_its_flag() {
     play(&mut closed, &rules, RED, answered(Answer::Close)).unwrap();
     assert_ne!(closed.state_hash(), state.state_hash());
     assert_ne!(closed.state_hash(), before);
+}
+
+/// What `viewer` is told of its view `view` of a map garrison (E08 T114b, ADV-GAR-006): its
+/// `GarrisonChanged`, then a `GarrisonStackSeen` for each stack its level shows, in slot order.
+pub(crate) fn garrison_telling(viewer: PlayerId, view: &MapGarrisonView) -> Vec<GameEvent> {
+    let (object_type, anchor) = (view.object_type, view.anchor);
+    let army = view.garrison.army.as_deref();
+    let mut told = vec![GameEvent::GarrisonChanged {
+        player: viewer,
+        object_type,
+        anchor,
+        owner: view.owner,
+        level: view.garrison.level,
+        slots: army.is_some(),
+        removable: view.removable,
+    }];
+    told.extend(view.garrison.stacks.iter().enumerate().map(|(i, &stack)| {
+        GameEvent::GarrisonStackSeen {
+            player: viewer,
+            object_type,
+            anchor,
+            stack,
+            slot: army.map(|army| army[i].slot),
+        }
+    }));
+    told
+}
+
+/// `viewer`'s views of the map garrisons.
+fn garrisons_seen(
+    state: &GameState,
+    rules: &GameRuleset,
+    viewer: PlayerId,
+) -> Vec<MapGarrisonView> {
+    observe(state, rules, Viewer::Player(viewer)).garrisons
+}
+
+/// The three garrisons of [`views`]: red's removable one on (1, 0) with 20 imps in slot 0,
+/// blue's anti-magic non-removable one on (3, 0) with 5 imps in slot 1, a neutral empty one on
+/// (0, 2).
+fn three(rules: &GameRuleset) -> Vec<ObjectSetup> {
+    vec![
+        garrison(
+            rules,
+            "t:garrison",
+            Pos::new(1, 0, 0),
+            Some(RED),
+            vec![imp(0, 20)],
+        ),
+        fixed(
+            rules,
+            ("t:anti_garrison", Pos::new(3, 0, 0)),
+            Some(BLUE),
+            vec![imp(1, 5)],
+            false,
+        ),
+        garrison(rules, "t:garrison", Pos::new(0, 2, 0), None, vec![]),
+    ]
+}
+
+// covers: ADV-GAR-006
+#[test]
+fn every_viewer_sees_a_map_garrison_at_its_level_and_its_flag_by_its_team() {
+    let rules = rules();
+    let state = game(&rules, 9, three(&rules));
+    let (plain, anti) = (
+        rules.adventure().object_type_by_key("t:garrison").unwrap(),
+        rules
+            .adventure()
+            .object_type_by_key("t:anti_garrison")
+            .unwrap(),
+    );
+    let word = |count| {
+        rules
+            .adventure()
+            .params()
+            .monsters()
+            .map(|w| w.count_word(count))
+    };
+    let own = |slot, count| GarrisonView {
+        level: OWNER_LEVEL,
+        stacks: vec![GarrisonStackView {
+            creature: imp(0, 1).creature,
+            count_word: word(count),
+            count: Some(count),
+        }],
+        army: Some(vec![imp(slot, count)]),
+    };
+    // Another team's at the viewer's taverns' level (none here: level 0, not even whether it is
+    // empty), its flag hidden; a neutral one nobody's team.
+    let unseen = GarrisonView {
+        level: 0,
+        stacks: vec![],
+        army: None,
+    };
+    let view = |object_type, anchor, owner, garrison, removable| MapGarrisonView {
+        object_type,
+        anchor,
+        owner,
+        garrison,
+        removable,
+    };
+    let (red_one, blue_one, neutral) = (Pos::new(1, 0, 0), Pos::new(3, 0, 0), Pos::new(0, 2, 0));
+    assert_eq!(
+        garrisons_seen(&state, &rules, RED),
+        [
+            view(plain, red_one, Some(RED), own(0, 20), Some(true)),
+            view(anti, blue_one, Some(BLUE), unseen.clone(), None),
+            view(plain, neutral, None, unseen.clone(), None),
+        ]
+    );
+    assert_eq!(
+        garrisons_seen(&state, &rules, BLUE),
+        [
+            view(plain, red_one, Some(RED), unseen.clone(), None),
+            view(anti, blue_one, Some(BLUE), own(1, 5), Some(false)),
+            view(plain, neutral, None, unseen, None),
+        ]
+    );
+    // Each view's events go to its viewer alone.
+    for event in garrison_telling(RED, &garrisons_seen(&state, &rules, RED)[0]) {
+        assert_eq!(project(&event, Viewer::Player(RED)), Some(event));
+        assert_eq!(project(&event, Viewer::Player(BLUE)), None);
+    }
+}
+
+// covers: ADV-GAR-006
+#[test]
+fn a_garrison_explored_since_a_grid_is_revealed_with_its_view() {
+    let rules = rules();
+    let state = game(&rules, 9, three(&rules));
+    let grid = state.adventure().explored(RED).unwrap().clone();
+    let (width, height, levels) = (grid.width(), grid.height(), grid.levels());
+    let seen = garrisons_seen(&state, &rules, RED);
+    let revealed = |since: &BitGrid| reveal(&state, &rules, Viewer::Player(RED), since).garrisons;
+    // From nothing explored: every garrison, as `observe` shows it; through the grid now: none; a
+    // grid of another size counts as none explored.
+    assert_eq!(revealed(&BitGrid::new(width, height, levels)), seen);
+    assert_eq!(revealed(&grid), []);
+    assert_eq!(revealed(&BitGrid::new(width + 1, height, levels)), seen);
+    // A grid with one tile of the neutral garrison explored leaves it out.
+    let mut since = BitGrid::new(width, height, levels);
+    since.set(Pos::new(0, 2, 0), true);
+    assert_eq!(revealed(&since), seen[..2]);
+}
+
+// covers: ADV-GAR-006, ADV-GAR-002
+#[test]
+fn a_garrison_battle_s_end_and_its_capture_tell_each_viewer_its_changed_view() {
+    let rules = rules();
+    let anchor = Pos::new(1, 0, 0);
+    let object = garrison(&rules, "t:garrison", anchor, Some(BLUE), vec![imp(0, 1)]);
+    let mut state = game(&rules, 300, vec![object]);
+    play(&mut state, &rules, RED, move_hero(0, &[anchor])).unwrap();
+    let events = win(&mut state, &rules);
+    // At the battle's end blue's view by slot, emptied (red's, at level 0, did not change); after
+    // the winner's levels the flag, every viewer's view, then the exchange.
+    let ended = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::BattleEnded { .. }))
+        .unwrap();
+    let told: Vec<GameEvent> = events[ended..]
+        .iter()
+        .filter(|e| {
+            matches!(
+                e,
+                GameEvent::GarrisonChanged { .. } | GameEvent::GarrisonStackSeen { .. }
+            )
+        })
+        .copied()
+        .collect();
+    let emptied = GameEvent::GarrisonChanged {
+        player: BLUE,
+        object_type: rules.adventure().object_type_by_key("t:garrison").unwrap(),
+        anchor,
+        owner: Some(BLUE),
+        level: OWNER_LEVEL,
+        slots: true,
+        removable: Some(true),
+    };
+    let mut expected = vec![emptied];
+    for viewer in [RED, BLUE] {
+        expected.extend(garrison_telling(
+            viewer,
+            &garrisons_seen(&state, &rules, viewer)[0],
+        ));
+    }
+    assert_eq!(told, expected);
+    assert_eq!(garrisons_seen(&state, &rules, BLUE)[0].owner, Some(RED));
+    let opened = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::ExchangeOpened { .. }));
+    let last = events
+        .iter()
+        .rposition(|e| matches!(e, GameEvent::GarrisonChanged { .. }));
+    assert!(last < opened);
 }

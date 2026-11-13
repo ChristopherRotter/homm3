@@ -3717,6 +3717,24 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
+id       = "ADV-GAR-006"
+title    = "What a viewer sees of a map garrison"
+context  = "adventure"
+status   = "implemented"
+summary  = "Every viewer that sees a map garrison sees its type (the anti-magic flag in it) and its owner (the flag, ADV-OWN-003); a viewer that has explored a tile of it also sees its army at its level, the levels of a town's garrison (TWN-VEW-002, TWN-VEW-003): 3 for the owner's team (a neutral garrison is nobody's) or a viewer one of whose heroes sees its entrance by Visions, else the viewer's towns with a standing Tavern, at most 2; at 0 nothing of the army (not even whether it is empty), at 1 each stack's creature packed in slot order, at 2 also its size word, at 3 its count; the army by slot and the removable flag to the owner's team only (the original shows the flag in the exchange, to the visitor). One only on the viewer's fringe has no such view (as a town's, TWN-VEW-001). E08 T114b (increment 12's design note sections 10 and 15): `h3_game::MapGarrisonView` in `GameObservation::garrisons` by type and anchor, in object order, and in `GameReveal::garrisons` for the garrisons explored since a grid; each viewer whose view a change moved is told it after the change (`GameEvent::GarrisonChanged`, then a `GarrisonStackSeen` per stack its level shows; to that viewer alone): a garrison battle's end, an exchange's army command, a capture (every viewer that sees it, before the exchange opens), a Tavern's build and a town's capture (its owners' levels: the town lane's `Told`, one for both). A change of a Visions holder's reach is not told (`TWN-STUB-13`, as a town's)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 8): garrison_popup 0x416F80 read whole (the level 3 for the record's owner's team or Visions at level 3 within reach of the entrance, hero_visions_level 0x4E5DE0, hero_visions_reach 0x4E5E10; else player_tavern_count 0x4CCE30, at most 2), garrison_quick_view_create 0x5307D0 and quick_view_army 0x530990 (0 nothing, 1 the creatures packed, 2 their size words, 3 their counts); tile_object_owner 0x40FD20 (the flag)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T1b2a; survey E09-towns.md section 12.3): town_popup 0x4167A0 sets the same levels for a town's garrison (TWN-VEW-002, TWN-VEW-003)"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-BON-001"
 title    = "The bonus visitables' kinds"
 context  = "adventure"

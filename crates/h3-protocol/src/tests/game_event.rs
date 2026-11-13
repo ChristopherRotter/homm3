@@ -666,6 +666,40 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             resource: Handle::from_raw(resource),
             amount,
         },
+        G::GarrisonChanged {
+            player,
+            object_type,
+            anchor,
+            owner,
+            level,
+            slots,
+            removable,
+        } => GameEvent::GarrisonChanged {
+            player: p(player),
+            object_type: ty(object_type),
+            anchor: pos_back(anchor),
+            owner: owner.map(p),
+            level,
+            slots,
+            removable,
+        },
+        G::GarrisonStackSeen {
+            player,
+            object_type,
+            anchor,
+            stack,
+            slot,
+        } => GameEvent::GarrisonStackSeen {
+            player: p(player),
+            object_type: ty(object_type),
+            anchor: pos_back(anchor),
+            stack: GarrisonStackView {
+                creature: Handle::from_raw(stack.creature),
+                count_word: stack.count_word,
+                count: stack.count,
+            },
+            slot,
+        },
         G::TownBuilt {
             player,
             town,
@@ -953,6 +987,48 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             },
             slot: None,
         },
+        // E08 T114b: a map garrison's whole view for its owner's team (by slot, its removable
+        // flag), then another's at a tavern level.
+        GameEvent::GarrisonChanged {
+            player: P0,
+            object_type: ty,
+            anchor: at,
+            owner: Some(P0),
+            level: 3,
+            slots: true,
+            removable: Some(false),
+        },
+        GameEvent::GarrisonStackSeen {
+            player: P0,
+            object_type: ty,
+            anchor: at,
+            stack: GarrisonStackView {
+                creature,
+                count_word: Some(2),
+                count: Some(11),
+            },
+            slot: Some(4),
+        },
+        GameEvent::GarrisonChanged {
+            player: P0,
+            object_type: ty,
+            anchor: at,
+            owner: None,
+            level: 2,
+            slots: false,
+            removable: None,
+        },
+        GameEvent::GarrisonStackSeen {
+            player: P0,
+            object_type: ty,
+            anchor: at,
+            stack: GarrisonStackView {
+                creature,
+                count_word: Some(2),
+                count: None,
+            },
+            slot: None,
+        },
         GameEvent::TownBuilt {
             player: P0,
             town: TownId::new(2),
@@ -1192,8 +1268,9 @@ pub(super) fn every_event() -> Vec<GameEvent> {
 fn every_event_maps_back_for_its_viewers_and_round_trips() {
     let all = every_event();
     let distinct: BTreeSet<String> = all.iter().map(kinds).collect();
-    // The game's 37 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`).
-    assert_eq!(distinct.len(), 37, "{distinct:?}");
+    // The game's 39 kinds of event (the adventure's as one; E08 T114a2: `ExchangeOpened`; T114b:
+    // `GarrisonChanged`, `GarrisonStackSeen`).
+    assert_eq!(distinct.len(), 39, "{distinct:?}");
     for viewer in [P0, P1] {
         let wire = events(&all, Viewer::Player(viewer));
         check(&all, viewer, &wire);

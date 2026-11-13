@@ -197,6 +197,14 @@ fn exchange(rules: &Rules, k: &str) -> AdventureOutcome {
     }
 }
 
+/// [`exchange`] after the visit flagged the garrison (E08 T114b: its views changed, ADV-GAR-006).
+fn flagged(rules: &Rules, k: &str) -> AdventureOutcome {
+    AdventureOutcome {
+        garrison_flagged: true,
+        ..exchange(rules, k)
+    }
+}
+
 /// The game of the [`CORRIDOR`] with red's hero [`HERO`] on (0, 1), blue's hero 2 on (11, 1),
 /// and `objects` (the first at object index 0).
 fn corridor(rules: &Rules, objects: Vec<ObjectSetup>) -> AdventureState {
@@ -352,7 +360,7 @@ fn an_empty_garrison_of_another_team_is_flagged_with_its_reveal() {
         );
         let (outcome, events) = walk(&mut state, &rules, &east(3), &mut stream()).unwrap();
         // The flag and its reveal around the entrance, then the exchange (ADV-GAR-003).
-        assert_eq!(outcome, exchange(&rules, "t:garrison"));
+        assert_eq!(outcome, flagged(&rules, "t:garrison"));
         assert_eq!(state.owner(0), Some(RED));
         let told = after_steps(&events);
         assert_eq!(
@@ -423,7 +431,7 @@ fn a_garrison_battle_s_end_keeps_the_survivors_or_flags_it_after_the_levels() {
             &mut events,
         );
         // Then the exchange (ADV-GAR-003), for a winner still on the map.
-        assert_eq!(given, exchange(&rules, "t:garrison"));
+        assert_eq!(given, flagged(&rules, "t:garrison"));
         assert_eq!(fought.owner(0), Some(RED));
         assert_eq!(
             events[0].kind,

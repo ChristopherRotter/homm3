@@ -7,8 +7,8 @@
 //! carries yet stays as it was, each a gap for the adventure and town lanes (SRV-Q26, SRV-Q27):
 //! a reveal's tiles, objects, heroes and towns; a hero, object or boat coming into sight without a
 //! reveal; two changes told to nobody who sees them; the views of an
-//! offer, a choice, a University and a hire dialog; a town's view moved by a Visions holder's
-//! reach; and the values the rules derive (where an added artifact or joined creatures land, a
+//! offer, a choice, a University and a hire dialog; a town's or a map garrison's view moved by a
+//! Visions holder's reach; and the values the rules derive (where an added artifact or joined creatures land, a
 //! capped gain, what a new owner's team sees of an object). The
 //! battle is its snapshots' (SRV-Q27 (1)): its events are the battle client's, and the fold only
 //! ends it.
@@ -18,7 +18,7 @@
 //! (`SRV-STUB-2`, a hero's movement points, by `MovementChanged`). A reveal's content comes after
 //! the events that a command told the viewer, when the command explored tiles for it
 //! ([`GameObservation::reveal`], E16 M5 T5c; `SRV-STUB-1` lifted): the tiles whose sight changed,
-//! the heroes, objects, empty boats and towns it newly sees. The gate is `tests/game_fold.rs`:
+//! the heroes, objects, empty boats, towns and (E08 T114b) map garrisons it newly sees. The gate is `tests/game_fold.rs`:
 //! over the golden replays the fold equals `observe` after every command for every viewer, but
 //! for the parts a stub names.
 //!
@@ -31,8 +31,9 @@ use alloc::vec::Vec;
 use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
     ArtifactPlace, Boat, Bonuses, Decision, GameEvent, GameObservation, GameReveal, Garrison,
-    Guards, HeroChange, HeroDetails, LevelUp, MapHero, Monster, Object, ObjectRef, OwnMapHero, Pos,
-    PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town, TownOwnerFacts,
+    GarrisonStack, Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object,
+    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
+    TownOwnerFacts,
 };
 use crate::wire::WireU64;
 
@@ -258,16 +259,7 @@ impl GameObservation {
                 slot,
             } => {
                 if let Some(view) = self.town_mut(town) {
-                    let garrison = &mut view.garrison;
-                    garrison.stacks.push(stack);
-                    // The garrison by slot: the stacks with their slots and counts.
-                    if let (Some(army), Some(slot)) = (garrison.army.as_mut(), slot) {
-                        army.push(ArmyStack {
-                            slot,
-                            creature: stack.creature,
-                            count: stack.count.unwrap_or_default(),
-                        });
-                    }
+                    view.garrison.see(stack, slot);
                 }
             }
             GameEvent::TownIncomeSeen {
@@ -279,6 +271,46 @@ impl GameObservation {
                 let view = self.town_mut(town);
                 if let Some(facts) = view.and_then(|view| view.owner_facts.as_mut()) {
                     facts.income.push(Amount { resource, amount });
+                }
+            }
+            // The viewer's whole view of a map garrison, its stacks following (E08 T114b,
+            // ADV-GAR-006): put in its place, a garrison the viewer did not see yet too. A change
+            // of a Visions holder's reach is not told (stub: TWN-STUB-13).
+            GameEvent::GarrisonChanged {
+                player: _,
+                object_type,
+                anchor,
+                owner,
+                level,
+                slots,
+                removable,
+            } => {
+                let view = MapGarrison {
+                    object_type,
+                    anchor,
+                    owner,
+                    garrison: Garrison {
+                        level,
+                        stacks: Vec::new(),
+                        army: slots.then(Vec::new),
+                    },
+                    removable,
+                };
+                put_garrison(&mut self.garrisons, view);
+            }
+            GameEvent::GarrisonStackSeen {
+                player: _,
+                object_type,
+                anchor,
+                stack,
+                slot,
+            } => {
+                let seen = self
+                    .garrisons
+                    .iter_mut()
+                    .find(|view| (view.object_type, view.anchor) == (object_type, anchor));
+                if let Some(view) = seen {
+                    view.garrison.see(stack, slot);
                 }
             }
             // What a building changes in its town's view comes as the owner's `TownChanged`
@@ -498,6 +530,7 @@ impl GameObservation {
             adventure,
             heroes,
             towns,
+            garrisons,
         } = reveal;
         self.adventure.reveal(adventure);
         for info in heroes {
@@ -505,6 +538,9 @@ impl GameObservation {
         }
         for view in towns {
             put(&mut self.towns, view.clone(), |view| view.town);
+        }
+        for view in garrisons {
+            put_garrison(&mut self.garrisons, view.clone());
         }
     }
 
@@ -649,6 +685,31 @@ fn put<T>(list: &mut Vec<T>, item: T, key: impl Fn(&T) -> u16) {
     match list.binary_search_by_key(&key(&item), &key) {
         Ok(at) => list[at] = item,
         Err(at) => list.insert(at, item),
+    }
+}
+
+/// Puts the map garrison `view` in its place among `list`, in their places' order
+/// ([`MapGarrison::place`]), replacing the one there.
+fn put_garrison(list: &mut Vec<MapGarrison>, view: MapGarrison) {
+    match list.binary_search_by_key(&view.place(), MapGarrison::place) {
+        Ok(at) => list[at] = view,
+        Err(at) => list.insert(at, view),
+    }
+}
+
+impl Garrison {
+    /// Adds a stack as the viewer's level shows it, after the ones before it (a town's
+    /// `TownStackSeen`, a map garrison's `GarrisonStackSeen`): to the garrison by slot too, with
+    /// its slot and count, for a viewer that sees it so.
+    fn see(&mut self, stack: GarrisonStack, slot: Option<u8>) {
+        self.stacks.push(stack);
+        if let (Some(army), Some(slot)) = (self.army.as_mut(), slot) {
+            army.push(ArmyStack {
+                slot,
+                creature: stack.creature,
+                count: stack.count.unwrap_or_default(),
+            });
+        }
     }
 }
 

@@ -125,8 +125,11 @@ pub mod wire;
 /// (E08 T114a2, the adventure lane's, `cross-lane`): a map garrison's exchange
 /// (`wire::game::Decision::Exchange`, the event `ExchangeOpened`), its army in the army commands
 /// (`wire::game::ArmyRef::MapGarrison`) and the one owner rule's refusals
-/// (`wire::game::ArmyReject`'s `NoGarrison`, `NotOwn`, `OnlyEmpty`).
-pub const PROTOCOL_VERSION: u32 = 52;
+/// (`wire::game::ArmyReject`'s `NoGarrison`, `NotOwn`, `OnlyEmpty`). v53 (E08 T114b, the
+/// adventure lane's, `cross-lane`): the map garrisons a viewer sees (`wire::game::GameObservation`'s
+/// and `GameReveal`'s `garrisons`, `wire::game::MapGarrison`) and their changes (the events
+/// `GarrisonChanged`, `GarrisonStackSeen`).
+pub const PROTOCOL_VERSION: u32 = 53;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

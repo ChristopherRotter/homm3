@@ -29,7 +29,7 @@ use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::{Decision, GameState, Rest};
 use crate::command::{AdventureSink, GameCommandError, GameEvent, Sink};
-use crate::{GameRuleset, town};
+use crate::{GameRuleset, garrisons, town};
 
 /// A battle in progress on the adventure map (ADR-0017 points 6 and 11; GAM-BAT-001, E08 T19a):
 /// the battle's state, the players owning its sides (the attacker's the visitor's; against
@@ -583,8 +583,14 @@ impl GameState {
         if let (Some(visitor), Some(hero), None) = (owners[0], heroes[0], heroes[1]) {
             let won = result.winner() == Some(BattleSide::Attacker);
             let survivors = &outcome.survivors[BattleSide::Defender.index()].stacks;
-            // E09 T18b2a: a garrison's battle (TWN-CAP-003) tells its town's changed views.
+            // E09 T18b2a: a garrison's battle (TWN-CAP-003) tells its town's changed views; E08
+            // T114b a map garrison's battle its own (ADV-GAR-006).
             let told = town::Told::before::<S>(self, rules, town.as_slice(), &[]);
+            let garrison = S::RECORDS
+                .then(|| self.adventure.garrison_at(rules.adventure(), tile))
+                .flatten()
+                .map(|(index, _)| index);
+            let garrison_told = garrisons::Told::before::<S>(self, rules, garrison.as_slice(), &[]);
             let (adventure, store) = self.adventure_with_heroes();
             let ended = adventure.end_unowned_battle(
                 (rules.core(), rules.adventure(), store),
@@ -594,6 +600,8 @@ impl GameState {
             );
             // rule: TWN-VEW-002, TWN-VEW-003
             told.tell(self, rules, sink);
+            // rule: ADV-GAR-006
+            garrison_told.tell(self, rules, sink);
             self.settle_outcome(rules, visitor, ended, sink);
         }
         // rule: TWN-CAP-003

@@ -454,6 +454,7 @@ fn game_snapshot(n: u32, battle: Option<Observation>) -> ServerMessage {
             heroes: Vec::new(),
             adventure,
             towns: Vec::new(),
+            garrisons: Vec::new(),
             battle,
         },
     }

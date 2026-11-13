@@ -217,7 +217,10 @@ impl AdventureState {
         if let Some(garrison) = self.garrison_at(part, tile) {
             self.flag_won((core, part), hero, garrison, sink);
             return if self.hero(hero).is_some() {
-                self.exchange(hero, garrison)
+                AdventureOutcome {
+                    garrison_flagged: true,
+                    ..self.exchange(hero, garrison)
+                }
             } else {
                 AdventureOutcome::default()
             };

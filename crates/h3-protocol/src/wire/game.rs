@@ -374,6 +374,9 @@ pub struct GameReveal {
     /// The viewer's views of [`AdventureReveal::towns`], in their order, as
     /// [`GameObservation::towns`] holds them (TWN-VEW-001 to -004).
     pub towns: Vec<Town>,
+    /// The viewer's views of the map garrisons a tile of which it explored since, in their
+    /// places' order, as [`GameObservation::garrisons`] holds them (ADV-GAR-006; protocol v53).
+    pub garrisons: Vec<MapGarrison>,
 }
 
 /// The adventure map's part of a [`GameReveal`] (`h3_adventure::AdventureReveal`).
@@ -431,7 +434,7 @@ pub struct RevealedArea {
 /// What one player may know of a game (`h3_game::observe`, ADR-0017 points 1 and 2;
 /// `docs/06-security.md`, "Information hiding"): the public facts, its own treasury, timed events
 /// and open decision, the heroes it sees with its own heroes' details, the adventure map, the
-/// towns and its battle as it sees them. The seed, the streams and the state hash never show
+/// towns, the map garrisons and its battle as it sees them. The seed, the streams and the state hash never show
 /// (ADR-0017 point 5).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -464,6 +467,10 @@ pub struct GameObservation {
     /// The towns the viewer sees, by town id (TWN-VEW-001 to -003): each town a tile of which
     /// it has explored, its object among [`Self::adventure`]'s ([`Object::town`]).
     pub towns: Vec<Town>,
+    /// The map garrisons the viewer sees, in their places' order ([`MapGarrison::place`];
+    /// ADV-GAR-006, protocol v53): each garrison a tile of which it has explored, its object among
+    /// [`Self::adventure`]'s by type and anchor.
+    pub garrisons: Vec<MapGarrison>,
     /// The battle of the viewer's first open decision, as its side sees it (GAM-BAT-001); other
     /// players' battles never show.
     pub battle: Option<super::Observation>,
@@ -840,6 +847,38 @@ pub struct Bonuses {
     pub luck: i8,
     /// The once-marks, a bit per kind of once-bonus.
     pub marks: u8,
+}
+
+/// A map garrison as a viewer sees it (ADV-GAR-006; protocol v53, E08 T114b): its type and
+/// anchor (its object among the view's), its owner, its army at the viewer's level (the levels of
+/// a town's garrison, TWN-VEW-002, -003) and, for its owner's team, its removable flag.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapGarrison {
+    /// Its object type's handle.
+    pub object_type: u16,
+    /// Its object's anchor.
+    pub anchor: Pos,
+    /// Its owner (its flag); none for a neutral garrison.
+    pub owner: Option<u8>,
+    /// Its army as the viewer's level shows it.
+    pub garrison: Garrison,
+    /// Whether its owner may take its troops back, for the owner's team only; none for every
+    /// other viewer.
+    pub removable: Option<bool>,
+}
+
+impl MapGarrison {
+    /// Its place among a view's map garrisons ([`GameObservation::garrisons`]): its anchor's
+    /// level, row and column, then its type (no two garrisons of one type share an anchor).
+    pub const fn place(&self) -> (u8, u16, u16, u16) {
+        (
+            self.anchor.level,
+            self.anchor.y,
+            self.anchor.x,
+            self.object_type,
+        )
+    }
 }
 
 /// A town as a viewer sees it (TWN-VEW-001 to -004): what the original shows another player on

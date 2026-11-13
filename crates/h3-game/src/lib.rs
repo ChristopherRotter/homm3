@@ -46,6 +46,7 @@
 extern crate alloc;
 
 mod command;
+mod garrisons;
 mod legal;
 mod manage;
 mod observe;
@@ -62,6 +63,7 @@ pub use command::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameCommandError, GameEvent,
     HireAnswer, NoopSink, SchoolChoice, Sink, SkillOffer, UniversityAnswer, apply,
 };
+pub use garrisons::MapGarrisonView;
 /// What [`reveal`] answers of the adventure map and the grid it reads (SRV-Q26 (a);
 /// `h3_adventure`'s types): a server keeps each viewer's last explored grid.
 pub use h3_adventure::{AdventureReveal, BitGrid, RevealedTile};

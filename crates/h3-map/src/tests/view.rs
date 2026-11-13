@@ -10,9 +10,9 @@ use h3_adventure::{
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
-    GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, OWNER_LEVEL, TAVERN_LEVELS,
-    TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands, legal_moves,
-    observe, project,
+    GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView, OWNER_LEVEL,
+    TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands,
+    legal_moves, observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -1032,6 +1032,8 @@ fn check_told(
     // E09 T18b2a (SRV-Q26): the views of the towns it is told, each the last `TownChanged` of its
     // town with the stacks and income lines that follow it.
     let mut views: Vec<TownView> = Vec::new();
+    // E08 T114b (ADV-GAR-006): the views of the map garrisons it is told, as the towns'.
+    let mut garrison_views: Vec<MapGarrisonView> = Vec::new();
     let mut garrisons: Vec<(TownId, Vec<ArmyStack>)> = before
         .towns
         .iter()
@@ -1322,6 +1324,57 @@ fn check_told(
                 prop_assert_eq!(player, viewer);
                 let view = views.last_mut().filter(|t| t.town == town);
                 prop_assert!(view.is_some(), "{:?} without its town's change", event);
+                let garrison = &mut view.unwrap().garrison;
+                garrison.stacks.push(stack);
+                prop_assert_eq!(slot.is_some(), garrison.army.is_some(), "{:?}", event);
+                if let (Some(army), Some(slot), Some(count)) =
+                    (&mut garrison.army, slot, stack.count)
+                {
+                    army.push(ArmyStack {
+                        slot,
+                        creature: stack.creature,
+                        count,
+                    });
+                }
+            }
+            GameEvent::GarrisonChanged {
+                player,
+                object_type,
+                anchor,
+                owner,
+                level,
+                slots,
+                removable,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let named =
+                    |g: &MapGarrisonView| (g.object_type, g.anchor) == (object_type, anchor);
+                let seen = before.garrisons.iter().chain(&after.garrisons).any(named);
+                prop_assert!(seen, "{:?} of a garrison the viewer does not see", event);
+                garrison_views.retain(|g| !named(g));
+                garrison_views.push(MapGarrisonView {
+                    object_type,
+                    anchor,
+                    owner,
+                    garrison: GarrisonView {
+                        level,
+                        stacks: Vec::new(),
+                        army: slots.then(Vec::new),
+                    },
+                    removable,
+                });
+            }
+            GameEvent::GarrisonStackSeen {
+                player,
+                object_type,
+                anchor,
+                stack,
+                slot,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let view = (garrison_views.last_mut())
+                    .filter(|g| (g.object_type, g.anchor) == (object_type, anchor));
+                prop_assert!(view.is_some(), "{:?} without its garrison's view", event);
                 let garrison = &mut view.unwrap().garrison;
                 garrison.stacks.push(stack);
                 prop_assert_eq!(slot.is_some(), garrison.army.is_some(), "{:?}", event);
@@ -1856,6 +1909,33 @@ fn check_told(
     let grew = ones(&after.adventure.explored) > ones(&before.adventure.explored);
     for now in &after.towns {
         let new = before.towns.iter().all(|t| t.town != now.town);
+        prop_assert!(grew || !new, "{:?} shows untold", now);
+    }
+    // E08 T114b (ADV-GAR-006): the map garrisons it sees, as the towns: a told one shows its told
+    // view, every other is as it was but for Visions' reach (`TWN-STUB-13`: a top level without
+    // the army by slot, before or after, keeps its owner and flag).
+    let place = |g: &MapGarrisonView| (g.object_type, g.anchor);
+    let by_visions =
+        |g: &MapGarrisonView| g.garrison.level == OWNER_LEVEL && g.garrison.army.is_none();
+    for was in &before.garrisons {
+        let now = after.garrisons.iter().find(|g| place(g) == place(was));
+        prop_assert!(now.is_some(), "{:?} left the view", was);
+        let now = now.unwrap();
+        if let Some(told) = garrison_views.iter().find(|g| place(g) == place(was)) {
+            prop_assert_eq!(now, told, "{:?}'s view is not the told one", place(was));
+        } else if by_visions(was) || by_visions(now) {
+            let public = |g: &MapGarrisonView| (g.owner, g.removable);
+            prop_assert_eq!(public(now), public(was), "{:?} changed untold", place(was));
+        } else {
+            prop_assert_eq!(now, was, "{:?} changed untold", place(was));
+        }
+    }
+    for told in &garrison_views {
+        let now = after.garrisons.iter().find(|g| place(g) == place(told));
+        prop_assert_eq!(now, Some(told), "{:?} told but not seen so", place(told));
+    }
+    for now in &after.garrisons {
+        let new = before.garrisons.iter().all(|g| place(g) != place(now));
         prop_assert!(grew || !new, "{:?} shows untold", now);
     }
     let named = |o: &ObjectView| (o.object_type, o.anchor);
