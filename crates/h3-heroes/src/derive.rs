@@ -17,7 +17,7 @@ use h3_contracts::{
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 
-use crate::details::{BattleBonuses, HeroDetails, PrimarySkill, check};
+use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
 use crate::spells;
 
@@ -30,8 +30,9 @@ use crate::spells;
 /// spell masteries, HER-SPL-003, and Eagle Eye, HER-SPL-004; the mana passed through), the spell
 /// bonuses (HER-BAT-012), the magic resistance (HER-BAT-013), the spell duration bonus
 /// (HER-BAT-014), the casting limits (HER-BAT-015), the spell defences (HER-BAT-016) and the
-/// opening spells (HER-BAT-017); the battle bonuses join the morale and luck (HER-ADV-008, E08
-/// T60a). The details are validated first.
+/// opening spells (HER-BAT-017); the battle `bonuses` join the morale and luck (HER-ADV-008, E08
+/// T60a; since E08 T115a the hero on the map's, an input beside the details, ADR-0013 point
+/// 15.1). The details are validated first.
 ///
 /// The maximum mana stays 0 (informative; it is derived with hero progression, E08–E10).
 ///
@@ -40,6 +41,7 @@ use crate::spells;
 /// [`DetailsError::TooManyBattleEffects`] if the effects exceed [`MAX_BATTLE_EFFECTS`].
 pub fn derive_battle_hero(
     details: &HeroDetails,
+    bonuses: BattleBonuses<'_>,
     ruleset: &Ruleset,
 ) -> Result<BattleHero, DetailsError> {
     let params = check(details, ruleset)?;
@@ -64,7 +66,7 @@ pub fn derive_battle_hero(
     // rule: HER-BAT-003
     hero.effects = morale_and_luck(
         sourced_effects(details, ruleset, Count::OncePerType),
-        details.bonuses,
+        bonuses,
     );
 
     // rule: HER-BAT-006
@@ -626,31 +628,76 @@ pub(crate) enum Count {
     OncePerType,
 }
 
+/// A visit's battle bonus under its once-mark (E08 T115a; increment 12's design note §12.2,
+/// HER-ADV-008): the morale and luck a visit gave under its mark, which the adventure's content
+/// names (the Warrior's Tomb's 0, a looted Pyramid's 1, increment 12's from 2), so this crate
+/// knows no object.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct VisitBonus {
+    /// The once-mark.
+    pub mark: u8,
+    /// The morale the visit gave.
+    pub morale: i8,
+    /// The luck the visit gave.
+    pub luck: i8,
+}
+
+/// The battle bonuses a hero is derived with (ADR-0013 point 15.1 as amended by E08 T112;
+/// HER-ADV-008, E08 T115a): the hero on the map's, which the game passes beside the details. Any
+/// value is valid.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct BattleBonuses<'a> {
+    /// The morale no once-mark names (a Pandora's Box's, an event's): the temporary source.
+    pub morale: i8,
+    /// The luck no once-mark names, as [`Self::morale`].
+    pub luck: i8,
+    /// The once-marks with their amounts, each its own source ([`EffectSource::Visit`]).
+    pub once: &'a [VisitBonus],
+}
+
+impl BattleBonuses<'_> {
+    /// No bonus: a hero off the map, or one that visited nothing since its last battle.
+    pub const NONE: BattleBonuses<'static> = BattleBonuses {
+        morale: 0,
+        luck: 0,
+        once: &[],
+    };
+}
+
 /// The morale and luck effects among `effects`, each with its source (CLT-Q40), in their order
-/// (a change of 0 left out), then the hero's battle bonuses as the temporary source's own morale
-/// and luck (HER-ADV-008; which visit gave how much is the adventure's content, not the
-/// details'): HER-BAT-003. The battle sums the changes and takes the smallest cap; content gives
-/// a source at most one effect of a kind.
+/// (a change of 0 left out), then the hero's battle bonuses: the morale and luck no once-mark names
+/// as the temporary source's, then each once-mark's as its visit's
+/// (`EffectSource::Visit { mark }`, E08 T115a: the original's +0x105 lines; a mark of no amount,
+/// the Sirens', gives none): HER-BAT-003, HER-ADV-008. The battle sums the changes and takes the
+/// smallest cap; content gives a source at most one effect of a kind.
 fn morale_and_luck<'a>(
     effects: impl Iterator<Item = (EffectSource, &'a CompiledHeroEffect)>,
-    bonuses: BattleBonuses,
+    bonuses: BattleBonuses<'_>,
 ) -> Vec<BattleEffect> {
     // rule: HER-ADV-008
-    let temporary = [
-        BattleEffect::Morale {
-            amount: bonuses.morale,
-            affects: Affects::Own,
-            source: EffectSource::Temporary,
-        },
-        BattleEffect::Luck {
-            amount: bonuses.luck,
-            affects: Affects::Own,
-            source: EffectSource::Temporary,
-        },
-    ];
+    let pair = |morale: i8, luck: i8, source: EffectSource| {
+        [
+            BattleEffect::Morale {
+                amount: morale,
+                affects: Affects::Own,
+                source,
+            },
+            BattleEffect::Luck {
+                amount: luck,
+                affects: Affects::Own,
+                source,
+            },
+        ]
+    };
+    let temporary = pair(bonuses.morale, bonuses.luck, EffectSource::Temporary);
+    let visits = bonuses
+        .once
+        .iter()
+        .flat_map(|b| pair(b.morale, b.luck, EffectSource::Visit { mark: b.mark }));
     effects
         .filter_map(|(source, effect)| sourced(effect, source))
         .chain(temporary)
+        .chain(visits)
         .filter(|e| {
             !matches!(
                 e,

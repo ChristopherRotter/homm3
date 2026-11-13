@@ -408,6 +408,16 @@ pub enum ObjectKind {
     },
 }
 
+/// How long a hero holds a timed mark (E08 T115a; increment 12's design note §12.4): the
+/// adventure's day step drops the day's, its week step the week's (ADV-BON-005, -006).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarkLifetime {
+    /// Until the next day's start (the Magic Well's).
+    Day,
+    /// Until the next week's start (the Stables').
+    Week,
+}
+
 /// A monolith's way (E08 T103a, increment 11's design note §1; ADV-TEL-001): which of the
 /// original's three classes it is, so which monoliths of its channel are its exits.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -585,6 +595,27 @@ impl ObjectKind {
             | Self::MagicSpring
             | Self::Stables { .. }
             | Self::Sirens { .. } => None,
+        }
+    }
+
+    /// How long a hero holds the timed mark a visit of this kind sets (E08 T115a; increment 12's
+    /// design note §12.4, decision 307: each kind names its lifetime, the mark is the object
+    /// type): the Magic Well's a day, the Stables' a week; none for every other kind.
+    pub const fn timed_mark(&self) -> Option<MarkLifetime> {
+        match self {
+            Self::MagicWell => Some(MarkLifetime::Day),
+            Self::Stables { .. } => Some(MarkLifetime::Week),
+            _ => None,
+        }
+    }
+
+    /// What a week mark of this kind adds to each day's land points until the week ends (E08
+    /// T115a; increment 12's design note §12.4, ADV-BON-005): the Stables' points; 0 for every
+    /// other kind.
+    pub(crate) const fn week_points(&self) -> u32 {
+        match self {
+            Self::Stables { points, .. } => *points,
+            _ => 0,
         }
     }
 

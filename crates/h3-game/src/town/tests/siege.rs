@@ -160,7 +160,9 @@ fn started(rules: &GameRuleset, game: &GameState, start: BattleStart) -> (GameSt
 /// A hero's battle hero as GAM-BAT-001 gives it, with its maximum spell points and its sex.
 fn battle_hero(game: &GameState, rules: &GameRuleset, id: HeroId) -> BattleHero {
     let details = game.hero(id).unwrap();
-    let mut hero = h3_heroes::derive_battle_hero(details, rules.core()).unwrap();
+    let mut hero =
+        h3_heroes::derive_battle_hero(details, h3_heroes::BattleBonuses::NONE, rules.core())
+            .unwrap();
     hero.magic.max_mana = h3_heroes::max_mana(details, rules.core());
     hero.sex = game.hero_sex(id);
     hero

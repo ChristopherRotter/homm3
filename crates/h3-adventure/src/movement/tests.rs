@@ -28,7 +28,7 @@ fn stack(slot: u8, creature: CreatureTypeId) -> ArmyStack {
 #[test]
 fn the_slowest_creature_picks_the_land_tables_entry() {
     let (core, part) = rules();
-    let points = |army: &[ArmyStack]| day_points(&core, &part, None, army);
+    let points = |army: &[ArmyStack]| day_points(&core, &part, None, army, 0);
     // Gogs (speed 2) slow the imps (speed 5) down to the table's third entry.
     assert_eq!(points(&[stack(0, IMP), stack(4, GOG)]), 1430);
     assert_eq!(points(&[stack(1, GOG)]), 1430);
@@ -42,7 +42,7 @@ fn the_slowest_creature_picks_the_land_tables_entry() {
     let plain = hero_details(&[]);
     let army = [stack(0, IMP), stack(4, GOG)];
     assert_eq!(land_table_points(&core, &part, Some(&plain), &army), 1430);
-    assert_eq!(day_points(&core, &part, Some(&plain), &army), 1430);
+    assert_eq!(day_points(&core, &part, Some(&plain), &army, 0), 1430);
 }
 
 // covers: ADV-MOV-001, ADV-FOG-001
@@ -57,11 +57,11 @@ fn the_heros_details_grow_its_day_points_and_radius() {
     for (level, points, radius) in [(1, 1650, 6), (2, 1800, 7), (3, 1950, 8)] {
         let hero = hero_details(&[(LOGISTICS, level), (SCOUTING, level), (PATHFINDING, level)]);
         assert_eq!(land_table_points(&core, &part, Some(&hero), &pikemen), 1500);
-        assert_eq!(day_points(&core, &part, Some(&hero), &pikemen), points);
+        assert_eq!(day_points(&core, &part, Some(&hero), &pikemen, 0), points);
         assert_eq!(hero_radius(&core, &part, Some(&hero)), radius);
         assert_eq!(hero_movement(&core, Some(&hero)).pathfinding, level);
     }
-    assert_eq!(day_points(&core, &part, None, &pikemen), 1500);
+    assert_eq!(day_points(&core, &part, None, &pikemen, 0), 1500);
     assert_eq!(hero_radius(&core, &part, None), 5);
     assert_eq!(hero_movement(&core, None), Movement::default());
     // The store by hero id: a hero it lacks has no details.

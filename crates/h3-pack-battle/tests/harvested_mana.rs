@@ -153,7 +153,6 @@ fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
         backpack: vec![],
         spells: vec![spell],
         mana: u16::from(knowledge) * 10,
-        bonuses: Default::default(),
     };
     let artillery = vec![(r.skill_by_key("base:artillery").unwrap(), 1)];
     let calid = details(
@@ -168,7 +167,8 @@ fn batch_2a_r6_the_hero_casts_in_his_ballistas_turn() {
         attacker: army(&r, &[(0, "base:familiar", 10), (1, "base:mage", 10)]),
         defender: army(&r, &[(0, "base:pegasus", 1), (1, "base:gnoll", 20)]),
         obstacles: vec![],
-        heroes: [&calid, &grindan].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
+        heroes: [&calid, &grindan]
+            .map(|d| Some(derive_battle_hero(d, h3_heroes::BattleBonuses::NONE, &r).unwrap())),
         terrain: None,
         battlefield: None,
         anti_magic: false,

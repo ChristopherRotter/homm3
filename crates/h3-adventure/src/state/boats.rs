@@ -295,7 +295,9 @@ impl AdventureState {
         sink: &mut S,
     ) {
         let details = details_of(heroes, self.heroes[index].id);
-        let maximum = day_points(core, part, details, &self.heroes[index].army);
+        let hero = &self.heroes[index];
+        let week = self.visit_marks(hero.id).week_land_points(part);
+        let maximum = day_points(core, part, details, &hero.army, week);
         self.change_surface(core, details, index, maximum);
         let hero = &mut self.heroes[index];
         hero.boat = None;

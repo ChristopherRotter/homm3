@@ -1231,7 +1231,7 @@ id       = "GAM-BAT-014"
 title    = "A battle's end clears every hero's battle bonuses, before the winner's levels"
 context  = "game"
 status   = "verified"
-summary  = "When a battle ends, whatever its result, every hero of it, winner and loser, loses its battle bonuses (the morale and luck objects gave until the end of its next battle) and their once-marks (`HeroChange::ClearBonuses`, HER-ADV-008), after the heroes' part of the outcome (GAM-BAT-002, the capture GAM-BAT-004) and before the winner's levels (GAM-BAT-008) and the visit's rest (GAM-DEC-007), so a reward won by the battle (a box's or an event's record) keeps its bonuses for the next battle. Told to the hero's owner when the hero had any; a hero without bonuses is told nothing. E08 T63b: `GameState::end_battle`."
+summary  = "When a battle ends, whatever its result, every hero of it still on the map, winner and loser, loses its battle bonuses (the morale and luck objects gave until the end of its next battle) and their once-marks (HER-ADV-008; since E08 T115a the adventure's change of its heroes on the map, `AdventureState::clear_battle_bonuses`; a hero that left the map left with them), after the heroes' part of the outcome (GAM-BAT-002, the capture GAM-BAT-004) and before the winner's levels (GAM-BAT-008) and the visit's rest (GAM-DEC-007), so a reward won by the battle (a box's or an event's record) keeps its bonuses for the next battle. Told to the hero's owner with the command's last events, after its movement (`OnceMarkChanged` per mark dropped, `BonusChanged` when its sums were not 0; before E08 T115a `HeroChange::ClearBonuses` at the clear); a hero without bonuses is told nothing. The marks a part names as outliving a battle under the profile (the Sirens' with `ADV-QUIRK-46` off) come with E08 T115b. E08 T63b: `GameState::end_battle`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1247,4 +1247,43 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "ADR-0017 point 11 (every hero in a battle loses its battle bonuses when it ends, as the original's battle_end); ADR-0013 point 15.1; increment 7's design note sections 5, 15 in E08-log.md"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-SYS-001"
+title    = "The system actor ends a player's turn as the player's own end"
+context  = "game"
+status   = "implemented"
+summary  = "The trusted host (the server's session layer, the env), never a player, may end a player's turn with its own command (`GameCommand::System(SystemCommand::EndTurn { player })`), as the original's turn timer ends a turn when its time runs out: checked and applied as the player's `EndTurn` (GAM-TRN-002), so it is refused unless the player is in the game, its turn is running and it has no open decision (the host answers them first, GAM-SYS-002, and plays its battle out, GAM-SYS-003), and while the game waits for another player's level-up (GAM-DEC-002); its events are the player's command's. A player's system command is refused (`SystemOnly`); a rejected one changes nothing. The host's clock, which decides when, stays outside the state (E16 M5 2b, T16). E16 M5 T14: `h3_game::SystemCommand`, `system.rs`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "SRV-Q31 (the user, 2026-11-13: at a turn's end the server ends the player's turn, each open decision answered by its default, a battle played out, every step a journaled command of the system actor); ADR-0017 point 2 as amended by E16 M5 T14"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-SYS-002"
+title    = "The system actor answers a player's decision with its default, past a level-up's hold"
+context  = "game"
+status   = "implemented"
+summary  = "The trusted host may answer a player's first open decision but a battle with its default (`SystemCommand::Answer { player }`): the engine takes `default_answer` (an offer declined, a chest's gold, the Arena's first skill, a School's and a University's leaving, a hire dialog's closing, a meeting's, an army dialog's and an exchange's closing, a level-up's offer by the original's choice; GAM-DEC-002, GAM-DEC-005, GAM-DEC-006, GAM-DEC-008), so the host never chooses an answer, and applies it as the player's own answer, in its turn or not. Refused for a player outside the game, without an open decision, and for a battle (`BattleOpen`: its commands are GAM-SYS-003's). The game's hold judges a system command as its player's: while a level-up is open the system's answer for its owner is admitted, every other system command refused (`WaitingForLevelUp`), as the player's own would be. E16 M5 T14."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "SRV-Q31 (the user, 2026-11-13: the level-up's owner's time an offer's setting, then default_answer); the adventure lane's 2026-10-21 note (E08 T30, decision 65: answer for a level-up's owner with default_answer after its time, as the original's network game does when its timer runs out); ADR-0017 points 2 and 6"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-SYS-003"
+title    = "The system actor plays a timed-out player's battle side"
+context  = "game"
+status   = "implemented"
+summary  = "The trusted host may give a command to the battle of a player's first open decision, for the side the player owns while it is to act (`SystemCommand::Battle { player, command }`), checked and applied as the player's own battle command (GAM-BAT-001): so the host's computer plays the side of a player whose time ran out for the rest of the battle, whoever the other side is (an unowned side stays the system's plain battle command's, which commands no owned side). Refused for a player outside the game, without a battle (`NoBattle`), for the side not to act (`NotYourSide`) and by the battle's own refusal. Which command the computer plays, and from when, is the host's (E16 M5 2b: the turn's timer running on in a battle, the chess timer between two players' heroes). E16 M5 T14."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "SRV-Q31 (the user, 2026-11-13: a battle does not stop the clock; at its end the server's computer plays the player's side for the rest of the battle; a side whose chess clock runs out is played by the computer); ADR-0017 point 2 as amended by E16 M5 T14"
   confidence = "high"

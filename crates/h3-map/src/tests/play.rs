@@ -3396,7 +3396,8 @@ fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
         | GameCommand::Answer(_)
         | GameCommand::Battle(_)
         | GameCommand::Manage(_)
-        | GameCommand::Town(_) => None,
+        | GameCommand::Town(_)
+        | GameCommand::System(_) => None,
     }
 }
 
@@ -3434,12 +3435,16 @@ fn landing(
     let kinds: Vec<AdventureEventKind> = events
         .iter()
         .filter_map(|e| match e {
-            // The movement changes come last (SRV-Q26 (b)): `view.rs`' `check_told` reads them.
+            // The movement changes come last (SRV-Q26 (b)), then since E08 T115a the bonuses':
+            // `view.rs`' `check_told` reads them.
             GameEvent::Adventure(AdventureEvent { kind, .. })
                 if !matches!(
                     kind,
                     AdventureEventKind::HeroRemoved { .. }
                         | AdventureEventKind::MovementChanged { .. }
+                        | AdventureEventKind::BonusChanged { .. }
+                        | AdventureEventKind::OnceMarkChanged { .. }
+                        | AdventureEventKind::TimedMarkChanged { .. }
                 ) =>
             {
                 Some(*kind)
@@ -5726,17 +5731,25 @@ fn check_timed(
             }
         }
     }
-    // The views a town event's build tells, after its `TownBuilt`; the turn's points restored,
-    // told last (SRV-Q26 (b): `check_told` reads them).
+    // The views a town event's build tells, after its `TownBuilt`, and since E09 T26b those its
+    // creatures tell (the owner's counts, TWN-VEW-004), after its `TownEventFired`; the turn's
+    // points restored, told last (SRV-Q26 (b)), and since E08 T115a the bonuses' and marks':
+    // `check_told` reads them all.
     let mut built = false;
     let told: Vec<GameEvent> = events[turn..]
         .iter()
         .filter(|e| {
-            built |= matches!(e, GameEvent::TownBuilt { .. });
+            built |= matches!(
+                e,
+                GameEvent::TownBuilt { .. } | GameEvent::TownEventFired { .. }
+            );
             let moved = matches!(
                 e,
                 GameEvent::Adventure(AdventureEvent {
-                    kind: AdventureEventKind::MovementChanged { .. },
+                    kind: AdventureEventKind::MovementChanged { .. }
+                        | AdventureEventKind::BonusChanged { .. }
+                        | AdventureEventKind::OnceMarkChanged { .. }
+                        | AdventureEventKind::TimedMarkChanged { .. },
                     ..
                 })
             );
@@ -7649,7 +7662,6 @@ fn check_unowned_battle_end(
                         change,
                         HeroChange::GainPrimary(_)
                             | HeroChange::RaiseSkill { .. }
-                            | HeroChange::Bonus { .. }
                             | HeroChange::LearnSpell(_)
                             | HeroChange::AddArtifact(_)
                     )
@@ -8115,14 +8127,10 @@ fn check_heroes_after_battle(
                         prop_assert!(false, "{:?} told a place", id);
                     }
                     // E08 T64b: a reward's changes after the battle, the winner's that stays (a
-                    // guarded object's, an event's held on the tile; GAM-DEC-007), and the
-                    // bonuses' end (GAM-BAT-014).
-                    HeroChange::GainPrimary(_)
-                    | HeroChange::RaiseSkill { .. }
-                    | HeroChange::Bonus { .. }
-                    | HeroChange::ClearBonuses => {
-                        let bonuses = matches!(change, HeroChange::ClearBonuses);
-                        prop_assert!(stays || bonuses, "{:?} told a reward", id);
+                    // guarded object's, an event's held on the tile; GAM-DEC-007). The bonuses'
+                    // end (GAM-BAT-014) is the hero on the map's since E08 T115a.
+                    HeroChange::GainPrimary(_) | HeroChange::RaiseSkill { .. } => {
+                        prop_assert!(stays, "{:?} told a reward", id);
                         h3_heroes::apply_change(&mut told, rules.core(), change);
                     }
                 },
@@ -8160,21 +8168,13 @@ fn check_heroes_after_battle(
         prop_assert_eq!((a.experience, a.mana), (experience, mana));
         prop_assert_eq!(a.worn.iter().flatten().count() + a.backpack.len(), items);
         prop_assert_eq!(
-            (
-                a.hero_type,
-                a.level,
-                a.primary,
-                &a.skills,
-                &a.spells,
-                a.bonuses
-            ),
+            (a.hero_type, a.level, a.primary, &a.skills, &a.spells),
             (
                 told.hero_type,
                 told.level,
                 told.primary,
                 &told.skills,
-                &told.spells,
-                told.bonuses
+                &told.spells
             )
         );
     }

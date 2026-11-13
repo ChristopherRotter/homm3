@@ -118,10 +118,10 @@ fn the_land_points_grow_by_logistics_without_a_specialty_alike_in_both_arithmeti
         let none = hero(&r, 1, &[], &[]);
         let heroes = [1, 2, 3].map(|level| (level, hero(&r, 1, &[("t:logistics", level)], &[])));
         for base in (1..=10_000).chain(LAND_TABLE) {
-            assert_eq!(land_points(&none, &r, base), base);
+            assert_eq!(land_points(&none, &r, base, 0), base);
             for (level, d) in &heroes {
                 let exact = base * (10 + u32::from(*level)) / 10;
-                assert_eq!(land_points(d, &r, base), exact, "{base} at {level}");
+                assert_eq!(land_points(d, &r, base, 0), exact, "{base} at {level}");
             }
         }
     }
@@ -156,13 +156,13 @@ fn a_logistics_specialists_points_follow_quirk_q0005() {
     for &(base, level, logistics, original, strict) in cases {
         let d = hero(&exact, level, &[("t:logistics", logistics)], &[]);
         let at = || format!("{base} at level {level}, Logistics {logistics}");
-        assert_eq!(land_points(&d, &single, base), original, "{}", at());
-        assert_eq!(land_points(&d, &exact, base), strict, "{}", at());
+        assert_eq!(land_points(&d, &single, base, 0), original, "{}", at());
+        assert_eq!(land_points(&d, &exact, base, 0), strict, "{}", at());
     }
     // Without the skill the specialty grows nothing.
     let d = hero(&exact, 12, &[], &[]);
-    assert_eq!(land_points(&d, &single, 1500), 1500);
-    assert_eq!(land_points(&d, &exact, 1500), 1500);
+    assert_eq!(land_points(&d, &single, 1500, 0), 1500);
+    assert_eq!(land_points(&d, &exact, 1500, 0), 1500);
 }
 
 // covers: HER-ADV-003
@@ -171,20 +171,40 @@ fn the_flat_bonuses_come_after_the_rate_once_per_artifact_type() {
     for r in both(movement_pack(vec![])) {
         // Batch E5's E5-1 (the table's 1560): Boots of Speed 2160, Equestrian's Gloves 1860,
         // both with Expert Logistics 2928 (⌊1560 × 1.3⌋ + 900).
-        assert_eq!(land_points(&hero(&r, 1, &[], &["t:helm"]), &r, 1560), 2160);
-        assert_eq!(land_points(&hero(&r, 1, &[], &["t:eye"]), &r, 1560), 1860);
+        assert_eq!(
+            land_points(&hero(&r, 1, &[], &["t:helm"]), &r, 1560, 0),
+            2160
+        );
+        assert_eq!(
+            land_points(&hero(&r, 1, &[], &["t:eye"]), &r, 1560, 0),
+            1860
+        );
         let both = hero(&r, 1, &[("t:logistics", 3)], &["t:helm", "t:eye"]);
-        assert_eq!(land_points(&both, &r, 1560), 2928);
+        assert_eq!(land_points(&both, &r, 1560, 0), 2928);
         // Two copies count once; a part of a worn combination counts as worn; the backpack not.
         let twice = hero(&r, 1, &[], &["t:eye", "t:eye"]);
-        assert_eq!(land_points(&twice, &r, 1560), 1860);
+        assert_eq!(land_points(&twice, &r, 1560, 0), 1860);
         let combined = hero(&r, 1, &[], &["t:circle"]);
-        assert_eq!(land_points(&combined, &r, 1560), 2160);
-        assert_eq!(land_points(&hero(&r, 1, &[], &[]), &r, 1560), 1560);
+        assert_eq!(land_points(&combined, &r, 1560, 0), 2160);
+        assert_eq!(land_points(&hero(&r, 1, &[], &[]), &r, 1560, 0), 1560);
         // The sum saturates.
         let expert = hero(&r, 1, &[("t:logistics", 3)], &["t:helm"]);
-        assert_eq!(land_points(&expert, &r, u32::MAX), u32::MAX);
-        assert_eq!(land_points(&combined, &r, u32::MAX - 10), u32::MAX);
+        assert_eq!(land_points(&expert, &r, u32::MAX, 0), u32::MAX);
+        assert_eq!(land_points(&combined, &r, u32::MAX - 10, 0), u32::MAX);
+    }
+}
+
+// covers: HER-ADV-003
+#[test]
+fn the_weeks_land_points_come_last_never_grown() {
+    for r in both(movement_pack(vec![])) {
+        // E08 T115a (increment 12's design note §12.6): the Stables' 400 after Expert Logistics'
+        // growth and the Boots' 600 (⌊1560 × 1.3⌋ + 600 + 400), not grown by Logistics.
+        let expert = hero(&r, 1, &[("t:logistics", 3)], &["t:helm"]);
+        assert_eq!(land_points(&expert, &r, 1560, 400), 3028);
+        assert_eq!(land_points(&hero(&r, 1, &[], &[]), &r, 1560, 400), 1960);
+        // Saturating.
+        assert_eq!(land_points(&expert, &r, 1560, u32::MAX), u32::MAX);
     }
 }
 

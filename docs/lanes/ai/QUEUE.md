@@ -67,6 +67,26 @@ E08 T45, T51b, T52, T58 (folded into T55b's below), T70, E23 T4c and T6's last p
 lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's fair system actor
 (folded into T14).
 
+**From the server lane** (E16 M5 T14):
+
+- 2026-11-13 (the server lane, E16 M5 T14, `claude/quirky-mccarthy-pgu2o6`, `cross-lane` with
+  the user's consent; **your path changed, informational**): `h3_game::GameCommand` gains
+  `System(SystemCommand)`, the trusted host's commands for a player whose time ran out (ADR-0017
+  point 2 amended); `crates/h3-sim/src/adventure/action.rs`' `tileless_entry` gives it no entry
+  (the host's, never a seat's; the action encoding is unchanged), and `legal_commands` never
+  lists it, so the env's seats and its neutral seat draw as before. The adventure replay format
+  is v14 (the adventure lane's version).
+
+**From the adventure lane** (E08 T115a):
+
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
+  consent; **informational**): `h3_heroes::HeroDetails` lost `bonuses` and `derive_battle_hero`
+  takes the battle bonuses beside the details (`h3_heroes::BattleBonuses::NONE` for none): your
+  `h3-sim` `encounter/hero.rs` literal and call changed so, no behaviour moved. The adventure's
+  heroes hold their bonuses and timed marks in the state (`AdventureState::visit_marks`); the env's
+  action encoding is unchanged, the observation's `OwnHeroView` gains `bonuses` and `timed` (yours
+  to encode, decision 187). The bots tables are unchanged (the part's hash did not move).
+
 **From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
 
 - 2026-11-10 (the town lane, E09 T19c1, `town/e09-t19c1`, `cross-lane` with the user's consent,

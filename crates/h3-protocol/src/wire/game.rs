@@ -34,7 +34,7 @@ pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
     GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
-    StandReject, TownCommand, TownReject, UniversityAnswer,
+    StandReject, SystemCommand, TownCommand, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -226,6 +226,11 @@ pub struct OwnMapHero {
     pub tactics: bool,
     /// The objects it holds the once-per-hero mark of (ADV-VIS-006), in the map's order.
     pub marks: Vec<ObjectRef>,
+    /// The bonuses it holds until the end of its next battle (HER-ADV-008; v57).
+    pub bonuses: Bonuses,
+    /// Its timed marks: the object types (handles) whose day's or week's mark it holds, sorted
+    /// (v57).
+    pub timed: Vec<u16>,
 }
 
 /// An object as a player sees it.
@@ -825,8 +830,6 @@ pub struct HeroDetails {
     pub spells: Vec<u16>,
     /// Its spell points.
     pub mana: u16,
-    /// The bonuses it holds until the end of its next battle (HER-ADV-008).
-    pub bonuses: Bonuses,
 }
 
 /// The levels at which a level-up last offered Wisdom and a magic school (HER-LVL-004).
@@ -859,16 +862,29 @@ pub struct Artifact {
     pub spell: Option<u16>,
 }
 
-/// The bonuses a hero holds until the end of its next battle (HER-ADV-008).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v57, E08
+/// T115a: the hero on the map's, `h3_adventure::HeroBonuses`, no longer its details').
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Bonuses {
-    /// The morale added to its side in its next battle.
+    /// The morale no once-mark names, added to its side in its next battle.
     pub morale: i8,
-    /// The luck added to its side in its next battle.
+    /// The luck no once-mark names, added to its side in its next battle.
     pub luck: i8,
-    /// The once-marks, a bit per kind of once-bonus.
-    pub marks: u8,
+    /// The once-marks with the morale and luck each visit gave, sorted by mark, unique.
+    pub once: Vec<VisitBonus>,
+}
+
+/// A visit's battle bonus under its once-mark (`h3_heroes::VisitBonus`; v57).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct VisitBonus {
+    /// The once-mark (the adventure's content names it).
+    pub mark: u8,
+    /// The morale the visit gave.
+    pub morale: i8,
+    /// The luck the visit gave.
+    pub luck: i8,
 }
 
 /// A map garrison as a viewer sees it (ADV-GAR-006; protocol v54, E08 T114b): its type and

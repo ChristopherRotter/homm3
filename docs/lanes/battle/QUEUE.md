@@ -21,6 +21,13 @@ E23, the original's battle AI, is **closed** (2026-10-24; `docs/epics/E23-origin
 
 Consolidated on 2026-10-19 (the user): the entries from E01 to E04c's closure are merged below by kind, done and duplicate parts dropped; the origin stays in brackets (an epic and task, a review report such as r3 or F-r2b-2). History: git. Items for other lanes went into their inboxes; the First Aid Tent became BAT-Q51. The addresses are readings of the executable, the reviews' not read a second time. Where the readings stand: `installation.md` §7.8–§7.33; the reviews' reports stay on `battle/e04b-t11b-review-reports` and `battle/e04c-t10b-review-reports`; their experiment candidates are in `docs/experiments/README.md` ("From the battle queue's inbox", "From the E04b review", "From E04c").
 
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
+  consent; **informational**): `h3_heroes::HeroDetails` lost `bonuses` (the battle bonuses are the
+  hero on the map's) and `derive_battle_hero(details, bonuses, ruleset)` takes them as its second
+  argument (`h3_heroes::BattleBonuses::NONE` for none, else the unmarked pair as the temporary
+  source and each once-mark as `EffectSource::Visit { mark }`): `h3-pack-battle`'s tests lost the
+  literals' `bonuses` line and pass `NONE`. No battle rule or hash moved.
+
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a), drawing a battle's start:** what the start does before the first turn (a
   siege's turrets and Catapult acting on their own in round 1, a first-acting Wraith's mana
