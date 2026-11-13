@@ -16126,3 +16126,74 @@ the census moved.
 **Versions:** adventure state hash v23, game state hash v31, protocol v57 (the server lane's,
 `cross-lane`). The part, the map import, the replay format and the env's encoding unchanged.
 T115b next.
+
+### Increment 12, round 7: T115b, the bonus visitables' visits (2026-11-14, `adventure/e08-t115b` after `shared/e08-t115b-sirens`, `cross-lane`)
+
+**The cut** (decision 327; asked at T115b's start, `AskUserQuestion`, with the `cross-lane`
+consent; T115b in two at the new state was recommended, the user chose the flag's `shared/` pull
+request, then T115b whole). **Baseline:** `master` b9431d1 (#906, T115a, merged before the
+session; CI green; the setup's `verify-once` found the engine code verified there, light gates
+only). No original data staged: nothing of the import or the census moved.
+
+- **The flag first** (`shared/e08-t115b-sirens`, #909): `quirk.adventure.sirens_again_after_battle`
+  (`QuirkFlag(41)`, `SIRENS_AGAIN_AFTER_BATTLE`; `ADV-QUIRK-46`, A-44) in `h3-content`, on in
+  `faithful` and off in `strict-fixed` (`h3-harvest`'s profile text and `packs/base/core.toml`; the
+  synthetic pack's profiles name no adventure flag, as before), `h3-pack`'s
+  `the_harvested_sirens_flag`. No encoding changed (`RULESET_HASH_VERSION` 53): the base faithful
+  hash moved 0x437388440d9286a3 to 0xb5c01c8736eb73f9, the 70 adventure replays on it re-recorded
+  (only `ruleset_hash`), `h3-server`'s record literal, the AI lane's two bot reports regenerated
+  (only `engine.core`). Design §17 had the core ruleset hash unmoved: corrected there.
+- **The weekday** (its own commit, the town lane's inbox told): `AdventureState::apply` takes
+  `(player, weekday, draws)`, `visit_held` and the revisit `(weekday, draws)`, down to `visit`;
+  `Weekday` (from 1; `index` the place in a week of pairs, a later day the last),
+  `CalendarParams::weekday(day)`, `GameState::weekday(rules)`. Every test call `Weekday::FIRST`.
+- **The visits** (`state/visitables.rs`; design §8, §9; `Effect::{Bonus, Fortune, Well, Spring,
+  Stables, Sirens}`): the `bonus` kinds' pair of the day under their once-mark, then the points to
+  the points left and the maximum (saturating) or the Swan Pond's drain, then the kind mark; the
+  Fountain's team knowledge on every visit, then its value as luck; the Well's day mark (none for a
+  full hero, the kind mark when unmarked); the Spring's knowledge and kind mark on every visit,
+  then the entrance's state; the Stables' week mark and points, then the upgrade at every visit
+  (`CreaturesUpgraded`), the nothing when neither; the Sirens' losses (`sirens_keep`: `Real`'s
+  double product, in full width, at least one; `SirensLoss` per slot), the mark either way.
+  `NothingGained { hero, object_type, anchor, why }` (`NothingWhy::{Visited, Full, Emptied}`).
+  **The Sirens' experience** (*agent's call*): the hit points are the battle part's, so the visit
+  returns the losses (`AdventureOutcome::drowned`, `Drowned`) and `GameState::give_drowned` sums
+  them (saturating) through `gained_experience` and gives them with the levels. **The battle's
+  clear** (`clear_battle_bonuses(core, part, heroes)`, moved to `visitables.rs`): every Sirens
+  kind's mark kept with the flag off (`VisitMarks::clear_bonuses(kept)`, `HeroBonuses::clears`).
+- **The blocks** (design §5): `fortunes` (by the place among the new `StaticMap::fountains`,
+  drawn in the build's first week and each week's pass as a third list of `in_object_order`,
+  `economy::fortune`); `springs` the emptied entrances' tiles (*agent's call*: no static list),
+  dropped by the week's step.
+- **The kind marks** (ADV-BON-009; decision 302): the flags' `kinds` (type and player bits),
+  `mark_kind` for the visitor's team (the visitor alone until E10), `KindKnown` to those that gained
+  it, `knows_kind`, `kinds_known`, `AdventureObservation::kinds`; set in the fifteen's visits as
+  above and in increment 7's: a gift once admitted and unmarked (the Schools before their gold, the
+  Tree before its price), a Shrine and a Witch Hut first, a University at its visit (*agent's
+  call*: the original's after its dialog). `Known::Visited` for a Fountain's and a Spring's team
+  knowledge.
+- **The wire** (`h3-protocol` v58, `cross-lane`): the four events and `NothingWhy`,
+  `Adventure::kinds`, `Known::Visited`, the fold (a kind mark inserted, the Sirens' loss as the
+  Whirlpool's, an upgrade's creature, nothing for `NothingGained`); the round-trip cases.
+- **Tests:** `h3-adventure`'s `state/tests/visitables.rs` (the Idol by the day, the Oasis and its
+  saturation, the Swan Pond; the Fountain's values and their weekly draws, its knowledge; the
+  Well's day and the full hero; the Spring's two entrances, the week's refill; the Stables' week
+  and upgrades; `sirens_keep`'s counts 90, 170, 46 812, 1 000 000 and the small parts; the Sirens
+  under both profiles; the kind marks' team and hash), `rewards.rs`' increment 7 kind marks,
+  `ruleset/tests/economy.rs`' weekday, the garrisons' kinds test with the effects; `h3-game`'s
+  `tests/visitables.rs` (the Idol on day 2 through the game, the week's days; the Sirens' 12
+  experience by the Imps' hit points); `h3-map`'s hygiene property taught the four events.
+- **The speed gate** (`cargo xtask bench-check --lane adventure`, `master` measured in
+  `target/wt-master`): every workload within +1.1 % of `master`'s count; the forks +24 to +28 Ir a
+  fork (the two empty `Option<Arc>` blocks; `AdventureEnv::fork` +18 Ir, the rest their drop; the
+  stones map's kind marks make the flags' block), the same shape per function. `fork-boxes-xl-144`
+  (+2.51 % on its file, +0.94 % on `master`) and `fork-stones-xl-144` (+2.67 %, +1.10 %)
+  re-baselined with the reason; the rest under the gate.
+- **Replays:** the 72 re-recorded from their own commands (only `adventure_state_hash_version`,
+  the checkpoints and `final_hash` moved); `h3-server`'s `army-dialog-s1` literals. The gates
+  `h3-protocol`'s `tests::game_fold`, `tests::game_session`, `h3-server`'s `tests::record`,
+  `h3-cli`'s `adventure_replays` pass. The bot reports record the part's hash, unchanged.
+
+**Versions:** adventure state hash v24, protocol v58 (the server lane's, `cross-lane`); the base
+faithful ruleset hash by #909. The part, the map import, the game state hash, the replay format and
+the env's encoding unchanged. T116 next.

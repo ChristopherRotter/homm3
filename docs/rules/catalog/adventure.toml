@@ -2132,7 +2132,7 @@ id       = "ADV-VIS-006"
 title    = "What a player knows of a visited object, and of its heroes' marks"
 context  = "adventure"
 status   = "implemented"
-summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`. Amended by E08 T84b1 (survey E08-economy.md §9.4; increment 9's design note §9): a weekly object's visit sets its visited marks first, before its gain or its empty message: a Windmill's and a Water Wheel's for every player of the visitor's team, a Mystical Garden's for the visitor's owner alone (its visitor's team since T84b2, below); each mark set anew is told to its player (`ObjectMarked`), a held one is not; never cleared, hint data the gain never reads (ADV-OWN-003 shows them; `Weekly::marks`). Amended by E08 T84b2 (the user, decision 222): a Mystical Garden's marks every player of the visitor's team too, as the Windmill's and the Water Wheel's (`ADV-QUIRK-35`, the original's own mask not reproduced; no difference until E10's teams)."
+summary  = "A visit tells its hero's owner, where the original sets the visitor's team's mark (the team's marks are the owner's knowledge until E10's teams), what the build drew for the object: a Shrine's spell and a Witch Hut's skill before their tests, a gift's drawn price (the Tree of Knowledge's) before its test, a University's skills when it opens, whether a Corpse, Wagon or Lean To is emptied at its visit and a Warrior's Tomb after its question; the owner keeps it (`AdventureObservation::known`: the object by type and anchor, while it is on the map; a find's emptying as it stands now). No other player learns it. The owner also sees each of its heroes' once-per-hero marks (`OwnHeroView::marks`, by type and anchor: a marked object stood on a tile the hero explored). E08 T62a: the state's visits' block (`Visits`), `AdventureState::observe`. Amended by E08 T84b1 (survey E08-economy.md §9.4; increment 9's design note §9): a weekly object's visit sets its visited marks first, before its gain or its empty message: a Windmill's and a Water Wheel's for every player of the visitor's team, a Mystical Garden's for the visitor's owner alone (its visitor's team since T84b2, below); each mark set anew is told to its player (`ObjectMarked`), a held one is not; never cleared, hint data the gain never reads (ADV-OWN-003 shows them; `Weekly::marks`). Amended by E08 T84b2 (the user, decision 222): a Mystical Garden's marks every player of the visitor's team too, as the Windmill's and the Water Wheel's (`ADV-QUIRK-35`, the original's own mask not reproduced; no difference until E10's teams). Since E08 T115b (increment 12's design note section 10) a Fountain of Fortune's and a Magic Spring's visit is known to the visitor's team on every visit (the original's tile team bits and the player record's +0xBC bit, which the hint reads) as `Known::Visited`: visited, nothing more, never the fountain's value nor the Spring's entrances' state."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3739,7 +3739,7 @@ id       = "ADV-BON-001"
 title    = "The bonus visitables' kinds"
 context  = "adventure"
 status   = "implemented"
-summary  = "Six kinds for the fifteen bonus visitables (increment 12's design note sections 2 and 3), none ownable or weekly, each type subclass 0 with no body: `bonus` (ten classes) with a once-mark, the morale and luck by the day of the week (seven pairs, day 1 first; a pack writes one pair for every day, or the seven), the movement added to the points left and the day's maximum, or the points left drained (not both); `fountain_of_fortune` with a once-mark and the values its draw picks among (distinct, none 0, at least one); `magic_well` (its day mark the type); `magic_spring` (per entrance); `stables` with the week's points (from 1) and the upgrade's two distinct creatures, neither a war machine; `sirens` with a once-mark and the part of a count kept (numerator at most the denominator, the denominator from 1). A part whose week has more days than a bonus names (seven) is refused. A type's kind mark (`kind_mark`): whether its visit sets the visitor's team's kind mark (the original's kinds_visited, game +0x4E344 + k, which the map hint reads; ADV-BON-009, T115b). The packs: base's fifteen, ab and sod none, the names ObjNames.txt's rows, the amounts the visit handlers' immediates as parameters, the marks 2 to 13 in the original's status bit order: the Buoy (11; mark 2, +1 morale), the Swan Pond (14; 3, +2 luck, drained), the Faerie Ring (28; 9, +1 luck), the Fountain of Fortune (30; 5, -1, +1, +2, +3), the Fountain of Youth (31; 10, +1 morale, +400), the Idol of Fortune (38; 4, +1 luck on an odd day, +1 morale on an even one, both on day 7), the Magic Spring (48), the Magic Well (49), the Mermaids (52; 11, +1 luck), the Oasis (56; 7, +1 morale, +800), the Rally Flag (64; 12, +1 morale and luck, +400), the Sirens (92; 13, keep 7 / 10), the Stables (94; 400, Cavaliers to Champions), the Temple (96; 8, +1 morale, +2 on day 7), the Watering Hole (110; 6, +1 morale, +400). Visited from a neighbour the Buoy, the Mermaids and the Sirens, the Buoy also from above; the twelve others entered, none from above (the original's class lists; E08 decision 317). The kind mark on the twelve but the Fountain of Fortune, the Stables and the Sirens, and on increment 7's fourteen whose visit sets one (the Garden of Revelation, the Learning Stone, the Library, the Marletto Tower, the Mercenary Camp, the Schools of Magic and War, the Star Axis, the Witch Hut, the Tree of Knowledge, the three Shrines, the University). E08 T113a: `ObjectKind::{Bonus, FountainOfFortune, MagicWell, MagicSpring, Stables, Sirens}`, `ObjectType::kind_mark`, the packs' tables and `kind_mark`, adventure ruleset part v20; the check against the original data (`h3-pack-adventure`'s `original_data` example, check 6: each type against both Objects.txt, ObjNames.txt, the executable's class lists and, for the Stables' points, movement.txt; the kind marks against the reading's list). Their visits come with T115b (ADV-BON-002 to -009); until then a step onto one is refused as any unbuilt visit's (`Visit`, ADV-OBJ-003) and the reach ends before it. E08 T113b (design note section 4; map import v22): the import types each of the fifteen classes at subclass 0 (another subclass none its class defines, `ImportError::Subclass`; an agent's call, as the garrisons' past 1) with no body, a Buoy, Mermaids or Sirens off water or another on water as the map has it. The census of the 160 shipped maps (`h3-map`'s `original_data`): 4 085 on 159 maps, each class's objects on the surface and underground, its maps and its most on one map as survey section 1.2, every one importing and validating. Since E08 T115a (increment 12's design note section 12.4) each kind names how long a hero holds its timed mark (`ObjectKind::timed_mark`: the Magic Well's a day, the Stables' a week; the mark is the object type), the hero on the map holds them sorted (`HeroOnMap::timed`), the adventure's day step drops the day's and its week step, first, the week's (`h3_adventure::drop_timed`, a function of one record), and the Stables' points count in each day's land points while its mark holds (`week_land_points`, HER-ADV-003's input); the visits that set them come with T115b."
+summary  = "Six kinds for the fifteen bonus visitables (increment 12's design note sections 2 and 3), none ownable or weekly, each type subclass 0 with no body: `bonus` (ten classes) with a once-mark, the morale and luck by the day of the week (seven pairs, day 1 first; a pack writes one pair for every day, or the seven), the movement added to the points left and the day's maximum, or the points left drained (not both); `fountain_of_fortune` with a once-mark and the values its draw picks among (distinct, none 0, at least one); `magic_well` (its day mark the type); `magic_spring` (per entrance); `stables` with the week's points (from 1) and the upgrade's two distinct creatures, neither a war machine; `sirens` with a once-mark and the part of a count kept (numerator at most the denominator, the denominator from 1). A part whose week has more days than a bonus names (seven) is refused. A type's kind mark (`kind_mark`): whether its visit sets the visitor's team's kind mark (the original's kinds_visited, game +0x4E344 + k, which the map hint reads; ADV-BON-009, T115b). The packs: base's fifteen, ab and sod none, the names ObjNames.txt's rows, the amounts the visit handlers' immediates as parameters, the marks 2 to 13 in the original's status bit order: the Buoy (11; mark 2, +1 morale), the Swan Pond (14; 3, +2 luck, drained), the Faerie Ring (28; 9, +1 luck), the Fountain of Fortune (30; 5, -1, +1, +2, +3), the Fountain of Youth (31; 10, +1 morale, +400), the Idol of Fortune (38; 4, +1 luck on an odd day, +1 morale on an even one, both on day 7), the Magic Spring (48), the Magic Well (49), the Mermaids (52; 11, +1 luck), the Oasis (56; 7, +1 morale, +800), the Rally Flag (64; 12, +1 morale and luck, +400), the Sirens (92; 13, keep 7 / 10), the Stables (94; 400, Cavaliers to Champions), the Temple (96; 8, +1 morale, +2 on day 7), the Watering Hole (110; 6, +1 morale, +400). Visited from a neighbour the Buoy, the Mermaids and the Sirens, the Buoy also from above; the twelve others entered, none from above (the original's class lists; E08 decision 317). The kind mark on the twelve but the Fountain of Fortune, the Stables and the Sirens, and on increment 7's fourteen whose visit sets one (the Garden of Revelation, the Learning Stone, the Library, the Marletto Tower, the Mercenary Camp, the Schools of Magic and War, the Star Axis, the Witch Hut, the Tree of Knowledge, the three Shrines, the University). E08 T113a: `ObjectKind::{Bonus, FountainOfFortune, MagicWell, MagicSpring, Stables, Sirens}`, `ObjectType::kind_mark`, the packs' tables and `kind_mark`, adventure ruleset part v20; the check against the original data (`h3-pack-adventure`'s `original_data` example, check 6: each type against both Objects.txt, ObjNames.txt, the executable's class lists and, for the Stables' points, movement.txt; the kind marks against the reading's list). Their visits since T115b (ADV-BON-002 to -009; until then a step onto one was refused as any unbuilt visit's, `Visit`, ADV-OBJ-003). E08 T113b (design note section 4; map import v22): the import types each of the fifteen classes at subclass 0 (another subclass none its class defines, `ImportError::Subclass`; an agent's call, as the garrisons' past 1) with no body, a Buoy, Mermaids or Sirens off water or another on water as the map has it. The census of the 160 shipped maps (`h3-map`'s `original_data`): 4 085 on 159 maps, each class's objects on the surface and underground, its maps and its most on one map as survey section 1.2, every one importing and validating. Since E08 T115a (increment 12's design note section 12.4) each kind names how long a hero holds its timed mark (`ObjectKind::timed_mark`: the Magic Well's a day, the Stables' a week; the mark is the object type), the hero on the map holds them sorted (`HeroOnMap::timed`), the adventure's day step drops the day's and its week step, first, the week's (`h3_adventure::drop_timed`, a function of one record), and the Stables' points count in each day's land points while its mark holds (`week_land_points`, HER-ADV-003's input); the visits that set them since T115b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3764,5 +3764,228 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "observation"
   ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-7 to E12-17, the hero standing on the Magic Wells (E12-14) and the Idol (E12-11) and visiting the Sirens, the Buoy and the Mermaids from the neighbouring water (E12-7, E12-16)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-BON-002"
+title    = "A bonus visitable's battle bonus by the day of the week"
+context  = "adventure"
+status   = "verified"
+summary  = "A `bonus` kind's visit (the Buoy, the Swan Pond, the Faerie Ring, the Fountain of Youth, the Idol of Fortune, the Mermaids, the Oasis, the Rally Flag, the Temple, the Watering Hole; increment 12's design note section 8.1): while the hero on the map does not hold the kind's once-mark, the morale and luck of the day of the week (the calendar's, GAM-CAL-002: the Idol's odd days luck, even days morale, day 7 both; the Temple's +1, day 7 +2) under the mark with their amounts (HER-ADV-008, its own battle source `EffectSource::Visit { mark }`), then its movement (ADV-BON-004), then the visitor's team's kind mark (ADV-BON-009). Holding the mark: nothing, told to the owner (`NothingGained`, `Visited`: the original's visited message), until the hero's next battle's end clears it (GAM-BAT-014). E08 T115b: `AdventureState::visit_bonus` (state/visitables.rs); the day an input of `AdventureState::apply` (`Weekday`)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10): the status bits 2 to 16, 20, 21, 25 to 29 cleared by hero_battle_bonuses_clear; visit_idol_of_fortune 0x4A12F0, visit_temple 0x4A6200 by the date +0x1F63E; visit_object 0x4A84F0's cases 11, 14, 28, 52"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-11 (the Idol day 1 luck, day 2 morale, day 7 both, the Temple day 6 +1 and day 7 +2, each battle clearing all), E12-13, E12-16"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableBonusing.json (ONE_BATTLE bonuses, the Idol's and the Temple's dayOfWeek limiters; VCMI 1.7.5, survey section 10.8)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/objects"
+  retrieved  = "2026-11-11"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-BON-003"
+title    = "A Fountain of Fortune's value"
+context  = "adventure"
+status   = "verified"
+summary  = "Each Fountain of Fortune's value is one of its kind's values with equal chances (the original's -1, +1, +2, +3, random_between(0, 3) with 0 as -1), drawn when the game is built from the setup stream and at each week's step from the game's stream, in object order with the weekly objects and the Refugee Camps (one pass, the original's map scan with case 30; increment 12's design note section 8.2). Its visit first gives the visitor's team its knowledge on every visit (ADV-VIS-006, `Known::Visited`: never the value), then, while the hero does not hold the kind's once-mark, the value as luck under it (HER-ADV-008), else nothing, told (`NothingGained`, `Visited`). No kind mark (its own tile's team bits stand for it). The value is never shown to any viewer. E08 T115b: `AdventureState::fortunes` (a block by the fountain's place among the static map's, none for a map without one), `economy::fortune`, `visit_fortune`; adventure state hash v24."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).6: the tile word's bits 13 to 16, drawn at a new game (0x4C1479) and every new week (0x4C8C9F), the draws in the walk's order among classes 54, 55, 78, 109, 112; visit_fountain_of_fortune 0x4A2480"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-12 (each -1, +1, +2 or +3, unchanged on days 2 to 7, drawn again on days 8, 15 and 22)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableBonusing.json (four rewards of 25 %, resetParameters every 7 days)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/objects"
+  retrieved  = "2026-11-11"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the list of adventure map objects' Fountain of Fortune row, as survey E08-garrisons-bonuses.md section 10.8 read it (-1 to +3, changed on a week's first day)"
+  url        = "https://heroes.thelazy.net/index.php/List_of_adventure_map_objects"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-BON-004"
+title    = "The movement objects' points"
+context  = "adventure"
+status   = "verified"
+summary  = "A `bonus` kind's points (the Oasis's 800, the Fountain of Youth's, the Rally Flag's and the Watering Hole's 400) are added at its gain (ADV-BON-002) to the hero's points left and to its day's maximum together, saturating (the original's 32 bits unbounded), so a later boarding or landing with the Admiral's Hat divides by the raised maximum (A-28's proportion); the Swan Pond's drain sets the points left to 0 and keeps the maximum (the original writes 0 even with points left). Told by the command's `MovementChanged`. E08 T115b: `AdventureState::visit_bonus`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).4: +0x4D the points left, +0x49 the day's maximum; the immediates 0x4A3D84, 0x4A26D7, 0x4A45AA, 0x4A7F85"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-13 (+800 and +400 to both, the Swan Pond's points 0 with the maximum kept at 3 200), E12-15 (the boarding by the raised maximum)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-BON-005"
+title    = "The Stables"
+context  = "adventure"
+status   = "verified"
+summary  = "The Stables' visit (increment 12's design note section 8.5; D-63 as the original): without its week mark (the type: any Stables of the type) its points (400) to the points left and the day's maximum and the week mark, which adds them to each day's land points until the week ends (HER-ADV-003's input, `week_land_points`; the week's step drops the mark first); with it no movement. Then at every visit every slot of its `from` creature (the Cavaliers) becomes its `to` (the Champions), the count kept, no price (`CreaturesUpgraded` per slot, the owner alone). Neither: nothing, told (`NothingGained`, `Visited`). No kind mark. E08 T115b: `AdventureState::visit_stables`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).4: visit_stables 0x4A60A0, bit 1, movement_bonus_stables 0x698A94, army_count_type(10), army_replace_type(10, 11), the new week's clear 0x4C8D2A"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-10 (+400 once, Champions at the revisit with no points, day 2's land points +400, the second hero's own visit)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/rewardableBonusing.json (ONE_WEEK; the Cavaliers kept at a revisit, D-63's other side)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/objects"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-BON-006"
+title    = "The Magic Well"
+context  = "adventure"
+status   = "verified"
+summary  = "A Magic Well's visit (increment 12's design note section 8.3): holding its day mark (the type: any Well of the type), nothing, told (`NothingGained`, `Visited`); else the visitor's team's kind mark, then with spell points below the hero's maximum (HER-MAN-001) the points set to it (`HeroChange::SetSpellPoints`, the game's) and the day mark; at or above nothing, told (`Full`, the original's message 79) and no mark, so the hero may drink again that day after casting. The day's step drops the mark. E08 T115b: `AdventureState::visit_well`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).4: visit_magic_well 0x4A3730, bit 0 cleared by new_day for every hero"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-14 (a full hero refused with 79 and no mark, refilled after a cast, another Well refused the same day, day 2 anew)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/magicWell.json"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/objects"
+  retrieved  = "2026-11-11"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-BON-007"
+title    = "The Magic Spring's entrances"
+context  = "adventure"
+status   = "verified"
+summary  = "A Magic Spring's visit from one of its two entrances (increment 12's design note section 8.4; D-62 as the original): on every visit first the visitor's team's knowledge (ADV-VIS-006, `Known::Visited`) and kind mark; then the entrance's state: emptied this week, nothing, told (`NothingGained`, `Emptied`); full, with spell points below twice the hero's maximum, the points set to twice it (saturating at the 16 bits) and the entrance emptied; at or above, nothing, told (`Full`, the original's 76), the entrance staying full. The other entrance keeps its own state. The week's step refills every entrance. An entrance's state is never shown. E08 T115b: `AdventureState::springs` (the emptied entrances by tile, none while all are full), `visit_spring`; adventure state hash v24."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).6: visit_magic_spring 0x4A3590, each entrance's word bit 6, the new week's 0x4C8B9C, the player record's +0xBC"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-9 (each entrance refills once a week on its own, both again at the week)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/objects/magicSpring.json (the second entrance refused: D-62's other side)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/config/objects"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the list of adventure map objects' Magic Spring row, as survey E08-garrisons-bonuses.md section 10.6 read it (the two tiles independent, each once a week)"
+  url        = "https://heroes.thelazy.net/index.php/List_of_adventure_map_objects"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-BON-008"
+title    = "The Sirens"
+context  = "adventure"
+status   = "verified"
+summary  = "The Sirens' visit (increment 12's design note section 9; D-64 as the original, A-45 fixed): holding the kind's once-mark, nothing, told (`NothingGained`, `Visited`). Else, slot by slot in slot order, a stack of more than one creature keeps trunc(count x keep), the original's double product (`kernel::num`'s `Real`: 7 / 10 correctly rounded is the double nearest 0.7, the constant 0x63E688; 90 keeps 62, 170 keeps 118), in full width (the original's 16-bit cut, A-45, `ADV-QUIRK-47`, fixed in every profile), at least one; a lone creature is kept; each slot that lost told (`SirensLoss`, the owner alone). The lost creatures' hit points (the battle part's, the game's) summed, saturating, through h3_heroes::gained_experience (HER-EXP-001's form with Learning) are the hero's experience, given with its levels (GAM-DEC-002). The mark is set either way (no battle bonus); a battle's end clears it with `quirk.adventure.sirens_again_after_battle` on (`ADV-QUIRK-46`, `faithful`: the original, the hero visits again after each battle), keeps it off (`strict-fixed`: once, the one mark for every Sirens; decision 308; GAM-BAT-014). E08 T115b: `AdventureState::visit_sirens`, `sirens_keep`, `AdventureOutcome::drowned`, `GameState::give_drowned`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).5: sirens_losses 0x527EC0 (count above 1, trunc(f32(count) x 0.7) at the x87's 53 bits, movsx eax, ax at 0x527F03), visit_sirens 0x4A5980, bit 20 cleared by hero_battle_bonuses_clear"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-7 (90, 10, 1 keep 62, 7, 1; 310 experience; bit 20), E12-8 (bit 20 cleared by a battle, the losses again)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/MiscObjects.cpp CGSirens (ceil(count x 0.3) drowned: D-64's other side)"
+  url        = "https://github.com/vcmi/vcmi/tree/1.7.5/lib/mapObjects"
+  retrieved  = "2026-11-11"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, the list of adventure map objects' Sirens row, as survey E08-garrisons-bonuses.md section 10.5 read it (the revisit after a battle called a bug, fixed in HotA)"
+  url        = "https://heroes.thelazy.net/index.php/List_of_adventure_map_objects"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-BON-009"
+title    = "The kind marks"
+context  = "adventure"
+status   = "verified"
+summary  = "A team's kind marks (increment 12's design note sections 3 and 10; decision 302; the original's kinds_visited, game +0x4E344 + k, a bit for every player of the visitor's team, which the map hint's bonus line reads): a visit of a type the part marks (`ObjectType::kind_mark`) gives each player of the visitor's team that did not hold it the type's mark, told to each of them (`KindKnown`); the team is the visitor alone until E10's teams. Where: the ten `bonus` kinds with their gain, the Magic Well when its day mark was not held, the Magic Spring on every visit; increment 7's once-per-hero gifts once the hero is admitted and unmarked (the Schools before their gold, the Tree before its price), the Shrines and the Witch Huts first, the University at the visit that opens its dialog (the original's after it). A player sees its team's marks (`AdventureObservation::kinds`), never another team's. E08 T115b: the flags' `kinds`, `AdventureState::mark_kind`, `knows_kind`, `kinds_known`; adventure state hash v24."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md section 10).1, 10.2, 10.7 and survey E08-rewards.md section 5 (the team marks; the Schools' before the gold test, the Tree's before its price, the Shrines' and the Witch Hut's before any test, the University's after its dialog)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12b.md (the capture harness, Complete 4.0 Heroes3.exe under Wine without HD, hot seat, Easy, 2026-11-12; survey E08-garrisons-bonuses.md section 15): E12-16 (the bonus line after a visit), E12-17 (the School's kind mark set before the gold test)"
   retrieved  = "2026-11-12"
   confidence = "high"

@@ -267,7 +267,7 @@ fn a_bonus_gives_the_days_pair_once_until_a_battle_then_its_movement_and_the_kin
     assert_eq!(s.visit_marks(HERO).bonuses().once, [once(3, 0, 2)]);
 }
 
-// covers: ADV-BON-003, ADV-VIS-006, ADV-WEK-001
+// covers: ADV-BON-003, ADV-VIS-006
 #[test]
 fn a_fountain_of_fortune_gives_its_weeks_value_and_its_team_knows_it() {
     let rules = visitable_rules(true);
