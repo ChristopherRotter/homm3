@@ -231,7 +231,6 @@ fn the_artifacts_give_the_originals_defences() {
         backpack: vec![],
         spells: vec![],
         mana: 0,
-        bonuses: Default::default(),
     };
     let effects = derive_battle_hero(
         &worn(&[
@@ -240,6 +239,7 @@ fn the_artifacts_give_the_originals_defences() {
             "base:orb_of_vulnerability",
             "base:badge_of_courage",
         ]),
+        h3_heroes::BattleBonuses::NONE,
         &r,
     )
     .unwrap()
@@ -259,7 +259,11 @@ fn the_artifacts_give_the_originals_defences() {
             BattleEffect::NegateImmunities,
         ]
     );
-    let only = |key: &str| derive_battle_hero(&worn(&[key]), &r).unwrap().effects;
+    let only = |key: &str| {
+        derive_battle_hero(&worn(&[key]), h3_heroes::BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects
+    };
     assert!(only("ab:armageddons_blade").contains(&immune("base:armageddon")));
     // Every Pendant its spell (Negativity above).
     for (pendant, spell_key) in [

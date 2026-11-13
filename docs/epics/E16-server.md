@@ -329,7 +329,7 @@ client lane's 2026-11-04 request, when online battles need them).
   from SRV-Q31's decisions.
 - **T16 The clock in the session** done 2026-11-13 (`E16-log.md`: `GameSession::elapse` and
   `deadline`, `GameOptions::clock`, the turn's timer, the level-up's time, the chess clocks
-  (SRV-Q32), the system's steps at an end, `GameEntry::Elapsed`; protocol v57 `GameClock`).
+  (SRV-Q32), the system's steps at an end, `GameEntry::Elapsed`; protocol v58 `GameClock`).
 - **T17 The clock hosted** (`h3-server`): `[[map]] turn_duration` (the eleven values), the
   level-up time and the battle's allowance (T16's `session::game::Clock`, today
   `Clock::UNLIMITED` in `whole.rs`), `GameSession::elapse` before every call and the game

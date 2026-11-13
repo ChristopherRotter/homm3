@@ -1927,9 +1927,6 @@ fn hash_details(details: &HeroDetails, h: &mut StateHasher) {
         spell.hash_into(h);
     }
     h.write_u16(details.mana);
-    h.write_i32(i32::from(details.bonuses.morale));
-    h.write_i32(i32::from(details.bonuses.luck));
-    h.write_u8(details.bonuses.marks);
 }
 
 /// An artifact in a hero's details' hash: its type, then 0 for no spell, else 1 and the spell.
@@ -2011,16 +2008,5 @@ impl GameState {
     /// Drops every held rest (GAM-DEC-007), for the hash's test.
     pub(crate) fn drop_rests(&mut self) {
         self.rests.clear();
-    }
-
-    /// Applies a change to a hero of the store, telling no one (tests of what the hash covers
-    /// before a rule gives the change).
-    pub(crate) fn apply_hero_change(
-        &mut self,
-        core: &h3_content::Ruleset,
-        hero: HeroId,
-        change: HeroChange,
-    ) {
-        self.update_hero(core, hero, change);
     }
 }

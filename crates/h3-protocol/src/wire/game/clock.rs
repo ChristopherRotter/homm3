@@ -1,4 +1,4 @@
-//! What a player sees of a whole game's clock (E16 M5 T16, v57; SRV-Q31, SRV-Q32): its own
+//! What a player sees of a whole game's clock (E16 M5 T16, v58; SRV-Q31, SRV-Q32): its own
 //! turn's timer, the chess clocks of its battle against another player's hero, its level-up's
 //! time, and whether the game waits for another player's level-up (never whose, nor its offers).
 //! Each time is what was left when the message was sent; a running one counts down from there on

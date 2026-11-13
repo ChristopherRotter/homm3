@@ -3136,7 +3136,7 @@ base, a battle and a unit timer; a timed-out side Defends in a battle between pl
   downtime never counts; a step a crash cut off after its `Elapsed` is taken at the first
   reading. `h3-server`'s `journal/whole.rs` writes it as `{"Elapsed":{"ms":…}}`, the format
   still 1.
-- **The wire** (protocol v57): `ServerMessage::GameClock { n, clock }` with `wire::game::GameClock`
+- **The wire** (protocol v58, after the adventure lane's T115a took v57): `ServerMessage::GameClock { n, clock }` with `wire::game::GameClock`
   (`turn`, `battle: Option<Duel>` with the attacker's and the defender's `Timer`, `level_up`,
   `waits`), each `Timer` the milliseconds left (32 bits) and whether it runs. A player is told its
   own timers and whether the game waits for another's level-up; told when that changes otherwise

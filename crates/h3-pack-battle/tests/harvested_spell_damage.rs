@@ -65,7 +65,6 @@ fn details(
         backpack: vec![],
         spells: spells.iter().map(|k| spell(r, k)).collect(),
         mana: u16::from(knowledge) * 10,
-        bonuses: Default::default(),
     }
 }
 
@@ -93,7 +92,7 @@ fn battle(
 ) -> BattleState {
     led(
         r,
-        derive_battle_hero(details, r).unwrap(),
+        derive_battle_hero(details, h3_heroes::BattleBonuses::NONE, r).unwrap(),
         defender,
         machines,
     )
@@ -351,14 +350,14 @@ fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
             backpack: vec![],
             spells: vec![],
             mana: 0,
-            bonuses: Default::default(),
         };
         let peasants = [100, 101, 102].map(|count| ("ab:peasant", count));
         let setup = BattleSetup {
             attacker: army(&r, &[("base:pikeman", 10)]),
             defender: army(&r, &peasants),
             obstacles: vec![],
-            heroes: [&caster, &tactician].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
+            heroes: [&caster, &tactician]
+                .map(|d| Some(derive_battle_hero(d, h3_heroes::BattleBonuses::NONE, &r).unwrap())),
             terrain: None,
             battlefield: None,
             anti_magic: false,

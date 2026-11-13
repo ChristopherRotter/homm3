@@ -2112,7 +2112,7 @@ pub enum ServerMessage {
         /// The player that asked: its index among the map's players.
         player: u8,
     },
-    /// What the player sees of the game's clock now (E16 M5 T16, v57; `game::GameClock`): after
+    /// What the player sees of the game's clock now (E16 M5 T16, v58; `game::GameClock`): after
     /// a join's or a record's `GameSnapshot` when it holds a timer or the game waits, and
     /// whenever it changes otherwise than by counting down (a timer started, stopped, run out or
     /// given its increment; the game waiting for another player's level-up or no longer): after

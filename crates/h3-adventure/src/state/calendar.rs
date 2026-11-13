@@ -20,7 +20,7 @@ use super::dwellings::draw_camp;
 use super::economy::{Drawn, block, contents, in_object_order, kind_at};
 use super::{Added, AdventureState, MapObject, Monster, Resolved, Weekly, aggression_between};
 use crate::command::{AdventureEvent, AdventureEventKind, Sink};
-use crate::ruleset::{AdventureRuleset, MAX_MONSTER_COUNT, ObjectTypeId, Passage};
+use crate::ruleset::{AdventureRuleset, MAX_MONSTER_COUNT, MarkLifetime, ObjectTypeId, Passage};
 use crate::setup::{Holds, Pos, Scenery, TileMask};
 
 /// A creature month's monster on `anchor` (ADV-MON-014; the original's `place_object` 0x4C9890):
@@ -47,6 +47,9 @@ impl AdventureState {
     /// `E08-economy.md` §7.3, the original's `new_day_week_events` 0x4C8AE0 to 0x4C8D19), called
     /// by the game on a week's first day after the first with the game's stream:
     ///
+    /// 0. **The week marks** (E08 T115a; increment 12's design note §12.4, §15): every hero on the
+    ///    map drops its timed marks of a week (the Stables'), before the turn's points are computed,
+    ///    so a new week's first day has no Stables' 400 (ADV-BON-005).
     /// 1. **The dwellings** (ADV-DWL-003, E08 T94b; increment 10's design note §9; survey
     ///    `E08-dwellings.md` §6.1, the original's `dwelling_week_refill` 0x4B8A60 for every
     ///    record): every dwelling refilled, owned or not, each count its growth and its guards the
@@ -73,6 +76,7 @@ impl AdventureState {
     /// it). Draws only for the weekly objects and the camps; no event for the refill or the draws
     /// (nothing shows a dwelling's counts and guards or a camp's creature, ADV-OWN-003).
     // rule: ADV-DWL-003, ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001, ADV-MON-013
+    // rule: ADV-BON-001
     pub fn start_week<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -80,6 +84,7 @@ impl AdventureState {
         draws: &mut Rng,
         sink: &mut S,
     ) {
+        self.drop_timed_marks(part, MarkLifetime::Week);
         self.dwellings = None;
         self.refill_weekly(core, part, draws);
         self.grow_monsters(core, part, sink);

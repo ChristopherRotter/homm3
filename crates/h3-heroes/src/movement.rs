@@ -28,8 +28,12 @@ use crate::details::HeroDetails;
 /// original's `hero_max_land_movement` (0x4E4990) computes the growth: the rate `f32(r ×
 /// (f32(level) × 0.05 + 1))`, the sum in single precision, `trunc((1 + sum) × base)` in its x87
 /// arithmetic, so a specialist can get one point less than the exact basis points give (D-22,
-/// batch E5's E5-2); without a specialty both give `⌊base × (10 + Logistics level) / 10⌋`.
-pub fn land_points(details: &HeroDetails, core: &Ruleset, base: u32) -> u32 {
+/// batch E5's E5-2); without a specialty both give `⌊base × (10 + Logistics level) / 10⌋`. Then
+/// `week_points`, the adventure's input (the hero on the map's week marks' points: the Stables'
+/// 400, E08 T115a; increment 12's design note §12.6, ADR-0013 point 13.6): added last, never
+/// grown (the original's `hero_max_land_movement` adds the Stables' 400 last while its bit
+/// holds, survey `E08-garrisons-bonuses.md` §10.4), saturating.
+pub fn land_points(details: &HeroDetails, core: &Ruleset, base: u32, week_points: u32) -> u32 {
     // rule: HER-ADV-003
     let points = grown(details, core, base, |effect| match *effect {
         HeroEffect::LandMovement { bp } => Some(bp),
@@ -44,6 +48,7 @@ pub fn land_points(details: &HeroDetails, core: &Ruleset, base: u32) -> u32 {
             u32::try_from(points).unwrap_or(u32::MAX),
             u32::saturating_add,
         )
+        .saturating_add(week_points)
 }
 
 /// The day's sea points from `table`, the adventure's sea points by Navigation level (0 to 3;

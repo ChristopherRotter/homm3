@@ -62,7 +62,6 @@ fn details(
         backpack: vec![],
         spells: spells.iter().map(|k| spell(r, k)).collect(),
         mana: u16::from(knowledge) * 10,
-        bonuses: Default::default(),
     }
 }
 
@@ -94,7 +93,8 @@ fn battle(
         attacker: army(r, attacker),
         defender: army(r, defender),
         obstacles: vec![],
-        heroes: heroes.map(|d| Some(derive_battle_hero(d, r).unwrap())),
+        heroes: heroes
+            .map(|d| Some(derive_battle_hero(d, h3_heroes::BattleBonuses::NONE, r).unwrap())),
         terrain: terrain.map(|t| r.terrain_by_key(t).unwrap()),
         battlefield: None,
         anti_magic: false,

@@ -42,7 +42,6 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         backpack: vec![],
         spells: vec![],
         mana: 0,
-        bonuses: Default::default(),
     };
     let one = |key: &str| Army {
         stacks: vec![ArmyStack {
@@ -55,7 +54,10 @@ fn chance(r: &BattleRuleset, (hero, level): (&str, u8), skill: u8, worn: &[&str]
         attacker: one("base:pikeman"),
         defender: one("base:gnoll"),
         obstacles: vec![],
-        heroes: [Some(derive_battle_hero(&details, r).unwrap()), None],
+        heroes: [
+            Some(derive_battle_hero(&details, h3_heroes::BattleBonuses::NONE, r).unwrap()),
+            None,
+        ],
         terrain: None,
         battlefield: None,
         anti_magic: false,

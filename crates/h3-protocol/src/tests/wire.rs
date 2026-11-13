@@ -710,7 +710,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             n: 7,
             reveal: reveal(),
         },
-        // E16 M5 T16 (v57): a player's clock.
+        // E16 M5 T16 (v58): a player's clock.
         ServerMessage::GameClock {
             n: 7,
             clock: game::GameClock::default(),
@@ -1110,7 +1110,7 @@ fn the_json_is_serdes_default_enum_form() {
         }),
         r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"palette":[{"explored":true,"view":{"Hidden":{}}}],"areas":[{"corner":{"x":2,"y":1,"level":0},"width":2,"tiles":[1,0]}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[],"garrisons":[]}}}"#
     );
-    // E16 M5 T16 (v57): a clock's times are plain numbers (32 bits: far below 2^53).
+    // E16 M5 T16 (v58): a clock's times are plain numbers (32 bits: far below 2^53).
     assert_eq!(
         server(&ServerMessage::GameClock {
             n: 3,

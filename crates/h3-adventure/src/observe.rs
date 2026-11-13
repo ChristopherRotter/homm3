@@ -35,7 +35,9 @@ use crate::fog::Sight;
 use crate::persistent::BitGrid;
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId, RiverId, RoadId};
 use crate::setup::{Pos, TileMask};
-use crate::state::{AdventureState, Boat, HeroOnMap, MapObject, Resolved, StaticTile, allied};
+use crate::state::{
+    AdventureState, Boat, HeroBonuses, HeroOnMap, MapObject, Resolved, StaticTile, allied,
+};
 
 mod reveal;
 
@@ -295,6 +297,11 @@ pub struct OwnHeroView {
     /// The objects it holds the once-per-hero mark of (ADV-VIS-006, E08 T62a), by type and
     /// anchor in the map's order: each stood on a tile the hero explored, so nothing hidden shows.
     pub marks: Vec<(ObjectTypeId, Pos)>,
+    /// Its battle bonuses with their once-marks and amounts (E08 T115a; increment 12's design
+    /// note §12.7, ADR-0016 point 6: no longer in the details' view).
+    pub bonuses: HeroBonuses,
+    /// Its timed marks, the object types whose day's or week's mark it holds (E08 T115a).
+    pub timed: Vec<ObjectTypeId>,
 }
 
 impl AdventureState {
@@ -452,6 +459,8 @@ impl AdventureState {
                 formation: hero.formation,
                 tactics: hero.tactics,
                 marks: self.marks_of(hero.id),
+                bonuses: self.visit_marks(hero.id).bonuses().clone(),
+                timed: self.visit_marks(hero.id).timed().to_vec(),
             }),
         }
     }
@@ -657,6 +666,9 @@ impl AdventureEvent {
                 | AdventureEventKind::TilesRevealed { .. }
                 | AdventureEventKind::KeyGained { .. }
                 | AdventureEventKind::MovementChanged { .. }
+                | AdventureEventKind::BonusChanged { .. }
+                | AdventureEventKind::OnceMarkChanged { .. }
+                | AdventureEventKind::TimedMarkChanged { .. }
                 | AdventureEventKind::HeroRemoved { .. }
                 | AdventureEventKind::CreaturesJoined { .. }
                 | AdventureEventKind::EventFired { .. }

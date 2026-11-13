@@ -43,7 +43,6 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: 0,
-        bonuses: Default::default(),
     };
     for key in ["base:ballistics", "base:artillery"] {
         let level = u8::try_from(rng.below(4)).unwrap();
@@ -244,7 +243,7 @@ fn random_legal_sod_heroes_besiege_every_town() {
             let details = [details(&sod, &mut rng), details(&sod, &mut rng)];
             let heroes = details
                 .clone()
-                .map(|d| derive_battle_hero(&d, &sod).unwrap());
+                .map(|d| derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, &sod).unwrap());
             // Three games in four at a town: the record of game's faction, each fort level,
             // each moat, any structures; else a special battlefield.
             let (siege, battlefield) = if game % 4 != 3 {

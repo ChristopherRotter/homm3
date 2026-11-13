@@ -113,7 +113,7 @@ Other lanes add entries here. The map client lane turns each into a task, or kee
 while the work waits.
 
 - 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
-  taken**): protocol **v57**, the whole game's clock: `ServerMessage::GameClock { n, clock }`
+  taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`
   (`wire::game::GameClock`: the player's own `turn` timer, its battle's chess clocks `battle`
   against another player's hero (`Duel`'s attacker and defender), its own `level_up` time, and
   `waits`, the game waiting for another player's level-up), each `Timer` the milliseconds left

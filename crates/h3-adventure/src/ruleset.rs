@@ -33,8 +33,8 @@ mod rewards;
 mod starting;
 
 pub use objects::{
-    BONUS_DAYS, KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, MonolithWay, ObjectKind, ObjectKindDef,
-    ObjectType, ObjectTypeDef, ObjectTypeId, Pickup, PickupDef, Visit,
+    BONUS_DAYS, KEY_COLOURS, MAX_GAIN, MAX_PICKUP_AMOUNT, MarkLifetime, MonolithWay, ObjectKind,
+    ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, Pickup, PickupDef, Visit,
 };
 pub(crate) use objects::{Effect, MAX_DWELLING_CREATURES};
 use objects::{

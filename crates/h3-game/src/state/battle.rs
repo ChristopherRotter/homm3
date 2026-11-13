@@ -21,8 +21,8 @@ use h3_contracts::{
     PlayerId, StackOrigin, StackRecord, TownId,
 };
 use h3_heroes::{
-    BattleBonuses, HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience,
-    learns_spell, lost_war_machine, max_mana, necromancy, next_capture, war_machines,
+    HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience, learns_spell,
+    lost_war_machine, max_mana, necromancy, next_capture, war_machines,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -159,13 +159,18 @@ impl GameState {
     }
 
     /// A hero's battle hero (`BattleSetup.heroes`): the hero model's translation of its details
-    /// (ADR-0013 point 2) with its maximum spell points (HER-MAN-001).
-    fn battle_hero(&self, core: &Ruleset, hero: HeroId) -> Option<BattleHero> {
+    /// (ADR-0013 point 2) with its maximum spell points (HER-MAN-001); since E08 T115a with the
+    /// hero on the map's battle bonuses beside them (ADR-0013 point 15.1 amended; increment 12's
+    /// design note §12.5, §14), none for a hero off the map.
+    pub(crate) fn battle_hero(&self, core: &Ruleset, hero: HeroId) -> Option<BattleHero> {
+        let bonuses = self.adventure().visit_marks(hero).bonuses().battle();
         self.hero(hero).and_then(|details| {
-            derive_battle_hero(details, core).ok().map(|mut battle| {
-                battle.magic.max_mana = max_mana(details, core);
-                battle
-            })
+            derive_battle_hero(details, bonuses, core)
+                .ok()
+                .map(|mut battle| {
+                    battle.magic.max_mana = max_mana(details, core);
+                    battle
+                })
         })
     }
 
@@ -486,9 +491,11 @@ impl GameState {
     /// (ADV-SEA-006, E08 T74b), its type going back free in the hero pool (TWN-SET-005, E09
     /// T7b1: the original's 0x4D9EC0); then the heroes' part
     /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then every hero of the battle, winner
-    /// and loser, loses its battle bonuses and their once-marks (GAM-BAT-014, E08 T63b:
-    /// `HeroChange::ClearBonuses`, told to its owner when it had any; the original's
-    /// `hero_battle_bonuses_clear` from `battle_end`, 0x477792, after the capture); then a
+    /// and loser still on the map, loses its battle bonuses and their once-marks (GAM-BAT-014,
+    /// E08 T63b; since E08 T115a the adventure's change of its heroes on the map,
+    /// `AdventureState::clear_battle_bonuses`, told to the owners as the command's
+    /// `BonusChanged` and `OnceMarkChanged`; the original's `hero_battle_bonuses_clear` from
+    /// `battle_end`, 0x477792, after the capture); then a
     /// surrender's price leaves the
     /// surrendering side's owner's treasury and enters the other side's owner's (GAM-BAT-005,
     /// D-13), each told to its owner. A battle against a wandering monster (E08 T20b2) or a
@@ -549,13 +556,8 @@ impl GameState {
         let sides = (owners, heroes, town.is_some());
         self.heroes_after_battle(rules, sides, outcome, winner, sink);
         // rule: GAM-BAT-014
-        for side in BattleSide::BOTH {
-            let (hero, owner) = (heroes[side.index()], owners[side.index()]);
-            let bonuses = hero.and_then(|hero| self.hero(hero).map(|d| (hero, d.bonuses)));
-            if let Some((hero, _)) = bonuses.filter(|(_, b)| *b != BattleBonuses::default()) {
-                self.change_hero(rules.core(), hero, owner, HeroChange::ClearBonuses, sink);
-            }
-        }
+        let fought: Vec<HeroId> = heroes.iter().flatten().copied().collect();
+        self.adventure.clear_battle_bonuses(&fought);
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let surrendered = match result {
             BattleResult::Surrender(side) => Some(side),
