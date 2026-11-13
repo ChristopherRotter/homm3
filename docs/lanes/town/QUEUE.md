@@ -50,6 +50,18 @@ income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, i
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): `h3-game`'s `town/view.rs`: `visions`,
+  `in_visions`, `tavern_level` and `garrison_view` are `pub(crate)` (the map garrisons' views use
+  the same levels, ADV-GAR-006, `crate::garrisons`), and `Told` holds the map garrisons' views of
+  `every`'s players too (`crate::garrisons::Told::before` with `every`, told after the towns'):
+  a Tavern's build and a town's capture tell the raised or lowered views of the map garrisons as
+  of the towns. `town/tests/view.rs` gains
+  `a_map_garrison_shows_at_a_towns_levels_and_a_new_tavern_tells_its_raised_level` (its helper
+  `map_garrison`). `TWN-STUB-13`'s text names the map garrisons too (Visions' reach untold for
+  them as for towns). `h3_adventure::AdventureOutcome` gains `garrison_flagged` (default false).
+  No version of yours moved; protocol v53 (the server lane's).
+
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
   taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the
   decisions, tag 8), so your T26a2's bump is v30; adventure replay format **v13** (`m<index>:<slot>`,

@@ -238,14 +238,16 @@ pub(crate) fn tell_all<S: Sink>(
     sink: &mut S,
 ) {
     let adventure = state.adventure();
-    let viewers = (0..state.players())
+    let views = (0..state.players())
         .filter(|_| S::RECORDS)
-        .filter_map(|p| u8::try_from(p).ok().map(PlayerId::new));
-    for viewer in viewers {
-        let explored = |pos| adventure.is_explored(viewer, pos);
-        if let Some(view) = Seer::new(state, rules, viewer).view(index, explored) {
-            tell(viewer, &view, sink);
-        }
+        .filter_map(|p| u8::try_from(p).ok().map(PlayerId::new))
+        .filter_map(|viewer| {
+            let explored = |pos| adventure.is_explored(viewer, pos);
+            let view = Seer::new(state, rules, viewer).view(index, explored);
+            view.map(|view| (viewer, view))
+        });
+    for (viewer, view) in views {
+        tell(viewer, &view, sink);
     }
 }
 

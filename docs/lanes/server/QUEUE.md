@@ -12,6 +12,21 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v53**: `wire::game::MapGarrison`
+  (type, anchor, owner, the town's `Garrison` at the viewer's level, `removable` to the owner's
+  team; `place()` its anchor's level, row, column, then its type) in `GameObservation::garrisons`
+  and `GameReveal::garrisons`, both in their places' order (the engine's are in object order: the
+  mapping sorts them); the events `GarrisonChanged { player, object_type, anchor, owner, level,
+  slots, removable }` and `GarrisonStackSeen { player, object_type, anchor, stack, slot }`, each to
+  its viewer alone, mapped both ways and in the round-trip lists (39 kinds); the fold puts a told
+  view in its place (one it did not see yet too, `put_garrison`) and adds its stacks
+  (`Garrison::see`, shared with `TownStackSeen`), the reveal's garrisons the same; `town()` maps
+  its garrison through the shared `garrison_wire`. The fold gate gains the parts "map garrisons
+  in sight" and "map garrisons", without a stub: no golden replay holds a garrison yet (E08 T116
+  adds them; a Visions holder's reach, `TWN-STUB-13`, then joins the second part if one shows
+  it). No golden replay or record literal moved.
+
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): protocol **v52** (after your T11's v50 and T12's v51): the wire's
   `ArmyRef::MapGarrison { garrison: u32 }` (a map garrison by object index, `u32::MAX` past it),

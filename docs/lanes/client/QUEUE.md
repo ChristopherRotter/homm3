@@ -43,6 +43,13 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
+  consent; **your test changed, nothing to build**): protocol **v53**: the wire's
+  `GameObservation` and `GameReveal` gain `garrisons` (`wire::game::MapGarrison`, the map
+  garrisons a player sees), so `h3-view`'s `game_record/tests.rs` literal gained `garrisons:
+  Vec::new()`; the events `GarrisonChanged` and `GarrisonStackSeen` are new (a record reader that
+  matches every event kind needs their arms).
+
 - 2026-11-12 (the server lane, E16 M5 T12, branch `claude/confident-knuth-subyc4`; **check
   your readers, nothing to build**): protocol **v51**. A whole game's fresh `GameSnapshot` (past
   half a record's bound) now comes inside a battle too, holding the battle's view in

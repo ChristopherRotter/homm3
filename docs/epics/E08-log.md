@@ -15988,3 +15988,54 @@ executables, `maps.tar`, `extracted.tar`.
 
 **Versions:** game state hash v29, adventure replay format v13, protocol v52 (the server lane's,
 `cross-lane`). The adventure state hash, the part and the map import unchanged. T114b next.
+
+### Increment 12, round 6: T114b, the garrisons' views (2026-11-13, `adventure/e08-t114b`, `cross-lane`)
+
+**The cut** (decision 325; asked at T114b's start, `AskUserQuestion`, with the `cross-lane`
+consent): whole, one pull request; protocol v53 once. **Baseline:** `master` 8380e4e (#898, T114a2,
+merged before the session; CI green on it; the setup's `verify-once` found the engine code
+verified there and ran the light gates only). No original data staged: nothing of the import or
+the census moved.
+
+- **The views** (`h3-game`'s new `garrisons.rs`; design §15's *As built*): `MapGarrisonView`
+  (`object_type`, `anchor`, `owner`, the town lane's `GarrisonView`, `removable` to the owner's
+  team) for every map garrison a tile of which the viewer explored, in object order (the map's
+  ownable objects holding `Holds::Garrison`): `GameObservation::garrisons`, and
+  `GameReveal::garrisons` for those explored now and through no tile of the grid (a grid of
+  another size as none). The level: 3 for the owner's team or a hero's Visions from the entrance,
+  else the viewer's Taverns (the town lane's `visions`, `in_visions`, `tavern_level`,
+  `garrison_view`, now `pub(crate)`).
+- **The events:** `GameEvent::GarrisonChanged { player, object_type, anchor, owner, level, slots,
+  removable }` and `GarrisonStackSeen { player, object_type, anchor, stack, slot }`, projected to
+  `player` alone. Told by `garrisons::Told` (each viewer's views before, the changed ones after; a
+  recording sink only) at a garrison battle's end (`state/battle.rs`, by the now public
+  `AdventureState::garrison_at` on the battle's tile) and an exchange's army command
+  (`state/manage.rs`' `garrison_told`); inside the town lane's `town::Told` (`every`'s players'
+  views of every garrison, after the towns') for a Tavern's build and a town's capture; a capture
+  (an empty one's visit, `give_won`'s flag) through `AdventureOutcome::garrison_flagged`, every
+  viewer that sees it told before `ExchangeOpened` (`garrisons::tell_all`). Visions' reach untold
+  (`TWN-STUB-13`, its text extended).
+- **The wire** (`cross-lane`, protocol v53): `MapGarrison` (its `place`), `GameObservation`'s and
+  `GameReveal`'s `garrisons` in their places' order, the two events both ways; the fold's
+  `put_garrison` and `Garrison::see` (shared with `TownStackSeen`); the round-trip lists (39 event
+  kinds), the JSON form, two fold cases, the gate's two parts without a stub (no golden replay
+  holds a garrison). The client lane's `h3-view` test literal (`garrisons`).
+- **Tests:** `h3-game`'s `tests/garrisons.rs`:
+  `every_viewer_sees_a_map_garrison_at_its_level_and_its_flag_by_its_team`,
+  `a_garrison_explored_since_a_grid_is_revealed_with_its_view`,
+  `a_garrison_battle_s_end_and_its_capture_tell_each_viewer_its_changed_view`, the exchange's and
+  the capture's exact events; `town/tests/view.rs`'
+  `a_map_garrison_shows_at_a_towns_levels_and_a_new_tavern_tells_its_raised_level` (Taverns,
+  Visions from the entrance, an unexplored one, the build's told view). `h3-adventure`'s outcomes
+  with `garrison_flagged`. `h3-map`'s `check_told` folds and checks the told garrison views as the
+  towns' (the plans meet garrisons with T116).
+- **The gates:** the scoped verify (no original data): `bench-check` passed (no workload moved
+  past its threshold), the determinism replays unchanged, coverage after `tell_all`'s implicit
+  `else` went; `check-lane --cross-lane`, `cargo check --workspace --all-targets` and the client
+  workspace's check.
+- **Rules:** ADV-GAR-006 written (`implemented`; the survey's §8 reading, the town popup's).
+  Docs: design §15's *As built*, §17's row; decision 325 and the task's line; the queue (T115),
+  `OVERVIEW.md`; the server, AI, town, client and map client lanes' inboxes.
+
+**Versions:** protocol v53 (the server lane's, `cross-lane`). The game and adventure state
+hashes, the part, the map import, the replay format and the env's encoding unchanged. T115 next.
