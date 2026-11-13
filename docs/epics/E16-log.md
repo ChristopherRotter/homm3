@@ -2920,3 +2920,38 @@ green, the sandbox's full verify passed). No original data. Branch
   `tests/whole.rs`: a seat finds its hero by its moves, the other player's question is answered
   none, the hero moves along a path of the tree over the network, and the record holds no
   answer; `tests/record.rs` counts the start's events apart.
+
+### M5 T12 — T7b's two findings (2026-11-12)
+
+The task (the epic's "M5 part 2"; T7b's reviewer's two left findings, `### M5 part 1's reviewer
+agent` above). Baseline: `master` 698eb84 (#895, T11; its code verified in the sandbox). No
+original data. Branch `claude/confident-knuth-subyc4`.
+
+- **A viewer's open battle by its identity** (`session::game::BattleKey`, *provisional*: the
+  battle's heroes by side and its tile, as `BattleStarted` names it; a hero is in one battle at a
+  time): `Viewer::battle` holds the key of the battle whose `Snapshot` it was sent, not whether
+  one is open. After a command the battle's own `Snapshot` goes to a viewer only when its open
+  battle (`GameState::battle`, its first decision's) differs from the one it holds, the held one
+  dropped when the command ended *that* battle (the session's sink now keeps each ended battle's
+  key with its last view). Before, a `BattleStarted` for a player whose first battle was open
+  resent the first's `Snapshot` as the second's opening. Unreachable while a turn group is one
+  player (a battle is its owner's first decision, so nothing else is applied before it ends), so
+  no test reaches it: the golden run (`tests/game_session.rs`' `check`) shows every reachable
+  order unchanged; concurrent battles (ADR-0017 point 7) are not in part 2.
+- **A player's own rejections inside a battle bounded in its record:** `Viewer::refresh` sends
+  the fresh `GameSnapshot` past half the bound inside a battle too; its observation holds the
+  battle's view (`GameObservation::battle`), as a join's mid-battle does, which the client lane's
+  reader already takes as a later snapshot of the battle open (`h3_view::game_record`, E17 M7
+  T4, R3-1). The battle's own `Snapshot` is not resent after it (the viewer still holds the
+  battle). So only one command's messages may take a record beyond its bound.
+- **Protocol v51** (the messages unchanged, their order new); the record format stays 5.
+- **Tests:** `h3-protocol` `tests/game_session.rs`: `a_players_own_rejections_inside_a_battle_
+  keep_its_record_within_its_bound` (the duel replay up to its first battle, 2 000 refused
+  end-of-turns by the player in it: each fresh snapshot holds the battle, no battle `Snapshot`
+  resent, the record from a snapshot and within its bound throughout, the state untouched; it
+  fails with the fix taken out); `a_record_is_cut_at_its_snapshots_within_its_bound` now expects
+  fresh snapshots inside battles (and none held back: its count of the start's frames after
+  the first snapshot fixed, which the held-back battles had hidden).
+- **Docs:** the lane's `TRAPS.md` (the record's cut, the battle's key), the client lane's inbox
+  (v51). `docs/06-security.md` is a shared path: its "Not covered yet" sentence on rejections
+  inside a battle beyond the bound is now stale and goes with T13's `shared/` change.

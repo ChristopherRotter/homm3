@@ -499,7 +499,7 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
   past the army's left to `NoSlot`; `ArmyCommandError::NoGarrison` for an index holding none), the
   garrison's army written through `army_left`. `Revisit` takes `visited_at_end`. The build forced
   two of T114b's pieces here: the replay text's `m<index>:<slot>` (**adventure replay format
-  v13**) and `h3-protocol`'s mapping (`cross-lane`, protocol v51: the wire's `MapGarrison`, the
+  v13**) and `h3-protocol`'s mapping (`cross-lane`, protocol v52: the wire's `MapGarrison`, the
   three errors, the decision and its event, the fold of the owner's decision).
 
 ###### 14. The battles (GAM-BAT-001 amended, ADV-GAR-005; D-60 as the original)

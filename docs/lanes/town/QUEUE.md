@@ -53,7 +53,7 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
   taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the
   decisions, tag 8), so your T26a2's bump is v30; adventure replay format **v13** (`m<index>:<slot>`,
-  a map garrison's army) and protocol **v51** (the server lane's, `cross-lane`); every adventure
+  a map garrison's army) and protocol **v52** (the server lane's, `cross-lane`); every adventure
   golden replay re-recorded (versions and hash lines only). The one owner rule is in
   `h3-adventure`'s `state/manage.rs`: `held` gives each army with its bar ownership (a hero's and
   the group the player's, a map garrison its owner's when removable, nobody's when not), so your

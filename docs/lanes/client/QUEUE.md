@@ -13,23 +13,11 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T1b3b — the catalogue, part 2d: the end of a scenario
-
-- **Scope** (decision 14): the end of a scenario (`game_main` after play from 0x4EF80B: the path
-  from play's end to the menu loop, with `network_client_flag` 0x6972B8 (*inferred*), which gates
-  the result screens, and `game_reload_reset` clearing it; victory, defeat, their clips and
-  messages; the win screen `scenario_win_screen` 0x4F3F60 with `HSANIM`, `HSLOOP`, the score and
-  its call before the entry; the new entry `high_score_entry` 0x4E91D0 with `HighName.pcx` and `HiScore.dat`'s
-  write; the lost one `scenario_lose_screen` 0x4EE2B0 with clip 34 and `UltimateLose`). Into
-  `E27-design.md` §5. The campaigns' path (0x4EF8C9 on, `Endgame`) only noted (E20).
-- **Acceptance:** as T1a's. **Depends on:** T1b3a (done: design §4). **Status:** ready.
-
 #### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
 
 - **Scope:** the shell's clips: `original-data/shell-videos.vid` exists (made on the user's
   computer at T1a1, rebuilt at T1b3a with three Smacker copies for CLT-Q96, design §1: 13 of
-  `VIDEO.VID`'s entries; a clip T1b3b places beyond them is added the same way, reading the
-  installation only); the harness's `VIDEO.VID` holding both
+  `VIDEO.VID`'s entries; T1b3b needs no other, design §5.9); the harness's `VIDEO.VID` holding both
   archives' clips (`setup.sh`; `h3ab_ahd.vid` stays whole beside it); the harness's steps to every
   catalogued screen and its probes (the runbook, a section of its own); the reference captures of
   each screen (stills; a clip's frames where a screen plays one), each recorded twice; the start
@@ -37,7 +25,8 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   more than half a context.
 - **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
   same or each difference listed; the harness check passes; the Definition of Done.
-- **Depends on:** T1b3b (the user's computer only if T1b3b adds a clip). **Status:** ready after T1b3b.
+- **Depends on:** T1b3b (done 2026-11-12: design §5; no clip added, so no need of the user's
+  computer for clips). **Status:** ready.
 
 #### E27 M1 T3 — M1's closure and M2's refinement
 
@@ -54,6 +43,13 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-12 (the server lane, E16 M5 T12, branch `claude/confident-knuth-subyc4`; **check
+  your readers, nothing to build**): protocol **v51**. A whole game's fresh `GameSnapshot` (past
+  half a record's bound) now comes inside a battle too, holding the battle's view in
+  `observation.battle`, with no battle `Snapshot` after it: `h3_view::game_record` already reads
+  it as a later snapshot of the open battle (R3-1); a live seat must not take it as a new battle
+  or a reconnect. A battle's own `Snapshot` opens only a battle the player does not hold yet
+  (unchanged on every reachable path).
 - 2026-11-12 (the server lane, E16 M5 T11, branch `claude/vibrant-albattani-ml282o`; **for online
   play, nothing to do before it**): protocol **v50**, the game's queries: a seat sends `GameQuery {
   seq, query }` and gets `GameAnswer { n, seq, answer }`, unnumbered (`n` the number of its last
