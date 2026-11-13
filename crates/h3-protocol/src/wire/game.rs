@@ -34,7 +34,7 @@ pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
     GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
-    StandReject, TownCommand, TownReject, UniversityAnswer,
+    StandReject, SystemCommand, TownCommand, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -226,10 +226,10 @@ pub struct OwnMapHero {
     pub tactics: bool,
     /// The objects it holds the once-per-hero mark of (ADV-VIS-006), in the map's order.
     pub marks: Vec<ObjectRef>,
-    /// The bonuses it holds until the end of its next battle (HER-ADV-008; v56).
+    /// The bonuses it holds until the end of its next battle (HER-ADV-008; v57).
     pub bonuses: Bonuses,
     /// Its timed marks: the object types (handles) whose day's or week's mark it holds, sorted
-    /// (v56).
+    /// (v57).
     pub timed: Vec<u16>,
 }
 
@@ -862,7 +862,7 @@ pub struct Artifact {
     pub spell: Option<u16>,
 }
 
-/// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v56, E08
+/// The bonuses a hero on the map holds until the end of its next battle (HER-ADV-008; v57, E08
 /// T115a: the hero on the map's, `h3_adventure::HeroBonuses`, no longer its details').
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -875,7 +875,7 @@ pub struct Bonuses {
     pub once: Vec<VisitBonus>,
 }
 
-/// A visit's battle bonus under its once-mark (`h3_heroes::VisitBonus`; v56).
+/// A visit's battle bonus under its once-mark (`h3_heroes::VisitBonus`; v57).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct VisitBonus {

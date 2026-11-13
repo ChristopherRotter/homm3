@@ -355,7 +355,7 @@ fn every_part() -> AdventureObservation {
                     formation: EngineFormation::Tight,
                     tactics: false,
                     marks: vec![(Handle::from_raw(9), p(1, 1, 0))],
-                    // E08 T115a (v56): the battle bonuses with their once-marks, the timed marks.
+                    // E08 T115a (v57): the battle bonuses with their once-marks, the timed marks.
                     bonuses: h3_adventure::HeroBonuses {
                         morale: -3,
                         luck: 2,

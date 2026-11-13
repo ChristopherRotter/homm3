@@ -58,7 +58,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   names (a Pandora's Box's, an event's) as `EffectSource::Temporary`, each once-mark's own
   amounts as `EffectSource::Visit { mark }` (the Warrior's Tomb's mark 0: −3 morale; a looted
   Pyramid's 1: −2 luck; increment 12's from 2 with T115b), the original's +0x105 lines. On the
-  wire (protocol v56) the bonuses left `HeroDetails` for `OwnMapHero::bonuses` (with each mark's
+  wire (protocol v57) the bonuses left `HeroDetails` for `OwnMapHero::bonuses` (with each mark's
   amounts) and `::timed` (the Magic Well's and the Stables' marks), changed by the adventure
   events `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged`. No client literal moved.
 

@@ -455,7 +455,7 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
    after a command as `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged` (the owner's, after
    `MovementChanged`; `AdventureEventKind` is `Copy`, so no list rides on it); the view's
    `OwnHeroView::bonuses`, `::timed`. Game state hash v31, adventure state hash v23, protocol
-   v56. The Sirens' kept mark (3) waits for its visit (T115b).
+   v57. The Sirens' kept mark (3) waits for its visit (T115b).
 
 ##### Part D — the game, the env, batch E12 and the cut (`h3-game`)
 

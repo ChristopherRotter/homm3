@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v13 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v14 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -22,7 +22,9 @@
 //! in the town's faction's record; v12 `revisit <hero>`, the entered object under the hero visited
 //! again, E08 T105b2; v13 a map garrison's army in a slot, `m<index>:<slot>`, the garrison by its
 //! object index, E08 T114a2: its exchange's army commands, and `answer close` closes an exchange
-//! too):
+//! too; v14 the system actor's own commands for a player, E16 M5 T14: `system for <player>
+//! end-turn`, `system for <player> answer default` (its first open decision's default answer),
+//! `system for <player> battle <command>` (its side's)):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -35,6 +37,8 @@
 //!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
 //!     "system battle wait",           #   the battle replays' text without the side letter;
 //!                                     #   `system battle …`: the unowned side's
+//!     "system for 1 answer default",  #   `system for <player> end-turn|answer default|battle
+//!                                     #   …`: the system's for a player (format 14)
 //!     "0 army split 1:0 1:3 5",       #   `<player> army …` (`m12:0`: a map garrison's slot,
 //!     "0 army move 1:2 m12:4",        #   format 13), `formation …`, `tactics …`,
 //!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`: a
@@ -46,7 +50,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 13
+//! format = 14
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -85,7 +89,7 @@ use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     ChestChoice, Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position,
-    SchoolChoice, SkillOffer, TownCommand, UniversityAnswer,
+    SchoolChoice, SkillOffer, SystemCommand, TownCommand, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -280,7 +284,8 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// without the side, which is the actor's in its battle; a management command (E08 T51a) by its
 /// own words ([`format_manage`]); an answer (E08 T63a) by its kind and words ([`format_answer`]);
 /// a `BuildBoat` (E08 T84b2) by its Shipyard's type index and anchor; a town's build (format v11,
-/// E09 T18b1) by its town and building; a `Revisit` (format v12, E08 T105b2) by its hero.
+/// E09 T18b1) by its town and building; a `Revisit` (format v12, E08 T105b2) by its hero; a
+/// system command (format v14, E16 M5 T14) by `for`, its player and its words.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -288,12 +293,19 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
         Actor::System => "system".to_owned(),
     };
     match command {
-        GameCommand::Battle(command) => {
-            let text = crate::format_command(BattleSide::Attacker, *command);
-            let (_, text) = text.split_once(' ').unwrap_or_default();
-            format!("{player} battle {text}")
-        }
+        GameCommand::Battle(command) => format!("{player} battle {}", format_battle(*command)),
         GameCommand::EndTurn => format!("{player} end-turn"),
+        // Format v14 (E16 M5 T14): the system actor's own commands, for the player they name.
+        GameCommand::System(command) => {
+            let words = match command {
+                SystemCommand::EndTurn { .. } => "end-turn".to_owned(),
+                SystemCommand::Answer { .. } => "answer default".to_owned(),
+                SystemCommand::Battle { command, .. } => {
+                    format!("battle {}", format_battle(*command))
+                }
+            };
+            format!("{player} for {} {words}", command.player().raw())
+        }
         // E08 T14b: an answer to the player's open decision (format v2; typed since v7, T63a).
         GameCommand::Answer(answer) => format!("{player} answer {}", format_answer(*answer)),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
@@ -534,6 +546,33 @@ fn parse_pos(word: &str) -> Option<Pos> {
     ))
 }
 
+/// A battle command as the battle replays write it ([`crate::format_command`]) without the side.
+fn format_battle(command: h3_battle::Command) -> String {
+    let text = crate::format_command(BattleSide::Attacker, command);
+    let (_, text) = text.split_once(' ').unwrap_or_default();
+    text.to_owned()
+}
+
+/// The rest of `words` as a battle command written by [`format_battle`].
+fn parse_battle<'a>(words: impl Iterator<Item = &'a str>) -> Option<h3_battle::Command> {
+    let rest: Vec<&str> = words.collect();
+    crate::parse_command(&format!("A {}", rest.join(" ")))
+        .ok()
+        .map(|(_, command)| command)
+}
+
+/// A system command's words after `for` (format v14, E16 M5 T14): the player, then `end-turn`,
+/// `answer default` or `battle <command>`.
+fn parse_system<'a>(mut words: impl Iterator<Item = &'a str>) -> Option<SystemCommand> {
+    let player = PlayerId::new(words.next()?.parse().ok()?);
+    match words.next()? {
+        "end-turn" => Some(SystemCommand::EndTurn { player }),
+        "answer" => (words.next()? == "default").then_some(SystemCommand::Answer { player }),
+        "battle" => parse_battle(words).map(|command| SystemCommand::Battle { player, command }),
+        _ => None,
+    }
+}
+
 /// Parses a command written by [`format_command`].
 ///
 /// # Errors
@@ -552,12 +591,9 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
     let command = match words.next() {
         Some("end-turn") => GameCommand::EndTurn,
         Some("answer") => GameCommand::Answer(parse_answer(words.by_ref()).ok_or_else(bad)?),
-        Some("battle") => {
-            let rest: Vec<&str> = words.by_ref().collect();
-            let (_, command) =
-                crate::parse_command(&format!("A {}", rest.join(" "))).map_err(|_| bad())?;
-            GameCommand::Battle(command)
-        }
+        Some("battle") => GameCommand::Battle(parse_battle(words.by_ref()).ok_or_else(bad)?),
+        // Format v14 (E16 M5 T14): the system actor's own commands.
+        Some("for") => GameCommand::System(parse_system(words.by_ref()).ok_or_else(bad)?),
         Some("move") => {
             let hero = words
                 .next()

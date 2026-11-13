@@ -363,6 +363,48 @@ fn a_defender_that_wins_holds_the_game_until_it_answers_outside_its_turn() {
     play(&mut state, &rules, RED, step).unwrap();
 }
 
+// covers: GAM-SYS-002, GAM-DEC-002
+#[test]
+fn the_systems_default_answer_passes_the_level_ups_hold() {
+    let rules = rules();
+    let game = with_second_red(&rules, 950);
+    let (mut held, _) = end(&game, &rules, &won_by(BattleSide::Defender, 2));
+    assert_eq!(held.waiting_for(), Some(BLUE));
+    // The hold judges a system command as its player's: red's are held, blue's pass it.
+    use super::system::system;
+    let waiting = Err(GameCommandError::WaitingForLevelUp(BLUE));
+    for command in [
+        SystemCommand::EndTurn { player: RED },
+        SystemCommand::Answer { player: RED },
+        SystemCommand::Battle {
+            player: RED,
+            command: h3_battle::Command::Wait,
+        },
+    ] {
+        assert_eq!(system(&mut held, &rules, command), waiting);
+    }
+    let wait = SystemCommand::Battle {
+        player: BLUE,
+        command: h3_battle::Command::Wait,
+    };
+    assert_eq!(
+        system(&mut held, &rules, wait),
+        Err(GameCommandError::NoBattle)
+    );
+    let end_blue = SystemCommand::EndTurn { player: BLUE };
+    let not_blues = Err(GameCommandError::NotYourTurn(BLUE));
+    assert_eq!(system(&mut held, &rules, end_blue), not_blues);
+    // Its answer is blue's default, outside blue's turn; then red's turn goes on.
+    let default = default_answer(&held, &rules, BLUE).unwrap();
+    let mut own = held.clone();
+    let told = play(&mut own, &rules, BLUE, GameCommand::Answer(default)).unwrap();
+    let answered = system(&mut held, &rules, SystemCommand::Answer { player: BLUE });
+    assert_eq!((answered, &held), (Ok(told), &own));
+    assert_eq!(held.waiting_for(), None);
+    assert_eq!(held.hero(BLUE_HERO).unwrap().level, 2);
+    system(&mut held, &rules, SystemCommand::EndTurn { player: RED }).unwrap();
+}
+
 // covers: GAM-BAT-008, HER-EXP-003
 #[test]
 fn the_scenarios_level_limit_bounds_the_levels_in_play() {

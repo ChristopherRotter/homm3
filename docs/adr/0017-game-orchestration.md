@@ -167,8 +167,18 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    as an agent's choices (point 4): the server's or the env's bot. The faithful policy is the
    original's battle AI, which the battle lane ports (E08 decision 27); it may read the whole
    battle state, as the original's does, since it runs in the trusted host; until then the env
-   plays the side at random. Its other commands stay the server lane's (M5), which also picks
-   its default for a battle whose player is gone. `Viewer::Player(PlayerId)` and `Viewer::Spectator`, which sees
+   plays the side at random. **Its own commands** (E16 M5 T14, SRV-Q31; built by the server
+   lane) are one closed variant, `GameCommand::System(SystemCommand)`, each naming the player it
+   acts for and checked and applied as that player's own command: `EndTurn { player }` (its
+   turn running, no open decision), `Answer { player }` (its first open decision but a battle,
+   answered by `default_answer`, which the engine takes: the host never chooses an answer) and
+   `Battle { player, command }` (the side the player owns while it is to act: the host's
+   computer plays a timed-out player's side for the rest of the battle, so the system actor
+   commands an owned side through this command alone). The game's hold (point 6) judges a
+   system command as its player's: a level-up's owner's default answer passes it. A player's
+   system command is refused (`SystemOnly`). They are not among the legal commands: the host
+   issues them by its clock, which stays outside the state, as its battle policy does; every
+   step is a journaled command. Removing a player comes with E10. `Viewer::Player(PlayerId)` and `Viewer::Spectator`, which sees
    public facts only. Increment 1 builds the player variants; the system actor and the spectator
    come with the server's M5 as additive variants. Contexts never see these types: a context's
    `apply` takes the `PlayerId`, its `observe` and `project` a viewer of its own (a player, or
@@ -1162,3 +1172,9 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
   garrison's battle and the anti-magic flag, the bonuses from the hero on the map, the clear's
   kept marks. Drafted in E08 T108b (survey `E08-garrisons-bonuses.md`); batch E12's outcome
   (T111, §15: every row as read) folded in.
+- 2026-11-13 (E16 M5 T14, the server lane's `cross-lane` pull request with its `shared:` commit;
+  the user at SRV-Q31 and at T14's start): point 2: the system actor's own commands,
+  `GameCommand::System(SystemCommand)` (`EndTurn`, `Answer` by `default_answer`, `Battle` for a
+  timed-out player's side), each naming its player and applied as that player's command; the
+  hold judges them as the player's; refused from a player (`SystemOnly`); not listed among the
+  legal commands (GAM-SYS-001 to GAM-SYS-003).

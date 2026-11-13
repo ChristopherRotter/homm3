@@ -494,7 +494,7 @@ impl GameObservation {
                     own.max_movement = max_movement;
                 }
             }
-            // Then its battle bonuses and timed marks (v56, E08 T115a): the marks dropped, the
+            // Then its battle bonuses and timed marks (v57, E08 T115a): the marks dropped, the
             // sums, the marks gained, each kept sorted.
             AdventureEvent::BonusChanged { hero, morale, luck } => {
                 if let Some(own) = self.own_mut(hero) {

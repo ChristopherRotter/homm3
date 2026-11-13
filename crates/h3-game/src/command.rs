@@ -19,6 +19,7 @@ use h3_heroes::{Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
+use crate::system::SystemCommand;
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
 
@@ -30,8 +31,10 @@ pub enum Actor {
     Player(PlayerId),
     /// The trusted layer that hosts the game (the server's session layer, the env), never a
     /// player (E08 T20b2): it plays a battle's unowned side (a wandering monster's) with a policy
-    /// of its own, and commands no owned side. Its other commands (ending a player's turn,
-    /// answering a decision with its default, removing a player) come with the server lane's M5.
+    /// of its own, and commands an owned side only for its player ([`GameCommand::System`]). Its
+    /// own commands ([`SystemCommand`], E16 M5 T14) end a player's turn, answer its decision with
+    /// its default and play its battle side when its time runs out; removing a player comes with
+    /// E10.
     System,
 }
 
@@ -55,6 +58,9 @@ pub enum GameCommand {
     /// E09 decision 45, T18b1): checked and applied as an adventure command is, with no hero and
     /// no visit (the original's town list opens the hall).
     Town(TownCommand),
+    /// A command of the system actor for a player ([`SystemCommand`]; ADR-0017 point 2, E16 M5
+    /// T14): the system's alone, refused from a player (`SystemOnly`).
+    System(SystemCommand),
 }
 
 /// An answer to a pending decision, typed by the decision's kind (ADR-0017 point 6; E08 decision
@@ -244,8 +250,11 @@ pub enum GameCommandError {
     /// The battle rejected the command.
     Battle(h3_battle::CommandError),
     /// A command the system actor does not issue: its commands are an unowned side's battle
-    /// commands (E08 T20b2).
+    /// commands (E08 T20b2) and its own ([`GameCommand::System`], E16 M5 T14).
     NotForSystem,
+    /// A system command ([`GameCommand::System`]) from a player: the system actor's alone
+    /// (ADR-0017 point 2, E16 M5 T14).
+    SystemOnly,
     /// An answer of another kind than the actor's first open decision (E08 T30; typed by kind
     /// since T63a): a level-up's for an offer, an offer's for a level-up, anything but `Close`
     /// for a meeting or an army dialog.
@@ -287,8 +296,9 @@ impl fmt::Display for GameCommandError {
             Self::NotYourSide => f.write_str("the side to act is not the player's"),
             Self::Battle(error) => write!(f, "{error}"),
             Self::NotForSystem => {
-                f.write_str("the system actor issues only an unowned side's commands")
+                f.write_str("the system actor issues only an unowned side's and its own commands")
             }
+            Self::SystemOnly => f.write_str("only the system actor issues a system command"),
             Self::WrongAnswer => f.write_str("the answer does not fit the open decision"),
             Self::WaitingForLevelUp(p) => {
                 write!(f, "the game waits for player {}'s level-up", p.raw())
@@ -837,8 +847,10 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 
 /// Applies a command of `actor` to the game (ADR-0017 point 1): validated against the state and
 /// the trusted actor, then applied; the events go to `sink`. The system actor issues only an
-/// unowned side's battle commands ([`Actor::System`], E08 T20b2). While a level-up is open the
-/// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002).
+/// unowned side's battle commands ([`Actor::System`], E08 T20b2) and its own for a player
+/// ([`GameCommand::System`], E16 M5 T14), which no player issues. While a level-up is open the
+/// game waits for its owner: every other actor's command is rejected (E08 T30, GAM-DEC-002), but
+/// the system's command for the owner, judged as the owner's (its default answer past the hold).
 /// After the command the rests whose owners have no open decision run (GAM-DEC-007, E08 T63b).
 /// Each battle the command ends goes to the sink as it ended ([`Sink::battle_ended`]; SRV-Q27
 /// (1)). Last, a sink that keeps events ([`Sink::RECORDS`]) is told each hero's movement points
@@ -846,7 +858,7 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 /// owner; SRV-Q26 (b)) and since E08 T115a its battle bonuses and timed marks
 /// (`AdventureEventKind::BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged`; `h3_adventure::
 /// OwnHeroes`).
-// rule: GAM-DEC-002, GAM-DEC-007
+// rule: GAM-DEC-002, GAM-DEC-007, GAM-SYS-002
 ///
 /// # Errors
 ///
@@ -858,7 +870,7 @@ pub fn apply<S: Sink>(
     command: GameCommand,
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
-    state.check_held(actor)?;
+    state.check_held(held_as(actor, &command))?;
     // What the command changes of the heroes' movement (SRV-Q26 (b)) and, since E08 T115a, of
     // their battle bonuses and timed marks is told after it.
     let own = S::RECORDS.then(|| state.adventure().own_heroes());
@@ -868,6 +880,16 @@ pub fn apply<S: Sink>(
         own.tell(state.adventure(), &mut AdventureSink(sink));
     }
     Ok(())
+}
+
+/// The actor the game's hold judges `actor`'s `command` by: a system command for a player as
+/// the player's own (ADR-0017 point 2, E16 M5 T14: the level-up's owner's default answer past
+/// the hold).
+fn held_as(actor: Actor, command: &GameCommand) -> Actor {
+    match (actor, command) {
+        (Actor::System, GameCommand::System(system)) => Actor::Player(system.player()),
+        _ => actor,
+    }
 }
 
 /// [`apply`]'s command, checked by the game's hold.
@@ -882,11 +904,15 @@ fn run<S: Sink>(
         (Actor::System, GameCommand::Battle(command)) => {
             return state.system_battle_command(rules, command, sink);
         }
+        (Actor::System, GameCommand::System(command)) => {
+            return crate::system::run(state, rules, command, sink);
+        }
         (Actor::System, _) => return Err(GameCommandError::NotForSystem),
         (Actor::Player(player), command) => (player, command),
     };
     match command {
         GameCommand::EndTurn => state.end_turn(rules, player, sink),
+        GameCommand::System(_) => Err(GameCommandError::SystemOnly),
         GameCommand::Answer(answer) => state.answer(rules, player, answer, sink),
         GameCommand::Battle(command) => state.battle_command(rules, player, command, sink),
         GameCommand::Manage(command) => state.manage(rules, player, command, sink),

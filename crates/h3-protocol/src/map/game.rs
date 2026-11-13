@@ -415,7 +415,7 @@ fn hero_details(d: &EngineDetails) -> HeroDetails {
     }
 }
 
-/// A hero on the map's battle bonuses on the wire (v56, E08 T115a).
+/// A hero on the map's battle bonuses on the wire (v57, E08 T115a).
 fn bonuses(b: &HeroBonuses) -> Bonuses {
     Bonuses {
         morale: b.morale,
@@ -424,7 +424,7 @@ fn bonuses(b: &HeroBonuses) -> Bonuses {
     }
 }
 
-/// A visit's battle bonus on the wire (v56).
+/// A visit's battle bonus on the wire (v57).
 pub(crate) const fn visit_bonus(b: EngineVisitBonus) -> VisitBonus {
     VisitBonus {
         mark: b.mark,

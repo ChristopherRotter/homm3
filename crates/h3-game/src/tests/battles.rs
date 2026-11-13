@@ -307,6 +307,69 @@ fn each_owner_sees_its_side_and_no_one_else_the_battle() {
 /// Plays `game`'s battle to its end, each owner to act picking its last legal command (an attack
 /// where it can), and returns the events of the last command, checked against the battle's own
 /// outcome of it.
+// covers: GAM-SYS-003, GAM-SYS-002
+#[test]
+fn the_system_plays_a_players_side_as_its_own_commands() {
+    let rules = rules();
+    let (game, _, _) = attacked(&rules, 5);
+    let (owner, side) = to_act(&game);
+    let waiting = if owner == RED { BLUE } else { RED };
+    let battle = game.battle(RED).unwrap().state().clone();
+    let listed = legal(&battle, &rules, side);
+    let for_side = |player, command| SystemCommand::Battle { player, command };
+    // Every listed command of the owner's applies from the system as the owner's own.
+    for command in &listed {
+        let GameCommand::Battle(battle_command) = command else {
+            panic!("{command:?} is no battle command")
+        };
+        let mut own = game.clone();
+        let mut told = Vec::new();
+        apply(
+            &mut own,
+            &rules,
+            Actor::Player(owner),
+            command.clone(),
+            &mut told,
+        )
+        .unwrap();
+        let mut by_system = game.clone();
+        let events = system::system(&mut by_system, &rules, for_side(owner, *battle_command));
+        assert_eq!(events, Ok(told));
+        assert_eq!(by_system, own);
+    }
+    // Refused for the side not to act, a player without a battle, a stranger, the battle's own
+    // refusal; the battle has no default answer, nor may the plain battle command (an unowned
+    // side's) command an owned side.
+    let mut probe = game.clone();
+    let any = Command::Wait;
+    use GameCommandError as E;
+    let stranger = PlayerId::new(5);
+    for (command, error) in [
+        (for_side(waiting, any), E::NotYourSide),
+        (for_side(GREEN, any), E::NoBattle),
+        (for_side(stranger, any), E::UnknownPlayer(stranger)),
+        (
+            for_side(owner, Command::EndTactics),
+            E::Battle(
+                h3_battle::validate(&battle, rules.battle(), side, Command::EndTactics)
+                    .unwrap_err(),
+            ),
+        ),
+        (SystemCommand::Answer { player: owner }, E::BattleOpen),
+        (SystemCommand::EndTurn { player: RED }, E::DecisionOpen),
+    ] {
+        assert_eq!(system::system(&mut probe, &rules, command), Err(error));
+    }
+    let plain = apply(
+        &mut probe,
+        &rules,
+        Actor::System,
+        GameCommand::Battle(any),
+        &mut NoopSink,
+    );
+    assert_eq!(plain, Err(E::NoBattle));
+}
+
 fn play_out(game: &mut GameState, rules: &GameRuleset) -> (Vec<GameEvent>, BattleOutcome) {
     for _ in 0..2000 {
         let (owner, side) = to_act(game);
@@ -862,7 +925,11 @@ fn the_battle_errors_read_well() {
         ),
         (
             GameCommandError::NotForSystem,
-            "the system actor issues only an unowned side's commands",
+            "the system actor issues only an unowned side's and its own commands",
+        ),
+        (
+            GameCommandError::SystemOnly,
+            "only the system actor issues a system command",
         ),
     ] {
         assert_eq!(error.to_string(), text);

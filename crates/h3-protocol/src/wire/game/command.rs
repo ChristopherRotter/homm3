@@ -3,6 +3,8 @@
 //! it ([`GameReject`], `h3_game::GameCommandError` one to one, a battle's refusal as the battle
 //! wire's [`RejectCode`]). A command names no player: the actor is the connection's seat (ADR-0018
 //! point 6), and the engine validates every value against the state and the actor (ADR-0008).
+//! The one that does is the system actor's ([`SystemCommand`], E16 M5 T14, v56): the host's, in
+//! its journal and its records; the engine refuses it from a seat ([`GameReject::SystemOnly`]).
 //!
 //! The same rules as [`super`]'s; the variants' meaning is documented on the engine's types,
 //! named in each variant's comment. Provisional (E16 M5 part 1's review): the shapes.
@@ -45,6 +47,34 @@ pub enum GameCommand {
     Town {
         /// The command.
         command: TownCommand,
+    },
+    /// The system actor's own command for a player (E16 M5 T14, v56): the host's alone.
+    System {
+        /// The command.
+        command: SystemCommand,
+    },
+}
+
+/// The system actor's own command for a player (`h3_game::SystemCommand`; E16 M5 T14, v56).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum SystemCommand {
+    /// Ends the player's turn (GAM-SYS-001).
+    EndTurn {
+        /// The player.
+        player: u8,
+    },
+    /// Answers the player's first open decision with its default (GAM-SYS-002).
+    Answer {
+        /// The player.
+        player: u8,
+    },
+    /// A command to the player's battle side while it is to act (GAM-SYS-003).
+    Battle {
+        /// The player.
+        player: u8,
+        /// The battle's command.
+        command: Command,
     },
 }
 
@@ -378,6 +408,8 @@ pub enum GameReject {
     },
     /// A command the system actor does not issue.
     NotForSystem {},
+    /// A system command from a player (E16 M5 T14, v56): the system actor's alone.
+    SystemOnly {},
     /// An answer of another kind than the open decision.
     WrongAnswer {},
     /// The game waits for this player's answer to its level-up.

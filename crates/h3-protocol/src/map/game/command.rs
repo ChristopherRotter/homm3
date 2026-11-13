@@ -8,15 +8,15 @@
 
 use h3_adventure::{AdventureCommand as EngineAdventure, AdventureCommandError, StandError};
 use h3_content::{CreatureTypeId, Formation as EngineFormation};
-use h3_contracts::{HeroId, TownId};
+use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Answer as EngineAnswer, ArenaChoice as EngineArena, ArmyCommand as EngineArmy,
     ArmyCommandError, ArmyRef as EngineArmyRef, ArmySlot as EngineSlot,
     ArtifactPlace as EnginePlace, BuildingId, ChestChoice as EngineChest, Consent as EngineConsent,
     GameCommand as EngineCommand, GameCommandError, HireAnswer as EngineHire, HireError,
     Manage as EngineManage, ManageError, Position, SchoolChoice as EngineSchool,
-    SkillOffer as EngineOffer, TownCommand as EngineTown, TownCommandError,
-    UniversityAnswer as EngineUniversity,
+    SkillOffer as EngineOffer, SystemCommand as EngineSystem, TownCommand as EngineTown,
+    TownCommandError, UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -27,7 +27,8 @@ use crate::wire::game::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
     GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, Pos,
-    SchoolChoice, SkillOffer, StandReject, TownCommand, TownReject, UniversityAnswer,
+    SchoolChoice, SkillOffer, StandReject, SystemCommand, TownCommand, TownReject,
+    UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).
@@ -60,6 +61,21 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 EngineTown::Build { town, building } => TownCommand::Build {
                     town: town.raw(),
                     building: building.raw(),
+                },
+            },
+        },
+        // E16 M5 T14 (v56): the system actor's own commands, the host's.
+        EngineCommand::System(c) => GameCommand::System {
+            command: match *c {
+                EngineSystem::EndTurn { player } => SystemCommand::EndTurn {
+                    player: player.raw(),
+                },
+                EngineSystem::Answer { player } => SystemCommand::Answer {
+                    player: player.raw(),
+                },
+                EngineSystem::Battle { player, command } => SystemCommand::Battle {
+                    player: player.raw(),
+                    command: from_engine::command(command),
                 },
             },
         },
@@ -249,6 +265,19 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 error: TownReject::UnknownBuilding {},
             })?,
         }),
+        // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
+        GameCommand::System { command } => EngineCommand::System(match command {
+            SystemCommand::EndTurn { player } => EngineSystem::EndTurn {
+                player: PlayerId::new(player),
+            },
+            SystemCommand::Answer { player } => EngineSystem::Answer {
+                player: PlayerId::new(player),
+            },
+            SystemCommand::Battle { player, command } => EngineSystem::Battle {
+                player: PlayerId::new(player),
+                command: battle_to_engine(command),
+            },
+        }),
     })
 }
 
@@ -389,6 +418,7 @@ pub fn reject(error: GameCommandError) -> GameReject {
             code: from_engine::reject(error),
         },
         E::NotForSystem => GameReject::NotForSystem {},
+        E::SystemOnly => GameReject::SystemOnly {},
         E::WrongAnswer => GameReject::WrongAnswer {},
         E::WaitingForLevelUp(player) => GameReject::WaitingForLevelUp {
             player: player.raw(),

@@ -9,7 +9,7 @@ commands = [
 checkpoints = ["0x96f4b1907292f9e4"]
 
 [replay]
-format = 13
+format = 14
 engine = "0.1.0"
 seed = "1"
 difficulty = 1

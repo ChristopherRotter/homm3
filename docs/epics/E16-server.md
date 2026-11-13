@@ -317,14 +317,8 @@ client lane's 2026-11-04 request, when online battles need them).
 
 **2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged):
 
-- **T14 The system commands** (`h3-game`, `cross-lane`, the server lane builds; the adventure
-  lane's crate, its traps first): `Actor::System`'s closed set beyond an unowned side's battle
-  commands: a player's turn ended, its first open decision answered by `default_answer` (the
-  level-up past its hold), a battle command for a timed-out player's side; each refused unless it
-  applies (the player's turn group current, a decision open, the side the player's); ADR-0017
-  point 2 amended in a `shared:` commit; rule IDs (`GAM-*`, `game.toml`) with the user's
-  decisions as their source; the adventure replay's text form (its format step, the adventure
-  lane's version) and the wire's mapping (protocol step); the golden replays unchanged.
+- **T14 The system commands** done 2026-11-13 (`E16-log.md`: `GameCommand::System(SystemCommand)`,
+  GAM-SYS-001 to GAM-SYS-003, ADR-0017 point 2 amended; replay format v14, protocol v56).
 - **T15 The survey of the original's turn timer** (where the original data are staged; the
   code reading of `turn_timer_poll` 0x557AF0 and `turn_timer_start` 0x557D90 and their callers,
   the manual's text, VCMI's chess clock as a reference): what ends a turn at its end (open
@@ -353,7 +347,12 @@ client lane's 2026-11-04 request, when online battles need them).
   missing command limit); a fresh reviewer agent; the user's checkpoint.
 
 **Review list for the 2b checkpoint** (the choices queued under the autonomy contract, filled as
-the tasks land): none yet.
+the tasks land):
+
+- T14: the system's own commands are not among `legal_commands(Actor::System)` (the env's
+  neutral seat draws from it; the host issues them by its clock); their text form `system for
+  <player> end-turn|answer default|battle <command>`; the whole game's journal format left at 1
+  (the user's call at T14's start).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
