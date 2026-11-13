@@ -13,49 +13,16 @@ actor, the neutral set +0.302, 0.552 head to head against `e25-imitate-1` #2). *
 probes, then one long run** (refined at T29, 2026-11-10, AI-Q17; its decisions in the epic file;
 the probes about 20 hours of the user's GPU; **T30 done** 2026-11-10, the analysis of #2,
 `E25-log.md` T30; **T31 done** 2026-11-10, the update's speed, `E25-log.md` T31: 98 to 67 s an
-update):
+update; **T33 done** 2026-11-13, PPO's settings, `E25-log.md` T33: no continuation from #2 gains,
+the annealed one level at 0.503 ± 0.002, so #2 sits at this setup's plateau and T35's long run
+starts from T32's best clone):
 
-- **T33 — PPO's settings by short continuations from #2** (refined 2026-11-11, decision 3,
-  T30's ranking; **in progress: round 1 done, round 2 prepared, the user's GPU next**). Each arm
-  is 2 M samples from #2 (`--init-from runs/e25-structure-1/best.pt`; #2's run's config
-  `e25-imitate-structure.toml`, seed 1, T31's update speed, the bonus at 0; the run's own ladders
-  cut to 1 episode a kind, no final one: the learner is measured after it).
-  - **Round 1 done** (`E25-log.md` T33; the records `python/records/e25-continue-*.json`, the
-    measures `python/records/continue/`): no arm gains; head to head against #2 the bonus at 0
-    0.494, a quarter of the rate 0.493, the imitation loss held 0.478 (± 0.002); the ladders
-    inside #2's interval. Each arm ran at 5 to 20 times #2's final rate against #2's annealed
-    endpoint; the entropy rose without the bonus.
-  - **Round 2** (the user, 2026-11-11, on round 1's read): **`e25-continue-anneal-1`**
-    (`configs/e25-continue-anneal.toml`; test `test_increment_8s_annealed_arm_is_the_quarter_
-    rate_falling_to_structure_1s_floor`): `e25-continue-lr-1` with the rate falling linearly from
-    6.25e-5 to #2's floor 1.25e-5 over the 2 M (reached at 1.6 M). Its 2 M ends at the floor, so
-    it does not resume into a long run.
-  - **The measures, as round 1's:** (a) the fixed head-to-head against #2 (score and standard
-    error, about 0.002); (b) the ladders against both system actors (500 a kind, ± 0.019) and on
-    the neutral set; (c) the update records (entropy, KL, clip). **The rule, stated before it
-    runs:** (a) above 0.5 by two standard errors with (b) inside #2's interval: more PPO from #2
-    pays once annealed, and T35's long run may start from #2 at a quarter of the rate, annealed;
-    within two standard errors of 0.5 or below: #2 sits at this setup's plateau, and the long run
-    starts from T32's best clone.
-  - **Budget:** about 2 hours (79 updates of about 83 s, round 1's 112 to 116 minutes; the
-    head-to-head 5 to 10 minutes, the ladders about 4). Parts under 2 hours: Ctrl-C, then
-    `--resume`. Round 1 and 2 together about 8 hours, decision 3's for PPO's settings.
-  - **The user's commands** (from `python/`; `--device cuda` on the user's card):
-
-        uv run --group train python -m h3env.train --config configs/e25-continue-anneal.toml --init-from runs/e25-structure-1/best.pt --out runs/e25-continue-anneal-1
-        uv run --group train python -m h3env.train --resume runs/e25-continue-anneal-1
-        uv run --group train python -m h3env.train.gate --candidate runs/e25-continue-anneal-1/checkpoint.pt --best runs/e25-structure-1/best.pt --device cuda --fixed --json runs/e25-continue-anneal-1/head-to-head.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-continue-anneal-1/checkpoint.pt --opponents system,system-all-seeing --device cuda --json runs/e25-continue-anneal-1/ladder.json
-        uv run --group train python -m h3env.train.ladder --checkpoint runs/e25-continue-anneal-1/checkpoint.pt --set neutral-v1 --device cuda --json runs/e25-continue-anneal-1/neutral.json
-
-    The results stay in `runs/e25-continue-anneal-1/` on the user's machine (a session linked to
-    it reads them there). **Acceptance:** the record and the measures committed as round 1's, the
-    read in `E25-log.md` T33, the arms ranked for T35, T33 closed.
 - **T32, T34 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
-  architectures by their clone's ladder (`hexconv` 96 × 6 the control); the regimes (#2
-  distilled, a KL anchor, the search at play on the hero battles); the probes' checkpoint (with
-  the outcome's weight in training as its question); the long run. Each is refined here when it
-  is next. **A `hexconv` run on the GTX 1070** sets `[ppo] accumulate = 4` and `chunk_align = 32`
+  architectures by their clone's ladder (`hexconv` 96 × 6 the control; **next**, the long run's
+  start since T33); the regimes (#2 distilled, a KL anchor, the search at play on the hero
+  battles); the probes' checkpoint (with the outcome's weight in training as its question; the
+  long run's settings from T33's ranking: the rate annealed to its floor by the end, the
+  imitation loss ending at its horizon); the long run. Each is refined here when it is next. **A `hexconv` run on the GTX 1070** sets `[ppo] accumulate = 4` and `chunk_align = 32`
   (T31; cuDNN's autotuner is on by default): its update 0.68 of T28's; another network or card:
   time it first (`python -m h3env.train.speed`, its `--sweep`).
 

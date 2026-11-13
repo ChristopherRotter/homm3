@@ -1847,3 +1847,41 @@ an entry only where a task builds on it.
   0.5: #2 sits at this setup's plateau (increment 2's scale run was flat from 20 M), and the long
   run starts from T32's best clone; below: the same, and the continuation's cost is not the rate.
   The entropy's end against 1.00 (#2's) says whether the annealing sharpened.
+- **Round 2** (the user's GPU, 2026-11-12, commit `cb89a8f`; `e25-continue-anneal-1`, the
+  record `python/records/e25-continue-anneal-1.json`, the measures `python/records/continue/`):
+  `--init-from` #2, seed 1, 2.01 M samples in 79 updates, 114 minutes, 301 samples a second (an
+  update 70.5 s: T31's holds); the run's own end gate rejected the learner (86 pairs, 0.485). Its
+  first update is `e25-continue-lr-1`'s (KL 0.028, entropy 0.97): the two pair at their start.
+
+  | Measure | `e25-continue-anneal-1` | #2 | `e25-continue-lr-1` |
+  |---|---|---|---|
+  | (a) head to head against #2 | **0.5029 ± 0.0020** (+1.5 SE; pairs 110, 3, 3 751, 3, 133; Elo +2.0) | | 0.4928 ± 0.0019 |
+  | (b) fair actor | 0.513 ± 0.019 (+0.027) | 0.511 (+0.027) | 0.506 (+0.024) |
+  | hero, siege hero, siege garrison | 0.513, 0.518, 0.506 | 0.509, 0.519, 0.505 | 0.503, 0.517, 0.500 |
+  | hero attacking, defending | 0.711, 0.314 | 0.707, 0.306 | 0.693, 0.312 |
+  | all-seeing (value) | 0.508 ± 0.019 (+0.023) | 0.507 (+0.026) | 0.506 (+0.020) |
+  | neutral set's value | +0.304 (0.991) | +0.302 | +0.301 |
+  | (c) rate, the last 20 updates | 1.54e-5 to 1.25e-5 (the floor from 1.63 M) | 1.25e-5 (its last 0.5 M) | 6.25e-5 to 5.6e-5 |
+  | KL, clip (the last 20) | 0.0027, 0.028 | 0.0025, 0.03 | 0.014, 0.12 |
+  | entropy (the first update, the end, the peak) | 0.97, 0.98, 1.06 at 0.49 M | 1.00 at its end | 0.97, 1.08, 1.11 at 1.9 M |
+
+  The explained variance 0.80 (the last 20 updates), as round 1's.
+- **The read, by the rule stated before it ran:** (a) lies within two standard errors of 0.5
+  (+1.5) and (b) inside #2's interval: **#2 sits at this setup's plateau**, and T35's long run
+  starts from T32's best clone, not from #2.
+  1. **Annealing recovers what round 1's rate cost, no more:** +0.0101 head to head over
+     `e25-continue-lr-1` from the same start (3.7 of their combined errors), level with #2.
+     Round 1's deficits were the rate's level at their end (its read 5); 2 M more samples of PPO
+     from #2, annealed as #2's own end was, leave it where it was, as increment 2's scale run
+     was flat from 20 M.
+  2. **The entropy follows the rate:** up to 1.06 while the rate stood near 5e-5, down with it to
+     0.98 at the floor (#2's 1.00); annealing does not sharpen past #2. T30's temperature 0.5
+     (+0.011) stays outside PPO's reach at these settings.
+  3. **The ladders move inside their intervals:** every row within 0.004 of #2's (the hero
+     battles' seats +0.004 and +0.008), the neutral set +0.304.
+- **The arms ranked for T35** (by (a)): the annealed quarter rate 0.5029 (level), the bonus at 0
+  0.4938, a quarter of the rate 0.4928, the imitation loss held 0.4779. None starts the long run
+  from #2 (the rule); what carries to its settings: the rate annealed to its floor by the run's
+  end (as #2's), the imitation loss ending at its horizon (held, it pulls towards the teacher),
+  the bonus immaterial at these rates. PPO's settings used decision 3's 8 hours (round 1 about
+  6, round 2 2). **T33 closed** 2026-11-13.
