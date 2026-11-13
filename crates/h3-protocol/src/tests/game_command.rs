@@ -125,7 +125,7 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(3),
         building: BuildingId::from_index(9).unwrap(),
     }));
-    // E09 T27 (protocol v57).
+    // E09 T27 (protocol v58).
     commands.push(GameCommand::Town(TownCommand::Recruit {
         town: TownId::new(1),
         building: BuildingId::from_index(30).unwrap(),

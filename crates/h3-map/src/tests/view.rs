@@ -1134,6 +1134,33 @@ fn check_told(
                     .map(|o| (o.movement, o.max_movement));
                 prop_assert_eq!(shown, Some((movement, max_movement)), "{:?}", event);
             }
+            // E08 T115a: a hero's battle bonuses and timed marks after the command, told to its
+            // owner alone, as the viewer's observation shows them after it (ADV-FOG-006).
+            GameEvent::Adventure(AdventureEvent {
+                kind:
+                    kind @ (AdventureEventKind::BonusChanged { hero, .. }
+                    | AdventureEventKind::OnceMarkChanged { hero, .. }
+                    | AdventureEventKind::TimedMarkChanged { hero, .. }),
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                let own = after.adventure.hero(hero).and_then(|h| h.own.as_ref());
+                prop_assert!(own.is_some(), "{:?}", event);
+                let own = own.unwrap();
+                let shown = match kind {
+                    AdventureEventKind::BonusChanged { morale, luck, .. } => {
+                        (own.bonuses.morale, own.bonuses.luck) == (morale, luck)
+                    }
+                    AdventureEventKind::OnceMarkChanged { bonus, held, .. } => {
+                        own.bonuses.once.contains(&bonus) == held
+                    }
+                    AdventureEventKind::TimedMarkChanged {
+                        object_type, held, ..
+                    } => own.timed.contains(&object_type) == held,
+                    _ => false,
+                };
+                prop_assert!(shown, "{:?}", event);
+            }
             // E08 T105a2: a Whirlpool's loss, told to the hero's owner alone, as its army is
             // (ADV-TEL-006).
             GameEvent::Adventure(AdventureEvent {

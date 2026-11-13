@@ -182,7 +182,6 @@ impl HeroData {
                 .map(|h| h.spells.clone())
                 .unwrap_or_default(),
             mana: 0,
-            bonuses: Default::default(),
         };
         let add = |details: &mut HeroDetails, artifact: ArtifactTypeId| {
             apply_change(
@@ -233,7 +232,7 @@ impl HeroData {
         core: &Ruleset,
         details: &HeroDetails,
     ) -> (BattleHero, Vec<CreatureTypeId>) {
-        let hero = derive_battle_hero(details, core).map_or_else(
+        let hero = derive_battle_hero(details, h3_heroes::BattleBonuses::NONE, core).map_or_else(
             |_| BattleHero::new(details.hero_type),
             |mut hero| {
                 hero.magic.max_mana = max_mana(details, core);

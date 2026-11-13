@@ -12,7 +12,7 @@ use h3_heroes::{HeroChange, HeroReward};
 
 use super::decisions::{ACCEPT, CLOSE, DECLINE, GOLD, RED, play};
 use super::monsters::valued;
-use super::rewards::{AT, HERO, changed, game, gold, reward_at, visit, won};
+use super::rewards::{AT, HERO, bonuses_of, changed, game, gold, once_told, reward_at, visit, won};
 use super::*;
 
 const GOG: CreatureTypeId = CreatureTypeId::from_raw(1);
@@ -236,11 +236,7 @@ fn the_pyramid_fights_two_creatures_split_by_its_tile_and_a_looted_one_costs_luc
     assert!(state.adventure().is_emptied(0) && !state.adventure().is_removed(0));
     visit(&mut state, &rules);
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
-    let luck = HeroChange::Bonus {
-        morale: 0,
-        luck: -2,
-        mark: Some(1),
-    };
-    assert!(events.contains(&changed(luck)));
-    assert_eq!(state.hero(HERO).unwrap().bonuses.luck, -2);
+    assert!(events.contains(&once_told(1, 0, -2, true)));
+    assert!(bonuses_of(&state).has_mark(1));
+    assert_eq!(bonuses_of(&state).once.len(), 1);
 }

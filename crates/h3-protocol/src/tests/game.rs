@@ -207,6 +207,21 @@ fn hero_back(h: &MapHero) -> HeroView {
                 .iter()
                 .map(|m| (Handle::from_raw(m.object_type), pos_back(m.anchor)))
                 .collect(),
+            bonuses: h3_adventure::HeroBonuses {
+                morale: o.bonuses.morale,
+                luck: o.bonuses.luck,
+                once: o
+                    .bonuses
+                    .once
+                    .iter()
+                    .map(|b| h3_heroes::VisitBonus {
+                        mark: b.mark,
+                        morale: b.morale,
+                        luck: b.luck,
+                    })
+                    .collect(),
+            },
+            timed: o.timed.iter().copied().map(Handle::from_raw).collect(),
         }),
     }
 }
@@ -369,6 +384,24 @@ fn every_part() -> AdventureObservation {
                     formation: EngineFormation::Tight,
                     tactics: false,
                     marks: vec![(Handle::from_raw(9), p(1, 1, 0))],
+                    // E08 T115a (v57): the battle bonuses with their once-marks, the timed marks.
+                    bonuses: h3_adventure::HeroBonuses {
+                        morale: -3,
+                        luck: 2,
+                        once: vec![
+                            h3_heroes::VisitBonus {
+                                mark: 0,
+                                morale: -3,
+                                luck: 0,
+                            },
+                            h3_heroes::VisitBonus {
+                                mark: 13,
+                                morale: 0,
+                                luck: 0,
+                            },
+                        ],
+                    },
+                    timed: vec![Handle::from_raw(48), Handle::from_raw(94)],
                 }),
             },
             HeroView {
@@ -383,6 +416,8 @@ fn every_part() -> AdventureObservation {
                     formation: EngineFormation::Loose,
                     tactics: true,
                     marks: Vec::new(),
+                    bonuses: h3_adventure::HeroBonuses::NONE,
+                    timed: Vec::new(),
                 }),
             },
             HeroView {
@@ -747,11 +782,6 @@ fn details_back(d: &HeroDetails) -> h3_heroes::HeroDetails {
         backpack: d.backpack.iter().copied().map(artifact_back).collect(),
         spells: d.spells.iter().copied().map(Handle::from_raw).collect(),
         mana: d.mana,
-        bonuses: h3_heroes::BattleBonuses {
-            morale: d.bonuses.morale,
-            luck: d.bonuses.luck,
-            marks: d.bonuses.marks,
-        },
     }
 }
 
@@ -1088,7 +1118,7 @@ fn every_decision() -> Vec<DecisionView> {
             cost: price(),
         }],
     }));
-    // E09 T27 (protocol v57): a town's recruitment, at an upgraded index and at a Portal.
+    // E09 T27 (protocol v58): a town's recruitment, at an upgraded index and at a Portal.
     let town = TownId::new(2);
     out.push(DecisionView::Hire(HireView {
         target: h3_adventure::HireTarget::Garrison(town),
@@ -1157,11 +1187,6 @@ pub(super) fn every_game_part(
         backpack: vec![Handle::from_raw(55).into()],
         spells: vec![Handle::from_raw(10), Handle::from_raw(12)],
         mana: 30,
-        bonuses: h3_heroes::BattleBonuses {
-            morale: -3,
-            luck: 2,
-            marks: 0b101,
-        },
     };
     let town = |fort, top: bool| TownView {
         town: TownId::new(2),

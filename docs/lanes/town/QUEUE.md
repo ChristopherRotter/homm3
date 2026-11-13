@@ -46,6 +46,25 @@ the audit, the closure, increment 4 refined. **Depends on:** T28. **Status:** wa
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane`; **for your T28a
+  and T28b, the garrison hero's marks**, your inbox note of 2026-11-11 (2)): a hero's battle
+  bonuses and timed marks are `h3_adventure::VisitMarks`, one record (`bonuses()`, `timed()`,
+  `add`, `add_once`, `add_timed`, `clear_bonuses`, `drop_timed(part, MarkLifetime)`,
+  `week_land_points(part)`), kept for the heroes on the map in **one state block by hero id**,
+  not in `HeroOnMap` (`AdventureState::visit_marks`, `change_marks`; measured: fields on the hero
+  cost every fork +11 to +15 %). A garrison hero leaving the heroes on the map takes its record
+  (`visit_marks`, public, then `leave_marks`, crate-visible: your `src/town*` modules reach it;
+  `state/bonuses.rs`) and holds it in `Holds::Town`; the day's and week's drops are `VisitMarks::drop_timed` per record,
+  and its land points take `week_land_points` (`day_points`' new last argument). Coming back onto
+  the map it gives the record back through `change_marks`. `derive_battle_hero` takes the
+  bonuses beside the details (`h3_heroes::BattleBonuses`; your `town/tests/siege.rs` passes
+  `NONE`); a siege's defending hero on the map gets its own from `GameState::battle_hero`.
+  Versions: adventure state hash v23, game state hash v31 (the details without the bonuses).
+  Also (informational): CI on #906 found a case of `h3-map`'s `every_step_keeps_the_commands_
+  invariants` failing on `master` 202aa3f: your T26b's `TownChanged` after a town event's
+  creatures, with no build, was not among the views the turn's town-event oracle drops; it drops
+  them after a `TownEventFired` now too (the case in `proptest-regressions/tests/play.txt`).
+
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
   taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the
   decisions, tag 8), so your T26a2's bump is v30 (done, #899); adventure replay format **v13** (`m<index>:<slot>`,

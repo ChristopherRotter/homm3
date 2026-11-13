@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use super::{
     ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireSeen, HireTarget, Month, Week,
 };
-use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings};
+use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings, VisitBonus};
 use crate::wire::{Event, Outcome};
 
 /// One game event, projected for its viewer (`h3_game::GameEvent`).
@@ -366,6 +366,21 @@ pub enum AdventureEvent {
         movement: u32,
         max_movement: u32,
     },
+    BonusChanged {
+        hero: u16,
+        morale: i8,
+        luck: i8,
+    },
+    OnceMarkChanged {
+        hero: u16,
+        bonus: VisitBonus,
+        held: bool,
+    },
+    TimedMarkChanged {
+        hero: u16,
+        object_type: u16,
+        held: bool,
+    },
 }
 
 /// Why a Shipyard builds no boat (`h3_adventure::ShipyardBlock`).
@@ -414,10 +429,4 @@ pub enum HeroChange {
         skill: u16,
         level: u8,
     },
-    Bonus {
-        morale: i8,
-        luck: i8,
-        mark: Option<u8>,
-    },
-    ClearBonuses {},
 }

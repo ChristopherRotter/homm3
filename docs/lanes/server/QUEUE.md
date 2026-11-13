@@ -23,6 +23,16 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   fold needed nothing new (the decision's view replaced whole; the garrison's slot as a siege's
   merge). Mapped, inverted and round-tripped in `src/tests/`; the golden replays re-recorded
   (hash lines and the format's version only).
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v57** (after the town lane's T26b's
+  v55 and your E16 M5 T14's v56): the battle bonuses are the hero on the map's, `wire::game::OwnMapHero::bonuses` (`Bonuses { morale, luck, once:
+  Vec<VisitBonus> }`, `wire::game::VisitBonus`) and `::timed` (object type handles, sorted);
+  `HeroDetails::bonuses` and the changes `HeroChange::Bonus`, `ClearBonuses` are gone; the
+  adventure events `BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged` (owner alone, after
+  `MovementChanged`, a command's last) mapped both ways and folded; the fold gate's new part
+  "battle bonuses and timed marks" (no stub), a fold case in `tests/game_fold.rs`;
+  `h3-server`'s `tests/record.rs` holds `army-dialog-s1`'s new checkpoint and final hash (the 72
+  replays re-recorded: hash lines only). Nothing for you to build.
 
 - 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **a protocol version
   taken**): protocol **v55** (after the adventure lane's T114b's v54): `wire::game::TownBuildings` (the owner's) gains `available`

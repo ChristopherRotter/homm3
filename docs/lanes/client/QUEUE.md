@@ -53,6 +53,15 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`; **CLT-Q40's amounts, and the
+  wire**): a hero's battle bonuses reach the battle by source: the morale and luck no once-mark
+  names (a Pandora's Box's, an event's) as `EffectSource::Temporary`, each once-mark's own
+  amounts as `EffectSource::Visit { mark }` (the Warrior's Tomb's mark 0: −3 morale; a looted
+  Pyramid's 1: −2 luck; increment 12's from 2 with T115b), the original's +0x105 lines. On the
+  wire (protocol v57) the bonuses left `HeroDetails` for `OwnMapHero::bonuses` (with each mark's
+  amounts) and `::timed` (the Magic Well's and the Stables' marks), changed by the adventure
+  events `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged`. No client literal moved.
+
 - 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
   consent; **your test changed, nothing to build**): protocol **v54**: the wire's
   `GameObservation` and `GameReveal` gain `garrisons` (`wire::game::MapGarrison`, the map

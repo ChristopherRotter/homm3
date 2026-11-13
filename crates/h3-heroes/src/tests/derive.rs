@@ -176,7 +176,7 @@ fn derived_primary_skills_and_tactics() {
         ..hero
     };
     assert_eq!(
-        derive_battle_hero(&d, &r),
+        derive_battle_hero(&d, BattleBonuses::NONE, &r),
         Ok(archer(expected(&r, [99, 5, 1, 1], 3, u16::MAX)))
     );
 
@@ -184,7 +184,7 @@ fn derived_primary_skills_and_tactics() {
     let mut lucky = d.clone();
     lucky.skills.push((skill(&r, "t:luck"), 1));
     assert_eq!(
-        derive_battle_hero(&lucky, &r),
+        derive_battle_hero(&lucky, BattleBonuses::NONE, &r),
         Ok(archer(expected(&r, [99, 15, 10, 10], 3, u16::MAX)))
     );
 
@@ -193,12 +193,27 @@ fn derived_primary_skills_and_tactics() {
     untrained
         .skills
         .retain(|&(s, _)| s != skill(&r, "t:tactics"));
-    assert_eq!(derive_battle_hero(&untrained, &r).unwrap().tactics, 1);
+    assert_eq!(
+        derive_battle_hero(&untrained, BattleBonuses::NONE, &r)
+            .unwrap()
+            .tactics,
+        1
+    );
     untrained.skills.push((skill(&r, "t:tactics"), 1));
-    assert_eq!(derive_battle_hero(&untrained, &r).unwrap().tactics, 1);
+    assert_eq!(
+        derive_battle_hero(&untrained, BattleBonuses::NONE, &r)
+            .unwrap()
+            .tactics,
+        1
+    );
     untrained.skills.pop();
     untrained.skills.push((skill(&r, "t:tactics"), 2));
-    assert_eq!(derive_battle_hero(&untrained, &r).unwrap().tactics, 2);
+    assert_eq!(
+        derive_battle_hero(&untrained, BattleBonuses::NONE, &r)
+            .unwrap()
+            .tactics,
+        2
+    );
 
     // Bare details: the base values (below-minimum knowledge raised) and the specialty only.
     let bare = HeroDetails {
@@ -210,7 +225,7 @@ fn derived_primary_skills_and_tactics() {
         ..d
     };
     assert_eq!(
-        derive_battle_hero(&bare, &r),
+        derive_battle_hero(&bare, BattleBonuses::NONE, &r),
         Ok(expected(&r, [99, 1, 1, 1], 0, 7))
     );
 }
@@ -219,7 +234,7 @@ fn derived_primary_skills_and_tactics() {
 #[test]
 fn derivation_leaves_later_fields_neutral_and_validates_first() {
     let r = effect_ruleset();
-    let hero = derive_battle_hero(&details(&r), &r).unwrap();
+    let hero = derive_battle_hero(&details(&r), BattleBonuses::NONE, &r).unwrap();
     assert_eq!(hero.war_machines, MachineControl::default());
     assert_eq!(hero.surrender_discount_bp, 0);
     assert!(hero.effects.is_empty());
@@ -233,12 +248,15 @@ fn derivation_leaves_later_fields_neutral_and_validates_first() {
 
     let mut d = details(&r);
     d.level = 0;
-    assert_eq!(derive_battle_hero(&d, &r), Err(DetailsError::LevelZero));
+    assert_eq!(
+        derive_battle_hero(&d, BattleBonuses::NONE, &r),
+        Err(DetailsError::LevelZero)
+    );
     let mut p = effect_pack();
     p.hero_params = None;
     let without = compile(p).unwrap();
     assert_eq!(
-        derive_battle_hero(&details(&without), &without),
+        derive_battle_hero(&details(&without), BattleBonuses::NONE, &without),
         Err(DetailsError::NoHeroParams)
     );
 }
@@ -282,7 +300,7 @@ fn morale_and_luck_effects_are_kept_per_source_and_count_each_artifact_once() {
         luck(1, Own, a("t:eye")),
     ];
     let specialty = [luck(-1, Enemy, Specialty), morale(1, Enemy, Specialty)];
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     let hook = [
         morale(-1, Enemy, a("t:hook")),
         morale_cap(2, Both, a("t:hook")),
@@ -303,15 +321,15 @@ fn morale_and_luck_effects_are_kept_per_source_and_count_each_artifact_once() {
         morale(2, Own, level("t:leadership", 2)),
         luck(1, Own, level("t:luck", 1)),
     ];
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(hero.effects, [&skills[..], &artifacts, &specialty].concat());
 }
 
 // covers: HER-ADV-008
 #[test]
-fn the_battle_bonuses_are_the_own_sides_temporary_morale_and_luck() {
+fn the_battle_bonuses_are_the_own_sides_temporary_and_visits_morale_and_luck() {
     use Affects::{Enemy, Own};
-    use h3_contracts::EffectSource::{Artifact, Skill, Specialty, Temporary};
+    use h3_contracts::EffectSource::{Artifact, Skill, Specialty, Temporary, Visit};
     let morale = |amount, affects, source| BattleEffect::Morale {
         amount,
         affects,
@@ -331,13 +349,32 @@ fn the_battle_bonuses_are_the_own_sides_temporary_morale_and_luck() {
     let mut d = details(&r);
     take_off(&mut d.worn, art(&r, "t:hook"));
     d.skills = vec![(skill(&r, "t:leadership"), 1)];
-    // The Tomb's −3 and the Pyramid's −2 (their marks set) are the temporary source's, last
-    // (which visit gave them is the adventure's content); the battle sums them with Basic
-    // Leadership's +1 and the circle's and band's +2 (0), and with the eye's +1 luck (−1).
-    d.bonuses = BattleBonuses {
-        morale: -3,
-        luck: -2,
-        marks: 0b11,
+    // E08 T115a: a Pandora's Box's −1 morale and +2 luck are the temporary source's, after the
+    // worn and the specialty's; the Tomb's −3 morale and the Pyramid's −2 luck each its visit's
+    // (`Visit { mark }`), last, in the list's order; a mark of no amount (the Sirens') gives none.
+    // The battle sums them with Basic Leadership's +1 and the circle's and band's +2, and with the
+    // eye's +1 luck.
+    let once = [
+        VisitBonus {
+            mark: 0,
+            morale: -3,
+            luck: 0,
+        },
+        VisitBonus {
+            mark: 1,
+            morale: 0,
+            luck: -2,
+        },
+        VisitBonus {
+            mark: 13,
+            morale: 0,
+            luck: 0,
+        },
+    ];
+    let bonuses = BattleBonuses {
+        morale: -1,
+        luck: 2,
+        once: &once,
     };
     let sums = |hero: &BattleHero| -> Vec<BattleEffect> {
         hero.effects
@@ -347,29 +384,38 @@ fn the_battle_bonuses_are_the_own_sides_temporary_morale_and_luck() {
             .collect()
     };
     let specialty = [luck(-1, Enemy, Specialty), morale(1, Enemy, Specialty)];
-    let bonuses = [morale(-3, Own, Temporary), luck(-2, Own, Temporary)];
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let given = [
+        morale(-1, Own, Temporary),
+        luck(2, Own, Temporary),
+        morale(-3, Own, Visit { mark: 0 }),
+        luck(-2, Own, Visit { mark: 1 }),
+    ];
+    let hero = derive_battle_hero(&d, bonuses, &r).unwrap();
     let worn = [
         morale(1, Own, leadership),
         morale(1, Own, a("t:circle")),
         morale(1, Own, a("t:band")),
         luck(1, Own, a("t:eye")),
     ];
-    assert_eq!(sums(&hero), [&worn[..], &specialty, &bonuses].concat());
+    assert_eq!(sums(&hero), [&worn[..], &specialty, &given].concat());
     // Without the circle and the band.
     take_off(&mut d.worn, art(&r, "t:circle"));
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, bonuses, &r).unwrap();
     let worn = [morale(1, Own, leadership), luck(1, Own, a("t:eye"))];
-    assert_eq!(sums(&hero), [&worn[..], &specialty, &bonuses].concat());
+    assert_eq!(sums(&hero), [&worn[..], &specialty, &given].concat());
     // A hero with no other source gets the bonuses alone.
     let plain = ruleset();
-    let mut bare = details(&plain);
-    bare.bonuses.morale = -3;
-    let hero = derive_battle_hero(&bare, &plain).unwrap();
-    assert_eq!(sums(&hero), [morale(-3, Own, Temporary)]);
-    // After the battle's end (cleared), none.
-    apply_change(&mut bare, &plain, HeroChange::ClearBonuses);
-    assert_eq!(sums(&derive_battle_hero(&bare, &plain).unwrap()), []);
+    let bare = details(&plain);
+    let tomb = BattleBonuses {
+        once: &once[..1],
+        ..BattleBonuses::NONE
+    };
+    let hero = derive_battle_hero(&bare, tomb, &plain).unwrap();
+    assert_eq!(sums(&hero), [morale(-3, Own, Visit { mark: 0 })]);
+    // None (a battle's end cleared them, or the hero visited nothing): none.
+    let none = derive_battle_hero(&bare, BattleBonuses::NONE, &plain).unwrap();
+    assert_eq!(sums(&none), []);
+    assert_eq!(BattleBonuses::default(), BattleBonuses::NONE);
 }
 
 // covers: HER-BAT-006
@@ -384,7 +430,7 @@ fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
     let r = compile(p).unwrap();
     // Two eyes are worn (and one is in the backpack): one effect.
     let mut d = details(&r);
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     let shackles = |h: &BattleHero| {
         h.effects
             .iter()
@@ -393,7 +439,10 @@ fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
     };
     assert_eq!(shackles(&hero), 1);
     take_off(&mut d.worn, art(&r, "t:eye"));
-    assert_eq!(shackles(&derive_battle_hero(&d, &r).unwrap()), 0);
+    assert_eq!(
+        shackles(&derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap()),
+        0
+    );
 }
 
 // covers: HER-BAT-015
@@ -412,7 +461,7 @@ fn casting_limits_are_kept_once_with_the_smallest_level() {
     }
     let r = compile(p).unwrap();
     let limits = |d: &HeroDetails| {
-        derive_battle_hero(d, &r)
+        derive_battle_hero(d, BattleBonuses::NONE, &r)
             .unwrap()
             .effects
             .into_iter()
@@ -473,7 +522,7 @@ fn spell_defences_are_kept_once_with_the_largest_level() {
     }
     let r = compile(p).unwrap();
     let defences = |d: &HeroDetails| {
-        derive_battle_hero(d, &r)
+        derive_battle_hero(d, BattleBonuses::NONE, &r)
             .unwrap()
             .effects
             .into_iter()
@@ -528,7 +577,7 @@ fn surrender_discounts_add_up_to_at_most_all() {
             a.effects.push(HeroEffectDef::SurrenderDiscount { bp });
         }
         let r = compile(p).unwrap();
-        derive_battle_hero(&details(&r), &r)
+        derive_battle_hero(&details(&r), BattleBonuses::NONE, &r)
             .unwrap()
             .surrender_discount_bp
     };
@@ -555,7 +604,11 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
     // Basic Archery 10 % grown by 5 % of itself per level (×1.5 at level 10) and the eye once
     // although two are worn; the specialty's own melee 1 %; the helm's 90 % (a part of the
     // worn circle). The loop needs Luck.
-    let derive = |d: &HeroDetails| derive_battle_hero(d, &r).unwrap().damage;
+    let derive = |d: &HeroDetails| {
+        derive_battle_hero(d, BattleBonuses::NONE, &r)
+            .unwrap()
+            .damage
+    };
     assert_eq!(derive(&d), bonuses(1500 + 500, 100, 9000));
     // Advanced Offense 20 % (no specialty for it); Expert Armorer's 15 % takes the reduction
     // past 100 %, so it stops there; with Luck the loop's 20 % counts.
@@ -578,7 +631,9 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
         experience: xp(&r, 3),
         ..more.clone()
     };
-    let grown = derive_battle_hero(&fast, &r).unwrap().damage;
+    let grown = derive_battle_hero(&fast, BattleBonuses::NONE, &r)
+        .unwrap()
+        .damage;
     assert_eq!(grown, bonuses(1000 + 500 + 2000, 41_321 + 100, 10_000));
     let saturated = HeroDetails {
         level: 10,
@@ -586,7 +641,11 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
         ..more
     };
     assert_eq!(
-        derive_battle_hero(&saturated, &r).unwrap().damage.melee.bp,
+        derive_battle_hero(&saturated, BattleBonuses::NONE, &r)
+            .unwrap()
+            .damage
+            .melee
+            .bp,
         u32::from(u16::MAX)
     );
 }
@@ -646,7 +705,9 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
             .extend(artillery.map(|l| (skill(r, "t:artillery"), l)));
         d.skills
             .extend(first_aid.map(|l| (skill(r, "t:first_aid"), l)));
-        let machines = derive_battle_hero(&d, r).unwrap().war_machines;
+        let machines = derive_battle_hero(&d, BattleBonuses::NONE, r)
+            .unwrap()
+            .war_machines;
         (
             machines
                 .ballista
@@ -712,7 +773,7 @@ fn ballistics_makes_the_hero_command_its_catapult() {
         let mut d = details(r);
         d.skills
             .extend(skill_level.map(|l| (skill(r, "t:logistics"), l)));
-        derive_battle_hero(&d, r)
+        derive_battle_hero(&d, BattleBonuses::NONE, r)
             .unwrap()
             .war_machines
             .catapult
@@ -816,18 +877,28 @@ fn stack_statistics_are_summed_per_creatures_statistic_and_operation() {
         effect(squires, CreatureStat::Attack, StatOp::Add, 5),
     ];
     want.extend(specialty(1000));
-    assert_eq!(derive_battle_hero(&d, &r).unwrap().effects, want);
+    assert_eq!(
+        derive_battle_hero(&d, BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects,
+        want
+    );
     // Level 1 is no full step: only the speed.
     d.level = 1;
     want.truncate(3);
     want.push(specialty(0)[2]);
-    assert_eq!(derive_battle_hero(&d, &r).unwrap().effects, want);
+    assert_eq!(
+        derive_battle_hero(&d, BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects,
+        want
+    );
     // At level 74, the highest (HER-EXP-002), 37 steps of 5 %; the largest growth per step at
     // level 1 of a level-1 creature, whose specialty without speed gives none, saturates at
     // i16::MAX basis points.
     d.level = 74;
     d.experience = xp(&r, 74);
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(hero.effects.get(3..), Some(&specialty(18_500)[..]));
     let mut p = pack();
     p.heroes[0].specialty = vec![HeroEffectDef::CreatureSpecialty {
@@ -838,7 +909,9 @@ fn stack_statistics_are_summed_per_creatures_statistic_and_operation() {
     let r = compile(p).unwrap();
     let peasants = CreatureSelector::Creature(r.creature_by_key("t:peasant").unwrap());
     assert_eq!(
-        derive_battle_hero(&details(&r), &r).unwrap().effects,
+        derive_battle_hero(&details(&r), BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects,
         [CreatureStat::Attack, CreatureStat::Defense].map(|stat| effect(
             peasants,
             stat,
@@ -888,7 +961,9 @@ fn stack_trait_effects_are_kept_once_per_kind_and_creatures() {
     // The helm's 70 beats the circle's 50 for the same creatures; the eye's second no range
     // penalty is dropped, its regeneration for all creatures kept.
     assert_eq!(
-        derive_battle_hero(&details(&r), &r).unwrap().effects,
+        derive_battle_hero(&details(&r), BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects,
         [
             BattleEffect::Regeneration {
                 creatures: alive,
@@ -937,7 +1012,9 @@ fn alignment_groups_are_kept_once_each() {
     // eye's (CLT-Q40).
     let source = |k| h3_contracts::EffectSource::Artifact(art(&r, k).artifact);
     assert_eq!(
-        derive_battle_hero(&details(&r), &r).unwrap().effects,
+        derive_battle_hero(&details(&r), BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects,
         [([0, 1], "t:circle"), ([1, 2], "t:eye")].map(|(ids, k)| BattleEffect::AlignmentGroup {
             factions: FactionGroup::new(&ids.map(id)).unwrap(),
             source: source(k),
@@ -1043,7 +1120,7 @@ fn magic_and_spell_bonuses_are_derived() {
     d.experience = xp(&r, 10);
     d.skills
         .extend([(skill(&r, "t:wisdom"), 2), (skill(&r, "t:logistics"), 3)]);
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     // The book gives the known spells; air from Wisdom, fire from the band: every air spell at
     // Advanced (the ability has no school); mana as given.
     let air = |level| {
@@ -1104,13 +1181,13 @@ fn magic_and_spell_bonuses_are_derived() {
     // Without the book no spell book; the highest mastery counts; an empty book is a book.
     let mut d2 = d.clone();
     take_off(&mut d2.worn, art(&r, "t:book"));
-    let plain = derive_battle_hero(&d2, &r).unwrap();
+    let plain = derive_battle_hero(&d2, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(plain.magic.spell_book, None);
     d2.skills.retain(|&(s, _)| s != skill(&r, "t:wisdom"));
     d2.skills.push((skill(&r, "t:wisdom"), 1));
     put_on(&r, &mut d2.worn, art(&r, "t:book"));
     d2.spells.clear();
-    let novice = derive_battle_hero(&d2, &r).unwrap();
+    let novice = derive_battle_hero(&d2, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(novice.magic.masteries, air(1));
     assert_eq!(novice.magic.spell_book, Some(vec![]));
 }
@@ -1176,7 +1253,7 @@ fn available_spells_and_masteries_come_from_the_details() {
         worn: wearing(&r, &[art(&r, "t:wand"), art(&r, "t:book")]),
         ..wise
     };
-    let hero = derive_battle_hero(&booked, &r).unwrap();
+    let hero = derive_battle_hero(&booked, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(
         hero.magic.spell_book,
         Some(vec![id("t:portal"), id("t:titan")])
@@ -1212,13 +1289,19 @@ fn more_battle_effects_than_the_seam_holds_are_an_error() {
         }
     }
     let r = compile(p).unwrap();
-    let error = derive_battle_hero(&details(&r), &r).unwrap_err();
+    let error = derive_battle_hero(&details(&r), BattleBonuses::NONE, &r).unwrap_err();
     assert_eq!(error, DetailsError::TooManyBattleEffects);
     assert_eq!(error.to_string(), "too many battle effects");
     // Without the eye's 16: 64, the limit.
     let mut d = details(&r);
     take_off(&mut d.worn, art(&r, "t:eye"));
-    assert_eq!(derive_battle_hero(&d, &r).unwrap().effects.len(), 64);
+    assert_eq!(
+        derive_battle_hero(&d, BattleBonuses::NONE, &r)
+            .unwrap()
+            .effects
+            .len(),
+        64
+    );
 }
 
 proptest! {
@@ -1230,8 +1313,11 @@ proptest! {
         swap in proptest::option::of((0usize..9, 0usize..9)),
         skills in proptest::collection::vec((0u16..10, 1u8..=3), 0..3),
         primary in proptest::array::uniform4(0u8..=100),
-        // E08 T60a: the battle bonuses join the morale and luck sums (HER-ADV-008).
-        (morale, luck, marks) in (any::<i8>(), any::<i8>(), any::<u8>()),
+        // E08 T60a: the battle bonuses join the morale and luck sums (HER-ADV-008); since E08
+        // T115a an input, with once-marks of their own amounts (unique marks: the adventure's
+        // list).
+        (morale, luck) in (any::<i8>(), any::<i8>()),
+        once in proptest::collection::btree_map(any::<u8>(), (any::<i8>(), any::<i8>()), 0..16),
     ) {
         let r = morale_ruleset();
         let listed: Vec<ArtifactInstance> =
@@ -1244,10 +1330,14 @@ proptest! {
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
             worn,
-            bonuses: BattleBonuses { morale, luck, marks },
             ..details(&r)
         };
-        let derived = derive_battle_hero(&d, &r);
+        let once: Vec<VisitBonus> = once
+            .into_iter()
+            .map(|(mark, (morale, luck))| VisitBonus { mark, morale, luck })
+            .collect();
+        let bonuses = BattleBonuses { morale, luck, once: &once };
+        let derived = derive_battle_hero(&d, bonuses, &r);
         prop_assert_eq!(derived.is_ok(), validate(&d, &r).is_ok());
         if let Ok(hero) = derived {
             let values = [hero.attack, hero.defense, hero.power, hero.knowledge];
@@ -1298,7 +1388,9 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
         d
     };
     let r = original(damage_pack("t:archery", 500));
-    let damage = derive_battle_hero(&d(&r), &r).unwrap().damage;
+    let damage = derive_battle_hero(&d(&r), BattleBonuses::NONE, &r)
+        .unwrap()
+        .damage;
     assert_eq!(
         damage.ranged,
         Rate {
@@ -1310,7 +1402,9 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
     assert_eq!(damage.reduction, Rate::bp(9000));
     // Without the quirk only the basis points.
     let r = damage_ruleset("t:archery", 500);
-    let exact = derive_battle_hero(&d(&r), &r).unwrap().damage;
+    let exact = derive_battle_hero(&d(&r), BattleBonuses::NONE, &r)
+        .unwrap()
+        .damage;
     assert_eq!(exact.ranged, Rate::bp(3550));
     // Expert Logistics (15 % to every spell, 20 % resistance) at level 10 (OPEN-QUESTIONS Q45's
     // example): 22.5 % in single precision is 0.2250000089…, above f32(0.225); with the hook's
@@ -1320,7 +1414,9 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
     d.level = 10;
     d.experience = xp(&r, 10);
     d.skills.push((skill(&r, "t:logistics"), 3));
-    let effects = derive_battle_hero(&d, &r).unwrap().effects;
+    let effects = derive_battle_hero(&d, BattleBonuses::NONE, &r)
+        .unwrap()
+        .effects;
     assert_eq!(
         effects[0],
         BattleEffect::SpellDamage {
@@ -1352,7 +1448,7 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
     d.level = 23;
     d.experience = xp(&r, 23);
     d.skills.push((skill(&r, "t:first_aid"), 3));
-    let tent = derive_battle_hero(&d, &r)
+    let tent = derive_battle_hero(&d, BattleBonuses::NONE, &r)
         .unwrap()
         .war_machines
         .tent
@@ -1420,7 +1516,7 @@ fn opening_spells_and_eagle_eye_are_derived() {
         d.level = 2;
         d.experience = xp(&r, 2);
         d.skills.push((skill(&r, "t:luck"), 1));
-        let hero = derive_battle_hero(&d, &r).unwrap();
+        let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
         // In the order of the artifact types, whatever the positions worn: the helm (a part of the
         // circle), the circle, then the hook's two in their order (HER-BAT-017).
         let opening = |spell, mastery, power| BattleEffect::OpeningSpell {
@@ -1438,7 +1534,12 @@ fn opening_spells_and_eagle_eye_are_derived() {
         let mut moved = d.clone();
         moved.worn.swap(1, 2);
         moved.worn.swap(3, 5);
-        assert_eq!(derive_battle_hero(&moved, &r).unwrap().effects, expected);
+        assert_eq!(
+            derive_battle_hero(&moved, BattleBonuses::NONE, &r)
+                .unwrap()
+                .effects,
+            expected
+        );
         // Basic Eagle Eye's 40 % grown by 10 %, then the eye's 5 % once; the combat spells of
         // level 2 at most the hero has not learned (the bolt is learned, the portal an adventure
         // spell, the gaze an ability, the storm of level 3) (HER-SPL-004). In single precision
@@ -1453,7 +1554,7 @@ fn opening_spells_and_eagle_eye_are_derived() {
         expert.skills.retain(|&(s, _)| s != skill(&r, "t:luck"));
         expert.skills.push((skill(&r, "t:luck"), 3));
         expert.spells.clear();
-        let eagle = derive_battle_hero(&expert, &r)
+        let eagle = derive_battle_hero(&expert, BattleBonuses::NONE, &r)
             .unwrap()
             .magic
             .eagle_eye
@@ -1467,7 +1568,10 @@ fn opening_spells_and_eagle_eye_are_derived() {
         let mut plain = d.clone();
         plain.skills.retain(|&(s, _)| s != skill(&r, "t:luck"));
         assert_eq!(
-            derive_battle_hero(&plain, &r).unwrap().magic.eagle_eye,
+            derive_battle_hero(&plain, BattleBonuses::NONE, &r)
+                .unwrap()
+                .magic
+                .eagle_eye,
             None
         );
     }
@@ -1497,7 +1601,9 @@ fn the_maximum_spell_points_come_from_knowledge_and_intelligence() {
     let r = compile(mana_pack(false)).unwrap();
     // Knowledge as the battle hero's: the base and the worn artifacts', within the bounds.
     let d = details(&r);
-    let knowledge = derive_battle_hero(&d, &r).unwrap().knowledge;
+    let knowledge = derive_battle_hero(&d, BattleBonuses::NONE, &r)
+        .unwrap()
+        .knowledge;
     assert_eq!(max_mana(&d, &r), 10 * u16::from(knowledge));
     let mut d = details(&r);
     d.worn.fill(None);
@@ -1590,7 +1696,7 @@ fn the_map_reads_attack_and_defense_as_the_battle_hero_has_them() {
     // `t:loop`, which needs a skill) and the specialty's, within the bounds: Defense
     // 0 + 1 - 5 + 2 + 3 + 3 + 1 is 5, Attack 99 and more is 99.
     let d = details(&r);
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(attack_defense(&d, &r), (hero.attack, hero.defense));
     assert_eq!(attack_defense(&d, &r), (99, 5));
     let mut d = details(&r);
@@ -1612,7 +1718,7 @@ fn the_map_reads_attack_and_defense_as_the_battle_hero_has_them() {
 fn the_map_reads_power_as_the_battle_hero_has_it() {
     let r = compile(effect_pack()).unwrap();
     let d = details(&r);
-    let hero = derive_battle_hero(&d, &r).unwrap();
+    let hero = derive_battle_hero(&d, BattleBonuses::NONE, &r).unwrap();
     assert_eq!(power(&d, &r), hero.power);
     let mut d = details(&r);
     d.worn = wearing(&r, &[art(&r, "t:band")]);

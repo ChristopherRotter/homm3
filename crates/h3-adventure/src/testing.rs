@@ -446,7 +446,6 @@ pub(crate) fn hero_details(skills: &[(SkillId, u8)]) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: 0,
-        bonuses: Default::default(),
     }
 }
 

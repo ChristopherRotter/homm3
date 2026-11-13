@@ -23,7 +23,7 @@ use crate::testing::{
 /// [`movement_rules_with`] (faithful) with one type of each of increment 12's seven kinds: the
 /// garrison `t:garrison` (anti-magic), entered and from above, a bonus `t:buoy` visited from a
 /// neighbour, and `t:fountain`, `t:well`, `t:spring`, `t:stables` and `t:sirens` entered.
-fn bonus_rules() -> Rules {
+pub(super) fn bonus_rules() -> Rules {
     movement_rules_with(
         true,
         32,

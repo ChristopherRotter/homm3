@@ -87,34 +87,6 @@ pub struct OfferLevels {
     pub school: u8,
 }
 
-/// The bonuses a hero holds until the end of its next battle (E08 T60a; ADR-0013 point 1,
-/// HER-ADV-008): the morale and luck that objects add (a Pandora's Box's and an event's, the
-/// Warrior's Tomb's −3, a looted Pyramid's −2 luck), summed across objects, and the once-marks of
-/// the bonuses an object gives a hero once until then. The original's +0x11A and +0x11B and the
-/// status bits 21 (the Tomb) and 12 (the Pyramid), cleared together at a battle's end
-/// (`hero_battle_bonuses_clear` 0x4DA510). Any value is valid.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct BattleBonuses {
-    /// The morale added to the hero's own side in its next battle, held saturating (the
-    /// original's byte wraps past 127: A-9's class, fixed).
-    pub morale: i8,
-    /// The luck added to the hero's own side in its next battle, held saturating.
-    pub luck: i8,
-    /// The once-marks, one bit per kind of once-bonus ([`BattleBonuses::MARKS`] kinds): the
-    /// object types name theirs in the adventure's content, so this crate knows no object.
-    pub marks: u8,
-}
-
-impl BattleBonuses {
-    /// How many kinds of once-mark a hero holds: the bits of [`BattleBonuses::marks`].
-    pub const MARKS: u8 = 8;
-
-    /// Whether the once-mark `mark` is set; `false` for a mark of no kind (8 and above).
-    pub const fn has_mark(self, mark: u8) -> bool {
-        mark < Self::MARKS && self.marks & (1 << mark) != 0
-    }
-}
-
 /// The lasting details of a hero (ADR-0013 point 1): what the hero is between battles, apart
 /// from its army. Values are *base* values; what artifacts and the specialty add is derived
 /// ([`crate::derive_battle_hero`]).
@@ -122,6 +94,10 @@ impl BattleBonuses {
 /// Artifacts are worn on positions (E08 T49a; ADR-0013 point 1): one per position of the
 /// ruleset's slots ([`crate::positions`]), an artifact on a position of its own slot, and a
 /// combination's locks counted per slot (HER-ART-001).
+///
+/// The battle bonuses are not details since E08 T115a (increment 12's design note §12.1): they
+/// are the hero on the map's (ADR-0016 point 3), and [`crate::BattleBonuses`] passes them to
+/// [`crate::derive_battle_hero`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeroDetails {
     /// The hero type: class, specialty and identity.
@@ -152,9 +128,6 @@ pub struct HeroDetails {
     pub spells: Vec<SpellId>,
     /// Spell points (E04b). May exceed the maximum (a Mana Vortex), so it is not bounded here.
     pub mana: u16,
-    /// The morale and luck bonuses and once-marks until the end of the next battle (E08 T60a,
-    /// HER-ADV-008): none (the default) at a map's start and after a battle.
-    pub bonuses: BattleBonuses,
 }
 
 /// Checks hero details against a ruleset: every reference exists and every limit holds.

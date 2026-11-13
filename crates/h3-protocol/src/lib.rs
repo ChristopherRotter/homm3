@@ -139,13 +139,18 @@ pub mod wire;
 /// v56 (E16 M5 T14, `cross-lane`): the system actor's own commands for a player
 /// (`wire::game::GameCommand::System`, `wire::game::SystemCommand`: its turn ended, its
 /// decision's default answer, its battle side's command) and their refusal from a seat
-/// (`wire::game::GameReject::SystemOnly`).
-/// v57 (E09 T27, the town lane's, `cross-lane`): a town's recruitment
+/// (`wire::game::GameReject::SystemOnly`). v57 (E08 T115a, the adventure lane's, `cross-lane`):
+/// the battle bonuses are the hero on the map's (`wire::game::OwnMapHero`'s `bonuses`, with the
+/// once-marks' amounts, `wire::game::VisitBonus`, and its `timed` marks), no longer the details'
+/// (`HeroDetails`' `bonuses` and the changes `Bonus`, `ClearBonuses` gone); their changes are the
+/// adventure events `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged`, the owner's alone,
+/// after `MovementChanged`.
+/// v58 (E09 T27, the town lane's, `cross-lane`): a town's recruitment
 /// (TWN-REC-001, -002): the town command `Recruit`, its refusals `NotRecruiting`, `NotStanding`
 /// and `NothingSummoned`, a hire dialog's town garrison target (`wire::game::HireTarget::Garrison`)
 /// and its source named as `wire::game::HireSeen` (a map object, a town's index or its Portal) in
 /// the dialog's view and in `HireOpened`, in place of the object's type and anchor.
-pub const PROTOCOL_VERSION: u32 = 57;
+pub const PROTOCOL_VERSION: u32 = 58;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

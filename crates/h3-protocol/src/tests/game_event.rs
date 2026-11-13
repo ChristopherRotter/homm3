@@ -132,8 +132,6 @@ fn change_back(c: w::HeroChange) -> HeroChange {
             skill: Handle::from_raw(skill),
             level,
         },
-        C::Bonus { morale, luck, mark } => HeroChange::Bonus { morale, luck, mark },
-        C::ClearBonuses {} => HeroChange::ClearBonuses,
     }
 }
 
@@ -345,6 +343,29 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
             hero: id(hero),
             movement,
             max_movement,
+        },
+        A::BonusChanged { hero, morale, luck } => K::BonusChanged {
+            hero: id(hero),
+            morale,
+            luck,
+        },
+        A::OnceMarkChanged { hero, bonus, held } => K::OnceMarkChanged {
+            hero: id(hero),
+            bonus: h3_heroes::VisitBonus {
+                mark: bonus.mark,
+                morale: bonus.morale,
+                luck: bonus.luck,
+            },
+            held,
+        },
+        A::TimedMarkChanged {
+            hero,
+            object_type,
+            held,
+        } => K::TimedMarkChanged {
+            hero: id(hero),
+            object_type: Handle::from_raw(object_type),
+            held,
         },
     }
 }
@@ -945,7 +966,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
                 anchor: at,
             },
         },
-        // E09 T27 (protocol v57): a town's recruitment.
+        // E09 T27 (protocol v58): a town's recruitment.
         GameEvent::HireOpened {
             player: P0,
             target: HireTarget::Garrison(TownId::new(1)),
@@ -1141,12 +1162,6 @@ pub(super) fn every_event() -> Vec<GameEvent> {
                 skill: Handle::from_raw(8),
                 level: 2,
             },
-            HeroChange::Bonus {
-                morale: 1,
-                luck: -1,
-                mark: Some(3),
-            },
-            HeroChange::ClearBonuses,
         ]
         .map(|change| GameEvent::HeroChanged {
             player: P0,
@@ -1299,6 +1314,25 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             hero,
             movement: 1_234,
             max_movement: 2_000,
+        },
+        K::BonusChanged {
+            hero,
+            morale: -1,
+            luck: 2,
+        },
+        K::OnceMarkChanged {
+            hero,
+            bonus: h3_heroes::VisitBonus {
+                mark: 13,
+                morale: 0,
+                luck: -2,
+            },
+            held: true,
+        },
+        K::TimedMarkChanged {
+            hero,
+            object_type: ty,
+            held: false,
         },
     ];
     events.extend(adventure.map(|kind| GameEvent::Adventure(AdventureEvent { kind, seen_by })));
