@@ -3002,3 +3002,38 @@ verified). No original data. Branch `claude/loving-babbage-aylytb`. The user's c
 - **The inbox:** the adventure lane's answer of 2026-11-12 to T7b's question (one type on one
   anchor: unique for every object a command, an offer or an event names; nothing for the server
   to do) moved to `QUEUE-ARCHIVE.md`.
+
+### M5 2a's reviewer agent (2026-11-13, in T13)
+
+- **The review**: a fresh, read-only agent over everything 2a changed in the two crates
+  (`a396c3f..` T13, about 3 500 lines of code and 3 000 of tests), against `docs/06-security.md`'s
+  two whole-game bullets and the 2a review list; one major finding, one minor, no leak. Found
+  sound: the seat claims (`session::refusal` shared by the session's join and the registry's
+  `bind_map`, an account seat by the trusted login alone, tokens compared by `same_token`, a
+  token handed only to the first taker or its holder, a refused join changing nothing, a battle
+  and a whole game refusing each other's joins); the numbers (only `execute` numbers, after the
+  engine accepted; a resend applying nothing; rejections taking no number and no entry; the kept
+  echoes rebuilt by the re-run); the write-ahead (every step appends and syncs before it
+  delivers, a journal that does not write drops the frames and stops the game); the restore (the
+  journal's seed, difficulty and interval, the map by hash and import version, the seats'
+  count, started, paused and the host rebuilt, the computer's answers journaled or given at the
+  hand-over, the paused deadline from the file's time); no game hosted twice (`bind_map` under
+  the registry's lock, the sweep voiding only paused ones); no file or accounts lock under the
+  registry's lock in the new paths; the projection (queries for the seat's own player, unnumbered
+  and unrecorded, `BattleStarted` only to its owners, the lobby's display names, no seed, token or
+  hash in log lines or void reasons); no panic from a client's message or a bad journal; the
+  seed pin in no release build (`deny_unknown_fields` refuses it in a configuration).
+- **Major, left** (the user, SRV-Q30 (b), 2026-11-13: documented now, bounded in 2b and 2c):
+  a whole game has no command limit (a battle's `commands_per_game` voids it): a seated player's
+  free commands (a formation toggle at 20 a second) grow the journal (about 170 MB a day), the
+  session's copy of its commands (`GameJournal::commands`, which a game of connections never
+  reads) and the restart's re-run, which runs before the server listens and holds back every
+  game's start. `docs/06-security.md`, "Not covered yet", names it; 2b bounds a seat's commands
+  per turn with its turn timers, 2c the restart's cost (long journals, state saves) and the copy.
+- **Minor, fixed** (*provisional* in its shape; a power loss cannot be tested): a journal
+  directory `create_in` made (the first whole game's `<data>/whole/` on an upgraded server) was
+  synced but not its entry in its parent, so a power loss after the first game's first frames
+  could lose its journal; its parent is synced too now (the battles' `games/` with it).
+- **The checkpoint** (SRV-Q30, the user, 2026-11-13, the agent's recommendations but the last):
+  (a) the review list accepted as built; (b) above; (c) the minor finding fixed in T13; (d) 2b's
+  refinement next, in this session, once T13's pull request is open.
