@@ -2,7 +2,7 @@
 //! adventure-owned, `lanes.toml`): the packs with their adventure, battle and town files and the
 //! `.h3m` maps read from disk, and the adventure replay file format (TOML).
 //!
-//! Replay file format v12 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
+//! Replay file format v13 (`fixtures/replays/adventure/*.toml` are examples; v2 added the
 //! difficulty and the answers, E08 T14b: a v1 file has no difficulty, reads as normal and is
 //! refused by its format version; a later file without one is malformed; v3 added the battle
 //! commands, E08 T19b1, and names each command's actor: a player by its number; v4 the system
@@ -20,7 +20,9 @@
 //! hash, E09 T5a2; v10 a hire dialog's answers, E08 T95b; v11 `town build <town> <building>`, a
 //! town's build without a hero, E09 T18b1: the town by its `TownId` and the building by its index
 //! in the town's faction's record; v12 `revisit <hero>`, the entered object under the hero visited
-//! again, E08 T105b2):
+//! again, E08 T105b2; v13 a map garrison's army in a slot, `m<index>:<slot>`, the garrison by its
+//! object index, E08 T114a2: its exchange's army commands, and `answer close` closes an exchange
+//! too):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -33,7 +35,8 @@
 //!     "1 battle attack 3 41",         #   `<player> battle <command>`: a command in its battle,
 //!     "system battle wait",           #   the battle replays' text without the side letter;
 //!                                     #   `system battle …`: the unowned side's
-//!     "0 army split 1:0 1:3 5",       #   `<player> army …`, `formation …`, `tactics …`,
+//!     "0 army split 1:0 1:3 5",       #   `<player> army …` (`m12:0`: a map garrison's slot,
+//!     "0 army move 1:2 m12:4",        #   format 13), `formation …`, `tactics …`,
 //!     "0 artifact 1:b0 1:w2",         #   `artifact …`, `assemble …`, `disassemble …`: a
 //!                                     #   management command
 //!     "0 build-boat 41 9,16,1",       #   `<player> build-boat <type> <x>,<y>,<level>`
@@ -43,7 +46,7 @@
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 12
+//! format = 13
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -381,13 +384,15 @@ fn parse_answer<'w>(mut words: impl Iterator<Item = &'w str>) -> Option<Answer> 
     words.next().is_none().then_some(answer)
 }
 
-/// An army slot as `<army>:<slot>`: the army a hero's id, `g` for the group, or `t<town>` for a
-/// town's garrison (E09 T8b2b: the garrison's merge's events; no command names it).
+/// An army slot as `<army>:<slot>`: the army a hero's id, `g` for the group, `t<town>` for a
+/// town's garrison (E09 T8b2b: the garrison's merge's events; no command names it), or since
+/// format v13 `m<index>` for a map garrison by its object index (E08 T114a2).
 fn format_slot(at: ArmySlot) -> String {
     match at.army {
         ArmyRef::Hero(hero) => format!("{}:{}", hero.raw(), at.slot),
         ArmyRef::Group => format!("g:{}", at.slot),
         ArmyRef::Garrison(town) => format!("t{}:{}", town.raw(), at.slot),
+        ArmyRef::MapGarrison(index) => format!("m{index}:{}", at.slot),
     }
 }
 
@@ -436,9 +441,10 @@ fn parse_slot(word: &str) -> Option<ArmySlot> {
     let (army, slot) = word.split_once(':')?;
     let army = match army {
         "g" => ArmyRef::Group,
-        id => match id.strip_prefix('t') {
-            Some(town) => ArmyRef::Garrison(TownId::new(town.parse().ok()?)),
-            None => ArmyRef::Hero(HeroId::new(id.parse().ok()?)),
+        id => match (id.strip_prefix('t'), id.strip_prefix('m')) {
+            (Some(town), _) => ArmyRef::Garrison(TownId::new(town.parse().ok()?)),
+            (_, Some(index)) => ArmyRef::MapGarrison(index.parse().ok()?),
+            (None, None) => ArmyRef::Hero(HeroId::new(id.parse().ok()?)),
         },
     };
     Some(ArmySlot {

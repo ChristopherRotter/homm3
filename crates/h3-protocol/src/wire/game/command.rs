@@ -305,6 +305,12 @@ pub enum ArmyRef {
         /// The town.
         town: u16,
     },
+    /// A map garrison's army, by the garrison's object index (E08 T114a2), while its exchange is
+    /// open (its `ExchangeOpened` names the index).
+    MapGarrison {
+        /// The garrison's object index.
+        garrison: u32,
+    },
 }
 
 /// A place of a hero's artifacts: the hero and where.
@@ -569,6 +575,12 @@ pub enum ArmyReject {
         /// The town.
         town: u16,
     },
+    /// The object index holds no map garrison (E08 T114a2).
+    NoGarrison {},
+    /// The stack's army is not the actor's to take from (the one owner rule, ADV-GAR-003).
+    NotOwn {},
+    /// An army not the actor's takes stacks only into its empty slots (the one owner rule).
+    OnlyEmpty {},
 }
 
 /// Why an artifact's move was refused (`h3_heroes::MoveError`).

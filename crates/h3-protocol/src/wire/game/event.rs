@@ -143,6 +143,14 @@ pub enum GameEvent {
         object_type: u16,
         anchor: Pos,
     },
+    ExchangeOpened {
+        player: u8,
+        hero: u16,
+        garrison: u32,
+        object_type: u16,
+        anchor: Pos,
+        removable: bool,
+    },
     ChoiceOpened {
         player: u8,
         hero: u16,

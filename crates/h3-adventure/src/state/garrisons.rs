@@ -2,8 +2,9 @@
 //! note §5 to §7 and §14; survey `E08-garrisons-bonuses.md` §3 to §5 and §7): a garrison's army as
 //! it stands, the visit of another team's or a neutral one (its army fought at once, unsplit, else
 //! its flag), its battle's end (the survivors kept, or the flag after the winner's levels) and the
-//! anti-magic battle on its entrance. A garrison of the mover's team is crossed on the way
-//! (`AdventureState::visit_at`); its visit, the exchange, comes with T114a2.
+//! anti-magic battle on its entrance; since E08 T114a2 the exchange its visit opens (ADV-GAR-003,
+//! increment 12's design note §13). A garrison of the mover's team is crossed on the way
+//! (`AdventureState::visit_at`) and visited where the move ends or by a revisit.
 
 use alloc::vec::Vec;
 
@@ -11,7 +12,7 @@ use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use super::{AdventureState, allied};
-use crate::command::{AdventureOutcome, Defender, Sink};
+use crate::command::{AdventureOutcome, Defender, Exchange, Sink};
 use crate::ruleset::{AdventureRuleset, ObjectKind, ObjectTypeId};
 use crate::setup::{Holds, Pos};
 
@@ -19,12 +20,23 @@ impl AdventureState {
     /// The army of the garrison at object index `index` as it stands (ADV-GAR-002, E08 T114a1;
     /// increment 12's design note §5): what its last battle left ([`Self::army_left`]: none after
     /// a won battle or a draw), else the map's (`Holds::Garrison`); none for an object that is no
-    /// map garrison. Its stacks by slot.
+    /// map garrison or past the objects. Its stacks by slot.
     pub fn garrison_army(&self, index: usize) -> &[ArmyStack] {
-        match (&self.object_at(index).holds, self.army_left(index)) {
-            (Holds::Garrison { .. }, Some(left)) => left,
-            (Holds::Garrison { army, .. }, None) => army,
+        match (self.object(index).map(|o| &o.holds), self.army_left(index)) {
+            (Some(Holds::Garrison { .. }), Some(left)) => left,
+            (Some(Holds::Garrison { army, .. }), None) => army,
             _ => &[],
+        }
+    }
+
+    /// The removable flag of the map garrison at object index `index` (ADV-GAR-001, ADV-GAR-003;
+    /// the map's, `Holds::Garrison`): whether its owner may take its troops back in its exchange
+    /// (the one owner rule: a non-removable one's bar owner is nobody). None for an object that
+    /// is no map garrison.
+    pub fn garrison_removable(&self, index: usize) -> Option<bool> {
+        match self.object(index)?.holds {
+            Holds::Garrison { removable, .. } => Some(removable),
+            _ => None,
         }
     }
 
@@ -44,11 +56,11 @@ impl AdventureState {
     /// The visit of the garrison at object index `index`, of type `object_type`, by `player`'s
     /// hero `hero` on its entrance (ADV-GAR-002, E08 T114a1; increment 12's design note §6; survey
     /// §3, the original's `visit_object` case 33, 0x4A9061): a garrison of the visitor's team
-    /// opens the exchange (T114a2); another team's or a neutral one holding a creature is fought
-    /// at once, **with no question** ([`Self::garrison_battle`]); one holding none is flagged for
-    /// the visitor's owner ([`Self::flag`], ADV-OWN-001: its reveal of the flag radius), then the
-    /// exchange (T114a2).
-    // rule: ADV-GAR-002, ADV-OWN-001
+    /// opens the exchange (ADV-GAR-003, E08 T114a2: [`Self::exchange`]); another team's or a
+    /// neutral one holding a creature is fought at once, **with no question**
+    /// ([`Self::garrison_battle`]); one holding none is flagged for the visitor's owner
+    /// ([`Self::flag`], ADV-OWN-001: its reveal of the flag radius), then the exchange.
+    // rule: ADV-GAR-002, ADV-GAR-003, ADV-OWN-001
     pub(super) fn visit_garrison<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset),
@@ -57,14 +69,34 @@ impl AdventureState {
         sink: &mut S,
     ) -> AdventureOutcome {
         match self.owner(object.0) {
-            // stub: ADV-STUB-17 (the exchange of a garrison of the visitor's team, T114a2)
-            Some(owner) if allied(owner, player) => AdventureOutcome::default(),
+            Some(owner) if allied(owner, player) => self.exchange(hero, object),
             _ if self.garrison_army(object.0).is_empty() => {
                 self.flag(rules, object, player, sink);
-                // stub: ADV-STUB-17 (the exchange after the capture, T114a2)
-                AdventureOutcome::default()
+                self.exchange(hero, object)
             }
             _ => self.garrison_battle(rules.1, hero, object.0),
+        }
+    }
+
+    /// The exchange of the hero `hero` with the garrison at object index `index`, of type
+    /// `object_type` (ADV-GAR-003, GAM-DEC-009; E08 T114a2, increment 12's design note §13; the
+    /// original's `garrison_exchange_dialog` 0x5D1130 at the visit, survey §6): the outcome the
+    /// game opens as the hero's owner's decision, the garrison by index, type and anchor.
+    // rule: ADV-GAR-003
+    pub(super) fn exchange(
+        &self,
+        hero: HeroId,
+        (index, object_type): (usize, ObjectTypeId),
+    ) -> AdventureOutcome {
+        AdventureOutcome {
+            exchange: Some(Exchange {
+                hero,
+                // An object index past a `u32` names no object: no map holds one.
+                garrison: u32::try_from(index).unwrap_or(u32::MAX),
+                object_type,
+                anchor: self.object_at(index).anchor,
+            }),
+            ..AdventureOutcome::default()
         }
     }
 
@@ -101,9 +133,10 @@ impl AdventureState {
     /// `hero` at `tile` (ADV-GAR-002, E08 T114a1; increment 12's design note §6; survey §4):
     /// after the visitor's side `won` the garrison's army is gone and its flag comes after the
     /// winner's levels ([`AdventureOutcome::reward_after`], GAM-DEC-007: the original's visit
-    /// flags it once its battle, levels included, returns; [`Self::give_won`]); else the
-    /// defender's `survivors` stay as its army, by slot (none after a draw: its next visitor
-    /// flags it), its owner unchanged. The army's view is told with T114b (ADV-GAR-006).
+    /// flags it once its battle, levels included, returns; [`Self::give_won`], which then opens
+    /// the exchange, E08 T114a2); else the defender's `survivors` stay as its army, by slot (none
+    /// after a draw: its next visitor flags it), its owner unchanged. The army's view is told
+    /// with T114b (ADV-GAR-006).
     // rule: ADV-GAR-002
     pub(super) fn end_garrison_battle(
         &mut self,

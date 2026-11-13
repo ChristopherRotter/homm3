@@ -950,6 +950,8 @@ enum Open {
     University(HeroId, h3_adventure::ObjectTypeId, TilePos),
     // E08 T95b: a hire dialog, named by its army and its source.
     Hire(h3_game::HireTarget, h3_adventure::ObjectTypeId, TilePos),
+    // E08 T114a2: a map garrison's exchange, its hero, the garrison and its army.
+    Exchange(HeroId, u32, Vec<ArmyStack>),
 }
 
 fn check_told(
@@ -994,6 +996,12 @@ fn check_told(
             Open::University(v.hero, v.object_type, v.anchor)
         }
         DecisionView::Hire(view) => Open::Hire(view.target, view.object_type, view.anchor),
+        DecisionView::Exchange {
+            hero,
+            garrison,
+            army,
+            ..
+        } => Open::Exchange(*hero, *garrison, army.clone()),
     };
     // E08 T51b: the group of the army dialog the viewer is told closed, whose stacks are lost.
     let mut lost: Vec<ArmyStack> = Vec::new();
@@ -1452,6 +1460,19 @@ fn check_told(
                     group.extend(stack);
                     group.sort_by_key(|s| s.slot);
                 }
+                // E08 T114a2: a slot of the open exchange's garrison, at its opening and by its
+                // commands.
+                if let ArmyRef::MapGarrison(index) = at.army {
+                    let open = match &mut decision {
+                        Some(Open::Exchange(_, open, army)) if *open == index => Some(army),
+                        _ => None,
+                    };
+                    prop_assert!(open.is_some(), "{:?} without its open exchange", event);
+                    let army = open.unwrap();
+                    army.retain(|s| s.slot != at.slot);
+                    army.extend(stack);
+                    army.sort_by_key(|s| s.slot);
+                }
                 // E09 T8b2b: a garrison's slot at a siege's merge (TWN-SIE-002), told to the
                 // garrison's owner, which sees it by slot (TWN-VEW-003).
                 if let ArmyRef::Garrison(town) = at.army {
@@ -1509,6 +1530,18 @@ fn check_told(
                 decision = Some(Open::Dialog(hero, Vec::new()));
                 guarding = Some((object_type, anchor));
             }
+            // E08 T114a2: a map garrison's exchange opens as the viewer's decision, its army's
+            // stacks following as `StackChanged`.
+            GameEvent::ExchangeOpened {
+                player,
+                hero,
+                garrison,
+                ..
+            } => {
+                prop_assert_eq!(player, viewer);
+                prop_assert!(decision.is_none());
+                decision = Some(Open::Exchange(hero, garrison, Vec::new()));
+            }
             // E08 T86b1: a Leave Guards dialog's close loses nothing: its group, which the viewer
             // was told stack by stack, is the mine's guards now.
             GameEvent::DecisionClosed { player } => {
@@ -1526,6 +1559,7 @@ fn check_told(
                                     | Open::Choice(..)
                                     | Open::University(..)
                                     | Open::Hire(..)
+                                    | Open::Exchange(..)
                             )
                         ),
                         "{:?}",
@@ -2409,6 +2443,7 @@ fn outcome(
             GameEvent::UniversityOpened { .. } => Some(9),
             GameEvent::HireOpened { .. } => Some(10),
             GameEvent::DecisionClosed { .. } => Some(11),
+            GameEvent::ExchangeOpened { .. } => Some(12),
             _ => None,
         })
         .collect();

@@ -20,6 +20,17 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-12, reviewed 2026-11-13 in E16 M5 T13 (the mapping both ways and the fold sound; the garrison's object index on the wire an exception to `docs/06-security.md`'s naming rule, harmless while objects are only appended, its type and anchor proposed to the adventure lane's inbox) (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v52** (after your T11's v50 and T12's v51): the wire's
+  `ArmyRef::MapGarrison { garrison: u32 }` (a map garrison by object index, `u32::MAX` past it),
+  `ArmyReject::{NoGarrison, NotOwn, OnlyEmpty}`, `Decision::Exchange` (the hero, the index, the
+  `ObjectRef`, the removable flag, the army) and `GameEvent::ExchangeOpened`, mapped both ways and
+  in the round-trip tests; the fold opens the exchange at `ExchangeOpened` and keeps its army from
+  the `StackChanged`s that follow (the other viewers' view of a map garrison, `GarrisonChanged`,
+  comes with E08 T114b). `map::game::command::slot` and `slot_to_engine` are no longer `const`.
+  The golden replays re-recorded (game state hash v29, adventure replay format v13), so
+  `h3-server`'s `tests/record.rs` literals moved with them. No golden replay holds a garrison.
+
 - 2026-11-12, handled 2026-11-13 in E16 M5 T13 (nothing for the server to do) (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the answer to your
   question of one type on one anchor**, E16 M5 T7b's review; E08 decisions 320, 322): every
   typed object a command, an offer or an event can name is unique by its type and anchor: the
