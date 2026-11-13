@@ -32,7 +32,7 @@ use crate::movement::{
 use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{
     AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
-    ObjectKind, ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
+    MarkLifetime, ObjectKind, ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
 };
 use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
@@ -82,6 +82,7 @@ impl StaticTile {
 }
 
 mod boats;
+mod bonuses;
 mod calendar;
 mod channels;
 mod draws;
@@ -107,6 +108,7 @@ mod weekly;
 
 pub use boats::Boat;
 use boats::Boats;
+pub use bonuses::{HeroBonuses, add_timed, drop_timed, week_land_points};
 pub use channels::{Channels, GateEntry, WhirlpoolTile};
 pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
@@ -1269,6 +1271,12 @@ pub struct HeroOnMap {
     /// surface, set by the start of the game and of its turn (ADV-MOV-002) and, from T73, by a
     /// boarding and a landing.
     pub max_movement: u32,
+    /// Its battle bonuses (E08 T115a; increment 12's design note §12.2, HER-ADV-008 amended):
+    /// none at its placing and after its battle.
+    pub bonuses: HeroBonuses,
+    /// Its timed marks (E08 T115a; increment 12's design note §12.4): the object types whose
+    /// day's or week's mark it holds, sorted; none at its placing.
+    pub timed: Vec<ObjectTypeId>,
 }
 
 impl HeroOnMap {
@@ -1480,13 +1488,17 @@ impl AdventureState {
     /// a Cover of Darkness hid tiles (`new_day` 0x4C7FE0, `cover_of_darkness_hide` 0x4C7BA0; survey
     /// `E08-hero-movement.md` §4.2), which comes with towns (E09). No event, as the start's and the
     /// steps' reveals have none of their own: the owner's observation shows the explored tiles.
-    // rule: ADV-FOG-003
+    /// First, since E08 T115a, every hero on the map drops its timed marks of a day (the Magic
+    /// Well's; increment 12's design note §12.4, §15; ADV-BON-006), told as the command's
+    /// [`crate::AdventureEventKind::TimedMarkChanged`].
+    // rule: ADV-FOG-003, ADV-BON-006
     pub fn start_day(
         &mut self,
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
     ) {
+        self.drop_timed_marks(part, MarkLifetime::Day);
         if !core.quirks().is_enabled(RADIUS_WAITS_FOR_A_STEP) {
             self.reveal_around_heroes(core, part, heroes);
         }
@@ -1554,6 +1566,8 @@ impl AdventureState {
                 movement: 0,
                 boat: None,
                 max_movement: 0,
+                bonuses: HeroBonuses::NONE,
+                timed: Vec::new(),
             },
         );
         Ok(())
@@ -3063,6 +3077,12 @@ impl CanonicalHash for AdventureState {
                     h.write_u8(1);
                     h.write_u32(boat);
                 }
+            }
+            // v23 (E08 T115a): the battle bonuses, then the timed marks.
+            hero.bonuses.hash_into(h);
+            h.write_len(hero.timed.len());
+            for ty in &hero.timed {
+                ty.hash_into(h);
             }
         }
         h.write_len(self.explored.len());

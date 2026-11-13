@@ -129,7 +129,6 @@ pub(super) fn hero(r: &Ruleset, hero: &str, experience: u32, skills: &[(&str, u8
         backpack: vec![],
         spells: vec![],
         mana: 0,
-        bonuses: Default::default(),
     }
 }
 

@@ -89,12 +89,12 @@ fn the_days_points_come_from_the_details_after_the_levels_at_load() {
     let details = state.hero(ONE).unwrap();
     assert_eq!(details.level, 4);
     let army = state.adventure().hero(ONE).unwrap().army.clone();
-    let expected = day_points(rules.core(), rules.adventure(), Some(details), &army);
+    let expected = day_points(rules.core(), rules.adventure(), Some(details), &army, 0);
     assert_eq!(points(&state), expected);
     let mut at_one = details.clone();
     at_one.level = 1;
     assert_ne!(
-        day_points(rules.core(), rules.adventure(), Some(&at_one), &army),
+        day_points(rules.core(), rules.adventure(), Some(&at_one), &army, 0),
         expected
     );
     // Its owner's turn start sets the same points again, from the store (red ends its turn).

@@ -43,7 +43,6 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: 0,
-        bonuses: Default::default(),
     };
     let skills = pick(rng, 9);
     while d.skills.len() < skills {
@@ -128,7 +127,7 @@ fn random_legal_sod_heroes_derive_and_play() {
         let details = [details(&sod, &mut rng), details(&sod, &mut rng)];
         let heroes = details
             .clone()
-            .map(|d| derive_battle_hero(&d, &sod).unwrap());
+            .map(|d| derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, &sod).unwrap());
         assert!(heroes.iter().all(|h| h.effects.len() <= MAX_BATTLE_EFFECTS));
         // A quarter of the battles against an army without a hero.
         let led = rng.below(4) != 0;
@@ -343,7 +342,7 @@ fn random_legal_sod_heroes_cast_and_play() {
             ];
             let heroes = details
                 .clone()
-                .map(|d| derive_battle_hero(&d, &sod).unwrap());
+                .map(|d| derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, &sod).unwrap());
             assert!(heroes.iter().all(|h| h.magic.spell_book.is_some()));
             // Three battles in four on a terrain with its random obstacles (BAT-GEO-004).
             let terrain = (rng.below(4) != 0)
@@ -440,7 +439,6 @@ fn wearing(sod: &BattleRuleset, worn: &[ArtifactInstance], skills: &[(&str, u8)]
         backpack: vec![],
         spells: vec![sod.spell_by_key("base:magic_arrow").unwrap()],
         mana: 0,
-        bonuses: Default::default(),
     }
 }
 
@@ -541,7 +539,7 @@ fn the_harvested_artifacts_give_the_originals_spells() {
         &[art("base:spell_book"), art("base:tome_of_air_magic")],
         &[("base:air_magic", 2)],
     );
-    let hero = derive_battle_hero(&booked, &sod).unwrap();
+    let hero = derive_battle_hero(&booked, h3_heroes::BattleBonuses::NONE, &sod).unwrap();
     assert_eq!(hero.magic.spell_book, Some(air));
     assert!(
         hero.magic
@@ -550,7 +548,7 @@ fn the_harvested_artifacts_give_the_originals_spells() {
     );
     let unbooked = wearing(&sod, &[art("base:tome_of_air_magic")], &[]);
     assert_eq!(
-        derive_battle_hero(&unbooked, &sod)
+        derive_battle_hero(&unbooked, h3_heroes::BattleBonuses::NONE, &sod)
             .unwrap()
             .magic
             .spell_book,

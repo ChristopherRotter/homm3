@@ -107,8 +107,11 @@ impl AdventureState {
     /// told to the hero's owner (`CreaturesJoined`), the stacks that find no room kept at their
     /// slots as **one** group for the army dialog ([`AdventureOutcome::no_room`], GAM-DEC-004).
     /// The creatures join here, before the game applies the hero's changes; nothing of either
-    /// reads the other. A hero without details gets no hero half; one not on the map no creature.
-    // rule: ADV-RWD-001, ADV-ARM-007
+    /// reads the other. Since E08 T115a the record's morale and luck are added to the hero on the
+    /// map's battle bonuses here, unmarked (HER-ADV-008; increment 12's design note §12.3: the
+    /// hero model's order kept, nothing of it reading them). A hero without details gets no hero
+    /// half but these; one not on the map no creature and no bonus.
+    // rule: ADV-RWD-001, ADV-ARM-007, HER-ADV-008
     pub(super) fn give_record<S: Sink>(
         &mut self,
         (core, part, heroes): Rules<'_>,
@@ -132,6 +135,8 @@ impl AdventureState {
         let room = (part.params().army_slots(), part.params().max_stack_count());
         let mut group = Vec::new();
         if let Some(visitor) = self.heroes.iter_mut().find(|h| h.id == hero) {
+            // rule: HER-ADV-008
+            visitor.bonuses.add(record.hero.morale, record.hero.luck);
             let owner = visitor.owner;
             for stack in &record.creatures {
                 if add_stack(&mut visitor.army, room, stack.creature, stack.count) {
@@ -184,13 +189,11 @@ impl AdventureState {
         };
         self.learn(player, index);
         if self.is_emptied(index) {
-            let looted = pyramid.looted;
-            let bonus = HeroChange::Bonus {
-                morale: looted.morale,
-                luck: looted.luck,
-                mark: Some(looted.mark),
-            };
-            return changes(offer.hero, Vec::from([bonus]));
+            // rule: HER-ADV-008
+            if let Some(hero) = self.hero_mut(offer.hero) {
+                hero.bonuses.add_once(pyramid.looted.visit());
+            }
+            return AdventureOutcome::default();
         }
         let defender = Defender::Monsters {
             split: pyramid.split,

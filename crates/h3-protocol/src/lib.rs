@@ -130,8 +130,13 @@ pub mod wire;
 /// observation's `week` (`wire::game::Week`), the fold keeping it. v54 (E08 T114b, the adventure
 /// lane's, `cross-lane`): the map garrisons a viewer sees (`wire::game::GameObservation`'s and
 /// `GameReveal`'s `garrisons`, `wire::game::MapGarrison`) and their changes (the events
-/// `GarrisonChanged`, `GarrisonStackSeen`).
-pub const PROTOCOL_VERSION: u32 = 54;
+/// `GarrisonChanged`, `GarrisonStackSeen`). v55 (E08 T115a, the adventure lane's,
+/// `cross-lane`): the battle bonuses are the hero on the map's (`wire::game::OwnMapHero`'s
+/// `bonuses`, with the once-marks' amounts, `wire::game::VisitBonus`, and its `timed` marks), no
+/// longer the details' (`HeroDetails`' `bonuses` and the changes `Bonus`, `ClearBonuses` gone);
+/// their changes are the adventure events `BonusChanged`, `OnceMarkChanged` and
+/// `TimedMarkChanged`, the owner's alone, after `MovementChanged`.
+pub const PROTOCOL_VERSION: u32 = 55;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

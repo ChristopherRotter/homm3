@@ -17,7 +17,8 @@
 //! Keymaster's tents with the keys and the border guards with their offer (T15a), the wandering
 //! monsters (T20), the guarded piles ([`Guards`], T21a); what a viewer newly sees since an
 //! explored grid of its own ([`AdventureState::reveal`], SRV-Q26 (a)) and the heroes' movement
-//! changes a command told ([`Movements`], SRV-Q26 (b)).
+//! changes a command told ([`OwnHeroes`], SRV-Q26 (b); since E08 T115a its battle bonuses and
+//! timed marks too).
 //! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
 //! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
@@ -62,7 +63,7 @@ pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
     BattleStart, Choice, ChoiceKind, Combatant, Defender, Exchange, Garrison, HeroGains,
-    HireDialog, HireError, HireSource, HireTarget, Meeting, Movements, NoRoom, Offer, OfferKind,
+    HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, Offer, OfferKind, OwnHeroes,
     Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
@@ -77,11 +78,12 @@ pub use ruleset::{
     BONUS_DAYS, BattleTerrains, BattleTerrainsDef, CalendarParams, Chest, ChestDef,
     DWELLING_LEVELS, DwellingParams, Find, FindContent, FindContentDef, FindDef, Gift, GiftDef,
     Gives, KEY_COLOURS, MAX_DIFFICULTIES, MAX_GAIN, MAX_LAND_POINTS, MAX_MONSTER_COUNT,
-    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MonolithWay, MonsterParams, MonsterParamsDef, MonthParams,
-    MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef, ObjectTypeId, OnceBonus,
-    Passage, Pickup, PickupDef, Pyramid, PyramidDef, RandomDwellingDef, RiverDef, RiverId,
-    RiverKind, RoadDef, RoadId, RoadKind, StartingResources, StartingResourcesDef, TerrainMovement,
-    TerrainMovementDef, TerrainWalker, TerrainWalkerDef, Turn, TurnDef, Visit,
+    MAX_PICKUP_AMOUNT, MAX_PLAYERS, MarkLifetime, MonolithWay, MonsterParams, MonsterParamsDef,
+    MonthParams, MonthParamsDef, ObjectKind, ObjectKindDef, ObjectType, ObjectTypeDef,
+    ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef, RandomDwellingDef,
+    RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
+    StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
+    Turn, TurnDef, Visit,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -96,9 +98,9 @@ pub use split::{TileRand, split, split_with_second};
 /// no edge to the hero model.
 pub use h3_heroes::{ArtifactInstance, HeroReward, PrimarySkill, ScholarGift};
 pub use state::{
-    AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroOnMap, HirePurchase,
-    MapObject, Monster, Resolved, StaticMap, StaticTile, Visits, Weekly, WhirlpoolTile, allied,
-    hire_price,
+    AdventureState, BACKGROUND_RADIUS, Boat, Channels, GateEntry, HeroBonuses, HeroOnMap,
+    HirePurchase, MapObject, Monster, Resolved, StaticMap, StaticTile, Visits, Weekly,
+    WhirlpoolTile, add_timed, allied, drop_timed, hire_price, week_land_points,
 };
 pub use town::TownReveal;
 
@@ -124,8 +126,9 @@ pub use town::TownReveal;
 /// creatures and counts. v21 (E09 T8a1): the towns among the ownable objects (their owners in the
 /// owners' block), a town's garrison on its object, a town's formation in the static map's
 /// objects ([`Holds`]' tag 9). v22 (E08 T113b): a map garrison's troops and removable flag in the
-/// static map's objects ([`Holds`]' tag 11).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 22;
+/// static map's objects ([`Holds`]' tag 11). v23 (E08 T115a): each hero on the map's battle
+/// bonuses and timed marks ([`HeroBonuses`]).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 23;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

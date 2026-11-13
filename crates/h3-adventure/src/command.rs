@@ -11,11 +11,11 @@ use core::fmt;
 
 use h3_content::{ContentKey, CreatureTypeId, Formation, ResourceId, SkillId, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
-use h3_heroes::{HeroChange, PrimarySkill};
+use h3_heroes::{HeroChange, PrimarySkill, VisitBonus};
 
 use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
-use crate::state::AdventureState;
+use crate::state::{AdventureState, HeroBonuses};
 
 /// A command to the adventure context, issued by a player.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1195,7 +1195,7 @@ pub enum AdventureEventKind {
     /// A hero's movement points left and its day's maximum after a command that changed either
     /// (SRV-Q26 (b), the user's decision of 2026-11-09; increment 12's design note's
     /// `MovementChanged`): a step, a jump, a visit, a boarding or a landing, a battle, a new day.
-    /// Told once a command, after its other events ([`Movements::tell`]): the rules derive them,
+    /// Told once a command, after its other events ([`OwnHeroes::tell`]): the rules derive them,
     /// so a client folds what the server tells. Seen by the hero's owner alone, as its movement
     /// is (ADV-FOG-006).
     MovementChanged {
@@ -1206,54 +1206,149 @@ pub enum AdventureEventKind {
         /// Its day's maximum (ADR-0016 point 3).
         max_movement: u32,
     },
+    /// A hero's morale and luck that no once-mark names, after a command that changed either
+    /// (E08 T115a; increment 12's design note §12, ADR-0016 point 6): a reward record's (a
+    /// Pandora's Box's, an event's), a battle's end. Told once a command, after its other events
+    /// and the hero's [`Self::MovementChanged`] ([`OwnHeroes::tell`]), with the once-marks and the
+    /// timed marks it dropped before and those it gained after: the rules derive them (the
+    /// once-marks' gates, the drops by the kinds' lifetimes), so a client folds what the server
+    /// tells. Seen by the hero's owner alone, as its view of them is (ADV-FOG-006).
+    BonusChanged {
+        /// The hero.
+        hero: HeroId,
+        /// The morale no once-mark names, now.
+        morale: i8,
+        /// The luck no once-mark names, now.
+        luck: i8,
+    },
+    /// A once-mark a hero gained with its amounts, or dropped (E08 T115a; as
+    /// [`Self::BonusChanged`]): a visit's (the Warrior's Tomb's, a looted Pyramid's; increment
+    /// 12's from T115b), a battle's end. The owner alone.
+    OnceMarkChanged {
+        /// The hero.
+        hero: HeroId,
+        /// The mark with the morale and luck its visit gave.
+        bonus: VisitBonus,
+        /// Whether the hero holds it now (gained) or not (dropped).
+        held: bool,
+    },
+    /// A timed mark a hero gained, or dropped (E08 T115a; as [`Self::BonusChanged`]): a Magic
+    /// Well's or the Stables' visit (T115b), a day's or a week's start. The owner alone.
+    TimedMarkChanged {
+        /// The hero.
+        hero: HeroId,
+        /// The mark's object type.
+        object_type: ObjectTypeId,
+        /// Whether the hero holds it now (gained) or not (dropped).
+        held: bool,
+    },
 }
 
-/// Each hero's movement points left and day's maximum before a command, by id, to tell their
-/// owners what the command changed ([`AdventureEventKind::MovementChanged`]; SRV-Q26 (b)): taken
-/// with [`AdventureState::movements`] before the command, told with [`Self::tell`] after it, for a
-/// sink that keeps events (the game's `Sink::RECORDS`: nobody reads what a sink that keeps
-/// nothing would be told).
+/// What each hero's owner alone knows of it and the rules derive, before a command, by id, to
+/// tell the owners what the command changed: its movement points left and day's maximum
+/// ([`AdventureEventKind::MovementChanged`]; SRV-Q26 (b)) and since E08 T115a its battle bonuses
+/// and timed marks ([`AdventureEventKind::BonusChanged`] and its two marks' events). Taken with
+/// [`AdventureState::own_heroes`] before the command, told with [`Self::tell`] after it, for a
+/// sink that keeps events (the game's `Sink::RECORDS`: nobody reads what a sink that keeps nothing
+/// would be told).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct Movements(Vec<(HeroId, u32, u32)>);
+pub struct OwnHeroes(Vec<OwnHero>);
+
+/// One hero's entry in [`OwnHeroes`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct OwnHero {
+    id: HeroId,
+    movement: (u32, u32),
+    bonuses: HeroBonuses,
+    timed: Vec<ObjectTypeId>,
+}
 
 impl AdventureState {
-    /// The heroes' movement points left and day's maximums now, by id ([`Movements`]).
-    pub fn movements(&self) -> Movements {
-        Movements(
+    /// The heroes' movement points left, day's maximums, battle bonuses and timed marks now, by
+    /// id ([`OwnHeroes`]).
+    pub fn own_heroes(&self) -> OwnHeroes {
+        OwnHeroes(
             self.heroes()
                 .iter()
-                .map(|hero| (hero.id, hero.movement, hero.max_movement))
+                .map(|hero| OwnHero {
+                    id: hero.id,
+                    movement: (hero.movement, hero.max_movement),
+                    bonuses: hero.bonuses.clone(),
+                    timed: hero.timed.clone(),
+                })
                 .collect(),
         )
     }
 }
 
-impl Movements {
-    /// Tells each hero's owner, in hero order, the movement points and day's maximum of each of
-    /// its heroes on the map in `state` whose either differs from these, or that was not on the
-    /// map then (ADV-FOG-006: the owner alone; SRV-Q26 (b)). A hero that left the map is told
-    /// nothing: its removal was.
+impl OwnHeroes {
+    /// Tells each hero's owner, in hero order, of each of its heroes on the map in `state`: its
+    /// movement points and day's maximum when either differs from these
+    /// ([`AdventureEventKind::MovementChanged`]); then the once-marks and the timed marks it
+    /// dropped, in mark and type order, its morale and luck no once-mark names when either
+    /// changed, and the once-marks and timed marks it gained, in order
+    /// ([`AdventureEventKind::OnceMarkChanged`], [`AdventureEventKind::BonusChanged`],
+    /// [`AdventureEventKind::TimedMarkChanged`]). A hero that was not on the map then is told its
+    /// movement, and its bonuses and marks against none (a hero comes onto the map without them).
+    /// A hero that left the map is told nothing: its removal was (ADV-FOG-006: the owner alone;
+    /// SRV-Q26 (b)).
     // rule: ADV-FOG-006
     pub fn tell<S: Sink>(&self, state: &AdventureState, sink: &mut S) {
         for hero in state.heroes() {
-            let now = (hero.movement, hero.max_movement);
             let before = self
                 .0
-                .binary_search_by_key(&hero.id, |&(id, ..)| id)
+                .binary_search_by_key(&hero.id, |entry| entry.id)
                 .ok()
-                .map(|at| (self.0[at].1, self.0[at].2));
-            if before != Some(now) {
-                sink.emit(AdventureEvent {
-                    kind: AdventureEventKind::MovementChanged {
-                        hero: hero.id,
-                        movement: hero.movement,
-                        max_movement: hero.max_movement,
-                    },
-                    seen_by: Viewers::NONE.with(hero.owner),
+                .map(|at| &self.0[at]);
+            let seen_by = Viewers::NONE.with(hero.owner);
+            let mut emit = |kind| sink.emit(AdventureEvent { kind, seen_by });
+            if before.map(|b| b.movement) != Some((hero.movement, hero.max_movement)) {
+                emit(AdventureEventKind::MovementChanged {
+                    hero: hero.id,
+                    movement: hero.movement,
+                    max_movement: hero.max_movement,
                 });
+            }
+            let none = HeroBonuses::NONE;
+            let (bonuses, timed) = before.map_or((&none, &[][..]), |b| (&b.bonuses, &b.timed[..]));
+            let id = hero.id;
+            let once = |bonus, held| AdventureEventKind::OnceMarkChanged {
+                hero: id,
+                bonus,
+                held,
+            };
+            let marked = |object_type, held| AdventureEventKind::TimedMarkChanged {
+                hero: id,
+                object_type,
+                held,
+            };
+            for &bonus in missing(&bonuses.once, &hero.bonuses.once) {
+                emit(once(bonus, false));
+            }
+            for &object_type in missing(timed, &hero.timed) {
+                emit(marked(object_type, false));
+            }
+            if (bonuses.morale, bonuses.luck) != (hero.bonuses.morale, hero.bonuses.luck) {
+                emit(AdventureEventKind::BonusChanged {
+                    hero: id,
+                    morale: hero.bonuses.morale,
+                    luck: hero.bonuses.luck,
+                });
+            }
+            for &bonus in missing(&hero.bonuses.once, &bonuses.once) {
+                emit(once(bonus, true));
+            }
+            for &object_type in missing(&hero.timed, timed) {
+                emit(marked(object_type, true));
             }
         }
     }
+}
+
+/// The entries of `from`, in order, that `other` does not hold (both sorted, unique): a once-mark
+/// whose amounts differ counts as another entry, so it is told dropped and gained.
+fn missing<'a, T: PartialEq>(from: &'a [T], other: &'a [T]) -> impl Iterator<Item = &'a T> {
+    from.iter().filter(move |entry| !other.contains(entry))
 }
 
 /// Receiver of the adventure context's events.

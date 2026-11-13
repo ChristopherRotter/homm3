@@ -17,7 +17,7 @@ use h3_heroes::{HeroDetails, Movement, land_points, movement_speed, scouting_rad
 
 use crate::ruleset::{AdventureRuleset, Passage, RoadId};
 use crate::setup::Pos;
-use crate::state::{HeroOnMap, Meets, Mode, StaticTile};
+use crate::state::{HeroOnMap, Meets, Mode, StaticTile, week_land_points};
 
 /// A hero's details in the game's store of heroes by [`HeroId`] (ADR-0016 point 3), if the store
 /// holds them. An adventure played without the game (this crate's own tests) passes an empty
@@ -52,18 +52,23 @@ pub fn land_table_points(
 
 /// A hero's day's movement points on land (ADV-MOV-001, E08 T40): [`land_table_points`], then
 /// the hero's bonuses on it (`h3_heroes::land_points`, HER-ADV-003: Logistics, a Logistics
-/// specialist's growth under Q-0005, the worn Boots of Speed and Equestrian's Gloves). Without
-/// `details` the table's entry alone. Stables, the sea and a computer player's bonus come later
-/// (survey `E08-hero-movement.md` §6).
+/// specialist's growth under Q-0005, the worn Boots of Speed and Equestrian's Gloves), then since
+/// E08 T115a `week_points`, the week's land points of the hero's week marks
+/// ([`crate::week_land_points`]: the Stables' 400), last and never grown. Without `details` the
+/// table's entry and the week's points. A computer player's bonus comes later (survey
+/// `E08-hero-movement.md` §6).
 // rule: ADV-MOV-001
 pub fn day_points(
     core: &Ruleset,
     part: &AdventureRuleset,
     details: Option<&HeroDetails>,
     army: &[ArmyStack],
+    week_points: u32,
 ) -> u32 {
     let base = land_table_points(core, part, details, army);
-    details.map_or(base, |details| land_points(details, core, base))
+    details.map_or(base.saturating_add(week_points), |details| {
+        land_points(details, core, base, week_points)
+    })
 }
 
 /// A hero's day's movement points at sea (ADV-MOV-001, HER-ADV-009; E08 T72):
@@ -87,7 +92,7 @@ pub fn sea_day_points(
 
 /// A hero's day's maximum on its surface (ADV-MOV-002, E08 T72; ADR-0016 point 3): its
 /// [`sea_day_points`] with its owner's `lighthouses` in a boat, else its [`day_points`] for its
-/// army.
+/// army and, since E08 T115a, its week marks' points.
 pub(crate) fn day_maximum(
     core: &Ruleset,
     part: &AdventureRuleset,
@@ -98,7 +103,13 @@ pub(crate) fn day_maximum(
     if hero.boat.is_some() {
         sea_day_points(core, part, details, lighthouses)
     } else {
-        day_points(core, part, details, &hero.army)
+        day_points(
+            core,
+            part,
+            details,
+            &hero.army,
+            week_land_points(part, &hero.timed),
+        )
     }
 }
 

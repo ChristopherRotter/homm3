@@ -131,11 +131,7 @@ fn a_record_is_granted_in_the_original_order() {
                 level: 1
             },
             HeroChange::SetSpellPoints(600),
-            HeroChange::Bonus {
-                morale: -1,
-                luck: 2,
-                mark: None
-            },
+            // E08 T115a: the morale and luck are the adventure's (the hero on the map's).
             HeroChange::AddArtifact(eye.into()),
             HeroChange::LearnSpell(shield),
         ]
@@ -261,17 +257,14 @@ fn the_bonuses_and_primary_skills_are_given_only_when_set() {
         })
         .is_empty()
     );
-    assert_eq!(
+    // E08 T115a: the morale and luck are the adventure's (the hero on the map's).
+    assert!(
         only(HeroReward {
             morale: 0,
             luck: -3,
             ..HeroReward::default()
-        }),
-        [HeroChange::Bonus {
-            morale: 0,
-            luck: -3,
-            mark: None
-        }]
+        })
+        .is_empty()
     );
 }
 

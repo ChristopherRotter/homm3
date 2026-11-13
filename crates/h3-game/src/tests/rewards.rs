@@ -3,7 +3,10 @@
 //! find's question as offers, the choices and the University as decisions with their typed
 //! answers (T63a), a won guarded artifact and a beaten monster's artifact.
 
-use h3_adventure::{Guards, Holds, MonsterSetup, ObjectSetup, OfferKind, TileMask};
+use h3_adventure::{
+    AdventureEvent, AdventureEventKind, Guards, Holds, MonsterSetup, ObjectSetup, OfferKind,
+    TileMask, Viewers,
+};
 use h3_contracts::{Army, BattleOutcome, BattleResult, BattleSide, HeroOutcome};
 use h3_heroes::SlotState;
 use h3_heroes::{ArtifactInstance, HeroChange};
@@ -395,9 +398,26 @@ fn a_gifts_price_opens_as_an_offer_when_the_treasury_can_pay() {
     );
 }
 
-// covers: ADV-PIK-011, HER-ADV-008
+/// Red's hero's battle bonuses on the map.
+pub(super) fn bonuses_of(state: &GameState) -> h3_adventure::HeroBonuses {
+    state.adventure().hero(HERO).unwrap().bonuses.clone()
+}
+
+/// The once-mark told to red of its hero, gained (`held`) or dropped (E08 T115a).
+pub(super) fn once_told(mark: u8, morale: i8, luck: i8, held: bool) -> GameEvent {
+    GameEvent::Adventure(AdventureEvent {
+        kind: AdventureEventKind::OnceMarkChanged {
+            hero: HERO,
+            bonus: h3_heroes::VisitBonus { mark, morale, luck },
+            held,
+        },
+        seen_by: Viewers::NONE.with(RED),
+    })
+}
+
+// covers: ADV-PIK-011, HER-ADV-008, GAM-BAT-014
 #[test]
-fn the_tombs_question_opens_and_its_morale_reaches_the_hero() {
+fn the_tombs_question_opens_and_its_morale_stays_on_the_hero_until_its_battle() {
     let rules = rules();
     let mut state = game(&rules, reward_at(&rules, "t:tomb", Holds::Nothing));
     visit(&mut state, &rules);
@@ -405,16 +425,25 @@ fn the_tombs_question_opens_and_its_morale_reaches_the_hero() {
     let mut declined = state.clone();
     play(&mut declined, &rules, RED, DECLINE).unwrap();
     assert_ne!(state.state_hash(), declined.state_hash());
-    assert_eq!(declined.hero(HERO).unwrap().bonuses.morale, 0);
+    assert!(bonuses_of(&declined).is_empty());
+    // E08 T115a: the hero on the map's, under the Tomb's mark 0, told to its owner last.
     let events = play(&mut state, &rules, RED, ACCEPT).unwrap();
-    let morale = HeroChange::Bonus {
-        morale: -3,
-        luck: 0,
-        mark: Some(0),
-    };
-    assert!(events.contains(&changed(morale)));
-    assert_eq!(state.hero(HERO).unwrap().bonuses.morale, -3);
+    assert_eq!(events.last(), Some(&once_told(0, -3, 0, true)));
+    let tomb = bonuses_of(&state);
+    assert_eq!((tomb.morale, tomb.luck, tomb.has_mark(0)), (0, 0, true));
+    assert_eq!(tomb.once[0].morale, -3);
     assert!(state.adventure().is_emptied(0) && state.adventure().knows(RED, 0));
+    // Its battle hero has it as the visit's source (ADR-0013 point 15.1 amended, CLT-Q40).
+    let effects = state.battle_hero(rules.core(), HERO).unwrap().effects;
+    assert!(effects.contains(&h3_contracts::BattleEffect::Morale {
+        amount: -3,
+        affects: h3_content::Affects::Own,
+        source: h3_contracts::EffectSource::Visit { mark: 0 },
+    }));
+    // Its battle's end clears it (GAM-BAT-014).
+    let sides = ([Some(RED), None], [Some(HERO), None], AT);
+    state.end_battle(&rules, sides, None, &won(), &mut Vec::new());
+    assert!(bonuses_of(&state).is_empty());
 }
 
 /// Red's victory over a side without a hero at [`AT`], keeping its nine imps.

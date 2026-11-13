@@ -9,7 +9,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::SpellId;
-use h3_heroes::{HeroChange, HeroDetails, HeroReward, grant};
+use h3_heroes::{HeroChange, HeroDetails, HeroReward, VisitBonus, grant};
 
 use super::draws::object;
 use super::rewards::{
@@ -148,6 +148,12 @@ fn a_box_asks_first_and_its_record_is_given_then_it_leaves() {
         assert_eq!(joined(&events), [(PEASANT, 5), (PIKEMAN, 7)]);
         let army = &s.hero(HERO).unwrap().army;
         assert_eq!(army, &[stack(0, PEASANT, 6), stack(1, PIKEMAN, 7)]);
+        // E08 T115a: the record's +1 morale is the hero on the map's, unmarked (HER-ADV-008).
+        let bonuses = &s.hero(HERO).unwrap().bonuses;
+        assert_eq!(
+            (bonuses.morale, bonuses.luck, bonuses.once.len()),
+            (1, 0, 0)
+        );
         assert!(s.is_removed(0));
         assert!(matches!(
             events.last().unwrap().kind,
@@ -345,14 +351,26 @@ fn the_pyramid_asks_at_every_visit_and_fights_with_a_second_creature() {
     assert!(s.is_emptied(0) && !s.is_removed(0));
     let again = s.give_won(context, (HERO, AT), &mut events);
     assert_eq!((again, events.len()), (AdventureOutcome::default(), 0));
-    // Looted: still asked; accepted, −2 luck once by its mark (the hero model gates it).
+    // Looted: still asked; accepted, −2 luck once by its mark: the hero on the map's (E08 T115a).
     assert_eq!(visit(&rules, &mut s, &heroes).offer, Some(search.clone()));
-    let looted = HeroChange::Bonus {
-        morale: 0,
-        luck: -2,
-        mark: Some(1),
+    let looted = HeroBonuses {
+        once: vec![VisitBonus {
+            mark: 1,
+            morale: 0,
+            luck: -2,
+        }],
+        ..HeroBonuses::NONE
     };
-    assert_eq!(accept(&rules, &mut s, &heroes, &search).0, gives(&[looted]));
+    assert_eq!(
+        accept(&rules, &mut s, &heroes, &search).0,
+        AdventureOutcome::default()
+    );
+    assert_eq!(s.hero(HERO).unwrap().bonuses, looted);
+    assert_eq!(
+        accept(&rules, &mut s, &heroes, &search).0,
+        AdventureOutcome::default()
+    );
+    assert_eq!(s.hero(HERO).unwrap().bonuses, looted, "once by its mark");
     // Its owner sees it looted.
     let seen = s.observe(&rules.0, &rules.1, RED).known;
     assert_eq!(

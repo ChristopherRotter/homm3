@@ -132,8 +132,6 @@ pub enum ChangeError {
     OfferedAboveLevel,
     /// A raised skill's level is not Basic to Expert (E08 T60a).
     SkillLevel(SkillId),
-    /// A bonus's once-mark is of no kind: 8 or above (E08 T60a, HER-ADV-008).
-    Mark(u8),
 }
 
 impl fmt::Display for ChangeError {
@@ -159,7 +157,6 @@ impl fmt::Display for ChangeError {
             Self::SkillLevel(id) => {
                 write!(f, "secondary skill {} cannot rise to that level", id.raw())
             }
-            Self::Mark(mark) => write!(f, "once-mark {mark} is of no kind"),
         }
     }
 }

@@ -211,6 +211,12 @@ const PARTS: &[Part] = &[
         stubs: &[],
         agree: |a, b| own(a, b, |o| (o.formation, o.tactics)),
     },
+    // E08 T115a (v55): the hero on the map's battle bonuses and timed marks.
+    Part {
+        name: "battle bonuses and timed marks",
+        stubs: &[],
+        agree: |a, b| own(a, b, |o| (o.bonuses.clone(), o.timed.clone())),
+    },
     Part {
         name: "once-marks",
         stubs: &["SRV-STUB-4"],
@@ -1231,7 +1237,6 @@ fn the_fold_applies_a_heros_changes() {
         wisdom: 7,
         school: 7,
     };
-    let bonus = |morale, luck, mark| HeroChange::Bonus { morale, luck, mark };
     fold(
         &mut v,
         &[
@@ -1281,11 +1286,6 @@ fn the_fold_applies_a_heros_changes() {
                 skill: 40,
                 level: 2,
             }),
-            // Once-mark 0 is set: no bonus; mark 1 is not.
-            change(bonus(1, 1, Some(0))),
-            change(bonus(1, 1, Some(1))),
-            change(bonus(-128, 0, None)),
-            change(bonus(0, 1, Some(9))),
         ],
     );
     let d = v.heroes[0].details.clone().unwrap();
@@ -1300,19 +1300,79 @@ fn the_fold_applies_a_heros_changes() {
     assert_eq!(d.worn, [Some(artifact(60)), None, Some(scroll)]);
     assert_eq!(d.backpack, [artifact(63), artifact(62)]);
     assert_eq!(d.spells, [10, 12, 20]);
-    let bonuses = Bonuses {
-        morale: -128,
-        luck: 4,
-        marks: 0b111,
+}
+
+#[test]
+fn the_fold_keeps_the_own_heroes_battle_bonuses_and_timed_marks() {
+    // E08 T115a (v55): hero 4's own view holds −3 morale and +2 luck, the once-marks 0 (−3
+    // morale) and 13, the timed marks 48 and 94 (`every_game_part`'s).
+    let mut v = view();
+    let hero = 4;
+    let bonus = |mark, morale, luck| VisitBonus { mark, morale, luck };
+    let once = |b, held| {
+        adventure(AdventureEvent::OnceMarkChanged {
+            hero,
+            bonus: b,
+            held,
+        })
     };
-    assert_eq!(d.bonuses, bonuses);
-    fold(&mut v, &[change(HeroChange::ClearBonuses {})]);
-    let cleared = Bonuses {
-        morale: 0,
-        luck: 0,
-        marks: 0,
+    let timed = |object_type, held| {
+        adventure(AdventureEvent::TimedMarkChanged {
+            hero,
+            object_type,
+            held,
+        })
     };
-    assert_eq!(v.heroes[0].details.as_ref().unwrap().bonuses, cleared);
+    let own = |v: &GameObservation| {
+        let seen = v.adventure.heroes.iter().find(|h| h.id == hero).unwrap();
+        seen.own.clone().unwrap()
+    };
+    assert_eq!(own(&v).bonuses.once, [bonus(0, -3, 0), bonus(13, 0, 0)]);
+    fold(
+        &mut v,
+        &[
+            once(bonus(0, -3, 0), false),
+            timed(48, false),
+            adventure(AdventureEvent::BonusChanged {
+                hero,
+                morale: 1,
+                luck: 0,
+            }),
+            once(bonus(2, 1, 0), true),
+            // Held already, or not held: nothing.
+            once(bonus(13, 0, 0), true),
+            once(bonus(5, 0, 3), false),
+            timed(49, true),
+            timed(94, true),
+            timed(50, false),
+            // A hero the view does not hold as its own.
+            adventure(AdventureEvent::BonusChanged {
+                hero: 9,
+                morale: 5,
+                luck: 5,
+            }),
+            adventure(AdventureEvent::OnceMarkChanged {
+                hero: 9,
+                bonus: bonus(1, 0, 1),
+                held: true,
+            }),
+            adventure(AdventureEvent::TimedMarkChanged {
+                hero: 9,
+                object_type: 1,
+                held: true,
+            }),
+        ],
+    );
+    let own = own(&v);
+    assert_eq!(
+        own.bonuses,
+        Bonuses {
+            morale: 1,
+            luck: 0,
+            once: vec![bonus(2, 1, 0), bonus(13, 0, 0)],
+        }
+    );
+    assert_eq!(own.timed, [49, 94]);
 }
 
 #[test]

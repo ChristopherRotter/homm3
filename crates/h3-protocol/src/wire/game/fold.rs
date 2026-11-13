@@ -30,9 +30,9 @@ use alloc::vec::Vec;
 
 use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
-    ArtifactPlace, Boat, Bonuses, Decision, GameEvent, GameObservation, GameReveal, Garrison,
-    GarrisonStack, Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object,
-    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
+    ArtifactPlace, Boat, Decision, GameEvent, GameObservation, GameReveal, Garrison, GarrisonStack,
+    Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object, ObjectRef,
+    OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
     TownOwnerFacts,
 };
 use crate::wire::WireU64;
@@ -492,6 +492,42 @@ impl GameObservation {
                 if let Some(own) = self.own_mut(hero) {
                     own.movement = movement;
                     own.max_movement = max_movement;
+                }
+            }
+            // Then its battle bonuses and timed marks (v55, E08 T115a): the marks dropped, the
+            // sums, the marks gained, each kept sorted.
+            AdventureEvent::BonusChanged { hero, morale, luck } => {
+                if let Some(own) = self.own_mut(hero) {
+                    own.bonuses.morale = morale;
+                    own.bonuses.luck = luck;
+                }
+            }
+            AdventureEvent::OnceMarkChanged { hero, bonus, held } => {
+                if let Some(own) = self.own_mut(hero) {
+                    let once = &mut own.bonuses.once;
+                    match (once.binary_search_by_key(&bonus.mark, |b| b.mark), held) {
+                        (Err(at), true) => once.insert(at, bonus),
+                        (Ok(at), false) => {
+                            once.remove(at);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+            AdventureEvent::TimedMarkChanged {
+                hero,
+                object_type,
+                held,
+            } => {
+                if let Some(own) = self.own_mut(hero) {
+                    let timed = &mut own.timed;
+                    match (timed.binary_search(&object_type), held) {
+                        (Err(at), true) => timed.insert(at, object_type),
+                        (Ok(at), false) => {
+                            timed.remove(at);
+                        }
+                        _ => {}
+                    }
                 }
             }
             AdventureEvent::WhirlpoolLoss {
@@ -966,23 +1002,6 @@ impl HeroDetails {
                     Some(known) => known.level = known.level.max(level),
                     None => self.skills.push(SkillLevel { skill, level }),
                 }
-            }
-            HeroChange::Bonus { morale, luck, mark } => {
-                let bit = mark.map_or(0, |mark| 1_u8.checked_shl(u32::from(mark)).unwrap_or(0));
-                // A once-mark set already gates the bonus (HER-ADV-008).
-                if self.bonuses.marks & bit == 0 {
-                    let bonuses = &mut self.bonuses;
-                    bonuses.morale = bonuses.morale.saturating_add(morale);
-                    bonuses.luck = bonuses.luck.saturating_add(luck);
-                    bonuses.marks |= bit;
-                }
-            }
-            HeroChange::ClearBonuses {} => {
-                self.bonuses = Bonuses {
-                    morale: 0,
-                    luck: 0,
-                    marks: 0,
-                };
             }
         }
     }

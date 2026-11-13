@@ -62,10 +62,11 @@ use crate::movement::{
     DIRECTIONS, Pricing, converted_points, day_points, details_of, hero_movement, sea_day_points,
 };
 use crate::persistent::BitGrid;
-use crate::ruleset::AdventureRuleset;
+use crate::ruleset::{AdventureRuleset, ObjectTypeId};
 use crate::setup::Pos;
 use crate::state::{
     AdventureState, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, enterable_terrain,
+    week_land_points,
 };
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
@@ -89,8 +90,15 @@ struct Search<'s> {
     added: Option<&'s BitGrid>,
     /// What a boarding's and a landing's conversion reads (E08 T73; ADV-SEA-002, ADV-SEA-003):
     /// the core, the hero's details, its day's maximum and its army; derived only at a boarding
-    /// or a landing met (`bench-check`).
-    surface: (&'s Ruleset, Option<&'s HeroDetails>, u32, &'s [ArmyStack]),
+    /// or a landing met (`bench-check`). Since E08 T115a the hero's timed marks too (a landing's
+    /// maximum has its week's land points).
+    surface: (
+        &'s Ruleset,
+        Option<&'s HeroDetails>,
+        u32,
+        &'s [ArmyStack],
+        &'s [ObjectTypeId],
+    ),
 }
 
 impl Search<'_> {
@@ -99,7 +107,7 @@ impl Search<'_> {
     /// move leaves them. Out of the search's hot loop: boats are rare.
     #[cold]
     fn boarded(&self, tile: &StaticTile, left: u32) -> u32 {
-        let (core, details, _, _) = self.surface;
+        let (core, details, ..) = self.surface;
         let lighthouses = self.state.lighthouse_points(self.part, self.owner);
         self.converted(
             self.pricing.sail_left_after(tile, left),
@@ -111,14 +119,15 @@ impl Search<'_> {
     /// the conversion to the land's maximum (`day_points` for the hero's army), as the move's.
     #[cold]
     fn landed(&self, left: u32) -> u32 {
-        let (core, details, _, army) = self.surface;
-        self.converted(left, day_points(core, self.part, details, army))
+        let (core, details, _, army, timed) = self.surface;
+        let week = week_land_points(self.part, timed);
+        self.converted(left, day_points(core, self.part, details, army, week))
     }
 
     /// [`converted_points`] of `points` from the hero's day's maximum to `new`, with its free
     /// boarding.
     fn converted(&self, points: u32, new: u32) -> u32 {
-        let (core, details, old, _) = self.surface;
+        let (core, details, old, ..) = self.surface;
         let free = details.is_some_and(|details| free_boarding(details, core));
         converted_points(points, (old, new), free)
     }
@@ -229,7 +238,7 @@ impl Reach {
             occupied,
             guards: map.any_monster() || state.added_tiles().is_some(),
             added: state.added_tiles(),
-            surface: (core, details, hero.max_movement, &hero.army),
+            surface: (core, details, hero.max_movement, &hero.army, &hero.timed),
         };
         reach.points[reach.start] = Some(hero.movement);
         if let Mode::Sail(boat) = mode {
