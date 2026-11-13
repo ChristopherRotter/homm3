@@ -70,7 +70,7 @@ fn expected_setup(game: &GameState, rules: &GameRuleset, obstacles: u64) -> Batt
         let on_map = game.adventure().hero(id).unwrap();
         let details = game.hero(id).unwrap();
         // E08 T115a: with the hero on the map's battle bonuses (none here).
-        let bonuses = on_map.bonuses.battle();
+        let bonuses = game.adventure().visit_marks(id).bonuses().battle();
         let mut hero = h3_heroes::derive_battle_hero(details, bonuses, core).unwrap();
         hero.magic.max_mana = h3_heroes::max_mana(details, core);
         hero.sex = game.hero_sex(id);

@@ -76,7 +76,7 @@ impl AdventureState {
     /// it). Draws only for the weekly objects and the camps; no event for the refill or the draws
     /// (nothing shows a dwelling's counts and guards or a camp's creature, ADV-OWN-003).
     // rule: ADV-DWL-003, ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001, ADV-MON-013
-    // rule: ADV-BON-005
+    // rule: ADV-BON-001
     pub fn start_week<S: Sink>(
         &mut self,
         core: &Ruleset,

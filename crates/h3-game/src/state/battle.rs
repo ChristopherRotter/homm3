@@ -21,8 +21,8 @@ use h3_contracts::{
     PlayerId, StackOrigin, StackRecord, TownId,
 };
 use h3_heroes::{
-    BattleBonuses, HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience,
-    learns_spell, lost_war_machine, max_mana, necromancy, next_capture, war_machines,
+    HeroChange, Necromancy, check_change, derive_battle_hero, gained_experience, learns_spell,
+    lost_war_machine, max_mana, necromancy, next_capture, war_machines,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87, mul_div_floor};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
@@ -163,10 +163,7 @@ impl GameState {
     /// hero on the map's battle bonuses beside them (ADR-0013 point 15.1 amended; increment 12's
     /// design note §12.5, §14), none for a hero off the map.
     pub(crate) fn battle_hero(&self, core: &Ruleset, hero: HeroId) -> Option<BattleHero> {
-        let bonuses = self
-            .adventure()
-            .hero(hero)
-            .map_or(BattleBonuses::NONE, |on_map| on_map.bonuses.battle());
+        let bonuses = self.adventure().visit_marks(hero).bonuses().battle();
         self.hero(hero).and_then(|details| {
             derive_battle_hero(details, bonuses, core)
                 .ok()

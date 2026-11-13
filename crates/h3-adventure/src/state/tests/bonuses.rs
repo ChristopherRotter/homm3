@@ -64,7 +64,42 @@ fn the_bonuses_add_up_saturating_and_a_once_mark_gates_its_bonus() {
     assert!(all.once.windows(2).all(|w| w[0].mark < w[1].mark));
 }
 
-// covers: ADV-BON-005, ADV-BON-006, HER-ADV-003, ADV-MOV-002
+// covers: HER-ADV-008, GAM-BAT-014
+#[test]
+fn a_heros_visit_marks_hold_nothing_until_a_visit_and_nothing_again_once_empty() {
+    let rules = bonus_rules();
+    let well = rules.1.object_type_by_key("t:well").unwrap();
+    let mut marks = VisitMarks::NONE;
+    assert!(marks.is_empty() && marks.bonuses().is_empty() && marks.timed().is_empty());
+    assert_eq!(marks, VisitMarks::default());
+    // Nothing added writes nothing.
+    marks.add(0, 0);
+    marks.clear_bonuses();
+    marks.drop_timed(&rules.1, MarkLifetime::Day);
+    assert!(marks.is_empty());
+    // A mark held gates its bonus; the block's bonuses are `HeroBonuses`'.
+    assert!(marks.add_once(once(0, -3, 0)));
+    assert!(!marks.add_once(once(0, 1, 1)));
+    marks.add(1, 2);
+    assert!(marks.add_timed(well) && !marks.add_timed(well));
+    assert_eq!(marks.bonuses().once, [once(0, -3, 0)]);
+    assert_eq!((marks.bonuses().morale, marks.bonuses().luck), (1, 2));
+    assert_eq!(marks.timed(), [well]);
+    // A fork shares the block; a write copies it.
+    let fork = marks.clone();
+    marks.clear_bonuses();
+    assert!(marks.bonuses().is_empty() && !marks.is_empty());
+    assert_eq!(fork.bonuses().once, [once(0, -3, 0)]);
+    // Empty again once both are: equal to a record that never held anything.
+    marks.drop_timed(&rules.1, MarkLifetime::Day);
+    assert_eq!(marks, VisitMarks::NONE);
+    let mut other = VisitMarks::NONE;
+    other.add(1, 0);
+    other.add(-1, 0);
+    assert_eq!(other, VisitMarks::NONE);
+}
+
+// covers: ADV-BON-001, HER-ADV-003, ADV-MOV-002
 #[test]
 fn the_days_and_the_weeks_marks_drop_at_their_steps_and_the_stables_raise_the_land_points() {
     let rules = bonus_rules();
@@ -72,16 +107,16 @@ fn the_days_and_the_weeks_marks_drop_at_their_steps_and_the_stables_raise_the_la
     let (well, stables, buoy) = (ty("t:well"), ty("t:stables"), ty("t:buoy"));
     let mut state = jump_state(&rules, (1, None), &[], &[]);
     let base = state.hero(HERO).unwrap().max_movement;
-    let timed = |state: &AdventureState| state.hero(HERO).unwrap().timed.clone();
+    let fresh = state.clone();
+    let timed = |state: &AdventureState| state.visit_marks(HERO).timed().to_vec();
     // A mark once per type, kept sorted (the visits come with T115b).
-    let hero = state.hero_mut(HERO).unwrap();
-    assert!(add_timed(&mut hero.timed, stables));
-    assert!(add_timed(&mut hero.timed, well));
-    assert!(!add_timed(&mut hero.timed, well));
+    assert!(state.change_marks(HERO, |m| m.add_timed(stables)));
+    assert!(state.change_marks(HERO, |m| m.add_timed(well)));
+    assert!(!state.change_marks(HERO, |m| m.add_timed(well)));
     let mut sorted = vec![well, stables];
     sorted.sort_unstable();
-    assert_eq!(hero.timed, sorted);
-    assert_eq!(week_land_points(&rules.1, &hero.timed), 400);
+    assert_eq!(timed(&state), sorted);
+    assert_eq!(state.visit_marks(HERO).week_land_points(&rules.1), 400);
     // The turn's maximum on land holds the Stables' 400 (the week's land points, last).
     state.start_turn(&rules.0, &rules.1, &[], RED);
     let hero = state.hero(HERO).unwrap();
@@ -93,21 +128,27 @@ fn the_days_and_the_weeks_marks_drop_at_their_steps_and_the_stables_raise_the_la
     state.start_week(&rules.0, &rules.1, &mut stream(), &mut Vec::new());
     assert_eq!(timed(&state), []);
     state.start_turn(&rules.0, &rules.1, &[], RED);
+    // The same steps without the marks: no block left.
+    let mut again = fresh;
+    again.start_turn(&rules.0, &rules.1, &[], RED);
+    again.start_day(&rules.0, &rules.1, &[]);
+    again.start_week(&rules.0, &rules.1, &mut stream(), &mut Vec::new());
+    again.start_turn(&rules.0, &rules.1, &[], RED);
+    assert_eq!(state, again);
     assert_eq!(state.hero(HERO).unwrap().max_movement, base);
     // One record alone (the town lane's garrison hero): a kind of no lifetime and a type the
     // part lacks are kept and count nothing.
     let stranger = ObjectTypeId::from_raw(u16::MAX);
-    let mut record = vec![buoy, well, stables, stranger];
-    record.sort_unstable();
-    drop_timed(&rules.1, &mut record, MarkLifetime::Week);
-    drop_timed(&rules.1, &mut record, MarkLifetime::Day);
+    let mut record = VisitMarks::NONE;
+    for ty in [buoy, well, stables, stranger] {
+        record.add_timed(ty);
+    }
+    record.drop_timed(&rules.1, MarkLifetime::Week);
+    record.drop_timed(&rules.1, MarkLifetime::Day);
     let mut kept = vec![buoy, stranger];
     kept.sort_unstable();
-    assert_eq!(record, kept);
-    assert_eq!(week_land_points(&rules.1, &record), 0);
-    // The week's points saturate.
-    let twice = [stables, stables];
-    assert_eq!(week_land_points(&rules.1, &twice), 800);
+    assert_eq!(record.timed(), kept);
+    assert_eq!(record.week_land_points(&rules.1), 0);
 }
 
 // covers: GAM-BAT-014
@@ -117,21 +158,38 @@ fn a_battles_end_clears_the_bonuses_of_its_heroes_still_on_the_map() {
     let well = rules.1.object_type_by_key("t:well").unwrap();
     let other = HeroId::new(2);
     let mut state = jump_state(&rules, (1, None), &[(2, 1, p(9, 1))], &[]);
+    let fresh = state.clone();
     for id in [HERO, other] {
-        let hero = state.hero_mut(id).unwrap();
-        hero.bonuses.add(1, 1);
-        hero.bonuses.add_once(once(0, -3, 0));
-        add_timed(&mut hero.timed, well);
+        state.give_bonus(id, 1, 1);
+        assert!(state.give_once(id, once(0, -3, 0)));
+        assert!(!state.give_once(id, once(0, 1, 0)));
+        state.change_marks(id, |m| m.add_timed(well));
     }
-    let kept = state.hero(other).unwrap().clone();
+    // A hero not on the map gets nothing.
+    let stranger = HeroId::new(9);
+    state.give_bonus(stranger, 1, 1);
+    assert!(!state.give_once(stranger, once(1, 0, 1)));
+    assert!(state.visit_marks(stranger).is_empty());
+    // A fork shares the block; a write copies it.
+    let fork = state.clone();
+    let kept = state.visit_marks(other).clone();
     // Its heroes on the map lose them; a hero not on the map is nothing; the timed marks stay.
-    state.clear_battle_bonuses(&[HERO, HeroId::new(9)]);
-    let hero = state.hero(HERO).unwrap();
+    state.clear_battle_bonuses(&[HERO, stranger]);
+    let marks = state.visit_marks(HERO);
     assert_eq!(
-        (&hero.bonuses, &hero.timed[..]),
+        (marks.bonuses(), marks.timed()),
         (&HeroBonuses::NONE, &[well][..])
     );
-    assert_eq!(state.hero(other), Some(&kept));
+    assert_eq!(state.visit_marks(other), &kept);
+    assert_eq!(fork.visit_marks(HERO).bonuses().once, [once(0, -3, 0)]);
+    // A hero that leaves the map leaves with them; the block goes once none holds any.
+    state.end_battle(&rules.0, &[(HERO, None)], &mut Vec::new());
+    assert!(state.visit_marks(HERO).is_empty());
+    state.leave_marks(other);
+    state.leave_marks(other);
+    let mut expected = fresh;
+    expected.end_battle(&rules.0, &[(HERO, None)], &mut Vec::new());
+    assert_eq!(state, expected);
 }
 
 // covers: ADV-FOG-006
@@ -151,11 +209,10 @@ fn a_command_tells_the_owner_the_marks_dropped_the_sums_then_the_marks_gained() 
     assert_eq!(told(&state.own_heroes(), &state), []);
     // Gains: the sums, then each mark gained in order, to the owner alone.
     let before = state.own_heroes();
-    let hero = state.hero_mut(HERO).unwrap();
-    hero.bonuses.add(1, 2);
-    hero.bonuses.add_once(once(13, 0, 0));
-    hero.bonuses.add_once(once(0, -3, 0));
-    add_timed(&mut hero.timed, well);
+    state.give_bonus(HERO, 1, 2);
+    state.give_once(HERO, once(13, 0, 0));
+    state.give_once(HERO, once(0, -3, 0));
+    state.change_marks(HERO, |m| m.add_timed(well));
     let red = Viewers::NONE.with(RED);
     let event = |kind| AdventureEvent { kind, seen_by: red };
     let held = |bonus, held| {
@@ -191,10 +248,9 @@ fn a_command_tells_the_owner_the_marks_dropped_the_sums_then_the_marks_gained() 
     let before = state.own_heroes();
     state.clear_battle_bonuses(&[HERO]);
     state.start_day(&rules.0, &rules.1, &[]);
-    let hero = state.hero_mut(HERO).unwrap();
-    hero.bonuses.add_once(once(1, 0, -2));
-    hero.bonuses.add_once(once(13, 0, 1));
-    add_timed(&mut hero.timed, stables);
+    state.give_once(HERO, once(1, 0, -2));
+    state.give_once(HERO, once(13, 0, 1));
+    state.change_marks(HERO, |m| m.add_timed(stables));
     assert_eq!(
         told(&before, &state),
         [

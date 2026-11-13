@@ -108,7 +108,8 @@ mod weekly;
 
 pub use boats::Boat;
 use boats::Boats;
-pub use bonuses::{HeroBonuses, add_timed, drop_timed, week_land_points};
+pub(crate) use bonuses::{HeldMarks, marks_in};
+pub use bonuses::{HeroBonuses, VisitMarks};
 pub use channels::{Channels, GateEntry, WhirlpoolTile};
 pub use draws::Resolved;
 use dwellings::{Camp, DwellingWeek};
@@ -1271,12 +1272,6 @@ pub struct HeroOnMap {
     /// surface, set by the start of the game and of its turn (ADV-MOV-002) and, from T73, by a
     /// boarding and a landing.
     pub max_movement: u32,
-    /// Its battle bonuses (E08 T115a; increment 12's design note §12.2, HER-ADV-008 amended):
-    /// none at its placing and after its battle.
-    pub bonuses: HeroBonuses,
-    /// Its timed marks (E08 T115a; increment 12's design note §12.4): the object types whose
-    /// day's or week's mark it holds, sorted; none at its placing.
-    pub timed: Vec<ObjectTypeId>,
 }
 
 impl HeroOnMap {
@@ -1341,6 +1336,12 @@ pub struct AdventureState {
     /// block the forks share, which a visit or the week's step copies (T84b1,
     /// [`Self::start_week`]).
     weekly: Option<Arc<[Weekly]>>,
+    /// The battle bonuses and timed marks of the heroes on the map that hold any (E08 T115a;
+    /// increment 12's design note §12, ADR-0016 point 3: the hero on the map's, not its details'),
+    /// by hero id: none until a visit gives a hero one, then one block the forks share (a write
+    /// copies it), so a fork costs a pointer, not two lists a hero (`bench-check`'s forks: +11 to
+    /// +15 % with them on `HeroOnMap`, E08 T115a's log).
+    visited: Option<Arc<HeldMarks>>,
     /// The dwellings' week by dwelling index (ADV-DWL-002, ADV-DWL-003, E08 T94b; increment 10's
     /// design note §6; ADR-0016 point 1): each dwelling's counts and guards as they stand. **None
     /// while every dwelling is as its week began** (each count its growth, the guards the kind's
@@ -1436,6 +1437,7 @@ impl AdventureState {
             dwellings: None,
             camps,
             fractions: Table::new(),
+            visited: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero, &refused)?;
@@ -1473,7 +1475,8 @@ impl AdventureState {
                 .get(usize::from(hero.owner.raw()))
                 .copied()
                 .unwrap_or(0);
-            hero.max_movement = day_maximum(core, part, details, hero, lights);
+            let week = marks_in(self.visited.as_deref(), hero.id).week_land_points(part);
+            hero.max_movement = day_maximum(core, part, details, hero, (lights, week));
             hero.movement = hero.max_movement;
         }
         self.reveal_around_heroes(core, part, heroes);
@@ -1491,7 +1494,7 @@ impl AdventureState {
     /// First, since E08 T115a, every hero on the map drops its timed marks of a day (the Magic
     /// Well's; increment 12's design note §12.4, §15; ADV-BON-006), told as the command's
     /// [`crate::AdventureEventKind::TimedMarkChanged`].
-    // rule: ADV-FOG-003, ADV-BON-006
+    // rule: ADV-FOG-003, ADV-BON-001
     pub fn start_day(
         &mut self,
         core: &Ruleset,
@@ -1566,8 +1569,6 @@ impl AdventureState {
                 movement: 0,
                 boat: None,
                 max_movement: 0,
-                bonuses: HeroBonuses::NONE,
-                timed: Vec::new(),
             },
         );
         Ok(())
@@ -1589,7 +1590,8 @@ impl AdventureState {
         let lighthouses = self.lighthouse_points(part, player);
         for hero in self.heroes.iter_mut().filter(|h| h.owner == player) {
             let details = details_of(heroes, hero.id);
-            hero.max_movement = day_maximum(core, part, details, hero, lighthouses);
+            let week = marks_in(self.visited.as_deref(), hero.id).week_land_points(part);
+            hero.max_movement = day_maximum(core, part, details, hero, (lighthouses, week));
             hero.movement = hero.max_movement;
         }
     }
@@ -2190,6 +2192,7 @@ impl AdventureState {
                 Some(army) => self.heroes[index].army = army.to_vec(),
                 None => {
                     let hero = self.heroes.remove(index);
+                    self.leave_marks(id);
                     let seen_by = self.viewers(core, hero.owner, hero.pos);
                     sink.emit(AdventureEvent {
                         kind: AdventureEventKind::HeroRemoved {
@@ -3079,11 +3082,7 @@ impl CanonicalHash for AdventureState {
                 }
             }
             // v23 (E08 T115a): the battle bonuses, then the timed marks.
-            hero.bonuses.hash_into(h);
-            h.write_len(hero.timed.len());
-            for ty in &hero.timed {
-                ty.hash_into(h);
-            }
+            self.visit_marks(hero.id).hash_into(h);
         }
         h.write_len(self.explored.len());
         for grid in &self.explored {

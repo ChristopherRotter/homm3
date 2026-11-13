@@ -459,8 +459,8 @@ impl AdventureState {
                 formation: hero.formation,
                 tactics: hero.tactics,
                 marks: self.marks_of(hero.id),
-                bonuses: hero.bonuses.clone(),
-                timed: hero.timed.clone(),
+                bonuses: self.visit_marks(hero.id).bonuses().clone(),
+                timed: self.visit_marks(hero.id).timed().to_vec(),
             }),
         }
     }

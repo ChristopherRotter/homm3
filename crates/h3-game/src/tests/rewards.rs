@@ -400,7 +400,7 @@ fn a_gifts_price_opens_as_an_offer_when_the_treasury_can_pay() {
 
 /// Red's hero's battle bonuses on the map.
 pub(super) fn bonuses_of(state: &GameState) -> h3_adventure::HeroBonuses {
-    state.adventure().hero(HERO).unwrap().bonuses.clone()
+    state.adventure().visit_marks(HERO).bonuses().clone()
 }
 
 /// The once-mark told to red of its hero, gained (`held`) or dropped (E08 T115a).

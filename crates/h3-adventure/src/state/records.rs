@@ -134,9 +134,9 @@ impl AdventureState {
         }
         let room = (part.params().army_slots(), part.params().max_stack_count());
         let mut group = Vec::new();
+        // rule: HER-ADV-008
+        self.give_bonus(hero, record.hero.morale, record.hero.luck);
         if let Some(visitor) = self.heroes.iter_mut().find(|h| h.id == hero) {
-            // rule: HER-ADV-008
-            visitor.bonuses.add(record.hero.morale, record.hero.luck);
             let owner = visitor.owner;
             for stack in &record.creatures {
                 if add_stack(&mut visitor.army, room, stack.creature, stack.count) {
@@ -190,9 +190,7 @@ impl AdventureState {
         self.learn(player, index);
         if self.is_emptied(index) {
             // rule: HER-ADV-008
-            if let Some(hero) = self.hero_mut(offer.hero) {
-                hero.bonuses.add_once(pyramid.looted.visit());
-            }
+            self.give_once(offer.hero, pyramid.looted.visit());
             return AdventureOutcome::default();
         }
         let defender = Defender::Monsters {

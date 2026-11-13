@@ -62,11 +62,11 @@ use crate::movement::{
     DIRECTIONS, Pricing, converted_points, day_points, details_of, hero_movement, sea_day_points,
 };
 use crate::persistent::BitGrid;
-use crate::ruleset::{AdventureRuleset, ObjectTypeId};
+use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{
-    AdventureState, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, enterable_terrain,
-    week_land_points,
+    AdventureState, HeroOnMap, Meets, Mode, Node, StaticMap, StaticTile, VisitMarks,
+    enterable_terrain,
 };
 
 /// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
@@ -97,7 +97,7 @@ struct Search<'s> {
         Option<&'s HeroDetails>,
         u32,
         &'s [ArmyStack],
-        &'s [ObjectTypeId],
+        &'s VisitMarks,
     ),
 }
 
@@ -119,8 +119,8 @@ impl Search<'_> {
     /// the conversion to the land's maximum (`day_points` for the hero's army), as the move's.
     #[cold]
     fn landed(&self, left: u32) -> u32 {
-        let (core, details, _, army, timed) = self.surface;
-        let week = week_land_points(self.part, timed);
+        let (core, details, _, army, visited) = self.surface;
+        let week = visited.week_land_points(self.part);
         self.converted(left, day_points(core, self.part, details, army, week))
     }
 
@@ -238,7 +238,13 @@ impl Reach {
             occupied,
             guards: map.any_monster() || state.added_tiles().is_some(),
             added: state.added_tiles(),
-            surface: (core, details, hero.max_movement, &hero.army, &hero.timed),
+            surface: (
+                core,
+                details,
+                hero.max_movement,
+                &hero.army,
+                state.visit_marks(hero.id),
+            ),
         };
         reach.points[reach.start] = Some(hero.movement);
         if let Mode::Sail(boat) = mode {

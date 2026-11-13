@@ -1042,7 +1042,7 @@ fn the_tomb_asks_then_gives_its_artifact_and_costs_morale_whatever_it_held() {
         AdventureOutcome::default()
     );
     // E08 T115a: the morale is the hero on the map's, under the Tomb's mark 0 (HER-ADV-008).
-    let morale = |state: &AdventureState| state.hero(HERO).unwrap().bonuses.clone();
+    let morale = |state: &AdventureState| state.visit_marks(HERO).bonuses().clone();
     let tomb = HeroBonuses {
         once: vec![VisitBonus {
             mark: 0,

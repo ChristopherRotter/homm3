@@ -16,7 +16,7 @@ use h3_contracts::{HeroId, PlayerId};
 use h3_heroes::{HeroDetails, free_boarding};
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use super::{AdventureState, StaticMap, week_land_points};
+use super::{AdventureState, StaticMap};
 use crate::command::{AdventureEvent, AdventureEventKind, Sink, Viewers};
 use crate::movement::{converted_points, day_points, details_of, sea_day_points};
 use crate::persistent::{BitGrid, Table};
@@ -296,13 +296,8 @@ impl AdventureState {
     ) {
         let details = details_of(heroes, self.heroes[index].id);
         let hero = &self.heroes[index];
-        let maximum = day_points(
-            core,
-            part,
-            details,
-            &hero.army,
-            week_land_points(part, &hero.timed),
-        );
+        let week = self.visit_marks(hero.id).week_land_points(part);
+        let maximum = day_points(core, part, details, &hero.army, week);
         self.change_surface(core, details, index, maximum);
         let hero = &mut self.heroes[index];
         hero.boat = None;

@@ -6,6 +6,7 @@
 //! rejected command changes nothing and emits nothing. An event carries the players who may see
 //! it, resolved when it is emitted (ADR-0016 point 6; E08 T8a).
 
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt;
 
@@ -15,7 +16,7 @@ use h3_heroes::{HeroChange, PrimarySkill, VisitBonus};
 
 use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
-use crate::state::{AdventureState, HeroBonuses};
+use crate::state::{AdventureState, HeldMarks, marks_in};
 
 /// A command to the adventure context, issued by a player.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1252,32 +1253,25 @@ pub enum AdventureEventKind {
 /// sink that keeps events (the game's `Sink::RECORDS`: nobody reads what a sink that keeps nothing
 /// would be told).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct OwnHeroes(Vec<OwnHero>);
-
-/// One hero's entry in [`OwnHeroes`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-struct OwnHero {
-    id: HeroId,
-    movement: (u32, u32),
-    bonuses: HeroBonuses,
-    timed: Vec<ObjectTypeId>,
+pub struct OwnHeroes {
+    /// Each hero's movement points left and day's maximum, by id.
+    movements: Vec<(HeroId, u32, u32)>,
+    /// The heroes' marks' block as it was (a pointer's copy: the block is shared, a write copies).
+    marks: Option<Arc<HeldMarks>>,
 }
 
 impl AdventureState {
     /// The heroes' movement points left, day's maximums, battle bonuses and timed marks now, by
     /// id ([`OwnHeroes`]).
     pub fn own_heroes(&self) -> OwnHeroes {
-        OwnHeroes(
-            self.heroes()
+        OwnHeroes {
+            movements: self
+                .heroes()
                 .iter()
-                .map(|hero| OwnHero {
-                    id: hero.id,
-                    movement: (hero.movement, hero.max_movement),
-                    bonuses: hero.bonuses.clone(),
-                    timed: hero.timed.clone(),
-                })
+                .map(|hero| (hero.id, hero.movement, hero.max_movement))
                 .collect(),
-        )
+            marks: self.held_marks(),
+        }
     }
 }
 
@@ -1296,21 +1290,29 @@ impl OwnHeroes {
     pub fn tell<S: Sink>(&self, state: &AdventureState, sink: &mut S) {
         for hero in state.heroes() {
             let before = self
-                .0
-                .binary_search_by_key(&hero.id, |entry| entry.id)
+                .movements
+                .binary_search_by_key(&hero.id, |&(id, ..)| id)
                 .ok()
-                .map(|at| &self.0[at]);
+                .map(|at| (self.movements[at].1, self.movements[at].2));
             let seen_by = Viewers::NONE.with(hero.owner);
             let mut emit = |kind| sink.emit(AdventureEvent { kind, seen_by });
-            if before.map(|b| b.movement) != Some((hero.movement, hero.max_movement)) {
+            if before != Some((hero.movement, hero.max_movement)) {
                 emit(AdventureEventKind::MovementChanged {
                     hero: hero.id,
                     movement: hero.movement,
                     max_movement: hero.max_movement,
                 });
             }
-            let none = HeroBonuses::NONE;
-            let (bonuses, timed) = before.map_or((&none, &[][..]), |b| (&b.bonuses, &b.timed[..]));
+            // A hero not on the map then held nothing (a hero leaves the map with its marks).
+            let (was, is) = (
+                marks_in(self.marks.as_deref(), hero.id),
+                state.visit_marks(hero.id),
+            );
+            if was == is {
+                continue;
+            }
+            let (bonuses, timed) = (was.bonuses(), was.timed());
+            let (now, now_timed) = (is.bonuses(), is.timed());
             let id = hero.id;
             let once = |bonus, held| AdventureEventKind::OnceMarkChanged {
                 hero: id,
@@ -1322,23 +1324,23 @@ impl OwnHeroes {
                 object_type,
                 held,
             };
-            for &bonus in missing(&bonuses.once, &hero.bonuses.once) {
+            for &bonus in missing(&bonuses.once, &now.once) {
                 emit(once(bonus, false));
             }
-            for &object_type in missing(timed, &hero.timed) {
+            for &object_type in missing(timed, now_timed) {
                 emit(marked(object_type, false));
             }
-            if (bonuses.morale, bonuses.luck) != (hero.bonuses.morale, hero.bonuses.luck) {
+            if (bonuses.morale, bonuses.luck) != (now.morale, now.luck) {
                 emit(AdventureEventKind::BonusChanged {
                     hero: id,
-                    morale: hero.bonuses.morale,
-                    luck: hero.bonuses.luck,
+                    morale: now.morale,
+                    luck: now.luck,
                 });
             }
-            for &bonus in missing(&hero.bonuses.once, &bonuses.once) {
+            for &bonus in missing(&now.once, &bonuses.once) {
                 emit(once(bonus, true));
             }
-            for &object_type in missing(&hero.timed, timed) {
+            for &object_type in missing(now_timed, timed) {
                 emit(marked(object_type, true));
             }
         }

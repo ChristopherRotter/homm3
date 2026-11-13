@@ -149,7 +149,7 @@ fn a_box_asks_first_and_its_record_is_given_then_it_leaves() {
         let army = &s.hero(HERO).unwrap().army;
         assert_eq!(army, &[stack(0, PEASANT, 6), stack(1, PIKEMAN, 7)]);
         // E08 T115a: the record's +1 morale is the hero on the map's, unmarked (HER-ADV-008).
-        let bonuses = &s.hero(HERO).unwrap().bonuses;
+        let bonuses = s.visit_marks(HERO).bonuses();
         assert_eq!(
             (bonuses.morale, bonuses.luck, bonuses.once.len()),
             (1, 0, 0)
@@ -365,12 +365,12 @@ fn the_pyramid_asks_at_every_visit_and_fights_with_a_second_creature() {
         accept(&rules, &mut s, &heroes, &search).0,
         AdventureOutcome::default()
     );
-    assert_eq!(s.hero(HERO).unwrap().bonuses, looted);
+    assert_eq!(s.visit_marks(HERO).bonuses(), &looted);
     assert_eq!(
         accept(&rules, &mut s, &heroes, &search).0,
         AdventureOutcome::default()
     );
-    assert_eq!(s.hero(HERO).unwrap().bonuses, looted, "once by its mark");
+    assert_eq!(s.visit_marks(HERO).bonuses(), &looted, "once by its mark");
     // Its owner sees it looted.
     let seen = s.observe(&rules.0, &rules.1, RED).known;
     assert_eq!(
