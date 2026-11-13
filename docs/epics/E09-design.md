@@ -1405,10 +1405,10 @@ still change at `TWN-Q14` (decision 78 lists them).
   `week_creatures(part, roe)` and `building_week(town, part, core)`; the chance's draw
   `below(denominator) < numerator`, then the creature's `below(n)`, no name index; a part without
   parameters or without an eligible creature draws no creature. The game state holds the week
-  (`GameState::week`), `roe` and the towns' stream (`StreamId::TOWNS`; game state hash v29, both
+  (`GameState::week`), `roe` and the towns' stream (`StreamId::TOWNS`; game state hash v30 after E08 T114a2's v29, both
   after the month's kind, the stream after the game's); `GameSetup::roe` from the import's format
   (map import v23); `WeekStarted { week, kind }`, `GameObservation::week`, the wire's `Week` and
-  the fold (protocol v52; the server lane's E16 M5 T11 and T12 took v50 and v51). `h3-game` re-exports `WeekKind`.
+  the fold (protocol v53; the server lane's E16 M5 T11 and T12 and E08 T114a2 took v50 to v52). `h3-game` re-exports `WeekKind`.
 
 ### 43. The month (TWN-GRO-004; GAM-CAL-003 amended)
 

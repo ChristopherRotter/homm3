@@ -138,9 +138,9 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     told by no event until T26b's views.
 90. **T26a2 whole** (the user at T26a2's start, asked; recommended was the engine now and the
     telling with T26b's protocol work, one bump instead of two): the towns' stream and the week
-    in the game state (hash v29), the draw with the setup's `roe` (map import v23), the kinds into
+    in the game state (hash v30, after E08 T114a2's v29), the draw with the setup's `roe` (map import v23), the kinds into
     the towns' week and month, the month after a `week_of` week, `WeekStarted`'s kind,
-    `GameObservation::week` and the protocol (v52: the server lane's T11 and T12 took v50 and v51); T26b bumps the protocol again for the views.
+    `GameObservation::week` and the protocol (v53: the server lane's T11 and T12 and E08 T114a2 took v50 to v52); T26b bumps the protocol again for the views.
     The same session classified the inbox's 2026-11-11 hygiene note (the user's choice): a
     property plan's fault, fixed in the adventure lane's `view.rs` in this pull request. *Agent's
     calls* (change freely): the draw in `h3-towns` (`draw_week`, `week_creatures`,

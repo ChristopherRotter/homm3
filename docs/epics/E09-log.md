@@ -3510,7 +3510,7 @@ recommended).
   lists and the records' `week_of` buildings when it is built (`WeekDraw`, not hashed): a walk
   each week cost `day-start-builds-36` +7.8 % against `master`.
 - **The game** (`state.rs`, `state/day.rs`): `GameState`'s `week`, `roe` and `towns_rng`
-  (`StreamId::TOWNS`), game state hash **v29** (the week and `roe` after the month, the stream
+  (`StreamId::TOWNS`), game state hash **v30** (after E08 T114a2's v29, merged before this pull request; the week and `roe` after the month, the stream
   after the game's); the draw before `WeekStarted`, its kind into `grow_week` and `grow_month`;
   `draw_month` after a building's week gives its base creature's month, the kind's draw made,
   the creature's not (GAM-CAL-003). `GameSetup::roe` (every literal in `h3-game`'s, `h3-map`'s
@@ -3518,8 +3518,8 @@ recommended).
   `WeekKind`.
 - **The telling:** `GameEvent::WeekStarted { week, kind }`, `GameObservation::week`; the wire's
   `Week` (`Normal`, `Creature`, `Of`), the mapping, the fold (`self.week = kind`), protocol
-  **v52** (the server lane's E16 M5 T11 and T12 took v50 and v51, merged during this task:
-  `master` merged in twice);
+  **v53** (the server lane's E16 M5 T11 and T12 and E08 T114a2 took v50 to v52, merged during this
+  task: `master` merged in three times, the replays re-recorded again after T114a2's);
   the fold gate's part "day, week and month".
 - **Tests:** `h3-towns`: the lists, `building_week`, the draw's chance and stream positions over
   400 seeds, no draw on a month's first, `roe`, the building's week over the draw. `h3-game`'s

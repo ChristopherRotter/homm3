@@ -715,6 +715,30 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "GAM-DEC-009"
+title    = "A map garrison's exchange: a pending decision closed by its owner"
+context  = "game"
+status   = "implemented"
+summary  = "A map garrison's exchange (`AdventureOutcome::exchange`, ADV-GAR-003: a team's garrison where a move ends on it or at a revisit, an empty one just flagged, one won after the winner's levels, the last as the won battle's rest, GAM-DEC-007) opens as its hero's owner's decision (`Decision::Exchange`; increment 12's design note section 13, E08 T114a2; the original's modal garrison_exchange_dialog 0x5D1130): told to the owner alone as `ExchangeOpened` (the hero, the garrison's object index, type and anchor, its removable flag), then each of the garrison's stacks as `StackChanged`, in slot order. It holds no one else and blocks its owner's `EndTurn` like a meeting; while it stands the owner's army commands name the hero's army and the garrison's (`Together::Exchange`: any other map garrison, the group or another hero is refused), each changing the armies at once (no copy, so nothing is written back), each slot told as `StackChanged`; its answer is `Close` (its default too), which only closes (`DecisionClosed`). Its view, the owner's: `DecisionView::Exchange` (the hero, the garrison by index, type and anchor, its removable flag, its army by slot). In the game state hash as its kind 8 (the owner, the hero, the garrison's index, type and anchor; game state hash v29)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (survey E08-garrisons-bonuses.md sections 3 and 6): visit_object 0x4A84F0 case 33 at 0x4A9061 (the exchange at a team's garrison and after the capture, after hero_level_up 0x4DA720 following a won battle), garrison_exchange_dialog 0x5D1130 (modal, the record's army changed in place)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-12a.md (survey section 15): E12-1 (the exchange at a move's end on Red's own garrison, none on the way), E12-2 and E12-6 (the exchange after an empty one's capture and after the won battle's levels)"
+  retrieved  = "2026-11-12"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 6 as amended by E08 T112 (increment 12's one decision kind, its armies held together, its close); increment 12's design note section 13 in E08-design.md"
+  confidence = "high"
+
+[[rule]]
 id       = "GAM-BAT-001"
 title    = "A battle on the map: its sides, its setup, its seeds, a decision its players own"
 context  = "game"
@@ -1052,7 +1076,7 @@ id       = "GAM-MAN-001"
 title    = "A player manages its heroes on the map in its turn"
 context  = "game"
 status   = "verified"
-summary  = "In its turn, with no decision open, a player gives management commands on its heroes on the map, at no cost, any number of times: an army command (a stack moved, merged, swapped, split or dismissed; ADV-ARM-001 to -005, -007), the formation and the tactics flag (ADV-ARM-006), an artifact's move (HER-ART-005), an assembly or a disassembly (HER-ART-006). The game checks the actor, its turn and its decision, that each hero named is its own on the map, and that a command between two armies (two heroes, or a hero and an army dialog's group) has them together (a meeting's, GAM-DEC-003; an army dialog's, GAM-DEC-004: E08 T51b; outside them `NotTogether`, the group alone `NoGroup`), and that while a meeting or an army dialog is open each hero named is one it holds (else `DecisionOpen`), then the adventure's or the hero model's rules, before anything changes; a refusal is typed and changes nothing. Each slot an army command names is told with what it holds after it, the formation and the flag when set, each artifact change as the hero change it is; to the owner alone (ADR-0016 point 6). E08 T51a: `GameCommand::Manage`, `Manage`, `ManageError`, `GameEvent::{StackChanged, FormationSet, TacticsSet}`."
+summary  = "In its turn, with no decision open, a player gives management commands on its heroes on the map, at no cost, any number of times: an army command (a stack moved, merged, swapped, split or dismissed; ADV-ARM-001 to -005, -007), the formation and the tactics flag (ADV-ARM-006), an artifact's move (HER-ART-005), an assembly or a disassembly (HER-ART-006). The game checks the actor, its turn and its decision, that each hero named is its own on the map, and that a command between two armies (two heroes, a hero and an army dialog's group, or since E08 T114a2 a hero and a map garrison) has them together (a meeting's, GAM-DEC-003; an army dialog's, GAM-DEC-004: E08 T51b; an exchange's, GAM-DEC-009: E08 T114a2; outside them `NotTogether`, a map garrison alone too, the group alone `NoGroup`), and that while a meeting, an army dialog or an exchange is open each hero and map garrison named is one it holds (else `DecisionOpen`), then the adventure's or the hero model's rules, before anything changes; a refusal is typed and changes nothing. Each slot an army command names is told with what it holds after it, the formation and the flag when set, each artifact change as the hero change it is; to the owner alone (ADR-0016 point 6). E08 T51a: `GameCommand::Manage`, `Manage`, `ManageError`, `GameEvent::{StackChanged, FormationSet, TacticsSet}`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1083,7 +1107,7 @@ id       = "GAM-MAN-002"
 title    = "The management commands are listed per hero"
 context  = "game"
 status   = "implemented"
-summary  = "The legal management commands are not in the flat list of legal commands (which keeps the end of the turn and the answers) but listed per hero, as its moves are (the reachable-tiles query): for the actor's hero on the map, in its turn without an open decision, every command `apply` accepts but the splits: its army's moves onto every other slot and its dismissals, both formations and both values of the flag, each artifact's moves onto every place the hero model takes it to, the assemblies and the disassemblies; none for another player's hero, a hero not on the map, the system actor or outside the turn. A split's counts come from a query per source and target slot of one army (ADV-ARM-003, -007): none where `apply` refuses every split. With a meeting open, a hero's listing also gives its stacks' moves onto the other hero's slots and its artifacts' moves onto the other hero's places; with an army dialog open, the hero's listing gives its stacks' moves onto the group's slots and then the group's own commands (its stacks' moves onto its other slots and the hero's, its dismissals); a hero the open decision does not hold lists none; the split's query takes slots of two armies together (E08 T51b). E08 T51a: `legal_management`, `split_range`, `AdventureState::army_commands`."
+summary  = "The legal management commands are not in the flat list of legal commands (which keeps the end of the turn and the answers) but listed per hero, as its moves are (the reachable-tiles query): for the actor's hero on the map, in its turn without an open decision, every command `apply` accepts but the splits: its army's moves onto every other slot and its dismissals, both formations and both values of the flag, each artifact's moves onto every place the hero model takes it to, the assemblies and the disassemblies; none for another player's hero, a hero not on the map, the system actor or outside the turn. A split's counts come from a query per source and target slot of one army (ADV-ARM-003, -007): none where `apply` refuses every split. With a meeting open, a hero's listing also gives its stacks' moves onto the other hero's slots and its artifacts' moves onto the other hero's places; with an army dialog open, the hero's listing gives its stacks' moves onto the group's slots and then the group's own commands (its stacks' moves onto its other slots and the hero's, its dismissals); with an exchange open (E08 T114a2), the hero's listing gives its stacks' moves onto the garrison's slots and then the garrison's own commands, each by the one owner rule (ADV-GAR-003); a hero the open decision does not hold lists none; the split's query takes slots of two armies together (E08 T51b). E08 T51a: `legal_management`, `split_range`, `AdventureState::army_commands`."
 numeric  = "integer"
 
   [[rule.source]]

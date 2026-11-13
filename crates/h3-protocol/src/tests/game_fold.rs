@@ -1131,6 +1131,55 @@ fn the_fold_opens_and_closes_the_decisions_whose_events_hold_their_view() {
             None
         ]
     );
+    // E08 T114a2: a map garrison's exchange opens empty, its stacks told after it and by its
+    // commands (a slot of another garrison changes nothing), and closes leaving nothing behind.
+    let garrison = |index, slot| ArmySlot {
+        army: ArmyRef::MapGarrison { garrison: index },
+        slot,
+    };
+    fold(
+        &mut v,
+        &[
+            GameEvent::ExchangeOpened {
+                player: 1,
+                hero: 4,
+                garrison: 17,
+                object_type: 33,
+                anchor: at(1, 0),
+                removable: false,
+            },
+            GameEvent::StackChanged {
+                player: 1,
+                at: garrison(17, 3),
+                stack: Some(stack(3, 8)),
+            },
+            GameEvent::StackChanged {
+                player: 1,
+                at: garrison(17, 0),
+                stack: Some(stack(0, 2)),
+            },
+            GameEvent::StackChanged {
+                player: 1,
+                at: garrison(18, 1),
+                stack: Some(stack(1, 2)),
+            },
+        ],
+    );
+    assert_eq!(
+        v.decision,
+        Some(Decision::Exchange {
+            hero: 4,
+            garrison: 17,
+            object: ObjectRef {
+                object_type: 33,
+                anchor: at(1, 0),
+            },
+            removable: false,
+            army: vec![stack(0, 2), stack(3, 8)],
+        })
+    );
+    fold(&mut v, &[GameEvent::DecisionClosed { player: 1 }]);
+    assert_eq!(v.decision, None);
     // A battle ends with its result; its snapshot is the session's.
     assert!(v.battle.is_some());
     fold(

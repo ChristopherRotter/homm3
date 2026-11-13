@@ -5,7 +5,7 @@ Inbox notes that left the queue, verbatim, with where their work went (`docs/08-
 
 ## 2026-11-12 — E09 T26a2: the versions taken, the hygiene note classified, the hut's week tested
 
-The first note's map import v22 was T113b's: T26a2 took v23 (and game state hash v29). The
+The first note's map import v22 was T113b's: T26a2 took v23 (and game state hash v30, after E08 T114a2's v29). The
 hygiene failure was the property plan's (a neutral plan's town visited at load is its visitor's
 owner's and drew its level-2 dwelling): `h3-map`'s `hygienic_town` counts it as owned, the case's
 `cc` line committed (`E09-log.md`, T26a2). The T97a note's check is `h3-game`'s

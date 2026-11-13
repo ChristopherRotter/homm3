@@ -147,7 +147,9 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// v27 (E08 T105b1): the held jump after a battle at a teleporter's exit among the rests (its
 /// tag 4, then the exit; increment 11's design note §13, which planned v26 before E09 T17a). v28
 /// (E09 T25a): the store of towns' encoding v3, each town's available creatures and Portal
-/// (`h3_towns::Town::available`, `portal`; E09 design §40). v29 (E09 T26a2): the week's kind
-/// (`h3_towns::WeekKind`) and whether the map is RoE's after the month's kind, the towns' stream
-/// after the game's (TWN-GRO-002; E09 design §42).
-pub const GAME_STATE_HASH_VERSION: u32 = 29;
+/// (`h3_towns::Town::available`, `portal`; E09 design §40). v29 (E08 T114a2): a map garrison's
+/// exchange among the decisions (GAM-DEC-009: its tag 8, the owner, the hero, the garrison's index,
+/// type and anchor; increment 12's design note §13 and §17). v30 (E09
+/// T26a2): the week's kind (`h3_towns::WeekKind`) and whether the map is RoE's after the month's
+/// kind, the towns' stream after the game's (TWN-GRO-002; E09 design §42).
+pub const GAME_STATE_HASH_VERSION: u32 = 30;

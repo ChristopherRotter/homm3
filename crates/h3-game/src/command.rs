@@ -80,7 +80,8 @@ pub enum Answer {
     University(UniversityAnswer),
     /// A hire dialog's purchase or closing (GAM-DEC-008, ADV-HIR-002; E08 T95b).
     Hire(HireAnswer),
-    /// Closes a meeting (GAM-DEC-003) or an army dialog (GAM-DEC-004; increment 6's `Decline`).
+    /// Closes a meeting (GAM-DEC-003), an army dialog (GAM-DEC-004; increment 6's `Decline`) or,
+    /// since E08 T114a2, a map garrison's exchange (GAM-DEC-009).
     Close,
 }
 
@@ -571,6 +572,26 @@ pub enum GameEvent {
         object_type: ObjectTypeId,
         /// The mine's anchor.
         anchor: Pos,
+    },
+    /// A map garrison's exchange opened (GAM-DEC-009, ADV-GAR-003; E08 T114a2, increment 12's
+    /// design note §13): its owner's army commands name the hero's army and the garrison's
+    /// (`h3_adventure::ArmyRef::MapGarrison`) until its `Close`; the garrison's stacks follow as
+    /// [`Self::StackChanged`], one event per stack in slot order (none for an empty garrison), and
+    /// its commands' changes as theirs. Seen by the owner.
+    ExchangeOpened {
+        /// The hero's owner.
+        player: PlayerId,
+        /// The visiting hero, on the garrison's entrance.
+        hero: HeroId,
+        /// The garrison's object index, which the army commands name.
+        garrison: u32,
+        /// The garrison's type.
+        object_type: ObjectTypeId,
+        /// The garrison's anchor.
+        anchor: Pos,
+        /// Whether its owner may take its troops back (the map's flag; the one owner rule: a
+        /// non-removable garrison only takes stacks into its empty slots).
+        removable: bool,
     },
     /// A visit's choice opened as a pending decision of its player (GAM-DEC-005, E08 T63a): a
     /// treasure chest's, the Arena's, or a School's when the treasury can pay its price; what it

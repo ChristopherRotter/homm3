@@ -13,7 +13,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T26a1 (decision 89: the inputs, the week and the month in the day, the events' creatures,
   `TWN-STUB-10` lifted), **T26a2** (decision 90, whole: the week's kind TWN-GRO-002 from the
   towns' stream, the setup's `roe`, the month after a `week_of` week, the telling and the wire;
-  game state hash v29, map import v23, protocol v52). **Next:**
+  game state hash v30, map import v23, protocol v53). **Next:**
   T26b (`QUEUE.md`), then T27 to T30
   (design §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is
   increment 4, the guild and the services 5, travel and the Grail 6.
@@ -28,7 +28,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   merged in order with its pull requests.
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3: T25a's counts
   and Portal) and the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v5: T25a's roles, `roe`,
-  parameters), both in `h3-towns`; the adventure lane's (game state hash v29 and map import v23 by
+  parameters), both in `h3-towns`; the adventure lane's (game state hash v30 and map import v23 by
   T26a2, adventure state and part hashes, replay format) and the env's and protocol's are bumped
   `cross-lane` (each task's record in `E09-log.md`); their current values are in the adventure
   lane's HANDOFF. Shared, from T24: core ruleset hash v53, pack format v52, quirk flags 41
@@ -55,7 +55,7 @@ disk, CI's run on `master` stands for it). T26a2 whole (the user, decision 90; t
 was recommended). The user's computer was connected at the start only: the original data staged
 then (17 files, SHA-256 checked), used for the scoped verify. First the inbox's hygiene note,
 classified: the property plan's fault (a visited town drew a dwelling its owner sees), fixed in
-`h3-map`'s `view.rs`. `cross-lane`: game state hash v29, map import v23, protocol v52 (the server's T11 and T12 took v50 and v51), the 72
+`h3-map`'s `view.rs`. `cross-lane`: game state hash v30, map import v23, protocol v53 (the server's T11, T12 and the adventure's T114a2 took v50 to v52), the 72
 adventure replays, four fork workloads re-baselined (+0.8 % to +1.1 % against `master`),
 `h3-server`'s record literals, a `h3-view` test literal. Notes in the adventure's and the
 server's inboxes. T26b next.
