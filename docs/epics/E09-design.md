@@ -1401,6 +1401,14 @@ still change at `TWN-Q14` (decision 78 lists them).
 - *As built (T26a1):* the towns' week (`town::growth::grow_week`) after `WeekStarted` and before
   the adventure's week step, each town written only where it changes; every week `Normal` until
   T26a2 draws the kind.
+- *As built (T26a2):* `h3_towns::draw_week(towns, part, core, roe, month_first, draws)` with
+  `week_creatures(part, roe)` and `building_week(town, part, core)`; the chance's draw
+  `below(denominator) < numerator`, then the creature's `below(n)`, no name index; a part without
+  parameters or without an eligible creature draws no creature. The game state holds the week
+  (`GameState::week`), `roe` and the towns' stream (`StreamId::TOWNS`; game state hash v30 after E08 T114a2's v29, both
+  after the month's kind, the stream after the game's); `GameSetup::roe` from the import's format
+  (map import v23); `WeekStarted { week, kind }`, `GameObservation::week`, the wire's `Week` and
+  the fold (protocol v53; the server lane's E16 M5 T11 and T12 and E08 T114a2 took v50 to v52). `h3-game` re-exports `WeekKind`.
 
 ### 43. The month (TWN-GRO-004; GAM-CAL-003 amended)
 
@@ -1428,6 +1436,9 @@ still change at `TWN-Q14` (decision 78 lists them).
   month step, `MonthKind` mapped one to one (a normal month writes nothing), the week's inputs
   reused; `advance_day`'s month block sits inside its week block. The month after a `week_of`
   week (GAM-CAL-003 amended) is T26a2's.
+- *As built (T26a2):* `draw_month` reads the week: after a building's week with a base creature
+  the month is `MonthKind::Creature(base)`, the kind's draw made (when the part has the months'
+  parameters) and the creature's not; `grow_week` and `grow_month` pass `GameState::week`.
 
 ### 44. A neutral town's garrison week (TWN-GRO-006; `h3-towns`' `garrison.rs`, `h3-adventure`'s `src/town.rs`)
 

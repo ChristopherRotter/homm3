@@ -51,9 +51,12 @@ fn hygienic() -> impl Strategy<Value = super::play::Plan> {
 /// a fixed faction (its hero's index as the code; its alignment then unused), a neutral town's
 /// editor garrison (drawn, TWN-SET-004) given as ten of a level-1 creature in its first slot, an
 /// owned town's standard set with a Fort (its level-2 dwelling drawn, TWN-SET-003; its buildings
-/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without.
+/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without. A town
+/// visited at load is its visitor's owner's whatever its plan's owner (`towns_laid_out`), so it
+/// counts as owned here (E09 T26a2: the town lane's inbox note of 2026-11-11, a neutral plan's
+/// visited town with a Fort drew a dwelling its new owner sees).
 fn hygienic_town(town: &mut TownPlan) {
-    if town.owner.is_some()
+    if (town.owner.is_some() || town.visited)
         && TOWN_BUILDINGS[town.buildings] == (Buildings::Standard { fort: true })
     {
         town.buildings = 0;
@@ -963,6 +966,8 @@ fn check_told(
     let mut day = before.day;
     // E08 T85b: the month's kind, public, told by its start.
     let mut month = before.month;
+    // E09 T26a2: and the week's kind.
+    let mut week = before.week;
     let mut acting: Vec<bool> = before.players.iter().map(|p| p.acting).collect();
     // The turn group: the players whose turns start after the last turn that ended, if any did.
     let mut group = before.turn_group.clone();
@@ -1650,7 +1655,10 @@ fn check_told(
                 today.push(event);
             }
             // E08 T85b: a week and a month start only on a new day, told to every viewer.
-            GameEvent::WeekStarted { .. } => prop_assert!(day != before.day),
+            GameEvent::WeekStarted { kind, .. } => {
+                prop_assert!(day != before.day);
+                week = kind;
+            }
             GameEvent::MonthStarted { kind, .. } => {
                 prop_assert!(day != before.day);
                 month = kind;
@@ -1736,6 +1744,7 @@ fn check_told(
         }
     }
     prop_assert_eq!(after.month, month);
+    prop_assert_eq!(after.week, week);
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
@@ -2673,6 +2682,18 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::MonthStarted { .. }))
             };
             if month(&ta) || month(&tb) {
+                break;
+            }
+            // E09 T26a2: a week's kind is a public draw of the towns' stream (TWN-GRO-002), whose
+            // seed the other game's changes: the comparison ends at a week's start whose kinds
+            // differ, as at a month's (with the same seed the two weeks are the same draw).
+            let week = |events: &[GameEvent]| {
+                events.iter().find_map(|e| match *e {
+                    GameEvent::WeekStarted { kind, .. } => Some(kind),
+                    _ => None,
+                })
+            };
+            if week(&ta) != week(&tb) {
                 break;
             }
             // E08 T106b2: a visit of a teleporter of the viewer's own shows it where the jump

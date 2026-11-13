@@ -12,6 +12,11 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-12 (the town lane, E09 T26a2, `town/e09-t26a2`, `cross-lane`; **a protocol version
+  taken**): protocol **v53** is the week's kind (after the adventure lane's v52) (TWN-GRO-002): `wire::game::Week` (`Normal`,
+  `Creature`, `Of`), `GameEvent::WeekStarted`'s `kind`, `GameObservation`'s `week`, the fold
+  keeping it; the fold gate's part "day and month" is "day, week and month". A bump of yours is
+  v54 or the next at merge (the town lane's T26b plans the next for the owner's counts).
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): protocol **v52** (after your T11's v50 and T12's v51): the wire's
   `ArmyRef::MapGarrison { garrison: u32 }` (a map garrison by object index, `u32::MAX` past it),

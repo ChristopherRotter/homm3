@@ -81,8 +81,10 @@ pub use parse::parse;
 /// 0 an empty slot) and its removable flag (true on an RoE map), a random stack in one refused for
 /// good (`ImportError::RandomStack`), a subclass past 1 refused; the fifteen bonus visitables (11,
 /// 14, 28, 30, 31, 38, 48, 49, 52, 56, 64, 92, 94, 96, 110) typed, a subclass past 0 refused; 219
-/// ownable among a battle's surroundings.
-pub const MAP_IMPORT_VERSION: u32 = 22;
+/// ownable among a battle's surroundings. v23 (E09 T26a2): the setup's `roe`, the map's format
+/// Restoration of Erathia's (`GameSetup::roe`: a creature's week names only RoE's town records'
+/// creatures, TWN-GRO-002).
+pub const MAP_IMPORT_VERSION: u32 = 23;
 
 /// Reads a map file as the game stores it (gzip-compressed) within `limits`.
 ///

@@ -21,7 +21,7 @@ use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
 use crate::town::view::{TownView, town_views, views_of};
-use crate::{GameRuleset, GameState, MonthKind};
+use crate::{GameRuleset, GameState, MonthKind, WeekKind};
 
 /// Who an observation or an event's projection is for (ADR-0017 point 2). The spectator, who
 /// sees public facts only, comes with the server lane as an additive variant.
@@ -40,6 +40,8 @@ pub struct GameObservation {
     pub day: u32,
     /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
     pub month: MonthKind,
+    /// The week's kind (TWN-GRO-002, E09 T26a2): public, as the original's week's message.
+    pub week: WeekKind,
     /// The players, by id.
     pub players: Vec<PlayerView>,
     /// The players of the group whose turn is running.
@@ -229,6 +231,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         viewer: player,
         day: state.day(),
         month: state.month(),
+        week: state.week(),
         players: (0..=u8::MAX)
             .take(state.players())
             .map(PlayerId::new)

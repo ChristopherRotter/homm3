@@ -327,19 +327,19 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x28d8e02544c13560",
-    "0x872ec915365f4536",
-    "0xe50315ee116b872f",
-    "0xbf9f705bd79f3c43",
-    "0x1a81103fd9447472",
-    "0x59cc7e6a4fdd64fd",
-    "0x6ca05c7be03ab823",
-    "0xfd863921c0ff83f7",
-    "0x8346be461a84ffba",
-    "0xd23291b423579fbc",
-    "0x44dd54a346045620",
-    "0x8c8971569b787b24",
-    "0x68bbe6a36e7c8f8f",
+    "0xd91155e5268bb729",
+    "0x828e338bb165fe59",
+    "0xf02368e87d3e973b",
+    "0xc6aef5be066c54f7",
+    "0x2b4170eac608f618",
+    "0x0496f7823d71239b",
+    "0xd664f4af83b98147",
+    "0x7b473959c8d77af3",
+    "0xe36454c6de5cffa2",
+    "0x4c469d236a3997c0",
+    "0xee93f26936edf904",
+    "0x66880d7f8e7b3384",
+    "0xfd94a292af096851",
 ]
 
 [replay]
@@ -369,15 +369,15 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 29
+game_state_hash_version = 30
 adventure_state_hash_version = 22
 checkpoint_every = 25
 
 [map]
 path = "fixtures/maps/e08-rewards-36.h3m"
 hash = "0x776d6b23b0ba2d87"
-import_version = 22
+import_version = 23
 
 [result]
 day = 29
-final_hash = "0xec1829133d2c2330"
+final_hash = "0xde6c92e959a6cd2e"

@@ -8,7 +8,7 @@ toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [workload]
-description = "100 000 forks of the env after 7 days of random play on the economy XL map (E08 T86b2, increment 9's design note §15: the step that starts day 8 has written the week, the weekly objects' contents and the grown monsters' counts and fractions, which the forks carry with the owners; 3 708 Ir a fork, fork-xl-144's 3 704 on its map: the blocks are reference counts); counts only inside h3_cli::adventure::bench::fork_workload"
+description = "100 000 forks of the env after 7 days of random play on the economy XL map (E08 T86b2, increment 9's design note §15: the step that starts day 8 has written the week, the weekly objects' contents and the grown monsters' counts and fractions, which the forks carry with the owners; 3 708 Ir a fork, fork-xl-144's 3 704 on its map: the blocks are reference counts); counts only inside h3_cli::adventure::bench::fork_workload; E09 T26a2 re-baselined at 378 700 075 (+0.83 % against master's 375 600 075 measured in the same sandbox, master itself above the old baseline there): a fork copies the game state's three new fields (the week's kind, the map's roe and the towns' stream; AdventureEnv::fork +19 Ir and memcpy +12 Ir a fork in fork-rewards-36), every other counted function the same"
 args = [
     "adventure",
     "bench",
@@ -26,5 +26,5 @@ args = [
     "1",
 ]
 collect = "*fork_workload*"
-instructions = 370800075
+instructions = 378700075
 threshold_percent = 2

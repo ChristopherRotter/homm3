@@ -13,7 +13,7 @@ use h3_adventure::{AdventureState, ObjectKind};
 use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::{
-    CREATURE_INDEXES, GrowthInputs, MAX_CREATURE_LEVELS, MonthGrowth, Town, TownRuleset, WeekKind,
+    CREATURE_INDEXES, GrowthInputs, MAX_CREATURE_LEVELS, MonthGrowth, Town, TownRuleset,
     index_creature,
 };
 
@@ -140,20 +140,22 @@ pub(crate) fn inputs(state: &GameState, rules: &GameRuleset) -> Vec<GrowthInputs
 /// The towns' week (TWN-GRO-003; design §42, survey §2: the original's `town_week_growth` 0x5BFDD0
 /// from `new_day_week_events`), on a week's first day after [`crate::GameEvent::WeekStarted`] and
 /// before the adventure's week step: every town in `TownId` order grows its week with its
-/// `inputs` ([`h3_towns::week_growth`]; a normal week until TWN-GRO-002 draws the kind, E09
-/// T26a2).
+/// `inputs` and the week's kind ([`h3_towns::week_growth`], [`GameState::week`]: TWN-GRO-002,
+/// drawn before [`crate::GameEvent::WeekStarted`] since E09 T26a2).
 // rule: TWN-GRO-003
 pub(crate) fn grow_week(state: &mut GameState, rules: &GameRuleset, inputs: &[GrowthInputs]) {
+    let week = state.week();
     rewrite(state, rules, inputs, |town, part, core, inputs| {
-        h3_towns::week_growth(town, part, core, &WeekKind::Normal, inputs)
+        h3_towns::week_growth(town, part, core, &week, inputs)
     });
 }
 
 /// The towns' month (TWN-GRO-004; design §43, survey §3: the original's `new_month` 0x4C8F40 at its
 /// towns), on a month's first day after [`crate::GameEvent::MonthStarted`] and before the
 /// adventure's month step: every town in `TownId` order takes `month` with its `inputs`
-/// ([`h3_towns::month`], the game's [`MonthKind`] as the town crate's [`MonthGrowth`]; the
-/// month's first week a normal one until E09 T26a2). A normal month writes nothing.
+/// ([`h3_towns::month`], the game's [`MonthKind`] as the town crate's [`MonthGrowth`], with the
+/// month's first week's kind: after a building's week the month's creature doubles nothing). A
+/// normal month writes nothing.
 // rule: TWN-GRO-004
 pub(crate) fn grow_month(
     state: &mut GameState,
@@ -166,8 +168,9 @@ pub(crate) fn grow_month(
         MonthKind::Creature(creature) => MonthGrowth::Creature(creature),
         MonthKind::Plague => MonthGrowth::Plague,
     };
+    let week = state.week();
     rewrite(state, rules, inputs, |town, part, core, inputs| {
-        h3_towns::month(town, part, core, growth, &WeekKind::Normal, inputs)
+        h3_towns::month(town, part, core, growth, &week, inputs)
     });
 }
 

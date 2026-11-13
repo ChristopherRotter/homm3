@@ -126,7 +126,9 @@ pub mod wire;
 /// (`wire::game::Decision::Exchange`, the event `ExchangeOpened`), its army in the army commands
 /// (`wire::game::ArmyRef::MapGarrison`) and the one owner rule's refusals
 /// (`wire::game::ArmyReject`'s `NoGarrison`, `NotOwn`, `OnlyEmpty`).
-pub const PROTOCOL_VERSION: u32 = 52;
+/// v53 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s `kind` and the game
+/// observation's `week` (`wire::game::Week`), the fold keeping it.
+pub const PROTOCOL_VERSION: u32 = 53;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

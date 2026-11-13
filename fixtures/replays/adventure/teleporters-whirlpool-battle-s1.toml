@@ -14,8 +14,8 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x3f8950adb68c942c",
-    "0x1957675daf4ebba0",
+    "0x740fe3b484bb406d",
+    "0x63a79ea24932a777",
 ]
 
 [replay]
@@ -45,15 +45,15 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 29
+game_state_hash_version = 30
 adventure_state_hash_version = 22
 checkpoint_every = 5
 
 [map]
 path = "fixtures/maps/e08-teleporters-36.h3m"
 hash = "0x27ac37d3c2d89975"
-import_version = 22
+import_version = 23
 
 [result]
 day = 4
-final_hash = "0x12ddfd5962508574"
+final_hash = "0xbd2a4e3fd9608a4f"

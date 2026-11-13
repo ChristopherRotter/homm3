@@ -14,7 +14,7 @@ use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, BattleResult, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
     ArmyRef, ArmySlot, ArtifactPlace, BuildingId, BuildingSet, GameEvent, GarrisonStackView,
-    HeroChange, HireTarget, MonthKind, Position, TownBuildingsView, Viewer,
+    HeroChange, HireTarget, MonthKind, Position, TownBuildingsView, Viewer, WeekKind,
 };
 use h3_heroes::{ArtifactInstance, OfferLevels, PrimarySkill as EnginePrimary};
 use h3_kernel::handle::Handle;
@@ -361,7 +361,10 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
     match e.clone() {
         G::TurnEnded { player } => GameEvent::TurnEnded { player: p(player) },
         G::DayStarted { day } => GameEvent::DayStarted { day },
-        G::WeekStarted { week } => GameEvent::WeekStarted { week },
+        G::WeekStarted { week, kind } => GameEvent::WeekStarted {
+            week,
+            kind: super::game::inverse_week(kind),
+        },
         G::MonthStarted { month, kind } => GameEvent::MonthStarted {
             month,
             kind: match kind {
@@ -730,7 +733,21 @@ pub(super) fn every_event() -> Vec<GameEvent> {
     let mut events = vec![
         GameEvent::TurnEnded { player: P1 },
         GameEvent::DayStarted { day: 9 },
-        GameEvent::WeekStarted { week: 2 },
+        GameEvent::WeekStarted {
+            week: 2,
+            kind: WeekKind::Normal,
+        },
+        GameEvent::WeekStarted {
+            week: 3,
+            kind: WeekKind::Creature(creature),
+        },
+        GameEvent::WeekStarted {
+            week: 4,
+            kind: WeekKind::Of {
+                creatures: [Some(creature), None],
+                bonus: 15,
+            },
+        },
         GameEvent::MonthStarted {
             month: 2,
             kind: MonthKind::Normal,

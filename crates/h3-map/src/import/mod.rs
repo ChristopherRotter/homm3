@@ -229,7 +229,8 @@ impl From<Unsupported> for ImportError {
 
 /// Imports a raw map with the game's rules into a game setup: the players in colour order with
 /// their starts, the static map ([`import_map`]), the towns, the heroes placed on it (a random
-/// hero without its type, E09 T7a1) and the hero pool's inputs.
+/// hero without its type, E09 T7a1), the hero pool's inputs and, since E09 T26a2, whether the map
+/// is RoE's (`GameSetup::roe`, TWN-GRO-002).
 ///
 /// # Errors
 ///
@@ -307,6 +308,8 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
         allowed_heroes,
         hero_masks,
         prisoners,
+        // rule: TWN-GRO-002
+        roe: map.header.version == Version::RoE,
     })
 }
 

@@ -145,6 +145,7 @@ fn static_layer_validates(m: &RawMap, rules: &GameRuleset) {
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
         prisoners: Vec::new(),
+        roe: false,
     };
     setup.validate(rules).unwrap();
 }
