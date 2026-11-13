@@ -1,0 +1,53 @@
+# E27 M1 T2: the original's shell captures of shell/scores.toml (h3shell.py run --record): per shot
+# `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip <frames>@<first>-<last> <digest>`; numbers only.
+scores-tabs scenarios t100 52db78a38d3b7316
+scores-tabs scenarios-anim clip 15@100-2940 56073cb8a9c837fb
+scores-tabs standard-hover t3200 877d00e2fd0a378d
+scores-tabs standard-press t3300 8d8a7c24d072a054
+scores-tabs standard-left t3500 eea6c557d8bd551b
+scores-tabs campaign-hover t3600 af12357c5ad0223c
+scores-tabs campaign-press t3700 7cb30620ea0da398
+scores-tabs campaign-left t3900 225c9e810fbd7d49
+scores-tabs reset-hover t4000 e146161beb57c221
+scores-tabs reset-press t4100 989d95cb37dadf46
+scores-tabs reset-left t4300 25d1201ed0e09a9e
+scores-tabs exit-hover t4400 f2c425361a9eb435
+scores-tabs exit-press t4500 50c5c3f1411b37b4
+scores-tabs exit-left t4700 90206eb74df046c8
+scores-tabs campaign-popup t4800 4adf251c137f1b3c
+scores-tabs creature-popup t5000 e63ade20778a7e43
+scores-tabs row-popup t5200 0b1be1f599f9b4a3
+scores-tabs popups-closed t5300 0b1be1f599f9b4a3
+scores-tabs campaigns t5400 43b806abbac59e17
+scores-tabs campaigns-anim clip 16@5400-8350 053b63cb6b93303b
+scores-tabs scenarios-again t8500 110453b57fe393ad
+scores-tabs campaigns-key t8600 e58493078b7b6927
+scores-tabs scenarios-key t8700 110453b57fe393ad
+scores-tabs escaped t8900 9f4ee4ac15c6fa8c
+scores-tabs reopened t9000 32ca4cff7781a688
+scores-tabs entered t9100 9f4ee4ac15c6fa8c
+scores-tabs opened t9200 52db78a38d3b7316
+scores-tabs exited t9300 dc62685f43b4f3fb
+scores-reset scenarios t100 52db78a38d3b7316
+scores-reset question t200 45c877a6505c1d51
+scores-reset ok-hover t300 9e75b6b8df372e3b
+scores-reset cancel-hover t400 3bd95084834439aa
+scores-reset cancelled t500 60bbc87497243514
+scores-reset reset t700 dce629271b7743c5
+scores-reset campaigns t800 43b806abbac59e17
+scores-reset question-campaigns t900 8983771692b5f7b3
+scores-reset reset-campaigns t1000 5bceace60424d9e5
+scores-reset menu t1100 b7dd66a1e899af04
+credits-scroll opened t200 3a30c7568043aa20
+credits-scroll start clip 21@200-3200 62fd9b1a073174f4
+credits-scroll scroll clip 2611@3200-264200 4c721bf3fa7358da
+credits-scroll end clip 12@264200-266500 ee01363232ff68ab
+credits-scroll menu t266500 e41a9f4a11e12d84
+credits-end before-key clip 21@200-3200 62fd9b1a073174f4
+credits-end moved t3300 2866bdbc595497bb
+credits-end key-ended t3400 f63f22cc282db23d
+credits-end before-left clip 21@3600-6600 20de84598dd9a1a1
+credits-end left-ended t6700 e41a9f4a11e12d84
+credits-end before-right clip 21@6800-9800 c225b5591f840bb4
+credits-end right-ended t9900 e41a9f4a11e12d84
+credits-end menu t10000 e41a9f4a11e12d84

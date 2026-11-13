@@ -1,0 +1,60 @@
+# E27 M1 T2: the original's shell captures of shell/end.toml (h3shell.py run --record): per shot
+# `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip <frames>@<first>-<last> <digest>`; numbers only.
+end-conquest blue-9 t800 39c83ce1cba33089
+end-conquest purple-6 t900 8586a26eeed26bbe
+end-conquest teal-6 t1000 feeba96d89b7963c
+end-conquest victory-660 t1100 3cc64b7b3546a390
+end-conquest score clip 185@1200-19700 85dce26fde189a43
+end-conquest entry t19800 9ba939ee7c2c2991
+end-conquest ok-empty t19900 fbf8ccee76da5691
+end-conquest enter-empty t20000 fbf8ccee76da5691
+end-conquest name-typed t20100 f5c775cb06bf4027
+end-conquest ok-hover t20200 f5c775cb06bf4027
+end-conquest ok-press t20300 ff9699a69bf3aa3a
+end-conquest to-scores clip 3@20400-20500 2df2bd5f90672414
+end-conquest scores t20500 bbb52a2c98a6dfcd
+end-conquest menu t20600 85767d0a2c132a6c
+end-score-press turn t1000 0509d41fd6ff7e44
+end-score-press message t1100 06781ea48d90b16a
+end-score-press blue-6 t1400 8f19d43423b8fd60
+end-score-press victory-660 t1700 d27de8d8fe24bbcf
+end-score-press score clip 21@1800-3800 cf8eddb607a49c37
+end-score-press entry t3900 28bb91cc9066471a
+end-score-press scores t4100 6f865ace939feea5
+end-eleventh victory-660 t1100 a53416bc87a1c531
+end-eleventh score clip 21@1200-3200 9be4794823c3b695
+end-eleventh entry t3300 80e015d9e6cbb58e
+end-eleventh scores t3600 35fd6449445d5ecb
+end-week red-7 t800 ab6e08acdb55671a
+end-lost-week red-8 t800 5469839d6aef6572
+end-lost-week lost clip 116@900-13760 c132cb54dc55f517
+end-lost-week menu t13760 a31b5d9fca864a1b
+end-lost-skip red-96 t800 3904034435a72a8d
+end-lost-skip lost clip 5@900-1810 69f026f4c54da918
+end-lost-skip skipped clip 3@2000-2100 42de4a9b57ef80d6
+end-lost-skip menu t2100 9199c6a1ed8bc7a9
+end-v0-won won t800 dcd6411595dd0213
+end-v0-lost lost t800 c93893a490e1f2c0
+end-v1-won won t800 3829e9cdd29af57c
+end-v1-lost lost t800 23d39657b046581c
+end-v2-won won t800 e764ff83352f8015
+end-v2-lost lost t800 62f0883ea365d003
+end-v3-won won t800 4575e865f86ae338
+end-v3-lost lost t800 11d1f96345ee84b8
+end-v4-won won t1000 05be667bf1f0294b
+end-v4-lost lost t1000 31f47c132dfaed35
+end-v5-won won t1200 4abefeab7f929fbb
+end-v6-won won t800 fc7f963349b25331
+end-v6-lost lost t800 580fe79f4f60b19d
+end-v7-won won t800 bda62d4c28b272e5
+end-v7-lost lost t800 b432834c11e92ec4
+end-v8-won won t800 fd876ec8ea408669
+end-v8-lost lost t800 1e77396df07dc74d
+end-v9-won won t800 fe72c982034f45d5
+end-v9-lost lost t800 c4d15bbacd6d20d3
+end-v10-won won t800 243f014977ffb072
+end-v10-lost lost t800 f3957860302a8af2
+end-l0 lost t800 8fb6254023fa0ad7
+end-l1 week-7 t800 f38d5afec2958b2f
+end-l1 lost t900 4b89cc314b0cd54e
+end-l2 lost t900 f15e5cc89d2dd3bd

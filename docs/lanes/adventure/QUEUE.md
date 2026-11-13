@@ -29,6 +29,15 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
+  `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a
+  run directory fails every run: rerun `setup.sh`); the run's `VIDEO.VID` joins `battle-videos.vid`
+  with `shell-videos.vid` when both are staged (the start's clips play only with `Show Intro` on,
+  which the harness's settings keep off); `SMACKW32.DLL` reads the virtual clock too and
+  `BinkGetSummary` is guarded (a full-screen clip's end on a frozen clock). `h3drive.Game` takes
+  `frozen` (`H3FROZEN`). New: `h3shell.py`, the shell's screens (the runbook's "The shell's
+  screens"). The harness check passed.
+
 - 2026-11-12 (the client lane, E27 M1 T1b3b, `client/e27-m1-t1b3b`; **a correction for your
   survey, and E10's needs**): 0x6972B8 is the scenario's end flag (`scenario_ended`, read: set
   with `scenario_result` 0x699510 by `scenario_condition_met` and the conditions' tests; the

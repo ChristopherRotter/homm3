@@ -1,0 +1,249 @@
+# E27 M1 T2: the advanced options' and the random map's recipes (design §3.12 to §3.18;
+# h3shell.py, the runbook's "The shell's screens"). Coordinates are the original's 800 × 600
+# screen (design §3.13's and §3.16's tables), a row r's at y + 50 r: the flag (35, 155), the
+# handicap (135, 163), the name (110, 138), the town's arrows (169, 145), (230, 145), the hero's
+# (245, 145), (306, 145), the bonus's (321, 145), (382, 145); the town's, hero's, bonus's
+# pictures (200, 146), (276, 146), (352, 146); the duration's arrows (66, 565), (244, 565). The
+# random map's buttons: sizes (183 + 47 i, 97), the levels (371, 97); the counts' rows at y 169,
+# 235, 301, 367 (85 + 32 i, Random 353); water and monsters (111, 196, 281, Random 353) at y 435,
+# 501; Show Random Maps (225, 555). The panel buttons, the saves' time, the moves before an
+# `until` and the `click-wait` of a load as scenario.toml's.
+
+[[recipe]]
+id = "adv-single-town"
+what = "§3.13, §3.14: the advanced options single (Arrogance); the town's arrows through every faction and Random, the resource bonus and its popup by faction (§3.15)"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:panel",
+  "click:230,145", "move:790,300", "shot:town-1", "click:321,145", "move:790,300", "shot:bonus-resource-1",
+  "right:352,146", "shot:bonus-popup-1", "right-up",
+  "click:230,145", "move:790,300", "shot:town-2", "right:352,146", "shot:bonus-popup-2", "right-up",
+  "click:230,145", "move:790,300", "shot:town-3", "right:352,146", "shot:bonus-popup-3", "right-up",
+  "click:230,145", "move:790,300", "shot:town-4", "right:352,146", "shot:bonus-popup-4", "right-up",
+  "click:230,145", "move:790,300", "shot:town-5", "right:352,146", "shot:bonus-popup-5", "right-up",
+  "click:230,145", "move:790,300", "shot:town-6", "right:352,146", "shot:bonus-popup-6", "right-up",
+  "click:230,145", "move:790,300", "shot:town-7", "right:352,146", "shot:bonus-popup-7", "right-up",
+  "click:230,145", "move:790,300", "shot:town-8", "right:352,146", "shot:bonus-popup-8", "right-up",
+  "click:230,145", "move:790,300", "shot:town-9", "right:352,146", "shot:bonus-popup-9", "right-up",
+  "right:200,146", "shot:town-popup-9", "right-up",
+  "click:230,145", "move:790,300", "shot:town-random", "right:200,146", "shot:town-popup-random", "right-up",
+  "click:169,145", "move:790,300", "shot:town-left-from-random", "click:169,145", "move:790,300", "shot:town-left-2",
+  "down:169,145", "shot:town-arrow-held", "up", "move:790,300", "shot:town-left-3",
+]
+
+[[recipe]]
+id = "adv-single-hero"
+what = "§3.14, §3.15: the hero's arrows (Random, the town's heroes, a step back past Random), its popups; the bonus's arrows and the four bonus popups; a computer's row"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,519", "move:790,300",
+  "click:306,145", "move:790,300", "shot:hero-random-town", "right:276,146", "shot:hero-popup-random", "right-up",
+  "click:230,145", "move:790,300", "shot:town-1",
+  "click:306,145", "move:790,300", "shot:hero-1", "right:276,146", "shot:hero-popup-1", "right-up",
+  "click:306,145", "move:790,300", "shot:hero-2", "click:306,145", "move:790,300", "shot:hero-3",
+  "click:245,145", "move:790,300", "shot:hero-back-2", "click:245,145", "click:245,145", "move:790,300", "shot:hero-back-random",
+  "click:245,145", "move:790,300", "shot:hero-last", "right:276,146", "shot:hero-popup-last", "right-up",
+  "right:352,146", "shot:bonus-popup-random", "right-up",
+  "click:382,145", "move:790,300", "shot:bonus-artifact", "right:352,146", "shot:bonus-popup-artifact", "right-up",
+  "click:382,145", "move:790,300", "shot:bonus-gold", "right:352,146", "shot:bonus-popup-gold", "right-up",
+  "click:382,145", "move:790,300", "shot:bonus-resource", "click:382,145", "move:790,300", "shot:bonus-random",
+  "click:321,145", "move:790,300", "shot:bonus-left-resource", "click:321,145", "click:321,145", "move:790,300", "shot:bonus-left-artifact",
+  "click:230,195", "move:790,300", "shot:computer-town-1", "click:306,195", "move:790,300", "shot:computer-hero",
+  "click:382,195", "move:790,300", "shot:computer-bonus", "right:276,196", "shot:computer-hero-popup", "right-up",
+  "click:169,195", "move:790,300", "shot:computer-town-random",
+  "click:382,195", "move:790,300", "shot:computer-bonus-random-town-1", "click:382,195", "move:790,300", "shot:computer-bonus-random-town-2",
+  "click:382,195", "move:790,300", "shot:computer-bonus-random-town-3",
+]
+
+[[recipe]]
+id = "adv-single-rest"
+what = "§3.13 to §3.15: the flags' hover and press (single), the name's edit, the handicap (single, disabled), the duration's eleven texts, the right press on the headers and items"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,519", "move:790,300",
+  "move:35,155", "shot:flag-hover-own", "move:35,205", "shot:flag-hover-blue", "move:790,300", "shot:flag-left",
+  "click:35,155", "move:790,300", "shot:flag-own-pressed",
+  "click:35,205", "move:790,300", "shot:flag-blue", "click:35,155", "move:790,300", "shot:flag-red",
+  "click:135,163", "move:790,300", "shot:handicap",
+  "click:110,138", "shot:name-edit", "type:Zed", "shot:name-typed", "key:Return", "shot:name-enter",
+  "click:790,300", "shot:name-left", "click:35,255", "move:790,300", "shot:name-after-flag",
+  "click:66,565", "shot:duration-9", "click:66,565", "shot:duration-8", "click:66,565", "shot:duration-7",
+  "click:66,565", "shot:duration-6", "click:66,565", "shot:duration-5", "click:66,565", "shot:duration-4",
+  "click:66,565", "shot:duration-3", "click:66,565", "shot:duration-2", "click:66,565", "shot:duration-1",
+  "click:66,565", "shot:duration-0", "click:66,565", "shot:duration-0-again", "click:244,565", "shot:duration-1-right",
+  "move:790,300",
+  "right:110,108", "shot:popup-name-header", "right-up", "right:200,108", "shot:popup-town-header", "right-up",
+  "right:276,108", "shot:popup-hero-header", "right-up", "right:352,108", "shot:popup-bonus-header", "right-up",
+  "right:225,544", "shot:popup-duration-label", "right-up", "right:155,565", "shot:popup-duration-bar", "right-up",
+  "right:35,155", "shot:popup-flag", "right-up", "right:169,145", "shot:popup-town-arrow", "right-up",
+  "right:245,145", "shot:popup-hero-arrow", "right-up", "right:321,145", "shot:popup-bonus-arrow", "right-up",
+  "right:135,163", "shot:popup-handicap", "right-up", "right:85,163", "shot:popup-kind", "right-up",
+  "right:110,138", "shot:popup-name", "right-up", "shot:closed",
+  "click:514,519", "move:790,300", "shot:hidden",
+]
+
+[[recipe]]
+id = "adv-single-maps"
+what = "§3.12, §3.14, §3.15: rows of other maps: a fixed town with its heroes (Free for All), no hero (Rebellion), a main hero and its popup (Adventures of Jared Haret)"
+maps = ["Free for All.h3m", "Rebellion.h3m", "Adventures of Jared Haret.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "move:790,300", "shot:screen", "click:514,91", "move:790,300", "shot:list",
+  "step:500", "click:216,135", "click:514,519", "move:790,300", "shot:map-0",
+  "click:306,145", "move:790,300", "shot:map-0-hero", "right:276,146", "shot:map-0-hero-popup", "right-up",
+  "right:200,146", "shot:map-0-town-popup", "right-up",
+  "click:514,91", "step:500", "click:216,160", "click:514,519", "move:790,300", "shot:map-1",
+  "right:276,146", "shot:map-1-hero-popup", "right-up", "click:230,145", "move:790,300", "shot:map-1-town",
+  "click:514,91", "step:500", "click:216,185", "click:514,519", "move:790,300", "shot:map-2",
+  "right:276,146", "shot:map-2-hero-popup", "right-up", "click:306,145", "move:790,300", "shot:map-2-hero-arrow",
+  "right:276,196", "shot:map-2-computer-hero-popup", "right-up",
+]
+
+[[recipe]]
+id = "adv-hotseat"
+what = "§3.12, §3.13: the advanced options in the hot seat with two to eight players (Warlords, 8 colours); Back to New Game's menu between"
+maps = ["Warlords.h3m"]
+steps = [
+  "move:400,300", "until:main_menu",
+  "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer", "type:A",
+  "click:578,157", "check:hotseat_names", "click:400,186", "key:BackSpace", "key:BackSpace", "type:A",
+  "click:400,216", "type:B", "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300",
+  "shot:players-2", "move:400,560", "click:667,555", "move:790,300", "until:new_game_menu", "shot:back",
+  "click:649,180", "check:multiplayer", "click:578,157", "check:hotseat_names", "click:400,186",
+  "key:BackSpace", "key:BackSpace", "type:A", "click:400,216", "type:B", "click:400,246", "type:C",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:players-3",
+  "click:667,555", "move:790,300", "until:new_game_menu",
+  "click:649,180", "check:multiplayer", "click:578,157", "check:hotseat_names", "click:400,186",
+  "key:BackSpace", "key:BackSpace", "type:A", "click:400,216", "type:B", "click:400,246", "type:C",
+  "click:400,276", "type:D", "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300",
+  "shot:players-4", "click:667,555", "move:790,300", "until:new_game_menu",
+  "click:649,180", "check:multiplayer", "click:578,157", "check:hotseat_names", "click:400,186",
+  "key:BackSpace", "key:BackSpace", "type:A", "click:400,216", "type:B", "click:400,246", "type:C",
+  "click:400,276", "type:D", "click:400,306", "type:E", "click:345,450", "move:790,300", "until:scenario_list",
+  "click:514,519", "move:790,300", "shot:players-5", "click:667,555", "move:790,300", "until:new_game_menu",
+  "click:649,180", "check:multiplayer", "click:578,157", "check:hotseat_names", "click:400,186",
+  "key:BackSpace", "key:BackSpace", "type:A", "click:400,216", "type:B", "click:400,246", "type:C",
+  "click:400,276", "type:D", "click:400,306", "type:E", "click:400,336", "type:F", "click:345,450",
+  "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:players-6", "click:667,555",
+  "move:790,300", "until:new_game_menu",
+  "click:649,180", "check:multiplayer", "click:578,157", "check:hotseat_names", "click:400,186",
+  "key:BackSpace", "key:BackSpace", "type:A", "click:400,216", "type:B", "click:400,246", "type:C",
+  "click:400,276", "type:D", "click:400,306", "type:E", "click:400,336", "type:F", "click:400,366",
+  "type:G", "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:players-7",
+  "click:667,555", "move:790,300", "until:new_game_menu",
+  "click:649,180", "check:multiplayer", "click:578,157", "check:hotseat_names", "click:400,186",
+  "key:BackSpace", "key:BackSpace", "type:A", "click:400,216", "type:B", "click:400,246", "type:C",
+  "click:400,276", "type:D", "click:400,306", "type:E", "click:400,336", "type:F", "click:400,366",
+  "type:G", "click:400,396", "type:H", "click:345,450", "move:790,300", "until:scenario_list", "click:514,519",
+  "move:790,300", "shot:players-8", "click:667,555", "move:790,300", "until:new_game_menu",
+]
+
+[[recipe]]
+id = "adv-hotseat-rows"
+what = "§3.14, §3.15: the hot seat (three players, Arrogance): the handicap's captions, the flags' hover and the cycle as read, every row's arrows"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B", "key:Tab", "type:C",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:panel",
+  "click:135,163", "move:790,300", "shot:handicap-1", "click:135,163", "move:790,300", "shot:handicap-2",
+  "click:135,163", "move:790,300", "shot:handicap-3", "right:135,163", "shot:handicap-popup", "right-up",
+  "move:35,305", "shot:flag-hover-green", "move:790,300",
+  "click:35,305", "move:790,300", "shot:flag-green-1", "click:35,305", "move:790,300", "shot:flag-green-2",
+  "click:35,205", "move:790,300", "shot:flag-blue-1", "click:35,155", "move:790,300", "shot:flag-red-1",
+  "click:230,195", "click:306,195", "click:382,195", "move:790,300", "shot:row-1-choices",
+  "click:110,188", "move:790,300", "shot:name-press",
+]
+
+[[recipe]]
+id = "adv-hotseat-begin"
+what = "§3.6, §3.14, §3.17: the hot seat (three players, two colours): a flag's press passes the colour on; the local player without a colour (GENRLTXT 531); the begin to the first player's turn"
+maps = ["A Warm and Familiar Place.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B", "key:Tab", "type:C",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:panel",
+  "click:35,155", "move:790,300", "shot:flag-red-1", "click:497,555", "shot:begin-1", "key:Return", "shot:closed-1",
+  "click:35,155", "move:790,300", "shot:flag-red-2", "click:35,205", "move:790,300", "shot:flag-green-1",
+  "click:35,155", "move:790,300", "shot:flag-red-3", "click-wait:497,555:3000",
+  "clip-until:load:turn_dialog|adventure", "shot:turn", "key:Return", "step:500", "shot:map",
+]
+
+[[recipe]]
+id = "adv-hotseat-two"
+what = "§3.6, §3.14: the hot seat (two players, two colours): a flag's press leaves one player placed (GENRLTXT 83); the other flag places the second"
+maps = ["A Warm and Familiar Place.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:514,519", "move:790,300", "shot:panel",
+  "click:35,205", "move:790,300", "shot:flag-green-1", "click:497,555", "shot:begin-1", "key:Return", "shot:closed-1",
+  "click:35,155", "move:790,300", "shot:flag-red-1", "click:35,155", "move:790,300", "shot:flag-red-2",
+  "click:35,205", "move:790,300", "shot:flag-green-2",
+]
+
+[[recipe]]
+id = "adv-load"
+what = "§3.13, §3.14: a hot-seat load's screen and its advanced options (the saved choices, no arrows); a row's popups"
+games = ["AUTOSAVE.GM1", "save1.GM1"]
+steps = [
+  "move:400,300", "until:main_menu", "games-time:1000000000", "click:645,192", "check:load_game_menu", "click:649,180", "check:multiplayer",
+  "type:A", "click:578,157", "check:hotseat_names", "key:Tab", "type:B",
+  "click:345,450", "step:1000", "move:790,300", "shot:screen", "click:514,519", "move:790,300", "shot:advanced",
+  "click:230,145", "click:135,163", "click:35,155", "move:790,300", "shot:pressed",
+  "right:200,146", "shot:town-popup", "right-up", "right:276,146", "shot:hero-popup", "right-up",
+  "right:352,146", "shot:bonus-popup", "right-up",
+  "click:514,91", "move:790,300", "shot:list", "click:514,91", "move:790,300", "shot:list-hidden",
+]
+
+[[recipe]]
+id = "adv-random"
+what = "§3.16: the random map's tab: each choice, the disabled counts, the levels, Show Random Maps (the empty list), the tab's toggle"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,115", "move:790,300", "shot:tab",
+  "click:183,97", "move:790,300", "shot:size-s", "click:277,97", "move:790,300", "shot:size-l",
+  "click:324,97", "move:790,300", "shot:size-xl", "click:371,97", "move:790,300", "shot:levels-1",
+  "click:371,97", "move:790,300", "shot:levels-2", "click:230,97", "move:790,300", "shot:size-m",
+  "click:85,169", "move:790,300", "shot:players-1", "click:117,169", "move:790,300", "shot:players-2",
+  "click:149,169", "move:790,300", "shot:players-3", "click:181,169", "move:790,300", "shot:players-4",
+  "click:213,169", "move:790,300", "shot:players-5", "click:245,169", "move:790,300", "shot:players-6",
+  "click:277,169", "move:790,300", "shot:players-7", "click:309,169", "move:790,300", "shot:players-8",
+  "click:181,169", "move:790,300", "shot:players-4b",
+  "click:85,235", "move:790,300", "shot:teams-0", "click:117,235", "move:790,300", "shot:teams-1",
+  "click:149,235", "move:790,300", "shot:teams-2", "click:181,235", "move:790,300", "shot:teams-3",
+  "click:213,235", "move:790,300", "shot:teams-4-disabled", "click:353,235", "move:790,300", "shot:teams-random",
+  "click:85,301", "move:790,300", "shot:computer-0", "click:117,301", "move:790,300", "shot:computer-1",
+  "click:149,301", "move:790,300", "shot:computer-2", "click:181,301", "move:790,300", "shot:computer-3",
+  "click:213,301", "move:790,300", "shot:computer-4", "click:245,301", "move:790,300", "shot:computer-5-disabled",
+  "click:353,301", "move:790,300", "shot:computer-random",
+  "click:181,301", "move:790,300", "shot:computer-3b",
+  "click:85,367", "move:790,300", "shot:computer-teams-0", "click:117,367", "move:790,300", "shot:computer-teams-1",
+  "click:149,367", "move:790,300", "shot:computer-teams-2", "click:181,367", "move:790,300", "shot:computer-teams-3-disabled",
+  "click:353,367", "move:790,300", "shot:computer-teams-random",
+  "click:353,169", "move:790,300", "shot:players-random",
+  "click:111,435", "move:790,300", "shot:water-none", "click:196,435", "move:790,300", "shot:water-normal",
+  "click:281,435", "move:790,300", "shot:water-islands", "click:353,435", "move:790,300", "shot:water-random",
+  "click:111,501", "move:790,300", "shot:monsters-weak", "click:196,501", "move:790,300", "shot:monsters-normal",
+  "click:281,501", "move:790,300", "shot:monsters-strong", "click:353,501", "move:790,300", "shot:monsters-random",
+  "right:183,97", "shot:popup-size", "right-up", "right:85,169", "shot:popup-players", "right-up",
+  "right:353,435", "shot:popup-water-random", "right-up", "right:225,555", "shot:popup-show", "right-up",
+  "move:225,555", "shot:show-hover", "click:225,555", "move:790,300", "shot:random-maps",
+  "click:514,115", "move:790,300", "shot:tab-again", "click:514,115", "move:790,300", "shot:tab-hidden",
+]
+
+[[recipe]]
+id = "adv-begin"
+what = "§3.17: Begin from the advanced options single (a town, a hero, the gold bonus): the loading bar to the first adventure frame"
+maps = ["Arrogance.h3m"]
+steps = [
+  "move:400,300", "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "move:790,300", "until:scenario_list", "click:514,519", "click:230,145", "click:306,145", "click:382,145", "click:382,145",
+  "move:790,300", "shot:panel", "click-wait:497,555:3000",
+  "clip-until:load:adventure", "shot:map",
+]
+

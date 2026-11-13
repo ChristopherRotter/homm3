@@ -1,0 +1,336 @@
+# E27 M1 T2: the end of a scenario's recipes (design §5.1 to §5.9; h3shell.py, the runbook's "The
+# shell's screens"). Each starts a shipped map as a single scenario (the human the list's first
+# colour), closes its first message, writes into the game's memory (`poke`) only the state that
+# makes a condition met, and ends the turn (key E: `scenario_condition_met`'s check at the turn's
+# end); every box and screen after it is the original's own path. The writes (game +offset):
+# a player c's record at 0x20AD0 + 0x168 c (its heroes' count +0x1, days without a town +0x3D,
+# towns' count +0x3E; design §5.1), the date u16[3] (day, week, month) at 0x1F63E, the victory
+# condition's met flag and colour at 0x1F89C + 0x48 (0x1F8E4), the loss's at 0x1F8E8 + 0x22
+# (0x1F90A). Arrogance's players: Red (the human), Blue, Purple and Teal (colours 0, 1, 5, 6), the
+# standard victory and loss. A map's first message waits for `map_frame` (the minimap's frame:
+# a message wider than the panel hides `adventure`'s probes). The won screen's entry: its OK at
+# (400, 353). Clips at 10 ms steps. A map's load is given real time to end before the clock
+# moves on (`settle` before Begin, `wait` once the restart's load began).
+
+[[recipe]]
+id = "end-conquest"
+what = "§5.1, §5.5, §5.6, §5.3: Blue's week without a town over (GENRLTXT 9), Purple and Teal eliminated (6, the crest), the standard victory (660); the score screen through hsAnim and a loop of hsloop, ended by a key; the entry: a single scenario's human has no name (the edit empty), OK and Enter with it do nothing, a typed name and OK; the fade to High Scores with the new row; Escape"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:game+0x20C75:0000", "poke:game+0x211D9:00", "poke:game+0x21216:00",
+  "poke:game+0x21341:00", "poke:game+0x2137E:00",
+  "key:e", "shot:blue-9", "press:ok", "shot:purple-6", "press:ok", "shot:teal-6", "press:ok", "shot:victory-660",
+  "press:ok", "clip:score:18500:10", "key:space", "shot:entry",
+  "click:400,353", "shot:ok-empty", "key:Return", "shot:enter-empty", "type:T2 name", "shot:name-typed",
+  "move:400,353", "shot:ok-hover", "down:400,353", "shot:ok-press", "up",
+  "clip-until:to-scores:high_scores:10:10000", "shot:scores", "key:Escape", "check:main_menu", "shot:menu",
+]
+
+[[recipe]]
+id = "end-score-press"
+what = "§5.1, §5.5, §5.6: a hot seat (Ann Red, Bob Blue, two computers): Blue, Purple and Teal eliminated (6), 660; the score screen ended by a left press; the entry with the player's name, Enter; High Scores with the new row"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:Ann", "click:578,157", "check:hotseat_names", "key:Tab", "type:Bob",
+  "click:345,450", "move:790,300", "until:scenario_list", "click:497,555",
+  "until:turn_dialog|adventure", "shot:turn", "key:Return", "until:adventure", "shot:message", "press:ok", "move:700,300",
+  "poke:game+0x20C39:00", "poke:game+0x20C76:00", "poke:game+0x211D9:00", "poke:game+0x21216:00",
+  "poke:game+0x21341:00", "poke:game+0x2137E:00",
+  "key:e", "shot:blue-6", "press:ok", "press:ok", "press:ok", "shot:victory-660",
+  "press:ok", "clip:score:2000:10", "click:400,300", "shot:entry", "key:Return", "until:high_scores:10000", "shot:scores",
+]
+
+[[recipe]]
+id = "end-eleventh"
+what = "§5.5, §5.6: a score that misses the ten (day 813 written: 88): the entry, Enter; High Scores' eleventh row"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:game+0x1F63E:010001001e00",
+  "poke:game+0x20C39:00", "poke:game+0x20C76:00", "poke:game+0x211D9:00", "poke:game+0x21216:00",
+  "poke:game+0x21341:00", "poke:game+0x2137E:00",
+  "key:e", "press:ok", "press:ok", "press:ok", "shot:victory-660",
+  "press:ok", "clip:score:2000:10", "key:space", "shot:entry", "type:T2 name", "key:Return", "until:high_scores:10000", "shot:scores",
+]
+
+[[recipe]]
+id = "end-week"
+what = "§5.1: Red's last town gone, its heroes kept: the week's warning (GENRLTXT 7, the crest)"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:game+0x20B0E:00", "key:e", "shot:red-7",
+]
+
+[[recipe]]
+id = "end-lost-week"
+what = "§5.1, §5.4: Red's week without a town over (GENRLTXT 8), no human left: the lost screen (LoseGame.smk) to its end, the main menu"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:game+0x20B0D:0000", "key:e", "shot:red-8", "press:ok",
+  "clip-until:lost:main_menu:10:40000", "shot:menu",
+]
+
+[[recipe]]
+id = "end-lost-skip"
+what = "§5.1, §5.4: Red eliminated (GENRLTXT 96); the lost screen ended by a key (its 1.5 s of waits are slept in real time: passed before the first input)"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:game+0x20AD1:00", "poke:game+0x20B0E:00", "key:e", "shot:red-96", "press:ok",
+  "clip:lost:1000:10", "key:space", "clip-until:skipped:main_menu:10:5000", "shot:menu",
+]
+
+# The victory conditions' texts (design §5.2): per code a shipped map with it, its met flag set
+# for the human's colour (won) and for an enemy's (lost), the turn ended. The loss conditions'
+# below. Rebellion opens with three messages, Last Chance with two, Wings of War with none (its human
+# Tan).
+
+[[recipe]]
+id = "end-v0-won"
+what = "§5.2: the victory condition an artifact met by the human: its won text"
+maps = ["Judgement Day.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v0-lost"
+what = "§5.2: the victory condition an artifact met by an enemy (colour 1): its lost text"
+maps = ["Judgement Day.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v1-won"
+what = "§5.2: the victory condition creatures met by the human: its won text"
+maps = ["A Warm and Familiar Place.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v1-lost"
+what = "§5.2: the victory condition creatures met by an enemy (colour 3): its lost text"
+maps = ["A Warm and Familiar Place.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0103", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v2-won"
+what = "§5.2: the victory condition resources met by the human: its won text"
+maps = ["Dwarven Gold.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v2-lost"
+what = "§5.2: the victory condition resources met by an enemy (colour 1): its lost text"
+maps = ["Dwarven Gold.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v3-won"
+what = "§5.2: the victory condition a town's upgrade met by the human: its won text"
+maps = ["Hold the middle.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v3-lost"
+what = "§5.2: the victory condition a town's upgrade met by an enemy (colour 1): its lost text"
+maps = ["Hold the middle.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v4-won"
+what = "§5.2: the victory condition the Grail's building met by the human: its won text"
+maps = ["Rebellion.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "press:ok", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v4-lost"
+what = "§5.2: the victory condition the Grail's building met by an enemy (colour 1): its lost text"
+maps = ["Rebellion.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "press:ok", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v5-won"
+what = "§5.2: the victory condition a hero's defeat met by the human: its won text"
+maps = ["Wings of War.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "step:500", "move:700,300",
+  "poke:game+0x1F8E4:0102", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v6-won"
+what = "§5.2: the victory condition a town's capture met by the human: its won text"
+maps = ["For Sale.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v6-lost"
+what = "§5.2: the victory condition a town's capture met by an enemy (colour 1): its lost text"
+maps = ["For Sale.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v7-won"
+what = "§5.2: the victory condition a monster's defeat met by the human: its won text"
+maps = ["Rise of the Phoenix.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v7-lost"
+what = "§5.2: the victory condition a monster's defeat met by an enemy (colour 1): its lost text"
+maps = ["Rise of the Phoenix.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v8-won"
+what = "§5.2: the victory condition the dwellings met by the human: its won text"
+maps = ["Too Many Monsters.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v8-lost"
+what = "§5.2: the victory condition the dwellings met by an enemy (colour 1): its lost text"
+maps = ["Too Many Monsters.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v9-won"
+what = "§5.2: the victory condition the mines met by the human: its won text"
+maps = ["Manifest Destiny.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v9-lost"
+what = "§5.2: the victory condition the mines met by an enemy (colour 1): its lost text"
+maps = ["Manifest Destiny.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-v10-won"
+what = "§5.2: the victory condition an artifact's transport met by the human: its won text"
+maps = ["Vial of Life.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0100", "key:e", "shot:won",
+]
+
+[[recipe]]
+id = "end-v10-lost"
+what = "§5.2: the victory condition an artifact's transport met by an enemy (colour 1): its lost text"
+maps = ["Vial of Life.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F8E4:0101", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-l0"
+what = "§5.2: the loss condition a town lost met for the human: its text"
+maps = ["For Sale.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F90A:0100", "key:e", "shot:lost",
+]
+
+[[recipe]]
+id = "end-l1"
+what = "§5.1, §5.2: the loss condition the hero lost met for the human: its text, after the week's warning (GENRLTXT 7) the map's townless start gives at the turn's end"
+maps = ["Adventures of Jared Haret.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "move:700,300",
+  "poke:game+0x1F90A:0100", "key:e", "shot:week-7", "press:ok", "shot:lost",
+]
+
+[[recipe]]
+id = "end-l2"
+what = "§5.2: the loss condition the time over met for the human: its text"
+maps = ["Last Chance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:map_frame:120000", "press:ok", "press:ok", "move:700,300",
+  "poke:game+0x1F90A:0100", "key:e", "shot:lost",
+]
+

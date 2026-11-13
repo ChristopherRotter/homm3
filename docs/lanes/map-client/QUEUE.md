@@ -112,6 +112,15 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
+  `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a
+  run directory fails every run: rerun `setup.sh`); the run's `VIDEO.VID` joins `battle-videos.vid`
+  with `shell-videos.vid` when both are staged (the start's clips play only with `Show Intro` on,
+  which the harness's settings keep off); `SMACKW32.DLL` reads the virtual clock too and
+  `BinkGetSummary` is guarded (a full-screen clip's end on a frozen clock). `h3drive.Game` takes
+  `frozen` (`H3FROZEN`). New: `h3shell.py`, the shell's screens (the runbook's "The shell's
+  screens"). The harness check passed.
+
 - 2026-11-12 (the server lane, E16 M5 T11, branch `claude/vibrant-albattani-ml282o`; **for online
   play, nothing to do before it**): protocol **v50**, the game's queries: a seat sends `GameQuery {
   seq, query }` and gets `GameAnswer { n, seq, answer }`, unnumbered (`n` the number of its last

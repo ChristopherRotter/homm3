@@ -8,9 +8,11 @@
 # INSTALL_COPY (default original-data/install) must hold Heroes3.exe, its five DLLs (BINKW32.DLL,
 # IFC20.dll, MP3DEC.ASI, MSS32.DLL, SMACKW32.DLL, copied from the installation) and Data/ with the
 # four LODs, Heroes3.snd, H3ab_ahd.snd and H3ab_ahd.vid. VIDEO.VID (629 MB) is replaced by the
-# user's original-data/battle-videos.vid when it is there (E17 M5 T4b2b: the result window's ten
-# clips and the spell book's two page turns, a VIDEO.VID of its own; H3_VIDEOS names another),
-# else by an empty archive (no clip plays); it says which. The run directory is
+# user's original-data/battle-videos.vid (E17 M5 T4b2b: the result window's ten clips and the
+# spell book's two page turns, a VIDEO.VID of its own) and original-data/shell-videos.vid (E27 M1
+# T2: the shell's 13 clips, design §1) joined into one archive, the entries of each in their
+# order, battle's first; either alone when only it is there; H3_VIDEOS names other archives
+# (paths separated by spaces); an empty archive (no clip plays) when none is. It says which. The run directory is
 # original-data/wine/game (gitignored), the Wine prefix $WINEPREFIX (default ~/.wine-h3). A
 # second instance (E17 M5 T8a: two captures side by side) sets H3_RUN (another run directory's
 # parent; refused without WINEPREFIX), WINEPREFIX and, for h3drive.py, H3_DISPLAY; set up one
@@ -54,16 +56,46 @@ for f in H3bitmap.lod H3sprite.lod H3ab_bmp.lod H3ab_spr.lod Heroes3.snd H3ab_ah
     H3ab_ahd.vid; do
     cp "$install/Data/$f" "$game/Data/"
 done
-videos="${H3_VIDEOS:-$root/original-data/battle-videos.vid}"
-# Which archive it is, said (E17 M5 T8b1, R7-2): a capture that reaches the result window fails
-# with the empty one (h3drive.check_clips).
-if [ -f "$videos" ]; then
-    cp "$videos" "$game/Data/VIDEO.VID"
-    echo "capture setup: VIDEO.VID is $videos"
+videos=()
+for v in ${H3_VIDEOS:-$root/original-data/battle-videos.vid $root/original-data/shell-videos.vid}; do
+    [ -f "$v" ] && videos+=("$v")
+done
+# Which archives it holds, said (E17 M5 T8b1, R7-2): a capture that reaches the result window
+# fails with the empty one (h3drive.check_clips), a shell recipe that plays a clip with one that
+# lacks it (h3shell.py's `clips`).
+if [ "${#videos[@]}" -gt 0 ]; then
+    # The archive's format (E27 design §1): a u32 count, per entry a 40-byte name and a u32
+    # offset from the file's start, an entry's size up to the next offset (the last's to the
+    # end), so the clips follow the table in its order. A name twice (ignoring case) is refused.
+    python3 - "$game/Data/VIDEO.VID" "${videos[@]}" <<'PY'
+import struct, sys
+out, names, blobs = sys.argv[1], [], []
+for path in sys.argv[2:]:
+    data = open(path, "rb").read()
+    (n,) = struct.unpack_from("<I", data)
+    table = [struct.unpack_from("<40sI", data, 4 + 44 * i) for i in range(n)]
+    for i, (name, start) in enumerate(table):
+        end = table[i + 1][1] if i + 1 < n else len(data)
+        names.append(name)
+        blobs.append(data[start:end])
+seen = [nm.split(b"\0")[0].lower() for nm in names]
+if len(set(seen)) != len(seen):
+    sys.exit(f"setup.sh: a clip in two archives: {sorted(x for x in set(seen) if seen.count(x) > 1)}")
+at = 4 + 44 * len(names)
+with open(out, "wb") as f:
+    f.write(struct.pack("<I", len(names)))
+    for name, blob in zip(names, blobs):
+        f.write(struct.pack("<40sI", name, at))
+        at += len(blob)
+    for blob in blobs:
+        f.write(blob)
+print(f"capture setup: VIDEO.VID holds {len(names)} clips")
+PY
+    echo "capture setup: VIDEO.VID is ${videos[*]}"
 else
     printf '\0\0\0\0' > "$game/Data/VIDEO.VID"
-    echo "capture setup: VIDEO.VID is empty ($videos not found): no clip plays, and a capture" \
-        "that reaches the result window fails"
+    echo "capture setup: VIDEO.VID is empty (no clip archive found): no clip plays, and a" \
+        "capture that reaches the result window fails"
 fi
 chmod -R u+w "$game"
 

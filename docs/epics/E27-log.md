@@ -247,3 +247,44 @@ against victory and defeat in play, about 4.5 and 7.5 KB of code) was declined.
   M1's review list (item 6).
 - **Not done:** no harness run (T2 captures, design §5.9). Gates: `scripts/exe.py check`,
   `cargo xtask check-exe-map`, `check-docs`, `check-lane`, `check-stubs`, `check-rules`.
+
+## M1 T2 — the harness on every catalogued screen, the reference captures (2026-11-13)
+
+On `client/e27-m1-t2` (the capture harness and docs), the user present at the start; `master` at
+`9c61958`. **Kept whole with the user at its start** (decision 18; the cut offered: the tool with
+the start and the menus, then §2's other screens, §3, §4 with §5). The user asked for sub-agents
+used efficiently: the tool and the `start` and `menus` groups by the session, the other six
+groups by three sub-agents, two at a time, each on a Wine instance of its own.
+
+- **Staged at the start** while the user's computer was online: 61 files (the four LODs one a
+  call, the executables, the five DLLs, both `.snd`, `H3ab_ahd.vid`, `battle-videos.vid`, both
+  tars, the three saves, the 40 non-campaign MP3s, `shell-videos.vid` alone), all checked by
+  SHA-256 against the computer's; the computer went offline an hour in.
+- **The harness:** `setup.sh` joins `battle-videos.vid` and `shell-videos.vid` into the run's
+  `VIDEO.VID` (25 clips); `xdd.dll` puts `SMACKW32.DLL`'s clock on the virtual one, counts the
+  clips' reads (in Bink's full-screen loop the game reads none itself), guards `BinkGetSummary`
+  (its read speed overflowed on a frozen clock: "division by zero" at 0x100061C4, the game
+  stopped at NWCLogo's end) and freezes the clock from the first read (`H3FROZEN`); its ack has 13
+  fields. `h3drive.Game` takes `frozen`. `h3shell.py` (new): recipes by group under
+  `capture/shell/`, `run` (twice, compared, `--record`), `play`, `learn`, `list`; the steps
+  (`STEPS`), the agents' `settle`, `click-wait`, `wait`, `games-time` and `poke` among them;
+  `test_h3shell.py` (no game).
+- **Recorded** (design §6.1): 84 recipes in eight groups, 864 shots and 27 clips, every one the
+  same in both runs but `start-smacker` (from H3Intro's first frame its second run's times 10 ms
+  earlier, its 2 586 frames the same; listed). `start-bink` plays the whole start, 2 400-odd
+  frames, in about an hour a run.
+- **Found** (design §6.2, §6.3; traps into `TRAPS.md` and the runbook): the cursor drawn on a
+  later tick; a step given while the game loads or before it took an input moves later times (the
+  tool waits for its idle loop; a `settle` for an input that starts a load; the first screen drawn
+  before the first step); a clip's frames due from the last one shown. Corrections of the
+  readings: the credits' closing text only near the end (§2.9); the lost screen's 1.5 s wait in
+  real time (§5.4); a single scenario's human has no name (§5.6). The victory and loss texts
+  reached and not (§6.3).
+- **Asked** (open, built as the original's): CLT-Q100 (a single scenario's player has no name),
+  CLT-Q101 (the multiplayer dialog's stale hint), CLT-Q102 (the options' boxes and bars on a
+  release off them). The agent's calls on M1's review list (item 7).
+- **Not done:** the `scenario` and `advanced` groups' oddities (their agent's report was lost
+  with a sandbox restart; its recipes' `what` lines hold its notes): T3's reviewer. The sandbox's
+  VM restarted twice (the runs and agents ended, `--record` now keeps each recipe as it ends).
+- **Gates:** the harness check (`h3adv.py batch capture/batches/harness-check.toml`),
+  `test_h3shell`, `test_h3drive`, the scoped verify.
