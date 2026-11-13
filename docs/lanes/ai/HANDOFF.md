@@ -35,11 +35,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   no continuation from #2 gains; head to head against #2 the bonus at 0 0.494, a quarter of the
   rate 0.493, the imitation loss held 0.478, that rate annealed to #2's floor 0.503 (± 0.002,
   level), the ladders inside #2's interval: **#2 sits at this setup's plateau**, so T35's long
-  run starts from T32's best clone. **Next: T32** (the architectures by their clone's ladder,
-  `hexconv` 96 × 6 the control; refine it in `QUEUE.md`, its arms and budget the user's), then
+  run starts from T32's best clone. **T32 prepared** (`QUEUE.md`; the arms the user's: the
+  control `hexconv` 96 × 6, it at 2e-3, 128 × 6, 64 × 10, 4 M each on T26b's bench with T27's
+  ladders, `configs/distill/e25-arch.toml`): **next: the user runs it** (about 7 hours in parts
+  under 2 hours; the commands in `QUEUE.md`), then its read names the long run's network; then
   T34, T35.
-- **Open pull requests:** the one of `claude/e25-continuation-e2ydg6` (T33's close). Merged:
-  #835 (T31), #843 (T33's preparation), #862 (T33's round 1).
+- **Open pull requests:** the one of `claude/e25-continuation-e2ydg6` (T33's close, T32's
+  preparation). Merged: #835 (T31), #843 (T33's preparation), #862 (T33's round 1).
 - **Versions:** battle action encoding v13, observation encoding v22, replay format v32
   (CLT-Q40), the adventure env's action encoding v6 (E08 T85b), C ABI v37 (E25 T16:
   `h3_batch_choice`; v36 the fair system actor in seat 4, the all-seeing one in seat 5)
@@ -53,12 +55,14 @@ Moved to `TRAPS.md`, in three groups: **Ownership** (cross-lane encodings and re
 
 ## Recent sessions
 
-### 2026-11-13 — E25 T33 (round 2 read, T33 closed)
+### 2026-11-13 — E25 T33 closed, T32 prepared
 
 - #862 merged. No computer folder linked: the user uploaded round 2's `record.json`,
   `metrics.jsonl` and the three measures (the measures with CRLF, stripped on commit; the
-  update records read from `metrics.jsonl`, not committed). Docs and records only; the scoped
-  verify.
+  update records read from `metrics.jsonl`, not committed). The user chose T32's arms. No setup
+  script run: cargo-llvm-cov, llvm-tools and llvm-20 installed by hand for the scoped verify,
+  `origin/master` fetched first (`check-lane` read a stale base); `uv sync --group train` for
+  T32's config test.
 
 ### 2026-11-11 — E25 T33 (round 1 read, round 2 prepared)
 

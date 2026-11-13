@@ -1885,3 +1885,14 @@ an entry only where a task builds on it.
   end (as #2's), the imitation loss ending at its horizon (held, it pulls towards the teacher),
   the bonus immaterial at these rates. PPO's settings used decision 3's 8 hours (round 1 about
   6, round 2 2). **T33 closed** 2026-11-13.
+
+## T32 — Architecture probes on the cloning bench (prepared 2026-11-13)
+
+- **The arms** (the user, 2026-11-13, of three sets offered: "mixed"; the others "capacity",
+  128 × 8 for 64 × 10, and "same cost", the entity network 256 × 4 for 128 × 6): T26b's sweep
+  again (`configs/distill/e25-arch.toml`), the control `hexconv` normalised 96 × 6 at 1e-3
+  (#2's network) beside it at 2e-3, wider (128 × 6) and deeper (64 × 10), with T27's ladders.
+  Since T33 the winner's clone is the long run's start, so its cost is the long run's: at most
+  1.34 times #2's here. The parameters (built on the CPU from the bench's config): the control
+  1 485 079 (#2's record's), 128 × 6 2 557 015, 64 × 10 1 033 431. The measures, the rule and
+  the budget (about 7 hours) as the AI queue stated them before the run.

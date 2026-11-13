@@ -17,14 +17,49 @@ update; **T33 done** 2026-11-13, PPO's settings, `E25-log.md` T33: no continuati
 the annealed one level at 0.503 ± 0.002, so #2 sits at this setup's plateau and T35's long run
 starts from T32's best clone):
 
-- **T32, T34 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the
-  architectures by their clone's ladder (`hexconv` 96 × 6 the control; **next**, the long run's
-  start since T33); the regimes (#2 distilled, a KL anchor, the search at play on the hero
-  battles); the probes' checkpoint (with the outcome's weight in training as its question; the
-  long run's settings from T33's ranking: the rate annealed to its floor by the end, the
-  imitation loss ending at its horizon); the long run. Each is refined here when it is next. **A `hexconv` run on the GTX 1070** sets `[ppo] accumulate = 4` and `chunk_align = 32`
-  (T31; cuDNN's autotuner is on by default): its update 0.68 of T28's; another network or card:
-  time it first (`python -m h3env.train.speed`, its `--sweep`).
+- **T32 — Architecture probes on the cloning bench with its ladder** (refined 2026-11-13,
+  decision 3, T30's ranking, T33's read; the arms the user's, "mixed"; **prepared, the user's GPU
+  next**). One bench run, `configs/distill/e25-arch.toml` (test `test_increment_8s_architecture_
+  bench_is_t26bs_with_three_arms_beside_its_control`): T26b's sweep (the fair actor teaching on
+  `e25-neutral.toml`'s mix, 4 M samples, two passes, seed 7, the held-out set of 16 384
+  decisions) with four `hexconv` normalised students, each with the mask, the order and the
+  attack hex, warm-up 131 072, decay 0.01: the control `hexconv-n-96x6-a` (T26b's winner, #2's
+  network, 1e-3; T26b's 0.755 at 4 M again), `-96x6-lr2` the control at 2e-3, `-128x6` wider
+  (about 1.34 times the control's sample-pass, T24's grid), `-64x10` deeper (about 1.1 times).
+  At the end each student's ladder against both system actors on the report set v1 and on the
+  neutral set v1 (500 a kind, T27's).
+  - **The measures:** (a) the held-out agreement at 4 M, by category, beside the entry's
+    cross-entropy, the value's explained variance, the µs a sample-pass and the peak MB (the curve
+    every 0.5 M); (b) the ladders (± 0.019 against the fair actor).
+  - **The rule, stated before it runs:** an arm replaces the control as the long run's network
+    if it leads it by at least 0.02 agreement at 4 M (T26b's margin) and its ladder against the
+    fair actor lies no more than the interval (0.019) below the control's; of several, the
+    highest agreement (within 0.01 of it, the cheaper). Else the control stays, and T35's long run
+    starts from T27's 16 M clone of it (`runs/clone-3/students/hexconv-n-96x6-a.pt`, #2's start).
+    The rate arm leading the control by at least 0.01 sets 2e-3 for the winner's long clone. A
+    new network's long clone (16 M on T27's bench, about 6 to 8 hours) comes before T35's run;
+    T34's distillation of #2 into it beside.
+  - **Budget:** about 7 hours (the students' passes 4 M × 2 at about 683, 683, 917 and 757 µs:
+    6.8 hours; the teacher about 4 minutes; the ladders about 20), in parts under 2 hours:
+    Ctrl-C, then `--resume`. Decision 3's 8 hours for the architectures. The peak about 4 GB
+    (`-128x6`, T24's grid with T26b's keys), under the cap; a wider winner's PPO chunks need
+    timing at T35 (the control's peak 5.5 GB at 1 024 rows, T31).
+  - **The user's commands** (from `python/`):
+
+        uv run --group train python -m h3env.train.distill --teacher system --config configs/distill/e25-arch.toml --out runs/arch-1
+        uv run --group train python -m h3env.train.distill --resume runs/arch-1
+
+    The upload: `runs/arch-1/report.json` and `metrics.jsonl` (the networks stay on the user's
+    machine). **Acceptance:** the report committed as `python/records/distill/arch-1.json`, the
+    read in `E25-log.md` T32, the long run's network named for T35, T32 closed.
+- **T34 to T36** (the epic file's table, ranked by T30's read in `E25-log.md` T30): the regimes
+  (#2 distilled into T32's best, a KL anchor, the search at play on the hero battles); the
+  probes' checkpoint (with the outcome's weight in training as its question; the long run's
+  settings from T33's ranking: the rate annealed to its floor by the end, the imitation loss
+  ending at its horizon); the long run. Each is refined here when it is next. **A `hexconv` run
+  on the GTX 1070** sets `[ppo] accumulate = 4` and `chunk_align = 32` (T31; cuDNN's autotuner
+  is on by default): its update 0.68 of T28's; another network or card: time it first
+  (`python -m h3env.train.speed`, its `--sweep`).
 
 ## Inbox
 
