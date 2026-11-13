@@ -992,6 +992,23 @@ fn the_harvested_flags_of_e09_increment_3() {
 }
 
 #[test]
+fn the_harvested_sirens_flag() {
+    // E08 T115b: A-44's flag (`ADV-QUIRK-46`), on in `faithful` and off in `strict-fixed` with
+    // every expansion.
+    use h3_content::SIRENS_AGAIN_AFTER_BATTLE;
+    for packs in [
+        &[SOD_CORE, AB_CORE, BASE_CORE][..],
+        &[AB_CORE, BASE_CORE],
+        &[BASE_CORE],
+    ] {
+        for (profile, on) in [("base:faithful", true), ("base:strict-fixed", false)] {
+            let q = compile(packs, profile).unwrap().quirks();
+            assert_eq!(q.is_enabled(SIRENS_AGAIN_AFTER_BATTLE), on, "{profile}");
+        }
+    }
+}
+
+#[test]
 fn the_level_data_and_class_overrides_parse() {
     // E08 T26b (pack format v44): the experience of the first levels, the highest level, the
     // skills offered when due, the class's intervals and a gated class override.
