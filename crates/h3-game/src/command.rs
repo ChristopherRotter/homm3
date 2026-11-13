@@ -19,6 +19,7 @@ use h3_heroes::{Choice, HeroChange, PrimarySkill};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
+use crate::observe::HireSeen;
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
 use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
 
@@ -620,18 +621,17 @@ pub enum GameEvent {
         anchor: Pos,
     },
     /// A hire dialog opened as a pending decision of its player (GAM-DEC-008, E08 T95b) after an
-    /// accepted hire question: its creatures, their counts and costs are its view
-    /// ([`crate::DecisionView::Hire`]). The source is named by type and anchor, never by index
-    /// (ADR-0016 point 6). Seen by the owner.
+    /// accepted hire question, or since E09 T27 a town's recruitment (TWN-REC-001, -002): its
+    /// creatures, their counts and costs are its view ([`crate::DecisionView::Hire`]). The source
+    /// is named as [`HireSeen`] says, never by an object's index (ADR-0016 point 6). Seen by the
+    /// owner.
     HireOpened {
         /// The player.
         player: PlayerId,
-        /// The army the bought creatures join: the visiting hero's.
+        /// The army the bought creatures join: the visiting hero's, or a town's garrison.
         target: HireTarget,
-        /// The source's type: the dwelling's or the Refugee Camp's.
-        object_type: ObjectTypeId,
-        /// The source's anchor.
-        anchor: Pos,
+        /// The source.
+        source: HireSeen,
     },
     /// The player's meeting or army dialog closed (its `Close`; E08 T51b); since E08 T63a also
     /// its choice once answered (the answer's payment and effects follow) and its University

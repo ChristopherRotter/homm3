@@ -10,7 +10,9 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireTarget, Month, Week};
+use super::{
+    ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireSeen, HireTarget, Month, Week,
+};
 use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings};
 use crate::wire::{Event, Outcome};
 
@@ -167,8 +169,7 @@ pub enum GameEvent {
     HireOpened {
         player: u8,
         target: HireTarget,
-        object_type: u16,
-        anchor: Pos,
+        source: HireSeen,
     },
     DecisionClosed {
         player: u8,

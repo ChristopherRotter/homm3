@@ -129,7 +129,10 @@ fn the_stock_is_a_dwelling_s_creatures_or_a_camp_s_and_none_for_another_object()
     // Another anchor, another type, an index past the objects: none.
     let HireSource::Object {
         index, object_type, ..
-    } = source;
+    } = source
+    else {
+        panic!("{source:?}");
+    };
     let moved = HireSource::Object {
         index,
         object_type,
@@ -305,7 +308,10 @@ fn each_refused_purchase_leaves_the_state_as_it_was() {
     let open = dialog(&rules, HERO, "t:d5");
     let HireSource::Object {
         index, object_type, ..
-    } = open.source;
+    } = open.source
+    else {
+        panic!("{open:?}");
+    };
     let moved = HireDialog {
         source: HireSource::Object {
             index,

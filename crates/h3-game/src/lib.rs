@@ -110,8 +110,8 @@ pub use legal::{
 };
 pub use manage::{Manage, ManageError};
 pub use observe::{
-    DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireView, LevelUpView,
-    PlayerView, Viewer, observe, project, reveal,
+    DecisionView, GameObservation, GameReveal, HeroInfo, HireCreature, HireSeen, HireView,
+    LevelUpView, PlayerView, Viewer, observe, project, reveal,
 };
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{
@@ -156,5 +156,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// exchange among the decisions (GAM-DEC-009: its tag 8, the owner, the hero, the garrison's index,
 /// type and anchor; increment 12's design note §13 and §17). v30 (E09
 /// T26a2): the week's kind (`h3_towns::WeekKind`) and whether the map is RoE's after the month's
-/// kind, the towns' stream after the game's (TWN-GRO-002; E09 design §42).
-pub const GAME_STATE_HASH_VERSION: u32 = 30;
+/// kind, the towns' stream after the game's (TWN-GRO-002; E09 design §42). v31 (E09 T27): a hire
+/// dialog's town target and sources (its target's tag 1, the garrison's town; its source's tag 1,
+/// a town's index, and tag 2, its Portal; TWN-REC-001, -002, E09 design §49).
+pub const GAME_STATE_HASH_VERSION: u32 = 31;

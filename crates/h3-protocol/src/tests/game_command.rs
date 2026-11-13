@@ -125,6 +125,11 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(3),
         building: BuildingId::from_index(9).unwrap(),
     }));
+    // E09 T27 (protocol v56).
+    commands.push(GameCommand::Town(TownCommand::Recruit {
+        town: TownId::new(1),
+        building: BuildingId::from_index(30).unwrap(),
+    }));
     commands
 }
 
@@ -252,6 +257,9 @@ fn every_rejection() -> Vec<GameCommandError> {
             TownCommandError::Capitol,
             TownCommandError::OfferedAs(BuildingId::from_index(37).unwrap()),
             TownCommandError::BuiltToday,
+            TownCommandError::NotRecruiting,
+            TownCommandError::NotStanding,
+            TownCommandError::NothingSummoned,
         ]
         .map(E::Town),
     );
@@ -414,6 +422,9 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
                 TownCommandError::OfferedAs(BuildingId::from_index(usize::from(building)).unwrap())
             }
             w::TownReject::BuiltToday {} => TownCommandError::BuiltToday,
+            w::TownReject::NotRecruiting {} => TownCommandError::NotRecruiting,
+            w::TownReject::NotStanding {} => TownCommandError::NotStanding,
+            w::TownReject::NothingSummoned {} => TownCommandError::NothingSummoned,
         }),
     })
 }
@@ -451,12 +462,17 @@ fn a_building_beyond_every_record_is_refused_before_the_engine() {
     let build = |building| w::GameCommand::Town {
         command: w::TownCommand::Build { town: 3, building },
     };
+    let recruit = |building| w::GameCommand::Town {
+        command: w::TownCommand::Recruit { town: 3, building },
+    };
     let refused = w::GameReject::Town {
         error: w::TownReject::UnknownBuilding {},
     };
-    assert_eq!(command_to_engine(build(64)), Err(refused));
-    assert_eq!(command_to_engine(build(u8::MAX)), Err(refused));
-    assert!(command_to_engine(build(63)).is_ok());
+    for command in [build, recruit] {
+        assert_eq!(command_to_engine(command(64)), Err(refused));
+        assert_eq!(command_to_engine(command(u8::MAX)), Err(refused));
+        assert!(command_to_engine(command(63)).is_ok());
+    }
 }
 
 #[test]
@@ -464,8 +480,9 @@ fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
     // 15 of the game's own, 31 of the battle's, 22 of the adventure's (E08 T105b2:
     // `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`, `OnlyEmpty`), 6
-    // of an artifact's move, 3 of a combination's, 4 of a hire's, 10 of a town's.
-    assert_eq!(errors.len(), 104);
+    // of an artifact's move, 3 of a combination's, 4 of a hire's, 13 of a town's (E09 T27:
+    // `NotRecruiting`, `NotStanding`, `NothingSummoned`).
+    assert_eq!(errors.len(), 107);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

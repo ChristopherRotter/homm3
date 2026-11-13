@@ -60,6 +60,14 @@ pub enum TownCommand {
         /// is refused as not of the record, [`TownReject::UnknownBuilding`]).
         building: u8,
     },
+    /// Opens the hire dialog of what a building of a town of the actor's sells: a standing
+    /// dwelling, horde or Portal of Summoning (TWN-REC-001, -002; E09 T27).
+    Recruit {
+        /// The town.
+        town: u16,
+        /// The building, as [`Self::Build`]'s.
+        building: u8,
+    },
 }
 
 /// A command to the adventure map (`h3_adventure::AdventureCommand`).
@@ -447,6 +455,12 @@ pub enum TownReject {
     },
     /// The town was built in today (TWN-BLD-004).
     BuiltToday {},
+    /// The building sells no creatures (TWN-REC-001).
+    NotRecruiting {},
+    /// The building does not stand to sell creatures (TWN-REC-001).
+    NotStanding {},
+    /// The Portal of Summoning holds nothing (TWN-REC-002).
+    NothingSummoned {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is
