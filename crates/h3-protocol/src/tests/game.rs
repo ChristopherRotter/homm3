@@ -1088,7 +1088,7 @@ fn every_decision() -> Vec<DecisionView> {
             cost: price(),
         }],
     }));
-    // E09 T27 (protocol v56): a town's recruitment, at an upgraded index and at a Portal.
+    // E09 T27 (protocol v57): a town's recruitment, at an upgraded index and at a Portal.
     let town = TownId::new(2);
     out.push(DecisionView::Hire(HireView {
         target: h3_adventure::HireTarget::Garrison(town),

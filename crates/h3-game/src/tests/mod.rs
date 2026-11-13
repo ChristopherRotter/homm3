@@ -1,7 +1,8 @@
 //! Tests of the game's rules bundle and setup (E08 T6a); the state, the starting armies' draw
 //! and the turns in `state.rs` (T6b); the observation and the projection in `observe.rs`
 //! (T8b1); the legal commands in `legal.rs` (T8b2a); the pending decisions in `decisions.rs`
-//! (T14b); battles in `battles.rs` (T19a); the level-ups in play in `level_ups.rs` (T30). The rulesets are built in code (an application crate
+//! (T14b); battles in `battles.rs` (T19a); the level-ups in play in `level_ups.rs` (T30); the
+//! system actor's own commands in `system.rs` (E16 M5 T14). The rulesets are built in code (an application crate
 //! takes no pack adapter as a dev-dependency).
 
 mod aftermath;
@@ -30,6 +31,7 @@ mod revisits;
 mod rewards;
 mod shipyards;
 mod state;
+mod system;
 
 extern crate std;
 

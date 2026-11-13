@@ -38,9 +38,12 @@ use super::rollout::choose;
 /// version 12 (E08 T105b2): the revisit of the entered object under a hero
 /// (`AdventureCommand::Revisit`, ADV-TEL-008); version 13 (E08 T114a2): a map garrison's army in
 /// the management commands (`h3_adventure::ArmyRef::MapGarrison`, its exchange's, GAM-DEC-009);
-/// version 14 (E09 T27): a town's recruitment (`h3_towns::TownCommand::Recruit` by its town and
-/// building, TWN-REC-001). A replay of another version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 14;
+/// version 14 (E16 M5 T14): the system actor's own commands for a player
+/// (`GameCommand::System`: its turn ended, its decision's default answer, its battle side's
+/// command; GAM-SYS-001 to GAM-SYS-003); version 15 (E09 T27): a town's recruitment
+/// (`h3_towns::TownCommand::Recruit` by its town and building, TWN-REC-001). A replay of another
+/// version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 15;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

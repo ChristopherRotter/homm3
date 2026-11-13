@@ -734,11 +734,13 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
         }
         GameCommand::Answer(answer) => answer_entry(*answer),
         // E08 T51a: the management commands have no entry (decision 99: the AI lane's call); a
-        // town's build takes a tile ([`command_entry`]'s, E09 T19c1).
+        // town's build takes a tile ([`command_entry`]'s, E09 T19c1); the system's own commands
+        // (E16 M5 T14) are the host's, never listed for a seat.
         GameCommand::Adventure(_)
         | GameCommand::Battle(_)
         | GameCommand::Manage(_)
-        | GameCommand::Town(_) => None,
+        | GameCommand::Town(_)
+        | GameCommand::System(_) => None,
     }
 }
 

@@ -945,7 +945,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
                 anchor: at,
             },
         },
-        // E09 T27 (protocol v56): a town's recruitment.
+        // E09 T27 (protocol v57): a town's recruitment.
         GameEvent::HireOpened {
             player: P0,
             target: HireTarget::Garrison(TownId::new(1)),
