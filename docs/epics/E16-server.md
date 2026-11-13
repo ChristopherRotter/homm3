@@ -317,12 +317,11 @@ client lane's 2026-11-04 request, when online battles need them).
   `shared/` change #889 (`E16-log.md`).
 - **T11 The game's queries on the wire:** done 2026-11-12, protocol v50, record format v5, a
   battle's targets inside a whole game added (the user; `E16-log.md`).
-- **T12 T7b's two findings:** a viewer's open battle known by its identity, so that a second
-  battle queued for a player while its first is open does not resend the first's `Snapshot` as
-  the second's opening; a player's own rejections inside a battle bounded in its record.
+- **T12 T7b's two findings:** done 2026-11-12, protocol v51 (`E16-log.md`).
 - **T13 The closure:** an end-to-end test (two clients play a whole game over the network through
   a server restart, a battle against an unowned side on the way); `docs/06-security.md`'s
-  networked whole game (T11's queries with it: answered for the seat's player alone, any other
+  networked whole game (its "Not covered yet" sentence on rejections inside a battle dropped,
+  T12 bounded them; T11's queries with it: answered for the seat's player alone, any other
   id none, unnumbered and unrecorded; the start's town events the owner's; a moves answer at
   most 11 KB on the XL fixtures); a fresh reviewer agent and the review list; the user's
   checkpoint.
@@ -382,6 +381,10 @@ the tasks land):
   `Reach::path`s, 32 KB its bound on the XL fixtures; the hall as three `WireU64` bit sets; the
   start's town events as one `GameEvents` between the snapshots and the turns, only to a player
   that has any, never at a restore or a re-take (record format v5).
+- T12 (v51): a viewer's open battle known by its heroes and tile (`BattleKey`), not a battle
+  id from the engine (none exists; a hero is in one battle at a time); the fresh `GameSnapshot`
+  inside a battle too, holding the battle's view (as a join's mid-battle), rather than no
+  snapshot there until the turn timers (2b) or rejections dropped from the record.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

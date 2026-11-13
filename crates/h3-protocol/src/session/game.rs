@@ -60,7 +60,9 @@
 //!   could not tell from it), its `GameReveal` when the command explored tiles for it (E16 M5 T5c, SRV-Q26 (a): the session
 //!   keeps each viewer's explored grid as it was last told it and asks `h3_game::reveal` when the
 //!   grid changed, T7b) and a battle's own `Snapshot` when one opens for it (SRV-Q27 (1): its
-//!   events are then the battle client's, inside `GameEvents`), a fresh `GameSnapshot` when its
+//!   events are then the battle client's, inside `GameEvents`; E16 M5 T12: a battle the viewer
+//!   does not hold yet, known by its heroes and tile, so that one queued behind its open battle
+//!   resends nothing), a fresh `GameSnapshot` when its
 //!   record needs one (below), then every player that may act its `GameTurn`. A rejected command changes nothing and is told to its player alone
 //!   (`GameRejected`).
 //! - **The journal** (E16 M5 T5b). The accepted commands with their actors and a state hash every
@@ -77,10 +79,10 @@
 //!   numbered message it was sent, within the host's bound ([`GameOptions::record_bytes`]): the
 //!   oldest lines go first, but only up to a `GameSnapshot`, which the rest folds onto (T7a1).
 //!   Once a player was sent more than half the bound since its last snapshot it gets a fresh one
-//!   after a command's messages (before its turn) or after its own rejection (T7b), unless a
-//!   battle is open in its view (whose own `Snapshot` opens it), so a record holds about one to
-//!   two such stretches; one command's messages, or a battle's (its own rejections there too), may
-//!   take it beyond its bound. [`GameSession::record`] gives it with
+//!   after a command's messages (before its turn) or after its own rejection (T7b), inside a
+//!   battle too (T12: the snapshot holds the battle's view, as a join's mid-battle), so a record
+//!   holds about one to two such stretches; only one command's messages may take it beyond its
+//!   bound. [`GameSession::record`] gives it with
 //!   its header line ([`GameRecordHeader`]: the game's manifest and the player), as a record file
 //!   holds it; a seat downloads its player's with `FetchRecord` (E16 M5 T9b: answered `Record`,
 //!   which takes no number, as a battle's).
@@ -122,8 +124,9 @@ use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 
+use h3_adventure::Pos;
 use h3_battle::{BattleSide, LegalCommands};
-use h3_contracts::PlayerId;
+use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
     Actor, BitGrid, GameCommandError, GameRuleset, GameSetup, GameSetupError, GameState, NoopSink,
     OpenBattle, Sink, Viewer as EngineViewer,
@@ -251,7 +254,7 @@ pub enum GameRestoreError {
 struct Told<'r> {
     rules: &'r GameRuleset,
     events: Vec<h3_game::GameEvent>,
-    ended: Vec<(PlayerId, Observation)>,
+    ended: Vec<(PlayerId, BattleKey, Observation)>,
 }
 
 impl Sink for Told<'_> {
@@ -263,7 +266,8 @@ impl Sink for Told<'_> {
         let owned = BattleSide::BOTH.into_iter().zip(battle.owners());
         for (side, owner) in owned.filter_map(|(side, owner)| owner.map(|o| (side, o))) {
             let last = map::observe(battle.state(), self.rules.battle(), side);
-            self.ended.push((owner, last));
+            self.ended
+                .push((owner, BattleKey::of((battle, side)), last));
         }
     }
 }
@@ -273,8 +277,9 @@ impl Sink for Told<'_> {
 struct Viewer {
     /// The number of the last message sent.
     n: u32,
-    /// Whether its view holds a battle: one whose snapshot it was sent, its end not told since.
-    battle: bool,
+    /// The battle its view holds: the one whose snapshot it was sent, its end not told since
+    /// (E16 M5 T12: by its identity, not whether one is open).
+    battle: Option<BattleKey>,
     /// The latest numbered messages sent (E16 M5 T5b).
     record: Record,
     /// Its explored tiles as it was last told them (E16 M5 T5c): the grid `h3_game::reveal`
@@ -307,8 +312,9 @@ impl Viewer {
     }
 
     /// Past half its record's bound since its last snapshot, the viewer `to` gets a fresh one of
-    /// `state` (E16 M5 T7a1), where its record may be cut; never inside a battle, which its own
-    /// `Snapshot` opens.
+    /// `state` (E16 M5 T7a1), where its record may be cut; inside a battle too (E16 M5 T12): the
+    /// snapshot holds the battle's view (`GameObservation::battle`), as a join's mid-battle does,
+    /// so that a player's own rejections there stay within its bound.
     fn refresh(
         &mut self,
         to: PlayerId,
@@ -316,7 +322,7 @@ impl Viewer {
         rules: &GameRuleset,
         out: &mut Vec<GameOutbound>,
     ) {
-        if self.since > self.record.limit() / 2 && !self.battle {
+        if self.since > self.record.limit() / 2 {
             let observation = map::game::observe(state, rules, EngineViewer::Player(to));
             self.post(to, |n| ServerMessage::GameSnapshot { n, observation }, out);
         }
@@ -592,7 +598,7 @@ impl<'r> GameSession<'r> {
         let state = GameState::new(rules, setup, seed)?;
         let viewer = Viewer {
             n: 0,
-            battle: false,
+            battle: None,
             record: Record::new(options.record_bytes),
             explored: None,
             since: 0,
@@ -666,7 +672,7 @@ impl<'r> GameSession<'r> {
     fn snapshot(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
         let observation = map::game::observe(&self.state, self.rules, EngineViewer::Player(player));
         let viewer = &mut self.viewers[player.index()];
-        viewer.battle = observation.battle.is_some();
+        viewer.battle = own_battle(&self.state, player).map(BattleKey::of);
         viewer.explored = explored(&self.state, player);
         viewer.post(
             player,
@@ -1305,15 +1311,14 @@ impl<'r> GameSession<'r> {
                 .any(|e| matches!(e, GameEvent::BattleStarted { .. }));
             // The fold ends a view's battle at its end (`GameObservation::fold`); the battle's
             // last view follows the events.
-            let held = viewer.battle
-                && !events
-                    .iter()
-                    .any(|e| matches!(e, GameEvent::BattleEnded { .. }));
+            let held = viewer.battle.filter(|held| {
+                !(ended.iter()).any(|(owner, key, _)| *owner == player && key == held)
+            });
             viewer.post(player, |n| ServerMessage::GameEvents { n, events }, out);
             let last = ended
                 .iter()
-                .filter(|(owner, _)| *owner == player && !started);
-            for (_, observation) in last {
+                .filter(|(owner, _, _)| *owner == player && !started);
+            for (_, _, observation) in last {
                 let observation = observation.clone();
                 viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
@@ -1328,13 +1333,16 @@ impl<'r> GameSession<'r> {
             }
             viewer.explored = now;
             let open = own_battle(&self.state, player);
+            let key = open.map(BattleKey::of);
+            // By its identity (E16 M5 T12): a battle started for the player while its first is
+            // open is queued behind it, and the first's view is held already.
             if let Some((battle, side)) = open
-                && (started || !held)
+                && key != held
             {
                 let observation = map::observe(battle.state(), self.rules.battle(), side);
                 viewer.post(player, |n| ServerMessage::Snapshot { n, observation }, out);
             }
-            viewer.battle = open.is_some();
+            viewer.battle = key;
             viewer.refresh(player, &self.state, self.rules, out);
         }
         self.turns(out);
@@ -1367,6 +1375,24 @@ impl<'r> GameSession<'r> {
             |n| ServerMessage::GameTurn { n, legal, castable },
             out,
         );
+    }
+}
+
+/// A battle on the map as a viewer holds it (E16 M5 T12, *provisional*): its heroes by side and
+/// its tile, as `BattleStarted` names it; a hero is in one battle at a time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct BattleKey {
+    heroes: [Option<HeroId>; 2],
+    tile: Pos,
+}
+
+impl BattleKey {
+    /// The key of an open battle, with the side the viewer owns there.
+    fn of((battle, _): (&OpenBattle, BattleSide)) -> Self {
+        Self {
+            heroes: battle.heroes(),
+            tile: battle.tile(),
+        }
     }
 }
 

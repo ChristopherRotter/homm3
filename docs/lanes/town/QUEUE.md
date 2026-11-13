@@ -23,7 +23,7 @@ garrison week (T25b2's `garrison_week`, written by `AdventureState::set_town_gar
 each from its stream: the week's from the towns' stream `GameState` holds since T26a2), the views
 (§47: the owner's counts and Portal; `TownChanged` told after the week, the month and an event's
 creatures; the week's kind is told since T26a2) and the protocol (`cross-lane`, the server lane's
-fold gate; v52 or the next at merge), the replays re-recorded (skill `homm3-rerecord-replays`),
+fold gate; v53 or the next at merge), the replays re-recorded (skill `homm3-rerecord-replays`),
 the bench (skill `homm3-bench-regression`). Each part's rule ids, sources and tests; the merge
 order with E08's increment 12 (each `cross-lane` number the next at merge). **At its start:**
 confirm the cut. **Depends on:** T26a2 (its pull request merged). **Status:** next.

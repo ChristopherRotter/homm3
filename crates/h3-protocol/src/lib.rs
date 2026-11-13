@@ -118,10 +118,13 @@ pub mod wire;
 /// `GameQuery` (`wire::game::GameQuery`: a hero's moves, a town's hall, a battle's targets), the
 /// answer `GameAnswer` (unnumbered, not recorded; `wire::game::Moves`, a path tree), and at the
 /// game's start each player's town events that fired at its turn start inside the build, in a
-/// `GameEvents` before any turn: the message is unchanged, its order is new.
-/// v51 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s `kind` and the game
+/// `GameEvents` before any turn: the message is unchanged, its order is new. v51 (E16 M5 T12): a
+/// whole game's fresh `GameSnapshot` past half a record's bound comes inside a battle too
+/// (`GameObservation::battle` holds it), and a battle's own `Snapshot` opens only a battle the
+/// player does not hold yet, by its identity: the messages are unchanged, their order is new.
+/// v52 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s `kind` and the game
 /// observation's `week` (`wire::game::Week`), the fold keeping it.
-pub const PROTOCOL_VERSION: u32 = 51;
+pub const PROTOCOL_VERSION: u32 = 52;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
