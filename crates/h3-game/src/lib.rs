@@ -87,6 +87,9 @@ pub use h3_heroes::{Movement, movement};
 /// `h3_heroes`' (the map's import equips a map's entries where they are taken, since E08 T49b
 /// with Titan's Thunder's Spell Book; `wearing` places a list).
 pub use h3_heroes::{Position, equip, positions, takes, wearing};
+/// The week's kind (TWN-GRO-002, E09 T26a2; the town crate's type, design note `E09-design.md`
+/// §42): [`GameState::week`], [`GameEvent::WeekStarted`]'s and [`GameObservation::week`].
+pub use h3_towns::WeekKind;
 /// The town context's command and its refusals (E09 T18b1; `h3_towns`' types): what
 /// [`GameCommand::Town`], [`GameCommandError::Town`] and [`GameEvent::TownBuilt`] carry, and a
 /// [`TownBuildingsView`]'s sets (E09 T18b2a).
@@ -146,5 +149,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// (E09 T25a): the store of towns' encoding v3, each town's available creatures and Portal
 /// (`h3_towns::Town::available`, `portal`; E09 design §40). v29 (E08 T114a2): a map garrison's
 /// exchange among the decisions (GAM-DEC-009: its tag 8, the owner, the hero, the garrison's index,
-/// type and anchor; increment 12's design note §13 and §17).
-pub const GAME_STATE_HASH_VERSION: u32 = 29;
+/// type and anchor; increment 12's design note §13 and §17). v30 (E09
+/// T26a2): the week's kind (`h3_towns::WeekKind`) and whether the map is RoE's after the month's
+/// kind, the towns' stream after the game's (TWN-GRO-002; E09 design §42).
+pub const GAME_STATE_HASH_VERSION: u32 = 30;

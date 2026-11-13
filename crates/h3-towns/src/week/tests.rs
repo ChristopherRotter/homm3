@@ -3,14 +3,17 @@
 //! TWN-3's rows 1 and 3 (survey `E09-growth.md` §17) with the fixture's growths, which are the
 //! rows' towns'.
 
+use alloc::vec::Vec;
+
 use h3_kernel::hash::hash_of;
+use h3_kernel::{Rng, StreamId};
 
 use super::*;
 use crate::fixture::{
-    DWELLING_1, DWELLING_2, UPG_DWELLING_1, WILD, core, core_with, creature, empty_part, part,
-    town, town_of,
+    DWELLING_1, DWELLING_2, GRAIL, MARSH, UPG_DWELLING_1, WILD, core, core_with, creature,
+    empty_part, part, part_with, town, town_of,
 };
-use crate::record::Summoned;
+use crate::record::{Summoned, TownStatic};
 
 /// Both month flags on: the faithful profile's (the original's rules).
 const FAITHFUL: [&str; 2] = [
@@ -324,4 +327,154 @@ fn twn_quirk_9_off_every_town_keeps_half_its_count_before_the_week() {
         [21, 12]
     );
     assert_eq!(plague(&[(0, 106), (1, 61)], &OWNED), [53, 30]);
+}
+
+/// The towns' stream of `seed`, as the game's (E09 T26a2).
+fn stream(seed: u64) -> Rng {
+    Rng::for_stream(seed, StreamId::TOWNS)
+}
+
+/// A store of `towns` without their static parts.
+fn store(towns: &[Town]) -> Towns {
+    Towns::new(
+        towns
+            .iter()
+            .map(|t| (t.clone(), TownStatic::default()))
+            .collect(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn a_week_s_creatures_are_every_record_s_levels_and_on_roe_the_roe_records_alone() {
+    let part = part();
+    let all: Vec<u16> = week_creatures(&part, false)
+        .iter()
+        .map(|c| c.raw())
+        .collect();
+    // The Keep's levels, base then upgrade (level 3 has none), then the Marsh's (roe false).
+    assert_eq!(all, [10, 11, 20, 21, 30, 40, 41, 50]);
+    let roe: Vec<u16> = week_creatures(&part, true)
+        .iter()
+        .map(|c| c.raw())
+        .collect();
+    assert_eq!(roe, [10, 11, 20, 21, 30, 40, 41]);
+    assert!(week_creatures(&empty_part(), false).is_empty());
+}
+
+#[test]
+fn a_standing_week_of_building_makes_its_level_s_week() {
+    let (core, part) = (core(), part());
+    // The fixture's Grail is level 1's: the Keep's 10 and 11, the bonus 10's growth (14).
+    assert_eq!(
+        building_week(&town(&[GRAIL]), &part, &core),
+        Some(OF_LEVEL_1)
+    );
+    assert_eq!(building_week(&town(&[DWELLING_1]), &part, &core), None);
+    // The Marsh has none; a faction without a record none either.
+    assert_eq!(building_week(&town_of(MARSH, &[0, 1]), &part, &core), None);
+    assert_eq!(building_week(&town_of(WILD, &[GRAIL]), &part, &core), None);
+}
+
+#[test]
+fn a_week_s_draw_is_a_creature_s_one_time_in_four_never_on_a_month_s_first() {
+    let (core, part) = (core(), part());
+    let towns = store(&[town(&[DWELLING_1])]);
+    let mut creatures = 0;
+    let mut named = [false; 8];
+    for seed in 0..400 {
+        let mut draws = stream(seed);
+        let kind = draw_week(&towns, &part, &core, false, false, &mut draws);
+        match kind {
+            WeekKind::Normal => {
+                // One draw: the chance's, failed.
+                let mut once = stream(seed);
+                assert!(once.below(4) > 0);
+                assert_eq!(draws, once, "seed {seed}");
+            }
+            WeekKind::Creature(c) => {
+                creatures += 1;
+                let at = week_creatures(&part, false)
+                    .iter()
+                    .position(|&w| w == c)
+                    .unwrap();
+                named[at] = true;
+                let mut twice = stream(seed);
+                assert_eq!(twice.below(4), 0);
+                assert_eq!(usize::try_from(twice.below(8)).unwrap(), at);
+                assert_eq!(draws, twice, "seed {seed}");
+            }
+            WeekKind::Of { .. } => panic!("no week_of building stands"),
+        }
+        // A month's first week draws nothing.
+        let mut first = stream(seed);
+        assert_eq!(
+            draw_week(&towns, &part, &core, false, true, &mut first),
+            WeekKind::Normal
+        );
+        assert_eq!(first, stream(seed));
+    }
+    assert!(
+        (70..=130).contains(&creatures),
+        "{creatures} creature weeks in 400"
+    );
+    assert_eq!(named, [true; 8], "every eligible creature comes");
+}
+
+#[test]
+fn on_roe_a_week_never_names_a_record_without_roe() {
+    let core = core();
+    // Every week a creature's.
+    let part = part_with(|p| p.week.creature_chance = [1, 1]);
+    let towns = store(&[town(&[])]);
+    let (mut marsh_roe, mut marsh) = (false, false);
+    for seed in 0..200 {
+        let roe = draw_week(&towns, &part, &core, true, false, &mut stream(seed));
+        let any = draw_week(&towns, &part, &core, false, false, &mut stream(seed));
+        assert!(matches!(roe, WeekKind::Creature(_)) && matches!(any, WeekKind::Creature(_)));
+        marsh_roe |= roe == WeekKind::Creature(creature(50));
+        marsh |= any == WeekKind::Creature(creature(50));
+    }
+    assert!(!marsh_roe && marsh);
+    // A part without records or parameters draws nothing.
+    let mut draws = stream(1);
+    let kind = draw_week(&store(&[]), &empty_part(), &core, false, false, &mut draws);
+    assert_eq!((kind, draws), (WeekKind::Normal, stream(1)));
+    // On roe with no roe record: the chance is drawn, no creature.
+    let marsh_only = part_with_keep_roe_off();
+    let mut draws = stream(1);
+    let kind = draw_week(&towns, &marsh_only, &core, true, false, &mut draws);
+    let mut once = stream(1);
+    once.below(1);
+    assert_eq!((kind, draws), (WeekKind::Normal, once));
+}
+
+/// The part whose Keep is not a Restoration of Erathia record either, every week a creature's.
+fn part_with_keep_roe_off() -> TownRuleset {
+    crate::fixture::part_changed(|p| p.week.creature_chance = [1, 1], |k| k.roe = false)
+}
+
+#[test]
+fn the_first_week_of_building_overwrites_the_draw_every_week() {
+    let (core, part) = (core(), part());
+    // A town without one first, then a Grail town of any owner: its week, the month's first too.
+    let towns = store(&[town(&[DWELLING_1]), town(&[GRAIL]), town(&[])]);
+    for seed in 0..40 {
+        for month_first in [false, true] {
+            let mut draws = stream(seed);
+            let kind = draw_week(&towns, &part, &core, false, month_first, &mut draws);
+            assert_eq!(kind, OF_LEVEL_1);
+            // The draw is made as without the building.
+            let mut without = stream(seed);
+            draw_week(
+                &store(&[town(&[])]),
+                &part,
+                &core,
+                false,
+                month_first,
+                &mut without,
+            );
+            assert_eq!(draws, without);
+        }
+    }
 }

@@ -40,6 +40,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `command_to_engine` resolving the index; or keep the index and say so in your decisions. No
   server change is needed either way unless you take the proposal.
 
+- 2026-11-13 (the town lane, E09 T26a2, #899, `cross-lane`; **three versions taken after
+  yours, for your T114b**): game state hash **v30** (the week's kind and `roe` after the month's
+  kind, the towns' stream after the game's; after your T114a2's v29), map import **v23**
+  (`GameSetup::roe`) and protocol **v53** (after your v52): T114b's bumps are the next at merge
+  (v31, v24, v54), and whichever merges second re-records the 72 replays. In your files:
+  `GameEvent::WeekStarted` gained `kind`, `GameObservation` `week`; `h3-map`'s `view.rs`
+  `hygienic_town` counts a town visited at load as owned (the town inbox's 2026-11-11 note: the
+  plan's fault, its `cc` line committed) and the hygiene property ends at a week's start whose
+  kinds differ; `benches/adventure/fork-{economy,meeting,sea}-xl-144` and `fork-rewards-36`
+  re-baselined (three new state fields, +0.8 % to +1.1 % against `master`).
 - 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
   `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a
   run directory fails every run: rerun `setup.sh`); the run's `VIDEO.VID` joins `battle-videos.vid`
