@@ -13,24 +13,14 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T1 — The Smacker decoder
-
-- **Scope:** the epic's M2 table, T1: `h3-smacker`, FFmpeg 6.1.1's `smacker.c` video (integer
-  only), the `video` command reading `.smk`, `smacker-check.sh` against `SMACKW32.DLL` under Wine
-  (as `bink-check.sh`, E17 M6 T6c1) on the seven Smacker clips of `shell-videos.vid` (headers:
-  design §2.1) and synthetic samples. Licence as `h3-bink`'s (CLT-Q29: LGPL-2.1-or-later ported
-  under the GPL-2.0-or-later, origin comments).
-- **Acceptance:** every frame of the seven clips the DLL's, byte for byte; `clients/scripts/check.sh`
-  green (100 % coverage of the new crate); the Definition of Done.
-- **Status:** ready (independent of T3).
-
 #### E27 M2 T2 — The clips' sound
 
 - **Scope:** the epic's M2 table, T2 (CLT-Q104, decision 21): Bink's and Smacker's audio decoded,
   the floating point emulated, checked against the DLLs' samples under Wine where the harness
   reaches them (else FFmpeg's and a `CLT-Q`); played through the window's audio. Confirm the cut at
-  its start (the DLL's audio path under Wine is unread).
-- **Status:** after T1.
+  its start (the DLL's audio path under Wine is unread; T1's `smackprobe.exe` opens no track:
+  design §7.5).
+- **Status:** ready (T1 done 2026-11-13).
 
 #### E27 M2 T3 — The shell's frame
 
@@ -39,12 +29,12 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
   input moved from `h3_view::options` into `h3-ui` (the combat options' tests unchanged; `h3-ui`
   is common: the map-client lane's inbox told of the addition), start-up loading by the LODs'
   tables.
-- **Status:** ready (independent of T1).
+- **Status:** ready.
 
 #### E27 M2 T4 to T8
 
 T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3); T5 the
-start (after T1, T2, T4); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
+start (after T2 and T4; every pixel of a Smacker clip through its palette, decision 24); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
 Multiplayer and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7).
 Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
 

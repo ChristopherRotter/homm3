@@ -25,6 +25,7 @@ adventure).
 |---|---|
 | `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
+| `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette (below, "The clips"). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `test_h3drive.py` | Checks of the driver's parts that need no game, Wine or display, its commands recorded (E17 M7 T4: a key or button an action holds let go at the game's stop and start): `python3 -m unittest test_h3drive` from here. |
@@ -1351,6 +1352,21 @@ DCT's pixels too since E17 M6 T6c1 (CLT-Q30; `clients/scripts/bink-check.sh` com
 planes). `tables` writes the DLL's intra and inter dequantizers (16 × 64 binary32 each, 8 KiB).
 The probe sets the game's x87 control word 0x27F first (mingw's startup leaves 0x37F;
 `BINKPROBE_CW=37f` to compare): the DLL's DCT keeps intermediates on the x87 stack.
+
+`smackprobe.exe` (E27 M2 T1, `smackprobe.c`, built beside the game by `setup.sh`) runs
+`SMACKW32.DLL` alone the same way, opening a Smacker clip as the game does but with no sound track
+(`docs/epics/E27-design.md` §7.2):
+
+```
+cd original-data/wine/game
+wine smackprobe.exe frames 'Data\VIDEO.VID' HSLOOP 0 hsloop.pal8          # 8 bits a pixel
+wine smackprobe.exe frames 'Data\VIDEO.VID' HSLOOP C0000000 hsloop.565    # the game's 5-6-5
+```
+
+Each frame (the ring frame too) as the buffer holds it after `SmackDoFrame`, then the 768 bytes of
+the DLL's palette; `<out>.info` the frame's number and the new-palette flag. Wine maps names
+ignoring case: an output named as an existing file of another case overwrites it.
+`clients/scripts/smacker-check.sh` compares `h3-smacker` with it (`smacker-dll.py`).
 
 ## Sound
 
