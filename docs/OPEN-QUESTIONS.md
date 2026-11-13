@@ -73,9 +73,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Server lane (`SRV-Q<n>`)
 
-#### SRV-Q31 — E16 M5 2b's refinement: time in a whole game
-
-2b (the epic's "M5 part 2") brings `h3-game`'s system commands (built by the server lane, `cross-lane`), the turn timers, the level-up hold online, a disconnected player's turns, a battle whose player is gone, and a seat's commands per turn bounded (SRV-Q30). Known of the original (`docs/exe/map.toml`): eleven turn durations (1, 2, 4, 6, 8, 10, 15, 20, 25, 30 minutes, unlimited; `turn_duration_texts`), a timer started at each turn (`turn_timer_start`); its expiry, its battles and its dialogs are unread (`turn_timer_poll`, "inferred"); the manual (search snippets only: its mirrors are outside the sandbox's network) limits a turn "when not in combat". VCMI's chess clock (turn, base, battle and unit timers) is its own design. So a survey (the code reading, the manual) is 2b's first task, where the original data are staged. Decisions: (1) the clock: the original's one turn duration per offer (recommended), or a chess clock as VCMI's; (2) a battle: the turn's timer stopped in it (the manual's reading) with a time per battle action, beyond which the server's computer plays that action (recommended), or nothing bounding a battle, or the timer running on and the computer playing the rest; (3) a disconnected player: SRV-Q19's grace (5 minutes) per absence and total (10 minutes) per game reused, beyond them its turns ended by the system and its battle sides played by the computer (recommended); (4) the level-up hold: the owner's time an offer's setting, then `default_answer`, the waiting players' timers stopped (recommended), or the original's dialog time once the survey finds it.
+(no open questions)
 
 ### AI lane (`AI-Q<n>`)
 

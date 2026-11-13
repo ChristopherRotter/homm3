@@ -3037,3 +3037,20 @@ verified). No original data. Branch `claude/loving-babbage-aylytb`. The user's c
 - **The checkpoint** (SRV-Q30, the user, 2026-11-13, the agent's recommendations but the last):
   (a) the review list accepted as built; (b) above; (c) the minor finding fixed in T13; (d) 2b's
   refinement next, in this session, once T13's pull request is open.
+
+### M5 2b's refinement (2026-11-13, SRV-Q31, in T13's session)
+
+- **What is known of the original's clock** (`docs/exe/map.toml`, the client lanes' readings):
+  eleven turn durations (`turn_duration_texts` 0x69FB44: 1, 2, 4, 6, 8, 10, 15, 20, 25, 30
+  minutes, unlimited; the save's and the setup's `turn_duration`), a timer started at each turn
+  (`turn_timer_start` 0x557D90: its start, half its limit, a quarter above 60 s), polled by the
+  tick (`turn_timer_poll` 0x557AF0, inferred). Unread: its end, battles, dialogs. The original
+  data were not staged and the manual's mirrors (`heroes.shoutwiki.com`, `issuu.com`) are outside
+  the sandbox's network; the search's snippets of the manual limit a turn "when not in combat".
+  VCMI's clock (turn, base, battle and unit timers, `server/TurnTimerHandler.cpp`) is its own.
+- **The user's decisions** (SRV-Q31, `QUESTIONS-ANSWERED.md`): the original's turn duration per
+  offer; the timer running on in a battle, the computer playing a timed-out player's side for
+  the rest of it; a chess timer in a battle between two players' heroes; the turn timer alone for
+  a disconnected player; the level-up's time an offer's setting; ADR-0017 point 2 amended in 2b's
+  engine pull request. 2b's tasks T14 to T19 in the epic's "M5 part 2", the survey (T15) where
+  the original data are staged.

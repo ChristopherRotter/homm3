@@ -275,17 +275,30 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 **Three increments** (2a closed, above), each closed by a fresh reviewer agent and the user's checkpoint (SRV-Q29):
 
-- **2b Time:** `h3-game`'s trusted system commands, **built by the server lane** in a
-  `cross-lane` pull request (ADR-0017 point 2 names them: a player's turn ended, a player's open
-  decision answered with `h3_game::default_answer`, the level-up past its hold included); the
-  turn timers (an offer's turn duration; the original's options and what its timer does in a
-  battle surveyed first, SRV-Q19); the level-up hold online (the inbox's 2026-10-21 note: the
-  waiting players' timers paused, the owner's limited time, then the default answer; others learn
-  only that the game waits); a disconnected player's turns ended (SRV-Q19's grace and total
-  reused); a battle whose player is gone (its default decided at 2b's refinement); a seat's
-  commands per turn bounded (2a's reviewer, SRV-Q30: a whole game has no command limit, so free
-  commands grow its journal without end; the bound pairs with the turn timers). Tasks refined
-  at 2a's checkpoint.
+- **2b Time** (refined 2026-11-13, SRV-Q31): `h3-game`'s trusted system commands, **built by the
+  server lane** in a `cross-lane` pull request (ADR-0017 point 2: a player's turn ended, a
+  player's open decision answered with `h3_game::default_answer`, the level-up past its hold
+  included; amended there so the system actor also plays a timed-out player's battle side); the
+  turn timers; the level-up hold online; a seat's commands per turn bounded (2a's reviewer,
+  SRV-Q30). **The user's decisions** (SRV-Q31):
+  - **The clock is the original's turn duration:** one per map offer, one of the original's
+    eleven (1, 2, 4, 6, 8, 10, 15, 20, 25, 30 minutes, unlimited; `turn_duration_texts`), not a
+    chess clock (a later offer option at most). At its end the server ends the player's turn:
+    each open decision answered by its default, a battle played out (below), then the turn ended,
+    every step a journaled command of the system actor.
+  - **A battle does not stop the clock:** the turn's timer runs on in a battle; at its end the
+    server's computer plays the player's side for the rest of the battle (`choose_fair`), then
+    the turn ends. **A battle between two players' heroes runs a chess timer:** each side its own
+    clock, the side to act's running; a side whose clock runs out is played by the computer for
+    the rest of the battle (each side's allowance, and the attacker's turn timer meanwhile,
+    settled in T16 and confirmed there by the user).
+  - **A disconnected player has the turn timer only:** no grace or total of its own (SRV-Q19's
+    stay the ranked battles'); its turn runs out as anyone's, its battle sides are played by
+    the computer when its time does; an unlimited duration waits for it (the host's pause and the
+    sweep as in 2a). No player is removed (part 2).
+  - **The level-up hold:** the owner's time an offer's setting (60 s by default; the survey may
+    give the original's dialog time as the default), then `default_answer`; the waiting players'
+    timers stopped meanwhile; the others learn only that the game waits.
 - **2c Spectators and long journals:** `Viewer::Spectator` (public facts only) through
   `h3-game`'s, `h3-adventure`'s and `h3-towns`' projections, **built by the server lane** in
   `cross-lane` pull requests; spectators on the whole game's wire (a battle's rules: the game's
@@ -301,6 +314,46 @@ point 7 designs for and does not build; 2a keeps only T7b's open battle by ident
 player and a game's end (E10's victory and defeat), computer players on the map (E13), ranked
 whole games (a ladder of maps, after E28's ranked battles), the attack and shot previews (the
 client lane's 2026-11-04 request, when online battles need them).
+
+**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged):
+
+- **T14 The system commands** (`h3-game`, `cross-lane`, the server lane builds; the adventure
+  lane's crate, its traps first): `Actor::System`'s closed set beyond an unowned side's battle
+  commands: a player's turn ended, its first open decision answered by `default_answer` (the
+  level-up past its hold), a battle command for a timed-out player's side; each refused unless it
+  applies (the player's turn group current, a decision open, the side the player's); ADR-0017
+  point 2 amended in a `shared:` commit; rule IDs (`GAM-*`, `game.toml`) with the user's
+  decisions as their source; the adventure replay's text form (its format step, the adventure
+  lane's version) and the wire's mapping (protocol step); the golden replays unchanged.
+- **T15 The survey of the original's turn timer** (where the original data are staged; the
+  code reading of `turn_timer_poll` 0x557AF0 and `turn_timer_start` 0x557D90 and their callers,
+  the manual's text, VCMI's chess clock as a reference): what ends a turn at its end (open
+  dialogs, a moving hero), the warnings (`turn_timer_start`'s half and quarter), what the clock
+  does in a battle and in a level-up's dialog (its time, if any: the hold's default), the "your
+  turn" window; `docs/exe/map.toml` entries; a question to the user where the original differs
+  from SRV-Q31's decisions.
+- **T16 The clock in the session** (`h3-protocol`, sans-I/O): the host's time passed in
+  (`GameSession` never reads a clock), an offer's turn duration and level-up time; the turn's
+  timer started per player of the turn group, stopped while a level-up holds the game (the
+  owner's own limit meanwhile), running in a battle, the chess timer in a battle between two
+  players (its allowances settled here with the user); at an end the system's commands as the
+  decisions say; the wire: each player told the timers it may see and that the game waits
+  (protocol step); the journal: what a restart needs to give the running turn its time left (the
+  server's downtime never counts).
+- **T17 The clock hosted** (`h3-server`): `[[map]] turn_duration` (the eleven values) and the
+  level-up time, the game thread's wake-up at the next deadline, a restore with the time left;
+  end to end: a turn ended at its end, a battle played out by the computer after it, a chess
+  timer's side taken over, a level-up answered at its limit.
+- **T18 A seat's commands per turn** (SRV-Q30): `[limits]`'s bound of a seat's accepted commands
+  in one of its turns (its default from the golden replays' and the XL fixtures' largest), beyond
+  it a new rejection but for ending the turn and answering its decisions (protocol step).
+- **T19 2b's closure:** an end-to-end test (two clients, a turn run out, a battle against the
+  other player's hero under the chess timer, a level-up held and answered, through a restart);
+  `docs/06-security.md` (the whole game's clock, its "Not covered yet": the turn timer, the
+  missing command limit); a fresh reviewer agent; the user's checkpoint.
+
+**Review list for the 2b checkpoint** (the choices queued under the autonomy contract, filled as
+the tasks land): none yet.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
