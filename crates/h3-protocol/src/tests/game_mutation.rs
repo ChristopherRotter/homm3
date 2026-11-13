@@ -45,6 +45,7 @@ const OPTIONS: GameOptions = GameOptions {
     game: 2,
     checkpoint_every: 0,
     record_bytes: usize::MAX,
+    clock: crate::session::game::Clock::UNLIMITED,
 };
 
 /// The map's identity for the manifest.

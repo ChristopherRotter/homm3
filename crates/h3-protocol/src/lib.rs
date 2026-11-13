@@ -145,7 +145,11 @@ pub mod wire;
 /// (`HeroDetails`' `bonuses` and the changes `Bonus`, `ClearBonuses` gone); their changes are the
 /// adventure events `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged`, the owner's alone,
 /// after `MovementChanged`.
-pub const PROTOCOL_VERSION: u32 = 57;
+/// v58 (E16 M5 T16): the whole game's clock (`ServerMessage::GameClock`, `wire::game::GameClock`:
+/// a player's turn timer, its battle's chess clocks against another player's hero, its level-up's
+/// time, the game waiting for another's level-up); the system's commands at a timer's end (a
+/// turn ended, a decision's default answer, a timed-out battle side played by the computer).
+pub const PROTOCOL_VERSION: u32 = 58;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

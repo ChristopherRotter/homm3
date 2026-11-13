@@ -40,6 +40,7 @@ const fn options(checkpoint_every: u32) -> GameOptions {
         game: 9,
         checkpoint_every,
         record_bytes: usize::MAX,
+        clock: crate::session::game::Clock::UNLIMITED,
     }
 }
 
@@ -103,6 +104,11 @@ fn opened(
         let observation = observe(state, rules, Viewer::Player(player));
         battle[index] = observation.battle.is_some();
         let mut expected = vec![ServerMessage::GameSnapshot { n: 1, observation }];
+        // Without a timer, only that the game waits for another's level-up (E16 M5 T16).
+        let clock = waiting(state, player);
+        if clock != GameClock::default() {
+            expected.push(ServerMessage::GameClock { n: 2, clock });
+        }
         let at_start: Vec<h3_game::GameEvent> = state
             .town_events_at_start(player)
             .into_iter()
@@ -116,7 +122,8 @@ fn opened(
         if !at_start.is_empty() {
             fired += at_start.len();
             let events = events(&at_start, Viewer::Player(player));
-            expected.push(ServerMessage::GameEvents { n: 2, events });
+            let n = u32::try_from(expected.len()).unwrap() + 1;
+            expected.push(ServerMessage::GameEvents { n, events });
         }
         if let Some((legal, castable)) = turn(state, rules, player) {
             let n = u32::try_from(expected.len()).unwrap() + 1;
@@ -126,6 +133,15 @@ fn opened(
         next[index] = u32::try_from(messages.len()).unwrap();
     }
     (next, battle, fired)
+}
+
+/// What `player` sees of an untimed game's clock in `state` (E16 M5 T16): whether the game waits
+/// for another player's level-up.
+fn waiting(state: &GameState, player: PlayerId) -> GameClock {
+    GameClock {
+        waits: state.waiting_for().is_some_and(|owner| owner != player),
+        ..GameClock::default()
+    }
 }
 
 /// Each player's messages in `out`, decoded, in order.
@@ -146,6 +162,7 @@ fn number(message: &ServerMessage) -> u32 {
         | ServerMessage::GameTurn { n, .. }
         | ServerMessage::GameAccepted { n, .. }
         | ServerMessage::GameRejected { n, .. }
+        | ServerMessage::GameClock { n, .. }
         | ServerMessage::Snapshot { n, .. } => *n,
         other => panic!("not a game's message: {other:?}"),
     }
@@ -184,6 +201,7 @@ struct Seen {
     reveals: usize,
     last_snapshots: usize,
     start_events: usize,
+    clocks: usize,
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
@@ -191,8 +209,9 @@ struct Seen {
 /// each battle of `ended` it owned a side of unless they open another battle for it, its
 /// `GameReveal` when
 /// its explored tiles grew since `grid`, the grid it was last told (then kept), a battle's
-/// snapshot when one opens for it, its turn if it may act. `battle` is whether its view holds a
-/// battle.
+/// snapshot when one opens for it, its clock when whether the game waits for another player's
+/// level-up changed (`waits`, as last told; E16 M5 T16), its turn if it may act. `battle` is
+/// whether its view holds a battle.
 #[allow(
     clippy::too_many_arguments,
     reason = "a test's check of one viewer's messages"
@@ -205,7 +224,7 @@ fn check(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
-    (battle_held, grid): (&mut bool, &mut BitGrid),
+    (battle_held, grid, waits): (&mut bool, &mut BitGrid, &mut GameClock),
     seen: &mut Seen,
 ) {
     for m in messages {
@@ -279,6 +298,16 @@ fn check(
     }
     // The view holds a battle exactly when the viewer has one.
     assert_eq!(*battle_held, observed.is_some());
+    let clock = waiting(state, player);
+    if let Some(ServerMessage::GameClock { clock: told, .. }) = rest.first() {
+        assert_eq!(*told, clock);
+        assert_ne!(*waits, clock, "a clock only when it changed");
+        seen.clocks += 1;
+        rest.remove(0);
+    } else {
+        assert_eq!(*waits, clock, "the clock changed untold");
+    }
+    *waits = clock;
     match (rest.as_slice(), turn(state, rules, player)) {
         ([], None) => {}
         (
@@ -321,6 +350,7 @@ fn the_golden_replays_run_through_the_session() {
         // The start: each player's snapshot, its start's events, then its turn.
         let (mut next, mut battle, fired) = opened(&out, (&shadow, true), rules, name);
         seen.start_events += fired;
+        let mut clocks: Vec<GameClock> = ids.iter().map(|&p| waiting(&shadow, p)).collect();
         let mut grids: Vec<BitGrid> = ids
             .iter()
             .map(|&p| shadow.adventure().explored(p).unwrap().clone())
@@ -369,7 +399,11 @@ fn the_golden_replays_run_through_the_session() {
                     &shadow,
                     rules,
                     player,
-                    (&mut battle[player.index()], &mut grids[player.index()]),
+                    (
+                        &mut battle[player.index()],
+                        &mut grids[player.index()],
+                        &mut clocks[player.index()],
+                    ),
                     &mut seen,
                 );
             }
@@ -427,6 +461,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.reveals > 1_000, "{seen:?}");
     assert!(seen.last_snapshots > 0, "{seen:?}");
     assert!(seen.start_events > 0, "{seen:?}");
+    assert!(seen.clocks > 0, "{seen:?}");
     assert_eq!(seen.restores, 72, "{seen:?}");
 }
 

@@ -34,6 +34,7 @@ pub(super) const OPTIONS: GameOptions = GameOptions {
     game: 9,
     checkpoint_every: 0,
     record_bytes: usize::MAX,
+    clock: crate::session::game::Clock::UNLIMITED,
 };
 
 /// The connections a test uses.
