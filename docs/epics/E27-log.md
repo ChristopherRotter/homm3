@@ -288,3 +288,39 @@ groups by three sub-agents, two at a time, each on a Wine instance of its own.
   VM restarted twice (the runs and agents ended, `--record` now keeps each recipe as it ends).
 - **Gates:** the harness check (`h3adv.py batch capture/batches/harness-check.toml`),
   `test_h3shell`, `test_h3drive`, the scoped verify.
+
+## M1 T3 — M1's closure: the fresh reviews, the questions, M2's refinement (2026-11-13)
+
+On `client/e27-m1-t3` (docs only), the user present; `master` at `88ab663` (#900 merged). **Kept
+whole with the user at its start** (decision 19; the cut offered: the review and the questions,
+then the review list and M2's refinement), with sub-agents used efficiently: one recorded the
+groups again, two fresh reviewers, one applied the doc fixes.
+
+- **Staged at the start** while the user's computer was online: 64 files (the 61 of T2 and the
+  installation's `README.TXT` and two `goggame` files), all checked by SHA-256 against the
+  computer's. The sandbox's baseline (`verify-once.sh clients`) passed on `master`.
+- **Recorded again** (`h3shell.py run`, a fresh sandbox, the harness set up anew): every recipe but
+  `start-bink` and `start-smacker` (82 recipes), every shot and clip the same in both runs and as
+  kept (TCP/IP's stage 2 included: the sandbox's address was the same). The VM restarted once, after
+  the runs.
+- **Reviewer 1** (the catalogue but §3 and its recipes; 35 findings): stale statements after T2's
+  recordings fixed in place (the clip table's order, the loading bar only when a game loads, the
+  credits' closing text, the hot seat's OK, the 151 guard as CLT-Q44's, the disabled state's bit);
+  the Smacker copies' headers read from `shell-videos.vid` (design §2.1; `start-smacker`'s 9 s more
+  are the 10 ms steps' 70 ms a frame, *inferred*); what M2 to M4 still read or record listed in
+  design §6.4; the adventure lane's inbox told (E10: the hero's defeat by another team, the score).
+  Its kind-4 oddities asked (CLT-Q106, CLT-Q107) or checked: the menus' redraw rectangle measured
+  in `menu-new`, `menu-load` (CLT-Q118); a computer's name in its elimination is its colour's.
+- **Reviewer 2** (§3 with the `scenario` and `advanced` groups' 383 shots as 76 contact sheets,
+  the lost report's work; 22 findings): ten oddities asked (CLT-Q108 to CLT-Q117), seven readings
+  corrected in §3 (the popups' sizes, Delete in the save mode, items 132 and 134, button 130 in a
+  load, the handicap's popup, the name's edit, the list's scroll), the recipe fixes for M3 in §6.4.
+- **The user's answers** (CLT-Q100 to CLT-Q118; decisions 20 to 22): CLT-Q102 as the combat
+  options' CLT-Q43 (2), the dialogs' input one implementation (the user: "the code should be shared
+  and not implemented twice"); the shell's code as the battle's; the clips' sound exact against the
+  DLLs; the score the engine's (E10); CLT-Q107 and CLT-Q117 against the recommendation; CLT-Q116 a
+  new option (the original's string, the number of town types from the enabled packs). M1's review
+  list rewritten (twelve items) and accepted; M1 moved to `E27-archive.md`.
+- **M2 refined** (M2 T0): eight tasks (the epic's M2 table, the queue), the loading bar moved to M3.
+- **Change freely** (the agent's): the contact sheets and the crop tool (`/home/claude/tools/`,
+  outside the repo); the review list's wording.
