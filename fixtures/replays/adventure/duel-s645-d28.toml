@@ -836,43 +836,43 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x4abfcaf90a845970",
-    "0x920c77a3fd9ac271",
-    "0x3359163452dc1a0a",
-    "0xf158e73e7bc3a014",
-    "0x634fe65e35b90974",
-    "0x44b04a9b1c06e5c1",
-    "0x0b9abcf04b256038",
-    "0x4e1aeb41822517a9",
-    "0x5e516186cb5332fc",
-    "0xb9ad5e2e53002dbf",
-    "0x293510924eb9b28f",
-    "0x554203f66ee6739d",
-    "0xa0478a108869b9ab",
-    "0xfd69527e7f9c15df",
-    "0x7a6cd3635cb74c5b",
-    "0x4ba6a574c80f20bd",
-    "0x70abdaa5fdf94acb",
-    "0x91347a67b2deb1d2",
-    "0x525c14cd3fe6db9d",
-    "0x2fcdebaf2d6f5488",
-    "0x897e2244bc14d1ee",
-    "0x24ae0a3d806ee715",
-    "0x3e6a5fac7c8e3057",
-    "0x618e51332d82e218",
-    "0x647bb236dd23214c",
-    "0xd5df3462888fa6a0",
-    "0x962da3a1115373cf",
-    "0xeabc8ce7519a6f59",
-    "0xeaffe352b7b15af1",
-    "0xbca221c7eeab9f85",
-    "0x7cbeedfb77464af0",
-    "0x9d94a07e41749d74",
-    "0x1780a4604abf866e",
+    "0xe7dbc25cc7cb1343",
+    "0x83536a09a6658fc0",
+    "0x3f826d3d9aab85a7",
+    "0x6ba0ba09c1c7348d",
+    "0x6ce835e6ef2fc341",
+    "0x889e8afd70309670",
+    "0x66c4443fba5041f7",
+    "0xea42f506a998e4d2",
+    "0x7df0e2d42761c327",
+    "0x70caf7237d7e49fa",
+    "0xdfaffcbb61d4290a",
+    "0x7bb1731f8aba77e8",
+    "0x49a56f9cb6cfea04",
+    "0xf8697ea7f031c91c",
+    "0x61879dd931abad16",
+    "0xa4ce6edb635b5f58",
+    "0x6dcc00cfb33115b6",
+    "0x22778894436e2037",
+    "0x85b7637004c66f94",
+    "0xc11511f9438b934d",
+    "0x00ec0fd6f320d0ef",
+    "0x84e7924d8807ccd0",
+    "0x5c74f4c269f4113a",
+    "0xa9269bdf42f0477d",
+    "0x6e9cf1f34341cead",
+    "0x8f13e564a62fd66d",
+    "0x9c33015efef0e562",
+    "0x49df79c982798c78",
+    "0xb6c9660199b27c30",
+    "0x6aaffaaf134ac650",
+    "0xb19a253d2f9f7729",
+    "0xcd6e1a0aa8384395",
+    "0xbfb7db53fc58fddb",
 ]
 
 [replay]
-format = 14
+format = 15
 engine = "0.1.0"
 seed = "645"
 difficulty = 1
@@ -898,7 +898,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 31
+game_state_hash_version = 32
 adventure_state_hash_version = 23
 checkpoint_every = 25
 
@@ -909,4 +909,4 @@ import_version = 23
 
 [result]
 day = 29
-final_hash = "0xe077227d2d63bdcb"
+final_hash = "0x53d6f54b4423bd26"

@@ -33,7 +33,8 @@ growth's inputs with it (§41's open point), rows 1 and 3 of a visit of another 
 part's replays re-recorded (skill `homm3-rerecord-replays`) and bench (skill
 `homm3-bench-regression`). **At its start:** confirm the cut (the design's two parts, each
 possibly cut again). **Depends on:** T27 (its pull request merged); E08's T115a (#906, the visit
-marks on `HeroOnMap`, which the garrison hero's record carries) merged. **Status:** next.
+marks on `HeroOnMap`, which the garrison hero's record carries; merged 2026-11-13, its note in the
+inbox). **Status:** next.
 
 **E09 T29, T30 — the rest of the build** (decision 83; design note §56 round 8, each cut
 confirmed at its start, the agent queues each in full when the one before it ends): **T29** the

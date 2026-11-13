@@ -14,14 +14,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `TWN-STUB-10` lifted), T26a2 (decision 90: the week's kind, game state hash v30, map import
   v23, protocol v53), T26b (decision 91: the neutral garrison week, the Portal's draws, the
   owner's counts and Portal), **T27** (decision 92, whole: recruitment, TWN-REC-001, -002; game
-  state hash v31, protocol v57, replay format v15, the env's v10). **Next:** T28, the rows
-  (`QUEUE.md`; after the adventure lane's T115a, #906, merges), then T29, T30 (design §56). The Tavern is
+  state hash v32, protocol v58, replay format v15, the env's v10). **Next:** T28, the rows
+  (`QUEUE.md`; E08 T115a, #906, merged), then T29, T30 (design §56). The Tavern is
   increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions).
 - **Open pull requests:** T27's (branch `town/e09-t27`, `cross-lane`; its number in the latest
-  session entry); watch it until it merges. The adventure lane's #906 (T115a) takes game state
-  hash v31 too: the second to merge bumps again and re-records the replays.
+  session entry); watch it until it merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -32,7 +31,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   parameters), both in `h3-towns`; the adventure lane's (game state hash v30 and map import v23 by
   T26a2, adventure state and part hashes, replay format) and the env's and protocol's are bumped
   `cross-lane` (each task's record in `E09-log.md`); their current values are in the adventure
-  lane's HANDOFF; T27 took game state hash v31, protocol v57, replay format v15 and the env's
+  lane's HANDOFF; T27 took game state hash v32, protocol v58, replay format v15 and the env's
   action encoding v10. Shared, from T24: core ruleset hash v53, pack format v52, quirk flags 41
   (`quirk.town.creature_month_exact` 39, `quirk.town.neutral_plague_full_growth` 40, read by
   T25b1's `month`), `StreamId::TOWNS` (7).
@@ -56,8 +55,8 @@ Baseline 202aa3f (#903 merged; the setup's baseline lost to a VM restart, CI's g
 `master` 999bb0e stands for it). T27 whole (the user, decision 92; two parts were recommended).
 The user's computer was connected at the start only: the original data staged then (17 files,
 SHA-256 checked), used for the scoped verify. `master` merged in after #904 (protocol v56,
-replay format v14 taken first). `cross-lane`: `h3-adventure`'s hire types, `h3-game`'s hire
-decision, hash and views, `h3-map`'s plans, `h3-files`, `h3-protocol` (v57), `h3-server`'s
+replay format v14) and #906 (game state hash v31, protocol v57). `cross-lane`: `h3-adventure`'s hire types, `h3-game`'s hire
+decision, hash and views, `h3-map`'s plans, `h3-files`, `h3-protocol` (v58), `h3-server`'s
 record literals, `h3-sim`'s `RECRUIT` (v10; the town map's seeds 70 and 46), the 72 replays,
 `legal-towns-36` and `reach-towns-36` re-baselined (the agent's recruitments). Notes in the
 adventure's, the server's and the AI lane's inboxes. T28 queued.

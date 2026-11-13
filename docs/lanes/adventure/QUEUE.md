@@ -26,10 +26,10 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 - 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane` with the user's consent, E09
   decision 92; **versions taken and your paths changed, for your review**): game state hash
-  **v31** (a hire dialog's town target and sources: the target's tag 1, the sources' tags 1 and
-  2), adventure replay format **v15** (`town recruit <town> <building>`; your T115a's #906 and
-  the server's #904 race for the numbers: the second to merge takes the next), every adventure
-  replay re-recorded (versions and hash lines only). `h3-adventure`: `HireTarget::Garrison(TownId)`,
+  **v32** (after your T115a's v31: a hire dialog's town target and sources, the target's tag 1,
+  the sources' tags 1 and 2), adventure replay format **v15** (`town recruit <town> <building>`,
+  after the server's v14), every adventure replay re-recorded (versions and hash lines only);
+  `h3-cli`'s adventure tests' format literals. `h3-adventure`: `HireTarget::Garrison(TownId)`,
   `HireSource::Town { town, index }`, `HireSource::Portal { town }`; `hire_stock` gives none for a
   town's source, `hire_room` reads a garrison; `check_join` (a target's room and the price, for a
   town's purchase) and `check_hire` built on it; `HirePurchase` names its army and the map's count

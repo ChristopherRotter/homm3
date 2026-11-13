@@ -3625,8 +3625,9 @@ lane's `h3-sim` env, with the user's consent). Starting point: `master` at 202aa
 the setup's full baseline was lost to a VM restart, CI's green run on `master` (999bb0e, #904)
 stands for it. The user's computer was connected at the start only: the original data staged
 then (17 files, SHA-256 checked against the PC's), used for the scoped verify. **T27 whole**
-(decision 92, the user; two parts were recommended, the env apart). `master` merged in once,
-after the server lane's #904 (protocol v56, replay format v14 taken first).
+(decision 92, the user; two parts were recommended, the env apart). `master` merged in twice,
+after the server lane's #904 (protocol v56, replay format v14 taken first) and after E08 T115a's
+#906 (game state hash v31, protocol v57; the replays re-recorded a second time).
 
 - **The town's rules** (`h3-towns`' `recruit.rs`; design §49 to §51): `RecruitSource::{Index,
   Portal}`; `recruit_source` (UnknownBuilding, NotRecruiting, NotStanding with a base index whose
@@ -3647,8 +3648,9 @@ after the server lane's #904 (protocol v56, replay format v14 taken first).
   `GameState::hire` hands a town's source to it and closes a one-creature dialog after either;
   `GameState::hire_stock` public (any source; the env's). `HireSeen` replaces `HireView`'s and
   `HireOpened`'s type and anchor. The legal recruitments after each own town's builds
-  (`town/offer.rs`). Game state hash **v31** (the target's tag 1, the sources' tags 1 and 2).
-- **The wire** (protocol **v57**): `TownCommand::Recruit`, three `TownReject`s,
+  (`town/offer.rs`). Game state hash **v32** (the target's tag 1, the sources' tags 1 and 2;
+  E08 T115a's #906 took v31 while this task ran).
+- **The wire** (protocol **v58**; #904 took v56, #906 v57): `TownCommand::Recruit`, three `TownReject`s,
   `HireTarget::Garrison`, `HireSeen` in `Hire` and `HireOpened`; mapped, inverted, round-tripped.
   Replay format **v15** (`town recruit <town> <building>`). The env's encoding **v10**: `RECRUIT`
   (entry 31) with `BUILD`'s tile and building heads; a dialog's creatures from
@@ -3671,8 +3673,9 @@ after the server lane's #904 (protocol v56, replay format v14 taken first).
   kept). `h3-sim`: the town map's play on seed 70 alone
   (a search over 1 to 399: the first seed meeting every feature, recruitments and purchases now
   among them), the fork test on seed 46 (a siege on day 1).
-- **Replays:** the 72 adventure replays re-recorded from their commands, only the format, the hash
-  version and the hash lines moved; `h3-server`'s record literals. The bot reports unchanged.
+- **Replays:** the 72 adventure replays re-recorded from their commands (twice: after each merge),
+  only the format, the hash version and the hash lines moved; `h3-server`'s record literals and
+  `h3-cli`'s adventure tests' format literals. The bot reports unchanged.
 - **Bench** (`master` built in the same sandbox): `legal-towns-36` 12 594 903 against 8 153 291
   (+54.48 %: the agent's recruitments, 1 755 listings for 1 172; `recruiting` with its
   `source_of` 12 %, about 850 Ir a listing) and `reach-towns-36` 1 291 602 865 against

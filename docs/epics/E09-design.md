@@ -1664,8 +1664,8 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   source's stock; the env reads a dialog's creatures from it). `HireSeen` in `observe.rs`, carried
   by `HireView::source` and `HireOpened::source` (the object's type and anchor moved into
   `HireSeen::Object`). The legal recruitments after each town's builds in `town/offer.rs`'s
-  `legal_builds`. Game state hash v31 (the target's tag 1, the sources' tags 1 and 2), protocol
-  v57 (#904 took v56), replay format v15 (`town recruit`, #904 took v14), env encoding v10
+  `legal_builds`. Game state hash v32 (the target's tag 1, the sources' tags 1 and 2; E08
+  T115a's #906 took v31), protocol v58 (#904 took v56, #906 v57), replay format v15 (`town recruit`, #904 took v14), env encoding v10
   (`RECRUIT`, entry 31, the two heads of `BUILD`).
 
 ### 50. The purchase (TWN-REC-001; ADV-HIR-002's room and price as built)
