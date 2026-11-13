@@ -29,6 +29,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-13 (the server lane, E16 M5 T14, `claude/quirky-mccarthy-pgu2o6`, `cross-lane` with
+  the user's consent, SRV-Q29, SRV-Q31; **your paths changed, for your review**): `h3-game`
+  gains the system actor's own commands, `GameCommand::System(SystemCommand)` (`system.rs`:
+  `EndTurn { player }`, `Answer { player }` by `default_answer`, `Battle { player, command }`
+  for a timed-out player's side; GAM-SYS-001 to GAM-SYS-003 in `game.toml`), applied as the
+  player's own commands; the hold judges them as their player's (`command.rs`' `held_as`: the
+  level-up's owner's default answer passes it); `GameCommandError::SystemOnly` for a player's;
+  `GameState::check_player`. Not in `legal_commands`. ADR-0017 point 2 amended (its `shared:`
+  commit). **Your version: the adventure replay format v14** (`system for <player>
+  end-turn|answer default|battle <command>` in `h3-files`' `src/adventure/`): the 72 golden
+  replays' `format` line alone moved, no hash; `h3-cli`'s and `h3-sim`'s version tests follow;
+  your HANDOFF's and `OVERVIEW.md`'s version lines say v14. A new match on `GameCommand` needs
+  the `System` arm (`h3-map`'s `as_move` has it).
+
 - 2026-11-13 (E08 T114b's scoped verify; **a failing case of the hygiene property, on `master`
   too**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see` failed with the regression line `cc
   f1ef9d365138e68fe1e92148a08536e583481e4b06db263fa364dc7e91824600` (a 7 × 7 two-level RoE plan;

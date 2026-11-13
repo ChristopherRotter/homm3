@@ -3054,3 +3054,44 @@ verified). No original data. Branch `claude/loving-babbage-aylytb`. The user's c
   a disconnected player; the level-up's time an offer's setting; ADR-0017 point 2 amended in 2b's
   engine pull request. 2b's tasks T14 to T19 in the epic's "M5 part 2", the survey (T15) where
   the original data are staged.
+
+### M5 T14 — `h3-game`'s system commands (2026-11-13)
+
+The task (the epic's "M5 part 2", 2b): the system actor's own commands in `h3-game`, built by
+the server lane, `cross-lane`; ADR-0017 point 2 amended in a `shared:` commit. Baseline:
+`master` a3f48f8 (#902, the adventure lane's T114b, protocol v54; CI green, its code verified).
+No original data. Branch `claude/quirky-mccarthy-pgu2o6`. The user's choices at the start
+(2026-11-13, asked as the engine API the server calls): one closed variant
+`GameCommand::System(SystemCommand)` naming its player, the engine taking the default answer,
+over an `Actor::SystemFor(player)` reusing the player's commands; the adventure replay format
+v14 and protocol v55, the whole game's journal format left at 1 (additive).
+
+- **The engine** (`h3-game` `system.rs`): `SystemCommand::{EndTurn { player }, Answer { player },
+  Battle { player, command }}`, each applied as the player's own (`end_turn`, `answer` with
+  `default_answer`, `battle_command`) and refused as the player's would be: unknown player, not
+  its turn, an open decision, no decision, `BattleOpen` for an answer to a battle (no default),
+  `NoBattle`, `NotYourSide`, the battle's refusal. The hold judges a system command as its
+  player's (`command.rs`' `held_as`): the level-up's owner's default answer passes it, every
+  other system command is `WaitingForLevelUp`. A player's system command is `SystemOnly` (a new
+  `GameCommandError`); `NotForSystem`'s text names the system's own commands too. Not in
+  `legal_commands(Actor::System)` (the env's neutral seat draws from it: the host issues them by
+  its clock). Rules GAM-SYS-001 to GAM-SYS-003 (`game.toml`, the user's SRV-Q31 as their source),
+  tests in `tests/system.rs` (the end of a turn and the default answer alike to the player's
+  own; no player issues one), `tests/battles.rs` (every listed command of the side to act alike
+  from the system; the refusals), `tests/level_ups.rs` (the hold). `GameState::check_player`
+  joins `check_acting`.
+- **The text form** (adventure replay format v14, `h3-files`' `src/adventure/`, the constant in
+  `h3-sim`'s `adventure/replay.rs`): `system for <player> end-turn`, `system for <player> answer
+  default`, `system for <player> battle <command>`; a player's, which the game refuses, writes as
+  `<player> for <player> …`. The 72 golden replays' `format` line alone moved (13 to 14; no
+  command, hash or checkpoint). The whole game's journal stores commands in this form
+  (`h3-server`'s `journal/whole.rs`), so it reads them with no change; its format stays 1: every
+  journal written so far reads the same (*provisional*, the agent's call the user confirmed).
+- **The other matches:** `h3-sim`'s `tileless_entry` (no entry: the host's, never a seat's;
+  action encoding unchanged) and `h3-map`'s plans (`as_move`).
+- **The wire** (protocol v55): `wire::game::GameCommand::System { command }` with
+  `wire::game::SystemCommand` (the player by its number, a battle command as the battle wire's),
+  `GameReject::SystemOnly`, mapped both ways and in the round-trip lists; `tests/game_session.rs`:
+  a seat's system command refused and told to it alone, the system's end of a turn not its
+  player's refused, and the system's end of a turn told to every player as the player's own (but
+  the echo), journaled as the system actor's.

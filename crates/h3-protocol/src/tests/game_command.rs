@@ -16,8 +16,8 @@ use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace,
     BuildingId, ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
-    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, TownCommand, TownCommandError,
-    UniversityAnswer,
+    ManageError, NoopSink, Position, SchoolChoice, SkillOffer, SystemCommand, TownCommand,
+    TownCommandError, UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -125,6 +125,19 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(3),
         building: BuildingId::from_index(9).unwrap(),
     }));
+    // E16 M5 T14 (v55): the system actor's own commands.
+    let player = PlayerId::new(1);
+    commands.extend(
+        [
+            SystemCommand::EndTurn { player },
+            SystemCommand::Answer { player },
+            SystemCommand::Battle {
+                player,
+                command: h3_battle::Command::Defend,
+            },
+        ]
+        .map(GameCommand::System),
+    );
     commands
 }
 
@@ -142,6 +155,7 @@ fn every_rejection() -> Vec<GameCommandError> {
         E::NoBattle,
         E::NotYourSide,
         E::NotForSystem,
+        E::SystemOnly,
         E::WrongAnswer,
         E::WaitingForLevelUp(PlayerId::new(0)),
         E::SlotClosed,
@@ -388,6 +402,7 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
         R::NotYourSide {} => E::NotYourSide,
         R::Battle { code } => E::Battle(battle_back(code)),
         R::NotForSystem {} => E::NotForSystem,
+        R::SystemOnly {} => E::SystemOnly,
         R::WrongAnswer {} => E::WrongAnswer,
         R::WaitingForLevelUp { player } => E::WaitingForLevelUp(PlayerId::new(player)),
         R::Manage { error } => E::Manage(manage_back(error)),
@@ -462,10 +477,10 @@ fn a_building_beyond_every_record_is_refused_before_the_engine() {
 #[test]
 fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
-    // 15 of the game's own, 31 of the battle's, 22 of the adventure's (E08 T105b2:
-    // `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`, `OnlyEmpty`), 6
-    // of an artifact's move, 3 of a combination's, 4 of a hire's, 10 of a town's.
-    assert_eq!(errors.len(), 104);
+    // 16 of the game's own (E16 M5 T14: `SystemOnly`), 31 of the battle's, 22 of the adventure's
+    // (E08 T105b2: `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`,
+    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 10 of a town's.
+    assert_eq!(errors.len(), 105);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

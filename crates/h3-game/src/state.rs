@@ -492,14 +492,19 @@ impl GameState {
     /// Checks that `player` is a player of the game whose turn is running (the game's part of
     /// every player command, ADR-0017 point 1).
     pub(crate) fn check_acting(&self, player: PlayerId) -> Result<(), GameCommandError> {
-        let state = self
-            .players
-            .get(player.index())
-            .ok_or(GameCommandError::UnknownPlayer(player))?;
-        if !state.acting {
+        self.check_player(player)?;
+        if !self.players[player.index()].acting {
             return Err(GameCommandError::NotYourTurn(player));
         }
         Ok(())
+    }
+
+    /// Checks that `player` is a player of the game.
+    pub(crate) fn check_player(&self, player: PlayerId) -> Result<(), GameCommandError> {
+        self.players
+            .get(player.index())
+            .map(|_| ())
+            .ok_or(GameCommandError::UnknownPlayer(player))
     }
 
     /// Checks that `player` may give a command other than an answer: its turn is running

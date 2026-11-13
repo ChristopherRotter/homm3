@@ -273,6 +273,36 @@ fn commands_round_trip_through_their_text() {
         parse_command("system battle wait").unwrap(),
         (Actor::System, wait)
     );
+    // Format v14 (E16 M5 T14): the system actor's own commands, for a player.
+    let player = PlayerId::new(1);
+    for (command, text) in [
+        (SystemCommand::EndTurn { player }, "system for 1 end-turn"),
+        (
+            SystemCommand::Answer { player },
+            "system for 1 answer default",
+        ),
+        (
+            SystemCommand::Battle {
+                player,
+                command: Command::Defend,
+            },
+            "system for 1 battle defend",
+        ),
+    ] {
+        let command = GameCommand::System(command);
+        assert_eq!(format_command(Actor::System, &command), text);
+        assert_eq!(parse_command(text).unwrap(), (Actor::System, command));
+    }
+    // A player's, which the game refuses, is written all the same.
+    let ended = GameCommand::System(SystemCommand::EndTurn { player });
+    assert_eq!(
+        format_command(Actor::Player(player), &ended),
+        "1 for 1 end-turn"
+    );
+    assert_eq!(
+        parse_command("1 for 1 end-turn").unwrap(),
+        (Actor::Player(player), ended)
+    );
     for bad in [
         "",
         "x end-turn",
@@ -340,6 +370,17 @@ fn commands_round_trip_through_their_text() {
         "0 battle wait now",
         "system",
         "systems battle wait",
+        "system for",
+        "system for x end-turn",
+        "system for 256 end-turn",
+        "system for 1",
+        "system for 1 move 1 3,4,0",
+        "system for 1 end-turn now",
+        "system for 1 answer",
+        "system for 1 answer offer decline",
+        "system for 1 answer default now",
+        "system for 1 battle",
+        "system for 1 battle fly 3",
         "0 army",
         "0 army jump 1:0",
         "0 army move 1:0",
