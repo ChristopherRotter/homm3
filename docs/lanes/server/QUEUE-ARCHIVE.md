@@ -215,3 +215,13 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 - 2026-10-20 (the adventure lane, E08 T26b, `shared/e08-t26b`, the user's choice; for your information, nothing to do): `cargo deny`'s advisories began to fail on RUSTSEC-2026-0382 (`rustls-webpki` 0.103.15 may accept certificate paths through distrusted emSign intermediates; `h3-server` through `rustls` 0.23.46 and `tokio-tungstenite`). That pull request bumps it to 0.103.16 in `Cargo.lock` (a patch release, two lines); `h3-server`'s 149 tests pass with it.
 
+*(Done in E16 M5 T16, 2026-11-13: the level-up's time, `Clock::level_up_ms`, every turn timer stopped while it holds, the others told only that the game waits.)*
+
+- 2026-10-21 (the adventure lane, E08 T30, decision 65, ADR-0017 point 6 amended in #353; for
+  M5, when the server hosts whole games): **a level-up holds the game.** While a hero's level-up
+  is open the engine rejects every other actor's command (`GameCommandError::WaitingForLevelUp
+  (owner)`) and `h3_game::GameState::waiting_for` names the owner (a battle's defender that won
+  answers outside its turn). The user's requirement online: pause the turn timer of the player
+  who waits for as long as the level-up is open, give the owner a limited time to answer, then
+  answer for it with `h3_game::default_answer` (the original's choice; its network game does the
+  same when its timer runs out). Other players learn only that the game waits, never the offers.

@@ -112,6 +112,19 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
+  taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`
+  (`wire::game::GameClock`: the player's own `turn` timer, its battle's chess clocks `battle`
+  against another player's hero (`Duel`'s attacker and defender), its own `level_up` time, and
+  `waits`, the game waiting for another player's level-up), each `Timer` the milliseconds left
+  when sent and whether it runs (count it down locally; a battle side at 0 is the server's
+  computer's for the rest of the battle). Numbered and recorded: after a command's other
+  messages and before the `GameTurn`s, alone when a timer ran out, and after a `GameSnapshot`
+  that leaves something to tell. In an untimed game (every game until the server lane's T17)
+  only `waits` is ever told. At a timer's end the server acts for the player with the system
+  actor's commands (T14's `GameCommand::System`), told as every command's. Your readers'
+  wildcards skip it; showing it is yours (E28's screens).
+
 - 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`; **for the garrison's
   right-click popup, nothing to do before it**): protocol **v54**: `GameObservation::garrisons`
   (`wire::game::MapGarrison`: by type and anchor, its owner, its army at the viewer's level as a
