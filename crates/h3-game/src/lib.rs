@@ -23,7 +23,8 @@
 //! server keeping each viewer's view by its events (SRV-Q26, SRV-Q27; the adventure lane's
 //! inbox work of 2026-11-11), what a viewer newly sees since an explored grid of its own
 //! ([`reveal`]), the heroes' movement changes told last, and each battle as it ended to the sink
-//! ([`Sink::battle_ended`]).
+//! ([`Sink::battle_ended`]); the system actor's own commands for a player whose time ran out
+//! ([`SystemCommand`], E16 M5 T14).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -53,6 +54,7 @@ mod observe;
 mod ruleset;
 mod setup;
 mod state;
+mod system;
 mod town;
 mod treasury;
 
@@ -119,6 +121,7 @@ pub use setup::{
     HeroDetailsSetup, PlayerSetup, TimedEventSetup,
 };
 pub use state::{GameState, MonthKind, OpenBattle};
+pub use system::SystemCommand;
 pub use town::offer::TownOffer;
 pub use town::view::{
     GarrisonStackView, GarrisonView, OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView,

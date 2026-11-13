@@ -484,6 +484,16 @@ fn a_rejected_command_changes_nothing_and_is_told_to_its_player_alone() {
         }
     );
     assert_eq!(out, rejected(last(waiting) + 2, 5, code));
+    // E16 M5 T14 (v56): a seat's system command, the system actor's alone.
+    out.clear();
+    let end_acting = GameCommand::System {
+        command: SystemCommand::EndTurn {
+            player: acting.raw(),
+        },
+    };
+    let code = session.play(waiting, 6, end_acting, &mut out).unwrap_err();
+    assert_eq!(code, GameReject::SystemOnly {});
+    assert_eq!(out, rejected(last(waiting) + 3, 6, code));
     // A player outside the game is told nothing; nor is the system actor.
     out.clear();
     let outside = PlayerId::new(200);
@@ -494,6 +504,17 @@ fn a_rejected_command_changes_nothing_and_is_told_to_its_player_alone() {
     assert_eq!(
         session.system(GameCommand::EndTurn {}, &mut out),
         Err(GameReject::NotForSystem {})
+    );
+    let end_waiting = GameCommand::System {
+        command: SystemCommand::EndTurn {
+            player: waiting.raw(),
+        },
+    };
+    assert_eq!(
+        session.system(end_waiting, &mut out),
+        Err(GameReject::NotYourTurn {
+            player: waiting.raw()
+        })
     );
     assert!(out.is_empty());
     assert!(session.system_legal().is_empty());
@@ -514,8 +535,55 @@ fn a_rejected_command_changes_nothing_and_is_told_to_its_player_alone() {
     );
     assert!(matches!(
         after[waiting.index()][0],
-        ServerMessage::GameEvents { n, .. } if n == last(waiting) + 3
+        ServerMessage::GameEvents { n, .. } if n == last(waiting) + 4
     ));
+}
+
+/// E16 M5 T14 (v56): the system's end of a player's turn is told as the player's own, but for
+/// its echo, and journaled as the system actor's.
+#[test]
+fn the_systems_end_of_a_turn_is_told_as_the_players_own() {
+    let (rules, setup) = duel();
+    let start = |out: &mut Vec<GameOutbound>| {
+        GameSession::start(rules, &setup, 3, manifest(rules, MAP), options(0), out).unwrap()
+    };
+    let (mut own, mut by_system) = (start(&mut Vec::new()), start(&mut Vec::new()));
+    let players = own.state().players();
+    let acting = own.state().turn_group()[0];
+    let (mut ended, mut timed_out) = (Vec::new(), Vec::new());
+    own.play(acting, 1, GameCommand::EndTurn {}, &mut ended)
+        .unwrap();
+    let end = SystemCommand::EndTurn {
+        player: acting.raw(),
+    };
+    let command = GameCommand::System { command: end };
+    by_system.system(command.clone(), &mut timed_out).unwrap();
+    assert_eq!(by_system.state().state_hash(), own.state().state_hash());
+    let (mut ended, timed_out) = (told(&ended, players), told(&timed_out, players));
+    assert!(matches!(
+        ended[acting.index()].remove(0),
+        ServerMessage::GameAccepted { .. }
+    ));
+    let renumbered = |messages: &[ServerMessage]| -> Vec<ServerMessage> {
+        messages
+            .iter()
+            .map(|m| {
+                let mut m = m.clone();
+                if let ServerMessage::GameEvents { n, .. } | ServerMessage::GameTurn { n, .. } =
+                    &mut m
+                {
+                    *n = 0;
+                }
+                m
+            })
+            .collect()
+    };
+    for player in 0..players {
+        assert_eq!(renumbered(&ended[player]), renumbered(&timed_out[player]));
+    }
+    let entries: Vec<GameEntry> = by_system.drain_entries().collect();
+    let engine = map::game::command_to_engine(command).unwrap();
+    assert!(entries.contains(&GameEntry::Command(Actor::System, engine)));
 }
 
 #[test]
