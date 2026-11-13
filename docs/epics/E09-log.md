@@ -3580,7 +3580,8 @@ whole** (decision 91, the user; two parts were recommended).
   of every town before the week's growth (a recording sink only) and the towns' day tells the
   changed ones after the marks; an event's creatures with their own `Told`; a build's and a
   capture's draws inside their `Told`, a flag's with one of its own. On the wire
-  `TownBuildings`' `available` and `portal` (`Summoned`), protocol **v54**; the fold unchanged
+  `TownBuildings`' `available` and `portal` (`Summoned`), protocol **v55** (E08 T114b's #902 took
+  v54 while this task ran: `master` merged in twice); the fold unchanged
   (the whole set replaced).
 - **Tests:** `h3-towns`: `has_portal`, `intersects`. `h3-adventure`: the flag named in the
   outcome (`dwelling_visits.rs`), `set_town_garrison` (`towns.rs`). `h3-game`'s
@@ -3598,11 +3599,17 @@ whole** (decision 91, the user; two parts were recommended).
   `towns-s173-d21`, `towns-s1702-d21`, `towns-s3435-d21`) re-recorded from their commands, only
   checkpoints and final hashes moved (a neutral garrison's week); no version moved but the
   protocol's. The bot reports unchanged (no part hash moved).
-- **Bench** (`master` built in the same sandbox): `day-start-builds-36` 587 773 against 577 013
-  (+1.86 %), `day-start-towns-36` 1 328 306 against 1 228 742 (+8.10 %: `garrison_week` and its
-  draws and writes); both re-baselined with the reason. First build: +6.8 % and +10.0 %, of it
-  `has_portal`'s standing set for every owned town each week (cut by the part's Portal set) and
-  the offer collected for the growth's inputs (an iterator again). Every other workload passes.
+- **Bench** (`master` built in the same sandbox): `day-start-towns-36` 1 328 051 against 1 228 566
+  (+8.10 %: `garrison_week` and its draws and writes), re-baselined with the reason;
+  `day-start-builds-36` 587 597, +1.60 % on the baseline E08 T114b set (it was 587 773 against
+  577 013, +1.86 %, before #902's merge, whose `Told::tell` returns at once for a `NoopSink`).
+  First build: +6.8 % and +10.0 %, of it `has_portal`'s standing set for every owned town each
+  week (cut by the part's Portal set) and the offer collected for the growth's inputs (an
+  iterator again). Every other workload passes.
+- **The merges:** `master` merged in twice, after the server lane's #901 (two inbox notes) and
+  after E08 T114b's #902 (protocol v54 taken first: T26b takes v55; the two bench files and the
+  inboxes; T114b's `Told` holds the map garrisons, so the week's views take theirs too). The 72
+  replays checked again from their commands after the second: all as recorded.
 - **Agent's calls (change freely):** decision 91's list.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s and

@@ -72,7 +72,10 @@ impl AdventureState {
             Some(owner) if allied(owner, player) => self.exchange(hero, object),
             _ if self.garrison_army(object.0).is_empty() => {
                 self.flag(rules, object, player, sink);
-                self.exchange(hero, object)
+                AdventureOutcome {
+                    garrison_flagged: true,
+                    ..self.exchange(hero, object)
+                }
             }
             _ => self.garrison_battle(rules.1, hero, object.0),
         }
@@ -152,12 +155,9 @@ impl AdventureState {
         }
     }
 
-    /// The garrison visited at `tile`, with its type, if one is ([`Self::give_won`]).
-    pub(super) fn garrison_at(
-        &self,
-        part: &AdventureRuleset,
-        tile: Pos,
-    ) -> Option<(usize, ObjectTypeId)> {
+    /// The map garrison visited at `tile`, by object index with its type, if one is
+    /// ([`Self::give_won`]; the game's views of a garrison's battle, ADV-GAR-006, E08 T114b).
+    pub fn garrison_at(&self, part: &AdventureRuleset, tile: Pos) -> Option<(usize, ObjectTypeId)> {
         self.tile_object(part, tile)
             .filter(|(_, _, ty)| matches!(ty.kind, ObjectKind::Garrison { .. }))
             .map(|(index, id, _)| (index, id))

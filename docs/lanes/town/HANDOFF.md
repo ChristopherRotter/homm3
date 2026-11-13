@@ -13,7 +13,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   T26a1 (decision 89: the inputs, the week and the month in the day, the events' creatures,
   `TWN-STUB-10` lifted), T26a2 (decision 90: the week's kind, game state hash v30, map import
   v23, protocol v53), **T26b** (decision 91, whole: the neutral garrison week, the Portal's
-  draws at its five moments, the owner's counts and Portal in the views, protocol v54). **Next:**
+  draws at its five moments, the owner's counts and Portal in the views, protocol v55). **Next:**
   T27, recruitment (`QUEUE.md`), then T28 to T30
   (design §56; T28, the rows, after the adventure lane's T114a and T115a). The Tavern is
   increment 4, the guild and the services 5, travel and the Grail 6.
@@ -31,7 +31,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   parameters), both in `h3-towns`; the adventure lane's (game state hash v30 and map import v23 by
   T26a2, adventure state and part hashes, replay format) and the env's and protocol's are bumped
   `cross-lane` (each task's record in `E09-log.md`); their current values are in the adventure
-  lane's HANDOFF; protocol v54 is T26b's. Shared, from T24: core ruleset hash v53, pack format v52, quirk flags 41
+  lane's HANDOFF; protocol v55 is T26b's. Shared, from T24: core ruleset hash v53, pack format v52, quirk flags 41
   (`quirk.town.creature_month_exact` 39, `quirk.town.neutral_plague_full_growth` 40, read by
   T25b1's `month`), `StreamId::TOWNS` (7).
 - **Ids** (next): questions `TWN-Q15`; decisions 92; quirks `TWN-QUIRK-11` (planned `-11`: T-5);
@@ -55,9 +55,10 @@ user, decision 91; two parts were recommended). The user's computer was connecte
 only: the original data staged then (17 files, SHA-256 checked), used for the scoped verify.
 `cross-lane`: `h3-adventure`'s outcome (`flagged_dwelling`) and dwelling visit, `h3-game`'s state
 and day, `h3-map`'s plans (the hygiene property ends at every week's start), four towns replays
-(hash lines), `day-start-builds-36` (+1.86 %) and `day-start-towns-36` (+8.10 %, the garrison
-week) re-baselined against `master`, `h3-protocol` (v54). Notes in the adventure's and the
-server's inboxes. T27 queued. PR #903 (`master` merged in after the server lane's #901).
+(hash lines), `day-start-towns-36` re-baselined (+8.10 % against `master`, the garrison week;
+`day-start-builds-36` +1.60 % on T114b's baseline), `h3-protocol` (v55, after T114b's v54). Notes in the adventure's and the
+server's inboxes. T27 queued. PR #903 (`master` merged in after the server lane's #901 and
+E08 T114b's #902, which took v54 first).
 
 ### 2026-11-12 — T26a2: the week's kind
 

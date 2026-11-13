@@ -202,6 +202,22 @@ pub enum GameEvent {
         resource: u16,
         amount: u32,
     },
+    GarrisonChanged {
+        player: u8,
+        object_type: u16,
+        anchor: Pos,
+        owner: Option<u8>,
+        level: u8,
+        slots: bool,
+        removable: Option<bool>,
+    },
+    GarrisonStackSeen {
+        player: u8,
+        object_type: u16,
+        anchor: Pos,
+        stack: GarrisonStack,
+        slot: Option<u8>,
+    },
     TownBuilt {
         player: u8,
         town: u16,

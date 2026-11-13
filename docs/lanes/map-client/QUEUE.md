@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`; **for the garrison's
+  right-click popup, nothing to do before it**): protocol **v54**: `GameObservation::garrisons`
+  (`wire::game::MapGarrison`: by type and anchor, its owner, its army at the viewer's level as a
+  town's garrison, TWN-VEW-002/-003, and the removable flag to the owner's team), kept current by
+  `GarrisonChanged` and `GarrisonStackSeen` and the reveal's `garrisons` (ADV-GAR-006): what the
+  original's popup (`garrison_popup` 0x416F80, the adventure survey `E08-garrisons-bonuses.md` §8)
+  draws over `townqvbk.pcx`.
+
 - 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
   `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a
   run directory fails every run: rerun `setup.sh`); the run's `VIDEO.VID` joins `battle-videos.vid`

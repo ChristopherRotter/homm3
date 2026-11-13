@@ -1579,7 +1579,8 @@ still change at `TWN-Q14` (decision 78 lists them).
   The adventure replays are re-recorded (skill `homm3-rerecord-replays`).
 - *As built (T26b):* `TownBuildingsView::available` (`[u16; CREATURE_INDEXES]`) and `portal`
   (`Option<Summoned>`; both re-exported by `h3-game`), `GameEvent` still `Copy`; the wire's
-  `TownBuildings` and `Summoned`, protocol **v54** (the table's "v42" was its planning number);
+  `TownBuildings` and `Summoned`, protocol **v55** (the table's "v42" was its planning number;
+  E08 T114b took v54 first);
   the day's week `Told` (every town, every viewer) told at the towns' day; an event's creatures
   with their own `Told`. No version of the game state hash, the map import or the replay format
   moved: the 72 adventure replays' hash lines and the session's golden finals moved (behaviour).

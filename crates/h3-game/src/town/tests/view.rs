@@ -9,7 +9,7 @@ use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_adventure::{Pos, TileMask, TileSetup};
+use h3_adventure::{Holds, ObjectSetup, Pos, Scenery, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
@@ -718,4 +718,117 @@ fn a_viewer_that_does_not_see_the_town_is_told_nothing_and_a_sink_that_keeps_not
     )
     .unwrap();
     assert_eq!(quiet.state_hash(), game.state_hash());
+}
+
+/// A map garrison of the test part's `t:garrison` on `(x, y)`, its entrance, `owner`'s, holding
+/// [`garrisoned`]'s 12 imps and 4 gogs, removable (E08 T114b, the adventure lane's).
+fn map_garrison(rules: &GameRuleset, (x, y): (u16, u16), owner: Option<u8>) -> ObjectSetup {
+    let army = [(0, IMP, 12), (1, GOG, 4)].map(|(slot, creature, count)| ArmyStack {
+        slot,
+        creature,
+        count,
+    });
+    ObjectSetup {
+        scenery: Scenery::default(),
+        anchor: Pos::new(x, y, 0),
+        blocked: TileMask::from_bits(1),
+        visitable: TileMask::from_bits(1),
+        object_type: rules.adventure().object_type_by_key("t:garrison"),
+        amount: None,
+        drawn: TileMask::default(),
+        monster: None,
+        guards: None,
+        holds: Holds::Garrison {
+            army: army.to_vec(),
+            removable: true,
+        },
+        owner: owner.map(PlayerId::new),
+    }
+}
+
+// covers: ADV-GAR-006, TWN-VEW-002, TWN-VEW-003
+#[test]
+fn a_map_garrison_shows_at_a_towns_levels_and_a_new_tavern_tells_its_raised_level() {
+    // E08 T114b (the adventure lane's, `cross-lane`): a map garrison's army by the levels of a
+    // town's garrison: the viewer's Taverns, a hero's Visions from its entrance; a Tavern's build
+    // tells its owner's raised view after the towns' (one `Told` for both).
+    let rules = tavern_rules();
+    let mut setup = garrisoned(&rules);
+    setup.towns[0].buildings = BuildingsSetup::Custom {
+        built: SlotSet::EMPTY,
+        forbidden: SlotSet::EMPTY,
+    };
+    setup
+        .map
+        .objects
+        .push(map_garrison(&rules, (0, 3), Some(1)));
+    let mut game = GameState::new(&rules, &setup, 7).unwrap();
+    let seen = |game: &GameState, viewer| observe(game, &rules, Viewer::Player(viewer)).garrisons;
+    assert_eq!(seen(&game, RED)[0].garrison, shown(0));
+    let record = rules.towns().town(faction(&rules, "t:town")).unwrap();
+    let tavern = record.building_by_key("tavern").unwrap();
+    let events = run(&rules, &mut game, RED, build(T0, tavern));
+    let red = seen(&game, RED);
+    assert_eq!(red[0].garrison, shown(1));
+    let (object_type, anchor) = (red[0].object_type, Pos::new(0, 3, 0));
+    let stack_seen = |creature| GameEvent::GarrisonStackSeen {
+        player: RED,
+        object_type,
+        anchor,
+        stack: GarrisonStackView {
+            creature,
+            count_word: None,
+            count: None,
+        },
+        slot: None,
+    };
+    let told = [
+        GameEvent::GarrisonChanged {
+            player: RED,
+            object_type,
+            anchor,
+            owner: Some(BLUE),
+            level: 1,
+            slots: false,
+            removable: None,
+        },
+        stack_seen(IMP),
+        stack_seen(GOG),
+    ];
+    assert_eq!(events[events.len() - 3..], told);
+    // Blue's own view (by slot, its flag) did not change: told to red alone.
+    assert!(
+        events
+            .iter()
+            .all(|e| !matches!(e, GameEvent::GarrisonChanged { player: BLUE, .. }))
+    );
+    // Visions from the garrison's entrance: within the radius the counts, never the army by slot
+    // nor the flag; beyond it red's Taverns (none here).
+    let rules = visions_rules(3, 3);
+    let mut setup = seer(&rules, (8, 8), 1, &[GOG]);
+    setup
+        .map
+        .objects
+        .push(map_garrison(&rules, (9, 9), Some(1)));
+    setup
+        .map
+        .objects
+        .push(map_garrison(&rules, (11, 8), Some(1)));
+    // A third red has explored no tile of: no view (as a town's, TWN-VEW-001).
+    let far = Pos::new(15, 0, 0);
+    setup
+        .map
+        .objects
+        .push(map_garrison(&rules, (15, 0), Some(1)));
+    let game = GameState::new(&rules, &setup, 7).unwrap();
+    assert!(!game.adventure().is_explored(RED, far));
+    let views = observe(&game, &rules, Viewer::Player(RED)).garrisons;
+    assert_eq!(views.len(), 2);
+    let counts: Vec<Option<u32>> = views[0].garrison.stacks.iter().map(|s| s.count).collect();
+    assert_eq!(
+        (views[0].garrison.level, counts, &views[0].garrison.army),
+        (OWNER_LEVEL, vec![Some(12), Some(4)], &None)
+    );
+    assert_eq!(views[0].removable, None);
+    assert_eq!(views[1].garrison, shown(0));
 }

@@ -23,7 +23,7 @@ town's `HireSource` and the target the town's garrison until T28a (`HireTarget`)
 across the store, the adventure's room and the treasury (§50; an upgraded index selling both
 creatures from one count; every refusal changing nothing), the Portal's hire (§51, TWN-REC-002),
 the legal commands, `HireSeen` in the view and the event, the protocol (`cross-lane`, the server
-lane's fold gate; v54 is T26b's, so the next at merge), `town recruit` in the CLI, the env's
+lane's fold gate; v55 is T26b's, so the next at merge), `town recruit` in the CLI, the env's
 `RECRUIT` (encoding v10, the AI lane's `cross-lane` consent), the replays re-recorded (skill
 `homm3-rerecord-replays`), the bench (skill `homm3-bench-regression`). Rules TWN-REC-001, -002 with
 sources and tests; GAM-DEC-008 amended. A count bought is a change of the owner's view (T26b's

@@ -643,6 +643,11 @@ impl GameState {
                 self.open_leave_guards(player, garrison, sink);
             }
             if let Some(exchange) = outcome.exchange {
+                // rule: ADV-GAR-006
+                if outcome.garrison_flagged {
+                    let index = object_index(exchange.garrison);
+                    crate::garrisons::tell_all(self, rules, index, sink);
+                }
                 self.open_exchange(player, exchange, sink);
             }
             if let Some(choice) = outcome.choice {

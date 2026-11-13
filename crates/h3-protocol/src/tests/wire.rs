@@ -804,6 +804,7 @@ fn reveal() -> game::GameReveal {
         },
         heroes: view.heroes[..1].to_vec(),
         towns: view.towns[..1].to_vec(),
+        garrisons: view.garrisons[..1].to_vec(),
     }
 }
 
@@ -1072,12 +1073,13 @@ fn the_json_is_serdes_default_enum_form() {
     nothing.adventure.towns.clear();
     nothing.heroes.clear();
     nothing.towns.clear();
+    nothing.garrisons.clear();
     assert_eq!(
         server(&ServerMessage::GameReveal {
             n: 10,
             reveal: nothing
         }),
-        r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"palette":[{"explored":true,"view":{"Hidden":{}}}],"areas":[{"corner":{"x":2,"y":1,"level":0},"width":2,"tiles":[1,0]}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[]}}}"#
+        r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"palette":[{"explored":true,"view":{"Hidden":{}}}],"areas":[{"corner":{"x":2,"y":1,"level":0},"width":2,"tiles":[1,0]}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[],"garrisons":[]}}}"#
     );
     // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
     assert_eq!(

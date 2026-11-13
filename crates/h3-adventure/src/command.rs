@@ -252,6 +252,12 @@ pub struct AdventureOutcome {
     /// it stands the player's army commands name the hero's army and the garrison's
     /// ([`crate::ArmyRef::MapGarrison`]) by the one owner rule.
     pub exchange: Option<Exchange>,
+    /// Whether the visit flagged [`Self::exchange`]'s garrison for the visitor's owner first
+    /// (ADV-GAR-002, ADV-OWN-001; E08 T114b): an empty one of another team or neutral, or one
+    /// whose army the hero beat ([`crate::AdventureState::give_won`]). Its owner changed, so every
+    /// viewer's view of it did (ADV-GAR-006), which the game tells; false for a garrison of the
+    /// visitor's team and with no exchange.
+    pub garrison_flagged: bool,
     /// What the visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): the artifacts,
     /// spells, skills, primary skills, spell points, bonuses and experience of a pickup, a
     /// teacher or a find, checked against the details the visit read; the game applies them.
