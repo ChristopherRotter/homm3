@@ -5,28 +5,48 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 ## Tasks
 
 **E27, the game shell** (refined 2026-11-12, M0, with the user: `docs/epics/E27-game-shell.md`,
-decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 (reading and captures)
-below; M2 to M4 are refined at their T0s. The original files: stage them from the user's
+decisions 4 to 8, CLT-Q79 to CLT-Q83; the clips: `E27-design.md` §1). M1 closed 2026-11-13 (T3);
+M2 (the start and the menus) below, refined at M1 T3; M3 and M4 are refined at their T0s. The original files: stage them from the user's
 `original-data/install/` (one large file per staging call; the user's computer must be online);
 never from the installation. The captures need the five DLLs, `Heroes3.snd`, `H3ab_ahd.snd`
 and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The client's gates:
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T3 — M1's closure and M2's refinement
+#### E27 M2 T1 — The Smacker decoder
 
-- **Scope:** a fresh reviewer on the catalogue and the recipes (design §2 to §6; the shell's
-  recipes and shots, `clients/capture/shell/`: the `scenario` and `advanced` groups' shots for
-  oddities, their agent's report having been lost), its findings fixed or listed; CLT-Q100 to
-  CLT-Q102 (T2's recordings);
-  M1's review list and the open questions with the user; M2 T0: M2's tasks into this queue (the
-  Smacker decoder, the start, the menus, the shell's state machine and its headless driver,
-  CLT-Q2's loading; where the shell's code lives, CLT-Q79).
-- **Acceptance:** the review list accepted by the user; M2's tasks queued; the Definition of
-  Done (docs).
-- **Depends on:** T2 (done 2026-11-13: design §6; the shots stay in a sandbox's `clients/out/shell/`,
-  so a reviewer records the groups again with `h3shell.py run`, about 1.5 hours without
-  `start-bink` and `start-smacker`). **Status:** ready.
+- **Scope:** the epic's M2 table, T1: `h3-smacker`, FFmpeg 6.1.1's `smacker.c` video (integer
+  only), the `video` command reading `.smk`, `smacker-check.sh` against `SMACKW32.DLL` under Wine
+  (as `bink-check.sh`, E17 M6 T6c1) on the seven Smacker clips of `shell-videos.vid` (headers:
+  design §2.1) and synthetic samples. Licence as `h3-bink`'s (CLT-Q29: LGPL-2.1-or-later ported
+  under the GPL-2.0-or-later, origin comments).
+- **Acceptance:** every frame of the seven clips the DLL's, byte for byte; `clients/scripts/check.sh`
+  green (100 % coverage of the new crate); the Definition of Done.
+- **Status:** ready (independent of T3).
+
+#### E27 M2 T2 — The clips' sound
+
+- **Scope:** the epic's M2 table, T2 (CLT-Q104, decision 21): Bink's and Smacker's audio decoded,
+  the floating point emulated, checked against the DLLs' samples under Wine where the harness
+  reaches them (else FFmpeg's and a `CLT-Q`); played through the window's audio. Confirm the cut at
+  its start (the DLL's audio path under Wine is unread).
+- **Status:** after T1.
+
+#### E27 M2 T3 — The shell's frame
+
+- **Scope:** the epic's M2 table, T3 (CLT-Q103, decision 20, CLT-Q2): the state machine and the
+  menu loop's requests in `h3-view`, `h3-view shell` with a headless text driver, the dialogs'
+  input moved from `h3_view::options` into `h3-ui` (the combat options' tests unchanged; `h3-ui`
+  is common: the map-client lane's inbox told of the addition), start-up loading by the LODs'
+  tables.
+- **Status:** ready (independent of T1).
+
+#### E27 M2 T4 to T8
+
+T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3); T5 the
+start (after T1, T2, T4); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
+Multiplayer and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7).
+Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
 
 ## Inbox
 
