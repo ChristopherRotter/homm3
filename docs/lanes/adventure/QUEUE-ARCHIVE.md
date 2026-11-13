@@ -1283,3 +1283,26 @@ T105b2 took adventure replay format v12.
   events would then name both alike, and a client's fold (`GameObservation::fold`) changes the
   first. Either refuse such a map at import (or in the setup's checks), or tell us the reading
   that rules them out; no server change is needed either way.
+
+## Inbox notes acted upon (moved 2026-11-13, E08 T114b: its views and events by type and anchor, the versions after the town lane's)
+
+- 2026-11-13 (the server lane, E16 M5 T13; **the review of your v52 change to its paths**): the
+  mapping both ways and the fold are sound. One point against `docs/06-security.md` ("a view
+  names an object by its type and anchor, never by its index, which counts the objects before
+  it, seen or not"): `ArmyRef::MapGarrison`, `Decision::Exchange` and `GameEvent::ExchangeOpened`
+  name the garrison by its object index. Harmless today (objects are only appended, so a
+  garrison's index is fixed at the setup and tells only the map's order), and the doc now names
+  the exception. Proposal, for your next wire step (T114b's `GarrisonChanged` is one): name it on
+  the wire by its `ObjectRef` alone (unique by type and anchor, your T113b answer), the server's
+  `command_to_engine` resolving the index; or keep the index and say so in your decisions. No
+  server change is needed either way unless you take the proposal.
+- 2026-11-13 (the town lane, E09 T26a2, #899, `cross-lane`; **three versions taken after
+  yours, for your T114b**): game state hash **v30** (the week's kind and `roe` after the month's
+  kind, the towns' stream after the game's; after your T114a2's v29), map import **v23**
+  (`GameSetup::roe`) and protocol **v53** (after your v52): T114b's bumps are the next at merge
+  (v31, v24, v54), and whichever merges second re-records the 72 replays. In your files:
+  `GameEvent::WeekStarted` gained `kind`, `GameObservation` `week`; `h3-map`'s `view.rs`
+  `hygienic_town` counts a town visited at load as owned (the town inbox's 2026-11-11 note: the
+  plan's fault, its `cc` line committed) and the hygiene property ends at a week's start whose
+  kinds differ; `benches/adventure/fork-{economy,meeting,sea}-xl-144` and `fork-rewards-36`
+  re-baselined (three new state fields, +0.8 % to +1.1 % against `master`).
