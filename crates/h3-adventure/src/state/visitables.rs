@@ -12,7 +12,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, Ruleset, SIRENS_AGAIN_AFTER_BATTLE};
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroChange, HeroDetails, VisitBonus, max_mana};
 use h3_kernel::num::Real;
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -50,6 +50,13 @@ impl AdventureState {
             },
             seen_by: Viewers::NONE.with(player),
         });
+    }
+
+    /// The visitor `hero`, on the map: a visit's hero stands on or beside the object (as the
+    /// Whirlpool's loss finds it).
+    fn visitor(&mut self, hero: HeroId) -> &mut super::HeroOnMap {
+        let index = self.heroes.partition_point(|h| h.id < hero);
+        &mut self.heroes[index]
     }
 
     /// Whether the hero on the map `hero` holds the timed mark of `object_type` (the Magic Well's
@@ -130,13 +137,12 @@ impl AdventureState {
         if !self.give_once(hero, VisitBonus { mark, morale, luck }) {
             return Self::nothing((player, hero), object, NothingWhy::Visited, sink);
         }
-        if let Some(on_map) = self.hero_mut(hero) {
-            if drain {
-                on_map.movement = 0;
-            } else {
-                on_map.movement = on_map.movement.saturating_add(points);
-                on_map.max_movement = on_map.max_movement.saturating_add(points);
-            }
+        let on_map = self.visitor(hero);
+        if drain {
+            on_map.movement = 0;
+        } else {
+            on_map.movement = on_map.movement.saturating_add(points);
+            on_map.max_movement = on_map.max_movement.saturating_add(points);
         }
         self.mark_kind(part, player, object.1, sink);
     }
@@ -253,9 +259,7 @@ impl AdventureState {
         if moves {
             self.change_marks(hero, |marks| marks.add_timed(object.1));
         }
-        let Some(on_map) = self.hero_mut(hero) else {
-            return;
-        };
+        let on_map = self.visitor(hero);
         if moves {
             on_map.movement = on_map.movement.saturating_add(points);
             on_map.max_movement = on_map.max_movement.saturating_add(points);
@@ -309,23 +313,23 @@ impl AdventureState {
             return AdventureOutcome::default();
         }
         let mut lost = Vec::new();
-        if let Some(on_map) = self.hero_mut(hero) {
-            for stack in on_map.army.iter_mut().filter(|stack| stack.count > 1) {
-                let count = stack.count - sirens_keep(stack.count, keep);
-                if count > 0 {
-                    stack.count -= count;
-                    lost.push((stack.creature, count));
-                    sink.emit(AdventureEvent {
-                        kind: AdventureEventKind::SirensLoss {
-                            hero,
-                            slot: stack.slot,
-                            creature: stack.creature,
-                            count,
-                        },
-                        seen_by: Viewers::NONE.with(player),
-                    });
-                }
-            }
+        let on_map = self.visitor(hero);
+        // A lone creature keeps itself (`sirens_keep` keeps at least one), as a stack whose part
+        // is the whole.
+        let loses = |stack: &&mut ArmyStack| sirens_keep(stack.count, keep) < stack.count;
+        for stack in on_map.army.iter_mut().filter(loses) {
+            let count = stack.count - sirens_keep(stack.count, keep);
+            stack.count -= count;
+            lost.push((stack.creature, count));
+            sink.emit(AdventureEvent {
+                kind: AdventureEventKind::SirensLoss {
+                    hero,
+                    slot: stack.slot,
+                    creature: stack.creature,
+                    count,
+                },
+                seen_by: Viewers::NONE.with(player),
+            });
         }
         AdventureOutcome {
             drowned: (!lost.is_empty()).then_some(Drowned { hero, lost }),

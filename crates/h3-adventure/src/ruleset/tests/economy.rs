@@ -801,4 +801,8 @@ fn the_day_of_the_week_follows_the_calendar() {
     assert_eq!(Weekday::new(1), Some(Weekday::FIRST));
     assert_eq!(Weekday::new(0), None);
     assert_eq!(Weekday::new(7).map(Weekday::get), Some(7));
+    // A week of pairs is read by the day's place; a later day (a part without a bonus kind may
+    // have a longer week) the last.
+    let places = [1, 7, 8, 200].map(|day| Weekday::new(day).unwrap().index());
+    assert_eq!(places, [0, 6, 6, 6]);
 }

@@ -691,14 +691,13 @@ impl GameState {
         let experience = self
             .hero(drowned.hero)
             .map_or(0, |details| gained_experience(details, rules.core(), base));
-        if experience > 0 {
-            let gains = HeroGains {
-                hero: drowned.hero,
-                changes: Vec::new(),
-                experience,
-            };
-            self.give_hero(rules, player, gains, sink);
-        }
+        // `give_hero` gives none for 0.
+        let gains = HeroGains {
+            hero: drowned.hero,
+            changes: Vec::new(),
+            experience,
+        };
+        self.give_hero(rules, player, gains, sink);
     }
 
     /// Gives `player`'s hero what a visit gave it (ADR-0017 point 10, E08 T62a): each change in

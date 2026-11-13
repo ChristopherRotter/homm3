@@ -1434,6 +1434,71 @@ fn the_fold_keeps_the_own_heroes_armies_and_the_towns() {
     assert_eq!(v.towns[1].garrison.army, Some(vec![stack(3, 8)]));
 }
 
+#[test]
+fn the_fold_keeps_the_bonus_visitables_army_changes_and_the_kind_marks() {
+    // E08 T115b (v59): the Sirens' loss as the Whirlpool's, the Stables' upgrade of a slot's
+    // creature, the team's kind marks in type order; another player's hero and a held mark
+    // change nothing; a visit that gave nothing is a message.
+    let mut v = view();
+    let before = v.adventure.heroes[0].own.clone().unwrap().army;
+    let i = before.iter().position(|stack| stack.count > 1).unwrap();
+    let at = before[i].slot;
+    let kinds = v.adventure.kinds.clone();
+    fold(
+        &mut v,
+        &[
+            adventure(AdventureEvent::SirensLoss {
+                hero: 4,
+                slot: at,
+                creature: before[i].creature,
+                count: 1,
+            }),
+            adventure(AdventureEvent::CreaturesUpgraded {
+                hero: 4,
+                slot: at,
+                from: before[i].creature,
+                to: 77,
+            }),
+            adventure(AdventureEvent::CreaturesUpgraded {
+                hero: 9,
+                slot: at,
+                from: 1,
+                to: 2,
+            }),
+            adventure(AdventureEvent::KindKnown { object_type: 3 }),
+            adventure(AdventureEvent::KindKnown { object_type: 50 }),
+            adventure(AdventureEvent::KindKnown { object_type: 3 }),
+            adventure(AdventureEvent::NothingGained {
+                hero: 4,
+                object_type: 3,
+                anchor: Pos {
+                    x: 1,
+                    y: 1,
+                    level: 0,
+                },
+                why: NothingWhy::Full,
+            }),
+        ],
+    );
+    let mut expected_army = before.clone();
+    expected_army[i] = ArmyStack {
+        slot: at,
+        creature: 77,
+        count: before[i].count - 1,
+    };
+    assert_eq!(
+        v.adventure.heroes[0].own.clone().unwrap().army,
+        expected_army
+    );
+    let mut expected = kinds;
+    for ty in [3, 50] {
+        if let Err(i) = expected.binary_search(&ty) {
+            expected.insert(i, ty);
+        }
+    }
+    assert_eq!(v.adventure.kinds, expected);
+}
+
 /// A viewer's whole view of town `town` told (`TownChanged`): its owner's, with a hall, unless
 /// `hall` is none.
 fn town_changed(town: u16, hall: Option<u8>) -> GameEvent {

@@ -330,6 +330,10 @@ fn a_map_without_a_fountain_has_no_values_to_draw() {
     s.start_week(&rules.0, &rules.1, &mut stream(), &mut Vec::new());
     assert!(s.fortunes.is_none());
     assert_eq!(s.state_hash(), none.state_hash());
+    // Another kind draws no value.
+    let idol = rules.1.object_type_by_key("t:idol").unwrap();
+    let kind = rules.1.object_type(idol).map(|ty| &ty.kind);
+    assert_eq!(crate::state::economy::fortune(kind, &mut stream()), None);
 }
 
 // covers: ADV-BON-006, ADV-BON-009, HER-MAN-001
