@@ -23,7 +23,7 @@ adventure).
 
 | File | What it does |
 |---|---|
-| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b; an empty archive without it, and it says which); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
+| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
@@ -33,6 +33,8 @@ adventure).
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed, since E08 T100a Replay Opponent Turn played on the frozen clock and a step played only on a tile; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
+| `h3shell.py` | The game shell's screens (E27 M1 T2): recipes from the game's start to each screen outside play on a clock frozen from the first read, each recorded twice and compared, their digests kept; `run`, `play`, `learn`, `list`. Below, "The shell's screens". |
+| `shell/` | The shell's recipes by group (`<group>.toml`), each group's probes (`<group>.screens.toml`) and kept digests (`kept/<group>.txt`, numbers only). |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -41,7 +43,8 @@ adventure).
 
 Before the first run: stage the copy's files (`Heroes3.exe`, the five DLLs `BINKW32.DLL`,
 `IFC20.dll`, `MP3DEC.ASI`, `MSS32.DLL`, `SMACKW32.DLL`, `Data/` with the four LODs, `Heroes3.snd`,
-`H3ab_ahd.snd`, `H3ab_ahd.vid`, and `original-data/battle-videos.vid`; one large file per staging
+`H3ab_ahd.snd`, `H3ab_ahd.vid`, `original-data/battle-videos.vid` and, for the shell's screens,
+`original-data/shell-videos.vid` (184 MB) and `original-data/games/`; one large file per staging
 call), run `clients/capture/setup.sh`,
 and build `cargo build --release -p h3-battle-client` in `clients/`. A run of the whole set takes about 50 minutes (172 situations, 222 frames, E17 M6 T7a).
 
@@ -1200,6 +1203,54 @@ original's frames stay only in the sandbox that recorded them). `h3-map-view seq
 (no Wine; the assets only) checks every sequence's timeline; `drawn` covers the sequences too
 (below).
 
+## The shell's screens
+
+E27 M1 T2 (*provisional*; the catalogue: `docs/epics/E27-design.md` §2 to §5, each section's "For
+T2's captures"). `h3shell.py` plays recipes from the game's start to the screens outside play
+(the start's clips, the menus, the scenario screen, the options, the end of a scenario) and keeps
+their shots, so M2 to M4 compare the shell's drawing with them. From `clients/capture/`:
+
+```
+python3 h3shell.py run [--group menus,start] [--only menu-main] [--record]   # each recipe twice
+python3 h3shell.py play menu-main [--keep]       # one run; --keep leaves the game on its last screen
+python3 h3shell.py learn menus load_game_menu --in 114,312,413,359   # probes, the display as it is
+python3 h3shell.py list
+```
+
+- **A recipe** (`shell/<group>.toml`, `[[recipe]]`): `id`, `what` (the catalogue's section),
+  `registry` (dwords over the base settings), `maps` (`"all"`, the default: the 160 shipped maps;
+  or a list), `games` (files of `original-data/games/`), `input_step` and `steps` (the docstring's
+  `STEPS`: `until`, `check`, `step`, `move`, `click`, `down`/`up`, `right`/`right-up`, `key`,
+  `type`, `press`/`point` a dialog's button by its probes, `until-button`, `shot`, `clip`,
+  `clip-until`). Each run starts afresh: the settings key removed and written again from
+  `setup.sh`'s `h3.reg` with `First Time` 0 and `Bink Video` 1 (the Bink copies of the start's
+  clips; a recipe sets 0 for the Smacker ones), then the recipe's values; no `HiScore.dat`; the
+  recipe's maps and saves; the pointer parked at (400, 300).
+- **The clock** is frozen from the game's first read (`xdd.dll`'s `H3FROZEN`, at 1 000 000 ms;
+  times are counted from it), so a run's every time is the same in each run: the main menu shows
+  at 10 ms. Time passes only by the recipe: `until` steps it 10 ms at a time, `clip` keeps every
+  changed screen while stepping it, and each input moves it on by `input_step` (default 100 ms):
+  the game redraws its cursor at the pointer only on a later tick (a move shows no cursor until
+  the clock moves on some 50 ms), the buttons' hover at once. A clip's frames are due from the
+  last one shown, so their times depend on the step: the 3DO logo is recorded at 1 ms steps, the
+  rest at 10 ms.
+- **Twice:** `run` plays each recipe twice and compares every shot's pixels and time and every
+  clip's frames (`differs`: the box and count of the pixels that differ; a recipe whose runs
+  differ lacks a step, such as an input taken in real time). The shots stay in
+  `clients/out/shell/<id>/run1/`, `run2/` (`<shot>.npz`, a clip's `<name>/t<ms>.npz` and
+  `<name>.txt`; never in git). `--record` writes `shell/kept/<group>.txt`: per shot
+  `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip <frames>@<first>-<last> <digest>`;
+  a later `run` says `ok`, `CHANGED` or `new` against it. Record again after a harness change that
+  can alter the original's side (as point 4 above).
+- **Probes:** a group's screens in `shell/<group>.screens.toml` (`learn`, h3drive's grid of 12
+  points that kept their value; with the clock frozen every point does, so give `--in` a box that
+  differs from every other screen: Load Game's menu is New Game's but for its title picture);
+  `screens.toml`'s and the buttons' (`[button.ok]`, `[button.cancel]`) are shared.
+- **Two instances:** `H3_RUN`, `WINEPREFIX` and `H3_DISPLAY` as for `h3drive.py` (each instance's
+  `setup.sh` first); a run ends its own instance's wineserver at each start.
+- **Limits:** the loading bar's steps (`loadprog.def`) are drawn while the game reads no clock, so
+  a shot taken once it is idle shows the bar full; the loading screen's fade is kept.
+
 ## The recipes' coordinates (800 × 600)
 
 | Where | Action | Point |
@@ -1249,7 +1300,9 @@ folder's `clock/`), it runs in real time until a command arrives in `ctl`, one l
 three numbers, below; since E17 M5 T4b2b an eighth, 1 when `BINKW32.DLL`'s own `timeGetTime`
 import points at the same clock: the result window's clip plays on the virtual clock, its reads
 not counted as the game's; since E17 M5 T5b2 a ninth, the Miles imports hooked in a `sound`
-run, below; since E17 M5 T8b1 a tenth, the sample calls the hooks could not follow, below).
+run, below; since E17 M5 T8b1 a tenth, the sample calls the hooks could not follow, below;
+since E27 M1 T2 an eleventh, 1 when `SMACKW32.DLL`'s `timeGetTime` points at the clips' clock too:
+the start's 3DO logo and the end screens' clips are Smacker ones).
 `Game.ack(need=True)`, which every check reads once, fails on an ack of fewer fields: a stale
 `xdd.dll` (rerun `setup.sh`, which builds it). A game that keeps reading a stopped clock is idle
 at that time: `Game.clock` waits for 20 reads (with sound the main thread's, growing over three
@@ -1258,8 +1311,9 @@ equal dumps (Wine may draw a moment later).
 
 ## The clips
 
-E17 M5 T4b2b (`docs/epics/E17-design.md` §7.21): the run directory's `VIDEO.VID` is the user's
-`battle-videos.vid`, so the result window plays its clip (`result-retreat`, `result-surrender`,
+E17 M5 T4b2b (`docs/epics/E17-design.md` §7.21): the run directory's `VIDEO.VID` holds the user's
+`battle-videos.vid` (since E27 M1 T2 joined with `shell-videos.vid`: the start's, the score
+screen's and the lost screen's clips, `SMACKW32.DLL` on the virtual clock too), so the result window plays its clip (`result-retreat`, `result-surrender`,
 `end`, `defended`): frame 0 from the window's opening, frame k from ⌊1000 (k + 2) / 15⌋ ms, a loop's
 first at the start's last decode. Since E17 M5 T8b1 (R7-2) `setup.sh` says which archive it
 copied, a battle capture fails at its start when the ack's eighth field is not 1 (the clip's

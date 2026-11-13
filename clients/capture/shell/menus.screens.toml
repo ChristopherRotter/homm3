@@ -1,0 +1,20 @@
+# The screens the capture driver recognises (E17 M2 T1, *provisional*; h3drive.py learn):
+# a screen shows when every probe [x, y, 5-6-5 value] matches. Numbers only (ADR-0009).
+# [button.<name>] (M2 T6, h3adv.py learn-button): a button found anywhere on the screen,
+# its probes relative to its top-left corner, `size` its width and height.
+
+[load_game_menu]
+probes = [
+    [118, 325, 4194],
+    [145, 316, 10566],
+    [172, 343, 16903],
+    [280, 316, 21163],
+    [271, 343, 27401],
+    [361, 316, 29616],
+    [379, 325, 35889],
+    [208, 343, 44308],
+    [316, 316, 48597],
+    [253, 325, 52825],
+    [361, 343, 57047],
+    [235, 343, 61277],
+]

@@ -159,7 +159,7 @@ TURN_LIMIT = 30000
 # The most values `roll:<name>:<a>,<b>,...` queues (xdd.c's QUEUE).
 QUEUE = 8
 # The fields of xdd.dll's ack (xdd.c's `control`; `Game.ack`).
-ACK_FIELDS = 10
+ACK_FIELDS = 13
 
 
 class Unreadable(RuntimeError):
@@ -375,7 +375,7 @@ def load_screens():
 class Game:
     """One run of the original under Wine with our clock."""
 
-    def __init__(self, out, sound=False, army_info=None, shades=None):
+    def __init__(self, out, sound=False, army_info=None, shades=None, frozen=None):
         self.out = Path(out)
         self.out.mkdir(parents=True, exist_ok=True)
         self.clock_dir = self.out / "clock"
@@ -399,6 +399,9 @@ class Game:
         # holds (`act`), which `stop` lets go if the run left them down.
         self.keys_held = set()
         self.right_held = self.left_held = False
+        # E27 M1 T2 (h3shell.py): the clock's time from the game's first read, frozen there
+        # (xdd.dll's H3FROZEN), or None: real time until the first command, as before.
+        self.frozen = frozen
 
     # -- the process ------------------------------------------------------------------------
     def start(self, map_path=None):
@@ -438,6 +441,8 @@ class Game:
         self.clock_dir.mkdir()
         e = env()
         e["H3CLOCK"] = "Z:" + str(self.clock_dir.resolve()).replace("/", "\\")
+        if self.frozen is not None:
+            e["H3FROZEN"] = str(self.frozen)
         sound_settings(self.sound)
         if self.army_info is not None:
             # Read after `sound_settings` waited for the wineserver (the registry saved).
@@ -570,7 +575,9 @@ class Game:
         and (M3 T7b-2b-1) the draws forced, the forced draws pending and the calls redirected, and
         (E17 M4 T3a) the roll commands and forced values it refused, (E17 M5 T4b2b) 1 when the
         clips' clock is the virtual one, (E17 M5 T5b2) the Miles imports hooked and (E17 M5
-        T8b1, R7-5) the sample calls the hooks could not follow: ACK_FIELDS, padded with 0; None
+        T8b1, R7-5) the sample calls the hooks could not follow, (E27 M1 T2) 1 when the Smacker
+        clips' clock is the virtual one too, the clips' reads since the command and 1 when
+        BinkGetSummary goes through xdd.dll's guard: ACK_FIELDS, padded with 0; None
         before the first. With `need` (a check reads it once so, R7-10) an error instead of None,
         and one naming a stale xdd.dll (built before xdd.c's last field) for fewer fields."""
         try:

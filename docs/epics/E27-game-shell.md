@@ -140,6 +140,12 @@ The user, 2026-11-12 (M1 T1b3b's start and its reading; `CLT-Q99`):
     ranked among the first ten rows only; one that misses them always replaces the eleventh row,
     shown highlighted (design §5.6).
 
+The user, 2026-11-13 (M1 T2's start):
+
+18. **T2 kept whole** (the cut offered: the tool and the start with the menus, then §2's other
+    screens, §3, §4 with §5), its recipe groups recorded by sub-agents, two at a time on their own
+    Wine instances.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the

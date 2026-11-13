@@ -1,0 +1,14 @@
+# E27 M1 T2: the original's shell captures of shell/start.toml (h3shell.py run --record): per shot
+# `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip <frames>@<first>-<last> <digest>`; numbers only.
+start-plain menu t0 e62581b7ce362971
+start-bink logo clip 68@0-5977 860a3323c1a880b2
+start-bink clips clip 2519@6000-180480 94fba25cd372b2ba
+start-bink menu t180480 e62581b7ce362971
+start-smacker clips clip 2586@0-189600 99438fb5c15c5f0a differs clip 2586@0-189590 e5023928774ec68b
+start-smacker menu t189600 e62581b7ce362971 differs t189590 e62581b7ce362971
+start-skip-key before t2000 48b6507c606e1346
+start-skip-key menu t2200 e62581b7ce362971
+start-skip-left before t12000 352ce7162dd4d11a
+start-skip-left menu t12200 e62581b7ce362971
+start-skip-right before t40000 774cf6dc4cf3c381
+start-skip-right menu t40200 e62581b7ce362971
