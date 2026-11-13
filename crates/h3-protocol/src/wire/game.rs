@@ -38,7 +38,7 @@ pub use command::{
     GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
     StandReject, SystemCommand, TownCommand, TownReject, UniversityAnswer,
 };
-pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
+pub use event::{AdventureEvent, GameEvent, HeroChange, NothingWhy, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
 pub use manifest::{GameKeyTables, GameManifest, GameRecordHeader, MapIdentity};
 pub use query::{DIRECTIONS, GameAnswer, GameQuery, Moves, TownOffer};
@@ -144,6 +144,8 @@ pub struct Adventure {
     pub known: Vec<KnownObject>,
     /// The empty boats it sees, in tile order.
     pub boats: Vec<Boat>,
+    /// The object types whose kind mark its team holds, in type order (ADV-BON-009, E08 T115b).
+    pub kinds: Vec<u16>,
 }
 
 impl Adventure {
@@ -351,6 +353,9 @@ pub enum Known {
         /// It is emptied.
         emptied: bool,
     },
+    /// That the player's team visited it, nothing more (a Fountain of Fortune, a Magic Spring;
+    /// E08 T115b).
+    Visited,
 }
 
 /// An empty boat as a player sees it (ADV-FOG-008): never its owner or captain, nor its index.

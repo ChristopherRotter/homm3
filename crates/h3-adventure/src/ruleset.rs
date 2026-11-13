@@ -261,6 +261,16 @@ impl Weekday {
     pub const fn get(self) -> u8 {
         self.0
     }
+    /// The day's place in a kind's week of amounts, from 0 ([`ObjectKind::Bonus`]'s `days`): a
+    /// part with a bonus kind has at most [`BONUS_DAYS`] days a week (its check), so a later day
+    /// takes the last place.
+    pub(crate) const fn index(self) -> usize {
+        if self.0 as usize > BONUS_DAYS {
+            BONUS_DAYS - 1
+        } else {
+            self.0 as usize - 1
+        }
+    }
 }
 
 /// The months' parameters in a pack (GAM-CAL-003, ADV-MON-014, E08 T83a; survey

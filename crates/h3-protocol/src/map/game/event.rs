@@ -5,7 +5,10 @@
 
 use alloc::vec::Vec;
 
-use h3_adventure::{AdventureEvent as EngineAdventure, AdventureEventKind, ShipyardBlock as Block};
+use h3_adventure::{
+    AdventureEvent as EngineAdventure, AdventureEventKind, NothingWhy as Why,
+    ShipyardBlock as Block,
+};
 use h3_content::Formation as EngineFormation;
 use h3_game::{GameEvent as EngineEvent, HeroChange as EngineChange, Viewer};
 use h3_heroes::OfferLevels as EngineLevels;
@@ -19,7 +22,8 @@ use super::{
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
-    AdventureEvent, Formation, GameEvent, HeroChange, HireTarget, OfferLevels, ShipyardBlock,
+    AdventureEvent, Formation, GameEvent, HeroChange, HireTarget, NothingWhy, OfferLevels,
+    ShipyardBlock,
 };
 
 /// The events `viewer` may see, in order, on the wire (`h3_game::project`); the others are
@@ -622,6 +626,46 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
             hero: hero.raw(),
             object_type: object_type.raw(),
             held,
+        },
+        K::NothingGained {
+            hero,
+            object_type,
+            anchor,
+            why,
+        } => AdventureEvent::NothingGained {
+            hero: hero.raw(),
+            object_type: object_type.raw(),
+            anchor: pos(anchor),
+            why: match why {
+                Why::Visited => NothingWhy::Visited,
+                Why::Full => NothingWhy::Full,
+                Why::Emptied => NothingWhy::Emptied,
+            },
+        },
+        K::SirensLoss {
+            hero,
+            slot,
+            creature,
+            count,
+        } => AdventureEvent::SirensLoss {
+            hero: hero.raw(),
+            slot,
+            creature: creature.raw(),
+            count,
+        },
+        K::CreaturesUpgraded {
+            hero,
+            slot,
+            from,
+            to,
+        } => AdventureEvent::CreaturesUpgraded {
+            hero: hero.raw(),
+            slot,
+            from: from.raw(),
+            to: to.raw(),
+        },
+        K::KindKnown { object_type } => AdventureEvent::KindKnown {
+            object_type: object_type.raw(),
         },
     }
 }

@@ -149,7 +149,11 @@ pub mod wire;
 /// a player's turn timer, its battle's chess clocks against another player's hero, its level-up's
 /// time, the game waiting for another's level-up); the system's commands at a timer's end (a
 /// turn ended, a decision's default answer, a timed-out battle side played by the computer).
-pub const PROTOCOL_VERSION: u32 = 58;
+/// v59 (E08 T115b, the adventure lane's, `cross-lane`): the bonus visitables' adventure events
+/// `NothingGained` (with `wire::game::NothingWhy`), `SirensLoss`, `CreaturesUpgraded` and
+/// `KindKnown`; the adventure observation's `kinds` (the kind marks the viewer's team holds) and
+/// the known object's `Known::Visited` (a Fountain of Fortune, a Magic Spring).
+pub const PROTOCOL_VERSION: u32 = 59;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

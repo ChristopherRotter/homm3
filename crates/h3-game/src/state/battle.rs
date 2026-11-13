@@ -557,7 +557,8 @@ impl GameState {
         self.heroes_after_battle(rules, sides, outcome, winner, sink);
         // rule: GAM-BAT-014
         let fought: Vec<HeroId> = heroes.iter().flatten().copied().collect();
-        self.adventure.clear_battle_bonuses(&fought);
+        self.adventure
+            .clear_battle_bonuses(rules.core(), rules.adventure(), &fought);
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let surrendered = match result {
             BattleResult::Surrender(side) => Some(side),

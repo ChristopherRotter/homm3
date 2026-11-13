@@ -104,6 +104,7 @@ mod records;
 mod revisits;
 mod rewards;
 mod shipyards;
+mod visitables;
 mod visits;
 mod weekly;
 
@@ -319,6 +320,10 @@ pub struct StaticMap {
     /// The Refugee Camps' indices, in object order (E08 T94a; increment 10's design note §5:
     /// [`ObjectKind::RefugeeCamp`]), the camp index. Follows from the objects.
     camps: Vec<usize>,
+    /// The Fountains of Fortune's indices, in object order (E08 T115b; increment 12's design note
+    /// §5: [`ObjectKind::FountainOfFortune`]); the state's fortunes are by their place here.
+    /// Follows from the objects.
+    fountains: Vec<usize>,
     /// Each camp's kind's levels, by camp index (E08 T94b): what its draws read
     /// ([`dwellings::draw_camp`]). Follows from the objects.
     camp_levels: Vec<[u8; 2]>,
@@ -405,6 +410,7 @@ impl StaticMap {
             ownables: Vec::new(),
             towns: Vec::new(),
             weeklies: Vec::new(),
+            fountains: Vec::new(),
             dwellings: Vec::new(),
             full_weeks: Vec::new(),
             camps: Vec::new(),
@@ -599,7 +605,8 @@ impl StaticMap {
     /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]); since
     /// E08 T94a the dwellings and the camps ([`Self::dwellings`], [`Self::camps`]), after the
     /// random dwellings resolved; since T94b each dwelling's week as it begins and each camp's
-    /// levels; since E09 T8a1 the towns ([`Self::towns`]).
+    /// levels; since E09 T8a1 the towns ([`Self::towns`]); since E08 T115b the Fountains of
+    /// Fortune ([`Self::fountains`]).
     fn list_economy(&mut self, core: &Ruleset, part: &AdventureRuleset) {
         for (index, object) in self.objects.iter().enumerate() {
             let kind = object
@@ -622,6 +629,9 @@ impl StaticMap {
             if let Some(&ObjectKind::RefugeeCamp { levels }) = kind {
                 self.camps.push(index);
                 self.camp_levels.push(levels);
+            }
+            if matches!(kind, Some(ObjectKind::FountainOfFortune { .. })) {
+                self.fountains.push(index);
             }
         }
     }
@@ -1067,6 +1077,17 @@ impl StaticMap {
         self.camps.binary_search(&index).ok()
     }
 
+    /// The Fountains of Fortune's indices, in object order (E08 T115b; increment 12's design note
+    /// §5): the state's fortunes are by their place here.
+    pub fn fountains(&self) -> &[usize] {
+        &self.fountains
+    }
+
+    /// The place of the object at `index` among the Fountains of Fortune, if it is one.
+    pub fn fountain_index(&self, index: usize) -> Option<usize> {
+        self.fountains.binary_search(&index).ok()
+    }
+
     /// The objects visited from `pos`, by index in map order, if a typed one is among them (none
     /// for a tile only blockers are visited from, or one off the map). A visit concerns the last
     /// of them still on the map ([`AdventureState::visit_at`], E08 T14a).
@@ -1365,6 +1386,19 @@ pub struct AdventureState {
     /// the week's growth leaves below a whole creature ([`Self::start_week`], T85a). A persistent
     /// table, as [`Self::army_left`]: empty, a fork copies nothing.
     fractions: Table<u8>,
+    /// Each Fountain of Fortune's value, the luck its visit gives, by its place among the static
+    /// map's fountains (ADV-BON-003, E08 T115b; increment 12's design note §5, §8.2): drawn when
+    /// the game is built and at each week's step with the weekly objects and the camps, in object
+    /// order; none for a map without one, else one block the forks share, the week's step making
+    /// a new one. Never shown (ADR-0016 point 6: the visitor learns it as its hero's bonus).
+    fortunes: Option<Arc<[i8]>>,
+    /// The Magic Springs' entrances emptied this week, by tile, sorted (ADV-BON-007, E08 T115b;
+    /// increment 12's design note §5, §8.4, D-62): **none while every entrance is full**, when the
+    /// game is built and after each week's step, which drops it ([`Self::start_week`]); a visit
+    /// that empties one makes it or copies it, the forks share it. *Agent's call* (design note §5
+    /// had a bit per entrance of a static list): the emptied tiles alone, so no static list, and
+    /// no block and an empty one hash alike. Never shown (ADR-0016 point 6).
+    springs: Option<Arc<Vec<Pos>>>,
 }
 
 impl AdventureState {
@@ -1418,7 +1452,7 @@ impl AdventureState {
         // rule: ADV-DWL-005
         let refused = dwellings::refused_tiles(part, &map, &setup.map.objects);
         let owners = economy::owners_at_start(&map, &setup.map.objects);
-        let (weekly, camps) = economy::first_week(core, part, &map, draws);
+        let (weekly, camps, fortunes) = economy::first_week(core, part, &map, draws);
         let unexplored = BitGrid::new(map.width(), map.height(), map.levels());
         let mut state = Self {
             map: Arc::new(map),
@@ -1439,6 +1473,8 @@ impl AdventureState {
             camps,
             fractions: Table::new(),
             visited: None,
+            fortunes,
+            springs: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero, &refused)?;
@@ -2282,20 +2318,26 @@ impl AdventureState {
     /// which a monolith's exit is drawn (ADV-TEL-003). Since T105a2 a Whirlpool
     /// ([`Self::visit_whirlpool`]): its loss, then the jump with the hero's boat. Since T105b1 a
     /// jump's exit under a hero gives the meeting or the battle with the held jump. Since T114a1 a
-    /// garrison ([`Self::visit_garrison`]): its battle at once, or its flag.
+    /// garrison ([`Self::visit_garrison`]): its battle at once, or its flag. Since T115b the
+    /// fifteen bonus visitables (`visitables.rs`, ADV-BON-002 to -008): the `bonus` kinds by
+    /// `weekday`, the day of the week ([`Self::visit_bonus`]), the Fountain of Fortune
+    /// ([`Self::visit_fortune`]), the Magic Well and the Magic Spring ([`Self::visit_well`],
+    /// [`Self::visit_spring`]), the Stables ([`Self::visit_stables`]) and the Sirens
+    /// ([`Self::visit_sirens`]).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005, ADV-VIS-001, ADV-VIS-002, ADV-VIS-003, ADV-VIS-004
-    // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001
+    // rule: ADV-VIS-005, ADV-PIK-004, ADV-PIK-017, ADV-DWL-004, ADV-RFG-001, ADV-BON-002
     fn visit<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
         visit: StepVisit<'_>,
-        (_weekday, draws): (Weekday, &mut Rng),
+        (weekday, draws): (Weekday, &mut Rng),
         sink: &mut S,
     ) -> AdventureOutcome {
         let core = rules.0;
         let object = (visit.object, visit.object_type);
         let anchor = self.object_at(visit.object).anchor;
+        let visited = (visit.object, visit.object_type, anchor);
         let offer = |kind| Offer {
             hero,
             object_type: visit.object_type,
@@ -2341,12 +2383,14 @@ impl AdventureState {
             Effect::Monster => outcome = self.visit_monster(rules, hero, object),
             Effect::Chest(chest) => outcome = self.visit_chest(rules, hero, object, chest, sink),
             Effect::Artifact => outcome = self.visit_artifact(rules, hero, object, sink),
-            Effect::Gift(gift) => outcome = self.visit_gift(rules, (player, hero), object, gift),
-            Effect::Shrine => outcome = self.visit_shrine(rules, (player, hero), visit.object),
-            Effect::WitchHut => outcome = self.visit_witch_hut(rules, (player, hero), visit.object),
+            Effect::Gift(gift) => {
+                outcome = self.visit_gift(rules, (player, hero), object, gift, sink);
+            }
+            Effect::Shrine => outcome = self.visit_shrine(rules, (player, hero), object, sink),
+            Effect::WitchHut => outcome = self.visit_witch_hut(rules, (player, hero), object, sink),
             Effect::Scholar => outcome = self.visit_scholar(rules, hero, object, sink),
             Effect::University(price) => {
-                outcome = self.visit_university((player, hero), object, price);
+                outcome = self.visit_university(rules.1, (player, hero), object, (price, sink));
             }
             Effect::Find(find) => {
                 outcome = self.visit_find(rules, (player, hero), object, find, sink);
@@ -2380,6 +2424,27 @@ impl AdventureState {
             }
             Effect::Garrison => {
                 outcome = self.visit_garrison((core, rules.1), (player, hero), object, sink);
+            }
+            Effect::Bonus {
+                mark,
+                days,
+                points,
+                drain,
+            } => {
+                let bonus = (mark, days[weekday.index()]);
+                let visitor = (player, hero);
+                self.visit_bonus(rules.1, visitor, visited, bonus, (points, drain), sink);
+            }
+            Effect::Fortune(mark) => self.visit_fortune((player, hero), visited, mark, sink),
+            Effect::Well => outcome = self.visit_well(rules, (player, hero), visited, sink),
+            Effect::Spring => {
+                outcome = self.visit_spring(rules, (player, hero), (visited, visit.tile), sink);
+            }
+            Effect::Stables { points, from, to } => {
+                self.visit_stables((player, hero), visited, (points, from, to), sink);
+            }
+            Effect::Sirens { mark, keep } => {
+                outcome = self.visit_sirens((player, hero), visited, (mark, keep), sink);
             }
             Effect::PandoraBox => outcome = self.ask(hero, object, OfferKind::OpenBox),
             Effect::Pyramid => outcome = self.ask(hero, object, OfferKind::SearchPyramid),
@@ -3058,7 +3123,8 @@ impl CanonicalHash for AdventureState {
     /// v18 the owners and the weekly contents (`economy.rs`' `hash_economy`); since v19 the
     /// monsters' fractions as their number and, by object index, the index and the fraction;
     /// since v20 the dwellings' counts and guards as they stand, then the camps' creatures and
-    /// counts (`dwellings.rs`' `hash_dwellings`).
+    /// counts (`dwellings.rs`' `hash_dwellings`); since v24 the Fountains' values and the Springs'
+    /// emptied entrances (`visitables.rs`' `hash_visitables`), the kind marks in the flags.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -3140,6 +3206,7 @@ impl CanonicalHash for AdventureState {
             h.write_u8(fraction);
         }
         self.hash_dwellings(h);
+        self.hash_visitables(h);
     }
 }
 

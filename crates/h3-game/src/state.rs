@@ -11,15 +11,15 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureOutcome, AdventureState, ArmyRef, ArmySlot, Choice, ChoiceKind, Exchange, Garrison,
-    HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick,
-    Pos, TownReveal, UniversityVisit, Weekday,
+    AdventureOutcome, AdventureState, ArmyRef, ArmySlot, Choice, ChoiceKind, Drowned, Exchange,
+    Garrison, HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer,
+    OfferKind, Pick, Pos, TownReveal, UniversityVisit, Weekday,
 };
 use h3_content::{HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
 use h3_heroes::{
     ArtifactInstance, HeroChange, HeroDetails, LevelUp, OfferLevels, Offers, SlotState,
-    meeting_spells, university_slot,
+    gained_experience, meeting_spells, university_slot,
 };
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
@@ -618,6 +618,9 @@ impl GameState {
                 }
                 self.give_hero(rules, player, gains, sink);
             }
+            if let Some(drowned) = outcome.drowned {
+                self.give_drowned(rules, player, &drowned, sink);
+            }
             next = outcome
                 .offer
                 .and_then(|offer| self.open(rules, player, offer, sink));
@@ -664,6 +667,37 @@ impl GameState {
             if let Some(dialog) = outcome.hire {
                 self.open_hire(player, dialog, sink);
             }
+        }
+    }
+
+    /// Gives `player`'s hero the experience of what a Sirens' visit took from its army
+    /// (ADV-BON-008, E08 T115b; increment 12's design note §9; survey `E08-garrisons-bonuses.md`
+    /// §10.5): the lost creatures' hit points (the battle part's: the adventure does not read
+    /// them) summed, saturating, as the battle's experience is (GAM-BAT-002), through
+    /// `h3_heroes::gained_experience` (HER-EXP-001's form with Learning), then given with its levels
+    /// ([`Self::give_hero`]); nothing for none.
+    // rule: ADV-BON-008
+    fn give_drowned<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        drowned: &Drowned,
+        sink: &mut S,
+    ) {
+        let hit_points = |c| rules.battle().creature(c).map_or(0, |c| c.hit_points);
+        let base = (drowned.lost.iter())
+            .map(|&(creature, count)| hit_points(creature).saturating_mul(count))
+            .fold(0_u32, u32::saturating_add);
+        let experience = self
+            .hero(drowned.hero)
+            .map_or(0, |details| gained_experience(details, rules.core(), base));
+        if experience > 0 {
+            let gains = HeroGains {
+                hero: drowned.hero,
+                changes: Vec::new(),
+                experience,
+            };
+            self.give_hero(rules, player, gains, sink);
         }
     }
 
