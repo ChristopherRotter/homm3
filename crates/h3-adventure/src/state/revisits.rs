@@ -55,8 +55,10 @@ impl AdventureState {
     /// meets as it stands now ([`Self::visit_at`]) when the step enters it and visits it, none
     /// for a tile no object is visited from, a neighbour-visited object's (a hero never stands
     /// there; a town defended against `player` is visited from the tile before, TWN-VIS-001), a
-    /// border gate the player passes (ADV-VIS-005) or an object whose visit is not built.
-    // rule: ADV-TEL-008
+    /// border gate the player passes (ADV-VIS-005) or an object whose visit is not built. A
+    /// garrison of the player's team, passed on the way, is revisited (its exchange, ADV-GAR-003,
+    /// E08 T114a2; increment 12's design note §7: `StepVisit::visited_at_end`).
+    // rule: ADV-TEL-008, ADV-GAR-004
     fn revisit_at<'p>(
         &self,
         part: &'p AdventureRuleset,
@@ -67,7 +69,7 @@ impl AdventureState {
             return None;
         }
         self.visit_at(part, player, at)
-            .filter(|visit| visit.mode == Visit::Enter && !visit.pass)
+            .filter(|visit| visit.mode == Visit::Enter && visit.visited_at_end())
     }
 
     /// `player`'s heroes whose `Revisit` [`Self::apply`] accepts now, in the order of their ids

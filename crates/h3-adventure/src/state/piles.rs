@@ -190,12 +190,13 @@ impl AdventureState {
     /// captured for the hero's owner (E09 T8b1, TWN-CAP-003: [`Self::town_won`],
     /// [`AdventureOutcome::capture`], which the game applies); a map garrison whose army the
     /// hero beat is flagged for the hero's owner (ADV-GAR-002, E08 T114a1: [`Self::flag_won`],
-    /// the original's `garrison_set_owner` 0x4C6960 after the battle; its exchange comes with
-    /// T114a2). Read when it is given: the levels'
+    /// the original's `garrison_set_owner` 0x4C6960 after the battle), then its exchange opens
+    /// (ADV-GAR-003, E08 T114a2: [`AdventureOutcome::exchange`], the original's dialog after the
+    /// flag; none for a winner no longer on the map). Read when it is given: the levels'
     /// skills decide what the hero can receive or learn (the Pyramid's spell, E7-22). Nothing when
     /// none of them is at `tile` any more.
     // rule: GAM-DEC-007, ADV-PIK-004, ADV-PIK-013, ADV-TCH-008, ADV-OBJ-007, ADV-MIN-002
-    // rule: ADV-DWL-004, TWN-CAP-003, ADV-GAR-002
+    // rule: ADV-DWL-004, TWN-CAP-003, ADV-GAR-002, ADV-GAR-003
     pub fn give_won<S: Sink>(
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
@@ -215,8 +216,11 @@ impl AdventureState {
         }
         if let Some(garrison) = self.garrison_at(part, tile) {
             self.flag_won((core, part), hero, garrison, sink);
-            // stub: ADV-STUB-17 (the exchange after the levels, T114a2)
-            return AdventureOutcome::default();
+            return if self.hero(hero).is_some() {
+                self.exchange(hero, garrison)
+            } else {
+                AdventureOutcome::default()
+            };
         }
         match self.tile_object(part, tile) {
             Some((index, _, ty)) if matches!(ty.kind, ObjectKind::Pyramid(_)) => {

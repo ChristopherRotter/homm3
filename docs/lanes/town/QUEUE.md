@@ -50,6 +50,18 @@ income, §54); **T29** the gates (§55, §47); **T30** the audit, the closure, i
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
+  taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the
+  decisions, tag 8), so your T26a2's bump is v30; adventure replay format **v13** (`m<index>:<slot>`,
+  a map garrison's army) and protocol **v52** (the server lane's, `cross-lane`); every adventure
+  golden replay re-recorded (versions and hash lines only). The one owner rule is in
+  `h3-adventure`'s `state/manage.rs`: `held` gives each army with its bar ownership (a hero's and
+  the group the player's, a map garrison its owner's when removable, nobody's when not), so your
+  `ArmyRef::Garrison(town)` gets its arm there (its town's owner) and `Held::keeps_last` stays false
+  for it; `h3-game`'s `Together::Exchange { hero, army }` holds a stationary `ArmyRef` (a town's
+  garrison may be its `army`), and `Together::admits` refuses a map garrison its decision does not
+  hold (`DecisionOpen`; alone `NotTogether`). Design note §13's *As built* (`E08-design.md`).
+
 - 2026-11-12 (the adventure lane, E08 T113b, `adventure/e08-t113b`; **two versions taken, for
   your T26a and T28a**): map import **v22** (the garrisons and the bonus visitables imported, a
   garrison's body in the new `h3_adventure::Holds::Garrison { army, removable }`) and adventure

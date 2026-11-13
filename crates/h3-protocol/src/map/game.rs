@@ -200,6 +200,19 @@ fn decision_view(d: &DecisionView) -> Decision {
             }
         }
         DecisionView::Hire(h) => Decision::Hire { hire: hire(h) },
+        DecisionView::Exchange {
+            hero,
+            garrison,
+            object,
+            removable,
+            army: stacks,
+        } => Decision::Exchange {
+            hero: hero.raw(),
+            garrison: *garrison,
+            object: object_ref(*object),
+            removable: *removable,
+            army: army(stacks),
+        },
     }
 }
 

@@ -118,8 +118,15 @@ pub mod wire;
 /// `GameQuery` (`wire::game::GameQuery`: a hero's moves, a town's hall, a battle's targets), the
 /// answer `GameAnswer` (unnumbered, not recorded; `wire::game::Moves`, a path tree), and at the
 /// game's start each player's town events that fired at its turn start inside the build, in a
-/// `GameEvents` before any turn: the message is unchanged, its order is new.
-pub const PROTOCOL_VERSION: u32 = 50;
+/// `GameEvents` before any turn: the message is unchanged, its order is new. v51 (E16 M5 T12): a
+/// whole game's fresh `GameSnapshot` past half a record's bound comes inside a battle too
+/// (`GameObservation::battle` holds it), and a battle's own `Snapshot` opens only a battle the
+/// player does not hold yet, by its identity: the messages are unchanged, their order is new. v52
+/// (E08 T114a2, the adventure lane's, `cross-lane`): a map garrison's exchange
+/// (`wire::game::Decision::Exchange`, the event `ExchangeOpened`), its army in the army commands
+/// (`wire::game::ArmyRef::MapGarrison`) and the one owner rule's refusals
+/// (`wire::game::ArmyReject`'s `NoGarrison`, `NotOwn`, `OnlyEmpty`).
+pub const PROTOCOL_VERSION: u32 = 52;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

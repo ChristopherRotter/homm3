@@ -688,9 +688,14 @@ fn a_record_is_cut_at_its_snapshots_within_its_bound() {
     let ids: Vec<PlayerId> = (0..=u8::MAX).take(players).map(PlayerId::new).collect();
     let mut sent = vec![Vec::new(); players];
     frames(&out, &mut sent);
-    // The bytes each player was sent since its last snapshot.
-    let mut since = vec![0; players];
-    let (mut fresh, mut held_back) = (0, 0);
+    // The bytes each player was sent since its last snapshot: the start's after its own.
+    let mut since: Vec<usize> = (sent.iter())
+        .map(|lines| {
+            let after = lines.iter().rev().take_while(|l| !snapshot(l));
+            after.map(|l| l.len() + 1).sum()
+        })
+        .collect();
+    let (mut fresh, mut in_battle) = (0, 0);
     for (seq, (actor, engine)) in replay.commands.iter().enumerate() {
         let seq = u32::try_from(seq).unwrap();
         out.clear();
@@ -711,11 +716,12 @@ fn a_record_is_cut_at_its_snapshots_within_its_bound() {
                     since[i] += frame.len() + 1;
                     continue;
                 }
-                // A fresh snapshot only past half the bound, as observed, outside a battle,
-                // after the command's other messages but the turn.
+                // A fresh snapshot only past half the bound, as observed (inside a battle too,
+                // E16 M5 T12: it holds the battle's view), after the command's other messages
+                // but the turn.
                 assert!(since[i] > BOUND / 2, "{seq}");
                 let observation = observe(session.state(), &rules, Viewer::Player(player));
-                assert!(observation.battle.is_none(), "{seq}");
+                in_battle += usize::from(observation.battle.is_some());
                 let message = ServerMessage::GameSnapshot {
                     n: number(&codec::decode_server(frame.as_bytes(), usize::MAX).unwrap()),
                     observation,
@@ -729,12 +735,9 @@ fn a_record_is_cut_at_its_snapshots_within_its_bound() {
                 since[i] = 0;
                 fresh += 1;
             }
-            // Past half the bound without one: a battle is open in the view.
-            if since[i] - turns > BOUND / 2 {
-                let o = observe(session.state(), &rules, Viewer::Player(player));
-                assert!(o.battle.is_some(), "{seq}");
-                held_back += 1;
-            }
+            // Never past half the bound without one but for the turns (E16 M5 T12: a battle
+            // held none back before).
+            assert!(since[i] - turns <= BOUND / 2, "{seq}");
             sent[i].extend(frames.iter().cloned());
             // The record: from a snapshot on, every frame since; within the bound unless it
             // begins with the newest snapshot, the earlier one beyond it.
@@ -755,7 +758,7 @@ fn a_record_is_cut_at_its_snapshots_within_its_bound() {
         }
     }
     assert!(fresh > 10, "{fresh}");
-    assert!(held_back > 0, "{held_back}");
+    assert!(in_battle > 0, "{in_battle}");
 }
 
 #[test]
@@ -786,6 +789,73 @@ fn a_players_own_rejections_keep_its_record_within_its_bound() {
         assert!(out[0].frame.starts_with(r#"{"GameRejected":"#));
         fresh += out.len() - 1;
         let record = session.record(waiting).unwrap();
+        let mut lines = record.lines().skip(1);
+        assert!(lines.next().unwrap().starts_with(r#"{"GameSnapshot":"#));
+        let bytes: usize = record.lines().skip(1).map(|l| l.len() + 1).sum();
+        assert!(bytes <= bound, "{seq}: {bytes} of {bound}");
+    }
+    assert!(fresh >= 2, "{fresh}");
+    assert_eq!(session.state().state_hash(), hash);
+}
+
+#[test]
+fn a_players_own_rejections_inside_a_battle_keep_its_record_within_its_bound() {
+    // E16 M5 T12 (T7b's second finding): a fresh snapshot inside a battle too, holding it.
+    let (rules, setup, replay) = one("duel-s1-d28");
+    let start = |bound: usize| {
+        let options = GameOptions {
+            record_bytes: bound,
+            ..options(0)
+        };
+        let mut out = Vec::new();
+        let manifest = manifest(&rules, MAP);
+        GameSession::start(&rules, &setup, replay.seed, manifest, options, &mut out).unwrap()
+    };
+    // The replay up to its first command that opens a battle for a player.
+    let to_battle = |session: &mut GameSession<'_>| {
+        for (seq, (actor, engine)) in replay.commands.iter().enumerate() {
+            let mut out = Vec::new();
+            let seq = u32::try_from(seq).unwrap();
+            match *actor {
+                Actor::Player(player) => session.play(player, seq, command(engine), &mut out),
+                Actor::System => session.system(command(engine), &mut out),
+            }
+            .unwrap();
+            let players = (0..=u8::MAX).take(session.state().players());
+            if let Some(player) = players
+                .map(PlayerId::new)
+                .find(|&p| session.state().battle(p).is_some())
+            {
+                return player;
+            }
+        }
+        panic!("no battle");
+    };
+    let mut probe = start(usize::MAX);
+    let fighting = to_battle(&mut probe);
+    let observation = observe(probe.state(), &rules, Viewer::Player(fighting));
+    assert!(observation.battle.is_some());
+    let message = ServerMessage::GameSnapshot { n: 1, observation };
+    let bound = 2 * codec::encode_text(&message).len() + (4 << 10);
+    let mut session = start(bound);
+    assert_eq!(to_battle(&mut session), fighting);
+    let (mut fresh, hash) = (0, session.state().state_hash());
+    for seq in 0..2_000 {
+        let mut out = Vec::new();
+        let refused = session.play(fighting, 1 << 20 | seq, GameCommand::EndTurn {}, &mut out);
+        assert!(refused.is_err());
+        assert!(out.iter().all(|o| o.to == fighting));
+        assert!(out[0].frame.starts_with(r#"{"GameRejected":"#));
+        for o in &out[1..] {
+            // The fresh snapshot holds the battle: the battle's own `Snapshot` is not resent.
+            let m = codec::decode_server(o.frame.as_bytes(), usize::MAX).unwrap();
+            let ServerMessage::GameSnapshot { observation, .. } = m else {
+                panic!("{m:?}");
+            };
+            assert!(observation.battle.is_some());
+            fresh += 1;
+        }
+        let record = session.record(fighting).unwrap();
         let mut lines = record.lines().skip(1);
         assert!(lines.next().unwrap().starts_with(r#"{"GameSnapshot":"#));
         let bytes: usize = record.lines().skip(1).map(|l| l.len() + 1).sum();

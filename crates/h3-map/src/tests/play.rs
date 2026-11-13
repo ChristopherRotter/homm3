@@ -2815,6 +2815,11 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
     if let Some((hero, _)) = state.army_dialog(player) {
         return vec![vec![ArmyRef::Hero(hero), ArmyRef::Group]];
     }
+    // E08 T114a2: an exchange's hero and map garrison (GAM-DEC-009).
+    if let Some(exchange) = state.exchange(player) {
+        let garrison = ArmyRef::MapGarrison(exchange.garrison);
+        return vec![vec![ArmyRef::Hero(exchange.hero), garrison]];
+    }
     let heroes = state.adventure().heroes().iter();
     heroes
         .filter(|h| h.owner == player)
@@ -2823,7 +2828,7 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
 }
 
 /// The stack at `at` (E08 T52): in its hero's army on the map, in the acting player's army
-/// dialog's group, or in a town's garrison (E09 T8b2b).
+/// dialog's group, in a town's garrison (E09 T8b2b) or in a map garrison's army (E08 T114a2).
 fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> {
     let adventure = state.adventure();
     let army = match at.army {
@@ -2833,6 +2838,7 @@ fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> 
             .map()
             .town_object(town)
             .and_then(|index| adventure.town_garrison(index)),
+        ArmyRef::MapGarrison(index) => Some(adventure.garrison_army(index as usize)),
     };
     army.and_then(|army| army.iter().find(|s| s.slot == at.slot).copied())
 }
@@ -7291,7 +7297,7 @@ fn check_managing(state: &GameState, rules: &GameRuleset) -> Result<(), TestCase
         .flatten()
         .filter_map(|&army| match army {
             ArmyRef::Hero(hero) => Some(hero),
-            ArmyRef::Group | ArmyRef::Garrison(_) => None,
+            ArmyRef::Group | ArmyRef::Garrison(_) | ArmyRef::MapGarrison(_) => None,
         })
         .collect();
     let seed = state.state_hash();

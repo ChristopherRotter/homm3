@@ -226,6 +226,21 @@ fn event(e: &EngineEvent) -> GameEvent {
             object_type: object_type.raw(),
             anchor: pos(anchor),
         },
+        EngineEvent::ExchangeOpened {
+            player,
+            hero,
+            garrison,
+            object_type,
+            anchor,
+            removable,
+        } => GameEvent::ExchangeOpened {
+            player: player.raw(),
+            hero: hero.raw(),
+            garrison,
+            object_type: object_type.raw(),
+            anchor: pos(anchor),
+            removable,
+        },
         EngineEvent::ChoiceOpened {
             player,
             hero,

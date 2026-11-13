@@ -11,9 +11,9 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureOutcome, AdventureState, Choice, ChoiceKind, Garrison, HeroGains, HireDialog,
-    HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick, Pos, TownReveal,
-    UniversityVisit,
+    AdventureOutcome, AdventureState, ArmyRef, ArmySlot, Choice, ChoiceKind, Exchange, Garrison,
+    HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick,
+    Pos, TownReveal, UniversityVisit,
 };
 use h3_content::{HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
@@ -68,7 +68,8 @@ struct PlayerState {
 /// since E08 T51b a meeting (GAM-DEC-003) and an army dialog (GAM-DEC-004), during which its
 /// owner also manages the heroes (and the group) it holds together (GAM-MAN-001); since E08 T63a
 /// a choice (GAM-DEC-005) and a University (GAM-DEC-006); since E08 T95b a hire dialog
-/// (GAM-DEC-008).
+/// (GAM-DEC-008); since E08 T114a2 a map garrison's exchange (GAM-DEC-009), during which its owner
+/// manages the hero's army and the garrison's.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Decision {
     /// An offer, answered by its owner.
@@ -138,6 +139,17 @@ enum Decision {
         /// The dialog: the army the creatures join and their source.
         dialog: HireDialog,
     },
+    /// A map garrison's exchange (GAM-DEC-009, ADV-GAR-003; E08 T114a2, increment 12's design
+    /// note §13; the original's `garrison_exchange_dialog` 0x5D1130), closed by its owner's
+    /// `Close`: the visiting hero and the garrison, whose armies its owner's army commands name
+    /// together meanwhile (`Together::Exchange`), changed at once by the one owner rule; the close
+    /// only closes.
+    Exchange {
+        /// The hero's owner, who closes it.
+        owner: PlayerId,
+        /// The hero and the garrison.
+        exchange: Exchange,
+    },
 }
 
 /// What holds an army dialog's group (GAM-DEC-004 amended; E08 T84a): a join's (or a reward
@@ -149,6 +161,12 @@ pub(crate) enum Holder {
     Join,
     /// The mine at this object index.
     Mine(usize),
+}
+
+/// The object index a map garrison's reference names (`ArmyRef::MapGarrison`, E08 T114a2): past
+/// the objects when it does not fit a `usize`, so it names none.
+pub(crate) fn object_index(garrison: u32) -> usize {
+    usize::try_from(garrison).unwrap_or(usize::MAX)
 }
 
 /// The drawn level of a level-up decision: `view`'s level with its two offers and `offered`.
@@ -184,7 +202,8 @@ impl Decision {
             | Self::ArmyDialog { owner, .. }
             | Self::Choice { owner, .. }
             | Self::University { owner, .. }
-            | Self::Hire { owner, .. } => *owner == player,
+            | Self::Hire { owner, .. }
+            | Self::Exchange { owner, .. } => *owner == player,
             Self::Battle(battle) => battle.owners().contains(&Some(player)),
         }
     }
@@ -206,19 +225,24 @@ impl Decision {
     }
 
     /// What the decision holds together for its owner's management commands, if it is a
-    /// meeting or an army dialog (GAM-DEC-003, GAM-DEC-004; E08 T51b).
+    /// meeting, an army dialog (GAM-DEC-003, GAM-DEC-004; E08 T51b) or an exchange (GAM-DEC-009,
+    /// E08 T114a2).
     const fn together(&self) -> Option<Together> {
         match self {
             Self::Meeting { heroes, .. } => Some(Together::Meeting(*heroes)),
             Self::ArmyDialog { hero, .. } => Some(Together::Dialog(*hero)),
+            Self::Exchange { exchange, .. } => Some(Together::Exchange {
+                hero: exchange.hero,
+                army: ArmyRef::MapGarrison(exchange.garrison),
+            }),
             _ => None,
         }
     }
 }
 
 /// What a player's management commands may name together (ADR-0017 point 6, GAM-MAN-001; E08
-/// T51b): one hero at a time without an open decision, a meeting's two heroes, or an army
-/// dialog's hero and its group.
+/// T51b): one hero at a time without an open decision, a meeting's two heroes, an army dialog's
+/// hero and its group, or since E08 T114a2 an exchange's hero and stationary army.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Together {
     /// No decision open: each command names one hero.
@@ -227,6 +251,15 @@ pub(crate) enum Together {
     Meeting([HeroId; 2]),
     /// An open army dialog's hero, with its group (GAM-DEC-004).
     Dialog(HeroId),
+    /// An open exchange's hero with the stationary army it exchanges with (GAM-DEC-009, E08
+    /// T114a2; increment 12's design note §13): a map garrison's (`ArmyRef::MapGarrison`); the
+    /// town lane's town screen may hold a town's garrison so (E09 increment 3).
+    Exchange {
+        /// The visiting hero.
+        hero: HeroId,
+        /// The stationary army.
+        army: ArmyRef,
+    },
 }
 
 /// The state of a whole game.
@@ -520,7 +553,7 @@ impl GameState {
     /// T95b): an outcome has at most one of the offer, the battle, the meeting, the group without
     /// room, the choice, the University and the hire dialog.
     // rule: GAM-DEC-001, GAM-DEC-005, GAM-DEC-006, GAM-DEC-007, GAM-DEC-008, ADV-MON-006
-    // rule: TWN-SIE-002
+    // rule: TWN-SIE-002, GAM-DEC-009
     pub(crate) fn settle_outcome<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -584,6 +617,9 @@ impl GameState {
             }
             if let Some(garrison) = outcome.garrison {
                 self.open_leave_guards(player, garrison, sink);
+            }
+            if let Some(exchange) = outcome.exchange {
+                self.open_exchange(player, exchange, sink);
             }
             if let Some(choice) = outcome.choice {
                 self.open_choice(player, choice, sink);
@@ -765,6 +801,35 @@ impl GameState {
         self.open_army_dialog(player, (garrison.hero, garrison.guards, holder), sink);
     }
 
+    /// Opens a map garrison's exchange (GAM-DEC-009, ADV-GAR-003; E08 T114a2, increment 12's design
+    /// note §13) as `player`'s decision, told to it alone: the hero and the garrison by index,
+    /// type and anchor with its removable flag (`ExchangeOpened`), then each of the garrison's
+    /// stacks as what its slot holds (`StackChanged`, in slot order; none for an empty garrison).
+    // rule: GAM-DEC-009
+    fn open_exchange<S: Sink>(&mut self, player: PlayerId, exchange: Exchange, sink: &mut S) {
+        let (garrison, index) = (exchange.garrison, object_index(exchange.garrison));
+        sink.emit(GameEvent::ExchangeOpened {
+            player,
+            hero: exchange.hero,
+            garrison,
+            object_type: exchange.object_type,
+            anchor: exchange.anchor,
+            removable: self.adventure.garrison_removable(index).unwrap_or_default(),
+        });
+        for &stack in self.adventure.garrison_army(index) {
+            let at = ArmySlot {
+                army: ArmyRef::MapGarrison(garrison),
+                slot: stack.slot,
+            };
+            let stack = Some(stack);
+            sink.emit(GameEvent::StackChanged { player, at, stack });
+        }
+        self.push_decision(Decision::Exchange {
+            owner: player,
+            exchange,
+        });
+    }
+
     /// Opens the offer a command of `player` made (ADR-0017 point 10): as a pending decision of
     /// the player if its treasury can pay the price (GAM-DEC-001; a border guard's has none, so it
     /// always opens, ADV-VIS-004), told to it alone. Otherwise the offer does not open: a
@@ -856,7 +921,9 @@ impl GameState {
                 Ok(())
             }
             (
-                decision @ (Decision::Meeting { .. } | Decision::ArmyDialog { .. }),
+                decision @ (Decision::Meeting { .. }
+                | Decision::ArmyDialog { .. }
+                | Decision::Exchange { .. }),
                 Answer::Close,
             ) => {
                 self.close_exchange(rules, (player, at), decision, sink);
@@ -958,13 +1025,15 @@ impl GameState {
         })
     }
 
-    /// Closes `player`'s meeting or army dialog `decision` at `at` (GAM-DEC-003, GAM-DEC-004; E08
-    /// T51b), told to it (`DecisionClosed`): what is left in a join's army dialog's group is lost,
-    /// each stack told after it (`GroupLost`; the original destroys its local army when the dialog
-    /// returns, 0x5D11D0); a Leave Guards dialog's group stays on its mine as its guards (E08
-    /// T84a, ADV-MIN-002: `AdventureState::set_guards`; the original's dialog edits the mine
-    /// record's army itself), which every viewer then sees as the guards' hint.
-    // rule: GAM-DEC-003, GAM-DEC-004, ADV-MIN-002
+    /// Closes `player`'s meeting, army dialog or exchange `decision` at `at` (GAM-DEC-003,
+    /// GAM-DEC-004; E08 T51b; GAM-DEC-009, E08 T114a2), told to it (`DecisionClosed`): what is
+    /// left in a join's army dialog's group is lost, each stack told after it (`GroupLost`; the
+    /// original destroys its local army when the dialog returns, 0x5D11D0); a Leave Guards
+    /// dialog's group stays on its mine as its guards (E08 T84a, ADV-MIN-002:
+    /// `AdventureState::set_guards`; the original's dialog edits the mine record's army itself),
+    /// which every viewer then sees as the guards' hint; an exchange's commands changed the
+    /// garrison already, so its close only closes.
+    // rule: GAM-DEC-003, GAM-DEC-004, GAM-DEC-009, ADV-MIN-002
     fn close_exchange<S: Sink>(
         &mut self,
         rules: &GameRuleset,
@@ -1102,6 +1171,16 @@ impl GameState {
                 .object(mine)
                 .and_then(|object| object.object_type.map(|ty| (ty, object.anchor))),
             (_, _, Holder::Join) => None,
+        }
+    }
+
+    /// The exchange of `player`'s first open decision, if it is one (GAM-DEC-009, E08 T114a2): the
+    /// hero and the map garrison. While it is open the player manages the hero's army and the
+    /// garrison's (GAM-MAN-001, the one owner rule) and closes it with `Close`.
+    pub fn exchange(&self, player: PlayerId) -> Option<&Exchange> {
+        match self.first_decision(player)? {
+            Decision::Exchange { exchange, .. } => Some(exchange),
+            _ => None,
         }
     }
 
@@ -1448,8 +1527,9 @@ impl CanonicalHash for GameState {
     /// the price, whether it may be left), in v18 whether a guard's visit waits; 6 a University:
     /// its owner, hero, object type, anchor, its skills (length, then each), its price, in v18
     /// whether a guard's visit waits; since v25 (E08 T95b) 7 a hire dialog: its owner, its target
-    /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v19 (E08
-    /// T63b) the rests in holding order, as length
+    /// (0 a hero and its id), its source (0 an object: its index, type and anchor); since v29 (E08
+    /// T114a2) 8 a map garrison's exchange: its owner, its hero, the garrison's object index (a
+    /// `u32`), type and anchor; since v19 (E08 T63b) the rests in holding order, as length
     /// and entries ([`Held`]'s encoding); the game's stream; since v5 the store of heroes
     /// (length, then each hero's details by id, [`hash_details`]); since v23 (E09 T7b1) the hero
     /// pool (`HeroPool`'s encoding: the number of types, then each type's status, 0 free, 1 taken
@@ -1640,6 +1720,14 @@ impl CanonicalHash for GameState {
                     h.write_len(index);
                     object_type.hash_into(h);
                     anchor.hash_into(h);
+                }
+                Decision::Exchange { owner, exchange } => {
+                    h.write_u8(8);
+                    h.write_u8(owner.raw());
+                    h.write_u16(exchange.hero.raw());
+                    h.write_u32(exchange.garrison);
+                    exchange.object_type.hash_into(h);
+                    exchange.anchor.hash_into(h);
                 }
             }
         }
