@@ -292,13 +292,14 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
     clock, the side to act's running; a side whose clock runs out is played by the computer for
     the rest of the battle (each side's allowance, and the attacker's turn timer meanwhile,
     settled in T16 and confirmed there by the user: SRV-Q32, Fischer's base and increment, the
-    attacker's turn timer stopped meanwhile).
+    attacker's turn timer stopped meanwhile). T15's survey found the original stopping the
+    turn's timer for every battle, with no battle clock; the user kept this decision (SRV-Q33).
   - **A disconnected player has the turn timer only:** no grace or total of its own (SRV-Q19's
     stay the ranked battles'); its turn runs out as anyone's, its battle sides are played by
     the computer when its time does; an unlimited duration waits for it (the host's pause and the
     sweep as in 2a). No player is removed (part 2).
-  - **The level-up hold:** the owner's time an offer's setting (60 s by default; the survey may
-    give the original's dialog time as the default), then `default_answer`; the waiting players'
+  - **The level-up hold:** the owner's time an offer's setting (60 s by default, kept after
+    T15's survey: SRV-Q33), then `default_answer`; the waiting players'
     timers stopped meanwhile; the others learn only that the game waits.
 - **2c Spectators and long journals:** `Viewer::Spectator` (public facts only) through
   `h3-game`'s, `h3-adventure`'s and `h3-towns`' projections, **built by the server lane** in
@@ -316,17 +317,14 @@ player and a game's end (E10's victory and defeat), computer players on the map 
 whole games (a ladder of maps, after E28's ranked battles), the attack and shot previews (the
 client lane's 2026-11-04 request, when online battles need them).
 
-**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged):
+**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged; T14 to T16 done):
 
 - **T14 The system commands** done 2026-11-13 (`E16-log.md`: `GameCommand::System(SystemCommand)`,
   GAM-SYS-001 to GAM-SYS-003, ADR-0017 point 2 amended; replay format v14, protocol v56).
-- **T15 The survey of the original's turn timer** (where the original data are staged; the
-  code reading of `turn_timer_poll` 0x557AF0 and `turn_timer_start` 0x557D90 and their callers,
-  the manual's text, VCMI's chess clock as a reference): what ends a turn at its end (open
-  dialogs, a moving hero), the warnings (`turn_timer_start`'s half and quarter), what the clock
-  does in a battle and in a level-up's dialog (its time, if any: the hold's default), the "your
-  turn" window; `docs/exe/map.toml` entries; a question to the user where the original differs
-  from SRV-Q31's decisions.
+- **T15 The survey of the original's turn timer** done 2026-11-13 (`E16-log.md`;
+  `docs/epics/E16-timer-survey.md`: the original stops the turn's timer for every battle, the
+  level-up's dialog has the turn's time or 15 s, a two-picture box at the end is answered at
+  random; SRV-Q33: the user kept SRV-Q31, the 60 s and `default_answer` as built).
 - **T16 The clock in the session** done 2026-11-13 (`E16-log.md`: `GameSession::elapse` and
   `deadline`, `GameOptions::clock`, the turn's timer, the level-up's time, the chess clocks
   (SRV-Q32), the system's steps at an end, `GameEntry::Elapsed`; protocol v58 `GameClock`).

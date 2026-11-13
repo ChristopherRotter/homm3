@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-13 (the server lane, E16 M5 T15, `server/e16-m5-t15`; **for showing `GameClock`,
+  nothing to do before it**): the original's turn timer is read in `docs/epics/E16-timer-survey.md`:
+  the warnings' schedule and texts in the adventure screen's chat line (§3: "<SYSTEM>:" with
+  GENRLTXT 627 to 630, at a quarter elapsed, a quarter left, a minute, ten seconds, then each
+  second), the end's box GENRLTXT 202 (§4), the hot seat's covered "your turn" box outside the
+  turn's time and the network one inside it (§8).
+
 - 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
   taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`
   (`wire::game::GameClock`: the player's own `turn` timer, its battle's chess clocks `battle`
