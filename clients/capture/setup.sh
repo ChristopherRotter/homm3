@@ -102,8 +102,10 @@ chmod -R u+w "$game"
 # 3. xdd.dll: DirectDrawCreate forwarded to Wine's ddraw, and the virtual clock (xdd.c).
 i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/xdd.dll" "$root/clients/capture/xdd.c" \
     "$root/clients/capture/xdd.def" -Wl,--enable-stdcall-fixup
-# binkprobe.exe (E17 M5 T4b2b): BINKW32.DLL run on the clips as a black box (binkprobe.c).
+# binkprobe.exe (E17 M5 T4b2b): BINKW32.DLL run on the clips as a black box (binkprobe.c);
+# smackprobe.exe (E27 M2 T1) the same for SMACKW32.DLL (smackprobe.c).
 i686-w64-mingw32-gcc -O2 -Wall -o "$game/binkprobe.exe" "$root/clients/capture/binkprobe.c"
+i686-w64-mingw32-gcc -O2 -Wall -o "$game/smackprobe.exe" "$root/clients/capture/smackprobe.c"
 
 # 4. The prefix, drive D: = the run directory, and the game's settings (the value names are the
 #    executable's): no intro, no combat grid, hex shade or movement shade, full screen, no sound.

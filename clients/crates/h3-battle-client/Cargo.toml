@@ -13,6 +13,7 @@ h3-view.workspace = true
 h3-assets.workspace = true
 # The result window's clips (E17 M5 T4b2): the Bink decoder, pure.
 h3-bink.workspace = true
+h3-smacker.workspace = true
 h3-formats.workspace = true
 h3-protocol.workspace = true
 h3-render.workspace = true

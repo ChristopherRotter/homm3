@@ -10,6 +10,8 @@ members = [
     "crates/h3-bink",
     "crates/h3-render",
     "crates/h3-sdl",
+    # The Smacker video decoder (E27 M2 T1, CLT-Q80): a port of FFmpeg's, pure.
+    "crates/h3-smacker",
     # What both viewers share (E24 M3 T1a, the user's decision at T0): common to both client lanes.
     "crates/h3-ui",
     "crates/h3-view",
@@ -33,6 +35,7 @@ h3-assets = { path = "crates/h3-assets" }
 h3-bink = { path = "crates/h3-bink" }
 h3-render = { path = "crates/h3-render" }
 h3-sdl = { path = "crates/h3-sdl" }
+h3-smacker = { path = "crates/h3-smacker" }
 h3-ui = { path = "crates/h3-ui" }
 h3-view = { path = "crates/h3-view" }
 # Engine crates (public crates only, ADR-0020 point 1). A change the client needs in one of them

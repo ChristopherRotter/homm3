@@ -348,6 +348,7 @@ dependencies = [
  "h3-protocol",
  "h3-render",
  "h3-sdl",
+ "h3-smacker",
  "h3-towns",
  "h3-ui",
  "h3-view",
@@ -563,6 +564,13 @@ dependencies = [
  "h3-towns",
  "serde",
  "toml 0.8.23",
+]
+
+[[package]]
+name = "h3-smacker"
+version = "0.1.0"
+dependencies = [
+ "proptest",
 ]
 
 [[package]]
