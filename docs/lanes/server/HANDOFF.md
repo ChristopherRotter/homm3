@@ -24,6 +24,10 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
+### 2026-11-13 — M5 T13: 2a's closure (in progress)
+
+Baseline: `master` dca8bbb (#897, T12; CI green). No original data. Branch `claude/loving-babbage-aylytb`. Done: the end-to-end test (`h3-server` `tests/whole.rs`, `two_clients_play_a_whole_game_...`; a test-only seed pin `config::MapOffer::seeds`, the user's choice), `docs/06-security.md`'s networked whole game (cross-lane in T13's PR, the user's choice). Next: the reviewer agent over `a396c3f..HEAD` (the two crates), its fixes, the docs (log, epic, queue), the PR, the user's checkpoint.
+
 ### 2026-11-12 — M5 T12: T7b's two findings (v51)
 
 Baseline: `master` 698eb84 (#895, its code verified). No original data. Built T12 (`E16-log.md`): `BattleKey` (a viewer's open battle by heroes and tile), `Viewer::refresh` inside a battle; `tests/game_session.rs`' rejections inside a battle; the client lane's inbox told (v51). Next: T13.
