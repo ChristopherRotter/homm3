@@ -125,7 +125,7 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(3),
         building: BuildingId::from_index(9).unwrap(),
     }));
-    // E16 M5 T14 (v55): the system actor's own commands.
+    // E16 M5 T14 (v56): the system actor's own commands.
     let player = PlayerId::new(1);
     commands.extend(
         [

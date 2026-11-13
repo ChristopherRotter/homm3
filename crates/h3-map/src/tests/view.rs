@@ -2414,9 +2414,12 @@ fn check_town_views(
                 hall: h3_towns::hall_level(record, part),
                 income: h3_towns::daily_income(record, part),
             }),
+            // E09 T26b: the owner's counts and Portal (TWN-VEW-004).
             buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
                 built: record.built(),
                 forbidden: record.forbidden(),
+                available: core::array::from_fn(|i| record.available(i)),
+                portal: record.portal(),
             }),
         });
     }
@@ -2765,15 +2768,16 @@ proptest! {
                 break;
             }
             // E09 T26a2: a week's kind is a public draw of the towns' stream (TWN-GRO-002), whose
-            // seed the other game's changes: the comparison ends at a week's start whose kinds
-            // differ, as at a month's (with the same seed the two weeks are the same draw).
+            // seed the other game's changes; (E09 T26b) after it the stream draws the neutral
+            // towns' garrison weeks (a seen garrison shows them, TWN-GRO-006) and the Portals
+            // (TWN-GRO-007), whose positions an unseen town's draws move: the comparison ends at
+            // every week's start, as at a month's.
             let week = |events: &[GameEvent]| {
-                events.iter().find_map(|e| match *e {
-                    GameEvent::WeekStarted { kind, .. } => Some(kind),
-                    _ => None,
-                })
+                events
+                    .iter()
+                    .any(|e| matches!(e, GameEvent::WeekStarted { .. }))
             };
-            if week(&ta) != week(&tb) {
+            if week(&ta) || week(&tb) {
                 break;
             }
             // E08 T106b2: a visit of a teleporter of the viewer's own shows it where the jump

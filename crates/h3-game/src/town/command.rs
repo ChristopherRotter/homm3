@@ -7,8 +7,8 @@
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
-use super::holds_capitol;
 use super::view::Told;
+use super::{Draws, holds_capitol, portal};
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
@@ -65,13 +65,15 @@ pub(crate) fn command<S: Sink>(
 
 /// Builds `building` in `player`'s `town` and tells it (TWN-BLD-005, TWN-VEW-004; E09 T18b2a,
 /// T18c): the command's build (`event` none) with the day's mark, a town event's (`event` its
-/// place in the town's list, TWN-EVT-003) without it ([`h3_towns::Towns::build`]), then
+/// place in the town's list, TWN-EVT-003) without it ([`h3_towns::Towns::build`]); a build that
+/// made the town's Portal of Summoning stand draws it (TWN-GRO-007, E09 T26b, [`portal::at_build`]:
+/// a command's from `player`'s stream, an event's from the towns' stream); then
 /// [`GameEvent::TownBuilt`] to `player`, then each view the build changed told to its viewer
 /// ([`Told`]: the town's by every player that sees it; for a town without a standing Tavern
 /// before, the owner's of every town, whose garrison levels a new Tavern raises, TWN-VEW-002).
 /// The caller checked the store's town and its record's building; the treasury holds nothing a
 /// view shows, so a price paid before changes no view.
-// rule: TWN-BLD-005, TWN-VEW-004
+// rule: TWN-BLD-005, TWN-VEW-004, TWN-GRO-007
 pub(crate) fn build_told<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -88,9 +90,16 @@ pub(crate) fn build_told<S: Sink>(
         _ => &[],
     };
     let told = Told::before::<S>(state, rules, &[town], every);
+    let had = state
+        .towns()
+        .get(town)
+        .is_some_and(|record| h3_towns::has_portal(record, part));
     let _before = state
         .towns_mut()
         .build(town, building, part, rules.core(), event.is_none());
+    // rule: TWN-GRO-007
+    let draws = event.map_or(Draws::Player(player), |_| Draws::Towns);
+    portal::at_build(state, rules, town, had, draws);
     sink.emit(GameEvent::TownBuilt {
         player,
         town,

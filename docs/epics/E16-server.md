@@ -318,7 +318,7 @@ client lane's 2026-11-04 request, when online battles need them).
 **2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged):
 
 - **T14 The system commands** done 2026-11-13 (`E16-log.md`: `GameCommand::System(SystemCommand)`,
-  GAM-SYS-001 to GAM-SYS-003, ADR-0017 point 2 amended; replay format v14, protocol v55).
+  GAM-SYS-001 to GAM-SYS-003, ADR-0017 point 2 amended; replay format v14, protocol v56).
 - **T15 The survey of the original's turn timer** (where the original data are staged; the
   code reading of `turn_timer_poll` 0x557AF0 and `turn_timer_start` 0x557D90 and their callers,
   the manual's text, VCMI's chess clock as a reference): what ends a turn at its end (open

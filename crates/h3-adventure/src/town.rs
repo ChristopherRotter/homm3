@@ -264,6 +264,17 @@ impl AdventureState {
         slots
     }
 
+    /// Writes `stacks`, by slot in slot order, as the garrison of `town` (TWN-GRO-006; E09 T26b,
+    /// the town epic's design note §44: a neutral town's garrison week, which the game draws with
+    /// `h3_towns::garrison_week` within the army's slots and a stack's most). A `TownId` the map
+    /// does not have changes nothing.
+    // rule: TWN-GRO-006
+    pub fn set_town_garrison(&mut self, town: TownId, stacks: Vec<ArmyStack>) {
+        if let Some(index) = self.map().town_object(town) {
+            self.set_army_left(index, stacks);
+        }
+    }
+
     /// Captures `town` for `player`, a player of the game (TWN-CAP-001; the town epic's design
     /// note §11; survey `E09-towns.md` §8.1, §8.3, the original's `town_change_owner` 0x4C61E0):
     /// its owner written (as a mine's flag writes it, ADV-OWN-001), its garrison written empty,

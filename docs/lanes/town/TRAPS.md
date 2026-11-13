@@ -25,10 +25,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 ## The property plans (`h3-map` `src/tests/play.rs`, `view.rs`; the adventure lane's files)
 
-- **A town's counts move without a told view** (E09 T26a1): `check_towns` lets the counts change
-  only with a week's start, a build or a town event of the town, and compares the rest of the
-  record as before. When T26b shows the counts in the owner's view, a count's change must be
-  told too (add it to the `TownChanged` check there).
+- **A town's counts and Portal are its owner's view** (E09 T26a1, T26b): `check_towns` lets the
+  counts change only with a week's start, a build or a town event of the town, the Portal only
+  with a week's start, a build, a capture or a dwelling's flag for its owner, requires the
+  owner's `TownChanged` for either, and compares the rest of the record as before. A new writer
+  of them (T27's hire) is told and taught there.
 
 - **A plan's town has no `KINDS` entry** (E09 T9b1): `towns_laid_out` lays the plan's towns
   (`TownPlan`) out after every other object but the boats, each with a template appended after

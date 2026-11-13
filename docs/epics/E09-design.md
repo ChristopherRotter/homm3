@@ -1470,6 +1470,12 @@ still change at `TWN-Q14` (decision 78 lists them).
   slots and a stack's most (the room is ADV-ARM-007's), the stacks returned in slot order; a level
   the record lacks, a creature growing none and a growth above a stack's most give none after the
   sums; row TWN-3-4's room cases are unit tests (decision 88).
+- *As built (T26b):* `h3-game`'s `town::garrison::garrison_weeks(state, rules, weeks)` after the
+  adventure's week step, `weeks` the day less one over the week's days; the state's
+  `town_draws(Draws::Towns)` gives the adventure, the store and the towns' stream at once;
+  `AdventureState::set_town_garrison(town, stacks)` (the town lane's `src/town.rs`). Told with the
+  towns' day: the day takes every viewer's views of every town before the week's growth (a
+  recording sink only) and `town::start_day` tells the changed ones after the marks.
 
 ### 45. The Portal of Summoning (TWN-GRO-007)
 
@@ -1496,6 +1502,15 @@ still change at `TWN-Q14` (decision 78 lists them).
 - *As built (T25b2):* `h3_towns::summon(town, part, core, offer, draws) -> Town` (`portal.rs`):
   a town without a standing `portal` building unchanged with no draw, an empty `offer` empties
   the Portal with no draw; the owner and the streams the game's (T26b).
+- *As built (T26b):* `h3-game`'s `town/portal.rs` (`Draws::{Towns, Player}`; `weekly`,
+  `at_setup`, `at_build`, `at_capture`, `on_flag`), the offer `town::growth::owned_dwellings`
+  (the growth's inputs read their first creatures); `h3_towns::has_portal`. A build draws when it
+  makes the Portal stand (the store's build in `build_told`, before `TownBuilt`, so the build's
+  `Told` carries it); the setup's after the levels at load; the flag by
+  `AdventureOutcome::flagged_dwelling` (the adventure lane's `enter_dwelling`, set when the visit
+  flags; `settle_outcome` draws right after a capture, before the rest of the outcome), each
+  empty Portal of the player's towns with one `Told`; a capture's inside the capture's `Told`.
+  "Holds nothing" is `Town::portal() == None` (a hire that takes every creature keeps it, T27).
 
 ### 46. A dwelling's first creatures and the town events' creatures (TWN-GRO-005, TWN-EVT-004 amended)
 
@@ -1562,6 +1577,13 @@ still change at `TWN-Q14` (decision 78 lists them).
   each town's counts checked against an independent walk of §41 to §46); the benchmark
   `day-start-builds-36` re-baselined or a week workload added (skill `homm3-bench-regression`).
   The adventure replays are re-recorded (skill `homm3-rerecord-replays`).
+- *As built (T26b):* `TownBuildingsView::available` (`[u16; CREATURE_INDEXES]`) and `portal`
+  (`Option<Summoned>`; both re-exported by `h3-game`), `GameEvent` still `Copy`; the wire's
+  `TownBuildings` and `Summoned`, protocol **v55** (the table's "v42" was its planning number;
+  E08 T114b took v54 first);
+  the day's week `Told` (every town, every viewer) told at the towns' day; an event's creatures
+  with their own `Told`. No version of the game state hash, the map import or the replay format
+  moved: the 72 adventure replays' hash lines and the session's golden finals moved (behaviour).
 - **Batch TWN-3** (survey §14; T23 after `TWN-Q14`): rows TWN-3-1 (T-13), -2 (§1's sum, a worn
   piece), -3 (T-12), -4 (TD-15), -5 (§5, T-11) are growth's; TWN-3-6 is T22b's half.
 - **Open for T22b:** the garrison hero as the Legion's second hero and in the owner's share

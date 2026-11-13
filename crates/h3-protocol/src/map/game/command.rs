@@ -64,7 +64,7 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 },
             },
         },
-        // E16 M5 T14 (v55): the system actor's own commands, the host's.
+        // E16 M5 T14 (v56): the system actor's own commands, the host's.
         EngineCommand::System(c) => GameCommand::System {
             command: match *c {
                 EngineSystem::EndTurn { player } => SystemCommand::EndTurn {
@@ -265,7 +265,7 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                 error: TownReject::UnknownBuilding {},
             })?,
         }),
-        // E16 M5 T14 (v55): the engine refuses it from a seat (`SystemOnly`).
+        // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
         GameCommand::System { command } => EngineCommand::System(match command {
             SystemCommand::EndTurn { player } => EngineSystem::EndTurn {
                 player: PlayerId::new(player),

@@ -130,11 +130,17 @@ pub mod wire;
 /// observation's `week` (`wire::game::Week`), the fold keeping it. v54 (E08 T114b, the adventure
 /// lane's, `cross-lane`): the map garrisons a viewer sees (`wire::game::GameObservation`'s and
 /// `GameReveal`'s `garrisons`, `wire::game::MapGarrison`) and their changes (the events
-/// `GarrisonChanged`, `GarrisonStackSeen`). v55 (E16 M5 T14, `cross-lane`): the system actor's
-/// own commands for a player (`wire::game::GameCommand::System`, `wire::game::SystemCommand`:
-/// its turn ended, its decision's default answer, its battle side's command) and their refusal
-/// from a seat (`wire::game::GameReject::SystemOnly`).
-pub const PROTOCOL_VERSION: u32 = 55;
+/// `GarrisonChanged`, `GarrisonStackSeen`). v55 (E09 T26b, the
+/// town lane's, `cross-lane`): a town's owner sees its available creatures and its Portal of
+/// Summoning (TWN-VEW-004: `wire::game::TownBuildings`' `available` and `portal`,
+/// `wire::game::Summoned`), told as `TownChanged` after the week, the month, a town event's
+/// creatures and each Portal's draw: the messages' order is new where a neutral garrison's week or
+/// a count changes a view.
+/// v56 (E16 M5 T14, `cross-lane`): the system actor's own commands for a player
+/// (`wire::game::GameCommand::System`, `wire::game::SystemCommand`: its turn ended, its
+/// decision's default answer, its battle side's command) and their refusal from a seat
+/// (`wire::game::GameReject::SystemOnly`).
+pub const PROTOCOL_VERSION: u32 = 56;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

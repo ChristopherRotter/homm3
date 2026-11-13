@@ -3064,7 +3064,7 @@ No original data. Branch `claude/quirky-mccarthy-pgu2o6`. The user's choices at 
 (2026-11-13, asked as the engine API the server calls): one closed variant
 `GameCommand::System(SystemCommand)` naming its player, the engine taking the default answer,
 over an `Actor::SystemFor(player)` reusing the player's commands; the adventure replay format
-v14 and protocol v55, the whole game's journal format left at 1 (additive).
+v14 and protocol v56, the whole game's journal format left at 1 (additive).
 
 - **The engine** (`h3-game` `system.rs`): `SystemCommand::{EndTurn { player }, Answer { player },
   Battle { player, command }}`, each applied as the player's own (`end_turn`, `answer` with
@@ -3089,7 +3089,7 @@ v14 and protocol v55, the whole game's journal format left at 1 (additive).
   journal written so far reads the same (*provisional*, the agent's call the user confirmed).
 - **The other matches:** `h3-sim`'s `tileless_entry` (no entry: the host's, never a seat's;
   action encoding unchanged) and `h3-map`'s plans (`as_move`).
-- **The wire** (protocol v55): `wire::game::GameCommand::System { command }` with
+- **The wire** (protocol v56): `wire::game::GameCommand::System { command }` with
   `wire::game::SystemCommand` (the player by its number, a battle command as the battle wire's),
   `GameReject::SystemOnly`, mapped both ways and in the round-trip lists; `tests/game_session.rs`:
   a seat's system command refused and told to it alone, the system's end of a turn not its

@@ -18,6 +18,18 @@ fn pick(n: usize, draws: &mut Rng) -> usize {
     usize::try_from(draws.below(n)).unwrap_or(0)
 }
 
+/// Whether `town` has a standing building of role `portal` (TWN-GRO-007; E09 T26b): the game
+/// draws its Portal of Summoning at the build that makes it stand (design §45). An ever-built one
+/// of the part's derived set is looked for first (most factions have no Portal, and the standing
+/// set's derivation is the cost: `bench-check`'s `day-start-builds-36`).
+// rule: TWN-GRO-007
+pub fn has_portal(town: &Town, part: &TownRuleset) -> bool {
+    town.built().intersects(part.portals(town.faction()))
+        && Roles::of(town, part)
+            .standing_roles()
+            .any(|(_, r)| r.portal)
+}
+
 /// `town` after its Portal of Summoning's draw (TWN-GRO-007; E09 design §45, survey
 /// `E09-growth.md` §5, the original's `portal_of_summoning_week` 0x5BD750), with its faction's
 /// record in `part`, the creatures' growths in `core` and `offer` its owner's dwellings' creature
@@ -39,10 +51,7 @@ pub fn summon(
     offer: &[&[CreatureTypeId]],
     draws: &mut Rng,
 ) -> Town {
-    if !Roles::of(town, part)
-        .standing_roles()
-        .any(|(_, r)| r.portal)
-    {
+    if !has_portal(town, part) {
         return town.clone();
     }
     if offer.is_empty() {

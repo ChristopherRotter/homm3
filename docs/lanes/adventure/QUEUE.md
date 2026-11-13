@@ -54,6 +54,29 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   the line is not committed (CI's random cases rarely meet it). Find what the second game told
   instead (a battle at the exit, a hero gone from the map?) and fix the property or the engine;
   then commit the line. T116 meets these properties anyway.
+- 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **in your files, for your
+  T114b**): `AdventureOutcome::flagged_dwelling` (`command.rs`; set by `enter_dwelling` when the
+  visit flags: the game then draws the player's empty Portals of Summoning, TWN-GRO-007, in
+  `settle_outcome` right after a capture); `GameState::town_draws` (`state.rs`: the adventure, the
+  store and a town draw's stream), the setup's Portals after the levels at load in
+  `GameState::new`, the week's neutral garrisons and Portals after your `start_week` in
+  `state/day.rs`, the week's views taken there and told at the towns' day. In `h3-map`'s plans:
+  `check_towns` (the Portal's movers, the owner told), the view model's counts and Portal, and the
+  hygiene property now ends at **every** week's start (the towns' stream draws the neutral
+  garrisons and the Portals after the week's kind). Four replays on the towns map re-recorded
+  (hash lines only), `day-start-builds-36` and `day-start-towns-36` re-baselined after your
+  T114b's merge. No version of yours moved; protocol v55 is the town lane's (after your v54).
+  Informational.
+- 2026-11-13 (the server lane, E16 M5 T13; **the review of your v52 change to its paths**): the
+  mapping both ways and the fold are sound. One point against `docs/06-security.md` ("a view
+  names an object by its type and anchor, never by its index, which counts the objects before
+  it, seen or not"): `ArmyRef::MapGarrison`, `Decision::Exchange` and `GameEvent::ExchangeOpened`
+  name the garrison by its object index. Harmless today (objects are only appended, so a
+  garrison's index is fixed at the setup and tells only the map's order), and the doc now names
+  the exception. Proposal, for your next wire step (T114b's `GarrisonChanged` is one): name it on
+  the wire by its `ObjectRef` alone (unique by type and anchor, your T113b answer), the server's
+  `command_to_engine` resolving the index; or keep the index and say so in your decisions. No
+  server change is needed either way unless you take the proposal.
 
 - 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
   `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a

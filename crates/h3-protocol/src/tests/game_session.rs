@@ -484,7 +484,7 @@ fn a_rejected_command_changes_nothing_and_is_told_to_its_player_alone() {
         }
     );
     assert_eq!(out, rejected(last(waiting) + 2, 5, code));
-    // E16 M5 T14 (v55): a seat's system command, the system actor's alone.
+    // E16 M5 T14 (v56): a seat's system command, the system actor's alone.
     out.clear();
     let end_acting = GameCommand::System {
         command: SystemCommand::EndTurn {
@@ -539,7 +539,7 @@ fn a_rejected_command_changes_nothing_and_is_told_to_its_player_alone() {
     ));
 }
 
-/// E16 M5 T14 (v55): the system's end of a player's turn is told as the player's own, but for
+/// E16 M5 T14 (v56): the system's end of a player's turn is told as the player's own, but for
 /// its echo, and journaled as the system actor's.
 #[test]
 fn the_systems_end_of_a_turn_is_told_as_the_players_own() {
