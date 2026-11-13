@@ -12,7 +12,7 @@ use crate::testing::{PIKEMAN, hero_details, stream};
 /// `player`'s hero `hero` revisits with `draws` as the player's stream: the outcome and the
 /// events, or the error (a rejected revisit changes neither the state nor the stream and emits
 /// nothing).
-fn revisit(
+pub(super) fn revisit(
     state: &mut AdventureState,
     rules: &Rules,
     (player, hero): (PlayerId, HeroId),
@@ -37,7 +37,7 @@ fn revisit(
 }
 
 /// The heroes of `player` whose revisit is legal now.
-fn revisitable(state: &AdventureState, rules: &Rules, player: PlayerId) -> Vec<HeroId> {
+pub(super) fn revisitable(state: &AdventureState, rules: &Rules, player: PlayerId) -> Vec<HeroId> {
     state.revisitable(&rules.1, player).collect()
 }
 

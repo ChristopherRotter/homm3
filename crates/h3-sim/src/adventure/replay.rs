@@ -36,9 +36,10 @@ use super::rollout::choose;
 /// (`Answer::Hire`: a purchase with its creature and amount, `Close`); version 11 (E09 T18b1):
 /// the town context's commands (`GameCommand::Town`: a town's build by its town and building);
 /// version 12 (E08 T105b2): the revisit of the entered object under a hero
-/// (`AdventureCommand::Revisit`, ADV-TEL-008). A replay of another version is refused
-/// ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 12;
+/// (`AdventureCommand::Revisit`, ADV-TEL-008); version 13 (E08 T114a2): a map garrison's army in
+/// the management commands (`h3_adventure::ArmyRef::MapGarrison`, its exchange's, GAM-DEC-009). A
+/// replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 13;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

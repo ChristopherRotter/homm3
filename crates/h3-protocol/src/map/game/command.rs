@@ -170,6 +170,7 @@ pub(super) const fn slot(s: EngineSlot) -> ArmySlot {
             EngineArmyRef::Hero(hero) => ArmyRef::Hero { hero: hero.raw() },
             EngineArmyRef::Group => ArmyRef::Group {},
             EngineArmyRef::Garrison(town) => ArmyRef::Garrison { town: town.raw() },
+            EngineArmyRef::MapGarrison(garrison) => ArmyRef::MapGarrison { garrison },
         },
         slot,
     }
@@ -347,6 +348,7 @@ const fn slot_to_engine(s: ArmySlot) -> EngineSlot {
             ArmyRef::Hero { hero } => EngineArmyRef::Hero(HeroId::new(hero)),
             ArmyRef::Group {} => EngineArmyRef::Group,
             ArmyRef::Garrison { town } => EngineArmyRef::Garrison(TownId::new(town)),
+            ArmyRef::MapGarrison { garrison } => EngineArmyRef::MapGarrison(garrison),
         },
         slot,
     }
@@ -484,6 +486,9 @@ fn manage_reject(error: ManageError) -> ManageReject {
                 ArmyCommandError::OtherCreature => ArmyReject::OtherCreature {},
                 ArmyCommandError::SplitCount(count) => ArmyReject::SplitCount { count },
                 ArmyCommandError::Garrison(town) => ArmyReject::Garrison { town: town.raw() },
+                ArmyCommandError::NoGarrison => ArmyReject::NoGarrison {},
+                ArmyCommandError::NotOwn => ArmyReject::NotOwn {},
+                ArmyCommandError::OnlyEmpty => ArmyReject::OnlyEmpty {},
             },
         },
         ManageError::Artifact(error) => ManageReject::Artifact {
