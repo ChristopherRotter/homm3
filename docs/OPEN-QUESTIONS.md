@@ -73,7 +73,9 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+#### SRV-Q30 — E16 M5 2a's checkpoint: the review list, the reviewer's major finding, what next
+
+2a (whole games over the network, T8a to T13) is built; T13's end-to-end test plays two clients through a restart inside a battle against the server's computer, and `docs/06-security.md` has the networked whole game. A fresh reviewer agent (`E16-log.md`, "M5 2a's reviewer agent") found one major and one minor defect and nothing leaking. (a) The review list (`docs/epics/E16-server.md`, "Review list for the 2a checkpoint"): accept as built? (b) **Major:** whole games have no command limit (battles void at `[limits] commands_per_game`): a seated player sending free commands (a formation toggle, at 20 a second) grows the journal (about 170 MB a day), the session's in-memory copy of the commands, and the restart's re-run, which holds back every game's start. Options: (1) a seat's commands per turn bounded now (`[limits]`, a new rejection, protocol v53); (2) a whole game's own total limit now (void or pause at it; a default guessed before 2c measures); (3) documented now under "Not covered yet", the bound built in 2b (turn timers bound a turn's time, a per-turn count pairs with them) and the restart's cost in 2c (long journals, state saves). **Recommendation: (3)**; nothing serves whole games to the public before the clients play them. (c) The minor finding (the new `whole/` directory's entry not synced at its creation): fixed in T13. (d) Next: 2b's refinement with the user, in a new session.
 
 ### AI lane (`AI-Q<n>`)
 
