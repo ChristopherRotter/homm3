@@ -75,7 +75,7 @@ pub use growth::{GrowthInputs, event_creatures, growth, index_creature};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
 pub use h3_contracts::Moat;
 pub use income::{daily_income, hall_level};
-pub use portal::summon;
+pub use portal::{has_portal, summon};
 pub use record::{CREATURE_INDEXES, MAX_AVAILABLE, Summoned, Town, TownEvent, TownStatic};
 pub use ruleset::{
     BUILDING_SLOTS, Building, BuildingDef, BuildingRoles, CreatureLevel, CreatureLevelDef,

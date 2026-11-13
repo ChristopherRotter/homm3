@@ -1390,6 +1390,11 @@ fn town_changed(town: u16, hall: Option<u8>) -> GameEvent {
         buildings: hall.map(|_| TownBuildings {
             built: WireU64(0b101),
             forbidden: WireU64(1 << 40),
+            available: [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+            portal: Some(Summoned {
+                creature: 12,
+                count: 3,
+            }),
         }),
     }
 }
@@ -1470,6 +1475,11 @@ fn the_fold_replaces_a_towns_view_by_its_told_one() {
             buildings: Some(TownBuildings {
                 built: WireU64(0b101),
                 forbidden: WireU64(1 << 40),
+                available: [5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2],
+                portal: Some(Summoned {
+                    creature: 12,
+                    count: 3,
+                }),
             }),
         }
     );

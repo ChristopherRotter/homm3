@@ -3,8 +3,8 @@
 //! [`GrowthInputs`] from the adventure's owners, the owners' dwellings on the map and the heroes'
 //! Legion ([`inputs`]), then on a week's first day every town's week ([`grow_week`]) and on a
 //! month's first day its month ([`grow_month`]), each written into the store where it changes.
-//! Every week is a normal one until the week's kind is drawn (TWN-GRO-002, E09 T26a2); the counts
-//! are the owner's and shown with E09 T26b, so nothing is told yet.
+//! Since E09 T26a2 the week's kind (TWN-GRO-002); the counts are the owner's (TWN-VEW-004, E09
+//! T26b), told at the towns' day (`super::start_day`).
 
 use alloc::vec;
 use alloc::vec::Vec;
@@ -45,7 +45,8 @@ impl Owner {
             .max()
             .unwrap_or(0);
         let mut firsts = Vec::new();
-        for creature in owned_dwellings(adventure, rules, player) {
+        let dwellings = owned_dwellings(adventure, rules, player);
+        for creature in dwellings.filter_map(|creatures| creatures.first().copied()) {
             if firsts.is_empty() {
                 firsts = vec![0_u16; core.creature_count()];
             }
@@ -66,13 +67,15 @@ impl Owner {
     }
 }
 
-/// The first creature of each dwelling `player` owns on the map, in object order (among the
-/// static map's ownable objects; a random dwelling is listed resolved, ADV-DWL-005).
-fn owned_dwellings<'a>(
+/// The creatures of each creature dwelling `player` owns on the map, in its kind's order, the
+/// dwellings in object order (among the static map's ownable objects; a random dwelling is listed
+/// resolved, ADV-DWL-005; a Refugee Camp is none): the growth's inputs by their first creature
+/// (TWN-GRO-001), the Portal of Summoning's offer (TWN-GRO-007, E09 T26b).
+pub(crate) fn owned_dwellings<'a, 'r>(
     adventure: &'a AdventureState,
-    rules: &'a GameRuleset,
+    rules: &'r GameRuleset,
     player: PlayerId,
-) -> impl Iterator<Item = CreatureTypeId> + 'a {
+) -> impl Iterator<Item = &'r [CreatureTypeId]> + use<'a, 'r> {
     let map = adventure.map();
     map.ownables()
         .iter()
@@ -80,7 +83,7 @@ fn owned_dwellings<'a>(
         .filter_map(move |&index| map.objects()[index].object_type)
         .filter_map(|id| rules.adventure().object_type(id))
         .filter_map(|ty| match &ty.kind {
-            ObjectKind::Dwelling { creatures, .. } => creatures.first().copied(),
+            ObjectKind::Dwelling { creatures, .. } => Some(creatures.as_slice()),
             _ => None,
         })
 }

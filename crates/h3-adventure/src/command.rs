@@ -307,6 +307,11 @@ pub struct AdventureOutcome {
     /// player's hero won, given after the winner's levels
     /// ([`crate::AdventureState::give_won`], TWN-CAP-003). The outcome changes no owner itself.
     pub capture: Option<TownId>,
+    /// Whether the visit flagged a creature dwelling for its player (ADV-OWN-001; E09 T26b, the
+    /// town epic's design note §45, decision 71): the game then draws the Portal of Summoning of
+    /// each of the player's towns that has none (TWN-GRO-007), from the player's stream after the
+    /// visit's draws.
+    pub flagged_dwelling: bool,
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes

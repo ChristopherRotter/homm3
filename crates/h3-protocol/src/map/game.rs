@@ -39,8 +39,8 @@ use crate::wire::game::{
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
     HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
     MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
-    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState, Tile,
-    Town, TownBuildings, TownOwnerFacts, UniversityVisit, Week,
+    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState,
+    Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, Week,
 };
 
 mod command;
@@ -539,12 +539,22 @@ pub(crate) const fn garrison_stack(
 }
 
 /// A town's buildings as its owner sees them, on the wire.
-pub(crate) const fn town_buildings(
-    TownBuildingsView { built, forbidden }: TownBuildingsView,
+pub(crate) fn town_buildings(
+    TownBuildingsView {
+        built,
+        forbidden,
+        available,
+        portal,
+    }: TownBuildingsView,
 ) -> TownBuildings {
     TownBuildings {
         built: WireU64(built.bits()),
         forbidden: WireU64(forbidden.bits()),
+        available,
+        portal: portal.map(|summoned| Summoned {
+            creature: summoned.creature.raw(),
+            count: summoned.count,
+        }),
     }
 }
 
