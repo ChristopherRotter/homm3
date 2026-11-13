@@ -291,7 +291,8 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
     the turn ends. **A battle between two players' heroes runs a chess timer:** each side its own
     clock, the side to act's running; a side whose clock runs out is played by the computer for
     the rest of the battle (each side's allowance, and the attacker's turn timer meanwhile,
-    settled in T16 and confirmed there by the user).
+    settled in T16 and confirmed there by the user: SRV-Q32, Fischer's base and increment, the
+    attacker's turn timer stopped meanwhile).
   - **A disconnected player has the turn timer only:** no grace or total of its own (SRV-Q19's
     stay the ranked battles'); its turn runs out as anyone's, its battle sides are played by
     the computer when its time does; an unlimited duration waits for it (the host's pause and the
@@ -326,16 +327,13 @@ client lane's 2026-11-04 request, when online battles need them).
   does in a battle and in a level-up's dialog (its time, if any: the hold's default), the "your
   turn" window; `docs/exe/map.toml` entries; a question to the user where the original differs
   from SRV-Q31's decisions.
-- **T16 The clock in the session** (`h3-protocol`, sans-I/O): the host's time passed in
-  (`GameSession` never reads a clock), an offer's turn duration and level-up time; the turn's
-  timer started per player of the turn group, stopped while a level-up holds the game (the
-  owner's own limit meanwhile), running in a battle, the chess timer in a battle between two
-  players (its allowances settled here with the user); at an end the system's commands as the
-  decisions say; the wire: each player told the timers it may see and that the game waits
-  (protocol step); the journal: what a restart needs to give the running turn its time left (the
-  server's downtime never counts).
-- **T17 The clock hosted** (`h3-server`): `[[map]] turn_duration` (the eleven values) and the
-  level-up time, the game thread's wake-up at the next deadline, a restore with the time left;
+- **T16 The clock in the session** done 2026-11-13 (`E16-log.md`: `GameSession::elapse` and
+  `deadline`, `GameOptions::clock`, the turn's timer, the level-up's time, the chess clocks
+  (SRV-Q32), the system's steps at an end, `GameEntry::Elapsed`; protocol v57 `GameClock`).
+- **T17 The clock hosted** (`h3-server`): `[[map]] turn_duration` (the eleven values), the
+  level-up time and the battle's allowance (T16's `session::game::Clock`, today
+  `Clock::UNLIMITED` in `whole.rs`), `GameSession::elapse` before every call and the game
+  thread's wake-up at `GameSession::deadline` (its frames routed), a restore with the time left;
   end to end: a turn ended at its end, a battle played out by the computer after it, a chess
   timer's side taken over, a level-up answered at its limit.
 - **T18 A seat's commands per turn** (SRV-Q30): `[limits]`'s bound of a seat's accepted commands
@@ -353,6 +351,18 @@ the tasks land):
   neutral seat draws from it; the host issues them by its clock); their text form `system for
   <player> end-turn|answer default|battle <command>`; the whole game's journal format left at 1
   (the user's call at T14's start).
+- T16: the defaults (a level-up 60 s, a battle 3 min and 10 s a command; `Clock::UNLIMITED`
+  for an in-process host and, until T17's offers, the server's); the time journaled at the
+  latest every 15 s (`ELAPSED_EVERY_MS`: a crash gives the running timers back at most that) and
+  before every accepted command when time counted (an `elapsed` line per command in a timed
+  game: 2c measures the journals); the whole game's journal format left at 1 again (the new
+  `elapsed` line is additive); a player told only its own timers and that the game waits (not
+  whose); `GameClock` after a command's other messages and after every snapshot that leaves
+  something to tell, not at every count; the increment after every accepted battle command of
+  the side (a hero's cast too), none for a side run out; the chess clocks stopped too while a
+  level-up holds the game; the level-up's time restarted after each command the hold admits;
+  without a computer (in-process) a timed-out side Defends; no rule ids for the clock (the
+  host's policy, outside the state; tested in `tests/game_clock.rs`).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

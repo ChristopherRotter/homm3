@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 
 use super::WireU64;
 
+mod clock;
 mod command;
 mod event;
 mod fold;
@@ -30,6 +31,7 @@ mod lobby;
 mod manifest;
 mod query;
 
+pub use clock::{Duel, GameClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,

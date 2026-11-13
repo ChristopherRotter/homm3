@@ -710,6 +710,35 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             n: 7,
             reveal: reveal(),
         },
+        // E16 M5 T16 (v57): a player's clock.
+        ServerMessage::GameClock {
+            n: 7,
+            clock: game::GameClock::default(),
+        },
+        ServerMessage::GameClock {
+            n: 8,
+            clock: game::GameClock {
+                turn: Some(game::Timer {
+                    left_ms: 120_000,
+                    running: false,
+                }),
+                battle: Some(game::Duel {
+                    attacker: game::Timer {
+                        left_ms: 0,
+                        running: false,
+                    },
+                    defender: game::Timer {
+                        left_ms: u32::MAX,
+                        running: true,
+                    },
+                }),
+                level_up: Some(game::Timer {
+                    left_ms: 60_000,
+                    running: true,
+                }),
+                waits: true,
+            },
+        },
         // E16 M5 T11 (v50).
         ServerMessage::GameAnswer {
             n: 7,
@@ -1080,6 +1109,20 @@ fn the_json_is_serdes_default_enum_form() {
             reveal: nothing
         }),
         r#"{"GameReveal":{"n":10,"reveal":{"adventure":{"viewer":1,"palette":[{"explored":true,"view":{"Hidden":{}}}],"areas":[{"corner":{"x":2,"y":1,"level":0},"width":2,"tiles":[1,0]}],"heroes":[],"objects":[],"boats":[],"towns":[]},"heroes":[],"towns":[],"garrisons":[]}}}"#
+    );
+    // E16 M5 T16 (v57): a clock's times are plain numbers (32 bits: far below 2^53).
+    assert_eq!(
+        server(&ServerMessage::GameClock {
+            n: 3,
+            clock: game::GameClock {
+                turn: Some(game::Timer {
+                    left_ms: 90_000,
+                    running: true,
+                }),
+                ..game::GameClock::default()
+            },
+        }),
+        r#"{"GameClock":{"n":3,"clock":{"turn":{"left_ms":90000,"running":true},"battle":null,"level_up":null,"waits":false}}}"#
     );
     // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
     assert_eq!(

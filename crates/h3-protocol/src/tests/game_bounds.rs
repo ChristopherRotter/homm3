@@ -173,6 +173,7 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
         game: 1,
         checkpoint_every: 0,
         record_bytes: RECORD,
+        clock: crate::session::game::Clock::UNLIMITED,
     };
     let mut l = Largest::default();
     for (name, map, seed) in MAPS {

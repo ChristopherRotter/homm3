@@ -2112,6 +2112,17 @@ pub enum ServerMessage {
         /// The player that asked: its index among the map's players.
         player: u8,
     },
+    /// What the player sees of the game's clock now (E16 M5 T16, v57; `game::GameClock`): after
+    /// a join's or a record's `GameSnapshot` when it holds a timer or the game waits, and
+    /// whenever it changes otherwise than by counting down (a timer started, stopped, run out or
+    /// given its increment; the game waiting for another player's level-up or no longer): after
+    /// a command's other messages, before the turns, or alone when a timer ran out.
+    GameClock {
+        /// The viewer's message number.
+        n: u32,
+        /// The clock as the player may see it.
+        clock: game::GameClock,
+    },
     /// The answer to a seat's `GameQuery` (E16 M5 T11, v50), as the game stood after the
     /// player's message `n`: it takes no number and is not recorded, as `Record` (a query
     /// changes nothing the player is told).

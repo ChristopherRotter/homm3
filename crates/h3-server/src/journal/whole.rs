@@ -6,7 +6,8 @@
 //! interval). Every further line is one of the whole game's session's entries ([`GameEntry`]): a
 //! seat taken (by an account, with its login name), the start, a command (the host's with its
 //! actor, a seat's with its number; in the replay's text form), a state hash, a pause and a
-//! resume. A whole game's journal has its own format ([`GAME_JOURNAL_FORMAT_VERSION`]), beside the
+//! resume, the time the clock counted (E16 M5 T16: format 1 still, the line is new and every
+//! journal written so far reads the same). A whole game's journal has its own format ([`GAME_JOURNAL_FORMAT_VERSION`]), beside the
 //! battle's.
 //!
 //! Provisional (the 2a review list): the directory, the lines, the replay's map named by its
@@ -69,6 +70,8 @@ enum GameLine {
     Paused {},
     /// [`GameEntry::Resumed`].
     Resumed {},
+    /// [`GameEntry::Elapsed`]: the milliseconds the running timers counted (E16 M5 T16).
+    Elapsed { ms: u64 },
 }
 
 impl GameLine {
@@ -96,6 +99,7 @@ impl GameLine {
             GameEntry::Started => Self::Started {},
             GameEntry::Paused => Self::Paused {},
             GameEntry::Resumed => Self::Resumed {},
+            GameEntry::Elapsed(ms) => Self::Elapsed { ms },
         }
     }
 
@@ -126,6 +130,7 @@ impl GameLine {
             Self::Started {} => GameEntry::Started,
             Self::Paused {} => GameEntry::Paused,
             Self::Resumed {} => GameEntry::Resumed,
+            Self::Elapsed { ms } => GameEntry::Elapsed(ms),
         })
     }
 }
