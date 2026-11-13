@@ -3665,7 +3665,9 @@ after the server lane's #904 (protocol v56, replay format v14 taken first).
   town's source and garrison (the town's told views between the slot's `StackChanged` and the
   close), `town_builds` probes each town's recruitments after its builds against `recruited`'s
   independent reading, `check_towns` lets a purchase lower one count or the Portal's, the open
-  dialogs tracked by `HireSeen` in `view.rs`. `h3-sim`: the town map's play on seed 70 alone
+  dialogs tracked by `HireSeen` in `view.rs`; `check_timed` leaves out a town event's views
+  after its `TownEventFired` too (T26b's gap: an event's creatures told without a building, met
+  by the scoped coverage's run; its `cc` line kept). `h3-sim`: the town map's play on seed 70 alone
   (a search over 1 to 399: the first seed meeting every feature, recruitments and purchases now
   among them), the fork test on seed 46 (a siege on day 1).
 - **Replays:** the 72 adventure replays re-recorded from their commands, only the format, the hash

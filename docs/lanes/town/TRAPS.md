@@ -54,8 +54,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 - **The turn start is compared whole** (`check_timed`, E09 T19b): every event after a command's
   first `TurnStarted` must be what the map's timed events and then the owned towns' events give,
-  in order (a town event's build's views after its `TownBuilt` are left out, the told-views
-  property's). A new event at a turn start (increment 3's creatures, a week's growth told) is
+  in order (a town event's views after its `TownBuilt` or its `TownEventFired` are left out,
+  the told-views property's; E09 T27 met an event's creatures told without a building). A new event at a turn start (increment 3's creatures, a week's growth told) is
   taught there, or every property fails at the first such turn.
 
 - **A public draw under the hygiene property** (E09 T9b2a's cut; T9b2b's `hygienic`): the
