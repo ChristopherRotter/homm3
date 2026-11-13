@@ -1,0 +1,5 @@
+// The stand-in's version (mss32.c): SMACKW32.DLL loads string 1 and wants at least "3.50F".
+STRINGTABLE
+BEGIN
+    1 "5.0e"
+END

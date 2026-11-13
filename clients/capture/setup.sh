@@ -106,6 +106,12 @@ i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/xdd.dll" "$root/clients/capture
 # smackprobe.exe (E27 M2 T1) the same for SMACKW32.DLL (smackprobe.c).
 i686-w64-mingw32-gcc -O2 -Wall -o "$game/binkprobe.exe" "$root/clients/capture/binkprobe.c"
 i686-w64-mingw32-gcc -O2 -Wall -o "$game/smackprobe.exe" "$root/clients/capture/smackprobe.c"
+# The stand-in Miles (E27 M2 T2, mss32.c) for smackprobe's audio, in mss/: the game's own
+# MSS32.DLL stays beside Heroes3.exe.
+mkdir -p "$game/mss"
+i686-w64-mingw32-windres "$root/clients/capture/mss32.rc" -O coff -o "$game/mss/mss32.res.o"
+i686-w64-mingw32-gcc -O2 -Wall -shared -o "$game/mss/MSS32.DLL" "$root/clients/capture/mss32.c" \
+    "$root/clients/capture/mss32.def" "$game/mss/mss32.res.o"
 
 # 4. The prefix, drive D: = the run directory, and the game's settings (the value names are the
 #    executable's): no intro, no combat grid, hex shade or movement shade, full screen, no sound.

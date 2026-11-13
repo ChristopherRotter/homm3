@@ -31,6 +31,26 @@
          intra blocks' (0x1001B2F8) and the inter blocks' (0x1001C2F8), each 16 quantizer
          indices of 64 binary32 values in natural order, as little-endian bits (8 KiB).
 
+     binkprobe sound <vid> <entry> <out>
+         (E27 M2 T2) The clip's sound as the DLL decodes it: the archive's entry read whole, its
+         first audio track opened by BinkAudioDecompressOpen with the arguments BinkOpen passes
+         (0x10005195: the track's rate, its channels, 1), then for each frame's packet of that
+         track BinkAudioDecompress as BinkDoFrame calls it (0x10005A90): from the packet's
+         second word (its first is the decoded size), until the decoded size is given, a block's
+         samples past it dropped; <out> gets the samples (16-bit little-endian, the channels
+         interleaved). Playback's ring (it drops what does not fit) and an 8-bit track's
+         conversion (0x10005430) come after this.
+     binkprobe sound-tables <out>
+         The sound decoder's tables (E27 M2 T2), by the DLL's own functions: the 256 band scales
+         (0x1000F310 on (float)(v * 0.664f), v = 0 to 255, its result stored as binary32, as the
+         block decoder 0x1000F62D does), then the twiddles Ooura's cdft (0x1000C610) builds for
+         1024, 2048 and 4096 values (makewt 0x1000C6A0: 256, 512 and 1024 binary32), each by a
+         cdft on zeros with a fresh table; little-endian bits.
+     binkprobe cdft <n> <in> <out>
+         The DLL's cdft (0x1000C610) with the sign -1, as the block decoder calls it (0x1000F874),
+         on each run of <n> binary32 values of <in> in turn (one table for all, as a decoder
+         keeps it); <out> gets the results.
+
    The surface type is the value BinkDDSurfaceType gives the game's primary surface (read from
    the running game's 0x694CA0, the runbook).
 
@@ -298,6 +318,139 @@ static int play(const char *vid, const char *start_name, const char *loop_name, 
     return 0;
 }
 
+/* The entry's bytes, read whole (its size up to the next entry's offset or the archive's end). */
+static BYTE *read_entry(const char *name, DWORD *size)
+{
+    char want[48];
+    DWORD i, end, got;
+    BYTE *bytes;
+    snprintf(want, sizeof want, "%s.bik", name);
+    for (i = 0; i < count; i++) {
+        if (lstrcmpiA(names[i], want) && lstrcmpiA(names[i], name))
+            continue;
+        end = i + 1 < count ? offsets[i + 1] : GetFileSize(archive, NULL);
+        *size = end - offsets[i];
+        bytes = malloc(*size + 8);
+        SetFilePointer(archive, (LONG)offsets[i], NULL, FILE_BEGIN);
+        if (!bytes || !ReadFile(archive, bytes, *size, &got, NULL) || got != *size)
+            return NULL;
+        return bytes;
+    }
+    fprintf(stderr, "binkprobe: no entry %s\n", name);
+    return NULL;
+}
+
+#define WORD32(p) (*(DWORD *)(p))
+
+typedef void *(WINAPI *sound_open_fn)(DWORD, DWORD, DWORD);
+typedef void(WINAPI *sound_fn)(void *, void **, DWORD *, void *, void **);
+typedef float(__cdecl *scale_fn)(float);
+typedef void(__cdecl *cdft_fn)(int, int, float *, int *, float *);
+
+static int sound(const char *vid, const char *entry, const char *out)
+{
+    sound_open_fn sound_open = (sound_open_fn)GetProcAddress(dll, "_BinkAudioDecompressOpen@12");
+    sound_fn decompress = (sound_fn)GetProcAddress(dll, "_BinkAudioDecompress@20");
+    BYTE *clip;
+    DWORD size, frames, tracks, word, f, t;
+    void *h;
+    FILE *o;
+    if (!sound_open || !decompress || !open_archive(vid) || !(clip = read_entry(entry, &size)))
+        return 1;
+    if (!(o = fopen(out, "wb")))
+        return 1;
+    frames = WORD32(clip + 8);
+    tracks = WORD32(clip + 0x28);
+    if (tracks == 0) {
+        fclose(o);
+        printf("%s: no sound\n", entry);
+        return 0;
+    }
+    /* the track's rate and flags: the header, its largest decoded sizes, then this word each */
+    word = WORD32(clip + 0x2C + 4 * tracks);
+    h = sound_open(word & 0xFFFF, ((word >> 29) & 1) + 1, 1);
+    if (!h)
+        return 1;
+    for (f = 0; f < frames; f++) {
+        DWORD at = WORD32(clip + 0x2C + 12 * tracks + 4 * f) & ~1u;
+        for (t = 0; t < tracks; t++) {
+            DWORD bytes = at + 4 <= size ? WORD32(clip + at) : 0, left;
+            BYTE *in;
+            at += 4;
+            if (t == 0 && bytes >= 4 && at + bytes <= size) {
+                left = WORD32(clip + at);
+                in = clip + at + 4;
+                while (left) {
+                    void *samples;
+                    DWORD got;
+                    decompress(h, &samples, &got, in, (void **)&in);
+                    if (got > left)
+                        got = left;
+                    fwrite(samples, 1, got, o);
+                    left -= got;
+                }
+            }
+            at += bytes;
+        }
+    }
+    fclose(o);
+    printf("%s: %lu frames, %lu Hz, flags %lx\n", entry, (unsigned long)frames,
+           (unsigned long)(word & 0xFFFF), (unsigned long)(word >> 16));
+    return 0;
+}
+
+/* The decoder's tables by its own functions (relative to the DLL's base 0x10000000). */
+static int sound_tables(const char *out)
+{
+    scale_fn scale = (scale_fn)((BYTE *)dll + 0xF310);
+    cdft_fn cdft = (cdft_fn)((BYTE *)dll + 0xC610);
+    const DWORD factor = 0x3F29FBE7; /* 0x100183AC: 0.664f */
+    FILE *o = fopen(out, "wb");
+    int v, n;
+    if (!o)
+        return 1;
+    for (v = 0; v < 256; v++) {
+        float c;
+        volatile float x, r;
+        memcpy(&c, &factor, 4);
+        /* fild, fmul by the binary32 factor, fstp: the product of an 8-bit integer and a
+           24-bit significand is exact in a double, so the cast is the DLL's one rounding */
+        x = (float)((double)v * (double)c);
+        r = scale(x);
+        fwrite((const void *)&r, 4, 1, o);
+    }
+    for (n = 1024; n <= 4096; n *= 2) {
+        float *a = calloc(n, sizeof *a), *w = calloc(n, sizeof *w);
+        int *ip = calloc(2 + n, sizeof *ip);
+        if (!a || !w || !ip)
+            return 1;
+        cdft(n, -1, a, ip, w);
+        fwrite(w, 4, n / 4, o);
+        free(a);
+        free(w);
+        free(ip);
+    }
+    fclose(o);
+    return 0;
+}
+
+static int run_cdft(int n, const char *in, const char *out)
+{
+    cdft_fn cdft = (cdft_fn)((BYTE *)dll + 0xC610);
+    float *a = calloc(n, sizeof *a), *w = calloc(n, sizeof *w);
+    int *ip = calloc(2 + n, sizeof *ip);
+    FILE *i = fopen(in, "rb"), *o = fopen(out, "wb");
+    if (n < 4 || !a || !w || !ip || !i || !o)
+        return 1;
+    while (fread(a, 4, n, i) == (size_t)n) {
+        cdft(n, -1, a, ip, w);
+        fwrite(a, 4, n, o);
+    }
+    fclose(i);
+    fclose(o);
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     const char *cw = getenv("BINKPROBE_CW");
@@ -313,8 +466,17 @@ int main(int argc, char **argv)
                     argc == 10 ? strtoul(argv[9], NULL, 0) : 0);
     if (argc == 5 && !strcmp(argv[1], "tables"))
         return tables(argv[2], argv[3], argv[4]);
+    if (argc == 5 && !strcmp(argv[1], "sound"))
+        return sound(argv[2], argv[3], argv[4]);
+    if (argc == 3 && !strcmp(argv[1], "sound-tables"))
+        return sound_tables(argv[2]);
+    if (argc == 5 && !strcmp(argv[1], "cdft"))
+        return run_cdft((int)strtoul(argv[2], NULL, 0), argv[3], argv[4]);
     fprintf(stderr, "usage: binkprobe frames <vid> <entry> <type> <out>\n"
                     "       binkprobe tables <vid> <entry> <out>\n"
-                    "       binkprobe play <vid> <start> <loop|-> <type> <ms> <out> [<first> [<redraws>]]\n");
+                    "       binkprobe play <vid> <start> <loop|-> <type> <ms> <out> [<first> [<redraws>]]\n"
+                    "       binkprobe sound <vid> <entry> <out>\n"
+                    "       binkprobe sound-tables <out>\n"
+                    "       binkprobe cdft <n> <in> <out>\n");
     return 2;
 }
