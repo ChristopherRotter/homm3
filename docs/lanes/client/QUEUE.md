@@ -64,7 +64,10 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   that leaves something to tell. In an untimed game (every game until the server lane's T17)
   only `waits` is ever told. At a timer's end the server acts for the player with the system
   actor's commands (T14's `GameCommand::System`), told as every command's. Your readers'
-  wildcards skip it; showing it is yours (E28's screens).
+  wildcards skip it; showing it is yours (E28's screens). **Your path changed** (`cross-lane`,
+  the user's consent): `GameOptions` gained `clock`, so `h3-battle-client`'s
+  `game_seat/tests.rs` builds its options with `clock: Clock::UNLIMITED` (one line and its
+  import).
 
 - 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
   consent; **your test changed, nothing to build**): protocol **v54**: the wire's
