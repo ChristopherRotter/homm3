@@ -11,7 +11,7 @@ use h3_adventure::{
     DwellingParams, Holds, MonthParamsDef, ObjectKindDef, ObjectSetup, ObjectTypeDef, Pos, Scenery,
     TileMask, Visit,
 };
-use h3_content::{ArtifactClass, ArtifactDef, HeroEffect};
+use h3_content::{ArtifactClass, ArtifactDef, ContentPack, HeroEffect};
 use h3_contracts::{PlayerId, TownId};
 use h3_heroes::{ArtifactInstance, wearing};
 use h3_kernel::{Rng, StreamId};
@@ -46,12 +46,22 @@ fn rules(odds: [u8; 3]) -> GameRuleset {
 /// [`rules`] with the town part edited by `edit` (E09 T26a2: the week's chance, a `week_of`
 /// building).
 pub(super) fn rules_on(odds: [u8; 3], edit: impl FnOnce(&mut TownPack)) -> GameRuleset {
+    rules_with(odds, |_| {}, edit)
+}
+
+/// [`rules_on`] with the core's pack changed by `core_edit` first (E09 T27: an upgraded level).
+pub(super) fn rules_with(
+    odds: [u8; 3],
+    core_edit: impl FnOnce(&mut ContentPack),
+    edit: impl FnOnce(&mut TownPack),
+) -> GameRuleset {
     let mut towns = town_pack(false);
     // E09 T26b: the neutral T3's garrison never grows here (its week draws its odds alone; the
     // garrison week is `garrison.rs`' tests').
     towns.params.as_mut().unwrap().garrison_week.odds = [0, 0];
     edit(&mut towns);
     let mut core = towns_core_pack(false);
+    core_edit(&mut core);
     for (k, effect) in [
         (
             "t:legs",

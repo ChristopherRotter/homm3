@@ -952,7 +952,7 @@ enum Open {
     Choice(HeroId, h3_adventure::ObjectTypeId, TilePos),
     University(HeroId, h3_adventure::ObjectTypeId, TilePos),
     // E08 T95b: a hire dialog, named by its army and its source.
-    Hire(h3_game::HireTarget, h3_adventure::ObjectTypeId, TilePos),
+    Hire(h3_game::HireTarget, h3_game::HireSeen),
     // E08 T114a2: a map garrison's exchange, its hero, the garrison and its army.
     Exchange(HeroId, u32, Vec<ArmyStack>),
 }
@@ -1000,7 +1000,7 @@ fn check_told(
         DecisionView::University { visit: v, .. } => {
             Open::University(v.hero, v.object_type, v.anchor)
         }
-        DecisionView::Hire(view) => Open::Hire(view.target, view.object_type, view.anchor),
+        DecisionView::Hire(view) => Open::Hire(view.target, view.source),
         DecisionView::Exchange {
             hero,
             garrison,
@@ -1502,12 +1502,11 @@ fn check_told(
             GameEvent::HireOpened {
                 player,
                 target,
-                object_type,
-                anchor,
+                source,
             } => {
                 prop_assert_eq!(player, viewer);
                 prop_assert!(decision.is_none());
-                decision = Some(Open::Hire(target, object_type, anchor));
+                decision = Some(Open::Hire(target, source));
             }
             // E08 T51a: the management's events are the owner's (the plans manage since T52); a
             // slot of an army dialog's group changes its group (T51b).
@@ -2155,6 +2154,29 @@ fn check_hire_sources(
             .zip(source(object_type, anchor))
             .is_some_and(|(h, (_, o))| o.covers(h.pos).1)
     };
+    // E09 T27: a hire dialog is the visitor's of a map source (its hero's visit), or a town's
+    // owner's, its target the town's garrison (TWN-REC-001, -002).
+    let opens = |target: h3_game::HireTarget, source: h3_game::HireSeen| match (target, source) {
+        (
+            h3_game::HireTarget::Hero(hero),
+            h3_game::HireSeen::Object {
+                object_type,
+                anchor,
+            },
+        ) => visits(hero, object_type, anchor),
+        (
+            h3_game::HireTarget::Garrison(town),
+            h3_game::HireSeen::Town { town: t, .. } | h3_game::HireSeen::Portal { town: t },
+        ) => {
+            t == town
+                && adventure
+                    .map()
+                    .town_object(town)
+                    .and_then(|index| adventure.owner(index))
+                    == Some(viewer)
+        }
+        _ => false,
+    };
     // Whether one of the viewer's heroes stands on an entrance of the source.
     let stands = |object_type, anchor| {
         let source = source(object_type, anchor);
@@ -2171,14 +2193,11 @@ fn check_hire_sources(
             "{:?} open for the viewer without its visit",
             offer
         ),
-        Some(DecisionView::Hire(hire)) => {
-            let h3_game::HireTarget::Hero(hero) = hire.target;
-            prop_assert!(
-                visits(hero, hire.object_type, hire.anchor),
-                "{:?} open for the viewer without its visit",
-                hire
-            );
-        }
+        Some(DecisionView::Hire(hire)) => prop_assert!(
+            opens(hire.target, hire.source),
+            "{:?} open for the viewer without its visit or its town",
+            hire
+        ),
         _ => {}
     }
     for event in told {
@@ -2199,14 +2218,13 @@ fn check_hire_sources(
             }
             GameEvent::HireOpened {
                 player,
-                target: h3_game::HireTarget::Hero(hero),
-                object_type,
-                anchor,
+                target,
+                source,
             } => {
                 prop_assert_eq!(player, viewer);
                 prop_assert!(
-                    visits(hero, object_type, anchor),
-                    "{:?} told without the viewer's visit",
+                    opens(target, source),
+                    "{:?} told without the viewer's visit or its town",
                     event
                 );
             }

@@ -48,8 +48,8 @@ use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
-    GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireTarget, HireView, Manage,
-    NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
+    GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireSeen, HireTarget, HireView,
+    Manage, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
     UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management, legal_moves,
     observe, split_range,
 };
@@ -4037,15 +4037,42 @@ fn choice_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> V
     answers.into_iter().map(GameCommand::Answer).collect()
 }
 
-/// The creatures the hire dialog's source of `object_type` on `anchor` sells on `state`, with
-/// their counts as they stand (ADV-HIR-002, E08 T95b), read apart from the dialog: a dwelling's
-/// kind's creatures in its order with the dwelling's counts, a Refugee Camp's week's creature and
-/// count.
+/// The creatures the hire dialog's `source` sells on `state`, with their counts as they stand
+/// (ADV-HIR-002, E08 T95b), read apart from the dialog: a dwelling's kind's creatures in its order
+/// with the dwelling's counts, a Refugee Camp's week's creature and count; since E09 T27 a town's
+/// index's creature, an upgraded index's upgrade then its base creature, each with the index's one
+/// count, or the Portal's creature and count (TWN-REC-001, -002).
 fn hire_stock(
     rules: &GameRuleset,
     state: &GameState,
-    (object_type, anchor): (ObjectTypeId, TilePos),
+    source: HireSeen,
 ) -> Vec<(CreatureTypeId, u32)> {
+    let (object_type, anchor) = match source {
+        HireSeen::Object {
+            object_type,
+            anchor,
+        } => (object_type, anchor),
+        HireSeen::Town { town, index } => {
+            let record = state.towns().get(town).unwrap();
+            let levels = &rules.towns().town(record.faction()).unwrap().creatures;
+            let index = usize::from(index);
+            let count = u32::from(record.available(index));
+            let level = levels.get(index % h3_towns::MAX_CREATURE_LEVELS);
+            let creatures = match (level, index >= h3_towns::MAX_CREATURE_LEVELS) {
+                (Some(level), true) => level.upgrade.into_iter().chain([level.base]).collect(),
+                (Some(level), false) => vec![level.base],
+                (None, _) => Vec::new(),
+            };
+            return creatures.into_iter().map(|c| (c, count)).collect();
+        }
+        HireSeen::Portal { town } => {
+            let held = state.towns().get(town).unwrap().portal();
+            return held
+                .map(|held| (held.creature, u32::from(held.count)))
+                .into_iter()
+                .collect();
+        }
+    };
     let index = object_index(state, object_type, anchor).unwrap();
     let adventure = state.adventure();
     match rules.adventure().object_type(object_type).map(|t| &t.kind) {
@@ -4062,6 +4089,18 @@ fn hire_stock(
     }
 }
 
+/// The army a hire dialog's `target` names on `state` (E09 T27): a hero's, or a town's garrison.
+fn hire_army(state: &GameState, target: HireTarget) -> Vec<h3_contracts::ArmyStack> {
+    let adventure = state.adventure();
+    match target {
+        HireTarget::Hero(hero) => adventure.hero(hero).unwrap().army.clone(),
+        HireTarget::Garrison(town) => {
+            let index = adventure.map().town_object(town).unwrap();
+            adventure.town_garrison(index).unwrap().to_vec()
+        }
+    }
+}
+
 /// The cost of one `creature` (ADV-HIR-002, E08 T95b): its core cost's resources of more than 0,
 /// in the core's order.
 fn unit_cost(rules: &GameRuleset, creature: CreatureTypeId) -> Vec<(ResourceId, u32)> {
@@ -4072,19 +4111,19 @@ fn unit_cost(rules: &GameRuleset, creature: CreatureTypeId) -> Vec<(ResourceId, 
 }
 
 /// The most of `creature` of a source holding `count` of it that `player` may buy now into
-/// `hero`'s army (GAM-DEC-008, ADV-ARM-007; E08 T95b), by an independent reading: the least of
-/// the count, the treasury divided by the cost of one for each resource it costs, and the room, a
-/// stack's most with a slot free, else the most less the least count among the army's stacks of
-/// the creature, else 0.
+/// `target`'s army (GAM-DEC-008, ADV-ARM-007; E08 T95b; since E09 T27 a town's garrison), by an
+/// independent reading: the least of the count, the treasury divided by the cost of one for each
+/// resource it costs, and the room, a stack's most with a slot free, else the most less the least
+/// count among the army's stacks of the creature, else 0.
 fn hire_most(
     rules: &GameRuleset,
     state: &GameState,
-    (player, hero): (PlayerId, HeroId),
+    (player, target): (PlayerId, HireTarget),
     (creature, count): (CreatureTypeId, u32),
 ) -> u32 {
     let params = rules.adventure().params();
     let (slots, most) = (params.army_slots(), params.max_stack_count());
-    let army = &state.adventure().hero(hero).unwrap().army;
+    let army = &hire_army(state, target);
     let room = if army.len() < usize::from(slots) {
         most
     } else {
@@ -4109,13 +4148,12 @@ fn hire_answers(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec
     let Some(view) = hire_view(state, rules, player) else {
         return Vec::new();
     };
-    let HireTarget::Hero(hero) = view.target;
-    hire_stock(rules, state, (view.object_type, view.anchor))
+    hire_stock(rules, state, view.source)
         .into_iter()
         .map(|(creature, count)| {
             (
                 creature,
-                hire_most(rules, state, (player, hero), (creature, count)),
+                hire_most(rules, state, (player, view.target), (creature, count)),
             )
         })
         .filter(|&(_, most)| most > 0)
@@ -4144,8 +4182,7 @@ fn check_hire(
     (actor, view): (PlayerId, &HireView),
     legal: &[GameCommand],
 ) -> Result<(), TestCaseError> {
-    let HireTarget::Hero(hero) = view.target;
-    let source = (view.object_type, view.anchor);
+    let (target, source) = (view.target, view.source);
     let stock = hire_stock(rules, state, source);
     let shown: Vec<(CreatureTypeId, u32)> = view
         .creatures
@@ -4174,7 +4211,7 @@ fn check_hire(
         |creature, amount| GameCommand::Answer(Answer::Hire(HireAnswer::Buy { creature, amount }));
     let mut refused = Vec::new();
     for &(creature, count) in &stock {
-        let most = hire_most(rules, state, (actor, hero), (creature, count));
+        let most = hire_most(rules, state, (actor, target), (creature, count));
         let range = hire_range(state, rules, actor, creature);
         prop_assert_eq!(range.clone(), 1..=most, "{:?}", creature);
         refused.extend([buy(creature, 0), buy(creature, range.end() + 1)]);
@@ -4224,6 +4261,28 @@ fn check_hire(
             .into_iter()
             .map(|(resource, each)| (resource, each * amount))
             .collect();
+        let mut army = hire_army(state, target);
+        let fits = |s: &h3_contracts::ArmyStack| {
+            s.creature == creature && s.count.saturating_add(amount) <= most
+        };
+        let joined = if let Some(at) = army.iter().position(fits) {
+            army[at].count += amount;
+            army[at]
+        } else {
+            let slot = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
+            let slot = slot.ok_or_else(|| fail(format!("{command:?} bought without room")))?;
+            let at = army
+                .iter()
+                .position(|s| s.slot > slot)
+                .unwrap_or(army.len());
+            let stack = h3_contracts::ArmyStack {
+                slot,
+                creature,
+                count: amount,
+            };
+            army.insert(at, stack);
+            stack
+        };
         let mut expected: Vec<GameEvent> = price
             .iter()
             .map(|&(resource, amount)| GameEvent::ResourcePaid {
@@ -4232,60 +4291,84 @@ fn check_hire(
                 amount,
             })
             .collect();
-        expected.push(GameEvent::Adventure(AdventureEvent {
-            kind: AdventureEventKind::CreaturesJoined {
-                hero,
-                creature,
-                count: amount,
-            },
-            seen_by: Viewers::NONE.with(actor),
-        }));
-        expected.extend(single.then_some(GameEvent::DecisionClosed { player: actor }));
-        // E08 T103d: nothing follows a purchase that closes the dialog (`held`).
+        // E09 T27: a town's purchase joins its garrison, told as the slot's `StackChanged` to the
+        // owner, then the town's changed views (its counts, the garrison at each viewer's level;
+        // `views_move_as_the_events_say` checks them), then the close.
+        let mut told = 0;
+        match target {
+            HireTarget::Hero(hero) => expected.push(GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::CreaturesJoined {
+                    hero,
+                    creature,
+                    count: amount,
+                },
+                seen_by: Viewers::NONE.with(actor),
+            })),
+            HireTarget::Garrison(town) => {
+                expected.push(GameEvent::StackChanged {
+                    player: actor,
+                    at: ArmySlot {
+                        army: ArmyRef::Garrison(town),
+                        slot: joined.slot,
+                    },
+                    stack: Some(joined),
+                });
+            }
+        }
         prop_assert_eq!(events.get(..expected.len()), Some(&expected[..]));
-        let rest = &events[expected.len()..];
+        if let HireTarget::Garrison(town) = target {
+            told = events[expected.len()..]
+                .iter()
+                .take_while(|e| {
+                    matches!(
+                        e,
+                        GameEvent::TownChanged { town: t, .. }
+                        | GameEvent::TownStackSeen { town: t, .. }
+                        | GameEvent::TownIncomeSeen { town: t, .. } if *t == town
+                    )
+                })
+                .count();
+            let owner_told = events[expected.len()..expected.len() + told]
+                .iter()
+                .any(|e| matches!(*e, GameEvent::TownChanged { player, .. } if player == actor));
+            prop_assert!(
+                owner_told,
+                "{:?} untold to its owner: {:?}",
+                command,
+                events
+            );
+        }
+        let closed = expected.len() + told;
+        let close = single.then_some(GameEvent::DecisionClosed { player: actor });
+        prop_assert_eq!(
+            events.get(closed..closed + usize::from(single)),
+            Some(close.as_slice())
+        );
+        // E08 T103d: nothing follows a purchase that closes the dialog (`held`).
+        let rest = &events[closed + usize::from(single)..];
         prop_assert!(single || rest.is_empty(), "{:?}", events);
         prop_assert!(held(rest), "{:?} after {:?}", events, command);
         let mut left = stock.clone();
         let place = left.iter().position(|&(sold, _)| sold == creature).unwrap();
-        left[place].1 -= amount;
+        // E09 T27: a town's index sells its creatures from one count (TWN-REC-001).
+        let one_count = matches!(source, HireSeen::Town { .. });
+        for (at, (_, count)) in left.iter_mut().enumerate() {
+            if at == place || one_count {
+                *count -= amount;
+            }
+        }
         prop_assert_eq!(hire_stock(rules, &after, source), left);
         let open = hire_view(&after, rules, actor);
         prop_assert_eq!(open.is_none(), single, "{:?}", command);
         if let Some(open) = open {
-            prop_assert_eq!(
-                (open.target, open.object_type, open.anchor),
-                (view.target, source.0, source.1)
-            );
+            prop_assert_eq!((open.target, open.source), (target, source));
         }
         let mut treasury = state.treasury(actor).unwrap().to_vec();
         for &(resource, paid) in &price {
             treasury[usize::from(resource.raw())] -= paid;
         }
         prop_assert_eq!(after.treasury(actor).unwrap(), &treasury[..]);
-        let mut army = state.adventure().hero(hero).unwrap().army.clone();
-        let fits = |s: &h3_contracts::ArmyStack| {
-            s.creature == creature && s.count.saturating_add(amount) <= most
-        };
-        if let Some(at) = army.iter().position(fits) {
-            army[at].count += amount;
-        } else {
-            let slot = (0..slots).find(|&slot| army.iter().all(|s| s.slot != slot));
-            let slot = slot.ok_or_else(|| fail(format!("{command:?} bought without room")))?;
-            let at = army
-                .iter()
-                .position(|s| s.slot > slot)
-                .unwrap_or(army.len());
-            army.insert(
-                at,
-                h3_contracts::ArmyStack {
-                    slot,
-                    creature,
-                    count: amount,
-                },
-            );
-        }
-        prop_assert_eq!(&after.adventure().hero(hero).unwrap().army, &army);
+        prop_assert_eq!(&hire_army(&after, target), &army);
     }
     Ok(())
 }
@@ -5194,8 +5277,9 @@ fn check_build_boat(
     Ok(())
 }
 
-/// Every town build to probe in `state` (E09 T18b2b): for each town of the store and one past it,
-/// in `TownId` order, each building of its faction's record and one past it, in index order.
+/// Every town command to probe in `state` (E09 T18b2b): for each town of the store and one past it,
+/// in `TownId` order, a build of each building of its faction's record and one past it, in index
+/// order, then (E09 T27) a recruitment at each of them, in the same order.
 fn town_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -5207,19 +5291,18 @@ fn town_builds<'a>(
             .get(town)
             .and_then(|record| rules.towns().town(record.faction()))
             .map_or(0, |record| record.buildings.len());
-        (0..=buildings)
-            .filter_map(BuildingId::from_index)
-            .map(move |building| {
-                (
-                    town,
-                    GameCommand::Town(TownCommand::Build { town, building }),
-                )
-            })
+        let ids = move || (0..=buildings).filter_map(BuildingId::from_index);
+        let builds = ids().map(move |building| TownCommand::Build { town, building });
+        let recruits = ids().map(move |building| TownCommand::Recruit { town, building });
+        builds
+            .chain(recruits)
+            .map(move |command| (town, GameCommand::Town(command)))
     })
 }
 
-/// The builds `player` may give in `state` by `apply`'s checks alone (E09 T18b2b; TWN-BLD-001): of
-/// [`town_builds`], those a probe accepts, in that order, as `legal_commands` must list them.
+/// The town commands `player` may give in `state` by `apply`'s checks alone (E09 T18b2b;
+/// TWN-BLD-001; since E09 T27 TWN-REC-001): of [`town_builds`], those a probe accepts, in that
+/// order, as `legal_commands` must list them.
 fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
     town_builds(state, rules)
         .map(|(_, command)| command)
@@ -5229,6 +5312,41 @@ fn accepted_builds(state: &GameState, rules: &GameRuleset, player: PlayerId) -> 
             apply(&mut probe, rules, actor, command.clone(), &mut NoopSink).is_ok()
         })
         .collect()
+}
+
+/// What a town's recruitment at `building` opens by an independent reading of the town's record
+/// (TWN-REC-001, -002; E09 T27, the town epic's design note §49): a standing dwelling's or horde's
+/// index (`level - 1`, `+ 7` upgraded; none for a base index whose upgraded dwelling was ever
+/// built), a standing Portal's while it holds a creature.
+fn recruited(
+    state: &GameState,
+    rules: &GameRuleset,
+    (town, building): (TownId, BuildingId),
+) -> Option<HireSeen> {
+    let record = state.towns().get(town)?;
+    let part = rules.towns().town(record.faction())?;
+    let roles = &part.building(building)?.roles;
+    if !record.standing(part).contains(building) {
+        return None;
+    }
+    if roles.portal {
+        return record.portal().map(|_| HireSeen::Portal { town });
+    }
+    let (level, upgraded) = match (roles.dwelling, roles.horde) {
+        (Some(d), _) => (d.level, d.upgraded),
+        (None, Some(h)) => (h.level, h.upgraded),
+        (None, None) => return None,
+    };
+    let moved = record.built().iter().any(|b| {
+        part.building(b)
+            .and_then(|b| b.roles.dwelling)
+            .is_some_and(|d| d.level == level && d.upgraded)
+    });
+    let levels = u8::try_from(h3_towns::MAX_CREATURE_LEVELS).unwrap();
+    (upgraded || !moved).then(|| HireSeen::Town {
+        town,
+        index: level - 1 + u8::from(upgraded) * levels,
+    })
 }
 
 /// Every town build (E09 T18b2b; TWN-BLD-001, the town epic's design note §29, §32): each one the
@@ -5261,8 +5379,27 @@ fn check_town_builds(
             continue;
         }
         prop_assert!(result.is_ok(), "legal {:?} rejected: {:?}", command, result);
-        let GameCommand::Town(TownCommand::Build { building, .. }) = command else {
-            return Err(fail(format!("{command:?}")));
+        let building = match command {
+            GameCommand::Town(TownCommand::Build { building, .. }) => building,
+            // E09 T27: a listed recruitment opens the town's hire dialog of what the building
+            // sells, its target the garrison, told to the owner alone, changing nothing else.
+            GameCommand::Town(TownCommand::Recruit { building, .. }) => {
+                let source = recruited(state, rules, (town, building));
+                let source = source.ok_or_else(|| fail(format!("{command:?} sells nothing")))?;
+                let target = HireTarget::Garrison(town);
+                let opened = GameEvent::HireOpened {
+                    player: actor,
+                    target,
+                    source,
+                };
+                prop_assert_eq!(&events, &vec![opened]);
+                let view = hire_view(&probe, rules, actor).unwrap();
+                prop_assert_eq!((view.target, view.source), (target, source));
+                prop_assert_eq!(probe.towns().get(town), state.towns().get(town));
+                prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+                continue;
+            }
+            _ => return Err(fail(format!("{command:?}"))),
         };
         let (old, new) = (
             state.towns().get(town).unwrap(),
@@ -5309,6 +5446,21 @@ fn check_town_builds(
         });
         let payable = offer.map_or(BuildingSet::EMPTY, |offer| offer.payable);
         prop_assert_eq!(listed.count(), payable.iter().count(), "{:?}", town);
+        // E09 T27: an owned town's listed recruitments are its buildings that sell, read apart.
+        let recruits: Vec<BuildingId> = legal
+            .iter()
+            .filter_map(|command| match *command {
+                GameCommand::Town(TownCommand::Recruit { town: t, building }) if t == town => {
+                    Some(building)
+                }
+                _ => None,
+            })
+            .collect();
+        let selling: Vec<BuildingId> = (0..h3_towns::MAX_BUILDINGS)
+            .filter_map(BuildingId::from_index)
+            .filter(|&b| offer.is_some() && recruited(state, rules, (town, b)).is_some())
+            .collect();
+        prop_assert_eq!(recruits, selling, "{:?}", town);
     }
     Ok(())
 }
@@ -6877,22 +7029,46 @@ fn check_towns(
         }
         // E09 T26a1: a town's counts move with a week's start (its growth, the month's after it,
         // since E09 T26b a neutral garrison's week; TWN-GRO-003, -004, -006), a build's first
-        // creatures (TWN-GRO-005) and a town event's creatures (TWN-EVT-004) only; (E09 T26b) its
+        // creatures (TWN-GRO-005), a town event's creatures (TWN-EVT-004) and (E09 T27) a purchase
+        // only; (E09 T26b) its
         // Portal with a week's start, a build, a capture or a dwelling's flag for its owner
         // (TWN-GRO-007); each told to an owner, whose view shows them (TWN-VEW-004); the rest of
         // the record as before.
         let week = events
             .iter()
             .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
+        // E09 T27: a purchase in the town's hire dialog joins its garrison (its slot's
+        // `StackChanged`, no battle) and lowers one index's count or its Portal's, the Portal's
+        // creature kept (TWN-REC-001, -002; `check_hire` checks the amount).
+        let bought = !events
+            .iter()
+            .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
+            && events.iter().any(|e| {
+                matches!(*e, GameEvent::StackChanged {
+                    at: ArmySlot { army: ArmyRef::Garrison(t), .. },
+                    ..
+                } if t == town)
+            });
         if old.available_all() != new.available_all() {
             let fired = events
                 .iter()
                 .any(|e| matches!(*e, GameEvent::TownEventFired { town: t, .. } if t == town));
             prop_assert!(
-                week || !built.is_empty() || fired,
-                "{:?}'s counts moved without a week, a build or an event",
+                week || !built.is_empty() || fired || bought,
+                "{:?}'s counts moved without a week, a build, an event or a purchase",
                 town
             );
+            if !(week || !built.is_empty() || fired) {
+                let lowered: Vec<usize> = (0..h3_towns::CREATURE_INDEXES)
+                    .filter(|&i| old.available(i) != new.available(i))
+                    .collect();
+                prop_assert!(
+                    lowered.len() == 1 && new.available(lowered[0]) < old.available(lowered[0]),
+                    "{:?}: a purchase moved {:?}",
+                    town,
+                    lowered
+                );
+            }
         }
         if old.portal() != new.portal() {
             let flagged = events.iter().any(|e| match e {
@@ -6911,9 +7087,12 @@ fn check_towns(
                 }
                 _ => false,
             });
+            let bought = bought
+                && matches!((old.portal(), new.portal()), (Some(o), Some(n))
+                    if o.creature == n.creature && n.count < o.count);
             prop_assert!(
-                week || !built.is_empty() || !captured.is_empty() || flagged,
-                "{:?}'s Portal moved without a week, a build, a capture or a flag",
+                week || !built.is_empty() || !captured.is_empty() || flagged || bought,
+                "{:?}'s Portal moved without a week, a build, a capture, a flag or a purchase",
                 town
             );
         }
@@ -8636,8 +8815,10 @@ fn check_decisions(
                         let expected = GameEvent::HireOpened {
                             player: actor,
                             target: HireTarget::Hero(open.hero),
-                            object_type,
-                            anchor,
+                            source: HireSeen::Object {
+                                object_type,
+                                anchor,
+                            },
                         };
                         prop_assert_eq!(
                             opened,
@@ -8711,11 +8892,9 @@ fn check_decisions(
     let choosing = |state: &GameState| {
         let hero = state.choice(actor).map(|c| c.hero);
         let hero = hero.or_else(|| state.university(actor).map(|u| u.hero));
-        // E08 T95b: or a hire dialog, by its army's hero.
-        hero.or_else(|| {
-            let HireTarget::Hero(hero) = hire_view(state, rules, actor)?.target;
-            Some(hero)
-        })
+        // E08 T95b: or a hire dialog, by its army's hero (since E09 T27 or its town's garrison).
+        hero.map(HireTarget::Hero)
+            .or_else(|| Some(hire_view(state, rules, actor)?.target))
     };
     let mut exchange = (before.meeting(actor), dialog(before), choosing(before));
     let mut guards = false;
@@ -8763,7 +8942,19 @@ fn check_decisions(
             } => {
                 prop_assert_eq!((player, exchange), (actor, (None, None, None)));
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
-                exchange.2 = Some(hero);
+                exchange.2 = Some(HireTarget::Hero(hero));
+            }
+            // E09 T27: a town's hire dialog opens for its owner (TWN-REC-001).
+            GameEvent::HireOpened {
+                player,
+                target: target @ HireTarget::Garrison(town),
+                ..
+            } => {
+                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                let adventure = after.adventure();
+                let index = adventure.map().town_object(town);
+                prop_assert_eq!(index.and_then(|i| adventure.owner(i)), Some(actor));
+                exchange.2 = Some(target);
             }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
@@ -10290,8 +10481,11 @@ impl Hired {
         }
         if let Some(view) = hire_view(before, rules, player) {
             let camp = matches!(
-                part.object_type(view.object_type).map(|t| &t.kind),
-                Some(ObjectKind::RefugeeCamp { .. })
+                view.source,
+                HireSeen::Object { object_type, .. } if matches!(
+                    part.object_type(object_type).map(|t| &t.kind),
+                    Some(ObjectKind::RefugeeCamp { .. })
+                )
             );
             match command {
                 GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) if camp => {

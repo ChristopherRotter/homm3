@@ -1026,5 +1026,6 @@ mod income;
 mod offer;
 mod pool;
 mod portal;
+mod recruit;
 mod siege;
 mod view;
