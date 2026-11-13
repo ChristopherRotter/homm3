@@ -147,6 +147,10 @@ pub struct GameSetup {
     pub hero_masks: Vec<(HeroTypeId, u8)>,
     /// The prisoners' hero types (the map's class 62; E09 T7a1): taken in the pool (TWN-SET-005).
     pub prisoners: Vec<HeroTypeId>,
+    /// Whether the map is a Restoration of Erathia one (the h3m's format; E09 T26a2, design note
+    /// `E09-design.md` §42): a creature's week then names only the town records' creatures that
+    /// RoE has (TWN-GRO-002, [`h3_towns::TownRecord::roe`]). Read by nothing else.
+    pub roe: bool,
 }
 
 /// A timed event as the map gives it (GAM-CAL-004, E08 T83a; survey `E08-economy.md` §11): on its

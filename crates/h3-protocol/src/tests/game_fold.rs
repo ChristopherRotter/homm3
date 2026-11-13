@@ -117,9 +117,9 @@ fn details<T: PartialEq>(
 /// the gaps that let the fold differ there (SRV-Q26, SRV-Q27 (2)): the gate (E16 M5 T3c2).
 const PARTS: &[Part] = &[
     Part {
-        name: "day and month",
+        name: "day, week and month",
         stubs: &[],
-        agree: |a, b| (a.day, a.month) == (b.day, b.month),
+        agree: |a, b| (a.day, a.week, a.month) == (b.day, b.week, b.month),
     },
     Part {
         name: "turns",
@@ -348,6 +348,27 @@ const PARTS: &[Part] = &[
         name: "town owner facts",
         stubs: &[VISIONS],
         agree: |a, b| towns(a, b, |t| t.owner_facts.clone()),
+    },
+    // E08 T114b (ADV-GAR-006): no golden replay holds a map garrison yet (increment 12's T116
+    // adds them), so neither part can differ; a Visions holder's reach (`TWN-STUB-13`) joins the
+    // second once one shows it.
+    Part {
+        name: "map garrisons in sight",
+        stubs: &[],
+        agree: |a, b| {
+            let places = |o: &GameObservation| {
+                o.garrisons
+                    .iter()
+                    .map(MapGarrison::place)
+                    .collect::<Vec<_>>()
+            };
+            places(a) == places(b)
+        },
+    },
+    Part {
+        name: "map garrisons",
+        stubs: &[],
+        agree: |a, b| pairs(&a.garrisons, &b.garrisons, MapGarrison::place).all(|(x, y)| x == y),
     },
 ];
 
@@ -631,7 +652,13 @@ fn the_fold_keeps_the_calendar_the_turns_and_the_treasury() {
             GameEvent::TurnEnded { player: 1 },
             GameEvent::TurnEnded { player: 9 },
             GameEvent::DayStarted { day: 31 },
-            GameEvent::WeekStarted { week: 5 },
+            GameEvent::WeekStarted {
+                week: 5,
+                kind: Week::Of {
+                    creatures: [Some(42), Some(43)],
+                    bonus: 15,
+                },
+            },
             GameEvent::MonthStarted {
                 month: 2,
                 kind: Month::Plague {},
@@ -671,6 +698,11 @@ fn the_fold_keeps_the_calendar_the_turns_and_the_treasury() {
         ],
     );
     assert_eq!((v.day, v.month), (31, Month::Plague {}));
+    let deity = Week::Of {
+        creatures: [Some(42), Some(43)],
+        bonus: 15,
+    };
+    assert_eq!(v.week, deity);
     let acting: Vec<bool> = v.players.iter().map(|p| p.acting).collect();
     assert_eq!(acting, [true, true]);
     assert_eq!(v.turn_group, [0, 1]);
@@ -1457,6 +1489,96 @@ fn the_fold_replaces_a_towns_view_by_its_told_one() {
     assert_eq!(other.owner_facts, None);
 }
 
+/// A viewer's whole view of the map garrison of type `object_type` at `anchor` told
+/// (`GarrisonChanged`, E08 T114b): its owner's team's, by slot with its removable flag, or
+/// another viewer's at `level`.
+fn garrison_changed(object_type: u16, anchor: Pos, owner: Option<u8>, level: u8) -> GameEvent {
+    let ours = owner == Some(1);
+    GameEvent::GarrisonChanged {
+        player: 1,
+        object_type,
+        anchor,
+        owner,
+        level,
+        slots: ours,
+        removable: ours.then_some(true),
+    }
+}
+
+#[test]
+fn the_fold_replaces_a_map_garrisons_view_by_its_told_one() {
+    // E08 T114b (ADV-GAR-006): the view's garrisons in their places' order: (3, 4, 0) another's
+    // at level 2, (9, 4, 0) the viewer's own, (3, 2, 1) a neutral one at level 0.
+    let mut v = view();
+    let p = |x, y, level| Pos { x, y, level };
+    let seen = |object_type, anchor, stack, slot| GameEvent::GarrisonStackSeen {
+        player: 1,
+        object_type,
+        anchor,
+        stack,
+        slot,
+    };
+    let before = v.garrisons.clone();
+    fold(
+        &mut v,
+        &[
+            // The viewer's own one captured by another: at its taverns' level, packed.
+            garrison_changed(33, p(9, 4, 0), Some(0), 1),
+            seen(33, p(9, 4, 0), shown(9, None), None),
+            // One it did not see yet (a reveal in the same command comes after): put in its
+            // place, by slot with its flag.
+            garrison_changed(33, p(5, 0, 0), Some(1), 3),
+            seen(33, p(5, 0, 0), shown(30, Some(8)), Some(1)),
+            seen(33, p(5, 0, 0), shown(31, Some(2)), Some(6)),
+            // A stack of a garrison of another type there: nothing.
+            seen(219, p(5, 0, 0), shown(9, None), None),
+        ],
+    );
+    let garrison = |object_type, anchor, owner, garrison, removable| MapGarrison {
+        object_type,
+        anchor,
+        owner,
+        garrison,
+        removable,
+    };
+    assert_eq!(
+        v.garrisons,
+        [
+            garrison(
+                33,
+                p(5, 0, 0),
+                Some(1),
+                Garrison {
+                    level: 3,
+                    stacks: vec![shown(30, Some(8)), shown(31, Some(2))],
+                    army: Some(vec![
+                        stack(1, 8),
+                        ArmyStack {
+                            slot: 6,
+                            creature: 31,
+                            count: 2
+                        }
+                    ]),
+                },
+                Some(true)
+            ),
+            before[0].clone(),
+            garrison(
+                33,
+                p(9, 4, 0),
+                Some(0),
+                Garrison {
+                    level: 1,
+                    stacks: vec![shown(9, None)],
+                    army: None,
+                },
+                None
+            ),
+            before[2].clone(),
+        ]
+    );
+}
+
 #[test]
 fn the_fold_moves_the_heroes_and_the_boats() {
     let mut v = view();
@@ -1713,6 +1835,7 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
         },
         heroes: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let before = v.clone();
     v.reveal(&nothing);
@@ -1758,6 +1881,16 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
         kind: 2,
         facing: 4,
     };
+    let garrisons = v.garrisons.clone();
+    let flag = |g: usize| MapGarrison {
+        owner: Some(0),
+        ..garrisons[g].clone()
+    };
+    let garrison = |anchor, object_type| MapGarrison {
+        object_type,
+        anchor,
+        ..garrisons[2].clone()
+    };
     v.reveal(&GameReveal {
         adventure: AdventureReveal {
             viewer: v.viewer,
@@ -1784,6 +1917,8 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
         },
         heroes: vec![info(4, 40), info(6, 60)],
         towns: vec![town(1), town(7)],
+        // E08 T114b: a map garrison seen already replaced, a new one in its place.
+        garrisons: vec![flag(1), garrison(at(1, 0), 219)],
     });
     assert_eq!(v.adventure.explored, [WireU64(0b010), WireU64(0)]);
     assert_eq!(v.adventure.fringe, [WireU64(0), WireU64(0b100)]);
@@ -1817,6 +1952,15 @@ fn a_reveal_puts_what_the_viewer_newly_sees_in_its_place() {
             (2, name(2)),
             (3, name(3)),
             (7, newly)
+        ]
+    );
+    assert_eq!(
+        v.garrisons,
+        [
+            garrison(at(1, 0), 219),
+            garrisons[0].clone(),
+            flag(1),
+            garrisons[2].clone()
         ]
     );
 }
@@ -1854,6 +1998,7 @@ fn a_view_of_the_largest_sides_folds_its_far_corner_without_a_panic() {
         },
         heroes: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     });
     let removed = adventure(AdventureEvent::ObjectRemoved {
         object_type: 1,

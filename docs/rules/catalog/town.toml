@@ -1034,12 +1034,37 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "TWN-GRO-002"
+title    = "The week's kind"
+context  = "town"
+status   = "implemented"
+summary  = "On a week's first day after the first, before WeekStarted, the game draws the week's kind from the towns' stream (`StreamId::TOWNS`, so the game's stream stays where it was, E09 decision 75): unless the week is a month's first, a creature's week with the part's `creature_chance` (one `below(denominator)` under the numerator; the original's 1 in 4), its creature one `below(n)` among the n eligible creatures (every town record's levels' creatures in the part's order, each level's base then its upgrade; on a Restoration of Erathia map only the records with `roe`: the original's 126 with AB, Conflux's left out; the neutrals never come); else a normal week. Then the first town in `TownId` order with a standing building of role `week_of`, of any owner, makes the week that building's (`WeekKind::Of`: its level's base creature and upgrade, the bonus the base's core growth, the Imp's 15), the draw kept or not, every week the month's first too. A part without the growth's parameters or without an eligible creature draws no creature. The kind is public: `GameEvent::WeekStarted { week, kind }` and `GameObservation::week`; the towns' week (TWN-GRO-003) and month (TWN-GRO-004) read it, and a building's week makes the month its base creature's (GAM-CAL-003). The game's first week is a normal one. E09 T26a2 (design section 42): `h3_towns::draw_week`, `week_creatures`, `building_week`; the setup's `GameSetup::roe` (the map's format, map import v23); the game state's week, `roe` and towns' stream (game state hash v30)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T77a2 and E09 T21; survey E09-growth.md section 2): new_day_week_events (0x4C8780) starts every week normal (kind 0, its name index drawn, the bonus 5); unless the ending week is the month's fourth (+0x1F640 not 4) random_between(1, 4) = 1 makes it a creature's week (kind 1) of the (r + 1)-th eligible creature from the top, r = crt_rand() mod their count: the creatures with a faction and a level not negative, on an RoE-format map (+0x1F698 0) below 118 and not the elementals 112 to 115; then any Inferno town (any owner) with building 26 standing sets kind 2, the Imp and the Familiar, the bonus the Imp's growth (+0x44 of record 42), every week, the month's fourth too, after and over the draw"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md section 11: a creature's week 25 in 100, not on a month's first week; the Deity of Fire's level every week"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 42 (E09 decisions 75 and 77): the towns' stream, the eligible list in the part's order with the records' `roe`, the setup's `roe` from the import, the building's week after the draw; the draw's order an agent's call (E09 T26a2: the chance, then the creature; no name index)"
+  confidence = "high"
+
+[[rule]]
 id       = "TWN-GRO-003"
 title    = "A town's week of growth"
 context  = "town"
 status   = "implemented"
 quirks   = ["TWN-QUIRK-8"]
-summary  = "On a week's first day (the month's first too, before the month), every town's indexes whose growth g (TWN-GRO-001) is above 0 gain g, + the week's bonus when the index's creature is one of the week's (a creature's week: that creature alone, the part's `creature_bonus`, the original's 5; a `week_of` building's week: either creature of its level, the level's base creature's core growth, the Imp's 15), halved (truncated, after the bonus) in a town without an owner, the count held at 32 767 (TWN-QUIRK-8); a normal week names no creature. The Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 42): `h3_towns::week_growth(town, part, core, &WeekKind, &GrowthInputs)` and the week's kind `h3_towns::WeekKind` (`Normal`, `Creature`, `Of`, hashed 0, 1 and the creature, 2 and its two creatures and the bonus); E09 T26a1: the game calls it in `TownId` order on a week's first day after WeekStarted and before the adventure's week step (h3-game's town/growth.rs `grow_week`, GAM-CAL-002), every week a normal one until the game draws the kind (TWN-GRO-002, E09 T26a2)."
+summary  = "On a week's first day (the month's first too, before the month), every town's indexes whose growth g (TWN-GRO-001) is above 0 gain g, + the week's bonus when the index's creature is one of the week's (a creature's week: that creature alone, the part's `creature_bonus`, the original's 5; a `week_of` building's week: either creature of its level, the level's base creature's core growth, the Imp's 15), halved (truncated, after the bonus) in a town without an owner, the count held at 32 767 (TWN-QUIRK-8); a normal week names no creature. The Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 42): `h3_towns::week_growth(town, part, core, &WeekKind, &GrowthInputs)` and the week's kind `h3_towns::WeekKind` (`Normal`, `Creature`, `Of`, hashed 0, 1 and the creature, 2 and its two creatures and the bonus); E09 T26a1: the game calls it in `TownId` order on a week's first day after WeekStarted and before the adventure's week step (h3-game's town/growth.rs `grow_week`, GAM-CAL-002); since E09 T26a2 with the week's kind the game drew (TWN-GRO-002)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1070,7 +1095,7 @@ title    = "A town's month of growth"
 context  = "town"
 status   = "implemented"
 quirks   = ["TWN-QUIRK-8", "TWN-QUIRK-9", "TWN-QUIRK-10"]
-summary  = "On a month's first day, after the week's growth (TWN-GRO-003) and the month's kind (GAM-CAL-003), every town's indexes whose growth g (TWN-GRO-001, unhalved, no week's bonus) is above 0: in a creature's month of c, unless the week is a `week_of` building's (the month is then its level's base creature's, which spawns on the map and doubles no town's count), the count doubles, held at 32 767 (TWN-QUIRK-8), when the index's creature is c, and with `quirk.town.creature_month_exact` off when c is either creature of the index's level (TWN-QUIRK-10); in the Plague the count less g (at least 0), then halved (truncated), and with `quirk.town.neutral_plague_full_growth` off a town without an owner loses g / 2 (what its week added), so every town keeps half of its count before the week (TWN-QUIRK-9). A normal month, the Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 43): `h3_towns::month(town, part, core, MonthGrowth, &WeekKind, &GrowthInputs)`, the month's kind as the towns read it `h3_towns::MonthGrowth` (`Normal`, `Creature`, `Plague`). E09 T26a1: the game maps its own `MonthKind` to it and calls it in `TownId` order after MonthStarted and before the adventure's month step, with the week's inputs (h3-game's town/growth.rs `grow_month`, GAM-CAL-002); the month after a `week_of` week with E09 T26a2 (GAM-CAL-003)."
+summary  = "On a month's first day, after the week's growth (TWN-GRO-003) and the month's kind (GAM-CAL-003), every town's indexes whose growth g (TWN-GRO-001, unhalved, no week's bonus) is above 0: in a creature's month of c, unless the week is a `week_of` building's (the month is then its level's base creature's, which spawns on the map and doubles no town's count), the count doubles, held at 32 767 (TWN-QUIRK-8), when the index's creature is c, and with `quirk.town.creature_month_exact` off when c is either creature of the index's level (TWN-QUIRK-10); in the Plague the count less g (at least 0), then halved (truncated), and with `quirk.town.neutral_plague_full_growth` off a town without an owner loses g / 2 (what its week added), so every town keeps half of its count before the week (TWN-QUIRK-9). A normal month, the Portal and the indexes that grow nothing are untouched. E09 T25b1 (design section 43): `h3_towns::month(town, part, core, MonthGrowth, &WeekKind, &GrowthInputs)`, the month's kind as the towns read it `h3_towns::MonthGrowth` (`Normal`, `Creature`, `Plague`). E09 T26a1: the game maps its own `MonthKind` to it and calls it in `TownId` order after MonthStarted and before the adventure's month step, with the week's inputs (h3-game's town/growth.rs `grow_month`, GAM-CAL-002); since E09 T26a2 with the month's first week's kind, so that the month after a `week_of` week (its creature's, GAM-CAL-003) doubles nothing."
 numeric  = "integer"
 
   [[rule.source]]

@@ -20,12 +20,12 @@ use h3_adventure::{
     RevealedTile as EngineRevealedTile, StaticTile, TileMask, TileView,
     UniversityVisit as EngineVisit,
 };
-use h3_content::{Formation as EngineFormation, ResourceId};
+use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
-    HireCreature as EngineCreature, HireView, LevelUpView, MonthKind, PlayerView,
-    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer,
+    HireCreature as EngineCreature, HireView, LevelUpView, MapGarrisonView, MonthKind, PlayerView,
+    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, BattleBonuses, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -38,9 +38,9 @@ use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
     HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
-    MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player,
-    Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState, Tile, Town,
-    TownBuildings, TownOwnerFacts, UniversityVisit,
+    MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
+    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState, Tile,
+    Town, TownBuildings, TownOwnerFacts, UniversityVisit, Week,
 };
 
 mod command;
@@ -75,6 +75,7 @@ pub(crate) fn reveal_view(r: &h3_game::GameReveal) -> GameReveal {
         adventure,
         heroes,
         towns,
+        garrisons,
     } = r;
     let EngineAdventureReveal {
         viewer,
@@ -97,6 +98,7 @@ pub(crate) fn reveal_view(r: &h3_game::GameReveal) -> GameReveal {
         },
         heroes: heroes.iter().map(hero_info).collect(),
         towns: towns.iter().map(town).collect(),
+        garrisons: map_garrisons(garrisons),
     }
 }
 
@@ -106,6 +108,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         viewer,
         day,
         month,
+        week,
         players,
         turn_group,
         treasury,
@@ -114,12 +117,14 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         heroes,
         adventure,
         towns,
+        garrisons,
         battle,
     } = o;
     GameObservation {
         viewer: viewer.raw(),
         day: *day,
         month: month_kind(*month),
+        week: week_kind(*week),
         players: players
             .iter()
             .map(|&PlayerView { colour, acting }| Player { colour, acting })
@@ -131,6 +136,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         heroes: heroes.iter().map(hero_info).collect(),
         adventure: adventure_view(adventure),
         towns: towns.iter().map(town).collect(),
+        garrisons: map_garrisons(garrisons),
         battle: battle.as_ref().map(crate::map::observation),
     }
 }
@@ -143,6 +149,31 @@ const fn month_kind(month: MonthKind) -> Month {
             creature: creature.raw(),
         },
         MonthKind::Plague => Month::Plague {},
+    }
+}
+
+/// A week's kind on the wire.
+const fn week_kind(week: WeekKind) -> Week {
+    match week {
+        WeekKind::Normal => Week::Normal {},
+        WeekKind::Creature(creature) => Week::Creature {
+            creature: creature.raw(),
+        },
+        WeekKind::Of {
+            creatures: [base, upgrade],
+            bonus,
+        } => Week::Of {
+            creatures: [handle(base), handle(upgrade)],
+            bonus,
+        },
+    }
+}
+
+/// A creature's handle on the wire, if any.
+const fn handle(creature: Option<CreatureTypeId>) -> Option<u16> {
+    match creature {
+        Some(c) => Some(c.raw()),
+        None => None,
     }
 }
 
@@ -422,11 +453,6 @@ fn town(t: &TownView) -> Town {
         owner_facts,
         buildings,
     } = t;
-    let GarrisonView {
-        level,
-        stacks,
-        army: garrison_army,
-    } = garrison;
     Town {
         town: town.raw(),
         anchor: pos(*anchor),
@@ -436,11 +462,7 @@ fn town(t: &TownView) -> Town {
         fort: fort_level(*fort),
         capitol: *capitol,
         built_today: *built_today,
-        garrison: Garrison {
-            level: *level,
-            stacks: stacks.iter().copied().map(garrison_stack).collect(),
-            army: garrison_army.as_deref().map(army),
-        },
+        garrison: garrison_wire(garrison),
         owner_facts: owner_facts
             .as_ref()
             .map(|TownOwnerView { hall, income }| TownOwnerFacts {
@@ -448,6 +470,46 @@ fn town(t: &TownView) -> Town {
                 income: amounts(income),
             }),
         buildings: buildings.map(town_buildings),
+    }
+}
+
+/// A viewer's map garrisons on the wire, in their places' order ([`MapGarrison::place`]; the
+/// engine's are in object order).
+fn map_garrisons(views: &[MapGarrisonView]) -> Vec<MapGarrison> {
+    let mut garrisons: Vec<MapGarrison> = views.iter().map(map_garrison).collect();
+    let _ = h3_kernel::order::sort_by_unique_key(&mut garrisons, MapGarrison::place);
+    garrisons
+}
+
+/// A map garrison as its viewer sees it on the wire.
+fn map_garrison(v: &MapGarrisonView) -> MapGarrison {
+    let MapGarrisonView {
+        object_type,
+        anchor,
+        owner,
+        garrison,
+        removable,
+    } = v;
+    MapGarrison {
+        object_type: object_type.raw(),
+        anchor: pos(*anchor),
+        owner: owner.map(h3_contracts::PlayerId::raw),
+        garrison: garrison_wire(garrison),
+        removable: *removable,
+    }
+}
+
+/// A garrison as a viewer's level shows it on the wire (a town's, a map garrison's).
+fn garrison_wire(g: &GarrisonView) -> Garrison {
+    let GarrisonView {
+        level,
+        stacks,
+        army: by_slot,
+    } = g;
+    Garrison {
+        level: *level,
+        stacks: stacks.iter().copied().map(garrison_stack).collect(),
+        army: by_slot.as_deref().map(army),
     }
 }
 

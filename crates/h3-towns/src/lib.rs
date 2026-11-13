@@ -91,7 +91,9 @@ pub use setup::{
 pub use siege::{defender_bonus, fort_level, siege, siege_obstacles};
 pub use store::{MAX_TOWNS, TownFacts, Towns};
 pub use view::has_tavern;
-pub use week::{MonthGrowth, WeekKind, month, week_growth};
+pub use week::{
+    MonthGrowth, WeekKind, building_week, draw_week, month, week_creatures, week_growth,
+};
 
 /// Version of the store of towns' canonical hash encoding, which the game state hash folds in
 /// (ADR-0028 points 4 and 9; `docs/08-work-process.md`, "Versions"; owned by the town lane). Bump

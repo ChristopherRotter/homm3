@@ -422,7 +422,7 @@ fn a_start_while_a_battle_is_open_ends_that_one_unended() {
 
 /// The whole game as the player sees it (`GameSnapshot`), its battle `battle`.
 fn game_snapshot(n: u32, battle: Option<Observation>) -> ServerMessage {
-    use h3_protocol::wire::game::{Adventure, GameObservation, Month};
+    use h3_protocol::wire::game::{Adventure, GameObservation, Month, Week};
     let adventure = Adventure {
         viewer: 0,
         width: 0,
@@ -446,6 +446,7 @@ fn game_snapshot(n: u32, battle: Option<Observation>) -> ServerMessage {
             viewer: 0,
             day: 1,
             month: Month::Normal {},
+            week: Week::Normal {},
             players: Vec::new(),
             turn_group: vec![0],
             treasury: Vec::new(),
@@ -454,6 +455,7 @@ fn game_snapshot(n: u32, battle: Option<Observation>) -> ServerMessage {
             heroes: Vec::new(),
             adventure,
             towns: Vec::new(),
+            garrisons: Vec::new(),
             battle,
         },
     }

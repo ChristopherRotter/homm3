@@ -10,7 +10,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use super::{ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireTarget, Month};
+use super::{ArmySlot, ArmyStack, Artifact, ArtifactPlace, Formation, HireTarget, Month, Week};
 use super::{GarrisonStack, OfferLevels, Pos, PrimarySkill, TownBuildings};
 use crate::wire::{Event, Outcome};
 
@@ -27,6 +27,7 @@ pub enum GameEvent {
     },
     WeekStarted {
         week: u32,
+        kind: Week,
     },
     MonthStarted {
         month: u32,
@@ -200,6 +201,22 @@ pub enum GameEvent {
         town: u16,
         resource: u16,
         amount: u32,
+    },
+    GarrisonChanged {
+        player: u8,
+        object_type: u16,
+        anchor: Pos,
+        owner: Option<u8>,
+        level: u8,
+        slots: bool,
+        removable: Option<bool>,
+    },
+    GarrisonStackSeen {
+        player: u8,
+        object_type: u16,
+        anchor: Pos,
+        stack: GarrisonStack,
+        slot: Option<u8>,
     },
     TownBuilt {
         player: u8,

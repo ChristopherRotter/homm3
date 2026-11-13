@@ -4,7 +4,8 @@
 //! show), since E08 T85b the timed events that fired at its turn start today, and open decision (T14b; since T30 an offer or a level-up, since T51b a meeting or an
 //! army dialog, since T63a a choice or a University, since T95b a hire dialog), the heroes it sees with their types and its own heroes'
 //! details (T18b, GAM-HER-001), each context's observation for the viewer (since T19a its
-//! battle's, as its side sees it; since E09 T8c1 the towns it sees, TWN-VEW-001 to -003), and the
+//! battle's, as its side sees it; since E09 T8c1 the towns it sees, TWN-VEW-001 to -003; since E08
+//! T114b the map garrisons it sees, ADV-GAR-006), and the
 //! projection of the game's events. The seed, the streams and the state hash never show
 //! (ADR-0017 point 5).
 
@@ -20,8 +21,9 @@ use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_heroes::{HeroDetails, PrimarySkill, SlotState};
 
 use crate::command::GameEvent;
+use crate::garrisons::{MapGarrisonView, garrison_views, revealed};
 use crate::town::view::{TownView, town_views, views_of};
-use crate::{GameRuleset, GameState, MonthKind};
+use crate::{GameRuleset, GameState, MonthKind, WeekKind};
 
 /// Who an observation or an event's projection is for (ADR-0017 point 2). The spectator, who
 /// sees public facts only, comes with the server lane as an additive variant.
@@ -40,6 +42,8 @@ pub struct GameObservation {
     pub day: u32,
     /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
     pub month: MonthKind,
+    /// The week's kind (TWN-GRO-002, E09 T26a2): public, as the original's week's message.
+    pub week: WeekKind,
     /// The players, by id.
     pub players: Vec<PlayerView>,
     /// The players of the group whose turn is running.
@@ -71,6 +75,11 @@ pub struct GameObservation {
     /// ([`h3_adventure::ObjectView::town`]), with its public facts, its garrison by the viewer's
     /// level and, for its owner's team, the popup's top level's facts.
     pub towns: Vec<TownView>,
+    /// The map garrisons the viewer sees, in object order (ADV-GAR-006, E08 T114b): each
+    /// garrison a tile of which it has explored, its object among [`Self::adventure`]'s by type
+    /// and anchor, with its owner, its army at the viewer's level (TWN-VEW-002, -003) and, for its
+    /// owner's team, its removable flag.
+    pub garrisons: Vec<MapGarrisonView>,
     /// The battle of the viewer's first open decision, as the viewer's side sees it
     /// (`h3_battle::observe`, ADR-0013 point 9; GAM-BAT-001, E08 T19a); other players' battles
     /// never show.
@@ -225,10 +234,12 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         .adventure()
         .observe(rules.core(), rules.adventure(), player);
     let towns = town_views(state, rules, &adventure);
+    let garrisons = garrison_views(state, rules, player);
     GameObservation {
         viewer: player,
         day: state.day(),
         month: state.month(),
+        week: state.week(),
         players: (0..=u8::MAX)
             .take(state.players())
             .map(PlayerId::new)
@@ -290,6 +301,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
         heroes: hero_infos(state, &adventure.heroes),
         adventure,
         towns,
+        garrisons,
         battle: state.battle(player).and_then(|open| {
             open.side_of(player)
                 .map(|side| h3_battle::observe(open.state(), rules.battle(), side))
@@ -328,13 +340,16 @@ pub struct GameReveal {
     /// The viewer's views of [`AdventureReveal::towns`], in their order, as
     /// [`GameObservation::towns`] holds them (TWN-VEW-001 to -004).
     pub towns: Vec<TownView>,
+    /// The viewer's views of the map garrisons a tile of which it explored since, in object
+    /// order, as [`GameObservation::garrisons`] holds them (ADV-GAR-006, E08 T114b).
+    pub garrisons: Vec<MapGarrisonView>,
 }
 
 /// What `viewer` sees now that it did not see through `since`, an earlier explored grid of its
 /// own (SRV-Q26 (a); `h3_adventure::AdventureState::reveal`): the tiles whose sight changed with
 /// their views, the heroes (with their types), typed objects and empty boats it sees now and did
-/// not, and its views of the towns a tile of which it explored since, each as [`observe`] shows
-/// it. A server keeps each viewer's grid (`state.adventure().explored(player)`, cheap to keep:
+/// not, and its views of the towns and (E08 T114b) the map garrisons a tile of which it explored
+/// since, each as [`observe`] shows it. A server keeps each viewer's grid (`state.adventure().explored(player)`, cheap to keep:
 /// its copies share their blocks) and asks when the viewer's explored count grew; the viewer's
 /// view folded with its events and this answer is its observation again. What it saw through
 /// `since` stays the events' to keep current.
@@ -352,6 +367,7 @@ pub fn reveal(
     GameReveal {
         heroes: hero_infos(state, &adventure.heroes),
         towns: views_of(state, rules, player, &adventure.towns),
+        garrisons: revealed(state, rules, player, since),
         adventure,
     }
 }
@@ -361,7 +377,8 @@ pub fn reveal(
 /// their owner only (E08 T13b, T14b, T19a2a, T30; a management command's since T51a, a meeting's
 /// and an army dialog's since T51b, a choice's and a University's since T63a, a hire dialog's
 /// since T95b; a town's build since E09 T18b1; a town's view, told to each of its viewers, since
-/// E09 T18b2a), a battle's, which show to the owners that see them (E08 T19a); an adventure or
+/// E09 T18b2a; a map garrison's view, since E08 T114b), a battle's, which show to the owners
+/// that see them (E08 T19a); an adventure or
 /// a battle event shows to
 /// the players who see it, naming the viewer alone among them
 /// ([`h3_adventure::AdventureEvent::project`]).
@@ -404,6 +421,8 @@ pub fn project(event: &GameEvent, viewer: Viewer) -> Option<GameEvent> {
         | GameEvent::TownChanged { player: owner, .. }
         | GameEvent::TownStackSeen { player: owner, .. }
         | GameEvent::TownIncomeSeen { player: owner, .. }
+        | GameEvent::GarrisonChanged { player: owner, .. }
+        | GameEvent::GarrisonStackSeen { player: owner, .. }
         | GameEvent::HeroChanged { player: owner, .. }
         | GameEvent::CreaturesRaised { player: owner, .. }
         | GameEvent::OfferOpened { player: owner, .. }

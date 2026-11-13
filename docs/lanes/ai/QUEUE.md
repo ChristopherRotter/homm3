@@ -95,6 +95,15 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the adventure lane** (E08 T95b, T105b2; the adventure agents' action space grows):
 
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`; **nothing to change, for
+  your docs and the observation's encoding**): a map garrison's exchange (GAM-DEC-009, E08 T114a2)
+  is answered by `Close` alone (its default too), which `answer_entry` already decodes as
+  `DECLINE`: action encoding **v8 is kept** (increment 12's design note §16); the module comment's
+  list of roles may name it beside the meeting's and the army dialog's. `GameObservation` gains
+  `garrisons` (`h3_game::MapGarrisonView`: each map garrison the player explored, its owner, its
+  army at the player's level, its removable flag to the owner's team), yours to encode when the
+  adventure gets a flat observation (decision 187).
+
 - 2026-11-10 (the adventure lane, E08 T105b2, `adventure/e08-t105b2`, `cross-lane` with the
   user's consent, E08 decision 268; **the env's action encoding v8, for the adventure agents, and
   a step cap**): `crates/h3-sim/src/adventure/action.rs` appends eight entries `REVISIT_BASE + s`

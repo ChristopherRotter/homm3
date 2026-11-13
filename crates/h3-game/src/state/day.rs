@@ -12,6 +12,7 @@ use alloc::vec::Vec;
 use h3_content::{CreatureTypeId, ResourceId};
 use h3_contracts::PlayerId;
 use h3_kernel::{CanonicalHash, StateHasher};
+use h3_towns::WeekKind;
 
 use super::GameState;
 use crate::command::{AdventureSink, GameEvent, Sink};
@@ -51,17 +52,20 @@ impl GameState {
     /// for the whole game after its last group's turn, in this order:
     ///
     /// 1. the day + 1, [`GameEvent::DayStarted`];
-    /// 2. on a week's first day (days 8, 15, …: `(day − 1) % week_days == 0`),
-    ///    [`GameEvent::WeekStarted`], then the towns' week (E09 T26a1, TWN-GRO-003: every town's
-    ///    counts grown with its inputs, `town::growth`, TWN-GRO-001; the towns' draws nothing),
+    /// 2. on a week's first day (days 8, 15, …: `(day − 1) % week_days == 0`), the week's kind
+    ///    drawn from the towns' stream (E09 T26a2, TWN-GRO-002: [`h3_towns::draw_week`], by the
+    ///    setup's `roe`; E09 decision 75, so the game's stream stays as it was),
+    ///    [`GameEvent::WeekStarted`] with it, then the towns' week (E09 T26a1, TWN-GRO-003: every
+    ///    town's counts grown with its inputs and the week's kind, `town::growth`, TWN-GRO-001),
     ///    then the adventure's week step with the game's stream
     ///    (`h3_adventure::AdventureState::start_week`: the weekly objects refilled, the monsters
-    ///    grown);
+    ///    grown; the map's dwellings read no week's kind, ADV-DWL-003);
     /// 3. on a month's first day (days 29, 57, …: every `month_weeks`-th week's), the month's
-    ///    kind drawn from the game's stream ([`Self::draw_month`]), [`GameEvent::MonthStarted`],
-    ///    then the towns' month (E09 T26a1, TWN-GRO-004: a creature's month doubles, the Plague
-    ///    halves, with the week's inputs), then in a creature's month the adventure's month step
-    ///    with the game's stream (`start_month`: its monsters added on free land tiles);
+    ///    kind drawn from the game's stream ([`Self::draw_month`]: after a building's week its
+    ///    level's base creature's, E09 T26a2), [`GameEvent::MonthStarted`], then the towns' month
+    ///    (E09 T26a1, TWN-GRO-004: a creature's month doubles, the Plague halves, with the week's
+    ///    inputs and kind), then in a creature's month the adventure's month step with the game's
+    ///    stream (`start_month`: its monsters added on free land tiles);
     /// 4. the towns' day (E09 T18b1: [`h3_towns::Towns::start_day`], every town's day's mark
     ///    cleared, TWN-BLD-004; the original's `new_day` towns' loop 0x4C8067, before its
     ///    income; since E09 T18b2a the views of the towns built in the day before told to their
@@ -69,11 +73,8 @@ impl GameState {
     /// 5. every hero's spell points ([`Self::regain_mana`]);
     /// 6. the adventure's start-of-day step (E08 T40: in `strict-fixed` each hero's reveal,
     ///    ADV-FOG-003).
-    ///
-    /// The week's kind and creature are not drawn yet (TWN-GRO-002, E09 T26a2: from the towns'
-    /// stream, E09 decision 75, so the game's stream stays as it is): every week is a normal one.
-    // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-003
-    // rule: TWN-GRO-004
+    // rule: GAM-TRN-002, GAM-CAL-001, GAM-CAL-002, GAM-CAL-003, TWN-BLD-004, TWN-GRO-002
+    // rule: TWN-GRO-003, TWN-GRO-004
     pub(super) fn advance_day<S: Sink>(&mut self, rules: &GameRuleset, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         self.day = self.day.saturating_add(1);
@@ -84,15 +85,25 @@ impl GameState {
         let since = self.day - 1;
         let week_start = since.is_multiple_of(week_days);
         if week_start {
+            // A month's first day is a week's.
+            let month_start = since.is_multiple_of(month_days);
+            self.week = h3_towns::draw_week(
+                &self.towns,
+                rules.towns(),
+                core,
+                self.roe,
+                month_start,
+                &mut self.towns_rng,
+            );
             sink.emit(GameEvent::WeekStarted {
                 week: since / week_days + 1,
+                kind: self.week,
             });
             let inputs = town::growth::inputs(self, rules);
             town::growth::grow_week(self, rules, &inputs);
             self.adventure
                 .start_week(core, part, &mut self.rng, &mut AdventureSink(sink));
-            // A month's first day is a week's.
-            if since.is_multiple_of(month_days) {
+            if month_start {
                 self.month = self.draw_month(rules);
                 sink.emit(GameEvent::MonthStarted {
                     month: since / month_days + 1,
@@ -121,15 +132,28 @@ impl GameState {
     /// against the odds in order: up to the first weight a normal month, then a creature's, then
     /// the Plague (5, 4, 1); a creature's month then draws its creature among the months'
     /// creatures with equal chances (the original's twelve). A part without the months'
-    /// parameters makes every month a normal one, without a draw.
+    /// parameters makes every month a normal one, without a draw. After a building's week (the
+    /// month's first: [`h3_towns::WeekKind::Of`], E09 T26a2, design §43) the month is its
+    /// level's base creature's, the kind drawn and overwritten, the creature not drawn (the
+    /// original's `new_month` 0x4C8F5E draws, 0x4C8F63 to 0x4C8F82 overwrite).
     // rule: GAM-CAL-003
     fn draw_month(&mut self, rules: &GameRuleset) -> MonthKind {
+        let building = match self.week {
+            WeekKind::Of {
+                creatures: [Some(base), _],
+                ..
+            } => Some(MonthKind::Creature(base)),
+            _ => None,
+        };
         let Some(months) = rules.adventure().params().months() else {
-            return MonthKind::Normal;
+            return building.unwrap_or(MonthKind::Normal);
         };
         let [normal, creature, plague] = months.odds.map(u32::from);
         let total = normal + creature + plague;
         let draw = self.rng.range_inclusive(1, total);
+        if let Some(month) = building {
+            return month;
+        }
         if draw <= normal {
             MonthKind::Normal
         } else if draw <= normal + creature {

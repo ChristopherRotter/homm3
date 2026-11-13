@@ -4,13 +4,31 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md`; M0 to M4, M6 and M5 part 1 are closed (checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24, -Q28; M6 is discovery, ADR-0021, detail in `E16-design.md` §12); the done tasks are in `E16-log.md`, the milestone chronicle in `QUEUE-ARCHIVE.md`. Work under the autonomy contract (`HANDOFF.md`). Wire changes bump `PROTOCOL_VERSION`, journal changes `JOURNAL_FORMAT_VERSION` (current values: `HANDOFF.md`). The inbox after M6 was done 2026-10-19 (`E16-log.md`).
+Epic: `docs/epics/E16-server.md`; M0 to M4, M6 and M5 part 1 are closed (checkpoints SRV-Q12, -Q16, -Q18, -Q22, -Q24, -Q28, M5 2a's SRV-Q30; M6 is discovery, ADR-0021, detail in `E16-design.md` §12); the done tasks are in `E16-log.md`, the milestone chronicle in `QUEUE-ARCHIVE.md`. Work under the autonomy contract (`HANDOFF.md`). Wire changes bump `PROTOCOL_VERSION`, journal changes `JOURNAL_FORMAT_VERSION` (current values: `HANDOFF.md`). The inbox after M6 was done 2026-10-19 (`E16-log.md`).
 
-**M5 part 1 closed 2026-11-12** (SRV-Q28: the review list as built; the tasks T0 to T7 in `QUEUE-ARCHIVE.md` and `E16-archive.md`, done in full in `E16-log.md`). **M5 part 2 refined 2026-11-12** (SRV-Q29): three increments, 2a whole games over the network (no engine change), 2b time (the server lane builds `h3-game`'s system commands, `cross-lane`), 2c spectators (the server lane builds `Viewer::Spectator`, `cross-lane`) and long journals; each with a reviewer and a checkpoint. **2a's tasks T8 to T13** are in the epic's "M5 part 2" (scope, the inbox notes each takes); T8a (the seats and connections, protocol v45) done 2026-11-12 (`E16-log.md`); T8b done 2026-11-12 (#880 merged); T9 split in two (the user, 2026-11-12): T9a live hosting done 2026-11-12 (protocol v47), T9b the lifecycle done 2026-11-12 (protocol v48); T10 the unowned battle sides done 2026-11-12 (protocol v49, after the `shared/` change #889; the inbox's 2026-11-02 note in `QUEUE-ARCHIVE.md`); T11 the game's queries done 2026-11-12 (protocol v50, record format v5, a battle's targets added by the user; the town lane's two notes of 2026-11-10 in `QUEUE-ARCHIVE.md`); T12 T7b's two findings done 2026-11-12 (protocol v51); **next: T13, 2a's closure** (the end-to-end test, `docs/06-security.md`, the reviewer agent, the user's checkpoint). The inbox's notes go with them: the 2026-10-21 one and SRV-Q19's turn timer to 2b.
+**M5 part 1 closed 2026-11-12** (SRV-Q28: the review list as built; the tasks T0 to T7 in `QUEUE-ARCHIVE.md` and `E16-archive.md`, done in full in `E16-log.md`). **M5 part 2 refined 2026-11-12** (SRV-Q29): three increments, 2a whole games over the network (no engine change), 2b time (the server lane builds `h3-game`'s system commands, `cross-lane`), 2c spectators (the server lane builds `Viewer::Spectator`, `cross-lane`) and long journals; each with a reviewer and a checkpoint. **2a's tasks T8 to T13** are in the epic's "M5 part 2" (scope, the inbox notes each takes); T8a (the seats and connections, protocol v45) done 2026-11-12 (`E16-log.md`); T8b done 2026-11-12 (#880 merged); T9 split in two (the user, 2026-11-12): T9a live hosting done 2026-11-12 (protocol v47), T9b the lifecycle done 2026-11-12 (protocol v48); T10 the unowned battle sides done 2026-11-12 (protocol v49, after the `shared/` change #889; the inbox's 2026-11-02 note in `QUEUE-ARCHIVE.md`); T11 the game's queries done 2026-11-12 (protocol v50, record format v5, a battle's targets added by the user; the town lane's two notes of 2026-11-10 in `QUEUE-ARCHIVE.md`); T12 T7b's two findings done 2026-11-12 (protocol v51); T13 2a's closure done 2026-11-13 (SRV-Q30: **2a closed**, its tasks in `E16-archive.md`; the reviewer's major finding into 2b and 2c); 2b refined 2026-11-13 (SRV-Q31: the original's turn duration, the timer running on in battles, a chess timer between two players, the turn timer alone for a disconnected player, the level-up's time an offer's); **next: 2b's T14, `h3-game`'s system commands** (`cross-lane`; the epic's "M5 part 2", T14 to T19; T15's survey where the original data are staged). The inbox's 2026-10-21 note (the level-up hold) goes with T16. The inbox's notes go with them: the 2026-10-21 one and SRV-Q19's turn timer to 2b.
 
 The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS for the client lane's browser.
 
 ## Inbox
+
+- 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v54** (after the town lane's v53): `wire::game::MapGarrison`
+  (type, anchor, owner, the town's `Garrison` at the viewer's level, `removable` to the owner's
+  team; `place()` its anchor's level, row, column, then its type) in `GameObservation::garrisons`
+  and `GameReveal::garrisons`, both in their places' order (the engine's are in object order: the
+  mapping sorts them); the events `GarrisonChanged { player, object_type, anchor, owner, level,
+  slots, removable }` and `GarrisonStackSeen { player, object_type, anchor, stack, slot }`, each to
+  its viewer alone, mapped both ways and in the round-trip lists (39 kinds); the fold puts a told
+  view in its place (one it did not see yet too, `put_garrison`) and adds its stacks
+  (`Garrison::see`, shared with `TownStackSeen`), the reveal's garrisons the same; `town()` maps
+  its garrison through the shared `garrison_wire`. The fold gate gains the parts "map garrisons
+  in sight" and "map garrisons", without a stub: no golden replay holds a garrison yet (E08 T116
+  adds them; a Visions holder's reach, `TWN-STUB-13`, then joins the second part if one shows
+  it). No golden replay or record literal moved. **Your review of v52** (2026-11-13): T114b's
+  views and events name a map garrison by type and anchor; the exchange keeps the object index
+  (`ArmyRef::MapGarrison`, `Decision::Exchange`, `ExchangeOpened`: its owner's alone, the index
+  fixed at the setup), as E08 decision 324's agent's call says, so your doc's exception stands.
 
 - 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): protocol **v52** (after your T11's v50 and T12's v51): the wire's
@@ -42,6 +60,12 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
   consent (`cross-lane`): the 72 golden replays' hashes moved (the adventure state hash version
   is hashed), so `h3-server`'s `tests/record.rs` has the smallest replay's new checkpoint, final
   hash and import version (`army-dialog-s1`); nothing else of yours changed.
+
+- 2026-11-12 (the town lane, E09 T26a2, `town/e09-t26a2`, `cross-lane`; **a protocol version
+  taken**): protocol **v53** is the week's kind (after the adventure lane's v52) (TWN-GRO-002): `wire::game::Week` (`Normal`,
+  `Creature`, `Of`), `GameEvent::WeekStarted`'s `kind`, `GameObservation`'s `week`, the fold
+  keeping it; the fold gate's part "day and month" is "day, week and month". A bump of yours is
+  v54 or the next at merge (the town lane's T26b plans the next for the owner's counts).
 - 2026-11-10 (the client lane, E17 M6 T7c; **the user's answers, for you when you take them**):
   (1) **CLT-Q69 (a)** with T7b's R12-3: once the battle lane splits `BattleState::start` into the
   setup and its first activation (its inbox), the session holds the battle before its start

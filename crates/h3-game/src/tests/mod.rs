@@ -959,6 +959,7 @@ pub(crate) fn setup() -> GameSetup {
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
         prisoners: Vec::new(),
+        roe: false,
     }
 }
 

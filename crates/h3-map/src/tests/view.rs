@@ -10,9 +10,9 @@ use h3_adventure::{
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
-    GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, OWNER_LEVEL, TAVERN_LEVELS,
-    TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands, legal_moves,
-    observe, project,
+    GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView, OWNER_LEVEL,
+    TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands,
+    legal_moves, observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -51,9 +51,12 @@ fn hygienic() -> impl Strategy<Value = super::play::Plan> {
 /// a fixed faction (its hero's index as the code; its alignment then unused), a neutral town's
 /// editor garrison (drawn, TWN-SET-004) given as ten of a level-1 creature in its first slot, an
 /// owned town's standard set with a Fort (its level-2 dwelling drawn, TWN-SET-003; its buildings
-/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without.
+/// its owner's, TWN-VEW-004, and its captor's after a capture) made the one without. A town
+/// visited at load is its visitor's owner's whatever its plan's owner (`towns_laid_out`), so it
+/// counts as owned here (E09 T26a2: the town lane's inbox note of 2026-11-11, a neutral plan's
+/// visited town with a Fort drew a dwelling its new owner sees).
 fn hygienic_town(town: &mut TownPlan) {
-    if town.owner.is_some()
+    if (town.owner.is_some() || town.visited)
         && TOWN_BUILDINGS[town.buildings] == (Buildings::Standard { fort: true })
     {
         town.buildings = 0;
@@ -963,6 +966,8 @@ fn check_told(
     let mut day = before.day;
     // E08 T85b: the month's kind, public, told by its start.
     let mut month = before.month;
+    // E09 T26a2: and the week's kind.
+    let mut week = before.week;
     let mut acting: Vec<bool> = before.players.iter().map(|p| p.acting).collect();
     // The turn group: the players whose turns start after the last turn that ended, if any did.
     let mut group = before.turn_group.clone();
@@ -1032,6 +1037,8 @@ fn check_told(
     // E09 T18b2a (SRV-Q26): the views of the towns it is told, each the last `TownChanged` of its
     // town with the stacks and income lines that follow it.
     let mut views: Vec<TownView> = Vec::new();
+    // E08 T114b (ADV-GAR-006): the views of the map garrisons it is told, as the towns'.
+    let mut garrison_views: Vec<MapGarrisonView> = Vec::new();
     let mut garrisons: Vec<(TownId, Vec<ArmyStack>)> = before
         .towns
         .iter()
@@ -1322,6 +1329,57 @@ fn check_told(
                 prop_assert_eq!(player, viewer);
                 let view = views.last_mut().filter(|t| t.town == town);
                 prop_assert!(view.is_some(), "{:?} without its town's change", event);
+                let garrison = &mut view.unwrap().garrison;
+                garrison.stacks.push(stack);
+                prop_assert_eq!(slot.is_some(), garrison.army.is_some(), "{:?}", event);
+                if let (Some(army), Some(slot), Some(count)) =
+                    (&mut garrison.army, slot, stack.count)
+                {
+                    army.push(ArmyStack {
+                        slot,
+                        creature: stack.creature,
+                        count,
+                    });
+                }
+            }
+            GameEvent::GarrisonChanged {
+                player,
+                object_type,
+                anchor,
+                owner,
+                level,
+                slots,
+                removable,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let named =
+                    |g: &MapGarrisonView| (g.object_type, g.anchor) == (object_type, anchor);
+                let seen = before.garrisons.iter().chain(&after.garrisons).any(named);
+                prop_assert!(seen, "{:?} of a garrison the viewer does not see", event);
+                garrison_views.retain(|g| !named(g));
+                garrison_views.push(MapGarrisonView {
+                    object_type,
+                    anchor,
+                    owner,
+                    garrison: GarrisonView {
+                        level,
+                        stacks: Vec::new(),
+                        army: slots.then(Vec::new),
+                    },
+                    removable,
+                });
+            }
+            GameEvent::GarrisonStackSeen {
+                player,
+                object_type,
+                anchor,
+                stack,
+                slot,
+            } => {
+                prop_assert_eq!(player, viewer);
+                let view = (garrison_views.last_mut())
+                    .filter(|g| (g.object_type, g.anchor) == (object_type, anchor));
+                prop_assert!(view.is_some(), "{:?} without its garrison's view", event);
                 let garrison = &mut view.unwrap().garrison;
                 garrison.stacks.push(stack);
                 prop_assert_eq!(slot.is_some(), garrison.army.is_some(), "{:?}", event);
@@ -1650,7 +1708,10 @@ fn check_told(
                 today.push(event);
             }
             // E08 T85b: a week and a month start only on a new day, told to every viewer.
-            GameEvent::WeekStarted { .. } => prop_assert!(day != before.day),
+            GameEvent::WeekStarted { kind, .. } => {
+                prop_assert!(day != before.day);
+                week = kind;
+            }
             GameEvent::MonthStarted { kind, .. } => {
                 prop_assert!(day != before.day);
                 month = kind;
@@ -1736,6 +1797,7 @@ fn check_told(
         }
     }
     prop_assert_eq!(after.month, month);
+    prop_assert_eq!(after.week, week);
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
@@ -1856,6 +1918,33 @@ fn check_told(
     let grew = ones(&after.adventure.explored) > ones(&before.adventure.explored);
     for now in &after.towns {
         let new = before.towns.iter().all(|t| t.town != now.town);
+        prop_assert!(grew || !new, "{:?} shows untold", now);
+    }
+    // E08 T114b (ADV-GAR-006): the map garrisons it sees, as the towns: a told one shows its told
+    // view, every other is as it was but for Visions' reach (`TWN-STUB-13`: a top level without
+    // the army by slot, before or after, keeps its owner and flag).
+    let place = |g: &MapGarrisonView| (g.object_type, g.anchor);
+    let by_visions =
+        |g: &MapGarrisonView| g.garrison.level == OWNER_LEVEL && g.garrison.army.is_none();
+    for was in &before.garrisons {
+        let now = after.garrisons.iter().find(|g| place(g) == place(was));
+        prop_assert!(now.is_some(), "{:?} left the view", was);
+        let now = now.unwrap();
+        if let Some(told) = garrison_views.iter().find(|g| place(g) == place(was)) {
+            prop_assert_eq!(now, told, "{:?}'s view is not the told one", place(was));
+        } else if by_visions(was) || by_visions(now) {
+            let public = |g: &MapGarrisonView| (g.owner, g.removable);
+            prop_assert_eq!(public(now), public(was), "{:?} changed untold", place(was));
+        } else {
+            prop_assert_eq!(now, was, "{:?} changed untold", place(was));
+        }
+    }
+    for told in &garrison_views {
+        let now = after.garrisons.iter().find(|g| place(g) == place(told));
+        prop_assert_eq!(now, Some(told), "{:?} told but not seen so", place(told));
+    }
+    for now in &after.garrisons {
+        let new = before.garrisons.iter().all(|g| place(g) != place(now));
         prop_assert!(grew || !new, "{:?} shows untold", now);
     }
     let named = |o: &ObjectView| (o.object_type, o.anchor);
@@ -2673,6 +2762,18 @@ proptest! {
                     .any(|e| matches!(e, GameEvent::MonthStarted { .. }))
             };
             if month(&ta) || month(&tb) {
+                break;
+            }
+            // E09 T26a2: a week's kind is a public draw of the towns' stream (TWN-GRO-002), whose
+            // seed the other game's changes: the comparison ends at a week's start whose kinds
+            // differ, as at a month's (with the same seed the two weeks are the same draw).
+            let week = |events: &[GameEvent]| {
+                events.iter().find_map(|e| match *e {
+                    GameEvent::WeekStarted { kind, .. } => Some(kind),
+                    _ => None,
+                })
+            };
+            if week(&ta) != week(&tb) {
                 break;
             }
             // E08 T106b2: a visit of a teleporter of the viewer's own shows it where the jump

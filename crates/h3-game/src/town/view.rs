@@ -246,7 +246,7 @@ impl<'a> Seer<'a> {
 /// the hero's Power (`h3_heroes::power`), at least the part's least radius
 /// (`hero_visions_reach` 0x4E5E10). Only the viewer's own heroes, as the original's popup asks.
 // rule: TWN-VEW-003
-fn visions(state: &GameState, rules: &GameRuleset, viewer: PlayerId) -> Vec<(Pos, u64)> {
+pub(crate) fn visions(state: &GameState, rules: &GameRuleset, viewer: PlayerId) -> Vec<(Pos, u64)> {
     let heroes = state.adventure().heroes();
     rules
         .towns()
@@ -278,7 +278,7 @@ fn visions(state: &GameState, rules: &GameRuleset, viewer: PlayerId) -> Vec<(Pos
 /// `hero_visions_reach` 0x4E5E10, from the town's entrance as `town_popup` 0x4167A0 passes it):
 /// on its level, the squared distance below the squared radius.
 // rule: TWN-VEW-003
-pub(super) fn in_visions(seers: &[(Pos, u64)], entrance: Pos) -> bool {
+pub(crate) fn in_visions(seers: &[(Pos, u64)], entrance: Pos) -> bool {
     seers.iter().any(|&(pos, reach)| {
         let dx = u64::from(pos.x.abs_diff(entrance.x));
         let dy = u64::from(pos.y.abs_diff(entrance.y));
@@ -289,7 +289,7 @@ pub(super) fn in_visions(seers: &[(Pos, u64)], entrance: Pos) -> bool {
 /// The number of `viewer`'s own towns with a standing Tavern, at most [`TAVERN_LEVELS`]
 /// (TWN-VEW-002; survey `E09-towns.md` §12.3, `player_tavern_count` 0x4CCE30).
 // rule: TWN-VEW-002
-fn tavern_level(
+pub(crate) fn tavern_level(
     adventure: &AdventureState,
     towns: &Towns,
     part: &TownRuleset,
@@ -310,7 +310,12 @@ fn tavern_level(
 
 /// The garrison `army` (by slot) as `level` shows it, its slots to the owner's team (`ours`).
 // rule: TWN-VEW-002, TWN-VEW-003
-fn garrison_view(rules: &GameRuleset, army: &[ArmyStack], level: u8, ours: bool) -> GarrisonView {
+pub(crate) fn garrison_view(
+    rules: &GameRuleset,
+    army: &[ArmyStack],
+    level: u8,
+    ours: bool,
+) -> GarrisonView {
     let words = rules.adventure().params().monsters();
     let stacks = if level == 0 {
         Vec::new()
@@ -337,9 +342,11 @@ fn garrison_view(rules: &GameRuleset, army: &[ArmyStack], level: u8, ours: bool)
 /// a capture, a siege's merge, a garrison's battle, the day's start) takes the views before it
 /// ([`Self::before`]) and tells the changed ones after it ([`Self::tell`]). Not told: a view
 /// that Visions' reach changes (`TWN-STUB-13`), and a town the viewer comes to see by exploring
-/// (SRV-Q26's query for newly seen tiles).
+/// (SRV-Q26's query for newly seen tiles). Since E08 T114b it holds the map garrisons' views of
+/// the players of `every` too ([`crate::garrisons::Told`], ADV-GAR-006: the same levels), told
+/// after the towns'.
 #[derive(Debug, Default)]
-pub(crate) struct Told(Vec<(PlayerId, Vec<Seen>)>);
+pub(crate) struct Told(Vec<(PlayerId, Vec<Seen>)>, crate::garrisons::Told);
 
 /// A town and a viewer's view of it before the change (none: it did not see it).
 type Seen = (TownId, Option<TownView>);
@@ -348,7 +355,8 @@ impl Told {
     /// The views of `towns` by every player of the game, and of every town by each player of
     /// `every` (one whose Taverns the change may count, TWN-VEW-002: a Tavern's build, a capture's
     /// two owners), in player order, each player's in `TownId` order. Nothing for a sink that
-    /// keeps nothing ([`Sink::RECORDS`]): nobody reads what it would tell.
+    /// keeps nothing ([`Sink::RECORDS`]): nobody reads what it would tell. Since E08 T114b also
+    /// every map garrison's views by each player of `every` ([`crate::garrisons::Told::before`]).
     pub(crate) fn before<S: Sink>(
         state: &GameState,
         rules: &GameRuleset,
@@ -377,16 +385,24 @@ impl Told {
                     (viewer, views)
                 })
                 .collect(),
+            crate::garrisons::Told::before::<S>(state, rules, &[], every),
         )
     }
 
     /// Tells each viewer of [`Self::before`] its view of a town that the change made, where it
-    /// differs from the one before and the viewer sees the town ([`tell`]), in the same order.
+    /// differs from the one before and the viewer sees the town ([`tell`]), in the same order;
+    /// then the map garrisons' (E08 T114b, [`crate::garrisons::Told::tell`]).
     pub(crate) fn tell<S: Sink>(self, state: &GameState, rules: &GameRuleset, sink: &mut S) {
         // stub: TWN-STUB-13 (a change of Visions' reach, a hero's step or army or Power, is not
         // told: only these changes are)
+        // E08 T114b: nothing for a sink that keeps nothing (its `before` held nothing either), so
+        // the day's start of a `NoopSink` pays no call (`bench-check`: day-start-builds-36).
+        if !S::RECORDS {
+            return;
+        }
         let adventure = state.adventure();
-        for (viewer, views) in self.0 {
+        let Self(towns, garrisons) = self;
+        for (viewer, views) in towns {
             let mut seer = Seer::new(state, rules, viewer);
             for (town, before) in views {
                 let explored = |pos| adventure.is_explored(viewer, pos);
@@ -396,6 +412,7 @@ impl Told {
                 }
             }
         }
+        garrisons.tell(state, rules, sink);
     }
 }
 

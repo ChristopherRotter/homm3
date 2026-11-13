@@ -20,7 +20,7 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
-use crate::{GameRuleset, GameState, MonthKind, OpenBattle};
+use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
 
 /// Who issues a command (ADR-0017 point 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -321,10 +321,13 @@ pub enum GameEvent {
         day: u32,
     },
     /// A new week started (GAM-CAL-002, E08 T85b): on its first day after the first week's, after
-    /// [`Self::DayStarted`] and before the adventure's week step's events. Public.
+    /// [`Self::DayStarted`] and before the adventure's week step's events, since E09 T26a2 with
+    /// the kind it drew (TWN-GRO-002). Public, as the original's week's message.
     WeekStarted {
         /// The week, from 1 (the first one starts with the game, without an event).
         week: u32,
+        /// Its kind.
+        kind: WeekKind,
     },
     /// A new month started (GAM-CAL-002, GAM-CAL-003, E08 T85b): on its first day after the first
     /// month's, after the week's events, with the kind it drew, before a creature's month's
@@ -710,6 +713,49 @@ pub enum GameEvent {
         resource: ResourceId,
         /// Its amount a day.
         amount: u32,
+    },
+    /// A player's view of a map garrison changed (ADV-GAR-006; E08 T114b, increment 12's design
+    /// note §10 and §15; SRV-Q26): the garrison's facts as `player` now sees it
+    /// (`MapGarrisonView`'s), followed by a [`Self::GarrisonStackSeen`] for each stack its level
+    /// shows; its view after them is the told one. Told after the change, to each player that sees
+    /// the garrison (an explored tile of it) and whose view of it the change made differ: its
+    /// battle's end (after its `BattleEnded`: the survivors, or none after the visitor's win), an
+    /// exchange's army command (after its `StackChanged`), its capture (after its `ObjectFlagged`
+    /// and `TilesRevealed`, before its `ExchangeOpened`: every viewer's), and a change of a
+    /// viewer's level by its Taverns (a Tavern's build, a town's capture: after the towns'
+    /// `TownChanged`). Not told: a change of Visions' reach (`TWN-STUB-13`). Seen by `player`.
+    GarrisonChanged {
+        /// The player told: the viewer.
+        player: PlayerId,
+        /// The garrison's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// Its owner, none for a neutral garrison.
+        owner: Option<PlayerId>,
+        /// The viewer's level of its army (`GarrisonView::level`).
+        level: u8,
+        /// Whether the viewer sees its army by slot (`GarrisonView::army`, the owner's team):
+        /// then each [`Self::GarrisonStackSeen`] gives its slot, and the army by slot is those
+        /// stacks with their slots and counts.
+        slots: bool,
+        /// Its removable flag, for a viewer of its owner's team (`MapGarrisonView::removable`).
+        removable: Option<bool>,
+    },
+    /// A stack of a map garrison's army as the viewer's level shows it (ADV-GAR-006; E08 T114b),
+    /// told after the viewer's [`Self::GarrisonChanged`], one per stack in slot order. Seen by
+    /// `player`.
+    GarrisonStackSeen {
+        /// The player told: the viewer.
+        player: PlayerId,
+        /// The garrison's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// The stack as the level shows it.
+        stack: GarrisonStackView,
+        /// Its slot, for a viewer that sees the army by slot (`GarrisonChanged::slots`).
+        slot: Option<u8>,
     },
     /// A building was built in a player's town (TWN-BLD-001, TWN-BLD-005; E09 T18b1, the town
     /// epic's design note §31): by the owner's build command, after its price's `ResourcePaid`

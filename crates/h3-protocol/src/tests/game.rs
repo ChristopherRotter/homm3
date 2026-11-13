@@ -17,8 +17,8 @@ use h3_content::Formation as EngineFormation;
 use h3_contracts::{ArmyStack as EngineStack, FortLevel, HeroId, PlayerId, TownId};
 use h3_game::{
     BuildingId, BuildingSet, DecisionView, GameRuleset, GarrisonStackView, GarrisonView, HireView,
-    LevelUpView, MonthKind, PlayerView, SlotState as EngineSlot, TownBuildingsView, TownOwnerView,
-    TownView, Viewer,
+    LevelUpView, MapGarrisonView, MonthKind, PlayerView, SlotState as EngineSlot,
+    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::PrimarySkill as EnginePrimary;
 use h3_kernel::handle::Handle;
@@ -218,6 +218,11 @@ fn boat_back(b: &Boat) -> BoatView {
 
 /// The engine's objects in the wire's order (`Object::place`, E16 M5 T5c): the wire leaves out
 /// the map's.
+/// `garrisons` in the wire's order, their places' (E08 T114b; the engine's is object order).
+pub(super) fn in_place_order(garrisons: &mut [MapGarrisonView]) {
+    garrisons.sort_by_key(|g| (g.anchor.level, g.anchor.y, g.anchor.x, g.object_type.raw()));
+}
+
 pub(super) fn in_tile_order(objects: &mut [ObjectView]) {
     objects.sort_by_key(|o| {
         let a = o.anchor;
@@ -739,20 +744,7 @@ fn town_back(t: &Town) -> TownView {
         ][usize::from(t.fort)],
         capitol: t.capitol,
         built_today: t.built_today,
-        garrison: GarrisonView {
-            level: t.garrison.level,
-            stacks: t
-                .garrison
-                .stacks
-                .iter()
-                .map(|s| GarrisonStackView {
-                    creature: Handle::from_raw(s.creature),
-                    count_word: s.count_word,
-                    count: s.count,
-                })
-                .collect(),
-            army: t.garrison.army.as_deref().map(army_back),
-        },
+        garrison: garrison_back(&t.garrison),
         owner_facts: t.owner_facts.as_ref().map(|f| TownOwnerView {
             hall: f.hall,
             income: amounts_back(&f.income),
@@ -761,6 +753,35 @@ fn town_back(t: &Town) -> TownView {
             built: set_back(b.built.0),
             forbidden: set_back(b.forbidden.0),
         }),
+    }
+}
+
+/// A garrison as a viewer's level shows it back in the engine's types (a town's, a map
+/// garrison's).
+fn garrison_back(g: &Garrison) -> GarrisonView {
+    GarrisonView {
+        level: g.level,
+        stacks: g
+            .stacks
+            .iter()
+            .map(|s| GarrisonStackView {
+                creature: Handle::from_raw(s.creature),
+                count_word: s.count_word,
+                count: s.count,
+            })
+            .collect(),
+        army: g.army.as_deref().map(army_back),
+    }
+}
+
+/// A map garrison back in the engine's types (E08 T114b).
+fn map_garrison_back(g: &MapGarrison) -> MapGarrisonView {
+    MapGarrisonView {
+        object_type: Handle::from_raw(g.object_type),
+        anchor: pos_back(g.anchor),
+        owner: g.owner.map(PlayerId::new),
+        garrison: garrison_back(&g.garrison),
+        removable: g.removable,
     }
 }
 
@@ -810,6 +831,7 @@ fn inverse_reveal(r: &GameReveal) -> h3_game::GameReveal {
         },
         heroes: r.heroes.iter().map(info_back).collect(),
         towns: r.towns.iter().map(town_back).collect(),
+        garrisons: r.garrisons.iter().map(map_garrison_back).collect(),
     }
 }
 
@@ -817,6 +839,7 @@ fn inverse_reveal(r: &GameReveal) -> h3_game::GameReveal {
 fn sorted_reveal(r: &h3_game::GameReveal) -> h3_game::GameReveal {
     let mut r = r.clone();
     in_tile_order(&mut r.adventure.objects);
+    in_place_order(&mut r.garrisons);
     r
 }
 
@@ -835,6 +858,7 @@ fn every_part_of_a_reveal_maps_back_and_round_trips() {
         },
         heroes: o.heroes.clone(),
         towns: o.towns.clone(),
+        garrisons: o.garrisons.clone(),
     };
     let wire = crate::map::game::reveal_view(&engine);
     assert_eq!(inverse_reveal(&wire), sorted_reveal(&engine));
@@ -870,6 +894,18 @@ fn tiles(views: &[TileView]) -> Vec<h3_game::RevealedTile> {
     tiles
 }
 
+/// The wire's week's kind back in the engine's type.
+pub(super) fn inverse_week(week: Week) -> WeekKind {
+    match week {
+        Week::Normal {} => WeekKind::Normal,
+        Week::Creature { creature } => WeekKind::Creature(Handle::from_raw(creature)),
+        Week::Of { creatures, bonus } => WeekKind::Of {
+            creatures: creatures.map(|c| c.map(Handle::from_raw)),
+            bonus,
+        },
+    }
+}
+
 /// The wire's observation back in the engine's types, with `battle` for the battle's part.
 fn inverse_game(
     g: &GameObservation,
@@ -884,6 +920,7 @@ fn inverse_game(
             Month::Creature { creature } => MonthKind::Creature(Handle::from_raw(creature)),
             Month::Plague {} => MonthKind::Plague,
         },
+        week: inverse_week(g.week),
         players: g
             .players
             .iter()
@@ -899,6 +936,7 @@ fn inverse_game(
         heroes: g.heroes.iter().map(info_back).collect(),
         adventure: inverse(&g.adventure),
         towns: g.towns.iter().map(town_back).collect(),
+        garrisons: g.garrisons.iter().map(map_garrison_back).collect(),
         battle,
     }
 }
@@ -1096,10 +1134,36 @@ pub(super) fn every_game_part(
             forbidden: set_back(1 << 5),
         }),
     };
+    let garrison = |anchor, owner: Option<u8>, level: u8| {
+        let ours = owner == Some(1);
+        MapGarrisonView {
+            object_type: Handle::from_raw(if ours { 33 } else { 219 }),
+            anchor,
+            owner: owner.map(PlayerId::new),
+            garrison: GarrisonView {
+                level,
+                stacks: (level > 0)
+                    .then(|| GarrisonStackView {
+                        creature: Handle::from_raw(8),
+                        count_word: (level >= 2).then_some(2),
+                        count: (level >= 3).then_some(14),
+                    })
+                    .into_iter()
+                    .collect(),
+                army: ours.then(|| stacks(1)),
+            },
+            removable: ours.then_some(false),
+        }
+    };
     h3_game::GameObservation {
         viewer: PlayerId::new(1),
         day: 30,
         month,
+        // A building's week of a level without an upgrade (E09 T26a2).
+        week: WeekKind::Of {
+            creatures: [Some(Handle::from_raw(42)), None],
+            bonus: 15,
+        },
         players: vec![
             PlayerView {
                 colour: 0,
@@ -1133,6 +1197,13 @@ pub(super) fn every_game_part(
             town(FortLevel::Citadel, false),
             town(FortLevel::Castle, true),
         ],
+        // E08 T114b: in object order, not the wire's: an own one by slot with its removable
+        // flag, another's at a tavern level, a neutral one at level 0.
+        garrisons: vec![
+            garrison(p(9, 4, 0), Some(1), 3),
+            garrison(p(3, 4, 0), Some(0), 2),
+            garrison(p(3, 2, 1), None, 0),
+        ],
         battle: Some(h3_battle::observe(&state, &ruleset, BattleSide::Attacker)),
     }
 }
@@ -1153,6 +1224,7 @@ fn every_part_of_the_game_maps_back_and_round_trips() {
         let mut o = every_game_part(decision, month);
         let wire = observation(&o);
         in_tile_order(&mut o.adventure.objects);
+        in_place_order(&mut o.garrisons);
         assert_eq!(inverse_game(&wire, o.battle.clone()), o);
         round_trips(&wire);
     }
@@ -1163,6 +1235,7 @@ fn every_part_of_the_game_maps_back_and_round_trips() {
     };
     let wire = observation(&o);
     in_tile_order(&mut o.adventure.objects);
+    in_place_order(&mut o.garrisons);
     assert_eq!(inverse_game(&wire, None), o);
 }
 

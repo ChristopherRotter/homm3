@@ -2955,3 +2955,102 @@ original data. Branch `claude/confident-knuth-subyc4`.
 - **Docs:** the lane's `TRAPS.md` (the record's cut, the battle's key), the client lane's inbox
   (v51). `docs/06-security.md` is a shared path: its "Not covered yet" sentence on rejections
   inside a battle beyond the bound is now stale and goes with T13's `shared/` change.
+
+### M5 T13 — 2a's closure (2026-11-13)
+
+The task (the epic's "M5 part 2"): the end-to-end test, `docs/06-security.md`, the reviewer
+agent, the user's checkpoint. Baseline: `master` dca8bbb (#897, T12; CI green, its code
+verified). No original data. Branch `claude/loving-babbage-aylytb`. The user's choices
+(2026-11-13): the seed pinned by a test-only hook rather than T10's journal rewrite;
+`docs/06-security.md` `cross-lane` in T13's pull request, as at part 1's closure.
+
+- **The seed pin** (`config::MapOffer::seeds`, `#[cfg(test)]`, serde-skipped, *provisional*):
+  a test's seeds for an offer's games in place of the OS's, the game's at its creation and its
+  computer's at each hosting (`whole::Prepared::new` and `restored`), so a golden replay's
+  commands play on a hosted game and its battles against the computer repeat. It is in no
+  server's build.
+- **The end-to-end test** (`h3-server` `tests/whole.rs`,
+  `two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_the_computer`): the duel
+  map offered with `duel-s3-easy-d7`'s seed and difficulty pinned; two clients take its seats
+  from the lobby; the replay's first 17 commands (three days of both players' moves and turns'
+  ends), each from its seat's client, a move's end found among its hero's moves (`GameQuery`)
+  before it is sent; the last opens the second player's battle against a wandering monster. The
+  first client reads on in a task meanwhile (its outbound queue is bounded). The fighter plays two
+  commands chosen from its turns, the fair computer the monster's side, then the server stops
+  with the fighter to act: both clients hear `Goodbye { Shutdown }`. At the restart the game is
+  listed running; each client re-takes its seat with its token, `GameJoined`'s `last` its last
+  command's number, the fighter's `GameSnapshot` holding its battle and its turn's battle
+  commands those before the restart; its last command resent is answered with its first echo
+  and nobody is told anything. The battle goes on to its end (19 more commands of the fighter's,
+  30 of the computer's in all), the fighter ends its turn, the first player's next day begins:
+  each player got one `GameEvents` per command since the restart (47), the computer's too. The
+  first player asks its hero's moves and ends its turn. Then the journal: each seat's numbers
+  strictly increasing (the resend not among them), the computer's commands the system actor's;
+  `GameSession::reopen` re-runs it in-process (its checkpoints checked), and each client, back on
+  a fresh connection, is sent exactly the view of the re-run game's state for its player
+  (`map::game::observe`); each record names its game and player and holds no `GameAnswer` and
+  none of the journal's 7 checkpoint hashes in decimal or hex. Stable over six runs, 4.5 s.
+- **`docs/06-security.md`** (cross-lane): "Hosted games" gains "The whole game over the
+  network" (the offers pinned by hash, the shared limits, seats by account or token, numbers and
+  resends, the host's pause, the journal synced ahead and the restore, the OS seed, the
+  computer on the unowned sides, the queries for the seat's player alone, the moves' bound, the
+  start's town events to their owner, T12's fresh snapshot inside a battle and the battle's
+  key); part 1's bullet points to it; "Not covered yet": no turn timer yet (a stall, the
+  level-up hold: 2b), no spectators (2c), nothing checking an offered map's snapshot against the
+  outbound queue and a record (431 KB on the fixtures), a record beyond its bound by one
+  command's messages at most; T12's stale sentence on rejections inside a battle dropped.
+- **The inbox:** the adventure lane's answer of 2026-11-12 to T7b's question (one type on one
+  anchor: unique for every object a command, an offer or an event names; nothing for the server
+  to do) moved to `QUEUE-ARCHIVE.md`.
+
+### M5 2a's reviewer agent (2026-11-13, in T13)
+
+- **The review**: a fresh, read-only agent over everything 2a changed in the two crates
+  (`a396c3f..` T13, about 3 500 lines of code and 3 000 of tests), against `docs/06-security.md`'s
+  two whole-game bullets and the 2a review list; one major finding, one minor, no leak. Found
+  sound: the seat claims (`session::refusal` shared by the session's join and the registry's
+  `bind_map`, an account seat by the trusted login alone, tokens compared by `same_token`, a
+  token handed only to the first taker or its holder, a refused join changing nothing, a battle
+  and a whole game refusing each other's joins); the numbers (only `execute` numbers, after the
+  engine accepted; a resend applying nothing; rejections taking no number and no entry; the kept
+  echoes rebuilt by the re-run); the write-ahead (every step appends and syncs before it
+  delivers, a journal that does not write drops the frames and stops the game); the restore (the
+  journal's seed, difficulty and interval, the map by hash and import version, the seats'
+  count, started, paused and the host rebuilt, the computer's answers journaled or given at the
+  hand-over, the paused deadline from the file's time); no game hosted twice (`bind_map` under
+  the registry's lock, the sweep voiding only paused ones); no file or accounts lock under the
+  registry's lock in the new paths; the projection (queries for the seat's own player, unnumbered
+  and unrecorded, `BattleStarted` only to its owners, the lobby's display names, no seed, token or
+  hash in log lines or void reasons); no panic from a client's message or a bad journal; the
+  seed pin in no release build (`deny_unknown_fields` refuses it in a configuration).
+- **Major, left** (the user, SRV-Q30 (b), 2026-11-13: documented now, bounded in 2b and 2c):
+  a whole game has no command limit (a battle's `commands_per_game` voids it): a seated player's
+  free commands (a formation toggle at 20 a second) grow the journal (about 170 MB a day), the
+  session's copy of its commands (`GameJournal::commands`, which a game of connections never
+  reads) and the restart's re-run, which runs before the server listens and holds back every
+  game's start. `docs/06-security.md`, "Not covered yet", names it; 2b bounds a seat's commands
+  per turn with its turn timers, 2c the restart's cost (long journals, state saves) and the copy.
+- **Minor, fixed** (*provisional* in its shape; a power loss cannot be tested): a journal
+  directory `create_in` made (the first whole game's `<data>/whole/` on an upgraded server) was
+  synced but not its entry in its parent, so a power loss after the first game's first frames
+  could lose its journal; its parent is synced too now (the battles' `games/` with it).
+- **The checkpoint** (SRV-Q30, the user, 2026-11-13, the agent's recommendations but the last):
+  (a) the review list accepted as built; (b) above; (c) the minor finding fixed in T13; (d) 2b's
+  refinement next, in this session, once T13's pull request is open.
+
+### M5 2b's refinement (2026-11-13, SRV-Q31, in T13's session)
+
+- **What is known of the original's clock** (`docs/exe/map.toml`, the client lanes' readings):
+  eleven turn durations (`turn_duration_texts` 0x69FB44: 1, 2, 4, 6, 8, 10, 15, 20, 25, 30
+  minutes, unlimited; the save's and the setup's `turn_duration`), a timer started at each turn
+  (`turn_timer_start` 0x557D90: its start, half its limit, a quarter above 60 s), polled by the
+  tick (`turn_timer_poll` 0x557AF0, inferred). Unread: its end, battles, dialogs. The original
+  data were not staged and the manual's mirrors (`heroes.shoutwiki.com`, `issuu.com`) are outside
+  the sandbox's network; the search's snippets of the manual limit a turn "when not in combat".
+  VCMI's clock (turn, base, battle and unit timers, `server/TurnTimerHandler.cpp`) is its own.
+- **The user's decisions** (SRV-Q31, `QUESTIONS-ANSWERED.md`): the original's turn duration per
+  offer; the timer running on in a battle, the computer playing a timed-out player's side for
+  the rest of it; a chess timer in a battle between two players' heroes; the turn timer alone for
+  a disconnected player; the level-up's time an offer's setting; ADR-0017 point 2 amended in 2b's
+  engine pull request. 2b's tasks T14 to T19 in the epic's "M5 part 2", the survey (T15) where
+  the original data are staged.

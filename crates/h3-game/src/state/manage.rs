@@ -18,9 +18,9 @@ use h3_heroes::{
 };
 
 use super::{Decision, GameState, Together};
-use crate::GameRuleset;
 use crate::command::{Actor, GameCommandError, GameEvent, Sink};
 use crate::manage::{Manage, ManageError};
+use crate::{GameRuleset, garrisons};
 
 impl GameState {
     /// `Manage`: a management command of `player` (GAM-MAN-001; E08 T51a, T51b): in its turn, on
@@ -147,6 +147,8 @@ impl GameState {
         let dialog = self.first(player).zip(self.army_dialog_holder(player));
         let held = dialog.map(|(at, (hero, _, holder))| (at, hero, holder));
         let mut group = dialog.map(|(_, (_, group, _))| group.to_vec());
+        // E08 T114b: an exchange's command tells the garrison's changed views (ADV-GAR-006).
+        let told = garrison_told::<S>(self, rules, command);
         self.adventure
             .manage_army(rules.adventure(), player, command, group.as_mut())
             .map_err(ManageError::of_army)?;
@@ -165,6 +167,8 @@ impl GameState {
             let stack = self.stack_at(player, at);
             sink.emit(GameEvent::StackChanged { player, at, stack });
         }
+        // rule: ADV-GAR-006
+        told.tell(self, rules, sink);
         Ok(())
     }
 
@@ -307,4 +311,24 @@ impl Together {
             _ => Some(GameCommandError::DecisionOpen),
         }
     }
+}
+
+/// The views of the map garrison `command` names, if any, by every player before the command
+/// (ADV-GAR-006; E08 T114b): an exchange's command changes the garrison's army, which its viewers
+/// see by their levels ([`garrisons::Told::tell`] after it). Nothing for a command naming none or
+/// a sink that keeps nothing.
+fn garrison_told<S: Sink>(
+    state: &GameState,
+    rules: &GameRuleset,
+    command: &ArmyCommand,
+) -> garrisons::Told {
+    let (from, to) = command.armies();
+    let named = [Some(from), to]
+        .into_iter()
+        .flatten()
+        .find_map(|army| match army {
+            ArmyRef::MapGarrison(garrison) => Some(super::object_index(garrison)),
+            _ => None,
+        });
+    garrisons::Told::before::<S>(state, rules, named.as_slice(), &[])
 }
