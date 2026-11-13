@@ -1539,7 +1539,7 @@ holds what the check against the game's `SMACKW32.DLL` found (`clients/scripts/s
   ring flag in +0x14, a new palette +0x68, the palette +0x6C (768 bytes: the 6-bit levels as 8-bit
   ones, FFmpeg's `smk_pal` values exactly), the frame's number +0x374. After the last frame
   `SmackNextFrame` gives the ring frame (`HSLOOP`'s 46th, `CREDITS.SMK`'s second).
-- The game's Smacker tick (0x598EB0) is `SmackWait`, `SmackDoFrame`, `SmackNextFrame` and
+- The game's Smacker tick (`smacker_tick` 0x598EB0) is `SmackWait`, `SmackDoFrame`, `SmackNextFrame` and
   `video_show`; nothing redraws a clip on a palette change.
 
 ### 7.3 Where the DLL reads otherwise than FFmpeg (no game clip has either)
@@ -1548,8 +1548,9 @@ holds what the check against the game's `SMACKW32.DLL` found (`clients/scripts/s
   as 0): the DLL faults on memory outside its tables or decodes other pixels.
 - **Bit 0 of a frame's size** (FFmpeg's key-frame mark): the frames after it are read from
   elsewhere (a sample's next palette came one byte off), decode other pixels or fault.
-- The samples (`build::sample`) keep to the rest; repeated values and escapes in a tree read as
-  FFmpeg reads them (60 samples). FFmpeg's handling of both cases stays the decoder's (the unit
+- The samples (`build::sample`) keep to the rest; repeated values, bytes and escapes in a tree
+  (which RAD's encoder would not write either) read as FFmpeg reads them (the 150 samples have
+  them). FFmpeg's handling of both cases stays the decoder's (the unit
   tests), as `h3-bink` keeps FFmpeg's on malformed data.
 
 ### 7.4 The 16-bit copy (CLT-Q119, decision 24)

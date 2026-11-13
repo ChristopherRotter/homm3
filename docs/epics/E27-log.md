@@ -339,7 +339,7 @@ user** (decision 23).
   frame followed by the next from where its size ends it), `Decoder` and `Frame` (the trees, the
   cache, the four block types and `SMK4`'s two modes; `Frame::written`, the blocks a frame wrote),
   `build` (the writer: shapes, trees, palette operations, files, `Video`'s codes, `sample`),
-  `check` (`frames`, `raw`, `hash`, `original_16`). 47 tests and four property tests; 100 % of
+  `check` (`frames`, `raw`, `hash`, `original_16`). 28 tests and three property tests; 100 % of
   lines and regions. FFmpeg's handling of malformed data kept (bits past a frame's end, a palette
   change failing midway, a size-0 palette change, audio packets' sizes); the `ffmpeg` command
   line's stop at a demuxer error and `avio_feof`'s end are not (the crate's header).

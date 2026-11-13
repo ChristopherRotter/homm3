@@ -5,8 +5,9 @@
 # when staged) and the synthetic samples of eight seeds with `h3-view video --smacker`, decodes the
 # same files with the DLL under Wine (scripts/smacker-dll.py: smackprobe.exe, 8-bit and 5-6-5),
 # and compares them frame by frame: the colour indices and palettes, and the original's 5-6-5 copy
-# (exit 1 on a difference). About 3 minutes, most of it the release build; H3INTRO.SMK (2 426
-# frames, 67 MB) takes the DLL about 20 seconds.
+# (exit 1 on a difference). About 5 minutes after the release build, most of it H3INTRO.SMK
+# (2 426 frames, decoded by the DLL twice); about 5 GB written (H3INTRO's 16-bit frames alone 1.1 GB
+# each side): delete clients/out/smacker after a run in a small sandbox.
 #
 #   clients/scripts/smacker-check.sh [--vid <file>] [<name>...]
 #
