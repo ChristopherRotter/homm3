@@ -146,6 +146,30 @@ The user, 2026-11-13 (M1 T2's start):
     screens, §3, §4 with §5), its recipe groups recorded by sub-agents, two at a time on their own
     Wine instances.
 
+The user, 2026-11-13 (M1 T3's start; `CLT-Q100` to `CLT-Q102`):
+
+19. **T3 kept whole** (the cut offered: the review and the questions, then the review list and
+    M2's refinement in a session of their own), with sub-agents used efficiently: one recorded the
+    groups again, two fresh reviewers (the catalogue but §3; §3 with the `scenario` and `advanced`
+    groups' shots).
+20. **T2's three oddities fixed**, the original's rules for the comparisons only: a single
+    scenario's player takes the client's player name, the colour's name when that is empty
+    (CLT-Q100); the multiplayer dialog's status line drawn again at a stage's change (CLT-Q101);
+    the system options' boxes and bars act on a release over them alone, as the combat options'
+    already do (CLT-Q102 as CLT-Q43 (2)), and **the code is shared, not built twice**: one
+    implementation of a dialog's buttons, boxes and bars serves the battle's and the shell's
+    dialogs.
+21. **M2's T0's questions** (`CLT-Q103` to `CLT-Q106`): the shell's code as the battle's
+    (CLT-Q103): its pure screens and state machine in `h3-view`, its element and adapters in
+    `h3-battle-client` (the `h3-view` command line's `shell` the player's program until E24 M5
+    hosts it), the Smacker decoder in `h3-smacker`, the dialogs' shared input in `h3-ui`; **the
+    clips' sound exact against the DLLs** (CLT-Q104): Bink's and Smacker's audio ported, the
+    floating point emulated as `h3-bink`'s inverse DCT, checked sample for sample against
+    `BINKW32.DLL` and `SMACKW32.DLL` under Wine where the harness reaches them; **the won
+    scenario's score is the engine's** (CLT-Q105: E10 computes and reports it, the shell shows
+    it, a stub until then); **one victory box** (CLT-Q106: the first condition's alone, the
+    original's two for the comparisons only).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the

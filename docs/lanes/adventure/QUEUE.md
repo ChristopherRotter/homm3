@@ -29,6 +29,19 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-13 (the client lane, E27 M1 T3, `client/e27-m1-t3`; **for E10's victory conditions,
+  nothing to do before it**): the original's "defeat a hero" victory (code 5,
+  `scenario_victory_test` 0x4F15E0; `docs/epics/E27-design.md` §5.2) counts only when the viewing
+  player's team defeats the hero: another team's defeat of it shows nothing and ends nothing, and
+  the condition can then never be met (the hero is gone). E10 decides the engine's rule (copy, or
+  a fix such as a loss or a fallback to the standard victory); the shell shows whatever the engine
+  reports. **And the won scenario's score is the engine's** (the user, CLT-Q105, E27 decision 21):
+  E10 computes it (a rule id and its test; design §5.5: the base 200 − (days + 10) / (towns + 5)
+  by integer division, + 25 when the player dug up the Grail, + 25 for a victory by conquest, times
+  the difficulty's `f32` factor 0.8, 1, 1.3, 1.6 or 2, truncated; the rank's creature is the
+  shell's) and reports it with the victory; the shell needs the day, the
+  difficulty and the score, and stubs it until then.
+
 - 2026-11-13 (the client lane, E27 M1 T2, `client/e27-m1-t2`; the capture harness, **rerun
   `setup.sh` in a fresh sandbox as before**): `xdd.dll`'s ack has 13 fields (a stale `xdd.dll` in a
   run directory fails every run: rerun `setup.sh`); the run's `VIDEO.VID` joins `battle-videos.vid`

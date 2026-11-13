@@ -1231,7 +1231,7 @@ python3 h3shell.py list
   recipe's maps and saves; the pointer parked at (400, 300).
 - **The clock** is frozen from the game's first read (`xdd.dll`'s `H3FROZEN`, at 1 000 000 ms;
   times are counted from it), so a run's every time is the same in each run: the main menu shows
-  at 10 ms. Time passes only by the recipe: `until` steps it 10 ms at a time, `clip` keeps every
+  at 0 ms. Time passes only by the recipe: `until` steps it 10 ms at a time, `clip` keeps every
   changed screen while stepping it, and each input moves it on by `input_step` (default 100 ms):
   the game redraws its cursor at the pointer only on a later tick (a move shows no cursor until
   the clock moves on some 50 ms), the buttons' hover at once. A clip's frames are due from the
