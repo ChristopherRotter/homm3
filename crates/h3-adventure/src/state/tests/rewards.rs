@@ -10,7 +10,7 @@ use std::vec::Vec;
 use h3_content::{
     ArtifactClass, ArtifactTypeId, ContentKey, HeroEffectDef, HeroParamsDef, SpellId,
 };
-use h3_heroes::{ArtifactInstance, HeroChange, HeroDetails, PrimarySkill, ScholarGift};
+use h3_heroes::{ArtifactInstance, HeroChange, HeroDetails, PrimarySkill, ScholarGift, VisitBonus};
 
 use super::draws::{object, rules_with};
 use super::*;
@@ -1041,10 +1041,15 @@ fn the_tomb_asks_then_gives_its_artifact_and_costs_morale_whatever_it_held() {
         declined.decline_offer(parts, &search, &mut Vec::new()),
         AdventureOutcome::default()
     );
-    let morale = HeroChange::Bonus {
-        morale: -3,
-        luck: 0,
-        mark: Some(0),
+    // E08 T115a: the morale is the hero on the map's, under the Tomb's mark 0 (HER-ADV-008).
+    let morale = |state: &AdventureState| state.visit_marks(HERO).bonuses().clone();
+    let tomb = HeroBonuses {
+        once: vec![VisitBonus {
+            mark: 0,
+            morale: -3,
+            luck: 0,
+        }],
+        ..HeroBonuses::NONE
     };
     // A full backpack: the artifact stays (not emptied), the morale is taken.
     let heroes_full = store(full(hero()));
@@ -1055,18 +1060,27 @@ fn the_tomb_asks_then_gives_its_artifact_and_costs_morale_whatever_it_held() {
         &search,
         &mut Vec::new(),
     );
-    assert_eq!(outcome, gives(&[morale]));
+    assert_eq!(outcome, AdventureOutcome::default());
+    assert_eq!(morale(&stays), tomb);
     assert!(!stays.is_emptied(0) && stays.knows(RED, 0));
-    // With room: the artifact and the morale, then emptied; a searched tomb costs the morale only.
+    // With room: the artifact and the morale, then emptied; a searched tomb costs the morale only,
+    // once until the hero's next battle (E7-11: the mark held, a second visit adds nothing).
     assert_eq!(
         s.accept_offer(parts, RED, &search, &mut Vec::new()),
-        gives(&[add(RING), morale])
+        gives(&[add(RING)])
     );
     assert!(s.is_emptied(0));
+    assert_eq!(morale(&s), tomb);
     assert_eq!(
         s.accept_offer(parts, RED, &search, &mut Vec::new()),
-        gives(&[morale])
+        AdventureOutcome::default()
     );
+    assert_eq!(morale(&s), tomb);
+    // After its battle (cleared) it is taken again.
+    s.clear_battle_bonuses(&[HERO]);
+    assert_eq!(morale(&s), HeroBonuses::NONE);
+    s.accept_offer(parts, RED, &search, &mut Vec::new());
+    assert_eq!(morale(&s), tomb);
     // An offer naming no find, or a gone object, gives nothing.
     let stray = Offer {
         object_type: crate::testing::CHART,

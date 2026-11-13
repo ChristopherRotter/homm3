@@ -45,7 +45,6 @@ fn details(r: &BattleRuleset, hero: &str, primary: [u8; 4], spells: &[&str]) -> 
         backpack: vec![],
         spells: spells.iter().map(|k| r.spell_by_key(k).unwrap()).collect(),
         mana: u16::from(primary[3]) * 10,
-        bonuses: Default::default(),
     }
 }
 
@@ -88,7 +87,8 @@ fn batch_2b_r3_the_fire_shield_reflects_a_fifth_of_the_first_stage() {
             attacker: army(&r, "base:naga_queen", 10),
             defender: army(&r, "ab:peasant", 1000),
             obstacles: vec![],
-            heroes: [&aine, &sephinroth].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
+            heroes: [&aine, &sephinroth]
+                .map(|d| Some(derive_battle_hero(d, h3_heroes::BattleBonuses::NONE, &r).unwrap())),
             terrain: None,
             battlefield: None,
             anti_magic: false,

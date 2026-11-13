@@ -444,6 +444,18 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 7. **The hashes:** the game state hash (v28) loses the details' bonuses; the adventure state hash
    (v22) gains each hero on the map's bonuses and timed marks. The owner sees them in its
    `OwnHeroView` (ADR-0016 point 6), no longer in the details' view.
+8. *As built* (T115a, decision 326): `h3_adventure::HeroBonuses` (2) and `VisitMarks` (a hero's
+   bonuses and timed marks, one record with `add`, `add_once`, `add_timed`, `clear_bonuses`,
+   `drop_timed`, `week_land_points`; `ObjectKind::timed_mark`, `MarkLifetime`); **not two fields
+   of `HeroOnMap`** (*agent's call*, measured: +11 to +15 % on every fork workload, one shared
+   pointer a hero still +2.7 to +4 %) but one state block of the heroes on the map that hold any,
+   by hero id (`AdventureState::visit_marks`; an entry dropped once empty, `leave_marks` at a
+   removal; every workload within +1.6 %). The input is `h3_heroes::BattleBonuses<'_>` with a
+   borrowed slice of `VisitBonus` (5), `land_points`' fourth argument (6). The changes are told
+   after a command as `BonusChanged`, `OnceMarkChanged` and `TimedMarkChanged` (the owner's, after
+   `MovementChanged`; `AdventureEventKind` is `Copy`, so no list rides on it); the view's
+   `OwnHeroView::bonuses`, `::timed`. Game state hash v31, adventure state hash v23, protocol
+   v57. The Sirens' kept mark (3) waits for its visit (T115b).
 
 ##### Part D — the game, the env, batch E12 and the cut (`h3-game`)
 

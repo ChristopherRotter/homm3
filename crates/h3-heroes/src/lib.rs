@@ -66,12 +66,12 @@ pub use choice::{ArmyWorth, TerrainShares, original_choice};
 pub use combine::{assemble_changes, check_assemble, check_disassemble, disassemble_changes};
 pub use day::{daily_income, day_mana, owner_town_growth, town_growth};
 pub use derive::{
-    MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, attack_defense, derive_battle_hero,
-    gained_experience, join_bonus, max_mana, necromancy, power,
+    BattleBonuses, MANA_PER_KNOWLEDGE, MAX_JOIN_BONUS, Necromancy, VisitBonus, attack_defense,
+    derive_battle_hero, gained_experience, join_bonus, max_mana, necromancy, power,
 };
 pub use details::{
-    ArtifactInstance, BattleBonuses, HeroDetails, OfferLevels, PrimarySkill, validate,
-    validate_artifact, war_machines,
+    ArtifactInstance, HeroDetails, OfferLevels, PrimarySkill, validate, validate_artifact,
+    war_machines,
 };
 pub use error::{ChangeError, CombineError, DetailsError, MoveError};
 pub use level::{

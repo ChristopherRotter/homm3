@@ -855,7 +855,9 @@ impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
 /// Each battle the command ends goes to the sink as it ended ([`Sink::battle_ended`]; SRV-Q27
 /// (1)). Last, a sink that keeps events ([`Sink::RECORDS`]) is told each hero's movement points
 /// and day's maximum that the command changed (`AdventureEventKind::MovementChanged`, to its
-/// owner; SRV-Q26 (b)).
+/// owner; SRV-Q26 (b)) and since E08 T115a its battle bonuses and timed marks
+/// (`AdventureEventKind::BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged`; `h3_adventure::
+/// OwnHeroes`).
 // rule: GAM-DEC-002, GAM-DEC-007, GAM-SYS-002
 ///
 /// # Errors
@@ -869,12 +871,13 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
     state.check_held(held_as(actor, &command))?;
-    // What the command changes of the heroes' movement is told after it (SRV-Q26 (b)).
-    let movements = S::RECORDS.then(|| state.adventure().movements());
+    // What the command changes of the heroes' movement (SRV-Q26 (b)) and, since E08 T115a, of
+    // their battle bonuses and timed marks is told after it.
+    let own = S::RECORDS.then(|| state.adventure().own_heroes());
     run(state, rules, actor, command, sink)?;
     state.run_rests(rules, sink);
-    if let Some(movements) = movements {
-        movements.tell(state.adventure(), &mut AdventureSink(sink));
+    if let Some(own) = own {
+        own.tell(state.adventure(), &mut AdventureSink(sink));
     }
     Ok(())
 }

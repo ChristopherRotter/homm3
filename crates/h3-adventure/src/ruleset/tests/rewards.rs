@@ -564,18 +564,6 @@ fn the_reward_kinds_parameters_are_checked() {
         &find_with(|f| f.draws[2].1 = FindContentDef::Nothing),
         "a find's drawn turn has no resources entry",
     );
-    let mark = "a bonus's mark is not below BattleBonuses::MARKS";
-    check(
-        9,
-        &find_with(|f| {
-            f.bonus = Some(OnceBonus {
-                morale: 1,
-                luck: 1,
-                mark: 8,
-            })
-        }),
-        mark,
-    );
     let pyramid_with = |f: fn(&mut PyramidDef)| {
         move |k: &mut ObjectKindDef| {
             let mut def = pyramid();
@@ -610,7 +598,6 @@ fn the_reward_kinds_parameters_are_checked() {
         &pyramid_with(|p| p.level = 0),
         "a Pyramid's spell level is 0",
     );
-    check(12, &pyramid_with(|p| p.looted.mark = 9), mark);
     // Once the army's slots are known: the second creature leaves the first a slot.
     check(
         12,

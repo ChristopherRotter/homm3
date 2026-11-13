@@ -591,11 +591,10 @@ impl AdventureState {
                 self.visits_mut().empty(index);
             }
         }
-        taken.extend(find.bonus.map(|bonus| HeroChange::Bonus {
-            morale: bonus.morale,
-            luck: bonus.luck,
-            mark: Some(bonus.mark),
-        }));
+        // rule: HER-ADV-008
+        if let Some(bonus) = find.bonus {
+            self.give_once(hero, bonus.visit());
+        }
         if find.leaves {
             self.take_object(core, (index, object_type), sink);
         }

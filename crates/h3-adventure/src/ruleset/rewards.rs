@@ -10,7 +10,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::vec::Vec;
 
 use h3_content::{ArtifactClass, ContentKey, CreatureTypeId, ResourceId};
-use h3_heroes::{BattleBonuses, PrimarySkill};
+use h3_heroes::{PrimarySkill, VisitBonus};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use super::{AdventureCompileError, MAX_GAIN, MAX_MONSTER_COUNT, Scope};
@@ -20,8 +20,9 @@ use super::{AdventureCompileError, MAX_GAIN, MAX_MONSTER_COUNT, Scope};
 pub type Resources = Vec<(ResourceId, u32)>;
 
 /// A battle bonus an object gives once until the hero's next battle (HER-ADV-008): the morale
-/// and luck it adds and the once-mark, below [`BattleBonuses::MARKS`], that gates and records it
-/// (the Warrior's Tomb: −3 morale, mark 0; a looted Pyramid: −2 luck, mark 1).
+/// and luck it adds and the once-mark that gates and records it (the Warrior's Tomb: −3 morale,
+/// mark 0; a looted Pyramid: −2 luck, mark 1). Any mark since E08 T115a (increment 12's design
+/// note §12.2: the hero on the map's list holds any number; below 8 before).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OnceBonus {
     /// The morale added.
@@ -30,6 +31,17 @@ pub struct OnceBonus {
     pub luck: i8,
     /// The once-mark.
     pub mark: u8,
+}
+
+impl OnceBonus {
+    /// The bonus as the hero on the map holds it (E08 T115a; HER-ADV-008).
+    pub const fn visit(self) -> VisitBonus {
+        VisitBonus {
+            mark: self.mark,
+            morale: self.morale,
+            luck: self.luck,
+        }
+    }
 }
 
 /// A treasure chest's type (ADV-PIK-005, survey `E08-rewards.md` §2): its contents drawn when
@@ -226,7 +238,7 @@ pub struct FindDef {
     pub full_backpack: Option<TurnDef>,
     /// The question.
     pub question: bool,
-    /// The bonus, its mark below [`BattleBonuses::MARKS`].
+    /// The bonus.
     pub bonus: Option<OnceBonus>,
     /// Whether it leaves the map at its visit (E08 T72); one that does has no
     /// [`TurnDef::Stays`] (E08 T74a).
@@ -258,7 +270,7 @@ pub struct PyramidDef {
     pub fixed: (ContentKey, Vec<u32>),
     /// The spell's level, from 1.
     pub level: u8,
-    /// The looted bonus, its mark below [`BattleBonuses::MARKS`].
+    /// The looted bonus.
     pub looted: OnceBonus,
 }
 
@@ -306,15 +318,6 @@ pub(super) fn compile_artifact_classes(
     classes
         .map(|list| check_classes(list).map(|()| list.clone()))
         .transpose()
-}
-
-/// A once-bonus's mark below [`BattleBonuses::MARKS`].
-fn check_bonus(bonus: OnceBonus) -> Result<OnceBonus, &'static str> {
-    if bonus.mark < BattleBonuses::MARKS {
-        Ok(bonus)
-    } else {
-        Err("a bonus's mark is not below BattleBonuses::MARKS")
-    }
 }
 
 /// Chances in percent: each from 1, together `total` at most (`exact`: exactly).
@@ -486,7 +489,7 @@ pub(super) fn compile_find(scope: &Scope<'_>, def: &FindDef) -> Compiled<Find> {
             // E08 T74a: a find that leaves takes what it holds with it.
             Err("a find that leaves keeps its artifact")
         } else {
-            def.bonus.map(check_bonus).transpose()
+            Ok(def.bonus)
         }
     };
     Ok(check().map(|bonus| Find {
@@ -514,11 +517,11 @@ pub(super) fn compile_pyramid(scope: &Scope<'_>, def: &PyramidDef) -> Compiled<P
     } else if def.level == 0 {
         Err("a Pyramid's spell level is 0")
     } else {
-        check_bonus(def.looted).map(|looted| Pyramid {
+        Ok(Pyramid {
             split: (split, def.split.1),
             fixed: (fixed, def.fixed.1.clone()),
             level: def.level,
-            looted,
+            looted: def.looted,
         })
     })
 }

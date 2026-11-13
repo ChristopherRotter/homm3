@@ -1633,7 +1633,6 @@ fn harvested_magic_derives() {
         backpack: vec![],
         spells: vec![spell("base:magic_arrow"), spell("base:chain_lightning")],
         mana: 50,
-        bonuses: Default::default(),
     };
     let school = |k: &str| {
         let i = sod.spell_schools().iter().position(|s| s.key.as_str() == k);
@@ -1647,7 +1646,7 @@ fn harvested_magic_derives() {
         &[("base:air_magic", 3), ("base:sorcery", 3)],
         &["base:spell_book", "base:orb_of_the_firmament"],
     );
-    let hero = derive_battle_hero(&solmyr, &sod).unwrap();
+    let hero = derive_battle_hero(&solmyr, h3_heroes::BattleBonuses::NONE, &sod).unwrap();
     assert_eq!(hero.magic.spell_book, Some(solmyr.spells.clone()));
     // Expert Air: every air spell at Expert, nothing else (HER-SPL-003).
     assert!(
@@ -1685,7 +1684,10 @@ fn harvested_magic_derives() {
         let mut d = details(hero, &[("base:armorer", mastery)], &[]);
         d.level = level;
         d.experience = h3_heroes::experience_for(sod.hero_params().unwrap(), level);
-        derive_battle_hero(&d, &sod).unwrap().damage.reduction
+        derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, &sod)
+            .unwrap()
+            .damage
+            .reduction
     };
     assert_eq!(
         armorer("base:mephala", 10, 3),
@@ -1696,7 +1698,12 @@ fn harvested_magic_derives() {
     );
     assert_eq!(armorer("base:octavia", 10, 1), Rate::bp(500));
     // Ciele: +50 % Magic Arrow damage whatever her level (wiki Ciele); no book, no casting.
-    let ciele = derive_battle_hero(&details("ab:ciele", &[], &[]), &sod).unwrap();
+    let ciele = derive_battle_hero(
+        &details("ab:ciele", &[], &[]),
+        h3_heroes::BattleBonuses::NONE,
+        &sod,
+    )
+    .unwrap();
     assert_eq!(ciele.magic.spell_book, None);
     assert_eq!(
         ciele.effects,
@@ -1728,7 +1735,6 @@ fn hero_details_fit_the_harvested_slots() {
             backpack: backpack.iter().map(art).map(Into::into).collect(),
             spells: vec![r.spell_by_key("base:magic_arrow").unwrap()],
             mana: 20,
-            bonuses: Default::default(),
         }
     };
     let machines = [
@@ -1761,7 +1767,7 @@ fn hero_details_fit_the_harvested_slots() {
     );
     // In battle the Alliance's six parts give +21 to every primary skill (wiki Angelic
     // Alliance), the two Quiet Eyes +1 attack and +1 defense each; Tactics from the skill.
-    let hero = derive_battle_hero(&d, &sod).unwrap();
+    let hero = derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, &sod).unwrap();
     assert_eq!(
         [hero.attack, hero.defense, hero.power, hero.knowledge],
         [28, 27, 23, 23]
@@ -1779,7 +1785,11 @@ fn hero_details_fit_the_harvested_slots() {
     );
     let bow = details(&sod, &["sod:bow_of_the_sharpshooter"], &[]);
     assert_eq!(
-        derive_battle_hero(&bow, &sod).unwrap().damage.ranged.bp,
+        derive_battle_hero(&bow, h3_heroes::BattleBonuses::NONE, &sod)
+            .unwrap()
+            .damage
+            .ranged
+            .bp,
         10_500
     );
     // Artillery: Basic one shot at 50 % double damage, Expert two at 100 % (batch 1a R6, R7;
@@ -1790,7 +1800,7 @@ fn hero_details_fit_the_harvested_slots() {
     for (level, shots, chance) in [(1, 1, 5000), (3, 2, 10_000)] {
         gunner.skills = vec![(artillery, level)];
         assert_eq!(
-            derive_battle_hero(&gunner, &sod)
+            derive_battle_hero(&gunner, h3_heroes::BattleBonuses::NONE, &sod)
                 .unwrap()
                 .war_machines
                 .ballista,
@@ -1806,7 +1816,12 @@ fn hero_details_fit_the_harvested_slots() {
     assert_eq!(hero.war_machines.tent, None);
     let first_aid = sod.skill_by_key("base:first_aid").unwrap();
     gunner.skills = vec![(first_aid, 1)];
-    let tent = |d: &HeroDetails| derive_battle_hero(d, &sod).unwrap().war_machines.tent;
+    let tent = |d: &HeroDetails| {
+        derive_battle_hero(d, h3_heroes::BattleBonuses::NONE, &sod)
+            .unwrap()
+            .war_machines
+            .tent
+    };
     assert_eq!(
         tent(&gunner),
         Some(TentControl {
@@ -1876,7 +1891,9 @@ fn hero_details_fit_the_harvested_slots() {
     };
     let pendant = artifact("base:pendant_of_courage");
     assert_eq!(
-        derive_battle_hero(&leader, &sod).unwrap().effects,
+        derive_battle_hero(&leader, h3_heroes::BattleBonuses::NONE, &sod)
+            .unwrap()
+            .effects,
         [
             morale(
                 3,
@@ -1905,7 +1922,12 @@ fn hero_details_fit_the_harvested_slots() {
     tactician
         .skills
         .push((sod.skill_by_key("base:tactics").unwrap(), 2));
-    assert_eq!(derive_battle_hero(&tactician, &sod).unwrap().tactics, 2);
+    assert_eq!(
+        derive_battle_hero(&tactician, h3_heroes::BattleBonuses::NONE, &sod)
+            .unwrap()
+            .tactics,
+        2
+    );
     // The Alliance locks the head: its position (0) is empty but taken (E08 T49a); machines
     // and the book stay out of the backpack.
     let mut head = details(&sod, &full, &[]);
@@ -1991,9 +2013,10 @@ fn the_data_quirks_are_fixed_in_strict_fixed() {
             backpack: vec![],
             spells: vec![],
             mana: 0,
-            bonuses: Default::default(),
         };
-        derive_battle_hero(&details, r).unwrap().effects
+        derive_battle_hero(&details, h3_heroes::BattleBonuses::NONE, r)
+            .unwrap()
+            .effects
     };
     for packs in [
         &[&*SOD_PACK, &*AB_PACK, &*BASE_PACK][..],
@@ -2064,13 +2087,15 @@ fn harvested_hero_effects_reproduce_the_experiments() {
             backpack: vec![],
             spells: vec![],
             mana: 0,
-            bonuses: Default::default(),
         };
         let setup = BattleSetup {
             attacker: to_army(army),
             defender: to_army(&[("ab:peasant", 1)]),
             obstacles: vec![],
-            heroes: [Some(derive_battle_hero(&details, &sod).unwrap()), None],
+            heroes: [
+                Some(derive_battle_hero(&details, h3_heroes::BattleBonuses::NONE, &sod).unwrap()),
+                None,
+            ],
             terrain: None,
             battlefield: None,
             anti_magic: false,

@@ -896,6 +896,7 @@ fn the_hash_sees_content_not_sharing() {
 mod added;
 mod answers;
 mod boats;
+mod bonuses;
 mod calendar;
 mod day;
 mod draws;

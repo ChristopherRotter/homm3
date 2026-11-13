@@ -14,7 +14,8 @@ use h3_kernel::handle::Handle;
 use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{
-    army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill, week_kind,
+    army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill, visit_bonus,
+    week_kind,
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
@@ -603,6 +604,25 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
             movement,
             max_movement,
         },
+        K::BonusChanged { hero, morale, luck } => AdventureEvent::BonusChanged {
+            hero: hero.raw(),
+            morale,
+            luck,
+        },
+        K::OnceMarkChanged { hero, bonus, held } => AdventureEvent::OnceMarkChanged {
+            hero: hero.raw(),
+            bonus: visit_bonus(bonus),
+            held,
+        },
+        K::TimedMarkChanged {
+            hero,
+            object_type,
+            held,
+        } => AdventureEvent::TimedMarkChanged {
+            hero: hero.raw(),
+            object_type: object_type.raw(),
+            held,
+        },
     }
 }
 
@@ -636,7 +656,5 @@ fn hero_change(change: EngineChange) -> HeroChange {
             skill: skill.raw(),
             level,
         },
-        EngineChange::Bonus { morale, luck, mark } => HeroChange::Bonus { morale, luck, mark },
-        EngineChange::ClearBonuses => HeroChange::ClearBonuses {},
     }
 }

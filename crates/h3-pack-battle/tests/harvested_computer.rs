@@ -52,7 +52,6 @@ fn details(r: &BattleRuleset, rng: &mut Rng) -> HeroDetails {
         backpack: vec![],
         spells: vec![],
         mana: [0, 20, 100][pick(rng, 3)],
-        bonuses: Default::default(),
     };
     for skill in [
         "base:tactics",
@@ -169,9 +168,10 @@ impl Pools {
 /// funds and `human`, the difficulty `game` mod 5.
 fn random_setup(sod: &BattleRuleset, pools: &Pools, game: u64, rng: &mut Rng) -> BattleSetup {
     let details = [details(sod, rng), details(sod, rng)];
-    let heroes = details
-        .clone()
-        .map(|d| (rng.below(3) != 0).then(|| derive_battle_hero(&d, sod).unwrap()));
+    let heroes = details.clone().map(|d| {
+        (rng.below(3) != 0)
+            .then(|| derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, sod).unwrap())
+    });
     // Half the games at a town, a quarter on a special battlefield.
     let (siege, battlefield) = match game % 4 {
         0 | 1 => {
@@ -869,10 +869,9 @@ fn fire_mage(r: &BattleRuleset) -> BattleHero {
         backpack: vec![],
         spells: vec![r.spell_by_key("base:fire_wall").unwrap()],
         mana: 100,
-        bonuses: Default::default(),
     };
     h3_heroes::validate(&d, r).unwrap();
-    derive_battle_hero(&d, r).unwrap()
+    derive_battle_hero(&d, h3_heroes::BattleBonuses::NONE, r).unwrap()
 }
 
 /// Where the defender's lone `walker` strikes the attacker's lone angel from, on Normal, after the

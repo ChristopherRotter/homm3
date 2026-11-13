@@ -1,6 +1,6 @@
-//! Tests of the rewards' hero changes and the battle bonuses (E08 T60a; increment 7's design note
-//! §1, §2): primary skills gained, a skill raised to a level, a bonus with its once-mark, the
-//! bonuses cleared.
+//! Tests of the rewards' hero changes (E08 T60a; increment 7's design note §1, §2): primary skills
+//! gained, a skill raised to a level. The battle bonuses are the hero on the map's since E08 T115a
+//! (`h3-adventure`'s tests).
 
 use std::string::ToString;
 
@@ -20,10 +20,6 @@ fn refused(r: &Ruleset, d: &HeroDetails, change: HeroChange, error: ChangeError)
     let mut after = d.clone();
     apply_change(&mut after, r, change);
     assert_eq!(&after, d, "{change:?}");
-}
-
-const fn bonus(morale: i8, luck: i8, mark: Option<u8>) -> HeroChange {
-    HeroChange::Bonus { morale, luck, mark }
 }
 
 // covers: HER-CHG-001
@@ -86,74 +82,12 @@ fn a_skill_rises_to_its_level_and_never_falls() {
     assert_eq!(raised.skills[0], (archery, 2));
 }
 
-// covers: HER-ADV-008, HER-CHG-001
-#[test]
-fn bonuses_add_up_saturate_and_once_marks_gate_them() {
-    let r = ruleset();
-    let d = details(&r);
-    assert_eq!(d.bonuses, BattleBonuses::default());
-    // The Warrior's Tomb's −3 morale under its mark: a second Tomb adds nothing (E7-11).
-    let tomb = applied(&r, d.clone(), bonus(-3, 0, Some(0)));
-    assert_eq!(
-        tomb.bonuses,
-        BattleBonuses {
-            morale: -3,
-            luck: 0,
-            marks: 0b1
-        }
-    );
-    assert!(tomb.bonuses.has_mark(0) && !tomb.bonuses.has_mark(1));
-    let again = applied(&r, tomb.clone(), bonus(-3, 0, Some(0)));
-    assert_eq!(again, tomb);
-    // A looted Pyramid's −2 luck under another mark, once (E7-21).
-    let pyramid = applied(&r, again, bonus(0, -2, Some(1)));
-    let pyramid = applied(&r, pyramid, bonus(0, -2, Some(1)));
-    assert_eq!(
-        pyramid.bonuses,
-        BattleBonuses {
-            morale: -3,
-            luck: -2,
-            marks: 0b11
-        }
-    );
-    // A box's and an event's add up without a mark, saturating both ways (A-9's class).
-    let boxes = applied(&r, pyramid, bonus(100, 127, None));
-    let boxes = applied(&r, boxes, bonus(100, 127, None));
-    assert_eq!((boxes.bonuses.morale, boxes.bonuses.luck), (127, 127));
-    let low = applied(&r, d.clone(), bonus(-100, -100, None));
-    let low = applied(&r, low, bonus(-100, -100, None));
-    assert_eq!((low.bonuses.morale, low.bonuses.luck), (-128, -128));
-    // A mark of no kind is refused; it is never set.
-    refused(&r, &d, bonus(1, 1, Some(8)), ChangeError::Mark(8));
-    assert!(
-        !BattleBonuses {
-            marks: 0xFF,
-            ..BattleBonuses::default()
-        }
-        .has_mark(8)
-    );
-    // The battle's end clears them all.
-    let cleared = applied(&r, boxes, HeroChange::ClearBonuses);
-    assert_eq!(cleared.bonuses, BattleBonuses::default());
-    // Any value is valid.
-    let mut any = d;
-    any.bonuses = BattleBonuses {
-        morale: i8::MIN,
-        luck: i8::MAX,
-        marks: 0xFF,
-    };
-    assert_eq!(validate(&any, &r), Ok(()));
-}
-
 #[test]
 fn the_new_change_errors_have_texts() {
-    let texts = [
-        (
-            ChangeError::SkillLevel(SkillId::from_raw(3)),
-            "secondary skill 3 cannot rise to that level",
-        ),
-        (ChangeError::Mark(9), "once-mark 9 is of no kind"),
-    ];
+    let texts = [(
+        ChangeError::SkillLevel(SkillId::from_raw(3)),
+        "secondary skill 3 cannot rise to that level",
+    )];
     for (error, text) in texts {
         assert_eq!(error.to_string(), text);
     }

@@ -159,5 +159,7 @@ pub use town::{FactionChoice, FactionSet, MainTown, PlayerStart};
 /// exchange among the decisions (GAM-DEC-009: its tag 8, the owner, the hero, the garrison's index,
 /// type and anchor; increment 12's design note §13 and §17). v30 (E09
 /// T26a2): the week's kind (`h3_towns::WeekKind`) and whether the map is RoE's after the month's
-/// kind, the towns' stream after the game's (TWN-GRO-002; E09 design §42).
-pub const GAME_STATE_HASH_VERSION: u32 = 30;
+/// kind, the towns' stream after the game's (TWN-GRO-002; E09 design §42). v31 (E08 T115a): the
+/// store of heroes' details without the battle bonuses (the hero on the map's since, in the
+/// adventure state hash v23; increment 12's design note §12.7).
+pub const GAME_STATE_HASH_VERSION: u32 = 31;

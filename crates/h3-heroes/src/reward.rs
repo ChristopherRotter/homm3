@@ -28,9 +28,10 @@ pub struct HeroReward {
     pub skills: Vec<(SkillId, u8)>,
     /// The spell points added: negative a loss.
     pub mana: i32,
-    /// The morale added to the battle bonuses (HER-ADV-008).
+    /// The morale added to the battle bonuses (HER-ADV-008): the hero on the map's since E08
+    /// T115a, so the adventure adds it, not [`grant`] (increment 12's design note §12.3).
     pub morale: i8,
-    /// The luck added to the battle bonuses.
+    /// The luck added to the battle bonuses, as [`Self::morale`].
     pub luck: i8,
     /// The artifacts, in the record's order.
     pub artifacts: Vec<ArtifactTypeId>,
@@ -67,7 +68,8 @@ pub struct Granted {
 /// 4. [`HeroChange::SetSpellPoints`] of the points plus the record's (when not 0), held between 0
 ///    and the ruleset's mana ceiling (999): above the hero's maximum, and a hero above the
 ///    ceiling falls to it (D-38);
-/// 5. [`HeroChange::Bonus`] of the morale and luck, without a once-mark, when either is not 0;
+/// 5. the morale and luck: the hero on the map's battle bonuses since E08 T115a, which the
+///    adventure adds at this place of the order (no change here; increment 12's design note §12.3);
 /// 6. [`HeroChange::AddArtifact`] per artifact the hero can receive ([`can_receive_artifact`]),
 ///    else it is lost ([`Granted::lost`]); an artifact the ruleset refuses as received (one it
 ///    lacks, a Spell Scroll without a spell: HER-ART-003) is lost too;
@@ -112,13 +114,6 @@ pub fn grant(details: &HeroDetails, ruleset: &Ruleset, reward: &HeroReward) -> G
         scratch.give(HeroChange::SetSpellPoints(
             u16::try_from(points).unwrap_or(ceiling),
         ));
-    }
-    if reward.morale != 0 || reward.luck != 0 {
-        scratch.give(HeroChange::Bonus {
-            morale: reward.morale,
-            luck: reward.luck,
-            mark: None,
-        });
     }
     let mut lost = Vec::new();
     for &artifact in &reward.artifacts {

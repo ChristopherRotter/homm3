@@ -14,7 +14,7 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureObservation, AdventureReveal as EngineAdventureReveal, BoatView,
-    Choice as EngineChoice, ChoiceKind as EngineChoiceKind, GuardsView, HeroView,
+    Choice as EngineChoice, ChoiceKind as EngineChoiceKind, GuardsView, HeroBonuses, HeroView,
     HireTarget as EngineHireTarget, Known as EngineKnown, KnownObject, MonsterView, ObjectTypeId,
     ObjectView, Offer as EngineOffer, OfferKind as EngineOfferKind, OwnHeroView,
     RevealedTile as EngineRevealedTile, StaticTile, TileMask, TileView,
@@ -28,8 +28,8 @@ use h3_game::{
     SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
-    ArtifactInstance, BattleBonuses, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
-    PrimarySkill as EnginePrimary,
+    ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
+    PrimarySkill as EnginePrimary, VisitBonus as EngineVisitBonus,
 };
 use h3_kernel::handle::Handle;
 
@@ -40,7 +40,7 @@ use crate::wire::game::{
     HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
     MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
     OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState,
-    Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, Week,
+    Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -393,14 +393,8 @@ fn hero_details(d: &EngineDetails) -> HeroDetails {
         backpack,
         spells,
         mana,
-        bonuses,
     } = d;
     let EngineLevels { wisdom, school } = *offered;
-    let BattleBonuses {
-        morale,
-        luck,
-        marks,
-    } = *bonuses;
     HeroDetails {
         hero_type: hero_type.raw(),
         level: *level,
@@ -418,11 +412,24 @@ fn hero_details(d: &EngineDetails) -> HeroDetails {
         backpack: backpack.iter().copied().map(artifact).collect(),
         spells: spells.iter().map(|&s| s.raw()).collect(),
         mana: *mana,
-        bonuses: Bonuses {
-            morale,
-            luck,
-            marks,
-        },
+    }
+}
+
+/// A hero on the map's battle bonuses on the wire (v57, E08 T115a).
+fn bonuses(b: &HeroBonuses) -> Bonuses {
+    Bonuses {
+        morale: b.morale,
+        luck: b.luck,
+        once: b.once.iter().copied().map(visit_bonus).collect(),
+    }
+}
+
+/// A visit's battle bonus on the wire (v57).
+pub(crate) const fn visit_bonus(b: EngineVisitBonus) -> VisitBonus {
+    VisitBonus {
+        mark: b.mark,
+        morale: b.morale,
+        luck: b.luck,
     }
 }
 
@@ -793,6 +800,8 @@ fn own_map_hero(h: &OwnHeroView) -> OwnMapHero {
         formation,
         tactics,
         marks,
+        bonuses: held,
+        timed,
     } = h;
     OwnMapHero {
         army: army(stacks),
@@ -804,6 +813,8 @@ fn own_map_hero(h: &OwnHeroView) -> OwnMapHero {
         },
         tactics: *tactics,
         marks: marks.iter().copied().map(object_ref).collect(),
+        bonuses: bonuses(held),
+        timed: timed.iter().map(|ty| ty.raw()).collect(),
     }
 }
 
