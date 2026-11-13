@@ -19,7 +19,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   increment 4, the guild and the services 5, travel and the Grail 6.
   Waiting elsewhere: `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5),
   `TWN-STUB-2` (the victory conditions). The protocol's v52 is T26a2's (T26b's views take the next).
-- **Open pull requests:** T26a2's (branch `town/e09-t26a2`, `cross-lane`); watch it until it
+- **Open pull requests:** #899, T26a2's (branch `town/e09-t26a2`, `cross-lane`); watch it until it
   merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
