@@ -561,7 +561,8 @@ impl AdventureState {
     /// `ObjectFlagged`, then the reveal of the part's flag radius around its entrance), then the
     /// hire question ([`OfferKind::Hire`], naming its creatures in its kind's order: the
     /// original's ADVEVENT 35, or 36 for four creatures). The flag needs no answer: a declined
-    /// question keeps it.
+    /// question keeps it. A flag is named in the outcome ([`AdventureOutcome::flagged_dwelling`],
+    /// E09 T26b: the game draws its player's empty Portals of Summoning, TWN-GRO-007).
     // rule: ADV-DWL-004, ADV-OWN-001
     fn enter_dwelling<S: Sink>(
         &mut self,
@@ -571,19 +572,22 @@ impl AdventureState {
         creatures: &[CreatureTypeId],
         sink: &mut S,
     ) -> AdventureOutcome {
-        if !self
+        let flagged = !self
             .owner(object.0)
-            .is_some_and(|owner| allied(owner, player))
-        {
+            .is_some_and(|owner| allied(owner, player));
+        if flagged {
             self.flag(rules, object, player, sink);
         }
-        self.ask(
-            hero,
-            object,
-            OfferKind::Hire {
-                creatures: creatures.to_vec(),
-            },
-        )
+        AdventureOutcome {
+            flagged_dwelling: flagged,
+            ..self.ask(
+                hero,
+                object,
+                OfferKind::Hire {
+                    creatures: creatures.to_vec(),
+                },
+            )
+        }
     }
 
     /// An accepted guards' question ([`OfferKind::Guarded`]) of `player`'s hero `hero` on the

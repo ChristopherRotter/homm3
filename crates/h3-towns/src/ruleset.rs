@@ -503,6 +503,9 @@ pub struct TownRuleset {
     towns: Vec<TownRecord>,
     /// What the week's draw reads, derived from the records (not hashed: the records are).
     week: WeekDraw,
+    /// Each record's buildings of role `portal`, where it has some, in faction order (E09 T26b,
+    /// [`crate::has_portal`]; derived, not hashed).
+    portals: Vec<(FactionId, BuildingSet)>,
     hash: u64,
 }
 
@@ -568,10 +571,25 @@ impl TownRuleset {
     /// The part of `params` and `towns` (in faction order) on `core`, hashed; the derivations'
     /// tests build theirs so (`crate::fixture`).
     pub(crate) fn new(core: &Ruleset, params: Option<TownParams>, towns: Vec<TownRecord>) -> Self {
+        let portals = towns
+            .iter()
+            .map(|record| {
+                let ids = (0..).map_while(BuildingId::from_index);
+                let set = record
+                    .buildings
+                    .iter()
+                    .zip(ids)
+                    .filter(|(b, _)| b.roles.portal)
+                    .fold(BuildingSet::EMPTY, |set, (_, id)| set.with(id));
+                (record.faction, set)
+            })
+            .filter(|(_, set)| !set.is_empty())
+            .collect();
         let mut part = Self {
             core_hash: core.content_hash(),
             params,
             week: WeekDraw::of(&towns),
+            portals,
             towns,
             hash: 0,
         };
@@ -604,6 +622,15 @@ impl TownRuleset {
     /// What the week's draw reads (E09 T26a2).
     pub(crate) const fn week_draw(&self) -> &WeekDraw {
         &self.week
+    }
+
+    /// The buildings of role `portal` of `faction`'s record (E09 T26b); none for a record without
+    /// one or a faction without a record.
+    pub(crate) fn portals(&self, faction: FactionId) -> BuildingSet {
+        self.portals
+            .iter()
+            .find_map(|&(f, set)| (f == faction).then_some(set))
+            .unwrap_or(BuildingSet::EMPTY)
     }
 
     /// The town record of `faction`, if it has one.

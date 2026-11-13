@@ -66,6 +66,11 @@ impl BuildingSet {
         Self(self.0 & !other.0)
     }
 
+    /// Whether the two sets share a building (E09 T26b).
+    pub const fn intersects(self, other: Self) -> bool {
+        self.0 & other.0 != 0
+    }
+
     /// Whether the set holds no building.
     pub const fn is_empty(self) -> bool {
         self.0 == 0
@@ -119,5 +124,6 @@ mod tests {
         let rest = set.difference(BuildingSet::EMPTY.with(ids[1]).with(ids[2]));
         assert_eq!(rest.iter().collect::<Vec<_>>(), [ids[0]]);
         assert!(!rest.is_empty() && set.difference(set).is_empty());
+        assert!(set.intersects(rest) && !rest.intersects(set.difference(rest)));
     }
 }

@@ -641,6 +641,11 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             buildings: buildings.map(|b| TownBuildingsView {
                 built: set_back(b.built.0),
                 forbidden: set_back(b.forbidden.0),
+                available: b.available,
+                portal: b.portal.map(|p| h3_game::Summoned {
+                    creature: Handle::from_raw(p.creature),
+                    count: p.count,
+                }),
             }),
         },
         G::TownStackSeen {
@@ -930,6 +935,11 @@ pub(super) fn every_event() -> Vec<GameEvent> {
                     .with(BuildingId::from_index(0).unwrap())
                     .with(BuildingId::from_index(63).unwrap()),
                 forbidden: BuildingSet::EMPTY.with(BuildingId::from_index(12).unwrap()),
+                available: [7, 0, 0, 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 1],
+                portal: Some(h3_game::Summoned {
+                    creature: Handle::from_raw(30),
+                    count: 4,
+                }),
             }),
         },
         GameEvent::TownStackSeen {

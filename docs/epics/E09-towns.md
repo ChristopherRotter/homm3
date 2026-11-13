@@ -146,6 +146,16 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     calls* (change freely): the draw in `h3-towns` (`draw_week`, `week_creatures`,
     `building_week`), the game state's `roe` beside the week, the chance's draw before the
     creature's with no name index, the wire's `Week::Of` named as the engine's.
+91. **T26b whole** (the user at T26b's start, asked; the agent recommended two parts, the draws
+    then the owner's view with the protocol; not chosen: three, the week's draws, the Portal's
+    other moments, the views). *Agent's calls* (change freely): a dwelling's flag named by the
+    adventure's outcome (`AdventureOutcome::flagged_dwelling`, set in `enter_dwelling`); the game's
+    `town/garrison.rs` and `town/portal.rs` with `Draws` and the state's `town_draws`;
+    `h3_towns::has_portal`; a build draws when it makes the Portal stand, inside the build's
+    `Told`; "holds nothing" is `portal() == None`; the counts and the Portal in
+    `TownBuildingsView` (`available`, `portal`) as design §47 says, on the wire `TownBuildings`'
+    two fields and `Summoned`; the week's views taken before its growth for every viewer and town,
+    told at the towns' day; the growth tests' rules without the garrison week (odds 0).
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 

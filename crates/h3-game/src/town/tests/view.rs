@@ -13,8 +13,8 @@ use h3_adventure::{Pos, TileMask, TileSetup};
 use h3_content::{CreatureTypeId, ProfileDef, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
 use h3_towns::{
-    BuildingDef, BuildingId, BuildingRoles, BuildingsSetup, GarrisonCreature, GarrisonStack,
-    SlotSet, TownCommand, TownFaction,
+    BuildingDef, BuildingId, BuildingRoles, BuildingsSetup, CREATURE_INDEXES, GarrisonCreature,
+    GarrisonStack, SlotSet, TownCommand, TownFaction,
 };
 
 use super::{
@@ -149,9 +149,12 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
                 hall: 4,
                 income: vec![(GOLD, 4001)],
             }),
+            // No dwelling stands, no Portal (E09 T26b).
             buildings: Some(TownBuildingsView {
                 built: record.built(),
                 forbidden: record.forbidden(),
+                available: [0; CREATURE_INDEXES],
+                portal: None,
             }),
         }
     );

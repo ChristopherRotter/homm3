@@ -760,6 +760,11 @@ fn town_back(t: &Town) -> TownView {
         buildings: t.buildings.map(|b| TownBuildingsView {
             built: set_back(b.built.0),
             forbidden: set_back(b.forbidden.0),
+            available: b.available,
+            portal: b.portal.map(|p| h3_game::Summoned {
+                creature: Handle::from_raw(p.creature),
+                count: p.count,
+            }),
         }),
     }
 }
@@ -1107,6 +1112,11 @@ pub(super) fn every_game_part(
         buildings: top.then(|| TownBuildingsView {
             built: set_back(1 << 63 | 0b1011),
             forbidden: set_back(1 << 5),
+            available: [14, 0, 9, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 32_767],
+            portal: Some(h3_game::Summoned {
+                creature: Handle::from_raw(8),
+                count: 6,
+            }),
         }),
     };
     h3_game::GameObservation {

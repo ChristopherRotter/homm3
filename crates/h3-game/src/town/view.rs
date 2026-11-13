@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use h3_adventure::{AdventureObservation, AdventureState, Pos, allied};
 use h3_content::{CreatureTypeId, FactionId, ResourceId};
 use h3_contracts::{ArmyStack, FortLevel, PlayerId, TownId};
-use h3_towns::{BuildingSet, TownRuleset, Towns};
+use h3_towns::{BuildingSet, CREATURE_INDEXES, Summoned, TownRuleset, Towns};
 
 use crate::command::{GameEvent, Sink};
 use crate::{GameRuleset, GameState};
@@ -34,7 +34,8 @@ const WORDS_LEVEL: u8 = 2;
 /// player on the map, in the hint and in the right-click popup, and its owner's team more. Named
 /// by its `TownId` (ADR-0028 point 3), the object's [`h3_adventure::ObjectView::town`]. Never its
 /// buildings but to its owner (TWN-VEW-004), the defender's bonuses or the Escape Tunnel, nor a
-/// draw's values. A change of it is told to the viewer ([`GameEvent::TownChanged`], E09 T18b2a).
+/// draw's values but its owner's counts and Portal. A change of it is told to the viewer
+/// ([`GameEvent::TownChanged`], E09 T18b2a).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TownView {
     /// The town.
@@ -62,19 +63,26 @@ pub struct TownView {
     pub owner_facts: Option<TownOwnerView>,
     /// Its buildings, for its owner alone (TWN-VEW-004; E09 T18b2a): the original opens the town
     /// screen from its owner's town list at any time, an ally's only at a visit (E10's teams,
-    /// `TWN-STUB-11`) and Visions' top level never (the popup shows no buildings).
+    /// `TWN-STUB-11`) and Visions' top level never (the popup shows no buildings). Since E09 T26b
+    /// with its available creatures and its Portal, the town screen's too.
     pub buildings: Option<TownBuildingsView>,
 }
 
 /// A town's buildings as its owner sees them (TWN-VEW-004; E09 T18b2a, the town epic's design
 /// note §31), each set over its faction's town record: the standing ones derive from the first
-/// with the part (`h3_towns::Town::standing`).
+/// with the part (`h3_towns::Town::standing`). Since E09 T26b its available creatures and its
+/// Portal of Summoning (design §47: the town screen's, the owner's alone).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TownBuildingsView {
     /// Every building it has had, the superseded ones too (`h3_towns::Town::built`).
     pub built: BuildingSet,
     /// The buildings the map forbids it (`h3_towns::Town::forbidden`).
     pub forbidden: BuildingSet,
+    /// Its available creatures at each of its fourteen indexes, the levels' dwellings then their
+    /// upgrades (`h3_towns::Town::available`, TWN-GRO-001 to -006).
+    pub available: [u16; CREATURE_INDEXES],
+    /// What its Portal of Summoning holds (`h3_towns::Town::portal`, TWN-GRO-007).
+    pub portal: Option<Summoned>,
 }
 
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003; survey `E09-towns.md` §12.3,
@@ -234,6 +242,8 @@ impl<'a> Seer<'a> {
             buildings: (owner == Some(viewer)).then(|| TownBuildingsView {
                 built: record.built(),
                 forbidden: record.forbidden(),
+                available: core::array::from_fn(|index| record.available(index)),
+                portal: record.portal(),
             }),
         })
     }

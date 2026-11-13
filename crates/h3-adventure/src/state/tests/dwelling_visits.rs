@@ -146,7 +146,7 @@ fn an_own_dwelling_asks_the_hire_question_without_a_flag_or_its_guards() {
     assert_eq!(s.dwelling_guards(0).len(), 2);
 }
 
-// covers: ADV-DWL-004, ADV-OWN-001
+// covers: ADV-DWL-004, ADV-OWN-001, TWN-GRO-007
 #[test]
 fn a_neutral_or_another_s_unguarded_dwelling_is_flagged_then_asks() {
     let rules = rules();
@@ -156,6 +156,8 @@ fn a_neutral_or_another_s_unguarded_dwelling_is_flagged_then_asks() {
         let before = s.clone();
         let (outcome, events) = visit(&rules, &mut s);
         assert_eq!(outcome.offer, Some(hire(&rules, "t:d1", &["t:c1", "t:w1"])));
+        // E09 T26b: the flag named in the outcome (an own dwelling's is not: above).
+        assert!(outcome.flagged_dwelling, "{owner:?}");
         // Flagged for red, told to red and, for its own, to blue; then the reveal around the
         // entrance, told to red alone.
         assert_eq!(s.owner(0), Some(RED));
@@ -317,10 +319,12 @@ fn an_accepted_guards_question_with_none_standing_goes_on_with_the_visit() {
     visit(&rules, &mut s);
     s.set_dwelling(0, &[2, 2], &[]);
     let (accepted, events) = accept(&rules, &mut s, &ask);
+    // E09 T26b: the flag is named (the game draws its player's empty Portals, TWN-GRO-007).
     assert_eq!(
         accepted,
         AdventureOutcome {
             offer: Some(hire(&rules, "t:d5", &["t:c5", "t:w5"])),
+            flagged_dwelling: true,
             ..AdventureOutcome::default()
         }
     );
@@ -404,6 +408,7 @@ fn a_dwelling_battle_s_end_keeps_the_survivors_or_goes_on_after_the_levels() {
         given,
         AdventureOutcome {
             offer: Some(hire(&rules, "t:d5", &["t:c5", "t:w5"])),
+            flagged_dwelling: true,
             ..AdventureOutcome::default()
         }
     );

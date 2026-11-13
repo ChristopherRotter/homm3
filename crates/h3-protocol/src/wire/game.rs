@@ -898,7 +898,8 @@ pub struct Town {
 
 /// A town's buildings as its owner sees them (TWN-VEW-004), each set a bit per building of its
 /// faction's town record (bit `i` the building of index `i`, a decimal string as every 64-bit
-/// value): the standing ones derive from the first with the town part.
+/// value): the standing ones derive from the first with the town part. Since v54 (E09 T26b) its
+/// available creatures and its Portal of Summoning, the town screen's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TownBuildings {
@@ -906,6 +907,21 @@ pub struct TownBuildings {
     pub built: WireU64,
     /// The buildings the map forbids it.
     pub forbidden: WireU64,
+    /// Its available creatures at each of its fourteen indexes: the seven levels' dwellings, then
+    /// their upgrades (`h3_game::CREATURE_INDEXES`).
+    pub available: [u16; h3_game::CREATURE_INDEXES],
+    /// What its Portal of Summoning holds; none while it holds nothing (or stands not).
+    pub portal: Option<Summoned>,
+}
+
+/// What a Portal of Summoning holds (TWN-GRO-007): a creature of one of its owner's dwellings.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Summoned {
+    /// The creature's handle.
+    pub creature: u16,
+    /// How many.
+    pub count: u16,
 }
 
 /// A town's garrison as a viewer sees it (TWN-VEW-002, -003): by the viewer's level, its stacks

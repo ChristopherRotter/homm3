@@ -127,8 +127,12 @@ pub mod wire;
 /// (`wire::game::ArmyRef::MapGarrison`) and the one owner rule's refusals
 /// (`wire::game::ArmyReject`'s `NoGarrison`, `NotOwn`, `OnlyEmpty`).
 /// v53 (E09 T26a2): the week's kind (TWN-GRO-002): `WeekStarted`'s `kind` and the game
-/// observation's `week` (`wire::game::Week`), the fold keeping it.
-pub const PROTOCOL_VERSION: u32 = 53;
+/// observation's `week` (`wire::game::Week`), the fold keeping it. v54 (E09 T26b, the town
+/// lane's, `cross-lane`): a town's owner sees its available creatures and its Portal of Summoning
+/// (TWN-VEW-004: `wire::game::TownBuildings`' `available` and `portal`, `wire::game::Summoned`),
+/// told as `TownChanged` after the week, the month, a town event's creatures and each Portal's
+/// draw: the messages' order is new where a neutral garrison's week or a count changes a view.
+pub const PROTOCOL_VERSION: u32 = 54;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

@@ -6874,14 +6874,16 @@ fn check_towns(
                 town
             );
         }
-        // E09 T26a1: a town's counts move with a week's start (its growth, the month's after it;
-        // TWN-GRO-003, -004), a build's first creatures (TWN-GRO-005) and a town event's
-        // creatures (TWN-EVT-004) only, told by nothing until the owner's view shows them (E09
-        // T26b); the rest of the record as before.
+        // E09 T26a1: a town's counts move with a week's start (its growth, the month's after it,
+        // since E09 T26b a neutral garrison's week; TWN-GRO-003, -004, -006), a build's first
+        // creatures (TWN-GRO-005) and a town event's creatures (TWN-EVT-004) only; (E09 T26b) its
+        // Portal with a week's start, a build, a capture or a dwelling's flag for its owner
+        // (TWN-GRO-007); each told to an owner, whose view shows them (TWN-VEW-004); the rest of
+        // the record as before.
+        let week = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
         if old.available_all() != new.available_all() {
-            let week = events
-                .iter()
-                .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
             let fired = events
                 .iter()
                 .any(|e| matches!(*e, GameEvent::TownEventFired { town: t, .. } if t == town));
@@ -6891,9 +6893,42 @@ fn check_towns(
                 town
             );
         }
-        let with_old_counts = (0..h3_towns::CREATURE_INDEXES).fold(new.clone(), |t, index| {
-            t.with_available(index, old.available(index))
-        });
+        if old.portal() != new.portal() {
+            let flagged = events.iter().any(|e| match e {
+                GameEvent::Adventure(AdventureEvent {
+                    kind:
+                        AdventureEventKind::ObjectFlagged {
+                            object_type, owner, ..
+                        },
+                    ..
+                }) => {
+                    Some(*owner) == now
+                        && matches!(
+                            rules.adventure().object_type(*object_type).map(|t| &t.kind),
+                            Some(ObjectKind::Dwelling { .. })
+                        )
+                }
+                _ => false,
+            });
+            prop_assert!(
+                week || !built.is_empty() || !captured.is_empty() || flagged,
+                "{:?}'s Portal moved without a week, a build, a capture or a flag",
+                town
+            );
+        }
+        let counted = old.available_all() != new.available_all() || old.portal() != new.portal();
+        if let Some(owner) = now.filter(|_| counted) {
+            prop_assert!(
+                changed.iter().any(|&(p, _)| p == owner),
+                "{:?}'s counts or Portal moved untold to its owner",
+                town
+            );
+        }
+        let with_old_counts = (0..h3_towns::CREATURE_INDEXES)
+            .fold(new.clone(), |t, index| {
+                t.with_available(index, old.available(index))
+            })
+            .with_portal(old.portal());
         if *old != with_old_counts {
             let cleared = day_started && old.built_today();
             prop_assert!(
