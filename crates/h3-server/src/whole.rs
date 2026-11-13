@@ -73,6 +73,9 @@ pub struct MapOffer {
     pub map: MapRef,
     /// What the lobby shows of it.
     pub info: h3_protocol::wire::game::MapOffer,
+    /// A test's seeds in place of the OS's (`config::MapOffer::seeds`, E16 M5 T13).
+    #[cfg(test)]
+    seeds: Option<(u64, u64)>,
 }
 
 impl MapOffer {
@@ -127,6 +130,8 @@ impl MapOffer {
             setup,
             map,
             info,
+            #[cfg(test)]
+            seeds: config.seeds,
         })
     }
 }
@@ -224,6 +229,8 @@ impl Prepared {
         (server, limits, stores): (&config::Server, &config::Limits, Stores),
     ) -> Result<Self, Error> {
         let (seed, computer_seed) = (os_u64()?, os_u64()?);
+        #[cfg(test)]
+        let (seed, computer_seed) = offer.seeds.unwrap_or((seed, computer_seed));
         let tokens = (offer.setup.players.iter().map(|_| token())).collect::<Result<_, _>>()?;
         (stores.ids.reach(game)).map_err(|e| Error(format!("game {game}'s id: {e}")))?;
         let options = GameOptions {
@@ -284,6 +291,8 @@ impl Prepared {
             record_bytes: limits.record_bytes,
         };
         let computer_seed = os_u64().map_err(|e| e.0)?;
+        #[cfg(test)]
+        let computer_seed = offer.seeds.map_or(computer_seed, |(_, computer)| computer);
         Ok(Self {
             offer,
             game,

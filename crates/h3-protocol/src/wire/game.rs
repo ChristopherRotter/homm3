@@ -375,7 +375,7 @@ pub struct GameReveal {
     /// [`GameObservation::towns`] holds them (TWN-VEW-001 to -004).
     pub towns: Vec<Town>,
     /// The viewer's views of the map garrisons a tile of which it explored since, in their
-    /// places' order, as [`GameObservation::garrisons`] holds them (ADV-GAR-006; protocol v53).
+    /// places' order, as [`GameObservation::garrisons`] holds them (ADV-GAR-006; protocol v54).
     pub garrisons: Vec<MapGarrison>,
 }
 
@@ -445,6 +445,8 @@ pub struct GameObservation {
     pub day: u32,
     /// The month's kind (GAM-CAL-003): public, as the original's month's message.
     pub month: Month,
+    /// The week's kind (TWN-GRO-002): public, as the original's week's message.
+    pub week: Week,
     /// The players, by id.
     pub players: Vec<Player>,
     /// The players of the group whose turn is running.
@@ -468,7 +470,7 @@ pub struct GameObservation {
     /// it has explored, its object among [`Self::adventure`]'s ([`Object::town`]).
     pub towns: Vec<Town>,
     /// The map garrisons the viewer sees, in their places' order ([`MapGarrison::place`];
-    /// ADV-GAR-006, protocol v53): each garrison a tile of which it has explored, its object among
+    /// ADV-GAR-006, protocol v54): each garrison a tile of which it has explored, its object among
     /// [`Self::adventure`]'s by type and anchor.
     pub garrisons: Vec<MapGarrison>,
     /// The battle of the viewer's first open decision, as its side sees it (GAM-BAT-001); other
@@ -488,6 +490,26 @@ pub enum Month {
     },
     /// The Plague.
     Plague {},
+}
+
+/// A week's kind (TWN-GRO-002): drawn on each week's first day after the first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Week {
+    /// A normal week.
+    Normal {},
+    /// The week of a creature: its dwellings grow more.
+    Creature {
+        /// The creature's handle.
+        creature: u16,
+    },
+    /// A building's week (the Deity of Fire's): the dwellings of either of its level's creatures
+    /// grow more.
+    Of {
+        /// The level's creature's handle and its upgrade's, if any.
+        creatures: [Option<u16>; 2],
+        /// What each such dwelling grows more.
+        bonus: u16,
+    },
 }
 
 /// A player as every viewer sees it.
@@ -849,7 +871,7 @@ pub struct Bonuses {
     pub marks: u8,
 }
 
-/// A map garrison as a viewer sees it (ADV-GAR-006; protocol v53, E08 T114b): its type and
+/// A map garrison as a viewer sees it (ADV-GAR-006; protocol v54, E08 T114b): its type and
 /// anchor (its object among the view's), its owner, its army at the viewer's level (the levels of
 /// a town's garrison, TWN-VEW-002, -003) and, for its owner's team, its removable flag.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

@@ -13,7 +13,9 @@ use h3_kernel::handle::Handle;
 
 use super::command::{artifact_place, slot};
 use super::town_buildings;
-use super::{army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill};
+use super::{
+    army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill, week_kind,
+};
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
     AdventureEvent, Formation, GameEvent, HeroChange, HireTarget, OfferLevels, ShipyardBlock,
@@ -36,7 +38,10 @@ fn event(e: &EngineEvent) -> GameEvent {
             player: player.raw(),
         },
         EngineEvent::DayStarted { day } => GameEvent::DayStarted { day },
-        EngineEvent::WeekStarted { week } => GameEvent::WeekStarted { week },
+        EngineEvent::WeekStarted { week, kind } => GameEvent::WeekStarted {
+            week,
+            kind: week_kind(kind),
+        },
         EngineEvent::MonthStarted { month, kind } => GameEvent::MonthStarted {
             month,
             kind: month_kind(kind),

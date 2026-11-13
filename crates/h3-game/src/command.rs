@@ -20,7 +20,7 @@ use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use crate::manage::{Manage, ManageError};
 use crate::town::view::{GarrisonStackView, TownBuildingsView};
-use crate::{GameRuleset, GameState, MonthKind, OpenBattle};
+use crate::{GameRuleset, GameState, MonthKind, OpenBattle, WeekKind};
 
 /// Who issues a command (ADR-0017 point 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -321,10 +321,13 @@ pub enum GameEvent {
         day: u32,
     },
     /// A new week started (GAM-CAL-002, E08 T85b): on its first day after the first week's, after
-    /// [`Self::DayStarted`] and before the adventure's week step's events. Public.
+    /// [`Self::DayStarted`] and before the adventure's week step's events, since E09 T26a2 with
+    /// the kind it drew (TWN-GRO-002). Public, as the original's week's message.
     WeekStarted {
         /// The week, from 1 (the first one starts with the game, without an event).
         week: u32,
+        /// Its kind.
+        kind: WeekKind,
     },
     /// A new month started (GAM-CAL-002, GAM-CAL-003, E08 T85b): on its first day after the first
     /// month's, after the week's events, with the kind it drew, before a creature's month's

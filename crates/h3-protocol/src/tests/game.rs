@@ -18,7 +18,7 @@ use h3_contracts::{ArmyStack as EngineStack, FortLevel, HeroId, PlayerId, TownId
 use h3_game::{
     BuildingId, BuildingSet, DecisionView, GameRuleset, GarrisonStackView, GarrisonView, HireView,
     LevelUpView, MapGarrisonView, MonthKind, PlayerView, SlotState as EngineSlot,
-    TownBuildingsView, TownOwnerView, TownView, Viewer,
+    TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::PrimarySkill as EnginePrimary;
 use h3_kernel::handle::Handle;
@@ -894,6 +894,18 @@ fn tiles(views: &[TileView]) -> Vec<h3_game::RevealedTile> {
     tiles
 }
 
+/// The wire's week's kind back in the engine's type.
+pub(super) fn inverse_week(week: Week) -> WeekKind {
+    match week {
+        Week::Normal {} => WeekKind::Normal,
+        Week::Creature { creature } => WeekKind::Creature(Handle::from_raw(creature)),
+        Week::Of { creatures, bonus } => WeekKind::Of {
+            creatures: creatures.map(|c| c.map(Handle::from_raw)),
+            bonus,
+        },
+    }
+}
+
 /// The wire's observation back in the engine's types, with `battle` for the battle's part.
 fn inverse_game(
     g: &GameObservation,
@@ -908,6 +920,7 @@ fn inverse_game(
             Month::Creature { creature } => MonthKind::Creature(Handle::from_raw(creature)),
             Month::Plague {} => MonthKind::Plague,
         },
+        week: inverse_week(g.week),
         players: g
             .players
             .iter()
@@ -1146,6 +1159,11 @@ pub(super) fn every_game_part(
         viewer: PlayerId::new(1),
         day: 30,
         month,
+        // A building's week of a level without an upgrade (E09 T26a2).
+        week: WeekKind::Of {
+            creatures: [Some(Handle::from_raw(42)), None],
+            bonus: 15,
+        },
         players: vec![
             PlayerView {
                 colour: 0,

@@ -15992,7 +15992,7 @@ executables, `maps.tar`, `extracted.tar`.
 ### Increment 12, round 6: T114b, the garrisons' views (2026-11-13, `adventure/e08-t114b`, `cross-lane`)
 
 **The cut** (decision 325; asked at T114b's start, `AskUserQuestion`, with the `cross-lane`
-consent): whole, one pull request; protocol v53 once. **Baseline:** `master` 8380e4e (#898, T114a2,
+consent): whole, one pull request; protocol v54 once (the town lane's T26a2 took v53 during the task). **Baseline:** `master` 8380e4e (#898, T114a2,
 merged before the session; CI green on it; the setup's `verify-once` found the engine code
 verified there and ran the light gates only). No original data staged: nothing of the import or
 the census moved.
@@ -16015,7 +16015,7 @@ the census moved.
   (an empty one's visit, `give_won`'s flag) through `AdventureOutcome::garrison_flagged`, every
   viewer that sees it told before `ExchangeOpened` (`garrisons::tell_all`). Visions' reach untold
   (`TWN-STUB-13`, its text extended).
-- **The wire** (`cross-lane`, protocol v53): `MapGarrison` (its `place`), `GameObservation`'s and
+- **The wire** (`cross-lane`, protocol v54): `MapGarrison` (its `place`), `GameObservation`'s and
   `GameReveal`'s `garrisons` in their places' order, the two events both ways; the fold's
   `put_garrison` and `Garrison::see` (shared with `TownStackSeen`); the round-trip lists (39 event
   kinds), the JSON form, two fold cases, the gate's two parts without a stub (no golden replay
@@ -16037,5 +16037,5 @@ the census moved.
   Docs: design §15's *As built*, §17's row; decision 325 and the task's line; the queue (T115),
   `OVERVIEW.md`; the server, AI, town, client and map client lanes' inboxes.
 
-**Versions:** protocol v53 (the server lane's, `cross-lane`). The game and adventure state
+**Versions:** protocol v54 (the server lane's, `cross-lane`; after the town lane's v53, merged in before the pull request). The game and adventure state
 hashes, the part, the map import, the replay format and the env's encoding unchanged. T115 next.

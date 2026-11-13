@@ -1,0 +1,123 @@
+# E27 M1 T2: the multiplayer dialog's and the hot seat's recipes (design §2.6, §2.7, §2.11;
+# h3shell.py, the runbook's "The shell's screens"). Coordinates are the original's 800 × 600
+# screen: the dialog's items at its own positions + (173, 55), the hot seat's + (218, 96); a
+# button's point is the middle of its DEF. Each button: its hover (its hint in the status line),
+# its press held, the pointer gone off it with the button still down (released there: no
+# command), its right press's popup and the screen once it closed. Online is never released over
+# its button: its command ends the game (game_shutdown; no shot can follow). Under the harness's
+# Wine IPX fails (its message), TCP/IP opens with the machine's address in its title (the
+# stage-2 shots hold this computer's address), Modem and Direct Connect open.
+
+[[recipe]]
+id = "mp-new"
+what = "§2.6: the multiplayer dialog over New Game's menu: stage 1, each button's hint, press and popup; Cancel, Escape"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer", "shot:dialog",
+  "move:578,157", "shot:hot-hover", "down:578,157", "shot:hot-press", "move:358,300", "up", "shot:hot-left",
+  "right:578,157", "shot:hot-popup", "right-up", "shot:hot-closed",
+  "move:578,214", "shot:ipx-hover", "down:578,214", "shot:ipx-press", "move:358,300", "up", "shot:ipx-left",
+  "right:578,214", "shot:ipx-popup", "right-up", "shot:ipx-closed",
+  "move:578,271", "shot:tcp-hover", "down:578,271", "shot:tcp-press", "move:358,300", "up", "shot:tcp-left",
+  "right:578,271", "shot:tcp-popup", "right-up", "shot:tcp-closed",
+  "move:578,328", "shot:modem-hover", "down:578,328", "shot:modem-press", "move:358,300", "up", "shot:modem-left",
+  "right:578,328", "shot:modem-popup", "right-up", "shot:modem-closed",
+  "move:578,385", "shot:direct-hover", "down:578,385", "shot:direct-press", "move:358,300", "up", "shot:direct-left",
+  "right:578,385", "shot:direct-popup", "right-up", "shot:direct-closed",
+  "move:578,442", "shot:online-hover", "down:578,442", "shot:online-press", "move:358,300", "up", "shot:online-left",
+  "right:578,442", "shot:online-popup", "right-up", "shot:online-closed",
+  "move:578,495", "shot:cancel-hover", "down:578,495", "shot:cancel-press", "move:358,300", "up", "shot:cancel-left",
+  "right:578,495", "shot:cancel-popup", "right-up", "shot:cancel-closed",
+  "move:359,500", "shot:name-hover", "right:359,500", "shot:name-popup", "right-up", "shot:name-closed",
+  "move:518,300", "shot:map-hover", "right:518,300", "shot:map-popup", "right-up", "shot:map-closed",
+  "click:578,495", "check:new_game_menu", "shot:cancelled",
+  "click:649,180", "check:multiplayer", "shot:again", "key:Escape", "check:new_game_menu", "shot:escaped",
+]
+
+[[recipe]]
+id = "hotseat-names"
+what = "§2.7: the hot seat's names: the first name from the dialog's, hints and popups, OK enabled by a second name, the ring, OK to the scenario screen"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "type:Anna", "shot:name-typed",
+  "click:578,157", "check:hotseat_names", "shot:names",
+  "move:345,450", "shot:ok-hover", "right:345,450", "shot:ok-popup", "right-up", "shot:ok-closed",
+  "move:455,450", "shot:cancel-hover", "right:455,450", "shot:cancel-popup", "right-up", "shot:cancel-closed",
+  "move:417,217", "shot:edit-hover", "right:417,217", "shot:edit-popup", "right-up", "shot:edit-closed",
+  "move:400,560",
+  "key:Tab", "shot:tab-2", "type:Bert", "shot:second-typed", "key:Tab", "shot:tab-3",
+  "key:Tab", "shot:tab-4", "key:Tab", "shot:tab-5", "key:Tab", "shot:tab-6", "key:Tab", "shot:tab-7",
+  "key:Tab", "shot:tab-8", "key:Tab", "shot:tab-1",
+  "key:shift+Tab", "shot:shift-tab-8", "key:Down", "shot:down-1", "key:Up", "shot:up-8",
+  "key:Return", "shot:enter-1",
+  "move:345,450", "shot:ok-hover-enabled", "down:345,450", "shot:ok-press", "up",
+  "until:scenario_list", "shot:scenario", "click:514,519", "shot:advanced",
+]
+
+[[recipe]]
+id = "hotseat-cancel"
+what = "§2.7: the hot seat with no name: OK enabled by two names and disabled again by a name's removal; Cancel and Escape back to stage 1"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "click:578,157", "check:hotseat_names", "shot:names", "move:400,560",
+  "type:A", "shot:first-typed", "key:Down", "shot:down-2", "type:B", "shot:second-typed",
+  "key:BackSpace", "shot:second-removed", "type:C", "shot:second-again", "key:Up", "shot:up-1",
+  "key:BackSpace", "shot:first-removed",
+  "move:455,450", "shot:cancel-hover", "down:455,450", "shot:cancel-press", "up", "check:multiplayer", "shot:cancelled",
+  "click:578,157", "check:hotseat_names", "shot:again", "type:D", "key:Escape", "check:multiplayer", "shot:escaped",
+  "click:578,157", "check:hotseat_names", "shot:third",
+]
+
+[[recipe]]
+id = "mp-load"
+what = "§2.6, §2.7: the multiplayer dialog over Load Game's menu; Escape; the hot seat's OK to the load"
+steps = [
+  "until:main_menu", "click:645,192", "check:load_game_menu", "click:649,180", "check:multiplayer", "shot:dialog",
+  "key:Escape", "check:load_game_menu", "shot:escaped",
+  "click:649,180", "check:multiplayer", "type:Anna", "click:578,157", "check:hotseat_names", "shot:names",
+  "key:Tab", "type:Bert", "shot:two-names", "click:345,450", "until-button:ok", "shot:load", "press:ok", "shot:load-closed",
+]
+
+[[recipe]]
+id = "mp-ipx"
+what = "§2.6: IPX: the network fails (GENRLTXT 461), its OK closes the dialog"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "click:578,214", "shot:failed", "until-button:ok", "point:ok", "shot:ok-hover", "press:ok", "until:new_game_menu", "shot:closed",
+]
+
+[[recipe]]
+id = "mp-tcp"
+what = "§2.6: TCP/IP: stage 2 with Search and the address; Host, Join, Search and the list's hints; Cancel to stage 1 (the types disabled), Escape, reopened"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "click:578,271", "shot:stage2", "clip:list:2000:100",
+  "move:578,157", "shot:host-hover", "right:578,157", "shot:host-popup", "right-up", "shot:host-closed",
+  "move:578,214", "shot:join-hover", "right:578,214", "shot:join-popup", "right-up", "shot:join-closed",
+  "move:578,271", "shot:search-hover", "right:578,271", "shot:search-popup", "right-up", "shot:search-closed",
+  "move:518,300", "shot:scroll-hover", "right:518,300", "shot:scroll-popup", "right-up", "shot:scroll-closed",
+  "move:350,178", "shot:row-hover", "click:350,178", "shot:row-pressed",
+  "move:578,495", "shot:cancel-hover", "click:578,495", "shot:stage1",
+  "click:578,271", "shot:tcp-again", "key:Escape", "check:new_game_menu", "shot:closed",
+  "click:649,180", "check:multiplayer", "shot:reopened",
+]
+
+[[recipe]]
+id = "mp-modem"
+what = "§2.6: Modem: stage 2 over the map picture, Host and Join; Cancel to stage 1 (the types disabled: Hot Seat does nothing), Escape"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "click:578,328", "shot:stage2", "clip:wait:2000:100",
+  "move:578,157", "shot:host-hover", "move:578,214", "shot:join-hover", "move:578,271", "shot:search-gone",
+  "move:578,495", "shot:cancel-hover", "click:578,495", "shot:stage1",
+  "click:578,157", "shot:hot-again", "key:Escape", "check:new_game_menu", "shot:closed",
+]
+
+[[recipe]]
+id = "mp-direct"
+what = "§2.6: Direct Connect: stage 2 over the map picture, Host and Join; Cancel to stage 1"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
+  "click:578,385", "shot:stage2", "clip:wait:2000:100",
+  "move:578,157", "shot:host-hover", "move:578,214", "shot:join-hover",
+  "move:578,495", "shot:cancel-hover", "click:578,495", "shot:stage1",
+]

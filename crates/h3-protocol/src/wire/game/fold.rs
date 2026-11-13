@@ -63,8 +63,7 @@ impl GameObservation {
                 // Today's timed events fire at the viewer's turn start (GAM-CAL-004).
                 self.events_today.clear();
             }
-            // No part of the view holds the week.
-            GameEvent::WeekStarted { week: _ } => {}
+            GameEvent::WeekStarted { week: _, kind } => self.week = kind,
             GameEvent::MonthStarted { month: _, kind } => self.month = kind,
             GameEvent::TurnStarted { player } => self.start_turn(player),
             GameEvent::TimedEventFired { player: _, event } => self.events_today.push(event),

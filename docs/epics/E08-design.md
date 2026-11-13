@@ -560,7 +560,7 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
   build, a town's capture: `every`'s players' views of every garrison, told after the towns');
   a capture through `AdventureOutcome::garrison_flagged` (`visit_garrison`'s empty arm,
   `give_won`'s), told to every viewer that sees it before `ExchangeOpened` (`garrisons::
-  tell_all`). Visions' reach: `TWN-STUB-13` extended. The wire (protocol v53): `MapGarrison` (its
+  tell_all`). Visions' reach: `TWN-STUB-13` extended. The wire (protocol v54, after the town lane's v53): `MapGarrison` (its
   `place`), the two events, the fold's `put_garrison` (a garrison not seen yet put in its place).
   No version but the protocol's moved; no replay changed (no fixture map holds a garrison).
 - **The kind marks** in the observation: the types the viewer's team holds (`AdventureObservation`,
@@ -612,7 +612,7 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 | game state hash | v27 | **v28** | T114a (`Exchange`, `Rest::Exchange`), T115a (the details lose the bonuses); *as built* v28 was E09 T25a's, v29 T114a2's (the exchange, no new rest) |
 | adventure replay format | v12 | **v13** | T114b: `MapGarrison` in management lines; *as built* T114a2's (the build needs it) |
 | env action encoding | v8 | v8 | none (§16) |
-| `h3-protocol` | v40 | the server lane's | the mapping, `cross-lane` in T114b and T115b; *as built* v52 T114a2's (the exchange), v53 T114b's (the views and their events) |
+| `h3-protocol` | v40 | the server lane's | the mapping, `cross-lane` in T114b and T115b; *as built* v52 T114a2's (the exchange), v53 E09 T26a2's (the week's kind), v54 T114b's (the views and their events) |
 
 Unmoved: the core ruleset hash and the pack format (no core change). The ids: part B §11 and part
 C §12 (HER-ADV-003, HER-ADV-008 amended; HER-MAN-001 read), GAM-DEC-009 new, GAM-DEC-007,

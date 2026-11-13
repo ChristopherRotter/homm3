@@ -591,6 +591,7 @@ fn check(
         allowed_heroes: Vec::new(),
         hero_masks: Vec::new(),
         prisoners: Vec::new(),
+        roe: false,
     };
     let built = GameState::new(rules, &setup, SEED)
         .map_err(|e| format!("static layer: {}", refusal(rules, &setup, e, &mut peaks.6)))?;

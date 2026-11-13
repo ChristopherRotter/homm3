@@ -20,12 +20,12 @@ use h3_adventure::{
     RevealedTile as EngineRevealedTile, StaticTile, TileMask, TileView,
     UniversityVisit as EngineVisit,
 };
-use h3_content::{Formation as EngineFormation, ResourceId};
+use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
     HireCreature as EngineCreature, HireView, LevelUpView, MapGarrisonView, MonthKind, PlayerView,
-    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer,
+    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, BattleBonuses, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -40,7 +40,7 @@ use crate::wire::game::{
     HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
     MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
     OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState, Tile,
-    Town, TownBuildings, TownOwnerFacts, UniversityVisit,
+    Town, TownBuildings, TownOwnerFacts, UniversityVisit, Week,
 };
 
 mod command;
@@ -108,6 +108,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         viewer,
         day,
         month,
+        week,
         players,
         turn_group,
         treasury,
@@ -123,6 +124,7 @@ pub(crate) fn observation(o: &h3_game::GameObservation) -> GameObservation {
         viewer: viewer.raw(),
         day: *day,
         month: month_kind(*month),
+        week: week_kind(*week),
         players: players
             .iter()
             .map(|&PlayerView { colour, acting }| Player { colour, acting })
@@ -147,6 +149,31 @@ const fn month_kind(month: MonthKind) -> Month {
             creature: creature.raw(),
         },
         MonthKind::Plague => Month::Plague {},
+    }
+}
+
+/// A week's kind on the wire.
+const fn week_kind(week: WeekKind) -> Week {
+    match week {
+        WeekKind::Normal => Week::Normal {},
+        WeekKind::Creature(creature) => Week::Creature {
+            creature: creature.raw(),
+        },
+        WeekKind::Of {
+            creatures: [base, upgrade],
+            bonus,
+        } => Week::Of {
+            creatures: [handle(base), handle(upgrade)],
+            bonus,
+        },
+    }
+}
+
+/// A creature's handle on the wire, if any.
+const fn handle(creature: Option<CreatureTypeId>) -> Option<u16> {
+    match creature {
+        Some(c) => Some(c.raw()),
+        None => None,
     }
 }
 

@@ -2,15 +2,18 @@
 //! `E09-growth.md` §2, §3): the week's kind ([`WeekKind`], the town crate's type, held by the
 //! game beside its month's kind), what a week adds to a town's counts (TWN-GRO-003) and what a
 //! month's kind does to them ([`MonthGrowth`], TWN-GRO-004). Pure functions over one town; the
-//! game draws the kinds (TWN-GRO-002, GAM-CAL-003), computes each town's [`GrowthInputs`] and
-//! calls them in `TownId` order (E09 T26a).
+//! game computes each town's [`GrowthInputs`] and calls them in `TownId` order (E09 T26a). The
+//! week's kind is drawn here from the towns' stream the game gives ([`draw_week`], TWN-GRO-002,
+//! E09 T26a2); the month's kind is the game's (GAM-CAL-003).
 
 use h3_content::{CREATURE_MONTH_EXACT, CreatureTypeId, NEUTRAL_PLAGUE_FULL_GROWTH, Ruleset};
-use h3_kernel::{CanonicalHash, StateHasher};
+use h3_contracts::TownId;
+use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use crate::growth::{GrowthInputs, TownGrowth, index_creature, level_of};
 use crate::record::{CREATURE_INDEXES, MAX_AVAILABLE, Town};
 use crate::ruleset::{TownRecord, TownRuleset};
+use crate::store::Towns;
 
 /// The week's kind (E09 design §42; the original's +0x1F63C kind with its two creatures and
 /// bonus, `new_day_week_events` 0x4C8780): what a dwelling of the week's creatures grows more.
@@ -76,6 +79,83 @@ impl CanonicalHash for WeekKind {
             }
         }
     }
+}
+
+/// The creatures a creature's week may name (TWN-GRO-002; E09 design §42, survey `E09-growth.md`
+/// §2 point 2): every record's levels' creatures in `part`'s order, each level's base then its
+/// upgrade; on a Restoration of Erathia map (`roe`) only the records with [`TownRecord::roe`] (the
+/// original's creatures below 118 but the elementals: Conflux's left out). A creature without a
+/// record (a neutral) never comes; upgrades do. Derived when the part is built.
+// rule: TWN-GRO-002
+pub fn week_creatures(part: &TownRuleset, roe: bool) -> &[CreatureTypeId] {
+    &part.week_draw().creatures[usize::from(roe)]
+}
+
+/// The week a town's standing building of role `week_of` makes (TWN-GRO-002; E09 design §42,
+/// survey `E09-growth.md` §2 point 3: the Deity of Fire's, the original's kind 2): its level's
+/// base creature and upgrade, the bonus the base's growth in `core` (the Imp's 15). None without
+/// such a building standing or without the faction's record in `part`.
+// rule: TWN-GRO-002
+pub fn building_week(town: &Town, part: &TownRuleset, core: &Ruleset) -> Option<WeekKind> {
+    let faction = town.faction();
+    let record = part.town(faction)?;
+    let &(_, building, level) = part
+        .week_draw()
+        .buildings
+        .iter()
+        .find(|&&(f, ..)| f == faction)?;
+    if !town.built().contains(building) || !town.standing(record).contains(building) {
+        return None;
+    }
+    // The compile's check: a `week_of` level is one of the record's.
+    usize::from(level)
+        .checked_sub(1)
+        .and_then(|index| record.creatures.get(index))
+        .map(|creatures| WeekKind::Of {
+            creatures: [Some(creatures.base), creatures.upgrade],
+            bonus: core.creature(creatures.base).map_or(0, |c| c.growth),
+        })
+}
+
+/// The week's kind on a week's first day (TWN-GRO-002; E09 design §42, survey `E09-growth.md` §2,
+/// the original's `new_day_week_events` 0x4C8780), from the towns' stream `draws`: unless the week
+/// is a month's first (`month_first`), a creature's week with the part's
+/// [`crate::WeekParams::creature_chance`] (`below(denominator)` under the numerator: the
+/// original's `random_between(1, 4)` at 1), its creature `below(n)` of the `n`
+/// [`week_creatures`] (by `roe`); then the first town of `towns` in `TownId` order with a
+/// standing building of role `week_of`, of any owner, makes the week that building's
+/// ([`building_week`]), the draw kept or not (the original's order: drawn, then overwritten, the
+/// month's first week too). A part without the growth's parameters, or without a creature to
+/// name, draws no creature.
+// rule: TWN-GRO-002
+pub fn draw_week(
+    towns: &Towns,
+    part: &TownRuleset,
+    core: &Ruleset,
+    roe: bool,
+    month_first: bool,
+    draws: &mut Rng,
+) -> WeekKind {
+    let mut kind = WeekKind::Normal;
+    if let Some(params) = part.params().filter(|_| !month_first) {
+        let [numerator, denominator] = params.week.creature_chance.map(u32::from);
+        let creatures = week_creatures(part, roe);
+        let n = u32::try_from(creatures.len()).unwrap_or(u32::MAX);
+        if draws.below(denominator) < numerator && n > 0 {
+            let pick = usize::try_from(draws.below(n)).unwrap_or(usize::MAX);
+            kind = creatures
+                .get(pick)
+                .map_or(WeekKind::Normal, |&c| WeekKind::Creature(c));
+        }
+    }
+    if part.week_draw().buildings.is_empty() {
+        return kind;
+    }
+    (0..=u16::MAX)
+        .map(TownId::new)
+        .map_while(|id| towns.get(id))
+        .find_map(|town| building_week(town, part, core))
+        .unwrap_or(kind)
 }
 
 /// What a month's kind does to the towns' counts (E09 design §43, TWN-GRO-004): the game maps

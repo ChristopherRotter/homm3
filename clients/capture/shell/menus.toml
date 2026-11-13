@@ -1,0 +1,77 @@
+# E27 M1 T2: the menus' recipes (design §2.2 to §2.5, §2.11; h3shell.py, the runbook's "The
+# shell's screens"). Coordinates are the original's 800 × 600 screen; a button's point is the
+# middle of its rectangle (design §2.3's and §2.4's tables). Each button: its hover (frame 3), its
+# press held (frame 1), the pointer gone off it with the button still down (released there: no
+# command), its right press's popup (style 4, Help.txt) and the screen once it closed.
+
+[[recipe]]
+id = "menu-main"
+what = "§2.3: the main menu: each button's hover, press and right press's popup"
+steps = [
+  "until:main_menu", "shot:menu",
+  "move:643,70", "shot:new-hover", "down:643,70", "shot:new-press", "move:300,560", "up", "shot:new-left",
+  "right:643,70", "shot:new-popup", "right-up", "shot:new-closed",
+  "move:645,192", "shot:load-hover", "down:645,192", "shot:load-press", "move:300,560", "up", "shot:load-left",
+  "right:645,192", "shot:load-popup", "right-up", "shot:load-closed",
+  "move:643,304", "shot:scores-hover", "down:643,304", "shot:scores-press", "move:300,560", "up", "shot:scores-left",
+  "right:643,304", "shot:scores-popup", "right-up", "shot:scores-closed",
+  "move:643,414", "shot:credits-hover", "down:643,414", "shot:credits-press", "move:300,560", "up", "shot:credits-left",
+  "right:643,414", "shot:credits-popup", "right-up", "shot:credits-closed",
+  "move:643,520", "shot:quit-hover", "down:643,520", "shot:quit-press", "move:300,560", "up", "shot:quit-left",
+  "right:643,520", "shot:quit-popup", "right-up", "shot:quit-closed",
+]
+
+[[recipe]]
+id = "menu-quit"
+what = "§2.3: Quit's question (GENRLTXT 70) by the button and by Escape, Cancel staying"
+steps = [
+  "until:main_menu",
+  "click:643,520", "shot:question", "move:359,350", "shot:ok-hover", "move:441,350",
+  "shot:cancel-hover", "down:441,350", "shot:cancel-press", "up", "shot:cancelled",
+  "key:Escape", "shot:question-key", "key:Escape", "shot:escaped",
+]
+
+[[recipe]]
+id = "menu-new"
+what = "§2.4: New Game's menu: each button's hover, press and popup; Back"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "shot:menu",
+  "move:649,65", "shot:single-hover", "down:649,65", "shot:single-press", "move:300,560", "up", "shot:single-left",
+  "right:649,65", "shot:single-popup", "right-up", "shot:single-closed",
+  "move:649,180", "shot:multi-hover", "down:649,180", "shot:multi-press", "move:300,560", "up", "shot:multi-left",
+  "right:649,180", "shot:multi-popup", "right-up", "shot:multi-closed",
+  "move:646,298", "shot:campaign-hover", "down:646,298", "shot:campaign-press", "move:300,560", "up", "shot:campaign-left",
+  "right:646,298", "shot:campaign-popup", "right-up", "shot:campaign-closed",
+  "move:647,412", "shot:tutorial-hover", "down:647,412", "shot:tutorial-press", "move:300,560", "up", "shot:tutorial-left",
+  "right:647,412", "shot:tutorial-popup", "right-up", "shot:tutorial-closed",
+  "move:645,517", "shot:back-hover", "down:645,517", "shot:back-press", "move:300,560", "up", "shot:back-left",
+  "right:645,517", "shot:back-popup", "right-up", "shot:back-closed",
+  "click:645,517", "check:main_menu", "shot:back",
+]
+
+[[recipe]]
+id = "menu-load"
+what = "§2.4: Load Game's menu (loadgame.pcx's title): each button's hover, press and popup; Escape"
+steps = [
+  "until:main_menu", "click:645,192", "check:load_game_menu", "shot:menu",
+  "move:649,65", "shot:single-hover", "down:649,65", "shot:single-press", "move:300,560", "up", "shot:single-left",
+  "right:649,65", "shot:single-popup", "right-up", "shot:single-closed",
+  "move:649,180", "shot:multi-hover", "down:649,180", "shot:multi-press", "move:300,560", "up", "shot:multi-left",
+  "right:649,180", "shot:multi-popup", "right-up", "shot:multi-closed",
+  "move:646,298", "shot:campaign-hover", "down:646,298", "shot:campaign-press", "move:300,560", "up", "shot:campaign-left",
+  "right:646,298", "shot:campaign-popup", "right-up", "shot:campaign-closed",
+  "move:647,412", "shot:tutorial-hover", "down:647,412", "shot:tutorial-press", "move:300,560", "up", "shot:tutorial-left",
+  "right:647,412", "shot:tutorial-popup", "right-up", "shot:tutorial-closed",
+  "move:645,517", "shot:back-hover", "down:645,517", "shot:back-press", "move:300,560", "up", "shot:back-left",
+  "right:645,517", "shot:back-popup", "right-up", "shot:back-closed",
+  "key:Escape", "check:main_menu", "shot:back",
+]
+
+[[recipe]]
+id = "menu-tutorial"
+what = "§2.1, §2.4: the tutorial's load (loadbar.pcx, loadprog.def, the bar full once the game is idle) to its adventure map and first message"
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "move:647,412",
+  "down:647,412", "settle:3", "up",
+  "clip:load:2000:10", "shot:map",
+]
