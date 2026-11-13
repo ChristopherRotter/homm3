@@ -10,7 +10,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   digests under `clients/capture/shell/`, the runbook's "The shell's screens"). **Next: M1 T3**
   (M1's closure: a fresh reviewer on the catalogue and the recipes, the `scenario` and `advanced`
   groups' shots included; the review list and CLT-Q100 to CLT-Q102 with the user; M2's
-  refinement; `QUEUE.md`). Open pull request: `client/e27-m1-t2` (watch it until it merges). E17
+  refinement; `QUEUE.md`). Open pull request: **#900** (`client/e27-m1-t2`; watch it until it merges). E17
   done (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
