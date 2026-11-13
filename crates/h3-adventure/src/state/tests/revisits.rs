@@ -25,7 +25,7 @@ pub(super) fn revisit(
         &rules.0,
         &rules.1,
         &store,
-        (player, draws),
+        (player, Weekday::FIRST, draws),
         &AdventureCommand::Revisit { hero },
         &mut events,
     );

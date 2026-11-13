@@ -160,7 +160,7 @@ fn walk(
             &rules.0,
             &rules.1,
             heroes,
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &step,
             &mut events,
         )
@@ -573,7 +573,12 @@ fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
         join.as_ref().unwrap(),
         &mut events,
     );
-    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut stream(), &mut events);
+    let visit = s.visit_held(
+        triple(&rules, &[]),
+        (RED, HERO),
+        (Weekday::FIRST, &mut stream()),
+        &mut events,
+    );
     assert_eq!(visit.offer.map(|o| o.object_type), Some(CHART));
     // Onto an observatory's tile: the guard's answer, the reveal held for after it (the step's
     // event alone), then given by the held visit.
@@ -596,7 +601,7 @@ fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
     let visit = s.visit_held(
         triple(&rules, &[]),
         (RED, HERO),
-        &mut stream(),
+        (Weekday::FIRST, &mut stream()),
         &mut revealed,
     );
     assert_eq!(visit, AdventureOutcome::default());
@@ -613,14 +618,19 @@ fn the_guard_answers_first_and_the_tiles_own_object_waits_for_it() {
         let visit = s.visit_held(
             triple(&rules, &[]),
             (player, hero),
-            &mut stream(),
+            (Weekday::FIRST, &mut stream()),
             &mut none,
         );
         assert_eq!(visit, AdventureOutcome::default());
     }
     let mut s = pikemen(&rules, &[(PEASANT, 100)], -4);
     walk(&rules, &mut s, &[], &[(2, 1)]);
-    let visit = s.visit_held(triple(&rules, &[]), (RED, HERO), &mut stream(), &mut none);
+    let visit = s.visit_held(
+        triple(&rules, &[]),
+        (RED, HERO),
+        (Weekday::FIRST, &mut stream()),
+        &mut none,
+    );
     assert_eq!((visit, none.len()), (AdventureOutcome::default(), 0));
 }
 

@@ -229,6 +229,40 @@ pub struct CalendarParams {
     pub month_weeks: NonZeroU8,
 }
 
+impl CalendarParams {
+    /// The day of the week of the game's day `day` (from 1): (day − 1) mod `week_days` + 1 (E08
+    /// T115b; increment 12's design note §15, the original's date +0x1F63E).
+    // rule: GAM-CAL-002
+    pub fn weekday(self, day: u32) -> Weekday {
+        let since = day.saturating_sub(1) % u32::from(self.week_days.get());
+        // Below `week_days`, a `u8`.
+        Weekday(u8::try_from(since).unwrap_or(u8::MAX).saturating_add(1))
+    }
+}
+
+/// The day of the week, from 1 (E08 T115b; increment 12's design note §5 and §15, ADR-0017 point
+/// 1): the game's calendar's ([`CalendarParams::weekday`]), an input of
+/// [`crate::AdventureState::apply`] beside the visitor's stream, not a copy in the adventure's
+/// state (one fact, one place). The Idol of Fortune's and the Temple's amounts are by it
+/// (ADV-BON-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Weekday(u8);
+
+impl Weekday {
+    /// The week's first day.
+    pub const FIRST: Self = Self(1);
+
+    /// The day `day` of the week, from 1; `None` for 0.
+    pub const fn new(day: u8) -> Option<Self> {
+        if day >= 1 { Some(Self(day)) } else { None }
+    }
+
+    /// The day, from 1.
+    pub const fn get(self) -> u8 {
+        self.0
+    }
+}
+
 /// The months' parameters in a pack (GAM-CAL-003, ADV-MON-014, E08 T83a; survey
 /// `E08-economy.md` §7.4, §10.2).
 #[derive(Debug, Clone, PartialEq, Eq)]

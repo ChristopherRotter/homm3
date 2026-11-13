@@ -83,7 +83,7 @@ pub use ruleset::{
     ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef, RandomDwellingDef,
     RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
     StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
-    Turn, TurnDef, Visit,
+    Turn, TurnDef, Visit, Weekday,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,

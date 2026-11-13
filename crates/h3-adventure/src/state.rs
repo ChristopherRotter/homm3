@@ -33,6 +33,7 @@ use crate::persistent::{BitGrid, Table};
 use crate::ruleset::{
     AdventureRuleset, Effect, MAX_GAIN, MAX_MONSTER_COUNT, MAX_PICKUP_AMOUNT, MAX_PLAYERS,
     MarkLifetime, ObjectKind, ObjectType, ObjectTypeId, Passage, Pickup, RiverId, RoadId, Visit,
+    Weekday,
 };
 use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
@@ -1660,20 +1661,21 @@ impl AdventureState {
         core: &Ruleset,
         part: &AdventureRuleset,
         heroes: &[Arc<HeroDetails>],
-        (player, draws): (PlayerId, &mut Rng),
+        (player, weekday, draws): (PlayerId, Weekday, &mut Rng),
         command: &AdventureCommand,
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
+        let turn = (weekday, draws);
         match command {
             AdventureCommand::MoveHero { hero, path } => {
-                self.move_hero((core, part, heroes), (player, *hero), path, draws, sink)
+                self.move_hero((core, part, heroes), (player, *hero), path, turn, sink)
             }
             AdventureCommand::BuildBoat {
                 object_type,
                 anchor,
             } => self.build_boat_command((core, part), player, (*object_type, *anchor), sink),
             AdventureCommand::Revisit { hero } => {
-                self.revisit((core, part, heroes), (player, *hero), draws, sink)
+                self.revisit((core, part, heroes), (player, *hero), turn, sink)
             }
         }
     }
@@ -1734,7 +1736,7 @@ impl AdventureState {
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, id): (PlayerId, HeroId),
         path: &[Pos],
-        draws: &mut Rng,
+        (weekday, draws): (Weekday, &mut Rng),
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
         let (core, part, heroes) = rules;
@@ -1868,7 +1870,9 @@ impl AdventureState {
         }
         let outcome = match visit {
             None => AdventureOutcome::default(),
-            Some(Meets::Object(visit)) => self.visit(rules, (player, id), visit, draws, sink),
+            Some(Meets::Object(visit)) => {
+                self.visit(rules, (player, id), visit, (weekday, draws), sink)
+            }
             Some(Meets::Board(boat)) => {
                 self.board(rules, (player, index), boat, sink);
                 AdventureOutcome::default()
@@ -2286,7 +2290,7 @@ impl AdventureState {
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
         visit: StepVisit<'_>,
-        draws: &mut Rng,
+        (_weekday, draws): (Weekday, &mut Rng),
         sink: &mut S,
     ) -> AdventureOutcome {
         let core = rules.0;
@@ -2412,7 +2416,7 @@ impl AdventureState {
         &mut self,
         rules: (&Ruleset, &AdventureRuleset, &[Arc<HeroDetails>]),
         (player, hero): (PlayerId, HeroId),
-        draws: &mut Rng,
+        turn: (Weekday, &mut Rng),
         sink: &mut S,
     ) -> AdventureOutcome {
         let tile = self
@@ -2424,7 +2428,7 @@ impl AdventureState {
             // The hero's tile is its move's end: a garrison of its team is visited there too
             // (ADV-GAR-004).
             Some(visit) if visit.visited_at_end() => {
-                self.visit(rules, (player, hero), visit, draws, sink)
+                self.visit(rules, (player, hero), visit, turn, sink)
             }
             _ => AdventureOutcome::default(),
         }

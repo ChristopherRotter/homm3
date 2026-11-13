@@ -328,7 +328,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                 &rules.0,
                 &rules.1,
                 &[],
-                (RED, &mut stream()),
+                (RED, crate::Weekday::FIRST, &mut stream()),
                 &command,
                 &mut events,
             )
@@ -344,7 +344,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                 &rules.0,
                 &rules.1,
                 &[],
-                (RED, &mut stream()),
+                (RED, crate::Weekday::FIRST, &mut stream()),
                 &back,
                 &mut events,
             )

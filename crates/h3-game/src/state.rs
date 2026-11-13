@@ -13,7 +13,7 @@ use alloc::vec::Vec;
 use h3_adventure::{
     AdventureOutcome, AdventureState, ArmyRef, ArmySlot, Choice, ChoiceKind, Exchange, Garrison,
     HeroGains, HireDialog, HireSource, HireTarget, Meeting, ObjectTypeId, Offer, OfferKind, Pick,
-    Pos, TownReveal, UniversityVisit,
+    Pos, TownReveal, UniversityVisit, Weekday,
 };
 use h3_content::{HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, HeroSex, PlayerId, TownId};
@@ -1333,6 +1333,12 @@ impl GameState {
     /// The day, from 1.
     pub const fn day(&self) -> u32 {
         self.day
+    }
+
+    /// The day of the week, from 1 (E08 T115b; increment 12's design note §15): the calendar's
+    /// (GAM-CAL-002), the input of the adventure's commands and visits.
+    pub fn weekday(&self, rules: &GameRuleset) -> Weekday {
+        rules.adventure().params().calendar().weekday(self.day)
     }
 
     /// The month's kind (GAM-CAL-003, E08 T85b): public, as the original's month's message.
