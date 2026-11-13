@@ -12,7 +12,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   independent). Decisions to carry: the dialogs' input one implementation shared with the
   battle's (20); the shell's code as the battle's: `h3-view` and `h3-battle-client`, `h3-smacker`,
   the clips' sound exact against the DLLs, the score the engine's (21); decision 22's fixes. Open
-  pull request: T3's (`client/e27-m1-t3`, docs only; watch it until it merges). E17 done
+  pull request: **#905** (`client/e27-m1-t3`, docs only; watch it until it merges). E17 done
   (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
