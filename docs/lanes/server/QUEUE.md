@@ -12,6 +12,18 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane`; **a protocol version taken,
+  for your review**): protocol **v57** (after your T14's v56): `wire::game::TownCommand::Recruit
+  { town, building }` (TWN-REC-001, -002), `TownReject`'s `NotRecruiting`, `NotStanding`,
+  `NothingSummoned`; `HireTarget::Garrison { town }`; a hire dialog's source as the new
+  `wire::game::HireSeen` (`Object { object_type, anchor }`, `Town { town, index }`, `Portal { town
+  }`) in `Hire` and `HireOpened`, which no longer carry `object_type` and `anchor` themselves. A
+  town's purchase tells the garrison slot's `StackChanged` (`ArmyRef::Garrison`) to the owner,
+  then the town's changed views (`TownChanged` and its stacks) before the dialog's close. The
+  fold needed nothing new (the decision's view replaced whole; the garrison's slot as a siege's
+  merge). Mapped, inverted and round-tripped in `src/tests/`; the golden replays re-recorded
+  (hash lines and the format's version only).
+
 - 2026-11-13 (the town lane, E09 T26b, `town/e09-t26b`, `cross-lane`; **a protocol version
   taken**): protocol **v55** (after the adventure lane's T114b's v54): `wire::game::TownBuildings` (the owner's) gains `available`
   (`[u16; 14]`, the counts) and `portal` (`Option<Summoned { creature, count }>`) (TWN-VEW-004,

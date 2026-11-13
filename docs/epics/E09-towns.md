@@ -156,6 +156,17 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     `TownBuildingsView` (`available`, `portal`) as design §47 says, on the wire `TownBuildings`'
     two fields and `Summoned`; the week's views taken before its growth for every viewer and town,
     told at the towns' day; the growth tests' rules without the garrison week (odds 0).
+92. **T27 whole** (the user at T27's start, asked; the agent recommended two parts, the engine,
+    the wire and the replays first, then the env's `RECRUIT`; not chosen: three, the town's pure
+    rules first with a second protocol bump). The user's choice is the AI lane's `cross-lane`
+    consent for the env's encoding v10. *Agent's calls* (change freely): the Portal holding
+    nothing refused by `h3_towns::recruit_source` with the record; `h3_towns::recruiting` for the
+    legal set (one pass); `recruit_stock` without the core; the town's refusals as their own
+    `RecruitError`, given as `HireError`'s; the adventure's `check_join` for a town's purchase
+    (the room and the price) and `hire` returning the garrison's slot, which the game tells as
+    `StackChanged`; `HireSeen` in `h3-game`'s observation, replacing the view's and the event's
+    type and anchor; `GameState::hire_stock` public for the env; `RECRUIT` as entry 31 with
+    `BUILD`'s heads.
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 

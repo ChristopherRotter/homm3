@@ -345,23 +345,23 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x174f18cbe7b4c68d",
-    "0x6d6f7ffd192f1be9",
-    "0xe6dc43b441a62b2d",
-    "0xf5b5b6352111411d",
-    "0x5d80405a8fd7a824",
-    "0x5847d8ac860d08cf",
-    "0xa05615da1e8a4374",
-    "0x58815debed26b5bc",
-    "0xe724c2dab2ffb53d",
-    "0xe985aaa60e9c4870",
-    "0x7217770ccf20731c",
-    "0x6271f9728b53b3ca",
-    "0x6ff12afa3ed3d888",
+    "0x7cedf52fbc647884",
+    "0x1054dce1970ca6a8",
+    "0x59d2c8667bc0e952",
+    "0x8037211d7131e21e",
+    "0xe6cec82e99bfe13b",
+    "0x61d87c9b6e8fffbc",
+    "0x0b3be4ef46445fab",
+    "0xae55cd7efa763f19",
+    "0x787060238969ea10",
+    "0x3a39e781bf4f3f05",
+    "0x987d55ed75d17afd",
+    "0x078b2d4f8ddfef33",
+    "0xef29794c7c5e36d3",
 ]
 
 [replay]
-format = 14
+format = 15
 engine = "0.1.0"
 seed = "103"
 difficulty = 1
@@ -387,7 +387,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-game_state_hash_version = 30
+game_state_hash_version = 31
 adventure_state_hash_version = 22
 checkpoint_every = 25
 
@@ -398,4 +398,4 @@ import_version = 23
 
 [result]
 day = 29
-final_hash = "0xbb543bc11ab5d9e9"
+final_hash = "0x5b696f9a2c45817e"

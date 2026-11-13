@@ -94,8 +94,9 @@ impl GameState {
 
     /// The creatures `source` sells with their counts as they stand, in its order (GAM-DEC-008):
     /// a map object's the adventure's ([`h3_adventure::AdventureState::hire_stock`]), a town's
-    /// the town's (E09 T27, `h3_towns::recruit_stock`). None for a source that is gone.
-    pub(crate) fn hire_stock(
+    /// the town's (E09 T27, `h3_towns::recruit_stock`). None for a source that is gone. The env
+    /// reads a dialog's creatures' order from it (action encoding v7).
+    pub fn hire_stock(
         &self,
         rules: &GameRuleset,
         source: &HireSource,
@@ -108,8 +109,7 @@ impl GameState {
 
     /// The hire dialog of `player`'s first open decision, if it is one (GAM-DEC-008, E08 T95b),
     /// as [`Self::university`] gives a University: its target and source by name; the source's
-    /// creatures and counts are the adventure's (`AdventureState::hire_stock`). The env reads
-    /// its creatures' order from it (action encoding v7).
+    /// creatures and counts are [`Self::hire_stock`]'s.
     pub fn hire_dialog(&self, player: PlayerId) -> Option<&HireDialog> {
         match self.first_decision(player)? {
             Decision::Hire { dialog, .. } => Some(dialog),

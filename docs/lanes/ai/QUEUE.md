@@ -79,6 +79,18 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
 
+- 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane` with the user's consent, E09
+  decision 92; **the env's action encoding v10, for the adventure agents**): `action.rs` appends
+  the entry `RECRUIT` (31; `ENTRY_COUNT` 32) with `BUILD`'s tile and building heads: a town's
+  entrance and a building opens that building's hire dialog (`TownCommand::Recruit`,
+  TWN-REC-001, -002: a standing dwelling, horde, or Portal holding a creature), masked by
+  `legal_commands`' recruitments (each own town's after its builds); the dialog's purchases are
+  the four hire entries as a dwelling's (`HIRE_BASE`), read from `GameState::hire_stock` (any
+  source's stock; an upgraded index sells two creatures from one count). `rollout::choose` draws
+  every listed recruitment, so random play changed course on every map with an owned town with a
+  dwelling (the town map's env tests on new seeds: 70 alone, and 46 for the fork test). A policy
+  trained on v9 sees one new entry. Nothing else of yours moved.
+
 - 2026-11-10 (the town lane, E09 T19c1, `town/e09-t19c1`, `cross-lane` with the user's consent,
   E09 decisions 7, 58, 62; **the env's action encoding v9, for the adventure agents**; it replaces
   the town lane's note of T18b2b): `crates/h3-sim/src/adventure/action.rs` appends the entry
