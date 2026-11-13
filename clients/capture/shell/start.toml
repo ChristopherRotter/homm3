@@ -1,0 +1,41 @@
+# E27 M1 T2: the start's recipes (design §2.1, §2.11; h3shell.py, the runbook's "The shell's
+# screens"): the clips with `Show Intro` on (the harness's own settings have it off), their order,
+# placements and frames on the frozen clock, a skip of each, the end's screen and the main menu.
+# `Bink Video` 1 (h3shell's base) plays NWCLogo and H3Intro as Bink, 0 their Smacker copies (the
+# system options' Low quality, CLT-Q96); 3DOLogo is Smacker either way. The 3DO logo is recorded
+# at 1 ms steps (its pacing exact: frames are due from the last one shown), the rest at 10 ms.
+
+[[recipe]]
+id = "start-plain"
+what = "§2.1: the start with Show Intro off (the harness's), straight to the main menu"
+steps = ["until:main_menu", "shot:menu"]
+
+[[recipe]]
+id = "start-bink"
+what = "§2.1: 3DOLogo (Smacker), NWCLogo and H3Intro (Bink, in introrim.pcx's frame), the main menu"
+registry = { "Show Intro" = 1 }
+steps = ["clip:logo:6000:1", "clip-until:clips:main_menu:10:200000", "shot:menu"]
+
+[[recipe]]
+id = "start-smacker"
+what = "§2.1: the start with Bink Video 0: NWCLOGO.SMK and H3INTRO.SMK, the main menu"
+registry = { "Show Intro" = 1, "Bink Video" = 0 }
+steps = ["clip-until:clips:main_menu:10:200000", "shot:menu"]
+
+[[recipe]]
+id = "start-skip-key"
+what = "§2.1: a key (Space) skips 3DOLogo and ends the sequence"
+registry = { "Show Intro" = 1 }
+steps = ["step:2000:10", "shot:before", "key:space", "until:main_menu", "shot:menu"]
+
+[[recipe]]
+id = "start-skip-left"
+what = "§2.1: a left press skips NWCLogo and ends the sequence"
+registry = { "Show Intro" = 1 }
+steps = ["step:12000:10", "shot:before", "click:400,300", "until:main_menu", "shot:menu"]
+
+[[recipe]]
+id = "start-skip-right"
+what = "§2.1: a right press skips H3Intro and ends the sequence"
+registry = { "Show Intro" = 1 }
+steps = ["step:40000:10", "shot:before", "right:400,300", "right-up", "until:main_menu", "shot:menu"]

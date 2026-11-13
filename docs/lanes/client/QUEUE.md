@@ -13,30 +13,20 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M1 T2 — the shell's clips, the harness on every screen, the reference captures
-
-- **Scope:** the shell's clips: `original-data/shell-videos.vid` exists (made on the user's
-  computer at T1a1, rebuilt at T1b3a with three Smacker copies for CLT-Q96, design §1: 13 of
-  `VIDEO.VID`'s entries; T1b3b needs no other, design §5.9); the harness's `VIDEO.VID` holding both
-  archives' clips (`setup.sh`; `h3ab_ahd.vid` stays whole beside it); the harness's steps to every
-  catalogued screen and its probes (the runbook, a section of its own); the reference captures of
-  each screen (stills; a clip's frames where a screen plays one), each recorded twice; the start
-  with its clips under Wine; the traps into `TRAPS.md`. Cut at its start with the user if it is
-  more than half a context.
-- **Acceptance:** every catalogued screen reached by a recipe and captured, two recordings the
-  same or each difference listed; the harness check passes; the Definition of Done.
-- **Depends on:** T1b3b (done 2026-11-12: design §5; no clip added, so no need of the user's
-  computer for clips). **Status:** ready.
-
 #### E27 M1 T3 — M1's closure and M2's refinement
 
-- **Scope:** a fresh reviewer on the catalogue and the recipes, its findings fixed or listed;
+- **Scope:** a fresh reviewer on the catalogue and the recipes (design §2 to §6; the shell's
+  recipes and shots, `clients/capture/shell/`: the `scenario` and `advanced` groups' shots for
+  oddities, their agent's report having been lost), its findings fixed or listed; CLT-Q100 to
+  CLT-Q102 (T2's recordings);
   M1's review list and the open questions with the user; M2 T0: M2's tasks into this queue (the
   Smacker decoder, the start, the menus, the shell's state machine and its headless driver,
   CLT-Q2's loading; where the shell's code lives, CLT-Q79).
 - **Acceptance:** the review list accepted by the user; M2's tasks queued; the Definition of
   Done (docs).
-- **Depends on:** T2. **Status:** ready after T2.
+- **Depends on:** T2 (done 2026-11-13: design §6; the shots stay in a sandbox's `clients/out/shell/`,
+  so a reviewer records the groups again with `h3shell.py run`, about 1.5 hours without
+  `start-bink` and `start-smacker`). **Status:** ready.
 
 ## Inbox
 

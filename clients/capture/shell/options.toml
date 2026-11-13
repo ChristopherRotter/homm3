@@ -1,0 +1,166 @@
+# E27 M1 T2: the system options' recipes (design §4.1 to §4.8; h3shell.py, the runbook's "The
+# shell's screens"). Each starts Arrogance as a single scenario, closes its first message and
+# opens the dialog by its hotkey O. Coordinates are the original's 800 × 600 screen: the dialog at
+# (159, 56), its items at their own places + (159, 56) (design §4.1's table), a point the middle of
+# the item: Load (455, 378), Save (566, 378), Restart (455, 437), Main Menu (566, 437), Quit
+# (455, 495), Return (566, 495); the music bar i (197 + 19 i, 433), the effects' (197 + 19 i,
+# 499); Hero Speed i (210 + 48 i, 149), Enemy Speed i (210 + 48 i, 216), Map Scroll Speed i
+# (218 + 64 i, 282); High (234, 348), Low (330, 348); the box k (421, 123 + 32 k). The pointer
+# parks at (700, 300), over the map's right panel, outside the dialog. `opt-first`, `opt-rows` and
+# `opt-bars` have a first run's settings (design §4.5): the registry's, but the effects' volume,
+# which h3drive's `Game.start` writes 0 after the recipe's registry (`sound_settings`: no sound
+# driver), so it is written into the game's setting (0x698764) before the dialog opens; the other
+# recipes keep setup.sh's (the volumes 0, most boxes off). The save from play (Save, GENRLTXT
+# 351) is scenario.toml's `scn-save`. A map's load is given real time to end before the clock
+# moves on (`settle` before Begin, `wait` once the restart's load began).
+
+[[recipe]]
+id = "opt-first"
+what = "§4.1, §4.2, §4.8: the dialog with a first run's settings; each kind of item's press held and the pointer gone off it before the release (a button: nothing; a box and a bar act: Show Route off, the music 3); every item's right press popup; Return and Escape, the dialog opened again"
+maps = ["Arrogance.h3m"]
+registry = { "Walk Speed" = 2, "Computer Walk Speed" = 3, "Window Scroll Speed" = 1, "Music Volume" = 5, "Last Music Volume" = 5, "Show Route" = 1, "Move Reminder" = 1, "Quick Combat" = 0, "Video Subtitles" = 1, "Town Outlines" = 1, "Animate SpellBook" = 1, "Blackout Computer" = 0 }
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:0x698764:05000000", "shot:map", "key:o", "shot:dialog",
+  "down:455,378", "shot:load-press", "move:700,300", "up", "shot:load-left",
+  "down:566,378", "shot:save-press", "move:700,300", "up", "shot:save-left",
+  "down:455,437", "shot:restart-press", "move:700,300", "up", "shot:restart-left",
+  "down:566,437", "shot:main-press", "move:700,300", "up", "shot:main-left",
+  "down:455,495", "shot:quit-press", "move:700,300", "up", "shot:quit-left",
+  "down:566,495", "shot:return-press", "move:700,300", "up", "shot:return-left",
+  "down:306,149", "shot:speed-press", "move:700,300", "up", "shot:speed-left",
+  "down:282,282", "shot:scroll-press", "move:700,300", "up", "shot:scroll-left",
+  "down:330,348", "shot:low-press", "move:700,300", "up", "shot:low-left",
+  "down:421,123", "shot:box-press", "move:700,300", "up", "shot:box-left",
+  "down:254,433", "shot:bar-press", "move:700,300", "up", "shot:bar-left",
+  "right:455,378", "shot:load-popup", "right-up", "right:566,378", "shot:save-popup", "right-up",
+  "right:455,437", "shot:restart-popup", "right-up", "right:566,437", "shot:main-popup", "right-up",
+  "right:455,495", "shot:quit-popup", "right-up", "right:566,495", "shot:return-popup", "right-up",
+  "right:197,433", "shot:music-0-popup", "right-up", "right:216,433", "shot:music-1-popup", "right-up",
+  "right:235,433", "shot:music-2-popup", "right-up", "right:254,433", "shot:music-3-popup", "right-up",
+  "right:273,433", "shot:music-4-popup", "right-up", "right:292,433", "shot:music-5-popup", "right-up",
+  "right:311,433", "shot:music-6-popup", "right-up", "right:330,433", "shot:music-7-popup", "right-up",
+  "right:349,433", "shot:music-8-popup", "right-up", "right:368,433", "shot:music-9-popup", "right-up",
+  "right:197,499", "shot:effects-0-popup", "right-up", "right:216,499", "shot:effects-1-popup", "right-up",
+  "right:235,499", "shot:effects-2-popup", "right-up", "right:254,499", "shot:effects-3-popup", "right-up",
+  "right:273,499", "shot:effects-4-popup", "right-up", "right:292,499", "shot:effects-5-popup", "right-up",
+  "right:311,499", "shot:effects-6-popup", "right-up", "right:330,499", "shot:effects-7-popup", "right-up",
+  "right:349,499", "shot:effects-8-popup", "right-up", "right:368,499", "shot:effects-9-popup", "right-up",
+  "right:210,149", "shot:hero-1-popup", "right-up", "right:258,149", "shot:hero-2-popup", "right-up",
+  "right:306,149", "shot:hero-3-popup", "right-up", "right:354,149", "shot:hero-4-popup", "right-up",
+  "right:210,216", "shot:enemy-2-popup", "right-up", "right:258,216", "shot:enemy-3-popup", "right-up",
+  "right:306,216", "shot:enemy-4-popup", "right-up", "right:354,216", "shot:enemy-5-popup", "right-up",
+  "right:218,282", "shot:scroll-0-popup", "right-up", "right:282,282", "shot:scroll-1-popup", "right-up",
+  "right:346,282", "shot:scroll-2-popup", "right-up",
+  "right:234,348", "shot:high-popup", "right-up", "right:330,348", "shot:low-popup", "right-up",
+  "right:421,123", "shot:route-popup", "right-up", "right:421,155", "shot:reminder-popup", "right-up",
+  "right:421,187", "shot:quick-popup", "right-up", "right:421,219", "shot:subtitles-popup", "right-up",
+  "right:421,251", "shot:outlines-popup", "right-up", "right:421,283", "shot:spellbook-popup", "right-up",
+  "right:280,88", "shot:title-popup", "right-up", "right:530,123", "shot:box-name-popup", "right-up",
+  "shot:popups-closed",
+  "click:566,495", "shot:returned", "key:o", "shot:again", "key:Escape", "shot:escaped",
+]
+
+[[recipe]]
+id = "opt-rows"
+what = "§4.2, §4.8: from a first run's settings each row's other choices, each box both ways; the dialog opened again (the changes kept)"
+maps = ["Arrogance.h3m"]
+registry = { "Walk Speed" = 2, "Computer Walk Speed" = 3, "Window Scroll Speed" = 1, "Music Volume" = 5, "Last Music Volume" = 5, "Show Route" = 1, "Move Reminder" = 1, "Quick Combat" = 0, "Video Subtitles" = 1, "Town Outlines" = 1, "Animate SpellBook" = 1, "Blackout Computer" = 0 }
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:0x698764:05000000", "key:o", "shot:dialog",
+  "click:210,149", "move:700,300", "shot:hero-1", "click:306,149", "move:700,300", "shot:hero-3",
+  "click:354,149", "move:700,300", "shot:hero-4", "click:258,149", "move:700,300", "shot:hero-2",
+  "click:210,216", "move:700,300", "shot:enemy-2", "click:306,216", "move:700,300", "shot:enemy-4",
+  "click:354,216", "move:700,300", "shot:enemy-5", "click:258,216", "move:700,300", "shot:enemy-3",
+  "click:218,282", "move:700,300", "shot:scroll-0", "click:346,282", "move:700,300", "shot:scroll-2",
+  "click:282,282", "move:700,300", "shot:scroll-1",
+  "click:330,348", "move:700,300", "shot:low", "click:234,348", "move:700,300", "shot:high",
+  "click:421,123", "move:700,300", "shot:route-off", "click:421,155", "move:700,300", "shot:reminder-off",
+  "click:421,187", "move:700,300", "shot:quick-on", "click:421,219", "move:700,300", "shot:subtitles-off",
+  "click:421,251", "move:700,300", "shot:outlines-off", "click:421,283", "move:700,300", "shot:spellbook-off",
+  "click:421,123", "move:700,300", "shot:route-on", "click:421,155", "move:700,300", "shot:reminder-on",
+  "click:421,187", "move:700,300", "shot:quick-off", "click:421,219", "move:700,300", "shot:subtitles-on",
+  "click:421,251", "move:700,300", "shot:outlines-on", "click:421,283", "move:700,300", "shot:spellbook-on",
+  "click:210,149", "click:354,216", "click:346,282", "click:330,348", "click:421,123", "click:421,187",
+  "move:700,300", "shot:changed", "click:566,495", "shot:returned", "key:o", "shot:kept", "key:Escape", "shot:escaped",
+]
+
+[[recipe]]
+id = "opt-bars"
+what = "§4.1, §4.2, §4.8: the volumes' bars from a first run's 5: each music and effects volume; at volume 0 without the sound driver a bar's press shows GENRLTXT 151 only; the dialog opened again"
+maps = ["Arrogance.h3m"]
+registry = { "Walk Speed" = 2, "Computer Walk Speed" = 3, "Window Scroll Speed" = 1, "Music Volume" = 5, "Last Music Volume" = 5, "Show Route" = 1, "Move Reminder" = 1, "Quick Combat" = 0, "Video Subtitles" = 1, "Town Outlines" = 1, "Animate SpellBook" = 1, "Blackout Computer" = 0 }
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "poke:0x698764:05000000", "key:o", "shot:dialog",
+  "click:216,433", "move:700,300", "shot:music-1", "click:235,433", "move:700,300", "shot:music-2",
+  "click:254,433", "move:700,300", "shot:music-3", "click:273,433", "move:700,300", "shot:music-4",
+  "click:311,433", "move:700,300", "shot:music-6", "click:330,433", "move:700,300", "shot:music-7",
+  "click:349,433", "move:700,300", "shot:music-8", "click:368,433", "move:700,300", "shot:music-9",
+  "click:292,433", "move:700,300", "shot:music-5", "click:197,433", "move:700,300", "shot:music-0",
+  "click:254,433", "shot:music-0-message", "press:ok", "move:700,300", "shot:music-0-closed",
+    "click:216,499", "move:700,300", "shot:effects-1", "click:235,499", "move:700,300", "shot:effects-2",
+  "click:254,499", "move:700,300", "shot:effects-3", "click:273,499", "move:700,300", "shot:effects-4",
+  "click:311,499", "move:700,300", "shot:effects-6", "click:330,499", "move:700,300", "shot:effects-7",
+  "click:349,499", "move:700,300", "shot:effects-8", "click:368,499", "move:700,300", "shot:effects-9",
+  "click:292,499", "move:700,300", "shot:effects-5", "click:197,499", "move:700,300", "shot:effects-0",
+  "click:254,499", "shot:effects-0-message", "press:ok", "move:700,300", "shot:effects-0-closed",
+    "click:566,495", "shot:returned", "key:o", "shot:kept", "key:Escape", "shot:escaped",
+]
+
+
+[[recipe]]
+id = "opt-questions"
+what = "§4.1 to §4.3, §4.8: the dialog with setup.sh's settings (the volumes 0: a bar's GENRLTXT 151); GENRLTXT 579 for Load, Main Menu and Quit by button and hotkey, Cancel and Escape keeping the dialog; Restart's GENRLTXT 68 over the map, Cancel and Escape; Main Menu's OK to the main menu"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "key:o", "shot:dialog",
+  "click:254,433", "shot:music-message", "press:ok", "move:700,300", "shot:music-closed",
+  "click:254,499", "shot:effects-message", "press:ok", "move:700,300", "shot:effects-closed",
+  "click:455,378", "shot:load-question", "press:cancel", "move:700,300", "shot:load-cancelled",
+  "click:566,437", "shot:main-question", "press:cancel", "move:700,300", "shot:main-cancelled",
+  "click:455,495", "shot:quit-question", "press:cancel", "move:700,300", "shot:quit-cancelled",
+  "key:l", "shot:load-key", "key:Escape", "shot:load-escaped",
+  "key:m", "shot:main-key", "key:Escape", "shot:main-escaped",
+  "key:q", "shot:quit-key", "key:Escape", "shot:quit-escaped",
+  "click:455,437", "shot:restart-question", "press:cancel", "move:700,300", "shot:restart-cancelled",
+  "key:o", "key:r", "shot:restart-key", "key:Escape", "shot:restart-escaped",
+  "key:o", "click:566,437", "press:ok", "until:main_menu", "shot:main-menu",
+]
+
+[[recipe]]
+id = "opt-load"
+what = "§4.1, §4.3: Load's OK: Load Game's menu"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "key:o", "click:455,378", "point:ok", "shot:question", "press:ok", "until:load_game_menu", "shot:menu",
+]
+
+[[recipe]]
+id = "opt-restart"
+what = "§4.3, §4.6: Restart's OK: the fade to the loading screen (its bar's steps are drawn in real time: not kept), the map again with its first message"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "key:o", "click:455,437", "point:ok", "shot:question", "press:ok", "clip:fade:90:10", "step:10", "wait:8", "until:adventure", "shot:map",
+  "press:ok", "move:700,300", "shot:closed",
+]
+
+[[recipe]]
+id = "opt-quit"
+what = "§4.3: Quit's OK by Enter: the screen as the game ends"
+maps = ["Arrogance.h3m"]
+steps = [
+  "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,65",
+  "until:scenario_list", "settle:8", "click:497,555", "until:adventure", "press:ok", "move:700,300",
+  "key:o", "key:q", "key:Return", "shot:ending",
+]
