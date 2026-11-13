@@ -20,6 +20,25 @@ M4's checkpoint passed 2026-10-12 (SRV-Q22); T8 and M4's review items done the s
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-12, handled 2026-11-13 in E16 M5 T13 (nothing for the server to do) (the adventure lane, E08 T113b, `adventure/e08-t113b`; **the answer to your
+  question of one type on one anchor**, E16 M5 T7b's review; E08 decisions 320, 322): every
+  typed object a command, an offer or an event can name is unique by its type and anchor: the
+  setup refuses a second one (`SetupError::SharedAnchor`, `AdventureState::new`'s name check;
+  a random dwelling by every outcome it may take). The exceptions are the special grounds, the
+  grounds of the sea (Favorable Winds) and the holes, which nothing names (never visited,
+  offered, flagged or removed); untyped blockers are in no view. The census of the 160 shipped
+  maps: 9 such twins on 5 maps (*Back For Revenge* and its allied version, *Carpe Diem* and its
+  allied version, *Deluge*), each a ground or Favorable Winds of two pictures that differ only
+  in `drawn`; the user kept them, and since T113b the setup refuses a ground, a ground of the
+  sea or a hole that differs from an earlier one of its type and anchor in anything else. So a
+  view may hold two `ObjectView`s of one type and anchor (in tile order by masks, as yours) that
+  no event names; nothing else. Also: map import v22 and adventure state hash v22 (your
+  manifests read the constants); the import types the garrisons (33, 219, with their owners)
+  and the fifteen bonus visitables, so shipped maps' views show those nineteen types (no golden
+  replay holds one). No server change is needed beyond one made for you, with the user's
+  consent (`cross-lane`): the 72 golden replays' hashes moved (the adventure state hash version
+  is hashed), so `h3-server`'s `tests/record.rs` has the smallest replay's new checkpoint, final
+  hash and import version (`army-dialog-s1`); nothing else of yours changed.
 - (Taken by E16 M5 T11, 2026-11-12: the hall as `GameQuery::TownOffer`, answered
   `wire::game::TownOffer`; the build's town events in the start's `GameEvents`.)
 - 2026-11-10 (the town lane, E09 T18c, `town/e09-t18c`, `cross-lane`; **your paths changed, and

@@ -2955,3 +2955,50 @@ original data. Branch `claude/confident-knuth-subyc4`.
 - **Docs:** the lane's `TRAPS.md` (the record's cut, the battle's key), the client lane's inbox
   (v51). `docs/06-security.md` is a shared path: its "Not covered yet" sentence on rejections
   inside a battle beyond the bound is now stale and goes with T13's `shared/` change.
+
+### M5 T13 — 2a's closure (2026-11-13)
+
+The task (the epic's "M5 part 2"): the end-to-end test, `docs/06-security.md`, the reviewer
+agent, the user's checkpoint. Baseline: `master` dca8bbb (#897, T12; CI green, its code
+verified). No original data. Branch `claude/loving-babbage-aylytb`. The user's choices
+(2026-11-13): the seed pinned by a test-only hook rather than T10's journal rewrite;
+`docs/06-security.md` `cross-lane` in T13's pull request, as at part 1's closure.
+
+- **The seed pin** (`config::MapOffer::seeds`, `#[cfg(test)]`, serde-skipped, *provisional*):
+  a test's seeds for an offer's games in place of the OS's, the game's at its creation and its
+  computer's at each hosting (`whole::Prepared::new` and `restored`), so a golden replay's
+  commands play on a hosted game and its battles against the computer repeat. It is in no
+  server's build.
+- **The end-to-end test** (`h3-server` `tests/whole.rs`,
+  `two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_the_computer`): the duel
+  map offered with `duel-s3-easy-d7`'s seed and difficulty pinned; two clients take its seats
+  from the lobby; the replay's first 17 commands (three days of both players' moves and turns'
+  ends), each from its seat's client, a move's end found among its hero's moves (`GameQuery`)
+  before it is sent; the last opens the second player's battle against a wandering monster. The
+  first client reads on in a task meanwhile (its outbound queue is bounded). The fighter plays two
+  commands chosen from its turns, the fair computer the monster's side, then the server stops
+  with the fighter to act: both clients hear `Goodbye { Shutdown }`. At the restart the game is
+  listed running; each client re-takes its seat with its token, `GameJoined`'s `last` its last
+  command's number, the fighter's `GameSnapshot` holding its battle and its turn's battle
+  commands those before the restart; its last command resent is answered with its first echo
+  and nobody is told anything. The battle goes on to its end (19 more commands of the fighter's,
+  30 of the computer's in all), the fighter ends its turn, the first player's next day begins:
+  each player got one `GameEvents` per command since the restart (47), the computer's too. The
+  first player asks its hero's moves and ends its turn. Then the journal: each seat's numbers
+  strictly increasing (the resend not among them), the computer's commands the system actor's;
+  `GameSession::reopen` re-runs it in-process (its checkpoints checked), and each client, back on
+  a fresh connection, is sent exactly the view of the re-run game's state for its player
+  (`map::game::observe`); each record names its game and player and holds no `GameAnswer` and
+  none of the journal's 7 checkpoint hashes in decimal or hex. Stable over six runs, 4.5 s.
+- **`docs/06-security.md`** (cross-lane): "Hosted games" gains "The whole game over the
+  network" (the offers pinned by hash, the shared limits, seats by account or token, numbers and
+  resends, the host's pause, the journal synced ahead and the restore, the OS seed, the
+  computer on the unowned sides, the queries for the seat's player alone, the moves' bound, the
+  start's town events to their owner, T12's fresh snapshot inside a battle and the battle's
+  key); part 1's bullet points to it; "Not covered yet": no turn timer yet (a stall, the
+  level-up hold: 2b), no spectators (2c), nothing checking an offered map's snapshot against the
+  outbound queue and a record (431 KB on the fixtures), a record beyond its bound by one
+  command's messages at most; T12's stale sentence on rejections inside a battle dropped.
+- **The inbox:** the adventure lane's answer of 2026-11-12 to T7b's question (one type on one
+  anchor: unique for every object a command, an offer or an event names; nothing for the server
+  to do) moved to `QUEUE-ARCHIVE.md`.

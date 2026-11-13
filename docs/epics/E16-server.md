@@ -318,13 +318,8 @@ client lane's 2026-11-04 request, when online battles need them).
 - **T11 The game's queries on the wire:** done 2026-11-12, protocol v50, record format v5, a
   battle's targets inside a whole game added (the user; `E16-log.md`).
 - **T12 T7b's two findings:** done 2026-11-12, protocol v51 (`E16-log.md`).
-- **T13 The closure:** an end-to-end test (two clients play a whole game over the network through
-  a server restart, a battle against an unowned side on the way); `docs/06-security.md`'s
-  networked whole game (its "Not covered yet" sentence on rejections inside a battle dropped,
-  T12 bounded them; T11's queries with it: answered for the seat's player alone, any other
-  id none, unnumbered and unrecorded; the start's town events the owner's; a moves answer at
-  most 11 KB on the XL fixtures); a fresh reviewer agent and the review list; the user's
-  checkpoint.
+- **T13 The closure:** the end-to-end test, `docs/06-security.md` (cross-lane) and the reviewer
+  agent done 2026-11-13 (`E16-log.md`); the user's checkpoint SRV-Q30.
 
 **Review list for the 2a checkpoint** (the choices queued under the autonomy contract, filled as
 the tasks land):
@@ -385,6 +380,10 @@ the tasks land):
   id from the engine (none exists; a hero is in one battle at a time); the fresh `GameSnapshot`
   inside a battle too, holding the battle's view (as a join's mid-battle), rather than no
   snapshot there until the turn timers (2b) or rejections dropped from the record.
+- T13: a test's seeds for an offer's games (`config::MapOffer::seeds`, `#[cfg(test)]`,
+  serde-skipped; the user's choice over T10's journal rewrite), the game's and its computer's
+  at each hosting, in no server's build; the end-to-end test's client reading on in a task while
+  the other plays (a real client must read, or its bounded queue drops it, `TooSlow`).
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
