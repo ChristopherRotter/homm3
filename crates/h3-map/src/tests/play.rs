@@ -4643,7 +4643,28 @@ fn check_legal(
                 end
             }
         );
-        let moved = probe.adventure().hero(hero).unwrap();
+        // E09 T27's CI (#911): a battle the move starts may end within the command, the
+        // defender's first shots (its war machines', which fire without the hero's Artillery)
+        // killing the mover's army; the loser leaves the map (its `HeroRemoved` after the
+        // battle's end), and the rest of the walk's checks do not apply.
+        let Some(moved) = probe.adventure().hero(hero) else {
+            let ended = events
+                .iter()
+                .position(|e| matches!(e, GameEvent::BattleEnded { .. }));
+            let removed = events.iter().position(|e| {
+                matches!(e, GameEvent::Adventure(AdventureEvent {
+                    kind: AdventureEventKind::HeroRemoved { hero: h, .. },
+                    ..
+                }) if *h == hero)
+            });
+            prop_assert!(
+                ended.zip(removed).is_some_and(|(e, r)| e < r),
+                "{:?} left the map without losing its battle: {:?}",
+                command,
+                events
+            );
+            continue;
+        };
         let points = reach_of(reaches, hero).points_left(end);
         // E08 T106b1: a jump from the walk's end, the entrance, keeps the points the query reports
         // there and the day's maximum (ADV-TEL-007, increment 11's design note §14).

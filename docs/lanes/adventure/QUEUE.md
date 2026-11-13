@@ -40,7 +40,9 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   `hire_most` and `check_hire` read a town's source and garrison, `town_builds` probes each
   town's recruitments after its builds (`recruited` reads what a building sells apart),
   `check_towns` lets a purchase lower one count or the Portal's; `view.rs`' open dialogs by
-  `HireSeen`. `h3-files`: the `town recruit` line.
+  `HireSeen`; `check_legal` lets a move's battle lost within the command remove the mover (CI's
+  case on #911, a defender's war machine firing first: a gap of your plans the changed games
+  reached; its `cc` line kept). `h3-files`: the `town recruit` line.
 
 - 2026-11-13 (the server lane, E16 M5 T14, `claude/quirky-mccarthy-pgu2o6`, `cross-lane` with
   the user's consent, SRV-Q29, SRV-Q31; **your paths changed, for your review**): `h3-game`

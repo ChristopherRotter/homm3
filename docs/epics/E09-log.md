@@ -3671,7 +3671,8 @@ lane's #907 (protocol v58) merged in after the pull request opened.
   dialogs tracked by `HireSeen` in `view.rs`; `check_timed` leaves out a town event's views
   after its `TownEventFired` too (T26b's gap: an event's creatures told without a building, met
   by the scoped coverage's run; E08 T115a's #906 made the same fix, merged in; both `cc` lines
-  kept). `h3-sim`: the town map's play on seed 70 alone
+  kept); `check_legal` lets a move's battle lost within the command remove the mover (CI's case on
+  #911: the defender's war machine firing first killed the mover's one stack; its `cc` line kept). `h3-sim`: the town map's play on seed 70 alone
   (a search over 1 to 399: the first seed meeting every feature, recruitments and purchases now
   among them), the fork test on seed 46 (a siege on day 1).
 - **Replays:** the 72 adventure replays re-recorded from their commands (twice: after each merge),
