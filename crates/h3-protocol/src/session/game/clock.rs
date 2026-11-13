@@ -62,7 +62,8 @@ impl Clock {
         battle: Allowance::DEFAULT,
     };
 
-    /// A level-up's time by default (SRV-Q31; the survey, T15, may give the original's).
+    /// A level-up's time by default (SRV-Q31; kept after T15's survey, SRV-Q33: the original's
+    /// dialog has the turn's time, 15 s in its last 15 s).
     pub const DEFAULT_LEVEL_UP_MS: u64 = 60_000;
 }
 

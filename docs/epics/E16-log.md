@@ -3151,3 +3151,40 @@ base, a battle and a unit timer; a timed-out side Defends in a battle between pl
   started counting nothing, the time journaled before the pause); `tests/game_session.rs`' golden
   gate checks each `GameClock` (`waits`) against the engine; `tests/wire.rs` round-trips and a
   JSON literal.
+
+### M5 T15 — the survey of the original's turn timer (2026-11-13)
+
+The task (the epic's "M5 part 2", 2b): the original's turn timer read, for T17 and the user's
+check of SRV-Q31. Baseline: `master` aec8772 (#907, T16, protocol v58). Docs only (the map, the
+structs, the survey, the questions) and one doc comment (`Clock::DEFAULT_LEVEL_UP_MS`). Staged:
+`Heroes3.exe` (SHA-256 checked), the three manuals, `HEROES3.HLP`, `GENRLTXT.TXT`, `turndur.txt`.
+Kept whole (a survey, about half a context). Branch `server/e16-m5-t15`.
+
+- **The survey** `docs/epics/E16-timer-survey.md` (the lane's path; indexed in
+  `docs/rules/surveys/README.md`): the record `turn_timer` 0x69D630 and its ten methods read
+  whole; the eleven durations (`turn_duration_minutes` 0x641AE8), humans only, never a campaign,
+  a single game too; started at each human turn and at play (a load restarts the turn whole),
+  stopped at the end and the next turn, **paused for every battle** (its time given back) and a
+  town screen's build; the warnings' schedule and texts in the screen chat; the end in the
+  adventure manager's procedure (GENRLTXT 202, a 15-s box), a move finished first, the screens
+  and dialogs closed (a dialog's +0x58, Cancel), the message boxes answered by style (a question
+  No, a two-picture box at random) or closed 15 s after a late opening with 9999; the level-up's
+  dialog on the turn's time, 15 s late or for a network game's other side, at once after the end
+  in a multiplayer game (a raw 15 000 stored as a deadline), unlimited after a battle in the hot
+  seat, the computer's choice at the end; the "your turn" windows (hot seat outside the time,
+  network inside); VCMI 1.7.5 compared; the table against SRV-Q31, SRV-Q32 and T16.
+- **The map** (`docs/exe/map.toml`): 25 entries new (the timer's methods, the record, the table,
+  `chat_system_message`, `dialog_construct`, `dialog_end_on_time_expired` (H3API agrees),
+  `level_up_dialog_proc`, `network_turn_window`, `game_is_multiplayer` (H3API agrees),
+  `town_screen_load`, `adventure_battle_unwind`, `network_game_join`, `network_player_left`,
+  `message_with_pictures`, `message_box_style`, `message_box_opened`, `screen_chat`, the site
+  `turn_time_expired_end`), `turn_timer_poll` read whole, eight summaries extended
+  (`dialog_proc_base` read whole, `message_box_proc`, `dialog_default_proc`,
+  `battle_result_deadline` the modal dialogs' deadline, `level_up_dialog`, `adventure_battle`,
+  `adventure_manager_procedure`, `turn_timer_start`); `structs.toml`'s `turn_timer` (H3API's
+  `H3TurnTimer`).
+- **SRV-Q33** (asked after the survey, answered at once): (a) battles: SRV-Q31 kept as built (the
+  agent's recommendation); (b) the level-up's default kept at 60 s (not the recommended 15 s);
+  (c) `default_answer`'s gold and Attack kept (the recommendation). Nothing built changes.
+- The map client lane's inbox: the warnings' schedule and texts, the end's box and the "your
+  turn" windows, for showing `GameClock`.

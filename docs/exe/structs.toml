@@ -1048,3 +1048,17 @@ fields = [
   { offset = 0x60, name = "changed", type = "u8", summary = "set by any handled click (system_options_proc); the run then saves the settings", confidence = "read" },
   { offset = 0x64, name = "quick_combat_at_open", type = "i32", summary = "Quick Combat as the dialog opened: the run sends a network game's change", confidence = "read" },
 ]
+
+[[struct]]
+name = "turn_timer"
+size = 0x14
+summary = "The game's turn timer (turn_timer 0x69D630; H3API's H3TurnTimer, its names agree; E16 M5 T15): every time a clock_ms value."
+refs = ["epics/E16-timer-survey.md"]
+h3api = "H3TurnTimer"
+fields = [
+  { offset = 0x0, name = "last_warning", type = "u32", summary = "the clock time of the last warning (turn_timer_poll), the start at turn_timer_start; moved on by a pause's length", confidence = "read" },
+  { offset = 0x4, name = "start", type = "u32", summary = "the turn's start (0: not running); moved on by a pause's length (turn_timer_resume)", confidence = "read" },
+  { offset = 0x8, name = "limit", type = "u32", summary = "the turn's limit in ms (0: unlimited): the duration's minutes x 60 000 (turn_timer_set_limit)", confidence = "read" },
+  { offset = 0xC, name = "next_warning", type = "u32", summary = "the time from the last warning to the next (0: no more): a quarter of the limit at the start (half up to 60 s), then by the time left", confidence = "read" },
+  { offset = 0x10, name = "paused_at", type = "u32", summary = "the clock time a pause began (0: not paused): a battle, a town screen's build", confidence = "read" },
+]
