@@ -88,6 +88,89 @@ the OK's Enter hotkey never fires while an edit has the focus, which it always h
 by the mouse alone. **Options:** (a) copy; (b) fix: Enter in an edit presses an enabled OK.
 **Recommendation:** (a): moving on by Enter is how the names are typed one after another.
 
+#### CLT-Q108 — The save mode's stale description (E27 M1 T3)
+
+**Context.** Recorded (`scn-save` screen; design §3.5): in the save mode with saves listed and none
+selected, the panel shows the current game's name but a saved game's description; with no saves
+(`scn-save-none`) the game's own. **Options:** (a) copy; (b) fix: the current game's own
+description. **Recommendation:** (b).
+
+#### CLT-Q109 — The hot seat's Begin with a player left without a colour (E27 M1 T3)
+
+**Context.** Recorded (`adv-hotseat-begin`; design §3.14): a named player left without a colour
+is dropped at Begin without a message (the game starts with the others); GENRLTXT 531 ("you must
+position yourself") shows only when the first player has no colour, so by its order it refuses even
+with two others placed. CLT-Q94's swap (decision 13) makes such a state rarer, not impossible.
+**Options:** (a) copy; (b) fix: Begin needs every named player placed, refused with 531 otherwise;
+(c) drop the unplaced players with a warning. **Recommendation:** (b).
+
+#### CLT-Q110 — A hot-seat load hands a saved human's colour to the computer (E27 M1 T3)
+
+**Context.** Recorded (`adv-load` pressed): in a hot-seat load a press on a flag moves a player
+there, leaves another without a colour and turns a colour the save holds as human into Computer.
+**Options:** (a) copy; (b) fix: in a load, colours move only among the save's humans; (c) allow it
+with CLT-Q94's swap. **Recommendation:** (b).
+
+#### CLT-Q111 — The random map's tab after Show Random Maps (E27 M1 T3)
+
+**Context.** Recorded (`adv-random` random-maps, tab-again, tab-hidden; design §3.16): after Show
+Random Maps (the list empty) and the tab toggled back, the panel's name, conditions and rating are
+blank, its description and seven flags stale, Begin drawn enabled (only the tab's first opening
+builds the random record). Begin with a random map is a stub (decision 13). **Options:** (a) copy;
+(b) fix: the random record built again at each opening of the tab. **Recommendation:** (b).
+
+#### CLT-Q112 — A hero "None" whose right press says Random Hero (E27 M1 T3)
+
+**Context.** Recorded (`adv-single-maps` map-2-computer-hero-popup; design §3.15): on Adventures
+of Jared Haret a computer's row shows the hero None, and its right press opens the Random Hero
+popup; Rebellion's human None opens none. **Options:** (a) copy; (b) fix: no popup where the row
+shows None. **Recommendation:** (b).
+
+#### CLT-Q113 — Save's and Load's right press say Begin's text (E27 M1 T3)
+
+**Context.** Recorded (`scn-save` save-popup, `scn-load` load-popup): the right press on the
+mode's Save or Load button shows Begin's Help.txt record (103: start the selected scenario) in
+every mode. **Options:** (a) copy; (b) a text per mode (the client's own: no record of the
+original's fits). **Recommendation:** (a).
+
+#### CLT-Q114 — Begin with no maps at all (E27 M1 T3)
+
+**Context.** Recorded (`scn-begin-none` begin, `scn-begin-filter` begin; design §3.6): with no map
+at all Begin is drawn enabled and does nothing; GENRLTXT 530 shows only when a filter has emptied
+the list. **Options:** (a) copy; (b) fix: 530 there too. **Recommendation:** (b).
+
+#### CLT-Q115 — The map size's mark stays on S (E27 M1 T3)
+
+**Context.** Recorded (`adv-random` size-xl, `scn-load-none` screen; design §3.2, §3.16): the
+panel's map size mark shows S in the random map's tab whatever size is chosen, and over an empty
+list; the mark's frame 4 is never seen. **Options:** (a) copy; (b) fix: the mark follows the random
+map's size, an empty list shows frame 4. **Recommendation:** (b).
+
+#### CLT-Q116 — "One of the eight town types" with nine offered (E27 M1 T3)
+
+**Context.** Recorded (`adv-single-town` town-popup-random): the Random town's popup says one of
+the eight town types while the arrows offer nine (Conflux included). The text is the
+installation's (the string catalogue reads it). **Options:** (a) copy; (b) the client's own text.
+**Recommendation:** (a).
+
+#### CLT-Q117 — Two small drawing slips in the scenario screen (E27 M1 T3)
+
+**Context.** Recorded: (1) a list row cuts a long name without an ellipsis ("Heroes of Might, Not
+Magic (A" in `scn-info` row-09); (2) a flag's press redraws the flags' strip and erases two shadow
+pixels of "Allies:" until the next full redraw (`adv-single-rest` flag-own-pressed). E17's binding
+decision fixes the original's drawing bugs (`h3_render::Bugs`, the original's for the comparisons).
+**Options:** (a) copy both; (b) fix both; (c) (2) fixed as a drawing bug, (1) copied (the original
+cuts every text to its box). **Recommendation:** (c).
+
+#### CLT-Q118 — New Game's and Load Game's menus leave stale rows (E27 M1 T3)
+
+**Context.** Recorded (`menu-new`, `menu-load`; design §2.4): the menus' redraw rectangle (526, 7,
+250, 560) misses Single's top rows 4 to 6 and Back's bottom rows 567 to 569, so once either button
+was drawn hovered or pressed those rows keep that frame (a faint highlight) until the menu closes.
+E17's binding decision fixes the original's drawing bugs (`h3_render::Bugs`). **Options:** (a)
+copy; (b) fix: the buttons redrawn whole, the original's for the comparisons only.
+**Recommendation:** (b).
+
 ### Map client lane (`MCL-Q<n>`)
 
 (no open questions)

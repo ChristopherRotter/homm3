@@ -180,7 +180,9 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
 - **The run:** "MainMenu" asked for again (the track already playing goes on: E24-design §3.11),
   `modal_loop`. **Hover** as the main menu's (`game_type_menu_hovered` 0x6780F0; with the CD notice
   only 102 and 104 cleared); the redraw: items 100 to 105, (526, 7, 250, 560) and the picture's
-  (114, 312, 300, 48) shown, `video_show`. **A press** and **its command** as the main menu's: 100
+  (114, 312, 300, 48) shown, `video_show`. The rectangle misses Single's top rows 4 to 6 and Back's bottom
+  rows 567 to 569 (recorded, M1 T3: `menu-new`, `menu-load`: from the first redraw of Single's or
+  Back's frame those rows keep the last frame shown, a faint highlight; CLT-Q118). **A press** and **its command** as the main menu's: 100
   to 104 end the menu with the id. **A right press:** Help.txt record 10 + (id − 100)
   (`game_type_menu_help` 0x6A6BF8: the file's order is the ids'), Load Game's the same records.
 - **New Game's results** (switch 0x4EECF5; before the menu, 0x4EEC14 resets a game's globals, `campaign_game` 0 among them, *not read*): 100 the
@@ -487,7 +489,7 @@ begin (§3.12 to §3.18); T1b3 the system options, the menu in play and the end 
 | 102, 103 | `AdvOptBk.pcx`, `RanMapBk.pcx` (575 × 585) | (3, 6, 557, 585) | the advanced options' and the random map's panels, hidden; only for a new game or a network or hot-seat load (§3.13, §3.16) |
 | 132 | text "%s:" GENRLTXT 493 (the player's difficulty) | (414, 435, 334, 19) | `smalfont.fnt`, colour 2, align 5 |
 | 133 | "%s:" GENRLTXT 219 (the rating) | (665, 435, 84, 19) | as 132 |
-| 134 | GENRLTXT 495 (the map's difficulty) | (414, 435, 90, 19) | as 132; over 132's place (which shows is not read: T2) |
+| 134 | GENRLTXT 495 (the map's difficulty) | (414, 435, 90, 19) | as 132; in 132's place, but both show, "Map Diff:" on the left and 132's "Player Difficulty:" centred, neither covering the other (recorded, M1 T3: `scn-difficulty`, `scn-right` map-difficulty-label and rating-label) |
 | 100 | GENRLTXT 496 (the name's label) | (422, 27, 278, 18) | colour 2, align 4 |
 | 105 | GENRLTXT 497 (the description's label) | (422, 137, 278, 18) | as 100 |
 | — | scrollable text, `smalfont.fnt`, colour 4 | (422, 155, 319, 115) | the description (the record's +0x196C) |
@@ -506,7 +508,7 @@ begin (§3.12 to §3.18); T1b3 the system options, the menu in play and the end 
 | 199 … 385, 338 … 344 | the players' rows, the headers, the turn's duration | — | §3.13 |
 | 179–182, 336, 389 | the chat's text, edit, plug, bar (`ircentry.pcx`, `CHATPLUG.pcx`, `selslide.pcx`) | — | network games (not built) |
 | 128 | caption button `gspbutt.def` (200 × 20), GENRLTXT 501 (show the scenarios), 656 in the load mode (show the saved games) | (414, 81, 200, 20) | hotkey S; new game or network or hot-seat load only |
-| 130 | as 128, GENRLTXT 760 (the random map) | (414, 105, 200, 20) | hotkey R; editions 1 and 3 only (AB and Complete) |
+| 130 | as 128, GENRLTXT 760 (the random map) | (414, 105, 200, 20) | hotkey R; editions 1 and 3 only (AB and Complete); shown in a hot-seat load too (recorded, M1 T3: `adv-load` screen; §3.16) |
 | 129 | as 128, GENRLTXT 502 (show the advanced options) | (414, 509, 200, 20) | hotkey A |
 | 107–111 | `gspbut3` … `gspbut7.def` (30 × 46) | (506 + 32 i, 456) | the difficulty, easy to impossible |
 | 186 | `scnrbeg.def`, `scnrlod.def` (load), `scnrsav.def` (save) (166 × 40) | (414, 535, 166, 40) | Begin, Load or Save; hotkey Enter |
@@ -544,8 +546,11 @@ last ones the players' rows', §3.13, §3.14).
   rows + 1); a load with no files sets `no_saves_notice` 0x69FDA0, and the procedure's next call
   shows GENRLTXT 686 (no saved games) once and disables Begin; the list sorted by key 2 (the
   version, then the name) while the current key is recorded as 1 (the size's: CLT-Q91, §3.4); the entry
-  whose file name is the kept one (§3.1; 0x58D3E0, *not read*) selected; a save with no match:
-  no selection and the current game's header shown (0x577530, *not read*).
+  whose file name is the kept one (§3.1; 0x58D3E0, *not read*) selected, the list scrolled so
+  that it is on the top row, the thumb mid-bar (recorded, M1 T3: `scn-list-keys` list); a save
+  with no match: no selection and the current game's header shown (0x577530, *not read*; with
+  saves listed the panel shows the current game's name but a saved game's description, recorded,
+  M1 T3: `scn-save` screen, where `scn-save-none` shows the game's own; CLT-Q108, §3.5).
 - **The shown list** (+0x1050) is the full list (+0x1030, or the random maps' +0x1040) less the
   entries of another size than the filter (+0x1860, 0 all), in the full list's order.
 
@@ -586,17 +591,21 @@ last ones the players' rows', §3.13, §3.14).
   + *r*). CLT-Q91: the client's double click needs the same row (decision 12).
 - **Keys** (with the list shown): Up and Down move the selection by one (not in the save mode),
   the top following; Page Up and Page Down move the top by rows − 1 (clamped), the selection
-  keeping its row; then the screen redrawn and `scenario_select`. Delete in the load and save modes
+  keeping its row; then the screen redrawn and `scenario_select`. Delete in the load mode
   (`saved_game_delete` 0x58DFB0): GENRLTXT 688 (delete this file?) with the file's name, style 2;
   OK deletes it from `games`, removes it, sorts by key 2 again and selects the first (or none).
+  In the save mode Delete goes to the name's edit and asks nothing (recorded, M1 T3: `scn-save`
+  delete): 688 is the load mode's alone.
 - **The bar** moves the top and redraws through `scenario_select` (0x57C990).
 
 ### 3.5 The information panel
 
 - **`scenario_select`** 0x585500 (H3API's UpdateForSelectedScenario; the index and a redraw
   flag): an index past the list does nothing; it records the selection and whether it changed;
-  −1 (no random map): in the save mode the current game's header and description, else an empty
-  description; else the record of the shown list (or the random map's own, +0x38C). The save mode
+  −1 (no random map): in the save mode the current game's header and description (as read; with
+  saves listed the description is a saved game's, recorded, M1 T3: `scn-save` screen; CLT-Q108),
+  else an empty description; else the record of the shown list (or the random map's own, +0x38C).
+  The save mode
   copies the file's name, cut at its first full stop, into the edit; the load mode keeps the
   file's name and takes the save's turn duration; a new game keeps the map's file name (§3.1); the
   map into the game (0x583580) and the players' rows (0x584C40, `scenario_hero_lists`; §3.12).
@@ -635,8 +644,14 @@ last ones the players' rows', §3.13, §3.14).
   game whose map's format is not RoE's, AB's or SoD's does nothing; the edition's allowed formats
   (`0x699240` by edition, a bit per format) refuse a map or a save with GENRLTXT 745 or 744 (this
   needs AB or SoD: 746, 747; never on Complete); Begin disabled does nothing; no maps and no
-  random map: GENRLTXT 530 (no maps); a new game whose local record has no colour: 531 (pick your
-  place); a network or hot-seat game with fewer than two placed players: 83 (two players needed);
+  random map: GENRLTXT 530 (no maps; recorded, M1 T3: reached only through a filter that empties
+  the list, `scn-begin-filter` begin; with no maps at all Begin looks enabled and does nothing,
+  `scn-begin-none` begin; CLT-Q114); a new game whose local record has no colour: 531 (pick your
+  place; recorded, M1 T3: in the hot seat only when the first player has no colour,
+  `adv-hotseat-begin` begin-1); a network or hot-seat game with fewer than two placed players: 83
+  (two players needed); a named player left without a colour is dropped at Begin without a
+  message (recorded, M1 T3: `adv-hotseat-begin` flag-red-3, turn: the game starts with A and C;
+  CLT-Q109);
   then the busy cursor, `loading_screen_open`, and the load (`scenario_load_begin` 0x58C290, *not
   read*) or `new_game_start` (§3.17).
 - **The save's name** (`save_name_confirm` 0x577360, from Begin or Enter with the edit's text):
@@ -788,7 +803,9 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
   records 0 to 10: 1, 2, 4, 6, 8, 10, 15, 20, 25, 30 minutes, unlimited; `turn_durations_load`
   0x577AB0) small colour 4 align 5 at (256, 556, 134, 18); every row (§3.14). The bar sets +0x378
   and game +0x1F843 (a host sends it) and redraws the screen. Hints: items up to 344 as §3.8; the
-  names, the edits and the areas have none.
+  names, the edits and the areas have none. But the single player's disabled handicap gives no
+  popup, where the hot seat's caption does (recorded, M1 T3: `adv-single-rest` popup-handicap,
+  `adv-hotseat-rows` handicap-popup).
 
 ### 3.14 A row (`scenario_player_row_draw` 0x58D510) and its presses
 
@@ -846,24 +863,38 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
     **CLT-Q94** (decision 13): the client passes the colour to the next player after its holder in
     the slots' order, the two exchanging colours (a taker without a colour leaves its holder with
     none); with no holder the first player takes it, leaving its own to the computer; after the
-    last player the computer (*provisional* in its detail until M3 builds it).
+    last player the computer (*provisional* in its detail until M3 builds it). Recorded, M1 T3,
+    for the comparisons beside CLT-Q94 (`adv-hotseat-two` flag-red-2, flag-green-2): with two
+    players the second press on red leaves both colours to the computer; the last shot has only
+    A placed, on green. In a hot-seat load a flag press can turn a saved human's colour into
+    Computer (recorded, M1 T3: `adv-load` pressed; CLT-Q110).
   - then the whole screen redrawn.
 - **The name** (345 to 352, `scenario_name_click` 0x58B620): single only, the own colour: the edit
   shown over the name with the record's name, the name hidden, the focus to it (`dialog_set_focus`
-  0x5FF490). Where the edit's text returns to the record: *not read* (T2).
+  0x5FF490). Where the edit's text returns to the record: *not read*; recorded, M1 T3: Return
+  closes the edit and shows the name ("Zed"), which moves with the player to another colour
+  (`adv-single-rest` name-enter, name-after-flag).
 
 ### 3.15 Right press and the hover
 
 - **362 to 369, the hero** (`scenario_dialog_right_click`): a hero shown: `scenario_hero_popup`
-  0x575A90 (300 × 256 at (250, 172): the name in `medfont.fnt`, the portrait, "%s - %s" in small
+  0x575A90 (320 × 256 at (250, 172), recorded, M1 T3: `adv-single-hero` hero-popup-1, not the
+  reading's 300: the name in `medfont.fnt`, the portrait, "%s - %s" in small
   (*not read*: the class and level), GENRLTXT 78 and 79's headings, the specialty's picture and
-  text); a Random one: `scenario_info_popup` 0x5757E0 (200 × 150 at (300, 225): a title, a
-  picture, two small texts) with GENRLTXT 102, 523 and 103; none: no popup (*inferred*).
+  text); a Random one: `scenario_info_popup` 0x5757E0 (256 × 192 at (300, 225), recorded, M1 T3:
+  `adv-single-hero` hero-popup-random, not the reading's 200 × 150: a title, a picture, two small
+  texts) with GENRLTXT 102, 523 and 103; none: no popup (*inferred*; recorded, M1 T3, for some
+  rows only: Rebellion's human None shows none, `adv-single-maps` map-1-hero-popup, but on
+  Adventures of Jared Haret the computer's row showing None gives the Random Hero popup,
+  map-2-computer-hero-popup; CLT-Q112). Each popup's changed block is 8 px wider and taller (a
+  shadow, *inferred*).
 - **370 to 377, the town:** Random: `scenario_info_popup` with 104, 523 and 105; a town:
-  `scenario_town_popup` 0x575E60 (H3API's town alignment dialog; 256 × 320 at (272, 140): GENRLTXT
+  `scenario_town_popup` 0x575E60 (H3API's town alignment dialog; 256 × 320 at (272, 140), recorded,
+  M1 T3: `adv-single-town` town-popup-9; GENRLTXT
   81's heading, the town's picture and name, 80's heading, its creatures in `cprsmall.def` 32 × 32
   in two rows at y 159 and 235 of the popup, their names in tiny below).
-- **378 to 385, the bonus** (`scenario_bonus_popup` 0x5754F0, 200 × 150 at (300, 225)):
+- **378 to 385, the bonus** (`scenario_bonus_popup` 0x5754F0, 256 × 192 at (300, 225), recorded,
+  M1 T3: `adv-single-town` bonus-popup-1, not the reading's 200 × 150):
   artifact GENRLTXT 84, frame 9, 91; gold 85, frame 8, 88 and 93; resource 86, the town's frame and
   by the faction 693 to 696 or 90 (Castle, Necropolis, Stronghold, Fortress wood and ore; Rampart
   crystal; Tower gems; Inferno, Conflux mercury; Dungeon sulfur) with 689 to 692 or 94; Random 87,
@@ -874,7 +905,9 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
 
 ### 3.16 The random map (button 130, `random_map_toggle` 0x57FEB0)
 
-- **Opens** in a new game only; shown, a press hides it (`random_map_hide` 0x581D80: 103, 280 to
+- **Opens** in a new game only (as read; its button 130 shows in a hot-seat load too, recorded,
+  M1 T3: `adv-load` screen; no recipe presses it there: M3); shown, a press hides it
+  (`random_map_hide` 0x581D80: 103, 280 to
   335, +0x37E cleared); else the list and the advanced options hidden, 103 `RanMapBk.pcx` and 280
   to 335 shown, the record into the game, +0x37E set, and the first time +0x37F (a random map
   chosen) and `random_map_info_build` 0x580430: the screen's own record (+0x38C) from the choices
@@ -914,6 +947,11 @@ network ones noted). T1b2's sections: the records (§3.12), the advanced options
   reading's; GENRLTXT 749 after a generation): *not read*.
 - **CLT-Q92** (decision 13): the tab drawn and chosen as the original's; Begin with a random map
   chosen shows a stub's message; Show Random Maps lists the client's own `random_maps` (empty).
+- *Recorded (M1 T3):* after Show Random Maps (an empty list) and the tab toggled back, the panel's
+  name, conditions and rating blank, the description and the seven flags stale, Begin drawn
+  enabled (`adv-random` random-maps, tab-again, tab-hidden; CLT-Q111). The size mark (189, §3.2)
+  stays on S in the tab whatever the size, and over an empty list; its frame 4 is never seen
+  (`adv-random` size-xl, `scn-load-none` screen; CLT-Q115).
 
 ### 3.17 The game's begin
 
@@ -1142,7 +1180,9 @@ T1b3b was kept whole (decision 16).
   town: the days without a town (player +0x3D) −1 become 7, with GENRLTXT 7 (the week's warning, the
   crest) when the colour is a human here whose turn it is; at 0 `player_defeated`, with GENRLTXT 8
   (the same human) or 9 (any other; both with the crest); GENRLTXT 7 and 8 take the player's name
-  first (", you" when it is empty, as a single scenario's human's is, §6.3; CLT-Q100). A town: −1.
+  first (", you" when it is empty, as a single scenario's human's is, §6.3; CLT-Q100). A computer's
+  name is its colour's (recorded, M1 T3: `end-conquest` purple-6, "Purple has been vanquished!",
+  the crest captioned Purple). A town: −1.
   The days' count down is E10's (not read). Every box is an OK box (style 1) at the screen's middle.
 - **The scenario's conditions:** the enemies counted (the colours neither defeated nor on the
   viewing player's team, game +0x1F879); the victory condition (game +0x1F89C, 0x4C bytes) through
@@ -1455,3 +1495,11 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   victory's or a special loss's box (§5.1, §5.2, §6.3); a 40-character name (§5.6, its clipping
   unread); the system options in another colour than Red (§4.1); the hotkeys' press frames (§2.3,
   §4.1); a skip of a Smacker copy (§2.1); a hot-seat restart (§4.6).
+- **Recipes for M3** (M1 T3's shot review): the date's field order (§3.5: `scn-load`'s
+  `games-time` gives day = month, and Wine's time zone enters the digest: a day above 12 and a
+  pinned TZ); `up-past-top` never reaches the list's first row (§3.4: Page Up first);
+  `popup-hero-arrow` pressed a computer row (§3.13's hints: row 2's arrow); `scn-load` size-1
+  changes nothing (both saves XL: a save of another size); the Random Map button in a load (`adv-load`,
+  §3.16); Begin after `tab-again` (§3.16); `scn-begin-none`'s `what` line (530 is a filter's,
+  §3.6); GENRLTXT 503 (reading the map files, §3.3) in no shot; Delete of the last save not
+  recorded (§3.4).
