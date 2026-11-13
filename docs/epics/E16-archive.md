@@ -1,6 +1,101 @@
-# E16 — archive: closed milestones M1 to M4 and M6
+# E16 — archive: closed milestones M1 to M4 and M6, M5's closed increments
 
 Moved out of `E16-server.md` on 2026-10-24, verbatim, so that the epic file holds the goals, the decisions, the milestone outline, the autonomy contract and the risks. Order as in the epic: task lists, exit criteria, review lists.
+
+## M5 part 2a (refined 2026-11-12, SRV-Q29; closed 2026-11-13, SRV-Q30)
+
+The increment's scope as the epic's "M5 part 2" held it, then its tasks, verbatim.
+
+- **2a Whole games over the network**, with no engine change: a lobby's map offers; **every
+  player of the map a seat**, the game starting when every seat is held (no computer player on
+  the map before E13, no seat left empty before 2b); seats by account, or by token in the
+  anonymous mode, as a battle's; the game on its own thread with its journal file and its restore
+  at start; reconnects with a fresh snapshot; the unowned battle sides played by the server
+  (`h3_battle_ai::choose_fair` by default, the inbox's 2026-11-02 note); a command resent after a
+  reconnect never applied twice; a hero's moves on the wire; T7b's two findings.
+
+**2a's tasks** (about half a context each; the numbers go on from part 1's T7):
+
+- **T8 The whole game's seats** (`h3-protocol`, the session core), in two (the user, SRV-Q29):
+  - **T8a Seats and connections:** done 2026-11-12, protocol v45 (`E16-log.md`).
+  - **T8b Numbers, pause, restore:** done 2026-11-12, protocol v46 (`E16-log.md`).
+- **T9 A whole game hosted** (`h3-server`), in two (the user, 2026-11-12):
+  - **T9a Live hosting:** done 2026-11-12, protocol v47, the whole game's journal format 1
+    (`E16-log.md`).
+  - **T9b The lifecycle:** done 2026-11-12, protocol v48 (`E16-log.md`).
+- **T10 The unowned sides played by the server:** done 2026-11-12, protocol v49, after the
+  `shared/` change #889 (`E16-log.md`).
+- **T11 The game's queries on the wire:** done 2026-11-12, protocol v50, record format v5, a
+  battle's targets inside a whole game added (the user; `E16-log.md`).
+- **T12 T7b's two findings:** done 2026-11-12, protocol v51 (`E16-log.md`).
+- **T13 The closure:** the end-to-end test, `docs/06-security.md` (cross-lane) and the reviewer
+  agent done 2026-11-13 (`E16-log.md`); the user's checkpoint SRV-Q30.
+
+## Review list for the M5 2a checkpoint (passed 2026-11-13, SRV-Q30)
+
+**Review list for the 2a checkpoint** (the choices queued under the autonomy contract, filled as
+the tasks land):
+
+- T8a (v45): the whole game's seat messages of their own (`GameJoin { game, player, token }`,
+  `GameCommand { seq, command }`, the answer `GameJoined { game, player, token, manifest }`), not
+  the battle's `Join` and `Command` widened (the client lanes match `Seat` exhaustively); the
+  refusal `NoSuchSeat`; the session's rejections `NotSeated` and `NotStarted` inside
+  `GameReject` (an unseated connection's numbered 0); a battle answers a whole game's join
+  `NoSuchGame` and its command `NotSeated`, and the reverse; a whole game ignores the battle's
+  other messages until T8b and T9 take what it needs (the record's download, the pause); the
+  host's tokens through a closure (`GameSession::new`), the in-process host holding every seat
+  (`start`, `restore`); `GameSession::route` public for the system actor's frames (T10).
+- T8b (v46): a seat's accepted commands numbered strictly increasing, gaps allowed; a resend
+  answered `GameAccepted` with the first echo while the seat keeps it (its last `KEPT_ANSWERS` =
+  16), numbered and recorded, else `GameRejected { Stale }`; a rejected command takes no number;
+  `GameJoined`'s `last`; the host the seat taken first, its `Pause` pausing, another seat's ask
+  told as `GamePauseAsked`, once until a command (`AlreadyAsked`), a paused game rejecting
+  `NotStarted`, any seat's join resuming it; the journal's seat entries (`Numbered`, `Taken`,
+  `TakenBy`, `Started`, `Paused`, `Resumed`) and `GameSession::reopen` with the host's tokens, a
+  restored started game's snapshots and turns into its records.
+- T9a (v47, whole game journal format 1): the lobby's whole games beside the battles (`Games`'s
+  `maps` and `map_games`, `wire::game::MapOffer`, `MapGameInfo`, `SeatedPlayer`), one id space and
+  the same limits; `CreateMapGame { seq, offer, player }`, not `CreateGame` widened (its `seat` is a
+  battle's); a `[[map]]` pinned by its file's content hash, with packs, profile, difficulty
+  (normal by default) and a name (the map header's as Latin-1, at most 64 characters, by
+  default); every seat's player `human` (no computer player in 2a); the journal
+  `<data>/whole/<game>.journal` of its own format (`GAME_JOURNAL_FORMAT_VERSION`, so the battles'
+  journals stay valid), its first line the adventure replay before its first command, commands
+  in the replay's text form; a game waiting with no seat held abandoned (its journal gone); a
+  draining server's running whole games play on, as a battle's (T9b decides, as they never end);
+  `GameSession`'s host accessors (`holds`, `seated`, `phase`, `open_seats`, `accounts`).
+- T9b (v48): a whole game's `FetchRecord` answered `Record` as a battle's (no message of its own;
+  the record's header says its kind); `GameSession::suspend` and `Hosted::PausedMap` as a battle's
+  sweep and pause; the drain not waiting for a running whole game (`Lobby::to_end`: it plays on
+  until the stop, its journal kept), `in_play` and the card still counting it; a restored game at
+  the seed, difficulty and checkpoint interval of its journal, its map checked against the
+  offer's by content hash and import version; the whole games' journals restored after the
+  battles'.
+- T10 (v49): the computer named by the map offer alone (`MapOffer`'s `computer`, not the
+  manifest or the record's header), `[[map]] computer = "fair" | "all-seeing"`; the battle
+  session's `Bot` trait reused, handed over after the construction (`GameSession::computer`,
+  which plays at once for a cut journal) rather than a constructor's argument; the computer asked
+  after a seat's accepted command, at a resuming join and at the hand-over, a rejected choice
+  replaced by the first legal command; its stream a seed drawn from the OS for each hosting
+  (never journaled, as the battle server's bots'), `StreamId::AGENT`.
+- T11 (v50, record format v5): one query message and one answer for the game's queries
+  (`GameQuery { seq, query }`, `GameAnswer { n, seq, answer }`), the battle's three questions
+  inside it (`GameQuery::Battle`) rather than the battle's `Query` routed; the answer unnumbered
+  and unrecorded (`n` the player's last message's, as `Record`), a query outside a running game
+  rejected `NotStarted` as a command (numbered, recorded); a hero's moves as a path tree
+  (`wire::game::Moves`: `8 · parent + direction`, the directions clockwise from north, points
+  plus 1 per node, 0 for a pass), its reader in `h3-protocol`, the tree built from the engine's
+  `Reach::path`s, 32 KB its bound on the XL fixtures; the hall as three `WireU64` bit sets; the
+  start's town events as one `GameEvents` between the snapshots and the turns, only to a player
+  that has any, never at a restore or a re-take (record format v5).
+- T12 (v51): a viewer's open battle known by its heroes and tile (`BattleKey`), not a battle
+  id from the engine (none exists; a hero is in one battle at a time); the fresh `GameSnapshot`
+  inside a battle too, holding the battle's view (as a join's mid-battle), rather than no
+  snapshot there until the turn timers (2b) or rejections dropped from the record.
+- T13: a test's seeds for an offer's games (`config::MapOffer::seeds`, `#[cfg(test)]`,
+  serde-skipped; the user's choice over T10's journal rewrite), the game's and its computer's
+  at each hosting, in no server's build; the end-to-end test's client reading on in a task while
+  the other plays (a real client must read, or its bounded queue drops it, `TooSlow`).
 
 ## M5 part 1 tasks (refined 2026-11-09, SRV-Q25; closed 2026-11-12, SRV-Q28)
 

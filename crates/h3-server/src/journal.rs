@@ -281,8 +281,12 @@ impl Writer {
     }
 
     /// Creates game `game`'s journal in `dir`, its first line `start` synced, and its directory
-    /// entry too (a whole game's too, E16 M5 T9a). An existing file is never overwritten.
+    /// entry too (a whole game's too, E16 M5 T9a); a directory it created, its own entry in its
+    /// parent too (E16 M5 T13: the reviewer's finding, the first whole game's `whole/`). An
+    /// existing file is never overwritten.
     fn create_in(dir: &Path, game: u32, start: &impl Serialize) -> io::Result<Self> {
+        #[cfg(unix)]
+        let new_dir = !dir.exists();
         create_dir(dir)?;
         let path = dir.join(format!("{game}.journal"));
         let mut options = OpenOptions::new();
@@ -295,7 +299,12 @@ impl Writer {
         file.write_all(line.as_bytes())?;
         file.sync_all()?;
         #[cfg(unix)]
-        File::open(dir)?.sync_all()?;
+        {
+            File::open(dir)?.sync_all()?;
+            if new_dir && let Some(parent) = dir.parent() {
+                File::open(parent)?.sync_all()?;
+            }
+        }
         Ok(Self { file, path })
     }
 
