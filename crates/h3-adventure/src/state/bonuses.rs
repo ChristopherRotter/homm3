@@ -276,14 +276,14 @@ impl AdventureState {
     /// A hero that leaves the map leaves with its marks (decision 307: none carries over to a
     /// hero hired again).
     pub(crate) fn leave_marks(&mut self, hero: HeroId) {
-        if self.visit_marks(hero).is_empty() {
+        let holds = |all: &&mut Arc<HeldMarks>| all.iter().any(|&(id, _)| id == hero);
+        let Some(block) = self.visited.as_mut().filter(holds) else {
             return;
-        }
-        if let Some(all) = self.visited.as_mut().map(Arc::make_mut) {
-            all.retain(|&(id, _)| id != hero);
-            if all.is_empty() {
-                self.visited = None;
-            }
+        };
+        let all = Arc::make_mut(block);
+        all.retain(|&(id, _)| id != hero);
+        if all.is_empty() {
+            self.visited = None;
         }
     }
 

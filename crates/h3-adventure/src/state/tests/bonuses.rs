@@ -285,3 +285,35 @@ fn a_command_tells_the_owner_the_marks_dropped_the_sums_then_the_marks_gained() 
     expected.push(movement(other, Viewers::NONE.with(BLUE)));
     assert_eq!(told(&OwnHeroes::default(), &state), expected);
 }
+
+// covers: HER-ADV-008
+#[test]
+fn the_state_hash_covers_each_heros_bonuses_their_amounts_and_its_timed_marks() {
+    let rules = bonus_rules();
+    let well = rules.1.object_type_by_key("t:well").unwrap();
+    let plain = jump_state(&rules, (1, None), &[], &[]);
+    let changes: [fn(&mut AdventureState, ObjectTypeId); 5] = [
+        |s, _| s.give_bonus(HERO, 1, 0),
+        |s, _| s.give_bonus(HERO, 0, 1),
+        |s, _| {
+            s.give_once(HERO, once(0, -3, 0));
+        },
+        |s, _| {
+            s.give_once(HERO, once(0, -2, 0));
+        },
+        |s, well| {
+            s.change_marks(HERO, |m| m.add_timed(well));
+        },
+    ];
+    let mut hashes = vec![hash_of(&plain)];
+    for change in changes {
+        let mut changed = plain.clone();
+        change(&mut changed, well);
+        assert_ne!(changed, plain);
+        hashes.push(hash_of(&changed));
+    }
+    let mut unique = hashes.clone();
+    unique.sort_unstable();
+    unique.dedup();
+    assert_eq!(unique.len(), hashes.len(), "{hashes:?}");
+}

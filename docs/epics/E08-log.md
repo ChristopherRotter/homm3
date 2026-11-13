@@ -16043,3 +16043,78 @@ the census moved.
 
 **Versions:** protocol v54 (the server lane's, `cross-lane`; after the town lane's v53, merged in before the pull request). The game and adventure state
 hashes, the part, the map import, the replay format and the env's encoding unchanged. T115 next.
+
+### Increment 12, round 7: T115a, the battle bonuses and timed marks on the hero on the map (2026-11-13, `adventure/e08-t115a`, `cross-lane`)
+
+**The cut** (decision 326; asked at T115's start, `AskUserQuestion`, with the `cross-lane`
+consent; the split at the timed marks was recommended, the user chose T115a whole). **Baseline:**
+`master` a3f48f8 (#902, T114b, merged before the session; the setup's `verify-once` found the
+engine code verified there, light gates only). No original data staged: nothing of the import or
+the census moved.
+
+- **The hero model** (`h3-heroes`; design §12.3, §12.5, §12.6): `HeroDetails::bonuses`,
+  `HeroChange::Bonus`, `HeroChange::ClearBonuses` and `ChangeError::Mark` gone; `grant` gives no
+  bonus change (the record's morale and luck are the adventure's, at the same place of the
+  order). `derive_battle_hero(details, bonuses, ruleset)` takes `BattleBonuses<'_>` (the unmarked
+  morale and luck, the temporary source; a borrowed slice of `VisitBonus { mark, morale, luck }`,
+  each mark's non-zero amounts as `EffectSource::Visit { mark }`, after the temporary pair; a mark
+  of no amount gives none). `land_points(details, core, base, week_points)`: the week's points
+  last, never grown, saturating.
+- **The adventure** (`state/bonuses.rs`; design §12): `HeroBonuses` (the unmarked sums,
+  saturating; the once-marks sorted and unique with their amounts, no fixed count), `VisitMarks`
+  (a hero's bonuses and timed marks: one record, with `add`, `add_once`, `add_timed`,
+  `clear_bonuses`, `drop_timed`, `week_land_points`, so the town lane's garrison hero keeps and
+  drops them as a hero on the map), `ObjectKind::timed_mark` (`MarkLifetime`: the Magic Well's a
+  day, the Stables' a week) and `week_points` (the Stables' points). **Where they live**
+  (*agent's call*, against design §12's `HeroOnMap::bonuses` and `::timed`): one state block of
+  the heroes on the map that hold any, by hero id (`AdventureState::visit_marks`; written by
+  `change_marks`, `give_bonus`, `give_once`; an entry dropped once empty and the block once none
+  holds any, so equal content compares equal; `leave_marks` at a battle's removal). Measured
+  first with the two fields on `HeroOnMap`: every fork cloned two more lists a hero, the nine fork
+  workloads +11.6 to +14.8 %; one `Option<Arc<…>>` a hero: +2.7 to +4.0 % (the hero list's clone
+  +96 Ir a fork on `fork-xl-144`, its drop +17); the block: every adventure workload within
+  +1.6 % of its file, `fork-xl-144` 379.4 M Ir against `master`'s own 378.3 M (+0.3 %; the file's
+  375.5 M, `master` +0.75 % on it). The Warrior's Tomb and a looted Pyramid give their once-mark
+  (`OnceBonus::visit`; the part's mark below 8 no longer checked), a reward record its unmarked
+  pair (a hero without details too; one off the map nothing). The day's step drops every hero's
+  day marks first, the week's step its week marks first; the turn's maximum on land, a landing's
+  and the reach's landing conversion count the week's points (`day_points`' new argument).
+  Adventure state hash v23 (each hero's marks after its boat).
+- **The game** (`h3-game`): the battle hero with the hero on the map's bonuses (`battle_hero`,
+  now `pub(crate)` for a test); the battle's end clears its heroes' bonuses on the map
+  (`AdventureState::clear_battle_bonuses`, GAM-BAT-014; its place unchanged: after the heroes'
+  part, before the levels; told with the command's last events now, not at the clear); game state
+  hash v31 (the details without the bonuses).
+- **The events** (*agent's call*): `AdventureEventKind` is `Copy`, so no list rides on it:
+  `BonusChanged { hero, morale, luck }`, `OnceMarkChanged { hero, bonus, held }`,
+  `TimedMarkChanged { hero, object_type, held }`, owner alone, told after the hero's
+  `MovementChanged` by `OwnHeroes` (was `Movements`; the block's pointer kept before the command)
+  in the order: marks dropped, the sums, marks gained (a mark of other amounts counts as another);
+  a hero new on the map against none. The owner's view `OwnHeroView::bonuses` and `::timed`.
+- **The wire** (`cross-lane`, protocol v55): `OwnMapHero::bonuses` (`Bonuses` with
+  `once: Vec<VisitBonus>`) and `::timed`; `HeroDetails::bonuses`, `HeroChange::Bonus` and
+  `ClearBonuses` gone; the three events both ways and folded (a mark held or not held already:
+  nothing); the fold gate's part "battle bonuses and timed marks" without a stub; a fold case.
+- **Other lanes' paths** (`cross-lane`): `h3-pack-battle`'s tests and `h3-sim`'s encounter hero
+  (the literals' `bonuses` line, `BattleBonuses::NONE` in each `derive_battle_hero`), the town
+  lane's siege test, `h3-server`'s `tests/record.rs` (`army-dialog-s1`'s checkpoint and final
+  hash). `h3-map`'s oracles: the three events among the command's last (`check_told` checks each
+  against the owner's view after it); the battle oracle no longer folds bonus changes (T116's
+  `check_bonuses` comes with the visits).
+- **Tests:** `h3-heroes`: the derivation's sources (temporary, then each visit's; a mark of no
+  amount none), the property with arbitrary once-marks, the week's land points.
+  `h3-adventure`'s `state/tests/bonuses.rs`: the sums and the gates, a record empty again equal to
+  none, the day's and week's drops with the Stables' 400 in the turn and no block left, a battle's
+  clear on the map only, a fork's block untouched by a write, a removed hero leaving with its
+  marks, the told events' order. The Tomb's, the Pyramid's and a box's tests read the hero on the
+  map. `h3-game`: the Tomb's mark told last, in the battle hero as `Visit { mark: 0 }`, cleared at
+  its battle's end; the looted Pyramid's.
+- **Replays:** the 72 golden adventure replays re-recorded from their own commands: only the two
+  hash versions, the checkpoints and the final hashes moved.
+- **Rules:** HER-ADV-008, HER-ADV-003, HER-CHG-003, GAM-BAT-014 and ADV-BON-001 amended. Docs:
+  decision 326 and the task's line, design §12's *As built*, the queue (T115b), `TRAPS.md`; the
+  client, server, town, AI and battle lanes' inboxes.
+
+**Versions:** adventure state hash v23, game state hash v31, protocol v55 (the server lane's,
+`cross-lane`). The part, the map import, the replay format and the env's encoding unchanged.
+T115b next.

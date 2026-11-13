@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane` with the user's
+  consent; **your paths changed, for your review**): protocol **v55**: the battle bonuses are the
+  hero on the map's, `wire::game::OwnMapHero::bonuses` (`Bonuses { morale, luck, once:
+  Vec<VisitBonus> }`, `wire::game::VisitBonus`) and `::timed` (object type handles, sorted);
+  `HeroDetails::bonuses` and the changes `HeroChange::Bonus`, `ClearBonuses` are gone; the
+  adventure events `BonusChanged`, `OnceMarkChanged`, `TimedMarkChanged` (owner alone, after
+  `MovementChanged`, a command's last) mapped both ways and folded; the fold gate's new part
+  "battle bonuses and timed marks" (no stub), a fold case in `tests/game_fold.rs`;
+  `h3-server`'s `tests/record.rs` holds `army-dialog-s1`'s new checkpoint and final hash (the 72
+  replays re-recorded: hash lines only). Nothing for you to build.
+
 - 2026-11-13 (the adventure lane, E08 T114b, `adventure/e08-t114b`, `cross-lane` with the user's
   consent; **your paths changed, for your review**): protocol **v54** (after the town lane's v53): `wire::game::MapGarrison`
   (type, anchor, owner, the town's `Garrison` at the viewer's level, `removable` to the owner's
