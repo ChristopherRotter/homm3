@@ -3703,7 +3703,8 @@ files and the four manuals, SHA-256 checked against the PC's). T28 cut in two at
 whole** (decision 93, the user; the agent recommended the bars first, then the garrison hero).
 `master` merged in twice: after the server lane's #913 (protocol v60), then after E08 T115b's
 #914 (protocol v61, adventure state hash v24), the server lane's #916 (protocol v62) and #917, so
-T28a took protocol v63 and adventure state hash v25; the replays re-recorded and the benches
+T28a took protocol v64 (the server lane's #919, open then, claimed v63) and adventure state hash
+v25; the replays re-recorded and the benches
 re-measured after the second.
 
 - **The town's rules** (`h3-towns`): `TownCommand::Heroes { town, change: TownHeroChange }`
@@ -3730,7 +3731,7 @@ re-measured after the second.
   the plans' told-views property found it), `stack_at` and `own_details` for a garrison hero;
   `legal.rs`' `town_partner` and `legal_town_management`; `observe.rs`' hero infos with the
   owner's garrison heroes and their details.
-- **The wire** (protocol **v63**): `TownCommand::Heroes`, `TownHeroChange`, eight `TownReject`s,
+- **The wire** (protocol **v64**): `TownCommand::Heroes`, `TownHeroChange`, eight `TownReject`s,
   `GarrisonEntered`, `GarrisonLeft`, `Adventure::garrison_heroes` (`GarrisonHero`); the fold moves
   the owner's own view between `heroes` and `garrison_heroes`. Replay format **v16** (`town heroes
   <town> enter|leave|swap`). The env's encoding **v11**: `TOWN_HEROES` 32 to 34 with the tile head.

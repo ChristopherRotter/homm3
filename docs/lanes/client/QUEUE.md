@@ -38,7 +38,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
-  **your path changed, informational**): protocol v63's `wire::game::Adventure` gains
+  **your path changed, informational**): protocol v64's `wire::game::Adventure` gains
   `garrison_heroes` (a player's own garrison heroes, `wire::game::GarrisonHero`), so
   `h3-view`'s `game_record/tests.rs` literal took `garrison_heroes: Vec::new()`. New wire
   variants a client may meet: `TownCommand::Heroes`, eight `TownReject`s, the adventure events

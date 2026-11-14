@@ -99,7 +99,7 @@ pub enum TownCommand {
         building: u8,
     },
     /// Moves a hero between the two bars of a town of the actor's (TWN-ROW-002 to -004; E09
-    /// T28a, v63).
+    /// T28a, v64).
     Heroes {
         /// The town.
         town: u16,
@@ -108,7 +108,7 @@ pub enum TownCommand {
     },
 }
 
-/// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v63).
+/// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum TownHeroChange {
@@ -522,7 +522,7 @@ pub enum TownReject {
     NotStanding {},
     /// The Portal of Summoning holds nothing (TWN-REC-002).
     NothingSummoned {},
-    /// A hero stands in the town's garrison already (TWN-ROW-002; E09 T28a, v63).
+    /// A hero stands in the town's garrison already (TWN-ROW-002; E09 T28a, v64).
     GarrisonHeld {},
     /// No hero of the actor's stands on the town's entrance (TWN-ROW-002, -004).
     NoVisitor {},

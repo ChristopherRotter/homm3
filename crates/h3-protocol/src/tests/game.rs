@@ -488,7 +488,7 @@ fn every_part() -> AdventureObservation {
         }],
         // E08 T115b: the kind marks the viewer's team holds.
         kinds: vec![Handle::from_raw(4), Handle::from_raw(30)],
-        // E09 T28a (v63).
+        // E09 T28a (v64).
         garrison_heroes: vec![GarrisonHeroView {
             town: TownId::new(3),
             id: HeroId::new(7),

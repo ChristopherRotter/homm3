@@ -146,12 +146,12 @@ pub struct Adventure {
     pub boats: Vec<Boat>,
     /// The object types whose kind mark its team holds, in type order (ADV-BON-009, E08 T115b).
     pub kinds: Vec<u16>,
-    /// Its own garrison heroes, by town (E09 T28a, v63): off the map, each with its town in place
+    /// Its own garrison heroes, by town (E09 T28a, v64): off the map, each with its town in place
     /// of a tile; another viewer sees none.
     pub garrison_heroes: Vec<GarrisonHero>,
 }
 
-/// A hero standing in its town's garrison as its owner sees it (E09 T28a, v63).
+/// A hero standing in its town's garrison as its owner sees it (E09 T28a, v64).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GarrisonHero {

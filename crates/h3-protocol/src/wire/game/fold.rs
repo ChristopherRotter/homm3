@@ -350,7 +350,7 @@ impl GameObservation {
                 self.adventure.keys |= 1_u8.checked_shl(u32::from(key)).unwrap_or(0);
             }
             AdventureEvent::HeroRemoved { hero, pos: _ } => self.remove_hero(hero),
-            // E09 T28a (v63): the owner moves its own view into its garrison heroes, every other
+            // E09 T28a (v64): the owner moves its own view into its garrison heroes, every other
             // viewer sees the hero leave the map.
             AdventureEvent::GarrisonEntered { hero, town, pos: _ } => {
                 let at = self

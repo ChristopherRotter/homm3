@@ -1261,7 +1261,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         },
         K::KeyGained { key: 4 },
         K::HeroRemoved { hero, pos: at },
-        // E09 T28a (v63).
+        // E09 T28a (v64).
         K::GarrisonEntered {
             hero,
             town: TownId::new(2),

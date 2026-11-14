@@ -1716,7 +1716,7 @@ fn the_fold_replaces_a_map_garrisons_view_by_its_told_one() {
     );
 }
 
-/// E09 T28a (v63): a hero's move between a town's bars. The owner moves its own view between the
+/// E09 T28a (v64): a hero's move between a town's bars. The owner moves its own view between the
 /// heroes on the map and its garrison heroes, a garrison hero's army changes as a hero's, and its
 /// leaving the game at its town's capture removes it; another viewer sees a hero leave the map,
 /// and one coming into sight is not carried (SRV-STUB-3).

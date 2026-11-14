@@ -130,7 +130,7 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(1),
         building: BuildingId::from_index(30).unwrap(),
     }));
-    // E09 T28a (protocol v63).
+    // E09 T28a (protocol v64).
     commands.extend(
         [
             TownHeroChange::Enter,

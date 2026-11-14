@@ -1829,7 +1829,7 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   `GarrisonLeft` (the viewers of the entrance; `Swap` the two in that order); the owner's view is
   `AdventureObservation::garrison_heroes` (`GarrisonHeroView`) and its details in
   `GameObservation::heroes`; `OwnHeroes` covers them; replay `town heroes <town> enter|leave|swap`
-  (v16); the env's `TOWN_HEROES` + 3 (v11); protocol v63. Its day, income and growth inputs are
+  (v16); the env's `TOWN_HEROES` + 3 (v11); protocol v64. Its day, income and growth inputs are
   T28b's; until T28b's rows 1 and 3 a garrison hero does not defend (`TWN-STUB-14`: its town falls
   as T-5's, `release_town_hero` at the capture).
 

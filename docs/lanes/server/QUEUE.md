@@ -13,8 +13,8 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 ## Inbox
 
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
-  **a protocol version taken, for your review**): protocol **v63** (after E08 T115b's v61 and your T18's
-  v62): `wire::game::TownCommand::Heroes { town, change:
+  **a protocol version taken, for your review**): protocol **v64** (after E08 T115b's v61, your T18's
+  v62 and your T19's v63, #919): `wire::game::TownCommand::Heroes { town, change:
   TownHeroChange }` (`Enter`, `Leave`, `Swap`; TWN-ROW-002 to -004), eight `TownReject`s
   (`GarrisonHeld` to `EmptyArmy`), the adventure events `GarrisonEntered` and `GarrisonLeft`, the
   adventure view's `garrison_heroes` (`wire::game::GarrisonHero`); mapped, inverted and
