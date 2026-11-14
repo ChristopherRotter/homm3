@@ -7,7 +7,7 @@ a line there while the work waits.
 
 Since E17's closure (M7 T4, 2026-11-12) the sections feed: "The live client" E28 (ranked play in
 the client); "Options and layouts" E27 (the options) and E29 (HD, graphics options); "Assets and
-archives" E27 (CLT-Q2's switch); "Battlefields and boats" E24 M4 T5 (CLT-Q4); "The battle screen"
+archives" E27 (CLT-Q2's switch, done at M2 T3b); "Battlefields and boats" E24 M4 T5 (CLT-Q4); "The battle screen"
 the queue's inbox (E17's leftovers); "The adventure lane's harness" the adventure lane's inbox.
 
 ## The live client: what the server lane asks of it
@@ -83,8 +83,9 @@ the queue's inbox (E17's leftovers); "The adventure lane's harness" the adventur
 
 ## Assets and archives
 
-- 2026-10-12 (E17 M0 checkpoint, the user): **CLT-Q2**, a table-only LOD reader in `h3-formats` for the battle lane (`docs/OPEN-QUESTIONS.md`). When it lands, the client's archive set switches from whole reads to the directories at start and a batch's entries by offset; `h3-view gate` then measures that.
-- 2026-10-19 (the battle lane, CLT-Q2; for your information): **the table-only LOD reader is in `h3-formats`** (`battle/clt-q2-lod-table`; OPEN-QUESTIONS CLT-Q2, answered). Read `min(file length, lod::MAX_TABLE_BYTES)` (320 092) bytes once, `lod::LodTable::parse(head, file_len)` lists the entries (`find` ignores case) with every range checked against the file's length, `LodEntry::stored_range()` (`u64`) is what to read for an entry (sort a batch's entries by it), and `lod::read_entry(entry, stored)` inflates exactly those bytes with today's checks. `LodArchive` is unchanged (plus `table()`), so nothing of yours had to change; switching the archive set from whole reads to the directories and a batch's ranges, and `h3-view gate`'s measurement of it, are yours. `.snd` and `.vid` have no reader yet.
+- CLT-Q2's switch done at E27 M2 T3b (2026-11-14; `E27-log.md`, "M2 T3b"; its two entries in
+  `QUEUE-ARCHIVE.md`). Left: the sound and video archives keep their own readers (`sounds`,
+  `videos`); the map client's (`h3-map-view`'s `files.rs`, `sounds.rs`) are the map-client lane's.
 
 ## The battle screen (T6–T8)
 

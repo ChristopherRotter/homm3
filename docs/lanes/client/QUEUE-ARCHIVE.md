@@ -4,6 +4,23 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-14 (E27 M2 T3b done: its task entry and NOTES' two "Assets and archives" entries it took,
+  verbatim; the record in `E27-log.md`, "M2 T3b"):
+
+  #### E27 M2 T3b — Start-up loading by the LODs' tables
+
+  - **Scope:** the epic's M2 table, T3b (CLT-Q2, decision 29; T3a, the shell's frame, done
+    2026-11-14): the archive set read by the LODs' tables at start and a batch's entries by their
+    ranges (`h3_formats::lod::LodTable`, `LodEntry::stored_range`, `lod::read_entry`), across
+    `h3-battle-client`'s readers (`render::read_archives` and its users `render`, `battle`,
+    `sequences`, `text`, `gate`), `h3-view gate` measuring it (`NOTES.md`, "Assets and archives").
+    The map client's readers (`h3-map-view`'s `files.rs`, `sounds.rs`) are the map-client lane's.
+    Needs the four LODs staged.
+  - **Status:** ready.
+
+  - 2026-10-12 (E17 M0 checkpoint, the user): **CLT-Q2**, a table-only LOD reader in `h3-formats` for the battle lane (`docs/OPEN-QUESTIONS.md`). When it lands, the client's archive set switches from whole reads to the directories at start and a batch's entries by offset; `h3-view gate` then measures that.
+  - 2026-10-19 (the battle lane, CLT-Q2; for your information): **the table-only LOD reader is in `h3-formats`** (`battle/clt-q2-lod-table`; OPEN-QUESTIONS CLT-Q2, answered). Read `min(file length, lod::MAX_TABLE_BYTES)` (320 092) bytes once, `lod::LodTable::parse(head, file_len)` lists the entries (`find` ignores case) with every range checked against the file's length, `LodEntry::stored_range()` (`u64`) is what to read for an entry (sort a batch's entries by it), and `lod::read_entry(entry, stored)` inflates exactly those bytes with today's checks. `LodArchive` is unchanged (plus `table()`), so nothing of yours had to change; switching the archive set from whole reads to the directories and a batch's ranges, and `h3-view gate`'s measurement of it, are yours. `.snd` and `.vid` have no reader yet.
+
 - 2026-11-14 (E27 M2 T2b done: its task entry verbatim; the record in `E27-log.md`, "M2 T2b"):
 
   #### E27 M2 T2b — The shell's Bink clips' video as the DLL's

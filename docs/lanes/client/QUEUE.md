@@ -13,17 +13,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T3b — Start-up loading by the LODs' tables
-
-- **Scope:** the epic's M2 table, T3b (CLT-Q2, decision 29; T3a, the shell's frame, done
-  2026-11-14): the archive set read by the LODs' tables at start and a batch's entries by their
-  ranges (`h3_formats::lod::LodTable`, `LodEntry::stored_range`, `lod::read_entry`), across
-  `h3-battle-client`'s readers (`render::read_archives` and its users `render`, `battle`,
-  `sequences`, `text`, `gate`), `h3-view gate` measuring it (`NOTES.md`, "Assets and archives").
-  The map client's readers (`h3-map-view`'s `files.rs`, `sounds.rs`) are the map-client lane's.
-  Needs the four LODs staged.
-- **Status:** ready.
-
 #### E27 M2 T4 to T8
 
 T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3a); T5 the
@@ -39,6 +28,14 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
+  taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
+  commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the
+  battle still open (a battle both of whose sides the server's computer plays, which it did not
+  end; SRV-Q35). Its connections hear `Goodbye { CommandLimit }` (until now a battle's alone), its
+  journal goes to the void, it leaves the lobby; an in-process `GameSession` that is void
+  (`GameSession::void`) rejects every command `GameReject::NotStarted {}`. No new message or
+  field. Show the goodbye's reason for a whole game too if you show it; nothing else to build.
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
   **your path changed, informational**): protocol v64's `wire::game::Adventure` gains
   `garrison_heroes` (a player's own garrison heroes, `wire::game::GarrisonHero`), so

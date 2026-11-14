@@ -8,17 +8,11 @@ use std::process::ExitCode;
 
 use h3_assets::def::{decode_frame, parse_def};
 use h3_assets::pcx::decode_pcx;
-use h3_formats::lod::LodArchive;
 use h3_render::blit::{Drawer, Placement, draw_frame, draw_image};
 use h3_render::palette::ScreenPalette;
 use h3_render::screen::{PixelFormat, Screen};
 
-use crate::gate::find_ci;
-
-/// The archives a DEF and an image are looked up in, in the executable's order: the base archive
-/// first, so its copy of a duplicate name wins (`docs/epics/E17-design.md` §3.1).
-const SPRITES: [&str; 2] = ["H3sprite.lod", "H3ab_spr.lod"];
-const BITMAPS: [&str; 2] = ["H3bitmap.lod", "H3ab_bmp.lod"];
+use crate::lods::Lods;
 
 /// The fill where no image is drawn: a mid grey, so that shadows show.
 const GREY: u16 = 0x8410;
@@ -108,26 +102,11 @@ pub fn run(options: &Options) -> ExitCode {
     }
 }
 
-/// The first archive of `names` (in `data`) that has `entry`, read.
-fn lookup(data: &Path, names: &[&str], entry: &str) -> Result<Vec<u8>, String> {
-    for name in names {
-        let path = find_ci(data, name).map_err(|e| format!("{}/{name}: {e}", data.display()))?;
-        let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-        let archive = LodArchive::parse(&bytes).map_err(|e| format!("{name}: {e:?}"))?;
-        if let Some(found) = archive
-            .read_by_name(entry)
-            .map_err(|e| format!("{name}:{entry}: {e:?}"))?
-        {
-            return Ok(found);
-        }
-    }
-    Err(format!("{entry}: in none of {}", names.join(", ")))
-}
-
 fn sprite(options: &Options) -> Result<PathBuf, String> {
-    let data = find_ci(&options.install, "Data")
-        .map_err(|e| format!("{}: {e}", options.install.display()))?;
-    let bytes = lookup(&data, &SPRITES, &options.def)?;
+    // The archives' tables (CLT-Q2); the DEF and the image looked up where the executable looks
+    // (`docs/epics/E17-design.md` §3.1: the base archive first, so its copy of a duplicate wins).
+    let archives = Lods::open(&options.install)?;
+    let bytes = archives.lookup(&options.def)?;
     let def = parse_def(&bytes).map_err(|e| format!("{}: {e:?}", options.def))?;
     let group = match options.group {
         Some(id) => def.groups.iter().find(|g| g.id == id),
@@ -147,8 +126,7 @@ fn sprite(options: &Options) -> Result<PathBuf, String> {
         Screen::new(cell.saturating_mul(count), height, format).ok_or("the sheet is too large")?;
     screen.fill(GREY);
     if let Some(name) = &options.background {
-        let image =
-            decode_pcx(&lookup(&data, &BITMAPS, name)?).map_err(|e| format!("{name}: {e:?}"))?;
+        let image = decode_pcx(&archives.lookup(name)?).map_err(|e| format!("{name}: {e:?}"))?;
         draw_image(&mut screen, &image, 0, 0);
     }
     let palette = ScreenPalette::new(&def.palette, format);

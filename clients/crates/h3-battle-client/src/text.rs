@@ -7,7 +7,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_ui::text::keys::{EXECUTABLE, Entry, Keys, Row, address_field};
 use h3_ui::text::pack::{Pack, Problem, Tables};
@@ -17,6 +16,7 @@ use h3_view::tables::{SIEGE_PARTS, Tables as AssetTables};
 
 use crate::assets;
 use crate::gate::find_ci;
+use crate::lods::{BITMAPS, Lods};
 
 /// The committed key catalogue.
 pub fn default_keys() -> PathBuf {
@@ -159,33 +159,6 @@ pub fn read_pack(path: &Path, keys: &Keys) -> Result<(Pack, Vec<Problem>), Strin
     Ok((pack, problems))
 }
 
-/// The bitmap archives of `install`, read whole (CLT-Q2), in the game's search order (§3.1).
-fn bitmap_archives(install: &Path) -> Result<Vec<(String, Vec<u8>)>, String> {
-    let data = find_ci(install, "Data").map_err(|e| format!("{}: {e}", install.display()))?;
-    ["H3bitmap.lod", "H3ab_bmp.lod"]
-        .iter()
-        .map(|name| {
-            let path =
-                find_ci(&data, name).map_err(|e| format!("{}/{name}: {e}", data.display()))?;
-            let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            Ok(((*name).to_owned(), bytes))
-        })
-        .collect()
-}
-
-/// The entry `name` from the first of `archives` that holds it.
-fn first_holding(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>, String> {
-    for (archive_name, archive) in archives {
-        if let Some(bytes) = archive
-            .read_by_name(name)
-            .map_err(|e| format!("{archive_name}:{name}: {e:?}"))?
-        {
-            return Ok(bytes);
-        }
-    }
-    Err(format!("{name}: in no bitmap archive"))
-}
-
 /// `h3-view text`'s options.
 #[derive(Debug)]
 pub struct Options {
@@ -278,16 +251,10 @@ pub fn run(options: &Options) -> ExitCode {
 fn text(options: &Options) -> Result<Vec<String>, String> {
     let assets = assets::load(&options.tables, assets::ALL)?;
     let keys = read_keys(&options.keys, &assets)?;
-    let bytes = bitmap_archives(&options.install)?;
-    let mut archives = Vec::new();
-    for (name, b) in &bytes {
-        archives.push((
-            name.as_str(),
-            LodArchive::parse(b).map_err(|e| format!("{name}: {e:?}"))?,
-        ));
-    }
+    // The bitmap archives' tables, in the game's search order (§3.1; CLT-Q2).
+    let archives = Lods::open_these(&options.install, &BITMAPS)?;
     let exe = executable(&options.install)?;
-    let texts = tables(&keys, |name| first_holding(&archives, name), &exe)?;
+    let texts = tables(&keys, |name| archives.lookup(name), &exe)?;
     let (original, problems) = Pack::original(&keys, &texts);
     let mut lines: Vec<String> = problems.iter().map(|p| format!("original: {p}")).collect();
     let mut catalogue = Catalogue::default();

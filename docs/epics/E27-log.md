@@ -455,3 +455,44 @@ files, checked by SHA-256 against the user's computer); the setup's baseline
 - **The agent's calls** (*provisional*, M2's review list items 10 to 12): `Input` beside the
   dialog's `Shown`; `message::Open` and `stats::Open` keep their own button loops; the screens and
   endings as two enums checked together; the ids as discriminants; the words.
+
+## M2 T3b — start-up loading by the LODs' tables (2026-11-14)
+
+On `client/e27-m2-t3b`, the user present; `master` at `2996b51` (#921 merged). One task, no cut
+(about a dozen files of `h3-battle-client`, one signature of the common `h3-assets`). The original
+data staged at once at the start (64 files, checked by SHA-256 against the user's computer); the
+setup's baseline (`clients/scripts/check.sh`) passed before any change.
+
+- **Built, `h3-battle-client`:** `lods` (`Lod`, `Reader`, `Lods`; `SPRITES` and `BITMAPS` moved
+  there from `render` and `sprite`): an archive listed from its head alone (`min(length,
+  lod::MAX_TABLE_BYTES)` read once, `LodTable::parse`), an entry's stored bytes read by its range
+  (`LodEntry::stored_range`) and inflated by `lod::read_entry`; `Lods::lookup` searches as
+  `render::lookup` did (a DEF in the sprite archives, the rest in the bitmap ones, the base archive
+  first); `Lods::batch` reads a batch's entries archive by archive in the order of their ranges,
+  through one open file each, and gives them back in the names' order. The set holds paths and
+  tables, no file handle (as `videos::Videos`). 3 tests on invented archives (the search lists, a
+  batch's order, a missing archive, a bad table, an archive cut or gone after it was listed).
+- **The readers switched:** `render::read_archives` and `render::lookup` gone. `render` (the
+  still's batch by `Lods::batch`), `battle` (`Ground` holds the `Lods`, no longer the 212 MiB;
+  `load_names` one batch, the clips from the video archives as before), `sequences` (the frames'
+  batch), `motion` and `log` (`&Lods` for `&[(&str, LodArchive)]`), `text` (the bitmap archives'
+  tables, `Lods::open_these`), `sprite` (the four tables; before, the archives read whole one after
+  another until one held the entry), the binary's `situation` and `harvest` (`Lod::open` of
+  `H3bitmap.lod`, then three and four text tables by their ranges). An asset a checkpoint's batch
+  lacks is still loaded as it is drawn (`Battle::compose`, the cursors' DEFs): now a read of its
+  range.
+- **`h3-view gate`:** opens the archives as the client starts and prints it (each table's KiB of
+  the archive's MiB and its µs; the total), then reads every entry by its range in the order of the
+  ranges, the read, the inflation and the decoding timed apart; the duplicates compared through one
+  reader an archive. `h3_assets::archive::inventory` takes a `LodTable` (common; the gate its one
+  caller).
+- **Measured** (release, the staged files, a warm cache; `master`'s binary built beside it): the
+  start 145 ms for the four archives read whole (212 MiB) → 1.3 ms for their tables (1 250 KiB);
+  every entry read by its range in 56 ms; `h3-view render scenarios/battle.toml`'s peak memory
+  243 → 28 MiB, its wall time 346 → 201 ms, the same PNG byte for byte. The gate's other lines
+  unchanged (11 981 entries, the 679 names, the 1 182 keys, the 1 232 sounds).
+- **Checked:** `clients/scripts/check.sh` with the original data staged (the window's staged
+  tests among it), 100 % coverage of the pure crates; `h3-view gate` on the staged files.
+- **The agent's calls** (*provisional*, M2's review list items 13 and 14): the set's shape; each
+  head read up to `MAX_TABLE_BYTES` (312 KiB an archive, as `h3-formats` advises) rather than the
+  used table alone; `sprite` needing all four archives; `inventory` on a table.

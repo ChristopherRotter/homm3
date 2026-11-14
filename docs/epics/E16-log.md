@@ -3369,3 +3369,69 @@ request, as at T7b and T13.
   battle of two system sides ends by a rule the user picks then, `drive` bounded); (c) the review
   list accepted as built, but the in-process Defend item, which (b) takes; (d) 2c refined in a new
   session. **2b closed.**
+
+### M5 2c's refinement (2026-11-14, SRV-Q35)
+
+Baseline: `master` 161b565 (#919, T19; CI green on it; the VM restarted during the setup's
+baseline, so CI's run stands for it). No original data. Branch `claude/sweet-gauss-ngra43`.
+Three questions to the user: how a battle both of whose sides the system plays ends (VCMI's
+server has no stalemate rule either: `BattleFlowProcessor`, `BattleProcessor`,
+`BattleResultProcessor`, `BattleActionProcessor` read 2026-11-14, and the engine has none), what a
+whole game's spectator sees, and the session's cut. **User:** the whole game void past a bound
+on the system's commands in one battle (not the agent's recommendation, the attacker's forced
+retreat at a round bound); an all-seeing spectator by the host's choice (not the
+recommendation, ADR-0017's public facts only); refine, then build T20. 2c's tasks T20 to T24 in
+the epic's "M5 part 2" (the all-seeing spectator cut into its design with the ADR amendments,
+T21a, then the engine's full views, T21b, then the hosting, T22).
+
+### M5 T20 — a battle both of whose sides the system plays made to end (2026-11-14)
+
+The task (SRV-Q35; 2b's reviewer's finding 3, T16's in-process Defend): a battle both of whose
+sides the system plays (a side past its clock or its bound against a monster, or both sides of a
+battle between players) has no end the host can force; in-process Defend against Defend never
+ended and `drive` never returned. Same session and branch as the refinement. Kept whole.
+
+- **The session** (`session::game::bounds`): `CommandBounds::system_per_battle`, the system
+  actor's accepted battle commands in one battle (an unowned side's `GameCommand::Battle`, a
+  player's side's `SystemCommand::Battle`), keyed by the battle (`BattleKey::open`), counted
+  afresh in each battle and dropped once no player holds it (every battle has a player's side).
+  Reaching the bound with the battle still open makes the game **void** (`Counts::void`, latched;
+  `GameSession::void`): `live()` is false, so nothing more is applied (`NotStarted`, a seat's and
+  the system's alike), driven or timed (`deadline` none). The count follows from the journal's
+  commands (`execute`), so a restore re-runs it: a journal ending at the voiding command restores
+  void, one cut before it voids at its next step; nothing new is journaled. `Counted` now carries
+  its player (`Map(player)`, `Battle(player, key)`, `System(key)`); `spent()` gives the three.
+- **`drive` bounded** (*provisional*): at most `DRIVE_STEPS` (64, about three rounds of a full
+  battle) steps per call; stopped there with a step due, `more` makes `deadline` the last
+  reading, so a game of connections' thread wakes at once and handles its messages and writes its
+  journal between the chunks (a stalled battle's thousands of steps no longer in one call); the
+  cap is checked before the computer is asked, so a stop costs no choice (at most one empty wake).
+- **The default, measured**: the system's commands in one battle are at most 505 on the golden
+  replays (`tests/game_session.rs`) and 295 on the XL fixtures' random play
+  (`tests/game_bounds.rs`); `DEFAULT` 10 000, a hosted battle's `commands_per_game`, about twenty
+  times the most and above a seat's bound with the computer's answers to it (which count): two
+  sides the system plays still have about two thousand commands to end their battle. Both suites
+  assert the count was taken.
+- **The wire** (protocol v65, after the town lane's E09 T28a took v64 and `master` was merged in): no new message; `Goodbye { CommandLimit }` now also says a whole
+  game is void (a battle the server played past its bound), `GameReject::NotStarted` also a void
+  game's rejection.
+- **`h3-server`:** `[limits] system_commands_per_battle` (10 000, in 1..=1 000 000;
+  `Limits::commands()`); the whole game's thread voids a void session after an event's frames are
+  delivered, and at its start (a restore whose journal ends there, or the computer's first steps):
+  `game::too_long`, now shared with the battle's `commands_per_game` and given its log line's
+  reason (`whole::STALLED`): `Goodbye { CommandLimit }` to every connection, the journal to
+  `<data>/void/`, the game out of the lobby.
+- **Tests:** `tests/game_limits.rs` (`h3-protocol`): the towns replay's battle between players
+  in-process under bounds of 1 and a system bound of 200: each side's one command, then Defend
+  against Defend by the system, each call taking at most 64 steps with the deadline at the last
+  reading, the game void at exactly 200 in three more readings with the battle open, a seat's and
+  a system command refused `NotStarted`, nothing timed after, the 200 journaled; a restore of the
+  journal void, one cut before its last command voiding at its first reading to the same state.
+  `h3-server`'s `tests/whole.rs`: the golden monster replay's battle under a system bound of 1:
+  the computer's first answer voids the game, both clients hear `CommandLimit`, the game leaves
+  the lobby, its journal (ending at the computer's command) in the void; put back, a restart voids
+  it again. The config test: the field, its range, the default. `MONSTER_REPLAY`'s doc corrected
+  (its 16th command opens the battle).
+- **Docs:** the client lanes' inboxes told (v65). `docs/06-security.md` (a shared path) is T24's,
+  as T19 was 2b's: its "Not covered yet" sentence on a battle both of whose sides the system plays
+  becomes the bound and the void (and `drive`'s chunks).

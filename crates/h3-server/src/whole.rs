@@ -10,7 +10,11 @@
 //! empty for `empty_game_ms` pauses at the sweep, and a paused one (its host's pause too) leaves
 //! its thread: the registry keeps its seats' tokens and accounts (`Hosted::PausedMap`), a seat's
 //! join restores it on a thread of its own and resumes it, and one nobody resumed within
-//! `paused_game_ms` is void. A drain does not wait for a running whole game (it never ends before
+//! `paused_game_ms` is void. One with a battle the server played past `[limits]
+//! system_commands_per_battle` (E16 M5 T20, SRV-Q35: a battle both of whose sides the computer
+//! plays, which it did not end) is void as a battle past `commands_per_game`: its connections hear
+//! `Goodbye { CommandLimit }`, its journal moves to `<data>/void/`, it leaves the lobby (a
+//! restored one whose journal ends there too). A drain does not wait for a running whole game (it never ends before
 //! E10): it plays on until the server stops, which keeps its journal for the next start. A seat
 //! downloads its record (`FetchRecord`, the session's).
 //!
@@ -56,7 +60,7 @@ use tokio::time::Instant;
 use crate::accounts::Accounts;
 use crate::game::{
     Frame, Hosting, Outbox, Stores, ToGame, close_all, deadline, launch, os_u64, shut_down, stop,
-    token, turn_away,
+    token, too_long, turn_away,
 };
 use crate::journal::whole::{self as journal, GAME_JOURNAL_FORMAT_VERSION, GameRead, GameStart};
 use crate::journal::{Writer, void};
@@ -65,6 +69,11 @@ use crate::{Error, config};
 
 /// The most characters of a map's name the lobby shows.
 const NAME_CHARS: usize = 64;
+
+/// Why a whole game is void when a battle the server played reached `[limits]
+/// system_commands_per_battle` (E16 M5 T20, SRV-Q35), as its log line says.
+const STALLED: &str = "a battle the server played reached its limit of the server's commands \
+                       in one battle without an end";
 
 /// A map a client may create a whole game from, compiled at start.
 #[derive(Debug)]
@@ -517,6 +526,13 @@ impl Hosting for Prepared {
             eprintln!("h3-server: game {game}: the journal does not write ({e}): it stops");
             return stop(&BTreeMap::new(), registry, game);
         }
+        // A restored game whose journal ends at the command that voided it, or one the computer's
+        // first steps void (E16 M5 T20): no seat is held yet.
+        if session.void() {
+            let host = (self.data.as_path(), registry);
+            let none = (&BTreeMap::new(), &[][..]);
+            return too_long(game, none, Some(journal), host, (&mut inbox, STALLED));
+        }
         let timer = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build();
@@ -608,6 +624,18 @@ impl Hosting for Prepared {
             for (i, outbound) in out.drain(..).enumerate() {
                 let left = last.filter(|&(at, _)| at == i).map(|(_, k)| k);
                 deliver(&mut conns, &mut session, outbound, left);
+            }
+            if session.void() {
+                // A battle the server played past its bound (E16 M5 T20), its frames delivered.
+                let host = (self.data.as_path(), registry);
+                let journal = Some(journal);
+                return too_long(
+                    game,
+                    (&conns, &closed),
+                    journal,
+                    host,
+                    (&mut inbox, STALLED),
+                );
             }
             if session.paused() {
                 // Its journal is the game now: a seat's join restores it (E16 M5 T9b).

@@ -8,7 +8,6 @@ use std::path::Path;
 
 use h3_content::{CreatureFlag, CreatureTypeId};
 use h3_content_battle::Ability;
-use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Event, Side};
 use h3_render::Bugs;
 use h3_view::anim::{
@@ -25,7 +24,7 @@ use h3_view::layout::BattleLayout;
 use h3_view::record::Record;
 use h3_view::tables::{Creature, Tables, Town};
 
-use crate::render::lookup;
+use crate::lods::Lods;
 
 /// The [`Look`] of every creature a living stack or a corpse (E17 M5 T6b2) of the record's first
 /// snapshot shows, by its handle; a siege's turrets (off the field, E17 M4 T2b) by the town's
@@ -33,7 +32,7 @@ use crate::render::lookup;
 pub fn looks(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
 ) -> Result<BTreeMap<u16, Look>, String> {
     let snapshot = record
         .first_snapshot()
@@ -84,7 +83,7 @@ pub fn looks(
 pub fn add_looks(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
     made: &[u16],
     looks: &mut BTreeMap<u16, Look>,
 ) -> Result<(), String> {
@@ -140,13 +139,13 @@ pub fn town<'t>(record: &Record, tables: &'t Tables) -> Result<&'t Town, String>
 fn look(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
     (entry, missile): (&Creature, Option<String>),
 ) -> Result<Look, String> {
     let standing = u32::from(tables.battle.groups.standing);
     let mut batch = Batch::default();
     batch
-        .add(&entry.def, &lookup(archives, &entry.def)?)
+        .add(&entry.def, &archives.lookup(&entry.def)?)
         .map_err(|e| e.to_string())?;
     let sprite = batch
         .sprite(&entry.def)
@@ -191,7 +190,7 @@ fn look(
 pub fn siege(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
 ) -> Result<Option<SiegeStage>, String> {
     let fort = record
         .first_snapshot()
@@ -231,7 +230,7 @@ pub fn siege(
 pub fn heroes(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
     seed: Option<u32>,
 ) -> Result<Heroes, String> {
     let snapshot = record
@@ -241,7 +240,7 @@ pub fn heroes(
     let groups = |def: &str| -> Result<BTreeMap<u32, u32>, String> {
         let mut batch = Batch::default();
         batch
-            .add(def, &lookup(archives, def)?)
+            .add(def, &archives.lookup(def)?)
             .map_err(|e| e.to_string())?;
         let sprite = batch
             .sprite(def)
@@ -278,14 +277,10 @@ pub fn heroes(
 
 /// A projectile: its DEF's canvas and the creature's angle for each frame of its group 0 (the
 /// table holds 12; a DEF with fewer frames uses the first ones, 0x469957).
-fn missile(
-    def: &str,
-    angles: &[i16; 12],
-    archives: &[(&str, LodArchive<'_>)],
-) -> Result<Missile, String> {
+fn missile(def: &str, angles: &[i16; 12], archives: &Lods) -> Result<Missile, String> {
     let mut batch = Batch::default();
     batch
-        .add(def, &lookup(archives, def)?)
+        .add(def, &archives.lookup(def)?)
         .map_err(|e| e.to_string())?;
     let sprite = batch
         .sprite(def)
@@ -316,7 +311,7 @@ fn missile(
 pub fn magic(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
     every: bool,
 ) -> Result<BTreeMap<u8, MagicLook>, String> {
     let mut numbers = std::collections::BTreeSet::new();
@@ -464,7 +459,7 @@ pub fn magic(
 pub fn casts(
     record: &Record,
     tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
     packs: &Path,
     (every, bugs): (bool, Bugs),
 ) -> Result<Casts, String> {
@@ -677,7 +672,7 @@ pub fn casts(
             .ok_or_else(|| format!("the asset tables have no entry for `{key}`"))?;
         let mut batch = Batch::default();
         batch
-            .add(art.def, &lookup(archives, art.def)?)
+            .add(art.def, &archives.lookup(art.def)?)
             .map_err(|e| e.to_string())?;
         let sprite = batch
             .sprite(art.def)
@@ -765,10 +760,10 @@ pub fn spell_numbered_in<'t>(
 }
 
 /// A DEF's canvas (width, height) and the frames of its group 0.
-fn def_numbers(def: &str, archives: &[(&str, LodArchive<'_>)]) -> Result<([i32; 2], u32), String> {
+fn def_numbers(def: &str, archives: &Lods) -> Result<([i32; 2], u32), String> {
     let mut batch = Batch::default();
     batch
-        .add(def, &lookup(archives, def)?)
+        .add(def, &archives.lookup(def)?)
         .map_err(|e| e.to_string())?;
     let sprite = batch
         .sprite(def)

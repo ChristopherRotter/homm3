@@ -3,8 +3,8 @@
 Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, T3: the fresh
 reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
 **M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
-27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); next
-**M2 T3b** (`docs/lanes/client/QUEUE.md`).
+27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); **M2
+T3b done** (2026-11-14); next **M2 T4** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -319,7 +319,7 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T2 | The clips' sound (CLT-Q104): Bink's audio in `h3-bink`, Smacker's in `h3-smacker`, the floating point emulated as `h3-bink`'s inverse DCT; checked sample for sample against the DLLs under Wine where the harness reaches them (else against FFmpeg's, a `CLT-Q`); the samples into the window's audio | **done** 2026-11-14 (decisions 25 to 27; CLT-Q120, CLT-Q121): `h3_smacker::sound`, `h3_bink::audio` (Ooura's FFT, `fft`; `trig`), `h3_view::clip_sound`, `HostSound::play_clip`, `video` writing each clip's sound and `--play`; a stand-in Miles, `smackprobe audio`, `binkprobe sound`; every track the DLLs' byte for byte; log "M2 T2", design §8 |
 | T2b | The shell's Bink clips' video as `BINKW32.DLL`'s (found at T2, design §8.4): `h3-bink`'s frames of `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from the DLL's in the chroma (at most 3 levels at the first differences) while the battle's clips and the samples match; find the cause (a block type, a coding path or the DCT on these clips), fix it in `h3-bink`, every frame of the shell's Bink clips exact in `bink-check.sh` | **done** 2026-11-14 (decision 28; CLT-Q122): the decoding was right; the DLL's `BinkCopyToBuffer` copies only the cells its change mask marks, the chroma's misfiled: `h3_bink::Target`, `Decoder`'s mask, the samples' still cells, `Reading::Original` copied; every frame of the fourteen game clips and the samples the DLL's; log "M2 T2b", design §9 |
 | T3a | The shell's frame (CLT-Q103, decision 29): the screens' state machine and the menu loop's requests (design §2.2) in `h3-view`, the `h3-view shell` command with a headless driver (a text client first, E17's pattern); the dialogs' input (a DEF button's own loop, a box's and a bar's press and release, the right press's help) moved from `h3_view::options` into `h3-ui`, the combat options on it unchanged (decision 20) | **done** 2026-11-14: `h3_ui::input` (`Input`, `Held`, `Did`), `h3_view::options` on it (its tests unchanged); `h3_view::shell` (`Shell`, `Screen`, `Ended`, `Request`, `Choice`, `Kind`, `PlayEnd`; the switches of §2.2 to §2.4, §4.3, §5.3), `shell::text` (the words), `h3-view shell [--script] [--no-intro]`; log "M2 T3a" |
-| T3b | Start-up loading by the LODs' tables (CLT-Q2, decision 29): the archive set read by the tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), across `h3-battle-client`'s readers (`render`, `battle`, `sequences`, `text`, `gate`), `h3-view gate` measuring it (`lanes/client/NOTES.md`, "Assets and archives"); the four LODs staged | ready |
+| T3b | Start-up loading by the LODs' tables (CLT-Q2, decision 29): the archive set read by the tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), across `h3-battle-client`'s readers (`render`, `battle`, `sequences`, `text`, `gate`), `h3-view gate` measuring it (`lanes/client/NOTES.md`, "Assets and archives"); the four LODs staged | **done** 2026-11-14: `h3_battle_client::lods` (`Lod`, `Reader`, `Lods`: the tables from the heads, an entry by its range, a batch archive by archive in the ranges' order), every LOD reader of the crate on it; `h3-view gate`: the start 1.3 ms for the tables alone (1 250 KiB; 145 ms for the 212 MiB read whole before), a battle still's peak memory 243 → 28 MiB; log "M2 T3b" |
 | T4 | The comparison: `h3shell.py drawn` (the shell plays a recipe's inputs at its times; its frames compared with the original's shots, as `h3drive.py drawn`); h3shell's sound (h3drive's `sound`); TCP/IP's address masked in its digests (review item 8); the main menu's first shot exact | after T3a |
 | T5 | The start (design §2.1, §8.4): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); the clips' sound at the effects setting (decision 27) and a clip's end (§8.4); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) and `game_samples_load` read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24), every Bink clip's frame whole (decision 28; the comparisons through `h3_bink::Target`, what the game's buffer holds before a clip read, design §9) | after T4 |
 | T6 | The main menu, New Game's and Load Game's menus, Quit's question (§2.3 to §2.5): hover, press, release off, popups, hotkeys, `button.wav`, `MAINMENU.MP3`, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menus` with its sound | after T4 |
@@ -347,7 +347,13 @@ screen (`Refused`, the shell unchanged), the original's ids the discriminants of
 `Choice`; the lost and won screens and the High Scores after a won one in the frame; play's
 request of High Scores or Credits refused (no writer of them); `Show Intro` the only start
 setting; (12) the driver's words and the screens' names (`shell::text`), a script's refused word
-exit 1, each screen naming the task that builds it.
+exit 1, each screen naming the task that builds it. T3b: (13) the LOD set's shape
+(`h3_battle_client::lods`): paths and tables held, no file handle kept (a file opened per lookup
+and per archive of a batch, as `videos::Videos`); each head read up to `lod::MAX_TABLE_BYTES`
+(312 KiB an archive, as `h3-formats` advises) rather than the used table alone; an asset a
+checkpoint's batch lacks still loaded as it is drawn (`Battle::compose`, the cursors' DEFs), now a
+read of its range; `sprite` needs all four archives; (14) `h3_assets::archive::inventory` takes a
+`LodTable` (the common crate's one caller the gate).
 
 ## Dependencies and boundaries
 
