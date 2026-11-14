@@ -544,6 +544,118 @@
 //!   pikemen join free (level 1: ADV-HIR-001, no hire dialog); his revisit at 0 points asks the
 //!   question again, no flag (ADV-DWL-004), accepted: `NoneToRecruit`.
 //!
+//! **Garrisons** (E08 T116a, increment 12), on `fixtures/maps/e08-garrisons-36.h3m` (written by
+//! `h3_map::writer`; `fixtures/maps/README.md`): SoD, 36 × 36 of grass cut into four quarters by
+//! a row of rock (row 17) and a column of it (column 18), every way between two quarters a map
+//! garrison, each given by its entrance and its index among the map's objects (`m<index>` in a
+//! replay's management line): red's (5, 17), m0, with ten pikemen and five archers; blue's
+//! (13, 17), m1, with four griffins; a neutral anti-magic one (21, 17), m2, with twenty pikemen
+//! and four swordsmen; a neutral empty one (29, 17), m3; red's non-removable vertical one (18, 8),
+//! m4, with three griffins; blue's non-removable anti-magic vertical one (18, 26), m5, with three
+//! monks and six archers. Red's Orrin (hero 0; eight pikemen, four archers, two griffins) on
+//! (5, 16), Ingham (hero 1; ten archangels, 900 experience) on (21, 16), Edric (hero 2; one
+//! pikeman) on (13, 16), Sylvia (hero 3; three swordsmen) on (17, 8); blue's Rion (hero 4; five
+//! angels, 900 experience) on (5, 18), Adela (hero 5) on (13, 18), Cuthbert (hero 6) on (29, 18),
+//! Adelaide (hero 7) on (19, 26). Random play, recorded with `--map
+//! fixtures/maps/e08-garrisons-36.h3m --seed N --agent-seed N --days 28`: the three of a search
+//! over the seeds 1 to 1 500 (a scratch probe noting each game's battles at the six entrances and
+//! their results, the flags, the level-ups and the exchanges after a battle, the exchanges by a
+//! revisit and the passages; not committed: 197 games fight at red's garrison, 269 at blue's, 252
+//! at the neutral anti-magic one, 31 at red's vertical one, 35 at blue's; the empty one is
+//! captured in 212, passed through after its capture in 149, fought at with a hero standing in it
+//! in 1; 226 level up after a garrison's battle; random play closes every exchange) whose union
+//! meets 27 of the 34 features counted:
+//!
+//! - `garrisons-s1205-d28`: Adelaide wins red's garrison (5, 17) on day 6, flagged for blue; Ingham
+//!   wins the neutral anti-magic one (21, 17) on day 7, level 2, then the flag and the exchange;
+//!   Edric loses at blue's (13, 17) on day 25 and leaves the map, the garrison keeping its army;
+//!   Rion wins red's vertical one (18, 8) on day 26; exchanges by a revisit; passages through
+//!   (5, 17), (13, 17), (18, 8) and (18, 26).
+//! - `garrisons-s1468-d28`: Ingham wins blue's garrison (13, 17) on day 10, level 2, and blue's
+//!   anti-magic vertical one (18, 26) on day 19; Cuthbert loses at the neutral anti-magic one
+//!   (21, 17) on day 14; blue takes the empty one (29, 17) on day 23 and passes through it.
+//! - `garrisons-s169-d28`: blue takes the empty garrison (29, 17) on day 10; on day 11 Sylvia
+//!   attacks Cuthbert standing in it and wins (GAM-BAT-004); red takes it on day 17, its army
+//!   still empty.
+//!
+//! **Scripted** (E08 T116a: increment 12's design note §16's paths), on the same map, recorded with
+//! `h3 adventure run --map fixtures/maps/e08-garrisons-36.h3m --seed 1 --checkpoint-every 5
+//! --script <script> --record <replay>` (the moves from a scratch probe walking each hero with
+//! `legal_moves`' paths, the battles' commands from E23's `h3_battle_ai::choose` for both sides;
+//! not committed); each ends with both players' turns. A refused exchange command cannot stand in
+//! a replay (`Replay::record_commands` stops at it): the one owner rule's refusals are
+//! `h3-adventure`'s and `h3-game`'s garrison tests.
+//!
+//! - `garrisons-exchange-s1`: Orrin onto red's garrison (5, 17): the exchange (ADV-GAR-002,
+//!   GAM-DEC-009); his griffins into its empty slot, four of its pikemen split onto his empty slot,
+//!   its archers onto his (merged), his pikemen onto its (merged), its griffins back, its pikemen
+//!   dismissed (ADV-GAR-003, GAM-MAN-001); closed. Sylvia onto red's non-removable (18, 8): two of
+//!   her three swordsmen split into its empty slot, all the one owner rule leaves there (D-61);
+//!   closed; her revisit opens the exchange again (ADV-TEL-008).
+//! - `garrisons-won-s1`: Ingham onto the neutral anti-magic garrison (21, 17): the battle at once,
+//!   no question, against unowned guards, without casts (ADV-GAR-002, ADV-GAR-005); won, level 2
+//!   answered with the first offer, then the flag for red and the exchange (GAM-DEC-007): three
+//!   archangels into it. Rion onto red's garrison (5, 17): its army defends as red's side, which
+//!   red plays outside its turn; won, level 2, the flag for blue (`GarrisonChanged` to both,
+//!   ADV-GAR-006), the exchange.
+//! - `garrisons-lost-s1`: Edric with one pikeman onto blue's garrison (13, 17): the battle lost to
+//!   its four griffins; Edric leaves the map, the garrison keeps its army and its owner.
+//! - `garrisons-passage-s1`: Orrin through red's garrison (5, 17) in one move to (5, 20), no visit
+//!   (ADV-GAR-004); Cuthbert onto the neutral empty garrison (29, 17): flagged for blue without a
+//!   battle, the exchange, one of his creatures into it; Adela through blue's (13, 17) to (13, 14).
+//!
+//! **Bonuses** (E08 T116a, increment 12), on `fixtures/maps/e08-bonuses-36.h3m` (written by
+//! `h3_map::writer`): SoD, 36 × 36 of grass with a strait on columns 24 to 29; in red's half the
+//! Stables (8, 4), a Magic Spring (its entrances (4, 10) and (5, 10)), a Fountain of Fortune
+//! (14, 3), the Idol of Fortune (17, 6), the Temple (visited on (11, 9)), the Swan Pond (on
+//! (17, 12)), the Faerie Ring (on (9, 14)) and the Oasis (on (20, 15), (21, 15)); in blue's half a
+//! Magic Spring ((4, 26), (5, 26)), a Fountain of Fortune (14, 32), the Fountain of Youth
+//! (10, 22), the Magic Well (17, 24), the Rally Flag (12, 28) and the Watering Hole (on its four
+//! tiles (18, 31) to (21, 31)); on the strait the Buoy (27, 3), the Sirens and the Mermaids
+//! (visited on (26, 9) and (26, 22) from beside or below), six savage pikemen on the water
+//! (27, 14); empty boats on (24, 6) and (24, 28). Red's Orrin (hero 0; twenty pikemen, ten
+//! archers, five swordsmen) on (23, 6) by red's boat, Valeska (hero 1) on (8, 5) below the
+//! Stables, Edric (hero 2; five Cavaliers, ten pikemen) on (9, 5), Sorsha (hero 3) on (6, 11) and
+//! Christian (hero 4) on (3, 11) by the first Spring; blue's Rion (hero 5) on (23, 28) by blue's
+//! boat, Adela (hero 6) on (6, 27), Cuthbert (hero 7) on (16, 25). Random play, recorded with
+//! `--map fixtures/maps/e08-bonuses-36.h3m --seed N --agent-seed N --days 28`: the three of a
+//! search over the seeds 1 to 2 000 (a scratch probe noting each game's kind marks, once-marks by
+//! mark and amount and their clears, timed marks, `NothingGained` by type and reason, the Sirens'
+//! losses, the Stables' upgrades and the battles at sea; not committed: of the first 600 games 2
+//! visit the Mermaids, 3 the Buoy, 6 the Sirens, 34 upgrade at the Stables, 2 fill a hero at a
+//! Well)
+//! whose union meets every class but the Mermaids (the scripted ones hold the Sirens' paths):
+//!
+//! - `bonuses-s501-d28`: Christian's Fountain of Youth (day 19), Valeska's Idol (luck, day 15) and
+//!   a Fountain of Fortune's −1 (day 16), Rion's Oasis (day 13) and Watering Hole (day 28), Adela's
+//!   Temple (day 22), Cuthbert's Swan Pond (day 27); a Spring's fill and an emptied entrance; the
+//!   Well at a full hero.
+//! - `bonuses-s61-d28`: Rion's Rally Flag (day 10) and Watering Hole (day 17); Edric's Cavaliers
+//!   upgraded at the Stables (day 23), the week mark set and dropped; Sorsha at sea: the Buoy (day
+//!   22), the Sirens' losses (day 26), then the pikemen at sea won (day 27), both marks cleared.
+//! - `bonuses-s348-d28`: on day 4 Orrin's Faerie Ring, Sorsha's Temple and Christian's Idol
+//!   (morale on an even day); Cuthbert's Rally Flag (day 7), Valeska's Temple on a week's seventh
+//!   day (morale 2, day 14), Edric's Fountain of Fortune's +3 (day 26); marks cleared by battles.
+//!
+//! **Scripted** (E08 T116a), on the same map, recorded as the garrisons' (`--profile
+//! base:strict-fixed` for the strict replay):
+//!
+//! - `bonuses-sirens-s1`: Orrin boards on day 1; on day 2 he visits the Sirens from (25, 10): each
+//!   stack above one creature keeps trunc(count × 0.7), 20, 10 and 5 to 14, 7 and 3 (ADV-BON-008),
+//!   the losses' 160 hit points as experience, the mark; again: `NothingGained`, visited. He fights
+//!   the pikemen from (26, 13) and wins: the battle's end clears the mark (`ADV-QUIRK-46` on,
+//!   GAM-BAT-014), so his visit from (26, 10) loses again, to 9, 4 and 2.
+//! - `bonuses-sirens-strict-s1` (`base:strict-fixed`): the same commands; the battle keeps the
+//!   mark (`ADV-QUIRK-46` off), so the last visit gives nothing.
+//! - `bonuses-spring-s1`: Sorsha onto the first Spring's (5, 10): her spell points to twice her
+//!   maximum, 20, the entrance emptied (ADV-BON-007), the kind mark (ADV-BON-009); onto (4, 10):
+//!   nothing, full; Christian onto (5, 10): nothing, emptied; onto (4, 10): 20; both players end
+//!   their turns to day 8, whose week's step refills both entrances: Edric onto (5, 10): 20.
+//! - `bonuses-stables-s1`: Valeska onto the Stables (8, 4): 400 to her points and her maximum, the
+//!   week mark (ADV-BON-005, HER-ADV-003), nothing to upgrade; she meets Edric and takes his five
+//!   Cavaliers; her revisit upgrades them to Champions, no points (D-63); again: nothing; day 2's
+//!   maximum 400 more (the week mark); on day 8 the mark gone, her revisit gives the 400 again.
+//!
 //! **Builds** (E09 T19a, the town lane's increment 2: design note `docs/epics/E09-design.md`
 //! §32's), on `fixtures/maps/e09-builds-36.h3m` (written by `h3_map::writer`;
 //! `fixtures/maps/README.md`): red (Castle) and blue (Conflux); red's Orrin (hero 0, ten pikemen) on
@@ -610,7 +722,7 @@ fn golden_adventure_replays_reproduce_their_hashes() {
         .collect();
     files.sort();
     assert!(
-        files.len() >= 69,
+        files.len() >= 86,
         "expected the E08 and E09 replay fixtures in {}",
         dir.display()
     );

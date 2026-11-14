@@ -60,7 +60,7 @@ pub(crate) struct StartClock {
     pub turn_ms: Option<u64>,
     /// A level-up's time; none: the game waits for it.
     pub level_up_ms: Option<u64>,
-    /// Each side's time at a battle's start between two players' heroes.
+    /// Each side's time at a battle's start between two players' sides.
     pub battle_ms: u64,
     /// What a side gains after each of its battle commands there.
     pub increment_ms: u64,

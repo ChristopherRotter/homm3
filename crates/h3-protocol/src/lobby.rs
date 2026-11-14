@@ -205,6 +205,7 @@ impl<O: Ord> Lobby<O> {
         let info = MapGameInfo {
             game,
             offer: found.id.clone(),
+            clock: found.clock,
             phase: Phase::Waiting,
             open: (0..=u8::MAX).take(found.players.len()).collect(),
             seated: Vec::new(),

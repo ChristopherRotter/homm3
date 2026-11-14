@@ -1,5 +1,5 @@
 //! What a player sees of a whole game's clock (E16 M5 T16, v58; SRV-Q31, SRV-Q32): its own
-//! turn's timer, the chess clocks of its battle against another player's hero, its level-up's
+//! turn's timer, the chess clocks of its battle against another player's side, its level-up's
 //! time, and whether the game waits for another player's level-up (never whose, nor its offers).
 //! Each time is what was left when the message was sent; a running one counts down from there on
 //! the client's own clock.
@@ -19,10 +19,10 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct GameClock {
     /// Its turn's timer, while its turn runs under a limited duration: stopped while a level-up
-    /// holds the game and while it fights another player's hero; at 0 the server ends its turn
+    /// holds the game and while it fights another player's side; at 0 the server ends its turn
     /// (its decisions answered by their defaults, its battle played by the computer).
     pub turn: Option<Timer>,
-    /// The chess clocks of its battle against another player's hero, under a limited duration:
+    /// The chess clocks of its battle against another player's side, under a limited duration:
     /// the side to act's runs; a side at 0 is the computer's for the rest of the battle.
     pub battle: Option<Duel>,
     /// Its own level-up's time while it holds the game, if the game limits it: at 0 the server
@@ -63,7 +63,7 @@ pub struct OfferClock {
     pub turn_ms: Option<u32>,
     /// A level-up's time while it holds the game; `None`: the game waits for it.
     pub level_up_ms: Option<u32>,
-    /// Each side's time at the start of a battle between two players' heroes, under a limited
+    /// Each side's time at the start of a battle between two players' sides, under a limited
     /// turn duration.
     pub battle_ms: u32,
     /// The time a side gains after each of its battle commands there.

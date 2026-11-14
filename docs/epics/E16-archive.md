@@ -2,6 +2,101 @@
 
 Moved out of `E16-server.md` on 2026-10-24, verbatim, so that the epic file holds the goals, the decisions, the milestone outline, the autonomy contract and the risks. Order as in the epic: task lists, exit criteria, review lists.
 
+## M5 part 2b (refined 2026-11-13, SRV-Q31; closed 2026-11-14, SRV-Q34)
+
+The increment's scope and the user's decisions as the epic's "M5 part 2" held them, then its tasks, verbatim.
+
+- **2b Time** (refined 2026-11-13, SRV-Q31): `h3-game`'s trusted system commands, **built by the
+  server lane** in a `cross-lane` pull request (ADR-0017 point 2: a player's turn ended, a
+  player's open decision answered with `h3_game::default_answer`, the level-up past its hold
+  included; amended there so the system actor also plays a timed-out player's battle side); the
+  turn timers; the level-up hold online; a seat's commands per turn bounded (2a's reviewer,
+  SRV-Q30). **The user's decisions** (SRV-Q31):
+  - **The clock is the original's turn duration:** one per map offer, one of the original's
+    eleven (1, 2, 4, 6, 8, 10, 15, 20, 25, 30 minutes, unlimited; `turn_duration_texts`), not a
+    chess clock (a later offer option at most). At its end the server ends the player's turn:
+    each open decision answered by its default, a battle played out (below), then the turn ended,
+    every step a journaled command of the system actor.
+  - **A battle does not stop the clock:** the turn's timer runs on in a battle; at its end the
+    server's computer plays the player's side for the rest of the battle (`choose_fair`), then
+    the turn ends. **A battle between two players' heroes runs a chess timer:** each side its own
+    clock, the side to act's running; a side whose clock runs out is played by the computer for
+    the rest of the battle (each side's allowance, and the attacker's turn timer meanwhile,
+    settled in T16 and confirmed there by the user: SRV-Q32, Fischer's base and increment, the
+    attacker's turn timer stopped meanwhile). T15's survey found the original stopping the
+    turn's timer for every battle, with no battle clock; the user kept this decision (SRV-Q33).
+  - **A disconnected player has the turn timer only:** no grace or total of its own (SRV-Q19's
+    stay the ranked battles'); its turn runs out as anyone's, its battle sides are played by
+    the computer when its time does; an unlimited duration waits for it (the host's pause and the
+    sweep as in 2a). No player is removed (part 2).
+  - **The level-up hold:** the owner's time an offer's setting (60 s by default, kept after
+    T15's survey: SRV-Q33), then `default_answer`; the waiting players'
+    timers stopped meanwhile; the others learn only that the game waits.
+
+**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged; T14 to T19 done):
+
+- **T14 The system commands** done 2026-11-13 (`E16-log.md`: `GameCommand::System(SystemCommand)`,
+  GAM-SYS-001 to GAM-SYS-003, ADR-0017 point 2 amended; replay format v14, protocol v56).
+- **T15 The survey of the original's turn timer** done 2026-11-13 (`E16-log.md`;
+  `docs/epics/E16-timer-survey.md`: the original stops the turn's timer for every battle, the
+  level-up's dialog has the turn's time or 15 s, a two-picture box at the end is answered at
+  random; SRV-Q33: the user kept SRV-Q31, the 60 s and `default_answer` as built).
+- **T16 The clock in the session** done 2026-11-13 (`E16-log.md`: `GameSession::elapse` and
+  `deadline`, `GameOptions::clock`, the turn's timer, the level-up's time, the chess clocks
+  (SRV-Q32), the system's steps at an end, `GameEntry::Elapsed`; protocol v58 `GameClock`).
+- **T17 The clock hosted** done 2026-11-14 (`E16-log.md`: `[[map]] turn_minutes`, `level_up_ms`,
+  `battle_ms`, `battle_increment_ms`; the offer's clock in the lobby, protocol v60 `OfferClock`,
+  and in the journal's first line; the game's thread waking at `GameSession::deadline`, a stop
+  journaling its time, `GameSession::flush_time`; `tests/clock.rs`).
+- **T18 A seat's commands bounded** done 2026-11-14 (`E16-log.md`: `[limits] commands_per_turn`,
+  a seat's map commands in a turn, beyond them `TurnLimit`; `commands_per_battle`, the user's
+  own counter per battle, beyond it the computer plays the side; `CommandBounds` in
+  `GameOptions`, `cross-lane`; protocol v62, after the adventure lane's T115b took v61).
+- **T19 2b's closure** done 2026-11-14 (`E16-log.md`): the end-to-end test (`tests/clock.rs`: a
+  golden replay's opening through a turn run out, a battle between players under the chess
+  clocks, two held level-ups and two restarts, to the golden replay's state),
+  `docs/06-security.md` (cross-lane), the reviewer agent (no major finding; findings 1, 2, 4 and
+  the nits fixed, protocol v63), the user's checkpoint SRV-Q34.
+
+## Review list for the M5 2b checkpoint (passed 2026-11-14, SRV-Q34)
+
+**Review list for the 2b checkpoint** (the choices queued under the autonomy contract, filled as
+the tasks land):
+
+- T14: the system's own commands are not among `legal_commands(Actor::System)` (the env's
+  neutral seat draws from it; the host issues them by its clock); their text form `system for
+  <player> end-turn|answer default|battle <command>`; the whole game's journal format left at 1
+  (the user's call at T14's start).
+- T16: the defaults (a level-up 60 s, a battle 3 min and 10 s a command; `Clock::UNLIMITED`
+  for an in-process host and, until T17's offers, the server's); the time journaled at the
+  latest every 15 s (`ELAPSED_EVERY_MS`: a crash gives the running timers back at most that) and
+  before every accepted command when time counted (an `elapsed` line per command in a timed
+  game: 2c measures the journals); the whole game's journal format left at 1 again (the new
+  `elapsed` line is additive); a player told only its own timers and that the game waits (not
+  whose); `GameClock` after a command's other messages and after every snapshot that leaves
+  something to tell, not at every count; the increment after every accepted battle command of
+  the side (a hero's cast too), none for a side run out; the chess clocks stopped too while a
+  level-up holds the game; the level-up's time restarted after each command the hold admits;
+  without a computer (in-process) a timed-out side Defends; no rule ids for the clock (the
+  host's policy, outside the state; tested in `tests/game_clock.rs`).
+- T17: the configuration (`turn_minutes`, absent for unlimited, one of the original's ten;
+  `level_up_ms`, 0 for a game that waits, 60 s by default also under unlimited turns; `battle_ms`,
+  not 0, and `battle_increment_ms`); the offer's clock shown in the lobby (`OfferClock`, v60,
+  milliseconds as 32 bits); a game's clock fixed at its creation, in its journal's first line (a
+  journal without one untimed, the format left at 1); the game's thread timed by a
+  current-thread tokio runtime of its own (`timeout_at` on its inbox), the sweep's tick reading
+  the clock too; a stop journaling the time up to it (`flush_time`; a crash still gives back up to
+  15 s), its due steps taken and told to nobody; a test's clock in place of the configured one
+  (`config::MapOffer::test_clock`, as the seeds).
+- T18: the defaults (1 000 map commands a turn, 4 000 commands a battle; measured at most 26 and
+  348 on the golden replays, 16 and 361 on the XL fixtures); the commands a turn counts (an
+  adventure's, a management one, a town's; ending the turn, answers and battle commands never),
+  each turn by its day; a battle's count by its identity, dropped once it is no longer the
+  player's open one; the bounds' rejections the session's own (`TurnLimit`, `BattleLimit`),
+  checked before the engine's; `GameTurn` leaving out what a bound refuses; nothing journaled
+  (a restore counts again; a restart's `[limits]` apply to its restored games); in-process
+  `CommandBounds::NONE`.
+
 ## M5 part 2a (refined 2026-11-12, SRV-Q29; closed 2026-11-13, SRV-Q30)
 
 The increment's scope as the epic's "M5 part 2" held it, then its tasks, verbatim.

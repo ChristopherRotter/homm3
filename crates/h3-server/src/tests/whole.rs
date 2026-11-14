@@ -274,9 +274,11 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         panic!("{created:?}")
     };
     let t0 = game_joined(&mut a, game, 0).await;
+    // Listed with its own clock, the offer's at its creation (E16 M5 T19).
     let waiting = MapGameInfo {
         game,
         offer: String::from("duel-map"),
+        clock: maps[0].clock,
         phase: Phase::Waiting,
         open: vec![1],
         seated: vec![],
@@ -363,13 +365,25 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         client.close().await;
     }
     running.shutdown().await;
-    let again = start(&config).await.unwrap();
+    // The operator times the offer otherwise meanwhile: the game keeps its own clock, and the lobby
+    // shows each (E16 M5 T19, the 2b reviewer's).
+    let retimed = Config {
+        maps: vec![config::MapOffer {
+            turn_minutes: Some(4),
+            ..duel_map()
+        }],
+        ..config.clone()
+    };
+    let again = start(&retimed).await.unwrap();
     let restored = MapGameInfo {
         phase: Phase::Running,
         open: vec![],
         ..waiting
     };
-    assert_eq!(map_listed(&again).await.1, [restored]);
+    let (maps, games) = map_listed(&again).await;
+    assert_eq!(games, [restored]);
+    assert_eq!(maps[0].clock.turn_ms, Some(240_000));
+    assert_eq!(games[0].clock.turn_ms, None);
     // Its seats re-taken with their tokens, the numbers kept: the first player's resend is answered
     // as the first time, the second player acts.
     let mut b = greeted(&again).await;

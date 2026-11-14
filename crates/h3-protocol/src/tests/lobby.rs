@@ -292,9 +292,11 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     assert_eq!(lobby.create_map(1, "duel", 0), Ok((1, 0)));
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((2, 0)));
     assert_eq!(lobby.create_map(2, "duel", 1), Ok((3, 0)), "one id space");
+    // Each with its offer's clock at its creation (E16 M5 T19).
     let waiting = |game| MapGameInfo {
         game,
         offer: "duel".to_string(),
+        clock: offer_clock(&Clock::UNLIMITED),
         phase: Phase::Waiting,
         open: vec![0, 1],
         seated: vec![],
@@ -332,12 +334,18 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     assert_eq!((lobby.in_play(), lobby.to_end()), (2, 1));
     lobby.remove(1);
     assert_eq!(map_games(&lobby).len(), 1);
-    // A restored whole game is listed again, the ids handed out after it higher (E16 M5 T9b).
+    // A restored whole game is listed again, the ids handed out after it higher (E16 M5 T9b),
+    // with its own clock, whatever the offer's is now (T19).
     let restored = MapGameInfo {
+        clock: offer_clock(&Clock {
+            turn_ms: Some(60_000),
+            ..Clock::UNLIMITED
+        }),
         phase: Phase::Running,
         open: vec![],
         ..waiting(7)
     };
+    assert_ne!(restored.clock, waiting(7).clock);
     lobby.reopen_map(2, restored.clone());
     assert_eq!(map_games(&lobby)[1..], [restored]);
     assert_eq!(lobby.create_map(2, "duel", 0), Ok((8, 0)));

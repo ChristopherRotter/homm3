@@ -1,0 +1,72 @@
+commands = [
+    "0 move 3 5,10,0",
+    "0 move 3 4,10,0",
+    "0 move 3 5,11,0 6,10,0 6,9,0",
+    "0 move 4 4,11,0 5,10,0",
+    "0 move 4 4,10,0",
+    "0 move 4 3,10,0 3,9,0",
+    "0 move 2 9,6,0 9,7,0 9,8,0 8,9,0 7,10,0 6,11,0",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 end-turn",
+    "1 end-turn",
+    "0 move 2 5,10,0",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = [
+    "0x7c6555cdfde4161c",
+    "0x583525651ea4a976",
+    "0x8530ed78703b1877",
+    "0x3694e6c77d94e8fb",
+]
+
+[replay]
+format = 15
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xb5c01c8736eb73f9"
+adventure_ruleset_hash = "0x505f48af68ec73ca"
+town_ruleset_hash = "0x4ded73a0d357e245"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 32
+adventure_state_hash_version = 24
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-bonuses-36.h3m"
+hash = "0x25a3fac98e5682f3"
+import_version = 23
+
+[result]
+day = 9
+final_hash = "0x54cfcc6eef72e8c7"

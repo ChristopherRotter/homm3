@@ -5,15 +5,16 @@
 //! - **A turn's timer** per player, the map offer's turn duration ([`Clock::turn_ms`], one of the
 //!   original's eleven), started afresh at each of the player's turns. It runs while the game runs
 //!   (started, not paused), the player's turn is running, no level-up holds the game and the
-//!   player does not fight another player's hero; a battle against a monster or a garrison does
-//!   not stop it. At its end the server ends the turn: each open decision answered by its default,
+//!   player does not fight another player's side; a battle against a monster or a neutral
+//!   garrison does not stop it. At its end the server ends the turn: each open decision answered by its default,
 //!   a battle played out by the computer for the player's side, then the turn ended, every step
 //!   the system actor's command (`h3_game::SystemCommand`), journaled.
 //! - **The level-up's time** ([`Clock::level_up_ms`]): while a level-up holds the game
 //!   (`h3_game::GameState::waiting_for`), every other timer stops and the owner's time runs,
 //!   started afresh at each command the hold admits (each answers a level-up); at its end the
 //!   system answers it by its default.
-//! - **The chess clocks** of a battle between two players' heroes, under a limited turn
+//! - **The chess clocks** of a battle between two players' sides (both sides owned: two heroes,
+//!   or a hero and a player's garrison without one, E16 M5 T19), under a limited turn
 //!   duration (the user, SRV-Q32: Fischer's): each side starts at [`Allowance::base_ms`] and
 //!   gains [`Allowance::increment_ms`] after each of its accepted battle commands; only the side
 //!   to act's runs; a side whose clock runs out is the computer's for the rest of the battle (no
@@ -49,7 +50,7 @@ pub struct Clock {
     /// The time a level-up's owner has while it holds the game, an offer's setting; `None`: the
     /// game waits for it.
     pub level_up_ms: Option<u64>,
-    /// Each side's allowance in a battle between two players' heroes, under a limited turn
+    /// Each side's allowance in a battle between two players' sides, under a limited turn
     /// duration.
     pub battle: Allowance,
 }
@@ -67,7 +68,7 @@ impl Clock {
     pub const DEFAULT_LEVEL_UP_MS: u64 = 60_000;
 }
 
-/// A side's chess clock in a battle between two players' heroes (SRV-Q32, Fischer's).
+/// A side's chess clock in a battle between two players' sides (SRV-Q32, Fischer's).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Allowance {
     /// The time each side starts the battle with.
@@ -111,7 +112,7 @@ pub(super) struct Timers {
     turns: Vec<TurnTimer>,
     /// The time the level-up the game waits for used.
     hold: u64,
-    /// The open battles between two players' heroes.
+    /// The open battles between two players' sides.
     duels: Vec<DuelClocks>,
     /// The host's clock the timers stand at: none before its first reading.
     pub(super) at: Option<u64>,
@@ -326,7 +327,7 @@ pub(super) fn same(old: &GameClock, then: u64, new: &GameClock, now: u64) -> boo
             .all(|(old, new)| timer(old, new))
 }
 
-/// The open battles between two players' heroes, each by its key, in the players' order.
+/// The open battles between two players' sides, each by its key, in the players' order.
 fn duels(state: &GameState) -> Vec<(BattleKey, &OpenBattle)> {
     let mut duels: Vec<(BattleKey, &OpenBattle)> = Vec::new();
     for player in players().take(state.players()) {
@@ -347,12 +348,12 @@ fn battle(state: &GameState, key: BattleKey) -> Option<&OpenBattle> {
         .find_map(|(k, battle)| (k == key).then_some(battle))
 }
 
-/// Whether `battle` is between two players' heroes.
+/// Whether `battle` is between two players' sides.
 fn is_duel(battle: &OpenBattle) -> bool {
     battle.owners().iter().all(Option::is_some)
 }
 
-/// Whether `player`'s battle is against another player's hero.
+/// Whether `player`'s battle is against another player's side.
 fn in_duel(state: &GameState, player: PlayerId) -> bool {
     state.battle(player).is_some_and(is_duel)
 }
