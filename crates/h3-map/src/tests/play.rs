@@ -135,8 +135,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// weekly objects and gremlins that never grow. Then (E08 T96b1, increment 10's design note §14)
 /// increment 10's kinds ([`DWELLINGS`]): six dwellings, the three random dwellings and the Refugee
 /// Camp. Then (E08 T106b1, increment 11's design note §14) increment 11's kinds ([`TELEPORTERS`]):
-/// the monoliths of two channels, the Subterranean Gate and the Whirlpool.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 103] = [
+/// the monoliths of two channels, the Subterranean Gate and the Whirlpool. Then (E08 T116b1,
+/// increment 12's design note §16) the map garrisons ([`GARRISONS`]).
+pub(super) const KINDS: [(u32, u32, Option<u32>); 107] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -240,6 +241,10 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 103] = [
     (45, 1, None),
     (103, 0, None),
     (111, 0, None),
+    (33, 0, None),
+    (33, 1, None),
+    (219, 0, None),
+    (219, 1, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -372,6 +377,23 @@ const LAND_TELEPORTERS: [usize; 6] = [
 /// The Whirlpool's object, the last of [`TELEPORTER_OBJECTS`].
 pub(super) const WHIRLPOOL_OBJECT: usize = TELEPORTER_OBJECTS[6];
 
+/// Increment 12's map garrisons in [`KINDS`] (E08 T116b1, increment 12's design note §16): the
+/// first of them, and how many. In order: the horizontal garrison (33.0), its anti-magic twin
+/// (33.1; ADV-GAR-005), and AB's vertical ones (219.0, 219.1), which an RoE map lays out as the
+/// horizontal ones of the same subclass ([`garrisons_laid_out`]: RoE has no class 219). Each takes
+/// its body from the plan's [`GarrisonPlan`] (owner, army, removable flag; ADV-GAR-001).
+pub(super) const GARRISONS: (usize, usize) = (103, 4);
+/// The garrisons' objects, by kind (one shape each: [`masks`] gives a horizontal garrison the
+/// original's three tiles of its row, entered from the middle one, one left of the anchor, and a
+/// vertical one three tiles of its column, entered from the middle one, one above the anchor:
+/// `garrisons_map.rs`' templates).
+pub(super) const GARRISON_OBJECTS: [usize; 4] = [
+    BLOCKERS.len() * GARRISONS.0,
+    BLOCKERS.len() * (GARRISONS.0 + 1),
+    BLOCKERS.len() * (GARRISONS.0 + 2),
+    BLOCKERS.len() * (GARRISONS.0 + 3),
+];
+
 /// Whether an object of kind `kind` is ownable, its owner at load from the plan's
 /// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
 /// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
@@ -454,12 +476,16 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// monolith's one tile, a Subterranean Gate's anchor, the two tiles left of it and the one above
 /// the middle one, visited on the middle one (the original's template, `teleporters_map.rs`), and
 /// a Whirlpool's anchor and the tile above it, both visited (the original's covers three columns
-/// of two rows: one column fits the plans' narrowest strait).
+/// of two rows: one column fits the plans' narrowest strait); (E08 T116b1) a horizontal garrison's
+/// three tiles of its row, visited on the middle one, a vertical one's three of its column,
+/// visited on the middle one (the original's templates).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     match KINDS[object / BLOCKERS.len()].0 {
         54 | 26 | 8 | 29 | 82 | 86 | 59 | 43 | 44 | 45 => (&[(0, 0)], &[(0, 0)]),
         103 => (&[(0, 0), (1, 0), (2, 0), (1, 1)], &[(1, 0)]),
         111 => (&[(0, 0), (0, 1)], &[(0, 0), (0, 1)]),
+        33 => (&[(0, 0), (1, 0), (2, 0)], &[(1, 0)]),
+        219 => (&[(0, 0), (0, 1), (0, 2)], &[(0, 1)]),
         21 | 46 | 225 => (&[], &[]),
         _ => BLOCKERS[object % BLOCKERS.len()],
     }
@@ -802,6 +828,40 @@ pub(super) struct Plan {
     /// anchor (modulo the map) and object ([`TELEPORTER_OBJECTS`]), laid out after every other
     /// object but the towns and the boats ([`teleporters_laid_out`]).
     pub(super) teleporters: Vec<(Spot, usize)>,
+    /// (E08 T116b1; increment 12's design note §16) The map garrisons ([`GarrisonPlan`],
+    /// [`garrisons`]), laid out after the teleporters ([`garrisons_laid_out`]).
+    pub(super) garrisons: Vec<GarrisonPlan>,
+}
+
+/// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
+/// stands, of which kind, and its body as the map stores it.
+#[derive(Debug, Clone)]
+pub(super) struct GarrisonPlan {
+    /// Its entrance's offset from a hero's tile, two columns and rows left of it to two right and
+    /// below, on the hero's level, and the hero (modulo the plan's): random play crosses, visits
+    /// and fights it.
+    pub(super) at: ((u8, u8), u8),
+    /// Its kind, an index into [`GARRISON_OBJECTS`] (modulo).
+    pub(super) kind: u8,
+    /// Its owner at load ([`GarrisonOwner`]).
+    pub(super) owner: GarrisonOwner,
+    /// Its seven slots as creature code and count: a count of 0 is an empty slot at the import,
+    /// so a garrison of none but those is empty (ADV-GAR-001).
+    pub(super) army: Vec<Option<(u16, u16)>>,
+    /// Whether its owner may take its troops back (ADV-GAR-003; AB and SoD only: an RoE map's
+    /// garrisons are all removable).
+    pub(super) removable: bool,
+}
+
+/// A plan's garrison's owner at load (E08 T116b1).
+#[derive(Debug, Clone, Copy)]
+pub(super) enum GarrisonOwner {
+    /// The owner of the hero it stands near: its passage and its exchange.
+    Near,
+    /// A playing colour by its index (modulo the players).
+    Player(u8),
+    /// None: a neutral garrison.
+    Neutral,
 }
 
 /// A plan's town (E09 T9b1; the town epic's design note §18), laid out as the import's tests
@@ -1072,6 +1132,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 towns(),
                 // E08 T106b1, drawn last for the same reason.
                 teleporters(),
+                // E08 T116b1, drawn last for the same reason.
+                garrisons(),
             ),
         ),
     )
@@ -1105,6 +1167,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         dwellings,
                         towns,
                         teleporters,
+                        garrisons,
                     ),
                 ),
             )| {
@@ -1299,9 +1362,56 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     owners: economy.owners,
                     towns,
                     teleporters: teleported,
+                    garrisons,
                 }
             },
         )
+}
+
+/// A plan's map garrisons (E08 T116b1; increment 12's design note §16): in three plans of five
+/// one to three, each near a hero ([`GarrisonPlan::at`]), of any kind, owned by the hero's owner,
+/// another colour or none in about equal parts, empty in one case of five, else holding a few
+/// level-1 creatures (counts of 0 among them: empty slots) that most heroes beat or, in one case
+/// of four of those, twenty to forty Skeletons that most heroes lose to; removable in two cases
+/// of three.
+fn garrisons() -> impl Strategy<Value = Vec<GarrisonPlan>> {
+    let weak = vec(
+        proptest::option::weighted(0.35, (proptest::sample::select(&LEVEL_1[..]), 0u16..=8)),
+        7,
+    );
+    let strong = (20u16..=40, 0usize..7).prop_map(|(count, slot)| {
+        let mut army = vec![None; 7];
+        army[slot] = Some((56, count));
+        army
+    });
+    let army = prop_oneof![
+        1 => Just(vec![None; 7]),
+        3 => weak,
+        1 => strong,
+    ];
+    let owner = prop_oneof![
+        Just(GarrisonOwner::Near),
+        any::<u8>().prop_map(GarrisonOwner::Player),
+        Just(GarrisonOwner::Neutral),
+    ];
+    let garrison = (
+        ((0u8..5, 0u8..5), any::<u8>()),
+        0u8..4,
+        owner,
+        army,
+        proptest::bool::weighted(2.0 / 3.0),
+    )
+        .prop_map(|(at, kind, owner, army, removable)| GarrisonPlan {
+            at,
+            kind,
+            owner,
+            army,
+            removable,
+        });
+    prop_oneof![
+        2 => Just(Vec::new()),
+        3 => vec(garrison, 1..=3),
+    ]
 }
 
 /// A teleporter near a hero ([`Teleporters::near`]): its offset from the hero's tile, the hero, the
@@ -1648,8 +1758,9 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         .and_then(|e| e.full.as_ref())
         .map(|_| MONSTER_OBJECTS[0]);
     let used = plan.blockers.iter().map(|&(_, o)| o).chain(goblins);
-    // E08 T106b1: the teleporters' too.
+    // E08 T106b1: the teleporters' too; (E08 T116b1) the garrisons'.
     let used = used.chain(plan.teleporters.iter().map(|&(_, o)| o));
+    let used = used.chain(plan.garrisons.iter().map(|g| garrison_object(g, v)));
     let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
@@ -1819,6 +1930,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     let owners: Vec<u8> = (0..heroes.len())
         .map(|i| colours[if Some(i) == mate { 0 } else { i } % colours.len()])
         .collect();
+    garrisons_laid_out(&mut m, plan, &heroes, &owners, &mut covered);
     towns_laid_out(&mut m, plan, &heroes, &owners, &mut covered);
     boats_laid_out(&mut m, &boats, &mut covered);
     // E08 T42: the hero with Nomads (AB and SoD know the creature).
@@ -1966,6 +2078,86 @@ fn teleporters_laid_out(
         o.pos.z = az;
         m.objects.push(o);
         covered.extend(blocks.into_iter().chain(visits));
+    }
+}
+
+/// The object of the plan's garrison `g` on a map of version `v` (E08 T116b1): its kind's of
+/// [`GARRISON_OBJECTS`], on an RoE map a vertical one's horizontal twin of its subclass.
+fn garrison_object(g: &GarrisonPlan, v: Version) -> usize {
+    let kind = usize::from(g.kind) % GARRISON_OBJECTS.len();
+    GARRISON_OBJECTS[if v == Version::RoE { kind % 2 } else { kind }]
+}
+
+/// The plan's map garrisons laid out after its teleporters (E08 T116b1; [`GarrisonPlan`]), each
+/// where the import builds it: its anchor one right of a horizontal one's entrance or one below a
+/// vertical one's, on the map; its entrance on land (an ownable object entered from water is
+/// refused, `Unsupported::OwnedOnWater`, ADV-OWN-002; one on rock is never reached); none of its
+/// tiles a hero's (a hero standing in a garrison at load is no case of the plans) or one an object
+/// laid out before blocks or is visited on (`covered`, which takes its tiles); on an RoE map a
+/// vertical one as the horizontal one of its subclass ([`garrison_object`]) and every one
+/// removable (RoE stores no flag, `garrisons_bonuses.rs`). Its owner the hero's (`owners`), a
+/// playing colour or none. A garrison anywhere else is left out; plans without garrisons keep
+/// their maps.
+fn garrisons_laid_out(
+    m: &mut RawMap,
+    plan: &Plan,
+    heroes: &[(Spot, &Slots)],
+    owners: &[u8],
+    covered: &mut Vec<Spot>,
+) {
+    let (v, side) = (plan.version, plan.side);
+    let colours: Vec<u8> = plan.players.iter().map(|&(colour, _)| colour).collect();
+    for g in &plan.garrisons {
+        let shape = garrison_object(g, v);
+        let ((dx, dy), hero) = g.at;
+        let index = usize::from(hero) % heroes.len();
+        let ((hx, hy, z), _) = heroes[index];
+        let at = |h: u8, d: u8| (h + side + d - 2) % side;
+        let (ex, ey) = (at(hx, dx), at(hy, dy));
+        let horizontal = KINDS[shape / BLOCKERS.len()].0 == 33;
+        let (ax, ay) = if horizontal {
+            (ex + 1, ey)
+        } else {
+            (ex, ey + 1)
+        };
+        if ax >= side || ay >= side {
+            continue;
+        }
+        let (blocked, visitable) = masks(shape);
+        let tiles: Vec<Spot> = blocked
+            .iter()
+            .chain(visitable)
+            .filter_map(|&(column, row)| Some((ax.checked_sub(column)?, ay.checked_sub(row)?, z)))
+            .collect();
+        let index_of = |(tx, ty, tz): Spot| {
+            (usize::from(tz) * usize::from(side) + usize::from(ty)) * usize::from(side)
+                + usize::from(tx)
+        };
+        let land = m.terrain.tiles[index_of((ex, ey, z))].terrain < 8;
+        let taken = |t: &Spot| covered.contains(t) || heroes.iter().any(|&(at, _)| at == *t);
+        if tiles.len() < blocked.len() || !land || tiles.iter().any(taken) {
+            continue;
+        }
+        let owner = match g.owner {
+            GarrisonOwner::Near => u32::from(owners[index]),
+            GarrisonOwner::Player(n) => u32::from(colours[usize::from(n) % colours.len()]),
+            GarrisonOwner::Neutral => NEUTRAL_OWNER,
+        };
+        let army = g
+            .army
+            .iter()
+            .map(|slot| slot.map(|(creature, count)| Stack { creature, count }))
+            .collect();
+        let body = Body::Garrison {
+            owner,
+            army,
+            removable: g.removable || v == Version::RoE,
+        };
+        let template = 1 + u32::try_from(shape).unwrap();
+        let mut o = object(ax, ay, template, body);
+        o.pos.z = z;
+        m.objects.push(o);
+        covered.extend(tiles);
     }
 }
 
@@ -2428,6 +2620,11 @@ pub(super) enum Step {
     /// (E09 T19b; the town epic's design note §32) The acting player's `n`-th listed build of a
     /// town (TWN-BLD-001; modulo their number), or as `Legal(n)` if it lists none.
     Build(u16),
+    /// (E08 T116b1; increment 12's design note §16) In a battle as `Fight(n)`; with an exchange
+    /// open its commands, listed or arbitrary, or `Close`; on the map a garrison's revisit, an
+    /// option that ends on a garrison's entrance or one that gets nearer to one
+    /// ([`exchange_with`]); as `Jump(n)` on a map without garrisons.
+    Exchange(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -2685,6 +2882,10 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     // E08 T106b1: runs of jumps, `Step::Jump`s, which walk and sail heroes to the teleporters,
     // enter and revisit them, and play the battles at their exits.
     let jump = vec(any::<u16>(), 8..48).prop_map(|ns| ns.into_iter().map(Step::Jump).collect());
+    // E08 T116b1: runs of exchanges, `Step::Exchange`s, which walk heroes to and through the
+    // garrisons, fight and take them, and manage their exchanges.
+    let exchange =
+        vec(any::<u16>(), 8..48).prop_map(|ns| ns.into_iter().map(Step::Exchange).collect());
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -2698,6 +2899,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => town,
             1 => jump,
             1 => build,
+            1 => exchange,
         ],
         0..40,
     )
@@ -2722,7 +2924,11 @@ fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameComman
     if state.level_up(actor).is_some() {
         return Some(LEVEL_ANSWERS[0].clone());
     }
-    if state.meeting(actor).is_some() || state.army_dialog(actor).is_some() {
+    // E08 T116b1: an exchange too (GAM-DEC-009).
+    if state.meeting(actor).is_some()
+        || state.army_dialog(actor).is_some()
+        || state.exchange(actor).is_some()
+    {
         return Some(CLOSE);
     }
     (state.choice(actor).is_some() || state.university(actor).is_some() || hiring(state, actor))
@@ -2730,7 +2936,7 @@ fn settle(state: &GameState, legal: &[GameCommand], n: u16) -> Option<GameComman
 }
 
 /// Whether `player`'s first open decision is a hire dialog (GAM-DEC-008, E08 T95b): an open
-/// decision of none of the other kinds, as `GameState` shows a hire dialog only through its
+/// decision of none of the other kinds (since E08 T116b1 an exchange among them, GAM-DEC-009), as `GameState` shows a hire dialog only through its
 /// owner's observation ([`hire_view`]).
 fn hiring(state: &GameState, player: PlayerId) -> bool {
     state.has_decision(player)
@@ -2739,6 +2945,7 @@ fn hiring(state: &GameState, player: PlayerId) -> bool {
         && state.level_up(player).is_none()
         && state.meeting(player).is_none()
         && state.army_dialog(player).is_none()
+        && state.exchange(player).is_none()
         && state.choice(player).is_none()
         && state.university(player).is_none()
 }
@@ -3277,6 +3484,208 @@ fn teleport(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u1
         .map_or(GameCommand::EndTurn, |&command| command.clone())
 }
 
+/// The map garrisons of `state` (E08 T116b1), by object index (the static map's: a garrison is
+/// never added in play).
+fn garrisons_of(state: &GameState, rules: &GameRuleset) -> Vec<usize> {
+    let adventure = state.adventure();
+    (0..adventure.map().objects().len())
+        .filter(|&i| {
+            let ty = adventure.object(i).and_then(|o| o.object_type);
+            let kind = ty.and_then(|ty| rules.adventure().object_type(ty));
+            kind.is_some_and(|t| matches!(t.kind, ObjectKind::Garrison { .. }))
+        })
+        .collect()
+}
+
+/// The map garrison whose entrance is `pos` on `state`, by object index (E08 T116b1).
+fn garrison_entered(state: &GameState, rules: &GameRuleset, pos: TilePos) -> Option<usize> {
+    state
+        .adventure()
+        .garrison_at(rules.adventure(), pos)
+        .map(|(i, _)| i)
+}
+
+/// [`Step::Exchange`] (E08 T116b1; increment 12's design note §16): in a battle as [`fight`];
+/// with an exchange open, `Close` in one step of eight, an arbitrary army command
+/// ([`arbitrary_exchange`]) in three of eight, else the `n`-th of [`managing`] (its hero's and
+/// garrison's army commands; `Close` if none); another decision settled ([`settle`]); on the map,
+/// in one step of four the `n`-th listed `Revisit` of a hero on a garrison's entrance, in another
+/// one of four the `n`-th of its options that cross its own garrison's entrance on their way,
+/// else the `n`-th of its options that end on a garrison's entrance (in one step of two its own:
+/// an exchange; else any: a battle, a capture or an exchange), else one that ends nearer to an
+/// entrance than its hero stands (crossing its own garrisons on the way), else `EndTurn`; as
+/// [`teleport`] on a map without garrisons.
+fn exchange_with(
+    state: &GameState,
+    rules: &GameRuleset,
+    legal: &[GameCommand],
+    n: u16,
+) -> GameCommand {
+    let garrisons = garrisons_of(state, rules);
+    if garrisons.is_empty() {
+        return teleport(state, rules, legal, n);
+    }
+    if battle_of(state, actor(state)).is_some() {
+        return fight(state, rules, legal, n);
+    }
+    let player = acting(state);
+    if let Some(open) = state.exchange(player) {
+        return match n % 8 {
+            7 => CLOSE,
+            4..=6 => arbitrary_exchange(state, open, n),
+            _ => pick(&managing(state, rules), n).unwrap_or(CLOSE),
+        };
+    }
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
+    }
+    let adventure = state.adventure();
+    let on_garrison = |hero: HeroId| {
+        adventure
+            .hero(hero)
+            .is_some_and(|h| garrison_entered(state, rules, h.pos).is_some())
+    };
+    let revisits: Vec<&GameCommand> = legal
+        .iter()
+        .filter(|c| {
+            matches!(c, GameCommand::Adventure(AdventureCommand::Revisit { hero }) if on_garrison(*hero))
+        })
+        .collect();
+    if n % 4 == 3 && !revisits.is_empty() {
+        return revisits[usize::from(n / 4) % revisits.len()].clone();
+    }
+    let moves: Vec<(&GameCommand, HeroId, &[TilePos])> = legal
+        .iter()
+        .filter_map(|c| as_move(c).map(|(hero, path)| (c, hero, path)))
+        .collect();
+    let entering = |own: bool| -> Vec<&GameCommand> {
+        (moves.iter())
+            .filter(|(_, _, path)| {
+                path.last()
+                    .and_then(|&to| garrison_entered(state, rules, to))
+                    .is_some_and(|i| !own || adventure.owner(i) == Some(player))
+            })
+            .map(|&(c, _, _)| c)
+            .collect()
+    };
+    // In one step of four an option that crosses an own garrison's entrance on its way (passed
+    // without a visit, ADV-GAR-004).
+    let crossing: Vec<&GameCommand> = (moves.iter())
+        .filter(|(_, _, path)| {
+            path.split_last().is_some_and(|(_, way)| {
+                way.iter().any(|&tile| {
+                    garrison_entered(state, rules, tile)
+                        .is_some_and(|i| adventure.owner(i) == Some(player))
+                })
+            })
+        })
+        .map(|&(c, _, _)| c)
+        .collect();
+    if n % 4 == 1 && !crossing.is_empty() {
+        return crossing[usize::from(n / 4) % crossing.len()].clone();
+    }
+    let (own, any) = (entering(true), entering(false));
+    if n.is_multiple_of(2) && !own.is_empty() {
+        return own[usize::from(n / 2) % own.len()].clone();
+    }
+    if !any.is_empty() {
+        return any[usize::from(n / 2) % any.len()].clone();
+    }
+    // The entrances' tiles, and the options that end nearer to one than their hero stands.
+    let tiles: Vec<TilePos> = garrisons
+        .iter()
+        .filter_map(|&i| {
+            // A horizontal garrison's entrance is one left of its anchor, a vertical one's one
+            // above it.
+            let o = adventure.object(i)?;
+            let at = |dx: u16, dy: u16| {
+                Some(TilePos::new(
+                    o.anchor.x.checked_sub(dx)?,
+                    o.anchor.y.checked_sub(dy)?,
+                    o.anchor.level,
+                ))
+            };
+            [at(1, 0), at(0, 1)]
+                .into_iter()
+                .flatten()
+                .find(|&pos| garrison_entered(state, rules, pos) == Some(i))
+        })
+        .collect();
+    let distance = |pos: TilePos| {
+        (tiles.iter())
+            .filter(|t| t.level == pos.level)
+            .map(|t| t.x.abs_diff(pos.x).max(t.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for &(command, hero, path) in &moves {
+        let Some(at) = adventure.hero(hero).map(|h| h.pos) else {
+            continue;
+        };
+        let (here, there) = (distance(at), path.last().and_then(|&to| distance(to)));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
+/// An arbitrary army command of the open exchange `open` (E08 T116b1; GAM-MAN-001 amended, the one
+/// owner rule): drawn from `n`, a move, a split or a dismissal (`n % 3`), from the exchange's hero to
+/// its garrison, back, within the garrison or within the hero (`n / 3 % 4`), from and to slots up
+/// to one past an army's (`n / 12 % 8`, `n / 96 % 8`; in one case of two of a stack into the
+/// garrison, its first occupied slot: a merge or a swap, which a non-removable one refuses), a
+/// split's count below 64 (`n / 768 % 64`);
+/// in one case of eight (`n / 768 % 8 == 7`) the garrison named by another index (another object's
+/// or one past the static map's), which the game refuses.
+fn arbitrary_exchange(state: &GameState, open: &h3_adventure::Exchange, n: u16) -> GameCommand {
+    let objects = u32::try_from(state.adventure().map().objects().len()).unwrap();
+    let index = if (n / 768) % 8 == 7 {
+        u32::from(n / 6144) % (objects + 1)
+    } else {
+        open.garrison
+    };
+    let (hero, garrison) = (ArmyRef::Hero(open.hero), ArmyRef::MapGarrison(index));
+    let (a, b) = match (n / 3) % 4 {
+        0 => (hero, garrison),
+        1 => (garrison, hero),
+        2 => (garrison, garrison),
+        _ => (hero, hero),
+    };
+    let slot = |k: u16| u8::try_from(k % 8).unwrap();
+    let from = ArmySlot {
+        army: a,
+        slot: slot(n / 12),
+    };
+    let occupied = (a, b) == (hero, garrison) && (n / 96).is_multiple_of(2);
+    let first = state.adventure().garrison_army(index as usize).first();
+    let to = ArmySlot {
+        army: b,
+        slot: first
+            .filter(|_| occupied)
+            .map_or(slot(n / 96), |stack| stack.slot),
+    };
+    let command = match n % 3 {
+        0 => ArmyCommand::Move { from, to },
+        1 => ArmyCommand::Split {
+            from,
+            to,
+            count: u32::from((n / 768) % 64),
+        },
+        _ => ArmyCommand::Dismiss { at: from },
+    };
+    GameCommand::Manage(Manage::Army(command))
+}
+
 /// On the map (E08 T52): the acting player's open offer declined, its level-up's first offer
 /// taken, its meeting or army dialog managed (the `n`-th of [`managing`], `Close` if none), its
 /// choice or University answered as [`settle`] does (E08 T63a);
@@ -3288,7 +3697,11 @@ fn meet(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -
     if battle_of(state, self::actor(state)).is_some() {
         return legal[usize::from(n) % legal.len()].clone();
     }
-    if state.meeting(actor).is_some() || state.army_dialog(actor).is_some() {
+    // E08 T116b1: an exchange too.
+    if state.meeting(actor).is_some()
+        || state.army_dialog(actor).is_some()
+        || state.exchange(actor).is_some()
+    {
         return pick(&managing(state, rules), n).unwrap_or(CLOSE);
     }
     if let Some(answer) = settle(state, legal, n) {
@@ -3800,6 +4213,7 @@ pub(super) fn resolve(
         Step::Hire(n) => (who, hire(state, rules, legal, *n)),
         Step::Town(n) => (who, visit_town(state, rules, legal, *n)),
         Step::Jump(n) => (who, teleport(state, rules, legal, *n)),
+        Step::Exchange(n) => (who, exchange_with(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -4402,8 +4816,11 @@ fn check_legal(
     let fighting = battle_of(state, who).is_some();
     let decided = state.decision(actor).is_some();
     let levelling = state.level_up(actor).is_some();
-    // E08 T51b: a meeting or an army dialog, closed by `Close` alone (T63a).
-    let exchanging = state.meeting(actor).is_some() || state.army_dialog(actor).is_some();
+    // E08 T51b: a meeting or an army dialog, closed by `Close` alone (T63a); (E08 T116b1) an
+    // exchange (GAM-DEC-009).
+    let exchanging = state.meeting(actor).is_some()
+        || state.army_dialog(actor).is_some()
+        || state.exchange(actor).is_some();
     // E08 T63a: a choice or a University.
     let choosing = state.choice(actor).is_some() || state.university(actor).is_some();
     // E08 T95b: a hire dialog, as its owner sees it.
@@ -7251,6 +7668,8 @@ fn check_management(
         before.army_dialog(player).map(|(hero, _)| hero),
         after.army_dialog(player).map(|(hero, _)| hero)
     );
+    // E08 T116b1: an exchange too (GAM-DEC-009).
+    prop_assert_eq!(before.exchange(player), after.exchange(player));
     let armies = match command {
         Manage::Army(army) => named(army),
         _ => Vec::new(),
@@ -7363,6 +7782,13 @@ fn check_inverse(
             if there.is_some_and(|t| moved.is_some_and(|m| m.creature == t.creature)) {
                 return Ok(false);
             }
+            // E08 T116b1: a stack moved into a non-removable garrison stays (the one owner rule:
+            // its bar is nobody's, D-61).
+            if let ArmyRef::MapGarrison(index) = to.army
+                && before.adventure().garrison_removable(index as usize) == Some(false)
+            {
+                return Ok(false);
+            }
             Manage::Army(ArmyCommand::Move { from: to, to: from })
         }
         Manage::Artifact { from, to } => {
@@ -7392,6 +7818,11 @@ fn check_inverse(
         result
     );
     prop_assert_eq!(armies(&back), armies(before));
+    // E08 T116b1: and the map garrisons' (an exchange's move).
+    for index in 0..before.adventure().map().objects().len() {
+        let army = |state: &GameState| state.adventure().garrison_army(index).to_vec();
+        prop_assert_eq!(army(&back), army(before));
+    }
     prop_assert_eq!(back.heroes(), before.heroes());
     prop_assert_eq!(
         back.army_dialog(player).map(|(_, g)| g.to_vec()),
@@ -7785,6 +8216,10 @@ fn check_unowned_battle_end(
         Some((index, ObjectKind::Town { .. })) => {
             return check_town_battle_end((before, after), events, (visitor, index, result));
         }
+        // E08 T116b1: a map garrison's ([`check_garrison_battle_end`]).
+        Some((index, ObjectKind::Garrison { .. })) => {
+            return check_garrison_battle_end((before, after), events, (visitor, index, result));
+        }
         _ => {}
     }
     // E08 T86b1: a found index may be a monster's added in play (a creature month's), read
@@ -8089,6 +8524,176 @@ fn check_mine_battle_end(
     prop_assert!(!removed, "{:?}", events);
     for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         prop_assert_eq!(before.treasury(player), after.treasury(player));
+    }
+    Ok(())
+}
+
+/// The end of a battle against a map garrison (E08 T116b1; ADV-GAR-002, GAM-BAT-001 amended,
+/// increment 12's design note §6, §14; the garrison of the visitor's battle tile), an owned one's
+/// played by its owner or a neutral one's by the system, unsplit: no object leaves the map and no
+/// treasury changes. Won by the visitor's side, the garrison's army is gone; after the winner's
+/// levels (GAM-DEC-007) its flag for the visitor's owner, told as its flag, then the exchange
+/// ([`check_decisions`]), in this command unless the winner's level-up is left open, its owner
+/// kept meanwhile. Else its owner is kept, nothing is flagged, and its army is its survivors,
+/// each of a stack it had by slot and creature with at most its count, none after a draw (its
+/// next visitor flags it).
+fn check_garrison_battle_end(
+    (before, after): (&GameState, &GameState),
+    events: &[GameEvent],
+    (visitor, index, result): (HeroId, usize, BattleResult),
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let owner = b.hero(visitor).unwrap().owner;
+    let (had, left) = (b.garrison_army(index), a.garrison_army(index));
+    let o = b.object(index).unwrap();
+    let flagged = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectFlagged { object_type, anchor, owner: to },
+                ..
+            }) if (Some(*object_type), *anchor, *to) == (o.object_type, o.anchor, owner)
+        )
+    });
+    if result.winner() == Some(BattleSide::Attacker) {
+        prop_assert!(left.is_empty(), "{:?} left after a win", left);
+        let levels = events
+            .iter()
+            .any(|e| matches!(e, GameEvent::LevelUpOpened { hero, .. } if *hero == visitor));
+        prop_assert_eq!(flagged, !levels);
+        let expected = if levels { b.owner(index) } else { Some(owner) };
+        prop_assert_eq!(a.owner(index), expected);
+    } else {
+        prop_assert!(!flagged);
+        prop_assert_eq!(a.owner(index), b.owner(index));
+        prop_assert!(
+            left.iter().all(|s| had
+                .iter()
+                .any(|h| (h.slot, h.creature) == (s.slot, s.creature) && h.count >= s.count)),
+            "{:?} of {:?}",
+            left,
+            had
+        );
+        if result == BattleResult::Draw {
+            prop_assert!(left.is_empty());
+        }
+    }
+    let removed = events.iter().any(|e| {
+        matches!(
+            e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved { .. },
+                ..
+            })
+        )
+    });
+    prop_assert!(!removed, "{:?}", events);
+    for player in (0..before.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
+        prop_assert_eq!(before.treasury(player), after.treasury(player));
+    }
+    Ok(())
+}
+
+/// The map garrisons after an accepted command of `player` (E08 T116b1; increment 12's design
+/// note §16; ADV-GAR-002, ADV-GAR-003, ADV-GAR-005, GAM-MAN-001 amended, ADV-OWN-001): a
+/// garrison's army changes only by its battle's end ([`check_garrison_battle_end`]) or by an army
+/// command of the player's open exchange with it, of a garrison the player owns (the one owner
+/// rule: another's or a neutral garrison is never managed), and a non-removable one's stacks
+/// never leave (each slot it held keeps its stack: no take, merge, swap or dismissal; only its
+/// empty slots take stacks, D-61); its owner changes only by its flag, told with the new owner,
+/// which only an empty garrison takes (ADV-OWN-001); and a battle started on an anti-magic
+/// garrison's entrance, the garrison's own or a hero's standing on it, is fought without magic,
+/// every other battle with it (ADV-GAR-005, D-60: the battle's observation, BAT-MAG-061).
+fn check_garrisons(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    (player, command): (PlayerId, &GameCommand),
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    // The garrison fought in a battle that ended in this command: its army is the battle's.
+    let fought = ended(events).first().and_then(|&(heroes, _)| {
+        let attacker = b.hero(heroes[BattleSide::Attacker.index()]?)?;
+        if heroes[BattleSide::Defender.index()].is_some() {
+            return None;
+        }
+        let started = events.iter().find_map(|e| match *e {
+            GameEvent::BattleStarted { tile, .. } => Some(tile),
+            _ => None,
+        });
+        let tile = before
+            .battle(attacker.owner)
+            .map(OpenBattle::tile)
+            .or(started)?;
+        garrison_entered(before, rules, tile)
+    });
+    let open = before.exchange(player).map(|e| e.garrison as usize);
+    let managed = match command {
+        GameCommand::Manage(Manage::Army(army)) => named(army),
+        _ => Vec::new(),
+    };
+    for index in garrisons_of(before, rules) {
+        let (had, has) = (b.garrison_army(index), a.garrison_army(index));
+        let (was, is) = (b.owner(index), a.owner(index));
+        let o = b.object(index).unwrap();
+        if was != is {
+            let told = events.iter().any(|e| {
+                matches!(
+                    *e,
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::ObjectFlagged { object_type, anchor, owner },
+                        ..
+                    }) if (Some(object_type), anchor, Some(owner)) == (o.object_type, o.anchor, is)
+                )
+            });
+            prop_assert!(told, "garrison {} taken from {:?} untold", index, was);
+            prop_assert!(
+                has.is_empty(),
+                "garrison {} flagged holding {:?}",
+                index,
+                has
+            );
+        }
+        if had == has || fought == Some(index) {
+            continue;
+        }
+        let named = managed.contains(&ArmyRef::MapGarrison(u32::try_from(index).unwrap()));
+        prop_assert!(
+            named && open == Some(index),
+            "garrison {}: {:?} became {:?} by {:?}",
+            index,
+            had,
+            has,
+            command
+        );
+        prop_assert_eq!(was, Some(player), "garrison {} managed by another", index);
+        if b.garrison_removable(index) == Some(false) {
+            prop_assert!(
+                had.iter().all(|s| has.contains(s)),
+                "non-removable garrison {}: {:?} became {:?}",
+                index,
+                had,
+                has
+            );
+        }
+    }
+    // ADV-GAR-005: a battle started in this command, as its attacker's owner sees it.
+    for e in events {
+        let GameEvent::BattleStarted { heroes, tile, .. } = *e else {
+            continue;
+        };
+        let Some(owner) = heroes[0].and_then(|h| a.hero(h)).map(|h| h.owner) else {
+            continue;
+        };
+        let Some(battle) = observe(after, rules, Viewer::Player(owner)).battle else {
+            continue;
+        };
+        let anti_magic = garrison_entered(before, rules, tile).is_some_and(|i| {
+            let ty = b.object(i).and_then(|o| o.object_type);
+            let kind = ty.and_then(|ty| rules.adventure().object_type(ty));
+            kind.is_some_and(|t| matches!(t.kind, ObjectKind::Garrison { anti_magic: true }))
+        });
+        prop_assert_eq!(battle.anti_magic, anti_magic, "a battle at {:?}", tile);
     }
     Ok(())
 }
@@ -8916,12 +9521,19 @@ fn check_decisions(
         hero.map(HireTarget::Hero)
             .or_else(|| Some(hire_view(state, rules, actor)?.target))
     };
-    let mut exchange = (before.meeting(actor), dialog(before), choosing(before));
+    // E08 T116b1: an exchange with a map garrison (GAM-DEC-009), by its hero and garrison.
+    let garrison = |state: &GameState| state.exchange(actor).map(|e| (e.hero, e.garrison));
+    let mut exchange = (
+        before.meeting(actor),
+        dialog(before),
+        choosing(before),
+        garrison(before),
+    );
     let mut guards = false;
     for event in events {
         match *event {
             GameEvent::MeetingOpened { player, heroes } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
                 for hero in heroes {
                     let owner = after.adventure().hero(hero).map(|h| h.owner);
                     prop_assert_eq!(owner, Some(actor));
@@ -8936,7 +9548,7 @@ fn check_decisions(
                 object_type,
                 anchor,
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
                 let map = after.adventure().map();
                 let own = map.objects().iter().enumerate().any(|(i, o)| {
                     (o.object_type, o.anchor) == (Some(object_type), anchor)
@@ -8947,10 +9559,10 @@ fn check_decisions(
                 guards = true;
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } if guards => {
-                prop_assert_eq!((player, exchange), (actor, (None, Some(hero), None)));
+                prop_assert_eq!((player, exchange), (actor, (None, Some(hero), None, None)));
             }
             GameEvent::ArmyDialogOpened { player, hero, .. } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
                 exchange.1 = Some(hero);
             }
             GameEvent::ChoiceOpened { player, hero, .. }
@@ -8960,7 +9572,7 @@ fn check_decisions(
                 target: HireTarget::Hero(hero),
                 ..
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
                 prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(actor));
                 exchange.2 = Some(HireTarget::Hero(hero));
             }
@@ -8970,26 +9582,61 @@ fn check_decisions(
                 target: target @ HireTarget::Garrison(town),
                 ..
             } => {
-                prop_assert_eq!((player, exchange), (actor, (None, None, None)));
+                prop_assert_eq!((player, exchange), (actor, (None, None, None, None)));
                 let adventure = after.adventure();
                 let index = adventure.map().town_object(town);
                 prop_assert_eq!(index.and_then(|i| adventure.owner(i)), Some(actor));
                 exchange.2 = Some(target);
             }
+            // E08 T116b1: a garrison's exchange opens for its visitor's owner, the garrison its
+            // (ADV-GAR-003): by index, type and anchor as the map holds it, the actor's after the
+            // command (its team's, or just flagged), its removable flag the map's.
+            GameEvent::ExchangeOpened {
+                player,
+                hero,
+                garrison,
+                object_type,
+                anchor,
+                removable,
+            } => {
+                prop_assert_eq!(after.adventure().hero(hero).map(|h| h.owner), Some(player));
+                let index = garrison as usize;
+                let o = after.adventure().object(index).unwrap();
+                prop_assert_eq!((o.object_type, o.anchor), (Some(object_type), anchor));
+                prop_assert_eq!(after.adventure().owner(index), Some(player));
+                let map = after.adventure().garrison_removable(index);
+                prop_assert_eq!(map, Some(removable));
+                // A battle's last command may be its defender's: an owned garrison's is played by
+                // its owner, whose stack's death on a retaliation ends it (as a held jump's,
+                // `check_jumps`); the exchange is then the winner's owner's, open after it.
+                if player != actor {
+                    prop_assert!(!ended(events).is_empty(), "{:?} of another player", event);
+                    let open = after.exchange(player).map(|e| (e.hero, e.garrison));
+                    prop_assert_eq!(open, Some((hero, garrison)));
+                    continue;
+                }
+                prop_assert_eq!(exchange, (None, None, None, None));
+                exchange.3 = Some((hero, garrison));
+            }
             GameEvent::DecisionClosed { player } => {
                 prop_assert_eq!(player, actor);
                 prop_assert!(
-                    exchange != (None, None, None),
+                    exchange != (None, None, None, None),
                     "{:?} with nothing open",
                     event
                 );
-                exchange = (None, None, None);
+                exchange = (None, None, None, None);
                 guards = false;
             }
             _ => {}
         }
     }
-    let open = (after.meeting(actor), dialog(after), choosing(after));
+    let open = (
+        after.meeting(actor),
+        dialog(after),
+        choosing(after),
+        garrison(after),
+    );
     prop_assert_eq!(open, exchange);
     prop_assert_eq!(after.decision(actor), decision.as_ref());
     prop_assert!(after.adventure().bought(actor).eq(bought));
@@ -9287,6 +9934,8 @@ proptest! {
             // E08 T106b1: the teleporters' jumps and visits, the Whirlpools' losses.
             check_jumps(rules, (&before, &state), (player, &command), &events, &channels)?;
             check_whirlpool_losses(rules, (&before, &state), &command, &events)?;
+            // E08 T116b1: the map garrisons' armies, owners and battles.
+            check_garrisons(rules, (&before, &state), (player, &command), &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -10021,6 +10670,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         owners: Vec::new(),
         towns: Vec::new(),
         teleporters: Vec::new(),
+        garrisons: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -11050,8 +11700,9 @@ fn the_plans_jump_through_teleporters() {
     let strategy = jump_plans();
     let mut teleported = Teleported::default();
     // 512 cases since E09 T19b (256 before), whose plans' town events moved the draws: the first
-    // 256 met no battle at a Whirlpool's exit.
-    for _ in 0..512 {
+    // 256 met no battle at a Whirlpool's exit; 768 since E08 T116b1, whose garrisons moved them
+    // again (512 met none).
+    for _ in 0..768 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let m = lay_out(&plan);
@@ -11106,4 +11757,310 @@ fn the_plans_jump_through_teleporters() {
         t.lone_losses > 0 && t.emptied > 0 && t.protected > 0,
         "{t:?}"
     );
+}
+
+/// The garrisons' kinds by the order of [`GARRISONS`] (E08 T116b1): the horizontal garrison, its
+/// anti-magic twin, AB's vertical one and its anti-magic twin; none for another type.
+fn garrison_kind(rules: &GameRuleset, object_type: Option<ObjectTypeId>) -> Option<usize> {
+    let keys = [
+        "base:garrison",
+        "base:anti_magic_garrison",
+        "ab:garrison_vertical",
+        "ab:anti_magic_garrison_vertical",
+    ];
+    let part = rules.adventure();
+    keys.iter()
+        .position(|key| part.object_type_by_key(key) == object_type)
+}
+
+/// What the garrison plans played (E08 T116b1; increment 12's design note §16): the garrisons laid
+/// out by kind ([`garrison_kind`]); their visits by kind and outcome (an exchange of the visitor's
+/// own, an empty one's capture, a battle); the steps that crossed an own garrison's entrance on a
+/// move's way; the battles against a garrison that ended, by its owner (owned, neutral) and result
+/// (won by the visitor, lost or fled, a draw); the battles started without magic (a garrison's on
+/// an anti-magic entrance, a hero's attacked standing on one); the exchanges opened after a won
+/// battle; the exchanges' army commands accepted (a stack into a removable garrison, out of one,
+/// into a non-removable one) and refused (`NotOwn`, `OnlyEmpty`, another refusal); the revisits
+/// of a garrison; the exchanges closed.
+#[derive(Debug, Default)]
+struct Garrisoned {
+    laid: [usize; 4],
+    visits: [[usize; 3]; 4],
+    crossed: usize,
+    battles: [[usize; 3]; 2],
+    anti_magic: [usize; 2],
+    after_battle: usize,
+    accepted: [usize; 3],
+    refused: [usize; 3],
+    revisits: usize,
+    closed: usize,
+}
+
+impl Garrisoned {
+    /// Counts what `command` of `player` did on its way from `before` to `after` (`result` its
+    /// answer, `events` its events).
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        (player, command): (PlayerId, &GameCommand),
+        (result, events): (&Result<(), GameCommandError>, &[GameEvent]),
+    ) {
+        let (b, part) = (before.adventure(), rules.adventure());
+        let named = match command {
+            GameCommand::Manage(Manage::Army(army)) => named(army),
+            _ => Vec::new(),
+        };
+        let garrison = named.iter().find_map(|&army| match army {
+            ArmyRef::MapGarrison(index) => Some(index as usize),
+            _ => None,
+        });
+        let Ok(()) = result else {
+            if let (Some(_), Err(error)) = (garrison, result) {
+                let refused = match error {
+                    GameCommandError::Manage(h3_game::ManageError::Army(
+                        h3_adventure::ArmyCommandError::NotOwn,
+                    )) => 0,
+                    GameCommandError::Manage(h3_game::ManageError::Army(
+                        h3_adventure::ArmyCommandError::OnlyEmpty,
+                    )) => 1,
+                    _ => 2,
+                };
+                self.refused[refused] += 1;
+            }
+            return;
+        };
+        if let (Some(index), GameCommand::Manage(Manage::Army(army))) = (garrison, command) {
+            let removable = b.garrison_removable(index) == Some(true);
+            if let ArmyCommand::Move { from, to } | ArmyCommand::Split { from, to, .. } = *army {
+                match (from.army, to.army) {
+                    (ArmyRef::Hero(_), ArmyRef::MapGarrison(_)) if removable => {
+                        self.accepted[0] += 1;
+                    }
+                    (ArmyRef::Hero(_), ArmyRef::MapGarrison(_)) => self.accepted[2] += 1,
+                    (ArmyRef::MapGarrison(_), ArmyRef::Hero(_)) => self.accepted[1] += 1,
+                    _ => {}
+                }
+            }
+        }
+        // The visit: a move's end or a revisit's tile.
+        let visited = match command {
+            GameCommand::Adventure(AdventureCommand::MoveHero { path, .. }) => path.last().copied(),
+            GameCommand::Adventure(AdventureCommand::Revisit { hero }) => {
+                b.hero(*hero).map(|h| h.pos)
+            }
+            _ => None,
+        };
+        let entered = visited.and_then(|tile| garrison_entered(before, rules, tile));
+        if let Some(index) = entered {
+            let kind = garrison_kind(rules, b.object(index).and_then(|o| o.object_type));
+            let flagged = events.iter().any(|e| {
+                matches!(
+                    e,
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::ObjectFlagged { .. },
+                        ..
+                    })
+                )
+            });
+            let opened = events
+                .iter()
+                .any(|e| matches!(e, GameEvent::ExchangeOpened { .. }));
+            let fought = events.iter().any(|e| {
+                matches!(
+                    e,
+                    GameEvent::BattleStarted {
+                        heroes: [_, None],
+                        ..
+                    }
+                )
+            });
+            let outcome = if fought {
+                Some(2)
+            } else if opened {
+                Some(usize::from(flagged))
+            } else {
+                None
+            };
+            if let (Some(kind), Some(outcome)) = (kind, outcome) {
+                self.visits[kind][outcome] += 1;
+            }
+            if matches!(
+                command,
+                GameCommand::Adventure(AdventureCommand::Revisit { .. })
+            ) {
+                self.revisits += 1;
+            }
+        }
+        // The crossings: a step off an own garrison's entrance the move did not start on.
+        if let Some((hero, _)) = as_move(command) {
+            let start = b.hero(hero).map(|h| h.pos);
+            self.crossed += events
+                .iter()
+                .filter(|e| match **e {
+                    GameEvent::Adventure(AdventureEvent {
+                        kind:
+                            AdventureEventKind::HeroStepped {
+                                hero: h,
+                                from: Some(from),
+                                ..
+                            },
+                        ..
+                    }) => {
+                        h == hero
+                            && Some(from) != start
+                            && garrison_entered(before, rules, from)
+                                .is_some_and(|i| b.owner(i) == Some(player))
+                    }
+                    _ => false,
+                })
+                .count();
+        }
+        for e in events {
+            match *e {
+                GameEvent::BattleStarted { heroes, tile, .. } => {
+                    let anti_magic = garrison_entered(before, rules, tile).is_some_and(|i| {
+                        let ty = b.object(i).and_then(|o| o.object_type);
+                        let kind = ty.and_then(|ty| part.object_type(ty));
+                        kind.is_some_and(|t| {
+                            matches!(t.kind, ObjectKind::Garrison { anti_magic: true })
+                        })
+                    });
+                    if anti_magic {
+                        self.anti_magic[usize::from(heroes[1].is_some())] += 1;
+                    }
+                }
+                GameEvent::BattleEnded {
+                    heroes: [Some(attacker), None],
+                    result,
+                    ..
+                } => {
+                    let Some(owner) = b.hero(attacker).map(|h| h.owner) else {
+                        continue;
+                    };
+                    let Some(tile) = before.battle(owner).map(OpenBattle::tile) else {
+                        continue;
+                    };
+                    if let Some(index) = garrison_entered(before, rules, tile) {
+                        let result = match result.winner() {
+                            Some(BattleSide::Attacker) => 0,
+                            _ if result == BattleResult::Draw => 2,
+                            _ => 1,
+                        };
+                        self.battles[usize::from(b.owner(index).is_none())][result] += 1;
+                    }
+                }
+                GameEvent::ExchangeOpened { .. } if !ended(events).is_empty() => {
+                    self.after_battle += 1;
+                }
+                GameEvent::DecisionClosed { player: p }
+                    if before.exchange(p).is_some() && after.exchange(p).is_none() =>
+                {
+                    self.closed += 1;
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
+/// The garrison plans (E08 T116b1): a plan with two to four garrisons in place of its own, the
+/// profile (strict or not), the seed and up to 199 steps, mostly [`Step::Exchange`]s with ends of
+/// turn among them (so that the other players' heroes come by) and [`Step::Legal`]s; what
+/// [`the_plans_cross_fight_and_exchange_at_garrisons`] counts, over proptest's deterministic
+/// runner.
+fn garrison_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
+    let steps = vec(
+        prop_oneof![
+            8 => any::<u16>().prop_map(Step::Exchange),
+            1 => any::<u16>().prop_map(Step::Legal),
+            1 => Just(Step::EndTurn),
+        ],
+        0..200,
+    );
+    let plan = (
+        plan(),
+        garrisons().prop_filter("garrisons", |g| g.len() > 1),
+    )
+        .prop_map(|(plan, garrisons)| Plan { garrisons, ..plan });
+    (plan, any::<bool>(), any::<u64>(), steps)
+}
+
+/// The plans cross, fight and exchange at garrisons (E08 T116b1; increment 12's design note §16,
+/// exit criteria 2 to 5): over a fixed set of 512 cases (proptest's deterministic runner; the
+/// thinnest counts, the crossings and the `OnlyEmpty` refusals, are single digits at 256), with
+/// the oracles the garrisons meet after every command (below), random play
+/// with the garrisons' steps ([`garrison_plans`], [`Step::Exchange`]) visits every kind of map
+/// garrison and meets each of its outcomes (its own's exchange, an empty one's capture, a battle),
+/// crosses its own garrisons on a move's way, wins and loses battles against owned and neutral
+/// garrisons (without magic on an anti-magic one), opens the exchange after a win, revisits them,
+/// and plays the exchange's army commands both ways, into a non-removable garrison too, and its
+/// refusals by the one owner rule, so that the properties' checks ([`check_garrisons`],
+/// [`check_garrison_battle_end`], the exchange in [`check_decisions`], [`check_management`],
+/// [`check_inverse`] and [`check_legal`]) see each.
+// covers: ADV-GAR-002, ADV-GAR-003, ADV-GAR-004, ADV-GAR-005, GAM-DEC-009
+#[test]
+fn the_plans_cross_fight_and_exchange_at_garrisons() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = garrison_plans();
+    let mut garrisoned = Garrisoned::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for index in garrisons_of(&state, rules) {
+            let ty = state.adventure().object(index).and_then(|o| o.object_type);
+            garrisoned.laid[garrison_kind(rules, ty).unwrap()] += 1;
+        }
+        for (i, step) in steps.iter().enumerate() {
+            check_invariants(rules, &state).unwrap();
+            let legal = options(&state, rules);
+            // The listing's oracle probes every listed command: on every fourth step.
+            if i % 4 == 0 {
+                let reaches = reaches(&state, rules);
+                check_legal(&state, rules, &legal, &reaches).unwrap();
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            let player = player_of(&before, actor);
+            // The oracles the garrisons meet, after every accepted command.
+            if result.is_ok() {
+                let after = (&before, &state);
+                check_garrisons(rules, after, (player, &command), &events).unwrap();
+                check_decisions(rules, after, player, &events).unwrap();
+                check_isolation(&before, &state, player, &events).unwrap();
+                check_conservation(rules, after, &command, &events).unwrap();
+                if let GameCommand::Manage(manage) = &command {
+                    check_management(rules, after, player, manage, &events).unwrap();
+                    check_inverse(rules, after, player, manage).unwrap();
+                }
+            } else {
+                assert_eq!(state, before);
+            }
+            garrisoned.count(
+                rules,
+                (&before, &state),
+                (player, &command),
+                (&result, &events),
+            );
+        }
+    }
+    let g = &garrisoned;
+    eprintln!("{g:?}");
+    assert!(g.laid.iter().all(|&n| n > 0), "{g:?}");
+    assert!(
+        g.visits.iter().all(|kind| kind.iter().all(|&n| n > 0)),
+        "{g:?}"
+    );
+    assert!(g.crossed > 0 && g.revisits > 0 && g.closed > 0, "{g:?}");
+    assert!(
+        g.battles.iter().all(|owner| owner[0] > 0 && owner[1] > 0),
+        "{g:?}"
+    );
+    assert!(g.anti_magic[0] > 0 && g.after_battle > 0, "{g:?}");
+    assert!(g.accepted.iter().all(|&n| n > 0), "{g:?}");
+    assert!(g.refused.iter().all(|&n| n > 0), "{g:?}");
 }
