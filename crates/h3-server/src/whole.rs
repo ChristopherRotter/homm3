@@ -31,6 +31,13 @@
 //! chess clock or a level-up runs out with nobody sending anything; a stop journals the time up
 //! to it, so that the restart keeps the time left.
 //!
+//! The spectators (E16 M5 T22b; SRV-Q36: each player's view): a game takes them if its creator
+//! said so (`CreateMapGame`'s flag, closed by default), within `[limits] spectators_per_game`, its
+//! host opening or closing it until the start; the lobby lists whether it takes them now. A
+//! spectator's connection stays bound to the game's thread while it watches, and hears the game's
+//! pause, its void and the server's stop as the seats do; after a disconnect or a restart it
+//! watches again, numbered afresh (a restored game takes them as its journal says it started).
+//!
 //! Provisional (the 2a review list): every seat's player human, a map's name from its header as
 //! Latin-1 within 64 characters, a draining server's running whole games playing on until the
 //! stop; a restored game at the difficulty its journal names; the computer's stream drawn afresh
@@ -246,10 +253,12 @@ struct Restored {
 impl Prepared {
     /// Draws game `game`'s secrets from the OS (ADR-0018 point 8): its seed and a token per
     /// player's seat; the game's id is the game's for the server's life before anything names it.
+    /// Created at `origin`, it takes spectators if its creator said so (`watchable`, E16 M5 T22b),
+    /// within `[limits] spectators_per_game`.
     pub(crate) fn new(
         offer: Arc<MapOffer>,
         game: u32,
-        origin: IpAddr,
+        (origin, watchable): (IpAddr, bool),
         (server, limits, stores): (&config::Server, &config::Limits, Stores),
     ) -> Result<Self, Error> {
         let (seed, computer_seed) = (os_u64()?, os_u64()?);
@@ -263,8 +272,10 @@ impl Prepared {
             record_bytes: limits.record_bytes,
             clock: offer.clock,
             commands: limits.commands(),
-            // Hosted from E16 M5 T22b.
-            spectators: Spectators::NONE,
+            spectators: Spectators {
+                limit: limits.spectators_per_game,
+                open: watchable,
+            },
         };
         Ok(Self {
             difficulty: offer.setup.difficulty,
@@ -321,8 +332,12 @@ impl Prepared {
             clock: read.start.clock.into(),
             // The hosting's bounds, whatever they were (E16 M5 T18).
             commands: limits.commands(),
-            // Hosted from E16 M5 T22b.
-            spectators: Spectators::NONE,
+            // The hosting's limit; whether it takes them is its journal's (E16 M5 T22b: a
+            // restored game started, `GameEntry::Watchable`).
+            spectators: Spectators {
+                limit: limits.spectators_per_game,
+                open: false,
+            },
         };
         let computer_seed = os_u64().map_err(|e| e.0)?;
         #[cfg(test)]
@@ -456,7 +471,7 @@ impl Prepared {
             phase: session.phase(),
             open: session.open_seats(),
             seated: seated(&named, &self.stores.accounts),
-            spectators: session.watchable() && self.options.spectators.limit > 0,
+            spectators: session.takes_spectators(),
         };
         let paused = session.paused();
         let hosted = if paused {
@@ -551,7 +566,8 @@ impl Hosting for Prepared {
         let mut conns: BTreeMap<ConnId, Outbox> = BTreeMap::new();
         // How many messages each connection passed the game (E16 M2 T5b).
         let mut passed: BTreeMap<ConnId, u64> = BTreeMap::new();
-        let status = |s: &GameSession<'_>| (s.phase(), s.open_seats());
+        // Whether it takes spectators too (E16 M5 T22b: the host's `SetSpectators`).
+        let status = |s: &GameSession<'_>| (s.phase(), s.open_seats(), s.takes_spectators());
         let mut reported = status(&session);
         // The seats' accounts the lobby names; a restored game was listed with them.
         let mut named = owned(&session);
@@ -588,7 +604,7 @@ impl Hosting for Prepared {
                     let k = passed.entry(conn).or_default();
                     *k += 1;
                     session.handle(conn, message, &mut out);
-                    left = (!session.holds(conn)).then_some((conn, *k));
+                    left = (!in_game(&session, conn)).then_some((conn, *k));
                 }
                 Some(ToGame::Closed { conn }) => {
                     elapse(&mut session, &mut out);
@@ -758,6 +774,13 @@ fn seated(accounts: &[(u8, String)], books: &Accounts) -> Vec<SeatedPlayer> {
     named.collect()
 }
 
+/// Whether the connection `conn` is in the game: it holds a seat or watches (E16 M5 T22b, as a
+/// battle's `Session::holds`). One that is not after its message left the game (a refused join or
+/// watch, `Leave`, a seat re-taken by another).
+fn in_game(session: &GameSession<'_>, conn: ConnId) -> bool {
+    session.holds(conn) || session.watches(conn)
+}
+
 /// Queues a frame for its connection, with its mark `left` ([`Frame::left`]), as a battle's
 /// (`game::deliver`): a full queue drops the connection, and the session forgets it.
 fn deliver(
@@ -773,7 +796,7 @@ fn deliver(
         text: outbound.frame,
         close: outbound.close,
         left,
-        held: session.holds(outbound.to),
+        held: in_game(session, outbound.to),
     };
     if !to.offer(frame) {
         conns.remove(&outbound.to);

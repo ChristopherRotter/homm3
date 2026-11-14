@@ -256,7 +256,7 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
         ..OPTIONS
     };
     let mut s = GameSession::new(rules, &setup, 3, manifest(rules, MAP), closed, token).unwrap();
-    assert!(!s.watchable());
+    assert!(!s.watchable() && !s.takes_spectators());
     assert_eq!(
         to(&send(&mut s, S, WATCH), S),
         [refused(Refusal::NoSpectators)]
@@ -301,7 +301,7 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
             ..
         }]
     ));
-    assert!(s.watchable());
+    assert!(s.watchable() && s.takes_spectators());
     // Two may watch, a third is refused; a spectator watches once and takes no seat; a seat's
     // connection does not watch.
     assert!(matches!(
@@ -382,6 +382,8 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
     };
     assert_eq!(to(&out, S), [paused]);
     assert_eq!(s.spectators(), 0);
+    // A paused game is listed as taking none (E16 M5 T22b).
+    assert!(s.watchable() && !s.takes_spectators());
     let entries: Vec<GameEntry> = s.drain_entries().collect();
     let at = entries
         .iter()
@@ -405,6 +407,16 @@ fn the_creators_setting_decides_and_a_spectator_neither_plays_nor_sits() {
         &entries,
     );
     assert!(!back.unwrap().watchable());
+    // Open on a host that takes no spectators, it is listed as taking none (E16 M5 T22b).
+    let none = GameOptions {
+        spectators: Spectators {
+            limit: 0,
+            open: true,
+        },
+        ..OPTIONS
+    };
+    let s = GameSession::new(rules, &setup, 3, manifest(rules, MAP), none, token).unwrap();
+    assert!(s.watchable() && !s.takes_spectators());
 }
 
 #[test]
