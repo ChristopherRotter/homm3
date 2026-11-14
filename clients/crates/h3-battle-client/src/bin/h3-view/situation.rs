@@ -27,7 +27,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use h3_map::writer::{
     ARMY_SLOTS, ARTIFACT_SLOTS, Ground, Hero, HeroArtifacts, Map, MapObject, ObjectTemplate,
@@ -36,6 +35,7 @@ use h3_map::writer::{
 
 use crate::harvest::{creature_names, hero_names, spell_numbers};
 use h3_battle_client::gate::find_ci;
+use h3_battle_client::lods::Lod;
 use h3_battle_client::scenario::{Book, Sides, SiegeTown, sides};
 /// Where Blue stands on the 36 × 36 map by default; Red stands one tile west. The original's
 /// obstacles depend on the battle's tile (`--tile`: the capture set's other battlefields).
@@ -227,12 +227,10 @@ struct Numbers {
 /// The installation's [`Originals`].
 fn original_tables(install: &Path) -> Result<Originals, String> {
     let data = find_ci(install, "Data").map_err(|e| format!("{}: Data: {e}", install.display()))?;
-    let path = find_ci(&data, "H3bitmap.lod").map_err(|e| format!("H3bitmap.lod: {e}"))?;
-    let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    let lod = LodArchive::parse(&bytes).map_err(|e| format!("H3bitmap.lod: {e:?}"))?;
+    // The archive's table alone (CLT-Q2), then the three tables by their ranges.
+    let lod = Lod::open(&data, "H3bitmap.lod")?;
     let entry = |name: &str| -> Result<Vec<u8>, String> {
-        lod.read_by_name(name)
-            .map_err(|e| format!("{name}: {e:?}"))?
+        lod.read_by_name(name)?
             .ok_or(format!("H3bitmap.lod has no {name}"))
     };
     let table = entry("CRTRAITS.TXT")?;

@@ -33,8 +33,10 @@ search the parent directories).
   `cargo-deny`, `cargo-llvm-cov` and the LLVM tools.
 - **The real-asset gate:** `cargo run --release -p h3-battle-client -- gate [--install <dir>] [--out <dir>]`
   (from `clients/`) opens the four LODs of the installation copy (default: `$H3_INSTALL`, then the
-  repository's `original-data/install`), decodes every PCX, PAL, DEF and MSK (it fails if one does
-  not), prints the entries by extension and the times, and writes every entry with its verdict to
+  repository's `original-data/install`) as the client starts, their tables alone (CLT-Q2; E27 M2
+  T3b: `h3_battle_client::lods`, a batch's entries read by their ranges), reads every entry by its
+  range and decodes every PCX, PAL, DEF and MSK (it fails if one does not), prints the entries by
+  extension and the times (the start's among them), and writes every entry with its verdict to
   `clients/out/gate/entries.tsv` and the inventory (findings, duplicates, names nothing mentions)
   to `clients/out/gate/report.md`; then it checks that every name in the asset tables
   (`--tables <dir>`, default `clients/assets`) is found where the game searches it and decodes.
