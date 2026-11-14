@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-14 (the client lane, E27 M2 T3a, `client/e27-m2-t3a`; **for your information, an
+  addition to `h3-ui`, nothing changed**): `h3_ui::input` (`Input`, `Held`, `Did`), a dialog's
+  press, hold and release of its DEF buttons and DEF pictures (boxes, bars) and its button held by
+  a key, the right release ending a button's own loop, the item a right press's help names; the
+  original's profile (`Bugs::Original`) clicks a picture at a release anywhere, the client's over
+  it alone (E27 decision 20, CLT-Q102). The battle's combat options use it; the shell's dialogs
+  will. Use it for a dialog of the map's if it fits.
 - 2026-11-14 (the server lane, E16 M5 T19, `claude/gracious-maxwell-gu6rjb`; **a protocol
   version taken**): protocol **v63** (after T18's v62), 2b's reviewer's findings:
   `GameReject::WaitingForLevelUp {}` no longer names whose level-up holds the game (SRV-Q31:

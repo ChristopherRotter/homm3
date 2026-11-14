@@ -16,6 +16,8 @@
 //! - **The other commands' adapters:** [`gate`] (the real-asset gate), [`render`] (the headless
 //!   renderer), [`sequences`] (the harness's sequences), [`scenario`] (a scenario file and its
 //!   packs), [`sprite`], [`text`], [`video`], [`assets`] (the asset tables and layouts read).
+//! - **The game shell** (E27; CLT-Q103, decision 21): [`shell`] (`h3-view shell`, its headless
+//!   driver; E27 M2 T3a).
 //!
 //! An adapter, not pure: it reads files and the archives, measures time, prints, runs threads and
 //! drives the window and the audio device through `h3-sdl`. Left out of the coverage gate as the
@@ -45,6 +47,7 @@ pub mod render;
 pub mod results;
 pub mod scenario;
 pub mod sequences;
+pub mod shell;
 pub mod sounds;
 pub mod spellbook;
 pub mod sprite;
