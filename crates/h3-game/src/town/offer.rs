@@ -1,5 +1,5 @@
-//! The hall's offer and the legal builds (E09 T18b2b, the town epic's design note §29): what a
-//! town's owner may build now, as [`crate::legal_commands`] lists it ([`legal_builds`]) and as a
+//! The hall's offer and the legal builds (E09 T18b2b, the town epic's design note §29), since E09
+//! T27 with the legal recruitments (design §49): what a town's owner may build now, as [`crate::legal_commands`] lists it ([`legal_builds`]) and as a
 //! client's hall shows it ([`GameState::town_offer`]). Both read the hall's tests
 //! ([`h3_towns::buildable`], [`h3_towns::possible`]) with whether the owner holds another town
 //! with a standing Capitol ([`holds_capitol`]), and the owner's treasury; the command's own checks
@@ -56,12 +56,14 @@ impl GameState {
     }
 }
 
-/// The builds `player` may give now, for [`crate::legal_commands`] in `player`'s turn without a
-/// decision (E09 T18b2b, design §29; TWN-BLD-001): for each town it owns, in `TownId` order (the
-/// static map's towns in object order), each building of the hall's offer whose price its treasury
-/// holds, in the record's order. A town built in today offers none (TWN-BLD-004) and costs no
-/// Capitol test; a map without towns walks nothing.
-// rule: TWN-BLD-001, TWN-BLD-004
+/// The town commands `player` may give now, for [`crate::legal_commands`] in `player`'s turn
+/// without a decision: for each town it owns, in `TownId` order (the static map's towns in object
+/// order), each building of the hall's offer whose price its treasury holds, in the record's order
+/// (E09 T18b2b, design §29; TWN-BLD-001), then since E09 T27 a recruitment at each building whose
+/// dialog opens ([`h3_towns::recruiting`]: a standing dwelling, horde, or Portal holding a
+/// creature), in the record's order (TWN-REC-001, -002; design §49). A town built in today offers
+/// no build (TWN-BLD-004) and costs no Capitol test; a map without towns walks nothing.
+// rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002
 pub(crate) fn legal_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -75,17 +77,24 @@ pub(crate) fn legal_builds<'a>(
         .filter(move |&&index| adventure.owner(index) == Some(player))
         .filter_map(move |&index| map.town_id(index))
         .flat_map(move |town| {
-            let buildable = state
-                .towns()
-                .get(town)
-                .filter(|record| !record.built_today())
-                .map_or(BuildingSet::EMPTY, |record| {
+            let record = state.towns().get(town);
+            let buildable = record.filter(|record| !record.built_today()).map_or(
+                BuildingSet::EMPTY,
+                |record| {
                     let holds = holds_capitol(adventure, state.towns(), part, player, town);
                     h3_towns::buildable(record, part, holds)
-                });
-            payable(state, rules, player, town, buildable)
+                },
+            );
+            let recruiting = record.map_or(BuildingSet::EMPTY, |record| {
+                h3_towns::recruiting(record, part)
+            });
+            let builds = payable(state, rules, player, town, buildable)
                 .iter()
-                .map(move |building| GameCommand::Town(TownCommand::Build { town, building }))
+                .map(move |building| GameCommand::Town(TownCommand::Build { town, building }));
+            let recruits = recruiting
+                .iter()
+                .map(move |building| GameCommand::Town(TownCommand::Recruit { town, building }));
+            builds.chain(recruits)
         })
 }
 

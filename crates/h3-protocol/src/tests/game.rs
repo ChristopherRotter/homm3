@@ -71,6 +71,35 @@ fn pos_back(p: Pos) -> h3_adventure::Pos {
     h3_adventure::Pos::new(p.x, p.y, p.level)
 }
 
+/// A hire dialog's army back (E09 T27: a town's garrison too).
+pub(super) const fn hire_target_back(target: HireTarget) -> h3_adventure::HireTarget {
+    match target {
+        HireTarget::Hero { hero } => h3_adventure::HireTarget::Hero(HeroId::new(hero)),
+        HireTarget::Garrison { town } => h3_adventure::HireTarget::Garrison(TownId::new(town)),
+    }
+}
+
+/// A hire dialog's source back (E09 T27).
+pub(super) fn hire_seen_back(source: HireSeen) -> h3_game::HireSeen {
+    use HireSeen as W;
+    match source {
+        W::Object {
+            object_type,
+            anchor,
+        } => h3_game::HireSeen::Object {
+            object_type: Handle::from_raw(object_type),
+            anchor: pos_back(anchor),
+        },
+        W::Town { town, index } => h3_game::HireSeen::Town {
+            town: TownId::new(town),
+            index,
+        },
+        W::Portal { town } => h3_game::HireSeen::Portal {
+            town: TownId::new(town),
+        },
+    }
+}
+
 fn army_back(stacks: &[ArmyStack]) -> Vec<EngineStack> {
     stacks
         .iter()
@@ -702,11 +731,8 @@ fn decision_back(d: &Decision) -> DecisionView {
                 .collect(),
         },
         Decision::Hire { hire } => DecisionView::Hire(HireView {
-            target: match hire.target {
-                HireTarget::Hero { hero } => h3_adventure::HireTarget::Hero(HeroId::new(hero)),
-            },
-            object_type: Handle::from_raw(hire.object_type),
-            anchor: pos_back(hire.anchor),
+            target: hire_target_back(hire.target),
+            source: hire_seen_back(hire.source),
             creatures: hire
                 .creatures
                 .iter()
@@ -1088,13 +1114,38 @@ fn every_decision() -> Vec<DecisionView> {
     });
     out.push(DecisionView::Hire(HireView {
         target: h3_adventure::HireTarget::Hero(hero),
-        object_type,
-        anchor,
+        source: h3_game::HireSeen::Object {
+            object_type,
+            anchor,
+        },
         creatures: vec![h3_game::HireCreature {
             creature: Handle::from_raw(12),
             count: 7,
             cost: price(),
         }],
+    }));
+    // E09 T27 (protocol v59): a town's recruitment, at an upgraded index and at a Portal.
+    let town = TownId::new(2);
+    out.push(DecisionView::Hire(HireView {
+        target: h3_adventure::HireTarget::Garrison(town),
+        source: h3_game::HireSeen::Town { town, index: 8 },
+        creatures: vec![
+            h3_game::HireCreature {
+                creature: Handle::from_raw(15),
+                count: 4,
+                cost: price(),
+            },
+            h3_game::HireCreature {
+                creature: Handle::from_raw(14),
+                count: 4,
+                cost: price(),
+            },
+        ],
+    }));
+    out.push(DecisionView::Hire(HireView {
+        target: h3_adventure::HireTarget::Garrison(town),
+        source: h3_game::HireSeen::Portal { town },
+        creatures: vec![],
     }));
     // E08 T114a2: a map garrison's exchange, armed and removable, and empty and not.
     out.push(DecisionView::Exchange {

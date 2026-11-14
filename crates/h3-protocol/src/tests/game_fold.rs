@@ -752,8 +752,10 @@ fn the_fold_leaves_the_view_for_messages_and_what_no_event_carries() {
             GameEvent::HireOpened {
                 player: 1,
                 target: HireTarget::Hero { hero: 4 },
-                object_type: ty,
-                anchor: a,
+                source: HireSeen::Object {
+                    object_type: ty,
+                    anchor: a,
+                },
             },
             GameEvent::BattleStarted {
                 heroes: [Some(4), None],
@@ -1436,7 +1438,7 @@ fn the_fold_keeps_the_own_heroes_armies_and_the_towns() {
 
 #[test]
 fn the_fold_keeps_the_bonus_visitables_army_changes_and_the_kind_marks() {
-    // E08 T115b (v59): the Sirens' loss as the Whirlpool's, the Stables' upgrade of a slot's
+    // E08 T115b (v60): the Sirens' loss as the Whirlpool's, the Stables' upgrade of a slot's
     // creature, the team's kind marks in type order; another player's hero and a held mark
     // change nothing; a visit that gave nothing is a message.
     let mut v = view();

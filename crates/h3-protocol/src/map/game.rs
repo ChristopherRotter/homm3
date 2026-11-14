@@ -24,8 +24,9 @@ use h3_content::{CreatureTypeId, Formation as EngineFormation, ResourceId};
 use h3_contracts::{ArmyStack as EngineStack, FortLevel};
 use h3_game::{
     DecisionView, GameRuleset, GameState, GarrisonStackView, GarrisonView, HeroInfo as EngineInfo,
-    HireCreature as EngineCreature, HireView, LevelUpView, MapGarrisonView, MonthKind, PlayerView,
-    SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView, Viewer, WeekKind,
+    HireCreature as EngineCreature, HireSeen as EngineSeen, HireView, LevelUpView, MapGarrisonView,
+    MonthKind, PlayerView, SlotState as EngineSlot, TownBuildingsView, TownOwnerView, TownView,
+    Viewer, WeekKind,
 };
 use h3_heroes::{
     ArtifactInstance, HeroDetails as EngineDetails, OfferLevels as EngineLevels,
@@ -37,10 +38,11 @@ use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
     Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
-    HeroInfo, Hire, HireCreature, HireTarget, Known, KnownObject as WireKnownObject, LevelUp,
-    MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind, OfferLevels,
-    OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, SlotState,
-    Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus, Week,
+    HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known, KnownObject as WireKnownObject,
+    LevelUp, MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind,
+    OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel,
+    SlotState, Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus,
+    Week,
 };
 
 mod command;
@@ -339,16 +341,12 @@ fn choice(c: &EngineChoice) -> Choice {
 fn hire(h: &HireView) -> Hire {
     let HireView {
         target,
-        object_type,
-        anchor,
+        source,
         creatures,
     } = h;
     Hire {
-        target: match target {
-            EngineHireTarget::Hero(hero) => HireTarget::Hero { hero: hero.raw() },
-        },
-        object_type: object_type.raw(),
-        anchor: pos(*anchor),
+        target: hire_target(*target),
+        source: hire_seen(*source),
         creatures: creatures
             .iter()
             .map(
@@ -724,6 +722,32 @@ fn tile(view: TileView) -> Tile {
             winds,
             hole,
         },
+    }
+}
+
+/// A hire dialog's army on the wire (E09 T27: a town's garrison too).
+pub(crate) const fn hire_target(target: EngineHireTarget) -> HireTarget {
+    match target {
+        EngineHireTarget::Hero(hero) => HireTarget::Hero { hero: hero.raw() },
+        EngineHireTarget::Garrison(town) => HireTarget::Garrison { town: town.raw() },
+    }
+}
+
+/// A hire dialog's source on the wire (E09 T27).
+pub(crate) const fn hire_seen(source: EngineSeen) -> HireSeen {
+    match source {
+        EngineSeen::Object {
+            object_type,
+            anchor,
+        } => HireSeen::Object {
+            object_type: object_type.raw(),
+            anchor: pos(anchor),
+        },
+        EngineSeen::Town { town, index } => HireSeen::Town {
+            town: town.raw(),
+            index,
+        },
+        EngineSeen::Portal { town } => HireSeen::Portal { town: town.raw() },
     }
 }
 

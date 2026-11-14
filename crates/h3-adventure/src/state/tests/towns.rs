@@ -12,6 +12,7 @@ use h3_kernel::hash::hash_of;
 
 use super::*;
 use crate::army::{ArmyRef, ArmySlot};
+use crate::command::{HireDialog, HireError, HireSource, HireTarget};
 use crate::ruleset::{AdventurePack, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::testing::{
     FLYING, MAX_STACK, PEASANT, PIKEMAN, WATER_WALKING, draws, hero_at, hero_details, hero_skills,
@@ -232,6 +233,101 @@ fn a_neutral_garrison_s_week_is_written_on_its_town() {
     assert_eq!(state.town_garrison(2), Some(&grown[..]));
     assert_eq!(state.town_garrison(1), before.town_garrison(1));
     assert_ne!(state.state_hash(), before.state_hash());
+}
+
+// covers: ADV-HIR-002, ADV-ARM-007, TWN-REC-001
+#[test]
+fn a_towns_purchase_joins_its_garrison_and_lowers_no_count_of_the_map() {
+    // E09 T27 (the town epic's design note §50): a town's source has no stock on the map; its
+    // purchase is checked for the garrison's room alone and joins the garrison, a stack of the
+    // creature first, else the first free slot, returning the slot for the game to tell.
+    let rules = town_rules();
+    let setup = town_setup(objects(&rules), vec![garrison(), vec![]]);
+    let mut state = started(&rules, &setup).unwrap();
+    let rules = (&rules.0, &rules.1);
+    let (red, gone) = (TownId::new(0), TownId::new(2));
+    let sources = [
+        HireSource::Town {
+            town: red,
+            index: 7,
+        },
+        HireSource::Portal { town: red },
+    ];
+    for source in sources {
+        assert_eq!(state.hire_stock(rules.1, &source), None);
+        let dialog = HireDialog {
+            target: HireTarget::Garrison(red),
+            source,
+        };
+        assert_eq!(
+            state.check_hire(rules, &dialog, (PIKEMAN, 1)),
+            Err(HireError::NoSource)
+        );
+    }
+    let target = HireTarget::Garrison(red);
+    assert_eq!(state.hire_room(rules.1, &target, PIKEMAN), MAX_STACK);
+    assert_eq!(
+        state.hire_room(rules.1, &HireTarget::Garrison(gone), PIKEMAN),
+        0
+    );
+    assert_eq!(
+        state.check_join(rules, &HireTarget::Garrison(gone), (PIKEMAN, 1)),
+        Err(HireError::NoSource)
+    );
+    let before = state.clone();
+    let mut sink = Vec::new();
+    let purchase = state.check_join(rules, &target, (PIKEMAN, 4)).unwrap();
+    assert_eq!(purchase.price(), &[][..]);
+    assert_eq!(
+        state.hire(purchase, &mut sink),
+        Some(ArmySlot {
+            army: ArmyRef::Garrison(red),
+            slot: 2
+        })
+    );
+    assert!(sink.is_empty());
+    assert_eq!(
+        state.town_garrison(1),
+        Some(&[stack(0, PEASANT, 3), stack(2, PIKEMAN, 9)][..])
+    );
+    let purchase = state
+        .check_join(rules, &target, (CreatureTypeId::from_raw(1), 2))
+        .unwrap();
+    assert_eq!(
+        state.hire(purchase, &mut sink),
+        Some(ArmySlot {
+            army: ArmyRef::Garrison(red),
+            slot: 1
+        })
+    );
+    assert_eq!(
+        state.town_garrison(1).unwrap()[1],
+        stack(1, CreatureTypeId::from_raw(1), 2)
+    );
+    // Nothing else of the map moved.
+    assert_eq!(state.town_garrison(2), before.town_garrison(2));
+    assert_eq!(state.heroes(), before.heroes());
+    // A full garrison takes only a stack of the creature within a stack's most.
+    let full: Vec<ArmyStack> = (0..7)
+        .map(|slot| stack(slot, CreatureTypeId::from_raw(u16::from(slot) + 10), 1))
+        .collect();
+    state.set_town_garrison(red, full);
+    assert_eq!(
+        state.check_join(rules, &target, (PIKEMAN, 1)),
+        Err(HireError::NoRoom)
+    );
+    assert_eq!(state.hire_room(rules.1, &target, PIKEMAN), 0);
+    let eleven = CreatureTypeId::from_raw(11);
+    assert_eq!(state.hire_room(rules.1, &target, eleven), MAX_STACK - 1);
+    let purchase = state.check_join(rules, &target, (eleven, 5)).unwrap();
+    assert_eq!(
+        state.hire(purchase, &mut sink),
+        Some(ArmySlot {
+            army: ArmyRef::Garrison(red),
+            slot: 1
+        })
+    );
+    assert_eq!(state.town_garrison(1).unwrap()[1], stack(1, eleven, 6));
 }
 
 // covers: TWN-SET-011, ADV-SHY-001

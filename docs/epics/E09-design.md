@@ -1655,6 +1655,18 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   building order (a Portal only with a creature summoned). The env's entry (§55).
 - **Replay** (the adventure replay format, `cross-lane`): `town recruit <town> <building>`, the
   purchases the hire dialog's lines as now.
+- *As built (T27):* `TownCommand::Recruit` and the errors `NotRecruiting`, `NotStanding`,
+  `NothingSummoned` (`h3-towns`' `command.rs`); `recruit.rs` with `RecruitSource`,
+  `recruit_source` (the Portal holding nothing tested there, with the record, not in the game:
+  *agent's call*) and `recruiting` (the legal set in one pass over the standing buildings, the
+  same test). `h3-game`'s `town/recruit.rs` (`open`, `town_source`, `stock`, `buy`) behind
+  `town::command`; `GameState::open_hire` now `pub(crate)`, `GameState::hire_stock` public (any
+  source's stock; the env reads a dialog's creatures from it). `HireSeen` in `observe.rs`, carried
+  by `HireView::source` and `HireOpened::source` (the object's type and anchor moved into
+  `HireSeen::Object`). The legal recruitments after each town's builds in `town/offer.rs`'s
+  `legal_builds`. Game state hash v32 (the target's tag 1, the sources' tags 1 and 2; E08
+  T115a's #906 took v31), protocol v59 (#904 took v56, #906 v57, #907 v58), replay format v15 (`town recruit`, #904 took v14), env encoding v10
+  (`RECRUIT`, entry 31, the two heads of `BUILD`).
 
 ### 50. The purchase (TWN-REC-001; ADV-HIR-002's room and price as built)
 
@@ -1681,6 +1693,15 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   treasury); an upgraded index sells either creature from one count and the other's count falls
   with it; a full garrison refuses with `NoRoom` while a stack of the creature takes it; a purchase
   into a garrison hero's army (§53).
+- *As built (T27):* `h3_towns::recruit_stock(town, part, source)` (no core: the record names the
+  creatures), `check_recruit(town, part, source, (creature, amount)) -> Result<(), RecruitError>`
+  (`NotOffered`, `Amount`, given by the game as `HireError`'s), `recruit(town, source, amount)`;
+  the adventure's `check_join((core, part), target, (creature, amount))` (the target's room and
+  the price; `check_hire` now builds on it) and `hire` returning the garrison's changed
+  `ArmySlot` (none for a hero's army), `HirePurchase` naming its army (`Joining`) and the map's
+  count to lower, none for a town's. The game's `buy`: the store's town, its tests, the room,
+  the treasury, then `Told::before`, the price, the store's write, the join, `StackChanged` to
+  the owner, `Told::tell`; the one-creature close stays `GameState::hire`'s.
 
 ### 51. The Portal's hire (TWN-REC-002) and a capture's empty Portal
 
@@ -1693,6 +1714,9 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   when the Portal stands empty and the capturer owns a dwelling (from the capturer's stream, after
   the capture's own draws; decision 71's "what a human sees at once" carried to the capture). Not
   chosen: no draw at a capture (the week or a flag draws).
+- *As built (T27):* `RecruitSource::Portal` / `HireSource::Portal`; a purchase lowers the count
+  and keeps the creature, at 0 too, so a bought-out Portal is still listed and opens a dialog
+  whose only answer is `Close` (TWN-REC-002).
 
 ### 52. The town's two bars (TWN-ROW-001; GAM-MAN-001, -002 amended)
 

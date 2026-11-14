@@ -44,7 +44,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`, #914, `cross-lane`; **your path
-  changed, for your review**): protocol v59 adds the adventure observation's `kinds` (the kind
+  changed, for your review**): protocol v60 adds the adventure observation's `kinds` (the kind
   marks of the viewer's team), so `h3-view`'s `game_record/tests.rs` snapshot literal gained
   `kinds: Vec::new()`; also new: `Known::Visited` and the adventure events `NothingGained`,
   `SirensLoss`, `CreaturesUpgraded`, `KindKnown` (your readers' wildcards skip them).

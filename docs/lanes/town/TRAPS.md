@@ -17,6 +17,16 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   T18b1): `h3-map`'s property tests (`play.rs`' `as_move`, `view.rs`' told views), `h3-sim`'s
   action entries, `h3-files`' replay words; the scoped verify builds `h3-map`'s tests only in its
   clippy and coverage steps. Run `cargo check --workspace --all-targets` right after adding one.
+- **A new town command in the legal set changes every random game with an owned town** (E09
+  T19c1, T27): the env's agent draws it, so `h3-sim`'s town-map tests (`tests/towns.rs`: the
+  play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a
+  throwaway `#[ignore]` test in release, its `CARGO_TARGET_DIR` outside the worktree: only
+  `/target` is ignored, and `git add -A` took a `target-rel/` (E09 T27).
+- **The scoped verify's clippy skips `h3-sim`** (E09 T27's CI: a one-element `for` in a town-map
+  test): after a change there run `cargo clippy --workspace --all-targets -- -D warnings`.
+- **A hire dialog's creatures for the env come from `GameState::hire_stock`** (E09 T27): a new
+  source served elsewhere leaves its `Buy`s without an entry, and the random agent falls back on
+  `EndTurn`, which the game refuses (`DecisionOpen`).
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's
   `_int_malloc` alone (E09 T8c2). Compare per function with `master` built in the same sandbox
@@ -46,8 +56,9 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 
 - **The turn start is compared whole** (`check_timed`, E09 T19b): every event after a command's
   first `TurnStarted` must be what the map's timed events and then the owned towns' events give,
-  in order (a town event's build's views after its `TownBuilt` are left out, the told-views
-  property's). A new event at a turn start (increment 3's creatures, a week's growth told) is
+  in order (a town event's views after its `TownBuilt` or its `TownEventFired` are left out,
+  the told-views property's; E08 T115a and E09 T27 met an event's creatures told without a
+  building). A new event at a turn start (increment 3's creatures, a week's growth told) is
   taught there, or every property fails at the first such turn.
 
 - **A public draw under the hygiene property** (E09 T9b2a's cut; T9b2b's `hygienic`): the

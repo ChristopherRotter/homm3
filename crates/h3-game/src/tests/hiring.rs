@@ -157,8 +157,10 @@ fn an_accepted_hire_question_opens_the_dialog_to_its_owner_alone() {
     let opened = GameEvent::HireOpened {
         player: RED,
         target: HireTarget::Hero(RED_HERO),
-        object_type: hut_type(&rules),
-        anchor: ANCHOR,
+        source: HireSeen::Object {
+            object_type: hut_type(&rules),
+            anchor: ANCHOR,
+        },
     };
     assert_eq!(events[1..], [joined(IMP, 3), opened]);
     assert_eq!(project(&opened, Viewer::Player(RED)), Some(opened));
@@ -167,8 +169,10 @@ fn an_accepted_hire_question_opens_the_dialog_to_its_owner_alone() {
     // core's order (gold, then gems); no most. Blue sees nothing.
     let view = HireView {
         target: HireTarget::Hero(RED_HERO),
-        object_type: hut_type(&rules),
-        anchor: ANCHOR,
+        source: HireSeen::Object {
+            object_type: hut_type(&rules),
+            anchor: ANCHOR,
+        },
         creatures: vec![
             HireCreature {
                 creature: IMP,
@@ -205,8 +209,10 @@ fn an_accepted_hire_question_opens_the_dialog_to_its_owner_alone() {
         Some(&GameEvent::HireOpened {
             player: RED,
             target: HireTarget::Hero(RED_HERO),
-            object_type: camp_type(&rules),
-            anchor: ANCHOR,
+            source: HireSeen::Object {
+                object_type: camp_type(&rules),
+                anchor: ANCHOR,
+            },
         })
     );
     let creatures = seen(&state, &rules, RED).map(|view| view.creatures);

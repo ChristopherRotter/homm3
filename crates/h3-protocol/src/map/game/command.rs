@@ -62,6 +62,10 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                     town: town.raw(),
                     building: building.raw(),
                 },
+                EngineTown::Recruit { town, building } => TownCommand::Recruit {
+                    town: town.raw(),
+                    building: building.raw(),
+                },
             },
         },
         // E16 M5 T14 (v56): the system actor's own commands, the host's.
@@ -257,14 +261,21 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
         GameCommand::Answer { answer } => EngineCommand::Answer(answer_to_engine(answer)),
         GameCommand::Battle { command } => EngineCommand::Battle(battle_to_engine(command)),
         GameCommand::Manage { manage } => EngineCommand::Manage(manage_to_engine(manage)),
-        GameCommand::Town {
-            command: TownCommand::Build { town, building },
-        } => EngineCommand::Town(EngineTown::Build {
-            town: TownId::new(town),
-            building: BuildingId::from_index(usize::from(building)).ok_or(GameReject::Town {
-                error: TownReject::UnknownBuilding {},
-            })?,
-        }),
+        GameCommand::Town { command } => {
+            let (town, building) = match command {
+                TownCommand::Build { town, building } | TownCommand::Recruit { town, building } => {
+                    (TownId::new(town), building)
+                }
+            };
+            let building =
+                BuildingId::from_index(usize::from(building)).ok_or(GameReject::Town {
+                    error: TownReject::UnknownBuilding {},
+                })?;
+            EngineCommand::Town(match command {
+                TownCommand::Build { .. } => EngineTown::Build { town, building },
+                TownCommand::Recruit { .. } => EngineTown::Recruit { town, building },
+            })
+        }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
         GameCommand::System { command } => EngineCommand::System(match command {
             SystemCommand::EndTurn { player } => EngineSystem::EndTurn {
@@ -452,6 +463,9 @@ pub fn reject(error: GameCommandError) -> GameReject {
                     building: building.raw(),
                 },
                 TownCommandError::BuiltToday => TownReject::BuiltToday {},
+                TownCommandError::NotRecruiting => TownReject::NotRecruiting {},
+                TownCommandError::NotStanding => TownReject::NotStanding {},
+                TownCommandError::NothingSummoned => TownReject::NothingSummoned {},
             },
         },
     }

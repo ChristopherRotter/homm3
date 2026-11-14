@@ -15,7 +15,8 @@
 //! hall's offer and the legal builds ([`offer`]); since E09 T18c it fires the town events at a
 //! player's turn start ([`events`]); since E09 T26a1 it grows the towns' counts each week and
 //! month ([`growth`]); since E09 T26b it grows the neutral towns' garrisons each week
-//! ([`garrison`]) and draws the Portals of Summoning ([`portal`]).
+//! ([`garrison`]) and draws the Portals of Summoning ([`portal`]); since E09 T27 it opens a town's
+//! hire dialog and makes its purchases ([`recruit`]).
 
 use alloc::vec::Vec;
 
@@ -38,6 +39,7 @@ pub(crate) mod income;
 pub(crate) mod offer;
 pub(crate) mod pool;
 pub(crate) mod portal;
+pub(crate) mod recruit;
 pub(crate) mod siege;
 pub(crate) mod view;
 

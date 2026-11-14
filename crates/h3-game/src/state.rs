@@ -1805,18 +1805,38 @@ impl CanonicalHash for GameState {
                 Decision::Hire { owner, dialog } => {
                     h.write_u8(7);
                     h.write_u8(owner.raw());
-                    let HireTarget::Hero(hero) = dialog.target;
-                    h.write_u8(0);
-                    h.write_u16(hero.raw());
-                    let HireSource::Object {
-                        index,
-                        object_type,
-                        anchor,
-                    } = dialog.source;
-                    h.write_u8(0);
-                    h.write_len(index);
-                    object_type.hash_into(h);
-                    anchor.hash_into(h);
+                    match dialog.target {
+                        HireTarget::Hero(hero) => {
+                            h.write_u8(0);
+                            h.write_u16(hero.raw());
+                        }
+                        // E09 T27 (game state hash v32).
+                        HireTarget::Garrison(town) => {
+                            h.write_u8(1);
+                            h.write_u16(town.raw());
+                        }
+                    }
+                    match dialog.source {
+                        HireSource::Object {
+                            index,
+                            object_type,
+                            anchor,
+                        } => {
+                            h.write_u8(0);
+                            h.write_len(index);
+                            object_type.hash_into(h);
+                            anchor.hash_into(h);
+                        }
+                        HireSource::Town { town, index } => {
+                            h.write_u8(1);
+                            h.write_u16(town.raw());
+                            h.write_u8(index);
+                        }
+                        HireSource::Portal { town } => {
+                            h.write_u8(2);
+                            h.write_u16(town.raw());
+                        }
+                    }
                 }
                 Decision::Exchange { owner, exchange } => {
                     h.write_u8(8);

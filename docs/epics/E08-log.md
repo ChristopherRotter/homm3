@@ -16172,7 +16172,7 @@ only). No original data staged: nothing of the import or the census moved.
   Tree before its price), a Shrine and a Witch Hut first, a University at its visit (*agent's
   call*: the original's after its dialog). `Known::Visited` for a Fountain's and a Spring's team
   knowledge.
-- **The wire** (`h3-protocol` v59, `cross-lane`; the server lane's T16 took v58 first): the four events and `NothingWhy`,
+- **The wire** (`h3-protocol` v60, `cross-lane`; the server lane's T16 and the town lane's T27 took v58 and v59 first, `master` merged in after #911): the four events and `NothingWhy`,
   `Adventure::kinds`, `Known::Visited`, the fold (a kind mark inserted, the Sirens' loss as the
   Whirlpool's, an upgrade's creature, nothing for `NothingGained`); the round-trip cases.
 - **Tests:** `h3-adventure`'s `state/tests/visitables.rs` (the Idol by the day, the Oasis and its
@@ -16194,6 +16194,6 @@ only). No original data staged: nothing of the import or the census moved.
   `h3-protocol`'s `tests::game_fold`, `tests::game_session`, `h3-server`'s `tests::record`,
   `h3-cli`'s `adventure_replays` pass. The bot reports record the part's hash, unchanged.
 
-**Versions:** adventure state hash v24, protocol v59 (the server lane's, `cross-lane`); the base
+**Versions:** adventure state hash v24, protocol v60 (the server lane's, `cross-lane`); the base
 faithful ruleset hash by #909. The part, the map import, the game state hash, the replay format and
 the env's encoding unchanged. T116 next.
