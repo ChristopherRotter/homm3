@@ -37,8 +37,9 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
+use h3_ui::input::{self, Input};
 use h3_ui::text::{Args, Catalogue};
-use h3_ui::ui::{Dialog, Item, Shown, State};
+use h3_ui::ui::{Dialog, Shown, State};
 use serde::Deserialize;
 
 use crate::message::{MessageBox, OK};
@@ -377,18 +378,6 @@ pub struct Did {
     pub closed: bool,
 }
 
-/// What the mouse or a key holds down.
-#[derive(Debug, Clone, PartialEq, Eq)]
-enum Held {
-    /// A DEF button by the mouse, and whether the mouse is over it.
-    Button { id: u16, over: bool },
-    /// A DEF picture (a bar or a box) by the mouse, and whether the mouse is over it: its release
-    /// clicks it over it (the client's profile, CLT-Q43 (2)) or anywhere (the original's).
-    Picture { id: u16, over: bool },
-    /// The OK by its key.
-    Key(String),
-}
-
 /// The dialog on the screen.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Open {
@@ -407,7 +396,8 @@ pub struct Open {
     audio: bool,
     /// The profile: the client's fixes or the original's oddities 2 and 7.
     bugs: Bugs,
-    held: Option<Held>,
+    /// What the mouse or a key holds (the shared input, decision 20: the oddity 2's rule there).
+    input: Input,
 }
 
 impl Open {
@@ -435,7 +425,7 @@ impl Open {
             texts,
             audio,
             bugs,
-            held: None,
+            input: Input::new(bugs),
         };
         open.fill();
         open
@@ -493,45 +483,17 @@ impl Open {
         self.window.shown = shown;
     }
 
-    /// The item at `point` (on the screen) of the kinds that take the mouse here: a DEF button
-    /// or a DEF picture, hidden ones too (a DEF picture takes the mouse by its bit 2 alone).
-    fn item_at(&self, point: [i32; 2]) -> Option<&Item> {
-        self.window
-            .dialog
-            .item_at(point)
-            .filter(|i| matches!(i, Item::Button(_) | Item::Def(_)))
-    }
-
     /// The left button pressed at `point`: a DEF button there goes down (not the chosen speed,
     /// disabled) with its own press sample alone, a speed's too (CLT-Q74: its loop sends the
     /// procedure no press; design §12.12's oddity 1 read again); a bar or a box is held,
     /// unchanged, a box's press sounding.
     pub fn press(&mut self, point: [i32; 2]) -> Did {
-        if self.held.is_some() {
-            return Did::default();
-        }
-        let item = self
-            .item_at(point)
-            .map(|i| (i.id(), matches!(i, Item::Button(_))));
-        let Some((id, button)) = item else {
-            return Did::default();
-        };
-        if !button {
-            self.held = Some(Held::Picture { id, over: true });
-            return Did {
-                box_sound: (AUTO..=BOXES + 3).contains(&id),
-                ..Did::default()
-            };
-        }
-        if self.window.shown.state(id).disabled {
-            return Did::default();
-        }
-        self.held = Some(Held::Button { id, over: true });
-        set_pressed(&mut self.window.shown, id, true);
+        let did = (self.input).press(&self.window.dialog, &mut self.window.shown, point);
         Did {
-            changed: true,
-            button_sound: true,
-            ..Did::default()
+            box_sound: did
+                .pressed
+                .is_some_and(|id| (AUTO..=BOXES + 3).contains(&id)),
+            ..drawn(did)
         }
     }
 
@@ -541,29 +503,7 @@ impl Open {
     /// box it holds notes whether the mouse is over it, nothing drawn (a picture's press changes
     /// nothing).
     pub fn moved(&mut self, point: [i32; 2]) -> Did {
-        let over_id = |id: u16| self.item_at(point).is_some_and(|i| i.id() == id);
-        let (id, over) = match self.held {
-            Some(Held::Picture { id, .. }) => {
-                self.held = Some(Held::Picture {
-                    id,
-                    over: over_id(id),
-                });
-                return Did::default();
-            }
-            Some(Held::Button { id, over }) => (id, over),
-            Some(Held::Key(_)) | None => return Did::default(),
-        };
-        let now = over_id(id);
-        if now == over {
-            return Did::default();
-        }
-        self.held = Some(Held::Button { id, over: now });
-        set_pressed(&mut self.window.shown, id, now);
-        Did {
-            changed: true,
-            button_sound: now,
-            ..Did::default()
-        }
+        drawn((self.input).moved(&self.window.dialog, &mut self.window.shown, point))
     }
 
     /// The left button released: the DEF button held clicks when the mouse is still over it,
@@ -571,19 +511,8 @@ impl Open {
     /// profile wherever the mouse is (oddity 2: `dialog_def_message`'s release tests no box;
     /// CLT-Q43 (2), fixed in the client's).
     pub fn release(&mut self) -> Did {
-        let anywhere = self.bugs == Bugs::Original;
-        match self.held.take_if(|h| !matches!(h, Held::Key(_))) {
-            Some(Held::Button { id, over: true }) => self.click(id),
-            Some(Held::Picture { id, over }) if over || anywhere => self.click(id),
-            Some(Held::Button { id, .. }) => {
-                set_pressed(&mut self.window.shown, id, false);
-                Did {
-                    changed: true,
-                    ..Did::default()
-                }
-            }
-            _ => Did::default(),
-        }
+        let did = self.input.release(&mut self.window.shown);
+        self.clicked(did)
     }
 
     /// The right button released: it ends a DEF button's hold by the mouse as the left's release
@@ -591,34 +520,20 @@ impl Open {
     /// when the mouse is over it; a bar or a box the mouse holds (a DEF picture, no loop of its
     /// own) and the OK its key holds are kept.
     pub fn right_release(&mut self) -> Did {
-        if matches!(self.held, Some(Held::Button { .. })) {
-            self.release()
-        } else {
-            Did::default()
-        }
+        let did = self.input.right_release(&mut self.window.shown);
+        self.clicked(did)
     }
 
     /// The OK's key down (Enter or Escape; `by` the key whose release clicks): the OK goes down
     /// with its press sample (`button_press` from 0x4565E7; E17 M6 T7b, R4-3).
     pub fn key(&mut self, by: &str) -> Did {
-        if self.held.is_some() {
-            return Did::default();
-        }
-        self.held = Some(Held::Key(String::from(by)));
-        set_pressed(&mut self.window.shown, OK, true);
-        Did {
-            changed: true,
-            button_sound: true,
-            ..Did::default()
-        }
+        drawn(self.input.key(&mut self.window.shown, OK, by))
     }
 
     /// A key up: the OK its key held clicks.
     pub fn key_up(&mut self, by: &str) -> Did {
-        match self.held.take_if(|h| *h == Held::Key(String::from(by))) {
-            Some(_) => self.click(OK),
-            None => Did::default(),
-        }
+        let did = self.input.key_up(&mut self.window.shown, by);
+        self.clicked(did)
     }
 
     /// The key of the help the right button pressed at `point` shows ([`help_key`]): over a DEF
@@ -627,10 +542,7 @@ impl Open {
     /// moves and the releases act there; E17 M6 T7b, R4-2).
     #[must_use]
     pub fn help_at(&self, point: [i32; 2]) -> Option<String> {
-        if matches!(self.held, Some(Held::Button { .. })) {
-            return None;
-        }
-        help_key(self.item_at(point)?.id())
+        help_key(self.input.help_at(&self.window.dialog, point)?)
     }
 
     /// Lets what the mouse (`by` none) or the key `by` holds go without its click, the OK drawn up
@@ -642,18 +554,15 @@ impl Open {
     /// the mouse holds is never let go here: its own loop drops the right press, so no popup
     /// opens over it ([`Self::help_at`]; E17 M7 T2).
     pub fn let_go(&mut self, by: Option<&str>) -> Did {
-        let held = self.held.take_if(|h| match h {
-            Held::Key(key) => by == Some(key.as_str()),
-            Held::Picture { .. } => by.is_none(),
-            Held::Button { .. } => false,
-        });
-        if !matches!(held, Some(Held::Key(_))) {
-            return Did::default();
-        }
-        set_pressed(&mut self.window.shown, OK, false);
-        Did {
-            changed: true,
-            ..Did::default()
+        drawn(self.input.let_go(&mut self.window.shown, by))
+    }
+
+    /// The shared input's release or key up: its click handled ([`Self::click`]), else what it
+    /// drew.
+    fn clicked(&mut self, did: input::Did) -> Did {
+        match did.clicked {
+            Some(id) => self.click(id),
+            None => drawn(did),
         }
     }
 
@@ -669,7 +578,6 @@ impl Open {
         let at = |first: u16| u8::try_from(id - first).unwrap_or(0);
         match id {
             OK => {
-                set_pressed(&mut self.window.shown, OK, false);
                 return Did {
                     changed: true,
                     closed: true,
@@ -715,10 +623,15 @@ impl Open {
     }
 }
 
-/// Item `id` drawn pressed or released in `shown`, its other state bits kept.
-fn set_pressed(shown: &mut Shown, id: u16, pressed: bool) {
-    let state = shown.state(id);
-    shown.states.insert(id, State { pressed, ..state });
+/// What the shared input drew and sounded, the dialog's own fields clear.
+const fn drawn(did: input::Did) -> Did {
+    Did {
+        changed: did.changed,
+        button_sound: did.button_sound,
+        box_sound: false,
+        no_sound: false,
+        closed: false,
+    }
 }
 
 #[cfg(test)]
