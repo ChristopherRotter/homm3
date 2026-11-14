@@ -16,9 +16,8 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   guild and the services 5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle
   lane's inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
 - **Open pull requests:** #920, T28a's (branch `town/e09-t28a`, `cross-lane`); watch it until it
-  merges. Its numbers come after #914's and #916's (merged) and #919's protocol v63 (open beside
-  it). The adventure lane's #918 (open) adds 14 replays at format 15: whichever merges second
-  re-records the other's (`homm3-rerecord-replays`).
+  merges. Its numbers come after #914's, #916's and #919's (protocol v61 to v63, merged); #918's
+  fourteen replays re-recorded here.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -48,11 +47,11 @@ In `TRAPS.md`.
 Baseline 50b0935 (#911 merged; CI's fingerprint, the light gates). T28 cut in two, T28a whole
 (the user, decision 93; the bars first were recommended). The user's computer was connected at the
 start only: the original data and the manuals staged then (SHA-256 checked), used for the scoped
-verify. `master` merged in after #913 (protocol v60), then after #914, #916 and #917 (the replays
-re-recorded, `fork-xl-144` re-measured). `cross-lane`: `h3-adventure`'s state,
+verify. `master` merged in after #913 (protocol v60), after #914, #916 and #917 (the replays
+re-recorded, `fork-xl-144` re-measured), after #918 and #919. `cross-lane`: `h3-adventure`'s state,
 army commands, hire, events and observation; `h3-game`'s management, listing and observation;
 `h3-map`'s plans; `h3-files`; `h3-harvest`'s gap-fill; `h3-protocol` (v64), `h3-server`'s
-literals; `h3-sim` (v11; the fork test on seed 70); the 72 replays; five workloads re-baselined.
+literals; `h3-sim` (v11; the fork test on seed 70); the 86 replays; five workloads re-baselined.
 Notes in the adventure's, the server's, the AI and the client lane's inboxes. T28b queued. PR #920.
 
 ### 2026-11-13 — T27: recruitment

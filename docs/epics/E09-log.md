@@ -3701,10 +3701,10 @@ point: `master` at 50b0935 (#911 merged; the setup found CI's fingerprint, the l
 green). The user's computer was connected at the start only: the original data staged then (17
 files and the four manuals, SHA-256 checked against the PC's). T28 cut in two at its start; **T28a
 whole** (decision 93, the user; the agent recommended the bars first, then the garrison hero).
-`master` merged in twice: after the server lane's #913 (protocol v60), then after E08 T115b's
+`master` merged in three times: after the server lane's #913 (protocol v60); after E08 T115b's
 #914 (protocol v61, adventure state hash v24), the server lane's #916 (protocol v62) and #917, so
-T28a took protocol v64 (the server lane's #919, open then, claimed v63) and adventure state hash
-v25; the replays re-recorded and the benches
+T28a took protocol v64 (the server lane's #919 claimed v63) and adventure state hash v25; after
+#918 (fourteen new replays, re-recorded here) and #919; the replays re-recorded and the benches
 re-measured after the second.
 
 - **The town's rules** (`h3-towns`): `TownCommand::Heroes { town, change: TownHeroChange }`
@@ -3746,7 +3746,7 @@ re-measured after the second.
   each town's recruitments with `check_town_heroes`, `check_invariants` (no hero both on the map
   and in a garrison, the garrison empty), `check_isolation` and `armies` over the garrison heroes,
   `view.rs`' `check_told` folding the two events.
-- **Replays:** the 72 re-recorded from their commands (a scratch script; the format, the town
+- **Replays:** the 86 re-recorded from their commands (a scratch script; the format, the town
   part's hash, the adventure state hash version and the hash lines only); `h3-server`'s record
   literals, `h3-cli`'s and `h3-sim`'s format literals; the client lane's `h3-view` test literal
   of the wire's `Adventure`. The bot reports unchanged (no part they record moved).
