@@ -133,5 +133,8 @@ mod tests {
         assert_eq!(round32((1 << 24) + 1, 124), X::int(1 << 24));
         assert_eq!(round32((1 << 24) + 3, 124), X::int((1 << 24) + 4));
         assert_eq!(round32((1 << 24) + 2, 124), X::int((1 << 24) + 2));
+        // A value below 2^-`frac` times its mantissa's bits: shifted down, truncated.
+        assert_eq!(fixed(X::from_bits32(0x0D80_0000), FRAC), 1 << 24);
+        assert_eq!(fixed(X::from_bits32(0x0080_0000), FRAC), 0);
     }
 }

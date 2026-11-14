@@ -1,6 +1,6 @@
 //! The audio tracks' sound (E27 M2 T2; CLT-Q104, decision 21): FFmpeg 6.1.1's Smacker audio
 //! decoder (`libavcodec/smacker.c`'s `smka_decode_frame`) for the packed tracks, the game's, and
-//! its PCM decoders for the plain ones (`libavcodec/pcmenc.c`'s `pcm_u8` and `pcm_s16le`).
+//! its PCM decoders for the plain ones (`libavcodec/pcm.c`'s `pcm_u8` and `pcm_s16le`).
 //!
 //! A packed packet holds its decoded size, then bits: whether it holds sound, whether it is
 //! stereo and 16-bit (both as its track says), a byte tree per channel and byte (two or four

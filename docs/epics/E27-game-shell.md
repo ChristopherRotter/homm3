@@ -2,8 +2,8 @@
 
 Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, T3: the fresh
 reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
-**M2 T1 done** (2026-11-13, decisions 23 and 24); next **M2 T2** and **T3**
-(`docs/lanes/client/QUEUE.md`).
+**M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
+27); next **M2 T2b** and **T3** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -199,6 +199,19 @@ The user, 2026-11-13 (M2 T1; `CLT-Q119`):
     frame's palette, the DLL's copy (`h3_smacker::check::original_16`) for the comparisons only
     (`Bugs::Original`). Design §7.
 
+The user, 2026-11-14 (M2 T2; `CLT-Q120`, `CLT-Q121`):
+
+25. **T2 kept whole** (the cut offered: Smacker's sound, Bink's sound, the checks against the DLLs
+    and the window's audio, one or two a session; all four in one, the long loops in narrow
+    passes).
+26. **Ooura's FFT ported** (CLT-Q120): `BINKW32.DLL`'s inverse FFT is Takuya Ooura's `fft8g.c`;
+    `h3_bink::fft` ports it as the DLL compiled it, crediting Ooura and his terms in its header,
+    under the project's GPL-2.0-or-later. Design §8.3.
+27. **Every clip's sound at the effects setting** (CLT-Q121): the game plays Smacker clips at the
+    effects setting and Bink clips (the start's) at full volume whatever it is; the client plays
+    every clip at the setting, the original's full volume for the comparisons only
+    (`Bugs::Original`, `h3_view::clip_sound::volume`). Design §8.3.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -286,10 +299,11 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | Task | Scope | Status |
 |---|---|---|
 | T1 | The Smacker decoder: `h3-smacker` (decision 5), FFmpeg 6.1.1's `smacker.c` video ported (integer only), the `video` command reading `.smk`; checked frame for frame against `SMACKW32.DLL` under Wine (`smacker-check.sh`, as `bink-check.sh`) on the shell's seven Smacker clips and synthetic samples | **done** 2026-11-13 (decisions 23, 24; CLT-Q119): `h3-smacker` (`Clip`, `Reader`, `Decoder`, `Frame::written`), `video --smacker`, `smackprobe.exe`, `smacker-check.sh`; the shell's eight clips, AB's `Credits.smk` and the samples the DLL's byte for byte, 8-bit and 5-6-5; log "M2 T1", design §7 |
-| T2 | The clips' sound (CLT-Q104): Bink's audio in `h3-bink`, Smacker's in `h3-smacker`, the floating point emulated as `h3-bink`'s inverse DCT; checked sample for sample against the DLLs under Wine where the harness reaches them (else against FFmpeg's, a `CLT-Q`); the samples into the window's audio | after T1 |
+| T2 | The clips' sound (CLT-Q104): Bink's audio in `h3-bink`, Smacker's in `h3-smacker`, the floating point emulated as `h3-bink`'s inverse DCT; checked sample for sample against the DLLs under Wine where the harness reaches them (else against FFmpeg's, a `CLT-Q`); the samples into the window's audio | **done** 2026-11-14 (decisions 25 to 27; CLT-Q120, CLT-Q121): `h3_smacker::sound`, `h3_bink::audio` (Ooura's FFT, `fft`; `trig`), `h3_view::clip_sound`, `HostSound::play_clip`, `video` writing each clip's sound and `--play`; a stand-in Miles, `smackprobe audio`, `binkprobe sound`; every track the DLLs' byte for byte; log "M2 T2", design §8 |
+| T2b | The shell's Bink clips' video as `BINKW32.DLL`'s (found at T2, design §8.4): `h3-bink`'s frames of `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from the DLL's in the chroma (at most 3 levels at the first differences) while the battle's clips and the samples match; find the cause (a block type, a coding path or the DCT on these clips), fix it in `h3-bink`, every frame of the shell's Bink clips exact in `bink-check.sh` | ready |
 | T3 | The shell's frame (CLT-Q103): the screens' state machine and the menu loop's requests (design §2.2) in `h3-view`, the `h3-view shell` command with a headless driver (a text client first, E17's pattern); the dialogs' input (a DEF button's own loop, a box's and a bar's press and release, the right press's help) moved from `h3_view::options` into `h3-ui`, the combat options on it unchanged (decision 20); start-up loading by the LODs' tables (CLT-Q2) | ready |
 | T4 | The comparison: `h3shell.py drawn` (the shell plays a recipe's inputs at its times; its frames compared with the original's shots, as `h3drive.py drawn`); h3shell's sound (h3drive's `sound`); TCP/IP's address masked in its digests (review item 8); the main menu's first shot exact | after T3 |
-| T5 | The start (design §2.1): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) and `game_samples_load` read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24) | after T2, T4 |
+| T5 | The start (design §2.1, §8.4): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); the clips' sound at the effects setting (decision 27) and a clip's end (§8.4); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) and `game_samples_load` read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24) | after T2b, T4 |
 | T6 | The main menu, New Game's and Load Game's menus, Quit's question (§2.3 to §2.5): hover, press, release off, popups, hotkeys, `button.wav`, `MAINMENU.MP3`, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menus` with its sound | after T4 |
 | T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6 |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |
@@ -300,7 +314,12 @@ the frames read in order by a `Reader` (the palette is cumulative), a frame's wr
 DLL's 16-bit copy kept in `h3_smacker::check` (`original_16`, the comparisons' only, decision 24)
 rather than in `h3-view`; (3) the `video --smacker` outputs `<stem>.pal8` (indices, then the
 palette) and `<stem>.565`; (4) the samples left within what the DLL reads as FFmpeg does (both
-byte trees, no key frame mark: design §7.3), `MAX_WIDTH` × `MAX_HEIGHT` 800 × 600 as `h3-bink`'s.
+byte trees, no key frame mark: design §7.3), `MAX_WIDTH` × `MAX_HEIGHT` 800 × 600 as `h3-bink`'s. T2: (5) the
+stand-in Miles (`capture/mss32.c`) answering preference 15 with 1, the double buffers' path; (6)
+Bink's sound checked through the DLL's decoder (`binkprobe sound`), not its playback; (7) a clip's
+whole track handed to the host at once (`HostSound::play_clip`), the DLLs' rings not modelled; (8)
+an 8-bit Bink track's samples given with the low byte 0 (`ClipSound::bink`); (9) `h3_bink::fft`'s
+functions generated from the DLL's reading (kept as generated: the DLL's order of operations).
 
 ## Dependencies and boundaries
 

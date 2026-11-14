@@ -150,6 +150,23 @@ mod tests {
         let mut dct = bytes;
         dct[44 + 4 + 3] |= 0x10;
         assert!(ClipSound::bink(&dct).is_err());
+        // A frame without a packet adds nothing; a packet past its frame fails.
+        let mut header = h3_bink::build::Header::new(16, 8);
+        header.audio_tracks = 1;
+        header.tracks = vec![h3_bink::audio::Track {
+            largest: 4096,
+            rate: 22050,
+            flags: BINK_16,
+        }];
+        let empty = h3_bink::build::frame_with_sound(&[], &[0, 0]);
+        let none = ClipSound::bink(&h3_bink::build::file(
+            &header,
+            core::slice::from_ref(&empty),
+        ));
+        assert_eq!(none.unwrap().unwrap().samples, Vec::<i16>::new());
+        let mut past = empty;
+        past[0] = 100;
+        assert!(ClipSound::bink(&h3_bink::build::file(&header, &[past])).is_err());
     }
 
     #[test]
@@ -173,6 +190,11 @@ mod tests {
         let n = broken.len();
         broken[n - 40..].fill(0xFF);
         assert!(ClipSound::smacker(&broken).is_ok());
+        // A track Bink-coded (its flags' 0x08, track 0's in the header's byte 75): no samples.
+        let mut bink = h3_smacker::build::sample(6);
+        bink[75] |= 0x08;
+        let s = ClipSound::smacker(&bink).unwrap();
+        assert!(s[0].samples.is_empty());
         assert_eq!(
             ClipSound::smacker(&h3_smacker::build::sample(2)),
             Ok(Vec::new())

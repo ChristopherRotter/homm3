@@ -320,11 +320,8 @@ impl<'a> Reader<'_, 'a> {
             }
             left -= bytes;
             if track.rate == 0 {
-                // No stream for it: its decoded size read, the rest skipped.
-                if duration != 0 {
-                    self.word();
-                }
-                self.at += u64::from(bytes - 4 - duration);
+                // No stream for it (and no decoded size: `duration_bytes`): skipped.
+                self.at += u64::from(bytes - 4);
                 continue;
             }
             let start = usize::try_from(self.at).unwrap_or(usize::MAX);

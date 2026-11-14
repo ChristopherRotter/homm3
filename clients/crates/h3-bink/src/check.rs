@@ -109,6 +109,25 @@ mod tests {
         // Track 0 with the DCT coding: refused.
         bad[44 + 4 + 3] |= 0x10;
         assert_eq!(sound(&bad), Err(Error::Field("audio coding")));
+        // A frame without a packet adds nothing; a packet past its frame fails.
+        let mut header = build::Header::new(16, 8);
+        header.audio_tracks = 1;
+        header.tracks = vec![crate::audio::Track {
+            largest: 4096,
+            rate: 22050,
+            flags: 0x4000,
+        }];
+        let empty = build::frame_with_sound(&[], &[0, 0]);
+        assert_eq!(
+            sound(&build::file(&header, core::slice::from_ref(&empty))),
+            Ok(Vec::new())
+        );
+        let mut past = empty;
+        past[0] = 100;
+        assert_eq!(
+            sound(&build::file(&header, &[past])),
+            Err(Error::Field("audio size"))
+        );
         // 256 scales and 256 + 512 + 1024 twiddles.
         assert_eq!(sound_tables().len(), 4 * (256 + 256 + 512 + 1024));
         // An impulse; a part run left out.

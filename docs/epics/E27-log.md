@@ -358,3 +358,37 @@ user** (decision 23).
   at +0x6C is FFmpeg's levels.
 - **The agent's calls** (*provisional*, M2's review list): items 1 to 4.
 
+
+## M2 T2 — the clips' sound (2026-11-13 to 2026-11-14)
+
+On `client/e27-m2-t2`, the user present at the start; `master` at `031a120` (#908 merged). **Kept
+whole with the user** (decision 25).
+
+- **The probes** (design §8.1): a stand-in Miles (`capture/mss32.c`, `.def`, `.rc`; built by
+  `setup.sh` into the run directory's `mss/`) records every buffer a DLL loads into a sample and
+  runs its timers when the probe pumps them; `smackprobe audio`, `binkprobe sound`, `sound-tables`
+  and `cdft`; `smacker-dll.py` and `bink-dll.py` write `<stem>.t<k>.pcm` and `<stem>.pcm` beside
+  the frames (a run helper that retries Wine's first start).
+- **`h3_smacker::sound`**: FFmpeg 6.1.1's Smacker audio and PCM ported (`Samples`, `Codec`,
+  `Track::{channels, bits, codec}`, `decode`); the reader hands each described track's packet
+  (`Packet::audio`); `build::sound` and the samples carry a random track (a packet each frame but
+  the last, so the DLL flushes); `check::sound`. The samples' hashes changed (re-checked against
+  FFmpeg and the DLL).
+- **`h3_bink::audio`**: the DLL's block decoder (`Track`, `Audio::new`, `Audio::decode`);
+  `fft` (Ooura's `cdft` as the DLL compiled it: generated from a scratch symbolic run of the DLL's
+  x87 code aligned with Ooura's C, then `makewt` by hand; CLT-Q120, decision 26); `trig` (cosines,
+  sines and `pow10` correctly rounded in 124-bit fixed point); `Clip::tracks`, `Clip::audio`;
+  `build::sound_block`, `sound_packet`, `sample_sound`; `check::sound`, `sound_tables`,
+  `inverse_fft`. 100 % of lines and regions (`clients/scripts/check.sh`).
+- **`h3_view::clip_sound`** (`ClipSound::bink`, `ClipSound::smacker`, `volume`; `h3-view` depends
+  on `h3-smacker` now, the purity allowlist with it), **`HostSound::play_clip`** (a stream of its
+  own, `clip_playing`, `stop_clip`), **`h3-view video`** writes each clip's sound, `--sound-tables`
+  and `--play` (the clip's sound through the window's audio at the effects setting 9).
+- **Checked** (design §8.2, §8.3): every track of the shell's clips, AB's `Credits.smk` (none) and
+  the samples the DLLs' byte for byte; Bink's tables and 120 FFT runs on random values too.
+- **Asked and answered:** CLT-Q120 (Ooura's code: ported with his credit, decision 26), CLT-Q121
+  (the Bink clips' full volume: every clip at the effects setting, decision 27).
+- **Found:** `h3-bink`'s video of the shell's four Bink clips is not the DLL's (the chroma, at
+  most 3 levels at the first differences; design §8.4): queued as T2b, before T5. The game cuts a
+  Smacker clip's queued sound at its last frame (T5).
+- **The agent's calls** (*provisional*, M2's review list): items 5 to 9.
