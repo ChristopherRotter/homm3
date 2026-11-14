@@ -1692,7 +1692,7 @@ pub enum GoodbyeReason {
     /// former key closes; the player logs in again with the new one.
     Rekeyed,
     /// The game reached the server's limit of commands without an end (E16 M3 T4a): it is void,
-    /// with no result and no replay. Since v64 (E16 M5 T20) a whole game too, when the server's
+    /// with no result and no replay. Since v65 (E16 M5 T20) a whole game too, when the server's
     /// own commands in one of its battles reached their limit with the battle still open (a battle
     /// both of whose sides the server's computer played, which it did not end).
     CommandLimit,

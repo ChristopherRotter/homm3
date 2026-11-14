@@ -425,3 +425,33 @@ setup's baseline (`clients/scripts/check.sh`) passed before any change.
   copy as well as the residues (one switch for the comparisons); the samples' still cells one in
   four, from a source of their own.
 
+
+## M2 T3a — the shell's frame: the dialogs' input shared, the state machine, `h3-view shell` (2026-11-14)
+
+On `client/e27-m2-t3a`, the user present; `master` at `2e02c90` (#917 merged). T3 cut in two with
+the user (decision 29): T3a here, T3b (start-up loading by the LODs' tables) next. The user's
+computer left the bridge at the start and came back; the original data then staged at once (64
+files, checked by SHA-256 against the user's computer); the setup's baseline
+(`clients/scripts/check.sh`) passed before any change.
+
+- **Built, `h3-ui`** (common: the map-client lane's inbox told): `input` (`Input`, `Held`, `Did`),
+  the press, hold and release of a dialog's DEF buttons and DEF pictures and its button held by a
+  key, the right release ending a button's own loop, the item a right press's help names, the let
+  go of a popup's release; the original's profile clicks a picture at a release anywhere
+  (CLT-Q43 (2), CLT-Q102), the client's over it alone. Moved from `h3_view::options` (decision
+  20): the combat options keep their clicks, sounds and `Did`, their 20 tests unchanged and
+  passing; `input`'s own 11 tests on an invented dialog.
+- **Built, `h3-view`:** `shell` (`Shell`, `Screen`, `Ended`, `Refused`, `Request`, `Game`, `Choice`,
+  `Kind`, `PlayEnd`): the menu loop's switches as read (design §2.2 the top and the main menu's
+  switch, §2.4 New Game's and Load Game's, §2.6 and §2.7 the multiplayer dialog's close, §4.3 play's
+  requests, §5.3 play's end: the lost screen, the won one, then High Scores); each screen names the
+  task that builds it. `shell::text`: the screens' names, the endings' words, `describe`, `ending`,
+  `answer`. 16 tests (every screen against every ending; a whole transcript).
+- **Built, `h3-battle-client`:** `shell` (`Options`, `run`): `h3-view shell [--script <file>]
+  [--no-intro]`, a word a line from standard input or a script (echoed; a refused word exit 1).
+- **Checked:** `clients/scripts/check.sh` with the original data staged (the window's staged
+  tests among it, the combat options' dialog in them), 100 % coverage of the pure crates; the
+  command by hand on a script through the hot seat to a won game's High Scores and Quit.
+- **The agent's calls** (*provisional*, M2's review list items 10 to 12): `Input` beside the
+  dialog's `Shown`; `message::Open` and `stats::Open` keep their own button loops; the screens and
+  endings as two enums checked together; the ids as discriminants; the words.

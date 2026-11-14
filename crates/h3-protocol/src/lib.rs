@@ -172,12 +172,18 @@ pub mod wire;
 /// creation, which a restart keeps); a seat whose turn or battle side's chess clock ran out is
 /// sent no battle commands in its `GameTurn` (the computer plays the side), and the game's start
 /// tells every player its clock.
-/// v64 (E16 M5 T20, SRV-Q35): a whole game is void when the system's commands in one battle
+/// v64 (E09 T28a, the town lane's, `cross-lane`, after the adventure lane's T115b and the server
+/// lane's T18 and T19 took v61 to v63): a town's garrison hero
+/// (TWN-ROW-001 to -004): the town command `Heroes` with its move (`wire::game::TownHeroChange`:
+/// `Enter`, `Leave`, `Swap`) and its eight refusals (`GarrisonHeld` to `EmptyArmy`), the
+/// adventure events `GarrisonEntered` and `GarrisonLeft`, and the owner's garrison heroes in the
+/// adventure view (`wire::game::Adventure::garrison_heroes`, `wire::game::GarrisonHero`).
+/// v65 (E16 M5 T20, SRV-Q35, after the town lane's E09 T28a took v64): a whole game is void when the system's commands in one battle
 /// reach the host's bound with the battle still open (`session::game::CommandBounds::
 /// system_per_battle`: a battle both of whose sides the system plays, which its computer did not
 /// end): `Goodbye { CommandLimit }` says so too, and a void game rejects every command
 /// `NotStarted`.
-pub const PROTOCOL_VERSION: u32 = 64;
+pub const PROTOCOL_VERSION: u32 = 65;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

@@ -144,6 +144,31 @@ fn commands_round_trip_through_their_text() {
             }),
             "0 town recruit 1 30",
         ),
+        // Format v16 (E09 T28a): a hero's move between a town's bars, by its town and move.
+        (
+            PlayerId::new(1),
+            GameCommand::Town(TownCommand::Heroes {
+                town: TownId::new(3),
+                change: TownHeroChange::Enter,
+            }),
+            "1 town heroes 3 enter",
+        ),
+        (
+            PlayerId::new(0),
+            GameCommand::Town(TownCommand::Heroes {
+                town: TownId::new(0),
+                change: TownHeroChange::Leave,
+            }),
+            "0 town heroes 0 leave",
+        ),
+        (
+            PlayerId::new(2),
+            GameCommand::Town(TownCommand::Heroes {
+                town: TownId::new(7),
+                change: TownHeroChange::Swap,
+            }),
+            "2 town heroes 7 swap",
+        ),
         // Format v12 (E08 T105b2): a revisit, by its hero.
         (
             PlayerId::new(1),
@@ -376,6 +401,12 @@ fn commands_round_trip_through_their_text() {
         "0 town recruit 2",
         "0 town recruit 2 64",
         "0 town recruit 2 7 now",
+        "0 town heroes",
+        "0 town heroes 2",
+        "0 town heroes x enter",
+        "0 town heroes 70000 enter",
+        "0 town heroes 2 visit",
+        "0 town heroes 2 enter now",
         "0 battle",
         "0 battle fly 3",
         "0 battle A wait",

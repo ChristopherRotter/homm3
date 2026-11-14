@@ -27,6 +27,10 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
 - **A hire dialog's creatures for the env come from `GameState::hire_stock`** (E09 T27): a new
   source served elsewhere leaves its `Buy`s without an entry, and the random agent falls back on
   `EndTurn`, which the game refuses (`DecisionOpen`).
+- **A town's entrance from its template is dear in a listing** (E09 T28a): `MapObject::entrance`
+  walks the visitable mask's offsets; three checks a town a listing cost `legal-towns-36` +56 %.
+  Read `StaticMap::town_entrance` (cached at the build) and find a visitor by comparing the
+  player's heroes' tiles with it; `StaticMap::town_at` for every hero costs too (+26 %).
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's
   `_int_malloc` alone (E09 T8c2). Compare per function with `master` built in the same sandbox
@@ -81,6 +85,11 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   answer. A check over a town's visitor (the hero on its entrance, TWN-VIS-002) exempts a hero
   whose player has an open decision (`GameState::has_decision`), as `check_invariants` does
   (the battle since the server lane's CI, 2026-11-09; the question since E09 T19c1's CI).
+
+- **A garrison hero is off the map but still a hero** (E09 T28a): every oracle over the heroes on
+  the map (`check_isolation`, `armies` for conservation, `check_invariants`) counts
+  `AdventureState::town_heroes()` too, or a hero entering or leaving its garrison reads as a hero
+  lost or made; the town's moves are probed among the town commands (`town_builds`).
 
 ## The views (`h3-game` `src/town/view.rs`)
 

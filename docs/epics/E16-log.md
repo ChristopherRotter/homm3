@@ -3412,7 +3412,7 @@ ended and `drive` never returned. Same session and branch as the refinement. Kep
   times the most and above a seat's bound with the computer's answers to it (which count): two
   sides the system plays still have about two thousand commands to end their battle. Both suites
   assert the count was taken.
-- **The wire** (protocol v64): no new message; `Goodbye { CommandLimit }` now also says a whole
+- **The wire** (protocol v65, after the town lane's E09 T28a took v64 and `master` was merged in): no new message; `Goodbye { CommandLimit }` now also says a whole
   game is void (a battle the server played past its bound), `GameReject::NotStarted` also a void
   game's rejection.
 - **`h3-server`:** `[limits] system_commands_per_battle` (10 000, in 1..=1 000 000;
@@ -3432,6 +3432,6 @@ ended and `drive` never returned. Same session and branch as the refinement. Kep
   the lobby, its journal (ending at the computer's command) in the void; put back, a restart voids
   it again. The config test: the field, its range, the default. `MONSTER_REPLAY`'s doc corrected
   (its 16th command opens the battle).
-- **Docs:** the client lanes' inboxes told (v64). `docs/06-security.md` (a shared path) is T24's,
+- **Docs:** the client lanes' inboxes told (v65). `docs/06-security.md` (a shared path) is T24's,
   as T19 was 2b's: its "Not covered yet" sentence on a battle both of whose sides the system plays
   becomes the bound and the void (and `drive`'s chunks).

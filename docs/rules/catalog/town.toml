@@ -1273,3 +1273,103 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 51 (E09 decisions 71 and 82): the Portal's hire into the upper bar, refused while it holds nothing, no draw at the command; T-11's screen-time draw left to the week, the build, the flag and the capture"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-ROW-001"
+title    = "The town's two bars"
+context  = "town"
+status   = "implemented"
+summary  = "A town has two bars: the upper, its garrison hero's army when one stands there, else the town's own garrison (`ArmyRef::Garrison`), the town's owner's bar by the one owner rule (ADV-GAR-003), which may be emptied while it is the garrison and keeps its last stack while it is a hero's; the lower, its visitor's army (TWN-VIS-002). In its turn with no decision open the owner's army commands may name an own town's upper bar alone or with that town's visitor's army, either way, admitted without a decision (the original's town screen opens at will); another's or a neutral town's garrison stays `ArmyCommandError::Garrison`, and so does a town's garrison named while a garrison hero stands there. A garrison hero manages its own army, formation, flag and artifacts as a hero on the map. The listings: a visitor of an own town lists its stacks' moves onto the upper bar's slots, a garrison hero onto its visitor's, and `legal_town_management` gives the upper bar's (a garrison hero's whole management, else the garrison's moves onto its other slots and the visitor's, then its dismissals). A town's purchase joins the upper bar (design section 49). E09 T28a: `Together`'s admission through `GameState::admits_army`, `AdventureState::held`'s town arms."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 9): town_garrison_army 0x5C1460 (the garrison hero's army or the town's), the stacks' moves the army dialog's between the bars or within one, the current player's bars only; the last stack kept 0x5C7436 to 0x5C746D for the lower bar and for the upper one with a garrison hero"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 CGTownInstance::getUpperArmy (the garrison hero's army, else the town's) and the garrison's exchange through the town window"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGTownInstance.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 52 (E09 decision 80, TWN-Q14): the bars admitted without a decision under E08's one owner rule; the listings (GAM-MAN-002 amended)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-ROW-002"
+title    = "The visitor into the garrison"
+context  = "town"
+status   = "implemented"
+summary  = "The town's owner, in its turn with no decision open, moves its visitor of the town into the town's garrison (`TownCommand::Heroes` with `Enter`): refused with a garrison hero there (`GarrisonHeld`) or no visitor of its own (`NoVisitor`); the town's garrison joins the visitor's army, each garrison stack in slot order onto the army's first stack of its creature, else into its first empty slot, else the army's own first two stacks of one creature merged, the later into the earlier, and the slot tried again, all or nothing: refused when no slot frees (`ArmiesDoNotFit`, the original's GENRLTXT 276) or a stack would pass a stack's most (`TooManyCreatures`). Then the hero's whole record leaves the map into the town (its army, points, day's maximum, formation, flag; its marks kept by hero id), the garrison is empty, the viewers of the entrance see a hero leave the map (`GarrisonEntered`), its owner moves its own view into its garrison heroes, each changed slot told and the town's changed views. Each refusal changes nothing. A garrison hero is off the map: no tile, reach, meeting or visit, not the town's visitor, in no hero slot of the env. E09 T28a: `AdventureState::move_town_hero`, `absorb`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 9): town_garrison_click 0x5D4C10's case 7, town_visitor_to_garrison 0x4B9FC0 with army_absorb 0x44B620 (read whole: per garrison slot onto the hero's stack of its creature, else the first empty slot, else the hero's own two stacks of one creature merged, the later into the earlier, the slot tried again; none frees a slot, GENRLTXT 276 and nothing changed); the hero to the town's +0xC, +0x10 -1, off the map and out of the player's list"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 CCreatureSet::canBeMergedWith (the two armies' creatures, each counted once, fit the slots) and CGameHandler::garrisonSwap"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/army/CCreatureSet.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 53 (E09 decision 81, TWN-Q14): the hero's whole record moved into the town, the move a town command (decision 93's agent's call), its refusals typed"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-ROW-003"
+title    = "The garrison hero out"
+context  = "town"
+status   = "implemented"
+summary  = "The town's owner, in its turn with no decision open, moves its garrison hero out onto the town's entrance as its visitor (`TownCommand::Heroes` with `Leave`), its record as it was kept, its points included, on land: refused without a garrison hero of its own (`NoGarrisonHero`), with a hero on the entrance (`EntranceHeld`), with the town part's most heroes on the map already (`TooManyHeroes`, 8: the original's GENRLTXT 19; `most_heroes` in the town part's parameters) or an army without a stack (`EmptyArmy`, GENRLTXT 20; reached only by T-5's state). The viewers of the entrance see a hero come into sight, its owner moves its view back onto the map (`GarrisonLeft`). E09 T28a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 9): town_garrison_click 0x5D4C10's case 8, town_hero_out_click 0x5D5220 (refused at 8 heroes on the map, the player record +1, GENRLTXT 19, or a garrison army without a stack, GENRLTXT 20), town_garrison_to_visitor 0x5BE390"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 CGameHandler::garrisonSwap: the hero out refused at the map's heroes cap, no creature test"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 53: the record back onto the entrance, its points as kept; the most heroes a town part parameter (E09 T28a)"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-ROW-004"
+title    = "The swap of the visitor and the garrison hero"
+context  = "town"
+status   = "implemented"
+summary  = "The town's owner, in its turn with no decision open, swaps its visitor and its garrison hero (`TownCommand::Heroes` with `Swap`), each with its army and record: refused without a garrison hero of its own (`NoGarrisonHero`) or a visitor of its own (`NoVisitor`: an ally's visitor moves no hero, TD-17 by the reading). Told as the visitor's entering (`GarrisonEntered`), then the garrison hero's leaving (`GarrisonLeft`). E09 T28a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 9): town_garrison_click 0x5D4C10's case 9, town_swap_heroes 0x5BE450 (each hero keeps its army), a human current player's only (player_is_human_both 0x4BAD80); from the lower portrait the visitor the town owner's"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 CGameHandler::garrisonSwap: no owner test of the visitor (TD-17, the reading followed)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 53: the swap, the visitor the town owner's"
+  confidence = "high"

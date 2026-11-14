@@ -39,6 +39,29 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent, E09
+  decision 93; **versions taken and your paths changed, for your review**): adventure state hash
+  **v25** (after your #914's v24: the towns' garrison heroes after the heroes on the map,
+  `hash_hero` shared), adventure replay format **v16** (`town heroes <town> enter|leave|swap`),
+  every adventure replay re-recorded (versions and hash lines only). `h3-adventure`: a state block
+  `town_heroes: Option<Arc<TownHeroes>>` (by town; its rules in the town lane's `src/town/rows.rs`:
+  `town_hero`, `garrisoned`, `move_town_hero`, `check_town_hero`, `release_town_hero`;
+  `town_heroes()` and `rows_mut()` in `state.rs`, `viewers` `pub(crate)`); `state/manage.rs`'
+  `held` answers `ArmyRef::Garrison` for an own town without a garrison hero (`Held::Town`) and a
+  garrison hero after the heroes on the map (`Held::TownHero`), both `#[cold]`, `set_formation`
+  and `set_tactics` through `own_record_mut`; `dwellings.rs`' `Joining::TownHero` (a town's
+  purchase joins its garrison hero's army); the events `GarrisonEntered`, `GarrisonLeft`;
+  `AdventureObservation::garrison_heroes` (`GarrisonHeroView`, `own_view` shared); `OwnHeroes`
+  over the garrison heroes too. A garrison hero's marks stay in your T115a block by hero id (no
+  `leave_marks` at `Enter`; `release_town_hero` calls it). `h3-game`: `state/manage.rs`'
+  `admits_army` (a town's two bars outside a decision) and `town_told`, `stack_at` and
+  `own_details` find a garrison hero, `legal.rs`' `town_partner` and `legal_town_management`,
+  `observe.rs`' hero infos with the owner's garrison heroes. `h3-map`'s plans: `town_builds`
+  probes the three moves after each town's recruitments, `check_town_heroes` reads their effects,
+  `check_invariants` the garrison heroes (none on the map, the town's garrison empty);
+  `view.rs`' `check_told` folds the two events. `h3-files`: the `town heroes` line.
+  `manage-army-12` +0.55 % against `master` (inside its gate).
+
 - 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane` with the user's consent, E09
   decision 92; **versions taken and your paths changed, for your review**): game state hash
   **v32** (after your T115a's v31: a hire dialog's town target and sources, the target's tag 1,

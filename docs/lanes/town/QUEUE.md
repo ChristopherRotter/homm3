@@ -11,36 +11,36 @@ drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
 ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87),
 T25b2 (decision 88), T26a1 (decision 89), T26a2 (decision 90), T26b (decision 91) and T27
-(decision 92). The building rounds follow the cut of design note §56
+(decision 92), T28a (decision 93). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T28 — the rows** (decision 83; design note §56 round 7, `cross-lane`; §52 to §54): **T28a**
-the town's two bars under E08's one owner rule, admitted without a decision in the owner's turn
-(TWN-ROW-001; GAM-MAN-001, -002 amended: the upper bar alone or with the town's visitor, the
-listings), the garrison hero's record (the hero on the map's whole record moved into the town,
-adventure state hash, `cross-lane`; the lookups of `ArmyRef::Hero`), the moves
-`AdventureCommand::TownHeroes { town, change }` `Enter`, `Leave`, `Swap` (TWN-ROW-002 to -004,
-each refusal typed and changing nothing), the hire's target into the garrison hero's army
-(T27's `HireTarget::Garrison` resolves to it, design §49), the events and views
-(`GarrisonHeroChanged`, the own hero view's place), the replay format (`town heroes <town>
-enter|leave|swap`, management lines naming a town's bar), the env's `TOWN_HEROES` + 3 (encoding
-v11, the AI lane's `cross-lane` consent), the protocol (the server lane's fold gate); **T28b**
-what a garrison hero changes: its day and income (TWN-ROW-005; ADV-MOV-002, GAM-RES-003, -005),
-growth's inputs with it (§41's open point), rows 1 and 3 of a visit of another team (TWN-SIE-001,
--002, TWN-CAP-003, GAM-BAT-001; T-5, `TWN-QUIRK-11`), level 3's view of it (TWN-VEW-001). Each
+**E09 T28b — what a garrison hero changes** (decision 83; design note §56 round 7, `cross-lane`;
+§53's day and income, §54; T28a done 2026-11-14, decision 93, `E09-log.md`): its day and income
+(TWN-ROW-005; ADV-MOV-002, GAM-RES-003, -005 amended: its day's maximum and points at its owner's
+turn start after the heroes on the map in `TownId` order, its spell points, its day and week marks'
+drops, which E08 T115a's block already reaches by hero id, its `daily_income` and its army's
+weekly resources with the town's garrison's Crystal Dragons), growth's inputs with it (§53: the
+Legion pieces of the visitor and the garrison hero, the Statue's share over the heroes on the map
+and the garrison heroes), rows 1 and 3 of a visit of another team (TWN-SIE-001, -002,
+TWN-CAP-003, GAM-BAT-001; the garrison hero alone defends in a siege with its own army, beside a
+visitor the visitor's battle at the gate is no siege; `town_visit`, `siege_start`, the battle's
+end for a garrison hero; **`TWN-STUB-14` lifted**), T-5 kept for a garrison hero without an army
+(`TWN-QUIRK-11`, its ledger entry and regression test; `release_town_hero` is its path), level 3's
+view of it (TWN-VEW-001: the garrison hero and its army as the town's garrison, the owner's view
+marking it; perhaps design §53's `GarrisonHeroChanged` to the viewers whose view shows it), the
+protocol where a view field moves (the server lane's fold gate), batch TWN-3's row 6 record. Each
 part's replays re-recorded (skill `homm3-rerecord-replays`) and bench (skill
-`homm3-bench-regression`). **At its start:** confirm the cut (the design's two parts, each
-possibly cut again). **Depends on:** T27 (its pull request merged); E08's T115a (#906, the visit
-marks on `HeroOnMap`, which the garrison hero's record carries; merged 2026-11-13, its note in the
-inbox). **Status:** next.
+`homm3-bench-regression`). **At its start:** confirm the cut (it may cut again: the day and income
+with growth's inputs, then the visits with T-5 and the view). **Depends on:** T28a's pull request
+merged. **Status:** next.
 
 **E09 T29, T30 — the rest of the build** (decision 83; design note §56 round 8, each cut
 confirmed at its start, the agent queues each in full when the one before it ends): **T29** the
 gates (§55, §47: the scripted replays on the builds map, growth through a month, a purchase at an
 upgraded dwelling and at the Portal, the rows; the census, the properties, the benchmarks); **T30**
-the audit, the closure, increment 4 refined. **Depends on:** T28. **Status:** waiting.
+the audit, the closure, increment 4 refined. **Depends on:** T28b. **Status:** waiting.
 
 ## Inbox
 
@@ -73,18 +73,6 @@ where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.
   invariants` failing on `master` 202aa3f: your T26b's `TownChanged` after a town event's
   creatures, with no build, was not among the views the turn's town-event oracle drops; it drops
   them after a `TownEventFired` now too (the case in `proptest-regressions/tests/play.txt`).
-
-- 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
-  taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the
-  decisions, tag 8), so your T26a2's bump is v30 (done, #899); adventure replay format **v13** (`m<index>:<slot>`,
-  a map garrison's army) and protocol **v52** (the server lane's, `cross-lane`); every adventure
-  golden replay re-recorded (versions and hash lines only). The one owner rule is in
-  `h3-adventure`'s `state/manage.rs`: `held` gives each army with its bar ownership (a hero's and
-  the group the player's, a map garrison its owner's when removable, nobody's when not), so your
-  `ArmyRef::Garrison(town)` gets its arm there (its town's owner) and `Held::keeps_last` stays false
-  for it; `h3-game`'s `Together::Exchange { hero, army }` holds a stationary `ArmyRef` (a town's
-  garrison may be its `army`), and `Together::admits` refuses a map garrison its decision does not
-  hold (`DecisionOpen`; alone `NotTogether`). Design note §13's *As built* (`E08-design.md`).
 
 - 2026-11-12 (the server lane, E16 M5 part 2's refinement, SRV-Q29; **the user's decision,
   informational**): in increment 2c the server lane builds `Viewer::Spectator` (public facts only)

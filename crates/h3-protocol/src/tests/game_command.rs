@@ -17,7 +17,7 @@ use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, ArtifactPlace,
     BuildingId, ChestChoice, Consent, GameCommand, GameCommandError, HireAnswer, HireError, Manage,
     ManageError, NoopSink, Position, SchoolChoice, SkillOffer, SystemCommand, TownCommand,
-    TownCommandError, UniversityAnswer,
+    TownCommandError, TownHeroChange, UniversityAnswer,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -130,6 +130,20 @@ pub(super) fn every_command() -> Vec<GameCommand> {
         town: TownId::new(1),
         building: BuildingId::from_index(30).unwrap(),
     }));
+    // E09 T28a (protocol v64).
+    commands.extend(
+        [
+            TownHeroChange::Enter,
+            TownHeroChange::Leave,
+            TownHeroChange::Swap,
+        ]
+        .map(|change| {
+            GameCommand::Town(TownCommand::Heroes {
+                town: TownId::new(2),
+                change,
+            })
+        }),
+    );
     // E16 M5 T14 (v56): the system actor's own commands.
     let player = PlayerId::new(1);
     commands.extend(
@@ -274,6 +288,14 @@ fn every_rejection() -> Vec<GameCommandError> {
             TownCommandError::NotRecruiting,
             TownCommandError::NotStanding,
             TownCommandError::NothingSummoned,
+            TownCommandError::GarrisonHeld,
+            TownCommandError::NoVisitor,
+            TownCommandError::ArmiesDoNotFit,
+            TownCommandError::TooManyCreatures,
+            TownCommandError::NoGarrisonHero,
+            TownCommandError::EntranceHeld,
+            TownCommandError::TooManyHeroes,
+            TownCommandError::EmptyArmy,
         ]
         .map(E::Town),
     );
@@ -446,6 +468,14 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
             w::TownReject::NotRecruiting {} => TownCommandError::NotRecruiting,
             w::TownReject::NotStanding {} => TownCommandError::NotStanding,
             w::TownReject::NothingSummoned {} => TownCommandError::NothingSummoned,
+            w::TownReject::GarrisonHeld {} => TownCommandError::GarrisonHeld,
+            w::TownReject::NoVisitor {} => TownCommandError::NoVisitor,
+            w::TownReject::ArmiesDoNotFit {} => TownCommandError::ArmiesDoNotFit,
+            w::TownReject::TooManyCreatures {} => TownCommandError::TooManyCreatures,
+            w::TownReject::NoGarrisonHero {} => TownCommandError::NoGarrisonHero,
+            w::TownReject::EntranceHeld {} => TownCommandError::EntranceHeld,
+            w::TownReject::TooManyHeroes {} => TownCommandError::TooManyHeroes,
+            w::TownReject::EmptyArmy {} => TownCommandError::EmptyArmy,
         }),
     })
 }
@@ -501,9 +531,10 @@ fn every_rejection_maps_back_and_round_trips() {
     let errors = every_rejection();
     // 16 of the game's own (E16 M5 T14: `SystemOnly`), 31 of the battle's, 22 of the adventure's
     // (E08 T105b2: `NothingToRevisit`), 13 of the army's (E08 T114a2: `NoGarrison`, `NotOwn`,
-    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 13 of a town's
-    // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`).
-    assert_eq!(errors.len(), 108);
+    // `OnlyEmpty`), 6 of an artifact's move, 3 of a combination's, 4 of a hire's, 21 of a town's
+    // (E09 T27: `NotRecruiting`, `NotStanding`, `NothingSummoned`; E09 T28a: `GarrisonHeld` to
+    // `EmptyArmy`).
+    assert_eq!(errors.len(), 116);
     let wire: BTreeSet<String> = errors.iter().map(|&e| kinds(&reject(e))).collect();
     assert_eq!(wire.len(), errors.len(), "distinct on the wire");
     for e in errors {

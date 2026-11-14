@@ -300,7 +300,7 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 - **T20 A battle both of whose sides the system plays made to end** done 2026-11-14
   (`E16-log.md`: `CommandBounds::system_per_battle`, `[limits] system_commands_per_battle`
-  10 000, `GameSession::void`, `drive` at most 64 steps per call; protocol v64).
+  10 000, `GameSession::void`, `drive` at most 64 steps per call; protocol v65).
 - **T21a The all-seeing spectator's design** (SRV-Q35): the observation's and the events' shape
   for a viewer who sees everything (every player's kingdom, treasury and decisions, the whole
   map, every object, town and garrison at the full level, a battle's both sides), the host's
@@ -328,7 +328,7 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 - T20: the system's bound counts every system battle command in a battle (an unowned side's
   answers to a seat too), not only those while both sides are the system's; its default 10 000
-  (measured most 505); `DRIVE_STEPS` 64; `CommandLimit` and `NotStarted` widened (v64) rather
+  (measured most 505); `DRIVE_STEPS` 64; `CommandLimit` and `NotStarted` widened (v65) rather
   than new variants; a void game's journal moves to `<data>/void/` as a battle's.
 
 **Not in part 2** (SRV-Q29): concurrent battles (they need simultaneous turns, which ADR-0017

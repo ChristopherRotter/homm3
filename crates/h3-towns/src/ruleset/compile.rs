@@ -259,6 +259,11 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         ));
     }
     check_growth_params(def)?;
+    if def.most_heroes == 0 {
+        return Err(TownCompileError::InvalidParams(
+            "the most heroes on the map needs at least 1",
+        ));
+    }
     Ok(TownParams {
         gold,
         hall_gold: def.hall_gold,
@@ -272,6 +277,7 @@ fn compile_params(scope: &Scope<'_>, def: &TownParamsDef) -> Result<TownParams> 
         visions_creatures: Vec::new(),
         week: def.week,
         garrison_week: def.garrison_week.clone(),
+        most_heroes: def.most_heroes,
     })
 }
 

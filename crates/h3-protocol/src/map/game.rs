@@ -37,12 +37,12 @@ use h3_kernel::handle::Handle;
 use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
-    Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonStack, Guards, HeroDetails,
-    HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known, KnownObject as WireKnownObject,
-    LevelUp, MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind,
-    OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel,
-    SlotState, Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus,
-    Week,
+    Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
+    Guards, HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known,
+    KnownObject as WireKnownObject, LevelUp, MapGarrison, MapHero, Monster, Month, Object,
+    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea,
+    RevealedView, SkillLevel, SlotState, Summoned, Tile, Town, TownBuildings, TownOwnerFacts,
+    UniversityVisit, VisitBonus, Week,
 };
 
 mod command;
@@ -586,6 +586,7 @@ pub(crate) fn adventure_view(o: &AdventureObservation) -> Adventure {
         known,
         boats,
         kinds,
+        garrison_heroes,
     } = o;
     let (palette, tiles) = packed(tiles);
     Adventure {
@@ -606,6 +607,14 @@ pub(crate) fn adventure_view(o: &AdventureObservation) -> Adventure {
         known: known.iter().map(known_object).collect(),
         boats: boats.iter().map(boat).collect(),
         kinds: kinds.iter().map(|&t| t.raw()).collect(),
+        garrison_heroes: garrison_heroes
+            .iter()
+            .map(|g| GarrisonHero {
+                town: g.town.raw(),
+                id: g.id.raw(),
+                own: own_map_hero(&g.own),
+            })
+            .collect(),
     }
 }
 
