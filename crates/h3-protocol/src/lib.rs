@@ -183,7 +183,12 @@ pub mod wire;
 /// system_per_battle`: a battle both of whose sides the system plays, which its computer did not
 /// end): `Goodbye { CommandLimit }` says so too, and a void game rejects every command
 /// `NotStarted`.
-pub const PROTOCOL_VERSION: u32 = 65;
+/// v66 (E16 M5 T22a, SRV-Q36): a whole game's spectators, who see every player's view:
+/// `CreateMapGame`'s `spectators` (closed by default), `GameWatch` answered `GameWatching`, each
+/// player's messages wrapped in `GameWatched` (the spectator's number, the player, the player's
+/// message), `SetSpectators` in a whole game (rejected `NotHost` or `AlreadyStarted`), the lobby's
+/// `MapGameInfo::spectators`.
+pub const PROTOCOL_VERSION: u32 = 66;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

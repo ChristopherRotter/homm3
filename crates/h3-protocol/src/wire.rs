@@ -15,6 +15,7 @@
 
 pub mod game;
 
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
@@ -1365,6 +1366,11 @@ pub enum ClientMessage {
         offer: String,
         /// The player whose seat the creator takes: its index among the map's players.
         player: u8,
+        /// Whether the game takes spectators, who see every player's view (E16 M5 T22a, v66;
+        /// SRV-Q36); `None`, or left out: it does not. Its host, the creator, may change it until
+        /// the game starts (`SetSpectators`).
+        #[serde(default)]
+        spectators: Option<bool>,
     },
     /// Take a seat in a game, or re-take it after a disconnect: with its token, or as the account
     /// it belongs to (E16 M3 T3: a seat a logged-in connection took is its account's).
@@ -1609,6 +1615,16 @@ pub enum ClientMessage {
         seq: u32,
         /// The question.
         query: game::GameQuery,
+    },
+    /// Watch a whole game as a spectator (E16 M5 T22a, v66; SRV-Q36): every player's view, as
+    /// each player's seat is sent it. Answered `GameWatching`, then each player's view
+    /// (`GameWatched`), or `Refused`: `NoSuchGame`, `AlreadyJoined` for a connection in the game
+    /// already, `NoSpectators` for a game that takes none (closed, or watched by as many as the
+    /// server allows). A spectator sends no command (`GameRejected { NotSeated }`); `Leave` ends
+    /// its watch.
+    GameWatch {
+        /// The game.
+        game: u32,
     },
 }
 
@@ -2138,6 +2154,28 @@ pub enum ServerMessage {
         seq: u32,
         /// The answer.
         answer: game::GameAnswer,
+    },
+    /// The connection watches a whole game now (E16 M5 T22a, v66): the answer to `GameWatch`,
+    /// before every player's view (`GameWatched`).
+    GameWatching {
+        /// The game.
+        game: u32,
+        /// What the game is made of.
+        manifest: game::GameManifest,
+    },
+    /// One of a player's messages, as the spectator sees the player's view (E16 M5 T22a, v66;
+    /// SRV-Q36): numbered in the spectator's own sequence, `message` as the player's seat was sent
+    /// it, its own number the player's. A watch begins with each player's `GameSnapshot`, its
+    /// `GameClock` when it holds a timer or the game waits, and its `GameTurn` if it may act,
+    /// each numbered as the player's last message (they are no message of the player's: the
+    /// player's own follow from its next number); then every message any player is sent.
+    GameWatched {
+        /// The spectator's message number.
+        n: u32,
+        /// The player whose view it is: its index among the map's players.
+        player: u8,
+        /// The player's message.
+        message: Box<ServerMessage>,
     },
 }
 

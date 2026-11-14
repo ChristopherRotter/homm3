@@ -104,7 +104,10 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 13,
             offer: "duel".to_string(),
             player: 1,
+            spectators: Some(true),
         },
+        // E16 M5 T22a: a whole game's spectator.
+        ClientMessage::GameWatch { game: 5 },
         ClientMessage::Pause { seq: 14 },
         ClientMessage::SetSpectators {
             seq: 15,
@@ -430,6 +433,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                 },
                 phase: Phase::Running,
                 open: vec![1],
+                spectators: true,
                 seated: vec![SeatedPlayer {
                     player: 0,
                     display: "Alice".to_string(),
@@ -795,6 +799,12 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                 targets: vec![Target::Stack { stack: 2 }, Target::Hex { hex: 40 }],
             },
         },
+        // E16 M5 T22a: a player's message as a spectator sees it.
+        ServerMessage::GameWatched {
+            n: 3,
+            player: 1,
+            message: std::boxed::Box::new(ServerMessage::GamePauseAsked { n: 9, player: 0 }),
+        },
     ]);
     out
 }
@@ -910,8 +920,26 @@ fn the_json_is_serdes_default_enum_form() {
             seq: 2,
             offer: "duel".to_string(),
             player: 1,
+            spectators: Some(true),
         }),
-        r#"{"CreateMapGame":{"seq":2,"offer":"duel","player":1}}"#
+        r#"{"CreateMapGame":{"seq":2,"offer":"duel","player":1,"spectators":true}}"#
+    );
+    // Left out, the game takes no spectators (E16 M5 T22a).
+    assert_eq!(
+        crate::codec::decode_client(
+            br#"{"CreateMapGame":{"seq":2,"offer":"duel","player":1}}"#,
+            4096
+        ),
+        Ok(ClientMessage::CreateMapGame {
+            seq: 2,
+            offer: "duel".to_string(),
+            player: 1,
+            spectators: None,
+        })
+    );
+    assert_eq!(
+        text(&ClientMessage::GameWatch { game: 5 }),
+        r#"{"GameWatch":{"game":5}}"#
     );
     // E16 M5 T11 (v50): a whole game's query and its answer.
     assert_eq!(

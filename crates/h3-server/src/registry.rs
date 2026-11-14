@@ -765,7 +765,8 @@ pub(crate) fn create_map(
     (conn, to, login): (ConnId, Outbox, Option<String>),
 ) -> Result<(u32, mpsc::Sender<ToGame>), Refusal> {
     let mut registry = lock(shared);
-    let (game, index) = registry.lobby.create_map(origin, offer, player)?;
+    // No spectators before E16 M5 T22b hosts them.
+    let (game, index) = registry.lobby.create_map(origin, (offer, player), false)?;
     let offer = Arc::clone(&registry.maps[index]);
     let (server, limits) = (registry.server.clone(), registry.limits);
     let stores = registry.stores.clone();

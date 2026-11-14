@@ -315,16 +315,20 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
   creator's flag, never ranked, live; ADR-0017 point 2, ADR-0018 point 7 and
   `docs/06-security.md` amended in the lane's pull request, `cross-lane` by the user's choice;
   `E16-log.md`). **T21b dropped** (SRV-Q36: no engine view to build); T22 cut in two (the user).
-- **T22a Spectators in the whole game's session** (`h3-protocol`, a protocol step): a spectator's
-  join of a whole game (no token, by the creator's flag and the game's limit, nothing
-  journaled), every player's snapshot at its join (and the battle's, the clock), then each
-  player's messages for its view after every command, named by the player in the spectator's
-  own numbering, its record; `CreateMapGame`'s flag (closed by default), `SetSpectators` until
-  the start, `Goodbye { SpectatorsClosed }`, `GameInfo::spectators`; a ranked whole game
-  refuses it; property-tested that the players' bytes do not depend on spectators.
-- **T22b Spectators hosted** (`h3-server`): the lobby, the limit, a spectator's join and
-  watch through the whole game's thread, a late joiner's and a reconnect's snapshots, a restart
-  (a spectator joins again, numbered afresh); end to end in `h3-server`'s tests.
+- **T22a Spectators in the whole game's session** done 2026-11-14 (protocol v66; `E16-log.md`:
+  `GameWatch`, `GameWatching`, `GameWatched` spliced from each player's frame in `route`,
+  `session::game::Spectators`, `GameEntry::Watchable`, `SetSpectators` with `NotHost` and
+  `AlreadyStarted`, `CreateMapGame`'s and `MapGameInfo`'s `spectators`; `h3-server` takes none
+  yet).
+- **T22b Spectators hosted** (`h3-server`): `CreateMapGame`'s flag into the lobby
+  (`Lobby::create_map`'s) and the session (`Spectators { limit: spectators_per_game, open }`,
+  in `whole::Prepared::new`; a restore's limit the configuration's), `SetSpectators`' change
+  into the listing (`Lobby::update_map` gains it), a spectator's `GameWatch` bound to the whole
+  game's thread (`registry::bind_map`'s like, today refused `NoSpectators` in `net.rs`), its
+  frames routed, its disconnect, `Goodbye` to it at a void, a pause and a shutdown, the
+  connection kept bound while it watches (`GameSession::watches` beside `holds`), a late
+  joiner's and a reconnect's snapshots, a restart (a spectator watches again, numbered afresh;
+  the journal's `Watchable` line read back); end to end in `h3-server`'s tests.
 - **T23 Long journals measured** (SRV-Q30's major finding's rest): a long game on an XL map
   (seeded random legal play over many days), the restore's and the verification's time and
   memory per day; the restart's cost (every whole journal re-run before the server listens) and
@@ -338,6 +342,12 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 **Review list for the M5 2c checkpoint** (built so far; the reviewer and the user at T24):
 
+- T22a: `GameWatched`'s frame spliced from the player's frame's text, not encoded from the
+  message (no decode, no clone; a test holds it to serde's form); a watch's start numbered as
+  each player's last message; a spectator has no record of its own (`FetchRecord` is
+  `NotSeated`); a watcher may not take a seat (`AlreadyJoined`, it leaves first); the setting
+  journaled only when open (`Watchable`, additive: `GAME_JOURNAL_FORMAT_VERSION` stays 1);
+  in-process nobody watches (`NoSpectators`).
 - T21a (SRV-Q36): the spectator's messages are each player's as its seat is sent them, wrapped
   with the player and renumbered (the players' numbers stay the players'), rather than a merged
   view; a whole game closed to spectators by default (a battle's are open by default).

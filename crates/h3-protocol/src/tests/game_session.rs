@@ -43,6 +43,7 @@ const fn options(checkpoint_every: u32) -> GameOptions {
         clock: crate::session::game::Clock::UNLIMITED,
         // The server's bounds (E16 M5 T18): no golden replay meets them.
         commands: crate::session::game::CommandBounds::DEFAULT,
+        spectators: crate::session::game::Spectators::NONE,
     }
 }
 

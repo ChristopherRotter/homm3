@@ -486,6 +486,12 @@ pub enum GameReject {
     /// host's bound ([`crate::session::game::CommandBounds::per_battle`]): the computer plays its
     /// side for the rest of the battle.
     BattleLimit {},
+    /// The session's (E16 M5 T22a, v66): `SetSpectators` from a seat that is not the host's (the
+    /// creator's).
+    NotHost {},
+    /// The session's (E16 M5 T22a, v66): `SetSpectators` once the game started, when its
+    /// setting is fixed.
+    AlreadyStarted {},
 }
 
 /// Why a town command was refused (`h3_towns::TownCommandError`).

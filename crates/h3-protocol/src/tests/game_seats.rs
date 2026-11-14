@@ -36,6 +36,7 @@ pub(super) const OPTIONS: GameOptions = GameOptions {
     record_bytes: usize::MAX,
     clock: crate::session::game::Clock::UNLIMITED,
     commands: crate::session::game::CommandBounds::NONE,
+    spectators: crate::session::game::Spectators::NONE,
 };
 
 /// The connections a test uses.

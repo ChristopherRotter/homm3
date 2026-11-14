@@ -21,6 +21,7 @@ mod game_query;
 mod game_resume;
 mod game_seats;
 mod game_session;
+mod game_watch;
 mod ladder;
 mod list;
 mod lobby;
