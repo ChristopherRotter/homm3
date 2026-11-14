@@ -201,24 +201,13 @@ fn play(seed: u64, days: u32) -> (AdventureEnv, Played) {
 /// the limit with no seat to move.
 #[test]
 fn the_env_plays_the_town_map_to_its_end_of_days() {
-    let mut all = Played::default();
-    for seed in [70] {
-        let (env, played) = play(seed, 21);
-        assert!(env.is_done(), "{seed}");
-        assert_eq!((env.day(), env.to_move().count()), (22, 0), "{seed}");
-        assert_eq!(
-            env.fork().step(PlayerId::new(0), Action::end_turn()),
-            Err(StepError::EpisodeOver)
-        );
-        all.undefended += played.undefended;
-        all.sieges += played.sieges;
-        all.merged += played.merged;
-        all.won += played.won;
-        all.lost += played.lost;
-        all.built += played.built;
-        all.recruited += played.recruited;
-        all.bought += played.bought;
-    }
+    let (env, all) = play(70, 21);
+    assert!(env.is_done());
+    assert_eq!((env.day(), env.to_move().count()), (22, 0));
+    assert_eq!(
+        env.fork().step(PlayerId::new(0), Action::end_turn()),
+        Err(StepError::EpisodeOver)
+    );
     assert!(all.undefended > 0, "{all:?}");
     assert!(all.sieges > all.merged && all.merged > 0, "{all:?}");
     assert!(all.won > 0 && all.lost > 0, "{all:?}");
