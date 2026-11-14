@@ -405,7 +405,8 @@ fn start_of<'c, 'a>(
         }
         h
     };
-    let picture = Picture::new(sources, rim, bink_video, bugs).ok_or("no 800 × 600 screen")?;
+    let black = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
+    let picture = Picture::new(black, sources, rim, bink_video, bugs);
     let mut ops = Vec::new();
     let start = Start::new(headers, bink_video, 0, &mut ops);
     Ok(((start, ops), picture))

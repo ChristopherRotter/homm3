@@ -1,6 +1,7 @@
 //! The start's tests (E27 M2 T5a): the DLLs' schedules, the sequence, its fades and skips, and
 //! the picture's ops on synthetic clips.
 
+use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_render::Bugs;
@@ -8,11 +9,15 @@ use h3_render::screen::Screen as Pixels;
 
 use super::{
     Codec, FADE_STEP, Header, Op, Pace, Part, Picture, PictureError, SmackSchedule, Source, Start,
-    place, smack_period, smack_wait,
+    place, shown_union, smack_period, smack_wait,
 };
 use crate::compose::FORMAT;
 
 const SMACK: Pace = Pace::Smacker(6666);
+
+fn black() -> Pixels {
+    Pixels::new(800, 600, FORMAT).unwrap()
+}
 const BINK: Pace = Pace::Bink { num: 15, den: 1 };
 
 fn header(frames: u32, pace: Pace) -> Option<Header> {
@@ -266,7 +271,7 @@ fn the_picture_carries_out_the_ops() {
             },
         )),
     ];
-    let mut picture = Picture::new(sources, Some(&rim), true, Bugs::Fixed).unwrap();
+    let mut picture = Picture::new(black(), sources, Some(&rim), true, Bugs::Fixed);
     assert!(picture.screen().pixels().iter().all(|&p| p == 0));
     picture.apply(Op::Rim).unwrap();
     assert!(picture.back().pixels().iter().all(|&p| p == 0x1234));
@@ -339,7 +344,7 @@ fn a_smacker_frame_is_copied_whole_or_as_the_dll_copies_it() {
                 pace: SMACK,
             };
             let sources = [Some((source, header)), None, None];
-            let mut picture = Picture::new(sources, None, false, bugs).unwrap();
+            let mut picture = Picture::new(black(), sources, None, false, bugs);
             for n in 0..frames {
                 picture.apply(Op::Frame(Part::Logo, n)).unwrap();
             }
@@ -376,6 +381,137 @@ fn a_smacker_frame_is_copied_whole_or_as_the_dll_copies_it() {
             assert_eq!(shown, want, "seed {seed}, {bugs:?}");
             // Outside the clip the back buffer's black.
             assert_eq!(picture.screen().pixel(x - 1, y), Some(0));
+        }
+    }
+}
+
+#[test]
+fn the_union_of_the_rectangles_is_the_game_s() {
+    assert_eq!(shown_union(&[]), None);
+    assert_eq!(shown_union(&[[16, 0, 32, 16]]), Some([16, 0, 32, 16]));
+    // One below and further out: the union grows.
+    assert_eq!(
+        shown_union(&[[16, 0, 32, 16], [0, 16, 64, 16]]),
+        Some([0, 0, 64, 32])
+    );
+    // One below and further left that does not reach as far right: the union's right edge
+    // comes in by as much (the game keeps the width while it moves the left edge).
+    assert_eq!(
+        shown_union(&[[64, 0, 64, 16], [0, 16, 16, 16]]),
+        Some([0, 0, 64, 32])
+    );
+    // One inside: nothing changes.
+    assert_eq!(
+        shown_union(&[[0, 0, 64, 32], [16, 0, 16, 16]]),
+        Some([0, 0, 64, 32])
+    );
+}
+
+#[test]
+fn a_bink_frame_shows_its_rectangles_union_as_the_game_takes_it() {
+    use h3_bink::build::{self, Block, Header as BinkHeader};
+    // 64 × 32 (4 × 2 cells): a key frame, a frame changing nothing, then one changing the
+    // cells (3, 0) and (0, 1): their union as the game takes it is (0, 0, 16, 32), so cell
+    // (3, 0) reaches the back buffer but not the screen.
+    let fills = |n, c| vec![Block::Fill(c); n];
+    let key = build::frame(64, 32, [&fills(32, 40), &fills(8, 90), &fills(8, 160)]);
+    let still = build::frame(
+        64,
+        32,
+        [
+            &vec![Block::Skip; 32],
+            &vec![Block::Skip; 8],
+            &vec![Block::Skip; 8],
+        ],
+    );
+    let mut luma = vec![Block::Skip; 32];
+    luma[6] = Block::Fill(200);
+    luma[16] = Block::Fill(200);
+    let moved = build::frame(
+        64,
+        32,
+        [&luma, &vec![Block::Skip; 8], &vec![Block::Skip; 8]],
+    );
+    let bytes = build::file(&BinkHeader::new(64, 32), &[key, still, moved]);
+    let clip = h3_bink::Clip::parse(&bytes).unwrap();
+    let decoder = h3_bink::Decoder::new(&clip).unwrap();
+    let header = Header {
+        size: [64, 32],
+        frames: 3,
+        pace: BINK,
+    };
+    let source = Source::Bink {
+        clip: &clip,
+        decoder: alloc::boxed::Box::new(decoder),
+        next: 0,
+    };
+    let mut picture = Picture::new(
+        black(),
+        [None, None, Some((source, header))],
+        None,
+        true,
+        Bugs::Original,
+    );
+    let (x, y) = (80, 187);
+    // Before a frame: no rectangles, nothing shown; no rim: nothing copied.
+    picture.apply(Op::Rim).unwrap();
+    picture.apply(Op::Show(Part::Intro)).unwrap();
+    assert!(picture.screen().pixels().iter().all(|&p| p == 0));
+    assert!(picture.back().pixels().iter().all(|&p| p == 0));
+    for n in 0..3 {
+        picture.apply(Op::Frame(Part::Intro, n)).unwrap();
+        picture.apply(Op::Show(Part::Intro)).unwrap();
+        let (back, screen) = (picture.back(), picture.screen());
+        let same = |px: i64, py: i64| back.pixel(x + px, y + py) == screen.pixel(x + px, y + py);
+        // Frames 0 and 1 (nothing marked: the first rectangle kept) show the whole picture.
+        assert!(same(63, 0) && same(0, 31), "frame {n}");
+        if n == 2 {
+            assert!(same(0, 16), "cell (0, 1) shown");
+            assert!(!same(48, 0), "cell (3, 0) not shown");
+        }
+    }
+    // Past the clip's last frame: the decoder's refusal.
+    assert!(matches!(
+        picture.apply(Op::Frame(Part::Intro, 3)),
+        Err(PictureError::Bink(_))
+    ));
+}
+
+#[test]
+fn a_smacker_frame_past_the_last_or_cut_short_is_refused() {
+    let bytes = h3_smacker::build::sample(2);
+    let cut = &bytes[..bytes.len() - 8];
+    for (bytes, past) in [(&bytes[..], true), (cut, false)] {
+        let clip = h3_smacker::Clip::parse(bytes).unwrap();
+        let frames = u32::try_from(clip.frames()).unwrap();
+        let source = Source::Smacker {
+            reader: alloc::boxed::Box::new(clip.reader()),
+            decoder: alloc::boxed::Box::new(h3_smacker::Decoder::new(&clip).unwrap()),
+        };
+        let header = Header {
+            size: [clip.width, clip.height],
+            frames,
+            pace: SMACK,
+        };
+        let mut picture = Picture::new(
+            black(),
+            [Some((source, header)), None, None],
+            None,
+            false,
+            Bugs::Fixed,
+        );
+        for n in 0..frames - 1 {
+            picture.apply(Op::Frame(Part::Logo, n)).unwrap();
+        }
+        let last = picture.apply(Op::Frame(Part::Logo, frames - 1));
+        if past {
+            last.unwrap();
+            assert_eq!(
+                picture.apply(Op::Frame(Part::Logo, frames)),
+                Err(PictureError::Order(Part::Logo, frames))
+            );
+        } else {
+            assert!(matches!(last, Err(PictureError::Smacker(_))), "{last:?}");
         }
     }
 }

@@ -107,9 +107,10 @@ pub const MAX_RECTS: usize = 8;
 pub fn rects(decoder: &Decoder) -> alloc::vec::Vec<Rect> {
     let (mask, wide) = decoder.changed();
     let high = mask.len() / wide.max(1);
+    let stride = i32::try_from(wide).unwrap_or(i32::MAX);
     let marked = |row: i32, col: i32| {
-        let at = usize::try_from(row).ok()? * wide + usize::try_from(col).ok()?;
-        mask.get(at).map(|&m| m != 0)
+        let at = usize::try_from(row.saturating_mul(stride).saturating_add(col));
+        mask.get(at.unwrap_or(usize::MAX)).is_some_and(|&m| m != 0)
     };
     let side = |n: usize| i32::try_from(n * 16).unwrap_or(i32::MAX);
     let Some(first) = bounds(&marked, [0, 0, side(wide), side(high)]) else {
@@ -138,23 +139,19 @@ pub fn rects(decoder: &Decoder) -> alloc::vec::Vec<Rect> {
     let (width, height) = decoder.size();
     let size = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
     let (width, height) = (size(width), size(height));
-    let mut sorted = alloc::vec::Vec::with_capacity(found.len());
-    let mut left: alloc::vec::Vec<Option<Rect>> = found.into_iter().map(Some).collect();
-    while let Some(k) = (0..left.len())
-        .filter(|&k| left[k].is_some())
-        .min_by_key(|&k| {
-            left[k].map(|[x, y, _, _]| (y as u32).wrapping_shl(16).wrapping_add(x as u32))
-        })
-    {
-        if let Some([x, y, mut w, mut h]) = left[k].take() {
-            if x + w > width {
-                w = width - x;
-            }
-            if y + h > height {
-                h = height - y;
-            }
-            sorted.push([x, y, w, h]);
+    let key = |[x, y, _, _]: Rect| (y as u32).wrapping_shl(16).wrapping_add(x as u32);
+    let mut left = found;
+    let mut sorted = alloc::vec::Vec::with_capacity(left.len());
+    while !left.is_empty() {
+        let k = (0..left.len()).min_by_key(|&k| key(left[k])).unwrap_or(0);
+        let [x, y, mut w, mut h] = left.remove(k);
+        if x + w > width {
+            w = width - x;
         }
+        if y + h > height {
+            h = height - y;
+        }
+        sorted.push([x, y, w, h]);
     }
     sorted
 }
@@ -163,44 +160,41 @@ pub fn rects(decoder: &Decoder) -> alloc::vec::Vec<Rect> {
 /// marked cell to the last, then its columns from the first to the last over those rows, in
 /// whole cells of 16 (a partial cell at its right or bottom edge is not looked at); none when
 /// none is marked.
-fn bounds(marked: &impl Fn(i32, i32) -> Option<bool>, rect: Rect) -> Option<Rect> {
+fn bounds(marked: &impl Fn(i32, i32) -> bool, rect: Rect) -> Option<Rect> {
     let [x, y, w, h] = rect;
     let (col0, row0, cols, rows) = (x / 16, y / 16, w / 16, h / 16);
-    let any_in_row = |r: i32, cs: core::ops::Range<i32>| {
-        cs.into_iter()
-            .any(|c| marked(row0 + r, col0 + c) == Some(true))
-    };
+    let any_in_row =
+        |r: i32, cs: core::ops::Range<i32>| cs.into_iter().any(|c| marked(row0 + r, col0 + c));
+    // The DLL trims the bottom only when the height left is above 1 and the right only when the
+    // width left is: a marked row and column leave at least a cell of 16 of each, so it always
+    // does.
     let top = (0..rows).find(|&r| any_in_row(r, 0..cols))?;
-    let mut out = [x, y + 16 * top, w, h - 16 * top];
-    let mut rows_left = rows - top;
-    if out[3] > 1 {
-        let empty = (0..rows_left)
-            .take_while(|&k| !any_in_row(top + rows_left - 1 - k, 0..cols))
-            .count();
-        let empty = i32::try_from(empty).unwrap_or(0);
-        out[3] -= 16 * empty;
-        rows_left -= empty;
-    }
-    let any_in_col =
-        |c: i32| (0..rows_left).any(|r| marked(row0 + top + r, col0 + c) == Some(true));
-    let first = (0..cols).find(|&c| any_in_col(c)).unwrap_or(cols);
-    out[0] = x + 16 * first;
-    out[2] = w - 16 * first;
-    let cols_left = cols - first;
-    if out[2] > 1 {
-        let last = (0..cols_left)
-            .rev()
-            .find(|&c| any_in_col(first + c))
-            .unwrap_or(-1);
-        out[2] += 16 * (last - cols_left + 1);
-    }
-    Some(out)
+    let marked_rows = (top..rows)
+        .rev()
+        .find(|&r| any_in_row(r, 0..cols))
+        .unwrap_or(top)
+        - top
+        + 1;
+    let empty_below = rows - top - marked_rows;
+    let any_in_col = |c: i32| (top..top + marked_rows).any(|r| marked(row0 + r, col0 + c));
+    let first = (0..cols).find(|&c| any_in_col(c)).unwrap_or(0);
+    let last = (first..cols)
+        .rev()
+        .find(|&c| any_in_col(c))
+        .unwrap_or(first);
+    let empty_right = cols - 1 - last;
+    Some([
+        x + 16 * first,
+        y + 16 * top,
+        w - 16 * first - 16 * empty_right,
+        h - 16 * top - 16 * empty_below,
+    ])
 }
 
 /// `rect`'s best cut (0x100067B0): the area it saves and the two halves (`rect` twice when
 /// neither cut is taken; a half with nothing marked, which a rectangle [`bounds`] gave never
 /// has, kept as cut).
-fn cut(marked: &impl Fn(i32, i32) -> Option<bool>, rect: Rect) -> (i32, Rect, Rect) {
+fn cut(marked: &impl Fn(i32, i32) -> bool, rect: Rect) -> (i32, Rect, Rect) {
     let [x, y, w, h] = rect;
     let area = |r: Rect| r[2] * r[3];
     let half = |n: i32| (n / 2 + 15) & !15;
@@ -346,6 +340,8 @@ mod tests {
         );
         // One cell: its own.
         assert_eq!(rects_of(128, 64, &[(3, 2)]), vec![[48, 32, 16, 16]]);
+        // A cell across the picture's right edge: cut at it (120 of 128).
+        assert_eq!(rects_of(120, 64, &[(7, 0)]), vec![[112, 0, 8, 16]]);
         // Nothing marked: none.
         assert!(rects_of(128, 64, &[]).is_empty());
         // A row of cells is one rectangle (no cut saves anything).

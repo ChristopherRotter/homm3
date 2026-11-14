@@ -367,9 +367,10 @@ impl Replay {
             }
             Step::Input(input) if self.screen() == Screen::Start => {
                 if skips(input) {
-                    if let Some(start) = self.start.as_mut() {
-                        start.skip(self.time, &mut self.ops);
-                    }
+                    let (time, ops) = (self.time, &mut self.ops);
+                    self.start
+                        .iter_mut()
+                        .for_each(|start| start.skip(time, ops));
                     self.ended();
                 }
                 self.tick(self.input_step);
