@@ -4,7 +4,8 @@
 //! battle against a monster that does not stop it and is played out by the computer, the
 //! level-up's hold stopping every other timer and answered at its end, the chess clocks of a
 //! battle between two players' heroes (the increment, a side run out played by the computer, the
-//! attacker's turn timer stopped meanwhile), a paused game and one not started counting nothing.
+//! attacker's turn timer stopped meanwhile), a paused game and one not started counting nothing;
+//! a stopping host's time journaled (T17).
 
 use std::boxed::Box;
 use std::vec::Vec;
@@ -203,6 +204,12 @@ fn a_restore_keeps_the_time_left_and_never_counts_the_downtime() {
     let mut entries = ended.clone();
     entries.extend(s.drain_entries());
     assert_eq!(entries.last(), Some(&GameEntry::Elapsed(20_000)));
+    // A host that stops journals the 5 s (E16 M5 T17); nothing more when nothing counted since.
+    let mut stopped = entries.clone();
+    s.flush_time();
+    s.flush_time();
+    stopped.extend(s.drain_entries());
+    assert_eq!(stopped[entries.len()..], [GameEntry::Elapsed(5_000)]);
     let mut told = Vec::new();
     let restore = |entries: &[GameEntry], told: &mut Vec<GameOutbound>| {
         let manifest = manifest(rules, MAP);
@@ -211,6 +218,9 @@ fn a_restore_keeps_the_time_left_and_never_counts_the_downtime() {
     let mut r = restore(&entries, &mut told);
     assert_eq!(r.state().state_hash(), s.state().state_hash());
     assert_eq!(clocks(&told, P1), [turn(running(40_000))]);
+    let mut at_stop = Vec::new();
+    restore(&stopped, &mut at_stop);
+    assert_eq!(clocks(&at_stop, P1), [turn(running(35_000))]);
     // The downtime never counts: the first reading counts nothing.
     let mut again = Vec::new();
     r.elapse(5_000_000, &mut again);

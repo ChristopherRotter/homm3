@@ -31,7 +31,7 @@ mod lobby;
 mod manifest;
 mod query;
 
-pub use clock::{Duel, GameClock, Timer};
+pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,

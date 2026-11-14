@@ -405,7 +405,7 @@ movement nor an upgrade (the original's 136).
 - *As built* (T115b, decision 327): the four events as listed (`NothingWhy`), owner alone but
   `KindKnown`, to the team's players that gained it; `AdventureObservation::kinds` (the types in
   type order, `kinds_known`); `Known::Visited`; not in `AdventureReveal` (the marks are no tile's).
-  `h3-protocol` v60 (the server lane's T16 and the town lane's T27 took v58 and v59 first): the wire's four events, `NothingWhy`, `Adventure::kinds`, `Known::Visited`, the
+  `h3-protocol` v61 (the server lane's T16 and T17 and the town lane's T27 took v58 to v60 first): the wire's four events, `NothingWhy`, `Adventure::kinds`, `Known::Visited`, the
   fold (`KindKnown` inserted, `SirensLoss` as `WhirlpoolLoss`, `CreaturesUpgraded` the slot's
   creature, `NothingGained` nothing).
 
@@ -663,7 +663,7 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 Unmoved: the pack format (no core change). *Corrected* (T115b, decision 327): `ADV-QUIRK-46`'s
 flag is a profile flag, so the base faithful ruleset hash moved (0x4373…86a3 to 0xb5c0…73f9; no
 encoding change, `RULESET_HASH_VERSION` 53 kept), in its own `shared/` pull request (#909). As built
-too: adventure state hash v24 and protocol v60 (T115b). The ids: part B §11 and part
+too: adventure state hash v24 and protocol v61 (T115b). The ids: part B §11 and part
 C §12 (HER-ADV-003, HER-ADV-008 amended; HER-MAN-001 read), GAM-DEC-009 new, GAM-DEC-007,
 GAM-MAN-001, GAM-BAT-001, GAM-BAT-014, GAM-CAL amended; `ADV-QUIRK-46`, `-47`; decisions 304 to
 309 (next 310).

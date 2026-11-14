@@ -1438,7 +1438,7 @@ fn the_fold_keeps_the_own_heroes_armies_and_the_towns() {
 
 #[test]
 fn the_fold_keeps_the_bonus_visitables_army_changes_and_the_kind_marks() {
-    // E08 T115b (v60): the Sirens' loss as the Whirlpool's, the Stables' upgrade of a slot's
+    // E08 T115b (v61): the Sirens' loss as the Whirlpool's, the Stables' upgrade of a slot's
     // creature, the team's kind marks in type order; another player's hero and a held mark
     // change nothing; a visit that gave nothing is a message.
     let mut v = view();

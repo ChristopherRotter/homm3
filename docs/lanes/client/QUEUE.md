@@ -44,10 +44,20 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`, #914, `cross-lane`; **your path
-  changed, for your review**): protocol v60 adds the adventure observation's `kinds` (the kind
+  changed, for your review**): protocol v61 adds the adventure observation's `kinds` (the kind
   marks of the viewer's team), so `h3-view`'s `game_record/tests.rs` snapshot literal gained
   `kinds: Vec::new()`; also new: `Known::Visited` and the adventure events `NothingGained`,
   `SirensLoss`, `CreaturesUpgraded`, `KindKnown` (your readers' wildcards skip them).
+- 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
+  version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
+  `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an
+  offer's one of the original's 1, 2, 4, 6, 8, 10, 15, 20, 25 or 30 minutes; `level_up_ms`, none
+  when the game waits for a level-up; `battle_ms` and `increment_ms`, each side's chess clock in a
+  battle between two players' heroes under a limited turn). The server's whole games are timed
+  by their offer now (`[[map]] turn_minutes`, 60 s a level-up by default), so `GameClock` is told
+  with running timers; T16's note above stands. Nothing to build unless your lobby shows the
+  offer's clock (it decodes the new field with the crate).
+
 - 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
   taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`
   (`wire::game::GameClock`: the player's own `turn` timer, its battle's chess clocks `battle`
