@@ -31,7 +31,7 @@ mod lobby;
 mod manifest;
 mod query;
 
-pub use clock::{Duel, GameClock, Timer};
+pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
@@ -144,12 +144,12 @@ pub struct Adventure {
     pub known: Vec<KnownObject>,
     /// The empty boats it sees, in tile order.
     pub boats: Vec<Boat>,
-    /// Its own garrison heroes, by town (E09 T28a, v60): off the map, each with its town in place
+    /// Its own garrison heroes, by town (E09 T28a, v62): off the map, each with its town in place
     /// of a tile; another viewer sees none.
     pub garrison_heroes: Vec<GarrisonHero>,
 }
 
-/// A hero standing in its town's garrison as its owner sees it (E09 T28a, v60).
+/// A hero standing in its town's garrison as its owner sees it (E09 T28a, v62).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct GarrisonHero {

@@ -15,7 +15,7 @@ use std::fs;
 
 use h3_contracts::PlayerId;
 use h3_protocol::map::game::manifest;
-use h3_protocol::session::game::{GameEntry, GameOptions, GameSession};
+use h3_protocol::session::game::{Allowance, Clock, GameEntry, GameOptions, GameSession};
 use h3_protocol::wire::game::{
     AdventureCommand, Computer, GameAnswer, GameCommand, GameEvent, GameQuery, GameRecordHeader,
     MapGameInfo, MapOffer,
@@ -31,7 +31,7 @@ use crate::journal::whole as journal;
 use crate::{Running, start, whole};
 
 /// The duel map of the golden adventure replays (two players), pinned by its hash.
-fn duel_map() -> config::MapOffer {
+pub(super) fn duel_map() -> config::MapOffer {
     let path = "fixtures/maps/e08-duel-36.h3m";
     let (_, map) = h3_files::adventure::read_map(&root(), path).unwrap();
     config::MapOffer {
@@ -43,7 +43,12 @@ fn duel_map() -> config::MapOffer {
         difficulty: 1,
         name: None,
         computer: config::Computer::Fair,
+        turn_minutes: None,
+        level_up_ms: 60_000,
+        battle_ms: 180_000,
+        battle_increment_ms: 10_000,
         seeds: None,
+        test_clock: None,
     }
 }
 
@@ -56,7 +61,7 @@ fn with_map() -> Config {
 }
 
 /// The lobby's map offers and whole games.
-async fn map_listed(running: &Running) -> (Vec<MapOffer>, Vec<MapGameInfo>) {
+pub(super) async fn map_listed(running: &Running) -> (Vec<MapOffer>, Vec<MapGameInfo>) {
     let mut client = greeted(running).await;
     client
         .send(&ClientMessage::ListGames { seq: 3 })
@@ -84,7 +89,7 @@ async fn listed_until(running: &Running, until: impl Fn(&[MapGameInfo]) -> bool)
 }
 
 /// The next message of `client` that `pick` takes, those before it skipped.
-async fn next<T>(client: &mut Client, pick: impl Fn(ServerMessage) -> Option<T>) -> T {
+pub(super) async fn next<T>(client: &mut Client, pick: impl Fn(ServerMessage) -> Option<T>) -> T {
     loop {
         let message = client.recv().await.expect("the connection closed");
         if let Some(picked) = pick(message) {
@@ -94,7 +99,7 @@ async fn next<T>(client: &mut Client, pick: impl Fn(ServerMessage) -> Option<T>)
 }
 
 /// A seat's `GameJoined` and `GameSnapshot`: the seat's token.
-async fn game_joined(client: &mut Client, game: u32, player: u8) -> String {
+pub(super) async fn game_joined(client: &mut Client, game: u32, player: u8) -> String {
     let joined = client.recv().await;
     let Some(ServerMessage::GameJoined {
         game: g,
@@ -209,6 +214,45 @@ fn a_map_offer_is_configured() {
         refused(&format!("{map}computer = \"human\"\n")).is_err(),
         "no such computer"
     );
+    // E16 M5 T17: the clock, untimed turns and the session's other defaults without; a turn one
+    // of the original's durations, a battle's allowance not 0.
+    assert_eq!(
+        m.clock(),
+        Clock {
+            turn_ms: None,
+            level_up_ms: Some(60_000),
+            battle: Allowance::DEFAULT,
+        }
+    );
+    let timed = "turn_minutes = 4\nlevel_up_ms = 0\nbattle_ms = 90000\nbattle_increment_ms = 0\n";
+    let timed = Config::parse(&format!("[content]\npacks = \"p\"\n{map}{timed}"), &base);
+    assert_eq!(
+        timed.unwrap().maps[0].clock(),
+        Clock {
+            turn_ms: Some(240_000),
+            level_up_ms: None,
+            battle: Allowance {
+                base_ms: 90_000,
+                increment_ms: 0,
+            },
+        }
+    );
+    for minutes in config::TURN_MINUTES {
+        let ok = Config::parse(
+            &format!("[content]\npacks = \"p\"\n{map}turn_minutes = {minutes}\n"),
+            &base,
+        );
+        assert!(ok.is_ok(), "{minutes} minutes");
+    }
+    for (text, why) in [
+        ("turn_minutes = 3\n", "not the original's"),
+        ("turn_minutes = 0\n", "unlimited is no number"),
+        ("battle_ms = 0\n", "a side run out at once"),
+        ("level_up_ms = -1\n", "no negative time"),
+    ] {
+        let error = refused(&format!("{map}{text}"));
+        assert!(error.is_err(), "{why}");
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -296,8 +340,10 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         game,
         checkpoint_every: config.server.checkpoint_every,
         record_bytes: config.limits.record_bytes,
-        clock: h3_protocol::session::game::Clock::UNLIMITED,
+        clock: offer.clock,
     };
+    // The game's clock is in its journal's first line (E16 M5 T17).
+    assert_eq!(Clock::from(read.start.clock), offer.clock);
     let tokens = read.start.tokens.clone();
     let mut reopened = GameSession::reopen(
         &offer.rules,
@@ -373,8 +419,16 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
 /// player's seat, the host's), up to the first player's turn: both clients, the game and the
 /// seats' tokens.
 async fn started(running: &Running) -> (Client, Client, u32, [String; 2]) {
+    started_on(running, "duel-map").await
+}
+
+/// [`started`] on the map offer `offer` of two players (E16 M5 T17).
+pub(super) async fn started_on(
+    running: &Running,
+    offer: &str,
+) -> (Client, Client, u32, [String; 2]) {
     let mut a = greeted(running).await;
-    a.create_map("duel-map", 0).await.unwrap();
+    a.create_map(offer, 0).await.unwrap();
     let Some(ServerMessage::GameCreated { game, .. }) = a.recv().await else {
         panic!("not created")
     };
@@ -742,7 +796,7 @@ async fn whole_journals_that_do_not_restore_are_void() {
 
 /// The golden replay whose 17th command opens a battle against a wandering monster on the duel
 /// map (its 18th the player's, then the system actor's).
-const MONSTER_REPLAY: &str = "fixtures/replays/adventure/duel-s3-easy-d7.toml";
+pub(super) const MONSTER_REPLAY: &str = "fixtures/replays/adventure/duel-s3-easy-d7.toml";
 
 /// Game `game`'s journal rewritten in `data` with its first line `start` and `entries`.
 fn rewrite(data: &std::path::Path, start: &journal::GameStart, entries: &[GameEntry]) {
@@ -961,7 +1015,7 @@ async fn read_until_turn(mut client: Client) -> (Client, Vec<ServerMessage>) {
 }
 
 /// A re-taken seat's `GameJoined` and `GameSnapshot`: its last command's number and its view.
-async fn rejoined(
+pub(super) async fn rejoined(
     client: &mut Client,
     game: u32,
     (player, token): (u8, &str),
@@ -1176,7 +1230,7 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
         game,
         checkpoint_every: config.server.checkpoint_every,
         record_bytes: config.limits.record_bytes,
-        clock: h3_protocol::session::game::Clock::UNLIMITED,
+        clock: loaded.clock,
     };
     let tokens = read.start.tokens.clone();
     let reopened = GameSession::reopen(

@@ -483,7 +483,7 @@ fn every_part() -> AdventureObservation {
             kind: 1,
             facing: 6,
         }],
-        // E09 T28a (v60).
+        // E09 T28a (v62).
         garrison_heroes: vec![GarrisonHeroView {
             town: TownId::new(3),
             id: HeroId::new(7),

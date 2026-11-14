@@ -260,13 +260,13 @@ pub enum AdventureEvent {
         hero: u16,
         pos: Pos,
     },
-    /// E09 T28a (v60).
+    /// E09 T28a (v62).
     GarrisonEntered {
         hero: u16,
         town: u16,
         pos: Pos,
     },
-    /// E09 T28a (v60).
+    /// E09 T28a (v62).
     GarrisonLeft {
         hero: u16,
         town: u16,

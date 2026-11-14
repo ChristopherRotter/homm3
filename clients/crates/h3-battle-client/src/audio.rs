@@ -27,7 +27,8 @@
 //! battle's effects take streams of their own on the host's device for its run. The focus lost
 //! holds every effect playing where it is and fades the music out; regained, they play on and the
 //! music fades in (`sound_focus_lost` 0x599C40, `sound_focus_regained` 0x599B90; E24 design
-//! §4.15). An adapter: it reads files and drives the audio device.
+//! §4.15). The clips' sound (E27 M2 T2) plays on streams of their own on the host's device
+//! ([`HostSound::play_clip`]). An adapter: it reads files and drives the audio device.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -39,6 +40,7 @@ use h3_render::Bugs;
 use h3_sdl::Audio;
 use h3_ui::music::{FULL, Queue, Request, Run, Track};
 use h3_view::anim::{Cue, Sound};
+use h3_view::clip_sound::ClipSound;
 use h3_view::options::sound_volume;
 use h3_view::sound::{
     EFFECT_VOLUME, FILE_VOLUME, Lengths, MUSIC_VOLUME, Opening, START_WAIT, Tune, length_ms,
@@ -544,6 +546,33 @@ impl HostSound {
         }
     }
 
+    /// Plays a clip's sound (E27 M2 T2) on a stream of its own at `volume` (Miles' 0 to 127:
+    /// `h3_view::clip_sound::volume`), its samples queued at once; the stream's handle.
+    ///
+    /// # Errors
+    /// SDL's error when the stream cannot be made or fed.
+    pub fn play_clip(&mut self, sound: &ClipSound, volume: u8) -> Result<usize, String> {
+        let stream = self.out.add_stream(sound.rate, sound.channels)?;
+        self.out.set_gain(stream, gain(volume));
+        if let Err(e) = self.out.put(stream, &sound.samples, true) {
+            self.out.remove_stream(stream);
+            return Err(e);
+        }
+        Ok(stream)
+    }
+
+    /// Whether a clip's sound still plays (its stream holds samples).
+    #[must_use]
+    pub fn clip_playing(&self, stream: usize) -> bool {
+        self.out.queued(stream) > 0
+    }
+
+    /// Stops a clip's sound and removes its stream.
+    pub fn stop_clip(&mut self, stream: usize) {
+        self.out.clear(stream);
+        self.out.remove_stream(stream);
+    }
+
     /// The device, for the report.
     #[must_use]
     pub fn describe(&self) -> String {
@@ -1021,6 +1050,30 @@ pub(crate) mod tests {
                 None
             }
         }
+    }
+
+    #[test]
+    fn a_clips_sound_plays_on_a_stream_of_its_own() {
+        let Some((_lock, mut sound)) = dummy(Bugs::Fixed) else {
+            return;
+        };
+        let clip = ClipSound {
+            rate: 22050,
+            channels: 2,
+            samples: vec![100; 2 * 22050],
+        };
+        let stream = sound.play_clip(&clip, 127).unwrap();
+        assert_ne!(stream, sound.music_stream);
+        assert!(sound.clip_playing(stream));
+        sound.stop_clip(stream);
+        assert!(!sound.clip_playing(stream));
+        // A format SDL refuses: no stream is left behind.
+        let bad = ClipSound {
+            rate: 0,
+            channels: 2,
+            samples: vec![0; 4],
+        };
+        assert!(sound.play_clip(&bad, 127).is_err());
     }
 
     /// An installation copy of nothing (`name` its folder's): no sound archive, no music.

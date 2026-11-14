@@ -98,6 +98,31 @@ pub fn original_16(frames: &[Frame], format: Format) -> Vec<u8> {
     out
 }
 
+/// Every track's sound decoded in order (E27 M2 T2), as the DLL hands it to Miles
+/// (`smackprobe audio`): for each track the header describes (its index and the samples'
+/// bytes, [`crate::Samples::bytes`]), its packets' samples one after the other; a frame or a
+/// packet that fails, or holds no sound, adds none (FFmpeg outputs none for it).
+pub fn sound(bytes: &[u8]) -> Result<Vec<(usize, Vec<u8>)>, Error> {
+    let clip = Clip::parse(bytes)?;
+    let mut tracks: Vec<(usize, Vec<u8>)> = clip
+        .tracks
+        .iter()
+        .enumerate()
+        .filter(|(_, track)| track.rate != 0)
+        .map(|(k, _)| (k, Vec::new()))
+        .collect();
+    for packet in clip.reader().flatten() {
+        for (k, out) in &mut tracks {
+            if let (Some(data), Some(&track)) = (packet.audio[*k], clip.tracks.get(*k))
+                && let Ok(Some(samples)) = crate::sound::decode(track, data)
+            {
+                out.extend(samples.bytes());
+            }
+        }
+    }
+    Ok(tracks)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -172,5 +197,48 @@ mod tests {
             Some(Error::Size)
         );
         assert_eq!(hash(&[]), 0xCBF2_9CE4_8422_2325);
+    }
+
+    #[test]
+    fn each_described_tracks_sound_is_its_packets_one_after_another() {
+        use crate::Track;
+        use crate::build::Shape;
+        let mut h = Header::new(4, 4, [None, None, None, Some(TreeSpec::of(&[2]))]);
+        // Track 1 packed mono 8-bit, track 3 described but given no packets.
+        h.tracks[1] = Track {
+            rate: 11025,
+            flags: 0xC0,
+            largest: 0,
+        };
+        h.tracks[3] = Track {
+            rate: 11025,
+            flags: 0xC0,
+            largest: 0,
+        };
+        let packet =
+            |first: u32| build::sound(h.tracks[1], &[Shape::Leaf(1)], [first, 0], &[1, 1, 1]);
+        let frame = |audio: Vec<(usize, Vec<u8>)>| FrameSpec {
+            audio,
+            ..FrameSpec::video(vec![0])
+        };
+        let no_sound = vec![4, 0, 0, 0, 0];
+        let bytes = build::file(
+            &h,
+            &[
+                frame(vec![(1, packet(10))]),
+                // A packet holding no sound, one that fails, and a track not described.
+                frame(vec![(1, no_sound), (5, vec![1])]),
+                frame(vec![(1, vec![1, 2])]),
+                frame(vec![(1, packet(20))]),
+            ],
+        );
+        assert_eq!(
+            sound(&bytes),
+            Ok(vec![
+                (1, vec![10, 11, 12, 13, 20, 21, 22, 23]),
+                (3, Vec::new())
+            ])
+        );
+        assert_eq!(sound(b"SMK"), Err(Error::Magic));
     }
 }

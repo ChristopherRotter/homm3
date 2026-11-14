@@ -53,10 +53,12 @@ mod bits;
 pub mod build;
 pub mod check;
 mod clip;
+pub mod sound;
 mod tree;
 mod video;
 
 pub use clip::{Clip, Packet, Reader, Track, Version};
+pub use sound::{Codec, Samples};
 pub use video::{Decoder, Frame};
 
 /// The largest frame the decoder takes: the game's screen (*provisional*; `HSANIM`, `HSLOOP`,
@@ -81,4 +83,6 @@ pub enum Error {
     Size,
     /// The trees or a frame's data break one of FFmpeg's checks; names it.
     Invalid(&'static str),
+    /// A part of the format FFmpeg decodes that is not ported; names it.
+    Unsupported(&'static str),
 }

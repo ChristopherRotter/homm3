@@ -4,6 +4,9 @@
 
 use alloc::vec::Vec;
 
+use crate::audio::Audio;
+use crate::fft::Fft;
+use crate::x87::X;
 use crate::{Clip, Decoder, Error, Frame, Reading};
 
 /// Every frame of the Bink file `bytes` decoded in order ([`Reading::Fixed`]), those that fail
@@ -40,4 +43,99 @@ pub fn hash(frames: &[Frame]) -> u64 {
         }
     }
     hash
+}
+
+/// The first audio track's sound (E27 M2 T2): every frame's packet decoded in order by
+/// [`Audio`], the bytes as `binkprobe sound` writes the DLL's; empty without a track.
+pub fn sound(bytes: &[u8]) -> Result<Vec<u8>, Error> {
+    let clip = Clip::parse(bytes)?;
+    let Some(&track) = clip.tracks.first() else {
+        return Ok(Vec::new());
+    };
+    let mut audio = Audio::new(track)?;
+    let mut out = Vec::new();
+    for n in 0..clip.frames().len() {
+        if let Some(packet) = clip.audio(n, 0)? {
+            out.extend(audio.decode(packet));
+        }
+    }
+    Ok(out)
+}
+
+/// The sound decoder's tables as `binkprobe sound-tables` writes the DLL's (E27 M2 T2): the 256
+/// band scales, then the twiddles of the transforms of 1024, 2048 and 4096 values, each a
+/// binary32's little-endian bits.
+#[must_use]
+pub fn sound_tables() -> Vec<u8> {
+    let bits = |x: &X| x.to_bits32().unwrap_or(0).to_le_bytes();
+    let mut out: Vec<u8> = crate::audio::band_scales().iter().flat_map(bits).collect();
+    for n in [1024, 2048, 4096] {
+        out.extend(Fft::new(n).twiddles().iter().flat_map(bits));
+    }
+    out
+}
+
+/// The sound decoder's inverse FFT of `n` binary32 values (their bits) per run of `bits`, as
+/// `binkprobe cdft` runs the DLL's (E27 M2 T2: the transform checked on any values; one table
+/// for all runs, as a decoder keeps it).
+#[must_use]
+pub fn inverse_fft(n: usize, bits: &[u32]) -> Vec<u32> {
+    let mut fft = Fft::new(n);
+    let mut out = Vec::with_capacity(bits.len());
+    for run in bits.chunks_exact(n) {
+        let mut a: Vec<X> = run.iter().map(|&b| X::from_bits32(b)).collect();
+        fft.inverse(&mut a);
+        out.extend(a.iter().map(|x| x.single().to_bits32().unwrap_or(0)));
+    }
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::build;
+    use alloc::vec;
+
+    #[test]
+    fn the_sound_checks_write_the_probes_formats() {
+        // A clip without a track has no sound; the samples' tracks a packet a frame.
+        assert_eq!(
+            sound(&build::file(&build::Header::new(16, 8), &[vec![0]])),
+            Ok(Vec::new())
+        );
+        assert_eq!(sound(b"BIK"), Err(Error::Truncated));
+        assert!(!sound(&build::sample(3)).unwrap().is_empty());
+        let mut bad = build::sample(3);
+        // Track 0 with the DCT coding: refused.
+        bad[44 + 4 + 3] |= 0x10;
+        assert_eq!(sound(&bad), Err(Error::Field("audio coding")));
+        // A frame without a packet adds nothing; a packet past its frame fails.
+        let mut header = build::Header::new(16, 8);
+        header.audio_tracks = 1;
+        header.tracks = vec![crate::audio::Track {
+            largest: 4096,
+            rate: 22050,
+            flags: 0x4000,
+        }];
+        let empty = build::frame_with_sound(&[], &[0, 0]);
+        assert_eq!(
+            sound(&build::file(&header, core::slice::from_ref(&empty))),
+            Ok(Vec::new())
+        );
+        let mut past = empty;
+        past[0] = 100;
+        assert_eq!(
+            sound(&build::file(&header, &[past])),
+            Err(Error::Field("audio size"))
+        );
+        // 256 scales and 256 + 512 + 1024 twiddles.
+        assert_eq!(sound_tables().len(), 4 * (256 + 256 + 512 + 1024));
+        // An impulse; a part run left out.
+        let mut one = vec![0u32; 16];
+        one[0] = 0x3F80_0000;
+        one.push(7);
+        let out = inverse_fft(16, &one);
+        assert_eq!(out.len(), 16);
+        assert!(out.iter().step_by(2).all(|&b| b == 0x3F80_0000));
+    }
 }

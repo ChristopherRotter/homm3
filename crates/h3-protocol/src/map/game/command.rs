@@ -284,7 +284,7 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
                     town: TownId::new(town),
                     building: building(b)?,
                 },
-                // E09 T28a (v60).
+                // E09 T28a (v62).
                 TownCommand::Heroes { town, change } => EngineTown::Heroes {
                     town: TownId::new(town),
                     change: match change {

@@ -103,7 +103,7 @@ impl AdventureState {
             .map(|(_, on)| on)
     }
 
-    /// Hashes the towns' garrison heroes (adventure state hash v24): their number, then each its
+    /// Hashes the towns' garrison heroes (adventure state hash v25): their number, then each its
     /// town and its record as a hero on the map's ([`Self::hash_hero`]).
     pub(crate) fn hash_town_heroes(&self, h: &mut StateHasher) {
         let all = self.town_heroes();

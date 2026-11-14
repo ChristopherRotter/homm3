@@ -21,6 +21,7 @@ use crate::{Running, bench, game, registry, start};
 mod accounts;
 mod bounds;
 mod card;
+mod clock;
 mod identity;
 mod ladders;
 mod lists;

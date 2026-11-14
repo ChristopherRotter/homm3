@@ -3102,7 +3102,7 @@ impl CanonicalHash for AdventureState {
     /// v18 the owners and the weekly contents (`economy.rs`' `hash_economy`); since v19 the
     /// monsters' fractions as their number and, by object index, the index and the fraction;
     /// since v20 the dwellings' counts and guards as they stand, then the camps' creatures and
-    /// counts (`dwellings.rs`' `hash_dwellings`); since v24 the towns' garrison heroes after the
+    /// counts (`dwellings.rs`' `hash_dwellings`); since v25 the towns' garrison heroes after the
     /// heroes (`town.rs`' `hash_town_heroes`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
@@ -3112,7 +3112,7 @@ impl CanonicalHash for AdventureState {
         for hero in &self.heroes {
             self.hash_hero(h, hero);
         }
-        // v24 (E09 T28a): the towns' garrison heroes.
+        // v25 (E09 T28a): the towns' garrison heroes.
         self.hash_town_heroes(h);
         h.write_len(self.explored.len());
         for grid in &self.explored {

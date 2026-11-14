@@ -1391,6 +1391,13 @@ impl<'r> GameSession<'r> {
         Some(at.saturating_add(end.min(journaled)))
     }
 
+    /// Journals the time the running timers counted since the last `Elapsed` entry (E16 M5 T17):
+    /// a host that stops calls it after its last [`GameSession::elapse`], so that the restore
+    /// counts the time up to the stop, not only up to the last journaling.
+    pub fn flush_time(&mut self) {
+        self.flush();
+    }
+
     /// The time counted since the last `Elapsed` entry, as one (none for none).
     fn flush(&mut self) {
         let pending = core::mem::take(&mut self.clock.pending);

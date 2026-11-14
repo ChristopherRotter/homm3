@@ -13,8 +13,9 @@ use h3_sim::adventure::replay::map_content_hash;
 
 use super::game::{RULES, round_trips};
 use crate::map;
-use crate::map::game::{key_tables, manifest, map_offer};
-use crate::wire::game::{Computer, GameRecordHeader, MapIdentity, MapOffer};
+use crate::map::game::{key_tables, manifest, map_offer, offer_clock};
+use crate::session::game::{Allowance, Clock};
+use crate::wire::game::{Computer, GameRecordHeader, MapIdentity, MapOffer, OfferClock};
 use crate::wire::{ServerMessage, WireU64};
 
 /// A golden adventure replay's map, as the manifest names it.
@@ -94,9 +95,23 @@ fn a_map_offer_names_the_maps_size_players_and_rules() {
     let (_, setup) =
         h3_files::adventure::load_map(&root, "fixtures/maps/e08-duel-36.h3m", rules).unwrap();
     let at = golden_map();
-    // E16 M5 T10: the offer names its computer.
+    // E16 M5 T10: the offer names its computer; T17: its clock, a time past 32 bits of
+    // milliseconds at their most.
     let all_seeing = ("duel", String::from("Duel"));
-    let offer = map_offer(all_seeing, (rules, &setup), at, Computer::AllSeeing);
+    let clock = Clock {
+        turn_ms: Some(240_000),
+        level_up_ms: None,
+        battle: Allowance {
+            base_ms: u64::MAX,
+            increment_ms: 10_000,
+        },
+    };
+    let offer = map_offer(
+        all_seeing,
+        (rules, &setup),
+        at,
+        (Computer::AllSeeing, &clock),
+    );
     let m = manifest(rules, at);
     assert_eq!(
         offer,
@@ -112,10 +127,23 @@ fn a_map_offer_names_the_maps_size_players_and_rules() {
             ruleset_hash: m.ruleset_hash,
             map: at,
             computer: Computer::AllSeeing,
+            clock: OfferClock {
+                turn_ms: Some(240_000),
+                level_up_ms: None,
+                battle_ms: u32::MAX,
+                increment_ms: 10_000,
+            },
         }
     );
     round_trips(&offer);
     round_trips(&Computer::Fair);
+    let unlimited = OfferClock {
+        turn_ms: None,
+        level_up_ms: None,
+        battle_ms: 180_000,
+        increment_ms: 10_000,
+    };
+    assert_eq!(offer_clock(&Clock::UNLIMITED), unlimited);
 }
 
 #[test]

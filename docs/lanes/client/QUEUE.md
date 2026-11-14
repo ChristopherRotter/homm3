@@ -13,14 +13,17 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T2 — The clips' sound
+#### E27 M2 T2b — The shell's Bink clips' video as the DLL's
 
-- **Scope:** the epic's M2 table, T2 (CLT-Q104, decision 21): Bink's and Smacker's audio decoded,
-  the floating point emulated, checked against the DLLs' samples under Wine where the harness
-  reaches them (else FFmpeg's and a `CLT-Q`); played through the window's audio. Confirm the cut at
-  its start (the DLL's audio path under Wine is unread; T1's `smackprobe.exe` opens no track:
-  design §7.5).
-- **Status:** ready (T1 done 2026-11-13).
+- **Scope:** the epic's M2 table, T2b (found at T2, design §8.4): `h3-bink`'s frames of
+  `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from `BINKW32.DLL`'s in the chroma (at
+  most 3 levels at the first differences: `NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6), the
+  battle's clips and the samples exact. Find what these clips use that the others do not (a
+  block type, a coding path, the DCT's or the dequantizers' rounding on their values), fix it in
+  `h3-bink` (a sample that shows it), and make `bink-check.sh` with no arguments exact on the
+  video too (it reports only the sound now). Needs the original data staged and the harness's
+  setup (`shell-videos.vid`).
+- **Status:** ready (T2 done 2026-11-14).
 
 #### E27 M2 T3 — The shell's frame
 
@@ -34,7 +37,9 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 #### E27 M2 T4 to T8
 
 T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3); T5 the
-start (after T2 and T4; every pixel of a Smacker clip through its palette, decision 24); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
+start (after T2b and T4; every pixel of a Smacker clip through its palette, decision 24; the clips'
+sound at the effects setting, decision 27, through `HostSound::play_clip`; how much of a Smacker
+clip's queued sound plays at its end, design §8.4); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
 Multiplayer and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7).
 Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
 
@@ -42,6 +47,16 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
+
+- 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
+  version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
+  `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an
+  offer's one of the original's 1, 2, 4, 6, 8, 10, 15, 20, 25 or 30 minutes; `level_up_ms`, none
+  when the game waits for a level-up; `battle_ms` and `increment_ms`, each side's chess clock in a
+  battle between two players' heroes under a limited turn). The server's whole games are timed
+  by their offer now (`[[map]] turn_minutes`, 60 s a level-up by default), so `GameClock` is told
+  with running timers; T16's note above stands. Nothing to build unless your lobby shows the
+  offer's clock (it decodes the new field with the crate).
 
 - 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
   taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`

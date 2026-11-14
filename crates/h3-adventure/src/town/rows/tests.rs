@@ -213,7 +213,7 @@ fn the_visitor_enters_the_garrison_with_its_whole_record_and_the_garrison_s_crea
             seen_by,
         }]
     );
-    // The hash reads the garrison hero (v24); its owner sees it in its garrison heroes.
+    // The hash reads the garrison hero (v25); its owner sees it in its garrison heroes.
     assert_ne!(state.state_hash(), hash);
     assert_eq!(state.state_hash(), hash_of(&state));
     let view = state.observe(&rules.0, &rules.1, RED);

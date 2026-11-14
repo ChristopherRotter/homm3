@@ -44,6 +44,7 @@ pub mod batch;
 pub mod battle_log;
 pub mod book;
 pub mod clip;
+pub mod clip_sound;
 pub mod compose;
 pub mod eagle_eye;
 pub mod game_record;

@@ -1824,12 +1824,12 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   `AdventureState::move_town_hero`, `StackChanged` of `Enter`'s slots, the town's `Told`), listed
   after each own town's recruitments (`check_town_hero`); the record in
   `AdventureState::town_heroes` (a block by town, none while no town holds one; adventure state
-  hash v24 after the heroes on the map, each as a hero's), its marks in the marks block by hero id;
+  hash v25 after the heroes on the map, each as a hero's), its marks in the marks block by hero id;
   `TooManyHeroes` reads the town part's `most_heroes` (8, part v6); told as `GarrisonEntered` and
   `GarrisonLeft` (the viewers of the entrance; `Swap` the two in that order); the owner's view is
   `AdventureObservation::garrison_heroes` (`GarrisonHeroView`) and its details in
   `GameObservation::heroes`; `OwnHeroes` covers them; replay `town heroes <town> enter|leave|swap`
-  (v16); the env's `TOWN_HEROES` + 3 (v11); protocol v60. Its day, income and growth inputs are
+  (v16); the env's `TOWN_HEROES` + 3 (v11); protocol v62. Its day, income and growth inputs are
   T28b's; until T28b's rows 1 and 3 a garrison hero does not defend (`TWN-STUB-14`: its town falls
   as T-5's, `release_town_hero` at the capture).
 
