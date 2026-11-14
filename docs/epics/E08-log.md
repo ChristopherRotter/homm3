@@ -16262,3 +16262,87 @@ only). No original data staged: nothing of the import or the census moved.
   and pass over all of them (the garrisons and the fifteen fold, no stub). The server lane's inbox
   told.
 - **Versions:** none.
+
+### Increment 12, round 8: T116b1, the garrisons in the plans' properties (2026-11-14, `adventure/e08-t116b1`)
+
+**The cut** (decision 329, the user at T116b's start): T116b in two, the garrisons first with the
+inbox's hygiene case; T116b2 the fifteen bonus visitables. **Baseline:** `master` 161b565 (#919;
+#918, T116a, merged before it; the setup's `verify-once` found the engine code verified there,
+light gates only). No original data staged. Built by the main session.
+
+- **The inbox's hygiene case** (`a_viewer_learns_nothing_it_cannot_see`, `cc f1ef9d36…`, now
+  committed in `proptest-regressions/tests/view.txt`): a fault of the property, not the engine.
+  The viewer's own hero walks onto a two-way monolith whose pair the other game's unseen part
+  removed: there it has no candidate and tells nothing, here it jumps. The comparison cut both
+  games' events at the visit's first event (`HeroTeleported`, `LeadsNowhere`, `MeetingOpened`),
+  but `MovementChanged` is told last since SRV-Q26 (b) (after T106b2 wrote the cut), so the game
+  without a jump kept it in its prefix. The prefix now ends at `MovementChanged` too.
+- **The plans' garrisons** (`h3-map`'s `play.rs`; `KINDS` 103 to 106, `GARRISONS`,
+  `GARRISON_OBJECTS`, appended): the horizontal garrison (33.0), its anti-magic twin (33.1) and
+  AB's vertical ones (219.0, 219.1), the original's templates (three tiles of a row entered from
+  the middle one, one left of the anchor; three of a column, one above it). `Plan::garrisons`
+  (`GarrisonPlan`, drawn last by `garrisons()`, in three plans of five one to three): each near a
+  hero, of any kind, owned by the hero's owner, another colour or none, empty in one case of
+  five, else a few level-1 creatures (counts of 0 among them: empty slots) or 20 to 40 Skeletons,
+  removable in two cases of three. `garrisons_laid_out` after the teleporters: the anchor on the
+  map, the entrance on land (`OwnedOnWater`), no tile a hero's or a covered one; on an RoE map a
+  vertical one as its horizontal twin and every one removable (`garrison_object`). Plans without
+  garrisons lay out as before (the fixtures unchanged).
+- **The steps:** `Step::Exchange` (runs of 8 to 47 in `steps()`; `exchange_with`): in a battle as
+  `Fight`; an open exchange's `Close` in one step of eight, an arbitrary army command
+  (`arbitrary_exchange`: a move, a split or a dismissal, hero to garrison, back or within one,
+  slots up to one past an army's, in one case of two into the garrison's first occupied slot, in
+  one of eight another object's index) in three, else a listed one (`managing`); another
+  decision settled; on the map a revisit of a hero on an entrance in one step of four, a move that
+  crosses an own garrison's entrance in another, else a move onto an entrance (an own one's in
+  one step of two), else one nearer to one; `teleport` on a map without garrisons.
+- **The checks** (design §16), after every command of `every_step_keeps_the_commands_invariants`:
+  `check_garrisons` (a garrison's army changes only by its battle's end or by an army command of
+  the player's open exchange with it naming it, of a garrison the player owns; a non-removable
+  one's occupied slots keep their stacks; its owner changes only by a told flag of the new owner,
+  of an empty garrison; a battle started on an anti-magic entrance, the garrison's or a hero's
+  standing on one, is fought without magic as its observation shows, every other with it);
+  `check_garrison_battle_end` (dispatched by `check_unowned_battle_end`, as a mine's: won, the
+  army gone and the flag after the winner's levels; else the survivors by slot, none after a
+  draw; no object removed, no treasury moved); the exchange in `check_decisions` (opened for its
+  visitor's owner, the garrison by index, type, anchor and removable flag as the map holds it,
+  the owner's after the command; closed as told; opened in another player's command only for a
+  battle's winner, an owned garrison's last stack dying on its own move, as a held jump's),
+  `check_management` (the exchange stays open) and `check_inverse` (no inverse into a
+  non-removable garrison; the garrisons' armies restored).
+- **Found on the way** (the plans' gaps, no engine fault): `hiring()` took an open exchange for a
+  hire dialog (it named every other kind), so `managed` never reached its exchange branch and
+  `settle`, `meet` and `check_legal` answered an exchange as a hire dialog; the first stress met
+  `DecisionClosed` with nothing open (the exchange untracked in `check_decisions`).
+- **The cover test** `the_plans_cross_fight_and_exchange_at_garrisons` (512 garrison plans,
+  `garrison_plans()`: two to four garrisons, up to 199 steps, mostly `Step::Exchange`; the
+  oracles above after every accepted command, `check_legal` every fourth step, a refused command
+  leaving the state): laid by kind 74, 63, 31, 42; visits by kind (own exchange, capture, battle)
+  274/24/55, 243/17/45, 99/14/23, 150/11/37; 87 crossings; battles won/lost against owned
+  garrisons 74/11, neutral 46/10, no draw; anti-magic battles 82 of a garrison's, 70 of a hero
+  standing on one; 119 exchanges after a battle; army commands accepted into a removable
+  garrison 207, out of one 76, into a non-removable one 86; refused `NotOwn` 130, `OnlyEmpty` 20,
+  others 630; 548 revisits; 899 exchanges closed; every count asserted but the draws. At 256 the
+  crossings and the `OnlyEmpty` refusals were single digits: the step's crossing and occupied-slot
+  preferences raised them. `the_plans_jump_through_teleporters` lost its battle at a Whirlpool's
+  exit with the new draw: raised from 512 to 768 cases (TRAPS: raise the cases, not the draw).
+- *Agent's calls (change freely):* the four kinds' shapes, the draws' weights, the armies; the
+  step's preferences; the cover test's 512 cases with the oracles inside it.
+- **On the merge with `master`** (#920, the town lane's E09 T28a, and #921 to #923): the plans'
+  `hire_army` and `check_hire` still expected a town's purchase in its garrison, where T28a puts
+  it into the town's garrison hero's army (the upper bar): the merged suite's main property met
+  it with T116b1's draws (`StackChanged` on the hero), and a 300-case stress then met the same in
+  `check_towns`' purchase (the town's counts moved "without a purchase"). All three now follow
+  the garrison hero; the main property then passed 300 cases in 467 s; the town lane's inbox
+  told.
+- **The stress** (cases raised for one run each, then restored): `every_step_keeps_the_commands_invariants`
+  passed 400 cases in 645 s; `a_viewer_learns_nothing_it_cannot_see` and
+  `views_move_as_the_events_say` 300 each in 114 s (the views' `GarrisonChanged` and the
+  exchange's decision as T114b built them, now with the plans' garrisons). The first stress
+  failed on the exchange untracked in `check_decisions` (above).
+- **Test time** (debug, two CPUs): the cover test 89 s, the jump cover test 43 s; `h3-map`'s lib
+  tests 427 s.
+- **Gates:** the scoped verify passed every step it runs (`check-lane` included, no cross-lane
+  path) after one rewording (`check-rules` read a doc comment's "rule:" as a marker): coverage,
+  determinism (the 86 replays unchanged), bench-check (no engine code changed).
+- **Versions:** none.

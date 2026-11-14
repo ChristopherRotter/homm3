@@ -2878,7 +2878,10 @@ proptest! {
             // exit or a gate without a pair leads nowhere, a monolith or a Whirlpool without a
             // candidate tells nothing), or a meeting at the pair. When the two games tell it other
             // events, they tell the same up to the visit's (the walk, and a Whirlpool's loss, its
-            // army the same in both) and the comparison ends, as at a pickup's contents.
+            // army the same in both) and the comparison ends, as at a pickup's contents. The
+            // movement's changes come last (SRV-Q26 (b)), after the visit's events, so a visit that
+            // tells nothing (no candidate in one game) ends its prefix there (E08 T116b: the
+            // inbox's two-way monolith, its pair removed in one game and kept in the other).
             if entering && ta != tb {
                 let visit = |events: &[GameEvent]| {
                     let at = events.iter().position(|e| {
@@ -2887,7 +2890,8 @@ proptest! {
                             GameEvent::MeetingOpened { .. }
                                 | GameEvent::Adventure(AdventureEvent {
                                     kind: AdventureEventKind::HeroTeleported { .. }
-                                        | AdventureEventKind::LeadsNowhere { .. },
+                                        | AdventureEventKind::LeadsNowhere { .. }
+                                        | AdventureEventKind::MovementChanged { .. },
                                     ..
                                 })
                         )
@@ -3212,6 +3216,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         owners: Vec::new(),
         teleporters: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3311,6 +3316,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         owners: vec![Some(0)],
         teleporters: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -3385,6 +3391,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         owners: Vec::new(),
         teleporters: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3465,6 +3472,7 @@ fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
             ((7, 4, 0), WHIRLPOOL_OBJECT),
         ],
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let m = lay_out(&plan);
     let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
@@ -3584,6 +3592,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
             town(((2, 0), 2), None, 2, false),
             town(((2, 0), 3), None, 3, true),
         ],
+        garrisons: Vec::new(),
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
@@ -3720,6 +3729,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         owners: Vec::new(),
         teleporters: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -3792,6 +3802,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         owners: Vec::new(),
         teleporters: Vec::new(),
         towns: Vec::new(),
+        garrisons: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {

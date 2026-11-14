@@ -13,14 +13,17 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T4 to T8
+#### E27 M2 T5 to T8
 
-T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3a); T5 the
-start (after T4; every pixel of a Smacker clip through its palette, decision 24, every Bink frame
-whole, decision 28, the comparisons through `h3_bink::Target`; the clips'
-sound at the effects setting, decision 27, through `HostSound::play_clip`; how much of a Smacker
-clip's queued sound plays at its end, design §8.4); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
-Multiplayer and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7).
+T5 the start (every pixel of a Smacker clip through its palette, decision 24, every Bink frame
+whole, decision 28, the comparisons through `h3_bink::Target`; the clips' sound at the effects
+setting, decision 27, through `HostSound::play_clip`, recorded with a recipe's `sound = true`;
+how much of a Smacker clip's queued sound plays at its end, design §8.4; the Start screen
+`Built`, so `h3shell.py drawn` plays the `start` group); T6 the main menu, New Game's and Load
+Game's menus, Quit (after T4; the main menu `Built::Whole`: the replay's presses and keys reach
+the screen, `shell::replay`'s `Step::Input`); T7 Multiplayer and the hot seat's names (after T6);
+T8 M2's closure and M3's refinement (after T7). Each screen's task runs `h3shell.py drawn` and
+records it (`--record`; the runbook's "The shell's screens").
 Their scopes: the epic's M2 table; what each still reads or records: design §6.4.
 
 ## Inbox
@@ -28,6 +31,23 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the server lane, E16 M5 T21a and T22a, `claude/festive-albattani-mdvj1a`,
+  `cross-lane`; **a protocol version taken; for when you show a whole game to someone who does
+  not play it**): protocol **v66**. The user (SRV-Q36): a whole game's spectator sees **every
+  player's view**, live, only in a game its creator opened before the start (closed by
+  default), never a ranked one. On the wire: `CreateMapGame`'s `spectators: Option<bool>` (left
+  out: closed), `GameWatch { game }` answered `GameWatching { game, manifest }`, then each
+  player's messages wrapped as `GameWatched { n, player, message }` (`n` the spectator's own
+  number, `message` exactly as that player's seat got it, with the player's own `n`); a watch
+  starts with each player's `GameSnapshot`, its `GameClock` and its `GameTurn` as a re-taken
+  seat gets them, numbered as the player's last message. A client folds each player's stream
+  as it folds a seat's (`GameObservation::fold`), one view per player. `SetSpectators` works
+  in a whole game (the host's, until the start: `GameReject::NotHost`, `AlreadyStarted`), the
+  lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them from
+  T22b: until then every whole game refuses `GameWatch` (`NoSpectators`) and lists
+  `spectators: false`. Nothing to build until you want a spectator's screen. **Your path
+  changed:** `h3-battle-client`'s `game_seat/tests.rs` literal took `spectators:
+  Spectators::NONE` (`GameOptions`' new field).
 - 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
   taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
   commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the

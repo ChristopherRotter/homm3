@@ -3435,3 +3435,67 @@ ended and `drive` never returned. Same session and branch as the refinement. Kep
 - **Docs:** the client lanes' inboxes told (v65). `docs/06-security.md` (a shared path) is T24's,
   as T19 was 2b's: its "Not covered yet" sentence on a battle both of whose sides the system plays
   becomes the bound and the void (and `drive`'s chunks).
+
+### M5 T21a — the all-seeing spectator's design (2026-11-14, SRV-Q36)
+
+Baseline: `master` 4dfc666 (#922, T20; CI green on it). No original data. Branch
+`claude/festive-albattani-mdvj1a`. Before asking, the agent read what a merged full view would
+cost: the engine's events are shaped as players see them (`HeroStepped`'s ends filtered by
+viewer, `MonsterChanged` a count's word told only when the word changes, a town's and a map
+garrison's view told to each of its viewers at that viewer's level, a team's marks emitted only
+when a team gains one), so a full view's fold would need a full projection in every context and
+the engine's told copies at the full level, the fold gate's kind of work in three lanes' crates.
+**The user (SRV-Q36):** each player's view (not the merged full view the agent recommended, nor
+the whole state); the creator's flag before the start, closed by default, the lobby showing it;
+a ranked game never; live, no delay. T21b dropped; T22 cut into T22a (`h3-protocol`) and T22b
+(`h3-server`); T21a's amendments and T22a in one pull request labelled `cross-lane` (the user:
+one branch). Amended: ADR-0017 point 2 (no spectator viewer; the host shows every player's
+view), ADR-0018 point 7 (the spectator's messages; replaces "a spectator once
+`h3_game::Viewer` has one"), `docs/06-security.md` "Hosted games" (the whole game's spectator,
+and T20's bound and void in "Not covered yet", which T20 had left to T24).
+
+### M5 T22a — spectators in the whole game's session (2026-11-14, protocol v66)
+
+Same session and branch as T21a; T22 cut into T22a (`h3-protocol`) and T22b (`h3-server`) by the
+user (SRV-Q36). Kept whole.
+
+- **The wire** (v66): `ClientMessage::GameWatch { game }`; `ServerMessage::GameWatching { game,
+  manifest }` (its answer) and `GameWatched { n, player, message: Box<ServerMessage> }` (a
+  player's message as its seat got it, `n` the spectator's own); `CreateMapGame`'s
+  `spectators: Option<bool>` (`serde(default)`: left out, closed); `MapGameInfo::spectators`;
+  the session's `GameReject::NotHost` and `AlreadyStarted` (`SetSpectators`). A battle's session
+  refuses `GameWatch` `NoSuchGame`, as `GameJoin`.
+- **The session** (`session::game`): `GameOptions::spectators` (`Spectators { limit, open }`,
+  `NONE`); watchers (connection and number) beside the seats. `route` (now `&mut self`) gives
+  every spectator each player's frame as its `GameWatched`, spliced from the frame's text
+  (`watched`: the codec's JSON, serde's default form; no decode or clone, *provisional*), so
+  every message any player is sent, its records' while its seat is empty too, reaches the
+  spectators, and the players' frames are what they were (`turn` split into `legal`, which the
+  watch's start reads too). `GameWatch` (`watch`): `NoSuchGame`, `AlreadyJoined` (a seat's
+  connection or a watcher), `NoSpectators` in-process, closed or full; else `GameWatching`,
+  then each player's `GameSnapshot`, `GameClock` (when there is one to tell) and `GameTurn`
+  (running game, may act), numbered inside as the player's last message (*provisional*).
+  `SetSpectators` (`set_spectators`): `NotSeated`, `NotHost` (checked first: a two-player game
+  starts at its second seat), `AlreadyStarted`, else the setting changes (closing:
+  `Goodbye { SpectatorsClosed }` to every watcher) and the host gets `SpectatorsSet`. A watcher
+  takes no seat (`AlreadyJoined`), sends no command or query, fetches no record and pauses
+  nothing (`NotSeated`: *provisional*, no record of a spectator's); `Leave`, a disconnect and the
+  host's pause end its watch (`Goodbye { Paused }`). `GameEntry::Watchable` right before
+  `Started` when the game starts open; the re-run takes the setting from it (a game that started
+  closed restores closed whatever the options say). `watchable()`, `spectators()`, `watches()`
+  for the host. Lobby: `create_map(origin, (offer, player), spectators)`.
+- **`h3-server`** (interim, T22b's to replace): `CreateMapGame`'s flag ignored, `GameWatch`
+  refused `NoSpectators` in `net.rs`, `Spectators::NONE` in `whole::Prepared`, the listing's
+  `spectators` from the session (false); the journal's `Watchable {}` line both ways (additive:
+  `GAME_JOURNAL_FORMAT_VERSION` stays 1).
+- **Tests** (`tests/game_watch.rs`): `towns-s173-d21` hosted for connections and watched from
+  before the first join: every player's connection hears its in-process twin's frames byte for
+  byte, the spectator every frame of every player's in order, numbered on, each splice serde's
+  own text, `Watchable` before `Started`, the reopened game watchable; a late watcher of the duel
+  (each player's snapshot at its last number, the acting one's turn), its watch going on with
+  the players' frames; the setting and its refusals (closed by default on a server taking two,
+  in-process, another game, the host's open and close, the limit, `AlreadyJoined` both ways,
+  `NotSeated`, `Leave`, `NotHost`, `AlreadyStarted`, a disconnect, the pause; a game started
+  closed restores closed); a timed game's watch with the clock; the splice against the typed
+  message. The wire's lists (`GameWatch`, `GameWatched`, the two rejections, the field's
+  default).

@@ -12,12 +12,15 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   input, the combat options on it), `h3_view::shell` (the menu loop's state machine) and
   `shell::text`, `h3-view shell`. **M2 T3b done** (2026-11-14, CLT-Q2's switch):
   `h3_battle_client::lods`, the LODs' tables at start and a batch by its ranges, `h3-view gate`
-  measuring the start (1.3 ms; 145 ms before). **Next: M2 T4** (the comparison, `h3shell.py
-  drawn`), then T5, T6. Decisions to carry: the dialogs' input one
+  measuring the start (1.3 ms; 145 ms before). **M2 T4 done** (2026-11-14, decision 30: kept
+  whole): `h3_view::shell::replay` and `look` (`clients/layouts/shell.toml`, `Built`), `h3-view
+  shell --steps --frames` and `--window`, `h3shell.py drawn` (`exact` against the kept digests;
+  `shell/drawn.txt`), h3shell's `sound` and `mask`; the main menu's first shot exact. **Next: M2
+  T5** (the start), then T6, T7. Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's, the score the engine's
   (21); decision 22's fixes; a Smacker clip's every pixel through its palette (24); every clip's
   sound at the effects setting (27); every Bink frame whole, the comparisons through `Target`
-  (28). Open pull request: **#923** (`client/e27-m2-t3b`) (watch it until it merges). E17
+  (28). Open pull request: **#925** (`client/e27-m2-t4`) (watch it until it merges). E17
   done (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -52,6 +55,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-14, E27 M2 T4 (done; `client/e27-m2-t4`).** The cut offered, the user kept it whole
+  (decision 30). The original data staged at once (64 files, checked by SHA-256); the VM restarted
+  during the baseline (CI's green `master` stood in). Built `shell::replay`, `shell::look`, `Built`,
+  `h3-view shell --steps --frames` and `--window`; `h3shell.py drawn`, `sound`, `mask`; recorded
+  `mp-tcp` again (masked) and `menu-sound` (a press does not wait for `button.wav`). `drawn`: 3
+  shots exact (the main menu at rest), the rest stop at T5's or T6's screens. `check.sh` with the
+  data staged. Record: `E27-log.md`, "M2 T4".
 - **2026-11-14, E27 M2 T3b (done; `client/e27-m2-t3b`).** One task, no cut. The original data
   staged at once (64 files, checked by SHA-256); the baseline passed. Built `h3_battle_client::lods`
   (`Lod`, `Reader`, `Lods`) and moved every LOD reader of the crate onto it (`render`, `battle`,
@@ -66,11 +76,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   `h3_view::shell` (the menu loop's switches, design §2.2 to §2.4, §4.3, §5.3; each screen names
   its task) with `shell::text`, and `h3-view shell [--script] [--no-intro]`. `check.sh` with the
   data staged. Record: `E27-log.md`, "M2 T3a".
-- **2026-11-14, E27 M2 T2b (done; `client/e27-m2-t2b`).** One task, no cut. The original data
-  staged at once (64 files, checked by SHA-256); the baseline passed. Found by tracing blocks in a
-  scratch copy against the DLL's planes and reading `BINKW32.DLL`: the decoding was right, the
-  game's `BinkCopyToBuffer` copies only the cells `ExpandPlane` marked, the chroma's misfiled.
-  Built `h3_bink::Target`, the decoder's mask, the samples' still cells; `Reading::Original`
-  copies. Every frame of the shell's four Bink clips, the battle's ten and the samples the DLL's.
-  CLT-Q122: shown whole (decision 28). The VM restarted once (files kept). Record: `E27-log.md`,
-  "M2 T2b".

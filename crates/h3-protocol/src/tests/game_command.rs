@@ -425,7 +425,9 @@ fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
         | R::AlreadyAsked {}
         | R::Stale {}
         | R::TurnLimit {}
-        | R::BattleLimit {} => return None,
+        | R::BattleLimit {}
+        | R::NotHost {}
+        | R::AlreadyStarted {} => return None,
         R::UnknownPlayer { player } => E::UnknownPlayer(PlayerId::new(player)),
         R::NotYourTurn { player } => E::NotYourTurn(PlayerId::new(player)),
         R::DecisionOpen {} => E::DecisionOpen,
@@ -557,6 +559,8 @@ fn every_rejection_maps_back_and_round_trips() {
         w::GameReject::Stale {},
         w::GameReject::TurnLimit {},
         w::GameReject::BattleLimit {},
+        w::GameReject::NotHost {},
+        w::GameReject::AlreadyStarted {},
     ];
     for code in own {
         round_trips(&code);

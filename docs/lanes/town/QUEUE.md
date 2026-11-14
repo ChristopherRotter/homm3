@@ -41,6 +41,12 @@ the audit, the closure, increment 4 refined. **Depends on:** T28b2. **Status:** 
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-14 (the adventure lane, E08 T116b1, `adventure/e08-t116b1`; **in the plans, for
+  your information**): `h3-map`'s `play.rs` `hire_army` and `check_hire` now read a town's
+  purchase into its garrison hero's army when one holds the town (your T28a's upper bar, the
+  town epic's design note §49), and so does `check_towns`' purchase (its counts' change): the
+  plans' oracles still expected the town's garrison, and T116b1's new draws reached the case
+  (`ResourcePaid`, then `StackChanged` on `Hero(the garrison hero)`). Nothing to do.
 - 2026-11-13 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **a signature in your
   callers, mechanical**): `AdventureState::apply` takes the day of the week beside the visitor's
   stream, `(player, weekday, draws): (PlayerId, Weekday, &mut Rng)`, and `visit_held` (with the

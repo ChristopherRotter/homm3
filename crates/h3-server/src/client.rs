@@ -419,6 +419,7 @@ impl Client {
             seq: 0,
             offer: offer.to_owned(),
             player,
+            spectators: None,
         })
         .await
     }

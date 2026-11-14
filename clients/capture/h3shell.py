@@ -19,12 +19,25 @@ game's first read, each recipe recorded twice and the two compared.
       The display's probes for a screen, into shell/<group>.screens.toml (h3drive.py learn's
       grid; the clock may be frozen: the probes are the points that kept their value).
   h3shell.py list    The recipes and their shots.
+  h3shell.py drawn [--group <g>[,<g>...]] [--only <id>[,<id>...]] [--record] [--out <dir>]
+      The viewer's side, without the original (no Wine; E27 M2 T4): each recipe's steps played
+      by `h3-view shell --steps` on the shell's own clock (the release build of clients/), each
+      shot and clip of the viewer against the original's kept line (`exact`: the same pixels at
+      the same time; else what differs, by pixel count and box when the original's frames of a
+      `run` are in <out>'s parent, clients/out/shell) and against the viewer's own record,
+      shell/drawn.txt (`same`, `CHANGED`, `new`, `GONE`); a recipe the viewer cannot finish says
+      at which step and why (a screen not built yet names its task). Exits 1 unless every
+      recipe's shots are as recorded; --record writes them. The frames stay in <out> (default
+      clients/out/shell-drawn): <id>/frames/<shot>.565 (5-6-5, as the harness's dumps).
 
 A recipe (a `[[recipe]]` of shell/<group>.toml): `id`, `what` (the catalogue's section), and
   registry  dwords of the settings key for this run, over setup.sh's (`Show Intro`, …)
   maps      the run's Maps/: "all" (the default: original-data/install/Maps), or a list of names
   games     the run's Games/: files of original-data/games (default none)
   frozen    false: the clock runs in real time until a step freezes it (default true)
+  sound     true: the game plays its sounds (h3drive's `sound`: an audio driver, the effects at
+            volume 5, the samples on the virtual clock), each sample started kept as a line
+            `<id> sound<k> t<ms> ch<channel> <length>ms x<loops>` (E27 M2 T4; default false)
   steps     the steps, in order (`STEPS`)
 Every run starts from setup.sh's registry (the settings key removed and written again: what a
 run saved never reaches the next), no HiScore.dat, the listed maps and saves.
@@ -49,6 +62,10 @@ ROOT = HERE.parent.parent
 SHELL = HERE / "shell"
 KEPT = SHELL / "kept"
 OUT = ROOT / "clients" / "out" / "shell"
+# The viewer's frames of `drawn` and its record (E27 M2 T4).
+DRAWN_OUT = ROOT / "clients" / "out" / "shell-drawn"
+DRAWN = SHELL / "drawn.txt"
+H3VIEW = ROOT / "clients" / "target" / "release" / "h3-view"
 DATA = ROOT / "original-data"
 # The clock's time at the game's first read (xdd.dll's H3FROZEN): any value; times are counted
 # from it.
@@ -101,12 +118,45 @@ STEPS = """The steps (strings `<verb>[:<arguments>]`):
   clip:<name>:<ms>[:<step>]   every changed screen kept for <ms>, the clock stepped by <step>
                          (default 10): `<name>/t<ms>.npz`, each with its time
   clip-until:<name>:<screen>[:<step>][:<limit ms>]   the same until the screen shows (kept)
+  mask:<x0>,<y0>,<x1>,<y1>   from here on the box (x1 and y1 excluded) is left out of the
+                         shots' and clips' digests, the original's and the viewer's: what the
+                         machine draws there (TCP/IP's address); `unmask` ends every mask
+  unmask                 no box left out from here on
 After each input the clock moves on by the recipe's `input_step` (default 100 ms: the game
 draws its cursor at the pointer only on a later tick) and the game is idle before the next step."""
 
 
-def digest(pix):
+def digest(pix, masks=()):
+    """The pixels' digest, each mask's box (x0, y0, x1, y1; the last two excluded) set to 0 first
+    (E27 M2 T4: what the machine draws, TCP/IP's address)."""
+    if masks:
+        pix = np.array(pix, copy=True)
+        for x0, y0, x1, y1 in masks:
+            pix[y0:y1, x0:x1] = 0
     return hashlib.sha256(np.ascontiguousarray(pix, dtype="<u2").tobytes()).hexdigest()[:16]
+
+
+def mask_box(arg):
+    """A `mask` step's box."""
+    box = tuple(int(v) for v in arg.split(","))
+    if len(box) != 4 or box[0] >= box[2] or box[1] >= box[3]:
+        raise ValueError(f"mask:{arg}: not <x0>,<y0>,<x1>,<y1> with x0 < x1 and y0 < y1")
+    return box
+
+
+def shot_masks(steps):
+    """Each shot's and clip's masks, by its name, as the `mask` and `unmask` steps before it
+    leave them (E27 M2 T4)."""
+    masks, out = [], {}
+    for step in steps:
+        verb, _, arg = step.partition(":")
+        if verb == "mask":
+            masks = masks + [mask_box(arg)]
+        elif verb == "unmask":
+            masks = []
+        elif verb in ("shot", "clip", "clip-until"):
+            out[arg.split(":")[0]] = list(masks)
+    return out
 
 
 def groups():
@@ -227,12 +277,15 @@ class Run:
             shutil.rmtree(self.out)
         self.out.mkdir(parents=True)
         frozen = FROZEN_AT if recipe.get("frozen", True) else None
-        self.game = h3drive.Game(self.out, frozen=frozen)
+        # E27 M2 T4: a recipe with `sound` plays the game's sounds (h3drive's `sound`).
+        self.game = h3drive.Game(self.out, sound=bool(recipe.get("sound", False)), frozen=frozen)
         self.game.screens = screens()
         self.kept = []  # (name, kind, time, digest or (count, first, last, digest))
         self.input_step = int(recipe.get("input_step", INPUT_STEP))
         # The next input's settle in seconds (`settle`; INPUT_SETTLE when None).
         self.settle = None
+        # The boxes left out of the digests from here on (`mask`; E27 M2 T4).
+        self.masks = []
 
     def now(self):
         a = self.game.ack(need=True)
@@ -354,7 +407,7 @@ class Run:
         self.idle()
         pix = self.game.settled()
         np.savez_compressed(self.out / f"{name}.npz", pix=pix)
-        self.kept.append((name, "shot", self.now(), digest(pix)))
+        self.kept.append((name, "shot", self.now(), digest(pix, self.masks)))
 
     def clip(self, name, ms=None, screen=None, step=UNTIL_STEP, limit=UNTIL_LIMIT):
         here = self.out / name
@@ -362,7 +415,7 @@ class Run:
         self.idle()
         last = self.game.settled()
         start = self.now()
-        lines = [(start, digest(last))]
+        lines = [(start, digest(last, self.masks))]
         np.savez_compressed(here / f"t{start}.npz", pix=last)
         end = start + (ms if ms is not None else limit)
         while self.now() < end:
@@ -370,7 +423,7 @@ class Run:
             pix = self.game.settled()
             if not np.array_equal(pix, last):
                 t = self.now()
-                lines.append((t, digest(pix)))
+                lines.append((t, digest(pix, self.masks)))
                 np.savez_compressed(here / f"t{t}.npz", pix=pix)
                 last = pix
             if screen and any(self.game.matches(n, pix) for n in screen.split("|")):
@@ -379,8 +432,7 @@ class Run:
             if screen:
                 raise TimeoutError(f"{name}: the screen `{screen}` within {limit} ms")
         (here.parent / f"{name}.txt").write_text("".join(f"{t} {d}\n" for t, d in lines))
-        whole = hashlib.sha256("".join(f"{t} {d}\n" for t, d in lines).encode()).hexdigest()[:16]
-        self.kept.append((name, "clip", start, (len(lines), lines[0][0], lines[-1][0], whole)))
+        self.kept.append((name, "clip", start, clip_entry(lines)))
 
     def do(self, step):
         verb, _, arg = step.partition(":")
@@ -503,6 +555,10 @@ class Run:
             finally:
                 mem.file.close()
             self.idle()
+        elif verb == "mask":
+            self.masks = self.masks + [mask_box(arg)]
+        elif verb == "unmask":
+            self.masks = []
         elif verb == "shot":
             self.shot(arg)
         elif verb == "clip":
@@ -526,6 +582,11 @@ class Run:
             self.start_drawn()
             for step in self.recipe["steps"]:
                 self.do(step)
+            if self.game.sound:
+                # Each sample started (xdd.dll's `sounds`), its time from the frozen start.
+                for k, (t, channel, length, loops) in enumerate(h3drive.sounds(self.game), 1):
+                    self.kept.append((f"sound{k}", "sound", t - FROZEN_AT,
+                                      (channel, length, loops)))
         except Exception:
             try:
                 self.game.dump(self.out / "failed.xwd")
@@ -539,10 +600,20 @@ class Run:
 
 
 # -- comparing and keeping ----------------------------------------------------------------------
+def clip_entry(lines):
+    """A clip's kept entry from its (time, digest) lines: their count, first and last times and
+    the digest of the lines."""
+    whole = hashlib.sha256("".join(f"{t} {d}\n" for t, d in lines).encode()).hexdigest()[:16]
+    return (len(lines), lines[0][0], lines[-1][0], whole)
+
+
 def kept_line(ident, entry, other=None):
     name, kind, t, d = entry
     if kind == "shot":
         line = f"{ident} {name} t{t} {d}"
+    elif kind == "sound":
+        channel, length, loops = d
+        line = f"{ident} {name} t{t} ch{channel} {length}ms x{loops}"
     else:
         n, first, last, whole = d
         line = f"{ident} {name} clip {n}@{first}-{last} {whole}"
@@ -664,11 +735,187 @@ def run_command(rest):
     return 1 if failed else 0
 
 
+# -- the viewer's side (E27 M2 T4) ---------------------------------------------------------------
+def load_565(path):
+    """A frame the viewer wrote (`h3-view shell --frames`): 800 × 600 pixels of 5-6-5."""
+    return np.fromfile(path, dtype="<u2").reshape(h3drive.HEIGHT, h3drive.WIDTH)
+
+
+def read_drawn():
+    """The viewer's record (shell/drawn.txt), by (id, name): its lines."""
+    found = {}
+    if DRAWN.exists():
+        for line in DRAWN.read_text().splitlines():
+            if line and not line.startswith("#"):
+                ident, name, _ = line.split(" ", 2)
+                found[(ident, name)] = line
+    return found
+
+
+def write_drawn(lines_by_id):
+    """The viewer's record, the recipes run replaced, in the recipes' order."""
+    old = read_drawn()
+    by_id = {}
+    for (ident, _), line in old.items():
+        by_id.setdefault(ident, []).append(line)
+    by_id.update(lines_by_id)
+    order = [r["id"] for r in all_recipes()]
+    head = ("# E27 M2 T4: the viewer's shots and clips of the shell's recipes (h3shell.py drawn "
+            "--record): per shot\n# `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip "
+            "<frames>@<first>-<last> <digest>`, as shell/kept/; numbers only.\n")
+    DRAWN.write_text(head + "".join(line + "\n" for ident in order
+                                    for line in by_id.get(ident, [])))
+
+
+def originals(line):
+    """The original's kept line as the forms a viewer's line can match: the first run's and, for
+    a shot or clip whose runs differ, the second's."""
+    ident, name, rest = line.split(" ", 2)
+    first, _, second = rest.partition(" differs ")
+    return [f"{ident} {name} {first}"] + ([f"{ident} {name} {second}"] if second else [])
+
+
+def drawn_recipe(recipe, out):
+    """One recipe through the viewer: its kept-form lines by name, the stop's line (or None), or
+    the viewer's failure as a string."""
+    ident = recipe["id"]
+    here = out / ident
+    shutil.rmtree(here, ignore_errors=True)
+    frames = here / "frames"
+    frames.mkdir(parents=True)
+    # The masks are the digests' (Python's), not the viewer's steps: left out, their places kept.
+    index = [k for k, s in enumerate(recipe["steps"]) if s.split(":")[0] not in ("mask", "unmask")]
+    (here / "steps.txt").write_text("".join(recipe["steps"][k] + "\n" for k in index))
+    args = [str(H3VIEW), "shell", "--steps", str(here / "steps.txt"), "--frames", str(frames)]
+    if int(recipe.get("registry", {}).get("Show Intro", 0)) == 0:
+        args.append("--no-intro")
+    if "input_step" in recipe:
+        args += ["--input-step", str(recipe["input_step"])]
+    done = subprocess.run(args, capture_output=True, text=True)
+    if done.returncode != 0:
+        return None, None, ((done.stdout + done.stderr).strip().splitlines() or ["no output"])[-1]
+    masks = shot_masks(recipe["steps"])
+    lines, clips, stop = {}, {}, None
+    for line in (frames / "replay.txt").read_text().splitlines():
+        kind, name, rest = line.split(" ", 2)
+        if kind == "shot":
+            t = int(rest.lstrip("t"))
+            pix = load_565(frames / f"{name}.565")
+            lines[name] = kept_line(ident, (name, "shot", t, digest(pix, masks.get(name, []))))
+        elif kind == "clip":
+            t = int(rest.lstrip("t"))
+            pix = load_565(frames / name / f"t{t}.565")
+            clips.setdefault(name, []).append((t, digest(pix, masks.get(name, []))))
+        elif kind == "stop":
+            # `stop <k> <why>`: k counts the viewer's steps, the masks left out.
+            k = index[int(name)]
+            stop = f"step {k + 1} `{recipe['steps'][k]}`: {rest}"
+    for name, frames_of in clips.items():
+        lines[name] = kept_line(ident, (name, "clip", frames_of[0][0], clip_entry(frames_of)))
+    order = list(masks)
+    return dict(sorted(lines.items(), key=lambda kv: order.index(kv[0]))), stop, None
+
+
+def compared(ident, name, ours, original):
+    """How the viewer's line `ours` (None: not drawn) stands to the original's kept `original`."""
+    if ours is None:
+        return "not drawn"
+    forms = originals(original)
+    if ours in forms:
+        return "exact"
+    mine = ours.split(" ", 2)[2].split()
+    theirs = forms[0].split(" ", 2)[2].split()
+    if mine[-1] == theirs[-1]:
+        return f"the original's pixels at {mine[0]}, not {theirs[0]}"
+    note = ""
+    shot = OUT / ident / "run1" / f"{name}.npz"
+    ours_file = DRAWN_OUT / ident / "frames" / f"{name}.565"
+    if mine[0].startswith("t") and shot.exists() and ours_file.exists():
+        a, b = np.load(shot)["pix"], load_565(ours_file)
+        note = f": {int((a != b).sum())} pixels in {h3drive.changed_box(a, b)}"
+    return "not the original's" + note
+
+
+def drawn_command(rest):
+    only = group_names = None
+    record = False
+    out = DRAWN_OUT
+    i = 0
+    while i < len(rest):
+        if rest[i] in ("--only", "--group", "--out") and i + 1 < len(rest):
+            if rest[i] == "--only":
+                only = set(rest[i + 1].split(","))
+            elif rest[i] == "--group":
+                group_names = rest[i + 1].split(",")
+            else:
+                out = Path(rest[i + 1])
+            i += 2
+        elif rest[i] == "--record":
+            record = True
+            i += 1
+        else:
+            sys.exit(__doc__)
+    if not H3VIEW.exists():
+        sys.exit(f"no {H3VIEW}: `cargo build --release -p h3-battle-client` in clients/ first")
+    recipes = [r for r in all_recipes()
+               if (only is None or r["id"] in only)
+               and (group_names is None or r["group"] in group_names)]
+    if not recipes:
+        sys.exit("no recipe chosen")
+    recorded = read_drawn()
+    got, failed, shots, drawn, exact = {}, 0, 0, 0, 0
+    for recipe in recipes:
+        ident = recipe["id"]
+        lines, stop, broken = drawn_recipe(recipe, out)
+        if broken is not None:
+            print(f"{ident}: the viewer failed ({broken})", flush=True)
+            failed += 1
+            continue
+        got[ident] = list(lines.values())
+        kept = {name: line for (i, name), line in read_kept(recipe["group"]).items() if i == ident}
+        verdicts, changed = [], []
+        for name, original in kept.items():
+            if name.startswith("sound"):
+                continue
+            shots += 1
+            ours = lines.get(name)
+            verdict = compared(ident, name, ours, original)
+            drawn += ours is not None
+            exact += verdict == "exact"
+            verdicts.append(f"{name}: {verdict}")
+        for name in sorted(set(lines) | {n for (i, n) in recorded if i == ident}):
+            before, now = recorded.get((ident, name)), lines.get(name)
+            if before != now:
+                changed.append(f"{name} {'GONE' if now is None else 'new' if before is None else 'CHANGED'}")
+        (out / ident / "verdicts.txt").write_text("".join(v + "\n" for v in verdicts))
+        n_exact = sum(v.endswith(": exact") for v in verdicts)
+        summary = (f"{ident}: {len(lines)} of {len(verdicts)} drawn, {n_exact} exact"
+                   + (f"; stopped at {stop}" if stop else ""))
+        if not changed:
+            state = "as recorded"
+        elif not any(i == ident for (i, _) in recorded):
+            state = "new"
+        else:
+            state = (f"not as recorded ({len(changed)}): " + ", ".join(changed[:6])
+                     + (", …" if len(changed) > 6 else ""))
+        failed += bool(changed)
+        print(f"{summary}; {state}", flush=True)
+    if record:
+        write_drawn(got)
+        print(f"drawn: {len(got)} recipes recorded in {DRAWN}")
+        return 1 if len(got) < len(recipes) else 0
+    print(f"drawn: {len(recipes)} recipes, {drawn} of {shots} shots drawn, {exact} exact; "
+          f"{failed} not as recorded; under {out}")
+    return 1 if failed else 0
+
+
 def main(args):
     if not args:
         sys.exit(__doc__)
     if args[0] == "run":
         sys.exit(run_command(args[1:]))
+    elif args[0] == "drawn":
+        sys.exit(drawn_command(args[1:]))
     elif args[0] == "play" and len(args) >= 2:
         recipe = next((r for r in all_recipes() if r["id"] == args[1]), None)
         if recipe is None:

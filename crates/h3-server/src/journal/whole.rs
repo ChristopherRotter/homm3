@@ -113,6 +113,8 @@ enum GameLine {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         account: Option<String>,
     },
+    /// [`GameEntry::Watchable`] (E16 M5 T22a; additive: a journal without it started closed).
+    Watchable {},
     /// [`GameEntry::Started`].
     Started {},
     /// [`GameEntry::Paused`].
@@ -145,6 +147,7 @@ impl GameLine {
                 player: player.raw(),
                 account: Some(login),
             },
+            GameEntry::Watchable => Self::Watchable {},
             GameEntry::Started => Self::Started {},
             GameEntry::Paused => Self::Paused {},
             GameEntry::Resumed => Self::Resumed {},
@@ -176,6 +179,7 @@ impl GameLine {
                     None => GameEntry::Taken(player),
                 }
             }
+            Self::Watchable {} => GameEntry::Watchable,
             Self::Started {} => GameEntry::Started,
             Self::Paused {} => GameEntry::Paused,
             Self::Resumed {} => GameEntry::Resumed,

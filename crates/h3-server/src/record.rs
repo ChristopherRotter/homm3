@@ -114,6 +114,7 @@ pub fn record_replay(
         record_bytes: usize::MAX,
         clock: h3_protocol::session::game::Clock::UNLIMITED,
         commands: h3_protocol::session::game::CommandBounds::NONE,
+        spectators: h3_protocol::session::game::Spectators::NONE,
     };
     // Every frame stays in the session's records; the host delivers none here.
     let mut out = Vec::new();

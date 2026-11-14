@@ -5,8 +5,10 @@
 # its press held, the pointer gone off it with the button still down (released there: no
 # command), its right press's popup and the screen once it closed. Online is never released over
 # its button: its command ends the game (game_shutdown; no shot can follow). Under the harness's
-# Wine IPX fails (its message), TCP/IP opens with the machine's address in its title (the
-# stage-2 shots hold this computer's address), Modem and Direct Connect open.
+# Wine IPX fails (its message), TCP/IP opens with the machine's address in its title, Modem and
+# Direct Connect open. The address's line is masked in the stage-2 shots' digests (E27 M2 T4,
+# M1's review item 8 (b): the sandbox's 192.0.2.2 in rows 101 to 114; the box spans the dialog's
+# width, for a longer address).
 
 [[recipe]]
 id = "mp-new"
@@ -90,14 +92,14 @@ id = "mp-tcp"
 what = "§2.6: TCP/IP: stage 2 with Search and the address; Host, Join, Search and the list's hints; Cancel to stage 1 (the types disabled), Escape, reopened"
 steps = [
   "until:main_menu", "click:643,70", "check:new_game_menu", "click:649,180", "check:multiplayer",
-  "click:578,271", "shot:stage2", "clip:list:2000:100",
+  "click:578,271", "mask:180,96,620,124", "shot:stage2", "clip:list:2000:100",
   "move:578,157", "shot:host-hover", "right:578,157", "shot:host-popup", "right-up", "shot:host-closed",
   "move:578,214", "shot:join-hover", "right:578,214", "shot:join-popup", "right-up", "shot:join-closed",
   "move:578,271", "shot:search-hover", "right:578,271", "shot:search-popup", "right-up", "shot:search-closed",
   "move:518,300", "shot:scroll-hover", "right:518,300", "shot:scroll-popup", "right-up", "shot:scroll-closed",
   "move:350,178", "shot:row-hover", "click:350,178", "shot:row-pressed",
-  "move:578,495", "shot:cancel-hover", "click:578,495", "shot:stage1",
-  "click:578,271", "shot:tcp-again", "key:Escape", "check:new_game_menu", "shot:closed",
+  "move:578,495", "shot:cancel-hover", "click:578,495", "unmask", "shot:stage1",
+  "click:578,271", "mask:180,96,620,124", "shot:tcp-again", "key:Escape", "unmask", "check:new_game_menu", "shot:closed",
   "click:649,180", "check:multiplayer", "shot:reopened",
 ]
 

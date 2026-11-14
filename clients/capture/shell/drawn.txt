@@ -1,0 +1,6 @@
+# E27 M2 T4: the viewer's shots and clips of the shell's recipes (h3shell.py drawn --record): per shot
+# `<id> <shot> t<ms> <digest>`, per clip `<id> <clip> clip <frames>@<first>-<last> <digest>`, as shell/kept/; numbers only.
+menu-main menu t0 e62581b7ce362971
+menu-main new-hover t100 215342b6c73e5986
+menu-sound menu t0 e62581b7ce362971
+start-plain menu t0 e62581b7ce362971
