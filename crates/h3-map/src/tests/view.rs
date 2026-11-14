@@ -9,10 +9,10 @@ use h3_adventure::{
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
-    GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView, OWNER_LEVEL,
-    TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands,
-    legal_moves, observe, project,
+    Actor, ArmyRef, ArmySlot, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset,
+    GameState, GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView,
+    OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply,
+    legal_commands, legal_moves, observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -2913,6 +2913,52 @@ proptest! {
                         )
                     })
             };
+            // E08 T116b2's stress: a map garrison's exchange names its garrison by its object
+            // index too (`docs/06-security.md`'s one exception: it tells the map's order), which
+            // the objects `vary` removes and adds before it move. The viewer's own exchange opened
+            // at a garrison of other indices in the two games tells the same but the index, and
+            // the comparison ends (its later commands name the first game's index).
+            let indexed = |events: &[GameEvent]| -> Vec<GameEvent> {
+                (events.iter())
+                    .map(|&e| match e {
+                        GameEvent::ExchangeOpened {
+                            player,
+                            hero,
+                            object_type,
+                            anchor,
+                            removable,
+                            ..
+                        } => GameEvent::ExchangeOpened {
+                            player,
+                            hero,
+                            garrison: 0,
+                            object_type,
+                            anchor,
+                            removable,
+                        },
+                        GameEvent::StackChanged {
+                            player,
+                            at:
+                                ArmySlot {
+                                    army: ArmyRef::MapGarrison(_),
+                                    slot,
+                                },
+                            stack,
+                        } => GameEvent::StackChanged {
+                            player,
+                            at: ArmySlot {
+                                army: ArmyRef::MapGarrison(0),
+                                slot,
+                            },
+                            stack,
+                        },
+                        other => other,
+                    })
+                    .collect()
+            };
+            if actor == Actor::Player(viewer) && ta != tb && indexed(&ta) == indexed(&tb) {
+                break;
+            }
             let learned =
                 known(&a, viewer) != known_before.0 || known(&b, viewer) != known_before.1;
             if actor == Actor::Player(viewer)
@@ -2922,10 +2968,31 @@ proptest! {
                 // and how many tiles it explored may differ; (E08 T64b) or a visit's contents:
                 // what its hero gained and what the visit asked, opened (a chest's choice of
                 // gold, not of an artifact) or refused for its price, so also how many of those
-                // it was told.
+                // it was told; (E08 T116b2) a Fountain of Fortune's value, its hero's once-mark,
+                // which the build drew from the seed (ADV-BON-003; the other game's differs), and
+                // whether a Magic Spring's entrance was emptied, by a visit of another player's
+                // hero the viewer never saw, in one game alone (ADV-BON-007: nothing told, or the
+                // spell points, a hero's change).
+                let drawn = |e: &GameEvent| match *e {
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::OnceMarkChanged { bonus, .. },
+                        ..
+                    }) => (rules.adventure().object_types().iter()).any(|ty| {
+                        matches!(ty.kind, ObjectKind::FountainOfFortune { mark, .. } if mark == bonus.mark)
+                    }),
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::NothingGained { object_type, .. },
+                        ..
+                    }) => matches!(
+                        rules.adventure().object_type(object_type).map(|t| &t.kind),
+                        Some(ObjectKind::MagicSpring)
+                    ),
+                    _ => false,
+                };
                 let blind = |events: Vec<GameEvent>| -> Vec<GameEvent> {
                     events
                         .into_iter()
+                        .filter(|e| !drawn(e))
                         .filter(|e| {
                             !matches!(
                                 e,
@@ -3144,7 +3211,7 @@ fn town_views_move_as_the_events_say() {
     });
     let strategy = (towns, any::<bool>(), any::<u64>(), steps());
     let mut met = TownsMet::default();
-    for _ in 0..512 {
+    for _ in 0..768 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start_on(&lay_out(&plan), rules, seed);

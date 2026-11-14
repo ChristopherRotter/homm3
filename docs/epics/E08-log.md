@@ -16346,3 +16346,75 @@ light gates only). No original data staged. Built by the main session.
   path) after one rewording (`check-rules` read a doc comment's "rule:" as a marker): coverage,
   determinism (the 86 replays unchanged), bench-check (no engine code changed).
 - **Versions:** none.
+
+### Increment 12, round 8: T116b2, the bonus visitables in the plans' properties (2026-11-14, `adventure/e08-t116b2`)
+
+**The cut** (decision 330, the user at T116b2's start): whole, with the inbox's case first (the
+land's twelve first, the sea's three second, was recommended). **Baseline:** `master` 4be4d94
+(#927; #926, T116b1, merged before it). The setup's baseline (`verify-once`, a full run: the code
+not verified yet) was lost to a VM restart; CI's run on `master` stands in. No original data
+staged. Built by the main session.
+
+- **The inbox's case** (the server lane's CI on #922, `cc f7f1ca8b…`, now committed in
+  `proptest-regressions/tests/play.txt`): a gap of the main property, no engine fault. Replayed on
+  29f658e in a worktree (the draws have moved since, so `master` no longer meets it): a move
+  into a monster's battle whose stack acts first kills the mover's army, the battle ends within
+  the move's command and the hero leaves the map; the property's landing check then read the
+  hero's tile. `check_legal` took this since #911; the check now takes it too (`lost_on_the_way`,
+  shared), and the case passes on 29f658e with the fix.
+- **The plans' bonus visitables** (`h3-map`'s `play.rs`; `KINDS` 107 to 121, `BONUSES`,
+  `BONUS_OBJECTS`, appended): the twelve on land with the original's templates
+  (`garrisons_bonuses.rs`' `LAND_BONUSES`: one tile, two of a row visited on the left, on the
+  anchor or on both, two rows of two, four of a row), the Buoy, the Mermaids and the Sirens one
+  tile each (the original's three columns do not fit the plans' narrowest strait, as the
+  Whirlpool's). `Plan::bonuses` (`Bonuses`, drawn last after the garrisons, in three plans of four:
+  one to five on land near the heroes, a Spring or a Fountain in one of three, up to three of the
+  sea's on a strait as the Whirlpools; Cavaliers for the first Stables' hero in two cases of
+  three); `bonuses_laid_out` after the garrisons: every tile on the map, the visitable ones on
+  land (the sea's on water), none a hero's or a covered one. Plans without them lay out as before.
+- **The steps:** `Step::Bonus` (runs of 8 to 47 with ends of turn among them; `seek_bonus`): in a
+  battle as `Fight`; a decision settled; on the map a revisit of a hero on a bonus visitable in
+  one step of four, else a move ending on a visitable tile, else with the sea's a walker's
+  boarding in one step of two, else one nearer; `exchange_with` on a map without them.
+- **The checks** (design §16), after every command of `every_step_keeps_the_commands_invariants`:
+  `check_bonuses` (each hero's once-marks only grow but at its battle's end, which keeps the
+  Sirens' with `ADV-QUIRK-46` off; at most one joins a command, with the kind's amounts: the day's
+  pair, a Fountain's value among its values, none for the Sirens; the bonuses no mark names 0
+  after a battle but one won against no hero, whose held visit may give a record's; the timed
+  marks dropped at the day's and the week's steps, at most one joining; a visit's movement, both
+  raised by the kind's points from the walk's points left or drained, a held mark's nothing told;
+  the Well's and the Spring's spell points or their nothing; the Stables' upgrades by slot, told;
+  the Sirens' part kept per slot, `sirens_kept` read apart from the engine's double product, each
+  loss told, the experience raised but at its cap; the kind marks only grow, each told).
+  `bonus_visited` takes a visit as given only with no guard's question or battle and the walk's
+  steps taken (decision 279's held visit). `landing` takes the visits' events, `check_legal` and
+  `check_revisits` the visits' movement (`visit_movement`), `check_conservation` the Sirens'
+  losses and the Stables' upgrades.
+- **The views** (`view.rs`): `check_told`'s bonuses and kind marks (T115b's) met by the plans'
+  kinds unchanged. The hygiene property ends at the viewer's own visit of a Fountain (its value
+  the build's draw from the seed, the other game's differs) or of a Spring emptied in one game
+  (its once-mark and nothing apart from the rest, `blind`), and at the viewer's own exchange of a
+  garrison whose index `vary` moved (`docs/06-security.md`'s one exception; met by the stress
+  with T116b2's draws, older than it). Both `cc` lines committed in
+  `proptest-regressions/tests/view.txt`.
+- **Found on the way** (the plans' gaps, no engine fault): `visited` names the object at a
+  move's end when its guard stopped the move (the first cover run); a held event's record after
+  a won battle with no defending hero; the walk's and the revisit's movement without the visit's
+  points; the Sirens at the experience's bound (the stress's `cc` line).
+- **The cover test** `the_plans_visit_the_bonus_visitables` (512 cases of `bonus_plans()`: three
+  or more, one of the sea's; up to 199 steps, mostly `Step::Bonus`; the oracles above after every
+  accepted command, `check_legal` every fourth step): laid by kind 18, 31, 141, 7, 28, 67, 33, 9,
+  21, 17, 27, 10, 199, 212, 228; visits that gave by kind 20, 49, 249, 13, 50, 104, 9, 18, 46, 36,
+  46, 30, 42, 59, 57; nothing told 4 697 (visited), 861 (full), 577 (emptied); 1 480 revisits;
+  the Fountains' values 55, 74, 58, 62; `bonus` gains on odd days 228, even 136, day 7 9; Sirens
+  losses 159, lone creatures kept 5; 6 upgrades; 128 heroes' bonuses cleared by a battle (the
+  Sirens' kept 2 under `strict-fixed`, cleared 3 under `faithful`: printed, not asserted); marks
+  dropped 8 (day), 13 (week); 441 kind marks learnt; every count asserted but the Sirens'
+  around a battle. `town_views_move_as_the_events_say` lost its Capitol count with the new draws:
+  raised from 512 to 768 cases (3; TRAPS: raise the cases).
+- *Agent's calls (change freely):* the sea's three one tile; the draws' weights; the step's
+  preferences; `sirens_kept`'s bracket; the cover test's 512 cases with the oracles inside it.
+- **The stress** (cases raised for one run each, then restored): `a_viewer_learns_nothing_it_cannot_see`
+  and `views_move_as_the_events_say` 300 each (after the Fountain's and the garrison's fixes);
+  `every_step_keeps_the_commands_invariants` 300 cases in 511 s (after the Sirens' cap).
+- **Versions:** none.

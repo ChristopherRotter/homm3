@@ -3950,7 +3950,12 @@ fn bonus_at<'r>(
 /// walker's option onto an empty boat (so that heroes sail to them), else one that ends nearer to
 /// a visitable tile than its hero stands, else `EndTurn`; as [`exchange_with`] on a map without
 /// bonus visitables.
-fn seek_bonus(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+fn seek_bonus(
+    state: &GameState,
+    rules: &GameRuleset,
+    legal: &[GameCommand],
+    n: u16,
+) -> GameCommand {
     let bonuses = bonuses_of(state, rules);
     if bonuses.is_empty() {
         return exchange_with(state, rules, legal, n);
@@ -9505,15 +9510,30 @@ fn check_bonuses(
         // them again (decision 279: an event's record after its guards' battle, won).
         if cleared && !held_after {
             let (morale, luck) = (is.bonuses().morale, is.bonuses().luck);
-            prop_assert_eq!((morale, luck), (0, 0), "{:?} after its battle: {:?}", hero.id, events);
+            prop_assert_eq!(
+                (morale, luck),
+                (0, 0),
+                "{:?} after its battle: {:?}",
+                hero.id,
+                events
+            );
         }
         for bonus in &joined {
             match mark_kind(bonus.mark).map(|ty| &ty.kind) {
                 Some(ObjectKind::Bonus { days, .. }) => {
-                    prop_assert_eq!((bonus.morale, bonus.luck), day_pair(days), "day {}", weekday);
+                    prop_assert_eq!(
+                        (bonus.morale, bonus.luck),
+                        day_pair(days),
+                        "day {}",
+                        weekday
+                    );
                 }
                 Some(ObjectKind::FountainOfFortune { values, .. }) => {
-                    prop_assert!(bonus.morale == 0 && values.contains(&bonus.luck), "{:?}", bonus);
+                    prop_assert!(
+                        bonus.morale == 0 && values.contains(&bonus.luck),
+                        "{:?}",
+                        bonus
+                    );
                 }
                 Some(ObjectKind::Sirens { .. }) => {
                     prop_assert_eq!((bonus.morale, bonus.luck), (0, 0));
@@ -9592,10 +9612,7 @@ fn check_bonuses(
             } => {
                 if gained(*mark) {
                     if *drain {
-                        prop_assert_eq!(
-                            (now.movement, now.max_movement),
-                            (0, then.max_movement)
-                        );
+                        prop_assert_eq!((now.movement, now.max_movement), (0, then.max_movement));
                     } else {
                         raised(*points)?;
                     }
@@ -9644,9 +9661,13 @@ fn check_bonuses(
                         lost |= count < stack.count;
                     }
                     prop_assert_eq!(now.army.len(), then.army.len());
+                    // Raised by a loss but at its cap (the bound or the scenario's level limit,
+                    // HER-EXP-002, -003).
                     let experience = (details_then.experience, details_now.experience);
+                    let capped = experience.0 >= experience_cap(rules, before, details_then.level);
                     prop_assert!(
-                        experience.1 >= experience.0 && (!lost || experience.1 > experience.0),
+                        experience.1 >= experience.0
+                            && (!lost || capped || experience.1 > experience.0),
                         "experience {:?} at the Sirens",
                         experience
                     );
@@ -9689,7 +9710,11 @@ fn check_bonuses(
                 let mut upgraded = false;
                 for stack in &then.army {
                     let now_stack = now.army.iter().find(|s| s.slot == stack.slot);
-                    let expected = if stack.creature == *from { *to } else { stack.creature };
+                    let expected = if stack.creature == *from {
+                        *to
+                    } else {
+                        stack.creature
+                    };
                     prop_assert_eq!(
                         now_stack.map(|s| (s.creature, s.count)),
                         Some((expected, stack.count))
@@ -9728,7 +9753,11 @@ fn check_bonuses(
             has
         );
         for &ty in has.iter().filter(|ty| !had.contains(ty)) {
-            prop_assert!(part.object_type(ty).is_some_and(|t| t.kind_mark), "{:?}", ty);
+            prop_assert!(
+                part.object_type(ty).is_some_and(|t| t.kind_mark),
+                "{:?}",
+                ty
+            );
             let told = events.iter().any(|e| {
                 matches!(
                     *e,
@@ -13195,7 +13224,10 @@ impl Bonused {
                 )
             });
             self.visits[kind][usize::from(nothing)] += 1;
-            if matches!(command, GameCommand::Adventure(AdventureCommand::Revisit { .. })) {
+            if matches!(
+                command,
+                GameCommand::Adventure(AdventureCommand::Revisit { .. })
+            ) {
                 self.revisits += 1;
             }
             if let (Some(then), Some(now)) = (b.hero(hero), a.hero(hero)) {
@@ -13211,7 +13243,11 @@ impl Bonused {
                     }
                     (Some(ObjectKind::Bonus { .. }), Some(_)) => {
                         let day = before.weekday(rules).get();
-                        self.weekdays[if day == 7 { 2 } else { usize::from(day % 2 == 0) }] += 1;
+                        self.weekdays[if day == 7 {
+                            2
+                        } else {
+                            usize::from(day % 2 == 0)
+                        }] += 1;
                     }
                     (Some(ObjectKind::Sirens { .. }), Some(_)) => {
                         let lone = then.army.iter().filter(|s| s.count == 1);
@@ -13249,7 +13285,8 @@ impl Bonused {
                     self.sirens_after_battle[usize::from(quirk)] += usize::from(held(is) != quirk);
                 }
             }
-            let lifetime = |ty: &ObjectTypeId| part.object_type(*ty).and_then(|t| t.kind.timed_mark());
+            let lifetime =
+                |ty: &ObjectTypeId| part.object_type(*ty).and_then(|t| t.kind.timed_mark());
             for ty in was.timed().iter().filter(|ty| !is.timed().contains(ty)) {
                 match lifetime(ty) {
                     Some(MarkLifetime::Day) if new_day => self.dropped[0] += 1,
