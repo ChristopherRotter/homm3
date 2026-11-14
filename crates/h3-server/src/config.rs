@@ -66,6 +66,13 @@
 //! name = "Duel"                      # optional: the lobby's name; the map file's by default
 //! computer = "fair"                  # optional: who plays its unowned battle sides (E16 M5 T10):
 //!                                    # "fair" (by default) or "all-seeing"
+//! turn_minutes = 4                   # optional: a turn's duration (E16 M5 T17), one of the
+//!                                    # original's 1 2 4 6 8 10 15 20 25 30; unlimited by default
+//! level_up_ms = 60000                # optional: a level-up's time while it holds the game (0:
+//!                                    # the game waits for it); 60 s by default
+//! battle_ms = 180000                 # optional: each side's time in a battle between two
+//!                                    # players' heroes, under a limited turn (not 0)
+//! battle_increment_ms = 10000        # optional: what a side gains after each battle command
 //!
 //! [[ladder]]                         # a ranked game configuration (E16 M4); none by default
 //! id = "arena"                       # a-z 0-9 _ -, at most 32: its results log's file name
@@ -103,6 +110,7 @@ use std::path::{Path, PathBuf};
 
 use h3_protocol::card;
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
+use h3_protocol::session::game::{Allowance, Clock};
 use serde::Deserialize;
 
 use crate::Error;
@@ -349,17 +357,75 @@ pub struct MapOffer {
     /// Who plays its games' unowned battle sides (E16 M5 T10): the fair computer by default.
     #[serde(default)]
     pub computer: Computer,
+    /// A turn's duration in minutes (E16 M5 T17; SRV-Q31): one of the original's ten
+    /// ([`TURN_MINUTES`]); unlimited, the original's eleventh, without.
+    #[serde(default)]
+    pub turn_minutes: Option<u8>,
+    /// A level-up's time while it holds the game, in milliseconds (E16 M5 T17); 0: the game waits
+    /// for it.
+    #[serde(default = "level_up_ms")]
+    pub level_up_ms: u32,
+    /// Each side's time at the start of a battle between two players' heroes under a limited
+    /// turn duration, in milliseconds (E16 M5 T17; SRV-Q32, Fischer's base): not 0.
+    #[serde(default = "battle_ms")]
+    pub battle_ms: u32,
+    /// The time a side gains after each of its battle commands there, in milliseconds (Fischer's
+    /// increment).
+    #[serde(default = "battle_increment_ms")]
+    pub battle_increment_ms: u32,
     /// A test's seeds for the offer's games in place of the OS's (E16 M5 T13, *provisional*): the
     /// game's and its computer's at each hosting, so that a golden replay's commands play on a
     /// hosted game and its battles against the computer repeat. Never in a server's build.
     #[cfg(test)]
     #[serde(skip)]
     pub seeds: Option<(u64, u64)>,
+    /// A test's clock in place of the configured one (E16 M5 T17): times of a test's length.
+    #[cfg(test)]
+    #[serde(skip)]
+    pub test_clock: Option<Clock>,
+}
+
+/// The turn durations a `[[map]]` may name, in minutes (E16 M5 T17): the original's
+/// (`turn_duration_texts`, `docs/epics/E16-timer-survey.md`) but unlimited.
+pub const TURN_MINUTES: [u8; 10] = [1, 2, 4, 6, 8, 10, 15, 20, 25, 30];
+
+impl MapOffer {
+    /// How the offer's games are timed (E16 M5 T17).
+    pub fn clock(&self) -> Clock {
+        #[cfg(test)]
+        if let Some(clock) = self.test_clock {
+            return clock;
+        }
+        Clock {
+            turn_ms: (self.turn_minutes).map(|minutes| u64::from(minutes) * 60_000),
+            level_up_ms: Some(u64::from(self.level_up_ms)).filter(|&ms| ms > 0),
+            battle: Allowance {
+                base_ms: u64::from(self.battle_ms),
+                increment_ms: u64::from(self.battle_increment_ms),
+            },
+        }
+    }
 }
 
 /// The difficulty a `[[map]]` that names none plays at: normal.
 const fn normal() -> u8 {
     h3_game::DEFAULT_DIFFICULTY
+}
+
+/// A `[[map]]`'s level-up time by default: the session's (SRV-Q31, kept by SRV-Q33).
+const fn level_up_ms() -> u32 {
+    // 60 s: within 32 bits.
+    Clock::DEFAULT_LEVEL_UP_MS as u32
+}
+
+/// A `[[map]]`'s battle allowance by default: the session's (SRV-Q32).
+const fn battle_ms() -> u32 {
+    Allowance::DEFAULT.base_ms as u32
+}
+
+/// A `[[map]]`'s battle increment by default: the session's (SRV-Q32).
+const fn battle_increment_ms() -> u32 {
+    Allowance::DEFAULT.increment_ms as u32
 }
 
 /// One `[[ladder]]` (E16 M4 T1; ADR-0019 points 4–6; `E16-design.md` §11): a ranked game
@@ -785,7 +851,8 @@ impl Config {
     }
 
     /// At least one offer or map; ids present and distinct, a map's from every offer's too; a
-    /// player's seat in each offer.
+    /// player's seat in each offer; a map's turn one of the original's, its battle allowance not 0
+    /// (E16 M5 T17).
     fn check_offers(&self) -> Result<(), Error> {
         if self.offers.is_empty() && self.maps.is_empty() {
             return Err(Error(String::from(
@@ -797,6 +864,20 @@ impl Config {
                 || self.offers.iter().any(|o| o.id == map.id);
             if map.id.is_empty() || taken {
                 return Err(Error(format!("map {i}: its id is empty or taken")));
+            }
+            if let Some(minutes) = map.turn_minutes
+                && !TURN_MINUTES.contains(&minutes)
+            {
+                return Err(Error(format!(
+                    "map `{}`: a turn of {minutes} minutes: the original's are {TURN_MINUTES:?}",
+                    map.id
+                )));
+            }
+            if map.battle_ms == 0 {
+                return Err(Error(format!(
+                    "map `{}`: battle_ms is 0: a side would run out at once",
+                    map.id
+                )));
             }
         }
         for (i, offer) in self.offers.iter().enumerate() {

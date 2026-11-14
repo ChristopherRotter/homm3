@@ -1,9 +1,9 @@
 //! A whole game's journal (E16 M5 T9a): one file per game, `<data>/whole/<game>.journal`, one JSON
 //! document per line, written ahead as a battle's journal is ([`Writer`]). The first line starts
 //! the game ([`GameStart`]): the format, the game, its map offer, its creator's address, the
-//! seats' tokens by player and the game's adventure replay before its first command (the replay
+//! seats' tokens by player, the game's adventure replay before its first command (the replay
 //! file of `h3_files::adventure`: the header, the map, the seed, the difficulty, the checkpoint
-//! interval). Every further line is one of the whole game's session's entries ([`GameEntry`]): a
+//! interval) and its clock (E16 M5 T17: format 1 still, a journal without one is untimed). Every further line is one of the whole game's session's entries ([`GameEntry`]): a
 //! seat taken (by an account, with its login name), the start, a command (the host's with its
 //! actor, a seat's with its number; in the replay's text form), a state hash, a pause and a
 //! resume, the time the clock counted (E16 M5 T16: format 1 still, the line is new and every
@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 
 use h3_contracts::PlayerId;
 use h3_game::Actor;
-use h3_protocol::session::game::GameEntry;
+use h3_protocol::session::game::{Allowance, Clock, GameEntry};
 use serde::{Deserialize, Serialize};
 
 use super::{Writer, read_as};
@@ -44,6 +44,55 @@ pub(crate) struct GameStart {
     pub tokens: Vec<String>,
     /// The game's adventure replay before its first command, as its file.
     pub replay: String,
+    /// How the game is timed (E16 M5 T17): its offer's clock when it was created, kept for its
+    /// life. A journal written before has none and reads as untimed, as its game was (format 1
+    /// still).
+    #[serde(default = "untimed")]
+    pub clock: StartClock,
+}
+
+/// A whole game's clock as its journal's first line holds it (E16 M5 T17): the session's
+/// [`Clock`], in milliseconds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct StartClock {
+    /// A turn's duration; none: unlimited.
+    pub turn_ms: Option<u64>,
+    /// A level-up's time; none: the game waits for it.
+    pub level_up_ms: Option<u64>,
+    /// Each side's time at a battle's start between two players' heroes.
+    pub battle_ms: u64,
+    /// What a side gains after each of its battle commands there.
+    pub increment_ms: u64,
+}
+
+impl From<Clock> for StartClock {
+    fn from(clock: Clock) -> Self {
+        Self {
+            turn_ms: clock.turn_ms,
+            level_up_ms: clock.level_up_ms,
+            battle_ms: clock.battle.base_ms,
+            increment_ms: clock.battle.increment_ms,
+        }
+    }
+}
+
+impl From<StartClock> for Clock {
+    fn from(clock: StartClock) -> Self {
+        Self {
+            turn_ms: clock.turn_ms,
+            level_up_ms: clock.level_up_ms,
+            battle: Allowance {
+                base_ms: clock.battle_ms,
+                increment_ms: clock.increment_ms,
+            },
+        }
+    }
+}
+
+/// The clock of a journal written before E16 M5 T17: none at all.
+fn untimed() -> StartClock {
+    Clock::UNLIMITED.into()
 }
 
 /// One line after the first: an entry of the whole game's session.
