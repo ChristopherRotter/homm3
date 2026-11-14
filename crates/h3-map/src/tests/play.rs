@@ -3993,6 +3993,24 @@ fn landing(
     Ok((walked.last().copied().unwrap_or(start), stays))
 }
 
+/// Whether `events` tell that `hero` lost a battle its move started within the move's command and
+/// left the map (its `HeroRemoved` after the battle's end): the defender's first shots or blows
+/// kill the mover's army before any order of its owner (E09 T27's CI on #911, a defender's war
+/// machines without the hero's Artillery; the server lane's CI on #922, a monster's stack acting
+/// first, the adventure lane's inbox).
+fn lost_on_the_way(events: &[GameEvent], hero: HeroId) -> bool {
+    let ended = events
+        .iter()
+        .position(|e| matches!(e, GameEvent::BattleEnded { .. }));
+    let removed = events.iter().position(|e| {
+        matches!(e, GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroRemoved { hero: h, .. },
+            ..
+        }) if *h == hero)
+    });
+    ended.zip(removed).is_some_and(|(e, r)| e < r)
+}
+
 /// Where `hero` arrived by a jump `events` tell (E08 T106b1; ADV-TEL-007): the exit of its
 /// `HeroTeleported`, if it jumped (its walk ended on the entrance, [`landing`]).
 fn jumped_to(events: &[GameEvent], hero: HeroId) -> Option<TilePos> {
@@ -5110,17 +5128,8 @@ fn check_legal(
         // killing the mover's army; the loser leaves the map (its `HeroRemoved` after the
         // battle's end), and the rest of the walk's checks do not apply.
         let Some(moved) = probe.adventure().hero(hero) else {
-            let ended = events
-                .iter()
-                .position(|e| matches!(e, GameEvent::BattleEnded { .. }));
-            let removed = events.iter().position(|e| {
-                matches!(e, GameEvent::Adventure(AdventureEvent {
-                    kind: AdventureEventKind::HeroRemoved { hero: h, .. },
-                    ..
-                }) if *h == hero)
-            });
             prop_assert!(
-                ended.zip(removed).is_some_and(|(e, r)| e < r),
+                lost_on_the_way(&events, hero),
                 "{:?} left the map without losing its battle: {:?}",
                 command,
                 events
@@ -10082,17 +10091,23 @@ proptest! {
                 let (at, _) = landing(&before, start, path, &events)?;
                 // E08 T106b1: a jump from the walk's end ([`check_jumps`]).
                 let at = jumped_to(&events, hero).unwrap_or(at);
-                prop_assert_eq!(state.adventure().hero(hero).map(|h| h.pos), Some(at));
-                // E08 T42 (increment 5's exit criterion 3): a flight or a water walk passes over
-                // water and blocked tiles but ends where a hero may stop, as a walk does; (E08
-                // T75b) a boat's hero at sea.
-                let afloat = state.adventure().hero(hero).is_some_and(|h| h.boat.is_some());
-                prop_assert!(
-                    stops_on(&before, rules, at) || (afloat && is_water(&before, rules, at)),
-                    "{:?} ends on {:?}",
-                    hero,
-                    at
-                );
+                // The adventure lane's inbox (the server lane's CI on #922): a battle the move
+                // starts may end within the command, its loser leaving the map.
+                if let Some(moved) = state.adventure().hero(hero) {
+                    prop_assert_eq!(moved.pos, at);
+                    // E08 T42 (increment 5's exit criterion 3): a flight or a water walk passes
+                    // over water and blocked tiles but ends where a hero may stop, as a walk
+                    // does; (E08 T75b) a boat's hero at sea.
+                    let afloat = moved.boat.is_some();
+                    prop_assert!(
+                        stops_on(&before, rules, at) || (afloat && is_water(&before, rules, at)),
+                        "{:?} ends on {:?}",
+                        hero,
+                        at
+                    );
+                } else {
+                    prop_assert!(lost_on_the_way(&events, hero), "{:?}", events);
+                }
                 check_sea_move(rules, (&before, &state), hero, path, &events)?;
             }
             let player = player_of(&before, actor);
