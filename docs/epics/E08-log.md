@@ -16417,4 +16417,9 @@ staged. Built by the main session.
 - **The stress** (cases raised for one run each, then restored): `a_viewer_learns_nothing_it_cannot_see`
   and `views_move_as_the_events_say` 300 each (after the Fountain's and the garrison's fixes);
   `every_step_keeps_the_commands_invariants` 300 cases in 511 s (after the Sirens' cap).
+- **Test time** (debug, two CPUs): the cover test 118 s; the town views' cover test 162 s at 768;
+  `h3-map`'s lib tests 451 s, 464 s after `master`'s merge (#924, the town lane's T28b1: its
+  garrison heroes' marks dropped off the map, `check_income`, `own_view`; the suite passed).
+- **Gates:** the scoped verify passed every step it runs (coverage 834 s, determinism 548 s, the
+  replays unchanged, bench-check 468 s: no engine code changed). PR #929.
 - **Versions:** none.
