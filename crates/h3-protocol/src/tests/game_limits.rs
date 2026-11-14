@@ -34,6 +34,7 @@ const fn bounded(per_turn: u32, per_battle: u32) -> GameOptions {
         commands: CommandBounds {
             per_turn,
             per_battle,
+            ..CommandBounds::NONE
         },
         ..OPTIONS
     }
@@ -266,4 +267,106 @@ fn a_battles_commands_past_their_bound_are_the_computers_to_its_end() {
     assert!(reopened.state().battle(P0).is_some());
     assert_eq!(reopened.spent(), counted);
     assert_eq!(counted.1, 2);
+}
+
+#[test]
+fn a_battle_the_system_plays_for_both_sides_voids_its_game_at_its_bound() {
+    // Player 0's hero attacks player 1's; each side past its bound of one command is the
+    // system's, and in-process (no computer) the system Defends for both: the battle never ends
+    // (E16 M5 T20, SRV-Q35).
+    let (rules, setup, replay) = one("towns-visitor-s1");
+    let manifest = manifest(&rules, MAP);
+    let options = GameOptions {
+        commands: CommandBounds {
+            per_turn: 1,
+            per_battle: 1,
+            system_per_battle: 200,
+        },
+        ..OPTIONS
+    };
+    let seed = replay.seed;
+    let mut out = Vec::new();
+    let mut s =
+        GameSession::start(&rules, &setup, seed, manifest.clone(), options, &mut out).unwrap();
+    s.elapse(0, &mut out);
+    let mut entries: Vec<GameEntry> = s.drain_entries().collect();
+    s.play(P0, 0, command(&replay.commands[0].1), &mut out)
+        .unwrap();
+    let defend = command(&Engine::Battle(Command::Defend));
+    let mut spent = [0, 0];
+    while spent != [1, 1] {
+        let battle = s.state().battle(P0).unwrap();
+        let side = battle.state().side_to_act().unwrap();
+        let player = usize::from(side == BattleSide::Defender);
+        assert_eq!(
+            spent[player], 0,
+            "a side past its bound is the system's at once"
+        );
+        let seat = PlayerId::new(player as u8);
+        s.play(seat, 1 + spent[player], defend.clone(), &mut out)
+            .unwrap();
+        spent[player] += 1;
+    }
+    // One call takes at most its steps' bound; the rest are due at the last reading.
+    let mut system = s.spent().2;
+    assert!(system > 0 && system <= 64, "{system}");
+    assert_eq!(s.deadline(), Some(0));
+    let mut calls = 0;
+    while !s.void() {
+        calls += 1;
+        s.elapse(calls, &mut out);
+        let now = s.spent().2;
+        assert!(now > system && now - system <= 64, "{system} then {now}");
+        system = now;
+    }
+    assert_eq!((system, calls), (200, 3));
+    entries.extend(s.drain_entries());
+    // Void: the battle still open, nothing more applied, driven or timed.
+    assert!(s.state().battle(P0).is_some());
+    assert_eq!(s.deadline(), None);
+    let hash = s.state().state_hash();
+    let refused = s.play(P1, 9, defend.clone(), &mut out);
+    assert_eq!(refused, Err(GameReject::NotStarted {}));
+    let system_defend = command(&Engine::System(SystemCommand::Battle {
+        player: P0,
+        command: Command::Defend,
+    }));
+    assert_eq!(
+        s.system(system_defend, &mut out),
+        Err(GameReject::NotStarted {})
+    );
+    s.elapse(1_000, &mut out);
+    assert_eq!(
+        (s.state().state_hash(), s.drain_entries().count()),
+        (hash, 0)
+    );
+    let played = entries.iter().filter(|e| {
+        matches!(
+            e,
+            GameEntry::Command(Actor::System, Engine::System(SystemCommand::Battle { .. }))
+        )
+    });
+    assert_eq!(played.count(), 200);
+    // A restore counts again: void at the journal's end, and one cut before its last command
+    // voids at its next step.
+    let restore = |entries: &[GameEntry]| {
+        let manifest = manifest.clone();
+        GameSession::restore(
+            &rules,
+            &setup,
+            seed,
+            manifest,
+            options,
+            entries,
+            &mut Vec::new(),
+        )
+        .unwrap()
+    };
+    assert!(restore(&entries).void());
+    let mut cut = restore(&entries[..entries.len() - 1]);
+    assert!(!cut.void());
+    assert_eq!(cut.spent().2, 199);
+    cut.elapse(0, &mut Vec::new());
+    assert!(cut.void());
+    assert_eq!(cut.state().state_hash(), hash);
 }

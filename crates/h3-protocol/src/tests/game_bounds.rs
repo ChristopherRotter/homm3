@@ -96,8 +96,9 @@ struct Largest {
     reveals: usize,
     moves: usize,
     queries: usize,
-    /// The most map commands a player spent in a turn, and commands in a battle (E16 M5 T18).
-    spent: (u32, u32),
+    /// The most map commands a player spent in a turn and commands in a battle (E16 M5 T18), and
+    /// the system's commands in a battle (T20).
+    spent: (u32, u32, u32),
 }
 
 /// Checks the frames a call sent: a reveal against the snapshot its viewer's view now is, the
@@ -215,8 +216,12 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
             .unwrap();
             let at = format!("{name} command {seq}");
             check(&session, &out, &at, &mut l);
-            let (turn, battle) = session.spent();
-            l.spent = (l.spent.0.max(turn), l.spent.1.max(battle));
+            let (turn, battle, system) = session.spent();
+            l.spent = (
+                l.spent.0.max(turn),
+                l.spent.1.max(battle),
+                l.spent.2.max(system),
+            );
             if seq % 100 == 0 {
                 records(&session, &at, &mut l);
             }
@@ -231,6 +236,8 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
     assert!(l.reveals > 500, "{l:?}");
     assert!(l.record > RECORD / 2, "{l:?}");
     assert!(l.queries > 1_000, "{l:?}");
-    // The server's bounds counted, never met (E16 M5 T18: 16 and 361 when measured).
+    // The server's bounds counted, never met (E16 M5 T18: 16 and 361 when measured; T20: the
+    // system's 295 in one battle).
     assert!(l.spent.0 > 10 && l.spent.1 > 100, "{l:?}");
+    assert!(l.spent.2 > 100, "{l:?}");
 }

@@ -51,6 +51,7 @@
 //! commands_per_game = 10000          # a game that reaches it without an end is void
 //! commands_per_turn = 1000           # a whole game's seat: its map commands in one of its turns
 //! commands_per_battle = 4000         # a whole game's seat: its commands in one of its battles
+//! system_commands_per_battle = 10000 # the server's in one battle of a whole game; past: void
 //!
 //! [[offer]]                          # what a client may create a game from; at least one
 //! id = "duel"                        # as `CreateGame` names it
@@ -604,6 +605,12 @@ pub struct Limits {
     /// A whole game's seat's commands in one of its battles (E16 M5 T18): beyond them the
     /// server's computer plays its side for the rest of the battle.
     pub commands_per_battle: u32,
+    /// The server's own commands in one battle of a whole game (E16 M5 T20, SRV-Q35): an unowned
+    /// side's and those it plays for players past their clocks or bounds. A battle still open when
+    /// they reach it voids its game, as `commands_per_game` voids a battle: a battle both of
+    /// whose sides the computer plays has no other end the server can force. They count the
+    /// computer's answers to a seat's commands too: keep it well above `commands_per_battle`.
+    pub system_commands_per_battle: u32,
 }
 
 impl Default for Limits {
@@ -633,6 +640,7 @@ impl Default for Limits {
             commands_per_game: 10_000,
             commands_per_turn: CommandBounds::DEFAULT.per_turn,
             commands_per_battle: CommandBounds::DEFAULT.per_battle,
+            system_commands_per_battle: CommandBounds::DEFAULT.system_per_battle,
         }
     }
 }
@@ -720,6 +728,12 @@ impl Limits {
                 1,
                 1_000_000,
             ),
+            (
+                "system_commands_per_battle",
+                u64::from(self.system_commands_per_battle),
+                1,
+                1_000_000,
+            ),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {
@@ -758,11 +772,13 @@ impl Limits {
 }
 
 impl Limits {
-    /// The bounds on a whole game's seats' commands (E16 M5 T18).
+    /// The bounds on a whole game's seats' commands (E16 M5 T18) and the server's in a battle
+    /// (T20).
     pub const fn commands(&self) -> CommandBounds {
         CommandBounds {
             per_turn: self.commands_per_turn,
             per_battle: self.commands_per_battle,
+            system_per_battle: self.system_commands_per_battle,
         }
     }
 }

@@ -172,7 +172,12 @@ pub mod wire;
 /// creation, which a restart keeps); a seat whose turn or battle side's chess clock ran out is
 /// sent no battle commands in its `GameTurn` (the computer plays the side), and the game's start
 /// tells every player its clock.
-pub const PROTOCOL_VERSION: u32 = 63;
+/// v64 (E16 M5 T20, SRV-Q35): a whole game is void when the system's commands in one battle
+/// reach the host's bound with the battle still open (`session::game::CommandBounds::
+/// system_per_battle`: a battle both of whose sides the system plays, which its computer did not
+/// end): `Goodbye { CommandLimit }` says so too, and a void game rejects every command
+/// `NotStarted`.
+pub const PROTOCOL_VERSION: u32 = 64;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

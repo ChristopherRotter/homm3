@@ -446,7 +446,8 @@ pub enum GameReject {
     /// game.
     NotSeated {},
     /// The session's (E16 M5 T8a, v45): the game does not run: not every seat was held yet, or
-    /// (E16 M5 T8b, v46) it is paused.
+    /// (E16 M5 T8b, v46) it is paused, or (E16 M5 T20, v64) it is void (a battle the system
+    /// played reached the host's bound on its commands).
     NotStarted {},
     /// The session's (E16 M5 T8b, v46): the seat asked for a pause already since the game last
     /// moved on.
