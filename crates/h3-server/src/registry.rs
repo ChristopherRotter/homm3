@@ -547,8 +547,9 @@ impl Registry {
         self.lobby.seat(game, seated);
     }
 
-    /// Where the whole game `game` is now (E16 M5 T9a): its phase and its open seats.
-    pub(crate) fn report_map(&mut self, game: u32, status: (Phase, Vec<u8>)) {
+    /// Where the whole game `game` is now (E16 M5 T9a): its phase, its open seats and whether it
+    /// takes spectators (E16 M5 T22b).
+    pub(crate) fn report_map(&mut self, game: u32, status: (Phase, Vec<u8>, bool)) {
         self.lobby.update_map(game, status);
     }
 
@@ -604,7 +605,8 @@ impl Registry {
         game: u32,
         (tokens, accounts): (Vec<String>, Vec<Option<String>>),
     ) {
-        self.lobby.update_map(game, (Phase::Paused, Vec::new()));
+        self.lobby
+            .update_map(game, (Phase::Paused, Vec::new(), false));
         let paused = Hosted::PausedMap {
             tokens,
             accounts,
@@ -755,29 +757,33 @@ pub(crate) fn create(
 }
 
 /// Creates a whole game of the map offer `offer` for a client at `origin`, whose creator takes
-/// `player`'s seat, and binds the creator (`conn`, its queue `to`, its account's `login`) to it
-/// (E16 M5 T9a): the game's id and inbox, or why not. As [`create`]: the creator's join is the
-/// game's first message, the game draws its secrets and creates its journal on its own thread.
+/// `player`'s seat and chose whether it takes spectators (`watchable`, E16 M5 T22b: listed so on
+/// a server that takes them), and binds the creator (`conn`, its queue `to`, its account's
+/// `login`) to it (E16 M5 T9a): the game's id and inbox, or why not. As [`create`]: the creator's
+/// join is the game's first message, the game draws its secrets and creates its journal on its own
+/// thread.
 pub(crate) fn create_map(
     shared: &Shared,
     origin: IpAddr,
-    (offer, player): (&str, u8),
+    (offer, player, watchable): (&str, u8, bool),
     (conn, to, login): (ConnId, Outbox, Option<String>),
 ) -> Result<(u32, mpsc::Sender<ToGame>), Refusal> {
     let mut registry = lock(shared);
-    // No spectators before E16 M5 T22b hosts them.
-    let (game, index) = registry.lobby.create_map(origin, (offer, player), false)?;
+    let listed = watchable && registry.limits.spectators_per_game > 0;
+    let (game, index) = registry.lobby.create_map(origin, (offer, player), listed)?;
     let offer = Arc::clone(&registry.maps[index]);
     let (server, limits) = (registry.server.clone(), registry.limits);
     let stores = registry.stores.clone();
-    let prepare =
-        move || match whole::Prepared::new(offer, game, origin, (&server, &limits, stores)) {
+    let prepare = move || {
+        let host = (&server, &limits, stores);
+        match whole::Prepared::new(offer, game, (origin, watchable), host) {
             Ok(prepared) => Some(prepared),
             Err(e) => {
                 eprintln!("h3-server: game {game} not created: {e}");
                 None
             }
-        };
+        }
+    };
     let (to_game, inbox) = mpsc::channel(GAME_INBOX);
     let join = ClientMessage::GameJoin {
         game,
@@ -853,6 +859,28 @@ pub(crate) fn bind_map(
         },
     );
     Ok((to_game, None))
+}
+
+/// Binds a connection that watches the whole game `game` (E16 M5 T22b; its opening's message is
+/// the `GameWatch`): the running game's inbox and the `opening` back for its task to pass, or why
+/// not. The game's session decides whether it watches (closed, full, a battle's: refused, and the
+/// task leaves the game at the refusal). A paused game takes none (its thread is gone, and a
+/// spectator resumes nothing: `NoSpectators`, as a paused battle refuses a spectator); a game the
+/// server does not host is `NoSuchGame`, a paused battle too (a running one's session refuses).
+pub(crate) fn watch_map(
+    shared: &Shared,
+    game: u32,
+    opening: Opening,
+) -> Result<(mpsc::Sender<ToGame>, Opening), Refusal> {
+    let mut registry = lock(shared);
+    match registry.games.get_mut(&game) {
+        Some(Hosted::Live { to, bound }) => {
+            *bound += 1;
+            Ok((to.clone(), opening))
+        }
+        Some(Hosted::PausedMap { .. }) => Err(Refusal::NoSpectators),
+        None | Some(Hosted::Paused { .. }) => Err(Refusal::NoSuchGame),
+    }
 }
 
 /// Binds a connection that joins `seat` of game `game` with `token`: the game's inbox, and the

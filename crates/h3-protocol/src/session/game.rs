@@ -1247,6 +1247,13 @@ impl<'r> GameSession<'r> {
         self.watchable
     }
 
+    /// Whether a spectator may watch now, as the lobby lists the game (E16 M5 T22b, as a
+    /// battle's `Session::takes_spectators`): it takes them ([`Self::watchable`]), the host
+    /// takes any, and it is not paused. A full game still lists as taking them.
+    pub const fn takes_spectators(&self) -> bool {
+        self.watchable && self.watchers_limit > 0 && !self.paused
+    }
+
     /// How many spectators watch (E16 M5 T22a).
     pub const fn spectators(&self) -> usize {
         self.watchers.len()

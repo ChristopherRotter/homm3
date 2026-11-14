@@ -310,9 +310,9 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     assert_eq!(map_games(&lobby), [waiting(1), waiting(3)]);
     assert_eq!(games(&lobby).len(), 1, "the battle beside them");
     assert_eq!(lobby.in_play(), 3);
-    // A whole game reports where it is and who holds its seats; a battle's reports leave it be,
-    // and its own leave a battle be.
-    lobby.update_map(1, (Phase::Running, vec![1]));
+    // A whole game reports where it is, who holds its seats and whether it takes spectators (E16
+    // M5 T22b: its host opened it); a battle's reports leave it be, and its own leave a battle be.
+    lobby.update_map(1, (Phase::Running, vec![1], true));
     let ann = vec![SeatedPlayer {
         player: 0,
         display: "Ann".to_string(),
@@ -320,14 +320,15 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     lobby.seat_map(1, ann.clone());
     lobby.update(1, (Phase::Over, vec![], true));
     lobby.seat(1, vec![]);
-    lobby.update_map(2, (Phase::Paused, vec![]));
+    lobby.update_map(2, (Phase::Paused, vec![], false));
     lobby.seat_map(2, ann.clone());
-    lobby.update_map(9, (Phase::Paused, vec![]));
+    lobby.update_map(9, (Phase::Paused, vec![], false));
     lobby.seat_map(9, ann.clone());
     let running = MapGameInfo {
         phase: Phase::Running,
         open: vec![1],
         seated: ann,
+        spectators: true,
         ..waiting(1)
     };
     assert_eq!(map_games(&lobby), [running, waiting(3)]);
@@ -336,7 +337,7 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     // A drain waits for the battles and the waiting whole games, not a running one (E16 M5 T9b).
     assert_eq!((lobby.in_play(), lobby.to_end()), (3, 2));
     // A paused whole game is not in play; a removed one leaves the list.
-    lobby.update_map(3, (Phase::Paused, vec![]));
+    lobby.update_map(3, (Phase::Paused, vec![], false));
     assert_eq!((lobby.in_play(), lobby.to_end()), (2, 1));
     lobby.remove(1);
     assert_eq!(map_games(&lobby).len(), 1);

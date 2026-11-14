@@ -55,7 +55,7 @@ pub(super) fn duel_map() -> config::MapOffer {
 }
 
 /// The test servers' configuration with the duel map offered.
-fn with_map() -> Config {
+pub(super) fn with_map() -> Config {
     Config {
         maps: vec![duel_map()],
         ..super::config(fast())
@@ -80,7 +80,7 @@ pub(super) async fn map_listed(running: &Running) -> (Vec<MapOffer>, Vec<MapGame
 }
 
 /// Waits until the lobby lists the whole games `until` accepts.
-async fn listed_until(running: &Running, until: impl Fn(&[MapGameInfo]) -> bool) {
+pub(super) async fn listed_until(running: &Running, until: impl Fn(&[MapGameInfo]) -> bool) {
     for _ in 0..250 {
         if until(&map_listed(running).await.1) {
             return;
@@ -447,8 +447,23 @@ pub(super) async fn started_on(
     running: &Running,
     offer: &str,
 ) -> (Client, Client, u32, [String; 2]) {
+    started_with(running, offer, None).await
+}
+
+/// [`started_on`], the game open to spectators as `spectators` says (E16 M5 T22b).
+async fn started_with(
+    running: &Running,
+    offer: &str,
+    spectators: Option<bool>,
+) -> (Client, Client, u32, [String; 2]) {
     let mut a = greeted(running).await;
-    a.create_map(offer, 0).await.unwrap();
+    let create = ClientMessage::CreateMapGame {
+        seq: 0,
+        offer: String::from(offer),
+        player: 0,
+        spectators,
+    };
+    a.send(&create).await.unwrap();
     let Some(ServerMessage::GameCreated { game, .. }) = a.recv().await else {
         panic!("not created")
     };
@@ -533,7 +548,7 @@ async fn a_seat_asks_the_games_rules_and_moves_by_their_answer() {
 }
 
 /// The goodbye a client gets, the messages before it skipped, then the end of the connection.
-async fn goodbye_after(client: &mut Client) -> GoodbyeReason {
+pub(super) async fn goodbye_after(client: &mut Client) -> GoodbyeReason {
     let reason = next(client, |m| match m {
         ServerMessage::Goodbye { reason } => Some(reason),
         _ => None,
@@ -544,7 +559,7 @@ async fn goodbye_after(client: &mut Client) -> GoodbyeReason {
 }
 
 /// Waits until the lobby lists the whole game `game` in `phase`, or no more (`None`).
-async fn map_listed_as(running: &Running, game: u32, phase: Option<Phase>) {
+pub(super) async fn map_listed_as(running: &Running, game: u32, phase: Option<Phase>) {
     listed_until(running, |games| {
         games.iter().find(|g| g.game == game).map(|g| g.phase) == phase
     })
@@ -1325,7 +1340,8 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
 async fn a_battle_the_server_plays_past_its_bound_voids_the_game_and_its_restore() {
     // The server's own commands in one battle bounded at one (E16 M5 T20, SRV-Q35): its first
     // answer to the fighter in the golden replay's battle against a monster, the battle still
-    // open, voids the game, as a stalled battle both of whose sides it played would.
+    // open, voids the game, as a stalled battle both of whose sides it played would; its
+    // spectator hears it too (T22b).
     let config = Config {
         limits: Limits {
             system_commands_per_battle: 1,
@@ -1335,13 +1351,23 @@ async fn a_battle_the_server_plays_past_its_bound_voids_the_game_and_its_restore
     };
     let data = &config.server.data;
     let running = start(&config).await.unwrap();
-    let (a, b, game, [t0, t1]) = started(&running).await;
+    let (a, b, game, [t0, t1]) = started_with(&running, "duel-map", Some(true)).await;
     for client in [a, b] {
         client.close().await;
     }
     running.shutdown().await;
     let (golden, path) = reseeded(data, game);
     let running = start(&config).await.unwrap();
+    let mut watcher = greeted(&running).await;
+    watcher
+        .send(&ClientMessage::GameWatch { game })
+        .await
+        .unwrap();
+    let watching = watcher.recv().await;
+    assert!(
+        matches!(watching, Some(ServerMessage::GameWatching { .. })),
+        "{watching:?}"
+    );
     let mut clients = [greeted(&running).await, greeted(&running).await];
     for (player, token) in [(0, &t0), (1, &t1)] {
         let join = ClientMessage::GameJoin {
@@ -1370,7 +1396,7 @@ async fn a_battle_the_server_plays_past_its_bound_voids_the_game_and_its_restore
         })
         .await;
     }
-    for client in &mut clients {
+    for client in clients.iter_mut().chain([&mut watcher]) {
         assert_eq!(goodbye_after(client).await, GoodbyeReason::CommandLimit);
     }
     map_listed_as(&running, game, None).await;

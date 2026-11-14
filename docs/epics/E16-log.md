@@ -3499,3 +3499,50 @@ user (SRV-Q36). Kept whole.
   closed restores closed); a timed game's watch with the clock; the splice against the typed
   message. The wire's lists (`GameWatch`, `GameWatched`, the two rejections, the field's
   default).
+
+### M5 T22b — spectators hosted (2026-11-14, protocol stays v66)
+
+Baseline: `master` 4be4d94 (#927, T21a and T22a). No original data. Kept whole (half of T22, the
+user's cut in SRV-Q36).
+
+- **The creator's flag** (`net.rs`): `CreateMapGame`'s `spectators` (left out: closed, SRV-Q36)
+  into `registry::create_map` (`(offer, player, watchable)`): the lobby lists it taking them if
+  the server takes any (`[limits] spectators_per_game` > 0, as a battle's `create`), and
+  `whole::Prepared::new` (`(origin, watchable)`) gives the session `Spectators { limit:
+  spectators_per_game, open: watchable }`. A restored game (`Prepared::restored`) takes the
+  hosting's limit and `open: false`: the session takes the setting the game started with from
+  its journal (`GameEntry::Watchable`).
+- **The listing:** `Lobby::update_map` takes `(phase, open, spectators)`; the whole game's thread
+  reports `GameSession::takes_spectators()` (new, as a battle's `Session::takes_spectators`:
+  open, the host takes any, not paused; a full game is still listed taking them) with its phase
+  and open seats, so the host's `SetSpectators` reaches the lobby at once; a restore lists it
+  so; `Registry::pause_map` lists a paused one as taking none.
+- **The watch** (`net.rs`, `registry::watch_map`): a `GameWatch` of another game than the bound
+  one binds to a running game's thread as a join does (`bound` counted), the watch its opening's
+  message; the session decides (closed, full: `NoSpectators`; a battle's session: `NoSuchGame`),
+  and a refused watch leaves the game by the frame's `left` mark. A paused whole game is refused
+  `NoSpectators` (no thread; a spectator resumes nothing, as a paused battle refuses one), an
+  unknown game or a paused battle `NoSuchGame`. A watch of the bound game is the session's
+  (`AlreadyJoined`). In the game's thread a connection is in the game if it holds a seat or
+  watches (`whole::in_game`, for the `left` and `held` marks): the whole game's `holds` is
+  seats only, unlike a battle's. Its disconnect, the host's pause (`Goodbye { Paused }`), a
+  void (`CommandLimit`), an abandoned game and the server's stop (`Shutdown`) reach it as the
+  seats' connections, through `conns`.
+- **No protocol step:** the wire and its meaning are v66's (T22a); the server now hosts what
+  v66 defined. The client lanes' inbox lines from T22a say so.
+- **Tests** (`tests/watch.rs`): a game opened at its creation, listed so, watched before its
+  second seat is taken (each player's snapshot, numbered from 1, no turn): every message either
+  seat's connection gets from the second join and from a command is the spectator's
+  `GameWatched` of that player, the same in the same order (query answers and the spectator's
+  own unseated query as barriers), numbered on; the stop's `Shutdown` to all three; the journal's
+  `Watchable` before `Started`; restored, listed running and taking them, a new spectator's
+  watch numbered from 1 with the second player's turn, a re-taken seat's messages its too. The
+  setting on a server taking one: closed by default (listed so, refused), the host's open
+  (listed, one watches, a second refused), close (`SpectatorsClosed`, listed closed) and
+  re-open, a disconnect freeing the place, the start (listed taking them), a watcher's join
+  and a seat's watch `AlreadyJoined`, `NotHost`, `AlreadyStarted`, an unknown game and a
+  battle `NoSuchGame`, the host's pause (`Paused` to the spectator, listed taking none, then
+  refused `NoSpectators`). A server taking none lists an opened game as taking none and refuses
+  its watch; an abandoned game's spectator hears `Abandoned`. T20's void test: the game created
+  open, a spectator after the restart hears `CommandLimit`. In `h3-protocol`:
+  `takes_spectators` (closed, open, paused, a limit of 0) and the lobby's flag.

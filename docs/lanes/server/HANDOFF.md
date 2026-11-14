@@ -4,7 +4,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 
 ## Current state
 
-- **M1–M4, M6, M5 part 1, 2a and 2b closed** (checkpoints SRV-Q12 to SRV-Q24, SRV-Q28, SRV-Q30 and SRV-Q34; M6 is discovery: ADR-0021). Their scopes, tasks and review lists are in `E16-archive.md`, done in full in `E16-log.md`. **2c refined 2026-11-14** (SRV-Q35: a battle both of whose sides the system plays voids its game past a bound; the spectator sees everything, by the host's choice): tasks T20 to T24 in the epic's "M5 part 2", its review list there. T20 done (v65, #922 merged). **T21a done** (SRV-Q36: the spectator sees each player's view, the creator's flag before the start, closed by default, never ranked, live; ADR-0017 point 2, ADR-0018 point 7, `docs/06-security.md` amended; T21b dropped, T22 cut in two). **T22a done** (v66: the session's spectators; `h3-server` takes none yet). Both in pull request #927 from `claude/festive-albattani-mdvj1a`, labelled `cross-lane` (the user: one branch); watch it until it merges. **Next: T22b**, the spectators hosted in `h3-server` (its scope in the epic).
+- **M1–M4, M6, M5 part 1, 2a and 2b closed** (checkpoints SRV-Q12 to SRV-Q24, SRV-Q28, SRV-Q30 and SRV-Q34; M6 is discovery: ADR-0021). Their scopes, tasks and review lists are in `E16-archive.md`, done in full in `E16-log.md`. **2c refined 2026-11-14** (SRV-Q35, SRV-Q36: the spectator sees each player's view, the creator's flag, closed by default): tasks T20 to T24 in the epic's "M5 part 2", its review list there. T20 (v65, #922), T21a and T22a (v66, #927) merged. **T22b done** (the spectators hosted in `h3-server`, still v66), in the pull request from `claude/eager-hamilton-eee14y`: watch it until it merges. **Next: T23**, long journals measured (its scope in the epic), then T24, 2c's closure.
 - **The TLS client** (ADR-0021 point 4, `peers::Tls`): rustls over graviola; no default features on a rustls crate (`ring`, `aws-lc` are not GPLv2-compatible; `cargo deny check` after a dependency change).
 - **ADR-0018 point 5 as amended:** the mapping matches the engine's enums and the observation's structs exhaustively; a new battle variant or field fails `h3-protocol`'s build until mapped (global trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
@@ -24,6 +24,10 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
+### 2026-11-14 — M5 T22b: spectators hosted (still v66)
+
+Baseline: `master` 4be4d94 (#927; its CI still running at the start; the setup's full local run stopped for the scoped one, which a mid-run edit of mine broke at coverage, so CI's run on `master` is the baseline). No original data. Kept whole. Built T22b (`E16-log.md`): the creator's flag into the lobby and the session, `Lobby::update_map`'s flag, `GameSession::takes_spectators`, `registry::watch_map`, `whole::in_game` (a trap: `TRAPS.md`), `tests/watch.rs`, T20's void test with a spectator. The client lanes' T22a inbox lines updated. Next: T23.
+
 ### 2026-11-14 — M5 T21a (SRV-Q36), T22a (v66)
 
 Baseline: `master` 4dfc666 (#922, T20; CI green on it). No original data. The user (SRV-Q36): the spectator sees each player's view (not the merged full view recommended), the creator's flag before the start, never ranked, live; T21b dropped, T22 cut into T22a and T22b, T22a in this session; the ADR and security amendments in the lane's pull request, `cross-lane` (one branch). Built T22a (`E16-log.md`): `GameWatch`, `GameWatched` spliced in `route`, `Spectators`, `GameEntry::Watchable`, `SetSpectators`; `h3-server` refuses watching until T22b. The client lanes' inboxes told (v66). Next: T22b.
@@ -31,7 +35,3 @@ Baseline: `master` 4dfc666 (#922, T20; CI green on it). No original data. The us
 ### 2026-11-14 — M5 2c refined (SRV-Q35), T20 (v65)
 
 Baseline: `master` 161b565 (#919, T19; CI green on it; the VM restarted during the setup's baseline). No original data. The user (SRV-Q35): a battle both of whose sides the system plays voids its game past a bound on the system's commands in one battle; the spectator sees everything, by the host's choice (ADR-0017 point 2 amended in T21a); refine, then T20. 2c's tasks T20 to T24 in the epic. Built T20 (`E16-log.md`): `CommandBounds::system_per_battle` (`[limits] system_commands_per_battle`, 10 000; measured most 505), `GameSession::void`, `drive` at most 64 steps per call, `whole.rs` voiding as a battle's `CommandLimit`. `docs/06-security.md` left to T24. The client lanes' inboxes told. Next: T21a.
-
-### 2026-11-14 — M5 T19: 2b's closure (SRV-Q34, v63)
-
-Baseline: `master` daf0051 (#916, T18). No original data. Kept whole (the user). The end-to-end test (`E16-log.md`): `towns-s3435-d21`'s opening on a timed hosted game, its turn run out, the duel under the chess clocks, two held level-ups, two restarts, to the golden replay's hash. `docs/06-security.md` `cross-lane`. The reviewer: no major, four minor, two nits; the user (SRV-Q34): 1, 2, 4 and the nits fixed (v63), finding 3 first in 2c, the review list as built, 2c refined in a new session. The client lanes' inboxes told. Next: 2c's refinement.
