@@ -256,12 +256,14 @@ impl<O: Ord> Lobby<O> {
         }
     }
 
-    /// Where the whole game `game` is now, as its session reports it (E16 M5 T9a): its phase and
-    /// its open seats. A battle is not changed.
-    pub fn update_map(&mut self, game: u32, (phase, open): (Phase, Vec<u8>)) {
+    /// Where the whole game `game` is now, as its session reports it (E16 M5 T9a): its phase, its
+    /// open seats and whether it takes spectators (E16 M5 T22b: its host's `SetSpectators` until
+    /// the start). A battle is not changed.
+    pub fn update_map(&mut self, game: u32, (phase, open, spectators): (Phase, Vec<u8>, bool)) {
         if let Some(Listed::Map(info)) = self.games.get_mut(&game).map(|e| &mut e.info) {
             info.phase = phase;
             info.open = open;
+            info.spectators = spectators;
         }
     }
 

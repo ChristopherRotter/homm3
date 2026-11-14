@@ -745,17 +745,16 @@ impl Link {
                     }
                 }
             }
-            // The creator's spectator setting is hosted from E16 M5 T22b: until then every whole
-            // game takes none.
+            // Closed to spectators unless its creator opens it (E16 M5 T22b, SRV-Q36).
             ClientMessage::CreateMapGame {
                 seq,
                 offer,
                 player,
-                spectators: _,
+                spectators,
             } => {
                 let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
                 let creator = (self.conn, to, login);
-                let asked = (offer.as_str(), player);
+                let asked = (offer.as_str(), player, spectators.unwrap_or(false));
                 match registry::create_map(&self.registry, self.origin, asked, creator) {
                     Err(reason) => Routed::Reply(refused(reason)),
                     Ok((game, to_game)) => {
@@ -765,8 +764,26 @@ impl Link {
                     }
                 }
             }
-            // A whole game's spectators are hosted from E16 M5 T22b: until then none watches.
-            ClientMessage::GameWatch { .. } => Routed::Reply(refused(Refusal::NoSpectators)),
+            // A watch of another game than the bound one (E16 M5 T22b): the bound one's own is its
+            // session's to refuse (`AlreadyJoined`).
+            ClientMessage::GameWatch { game }
+                if self.bound.as_ref().is_none_or(|bound| bound.game != game) =>
+            {
+                let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
+                let opening = Opening {
+                    conn: self.conn,
+                    to,
+                    login,
+                    join: message,
+                };
+                match registry::watch_map(&self.registry, game, opening) {
+                    Err(reason) => Routed::Reply(refused(reason)),
+                    Ok((to_game, opening)) => {
+                        self.switch(game, (to_game, from_game), Some(opening), None)
+                            .await
+                    }
+                }
+            }
             ClientMessage::GameJoin {
                 game,
                 player,

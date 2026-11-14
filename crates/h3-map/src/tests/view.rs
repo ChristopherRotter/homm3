@@ -5,14 +5,14 @@
 
 use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, GuardsView, ObjectKind, ObjectView,
-    OfferKind, Pos as TilePos, TileMask, TileView, Viewers, allied,
+    OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
-    Actor, ArmyRef, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset, GameState,
-    GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView, OWNER_LEVEL,
-    TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply, legal_commands,
-    legal_moves, observe, project,
+    Actor, ArmyRef, ArmySlot, DecisionView, GameCommand, GameEvent, GameObservation, GameRuleset,
+    GameState, GarrisonStackView, GarrisonView, HeroInfo, LevelUpView, MapGarrisonView,
+    OWNER_LEVEL, TAVERN_LEVELS, TownBuildingsView, TownOwnerView, TownView, Viewer, apply,
+    legal_commands, legal_moves, observe, project,
 };
 use h3_heroes::HeroDetails;
 use proptest::collection::vec;
@@ -957,6 +957,18 @@ enum Open {
     Exchange(HeroId, u32, Vec<ArmyStack>),
 }
 
+/// The owner's own view of `hero` in `view`: on the map, or (E09 T28a) in one of its towns'
+/// garrisons, whose points (E09 T28b1: refilled at the owner's turn start, TWN-ROW-005) and marks
+/// (the day's and the week's drops) change too.
+fn own_view(view: &GameObservation, hero: HeroId) -> Option<&OwnHeroView> {
+    let garrisoned = || {
+        let mut all = view.adventure.garrison_heroes.iter();
+        all.find(|h| h.id == hero).map(|h| &h.own)
+    };
+    let on_map = view.adventure.hero(hero).and_then(|h| h.own.as_ref());
+    on_map.or_else(garrisoned)
+}
+
 fn check_told(
     viewer: PlayerId,
     (before, after): (&GameObservation, &GameObservation),
@@ -1127,11 +1139,7 @@ fn check_told(
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
-                let shown = after
-                    .adventure
-                    .hero(hero)
-                    .and_then(|h| h.own.as_ref())
-                    .map(|o| (o.movement, o.max_movement));
+                let shown = own_view(after, hero).map(|o| (o.movement, o.max_movement));
                 prop_assert_eq!(shown, Some((movement, max_movement)), "{:?}", event);
             }
             // E08 T115a: a hero's battle bonuses and timed marks after the command, told to its
@@ -1144,7 +1152,7 @@ fn check_told(
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
-                let own = after.adventure.hero(hero).and_then(|h| h.own.as_ref());
+                let own = own_view(after, hero);
                 prop_assert!(own.is_some(), "{:?}", event);
                 let own = own.unwrap();
                 let shown = match kind {
@@ -2913,6 +2921,52 @@ proptest! {
                         )
                     })
             };
+            // E08 T116b2's stress: a map garrison's exchange names its garrison by its object
+            // index too (`docs/06-security.md`'s one exception: it tells the map's order), which
+            // the objects `vary` removes and adds before it move. The viewer's own exchange opened
+            // at a garrison of other indices in the two games tells the same but the index, and
+            // the comparison ends (its later commands name the first game's index).
+            let indexed = |events: &[GameEvent]| -> Vec<GameEvent> {
+                (events.iter())
+                    .map(|&e| match e {
+                        GameEvent::ExchangeOpened {
+                            player,
+                            hero,
+                            object_type,
+                            anchor,
+                            removable,
+                            ..
+                        } => GameEvent::ExchangeOpened {
+                            player,
+                            hero,
+                            garrison: 0,
+                            object_type,
+                            anchor,
+                            removable,
+                        },
+                        GameEvent::StackChanged {
+                            player,
+                            at:
+                                ArmySlot {
+                                    army: ArmyRef::MapGarrison(_),
+                                    slot,
+                                },
+                            stack,
+                        } => GameEvent::StackChanged {
+                            player,
+                            at: ArmySlot {
+                                army: ArmyRef::MapGarrison(0),
+                                slot,
+                            },
+                            stack,
+                        },
+                        other => other,
+                    })
+                    .collect()
+            };
+            if actor == Actor::Player(viewer) && ta != tb && indexed(&ta) == indexed(&tb) {
+                break;
+            }
             let learned =
                 known(&a, viewer) != known_before.0 || known(&b, viewer) != known_before.1;
             if actor == Actor::Player(viewer)
@@ -2922,10 +2976,31 @@ proptest! {
                 // and how many tiles it explored may differ; (E08 T64b) or a visit's contents:
                 // what its hero gained and what the visit asked, opened (a chest's choice of
                 // gold, not of an artifact) or refused for its price, so also how many of those
-                // it was told.
+                // it was told; (E08 T116b2) a Fountain of Fortune's value, its hero's once-mark,
+                // which the build drew from the seed (ADV-BON-003; the other game's differs), and
+                // whether a Magic Spring's entrance was emptied, by a visit of another player's
+                // hero the viewer never saw, in one game alone (ADV-BON-007: nothing told, or the
+                // spell points, a hero's change).
+                let drawn = |e: &GameEvent| match *e {
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::OnceMarkChanged { bonus, .. },
+                        ..
+                    }) => (rules.adventure().object_types().iter()).any(|ty| {
+                        matches!(ty.kind, ObjectKind::FountainOfFortune { mark, .. } if mark == bonus.mark)
+                    }),
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::NothingGained { object_type, .. },
+                        ..
+                    }) => matches!(
+                        rules.adventure().object_type(object_type).map(|t| &t.kind),
+                        Some(ObjectKind::MagicSpring)
+                    ),
+                    _ => false,
+                };
                 let blind = |events: Vec<GameEvent>| -> Vec<GameEvent> {
                     events
                         .into_iter()
+                        .filter(|e| !drawn(e))
                         .filter(|e| {
                             !matches!(
                                 e,
@@ -3144,7 +3219,7 @@ fn town_views_move_as_the_events_say() {
     });
     let strategy = (towns, any::<bool>(), any::<u64>(), steps());
     let mut met = TownsMet::default();
-    for _ in 0..512 {
+    for _ in 0..768 {
         let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start_on(&lay_out(&plan), rules, seed);
@@ -3209,6 +3284,7 @@ fn vary_changes_what_the_viewer_never_sees_only() {
         teleporters: Vec::new(),
         towns: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3309,6 +3385,7 @@ fn vary_keeps_a_random_dwelling_whose_resolved_tiles_may_show() {
         teleporters: Vec::new(),
         towns: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let m = lay_out(&plan);
     let random = |m: &RawMap| -> Vec<(Spot, u32)> {
@@ -3384,6 +3461,7 @@ fn vary_keeps_a_shipyard_s_boat_tiles() {
         teleporters: Vec::new(),
         towns: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let m = lay_out(&plan);
     let unseen = Unseen {
@@ -3465,6 +3543,7 @@ fn vary_changes_the_teleporters_the_viewer_never_sees_only() {
         ],
         towns: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let m = lay_out(&plan);
     let objects = |m: &RawMap| -> Vec<(u8, u8, u32)> {
@@ -3585,6 +3664,7 @@ fn vary_changes_the_towns_the_viewer_never_sees_only() {
             town(((2, 0), 3), None, 3, true),
         ],
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let m = lay_out(&plan);
     // Each town's anchor, owner, garrison and buildings.
@@ -3722,6 +3802,7 @@ fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
         teleporters: Vec::new(),
         towns: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let m = lay_out(&plan);
     let red = PlayerId::new(0);
@@ -3795,6 +3876,7 @@ fn another_players_level_up_shows_nothing_of_its_offers() {
         teleporters: Vec::new(),
         towns: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     let (red, blue) = (PlayerId::new(0), PlayerId::new(1));
     let attack = GameCommand::Adventure(AdventureCommand::MoveHero {

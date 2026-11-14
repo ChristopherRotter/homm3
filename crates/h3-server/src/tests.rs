@@ -30,6 +30,7 @@ mod peers;
 mod proxy;
 mod record;
 mod seats;
+mod watch;
 mod whole;
 
 fn root() -> PathBuf {

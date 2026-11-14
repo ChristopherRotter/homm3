@@ -8,7 +8,6 @@
 //! the weekly contents one too, each none for a map without such objects, so a fork of one costs
 //! nothing more and of another a reference count or two (`bench-check`).
 
-use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -328,11 +327,13 @@ impl AdventureState {
     /// layout), the production of every mine it owns ([`Self::production`]: a mine's own, an
     /// abandoned mine's drawn resource at that resource's mine's amount), and on a week's first
     /// day (`week_start`) each creature type with a `weekly_resource` ability in the army of one
-    /// of its heroes on the map, that amount once however many stacks and heroes hold it (the
-    /// Crystal Dragons' 3 crystal, `player_daily_income` 0x4B8C32). Saturating per resource; an
-    /// ally's do not count, nor a mine's guards. The heroes' own income is
-    /// `h3_heroes::daily_income`, the game's to add, as the towns' (E09).
-    // rule: GAM-RES-003, GAM-RES-005
+    /// of its heroes on the map or, since E09 T28b1, in the upper bar of one of its towns (its
+    /// garrison hero's army, else its garrison: [`Self::upper_bars`]), that amount once however
+    /// many stacks, heroes and towns hold it (the Crystal Dragons' 3 crystal, `player_daily_income`
+    /// 0x4B8C32, 0x4B8DCF, 0x4B8E26). Saturating per resource; an ally's do not count, nor a
+    /// mine's guards. The heroes' own income is `h3_heroes::daily_income`, the game's to add, as
+    /// the towns'.
+    // rule: GAM-RES-003, GAM-RES-005, TWN-ROW-005
     pub fn income(
         &self,
         core: &Ruleset,
@@ -356,13 +357,24 @@ impl AdventureState {
             }
         }
         if week_start {
-            let creatures: BTreeSet<CreatureTypeId> = self
-                .heroes
-                .iter()
-                .filter(|hero| hero.owner == player)
-                .flat_map(|hero| &hero.army)
-                .map(|stack| stack.creature)
-                .collect();
+            // Each creature type with an ability, once (E09 T28b1: a short list, since few have
+            // one, so that the upper bars' stacks pass over unlisted; the amounts add up the same
+            // in any order, saturating).
+            let mut creatures: Vec<CreatureTypeId> = Vec::new();
+            let mut note = |stack: &ArmyStack| {
+                let gives = core
+                    .creature(stack.creature)
+                    .is_some_and(|info| !info.abilities.is_empty());
+                if gives && !creatures.contains(&stack.creature) {
+                    creatures.push(stack.creature);
+                }
+            };
+            for hero in self.heroes.iter().filter(|hero| hero.owner == player) {
+                hero.army.iter().for_each(&mut note);
+            }
+            for army in self.upper_bars(player) {
+                army.iter().for_each(&mut note);
+            }
             for info in creatures.into_iter().filter_map(|c| core.creature(c)) {
                 for ability in &info.abilities {
                     let CreatureAbility::WeeklyResource { resource, amount } = *ability;

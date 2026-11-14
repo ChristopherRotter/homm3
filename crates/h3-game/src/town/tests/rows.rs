@@ -11,16 +11,18 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_adventure::{AdventureEvent, AdventureEventKind, ArmyCommand, HeroOnMap, Pos};
-use h3_content::{Formation, ResourceId};
+use h3_content::{ArtifactClass, ArtifactDef, ContentPack, Formation, HeroEffect, ResourceId};
 use h3_contracts::{ArmyStack, HeroId, TownId};
-use h3_towns::{BuildingId, TownCommand, TownCommandError, TownHeroChange};
+use h3_heroes::wearing;
+use h3_towns::{BuildingId, GrowthInputs, TownCommand, TownCommandError, TownHeroChange};
 
 use super::command::{BLUE, RED, end_turn, run};
 use super::growth::{DWELLING_1, T0, T1, built, setup};
+use crate::tests::key;
 use crate::{
     Actor, Answer, ArmyRef, ArmySlot, GameCommand, GameCommandError, GameEvent, GameRuleset,
-    GameSetup, GameState, HireAnswer, Manage, ManageError, Viewer, legal_commands,
-    legal_management, legal_town_management, observe, split_range,
+    GameSetup, GameState, HeroArtifactsSetup, HireAnswer, Manage, ManageError, Viewer,
+    legal_commands, legal_management, legal_town_management, observe, split_range,
 };
 use h3_adventure::ArmyCommandError;
 
@@ -360,6 +362,133 @@ fn a_town_s_purchase_joins_its_garrison_hero_s_army() {
         game.adventure().town_hero(T0).unwrap().army,
         [stack(1, imp, 11)]
     );
+}
+
+// covers: TWN-GRO-001, TWN-ROW-005
+#[test]
+fn a_garrison_hero_s_legion_and_statue_count_in_its_owner_s_towns_growth() {
+    let rules = rules();
+    let mut setup = two_heroes(&rules);
+    // Red's second hero wears the Legs alone (no Statue).
+    let legs = rules.core().artifact_by_key("t:legs").unwrap();
+    setup.heroes.last_mut().unwrap().details.artifacts = Some(HeroArtifactsSetup {
+        worn: wearing(rules.core(), &[legs.into()]),
+        backpack: vec![],
+    });
+    let mut game = game(&rules, &setup, vec![]);
+    let owned = |legion: u16| {
+        let mut inputs = GrowthInputs {
+            owned: true,
+            share_bp: 5_000,
+            ..GrowthInputs::NEUTRAL
+        };
+        inputs.legion[0] = legion;
+        inputs.dwellings[0] = 1;
+        inputs
+    };
+    let inputs = |game: &GameState| crate::town::growth::inputs(game, &rules);
+    // The visitor with the Legs and the Statue enters T0's garrison: its Legs count at T0 and its
+    // Statue's share at every town of red's (the original's `player_hero_wears_artifact`
+    // 0x4BACB0 reads the towns' garrison heroes after the player's list).
+    run(&rules, &mut game, RED, heroes(T0, TownHeroChange::Enter)).unwrap();
+    let grown = inputs(&game);
+    assert_eq!((grown[0], grown[2]), (owned(5), owned(0)));
+    // Red's other hero steps onto the entrance: the visitor's Legs and the garrison hero's, each
+    // hero once.
+    let other = game.adventure().heroes().iter().find(|h| h.owner == RED);
+    let step = GameCommand::Adventure(h3_adventure::AdventureCommand::MoveHero {
+        hero: other.unwrap().id,
+        path: vec![Pos::new(1, 1, 0)],
+    });
+    run(&rules, &mut game, RED, step).unwrap();
+    assert_eq!(inputs(&game)[0], owned(10));
+}
+
+/// [`rules`] with a purse `t:purse` of 500 gold a day in the ring slot.
+fn rules_purse() -> GameRuleset {
+    let purse = |core: &mut ContentPack| {
+        core.artifacts.push(ArtifactDef {
+            key: key("t:purse"),
+            name: "Artifact".into(),
+            class: ArtifactClass::Treasure,
+            cost: vec![],
+            slot: Some(key("t:ring_slot")),
+            war_machine: None,
+            needs_skill: None,
+            effects: vec![HeroEffect::DailyResource {
+                resource: key("t:gold"),
+                amount: 500,
+            }],
+            parts: vec![],
+        });
+    };
+    super::growth::rules_with([1, 0, 0], purse, |_| {})
+}
+
+/// Red's gold gained from the start of `game`'s next day to the start of `day`'s.
+fn gained(rules: &GameRuleset, mut game: GameState, day: u32) -> u32 {
+    super::growth::to_day_told(rules, &mut game, day)
+        .iter()
+        .map(|e| match *e {
+            GameEvent::ResourceGained {
+                player: RED,
+                resource,
+                amount,
+            } if resource == GOLD => amount,
+            _ => 0,
+        })
+        .sum()
+}
+
+// covers: GAM-RES-004, TWN-ROW-005, ADV-MOV-002
+#[test]
+fn a_garrison_hero_s_income_and_points_are_those_it_had_on_the_map() {
+    let rules = rules_purse();
+    let mut setup = setup(&rules);
+    let purse = rules.core().artifact_by_key("t:purse").unwrap();
+    setup.heroes[0].details.artifacts = Some(HeroArtifactsSetup {
+        worn: wearing(rules.core(), &[purse.into()]),
+        backpack: vec![],
+    });
+    let on_map = game(&rules, &setup, vec![]);
+    let mut held = on_map.clone();
+    let hero = visitor(&held);
+    run(&rules, &mut held, RED, heroes(T0, TownHeroChange::Enter)).unwrap();
+    setup.heroes[0].details.artifacts = None;
+    let bare = game(&rules, &setup, vec![]);
+    // Day 2's income: the garrison hero's purse is paid as on the map (the original's
+    // `count_worn_artifact` 0x4BABD0 and `town_gold_income` read the towns' garrison heroes).
+    let paid = gained(&rules, on_map.clone(), 2);
+    assert_eq!(paid, gained(&rules, bare, 2) + 500);
+    assert_eq!(gained(&rules, held.clone(), 2), paid);
+    // Red's day 2 turn start gives the garrison hero the full points the hero on the map has,
+    // after its spent ones (batch TWN-3's row 6: the full points on Red's next day).
+    let (mut on_map, mut spent) = (on_map.clone(), on_map);
+    for to in [Pos::new(1, 2, 0), Pos::new(1, 1, 0)] {
+        let step = GameCommand::Adventure(h3_adventure::AdventureCommand::MoveHero {
+            hero,
+            path: vec![to],
+        });
+        run(&rules, &mut spent, RED, step).unwrap();
+    }
+    run(&rules, &mut spent, RED, heroes(T0, TownHeroChange::Enter)).unwrap();
+    let left = spent.adventure().town_hero(T0).map(|h| h.movement);
+    assert!(left < spent.adventure().town_hero(T0).map(|h| h.max_movement));
+    for game in [&mut on_map, &mut spent, &mut held] {
+        super::growth::to_day(&rules, game, 2);
+    }
+    let full = on_map
+        .adventure()
+        .hero(hero)
+        .map(|h| (h.max_movement, h.movement));
+    for game in [&spent, &held] {
+        let points = game
+            .adventure()
+            .town_hero(T0)
+            .map(|h| (h.max_movement, h.movement));
+        assert_eq!(points, full);
+    }
+    assert_ne!(full.map(|(max, _)| max), Some(0));
 }
 
 /// The adventure's refusals as the town command's, one to one (each the same name).
