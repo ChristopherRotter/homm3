@@ -16489,4 +16489,12 @@ session.
   census as before; `h3-pack-adventure`'s check after `extracted/H3ab_bmp` was copied in, which
   the setup leaves out: TRAPS). `h3-cli`'s suite (outside the scope) and `cargo check --workspace
   --all-targets` passed. PR #934.
+- **CI's first run on #934** failed in the main property (`every_step_keeps_the_commands_invariants`,
+  `cc 7ada641d…`, committed): on `master` c05bccd a blue hero's move onto a red town's entrance
+  captured it at once and removed its armed garrison hero (`TWN-STUB-14`'s behaviour), which
+  `check_conservation`'s armies do not expect outside a battle. `master` moved meanwhile (#930, the
+  town lane's T28b2, lifted the stub: the garrison hero defends; #931; #933, the README's rows):
+  merged in, the case passes; the scoped verify `--with-original-data` again passed every step
+  (coverage 606 s, determinism 335 s, bench-check 359 s with every count as before, original-data
+  22 s), `h3-cli`'s suite too.
 - **Versions:** none (no engine behaviour changed; `emptied_springs` is a read).
