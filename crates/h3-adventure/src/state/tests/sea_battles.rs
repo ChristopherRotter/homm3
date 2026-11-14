@@ -82,7 +82,7 @@ fn battle(
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &command,
             &mut Vec::new(),
         )

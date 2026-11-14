@@ -458,12 +458,12 @@ pub enum GameReject {
     /// skipped, or one older than the seat's last [`crate::session::game::KEPT_ANSWERS`]
     /// accepted): a resend, nothing applied.
     Stale {},
-    /// The session's (E16 M5 T18, v61): the seat's map commands in its running turn (an
+    /// The session's (E16 M5 T18, v62): the seat's map commands in its running turn (an
     /// adventure's, a management one, a town's) reached the host's bound
     /// ([`crate::session::game::CommandBounds::per_turn`]): it may still end its turn, answer its
     /// decisions and fight its battles.
     TurnLimit {},
-    /// The session's (E16 M5 T18, v61): the seat's commands in its open battle reached the
+    /// The session's (E16 M5 T18, v62): the seat's commands in its open battle reached the
     /// host's bound ([`crate::session::game::CommandBounds::per_battle`]): the computer plays its
     /// side for the rest of the battle.
     BattleLimit {},

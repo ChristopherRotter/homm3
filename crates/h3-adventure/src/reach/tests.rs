@@ -74,7 +74,7 @@ fn walk_of(
         &rules.0,
         &rules.1,
         store,
-        (RED, &mut stream()),
+        (RED, crate::Weekday::FIRST, &mut stream()),
         &command,
         &mut events,
     );

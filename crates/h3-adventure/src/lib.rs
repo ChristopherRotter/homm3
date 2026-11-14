@@ -62,9 +62,9 @@ mod testing;
 pub use army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot, split_range};
 pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureOutcome,
-    BattleStart, Choice, ChoiceKind, Combatant, Defender, Exchange, Garrison, HeroGains,
-    HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, Offer, OfferKind, OwnHeroes,
-    Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
+    BattleStart, Choice, ChoiceKind, Combatant, Defender, Drowned, Exchange, Garrison, HeroGains,
+    HireDialog, HireError, HireSource, HireTarget, Meeting, NoRoom, NothingWhy, Offer, OfferKind,
+    OwnHeroes, Pick, ShipyardBlock, Sink, UniversityVisit, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
@@ -83,7 +83,7 @@ pub use ruleset::{
     ObjectTypeId, OnceBonus, Passage, Pickup, PickupDef, Pyramid, PyramidDef, RandomDwellingDef,
     RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind, StartingResources,
     StartingResourcesDef, TerrainMovement, TerrainMovementDef, TerrainWalker, TerrainWalkerDef,
-    Turn, TurnDef, Visit,
+    Turn, TurnDef, Visit, Weekday,
 };
 pub use setup::{
     AdventureSetup, ArmyError, Bans, BoatSetup, EventSetup, Guards, HeroSetup, Holds, MapSetup,
@@ -127,8 +127,9 @@ pub use town::TownReveal;
 /// owners' block), a town's garrison on its object, a town's formation in the static map's
 /// objects ([`Holds`]' tag 9). v22 (E08 T113b): a map garrison's troops and removable flag in the
 /// static map's objects ([`Holds`]' tag 11). v23 (E08 T115a): each hero on the map's battle
-/// bonuses and timed marks ([`HeroBonuses`]).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 23;
+/// bonuses and timed marks ([`HeroBonuses`]). v24 (E08 T115b): the Fountains of Fortune's values,
+/// the Magic Springs' emptied entrances and the kind marks.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 24;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

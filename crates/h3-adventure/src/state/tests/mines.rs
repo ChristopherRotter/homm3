@@ -50,7 +50,7 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &walk,
             &mut events,
         )
@@ -504,7 +504,7 @@ fn each_lighthouse_its_owner_holds_adds_its_points_to_the_sea_s_maximum() {
         &rules.0,
         &rules.1,
         &[],
-        (RED, &mut stream()),
+        (RED, Weekday::FIRST, &mut stream()),
         &board,
         &mut Vec::new(),
     )

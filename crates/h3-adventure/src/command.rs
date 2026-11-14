@@ -308,11 +308,26 @@ pub struct AdventureOutcome {
     /// player's hero won, given after the winner's levels
     /// ([`crate::AdventureState::give_won`], TWN-CAP-003). The outcome changes no owner itself.
     pub capture: Option<TownId>,
+    /// The creatures a Sirens' visit took from the hero's army (ADV-BON-008; E08 T115b, increment
+    /// 12's design note §9), each with how many: the game sums their hit points (the battle part's,
+    /// which the adventure does not read: ADR-0005's layers) into the hero's experience through
+    /// `h3_heroes::gained_experience` (HER-EXP-001's form with Learning) and gives it with its
+    /// levels; none for a visit that took nothing.
+    pub drowned: Option<Drowned>,
     /// Whether the visit flagged a creature dwelling for its player (ADV-OWN-001; E09 T26b, the
     /// town epic's design note §45, decision 71): the game then draws the Portal of Summoning of
     /// each of the player's towns that has none (TWN-GRO-007), from the player's stream after the
     /// visit's draws.
     pub flagged_dwelling: bool,
+}
+
+/// What a Sirens' visit took from its hero's army ([`AdventureOutcome::drowned`]; E08 T115b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Drowned {
+    /// The hero.
+    pub hero: HeroId,
+    /// Each stack's creature and how many it lost, in slot order.
+    pub lost: Vec<(CreatureTypeId, u32)>,
 }
 
 /// What a visit gives its hero (ADR-0017 point 10, increment 7; E08 T62a): each change passes
@@ -1266,6 +1281,68 @@ pub enum AdventureEventKind {
         /// Whether the hero holds it now (gained) or not (dropped).
         held: bool,
     },
+    /// A bonus visitable's visit gave nothing (ADV-BON-002 to -008, E08 T115b; increment 12's
+    /// design note §8, §10: the original's "visited" messages, the Magic Well's and the Spring's
+    /// "full", the Spring's "emptied"). Seen by the visitor's owner alone, as the gain would have
+    /// been.
+    NothingGained {
+        /// The visitor.
+        hero: HeroId,
+        /// The object's type.
+        object_type: ObjectTypeId,
+        /// Its anchor.
+        anchor: Pos,
+        /// Why.
+        why: NothingWhy,
+    },
+    /// The Sirens took a stack's creatures (ADV-BON-008, E08 T115b; increment 12's design note
+    /// §9): a stack of more than one kept its part, the rest lost; told per slot that lost, in
+    /// slot order, before the hero's experience. Seen by the hero's owner alone, as its army is
+    /// (as [`Self::WhirlpoolLoss`]).
+    SirensLoss {
+        /// The hero.
+        hero: HeroId,
+        /// The stack's army slot.
+        slot: u8,
+        /// Its creature.
+        creature: CreatureTypeId,
+        /// How many it lost.
+        count: u32,
+    },
+    /// The Stables upgraded a stack (ADV-BON-005, E08 T115b; increment 12's design note §8.5, D-63):
+    /// its creature became the kind's upgrade, its count kept; told per slot, in slot order. Seen
+    /// by the hero's owner alone, as its army is.
+    CreaturesUpgraded {
+        /// The hero.
+        hero: HeroId,
+        /// The stack's army slot.
+        slot: u8,
+        /// The creature it held.
+        from: CreatureTypeId,
+        /// The creature it holds now.
+        to: CreatureTypeId,
+    },
+    /// A player's team learned an object type's kind mark (ADV-BON-009, E08 T115b; increment 12's
+    /// design note §3, §10, decision 302: the original's `kinds_visited`, which the map's hint
+    /// reads): a visit of a type the part marks. Seen by each player of the visitor's team that
+    /// did not hold it (the visitor alone until E10's teams), as [`Self::ObjectMarked`].
+    KindKnown {
+        /// The type.
+        object_type: ObjectTypeId,
+    },
+}
+
+/// Why a bonus visitable's visit gave nothing ([`AdventureEventKind::NothingGained`]; E08 T115b).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NothingWhy {
+    /// The hero holds the kind's mark: a once-mark until its next battle, the Magic Well's day
+    /// mark, the Stables' week mark with no creature to upgrade.
+    Visited,
+    /// The hero's spell points are at or above what the object gives: the Magic Well's maximum,
+    /// the Spring's twice it.
+    Full,
+    /// The Magic Spring's entrance is emptied this week.
+    Emptied,
 }
 
 /// What each hero's owner alone knows of it and the rules derive, before a command, by id, to

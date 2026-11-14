@@ -3257,7 +3257,7 @@ original data. Branch `claude/awesome-sagan-lue93w`. Kept whole (about half a co
   the accepted commands (`execute`), so `restore` and `reopen` count again and nothing is
   journaled; the bounds are the hosting's (a restart with other `[limits]` applies them).
   `GameTurn` leaves out what a bound refuses (no `GameTurn` when nothing is left).
-- **The wire** (protocol v61): `GameReject::TurnLimit {}`, `GameReject::BattleLimit {}`, the
+- **The wire** (protocol v62, after the adventure lane's E08 T115b took v61 and `master` was merged in): `GameReject::TurnLimit {}`, `GameReject::BattleLimit {}`, the
   session's own; `GameTurn`'s list as above.
 - **The defaults, measured**: the golden replays spend at most 26 map commands in a turn
   (`teleporters-s1711-d28`) and 348 commands of a side in one battle; the XL fixtures' 28 days of
@@ -3276,7 +3276,7 @@ original data. Branch `claude/awesome-sagan-lue93w`. Kept whole (about half a co
   battle's end, a seat past it refused `BattleLimit`, its `GameTurn`s without battle commands,
   then `TurnLimit` for the attacker's map command and its `EndTurn` accepted, a reopen inside the
   battle counting the same. `h3-server`'s config test: the fields, their range, the defaults.
-- **Docs:** the client lanes' inboxes told (v61). `docs/06-security.md` (a shared path) is
+- **Docs:** the client lanes' inboxes told (v62). `docs/06-security.md` (a shared path) is
   T19's, as the epic plans: its "Not covered yet" then names what the bounds leave (no total
   limit, colluding seats that keep ending their turns under an unlimited turn, many battles in
   one turn, long games' journals).

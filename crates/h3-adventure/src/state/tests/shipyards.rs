@@ -45,7 +45,7 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &walk,
             &mut events,
         )
@@ -148,7 +148,7 @@ fn a_shipyard_s_visit_flags_it_then_offers_a_boat_on_its_tile() {
         &rules.0,
         &rules.1,
         &[],
-        (RED, &mut stream()),
+        (RED, Weekday::FIRST, &mut stream()),
         &back,
         &mut Vec::new(),
     )
@@ -163,7 +163,7 @@ fn a_shipyard_s_visit_flags_it_then_offers_a_boat_on_its_tile() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &again,
             &mut events,
         )
@@ -307,7 +307,14 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     };
     let mut events = Vec::new();
     let outcome = s
-        .apply(core, part, &[], (RED, &mut stream()), &command, &mut events)
+        .apply(
+            core,
+            part,
+            &[],
+            (RED, Weekday::FIRST, &mut stream()),
+            &command,
+            &mut events,
+        )
         .unwrap();
     assert_eq!(outcome, AdventureOutcome::default());
     assert_eq!(
@@ -326,7 +333,14 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     let before = s.clone();
     let mut events = Vec::new();
     assert_eq!(
-        s.apply(core, part, &[], (RED, &mut stream()), &command, &mut events),
+        s.apply(
+            core,
+            part,
+            &[],
+            (RED, Weekday::FIRST, &mut stream()),
+            &command,
+            &mut events
+        ),
         Err(AdventureCommandError::BoatTileTaken)
     );
     assert!(events.is_empty());
@@ -340,7 +354,14 @@ fn build_boat_checks_the_shipyard_its_owner_and_its_tile_in_order() {
     let before = s.clone();
     let mut events = Vec::new();
     assert_eq!(
-        s.apply(core, part, &[], (RED, &mut stream()), &command, &mut events),
+        s.apply(
+            core,
+            part,
+            &[],
+            (RED, Weekday::FIRST, &mut stream()),
+            &command,
+            &mut events
+        ),
         Err(AdventureCommandError::BoatTileTaken)
     );
     assert!(events.is_empty());

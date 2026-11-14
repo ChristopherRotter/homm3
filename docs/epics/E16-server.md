@@ -335,7 +335,7 @@ client lane's 2026-11-04 request, when online battles need them).
 - **T18 A seat's commands bounded** done 2026-11-14 (`E16-log.md`: `[limits] commands_per_turn`,
   a seat's map commands in a turn, beyond them `TurnLimit`; `commands_per_battle`, the user's
   own counter per battle, beyond it the computer plays the side; `CommandBounds` in
-  `GameOptions`, `cross-lane`; protocol v61).
+  `GameOptions`, `cross-lane`; protocol v62, after the adventure lane's T115b took v61).
 - **T19 2b's closure:** an end-to-end test (two clients, a turn run out, a battle against the
   other player's hero under the chess timer, a level-up held and answered, through a restart);
   `docs/06-security.md` (the whole game's clock, its "Not covered yet": the turn timer, the

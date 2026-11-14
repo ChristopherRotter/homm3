@@ -328,7 +328,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                 &rules.0,
                 &rules.1,
                 &[],
-                (RED, &mut stream()),
+                (RED, crate::Weekday::FIRST, &mut stream()),
                 &command,
                 &mut events,
             )
@@ -344,7 +344,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                 &rules.0,
                 &rules.1,
                 &[],
-                (RED, &mut stream()),
+                (RED, crate::Weekday::FIRST, &mut stream()),
                 &back,
                 &mut events,
             )
@@ -391,7 +391,11 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::MovementChanged { .. }
                     | AdventureEventKind::BonusChanged { .. }
                     | AdventureEventKind::OnceMarkChanged { .. }
-                    | AdventureEventKind::TimedMarkChanged { .. } => (None, None),
+                    | AdventureEventKind::TimedMarkChanged { .. }
+                    | AdventureEventKind::NothingGained { .. }
+                    | AdventureEventKind::SirensLoss { .. }
+                    | AdventureEventKind::CreaturesUpgraded { .. }
+                    | AdventureEventKind::KindKnown { .. } => (None, None),
                 })
             })
             .collect();

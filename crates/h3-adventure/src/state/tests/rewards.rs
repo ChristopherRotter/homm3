@@ -73,12 +73,14 @@ pub(super) fn rules(faithful: bool) -> Rules {
             });
         },
         |types| {
+            // E08 T115b: the Marletto Tower, the Library and the School mark their kind (the base
+            // pack's, ADV-BON-009), the Arena not.
             let ty = |k: &str, kind| ObjectTypeDef {
                 key: key(k),
                 name: "Object".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
-                kind_mark: false,
+                kind_mark: ["t:marletto", "t:library", "t:school"].contains(&k),
                 kind,
             };
             let gift = |gives, prices: Vec<Vec<(ContentKey, u32)>>, admits, leave| {
@@ -309,7 +311,7 @@ pub(super) fn visit(
             &rules.0,
             &rules.1,
             heroes,
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &command,
             &mut Vec::new(),
         )
@@ -1077,7 +1079,7 @@ fn the_tomb_asks_then_gives_its_artifact_and_costs_morale_whatever_it_held() {
     );
     assert_eq!(morale(&s), tomb);
     // After its battle (cleared) it is taken again.
-    s.clear_battle_bonuses(&[HERO]);
+    s.clear_battle_bonuses(parts.0, parts.1, &[HERO]);
     assert_eq!(morale(&s), HeroBonuses::NONE);
     s.accept_offer(parts, RED, &search, &mut Vec::new());
     assert_eq!(morale(&s), tomb);
@@ -1148,4 +1150,78 @@ fn a_hero_sees_its_own_marks_and_the_block_is_written_once_needed() {
     let fork = s.clone();
     visit(&rules, &mut s, &store(hero()));
     assert!(core::ptr::eq(s.visits().unwrap(), fork.visits().unwrap()));
+}
+
+// covers: ADV-BON-009
+#[test]
+fn increment_7s_visits_mark_their_kind_where_the_original_does() {
+    // E08 T115b (decision 302; survey `E08-rewards.md` §5's team marks): a gift's once the hero is
+    // admitted and unmarked (the School before its gold, the Tree before its price), the Shrine's
+    // and the Witch Hut's first (a refused visit still counts), the University's at the visit.
+    let rules = rules(true);
+    let mark = |k: &str, holds, resolved: Option<Resolved>, details: HeroDetails| {
+        let mut s = one(&rules, k, holds);
+        if let Some(resolved) = resolved {
+            draw(&mut s, 0, resolved, &[]);
+        }
+        let mut events = Vec::new();
+        let command = AdventureCommand::MoveHero {
+            hero: HERO,
+            path: vec![AT],
+        };
+        let store = store(details);
+        s.apply(
+            &rules.0,
+            &rules.1,
+            &store,
+            (RED, Weekday::FIRST, &mut stream()),
+            &command,
+            &mut events,
+        )
+        .unwrap();
+        let known = (events.iter())
+            .filter(|e| matches!(e.kind, AdventureEventKind::KindKnown { .. }))
+            .count();
+        (s.kinds_known(RED) == [type_of(&rules, k)], known, s)
+    };
+    // A free gift with its gain; the School with its choice, whatever the treasury; the Arena
+    // has no kind mark.
+    assert!(mark("t:marletto", Holds::Nothing, None, hero()).0);
+    assert_eq!(mark("t:school", Holds::Nothing, None, hero()).1, 1);
+    let (marked, known, _) = mark("t:arena", Holds::Nothing, None, hero());
+    assert_eq!((marked, known), (false, 0));
+    // The Library refuses below level 10: no kind mark; at 10 the mark.
+    assert_eq!(mark("t:library", Holds::Nothing, None, hero()).1, 0);
+    let tenth = HeroDetails {
+        level: 10,
+        ..hero()
+    };
+    assert_eq!(mark("t:library", Holds::Nothing, None, tenth).1, 1);
+    // A Shrine refused (no spell book) and a Witch Hut: the mark first; a University.
+    let shrine = mark(
+        "t:shrine",
+        Holds::Spell(None),
+        Some(Resolved::Spell(GUST)),
+        hero(),
+    );
+    assert_eq!((shrine.0, shrine.1), (true, 1));
+    assert_eq!(mark("t:hut", Holds::Skills(None), None, hero()).1, 1);
+    assert_eq!(mark("t:university", Holds::Nothing, None, hero()).1, 1);
+    // A second visit of the Marletto Tower (the hero marked): no second mark, nothing told.
+    let (_, _, mut s) = mark("t:marletto", Holds::Nothing, None, hero());
+    let mut events = Vec::new();
+    let command = AdventureCommand::Revisit { hero: HERO };
+    let _ = s.apply(
+        &rules.0,
+        &rules.1,
+        &store(hero()),
+        (RED, Weekday::FIRST, &mut stream()),
+        &command,
+        &mut events,
+    );
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e.kind, AdventureEventKind::KindKnown { .. }))
+    );
 }

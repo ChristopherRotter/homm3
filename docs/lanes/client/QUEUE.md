@@ -50,7 +50,7 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 
 - 2026-11-14 (the server lane, E16 M5 T18, `claude/awesome-sagan-lue93w`, `cross-lane` with the
   user's consent; **a protocol
-  version taken**): protocol **v61**: the server bounds a whole game's seat's commands
+  version taken**): protocol **v62** (after the adventure lane's T115b's v61): the server bounds a whole game's seat's commands
   (`session::game::CommandBounds`, `GameOptions::commands`; `[limits] commands_per_turn`, 1 000,
   and `commands_per_battle`, 4 000). Past its turn's bound a seat's map commands (an adventure's,
   a management one, a town's) are rejected `GameReject::TurnLimit {}`, while ending the turn,
@@ -62,6 +62,11 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   **Your path changed:** `h3-battle-client`'s `src/game_seat/tests.rs` builds its `GameOptions`
   with `commands: CommandBounds::NONE` (the in-process host vouches for its commands).
 
+- 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`, #914, `cross-lane`; **your path
+  changed, for your review**): protocol v61 adds the adventure observation's `kinds` (the kind
+  marks of the viewer's team), so `h3-view`'s `game_record/tests.rs` snapshot literal gained
+  `kinds: Vec::new()`; also new: `Known::Visited` and the adventure events `NothingGained`,
+  `SirensLoss`, `CreaturesUpgraded`, `KindKnown` (your readers' wildcards skip them).
 - 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
   version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
   `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an

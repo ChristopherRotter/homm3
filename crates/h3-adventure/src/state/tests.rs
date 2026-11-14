@@ -921,5 +921,6 @@ mod sea_pickups;
 mod shipyards;
 mod teleporters;
 mod towns;
+mod visitables;
 mod visits;
 mod weekly;

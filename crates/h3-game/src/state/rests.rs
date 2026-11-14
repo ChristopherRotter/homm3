@@ -122,11 +122,13 @@ impl GameState {
         match rest {
             Rest::Visit => {
                 // The visitor's owner's stream: a jump after its entrance's guard draws its exit
-                // from it (ADV-TEL-003, E08 T105a1).
+                // from it (ADV-TEL-003, E08 T105a1); the calendar's day of the week (T115b).
+                let weekday = self.weekday(rules);
                 let (adventure, store, draws) = self.adventure_for(owner);
                 let context = (rules.core(), rules.adventure(), store);
                 let events = &mut AdventureSink(&mut *sink);
-                let outcome = adventure.visit_held(context, (owner, hero), draws, events);
+                let turn = (weekday, draws);
+                let outcome = adventure.visit_held(context, (owner, hero), turn, events);
                 self.settle_outcome(rules, owner, outcome, sink);
             }
             Rest::Experience(experience) => {

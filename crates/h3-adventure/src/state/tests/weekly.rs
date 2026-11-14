@@ -34,7 +34,7 @@ fn visit(rules: &Rules, state: &mut AdventureState) -> (AdventureOutcome, Vec<Ad
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &walk,
             &mut events,
         )
