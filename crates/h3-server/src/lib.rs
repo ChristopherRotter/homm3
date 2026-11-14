@@ -24,7 +24,8 @@
 //! - [`client`]: a headless client for tests and tools;
 //! - [`record`]: an adventure replay run through the whole game's session, each player's record
 //!   written (`h3-server record`, E16 M5 T6);
-//! - [`bench`]: the session core's workload (`benches/server/`).
+//! - [`bench`]: the session core's workload (`benches/server/`);
+//! - [`measure`]: the long journals' measurement (`h3-server-journals`, E16 M5 T23).
 //!
 //! Provisional (E16 M1 review): the module layout, the thread and channel layout, the log lines
 //! on standard error.
@@ -53,6 +54,7 @@ mod journal;
 mod key;
 mod ladders;
 mod lists;
+pub mod measure;
 mod net;
 mod peers;
 mod players;

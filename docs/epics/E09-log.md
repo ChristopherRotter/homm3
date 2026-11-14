@@ -3816,3 +3816,61 @@ manuals, SHA-256 checked against the PC's). T28b cut in two at its start; **T28b
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
 request is the record.
+
+### T28b2 — a garrison hero defends; T-5; the town's views (2026-11-14)
+
+One session, the user present at the start; branch `town/e09-t28b2`, `cross-lane` (the adventure
+lane's `h3-adventure` `state.rs`' battle's end and Necromancy, `state/bonuses.rs`' marks;
+`h3-game`'s `state/battle.rs` and `state/manage.rs`; `h3-map`'s view property; `h3-protocol`).
+Starting point: `master` at 0872fc6 (#924 merged; the setup's baseline lost to a VM restart, CI's
+green run on `master` stands for it). The user's computer was connected at the start: the original
+data and the four manuals staged then (28 files, SHA-256 checked against the PC's). T28b2 **whole**
+(decision 95, the user; the agent recommended two parts, the visits with T-5 first).
+
+- **The visits** (survey §9.1's rows 1 and 3; TWN-SIE-001, TWN-VIS-001 amended):
+  `AdventureState::town_visit` finds a town of another team defended by its garrison hero with a
+  stack; `siege_start`'s defender is the visitor, else the garrison hero (`Defender::Hero` off the
+  map, its owner's side), else the garrison; beside a garrison hero the visitor's battle is a
+  `BattleStart` without a town (no siege: the gate tile's battle, no merge, no town's facts), the
+  town not taken. `town::merge` skips a defender off the map (TWN-SIE-002 only for a visitor).
+- **The battle's end** (TWN-CAP-003, GAM-BAT-003 amended): `AdventureState::end_battle` hands a hero
+  not on the map to `end_town_hero_battle` (the town lane's `src/town/rows.rs`): the survivors by
+  slot, an empty army kept for a winner (survey §9.3, the original's); else
+  `release_town_hero` (`HeroRemoved` to its owner at the entrance). The game's `end_battle` keeps a
+  garrison winner's survivors when none is left, frees a beaten one's type, and tells its town's
+  views after the heroes' part; Necromancy reaches it (`raise` through `hero_or_held_mut`), its
+  bonuses are cleared (`change_marks` admits a garrison hero); the capture after the attacker's
+  win as against a visitor.
+- **T-5** (`TWN-QUIRK-11`, preserve without a flag, decision 12): a garrison hero without a stack
+  does not defend, the step enters and captures, the hero to the pool; reached by a defence won
+  with creatures the battle made alone. Sources: `town_visit` 0x4AB0EE (E09 T1b1) and
+  `town_defended` 0x5BDFE0 (E24 M3 T6a1, T7b2), disassembled again here (the visitor +0x10, else
+  the garrison hero's +0x91, else the town's +0xE0, `army_has_creature` 0x4496A0); VCMI 1.7.5's
+  `armedGarrison` counts any garrison hero (it never makes one without a stack). `TWN-STUB-14`
+  lifted.
+- **The views** (TWN-VEW-001, -002 amended): a town's garrison at every level is its upper bar
+  (`AdventureState::upper_bar`: the garrison hero's army with one, `town_garrison_army`
+  0x5C1460), the owner's slots included; the top level's mark `TownOwnerView::garrison_hero` and
+  `TownChanged::garrison_hero` (protocol **v67**, `TownOwnerFacts::garrison_hero`). Told: the
+  moves', the recruits' and the capture's `Told`s as built; new, `state/manage.rs`' `town_told`
+  for a command naming a garrison hero's army and `state/battle.rs`' around a garrison hero's
+  battle's end. No `GarrisonHeroChanged` (the whole view is told).
+- **Rules:** TWN-SIE-001, -002, TWN-VIS-001, TWN-CAP-003, TWN-VEW-001, -002, GAM-BAT-001, -003
+  amended; the ledger's `TWN-QUIRK-11`.
+- **Tests:** `h3-adventure`'s `town/rows/tests.rs` (3: row 3 and T-5's visit, row 1's battle at
+  the gate, the battle's end with Necromancy, the bonuses and the release); `h3-game`'s
+  `town/tests/siege/held.rs` (3: the siege against the garrison hero as built from the town, its
+  win and its loss with the capture and the town's view told before it, row 1 played to its end
+  with the town standing) and `town/tests/rows.rs` (T-5's regression test, the views with the
+  mark and their tells). `h3-map`'s plans: `check_town_views` expects the upper bar and the mark;
+  **a stress of 300 cases** found the told views' fold keeping a town's garrison by slot from the
+  `StackChanged`s alone (after `Enter` the hero's army is told by `TownChanged`): the fold takes a
+  told view's slots whole now (`cc 38e88291…`, kept). A second gap, the adventure lane's,
+  failing on `master` 0872fc6 too: the hygiene property's map garrison index in
+  `ExchangeOpened` (two seeds); the adventure lane's #929 (E08 T116b2) fixed it while this pull
+  request's CI ran, and both seeds pass after `master` was merged in.
+- **Replays and versions:** none moved but protocol v67 (no replay holds a garrison hero).
+- **Agent's calls (change freely):** decision 95's list.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

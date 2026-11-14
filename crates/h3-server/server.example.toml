@@ -7,6 +7,7 @@
 bind = "127.0.0.1:7878"        # loopback; the internet only behind a TLS proxy (ADR-0018 point 2)
 data = "../../target/h3-server"   # journals, replays: readable by the server's user only
 checkpoint_every = 25
+whole_checkpoint_every = 250    # a whole game's journal (E16 M5 T23b)
 shadow_instance = false         # true: a second battle checks every command (E16-design.md §8)
 # public_url = "wss://h3.example.org"   # the server's id, which logins sign: the address clients
                                         # dial (behind a TLS proxy); else ws:// and `bind`'s address

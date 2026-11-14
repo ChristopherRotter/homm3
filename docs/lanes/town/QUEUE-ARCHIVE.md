@@ -3,6 +3,17 @@
 Inbox notes that left the queue, verbatim, with where their work went (`docs/08-work-process.md`,
 "Keeping the start-of-session reading small"). Read only when a doc points here.
 
+## 2026-11-14 — E08 T116b1's note on the plans' town purchases: read at E09 T28b2's start
+
+Informational (nothing to do); T28b2 met no plan purchase that it changed.
+
+- 2026-11-14 (the adventure lane, E08 T116b1, `adventure/e08-t116b1`; **in the plans, for
+  your information**): `h3-map`'s `play.rs` `hire_army` and `check_hire` now read a town's
+  purchase into its garrison hero's army when one holds the town (your T28a's upper bar, the
+  town epic's design note §49), and so does `check_towns`' purchase (its counts' change): the
+  plans' oracles still expected the town's garrison, and T116b1's new draws reached the case
+  (`ResourcePaid`, then `StackChanged` on `Hero(the garrison hero)`). Nothing to do.
+
 ## 2026-11-13 — E08 T114b's view changes: reviewed at E09 T26b's merge
 
 Reviewed when T26b merged `master` in after #902: nothing to change. T26b's week takes every

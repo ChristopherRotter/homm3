@@ -17,7 +17,7 @@ use h3_game::{Actor, GameRuleset, GameSetup};
 use h3_sim::adventure::replay::Replay;
 
 use super::game_fold::one;
-use super::game_seats::{OPTIONS, join, send, to, token};
+use super::game_seats::{OPTIONS, join, same_journal, send, to, token};
 use crate::map::game::{command, manifest};
 use crate::session::game::{GameEntry, GameOutbound, GameSession};
 use crate::session::{Bot, ConnId, Outbound};
@@ -163,7 +163,7 @@ fn the_computer_plays_the_unowned_sides_as_the_in_process_host_would() {
     let mut net = seated(&rules, &setup, replay.seed);
     let mut out = Vec::new();
     net.computer(std::boxed::Box::new(Scripted::of(&replay, 0)), &mut out);
-    assert!(out.is_empty() && net.journal().commands.is_empty());
+    assert!(out.is_empty() && net.journal().accepted == 0);
     let players = twin.state().players();
     let (mut heard, mut told) = (vec![Vec::new(); players], vec![Vec::new(); players]);
     let mut systems = 0;
@@ -195,13 +195,13 @@ fn the_computer_plays_the_unowned_sides_as_the_in_process_host_would() {
     }
     assert!(systems > 0);
     assert_eq!(net.state().state_hash(), twin.state().state_hash());
-    assert_eq!(net.journal(), twin.journal());
     for player in (0..=u8::MAX).take(players).map(PlayerId::new) {
         assert_eq!(net.record(player), twin.record(player));
     }
     // Each of its commands journaled as the system actor's: a restore re-runs them and asks no
     // computer, which has nothing to play then either.
     let entries: Vec<GameEntry> = net.drain_entries().collect();
+    same_journal(net.journal(), twin.journal(), &entries);
     let theirs = entries.iter().filter(|e| {
         matches!(
             e,
@@ -221,7 +221,7 @@ fn the_computer_plays_the_unowned_sides_as_the_in_process_host_would() {
     let mut back = reopened.unwrap();
     back.computer(std::boxed::Box::new(Never), &mut out);
     assert!(out.is_empty() && back.drain_entries().next().is_none());
-    assert_eq!(back.journal(), twin.journal());
+    same_journal(back.journal(), twin.journal(), &entries);
 }
 
 #[test]

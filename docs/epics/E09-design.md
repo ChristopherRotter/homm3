@@ -1870,6 +1870,22 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   the owner's view marks the town's garrison hero (the status window's `townqkgh.pcx`).
 - **Increment 2's reads:** the build and the events read no hero; the income reads the garrison
   hero's (§53).
+- *As built (T28b2, decision 95, whole):* the visit is `AdventureState::town_visit` (a town of
+  another team defended by a garrison hero with a stack; one without not, `TWN-QUIRK-11`, the
+  original's `town_defended` 0x5BDFE0 read a third time) and `siege_start` (the defender the
+  visitor, else the garrison hero as `Defender::Hero` off the map; `BattleStart::town` none when
+  both stand: row 1 is the gate tile's battle). No merge for a garrison hero (`town::merge` skips
+  a defender off the map). Its battle's end: `AdventureState::end_battle` hands a hero not on the
+  map to `end_town_hero_battle` (the town lane's `src/town/rows.rs`: the survivors by slot, an
+  empty army kept for a winner; else `release_town_hero`, `HeroRemoved` to its owner at the
+  entrance); the game's `end_battle` keeps a garrison winner's survivors even when none is left;
+  Necromancy reaches it (`raise` through `hero_or_held_mut`), and its bonuses are cleared
+  (`change_marks` admits a garrison hero). The view: `AdventureState::upper_bar` is every level's
+  garrison (`GarrisonView::stacks` and the owner's `army`), the mark `TownOwnerView::garrison_hero`
+  and `TownChanged::garrison_hero` (protocol v67), not a hero id (the original's mark is a picture;
+  the owner sees the hero in its own heroes) and no `GarrisonHeroChanged` (the town's whole view is
+  told: `Told` around a garrison hero's battle's end and the army commands naming its army, in
+  `state/manage.rs`' `town_told`). No hash, format or encoding moved; `TWN-STUB-14` lifted.
 
 ### 55. Recruitment's and the rows' views, versions, ids and gates
 

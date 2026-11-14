@@ -1064,4 +1064,7 @@ pub struct TownOwnerFacts {
     pub hall: u8,
     /// Its day's income, by resource.
     pub income: Vec<Amount>,
+    /// Whether a hero stands in its garrison (TWN-VEW-001, the popup's mark; E09 T28b2, v67):
+    /// the garrison's stacks are then that hero's army.
+    pub garrison_hero: bool,
 }

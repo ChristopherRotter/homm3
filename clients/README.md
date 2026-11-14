@@ -81,6 +81,10 @@ search the parent directories).
   --frames <dir>` plays a capture recipe's steps on the shell's own clock into frames, which
   `capture/h3shell.py drawn` compares with the original's shots (`capture/README.md`, "The
   shell's screens").
+  Since M2 T5a the start's clips play first unless `--no-intro` (`h3_view::shell::start`: from the
+  video archives, `shell-videos.vid` standing in for `VIDEO.VID`; `--video-quality low` plays the
+  Smacker copies), in the replay as the DLLs show them, in the window whole; a key or a press
+  skips them.
 - **A look at the drawers:** `cargo run --release -p h3-battle-client -- sprite CPKMAN.DEF --group 2
   --background CmBkGrMt.pcx [--mirror]` draws every frame of one group of a DEF side by side over
   a PCX, as the battle draws a stack, into `clients/out/sprite/` (the base archives searched

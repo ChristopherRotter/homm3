@@ -74,16 +74,17 @@ Scores and Credits (§2.6 to §2.9); T1b1 the scenario screen's frame, list and 
      down other than F4 (scan code 0x3E, the window's mode), a left press (type 8) or a right press
      (0x20) stops the clip, except on the first run (then nothing does). The input queue is flushed
      first.
-   - **Which file:** an index below 28 is always Bink (0x44DD20, *not read*); from 28 Bink when the
+   - **Which file:** an index below 28 is always Bink (0x44DD20, read at M2 T5a: §10); from 28 Bink when the
      table's +8 is set and `Bink Video` is on (33 only for editions 2 and 3), else Smacker
      (`smacker_open_in_dialog` 0x598AF0). So `3DOLogo` (+8 clear) is always Smacker; `NWCLogo` and
      `H3Intro` are Bink with `Bink Video` on, else their `.SMK` copies. Smacker's lookup
      (`smacker_open` 0x598790) has `video_open`'s order: on Complete `Video.vid`, the CD's, then
      `h3ab_ahd.vid` (edition 1: `h3ab_ahd.vid` first).
    - **Placement:** full screen at (0, 0, 800, 600): a Smacker clip centred, `3DOLogo` (640 × 480)
-     at (80, 60); a Bink clip through 0x44DD20 (*not read*; `NWCLogo` 400 × 300). The cursor hidden;
-     at the end, with the table's +0xA set (28 to 31), a screen call (*not read*), else the
-     clip's rectangle shown; the cursor shown.
+     at (80, 60); a Bink clip through 0x44DD20, centred too but `NWCLogo` (400 × 300), left at
+     the corner and stretched onto the screen (§10). The cursor hidden; at the end, with the
+     table's +0xA set (28 to 31), the fade (0x602C50, read at M2 T5a: §10), else the clip's
+     rectangle shown; the cursor shown.
    - **`H3Intro`** (`video_play_framed`): `introrim.pcx` (800 × 600) loaded; the clip opened in a
      dialog at (80, 187) in its own size (640 × 360), not playing on, not shown by the tick; the
      rim copied whole onto the back buffer; the screen shown; each frame due (`video_frame_ready`
@@ -1438,9 +1439,10 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   the Smacker copies have the same frames and rate (§2.1), so `start-smacker`'s 9.1 s more (189.6 s)
   are the steps': its frames are due from the last one shown (§6.2), at 10 ms steps every 70 ms,
   not 66.66 (2 702 × 70 ms + 350 ms = 189.5 s; Bink's own pacing keeps its rate; *inferred*).
-  Not settled by T2 (the recipes keep digests, not these measures): NWCLogo's placement, the
-  end-of-clip screen call, the screen before 3DOLogo's first frame (350 ms) and between the clips:
-  M2's start task, from `start-bink`'s frames.
+  Settled at M2 T5a (§10, from `start-bink`'s and `start-smacker`'s frames): NWCLogo's placement,
+  the end-of-clip fade, the black screen before 3DOLogo's first visible frame (its frames 0 to 3
+  black, frame 4 at 335 ms) and between the clips; the Smacker frames' 70 ms at 10 ms steps
+  read in `SmackWait`.
 - **Credits** (§2.9, a correction): the closing text (record 2) shows only near the end, once the
   text's end has risen to about 435 px (first at 244.6 s into the scroll), not while little text
   is shown at the start; the first frame comes 1 100 ms after the screen opens, then one every
@@ -1693,10 +1695,89 @@ cells (`build::still_cells`); `Reading::Original` (`check::frames_read`, `h3-vie
 - **The probe** copies into one buffer of zeros for the whole clip (`binkprobe frames`), as the
   game's dialog target holds its last frame; a `Target` starts at zeros too. What the game's
   buffer holds before a clip's first frame (a key frame marks every cell that has a block of a
-  type but 0; the samples' first frames have no skip) is not modelled: T5 reads it with the start.
+  type but 0; the samples' first frames have no skip) is the start's (M2 T5a, §10): the client
+  copies each frame onto the back buffer as it is (black, or `introrim.pcx`'s middle).
 - **The samples** (`build::sample`): after the first frame a quarter of the cells keep their luma
   (skipped whole, drawn first so the other blocks stay as they were) while the chroma changes, so
   every seed's copied frames differ from its decoded ones and `bink-check.sh` checks the DLL's
   marks; the hashes (seeds 1 to 3, and three at 256 × 120 through `bink-dll.py` by hand) are the
   DLL's.
+
+## 10. The start's pictures (M2 T5a, 2026-11-14)
+
+Read in `Heroes3.exe` (0x44DD20, 0x6030E0; the map), `SMACKW32.DLL` (`SmackWait` 0x10007840,
+`SmackNextFrame` 0x10006440, `SmackToBufferRect` 0x100072D0 in part) and `BINKW32.DLL`
+(`BinkGetRects` 0x10006380 with 0x10006650 and 0x100067B0) with capstone, and checked on the
+original's frames: `h3shell.py run --once` of the `start` group in this sandbox (as kept: the
+skips, `start-bink` 25 min, `start-smacker` 21 min, its second run's form). Built:
+`h3_view::shell::start` (`Start` the timing, `Picture` the buffers), `h3_bink::rects` and
+`copies`; the replay plays the start; `h3-view shell` draws it (`--video-quality low` for Bink
+Video 0); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when `VIDEO.VID` is missing.
+
+- **The screens:** at the start (time 0 of the frozen clock) the back buffer filled black and
+  shown (0x4EE776), the cursor hidden; each clip draws into the back buffer and shows what
+  changed; between two clips the fade's black (below), the next clip opened at the same reading.
+  `H3Intro` (`video_play_framed`): the rim copied onto the back buffer, a tick (its first frame
+  decoded into the buffer), the whole screen shown. After the last clip the main menu at the same
+  reading.
+- **The frames' times:** Smacker's `SmackWait` (no sound track) counts in 10 µs: the first call
+  sets the due time to now + the frame time and waits; a call at or past it lets the frame through
+  and sets the next due time to the call's time + the frame time, unless the call came between one
+  and two frame times late (an unsigned comparison of a negative difference), then to the due time
+  + the frame time; `SmackNextFrame` clears the frame's flag. So at 1 ms steps 67 ms a frame
+  (3DOLogo's frames at 67 (k + 1) ms: frames 0 to 3 black, the first change at 335 ms), at 10 ms
+  steps 70 (`start-smacker`'s 189.59 s). Bink's: frame p once the clock reaches the first frame's
+  time + ⌊1000 p / rate⌋ (E17's measure), the first at the clip's first tick (NWCLogo's at the
+  logo's black, 5 577 ms; 6 043 shown at 6 050). The ends: `start-bink`'s menu at 180 480 ms,
+  `start-smacker`'s at 189 590 (its second kept run; the first run's 10 ms later from H3Intro on).
+- **The fade** (0x602C50 with 1, 4, 0 → `screen_fade_out` 0x6030E0; the clips with the table's
+  +0xA, 28 to 31, at their last frame, and the full-screen clips when skipped): the back buffer
+  copied, then shown at shifts 0, 1 and 2 of each channel, each step 50 ms of the clock after the
+  last (`wait_until`, the first reading at or past it; a step that took more than 50 ms ends the
+  loop, never on the frozen clock), then the back buffer filled black and shown 50 ms after the
+  third: 3DOLogo's last frame at 5 427 ms, the steps at 5 427, 5 477, 5 527, the black and
+  NWCLogo's first frame at 5 577. A clip's last frame is decoded but not shown before it (the
+  fade's first step shows it). `H3Intro` skipped stops at once (`video_stop_all`, no fade).
+- **NWCLogo's Bink copy** (clip 29, 400 × 300): 0x44DD20 leaves it at (0, 0) of the back buffer
+  (every other clip centred), and `video_show` blits that corner stretched onto the whole screen
+  (DirectDraw's `Blt`, Wine's nearest pixel: each pixel doubled). The fade copies the back buffer,
+  so a skip shows the logo unstretched at the corner, fading (its last frame is black: a clip run
+  to its end shows nothing of it). **CLT-Q123** (the user, 2026-11-14: fix, decision 32): the
+  client fades the screen as shown; the corner the comparisons' (`Bugs::Original`).
+- **What a frame shows** (`video_show` 0x5979D0): the clip's changed rectangles, `BinkGetRects`'s
+  or `SmackToBufferRect`'s, as one union shown, by an arithmetic that moves the left (top) edge
+  to a later rectangle's smaller one without widening the union and compares a later right
+  (bottom) edge with the width (height) from the edges as they now are: the rectangles come top to
+  bottom, so a lower one further left cuts off the right of those above it, and the screen there
+  keeps an older frame until a later union covers it (`H3Intro`'s Bink copy: 43 of its 2 426
+  frames, the right half 4 frames late at 21.3 s; its Smacker copy: 23 frames in small boxes).
+  **CLT-Q124** (the user, 2026-11-14: fix, decision 32): the client shows the clip's whole
+  rectangle each frame; the union the comparisons' (`h3_view::shell::start::shown_union`).
+- **`BinkGetRects`** (`h3_bink::rects`; the game's surface type, neither 0x40000000, no
+  rectangles, nor 0x80000000, one): the bounding rectangle of the marked cells (the change mask,
+  §9) over the luma's stride and rows (the picture rounded up to 16: whole cells, no partial
+  strip); then, while there are fewer than 8, the rectangle whose cut saves the most area (`>`
+  the best so far, from 0: the first of equals) cut in two: across at half its width or down at
+  half its height, each rounded up to 16 and shrunk to its marked cells, the cut that saves more
+  (across on a tie), the new half last; its own and the new half's best cuts computed again. The
+  output in the order of y · 65 536 + x (the first of equals first), each cut at the picture's
+  right and bottom edge. A frame that marks nothing gives none and leaves the handle's first
+  rectangle, which the game shows again. (A half with no marked cell would leave the caller's
+  buffer as it was; none occurs: every rectangle is a bounding rectangle of whole cells, so both
+  halves of a cut hold one of its edges' marked cells.)
+- **`SmackToBufferRect`** (glanced at, *inferred* in its detail; *not built*: T5a2): it pops
+  rectangles from a list of at most four, first in first out; the list is filled from an
+  iterator over the decoder's state (0x10012760, some 400 instructions, its state filled by
+  `SmackDoFrame`: *not read*) by 0x10007410, which seems to join the iterator's rectangles while
+  their bounding box stays within 1.25 times their areas and to align them to 8 pixels across,
+  and 0x10007680 (*not read*). The game's union of them is the same arithmetic as Bink's.
+  3DOLogo's frames and the skips are exact with the clip's whole rectangle shown;
+  `H3INTRO.SMK`'s 23 frames are not (`start-smacker`'s clip line).
+- **The comparisons** (`h3shell.py drawn --group start`): 11 of the 12 lines exact
+  (`start-plain`, `start-bink`'s logo, clips and menu, every skip's shots, `start-smacker`'s
+  menu); `start-smacker`'s clip line differs only in those 23 frames. The Bink decoder of a
+  comparison reads as the DLL (`Reading::Original`, CLT-Q68: without it two pixels of NWCLogo
+  differ from frame 19 on); each frame is copied onto the back buffer as the DLL copies it
+  (`h3_bink::copies`; a Smacker frame's written blocks), so the cells a frame leaves keep what
+  the buffer held (the black, the rim).
 

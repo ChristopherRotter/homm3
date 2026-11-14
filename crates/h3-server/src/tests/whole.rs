@@ -340,11 +340,16 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         ]
     );
     let replay = h3_files::adventure::parse_replay(&read.start.replay).unwrap();
+    // A whole game's own interval (E16 M5 T23b), kept in its journal.
+    assert_eq!(
+        replay.checkpoint_every,
+        config.server.whole_checkpoint_every
+    );
     let offer = whole::MapOffer::load(&duel_map(), &config.content.packs).unwrap();
     assert_eq!(replay.map.content_hash, offer.map.content_hash);
     let options = GameOptions {
         game,
-        checkpoint_every: config.server.checkpoint_every,
+        checkpoint_every: replay.checkpoint_every,
         record_bytes: config.limits.record_bytes,
         clock: offer.clock,
         commands: config.limits.commands(),
@@ -364,7 +369,7 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
     )
     .unwrap();
     assert!(reopened.started() && reopened.drain_entries().next().is_none());
-    assert_eq!(reopened.journal().commands.len(), 1);
+    assert_eq!(reopened.journal().accepted, 1);
     // A restart restores it: listed running, its seats empty and none open.
     for client in [a, b] {
         client.close().await;
@@ -1273,7 +1278,7 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
     assert_eq!(replay.seed, golden.seed);
     let options = GameOptions {
         game,
-        checkpoint_every: config.server.checkpoint_every,
+        checkpoint_every: config.server.whole_checkpoint_every,
         record_bytes: config.limits.record_bytes,
         clock: loaded.clock,
         commands: config.limits.commands(),

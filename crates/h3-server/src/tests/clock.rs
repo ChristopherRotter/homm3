@@ -692,7 +692,7 @@ async fn two_clients_play_a_timed_game_through_a_duel_held_level_ups_and_restart
     let loaded = crate::whole::MapOffer::load(&offer, &config.content.packs).unwrap();
     let options = h3_protocol::session::game::GameOptions {
         game,
-        checkpoint_every: config.server.checkpoint_every,
+        checkpoint_every: config.server.whole_checkpoint_every,
         record_bytes: config.limits.record_bytes,
         clock: loaded.clock,
         commands: config.limits.commands(),

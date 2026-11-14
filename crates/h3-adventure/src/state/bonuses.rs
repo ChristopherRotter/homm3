@@ -237,14 +237,16 @@ impl AdventureState {
     }
 
     /// Changes the marks of the hero on the map `hero` with `change` (nothing for a hero not on
-    /// the map): the block written first if there is none (copied if the forks share it), the
-    /// hero's entry dropped when it is left empty and the block when no hero holds any.
+    /// the map; since E09 T28b2 a garrison hero's too, whose siege's end clears its battle
+    /// bonuses, [`Self::clear_battle_bonuses`]): the block written first if there is none (copied
+    /// if the forks share it), the hero's entry dropped when it is left empty and the block when
+    /// no hero holds any.
     pub(crate) fn change_marks<R: Default>(
         &mut self,
         hero: HeroId,
         change: impl FnOnce(&mut VisitMarks) -> R,
     ) -> R {
-        if self.hero(hero).is_none() {
+        if self.hero(hero).is_none() && self.garrisoned(hero).is_none() {
             return R::default();
         }
         let all = Arc::make_mut(self.visited.get_or_insert_with(Arc::default));

@@ -16,7 +16,11 @@
 //!   menu at rest), the others black until their task, the cursor the shell's arrow; the words
 //!   still read from standard input. Closing the window ends it.
 //!
-//! `--no-intro` starts at the main menu (the setting `Show Intro` off).
+//! `--no-intro` starts at the main menu (the setting `Show Intro` off); else the start's clips
+//! play first (T5a: `h3_view::shell::start`, read from the video archives, `introrim.pcx` from the
+//! LODs), from Bink or with `--video-quality low` from their Smacker copies (the setting Bink
+//! Video 0, CLT-Q96). The replay draws them as the DLLs copy them (`Bugs::Original`), the window
+//! whole, on the window's own clock.
 
 use std::fs;
 use std::io::{self, BufRead};
@@ -34,10 +38,12 @@ use h3_view::batch::Batch;
 use h3_view::compose::FORMAT;
 use h3_view::shell::look::{self, ShellLayout};
 use h3_view::shell::replay::{self, INPUT_STEP, Replay, Stop, Take};
-use h3_view::shell::{Screen, Shell, text};
+use h3_view::shell::start::{self as clips, Header, Op, Pace, Part, Picture, Source, Start};
+use h3_view::shell::{Ended, Screen, Shell, text};
 
 use crate::assets;
 use crate::lods::Lods;
+use crate::videos::Videos;
 
 /// The original's screen.
 const WIDTH: u32 = 800;
@@ -66,13 +72,16 @@ enum Mode {
 pub struct Options {
     mode: Mode,
     intro: bool,
+    /// The setting Bink Video (Video Quality High: the start's Bink clips).
+    bink_video: bool,
     install: PathBuf,
 }
 
 impl Options {
     /// Parses `[--script <file> | --steps <file> --frames <dir> [--pointer <x>,<y>]
-    /// [--input-step <ms>] | --window [--scale <n>]] [--no-intro] [--install <dir>]`; the
-    /// installation defaults to `$H3_INSTALL`, then the repository's `original-data/install`.
+    /// [--input-step <ms>] | --window [--scale <n>]] [--no-intro] [--video-quality high|low]
+    /// [--install <dir>]`; the installation defaults to `$H3_INSTALL`, then the repository's
+    /// `original-data/install`.
     ///
     /// # Errors
     /// An unknown argument, a flag without its value, or two modes.
@@ -85,7 +94,7 @@ impl Options {
     fn parse_with(args: &[String], env: Option<PathBuf>) -> Result<Self, String> {
         let (mut script, mut steps, mut frames, mut install) = (None, None, None, None);
         let (mut pointer, mut input_step, mut scale) = (None, None, None);
-        let (mut intro, mut window) = (true, false);
+        let (mut intro, mut window, mut bink_video) = (true, false, true);
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -103,6 +112,13 @@ impl Options {
                 "--scale" => scale = Some(number(&value()?)?),
                 "--window" => window = true,
                 "--no-intro" => intro = false,
+                "--video-quality" => {
+                    bink_video = match value()?.as_str() {
+                        "high" => true,
+                        "low" => false,
+                        other => return Err(format!("shell: video quality `{other}`")),
+                    };
+                }
                 other => return Err(format!("shell: unknown argument `{other}`")),
             }
         }
@@ -139,6 +155,7 @@ impl Options {
         Ok(Self {
             mode,
             intro,
+            bink_video,
             install: install
                 .or(env)
                 .unwrap_or_else(|| manifest.join("../../../original-data/install")),
@@ -165,7 +182,7 @@ pub fn run(options: &Options) -> ExitCode {
         Mode::Replay { .. } => Drawer::load(&options.install, Bugs::Original)
             .and_then(|drawer| replay_steps(options, &drawer)),
         Mode::Window(scale) => Drawer::load(&options.install, Bugs::Fixed)
-            .and_then(|drawer| in_window(options.intro, *scale, &drawer)),
+            .and_then(|drawer| in_window(options, *scale, &drawer)),
     };
     match done {
         Ok(()) => ExitCode::SUCCESS,
@@ -213,6 +230,9 @@ fn words(intro: bool, script: Option<&Path>) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// `H3Intro`'s frame (`start_clips` 0x4EE7A6 hands it to `video_play_framed`).
+const RIM: &str = "introrim.pcx";
+
 /// The shell's layout, its assets and its cursor: what draws a frame.
 struct Drawer {
     layout: ShellLayout,
@@ -220,6 +240,10 @@ struct Drawer {
     cursor: Cursor,
     hardware: CursorImage,
     bugs: Bugs,
+    /// `introrim.pcx` drawn on the screen (none when the LODs lack it: `H3Intro` then plays on
+    /// what the back buffer held).
+    rim: Option<Pixels>,
+    videos: Videos,
 }
 
 impl Drawer {
@@ -230,11 +254,17 @@ impl Drawer {
         let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
         let layout = look::parse_layout(&text).map_err(|e| format!("{}: {e}", path.display()))?;
         let lods = Lods::open(install)?;
-        let names = look::names(&layout);
+        let mut names = look::names(&layout);
+        names.push(String::from(RIM));
         let mut batch = Batch::with_bugs(bugs);
         for (name, bytes) in names.iter().zip(lods.batch(&names)?) {
             batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
+        let rim = batch.picture(RIM).and_then(|pcx| {
+            let mut pixels = Pixels::new(WIDTH, HEIGHT, FORMAT)?;
+            draw_image(&mut pixels, pcx, 0, 0);
+            Some(pixels)
+        });
         let (def, frame) = (&layout.cursor.def, layout.cursor.frame);
         let cursor = batch
             .sprite(def)
@@ -254,7 +284,15 @@ impl Drawer {
             cursor,
             hardware,
             bugs,
+            rim,
+            videos: Videos::open(install),
         })
+    }
+
+    /// The start's clips' bytes from the video archives (none for a clip no archive holds: the
+    /// sequence ends there, as the original's).
+    fn clips(&self, bink_video: bool) -> [Option<Vec<u8>>; 3] {
+        Part::ALL.map(|part| self.videos.read(part.file(bink_video)).ok())
     }
 
     /// The frame of `screen`, the cursor at `pointer` if any: a built screen's background copied
@@ -276,6 +314,113 @@ impl Drawer {
         }
         Ok(pixels)
     }
+}
+
+/// A start clip parsed.
+enum Parsed<'a> {
+    Smacker(h3_smacker::Clip<'a>),
+    Bink(h3_bink::Clip<'a>),
+}
+
+/// The start's clips parsed (none for one missing or not readable as its format: the original
+/// ends the sequence at a clip it cannot open).
+fn parse_clips(bytes: &[Option<Vec<u8>>; 3]) -> [Option<Parsed<'_>>; 3] {
+    let mut parsed = [None, None, None];
+    for (slot, bytes) in parsed.iter_mut().zip(bytes) {
+        *slot = bytes.as_deref().and_then(|b| {
+            h3_smacker::Clip::parse(b)
+                .map(Parsed::Smacker)
+                .or_else(|_| h3_bink::Clip::parse(b).map(Parsed::Bink))
+                .ok()
+        });
+    }
+    parsed
+}
+
+impl Parsed<'_> {
+    /// What the start's timing takes of the header (a Smacker clip's ring frame not counted, as
+    /// the handle's +0xC).
+    fn header(&self) -> Header {
+        match self {
+            Self::Smacker(clip) => Header {
+                size: [clip.width, clip.height],
+                frames: u32::try_from(clip.frames() - usize::from(clip.ring())).unwrap_or(0),
+                pace: Pace::Smacker(clips::smack_period(clip.rate)),
+            },
+            Self::Bink(clip) => Header {
+                size: [clip.width, clip.height],
+                frames: u32::try_from(clip.frames().len()).unwrap_or(0),
+                pace: Pace::Bink {
+                    num: clip.rate_num,
+                    den: clip.rate_den,
+                },
+            },
+        }
+    }
+}
+
+/// The start from its clips at 0 ms, and its picture (`bugs` the DLLs' copies or whole frames).
+fn start_of<'c, 'a>(
+    parsed: &'c [Option<Parsed<'a>>; 3],
+    rim: Option<&'c Pixels>,
+    bink_video: bool,
+    bugs: Bugs,
+) -> Result<((Start, Vec<Op>), Picture<'c, 'a>), String> {
+    let headers = parsed.each_ref().map(|p| p.as_ref().map(Parsed::header));
+    // The residues as the DLL reads them for the comparisons (CLT-Q68).
+    let reading = match bugs {
+        Bugs::Fixed => h3_bink::Reading::Fixed,
+        Bugs::Original => h3_bink::Reading::Original,
+    };
+    let mut sources = [None, None, None];
+    for (slot, p) in sources.iter_mut().zip(parsed) {
+        *slot = match p {
+            Some(Parsed::Smacker(clip)) => {
+                h3_smacker::Decoder::new(clip)
+                    .ok()
+                    .map(|decoder| Source::Smacker {
+                        reader: Box::new(clip.reader()),
+                        decoder: Box::new(decoder),
+                    })
+            }
+            Some(Parsed::Bink(clip)) => h3_bink::Decoder::new(clip)
+                .ok()
+                .map(|decoder| decoder.reading(reading))
+                .map(|decoder| Source::Bink {
+                    clip,
+                    decoder: Box::new(decoder),
+                    next: 0,
+                }),
+            None => None,
+        }
+        .zip(p.as_ref().map(Parsed::header));
+    }
+    // A clip whose decoder refuses it does not open.
+    let headers = {
+        let mut h = headers;
+        for (header, source) in h.iter_mut().zip(&sources) {
+            if source.is_none() {
+                *header = None;
+            }
+        }
+        h
+    };
+    let black = Pixels::new(WIDTH, HEIGHT, FORMAT).ok_or("no 800 × 600 screen")?;
+    let picture = Picture::new(black, sources, rim, bink_video, bugs);
+    let mut ops = Vec::new();
+    let start = Start::new(headers, bink_video, 0, &mut ops);
+    Ok(((start, ops), picture))
+}
+
+/// Carries out the ops `picture` has not yet.
+fn catch_up(picture: &mut Picture<'_, '_>, ops: &[Op], applied: &mut usize) -> Result<(), String> {
+    for op in ops.get(*applied..).unwrap_or_default() {
+        picture
+            .apply(*op)
+            .map_err(|e| format!("the start's {op:?}: {e:?}"))?;
+    }
+    *applied = ops.len();
+    Ok(())
 }
 
 /// The frame's pixels as the harness's dumps hold them: 5-6-5, little-endian, row by row.
@@ -340,10 +485,25 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
     };
     let mut listing = Vec::new();
     let mut last: Option<Vec<u16>> = None;
-    let mut r = Replay::new(Shell::new(options.intro), *pointer, *input_step);
+    let bytes = if options.intro {
+        drawer.clips(options.bink_video)
+    } else {
+        [None, None, None]
+    };
+    let clips = parse_clips(&bytes);
+    let (start, mut picture) =
+        start_of(&clips, drawer.rim.as_ref(), options.bink_video, drawer.bugs)?;
+    let mut applied = 0;
+    let shell = Shell::new(options.intro);
+    let mut r = Replay::new(shell, *pointer, *input_step, Some(start));
     for (k, step) in parsed.iter().enumerate() {
         let mut take = |r: &Replay, t: Take<'_>| -> Result<(), String> {
-            let pixels = drawer.frame(r.screen(), Some(r.pointer()))?;
+            catch_up(&mut picture, r.ops(), &mut applied)?;
+            let pixels = if r.screen() == Screen::Start {
+                picture.screen().clone()
+            } else {
+                drawer.frame(r.screen(), Some(r.pointer()))?
+            };
             match t {
                 Take::Shot(name) => {
                     write(&frames.join(format!("{name}.565")), &raw(&pixels))?;
@@ -371,9 +531,22 @@ fn replay_steps(options: &Options, drawer: &Drawer) -> Result<(), String> {
     write(&frames.join("replay.txt"), listing.as_bytes())
 }
 
-/// The shell in a window (T4): the built screens drawn, the words from standard input.
-fn in_window(intro: bool, scale: Option<u32>, drawer: &Drawer) -> Result<(), String> {
-    let mut shell = Shell::new(intro);
+/// The shell in a window (T4): the built screens drawn, the words from standard input; the
+/// start's clips on the window's clock (T5a), a key or a left press skipping them.
+fn in_window(options: &Options, scale: Option<u32>, drawer: &Drawer) -> Result<(), String> {
+    let mut shell = Shell::new(options.intro);
+    let bytes = if options.intro {
+        drawer.clips(options.bink_video)
+    } else {
+        [None, None, None]
+    };
+    let clips = parse_clips(&bytes);
+    let ((mut start, mut ops), mut picture) =
+        start_of(&clips, drawer.rim.as_ref(), options.bink_video, drawer.bugs)?;
+    let mut applied = 0;
+    if start.ended() {
+        let _ = shell.end(Ended::Start);
+    }
     println!("{}", text::describe(shell.screen()));
     let (sender, words) = mpsc::channel();
     // Standard input's reader, beside the window's loop (as the connection's I/O thread, `net`).
@@ -397,9 +570,15 @@ fn in_window(intro: bool, scale: Option<u32>, drawer: &Drawer) -> Result<(), Str
         fullscreen: false,
     })?;
     let drawn = win.set_cursor(Some(drawer.hardware.clone())).is_err();
+    // The start's clock: the window's, from its opening (the start read at 0 ms there).
+    let began = win.ticks_ns();
+    let now = |win: &Window| {
+        u32::try_from(win.ticks_ns().saturating_sub(began) / 1_000_000).unwrap_or(u32::MAX)
+    };
     let (mut pointer, mut dirty) = (None, true);
     loop {
-        for event in win.wait(50) {
+        let playing = shell.screen() == Screen::Start;
+        for event in win.wait(if playing { 5 } else { 50 }) {
             match event {
                 Event::Quit => return Ok(()),
                 Event::Pointer(at) => {
@@ -407,7 +586,20 @@ fn in_window(intro: bool, scale: Option<u32>, drawer: &Drawer) -> Result<(), Str
                     dirty |= drawn;
                 }
                 Event::Redraw => dirty = true,
+                Event::Key(_) | Event::Click { down: true, .. } if playing => {
+                    start.skip(now(&win), &mut ops);
+                }
                 _ => {}
+            }
+        }
+        if shell.screen() == Screen::Start {
+            start.read(now(&win), &mut ops);
+            dirty |= applied < ops.len();
+            catch_up(&mut picture, &ops, &mut applied)?;
+            if start.ended() {
+                let _ = shell.end(Ended::Start);
+                println!("{}", text::describe(shell.screen()));
+                dirty = true;
             }
         }
         while let Ok(line) = words.try_recv() {
@@ -418,7 +610,11 @@ fn in_window(intro: bool, scale: Option<u32>, drawer: &Drawer) -> Result<(), Str
             dirty = true;
         }
         if dirty {
-            let frame = drawer.frame(shell.screen(), pointer.filter(|_| drawn))?;
+            let frame = if shell.screen() == Screen::Start {
+                picture.screen().clone()
+            } else {
+                drawer.frame(shell.screen(), pointer.filter(|_| drawn))?
+            };
             win.present(&frame.xrgb())?;
             dirty = false;
         }
@@ -477,6 +673,9 @@ mod tests {
             parse(&["--window", "--scale", "2"]).unwrap().mode,
             Mode::Window(Some(2))
         );
+        assert!(none.bink_video);
+        assert!(!parse(&["--video-quality", "low"]).unwrap().bink_video);
+        assert!(parse(&["--video-quality", "high"]).unwrap().bink_video);
         let refused = [
             &["--script"][..],
             &["--intro"],
@@ -489,6 +688,7 @@ mod tests {
             &["--steps", "s", "--frames", "f", "--pointer", "x,2"],
             &["--input-step", "x"],
             &["--scale", "2"],
+            &["--video-quality", "medium"],
         ];
         for args in refused {
             assert!(parse(args).is_err(), "{args:?}");

@@ -3546,3 +3546,66 @@ user's cut in SRV-Q36).
   its watch; an abandoned game's spectator hears `Abandoned`. T20's void test: the game created
   open, a spectator after the restart hears `CommandLimit`. In `h3-protocol`:
   `takes_spectators` (closed, open, paused, a limit of 0) and the lobby's flag.
+
+### M5 T23 — long journals measured (2026-11-14, SRV-Q37)
+
+Baseline: `master` 0872fc6 (#928, T22b; the setup's full local verify green on it). No original
+data. Kept whole.
+
+- **The measurement** (`h3_server::measure`, the binary `h3-server-journals`, kept in the repo):
+  a whole game on a map offer loaded as a server's `[[map]]` (`whole::MapOffer::load`: the three
+  packs, the faithful profile, every seat a player's), played for N days by the plain random
+  agent (`Replay::record_random`) or a busy one that makes each of a seat's turns up to
+  `--per-turn` map commands with free tactics switches (GAM-MAN-001; 1 000 is a seat's bound,
+  `[limits] commands_per_turn`); its journal for the commands up to the end of each mark's day
+  written through `journal::whole` as a game of connections journals it (every seat `Taken` by a
+  token in player order, `Started`, each seat's `Numbered` commands and the system's `Command`s,
+  a checkpoint every `checkpoint_every`; untimed, no `Elapsed`), then read
+  (`journal::whole::read`), re-run (`GameSession::reopen`, as `whole::Prepared::resume`) and the
+  replay up to the day verified (`Replay::verify`), each timed; the engine's re-run alone
+  (`apply`) and the state's heap at each day's end; the heap through the binary's counting
+  allocator (`Meter`): the reading's peak and what it holds, the re-run's peak beyond it, the
+  restored session's and its copy of the commands (`GameJournal::commands`, cloned and counted).
+- **The numbers** (`E16-design.md` §15): a year on `e08-economy-144` and `e08-xl-144`, two seats:
+  6 595 to 29 233 commands for the plain agent and 40 a turn (0.35 to 1.58 MiB of journal, read
+  in 3 to 10 ms, re-run in 44 to 69 ms, restored sessions of 2.5 to 5.6 MiB), 585 073 at the bound
+  on the XL map (31.8 MiB, 0.17 s, 0.75 s, 114 MiB). Found: the checkpoints' hashes (about 25 µs
+  each on these maps) are 80 % of a re-run at the bound; a restored session keeps the re-run's
+  drained entries' capacity for its life (`GameSession::rerun`), beside the copy (56 B each); a
+  paused game is re-run at the start and again at its resuming join; whole games fill the
+  lobby's `[limits] games` for ever before E10, so a restart's serial re-run of 16 flooded
+  eight-seat games takes about a minute.
+- **The case for state saves** written (§15): not for the server now (their cost is a versioned
+  state serialization across five crates of three lanes; a year's restore is under a second at
+  the bound with two seats); they pay for single games whose re-run reaches seconds, or a
+  player's own save and load (ADR-0004 point 9, the adventure lane's).
+- **The user (SRV-Q37):** remedies (a) the re-run's entries released, (b) no copy of a game of
+  connections' commands, (c) a whole game's own checkpoint interval (250) now, as T23b before
+  T24 (the agent's recommendation); (d) a streaming restore, (e) a lazy or parallel restart and
+  (g) state saves documented for later in T24; no (f), a total bound.
+
+### M5 T23b — the long journals' remedies (2026-11-14, SRV-Q37)
+
+Baseline: T23's commit (e692a71 on `master` 0872fc6). No original data. No wire or format change
+(the protocol stays v66, `GAME_JOURNAL_FORMAT_VERSION` 1).
+
+- **(a) The re-run's entries released** (`GameSession::rerun`): after the comparison with the
+  journal it drains its own entries and `shrink_to_fit`s the vector, which kept the whole
+  journal's room for the game's life (56 B an entry, up to twice with the spare capacity).
+- **(b) No copy of a game of connections' commands:** `GameJournal::commands` is an `Option`,
+  `Some` for the in-process host (`start`, `restore`: its tests compare it with a replay's),
+  `None` from `GameSession::new` on (`reopen` too); `GameJournal::accepted` counts the accepted
+  commands, the checkpoints' cadence. The tests that held a game of connections' journal equal to
+  its in-process twin's (`game_seats.rs`, `game_computer.rs`) compare it through
+  `game_seats::same_journal`: the same but for the commands, and the twin's commands those of the
+  game of connections' journaled entries, in order.
+- **(c) A whole game's own checkpoint interval:** `[server] whole_checkpoint_every` (250,
+  *provisional*; the battles' `checkpoint_every` stays 25) for a new whole game
+  (`whole::Prepared::new`); a restored one keeps its journal's (its first line's replay), so a
+  journal written before restores as written. The tests' servers set it to their battles' 10;
+  `tests/whole.rs` checks a journal's interval is the server's whole-game one, and the
+  configuration's default.
+- **Measured again** (`h3-server-journals`, its default interval now the server's): the XL year
+  at the bound re-run in 0.16 s (0.75 before), verified in 0.09 s, its restored session 2.1 MiB
+  (114.3), the re-run's peak beyond the read journal 57.5 MiB (115.4); the plain agent's years
+  re-run in 0.03 to 0.06 s, sessions of 1.6 to 2.0 MiB (`E16-design.md` §15, "After T23b").

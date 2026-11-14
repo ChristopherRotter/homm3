@@ -148,6 +148,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
             owner_facts: Some(TownOwnerView {
                 hall: 4,
                 income: vec![(GOLD, 4001)],
+                garrison_hero: false,
             }),
             // No dwelling stands, no Portal (E09 T26b).
             buildings: Some(TownBuildingsView {
@@ -215,6 +216,7 @@ fn a_viewer_sees_each_town_with_its_public_facts_and_its_own_with_the_owners() {
         Some(TownOwnerView {
             hall: 1,
             income: vec![(GOLD, 500)],
+            garrison_hero: false,
         })
     );
     let public = TownView {
@@ -451,6 +453,7 @@ fn a_heros_visions_creature_shows_another_teams_town_at_the_top_level_within_its
         owner_facts: Some(TownOwnerView {
             hall: 1,
             income: vec![(GOLD, 500)],
+            garrison_hero: false,
         }),
         ..towns_seen(&rules, &seer(&rules, (0, 0), 1, &[IMP]), RED)[1].clone()
     };

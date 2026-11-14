@@ -60,6 +60,7 @@ fn config(limits: Limits) -> Config {
             bind: String::from("127.0.0.1:0"),
             data: std::env::temp_dir().join(format!("h3-server-{:016x}", game::os_u64().unwrap())),
             checkpoint_every: 10,
+            whole_checkpoint_every: 10,
             shadow_instance: false,
             public_url: None,
             addresses: vec![],
@@ -1648,9 +1649,10 @@ fn configurations_are_checked() {
     assert_eq!(
         (
             minimal.server.checkpoint_every,
+            minimal.server.whole_checkpoint_every,
             minimal.offers[0].bots.len()
         ),
-        (25, 0)
+        (25, 250, 0)
     );
     let refused = |text: &str| Config::parse(&format!("[content]\npacks = \"p\"\n{text}"), &base);
     assert!(

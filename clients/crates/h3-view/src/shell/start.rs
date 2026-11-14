@@ -1,0 +1,705 @@
+//! The start (E27 M2 T5a; `docs/epics/E27-design.md` §2.1, §10): the clips before the main menu,
+//! as `game_main` plays them (`start_clips` 0x4EE7A6), timed on the game's clock and drawn as the
+//! game draws them, into its back buffer and onto the screen. [`Start`] is the timing: what the
+//! game does at each reading of its clock (its [`Op`]s); [`Picture`] carries the ops out on the two
+//! buffers with the clips' decoders.
+//!
+//! **The sequence.** The back buffer filled black and shown (0x4EE776); clip 28 `3DOLogo`
+//! full screen (`video_play_fullscreen` 0x5972D0, always Smacker); if it ran to its end, clip 29
+//! `NWCLogo` full screen; if that ran to its end, clip 30 `H3Intro` framed in `introrim.pcx`
+//! (`video_play_framed` 0x4EE1B0). `NWCLogo` and `H3Intro` play from Bink with the setting Bink
+//! Video on (Video Quality High), else from their Smacker copies (CLT-Q96); a clip that does not
+//! open ends the sequence. Then the main menu.
+//!
+//! **The frames' times.** `SMACKW32.DLL`'s `SmackWait` (0x10007840, read; no sound track) counts
+//! in 10 µs (the clock's milliseconds × 100): its first call sets the first frame's due time to
+//! the call's time + the frame time and waits; a call at or after the due time lets the frame
+//! through and sets the next due time to the call's time + the frame time, unless the call came
+//! between one and two frame times late (an unsigned comparison of a negative difference:
+//! [`smack_wait`]), when it is the due time + the frame time. So a Smacker clip's frames are due
+//! from the last one let through: at 1 ms steps 67 ms apart at a frame time of 66.66 ms, at
+//! 10 ms steps 70. `BINKW32.DLL`'s `BinkWait` lets frame p through once the clock reaches the
+//! first frame's time + ⌊1000 p / rate⌋ ms (E17 M5 T4b2b's measure, [`crate::clip`]): Bink keeps
+//! its rate. The game's loop decodes a frame let through into the back buffer and shows what
+//! changed (`video_show` 0x5979D0): a Smacker clip's rectangles from `SmackToBufferRect`, a Bink
+//! clip's from `BinkGetRects` (`h3_bink::rects`), the union of each list as the game's own
+//! arithmetic takes it ([`shown_union`]: a lower rectangle further left cuts off the right of
+//! those above it, the screen there keeping an older frame until a later union covers it;
+//! CLT-Q124, decision 32: the client shows the clip's whole rectangle, the union the
+//! comparisons'). `NWCLogo`'s Bink copy (400 × 300, clip 29: `video_show`'s own case) is drawn at the
+//! back buffer's corner and stretched onto the whole screen by DirectDraw. *Not built:* the
+//! Smacker clips' rectangles (`SMACKW32.DLL`'s, T5a2): their whole rectangle is shown, so
+//! `H3INTRO.SMK` differs from the original in 23 of its frames' small boxes.
+//!
+//! **The ends.** A clip's last frame is decoded but not shown: the clips with the clip table's
+//! +0xA (28 to 31) end in the window manager's fade (0x602C50 with 1, 4, 0 → 0x6030E0): the back
+//! buffer shown at full, half and a quarter of each channel's level, each step 50 ms on the clock
+//! after the last (`wait_until`: the first reading at or past it), then the back buffer filled
+//! black and shown, 50 ms after the third. So `NWCLogo`'s Bink copy fades from the back buffer,
+//! at the corner unstretched (CLT-Q123; its last frame is black, so only a skip shows it;
+//! decision 32: the client fades the screen as shown, the corner the comparisons').
+//!
+//! **Skipping** (as the first run's reading is not the client's, CLT-Q85: never the first run): a
+//! key down but F4, a left or a right press stops the clip playing. The full-screen clips then
+//! fade from what the back buffer holds; `H3Intro` stops at once (`video_stop_all`, no fade).
+//! Either way the sequence ends. An input during a fade is lost (the next clip flushes the input
+//! queue; after `H3Intro`'s fade the menu would take it: not modelled).
+//!
+//! Pure: the times are the caller's clock readings (the replay's, `super::replay`; the window's).
+
+use alloc::vec::Vec;
+
+use h3_bink::Decoder as BinkDecoder;
+use h3_render::Bugs;
+use h3_render::screen::Screen as Pixels;
+
+/// The screen's width and height.
+pub const WIDTH: u32 = 800;
+/// See [`WIDTH`].
+pub const HEIGHT: u32 = 600;
+/// A fade's step (`0x6030E0`: each step waits until 50 ms after the last began).
+pub const FADE_STEP: u32 = 50;
+/// Where `H3Intro` plays inside its frame (`video_play_framed` 0x4EE1B0: (80, 187)).
+pub const FRAMED_AT: [u32; 2] = [80, 187];
+
+/// The start's clips, in their order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Part {
+    /// Clip 28 `3DOLogo` (full screen, Smacker always).
+    Logo,
+    /// Clip 29 `NWCLogo` (full screen).
+    Nwc,
+    /// Clip 30 `H3Intro` (in `introrim.pcx`'s frame).
+    Intro,
+}
+
+/// A clip's file format.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Codec {
+    /// Smacker (`.smk`).
+    Smacker,
+    /// Bink (`.bik`).
+    Bink,
+}
+
+impl Part {
+    /// The three, in their order.
+    pub const ALL: [Self; 3] = [Self::Logo, Self::Nwc, Self::Intro];
+
+    /// The clip table's index (0x6839C0).
+    #[must_use]
+    pub const fn index(self) -> u32 {
+        match self {
+            Self::Logo => 28,
+            Self::Nwc => 29,
+            Self::Intro => 30,
+        }
+    }
+
+    /// The format played: Bink for `NWCLogo` and `H3Intro` with the setting Bink Video on
+    /// (`bink_video`, 0x6987A8: the table's +8 set for them), else Smacker.
+    #[must_use]
+    pub const fn codec(self, bink_video: bool) -> Codec {
+        match self {
+            Self::Nwc | Self::Intro if bink_video => Codec::Bink,
+            _ => Codec::Smacker,
+        }
+    }
+
+    /// The file played, as the video archives name it (their lookup ignores case).
+    #[must_use]
+    pub const fn file(self, bink_video: bool) -> &'static str {
+        match (self, self.codec(bink_video)) {
+            (Self::Logo, _) => "3DOLOGO.SMK",
+            (Self::Nwc, Codec::Bink) => "NWCLOGO.BIK",
+            (Self::Nwc, Codec::Smacker) => "NWCLOGO.SMK",
+            (Self::Intro, Codec::Bink) => "H3INTRO.BIK",
+            (Self::Intro, Codec::Smacker) => "H3INTRO.SMK",
+        }
+    }
+
+    fn next(self) -> Option<Self> {
+        match self {
+            Self::Logo => Some(Self::Nwc),
+            Self::Nwc => Some(Self::Intro),
+            Self::Intro => None,
+        }
+    }
+}
+
+/// How a clip's frames are timed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pace {
+    /// Smacker's: the frame time in 10 µs ([`smack_period`]).
+    Smacker(u32),
+    /// Bink's: its rate, frames per `den` seconds.
+    Bink {
+        /// Frames…
+        num: u32,
+        /// …per so many seconds.
+        den: u32,
+    },
+}
+
+/// What the start needs of a clip's header.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Header {
+    /// The picture's width and height.
+    pub size: [u32; 2],
+    /// Its frames.
+    pub frames: u32,
+    /// Their pace.
+    pub pace: Pace,
+}
+
+/// A Smacker header's frame time in 10 µs, as `SmackOpen` takes it: a negative value is in
+/// 10 µs already, a positive one in ms, 0 is 100 ms.
+#[must_use]
+pub const fn smack_period(rate: i32) -> u32 {
+    if rate < 0 {
+        rate.unsigned_abs()
+    } else if rate > 0 {
+        rate.unsigned_abs().saturating_mul(100)
+    } else {
+        10_000
+    }
+}
+
+/// `SmackWait`'s schedule (module doc): the next due time in 10 µs (none before the first call).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct SmackSchedule {
+    next: Option<u32>,
+}
+
+/// One call of `SmackWait` at `now` ms with the frame time `period` (10 µs): whether a frame goes
+/// through. The arithmetic is the DLL's, on 32-bit words.
+pub fn smack_wait(schedule: &mut SmackSchedule, now: u32, period: u32) -> bool {
+    let now = now.wrapping_mul(100);
+    let Some(next) = schedule.next else {
+        schedule.next = Some(now.wrapping_add(period));
+        return false;
+    };
+    if now < next {
+        return false;
+    }
+    let after = next.wrapping_add(period);
+    // The DLL compares `now - after` with the period unsigned: a call before `after` (the usual
+    // case) gives a huge difference, so the next frame is due a period after this call.
+    schedule.next = Some(if now.wrapping_sub(after) > period {
+        now.wrapping_add(period)
+    } else {
+        after
+    });
+    true
+}
+
+/// What the game does to its buffers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Op {
+    /// The back buffer filled black and shown whole (the start's first screen, a fade's end).
+    Black,
+    /// `introrim.pcx` copied whole onto the back buffer (`H3Intro`'s frame).
+    Rim,
+    /// The clip's frame decoded into the back buffer at its place (the frames come in order).
+    Frame(Part, u32),
+    /// The clip's rectangle shown: the back buffer's onto the screen (`NWCLogo`'s Bink copy
+    /// stretched onto the whole screen).
+    Show(Part),
+    /// The whole back buffer shown.
+    ShowAll,
+    /// A fade's step: the screen the back buffer with each channel's level shifted down so many
+    /// bits (0 to 2).
+    Fade(u8),
+}
+
+/// A clip playing: its part and header, the frames let through so far, Smacker's schedule or
+/// Bink's first frame's time.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Playing {
+    part: Part,
+    header: Header,
+    done: u32,
+    smack: SmackSchedule,
+    first: Option<u32>,
+}
+
+/// What the start is doing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum State {
+    /// A clip plays.
+    Playing(Playing),
+    /// A fade: its last step, the time it began, what comes after it.
+    Fading {
+        step: u8,
+        at: u32,
+        then: Option<Part>,
+    },
+    /// The sequence ended: the main menu.
+    Ended,
+}
+
+/// The start's timing (module doc): the clips' headers and what plays.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Start {
+    headers: [Option<Header>; 3],
+    bink_video: bool,
+    state: State,
+}
+
+impl Start {
+    /// The start at its first reading of the clock (`now`), each clip's header (none for a clip
+    /// that does not open) and the setting Bink Video: the screen black, `3DOLogo` opened. The
+    /// ops of that reading go to `ops`.
+    #[must_use]
+    pub fn new(
+        headers: [Option<Header>; 3],
+        bink_video: bool,
+        now: u32,
+        ops: &mut Vec<Op>,
+    ) -> Self {
+        let mut start = Self {
+            headers,
+            bink_video,
+            state: State::Ended,
+        };
+        ops.push(Op::Black);
+        start.open(Part::Logo, now, ops);
+        start
+    }
+
+    /// Whether the sequence ended (the main menu next).
+    #[must_use]
+    pub const fn ended(&self) -> bool {
+        matches!(self.state, State::Ended)
+    }
+
+    /// The clip playing, if any (none during a fade).
+    #[must_use]
+    pub const fn playing(&self) -> Option<Part> {
+        match self.state {
+            State::Playing(Playing { part, .. }) => Some(part),
+            _ => None,
+        }
+    }
+
+    /// The setting Bink Video the start plays with.
+    #[must_use]
+    pub const fn bink_video(&self) -> bool {
+        self.bink_video
+    }
+
+    /// Opens `part` at `now`: `H3Intro`'s frame first; the clip's first reading of its clock.
+    fn open(&mut self, part: Part, now: u32, ops: &mut Vec<Op>) {
+        let Some(header) = self.headers[part as usize] else {
+            self.state = State::Ended;
+            return;
+        };
+        let playing = Playing {
+            part,
+            header,
+            done: 0,
+            smack: SmackSchedule::default(),
+            first: None,
+        };
+        if part == Part::Intro {
+            // `video_play_framed`: the rim onto the back buffer, a tick of the clip, the whole
+            // screen shown.
+            ops.push(Op::Rim);
+            self.tick(playing, now, ops);
+            ops.push(Op::ShowAll);
+        } else {
+            self.state = State::Playing(playing);
+        }
+        self.read(now, ops);
+    }
+
+    /// The game's readings of its clock at `now` (a reading after the last one's, or the same):
+    /// what is due runs, its ops into `ops`.
+    pub fn read(&mut self, now: u32, ops: &mut Vec<Op>) {
+        // At one reading the game runs until it waits on the clock: a frame let through, a
+        // fade's step, the next clip opened, until nothing more is due.
+        loop {
+            let before = self.state;
+            match self.state {
+                State::Playing(playing) => self.tick(playing, now, ops),
+                State::Fading { step, at, then } => {
+                    if now.wrapping_sub(at) as i32 >= FADE_STEP as i32 {
+                        self.fade_step(step, now, then, ops);
+                    }
+                }
+                State::Ended => return,
+            }
+            if self.state == before {
+                return;
+            }
+        }
+    }
+
+    /// One tick of the clip `playing` at `now`: a frame let through when due.
+    fn tick(&mut self, mut playing: Playing, now: u32, ops: &mut Vec<Op>) {
+        let Playing {
+            part, header, done, ..
+        } = playing;
+        let due = match header.pace {
+            Pace::Smacker(period) => smack_wait(&mut playing.smack, now, period),
+            Pace::Bink { num, den } => {
+                let start = *playing.first.get_or_insert(now);
+                let at = u64::from(done) * 1000 * u64::from(den) / u64::from(num.max(1));
+                u64::from(now.wrapping_sub(start)) >= at
+            }
+        };
+        if !due {
+            self.state = State::Playing(playing);
+            return;
+        }
+        ops.push(Op::Frame(part, done));
+        if done + 1 >= header.frames {
+            // The last frame: decoded, not shown; the clip closed and the fade (+0xA).
+            self.fade(now, part.next(), ops);
+        } else {
+            ops.push(Op::Show(part));
+            playing.done = done + 1;
+            self.state = State::Playing(playing);
+        }
+    }
+
+    /// The fade begins at `now`: its first step shown.
+    fn fade(&mut self, now: u32, then: Option<Part>, ops: &mut Vec<Op>) {
+        ops.push(Op::Fade(0));
+        self.state = State::Fading {
+            step: 0,
+            at: now,
+            then,
+        };
+    }
+
+    /// The fade's next step after `step`, due at `now`.
+    fn fade_step(&mut self, step: u8, now: u32, then: Option<Part>, ops: &mut Vec<Op>) {
+        if step < 2 {
+            ops.push(Op::Fade(step + 1));
+            self.state = State::Fading {
+                step: step + 1,
+                at: now,
+                then,
+            };
+            return;
+        }
+        ops.push(Op::Black);
+        match then {
+            Some(part) => self.open(part, now, ops),
+            None => self.state = State::Ended,
+        }
+    }
+
+    /// An input that stops a clip (a key down but F4, a left or a right press) at `now`: the
+    /// full-screen clips fade, `H3Intro` stops at once; the sequence ends. Nothing during a fade.
+    pub fn skip(&mut self, now: u32, ops: &mut Vec<Op>) {
+        match self.state {
+            State::Playing(Playing {
+                part: Part::Intro, ..
+            }) => self.state = State::Ended,
+            State::Playing(_) => self.fade(now, None, ops),
+            State::Fading { .. } | State::Ended => {}
+        }
+    }
+}
+
+/// A clip's decoding for [`Picture`].
+#[derive(Debug, Clone)]
+pub enum Source<'c, 'a> {
+    /// A Smacker clip's frames in order.
+    Smacker {
+        /// Its reader.
+        reader: alloc::boxed::Box<h3_smacker::Reader<'c, 'a>>,
+        /// Its decoder.
+        decoder: alloc::boxed::Box<h3_smacker::Decoder>,
+    },
+    /// A Bink clip's.
+    Bink {
+        /// The clip.
+        clip: &'c h3_bink::Clip<'a>,
+        /// Its decoder.
+        decoder: alloc::boxed::Box<BinkDecoder>,
+        /// The next frame to decode.
+        next: usize,
+    },
+}
+
+/// Why a frame was not drawn.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PictureError {
+    /// A frame asked for out of order, or of a clip without its source.
+    Order(Part, u32),
+    /// The Smacker decoder's.
+    Smacker(h3_smacker::Error),
+    /// The Bink decoder's.
+    Bink(h3_bink::Error),
+}
+
+/// The game's back buffer and screen, the start's ops carried out on them (module doc).
+#[derive(Debug, Clone)]
+pub struct Picture<'c, 'a> {
+    back: Pixels,
+    screen: Pixels,
+    sources: [Option<Source<'c, 'a>>; 3],
+    places: [[u32; 4]; 3],
+    rim: Option<&'c Pixels>,
+    stretched: bool,
+    bugs: Bugs,
+    decoded: [u32; 3],
+    /// Each Bink clip's rectangles of its last frame (`h3_bink::rects`), the first kept from a
+    /// frame before when the last marked nothing (the DLL leaves it in the handle).
+    rects: [Vec<h3_bink::Rect>; 3],
+    /// What a fade fades: the back buffer as the game's fade copies it (`Bugs::Original`), the
+    /// screen as shown (`Bugs::Fixed`, CLT-Q123); taken at its first step.
+    fading: Option<Pixels>,
+}
+
+/// The union of a clip's rectangles as `video_show` (0x5979D0) takes it: from the first, each
+/// later one's left and top edges taken when further left or up, its right and bottom edges when
+/// further out than the union's width and height from the edges as they now are, so a rectangle
+/// further left that does not reach as far right shortens the union by as much (the rectangles
+/// come top to bottom: one lower and further left cuts off the right of those above it until a
+/// later frame shows them; CLT-Q124). None for none.
+#[must_use]
+pub fn shown_union(rects: &[h3_bink::Rect]) -> Option<h3_bink::Rect> {
+    let (&[mut x, mut y, mut w, mut h], rest) = rects.split_first()?;
+    for &[rx, ry, rw, rh] in rest {
+        x = x.min(rx);
+        y = y.min(ry);
+        if rx + rw > w + x {
+            w = rx + rw - x;
+        }
+        if ry + rh > h + y {
+            h = ry + rh - y;
+        }
+    }
+    Some([x, y, w, h])
+}
+
+/// Where a clip's frame goes in the back buffer: a full-screen clip centred, `H3Intro` in its
+/// frame, `NWCLogo`'s Bink copy at the corner (`video_play_fullscreen_bink` 0x44DD20's case of
+/// clip 29).
+#[must_use]
+pub fn place(part: Part, codec: Codec, size: [u32; 2]) -> [u32; 4] {
+    let [w, h] = size;
+    let [x, y] = match (part, codec) {
+        (Part::Intro, _) => FRAMED_AT,
+        (Part::Nwc, Codec::Bink) => [0, 0],
+        _ => [WIDTH.wrapping_sub(w) / 2, HEIGHT.wrapping_sub(h) / 2],
+    };
+    [x, y, w, h]
+}
+
+impl<'c, 'a> Picture<'c, 'a> {
+    /// The buffers as `black` (the screen, 800 × 600 and black), each clip's source and header
+    /// (none for one that does not open), the rim (`introrim.pcx`, 800 × 600), the setting Bink
+    /// Video and `bugs`: [`Bugs::Original`] each frame as the DLLs copy it (a Smacker frame's
+    /// written blocks through its palette, a Bink frame's changed cells: `h3_bink::copies`;
+    /// CLT-Q119, CLT-Q122), its rectangles shown as the game takes their union ([`shown_union`],
+    /// CLT-Q124) and a fade from the back buffer (`NWCLogo`'s at the corner, CLT-Q123);
+    /// [`Bugs::Fixed`] every pixel, the clip's whole rectangle and a fade from the screen as
+    /// shown (decisions 24, 28, 32).
+    #[must_use]
+    pub fn new(
+        black: Pixels,
+        sources: [Option<(Source<'c, 'a>, Header)>; 3],
+        rim: Option<&'c Pixels>,
+        bink_video: bool,
+        bugs: Bugs,
+    ) -> Self {
+        let mut places = [[0; 4]; 3];
+        let mut kept = [None, None, None];
+        for ((k, part), source) in Part::ALL.iter().enumerate().zip(sources) {
+            if let Some((source, header)) = source {
+                places[k] = place(*part, part.codec(bink_video), header.size);
+                kept[k] = Some(source);
+            }
+        }
+        Self {
+            back: black.clone(),
+            screen: black,
+            sources: kept,
+            places,
+            rim,
+            stretched: bink_video,
+            bugs,
+            decoded: [0; 3],
+            rects: [Vec::new(), Vec::new(), Vec::new()],
+            fading: None,
+        }
+    }
+
+    /// The screen.
+    #[must_use]
+    pub const fn screen(&self) -> &Pixels {
+        &self.screen
+    }
+
+    /// The back buffer.
+    #[must_use]
+    pub const fn back(&self) -> &Pixels {
+        &self.back
+    }
+
+    /// Carries out `op`.
+    ///
+    /// # Errors
+    /// A frame out of order or not decoded ([`PictureError`]): the buffers as they were.
+    pub fn apply(&mut self, op: Op) -> Result<(), PictureError> {
+        match op {
+            Op::Black => {
+                self.back.fill(0);
+                self.screen.fill(0);
+                self.fading = None;
+            }
+            Op::Rim => {
+                if let Some(rim) = self.rim {
+                    self.back
+                        .copy_rect(rim, [0, 0, i64::from(WIDTH), i64::from(HEIGHT)]);
+                }
+            }
+            Op::Frame(part, n) => self.frame(part, n)?,
+            Op::Show(part) => self.show(part),
+            Op::ShowAll => self.screen.clone_from(&self.back),
+            Op::Fade(shift) => self.fade(shift),
+        }
+        Ok(())
+    }
+
+    fn rect(&self, part: Part) -> [i64; 4] {
+        self.places[part as usize].map(i64::from)
+    }
+
+    fn show(&mut self, part: Part) {
+        let [x, y, w, h] = self.rect(part);
+        if part == Part::Nwc && self.stretched {
+            // DirectDraw's stretch of the corner onto the whole screen (`video_show`'s `Blt`),
+            // the nearest pixel as Wine's software blit takes it: a step of the source's size
+            // over the screen's in 16.16 fixed point (400 × 300: each pixel doubled).
+            let back = self.back.pixels();
+            let (sw, sh) = (WIDTH as usize, HEIGHT as usize);
+            let x_step = ((w as usize) << 16) / sw;
+            let y_step = ((h as usize) << 16) / sh;
+            let out = self.screen.pixels_mut();
+            for (row, line) in out.chunks_mut(sw).enumerate() {
+                let from = ((row * y_step) >> 16) * sw;
+                for (col, pixel) in line.iter_mut().enumerate() {
+                    *pixel = back
+                        .get(from + ((col * x_step) >> 16))
+                        .copied()
+                        .unwrap_or(0);
+                }
+            }
+            return;
+        }
+        let bink = matches!(self.sources[part as usize], Some(Source::Bink { .. }));
+        if bink && self.bugs == Bugs::Original {
+            // The DLL's rectangles' union as the game takes it (CLT-Q124: the comparisons').
+            if let Some([rx, ry, rw, rh]) = shown_union(&self.rects[part as usize]) {
+                let (rx, ry) = (x + i64::from(rx), y + i64::from(ry));
+                self.screen
+                    .copy_rect(&self.back, [rx, ry, rx + i64::from(rw), ry + i64::from(rh)]);
+            }
+            return;
+        }
+        self.screen.copy_rect(&self.back, [x, y, x + w, y + h]);
+    }
+
+    fn fade(&mut self, shift: u8) {
+        let from = match (shift, self.fading.take()) {
+            (1.., Some(from)) => from,
+            _ => match self.bugs {
+                Bugs::Original => self.back.clone(),
+                Bugs::Fixed => self.screen.clone(),
+            },
+        };
+        let masks = from.format().channel_masks();
+        let shift = u32::from(shift);
+        for (out, &pixel) in self.screen.pixels_mut().iter_mut().zip(from.pixels()) {
+            let p = u32::from(pixel);
+            let faded = masks
+                .iter()
+                .fold(0, |acc, &mask| acc | (((p & mask) >> shift) & mask));
+            *out = u16::try_from(faded).unwrap_or(0);
+        }
+        self.fading = Some(from);
+    }
+
+    fn frame(&mut self, part: Part, n: u32) -> Result<(), PictureError> {
+        let k = part as usize;
+        let order = PictureError::Order(part, n);
+        if self.decoded[k] != n {
+            return Err(order);
+        }
+        let [x0, y0, _, _] = self.places[k].map(|v| v as usize);
+        let bugs = self.bugs;
+        let width = WIDTH as usize;
+        let back = self.back.pixels_mut();
+        match self.sources[k].as_mut().ok_or(order)? {
+            Source::Smacker { reader, decoder } => {
+                reader
+                    .next()
+                    .ok_or(order)?
+                    .and_then(|packet| decoder.decode(&packet).map(|_| ()))
+                    .map_err(PictureError::Smacker)?;
+                let frame = decoder.frame();
+                let w = frame.width() as usize;
+                let palette = frame.palette();
+                let colour = |index: u8| {
+                    let at = 3 * usize::from(index);
+                    let [r, g, b] = [0, 1, 2].map(|c| u16::from(palette[at + c]));
+                    (r >> 3) << 11 | (g >> 2) << 5 | b >> 3
+                };
+                let written = frame.written();
+                for (at, &index) in frame.pixels().iter().enumerate() {
+                    let (x, y) = (at % w.max(1), at / w.max(1));
+                    let block = (y / 4) * (w / 4) + x / 4;
+                    let copied = match bugs {
+                        Bugs::Fixed => true,
+                        Bugs::Original => written.get(block).copied().unwrap_or(false),
+                    };
+                    let at = (y0 + y) * width + x0 + x;
+                    if let Some(pixel) = back.get_mut(at).filter(|_| copied && x0 + x < width) {
+                        *pixel = colour(index);
+                    }
+                }
+            }
+            Source::Bink {
+                clip,
+                decoder,
+                next,
+            } => {
+                clip.video(*next)
+                    .and_then(|packet| decoder.decode(packet).map(|_| ()))
+                    .map_err(PictureError::Bink)?;
+                *next += 1;
+                let rects = h3_bink::rects(decoder);
+                if rects.is_empty() {
+                    self.rects[k].truncate(1);
+                } else {
+                    self.rects[k] = rects;
+                }
+                let frame = decoder.frame();
+                let pixels = crate::clip::rgb565(frame);
+                let w = frame.planes()[0].width();
+                for (at, &pixel) in pixels.iter().enumerate() {
+                    let (x, y) = (at % w.max(1), at / w.max(1));
+                    let copied = match bugs {
+                        Bugs::Fixed => true,
+                        Bugs::Original => h3_bink::copies(decoder, x, y),
+                    };
+                    let at = (y0 + y) * width + x0 + x;
+                    if let Some(p) = back.get_mut(at).filter(|_| copied && x0 + x < width) {
+                        *p = pixel;
+                    }
+                }
+            }
+        }
+        self.decoded[k] = n + 1;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests;

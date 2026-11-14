@@ -995,6 +995,7 @@ pub(super) fn telling(viewer: PlayerId, view: &TownView) -> Vec<GameEvent> {
         level: view.garrison.level,
         slots: view.garrison.army.is_some(),
         hall: view.owner_facts.as_ref().map(|facts| facts.hall),
+        garrison_hero: view.owner_facts.as_ref().is_some_and(|f| f.garrison_hero),
         buildings: view.buildings,
     }];
     let army = view.garrison.army.as_deref().unwrap_or_default();

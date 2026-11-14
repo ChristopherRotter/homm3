@@ -268,6 +268,14 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   store of the DLL's); a change shows only in the samples, so run `bink-check.sh` after one. A
   sample's hash change in `h3-smacker` or `h3-bink` needs the samples checked again against the
   DLL (and FFmpeg for Smacker) before the hashes are updated.
+- The start's clips (E27 M2 T5a, design §10): a comparison's Bink decoder needs
+  `Reading::Original` (`h3_bink::Decoder::reading`; the default is `Fixed`: two of NWCLogo's
+  pixels differ from its frame 19 on), and its frames go onto the back buffer as the DLL copies
+  them (`h3_bink::copies`), not through a `Target` of zeros (YUV 0 is green in 5-6-5, the game's
+  buffer black or the rim). The screen is not the back buffer: `video_show` shows only the union
+  of the DLLs' rectangles (`h3_bink::rects`, `shown_union`), `NWCLogo` is stretched from the
+  corner, and the fade copies the back buffer. A `start-*` run takes 20 to 25 minutes; `drawn`
+  over the group about a minute (`H3INTRO`'s 2 426 frames decoded in order).
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is

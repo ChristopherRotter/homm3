@@ -232,6 +232,7 @@ impl GameObservation {
                 level,
                 slots,
                 hall,
+                garrison_hero,
                 buildings,
             } => {
                 if let Some(view) = self.town_mut(town) {
@@ -247,6 +248,7 @@ impl GameObservation {
                     view.owner_facts = hall.map(|hall| TownOwnerFacts {
                         hall,
                         income: Vec::new(),
+                        garrison_hero,
                     });
                     view.buildings = buildings;
                 }
@@ -676,7 +678,8 @@ impl GameObservation {
     /// A hero left the viewer's sight or the map.
     fn remove_hero(&mut self, hero: u16) {
         self.adventure.heroes.retain(|seen| seen.id != hero);
-        // E09 T28a: a garrison hero leaves the game at its town's capture (`TWN-STUB-14`).
+        // E09 T28a, T28b2: a garrison hero leaves the game at its town's capture (`TWN-QUIRK-11`)
+        // or by its siege.
         self.adventure
             .garrison_heroes
             .retain(|held| held.id != hero);

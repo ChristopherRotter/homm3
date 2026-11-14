@@ -274,7 +274,7 @@ fn check_command(
     match played {
         Err(code) => {
             prop_assert_eq!(session.state().state_hash(), hash);
-            prop_assert_eq!(session.journal().commands.len(), point);
+            prop_assert_eq!(session.journal().accepted, point);
             prop_assert!(drained.is_empty());
             let told: Vec<GameOutbound> = match actor {
                 Actor::Player(player) if player.index() < session.state().players() => {
@@ -363,7 +363,7 @@ fn check_query(
         prop_assert!(moves.nodes().is_some());
     }
     prop_assert_eq!(session.state().state_hash(), hash);
-    prop_assert_eq!(session.journal().commands.len(), point);
+    prop_assert_eq!(session.journal().accepted, point);
     prop_assert_eq!(session.drain_entries().count(), 0);
     prop_assert_eq!(session.record(player), records);
     Ok(true)

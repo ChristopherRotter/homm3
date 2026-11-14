@@ -303,6 +303,7 @@ fn event(e: &EngineEvent) -> GameEvent {
             level,
             slots,
             hall,
+            garrison_hero,
             buildings,
         } => GameEvent::TownChanged {
             player: player.raw(),
@@ -314,6 +315,7 @@ fn event(e: &EngineEvent) -> GameEvent {
             level,
             slots,
             hall,
+            garrison_hero,
             buildings: buildings.map(town_buildings),
         },
         EngineEvent::TownStackSeen {

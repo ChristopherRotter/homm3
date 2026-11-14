@@ -103,6 +103,19 @@ impl AdventureState {
             })
     }
 
+    /// The army in `town`'s upper bar (TWN-ROW-001; E09 T28b2, the town epic's design note §54;
+    /// survey `E09-towns.md` §12.3, the original's `town_garrison_army` 0x5C1460): its garrison
+    /// hero's army if one stands there, else the town's garrison; what a viewer sees as the town's
+    /// garrison (TWN-VEW-002, -003). Empty for a `TownId` the map does not have.
+    pub fn upper_bar(&self, town: TownId) -> &[ArmyStack] {
+        match self.town_hero(town) {
+            Some(hero) => &hero.army,
+            None => (self.map().town_object(town))
+                .and_then(|index| self.town_garrison(index))
+                .unwrap_or_default(),
+        }
+    }
+
     /// The town's visitor (TWN-VIS-002; the town epic's design note §9, survey `E09-towns.md` §7.3:
     /// the original's town +0x10, which `hero_show` and `hero_hide` keep): the hero standing on
     /// its entrance, if one does; never stored (ADR-0016's amendment point 2). None for a
@@ -144,7 +157,11 @@ impl AdventureState {
     /// survey's §7.2 step 3: a visiting hero defends; an own town's included, which only a map
     /// placing another player's hero on its entrance gives, TWN-SET-010). The step meets such a
     /// visitor first ([`Self::besieges`]) and visits the town here; the walking search, which
-    /// leaves its tile unmarked, meets it here too.
+    /// leaves its tile unmarked, meets it here too. Since E09 T28b2 a town of another team whose
+    /// garrison hero holds a stack is defended as one with a garrison (survey §9.1's third row);
+    /// one whose garrison hero's army is empty is not (`TWN-QUIRK-11`, T-5, faithful: the
+    /// original's `town_visit` 0x4AB0EE, survey §8.1 step 1): the step enters it and captures it,
+    /// its garrison hero back to the pool ([`Self::release_town_hero`]).
     // rule: TWN-VIS-001, TWN-VIS-002
     #[inline(never)]
     pub(crate) fn town_visit(&self, index: usize, player: PlayerId) -> Visit {
@@ -155,11 +172,14 @@ impl AdventureState {
                 .any(|hero| hero.pos == entrance && !allied(hero.owner, player))
         });
         let own = self.owner(index).is_some_and(|owner| allied(owner, player));
+        let holds = |army: &[ArmyStack]| !army.is_empty();
+        // `TWN-QUIRK-11` (T-5, faithful): a garrison hero without a stack does not defend.
         let defended = visitor
             || !own
-                && self
-                    .town_garrison(index)
-                    .is_some_and(|army| !army.is_empty());
+                && (self.town_garrison(index).is_some_and(holds)
+                    || (map.town_id(index))
+                        .and_then(|town| self.town_hero(town))
+                        .is_some_and(|held| holds(&held.army)));
         if defended {
             Visit::Neighbour
         } else {
@@ -196,17 +216,28 @@ impl AdventureState {
         }
     }
 
-    /// The siege the hero `hero` starts against the town at object index `index` (TWN-SIE-001;
-    /// E09 T8b2a, T8b2b; the town epic's design note §10; survey `E09-towns.md` §9.1, `town_visit`
-    /// 0x4AB25A to 0x4AB338). Its visitor, the hero on its entrance (of another team: the step
-    /// meets one of its own team as a hero), defends as itself ([`Defender::Hero`], its owner's
-    /// side, its army as it stands: the game merges the garrison into it before the battle,
-    /// [`Self::merge_garrison`], TWN-SIE-002). Without a visitor, the garrison as an army without
-    /// a hero, its stacks by slot as they stand, unsplit: its owner's side for an owned town
-    /// ([`Defender::Garrison`], played by its owner outside its turn, as a mine's guards,
-    /// ADV-MIN-002), the neutral seat's for a neutral one ([`Defender::Guards`], *agent's call*: no
-    /// new variant). Fought at the town's entrance ([`Self::battle_at`]; with a visitor in a boat
-    /// never: an entrance is on land) as the battle of its town ([`BattleStart::town`]), which the
+    /// The battle the hero `hero` starts against the town at object index `index` (TWN-SIE-001;
+    /// E09 T8b2a, T8b2b, T28b2; the town epic's design note §10, §54; survey `E09-towns.md` §9.1,
+    /// `town_visit` 0x4AB25A to 0x4AB338), by who holds it:
+    ///
+    /// - its visitor, the hero on its entrance (of another team: the step meets one of its own
+    ///   team as a hero), defends as itself ([`Defender::Hero`], its owner's side, its army as it
+    ///   stands); with no garrison hero the siege of the town, the game merging the garrison into
+    ///   the visitor's army before it ([`Self::merge_garrison`], TWN-SIE-002); **beside a garrison
+    ///   hero no siege** (since E09 T28b2, the first row: the original's town argument 0, the gate
+    ///   tile's battle as any hero's, no merge, no town's facts), after which the town is not taken
+    ///   and the next visit meets the garrison hero;
+    /// - else its garrison hero (since E09 T28b2, the third row) defends the siege as itself with
+    ///   its own army ([`Defender::Hero`], off the map: the game ends its battle in the town,
+    ///   [`Self::end_town_hero_battle`]); the step gives no battle for one whose army is empty
+    ///   ([`Self::town_visit`], `TWN-QUIRK-11`);
+    /// - else the garrison as an army without a hero, its stacks by slot as they stand, unsplit:
+    ///   its owner's side for an owned town ([`Defender::Garrison`], played by its owner outside
+    ///   its turn, as a mine's guards, ADV-MIN-002), the neutral seat's for a neutral one
+    ///   ([`Defender::Guards`], *agent's call*: no new variant).
+    ///
+    /// Fought at the town's entrance ([`Self::battle_at`]; with a visitor in a boat never: an
+    /// entrance is on land), a siege as the battle of its town ([`BattleStart::town`]), which the
     /// game builds from the town (TWN-SIE-003 to -005). None when `hero` is not on the map or
     /// `index` is not a town's: never, the step checked both (a none would leave the step paid and
     /// no battle).
@@ -219,19 +250,22 @@ impl AdventureState {
     ) -> Option<BattleStart> {
         let map = self.map();
         let entrance = map.objects()[index].entrance(map);
+        let town = map.town_id(index);
         let visitor =
             entrance.and_then(|entrance| self.heroes().iter().find(|h| h.pos == entrance));
+        let held = town.and_then(|town| self.town_hero(town));
         let army = self.town_garrison(index).unwrap_or_default().to_vec();
-        let defender = match (visitor, self.owner(index)) {
-            (Some(visitor), _) => Defender::Hero(visitor.combatant()),
+        let defender = match (visitor.or(held), self.owner(index)) {
+            (Some(defending), _) => Defender::Hero(defending.combatant()),
             (None, Some(owner)) => Defender::Garrison { owner, army },
             (None, None) => Defender::Guards { army },
         };
-        map.town_id(index)
-            .zip(entrance)
+        // The first row: beside a garrison hero the visitor's battle is no siege.
+        let siege = !(visitor.is_some() && held.is_some());
+        town.zip(entrance)
             .zip(self.hero(hero))
             .map(|((town, entrance), attacker)| BattleStart {
-                town: Some(town),
+                town: siege.then_some(town),
                 ..self.battle_at(part, attacker, defender, entrance)
             })
     }
