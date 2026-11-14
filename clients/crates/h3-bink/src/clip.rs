@@ -12,6 +12,7 @@
 use alloc::vec::Vec;
 
 use crate::Error;
+use crate::audio::Track;
 
 /// The header's bytes.
 const HEADER: usize = 44;
@@ -48,8 +49,10 @@ pub struct Clip<'a> {
     pub rate_den: u32,
     /// The video's flags (FFmpeg's extradata; [`crate::FLAG_ALPHA`] an alpha plane).
     pub flags: u32,
-    /// How many audio tracks the frames carry (their packets are skipped).
+    /// How many audio tracks the frames carry.
     pub audio_tracks: u32,
+    /// The audio tracks as the header describes them.
+    pub tracks: Vec<Track>,
     frames: Vec<FrameEntry>,
 }
 
@@ -110,6 +113,18 @@ impl<'a> Clip<'a> {
             return Err(Error::Field("audio tracks"));
         }
         let extra = if revision == b'k' { 4 } else { 0 };
+        let tracks = (0..index(audio))
+            .map(|k| {
+                let largest = word(bytes, HEADER + extra + 4 * k).ok_or(Error::Truncated)?;
+                let format =
+                    word(bytes, HEADER + extra + 4 * (index(audio) + k)).ok_or(Error::Truncated)?;
+                Ok(Track {
+                    largest,
+                    rate: format as u16,
+                    flags: (format >> 16) as u16,
+                })
+            })
+            .collect::<Result<Vec<_>, Error>>()?;
         let mut at = HEADER + extra + 12 * index(audio);
         let mut frames = Vec::with_capacity(index(count).min(bytes.len() / 4));
         let mut next = word(bytes, at).ok_or(Error::Truncated)?;
@@ -145,6 +160,7 @@ impl<'a> Clip<'a> {
             rate_den,
             flags,
             audio_tracks: audio,
+            tracks,
             frames,
         })
     }
@@ -153,6 +169,29 @@ impl<'a> Clip<'a> {
     #[must_use]
     pub fn frames(&self) -> &[FrameEntry] {
         &self.frames
+    }
+
+    /// Frame `n`'s packet of audio track `track` (E27 M2 T2): its bytes after its size word,
+    /// `None` when it has none or one under 4 bytes (`read_packet` gives none for it).
+    pub fn audio(&self, n: usize, track: usize) -> Result<Option<&'a [u8]>, Error> {
+        let entry = self.frames.get(n).ok_or(Error::Field("frame"))?;
+        let mut data = self
+            .bytes
+            .get(entry.offset..)
+            .and_then(|rest| rest.get(..entry.size))
+            .unwrap_or_default();
+        for k in 0..index(self.audio_tracks) {
+            let size = index(word(data, 0).ok_or(Error::Truncated)?);
+            let packet = data
+                .get(4..)
+                .and_then(|rest| rest.get(..size))
+                .ok_or(Error::Field("audio size"))?;
+            if k == track {
+                return Ok((size >= 4).then_some(packet));
+            }
+            data = &data[4 + size..];
+        }
+        Ok(None)
     }
 
     /// Frame `n`'s video packet: its bytes past its audio tracks' packets (`read_packet`).
