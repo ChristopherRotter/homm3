@@ -3865,9 +3865,10 @@ data and the four manuals staged then (28 files, SHA-256 checked against the PC'
   mark and their tells). `h3-map`'s plans: `check_town_views` expects the upper bar and the mark;
   **a stress of 300 cases** found the told views' fold keeping a town's garrison by slot from the
   `StackChanged`s alone (after `Enter` the hero's army is told by `TownChanged`): the fold takes a
-  told view's slots whole now (`cc 38e88291…`, kept). A second gap, **the adventure lane's**,
-  failing on `master` too: the hygiene property's map garrison index in `ExchangeOpened` (two
-  seeds in their inbox, not kept here).
+  told view's slots whole now (`cc 38e88291…`, kept). A second gap, the adventure lane's,
+  failing on `master` 0872fc6 too: the hygiene property's map garrison index in
+  `ExchangeOpened` (two seeds); the adventure lane's #929 (E08 T116b2) fixed it while this pull
+  request's CI ran, and both seeds pass after `master` was merged in.
 - **Replays and versions:** none moved but protocol v67 (no replay holds a garrison hero).
 - **Agent's calls (change freely):** decision 95's list.
 

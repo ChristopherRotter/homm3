@@ -17,8 +17,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the victory
   conditions).
 - **Open pull requests:** #930, T28b2's (branch `town/e09-t28b2`, `cross-lane`); watch it until it
-  merges. A failing case of the adventure lane's hygiene property on `master` (their inbox, not
-  in `proptest-regressions`): if CI meets it on a town pull request, it is not the town lane's.
+  merges.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -50,8 +49,8 @@ user's computer was connected at the start: the original data and the four manua
 (28 files, SHA-256 checked), used for the scoped verify and a third reading of `town_defended`.
 `cross-lane`: `h3-adventure`'s `end_battle`, `raise`, `change_marks`; `h3-game`'s battle end and
 `town_told`; `h3-map`'s view property; `h3-protocol` (v67). A hygiene case found failing on
-`master` too, left in the adventure lane's inbox with its seed. Notes in the adventure's and the
-server's inboxes. T29 next. PR #930.
+`master` too (a map garrison's index), fixed by the adventure lane's #929, merged in. Notes in the
+adventure's and the server's inboxes. T29 next. PR #930.
 
 ### 2026-11-14 — T28b1: a garrison hero's day, income and growth's inputs
 

@@ -22,16 +22,6 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
-- 2026-11-14 (the town lane, E09 T28b2, `town/e09-t28b2`; **a failing case of your hygiene
-  property, found on `master` 0872fc6, for you to act on**): `a_viewer_learns_nothing_it_cannot_see`
-  fails with `cc fbf94a8bd9a467885d137fee3654d0b38b48a0fc9b29bc514905030f3cd04dc9` (a release run;
-  not added to `proptest-regressions/tests/view.txt`, so that a town pull request's CI does not
-  fail on it): the viewer's `ExchangeOpened` names its map garrison by object index, 20 in one
-  game and 18 in the other, whose `Unseen` removed objects the viewer never sees before it
-  (`removed: [true, true, true, false, true, true]`). The map garrison's object index tells the
-  viewer how many objects come before it; the same case fails identically without T28b2. A
-  second seed, from a stress of 300 cases: `cc 211de8e9f5656495c217b1ae604c5f87bc0246256197d1fa04e3430dd458cb92`
-  (13 against 11).
 - 2026-11-14 (the town lane, E09 T28b2, `town/e09-t28b2`, `cross-lane` with the user's consent, E09
   decision 95; **your paths changed, for your review; protocol v67, no other version**): a
   garrison hero defends its town (TWN-SIE-001's rows 1 and 3; GAM-BAT-001, -003 amended).
