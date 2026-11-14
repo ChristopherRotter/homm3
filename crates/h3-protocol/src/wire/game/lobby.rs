@@ -3,14 +3,14 @@
 //!
 //! Provisional (the 2a review list): the shapes; a map named by its operator's configuration or
 //! its file's header; the players by colour; no spectators (2c); the computer named by the offer
-//! alone (T10).
+//! alone (T10); its clock in the offer (T17).
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use serde::{Deserialize, Serialize};
 
-use super::MapIdentity;
+use super::{MapIdentity, OfferClock};
 use crate::wire::{PackRef, Phase, WireU64};
 
 /// A map a whole game may be created from (`CreateMapGame`): the map, its rules and its seats.
@@ -40,6 +40,8 @@ pub struct MapOffer {
     pub map: MapIdentity,
     /// The computer that plays its games' unowned battle sides (E16 M5 T10, v49).
     pub computer: Computer,
+    /// How its games are timed (E16 M5 T17, v59).
+    pub clock: OfferClock,
 }
 
 /// The server's computer that plays a whole game's unowned battle sides (E16 M5 T10): a

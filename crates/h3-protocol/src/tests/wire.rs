@@ -13,7 +13,7 @@ use serde::de::DeserializeOwned;
 use super::battle;
 use crate::PROTOCOL_VERSION;
 use crate::map;
-use crate::wire::game::{Computer, MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
+use crate::wire::game::{Computer, MapGameInfo, MapIdentity, MapOffer, OfferClock, SeatedPlayer};
 use crate::wire::*;
 
 /// One of every command.
@@ -412,6 +412,12 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     import_version: 21,
                 },
                 computer: Computer::AllSeeing,
+                clock: OfferClock {
+                    turn_ms: Some(60_000),
+                    level_up_ms: Some(60_000),
+                    battle_ms: 180_000,
+                    increment_ms: 10_000,
+                },
             }],
             map_games: vec![MapGameInfo {
                 game: 5,

@@ -8,6 +8,8 @@ use std::vec::Vec;
 use super::full;
 use crate::lobby::{Limits, Lobby};
 use crate::map;
+use crate::map::game::offer_clock;
+use crate::session::game::Clock;
 use crate::wire::game::{Computer, MapGameInfo, MapIdentity, MapOffer, SeatedPlayer};
 use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage, WireU64};
 
@@ -36,6 +38,7 @@ fn maps() -> Vec<MapOffer> {
             import_version: 1,
         },
         computer: Computer::Fair,
+        clock: offer_clock(&Clock::UNLIMITED),
     }]
 }
 

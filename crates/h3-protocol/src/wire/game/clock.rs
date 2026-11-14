@@ -4,6 +4,9 @@
 //! Each time is what was left when the message was sent; a running one counts down from there on
 //! the client's own clock.
 //!
+//! A map offer shows how its games are timed (E16 M5 T17, v59: [`OfferClock`]), before anyone
+//! joins.
+//!
 //! Provisional (the 2b review list): the shapes; a player told only its own timers (another
 //! player's turn timer would show where it fights: its timer stops in a battle between players);
 //! milliseconds as 32 bits (49 days).
@@ -48,4 +51,21 @@ pub struct Duel {
     pub attacker: Timer,
     /// The defender's.
     pub defender: Timer,
+}
+
+/// How a map offer's games are timed (E16 M5 T17, v59), as the lobby shows it: the session's
+/// clock (`session::game::Clock`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OfferClock {
+    /// A turn's duration in milliseconds (an offer's is one of the original's eleven: 1, 2, 4, 6,
+    /// 8, 10, 15, 20, 25 or 30 minutes); `None`: unlimited, no turn timer and no chess clock.
+    pub turn_ms: Option<u32>,
+    /// A level-up's time while it holds the game; `None`: the game waits for it.
+    pub level_up_ms: Option<u32>,
+    /// Each side's time at the start of a battle between two players' heroes, under a limited
+    /// turn duration.
+    pub battle_ms: u32,
+    /// The time a side gains after each of its battle commands there.
+    pub increment_ms: u32,
 }

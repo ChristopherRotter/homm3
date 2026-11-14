@@ -50,7 +50,7 @@ mod query;
 
 pub use command::{command, command_to_engine, reject};
 pub use event::events;
-pub use manifest::{key_tables, manifest, map_offer};
+pub use manifest::{key_tables, manifest, map_offer, offer_clock};
 pub use query::{answer, moves};
 
 /// What `viewer` may know of the game, on the wire (`h3_game::observe`).

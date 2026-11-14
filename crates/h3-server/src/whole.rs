@@ -39,7 +39,7 @@ use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup, GameState};
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::map::game::{manifest, map_offer};
-use h3_protocol::session::game::{GameEntry, GameOptions, GameSession};
+use h3_protocol::session::game::{Clock, GameEntry, GameOptions, GameSession};
 use h3_protocol::session::{Bot, ConnId, Outbound};
 use h3_protocol::wire::game::{Computer, MapGameInfo, MapIdentity, SeatedPlayer};
 use h3_protocol::wire::{GoodbyeReason, Phase, WireU64};
@@ -73,6 +73,8 @@ pub struct MapOffer {
     pub map: MapRef,
     /// What the lobby shows of it.
     pub info: h3_protocol::wire::game::MapOffer,
+    /// How its games are timed (E16 M5 T17).
+    pub clock: Clock,
     /// A test's seeds in place of the OS's (`config::MapOffer::seeds`, E16 M5 T13).
     #[cfg(test)]
     seeds: Option<(u64, u64)>,
@@ -123,13 +125,20 @@ impl MapOffer {
             config::Computer::Fair => Computer::Fair,
             config::Computer::AllSeeing => Computer::AllSeeing,
         };
-        let info = map_offer((&config.id, name), (&rules, &setup), identity, computer);
+        let clock = config.clock();
+        let info = map_offer(
+            (&config.id, name),
+            (&rules, &setup),
+            identity,
+            (computer, &clock),
+        );
         Ok(Self {
             id: config.id.clone(),
             rules,
             setup,
             map,
             info,
+            clock,
             #[cfg(test)]
             seeds: config.seeds,
         })
@@ -237,7 +246,7 @@ impl Prepared {
             game,
             checkpoint_every: server.checkpoint_every,
             record_bytes: limits.record_bytes,
-            clock: h3_protocol::session::game::Clock::UNLIMITED,
+            clock: offer.clock,
         };
         Ok(Self {
             difficulty: offer.setup.difficulty,
@@ -290,7 +299,8 @@ impl Prepared {
             game,
             checkpoint_every: replay.checkpoint_every,
             record_bytes: limits.record_bytes,
-            clock: h3_protocol::session::game::Clock::UNLIMITED,
+            // Its own clock, whatever the offer's is now (E16 M5 T17).
+            clock: read.start.clock.into(),
         };
         let computer_seed = os_u64().map_err(|e| e.0)?;
         #[cfg(test)]
@@ -347,6 +357,7 @@ impl Prepared {
             origin: self.origin,
             tokens: self.tokens.clone(),
             replay,
+            clock: self.options.clock.into(),
         })
     }
 }
@@ -471,10 +482,40 @@ impl Hosting for Prepared {
         };
         let mut out = Vec::new();
         session.computer(Box::new(computer), &mut out);
+        // The game's clock (E16 M5 T17): the milliseconds since this thread hosts it, read before
+        // every call; its first reading counts nothing (a restore's downtime never counts). The
+        // thread wakes at the session's deadline, on a timer of its own.
+        let begun = Instant::now();
+        let elapse = |session: &mut GameSession<'_>, out: &mut Vec<Outbound>| {
+            let now = u64::try_from(begun.elapsed().as_millis()).unwrap_or(u64::MAX);
+            let mut frames = Vec::new();
+            session.elapse(now, &mut frames);
+            session.route(frames, out);
+        };
+        // A stop counts the time up to it and journals it, so that the restore does too: the
+        // steps it leaves due are journaled and told to nobody (the restore re-runs them).
+        let settle = |session: &mut GameSession<'_>, journal: &mut Writer| {
+            elapse(session, &mut Vec::new());
+            session.flush_time();
+            if let Err(e) = journal.append_game(session.drain_entries()) {
+                eprintln!("h3-server: game {game}: the journal does not write ({e}) at the stop");
+            }
+        };
+        elapse(&mut session, &mut out);
         if let Err(e) = journal.append_game(session.drain_entries()) {
             eprintln!("h3-server: game {game}: the journal does not write ({e}): it stops");
             return stop(&BTreeMap::new(), registry, game);
         }
+        let timer = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build();
+        let timer = match timer {
+            Ok(timer) => timer,
+            Err(e) => {
+                eprintln!("h3-server: game {game}: no timer ({e}): it stops");
+                return stop(&BTreeMap::new(), registry, game);
+            }
+        };
         let mut conns: BTreeMap<ConnId, Outbox> = BTreeMap::new();
         // How many messages each connection passed the game (E16 M2 T5b).
         let mut passed: BTreeMap<ConnId, u64> = BTreeMap::new();
@@ -483,41 +524,61 @@ impl Hosting for Prepared {
         // The seats' accounts the lobby names; a restored game was listed with them.
         let mut named = owned(&session);
         let mut empty_since = (!session.seated()).then(Instant::now);
-        while let Some(event) = inbox.blocking_recv() {
+        loop {
+            // `None` at the session's deadline (E16 M5 T17).
+            let event = match session.deadline() {
+                Some(at) => {
+                    let due = begun + Duration::from_millis(at);
+                    // The timer is made inside its runtime.
+                    let next =
+                        timer.block_on(async { tokio::time::timeout_at(due, inbox.recv()).await });
+                    next.map_or(Some(None), |event| event.map(Some))
+                }
+                None => inbox.blocking_recv().map(Some),
+            };
+            let Some(event) = event else {
+                break;
+            };
             let mut left = None;
             match event {
+                // A timer's end, or the time counted to journal: the system's steps.
+                None => elapse(&mut session, &mut out),
                 // Nothing changes for the session until the connection's join.
-                ToGame::Open { conn, to, login } => {
+                Some(ToGame::Open { conn, to, login }) => {
                     conns.insert(conn, to);
                     if let Some(login) = login {
                         session.logged_in(conn, login);
                     }
                     continue;
                 }
-                ToGame::Message { conn, message } => {
+                Some(ToGame::Message { conn, message }) => {
+                    elapse(&mut session, &mut out);
                     let k = passed.entry(conn).or_default();
                     *k += 1;
                     session.handle(conn, message, &mut out);
                     left = (!session.holds(conn)).then_some((conn, *k));
                 }
-                ToGame::Closed { conn } => {
+                Some(ToGame::Closed { conn }) => {
+                    elapse(&mut session, &mut out);
                     conns.remove(&conn);
                     passed.remove(&conn);
                     session.disconnected(conn);
                 }
-                // A running game whose seats stayed empty pauses (E16 M5 T9b).
-                ToGame::Tick => {
+                // A running game whose seats stayed empty pauses (E16 M5 T9b), its time counted
+                // first.
+                Some(ToGame::Tick) => {
+                    elapse(&mut session, &mut out);
                     let due = (self.empty_game.zip(empty_since))
                         .is_some_and(|(after, since)| since.elapsed() >= after);
-                    if !(due && session.suspend(&mut out)) {
-                        continue;
+                    if due && session.suspend(&mut out) {
+                        eprintln!("h3-server: game {game}: its seats stayed empty");
                     }
-                    eprintln!("h3-server: game {game}: its seats stayed empty");
                 }
                 // It never ends before E10: it plays on until the server stops (E16 M5 T9b).
-                ToGame::Drain if session.started() => continue,
-                ToGame::Drain | ToGame::Stop => {
+                Some(ToGame::Drain) if session.started() => continue,
+                Some(ToGame::Drain | ToGame::Stop) => {
                     let started = session.started();
+                    settle(&mut session, &mut journal);
                     return shut_down(game, (&conns, started, Some(journal)), registry, &mut inbox);
                 }
             }
@@ -574,6 +635,7 @@ impl Hosting for Prepared {
             // A drain or a stop the full inbox missed (M2 T5e's review).
             let started = session.started();
             if matches!(signal, Some(ToGame::Stop)) || (signal.is_some() && !started) {
+                settle(&mut session, &mut journal);
                 return shut_down(game, (&conns, started, Some(journal)), registry, &mut inbox);
             }
         }
