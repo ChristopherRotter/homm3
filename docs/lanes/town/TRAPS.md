@@ -22,6 +22,8 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   play's seed, the fork's siege seed) and the `*-towns-36` workloads move. Search seeds with a
   throwaway `#[ignore]` test in release, its `CARGO_TARGET_DIR` outside the worktree: only
   `/target` is ignored, and `git add -A` took a `target-rel/` (E09 T27).
+- **The scoped verify's clippy skips `h3-sim`** (E09 T27's CI: a one-element `for` in a town-map
+  test): after a change there run `cargo clippy --workspace --all-targets -- -D warnings`.
 - **A hire dialog's creatures for the env come from `GameState::hire_stock`** (E09 T27): a new
   source served elsewhere leaves its `Buy`s without an entry, and the random agent falls back on
   `EndTurn`, which the game refuses (`DecisionOpen`).
