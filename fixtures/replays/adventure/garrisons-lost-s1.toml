@@ -1,0 +1,50 @@
+commands = [
+    "0 move 2 13,17,0",
+    "1 battle wait",
+    "0 battle move 73",
+    "1 battle move 96",
+    "1 battle attack 0 75",
+    "0 end-turn",
+    "1 end-turn",
+]
+checkpoints = ["0x0292526ac29734ae"]
+
+[replay]
+format = 15
+engine = "0.1.0"
+seed = "1"
+difficulty = 1
+packs = [
+    [
+    "base",
+    "harvest-1",
+],
+    [
+    "ab",
+    "harvest-1",
+],
+    [
+    "sod",
+    "harvest-1",
+],
+]
+profile = "base:faithful"
+ruleset_hash = "0xb5c01c8736eb73f9"
+adventure_ruleset_hash = "0x505f48af68ec73ca"
+town_ruleset_hash = "0x4ded73a0d357e245"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+game_state_hash_version = 32
+adventure_state_hash_version = 24
+checkpoint_every = 5
+
+[map]
+path = "fixtures/maps/e08-garrisons-36.h3m"
+hash = "0xa3cbaec168902eb6"
+import_version = 23
+
+[result]
+day = 2
+final_hash = "0xdb3a927d7680bd7a"
