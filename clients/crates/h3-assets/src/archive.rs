@@ -1,12 +1,13 @@
 //! The archives' contents at a glance (E17 M0 T3, the real-asset gate): per archive, how many
 //! entries of each extension it holds, how many are compressed and their unpacked size. The
-//! archives are parsed by the engine's `h3-formats`; the lookup across archives (which one wins
-//! for a name) follows the code reading (M1 T1).
+//! archives' tables are parsed by the engine's `h3-formats` (its table-only reader since E27 M2
+//! T3b, CLT-Q2); the lookup across archives (which one wins for a name) follows the code reading
+//! (M1 T1).
 
 use alloc::collections::BTreeMap;
 use alloc::string::String;
 
-use h3_formats::lod::LodArchive;
+use h3_formats::lod::LodTable;
 
 /// Counts over a set of entries.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -38,9 +39,9 @@ pub struct Inventory {
     pub by_extension: BTreeMap<String, Tally>,
 }
 
-/// The inventory of a parsed archive.
+/// The inventory of an archive's table.
 #[must_use]
-pub fn inventory(archive: &LodArchive<'_>) -> Inventory {
+pub fn inventory(archive: &LodTable) -> Inventory {
     let mut total = Tally::default();
     let mut by_extension: BTreeMap<String, Tally> = BTreeMap::new();
     for entry in archive.entries() {
@@ -69,7 +70,7 @@ pub fn extension(name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use h3_formats::lod::build;
+    use h3_formats::lod::{LodArchive, build};
 
     #[test]
     fn counts_entries_by_extension() {
@@ -83,7 +84,7 @@ mod tests {
             ],
         );
         let archive = LodArchive::parse(&bytes).unwrap();
-        let inv = inventory(&archive);
+        let inv = inventory(archive.table());
         assert_eq!(inv.kind, 200);
         assert_eq!(
             inv.total,
@@ -109,7 +110,7 @@ mod tests {
     #[test]
     fn an_empty_archive_has_an_empty_inventory() {
         let bytes = build(500, &[]);
-        let inv = inventory(&LodArchive::parse(&bytes).unwrap());
+        let inv = inventory(LodArchive::parse(&bytes).unwrap().table());
         assert_eq!(inv.kind, 500);
         assert_eq!(inv.total, Tally::default());
         assert!(inv.by_extension.is_empty());

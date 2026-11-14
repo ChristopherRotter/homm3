@@ -11,7 +11,7 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
 - `ci.yml` ignores `clients/**`; `clients.yml` watches `clients/` and the engine crates the client builds (`check.sh`'s "ci paths" keeps that list complete).
 - Never run the original from the installation (it writes into its folder): captures run the copy under `original-data/wine/`, the Wine prefix in a directory the shell's user owns; captures never enter git (ADR-0009).
 - The original's memory holds the frame drawn, the screen the one shown (design §7.1, §7.9): never render memory's poses as the screen (a cast's first frame: `before`). More in the runbook's "Traps".
-- A text table's record numbers are those of the file the game reads first, H3bitmap.lod's (the client's `bitmap_archives` order): `original-data/extracted/H3ab_bmp/` holds older copies (ARRAYTXT's records after 82 one lower: E17 M6 T2a2b2); count records with a quoted-field reader, a record may span lines.
+- A text table's record numbers are those of the file the game reads first, H3bitmap.lod's (the client's `lods::BITMAPS` order): `original-data/extracted/H3ab_bmp/` holds older copies (ARRAYTXT's records after 82 one lower: E17 M6 T2a2b2); count records with a quoted-field reader, a record may span lines.
 - A key family of `clients/text/keys.toml` resolves in the battle viewer only over the entries
   `h3-view`'s `text::entries` lists (an `optional` family it does not list is skipped silently,
   its keys shown as themselves: `artifact` until E17 M6 T5a); check a new key with

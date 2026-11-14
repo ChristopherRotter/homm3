@@ -13,11 +13,11 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_formats::exe::{self, PeImage};
-use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 use serde::Deserialize;
 
 use h3_battle_client::gate::find_ci;
+use h3_battle_client::lods::Lod;
 
 /// The tables, one per pack, dependencies first.
 const PACKS: [&str; 3] = ["base", "ab", "sod"];
@@ -401,13 +401,11 @@ fn harvest(options: &Options) -> Result<(), String> {
         .map_err(|e| format!("{}: Heroes3.exe: {e}", options.install.display()))?;
     let exe_bytes = fs::read(&exe_path).map_err(|e| format!("{}: {e}", exe_path.display()))?;
     let data = find_ci(&options.install, "Data").map_err(|e| format!("Data: {e}"))?;
-    let lod_path = find_ci(&data, "H3bitmap.lod").map_err(|e| format!("H3bitmap.lod: {e}"))?;
-    let lod_bytes = fs::read(&lod_path).map_err(|e| format!("{}: {e}", lod_path.display()))?;
-    let lod = LodArchive::parse(&lod_bytes).map_err(|e| format!("H3bitmap.lod: {e:?}"))?;
+    // The archive's table alone (CLT-Q2), then the four tables by their ranges.
+    let lod = Lod::open(&data, "H3bitmap.lod")?;
     let text = |name: &str| -> Result<TextTable, String> {
         let bytes = lod
-            .read_by_name(name)
-            .map_err(|e| format!("{name}: {e:?}"))?
+            .read_by_name(name)?
             .ok_or_else(|| format!("H3bitmap.lod has no {name}"))?;
         TextTable::parse(&bytes).map_err(|e| format!("{name}: {e:?}"))
     };

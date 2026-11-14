@@ -7,12 +7,12 @@
 //! harness kept a frame of the original (`<dir>/<id>/frames.toml`, `h3drive.py frames`), for the
 //! harness's diff. An adapter: it reads files and the archives.
 
+use std::collections::BTreeMap;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Seat, Side};
 use h3_render::Bugs;
 use h3_view::anim::{self, Playhead, Pose, Speed, Timeline};
@@ -29,7 +29,8 @@ use h3_view::tables::Tables;
 use h3_view::{layout, record, scene};
 use serde::Deserialize;
 
-use crate::render::{lookup, read_archives, write};
+use crate::lods::Lods;
+use crate::render::write;
 use crate::{assets, log, motion, pointer, scenario};
 
 /// When a stats dialog's creature first steps after the dialog opened (E17 M6 T2a1: its modal run
@@ -485,18 +486,10 @@ fn sequences(options: &Options) -> Result<usize, String> {
         &fs::read_to_string(&layout_path).map_err(|e| format!("{}: {e}", layout_path.display()))?,
     )
     .map_err(|e| format!("{}: {e}", layout_path.display()))?;
-    let bytes = read_archives(&options.install)?;
+    let archives = Lods::open(&options.install)?;
     let videos = crate::videos::Videos::open(&options.install);
     // The executable's own strings: read only when a line needs them.
     let exe = crate::text::executable(&options.install).unwrap_or_default();
-    let archives = bytes
-        .iter()
-        .map(|(name, b)| {
-            LodArchive::parse(b)
-                .map(|a| (*name, a))
-                .map_err(|e| format!("{name}: {e:?}"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
     let mut differing = 0;
     for sequence in &file.sequence {
         if options.only.as_ref().is_some_and(|id| *id != sequence.id) {
@@ -738,7 +731,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
             // held command (its hero's name, the price), laid out in the original's fonts.
             let writer = log::Writer::new(&tables, &layout, (&archives, &exe), Bugs::Original)?;
             let gold = layout.message.resources.clone();
-            let gold_size = lookup(&archives, &gold)
+            let gold_size = archives
+                .lookup(&gold)
                 .ok()
                 .and_then(|b| h3_assets::def::parse_def(&b).ok())
                 .map_or([0, 0], |d| {
@@ -768,7 +762,8 @@ fn sequences(options: &Options) -> Result<usize, String> {
             }
             // Eagle Eye's message after the result window (E17 M6 T5c), laid out as the window.
             let spell_pictures = layout.message.spell_pictures.clone();
-            let spells_size = lookup(&archives, &spell_pictures)
+            let spells_size = archives
+                .lookup(&spell_pictures)
                 .ok()
                 .and_then(|b| h3_assets::def::parse_def(&b).ok())
                 .map_or([0, 0], |d| {
@@ -923,7 +918,7 @@ pub(crate) fn draw_frames(
     timeline: &Timeline,
     tables: &Tables,
     layout: &BattleLayout,
-    (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
+    (archives, exe): (&Lods, &[u8]),
     interface: &Interface<'_>,
 ) -> Result<usize, String> {
     let panels = interface.panels;
@@ -1363,12 +1358,22 @@ pub(crate) fn draw_frames(
     }
     // The original's clips' reading too (E17 M6 T6c1, CLT-Q68).
     let mut batch = Batch::with_bugs(Bugs::Original);
+    // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs, read as one
+    // batch by their ranges (E27 M2 T3b).
+    let from_lods: Vec<String> = (names.iter())
+        .filter(|n| interface.videos.is_none() || !n.ends_with(".BIK"))
+        .cloned()
+        .collect();
+    let mut read: BTreeMap<String, Vec<u8>> = (from_lods.iter().cloned())
+        .zip(archives.batch(&from_lods)?)
+        .collect();
     for name in &names {
-        // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
         let clip = name.ends_with(".BIK");
-        let bytes = match interface.videos {
-            Some(videos) if clip => videos.read(name)?,
-            _ => lookup(archives, name)?,
+        let bytes = match read.remove(name) {
+            Some(bytes) => bytes,
+            None => (interface.videos)
+                .ok_or_else(|| format!("{name}: no video archives"))?
+                .read(name)?,
         };
         // A clip that does not decode fails the comparison (E17 M5 T8b2, R2b's leftover): the
         // original showed it, so a bare slot would only differ in pixels without saying why

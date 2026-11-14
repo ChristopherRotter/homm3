@@ -19,7 +19,6 @@ use std::time::Duration;
 
 use h3_battle::BattleSetup;
 use h3_content_battle::BattleRuleset;
-use h3_formats::lod::LodArchive;
 use h3_protocol::wire::{Command, Observation, Outcome, Seat, ServerMessage, Side};
 use h3_render::Bugs;
 use h3_render::screen::{Screen, Widening};
@@ -51,8 +50,8 @@ use crate::audio::Voices;
 use crate::boxes::{Answered, Asked, Leave};
 use crate::game_seat::GameSeat;
 use crate::live::{Computer, Live};
+use crate::lods::Lods;
 use crate::online::{Online, Server};
-use crate::render::{lookup, read_archives};
 use crate::{assets, motion};
 
 /// How long the battle's loading waits for a seat's record on a server (*provisional*).
@@ -263,8 +262,9 @@ pub struct Ground {
     /// The asset tables.
     pub tables: Tables,
     layout: BattleLayout,
-    /// The archives' bytes (CLT-Q2: whole archives): the batch takes the assets the frames name.
-    archives: Vec<(&'static str, Vec<u8>)>,
+    /// The archives' tables (CLT-Q2, E27 M2 T3b): the batch reads the entries the frames name by
+    /// their ranges.
+    archives: Lods,
     /// The video archives' directories (E17 M5 T4b2b): the result window's clips.
     videos: crate::videos::Videos,
     /// The executable's own strings (a panel made without the text tables).
@@ -574,31 +574,29 @@ impl Ground {
                 .map_err(|e| format!("{}: {e}", layout_path.display()))?,
         )
         .map_err(|e| format!("{}: {e}", layout_path.display()))?;
-        let archives = read_archives(&source.install)?;
+        let archives = Lods::open(&source.install)?;
         let videos = crate::videos::Videos::open(&source.install);
-        let parsed = parse(&archives)?;
         // The executable's own strings: read only when a line needs them.
         let exe = crate::text::executable(&source.install).unwrap_or_default();
         let every = fight.is_some();
-        let looks = motion::looks(&record, &tables, &parsed)?;
-        let magic = motion::magic(&record, &tables, &parsed, every)?;
-        let siege = motion::siege(&record, &tables, &parsed)?;
+        let looks = motion::looks(&record, &tables, &archives)?;
+        let magic = motion::magic(&record, &tables, &archives, every)?;
+        let siege = motion::siege(&record, &tables, &archives)?;
         let casts = motion::casts(
             &record,
             &tables,
-            &parsed,
+            &archives,
             &source.packs,
             (every, Bugs::Fixed),
         )?;
         // A battle fought as it is played may create any creature a spell or a raiser makes.
         let mut looks = looks;
         let made: Vec<u16> = casts.bodies.keys().copied().collect();
-        motion::add_looks(&record, &tables, &parsed, &made, &mut looks)?;
+        motion::add_looks(&record, &tables, &archives, &made, &mut looks)?;
         // The viewer's own fidgets and the heroes' reactions, from the battle's seed.
         let seed = u32::try_from(source.seed & u64::from(u32::MAX)).unwrap_or(1);
-        let heroes = motion::heroes(&record, &tables, &parsed, Some(seed))?;
-        let writer = crate::log::Writer::new(&tables, &layout, (&parsed, &exe), Bugs::Fixed).ok();
-        drop(parsed);
+        let heroes = motion::heroes(&record, &tables, &archives, Some(seed))?;
+        let writer = crate::log::Writer::new(&tables, &layout, (&archives, &exe), Bugs::Fixed).ok();
         Ok(Self {
             record,
             tables,
@@ -2158,14 +2156,13 @@ impl<'g> Battle<'g> {
     fn logged_panel(&self) -> Result<Panels, String> {
         let ground = self.ground;
         let Some(writer) = &ground.writer else {
-            let parsed = parse(&ground.archives)?;
             let timeline = self.played.timeline();
             return crate::log::panels(
                 &self.record,
                 (&timeline.log, &timeline.controllers),
                 &ground.tables,
                 &ground.layout,
-                (&parsed, &ground.exe),
+                (&ground.archives, &ground.exe),
                 Bugs::Fixed,
             );
         };
@@ -3983,14 +3980,15 @@ impl<'g> Battle<'g> {
         if names.is_empty() {
             return Ok(());
         }
-        let parsed = parse(&self.ground.archives)?;
-        for name in &names {
-            // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs.
-            let bytes = if name.ends_with(".BIK") {
-                self.ground.videos.read(name)?
-            } else {
-                lookup(&parsed, name)?
-            };
+        // A clip from the video archives (E17 M5 T4b2b), every other asset from the LODs, read
+        // as one batch by their ranges (E27 M2 T3b).
+        let (clips, lods): (Vec<String>, Vec<String>) =
+            names.into_iter().partition(|n| n.ends_with(".BIK"));
+        for (name, bytes) in lods.iter().zip(self.ground.archives.batch(&lods)?) {
+            self.batch.add(name, &bytes).map_err(|e| e.to_string())?;
+        }
+        for name in &clips {
+            let bytes = self.ground.videos.read(name)?;
             self.batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
         Ok(())
@@ -4163,20 +4161,6 @@ fn held(batch: &Batch, name: &str) -> bool {
         || batch.palette(name).is_some()
         || batch.font(name).is_some()
         || batch.video(name).is_some()
-}
-
-/// The archives' directories.
-fn parse<'a>(
-    archives: &'a [(&'static str, Vec<u8>)],
-) -> Result<Vec<(&'static str, LodArchive<'a>)>, String> {
-    archives
-        .iter()
-        .map(|(name, b)| {
-            LodArchive::parse(b)
-                .map(|a| (*name, a))
-                .map_err(|e| format!("{name}: {e:?}"))
-        })
-        .collect()
 }
 
 /// The Auto Combat boxes the battle began with (E17 M6 T4b1, design §12.13): those before the

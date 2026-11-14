@@ -3,9 +3,9 @@
 //! M2 T5b: every sound decodes to SDL's samples, `sounds.tsv`; M3 T4b-1: every key of the string
 //! catalogue is read from the text tables). It
 //! runs only where the user's files are (ADR-0009): a copy of the installation, never the
-//! installation itself, which it would only read anyway. It reads whole archives, since
-//! `h3-formats` parses only a whole archive; with the table-only reader (CLT-Q2) it measures the
-//! client's real start instead: the directories only (ADR-0020 point 7).
+//! installation itself, which it would only read anyway. It opens the archives as the client
+//! starts, each archive's table alone (CLT-Q2, ADR-0020 point 7; E27 M2 T3b), and measures that;
+//! then it reads every entry by its range, in the order of the ranges, as a batch does.
 
 use std::fmt::Write as _;
 use std::fs;
@@ -19,10 +19,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use h3_assets::archive;
 use h3_assets::check::{Decoded, EntryCheck, check_entry};
 use h3_assets::survey::{self, Mention, Mentions};
-use h3_formats::lod::LodArchive;
+use h3_formats::lod;
 use h3_ui::text::Catalogue;
 use h3_ui::text::pack::Pack;
 
+use crate::lods::Lod;
 use crate::{assets, sounds, text};
 
 /// The four LOD archives of the Complete edition, in the order the gate reports them.
@@ -83,14 +84,6 @@ impl Options {
     }
 }
 
-/// One archive, read.
-struct Opened {
-    name: &'static str,
-    path: PathBuf,
-    bytes: Vec<u8>,
-    read: Duration,
-}
-
 /// One entry and what the gate found.
 struct Checked {
     archive: usize,
@@ -104,6 +97,7 @@ struct Checked {
 /// Wall time per step of the decoding pass.
 #[derive(Default)]
 struct Times {
+    read: Duration,
     inflate: Duration,
     decode: Duration,
     compare: Duration,
@@ -122,44 +116,19 @@ pub fn run(options: &Options) -> ExitCode {
 fn gate(options: &Options) -> Result<(), String> {
     let data = find_ci(&options.install, "Data")
         .map_err(|e| format!("{}: {e}", options.install.display()))?;
-    let mut opened = Vec::new();
-    for name in ARCHIVES {
-        opened.push(open(&data, name)?);
-    }
+    // The client's start (ADR-0020 point 7, CLT-Q2): each archive's table alone.
     let mut archives = Vec::new();
-    let mut parse_times = Vec::new();
-    for a in &opened {
-        let (archive, parse) = timed(|| LodArchive::parse(&a.bytes));
-        archives.push(archive.map_err(|e| format!("{}: {e:?}", a.path.display()))?);
-        parse_times.push(parse);
+    let mut open_times = Vec::new();
+    for name in ARCHIVES {
+        let (archive, open) = timed(|| Lod::open(&data, name));
+        archives.push(archive?);
+        open_times.push(open);
     }
     let mut times = Times::default();
     let mut mentions = Mentions::default();
     let mut checked = Vec::new();
     for (i, archive) in archives.iter().enumerate() {
-        for e in archive.entries() {
-            let (bytes, inflate) = timed(|| archive.read(e));
-            times.inflate += inflate;
-            let check = match bytes {
-                Ok(bytes) => {
-                    if archive::extension(&e.name) == "TXT" {
-                        mentions.scan(&bytes);
-                    }
-                    let (check, decode) = timed(|| check_entry(&e.name, e.type_tag, &bytes));
-                    times.decode += decode;
-                    Ok(check)
-                }
-                Err(error) => Err(format!("inflate {error:?}")),
-            };
-            checked.push(Checked {
-                archive: i,
-                name: e.name.clone(),
-                tag: e.type_tag,
-                size: e.size,
-                compressed_size: e.compressed_size,
-                check,
-            });
-        }
+        checked.extend(check_archive(i, archive, &mut times, &mut mentions)?);
     }
     // The game's and the map editor's executables: an entry only the editor names is not dead.
     let mut scanned = vec![String::from("the text tables")];
@@ -175,10 +144,11 @@ fn gate(options: &Options) -> Result<(), String> {
     let exe_note = scanned.join(", ");
     let listings: Vec<Vec<String>> = archives
         .iter()
-        .map(|a| a.entries().iter().map(|e| e.name.clone()).collect())
+        .map(|a| a.table().entries().iter().map(|e| e.name.clone()).collect())
         .collect();
     let dups = survey::duplicates(&listings);
     let (same, compare) = timed(|| identical(&archives, &dups));
+    let same = same?;
     times.compare = compare;
     let all: BTreeSet<String> = dups
         .keys()
@@ -186,14 +156,7 @@ fn gate(options: &Options) -> Result<(), String> {
         .chain(listings.iter().flatten().map(|n| n.to_ascii_uppercase()))
         .collect();
 
-    let summary = summary(
-        &options.install,
-        &opened,
-        &archives,
-        &parse_times,
-        &checked,
-        &times,
-    );
+    let summary = summary(&options.install, &archives, &open_times, &checked, &times);
     print!("{summary}");
     let mut listing = String::from(
         "archive\tname\ttype\tsize\tcompressed_size\tdecoded\tfindings\tmention\tduplicate\n",
@@ -253,10 +216,7 @@ fn gate(options: &Options) -> Result<(), String> {
     let keys = text::read_keys(&options.keys, &tables)?;
     let entry = |name: &str| {
         for &a in assets::search(&name.to_ascii_uppercase()) {
-            if let Some(bytes) = archives[a]
-                .read_by_name(name)
-                .map_err(|e| format!("{}:{name}: {e:?}", ARCHIVES[a]))?
-            {
+            if let Some(bytes) = archives[a].read_by_name(name)? {
                 return Ok(bytes);
             }
         }
@@ -295,39 +255,74 @@ fn gate(options: &Options) -> Result<(), String> {
     Ok(())
 }
 
-/// Reads one archive, timing it.
-fn open(data: &Path, name: &'static str) -> Result<Opened, String> {
-    let path = find_ci(data, name).map_err(|e| format!("{}/{name}: {e}", data.display()))?;
-    let (bytes, read) = timed(|| fs::read(&path));
-    let bytes = bytes.map_err(|e| format!("{}: {e}", path.display()))?;
-    Ok(Opened {
-        name,
-        path,
-        bytes,
-        read,
-    })
+/// Every entry of `archive` (the gate's `i`th) read by its range, in the order of the ranges as
+/// a batch reads them, then inflated and decoded; listed in the table's order.
+fn check_archive(
+    i: usize,
+    archive: &Lod,
+    times: &mut Times,
+    mentions: &mut Mentions,
+) -> Result<Vec<Checked>, String> {
+    let entries = archive.table().entries();
+    let mut order: Vec<usize> = (0..entries.len()).collect();
+    order.sort_unstable_by_key(|&k| (entries[k].stored_range().start, k));
+    let mut reader = archive.reader()?;
+    let mut checks = Vec::with_capacity(entries.len());
+    for k in order {
+        let e = &entries[k];
+        let (stored, read) = timed(|| reader.stored(e));
+        times.read += read;
+        let check = stored
+            .map_err(|error| format!("read {error}"))
+            .and_then(|stored| {
+                let (bytes, inflate) = timed(|| lod::read_entry(e, &stored));
+                times.inflate += inflate;
+                let bytes = bytes.map_err(|error| format!("inflate {error:?}"))?;
+                if archive::extension(&e.name) == "TXT" {
+                    mentions.scan(&bytes);
+                }
+                let (check, decode) = timed(|| check_entry(&e.name, e.type_tag, &bytes));
+                times.decode += decode;
+                Ok(check)
+            });
+        checks.push((k, check));
+    }
+    checks.sort_unstable_by_key(|&(k, _)| k);
+    Ok(entries
+        .iter()
+        .zip(checks)
+        .map(|(e, (_, check))| Checked {
+            archive: i,
+            name: e.name.clone(),
+            tag: e.type_tag,
+            size: e.size,
+            compressed_size: e.compressed_size,
+            check,
+        })
+        .collect())
 }
 
 /// For each duplicate name, whether every copy has the same bytes.
 fn identical(
-    archives: &[LodArchive<'_>],
+    archives: &[Lod],
     dups: &BTreeMap<String, Vec<usize>>,
-) -> BTreeMap<String, bool> {
+) -> Result<BTreeMap<String, bool>, String> {
     let mut copies: BTreeMap<&str, Vec<Option<Vec<u8>>>> = BTreeMap::new();
     for archive in archives {
-        for e in archive.entries() {
+        let mut reader = archive.reader()?;
+        for e in archive.table().entries() {
             if let Some((name, _)) = dups.get_key_value(&e.name.to_ascii_uppercase()) {
-                copies.entry(name).or_default().push(archive.read(e).ok());
+                copies.entry(name).or_default().push(reader.read(e).ok());
             }
         }
     }
-    copies
+    Ok(copies
         .into_iter()
         .map(|(name, bytes)| {
             let same = bytes.windows(2).all(|w| w[0].is_some() && w[0] == w[1]);
             (name.to_owned(), same)
         })
-        .collect()
+        .collect())
 }
 
 fn decoded_text(check: &Result<EntryCheck, String>) -> String {
@@ -367,35 +362,37 @@ fn findings_text(check: &Result<EntryCheck, String>) -> String {
     }
 }
 
-/// The printed summary: one block per archive, then the decoding pass.
+/// The printed summary: one block per archive, the start (the tables alone), then the decoding
+/// pass.
 fn summary(
     install: &Path,
-    opened: &[Opened],
-    archives: &[LodArchive<'_>],
-    parse_times: &[Duration],
+    archives: &[Lod],
+    open_times: &[Duration],
     checked: &[Checked],
     times: &Times,
 ) -> String {
     let mut out = format!("gate: {}\n", install.display());
     let mut entries = 0u64;
     let mut total = Duration::ZERO;
-    for ((a, parsed), &parse) in opened.iter().zip(archives).zip(parse_times) {
-        let inv = archive::inventory(parsed);
+    let mut head = 0usize;
+    for (a, &open) in archives.iter().zip(open_times) {
+        let inv = archive::inventory(a.table());
         entries += u64::from(inv.total.entries);
-        total += a.read + parse;
+        total += open;
+        head += a.head_len();
         let _ = writeln!(
             out,
-            "{:<13} kind {:>3}  {:>5} entries ({} compressed, {} MiB unpacked)  {} MiB read in {} ms, \
-             parsed in {} ms  [{}]",
-            a.name,
+            "{:<13} kind {:>3}  {:>5} entries ({} compressed, {} MiB unpacked)  its table: {} KiB \
+             of {} MiB read and parsed in {} µs  [{}]",
+            a.name(),
             inv.kind,
             inv.total.entries,
             inv.total.compressed,
             inv.total.bytes >> 20,
-            a.bytes.len() >> 20,
-            a.read.as_millis(),
-            parse.as_millis(),
-            a.path.display(),
+            a.head_len() >> 10,
+            a.len() >> 20,
+            open.as_micros(),
+            a.path().display(),
         );
         let by_ext: Vec<String> = inv
             .by_extension
@@ -409,9 +406,11 @@ fn summary(
     }
     let _ = writeln!(
         out,
-        "gate: {} archives, {entries} entries, opened in {} ms",
-        opened.len(),
-        total.as_millis()
+        "gate: {} archives, {entries} entries, opened in {} µs: the client's start, their tables \
+         alone ({} KiB; CLT-Q2)",
+        archives.len(),
+        total.as_micros(),
+        head >> 10
     );
     let mut per_ext: BTreeMap<String, (u32, u32, u32)> = BTreeMap::new();
     for c in checked {
@@ -429,8 +428,10 @@ fn summary(
         .collect();
     let _ = writeln!(
         out,
-        "gate: decoded {}; every entry inflated in {} ms, decoded in {} ms; duplicates compared in {} ms",
+        "gate: decoded {}; every entry read by its range in {} ms, inflated in {} ms, decoded in {} \
+         ms; duplicates compared in {} ms",
         line.join("; "),
+        times.read.as_millis(),
         times.inflate.as_millis(),
         times.decode.as_millis(),
         times.compare.as_millis()

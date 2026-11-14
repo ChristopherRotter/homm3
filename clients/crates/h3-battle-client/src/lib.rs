@@ -38,6 +38,7 @@ pub mod connect;
 pub mod game_seat;
 pub mod gate;
 pub mod live;
+pub mod lods;
 pub mod log;
 pub mod motion;
 pub mod net;
