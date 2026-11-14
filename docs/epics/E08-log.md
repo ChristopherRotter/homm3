@@ -16423,3 +16423,70 @@ staged. Built by the main session.
 - **Gates:** the scoped verify passed every step it runs (coverage 834 s, determinism 548 s, the
   replays unchanged, bench-check 468 s: no engine code changed). PR #929.
 - **Versions:** none.
+
+### Increment 12, round 8: T116c, the garrisons and bonuses XL, its workloads and the original data (2026-11-14, `adventure/e08-t116c`)
+
+**The cut** (decision 331, the user at T116c's start): whole (recommended; not chosen: in two, the
+XL first or the two maps' workloads first). **Baseline:** `master` c05bccd (#929, T116b2, merged
+before the start; the setup's `verify-once` found the code verified, light gates only; the VM
+restarted after it, the tools kept). The original data staged at the start (the two LODs, the
+executable, `maps.tar`, `extracted.tar`; SHA-256 checked against the PC's). Built by the main
+session.
+
+- **The map** `fixtures/maps/e08-garrisons-bonuses-144.h3m` (`garrisons_bonuses_xl_map.rs`,
+  `h3_map::writer`, 4.3 KB): SoD, 144 × 144 of grass with the sea on columns 132 to 143, one level,
+  cut by rock into five rows of four regions (wall rows 28, 57, 86 and 115 up to the sea, wall
+  columns 35, 71 and 107). Every way between two regions a garrison, the census's most of each
+  class on one map (survey §1.1: 16 of class 33, 11 of 219): a horizontal one in the middle of each
+  region's column on each wall row, a vertical one in the middle of each region's row on each wall
+  column but every fourth such way from the third (four left as rock); the `n`th red's, blue's or
+  neutral by `n` modulo 3 (nine each), empty at 4 modulo 5 (five), not removable at 6 modulo 7
+  (three), a class's `m`th anti-magic at 3 modulo 4 (four and two), the others with one stack of 1
+  to 6 Pikemen, Archers, Griffins, Swordsmen or Monks. The fifteen at the census's most on one map
+  (§1.2: 158 on land, eight Magic Springs and eleven Fountains of Fortune among them; 35 at sea),
+  each in a 6 × 6 cell of its own anchored 4 right of and 3 below its corner (its tiles off the
+  cell's edges): the land's by a stride of 101 through the 370 land cells holding no wall's, sea's
+  or hero's tile, the sea's by a stride of 5 through its 48. Red's five heroes in the north (the
+  first with a Spring anchored seven tiles east, two by their regions' garrisons, one on the coast
+  beside a boat on (132, 10)), blue's five in the south (a boat on (132, 133)), types 0, 14, …, 126;
+  177 stacks of 1 to 12 savage gnolls, one on every hundredth of the 18 141 land tiles free of the
+  objects and the heroes' neighbourhoods. The test
+  `the_garrisons_bonuses_xl_map_is_committed_as_written_and_imports_its_seventeen_classes`: the
+  heroes, the boats, every object typed, each garrison's type, anchor, owner, army and flag on its
+  wall, the fifteen's counts and anchors, the Spring by red's first hero, the build's eleven
+  Fountains. The fixtures README's row.
+- **`--spring 1`** (`h3-cli`'s `adventure::bench`, the `fork` workload; design §16's "a Spring
+  emptied"): random play's seven days end at the step that starts day 8, whose week refills every
+  Spring, so its forks never carry the Springs' block; with `--spring 1` a player's heroes seek the
+  Springs (each one's first entrance) and the play stops when a visit empties one. `until_dwelling`
+  and `seek_dwelling` became `until_sought` (`Sought::Dwelling`, `Sought::Spring`) and
+  `seek_entrance`, the dwellings' path the same steps and allocations; `BenchResult::springs` and
+  its output line; `AdventureState::emptied_springs`, a read of the block (ADV-BON-007's test reads
+  it). The bench test: random play's forks no Springs' block, the sought ones one.
+- **The workloads** (`benches/adventure/`, each baselined at its first count; the benches README's
+  rows in `shared/e08-t116c-benches`, #933):
+
+  | Workload | Seed | What it plays | Ir | Per operation |
+  |---|---|---|---|---|
+  | `reach-garrisons-xl-144` | 4 | 2 games of 28 days on the XL: 2 747 steps, 9 000 walkers' queries, 825 (9.2 %) reaching a garrison's entrance, 442 (4.9 %) an own side's (crossed, ADV-GAR-004); 21 battles, a garrison captured | 1 247 962 909 | 139 k a query; 94 % in `legal_moves`, `Reach::search` 62 % itself, `visit_at` 1.0 % |
+  | `fork-bonuses-xl-144` | 1 | `--spring 1`: 2 steps on day 1, then 100 000 forks carrying the Springs' block (one entrance), the eleven Fountains' values, the kind marks and the visits block | 429 900 386 | 4 299 a fork (`fork-dwellings-xl-144`'s 3 766 with eight heroes: ten here, their records 15 %); 58 % in malloc and free |
+  | `random-play-garrisons-36` | 7 | 5 games of 28 days on T116a's garrisons map: 2 113 steps, an exchange open after 20, 3 garrisons captured, 5 battles | 2 076 495 300 | 983 000 a step; 95 % in `Reach::search`, the agent's legal moves 77 % |
+  | `random-play-bonuses-36` | 6 | 5 games of 28 days on T116a's bonuses map: 1 561 steps, 20 kind marks at the games' ends, 4 Springs emptied | 2 617 736 246 | 1 677 000 a step; 97 % in `Reach::search`, the agent's legal moves 81 %, `visit_at` 1.9 % |
+
+- *Agent's calls (change freely):* the map's layout (one level; the regions, the ways left as
+  rock, the owners', armies' and flags' cycles, the strides; the classes at the census's most, as
+  T106c's teleporters); `--spring` seeking the Springs alone (a seek of all fifteen would revisit
+  a bonus visited from its neighbour, which never empties a Spring); each seed by a scratch probe
+  (not committed): the XL's seeds 1 to 24 by the queries reaching an own garrison's entrance (216 to
+  442), the garrisons map's 1 to 8 by the steps with an exchange open (11 to 20), the bonuses map's
+  1 to 8 by the kind marks at the games' ends (15 to 20) and the Springs emptied (2 to 4).
+- **Gates:** the scoped verify `--with-original-data` passed every step it runs (`check-lane`
+  included, no cross-lane path): coverage 651 s, determinism 382 s (the golden replays unchanged),
+  bench-check 376 s (the four new at their counts; every other inside the gate, the reach's five
+  −0.36 to +0.06 %; the fork workloads up to +1.99 %, `fork-dwellings-xl-144`'s 384 100 055 the
+  same count in a `master` c05bccd worktree: the state other lanes added since its baseline, noted
+  in T117's queue entry), original-data 36 s (the harvest, the 160 shipped maps' import and the
+  census as before; `h3-pack-adventure`'s check after `extracted/H3ab_bmp` was copied in, which
+  the setup leaves out: TRAPS). `h3-cli`'s suite (outside the scope) and `cargo check --workspace
+  --all-targets` passed. PR #934.
+- **Versions:** none (no engine behaviour changed; `emptied_springs` is a read).
