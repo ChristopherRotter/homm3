@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `TWN-STUB-8` (the battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the
   victory conditions).
 - **Open pull requests:** T28b1's (branch `town/e09-t28b1`, `cross-lane`); watch it until it
-  merges. Open beside it: the server lane's #922 (protocol v65).
+  merges. `master` merged in after the server lane's #922 (protocol v65) and the client's #923.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
