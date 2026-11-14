@@ -10,12 +10,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   (2026-11-13 to 14: `h3-smacker`, the clips' sound, the DLL's masked Bink copy; design §7 to §9).
   **M2 T3a done** (2026-11-14, decision 29: T3 cut in two): `h3_ui::input` (the dialogs' shared
   input, the combat options on it), `h3_view::shell` (the menu loop's state machine) and
-  `shell::text`, `h3-view shell`. **Next: M2 T3b** (start-up loading by the LODs' tables, CLT-Q2;
-  the four LODs staged), then T4 (needs T3a only), T5. Decisions to carry: the dialogs' input one
+  `shell::text`, `h3-view shell`. **M2 T3b done** (2026-11-14, CLT-Q2's switch):
+  `h3_battle_client::lods`, the LODs' tables at start and a batch by its ranges, `h3-view gate`
+  measuring the start (1.3 ms; 145 ms before). **Next: M2 T4** (the comparison, `h3shell.py
+  drawn`), then T5, T6. Decisions to carry: the dialogs' input one
   implementation (20; `h3_ui::input`); the shell's code as the battle's, the score the engine's
   (21); decision 22's fixes; a Smacker clip's every pixel through its palette (24); every clip's
   sound at the effects setting (27); every Bink frame whole, the comparisons through `Target`
-  (28). Open pull request: **#921** (`client/e27-m2-t3a`) (watch it until it merges). E17
+  (28). Open pull request: **#PR** (`client/e27-m2-t3b`) (watch it until it merges). E17
   done (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -50,6 +52,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-14, E27 M2 T3b (done; `client/e27-m2-t3b`).** One task, no cut. The original data
+  staged at once (64 files, checked by SHA-256); the baseline passed. Built `h3_battle_client::lods`
+  (`Lod`, `Reader`, `Lods`) and moved every LOD reader of the crate onto it (`render`, `battle`,
+  `sequences`, `motion`, `log`, `text`, `sprite`, the binary's `situation` and `harvest`); `h3-view
+  gate` measures the start; `h3_assets::archive::inventory` on a `LodTable`. Measured against
+  `master`'s binary: the start 145 → 1.3 ms, a battle still's peak memory 243 → 28 MiB, the same
+  PNG. `check.sh` with the data staged. Record: `E27-log.md`, "M2 T3b".
 - **2026-11-14, E27 M2 T3a (done; `client/e27-m2-t3a`).** T3 cut in two with the user (decision
   29). The user's computer left the bridge at the start and came back; then the original data
   staged at once (64 files, checked by SHA-256); the baseline passed. Built `h3_ui::input` (moved
@@ -65,11 +74,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   copies. Every frame of the shell's four Bink clips, the battle's ten and the samples the DLL's.
   CLT-Q122: shown whole (decision 28). The VM restarted once (files kept). Record: `E27-log.md`,
   "M2 T2b".
-- **2026-11-14, E27 M2 T2 (done; `client/e27-m2-t2`).** Kept whole with the user (decision 25).
-  Built a stand-in Miles for the probes (`capture/mss32.c`), `smackprobe audio`, `binkprobe
-  sound`; `h3_smacker::sound` (FFmpeg's), `h3_bink::audio` with Ooura's FFT as `BINKW32.DLL`
-  compiled it (CLT-Q120: ported, credited; generated from a symbolic run of the DLL's x87 code),
-  `h3_view::clip_sound`, `HostSound::play_clip`, `video --play`. Every track of the shell's clips
-  and the samples the DLLs' byte for byte. CLT-Q121: every clip at the effects setting. Found:
-  `h3-bink`'s video of the shell's four Bink clips is not the DLL's (T2b). The VM restarted once
-  (files kept). Record: `E27-log.md`, "M2 T2".
