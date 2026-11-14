@@ -21,7 +21,8 @@ game's first read, each recipe recorded twice and the two compared.
   h3shell.py list    The recipes and their shots.
   h3shell.py drawn [--group <g>[,<g>...]] [--only <id>[,<id>...]] [--record] [--out <dir>]
       The viewer's side, without the original (no Wine; E27 M2 T4): each recipe's steps played
-      by `h3-view shell --steps` on the shell's own clock (the release build of clients/), each
+      by `h3-view shell --steps` on the shell's own clock (the release build of clients/; a
+      recipe's `Show Intro` and `Bink Video` as `--no-intro` and `--video-quality`), each
       shot and clip of the viewer against the original's kept line (`exact`: the same pixels at
       the same time; else what differs, by pixel count and box when the original's frames of a
       `run` are in <out>'s parent, clients/out/shell) and against the viewer's own record,
@@ -789,6 +790,9 @@ def drawn_recipe(recipe, out):
     args = [str(H3VIEW), "shell", "--steps", str(here / "steps.txt"), "--frames", str(frames)]
     if int(recipe.get("registry", {}).get("Show Intro", 0)) == 0:
         args.append("--no-intro")
+    # E27 M2 T5a: Bink Video 0 (Video Quality Low) plays the start's Smacker copies.
+    if int(recipe.get("registry", {}).get("Bink Video", 1)) == 0:
+        args += ["--video-quality", "low"]
     if "input_step" in recipe:
         args += ["--input-step", str(recipe["input_step"])]
     done = subprocess.run(args, capture_output=True, text=True)

@@ -545,3 +545,42 @@ checked by SHA-256 against the user's computer). The VM restarted during the set
 - **The agent's calls** (*provisional*, M2's review list items 15 to 20): the replay's shape and
   its stops; the layout's format; `drawn`'s two comparisons and the raw frames; the window's
   stand-ins and cursor; the mask's box; the samples' lines.
+
+## M2 T5a — the start's pictures: the clips timed and drawn, BinkGetRects, the fade (2026-11-14)
+
+On `client/e27-m2-t5a`, the user present; `master` at `4be4d94` (#925 merged). T5 cut in two with
+the user (decision 31: the pictures now, the sound in T5b). The original data staged at once at
+the start (64 files, checked by SHA-256 against the user's computer). The sandbox's baseline
+(`verify-once.sh clients`) died in its coverage step: CI's green Clients job on `master` stood in.
+
+- **Recorded** (`h3shell.py run --once`, the `start` group, for the frames' times and pixels):
+  every line as kept (`start-bink` in 25 min, `start-smacker` in 21 min: its second kept run's
+  form). Not `--record`: nothing changed.
+- **Read** (design §10; capstone over `Heroes3.exe`, `SMACKW32.DLL`, `BINKW32.DLL`): 0x44DD20
+  (`NWCLogo` at the corner, the rest centred), the fade 0x602C50 → 0x6030E0 (three steps 50 ms
+  apart, then black), `SmackWait` (frames due from the last let through: an unsigned comparison),
+  `BinkGetRects` (a bounding rectangle cut in two up to 8 times, sorted top to bottom), the game's
+  union of the rectangles in `video_show` (a later rectangle further left shortens it),
+  `SmackToBufferRect` glanced at. The map: 0x44DD20 and 0x602C50 read, 0x6030E0 new, 0x5979D0's
+  union.
+- **Built, `h3-view`:** `shell::start` (`Part`, `Codec`, `Header`, `Pace`, `smack_period`,
+  `smack_wait`, `Op`, `Start`, `Source`, `Picture`, `place`, `shown_union`); the replay's start
+  (`Replay::new`'s start and its ops' log, `skips`; the start's end the main menu; a release with
+  nothing held passing on a screen at rest); `Screen::Start` built whole. 13 tests.
+- **Built, `h3-bink`:** `copies` (the DLL's copy of a pixel, `Target::copy` on it) and `rects`
+  (`BinkGetRects`). 3 tests.
+- **Built, `h3-battle-client`:** `h3-view shell` plays the start (`--video-quality high|low`; the
+  replay under `Bugs::Original` with the DLL's reading, the window under `Bugs::Fixed` on
+  `ticks_ns`); `Videos` reads `shell-videos.vid` after `battle-videos.vid` when the copy has no
+  `VIDEO.VID`. The harness: `drawn` passes `--video-quality low` for `Bink Video = 0`.
+- **The comparison** (`drawn --group start`): 11 of 12 exact; `start-smacker`'s clip differs in 23
+  of 2 586 frames (`SMACKW32`'s rectangles, not built). Found on the way: a Bink comparison needs
+  `Reading::Original` (two of NWCLogo's pixels); the union's arithmetic (43 of `H3INTRO.BIK`'s
+  frames). `shell/drawn.txt` recorded (the start group's 11 lines new).
+- **Asked and answered** (decision 32): CLT-Q123 (a skipped NWCLogo fades at the corner) and
+  CLT-Q124 (the rectangles' union leaves parts of a frame unshown): both fixed, the original's for
+  the comparisons. The SMACKW32 rectangles a task of their own (T5a2), the cut offered.
+- **Checked:** `clients/scripts/check.sh` with the data staged; the window under Xvfb (the 3DO
+  logo, NWCLogo stretched); `cargo xtask check-exe-map`.
+- **The agent's calls** (*provisional*, M2's review list items 21 to 26).
+

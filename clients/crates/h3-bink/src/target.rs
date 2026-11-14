@@ -46,20 +46,14 @@ impl Target {
 
     /// Copies `decoder`'s last frame in as the DLL does (the module doc) and returns the buffer.
     pub fn copy(&mut self, decoder: &Decoder) -> &Frame {
-        let (width, height) = decoder.size();
-        let (right, bottom) = (width & !15, height & !15);
-        let (changed, wide) = decoder.changed();
         let planes = self.frame.planes_mut().iter_mut();
         for (p, (target, source)) in planes.zip(decoder.frame().planes()).enumerate() {
             // A chroma pixel's luma position: twice its own.
             let shift = usize::from(p > 0);
             let stride = target.stride();
             for (y, row) in source.pixels().chunks(stride).enumerate() {
-                let ly = y << shift;
                 for (x, &value) in row.iter().enumerate() {
-                    let lx = x << shift;
-                    let cell = (ly >> 4) * wide + (lx >> 4);
-                    if lx >= right || ly >= bottom || changed.get(cell).is_some_and(|&c| c != 0) {
+                    if copies(decoder, x << shift, y << shift) {
                         dsp::set(target.pixels_mut(), y * stride + x, value);
                     }
                 }
@@ -73,6 +67,160 @@ impl Target {
     pub fn frame(&self) -> &Frame {
         &self.frame
     }
+}
+
+/// Whether the DLL's copy of `decoder`'s last frame writes the luma position (`x`, `y`) (the
+/// module doc): its cell marked changed, or on the strips right of the last whole column of cells
+/// and below the last whole row. A pixel of the game's 5-6-5 buffer takes its colour from its
+/// luma and its 2 × 2 block's chroma, both inside its cell, so the copy writes it exactly when
+/// this holds (E27 M2 T5a: the shell's clips copied onto what the game's buffer held before).
+#[must_use]
+pub fn copies(decoder: &Decoder, x: usize, y: usize) -> bool {
+    let (width, height) = decoder.size();
+    let (changed, wide) = decoder.changed();
+    x >= width & !15
+        || y >= height & !15
+        || changed
+            .get((y >> 4) * wide + (x >> 4))
+            .is_some_and(|&c| c != 0)
+}
+
+/// A rectangle of the picture: x, y, width and height in pixels.
+pub type Rect = [i32; 4];
+
+/// The most rectangles `BinkGetRects` gives.
+pub const MAX_RECTS: usize = 8;
+
+/// The rectangles of `decoder`'s last frame as `BINKW32.DLL`'s `BinkGetRects` (0x10006380, read
+/// at E27 M2 T5a) gives them for the game's surface type (its flags neither 0x40000000, no
+/// rectangles, nor 0x80000000, one bounding rectangle): the bounding rectangle of the cells the
+/// frame marked changed ([`copies`]' mask) over the luma's stride and rows (the picture rounded
+/// up to 16; 0x10006650), then, while there are fewer than [`MAX_RECTS`], the rectangle whose cut
+/// saves the most area cut in two (0x100067B0: across at half its width or down at half its
+/// height, each half rounded up to 16 and shrunk to its own marked cells; the cut that saves
+/// more, across on a tie; none that saves nothing), the new half last. Then they are given in
+/// the order of their top edge, then their left (the key y · 65 536 + x, the first of equal keys
+/// first), each cut at the picture's right and bottom edge. A frame that marked nothing has none.
+/// The game shows their union (`video_show` 0x5979D0), which its own arithmetic can leave short
+/// (E27 M2 T5a: `h3_view::shell::start`).
+#[must_use]
+pub fn rects(decoder: &Decoder) -> alloc::vec::Vec<Rect> {
+    let (mask, wide) = decoder.changed();
+    let high = mask.len() / wide.max(1);
+    let stride = i32::try_from(wide).unwrap_or(i32::MAX);
+    let marked = |row: i32, col: i32| {
+        let at = usize::try_from(row.saturating_mul(stride).saturating_add(col));
+        mask.get(at.unwrap_or(usize::MAX)).is_some_and(|&m| m != 0)
+    };
+    let side = |n: usize| i32::try_from(n * 16).unwrap_or(i32::MAX);
+    let Some(first) = bounds(&marked, [0, 0, side(wide), side(high)]) else {
+        return alloc::vec::Vec::new();
+    };
+    let mut found = alloc::vec![first];
+    let mut cuts = alloc::vec![cut(&marked, first)];
+    while found.len() < MAX_RECTS {
+        // The cut that saves the most, the first of equals; none that saves nothing.
+        let mut best: Option<(usize, i32)> = None;
+        for (k, &(saved, _, _)) in cuts.iter().enumerate() {
+            if saved > best.map_or(0, |(_, b)| b) {
+                best = Some((k, saved));
+            }
+        }
+        let Some((k, _)) = best else { break };
+        let (_, a, b) = cuts[k];
+        found[k] = a;
+        found.push(b);
+        if found.len() == MAX_RECTS {
+            break;
+        }
+        cuts[k] = cut(&marked, a);
+        cuts.push(cut(&marked, b));
+    }
+    let (width, height) = decoder.size();
+    let size = |n: usize| i32::try_from(n).unwrap_or(i32::MAX);
+    let (width, height) = (size(width), size(height));
+    let key = |[x, y, _, _]: Rect| (y as u32).wrapping_shl(16).wrapping_add(x as u32);
+    let mut left = found;
+    let mut sorted = alloc::vec::Vec::with_capacity(left.len());
+    while !left.is_empty() {
+        let k = (0..left.len()).min_by_key(|&k| key(left[k])).unwrap_or(0);
+        let [x, y, mut w, mut h] = left.remove(k);
+        if x + w > width {
+            w = width - x;
+        }
+        if y + h > height {
+            h = height - y;
+        }
+        sorted.push([x, y, w, h]);
+    }
+    sorted
+}
+
+/// The rectangle `rect` shrunk to its marked cells (0x10006650): its rows from the first with a
+/// marked cell to the last, then its columns from the first to the last over those rows, in
+/// whole cells of 16 (a partial cell at its right or bottom edge is not looked at); none when
+/// none is marked.
+fn bounds(marked: &impl Fn(i32, i32) -> bool, rect: Rect) -> Option<Rect> {
+    let [x, y, w, h] = rect;
+    let (col0, row0, cols, rows) = (x / 16, y / 16, w / 16, h / 16);
+    let any_in_row =
+        |r: i32, cs: core::ops::Range<i32>| cs.into_iter().any(|c| marked(row0 + r, col0 + c));
+    // The DLL trims the bottom only when the height left is above 1 and the right only when the
+    // width left is: a marked row and column leave at least a cell of 16 of each, so it always
+    // does.
+    let top = (0..rows).find(|&r| any_in_row(r, 0..cols))?;
+    let marked_rows = (top..rows)
+        .rev()
+        .find(|&r| any_in_row(r, 0..cols))
+        .unwrap_or(top)
+        - top
+        + 1;
+    let empty_below = rows - top - marked_rows;
+    let any_in_col = |c: i32| (top..top + marked_rows).any(|r| marked(row0 + r, col0 + c));
+    let first = (0..cols).find(|&c| any_in_col(c)).unwrap_or(0);
+    let last = (first..cols)
+        .rev()
+        .find(|&c| any_in_col(c))
+        .unwrap_or(first);
+    let empty_right = cols - 1 - last;
+    Some([
+        x + 16 * first,
+        y + 16 * top,
+        w - 16 * first - 16 * empty_right,
+        h - 16 * top - 16 * empty_below,
+    ])
+}
+
+/// `rect`'s best cut (0x100067B0): the area it saves and the two halves (`rect` twice when
+/// neither cut is taken; a half with nothing marked, which a rectangle [`bounds`] gave never
+/// has, kept as cut).
+fn cut(marked: &impl Fn(i32, i32) -> bool, rect: Rect) -> (i32, Rect, Rect) {
+    let [x, y, w, h] = rect;
+    let area = |r: Rect| r[2] * r[3];
+    let half = |n: i32| (n / 2 + 15) & !15;
+    let mut best = (0, rect, rect);
+    if w >= 32 {
+        let a = [x, y, half(w), h];
+        let b = [x + half(w), y, w - half(w), h];
+        let (a, b) = (
+            bounds(marked, a).unwrap_or(a),
+            bounds(marked, b).unwrap_or(b),
+        );
+        best = (area(rect) - area(a) - area(b), a, b);
+    }
+    if h >= 32 {
+        let a = [x, y, w, half(h)];
+        let b = [x, y + half(h), w, h - half(h)];
+        let (a, b) = (
+            bounds(marked, a).unwrap_or(a),
+            bounds(marked, b).unwrap_or(b),
+        );
+        let saved = area(rect) - area(a) - area(b);
+        if saved > best.0 {
+            best = (saved, a, b);
+        }
+    }
+    best
 }
 
 #[cfg(test)]
@@ -138,6 +286,97 @@ mod tests {
             }
         }
         assert_eq!(du.row(8)[8], 21, "the decoder has the change");
+    }
+
+    #[test]
+    fn copies_names_the_marked_cells_and_the_strips() {
+        let key = build::frame(40, 40, [&fills(25, 10), &fills(9, 20), &fills(9, 30)]);
+        let mut luma = vec![Block::Skip; 25];
+        luma[0] = Block::Fill(11);
+        let still = build::frame(
+            40,
+            40,
+            [&luma, &vec![Block::Skip; 9], &vec![Block::Skip; 9]],
+        );
+        let (decoder, marks, _) = decoded(&[key, still]);
+        assert_eq!(marks[1], vec![1, 0, 0, 0, 0, 0, 0, 0, 0]);
+        assert!(copies(&decoder, 0, 0) && copies(&decoder, 15, 15));
+        assert!(!copies(&decoder, 16, 0) && !copies(&decoder, 31, 31));
+        assert!(copies(&decoder, 32, 0) && copies(&decoder, 0, 32) && copies(&decoder, 39, 39));
+    }
+
+    /// A 128 × 64 clip (8 × 4 cells) whose second frame changes the luma blocks of `cells`
+    /// alone (each cell's top left block), the chroma skipped: the second frame's rectangles.
+    fn rects_of(width: usize, height: usize, cells: &[(usize, usize)]) -> Vec<Rect> {
+        let (bw, bh) = (width.div_ceil(8), height.div_ceil(8));
+        let chroma = width.div_ceil(16) * height.div_ceil(16);
+        let key = build::frame(
+            width,
+            height,
+            [&fills(bw * bh, 10), &fills(chroma, 20), &fills(chroma, 30)],
+        );
+        let mut luma = vec![Block::Skip; bw * bh];
+        for &(cx, cy) in cells {
+            luma[2 * cy * bw + 2 * cx] = Block::Fill(99);
+        }
+        let skip = vec![Block::Skip; chroma];
+        let next = build::frame(width, height, [&luma, &skip, &skip]);
+        let bytes = build::file(&Header::new(width as u32, height as u32), &[key, next]);
+        let clip = Clip::parse(&bytes).unwrap();
+        let mut decoder = Decoder::new(&clip).unwrap();
+        decoder.decode(clip.video(0).unwrap()).unwrap();
+        assert_eq!(rects(&decoder), vec![[0, 0, width as i32, height as i32]]);
+        decoder.decode(clip.video(1).unwrap()).unwrap();
+        rects(&decoder)
+    }
+
+    #[test]
+    fn the_rectangles_are_the_marked_cells_cut_where_it_saves_most() {
+        // Two corners: one cut across (a tie with the cut down keeps across), then nothing
+        // more to save; the two in their order, top first.
+        assert_eq!(
+            rects_of(128, 64, &[(7, 3), (0, 0)]),
+            vec![[0, 0, 16, 16], [112, 48, 16, 16]]
+        );
+        // One cell: its own.
+        assert_eq!(rects_of(128, 64, &[(3, 2)]), vec![[48, 32, 16, 16]]);
+        // A cell across the picture's right edge: cut at it (120 of 128).
+        assert_eq!(rects_of(120, 64, &[(7, 0)]), vec![[112, 0, 8, 16]]);
+        // Nothing marked: none.
+        assert!(rects_of(128, 64, &[]).is_empty());
+        // A row of cells is one rectangle (no cut saves anything).
+        let row: Vec<_> = (0..8).map(|x| (x, 1)).collect();
+        assert_eq!(rects_of(128, 64, &row), vec![[0, 16, 128, 16]]);
+        // Scattered cells: at most eight, ordered by top, then left, the bottom row cut at
+        // the picture's edge (60 of 64).
+        let spread: Vec<_> = (0..8)
+            .flat_map(|x| [(x, 0), (x, 3)])
+            .filter(|&(x, _)| x % 2 == 0)
+            .collect();
+        let got = rects_of(128, 60, &spread);
+        assert_eq!(got.len(), MAX_RECTS);
+        let keys: Vec<u32> = got
+            .iter()
+            .map(|r| ((r[1] as u32) << 16) + r[0] as u32)
+            .collect();
+        assert!(keys.windows(2).all(|k| k[0] < k[1]), "{got:?}");
+        assert!(got.iter().all(|r| r[1] + r[3] <= 60 && r[0] + r[2] <= 128));
+        assert!(got.iter().any(|r| r[1] == 48 && r[3] == 12));
+    }
+
+    #[test]
+    fn a_cut_down_wins_when_it_saves_more() {
+        // Cells (0, 0) and (1, 3): across at 16 px saves 32 · 64 − 2 · 16 · 16; down at 32 the
+        // same: across kept. With (0, 0), (1, 0) and (0, 3): across saves 32 · 64 − 16 · 64 − 16 ·
+        // 16, down 32 · 64 − 32 · 16 − 16 · 16: down.
+        assert_eq!(
+            rects_of(32, 64, &[(0, 0), (1, 3)]),
+            vec![[0, 0, 16, 16], [16, 48, 16, 16]]
+        );
+        assert_eq!(
+            rects_of(32, 64, &[(0, 0), (1, 0), (0, 3)]),
+            vec![[0, 0, 32, 16], [0, 48, 16, 16]]
+        );
     }
 
     #[test]

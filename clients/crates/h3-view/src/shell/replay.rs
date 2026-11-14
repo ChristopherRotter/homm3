@@ -6,18 +6,24 @@
 //! in steps of [`UNTIL_STEP`]. Each shot and each clip's frame is handed to the caller, which
 //! draws the shell as it is then ([`Replay::screen`], [`Replay::pointer`], [`Replay::time`]).
 //!
+//! The start (E27 M2 T5a) plays on the same clock: each step's reading of it runs the start's
+//! timing ([`super::start::Start`]), whose ops the caller carries out ([`Replay::ops`]); an input
+//! that stops a clip is the start's ([`Start::skip`]); its end shows the main menu.
+//!
 //! What only the harness can do stops the replay ([`Stop`]): a step on the original's memory or
 //! its probes (`poke`, `press`, `point`, `until-button`, `games-time`, `freeze`), a screen name the
 //! viewer does not know, a screen not built yet ([`Screen::built`]: nothing on it changes by
 //! itself, and its shots would be a stand-in's), a press or a key on a screen built only at rest
-//! (the main menu until T6: the pointer's moves are taken, its hover not drawn). The real-time
+//! (the main menu until T6: the pointer's moves and the releases with nothing held are taken,
+//! its hover not drawn). The real-time
 //! pauses (`settle`, `wait`) pass no time on the frozen clock.
 
 use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use super::{Built, Game, Screen, Shell};
+use super::start::{Op, Start};
+use super::{Built, Ended, Game, Screen, Shell};
 
 /// The clock's step after each input (h3shell's `INPUT_STEP`: the game draws its cursor at the
 /// pointer only on a later tick).
@@ -246,26 +252,68 @@ pub enum Stop {
     },
 }
 
-/// A recipe's replay: the shell, the time and the pointer.
+/// A recipe's replay: the shell, the time and the pointer, the start's timing and its ops.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Replay {
     shell: Shell,
     time: u32,
     pointer: [i32; 2],
     input_step: u32,
+    start: Option<Start>,
+    ops: Vec<Op>,
+}
+
+/// Whether an input stops a start's clip (`video_play_fullscreen`'s and `video_play_framed`'s
+/// loops): a key down but F4 (scan code 0x3E), a left or a right press.
+#[must_use]
+pub fn skips(input: &Input) -> bool {
+    match input {
+        Input::Key(name) | Input::KeyDown(name) => !name.eq_ignore_ascii_case("F4"),
+        Input::Type(text) => !text.is_empty(),
+        Input::Click(_) | Input::Down(_) | Input::Right(_) => true,
+        Input::Move(_) | Input::Up | Input::RightUp | Input::KeyUp(_) => false,
+    }
 }
 
 impl Replay {
     /// A replay of `shell` from its first screen at 0 ms, the pointer at `pointer` (where the
-    /// harness parks it before the game starts), each input followed by `input_step`.
+    /// harness parks it before the game starts), each input followed by `input_step`; a shell at
+    /// the start plays `start`'s clips (started at 0 ms: [`Start::new`] with its ops, given as
+    /// `ops`), none ending the start at once.
     #[must_use]
-    pub const fn new(shell: Shell, pointer: [i32; 2], input_step: u32) -> Self {
+    pub fn new(
+        mut shell: Shell,
+        pointer: [i32; 2],
+        input_step: u32,
+        start: Option<(Start, Vec<Op>)>,
+    ) -> Self {
+        let (start, ops) = match start {
+            Some((start, ops)) if shell.screen() == Screen::Start => (Some(start), ops),
+            _ => (None, Vec::new()),
+        };
+        if shell.screen() == Screen::Start && start.as_ref().is_none_or(Start::ended) {
+            let _ = shell.end(Ended::Start);
+        }
         Self {
             shell,
             time: 0,
             pointer,
             input_step,
+            start,
+            ops,
         }
+    }
+
+    /// The start's ops so far, in order (the caller carries out those it has not yet).
+    #[must_use]
+    pub fn ops(&self) -> &[Op] {
+        &self.ops
+    }
+
+    /// The start's timing, while the start plays.
+    #[must_use]
+    pub const fn start(&self) -> Option<&Start> {
+        self.start.as_ref()
     }
 
     /// The milliseconds since the first screen.
@@ -317,7 +365,26 @@ impl Replay {
                 self.tick(self.input_step);
                 Ok(None)
             }
-            // A press or a key: no screen takes them yet (T6 builds the main menu's).
+            Step::Input(input) if self.screen() == Screen::Start => {
+                if skips(input) {
+                    let (time, ops) = (self.time, &mut self.ops);
+                    self.start
+                        .iter_mut()
+                        .for_each(|start| start.skip(time, ops));
+                    self.ended();
+                }
+                self.tick(self.input_step);
+                Ok(None)
+            }
+            // A release with nothing held (a press would have stopped the replay before; the
+            // start's skip took its own): nothing on a screen at rest.
+            Step::Input(Input::Up | Input::RightUp | Input::KeyUp(_))
+                if self.screen().built() == Built::AtRest =>
+            {
+                self.tick(self.input_step);
+                Ok(None)
+            }
+            // A press or a key: no other screen takes them yet (T6 builds the main menu's).
             Step::Input(_) => Ok(Some(match self.screen().built() {
                 Built::Not => Stop::NotBuilt(self.screen()),
                 Built::AtRest | Built::Whole => Stop::AtRest(self.screen()),
@@ -335,9 +402,21 @@ impl Replay {
         }
     }
 
-    /// The clock moved on.
+    /// The clock moved on: the start's reading of it.
     fn tick(&mut self, ms: u32) {
         self.time = self.time.saturating_add(ms);
+        if let Some(start) = self.start.as_mut() {
+            start.read(self.time, &mut self.ops);
+        }
+        self.ended();
+    }
+
+    /// The start's end taken: the main menu.
+    fn ended(&mut self) {
+        if self.start.as_ref().is_some_and(Start::ended) {
+            self.start = None;
+            let _ = self.shell.end(Ended::Start);
+        }
     }
 
     /// A name the viewer does not know among `screens`.

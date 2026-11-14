@@ -247,13 +247,19 @@ fn each_screen_names_the_task_that_builds_it() {
 }
 
 #[test]
-fn only_the_main_menu_is_built_at_rest() {
+fn the_start_is_built_whole_and_the_main_menu_at_rest() {
     let built: Vec<(Screen, Built)> = screens()
         .into_iter()
         .map(|s| (s, s.built()))
         .filter(|(_, b)| *b != Built::Not)
         .collect();
-    assert_eq!(built, [(Screen::MainMenu, Built::AtRest)]);
+    assert_eq!(
+        built,
+        [
+            (Screen::Start, Built::Whole),
+            (Screen::MainMenu, Built::AtRest)
+        ]
+    );
 }
 
 #[test]
