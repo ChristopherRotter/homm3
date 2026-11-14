@@ -874,6 +874,16 @@ fn sample_sound(seed: u64) -> (Track, Vec<Vec<u8>>) {
     (Track { largest, ..track }, packets)
 }
 
+/// Which 16 × 16 cells of frame `f` keep their luma (E27 M2 T2b): none in the first, else each
+/// one time in four, drawn from a source of its own. Where the chroma changes there,
+/// `BINKW32.DLL`'s copy may leave it out (CLT-Q122, [`crate::Target`]), so the samples check the
+/// DLL's marks.
+fn still_cells(rng: &mut Random, f: usize, width: usize, height: usize) -> Vec<bool> {
+    (0..width.div_ceil(16) * height.div_ceil(16))
+        .map(|_| f > 0 && rng.below(4) == 0)
+        .collect()
+}
+
 /// The sample's frame size and length.
 pub const SAMPLE_WIDTH: u32 = 256;
 /// See [`SAMPLE_WIDTH`].
@@ -883,7 +893,8 @@ pub const SAMPLE_FRAMES: usize = 8;
 
 /// A 256 × 48 clip of 8 frames (as wide as the game's clips), every block of a random type of
 /// the nine with random values (the first frame's skipped blocks raw instead; DCT coefficients
-/// of every magnitude up to 15 bits, E17 M6 T6c1), and a sound track (E27 M2 T2,
+/// of every magnitude up to 15 bits, E17 M6 T6c1), after the first frame a quarter of the 16 ×
+/// 16 cells' luma skipped whole ([`still_cells`]), and a sound track (E27 M2 T2,
 /// [`sample_sound`]), each seed its own clip: what `h3-view video
 /// --sample` writes for the DLL to decode (`bink-check.sh`; FFmpeg until E17 M6 T6c1), and what
 /// the decoder's unit test hashes.
@@ -899,6 +910,7 @@ pub fn sample(seed: u64) -> Vec<u8> {
 #[must_use]
 pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
     let mut rng = Random::new(seed);
+    let mut still = Random::new(seed ^ 0x5711_CE11);
     let (track, sound) = sample_sound(seed);
     let header = Header {
         audio_tracks: 1,
@@ -908,6 +920,7 @@ pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
     let (width, height) = (width as usize, height as usize);
     let frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
         .map(|f| {
+            let still = still_cells(&mut still, f, width, height);
             let planes: [Vec<Block>; 3] = core::array::from_fn(|i| {
                 let size = if i == 0 { 8 } else { 16 };
                 let (columns, rows) = (width.div_ceil(size), height.div_ceil(size));
@@ -915,8 +928,16 @@ pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
                     .map(|b| {
                         let kind = rng.below(9);
                         let kind = if f == 0 && kind == 0 { 8 } else { kind };
-                        let vectors = inside(b % columns, b / columns, columns, rows, f == 0);
-                        random_block(&mut rng, kind, vectors)
+                        let (x, y) = (b % columns, b / columns);
+                        let vectors = inside(x, y, columns, rows, f == 0);
+                        // Drawn whole, then skipped: the other blocks' values stay as they were.
+                        let block = random_block(&mut rng, kind, vectors);
+                        let cell = y / 2 * width.div_ceil(16) + x / 2;
+                        if i == 0 && still.get(cell) == Some(&true) {
+                            Block::Skip
+                        } else {
+                            block
+                        }
                     })
                     .collect()
             });

@@ -1643,12 +1643,56 @@ game's DLLs (`clients/scripts/smacker-check.sh`, `bink-check.sh`; the probes in
 ### 8.4 For T2b and T5
 
 - **The Bink clips' video (T2b):** the check of the sound found `h3-bink`'s video of the shell's
-  four Bink clips not the DLL's (the battle's clips and the samples are): at the first
-  differences the chroma only, at most 3 levels (`NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6;
-  `bink-check.sh` with no arguments reports them). M2 T2b finds why, before T5.
+  four Bink clips not the DLL's (the battle's clips and the samples were): at the first
+  differences the chroma only, at most 3 levels (`NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6).
+  Found and settled at T2b: the decoding was right, the DLL's copy is not (§9).
 - **The end of a clip:** the game closes a Smacker clip right after its last `SmackDoFrame`
   (`smacker_tick` 0x598F74), so the sound still queued is cut; T5 reads how much plays and settles
   the client's end (the samples are whole).
 - **The pace:** the client hands the host a clip's whole track (`HostSound::play_clip`, a stream
   of its own); the DLLs' rings and their drops on a late consumer are not modelled. The 3DO logo's
   full-screen path's volume and the game's DirectSound path are read at T5.
+
+## 9. The Bink clips' copy (M2 T2b, 2026-11-14)
+
+The shell's four Bink clips decode as `BINKW32.DLL` decodes them; what differed is the frame
+the game gets. Read in the DLL (scratch disassembly with capstone) and checked on every frame of
+the fourteen game clips and the samples (`bink-check.sh`, all exact since T2b). Built:
+`h3_bink::Target` (its module doc holds the reading), `Decoder`'s change mask, the samples' still
+cells (`build::still_cells`); `Reading::Original` (`check::frames_read`, `h3-view video
+--original`, `h3_view::clip::Video` under `Bugs::Original`) gives the copied frames.
+
+- **The copy.** The game calls `BinkCopyToBuffer` with the surface type alone (`video_tick`
+  0x44DAA0, `video_redraw` 0x44D9E0: `video_surface_type`), never `BINKCOPYALL` (0x4000000), so
+  the DLL (0x10005550) copies the whole frame only when every byte of its change mask is set (a
+  `strlen` of it against its size, `[h+0xD0]`) and otherwise only the marked 16 × 16 cells
+  (`YUV_blit_16bpp_mask` 0x100096B0 for the game's 5-6-5, `YUV_blit_YUY2_mask` 0x10009D90 for the
+  probe's YUY2: the same loop, two cells at a time), then the strips right of `width & !15` and
+  below `height & !15` whatever the mask (the full copies 0x10007A90, 0x10008330; the right strip
+  read only: no clip's width leaves one). The target keeps the rest from the copies before.
+- **The mask** (`[h+0xC8]`, `(S/16) · (R/16)` bytes, `S` and `R` the luma plane's stride and rows,
+  the picture's size rounded up to 16: `BinkOpen` 0x10004AC9): cleared by `ExpandBink` 0x10003240
+  before the planes; `ExpandPlane` 0x10002040 sets a byte at every block of a type 1 to 8 (a skip,
+  0, sets none; an unknown type is a skip there): a counter advanced by its last argument (1 for
+  the luma, 2 for the chroma) and halved gives the cell across; the row pointer moves on after each
+  odd block row by its stride argument over 16. For the luma that is right. The chroma gets half
+  the luma's stride, so its row step is half a row of cells (rounded down) after every two block
+  rows, where each chroma block row is a row of cells: chroma block (`bx`, `by`) marks cell
+  (`by` / 2) · ⌊`S` / 32⌋ + `bx` instead of `by` · `S` / 16 + `bx`.
+- **What shows:** a cell whose chroma changed while none of its four luma blocks did reaches the
+  game's buffer only when a later frame marks it. In the shell's clips that is a fade's chroma a
+  frame or a few late, up to a few levels (`NWCLOGO`'s logo from frame 7, `LOSEGAME` from frame 6,
+  `H3INTRO` from 16, `H3X1intr` from 9); the battle's ten clips have no such cell, so their frames
+  are the same either way (their captures need nothing new). **CLT-Q122** (the user, 2026-11-14:
+  fix, decision 28): the client shows every decoded frame whole; the DLL's copy for the
+  comparisons only.
+- **The probe** copies into one buffer of zeros for the whole clip (`binkprobe frames`), as the
+  game's dialog target holds its last frame; a `Target` starts at zeros too. What the game's
+  buffer holds before a clip's first frame (a key frame marks every cell that has a block of a
+  type but 0; the samples' first frames have no skip) is not modelled: T5 reads it with the start.
+- **The samples** (`build::sample`): after the first frame a quarter of the cells keep their luma
+  (skipped whole, drawn first so the other blocks stay as they were) while the chroma changes, so
+  every seed's copied frames differ from its decoded ones and `bink-check.sh` checks the DLL's
+  marks; the hashes (seeds 1 to 3, and three at 256 × 120 through `bink-dll.py` by hand) are the
+  DLL's.
+

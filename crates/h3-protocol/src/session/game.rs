@@ -109,6 +109,12 @@
 //!   what it may see of the clock (`GameClock`) whenever that changes otherwise than by counting
 //!   down, after a command's other messages and before the turns, and after a snapshot that
 //!   leaves something to tell; the time counted is journaled ([`GameEntry::Elapsed`]).
+//! - **The bounds** (E16 M5 T18; [`bounds`]' own text). The host bounds a player's commands
+//!   ([`GameOptions::commands`]): its map commands in its running turn, past which they are
+//!   rejected `TurnLimit` (ending the turn, answering a decision and fighting a battle never
+//!   are), and its commands in one battle, past which the computer plays its side for the rest of
+//!   the battle as a timed-out one's (the system's journaled steps) and its own are rejected
+//!   `BattleLimit`. `GameTurn` leaves out what a bound refuses.
 //! - **Not here yet:** a battle's `ProposePause`, `AnswerPause` (no whole game is ranked),
 //!   `FetchReplay` (no whole game ends before E10) and `SetSpectators` (2c), ignored here; its
 //!   `Query` too (a whole game's is `GameQuery::Battle`).
@@ -130,7 +136,8 @@
 //! unnumbered and unrecorded, a query outside a running game rejected as a command, the start's
 //! events only to a player that has any (T11); `GameClock` after the other messages and after a
 //! snapshot, the system's steps in the order the module says, the computer's or else Defend for
-//! a timed-out side in-process (T16).
+//! a timed-out side in-process (T16); the bounds' rejections the session's own, checked before
+//! the engine's (T18).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -151,6 +158,7 @@ use super::{
     unseated,
 };
 
+mod bounds;
 mod clock;
 
 use crate::RECORD_FORMAT_VERSION;
@@ -161,6 +169,7 @@ use crate::wire::game::{
     GameReject,
 };
 use crate::wire::{ClientMessage, GoodbyeReason, Observation, Phase, Refusal, ServerMessage};
+pub use bounds::CommandBounds;
 pub use clock::{Allowance, Clock, ELAPSED_EVERY_MS};
 
 /// A frame for a player: the host delivers it to the player's client.
@@ -186,6 +195,9 @@ pub struct GameOptions {
     pub record_bytes: usize,
     /// How the game's clock runs (E16 M5 T16): [`Clock::UNLIMITED`] for none.
     pub clock: Clock,
+    /// The bounds on a seat's commands (E16 M5 T18, [`bounds`]): [`CommandBounds::NONE`] for
+    /// none.
+    pub commands: CommandBounds,
 }
 
 /// The journal (E16 M5 T5b): the adventure replay in progress but for what the host names (the
@@ -486,6 +498,8 @@ pub struct GameSession<'r> {
     computer: Option<Box<dyn Bot + Send>>,
     /// The game's timers (E16 M5 T16).
     clock: clock::Timers,
+    /// The players' commands counted against the host's bounds (E16 M5 T18).
+    counts: bounds::Counts,
 }
 
 impl<'r> GameSession<'r> {
@@ -666,6 +680,8 @@ impl<'r> GameSession<'r> {
         };
         let mut clock = clock::Timers::new(options.clock, state.players());
         clock.sync(&state, None);
+        let mut counts = bounds::Counts::new(options.commands, state.players());
+        counts.sync(&state, None);
         Ok(Self {
             rules,
             viewers: vec![viewer; state.players()],
@@ -686,6 +702,7 @@ impl<'r> GameSession<'r> {
             logins: BTreeMap::new(),
             computer: None,
             clock,
+            counts,
         })
     }
 
@@ -1265,7 +1282,8 @@ impl<'r> GameSession<'r> {
     /// 2. An unowned battle side to act, by the host's computer (none without one: the
     ///    in-process host plays the system actor itself).
     /// 3. A battle side to act that is the computer's, a player's whose turn or chess clock ran
-    ///    out: by the computer, or Defend (else the first legal command) without one.
+    ///    out or whose commands in the battle reached the host's bound (E16 M5 T18): by the
+    ///    computer, or Defend (else the first legal command) without one.
     /// 4. A player whose turn ran out and who fights no battle: its first open decision's
     ///    default answer, or its turn's end when it has none.
     ///
@@ -1309,7 +1327,9 @@ impl<'r> GameSession<'r> {
         for player in players.clone() {
             if let Some((battle, side)) = own_battle(state, player)
                 && battle.state().side_to_act() == Some(side)
-                && (self.clock.turn_out(state, player) || self.clock.side_out(battle, side))
+                && (self.clock.turn_out(state, player)
+                    || self.clock.side_out(battle, side)
+                    || self.counts.battle_out(player))
             {
                 let computer = self.computer.as_mut();
                 let choices = choices(computer, battle, self.rules, side);
@@ -1415,6 +1435,13 @@ impl<'r> GameSession<'r> {
         }
     }
 
+    /// The most commands a player spent now of the host's bounds (E16 M5 T18): in its running
+    /// turn, in its open battle; the tests' measures of the defaults.
+    #[cfg(test)]
+    pub(crate) fn spent(&self) -> (u32, u32) {
+        self.counts.most()
+    }
+
     /// The game's state (the host's: the hashes, the end).
     pub const fn state(&self) -> &GameState {
         &self.state
@@ -1462,6 +1489,12 @@ impl<'r> GameSession<'r> {
             return Err(GameReject::NotStarted {});
         }
         let command = map::game::command_to_engine(command)?;
+        // The host's bounds on a seat's commands (E16 M5 T18).
+        if let Actor::Player(player) = origin.actor()
+            && let Some(code) = self.counts.refuses(&self.state, player, &command)
+        {
+            return Err(code);
+        }
         let echo = map::game::command(&command);
         let mut told = Told {
             rules: self.rules,
@@ -1494,11 +1527,13 @@ impl<'r> GameSession<'r> {
         let commanded = commander
             .and_then(|player| own_battle(&self.state, player))
             .map(|own| (BattleKey::of(own), own.1));
+        let counted = bounds::Counts::of(&self.state, actor, &command);
         h3_game::apply(&mut self.state, self.rules, actor, command.clone(), sink)?;
         // The time counted so far precedes the command, which may change what runs; it counted
         // in the state before it.
         self.flush();
         self.clock.sync(&self.state, commanded);
+        self.counts.sync(&self.state, counted);
         for seat in self.taken_mut() {
             seat.asked = false;
         }
@@ -1579,12 +1614,14 @@ impl<'r> GameSession<'r> {
         }
     }
 
-    /// If `player` may act, its legal commands and, while its battle side is to act, the spells
-    /// its hero may cast.
+    /// If `player` may act, its legal commands but those the host's bounds refuse (E16 M5 T18)
+    /// and, while its battle side is to act, the spells its hero may cast.
     fn turn(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
+        let (state, counts) = (&self.state, &self.counts);
         let legal: Vec<GameCommand> =
-            h3_game::legal_commands(&self.state, self.rules, Actor::Player(player))
+            h3_game::legal_commands(state, self.rules, Actor::Player(player))
                 .iter()
+                .filter(|command| counts.refuses(state, player, command).is_none())
                 .map(map::game::command)
                 .collect();
         if legal.is_empty() {

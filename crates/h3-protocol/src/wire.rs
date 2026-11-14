@@ -2057,7 +2057,10 @@ pub enum ServerMessage {
     /// The player may act in the whole game (E16 M5 T5a, v39): its legal commands but its moves
     /// (`h3_game::legal_commands`: in its turn, an open decision's answers, its battle side's
     /// commands while that side is to act, also outside its turn). Sent when the game starts and
-    /// after every accepted command to each player that may act then.
+    /// after every accepted command to each player that may act then. Past one of the host's
+    /// bounds (E16 M5 T18, v62) it leaves out what the session would reject: its map commands
+    /// once its turn's reached `TurnLimit`, its battle commands once its battle's reached
+    /// `BattleLimit` (the computer plays that side then; none left: no `GameTurn`).
     GameTurn {
         /// The viewer's message number.
         n: u32,
