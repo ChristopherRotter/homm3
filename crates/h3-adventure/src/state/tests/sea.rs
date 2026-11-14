@@ -114,7 +114,7 @@ fn sail(
         &rules.0,
         &rules.1,
         store,
-        (RED, &mut stream()),
+        (RED, Weekday::FIRST, &mut stream()),
         &command,
         &mut events,
     );

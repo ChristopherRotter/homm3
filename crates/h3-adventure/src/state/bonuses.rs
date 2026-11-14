@@ -3,8 +3,9 @@
 //! effect lives on the hero on the map, not in its details, so none carries over to a hero that
 //! leaves the map and is hired again. The battle bonuses are the morale and luck no once-mark
 //! names (a Pandora's Box's, an event's) and a short list of once-marks with the amounts their
-//! visits gave (the Warrior's Tomb's, a looted Pyramid's; increment 12's ten bonus kinds and the
-//! Fountain of Fortune from T115b); a battle's end clears them (GAM-BAT-014). The timed marks are
+//! visits gave (the Warrior's Tomb's, a looted Pyramid's; increment 12's ten bonus kinds, the
+//! Fountain of Fortune and the Sirens since T115b, `visitables.rs`); a battle's end clears them
+//! (GAM-BAT-014; the Sirens' kept with `ADV-QUIRK-46` off). The timed marks are
 //! the object types whose day's or week's mark the hero holds (the Magic Well's, the Stables'):
 //! the adventure's day step drops the day's, its week step the week's, and the week's land points
 //! are derived from them. Both are one record's ([`VisitMarks`]), so a hero held off the map (the
@@ -73,9 +74,16 @@ impl HeroBonuses {
         self.luck = self.luck.saturating_add(luck);
     }
 
+    /// Whether a battle's end that keeps the once-marks `kept` changes these bonuses (E08 T115b):
+    /// some morale or luck, or a once-mark not kept.
+    pub fn clears(&self, kept: &[u8]) -> bool {
+        self.morale != 0 || self.luck != 0 || self.once.iter().any(|b| !kept.contains(&b.mark))
+    }
+
     /// Adds `bonus` under its once-mark while the hero does not hold the mark, which it then
     /// holds with the bonus's amounts; `false`, and nothing changed, when it does (a second
-    /// Warrior's Tomb before a battle: E7-11; the visits' `NothingGained` from T115b).
+    /// Warrior's Tomb before a battle: E7-11; since T115b the bonus visitables' second visit,
+    /// [`crate::AdventureEventKind::NothingGained`]).
     // rule: HER-ADV-008
     pub fn add_once(&mut self, bonus: VisitBonus) -> bool {
         match self.once.binary_search_by_key(&bonus.mark, |b| b.mark) {
@@ -138,7 +146,7 @@ impl VisitMarks {
 
     /// Adds the timed mark of the object type `object_type` (the type's kind names how long it is
     /// held, [`crate::ObjectKind::timed_mark`]): `false`, and nothing changed, when it is held (a
-    /// Magic Well's visit the same day, the Stables' the same week; their visits from T115b).
+    /// Magic Well's visit the same day, the Stables' the same week; E08 T115b).
     pub fn add_timed(&mut self, object_type: ObjectTypeId) -> bool {
         match self.timed.binary_search(&object_type) {
             Ok(_) => false,
@@ -149,10 +157,13 @@ impl VisitMarks {
         }
     }
 
-    /// The battle's end (GAM-BAT-014): the bonuses cleared, the timed marks kept.
+    /// The battle's end (GAM-BAT-014): the bonuses cleared but the once-marks `kept` (since E08
+    /// T115b the Sirens' with `ADV-QUIRK-46` off), the timed marks kept.
     // rule: GAM-BAT-014
-    pub fn clear_bonuses(&mut self) {
-        self.bonuses = HeroBonuses::NONE;
+    pub fn clear_bonuses(&mut self, kept: &[u8]) {
+        self.bonuses.morale = 0;
+        self.bonuses.luck = 0;
+        self.bonuses.once.retain(|bonus| kept.contains(&bonus.mark));
     }
 
     /// Drops every timed mark whose type's kind lives for `lifetime` (E08 T115a; increment 12's
@@ -284,23 +295,6 @@ impl AdventureState {
         all.retain(|&(id, _)| id != hero);
         if all.is_empty() {
             self.visited = None;
-        }
-    }
-
-    /// The end of a battle for its heroes on the map (GAM-BAT-014 amended, E08 T115a; increment
-    /// 12's design note §14): each of `heroes` still on the map loses its battle bonuses and their
-    /// once-marks, the game calling it after the battle's capture and the heroes' part, as the
-    /// original's `hero_battle_bonuses_clear` from `battle_end` (0x477792). A hero that left the
-    /// map left with them. The marks a part names as outliving a battle under the profile (the
-    /// Sirens', `ADV-QUIRK-46` off) come with their visits (T115b). Told as the command's
-    /// [`crate::AdventureEventKind::OnceMarkChanged`] and
-    /// [`crate::AdventureEventKind::BonusChanged`].
-    // rule: GAM-BAT-014
-    pub fn clear_battle_bonuses(&mut self, heroes: &[HeroId]) {
-        for &id in heroes {
-            if !self.visit_marks(id).bonuses().is_empty() {
-                self.change_marks(id, VisitMarks::clear_bonuses);
-            }
         }
     }
 

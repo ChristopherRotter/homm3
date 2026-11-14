@@ -520,6 +520,45 @@ pub(crate) enum Effect<'k> {
     /// (its exchange); for any other, its army fought at once while it holds one, then its flag
     /// (a garrison, ADV-GAR-002, ADV-GAR-004, E08 T114a1).
     Garrison,
+    /// Under this once-mark the day's morale and luck from this week of pairs, then these points
+    /// to the points left and the day's maximum, or with `drain` the points left emptied (a bonus
+    /// visitable, ADV-BON-002, ADV-BON-004, E08 T115b).
+    Bonus {
+        /// The once-mark.
+        mark: u8,
+        /// The pairs by the day of the week.
+        days: &'k [(i8, i8); BONUS_DAYS],
+        /// The points added (0 none).
+        points: u32,
+        /// Whether the points left are emptied.
+        drain: bool,
+    },
+    /// Its knowledge for the visitor's team, then under this once-mark the fountain's value as
+    /// luck (a Fountain of Fortune, ADV-BON-003, E08 T115b).
+    Fortune(u8),
+    /// The spell points to the hero's maximum once a day (a Magic Well, ADV-BON-006, E08 T115b).
+    Well,
+    /// The spell points to twice the maximum, once a week per entrance (a Magic Spring,
+    /// ADV-BON-007, E08 T115b).
+    Spring,
+    /// At a week's first visit these points; at every visit `from` made `to` (the Stables,
+    /// ADV-BON-005, E08 T115b).
+    Stables {
+        /// The points of the week's first visit.
+        points: u32,
+        /// The creature upgraded.
+        from: CreatureTypeId,
+        /// What it becomes.
+        to: CreatureTypeId,
+    },
+    /// Under this once-mark each stack above one creature keeps this part of its count (the
+    /// Sirens, ADV-BON-008, E08 T115b).
+    Sirens {
+        /// The once-mark.
+        mark: u8,
+        /// The part kept, (numerator, denominator).
+        keep: (u32, u32),
+    },
 }
 
 impl ObjectKind {
@@ -534,7 +573,8 @@ impl ObjectKind {
     /// and the abandoned mines; T84b1: the Lighthouses and the weekly objects; T84b2: the
     /// Shipyards; T95a1: the dwellings and the Refugee Camps; E09 T8a2: the towns; E08 T105a1:
     /// the monoliths and the Subterranean Gates, whose visit is the jump; T105a2: the Whirlpool,
-    /// whose visit is its loss and the jump; T114a1: the garrisons. Who reaches a kind's visit is the passage's: on water
+    /// whose visit is its loss and the jump; T114a1: the garrisons; T115b: the fifteen bonus
+    /// visitables. Who reaches a kind's visit is the passage's: on water
     /// only a boat (ADV-PIK-018, D-46).
     pub(crate) fn effect(&self) -> Option<Effect<'_>> {
         match self {
@@ -572,6 +612,29 @@ impl ObjectKind {
             Self::SubterraneanGate => Some(Effect::SubterraneanGate),
             Self::Whirlpool { divisor } => Some(Effect::Whirlpool(*divisor)),
             Self::Garrison { .. } => Some(Effect::Garrison),
+            Self::Bonus {
+                mark,
+                days,
+                points,
+                drain,
+            } => Some(Effect::Bonus {
+                mark: *mark,
+                days,
+                points: *points,
+                drain: *drain,
+            }),
+            Self::FountainOfFortune { mark, .. } => Some(Effect::Fortune(*mark)),
+            Self::MagicWell => Some(Effect::Well),
+            Self::MagicSpring => Some(Effect::Spring),
+            Self::Stables { points, from, to } => Some(Effect::Stables {
+                points: *points,
+                from: *from,
+                to: *to,
+            }),
+            Self::Sirens { mark, keep } => Some(Effect::Sirens {
+                mark: *mark,
+                keep: *keep,
+            }),
             // E08 T61a: typed; an event is fired by a step, never visited (T62b2). E08 T72: the
             // grounds of the sea and the holes are never visited. E08 T83a: increment 9's seven
             // kinds are typed; the mines' visits came with T84a, the Lighthouses' and the weekly
@@ -583,18 +646,12 @@ impl ObjectKind {
             // typed; the monoliths' and the gates' jump came with T105a1 (increment 11's design
             // note §7), the Whirlpool's with T105a2 (its loss first, note §8). E08 T113a:
             // increment 12's seven kinds are typed; the garrisons' visits came with T114a1, the
-            // bonus visitables' come with T115b (increment 12's design note §19).
+            // bonus visitables' with T115b (increment 12's design note §8, §9).
             Self::Ground { .. }
             | Self::Event
             | Self::SeaGround
             | Self::Hole
-            | Self::RandomDwelling
-            | Self::Bonus { .. }
-            | Self::FountainOfFortune { .. }
-            | Self::MagicWell
-            | Self::MagicSpring
-            | Self::Stables { .. }
-            | Self::Sirens { .. } => None,
+            | Self::RandomDwelling => None,
         }
     }
 

@@ -134,34 +134,47 @@ pub(super) fn owners_at_start(
     })
 }
 
-/// A weekly object or a Refugee Camp, by its place among its own (E08 T94b): what the week's
-/// draws walk ([`in_object_order`]).
+/// A weekly object, a Refugee Camp or a Fountain of Fortune, by its place among its own (E08
+/// T94b; the fountains since T115b): what the week's draws walk ([`in_object_order`]).
 #[derive(Clone, Copy)]
 pub(super) enum Drawn {
     /// The weekly object at this place among the static map's weekly objects.
     Weekly(usize),
     /// The camp at this camp index.
     Camp(usize),
+    /// The Fountain of Fortune at this place among the static map's fountains.
+    Fountain(usize),
 }
 
-/// The weekly objects and the camps of `map` in object order, in one pass (E08 T94b, increment
-/// 10's design note §9: the original's map scan holds case 78 beside the weekly objects' cases;
+/// The weekly objects, the camps and (since E08 T115b) the Fountains of Fortune of `map` in object
+/// order, in one pass (E08 T94b, increment 10's design note §9: the original's map scan holds case
+/// 78 beside the weekly objects' cases, and case 30 (0x4C8C9F; increment 12's survey §10.6);
 /// *agent's call:* one pass, so the stream's order follows the object order).
 pub(super) fn in_object_order(map: &StaticMap) -> impl Iterator<Item = Drawn> + '_ {
-    let (weeklies, camps) = (map.weeklies(), map.camps());
-    let (mut weekly, mut camp) = (0, 0);
+    let lists = [map.weeklies(), map.camps(), map.fountains()];
+    let mut next = [0; 3];
     core::iter::from_fn(move || {
-        let next_camp = camps
-            .get(camp)
-            .is_some_and(|c| weeklies.get(weekly).is_none_or(|w| c < w));
-        if next_camp {
-            camp += 1;
-            return Some(Drawn::Camp(camp - 1));
-        }
-        let place = weekly;
-        weekly += 1;
-        weeklies.get(place).map(|_| Drawn::Weekly(place))
+        // The list whose next object comes first (the lists are disjoint: an object has one kind).
+        let list = (0..lists.len())
+            .filter_map(|list| lists[list].get(next[list]).map(|&index| (index, list)))
+            .min()?
+            .1;
+        let place = next[list];
+        next[list] += 1;
+        Some([Drawn::Weekly, Drawn::Camp, Drawn::Fountain][list](place))
     })
+}
+
+/// A Fountain of Fortune's value for a week (ADV-BON-003, E08 T115b; increment 12's design note
+/// §8.2; survey `E08-garrisons-bonuses.md` §10.6, the original's `random_between(0, 3)` at 0x4C1479
+/// and 0x4C8C9F): one of its kind's values with equal chances, drawn from `draws`; none for an
+/// object of another kind.
+// rule: ADV-BON-003
+pub(super) fn fortune(kind: Option<&ObjectKind>, draws: &mut Rng) -> Option<i8> {
+    match kind {
+        Some(ObjectKind::FountainOfFortune { values, .. }) => pick(values, draws).copied(),
+        _ => None,
+    }
 }
 
 /// A block of the state the forks share, by place: none for a map without its objects.
@@ -175,17 +188,19 @@ pub(super) fn block<T>(entries: Vec<T>) -> Block<T> {
 /// The first week's weekly contents and camps (ADV-WEK-001 to -003, ADV-RFG-001; increment 9's
 /// design note §6, §10, increment 10's §9), drawn from the setup stream after the static map's
 /// draws, in one pass in object order (since E08 T94b, [`in_object_order`]): each weekly object's
-/// first week's [`contents`], no marks; each camp's creature and count ([`draw_camp`]). Each block
-/// none for a map without its objects.
-// rule: ADV-RFG-001
+/// first week's [`contents`], no marks; each camp's creature and count ([`draw_camp`]); since E08
+/// T115b each Fountain of Fortune's value ([`fortune`]). Each block none for a map without its
+/// objects.
+// rule: ADV-RFG-001, ADV-BON-003
 pub(super) fn first_week(
     core: &Ruleset,
     part: &AdventureRuleset,
     map: &StaticMap,
     draws: &mut Rng,
-) -> (Block<Weekly>, Block<Camp>) {
+) -> (Block<Weekly>, Block<Camp>, Block<i8>) {
     let mut weekly = Vec::with_capacity(map.weeklies().len());
     let mut camps = Vec::with_capacity(map.camps().len());
+    let mut fortunes = Vec::with_capacity(map.fountains().len());
     for drawn in in_object_order(map) {
         match drawn {
             Drawn::Weekly(place) => {
@@ -201,9 +216,12 @@ pub(super) fn first_week(
             Drawn::Camp(place) => {
                 camps.extend(draw_camp(core, part, map.camp_levels[place], draws));
             }
+            Drawn::Fountain(place) => {
+                fortunes.extend(fortune(kind_at(part, map, map.fountains()[place]), draws));
+            }
         }
     }
-    (block(weekly), block(camps))
+    (block(weekly), block(camps), block(fortunes))
 }
 
 impl AdventureState {

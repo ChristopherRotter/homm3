@@ -383,7 +383,7 @@ pub(super) fn walk(
         &rules.0,
         &rules.1,
         &heroes,
-        (RED, draws),
+        (RED, Weekday::FIRST, draws),
         &command,
         &mut events,
     );
@@ -779,7 +779,12 @@ fn a_guarded_entrance_meets_its_guard_first_then_the_jump_follows() {
     let heroes = [Arc::new(hero_details(&[]))];
     let mut events = Vec::new();
     let rules3 = (&rules.0, &rules.1, &heroes[..]);
-    let held = state.visit_held(rules3, (RED, HERO), &mut stream(), &mut events);
+    let held = state.visit_held(
+        rules3,
+        (RED, HERO),
+        (Weekday::FIRST, &mut stream()),
+        &mut events,
+    );
     assert_eq!(held, AdventureOutcome::default());
     assert_eq!(red(&state).0, p(20, 1));
     assert_eq!(jumps(&events), [(Some(p(2, 1)), Some(p(20, 1)))]);
@@ -792,7 +797,12 @@ fn a_guarded_entrance_meets_its_guard_first_then_the_jump_follows() {
     let (outcome, _) = walk(&mut state, &rules, &ONTO, &mut stream()).unwrap();
     assert_eq!((outcome.visit_after, red(&state).0), (Some(HERO), p(2, 1)));
     let mut events = Vec::new();
-    state.visit_held(rules3, (RED, HERO), &mut stream(), &mut events);
+    state.visit_held(
+        rules3,
+        (RED, HERO),
+        (Weekday::FIRST, &mut stream()),
+        &mut events,
+    );
     assert_eq!(jumps(&events), [(Some(p(2, 1)), Some(at(2, 1, 1)))]);
     // A guarded two-way monolith's held visit draws its exit from the stream it is given (the
     // game's: the visitor's owner's, `run_rest`).
@@ -808,7 +818,12 @@ fn a_guarded_entrance_meets_its_guard_first_then_the_jump_follows() {
         let place = usize::try_from(expected.below(2)).unwrap();
         seen[place] = true;
         let mut events = Vec::new();
-        state.visit_held(rules3, (RED, HERO), &mut draws, &mut events);
+        state.visit_held(
+            rules3,
+            (RED, HERO),
+            (Weekday::FIRST, &mut draws),
+            &mut events,
+        );
         assert_eq!(draws, expected, "seed {seed}");
         assert_eq!(red(&state).0, members[1 + place]);
     }
@@ -951,7 +966,7 @@ pub(super) fn whirl(
             &rules.0,
             &rules.1,
             store,
-            (RED, draws),
+            (RED, Weekday::FIRST, draws),
             &command,
             &mut events,
         )
@@ -1142,7 +1157,7 @@ fn a_whirlpool_takes_every_players_hero_alike() {
             &rules.0,
             &rules.1,
             &store,
-            (BLUE, &mut draws),
+            (BLUE, Weekday::FIRST, &mut draws),
             &command,
             &mut events,
         )

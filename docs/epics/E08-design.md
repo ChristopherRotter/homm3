@@ -219,6 +219,15 @@ the Sirens, the Buoy and the Mermaids from the neighbouring water.
   only once a battle writes the survivors (a won battle or a draw an empty army). No version
   moved: the adventure state hash's v23 stays with T115 (the heroes' marks, the fortunes, the
   springs, the kind marks).
+- *As built* (T115b, decision 327): `AdventureState::fortunes` (`Option<Arc<[i8]>>`, by the place
+  among `StaticMap::fountains`, drawn in `economy::first_week` and `refill_weekly` as a third list of
+  `in_object_order`, `Drawn::Fountain`); `springs` **the emptied entrances' tiles, sorted**
+  (*agent's call*, against the bullet's bit per entrance of a static list: no static list, and no
+  block and an empty one hash alike), dropped by `start_week`; the kind marks the flags' `kinds`
+  beside `bought` (hashed after the keys); `Weekday` (`CalendarParams::weekday`) passed as
+  `apply`'s `(player, weekday, draws)` and `visit_held`'s `(weekday, draws)`. Adventure state hash
+  v24 (the fortunes and the springs after the dwellings, `hash_visitables`). The fork workloads +24
+  to +28 Ir a fork (the two empty `Option<Arc>`; +0.6 to +1.1 % against `master`).
 
 ###### 6. The garrison's visit, battle and capture (ADV-GAR-002; survey §3 to §5)
 
@@ -321,6 +330,16 @@ with the Admiral's Hat divides by the raised maximum (A-28's proportion; batch E
 the twelve entered, the Wells and the Idol too (batch E12's E12-14, E12-11); the Buoy, the Mermaids
 and the Sirens, visited from a neighbour, are never stood on (§2, decision 317).
 
+*As built* (T115b, decision 327): `state/visitables.rs` (`visit_bonus`, `visit_fortune`,
+`visit_well`, `visit_spring`, `visit_stables`, `visit_sirens`), `Effect::{Bonus, Fortune, Well,
+Spring, Stables, Sirens}`. The kind marks' points as §10.2 and `E08-rewards.md` §5: a `bonus` kind's
+with its gain, the Well's when not marked, the Spring's every visit; increment 7's gifts once the
+hero is admitted and unmarked (the Schools before the gold, the Tree before its price), the Shrines'
+and Witch Huts' first, the University's at its visit (*agent's call*: the original's after its
+dialog). The Fountain's and the Spring's team knowledge as `Known::Visited` (`AdventureObservation::
+known`; *agent's call*: a variant of its own, not `Emptied`). The Stables' "nothing" when neither the
+movement nor an upgrade (the original's 136).
+
 ###### 9. The Sirens (ADV-BON-008; survey §10.5; D-64, A-44, A-45)
 
 - **The losses**, slot by slot in slot order: a stack of more than one creature keeps
@@ -345,6 +364,15 @@ and the Sirens, visited from a neighbour, are never stood on (§2, decision 317)
   smallest change from the original's bit; not one mark per Sirens object (as HotA's per-object
   rule may be, unread). The game's clear keeps the marks the part names as outliving a battle
   under the profile (part C §12.3; decision 308).
+- *As built* (T115b, decision 327): `sirens_keep` (`Real` of the count times `Real` 7 ÷ `Real` 10,
+  truncated, **at least one**: *agent's call*, a pack's smaller part would empty a slot; 90 keeps 62,
+  170 keeps 118, 46 812 keeps 32 768); **the experience is the game's** (*agent's call*: the hit
+  points are the battle part's, which `h3-adventure` does not read, ADR-0005's layers): the visit
+  returns the losses (`AdventureOutcome::drowned`, `Drowned`), `GameState::give_drowned` sums the
+  hit points (saturating, as GAM-BAT-002) through `gained_experience` and gives them with the levels.
+  The flag `quirk.adventure.sirens_again_after_battle` (`QuirkFlag(41)`) came in its own `shared/`
+  pull request first (#909; the base faithful ruleset hash moved, §17); `clear_battle_bonuses`
+  takes the core and the part and keeps every Sirens kind's mark with it off.
 
 ###### 10. Information (ADV-GAR-006, ADV-BON-009; ADR-0016 point 6)
 
@@ -374,6 +402,12 @@ and the Sirens, visited from a neighbour, are never stood on (§2, decision 317)
   draws three different messages).
 - `docs/06-security.md`'s lines (the round's `shared/` task): a garrison's army by the levels; a
   Fountain's value and a Spring's state hidden; the kind marks the team's.
+- *As built* (T115b, decision 327): the four events as listed (`NothingWhy`), owner alone but
+  `KindKnown`, to the team's players that gained it; `AdventureObservation::kinds` (the types in
+  type order, `kinds_known`); `Known::Visited`; not in `AdventureReveal` (the marks are no tile's).
+  `h3-protocol` v61 (the server lane's T16 and T17 and the town lane's T27 took v58 to v60 first): the wire's four events, `NothingWhy`, `Adventure::kinds`, `Known::Visited`, the
+  fold (`KindKnown` inserted, `SirensLoss` as `WhirlpoolLoss`, `CreaturesUpgraded` the slot's
+  creature, `NothingGained` nothing).
 
 ###### 11. Ids, quirks and seams (parts A and B)
 
@@ -626,7 +660,10 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
 | env action encoding | v8 | v8 | none (§16) |
 | `h3-protocol` | v40 | the server lane's | the mapping, `cross-lane` in T114b and T115b; *as built* v52 T114a2's (the exchange), v53 E09 T26a2's (the week's kind), v54 T114b's (the views and their events) |
 
-Unmoved: the core ruleset hash and the pack format (no core change). The ids: part B §11 and part
+Unmoved: the pack format (no core change). *Corrected* (T115b, decision 327): `ADV-QUIRK-46`'s
+flag is a profile flag, so the base faithful ruleset hash moved (0x4373…86a3 to 0xb5c0…73f9; no
+encoding change, `RULESET_HASH_VERSION` 53 kept), in its own `shared/` pull request (#909). As built
+too: adventure state hash v24 and protocol v61 (T115b). The ids: part B §11 and part
 C §12 (HER-ADV-003, HER-ADV-008 amended; HER-MAN-001 read), GAM-DEC-009 new, GAM-DEC-007,
 GAM-MAN-001, GAM-BAT-001, GAM-BAT-014, GAM-CAL amended; `ADV-QUIRK-46`, `-47`; decisions 304 to
 309 (next 310).

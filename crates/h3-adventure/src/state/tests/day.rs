@@ -80,7 +80,7 @@ fn walk(
             &rules.0,
             &rules.1,
             heroes,
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )

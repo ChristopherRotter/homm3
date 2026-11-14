@@ -463,6 +463,7 @@ pub(crate) fn movement_rules_with(
         "quirk.adventure.fringe_shows_objects",
         "quirk.adventure.drop_ignores_artifacts",
         "quirk.adventure.radius_waits_for_a_step",
+        "quirk.adventure.sirens_again_after_battle",
     ];
     let core = ContentPack {
         terrains: ["t:grass", "t:sand", "t:swamp", "t:sea", "t:rock"]

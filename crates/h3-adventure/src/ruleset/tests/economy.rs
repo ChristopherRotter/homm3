@@ -785,3 +785,24 @@ fn the_hash_sees_the_economy() {
         compile(&monster_packs()).unwrap().content_hash()
     );
 }
+
+#[test]
+fn the_day_of_the_week_follows_the_calendar() {
+    // covers: GAM-CAL-002
+    // E08 T115b (increment 12's design note §15): (day − 1) mod `week_days` + 1, from 1.
+    let week = |days| CalendarParams {
+        week_days: NonZeroU8::new(days).unwrap(),
+        month_weeks: NonZeroU8::new(4).unwrap(),
+    };
+    let days =
+        |calendar: CalendarParams| [1, 2, 7, 8, 15, 0].map(|day| calendar.weekday(day).get());
+    assert_eq!(days(week(7)), [1, 2, 7, 1, 1, 1]);
+    assert_eq!(days(week(5)), [1, 2, 2, 3, 5, 1]);
+    assert_eq!(Weekday::new(1), Some(Weekday::FIRST));
+    assert_eq!(Weekday::new(0), None);
+    assert_eq!(Weekday::new(7).map(Weekday::get), Some(7));
+    // A week of pairs is read by the day's place; a later day (a part without a bonus kind may
+    // have a longer week) the last.
+    let places = [1, 7, 8, 200].map(|day| Weekday::new(day).unwrap().index());
+    assert_eq!(places, [0, 6, 6, 6]);
+}

@@ -558,3 +558,29 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 - Defaults: not reproduced in every profile
 - Regression test: `crates/h3-adventure/src/state/tests/teleporters.rs`, `the_whirlpools_list_every_tile_with_its_whirlpool` and (an empty boat's tile no candidate) `a_whirlpools_exit_is_drawn_among_the_other_whirlpools_tiles_the_hero_jumping_in_its_boat`; `crates/h3-map/src/tests/teleporters.rs`, `the_teleporters_import_as_their_types` (the boat on a Whirlpool's tile refused)
 - Decided by / date: the survey's scoring (§15), not reproduced (the user 2026-11-07, ADV-Q47, E08 decision 280); recorded by E08 T104, the candidates' line by T105a2
+
+### ADV-QUIRK-46 — The Sirens visited again after every battle
+- Class: fix-optional (E08 decision 301; A-44)
+- Context / rules affected: adventure, ADV-BON-008 (the Sirens), GAM-BAT-014 (the battle's clear of the battle bonuses)
+- Original behavior: the Sirens' mark is the hero's status bit 20, one of the bits `hero_battle_bonuses_clear` (from `battle_end` 0x477792) clears with the battle bonuses, so after any battle the hero visits any Sirens again and loses creatures again (survey `E08-garrisons-bonuses.md` §10.5; batch E12's E12-8: the bit cleared by a won battle, the losses and the experience again). The wiki calls it a bug, which HotA fixed; VCMI 1.7.5 does the same as the original.
+- Intended/expected behavior: with `quirk.adventure.sirens_again_after_battle` on (`faithful`) the original's: the battle's end clears the Sirens' mark with the rest. Off (`strict-fixed`): the battle's end keeps every Sirens kind's once-mark, so a hero visits Sirens once (decision 308: the original's one mark for every Sirens kept, not one mark per Sirens object as HotA's rule may be, unread).
+- Impact: a hero that fights between visits loses creatures at the Sirens again and gains their experience again.
+- Community status: documented (the wiki's Sirens: a bug; HotA's fix).
+- Sources: code reading (survey §10.5); observation, batch E12b's E12-8 (survey §15).
+- Flag: `quirk.adventure.sirens_again_after_battle` (`SIRENS_AGAIN_AFTER_BATTLE`, `QuirkFlag(41)`; the shared pull request of E08 T115b)
+- Defaults: on in `faithful`, off in `strict-fixed`
+- Regression test: `crates/h3-adventure/src/state/tests/visitables.rs`, `the_sirens_take_their_part_once_and_again_after_a_battle_only_under_the_quirk`; `crates/h3-pack/src/tests.rs`, `the_harvested_sirens_flag`
+- Decided by / date: the user 2026-11-11 (ADV-Q49, E08 decision 301: fix-optional; decision 308: the one mark kept); built by E08 T115b
+
+### ADV-QUIRK-47 — The Sirens' survivors cut to 16 bits
+- Class: exploit-fix (no flag: state-corrupting, always fixed; E08 decision 301; A-45)
+- Context / rules affected: adventure, ADV-BON-008 (the Sirens)
+- Original behavior: `sirens_losses` 0x527EC0 computes a stack's survivors as trunc(f32(count) × 0.7) at the x87's 53 bits, then cuts them to 16 bits signed (`movsx eax, ax`, 0x527F03), so a stack of 46 812 or more keeps −32 768 or another wrong count (survey `E08-garrisons-bonuses.md` §10.5).
+- Intended/expected behavior: the survivors in full width (the double product's truncation: a stack of 46 812 keeps 32 768, of 1 000 000 keeps 700 000).
+- Impact: none below 46 812 creatures in a stack; above it the original corrupts the army.
+- Community status: not documented.
+- Sources: code reading (survey §10.5).
+- Flag: none (always fixed)
+- Defaults: fixed in every profile
+- Regression test: `crates/h3-adventure/src/state/tests/visitables.rs`, `the_sirens_keep_the_double_products_survivors_in_full_width`
+- Decided by / date: the user 2026-11-11 (ADV-Q49, E08 decision 301); built and recorded by E08 T115b

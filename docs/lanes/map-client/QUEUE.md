@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **for the bonus visitables'
+  hint, nothing to do before it**; design note §10): protocol **v61**: the observation's `kinds`
+  (the object types whose kind mark the viewer's team holds, in type order: the hint's bonus line,
+  the original's `kinds_visited`) kept current by `KindKnown`; a Fountain of Fortune's and a Magic
+  Spring's team knowledge as `Known::Visited` in `known` (never the fountain's value nor the
+  Spring's entrances' state); the hero's own once-marks and timed marks in its own view (T115a's
+  `bonuses`, `timed`: "visited" or "not visited" for the selected hero). The visits' messages:
+  `NothingGained` (`Visited`, `Full`, `Emptied`), `SirensLoss`, `CreaturesUpgraded`.
 - 2026-11-13 (the server lane, E16 M5 T15, `server/e16-m5-t15`; **for showing `GameClock`,
   nothing to do before it**): the original's turn timer is read in `docs/epics/E16-timer-survey.md`:
   the warnings' schedule and texts in the adventure screen's chat line (§3: "<SYSTEM>:" with
