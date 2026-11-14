@@ -73,9 +73,7 @@ The review's fix C3 follows the reading of 0x47A100: a created stack whose round
 
 ### Server lane (`SRV-Q<n>`)
 
-#### SRV-Q34 — M5 2b's checkpoint (E16 M5 T19, 2026-11-14)
-
-2b done (T14 to T19; T19's end-to-end test of a timed game through a turn run out, a battle between players under the chess clocks, two held level-ups and two restarts, to the golden replay's state; `docs/06-security.md`'s time and bounds). The fresh reviewer agent (`docs/epics/E16-log.md`, "M5 2b's reviewer agent") found no major defect; four minor findings, two nits, all confirmed against the code: (1) the hold's rejection `WaitingForLevelUp { player }` names whose level-up holds the game (any seat may probe it at any time), against SRV-Q31's "not whose"; (2) the join that starts a game of connections tells the clock before the start, so every player last heard a stopped turn timer until the next reading (up to 15 s); (3) a battle both of whose sides the system plays (a side timed out or past its bound against a monster, or both sides of a duel) has no end the server can force: in-process Defend against Defend loops `drive` forever, on the server only if the fair computer never ends it (unproven; the engine has no round limit), and the game's thread would spin there, its entries growing in memory; (4) the lobby shows an offer's clock now, a restored game runs on its journal's. Nits: a seat whose side ran out is still sent its battle commands; the chess clocks run against a player's garrison without a hero too (the docs say "heroes"). Questions: which to fix in T19, finding 3's way, the review list, 2c's refinement. Recommendations: fix 1, 2, 4 and the nits in T19 (protocol v63); finding 3 documented now and built first in 2c (a battle of two system sides ends by a rule the user picks then, `drive` bounded); the review list as built but the in-process Defend; 2c refined in a new session.
+(no open questions)
 
 ### AI lane (`AI-Q<n>`)
 

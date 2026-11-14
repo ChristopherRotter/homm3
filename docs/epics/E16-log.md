@@ -3319,3 +3319,53 @@ request, as at T7b and T13.
   unlimited turn still waits on a connected player and a level-up for its offer's time, the bounds
   have no total (each turn and battle afresh, seats ending their turns at the message rate), the
   journal's growth and the restart's cost left to 2c.
+- **The reviewer's findings fixed** (SRV-Q34 (a), protocol v63): `GameReject::WaitingForLevelUp
+  {}` without the owner (`tests/game_command.rs`: every owner's alike, its JSON); the join that
+  starts a game of connections tells the clocks after the opening and before the turns
+  (`tests/game_clock.rs`' not-started test: the first player told its turn running, the second
+  nothing); `MapGameInfo`'s `clock`, the offer's at the creation (`lobby::create_map`) or the
+  journal's at a restore (`whole::Prepared`), `tests/whole.rs` restarting under a retimed offer
+  (the lobby shows the offer's 4 minutes, the game its own unlimited); `GameSession::turn` leaves
+  out the battle commands of a side whose turn or chess clock ran out (`tests/game_clock.rs`' duel:
+  none to the defender once out); the chess clocks' texts say "two players' sides" (a player's
+  garrison without a hero is a side). Each new assertion failed without its fix.
+  `docs/06-security.md` corrected where the reviewer found it contradicted ("not whose" now
+  holds, a battle past its bound ends only if the computer ends it, an unlimited turn waits on a
+  disconnected player too, a level-up without a limit under any duration) and finding 3 under
+  "Not covered yet". The client lanes' inboxes told (v63).
+
+### M5 2b's reviewer agent (2026-11-14, in T19)
+
+- **The review**: a fresh, read-only agent over 2b's code (T14 #904, T16 #907, T17 #913, T18
+  #916 and T19's commits; about 3 600 lines in `h3-game`'s system commands, `h3-protocol` and
+  `h3-server`), against `docs/06-security.md`'s new bullet and "Not covered yet", the 2b review
+  list, the lane's `TRAPS.md`; no major finding, four minor, two nits, each confirmed against the
+  code by the agent of T19. Found sound: a seat's system command always rejected and none legal
+  for any actor, the system's commands never counted; no client message carries a time, `elapse`
+  on the host's monotonic clock before every call; `Elapsed` journaled before the command entry
+  after the engine accepted, at a timer's end, before a pause and at a stop; the restore's
+  counting the live one's, downtime never counted, no system step taken twice; `drive` called on
+  every path that can make a step due, the deadline at least 1 ms ahead and at most 15 s, the
+  arithmetic saturating and the wire's 32 bits capped; the bounds before the engine, a resend
+  never counted, a reopen counting again; no file I/O under the registry's lock, entries drained
+  before delivery, `timeout_at` inside `block_on`; `GameClock` the viewer's own timers, its own
+  battle's clocks and `waits` only.
+- **Minor, fixed in T19**: (1) the hold's rejection `WaitingForLevelUp { player }` named whose
+  level-up holds the game, which any seat could probe at any moment (the hold is checked before
+  every other check), against SRV-Q31; (2) the join that starts a game of connections told the
+  clock before `started`, so every player last heard a stopped turn timer until the next reading
+  (up to 15 s); (4) the lobby showed an offer's clock now while a restored game runs on its
+  journal's. **Nits, fixed**: a seat whose side ran out was still sent its battle commands; the
+  chess clocks run against a player's garrison without a hero too (the texts said heroes).
+- **Minor, left** (SRV-Q34 (b): documented now, 2c's first task): (3) a battle both of whose sides
+  the system plays (a side timed out or past its bound against a monster, or both sides of a
+  battle between players) has no end the server can force: the engine has no round limit;
+  in-process the timed-out sides Defend and `drive` never returns; on the server only if the fair
+  computer never ends it (unproven), the game's thread then playing on without returning, its
+  entries growing in memory. T16's review-list item "without a computer (in-process) a timed-out
+  side Defends" goes with it.
+- **The checkpoint** (SRV-Q34, the user, 2026-11-14, the agent's recommendations): (a) findings
+  1, 2, 4 and the nits fixed in T19 (protocol v63); (b) finding 3 documented, built first in 2c (a
+  battle of two system sides ends by a rule the user picks then, `drive` bounded); (c) the review
+  list accepted as built, but the in-process Defend item, which (b) takes; (d) 2c refined in a new
+  session. **2b closed.**

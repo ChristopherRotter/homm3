@@ -1618,20 +1618,20 @@ impl<'r> GameSession<'r> {
     }
 
     /// If `player` may act, its legal commands but those the host's bounds refuse (E16 M5 T18)
-    /// and its battle commands once its turn or its side's chess clock ran out (the computer's
-    /// then, T19), and, while its battle side is to act, the spells its hero may cast.
+    /// and, while its battle side is to act, the spells its hero may cast; nothing in a battle
+    /// once its turn or its side's chess clock ran out (T19): the computer plays its side then,
+    /// and a battle's legal commands are all battle commands.
     fn turn(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
         let (state, counts) = (&self.state, &self.counts);
-        let timed_out = own_battle(state, player).is_some_and(|(battle, side)| {
+        if own_battle(state, player).is_some_and(|(battle, side)| {
             self.clock.turn_out(state, player) || self.clock.side_out(battle, side)
-        });
+        }) {
+            return;
+        }
         let legal: Vec<GameCommand> =
             h3_game::legal_commands(state, self.rules, Actor::Player(player))
                 .iter()
                 .filter(|command| counts.refuses(state, player, command).is_none())
-                .filter(|command| {
-                    !(timed_out && matches!(command, h3_game::GameCommand::Battle(_)))
-                })
                 .map(map::game::command)
                 .collect();
         if legal.is_empty() {
