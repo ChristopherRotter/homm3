@@ -438,6 +438,8 @@ impl Prepared {
         let info = MapGameInfo {
             game,
             offer: offer.id.clone(),
+            // Its own clock, the journal's (E16 M5 T19).
+            clock: h3_protocol::map::game::offer_clock(&self.options.clock),
             phase: session.phase(),
             open: session.open_seats(),
             seated: seated(&named, &self.stores.accounts),
