@@ -496,3 +496,52 @@ setup's baseline (`clients/scripts/check.sh`) passed before any change.
 - **The agent's calls** (*provisional*, M2's review list items 13 and 14): the set's shape; each
   head read up to `MAX_TABLE_BYTES` (312 KiB an archive, as `h3-formats` advises) rather than the
   used table alone; `sprite` needing all four archives; `inventory` on a table.
+
+## M2 T4 — the comparison, the main menu at rest, h3shell's sound, TCP/IP's mask, the window (2026-11-14)
+
+On `client/e27-m2-t4`, the user present; `master` at `421b41b` (#923 merged). The cut offered
+(the comparison and the main menu first, the harness's sound and mask next, the window to T5);
+the user kept T4 whole (decision 30). The original data staged at once at the start (64 files,
+checked by SHA-256 against the user's computer). The VM restarted during the setup's baseline
+(files kept): CI's green run on `master` stood in for it.
+
+- **Built, `h3-view`:** `shell::Built` (`Not`, `AtRest`, `Whole`; `Screen::built`: the main menu
+  `AtRest`); `shell::look` (`ShellLayout`, `Menu`, `CursorLook`, `Look`; `parse_layout`, `look`,
+  `names`) over `clients/layouts/shell.toml` (the cursor, the main menu's `GamSelBk.pcx` and its
+  five DEF buttons from `main_menu_layout` 0x63FF28); `shell::replay` (`Step`, `ClipEnd`, `Input`,
+  `parse`, `shown`, `Take`, `Stop`, `Replay`): a recipe's steps on the shell's own clock as
+  h3shell's runs pass the frozen clock (an input then 100 ms, `until` and clips in 10 ms steps,
+  `until` checked then stepped `limit / 10 + 1` times), each shot and clip frame handed to the
+  caller; the harness's own steps, an unknown screen name, a screen not built and a press or a
+  key on one built at rest stop it. 9 tests.
+- **Built, `h3-battle-client`:** `shell` gains `--steps <file> --frames <dir>` (`Drawer`: the
+  layout's assets in one batch by the LODs' tables, the background copied whole by `draw_image`,
+  the dialog by `h3_ui::paint`, the arrow by `h3_ui::cursor`; each shot `<dir>/<shot>.565`, a
+  clip's changed frames `<dir>/<clip>/t<ms>.565`, `replay.txt` with the stop) and `--window`
+  (the built screens, the others black, the hardware cursor when SDL makes it, the words from
+  standard input through a thread), `--install`, `--pointer`, `--input-step`, `--scale`.
+- **Built, the harness:** `h3shell.py drawn [--group] [--only] [--record] [--out]` (no Wine):
+  each recipe through `h3-view shell --steps`, every shot and clip against the original's kept
+  line (`exact`; else the time, or the pixels' count and box when a `run`'s frames are there) and
+  against the viewer's record `shell/drawn.txt`; a recipe's `sound = true` (h3drive's `Game(sound)`;
+  each sample started kept as `<id> sound<k> t<ms> ch<c> <length>ms x<loops>`); the steps `mask`
+  and `unmask` (a box left out of the later digests, the original's and the viewer's).
+  `test_h3shell.py`: 5 more tests.
+- **Recorded:** `mp-tcp` again with `mask:180,96,620,124` over its stage-2 shots (the sandbox's
+  192.0.2.2 in rows 101 to 114; 18 lines changed, the rest `ok`); `menu-sound` (new): New Game's
+  press and Back's each start a 151 ms sample at the press (t0, t100), and the menus' shots are
+  the silent recipes' digests at the same times (`menu-new`'s `menu` t100, `back`): the presses do
+  not wait for `button.wav`. `menu-main`, `start-plain`, `start-skip-key` and `scores-reset`
+  played again with the changed `h3shell.py`: as kept. The adventure harness check not run:
+  nothing it runs imports `h3shell.py`.
+- **The comparison:** `drawn` over the 85 recipes: 4 shots drawn, 3 exact (`start-plain`'s,
+  `menu-main`'s and `menu-sound`'s first: `GamSelBk.pcx`, the five buttons in frame 0 and the
+  arrow at the parked pointer, at 0 ms, on the first build); `menu-main`'s `new-hover` drawn, not
+  the original's (the hover is T6's); every other recipe stops at its first press (the main menu
+  at rest, T6), at the start (T5) or at a harness step (`games-time`, `until-button`).
+- **Checked:** `clients/scripts/check.sh` with the original data staged; `python3 -m unittest
+  test_h3shell`; the window under Xvfb (SDL's software renderer: the main menu, then New Game's
+  stand-in after its word).
+- **The agent's calls** (*provisional*, M2's review list items 15 to 20): the replay's shape and
+  its stops; the layout's format; `drawn`'s two comparisons and the raw frames; the window's
+  stand-ins and cursor; the mask's box; the samples' lines.

@@ -1,0 +1,54 @@
+# The game shell's screens at the native resolution (E27 M2 T4; docs/epics/E27-design.md §2).
+# The numbers are the executable's; loader: h3_view::shell::look (the format is provisional until
+# M2's review, T8). Each built screen: the picture copied whole onto the screen first, then its
+# dialog's items (h3_ui::ui), drawn in the order the executable adds them.
+
+# The cursor the menu loop sets (0x4EE842): the arrow, the default cursor's frame 0.
+[cursor]
+def = "crdeflt.def"
+frame = 0
+
+# The main menu (§2.3: main_menu_create 0x4FB2A0): a dialog at (0, 0, 800, 600) with no picture
+# of its own over the loop's GamSelBk.pcx; its five DEF buttons (group 0, four frames: 0, pressed
+# 1, disabled 2, selected 3, the hover) in this order, their rectangles from main_menu_layout
+# 0x63FF28. The hover, the press, the hotkeys and the popups are T6's.
+[main_menu]
+background = "GamSelBk.pcx"
+
+[main_menu.dialog]
+place = [0, 0]
+
+[[main_menu.dialog.items]]
+kind = "button"
+id = 101
+def = "mmenung.def"
+at = [540, 10]
+size = [207, 121]
+
+[[main_menu.dialog.items]]
+kind = "button"
+id = 102
+def = "mmenulg.def"
+at = [532, 132]
+size = [226, 120]
+
+[[main_menu.dialog.items]]
+kind = "button"
+id = 103
+def = "mmenuhs.def"
+at = [524, 251]
+size = [239, 106]
+
+[[main_menu.dialog.items]]
+kind = "button"
+id = 104
+def = "mmenucr.def"
+at = [557, 359]
+size = [173, 110]
+
+[[main_menu.dialog.items]]
+kind = "button"
+id = 105
+def = "mmenuqt.def"
+at = [586, 469]
+size = [114, 102]

@@ -4,7 +4,8 @@ Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, 
 reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
 **M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
 27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); **M2
-T3b done** (2026-11-14); next **M2 T4** (`docs/lanes/client/QUEUE.md`).
+T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); next **M2 T5**
+(`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -228,6 +229,10 @@ The user, 2026-11-14 (M2 T3's start):
     needed), T3b start-up loading by the LODs' tables (CLT-Q2: every archive reader of
     `h3-battle-client` on the tables and a batch's ranges, `h3-view gate` measuring it; the four
     LODs staged). T4 needs T3a only.
+30. **T4 kept whole** (the user, 2026-11-14; the cut offered: the comparison and the main menu at
+    rest, then the harness's sound and TCP/IP's mask, the window to T5): `h3shell.py drawn`, the
+    main menu at rest exact, h3shell's `sound`, TCP/IP's address masked (M1's review item 8 (b))
+    and the shell's window in one task.
 
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
@@ -320,7 +325,7 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T2b | The shell's Bink clips' video as `BINKW32.DLL`'s (found at T2, design §8.4): `h3-bink`'s frames of `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from the DLL's in the chroma (at most 3 levels at the first differences) while the battle's clips and the samples match; find the cause (a block type, a coding path or the DCT on these clips), fix it in `h3-bink`, every frame of the shell's Bink clips exact in `bink-check.sh` | **done** 2026-11-14 (decision 28; CLT-Q122): the decoding was right; the DLL's `BinkCopyToBuffer` copies only the cells its change mask marks, the chroma's misfiled: `h3_bink::Target`, `Decoder`'s mask, the samples' still cells, `Reading::Original` copied; every frame of the fourteen game clips and the samples the DLL's; log "M2 T2b", design §9 |
 | T3a | The shell's frame (CLT-Q103, decision 29): the screens' state machine and the menu loop's requests (design §2.2) in `h3-view`, the `h3-view shell` command with a headless driver (a text client first, E17's pattern); the dialogs' input (a DEF button's own loop, a box's and a bar's press and release, the right press's help) moved from `h3_view::options` into `h3-ui`, the combat options on it unchanged (decision 20) | **done** 2026-11-14: `h3_ui::input` (`Input`, `Held`, `Did`), `h3_view::options` on it (its tests unchanged); `h3_view::shell` (`Shell`, `Screen`, `Ended`, `Request`, `Choice`, `Kind`, `PlayEnd`; the switches of §2.2 to §2.4, §4.3, §5.3), `shell::text` (the words), `h3-view shell [--script] [--no-intro]`; log "M2 T3a" |
 | T3b | Start-up loading by the LODs' tables (CLT-Q2, decision 29): the archive set read by the tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), across `h3-battle-client`'s readers (`render`, `battle`, `sequences`, `text`, `gate`), `h3-view gate` measuring it (`lanes/client/NOTES.md`, "Assets and archives"); the four LODs staged | **done** 2026-11-14: `h3_battle_client::lods` (`Lod`, `Reader`, `Lods`: the tables from the heads, an entry by its range, a batch archive by archive in the ranges' order), every LOD reader of the crate on it; `h3-view gate`: the start 1.3 ms for the tables alone (1 250 KiB; 145 ms for the 212 MiB read whole before), a battle still's peak memory 243 → 28 MiB; log "M2 T3b" |
-| T4 | The comparison: `h3shell.py drawn` (the shell plays a recipe's inputs at its times; its frames compared with the original's shots, as `h3drive.py drawn`); h3shell's sound (h3drive's `sound`); TCP/IP's address masked in its digests (review item 8); the main menu's first shot exact | after T3a |
+| T4 | The comparison: `h3shell.py drawn` (the shell plays a recipe's inputs at its times; its frames compared with the original's shots, as `h3drive.py drawn`); h3shell's sound (h3drive's `sound`); TCP/IP's address masked in its digests (review item 8); the main menu's first shot exact | **done** 2026-11-14 (decision 30): `h3_view::shell::replay` (a recipe's steps on the shell's own clock; `Stop`), `shell::look` and `clients/layouts/shell.toml` (the main menu at rest), `Built`; `h3-view shell --steps --frames` and `--window`; `h3shell.py drawn` (`exact` against the kept lines, `shell/drawn.txt`), `sound`, `mask`; `start-plain`'s and `menu-main`'s first shots exact; `menu-sound` recorded, `mp-tcp` again masked; log "M2 T4" |
 | T5 | The start (design §2.1, §8.4): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); the clips' sound at the effects setting (decision 27) and a clip's end (§8.4); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) and `game_samples_load` read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24), every Bink clip's frame whole (decision 28; the comparisons through `h3_bink::Target`, what the game's buffer holds before a clip read, design §9) | after T4 |
 | T6 | The main menu, New Game's and Load Game's menus, Quit's question (§2.3 to §2.5): hover, press, release off, popups, hotkeys, `button.wav`, `MAINMENU.MP3`, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menus` with its sound | after T4 |
 | T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6 |
@@ -353,7 +358,19 @@ and per archive of a batch, as `videos::Videos`); each head read up to `lod::MAX
 (312 KiB an archive, as `h3-formats` advises) rather than the used table alone; an asset a
 checkpoint's batch lacks still loaded as it is drawn (`Battle::compose`, the cursors' DEFs), now a
 read of its range; `sprite` needs all four archives; (14) `h3_assets::archive::inventory` takes a
-`LodTable` (the common crate's one caller the gate).
+`LodTable` (the common crate's one caller the gate). T4: (15) the replay's shape
+(`h3_view::shell::replay`): the harness's step words read in Rust, the masks left to Python; the
+probes' names mapped to the shell's screens (`replay::shown`), a name it lacks, a screen
+`Built::Not`, a press or a key on one `Built::AtRest` and the harness's own steps stop the replay
+(no shot drawn from a screen the recipe did not reach); (16) the shell's layout
+(`clients/layouts/shell.toml`): each built screen its background copied whole and an `h3_ui`
+dialog, the cursor `crdeflt.def`'s frame 0 with its hot spot at the corner; (17) `drawn`'s two
+comparisons: `exact` against the original's kept line (pixels and time), regressions against
+the viewer's own record `shell/drawn.txt` (`CHANGED`, `new`, `GONE` fail), frames as raw
+`.565`; (18) the window: SDL's hardware cursor when it makes one, the screens not built black,
+the words from standard input, no key of its own; (19) TCP/IP's mask (180, 96) to (620, 124),
+the dialog's width; (20) a sound recipe's samples kept as lines (`sound<k> t<ms> ch<c>
+<length>ms x<loops>`), their names unknown (`xdd.dll` logs none).
 
 ## Dependencies and boundaries
 

@@ -26,6 +26,11 @@ menu-main quit-press t2600 ad5aa6268ea628b5
 menu-main quit-left t2800 e41a9f4a11e12d84
 menu-main quit-popup t2900 68b2ea0d60633e92
 menu-main quit-closed t3000 b4dc042cfa8704c2
+menu-sound menu t0 e62581b7ce362971
+menu-sound new t100 dae0a5d2778bed4a
+menu-sound back t200 da1e62ee2ec92b93
+menu-sound sound1 t0 ch0 151ms x1
+menu-sound sound2 t100 ch1 151ms x1
 menu-quit question t100 904f2db6a9ea3893
 menu-quit ok-hover t200 8587292d0487725a
 menu-quit cancel-hover t300 774c96763a61e4a9

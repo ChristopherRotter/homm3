@@ -3,6 +3,8 @@ clients/capture/: `python3 -m unittest test_h3shell` (numpy, as the harness)."""
 
 import re
 import tempfile
+
+import numpy as np
 import tomllib
 import unittest
 from pathlib import Path
@@ -68,6 +70,42 @@ class Kept(unittest.TestCase):
         self.assertEqual(h3shell.kept_line("m", ("menu", "shot", 10, "ab")), "m menu t10 ab")
         clip = ("logo", "clip", 0, (3, 0, 140, "cd"))
         self.assertEqual(h3shell.kept_line("s", clip), "s logo clip 3@0-140 cd")
+        entry = h3shell.clip_entry([(0, "aa"), (40, "bb")])
+        self.assertEqual(entry[:3], (2, 0, 40))
+
+    def test_a_sample(self):
+        sample = ("sound1", "sound", 120, (2, 87, 1))
+        self.assertEqual(h3shell.kept_line("m", sample), "m sound1 t120 ch2 87ms x1")
+
+    def test_a_mask_leaves_its_box_out_of_the_digest(self):
+        a = np.zeros((600, 800), dtype=np.uint16)
+        b = a.copy()
+        b[100, 400] = 0xFFFF
+        self.assertNotEqual(h3shell.digest(a), h3shell.digest(b))
+        box = h3shell.mask_box("180,96,620,124")
+        self.assertEqual(h3shell.digest(a, [box]), h3shell.digest(b, [box]))
+        self.assertEqual(b[100, 400], 0xFFFF)  # the frame itself left as it was
+        for bad in ("1,2,3", "5,0,5,9", "0,9,5,9", "a,0,5,9"):
+            with self.assertRaises(ValueError, msg=bad):
+                h3shell.mask_box(bad)
+
+    def test_the_masks_follow_the_steps(self):
+        steps = ["shot:a", "mask:0,0,1,1", "shot:b", "clip:c:100", "mask:2,2,3,3", "shot:d",
+                 "unmask", "clip-until:e:main_menu"]
+        self.assertEqual(h3shell.shot_masks(steps), {
+            "a": [], "b": [(0, 0, 1, 1)], "c": [(0, 0, 1, 1)],
+            "d": [(0, 0, 1, 1), (2, 2, 3, 3)], "e": []})
+
+    def test_a_viewer_line_matches_either_run_of_the_original(self):
+        self.assertEqual(h3shell.originals("m a t10 ab"), ["m a t10 ab"])
+        self.assertEqual(h3shell.originals("s clips clip 3@0-9 ab differs clip 3@0-8 cd"),
+                         ["s clips clip 3@0-9 ab", "s clips clip 3@0-8 cd"])
+        self.assertEqual(h3shell.compared("m", "a", None, "m a t10 ab"), "not drawn")
+        self.assertEqual(h3shell.compared("m", "a", "m a t10 ab", "m a t10 ab"), "exact")
+        self.assertEqual(h3shell.compared("m", "a", "m a t20 ab", "m a t10 ab"),
+                         "the original's pixels at t20, not t10")
+        self.assertTrue(h3shell.compared("m", "zz-none", "m a t10 cd", "m a t10 ab")
+                        .startswith("not the original's"))
 
     def test_two_runs_that_differ_keep_both(self):
         a, b = ("menu", "shot", 10, "ab"), ("menu", "shot", 20, "ab")
@@ -100,6 +138,11 @@ class Kept(unittest.TestCase):
                 elif verb == "clip-until":
                     for name in arg.split(":")[1].split("|"):
                         self.assertIn(name, known, f"{r['id']}: {step}")
+
+    def test_the_viewers_record_names_only_recipes(self):
+        ids = {r["id"] for r in h3shell.all_recipes()}
+        for ident, _ in h3shell.read_drawn():
+            self.assertIn(ident, ids)
 
     def test_the_kept_files_name_only_recipes_of_their_group(self):
         for path in h3shell.KEPT.glob("*.txt"):

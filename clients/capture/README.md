@@ -35,8 +35,8 @@ adventure).
 | `h3mem.py` | Reads the running game's state from its memory: the battle's clocks, idle steps, active stack and the mouse's highlight, each stack's group, frame, hex, offsets and draw layer, and each side's hero's group and frame and its flag's frame (M3 T3a), the magic animation drawn and the stacks under it (M3 T3b), the battle's outcome (H1); the adventure map's players, heroes (with their experience, level, army and skills: H1), view and path, the difficulty, a tile's monster, the topmost dialog's text (H1; below); since E08 T47a the topmost dialog's kind and its items' boxes, states and texts, a hero's army slot by slot, worn positions, flags and learned spells, the artifact held, the battle's tactics phase; since E08 T57 a map object's word on its entrance tile, the Universities' skills, a hero's spell points, morale and luck bonuses and status flags, a stack's army slot, a message box's pictures and captions, the game's version; since E08 T68a the battle's ship flag and the obstacles' hexes; since E08 T79a the mines' and Lighthouses' records, a tile's own word, each battle side's owner and controllers, auto combat's flag; since E09 T3b the towns' records (owner, faction, entrance, garrison and visiting heroes, army, the buildings standing and every built: `towns`, `town_record`, `town_at`); since E08 T90 the dwellings' records, the players' teams, the map objects' class and subclass, a tile's blocked and visitable bits, a Refugee Camp's words, the hire dialog (`dwellings`, `teams`, `objects`, `access`, `camp`, `recruit_dialog`), the status bar's text, a player's human flag. |
 | `h3adv.py` | The adventure map (M2 T6, H1, H2): hot seat at a chosen difficulty, heroes (the list scrolled), tiles of either level clicked twice, questions answered, battles played, level-ups chosen, turns, artifacts put on from the backpack in the hero screen (E08 T37a), the hero screen's, the exchange's, the army, creature and split dialogs' items clicked by their ids and a tactics phase ended (E08 T47a), a choice between two pictures made, steps run over a grid of tiles and a new game started again until its draws hold what the recipe requires (E08 T57), boats boarded and left, a key pressed for a hero, a second click made on a condition (E08 T68a), the sea pickups' words read and visits picked by them, legs sailed over open water, a table's rows filled step by step (E08 T68b), mine records and Shipyards read, the boat dialog and Leave Guards played, auto combat turned on again at each stop (E08 T79a), since E09 T3b the map started anew within a batch (`new_game`), a battle won by a list of targets, the towns' records read and the town screen noted and closed, since E08 T100a Replay Opponent Turn played on the frozen clock and a step played only on a tile; `batch` plays an experiment batch and fills its results template, `compare` sets two filled templates side by side, `learn-button`. |
 | `h3map.py` | The adventure map's stills (E24 M1 T3b2, the map client lane): `still` shows a situation of `../map/situations/` in the original (a single scenario, a writer's map or a shipped one whole, the human's explored tiles written, the view by the minimap, the clock frozen), draws ours and diffs them; `set` runs the map's capture set, keeping each live part; `drawn` (T6a) draws ours from the kept ones without the original; `frames` (E24 M2 T1a1) records the map's sequences, 1 ms at a time (T1a2: with their options and inputs). Below, "The map's stills" and "The map's sequences". |
-| `h3shell.py` | The game shell's screens (E27 M1 T2): recipes from the game's start to each screen outside play on a clock frozen from the first read, each recorded twice and compared, their digests kept; `run`, `play`, `learn`, `list`. Below, "The shell's screens". |
-| `shell/` | The shell's recipes by group (`<group>.toml`), each group's probes (`<group>.screens.toml`) and kept digests (`kept/<group>.txt`, numbers only). |
+| `h3shell.py` | The game shell's screens (E27 M1 T2): recipes from the game's start to each screen outside play on a clock frozen from the first read, each recorded twice and compared, their digests kept; `run`, `play`, `learn`, `list`; `drawn`, the viewer's frames of each recipe against the kept digests, without Wine (E27 M2 T4). Below, "The shell's screens". |
+| `shell/` | The shell's recipes by group (`<group>.toml`), each group's probes (`<group>.screens.toml`) and kept digests (`kept/<group>.txt`, numbers only); the viewer's record (`drawn.txt`, E27 M2 T4). |
 | `h3lod.py` | The original's text tables, read from the run directory's LODs at run time (H1): which record a dialog's text was written from (`ADVEVENT:86`); never their text. |
 | `batches/` | The batches' recipes: a spec's procedure as steps (`E08-batch-2.toml`), and the harness's own check (`harness-check.toml`, its spec in `checks/`). |
 | `../situations/` | The capture set: `set.toml` and its situations' scenario files; the recorded sequences, `sequences.toml`, their scenarios `seq-*.toml` and `timelines/`. |
@@ -105,6 +105,13 @@ a timeline not as recorded fails the sequence), their digests outside the panels
 `map/timelines/drawn.txt` (`<id> t<ms> <digest>`); `frames --only <id>` for a sequence it lists
 as `CHANGED`, `new` or `STALE` (and its counts recorded), then `drawn --record`. A walk is M2
 T3's.
+
+**The shell's screens** (E27 M2 T4) follow them too: `python3 capture/h3shell.py drawn` (no Wine;
+seconds) plays every recipe in the viewer and compares each shot with the original's kept digest
+(`exact`) and with `shell/drawn.txt`; a task that builds or changes a screen records it (`drawn
+--record`), adds the recipes its screen still lacks (`run --only <id> --record`), and runs the
+groups whose recipes reach the screen again only when the harness's side changes (the
+runbook's "The shell's screens").
 
 `drawn` reporting every one the same (a change that reaches no reference frame) needs no Wine
 setup at all. Its digests are of the PNG files' pixels (`h3_render::png`'s unfiltered rows): a
@@ -1217,6 +1224,7 @@ python3 h3shell.py run [--group menus,start] [--only menu-main] [--record]   # e
 python3 h3shell.py play menu-main [--keep]       # one run; --keep leaves the game on its last screen
 python3 h3shell.py learn menus load_game_menu --in 114,312,413,359   # probes, the display as it is
 python3 h3shell.py list
+python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the viewer's side, no Wine
 ```
 
 - **A recipe** (`shell/<group>.toml`, `[[recipe]]`): `id`, `what` (the catalogue's section),
@@ -1256,11 +1264,34 @@ python3 h3shell.py list
 - **Before the first step** the run waits for the game's idle loop and for the first screen to
   stay unchanged for a second of real time (the main menu shows at 0 ms; a first step given before
   it was drawn showed it at 10 ms).
+- **Sound** (E27 M2 T4): a recipe with `sound = true` runs as h3drive's sound runs (below,
+  "Sound": Wine's ALSA driver over the null sink, the effects at volume 5, the samples on the
+  virtual clock); each sample started is kept as `<id> sound<k> t<ms> ch<channel> <length>ms
+  x<loops>` after the recipe's shots (`menu-sound`: the menus' presses).
+- **Masks** (E27 M2 T4): `mask:<x0>,<y0>,<x1>,<y1>` leaves its box (x1, y1 excluded) out of the
+  digests of every later shot and clip, the original's and the viewer's (`drawn`), until
+  `unmask`: what the machine draws, TCP/IP's address in `mp-tcp`. A mask changes the recipe's
+  kept digests: record it again.
+- **The viewer's side** (E27 M2 T4; from `clients/` after `cargo build --release -p
+  h3-battle-client`): `drawn` gives each recipe's steps (the masks left out) to `h3-view shell
+  --steps <file> --frames <dir>` (`--no-intro` unless the recipe sets `Show Intro`), which plays
+  them on the shell's own clock as `run` passes the original's (an input then 100 ms, `until` and
+  clips in 10 ms steps) and writes each shot's 5-6-5 frame (`.565`); each shot and clip is then
+  compared with the original's kept line (`exact`: the same digest at the same time; else the
+  time, or the count and box of the pixels that differ when a `run`'s frames are in
+  `clients/out/shell/<id>/run1/`) and with the viewer's own record, `shell/drawn.txt` (`same`;
+  `CHANGED`, `new`, `GONE` fail; `--record` writes it). The viewer stops a recipe at a step it
+  cannot take, and says which and why: the harness's own (`poke`, `press`, `point`,
+  `until-button`, `games-time`, `freeze`), a screen name it does not know, a screen not built
+  yet, a press or a key on a screen built at rest (each names the task that builds it). Its
+  frames stay in `clients/out/shell-drawn/<id>/` (`frames/`, `steps.txt`, `verdicts.txt`). A
+  change to the shell's drawing runs `drawn` and records it; `run` only when the harness's side
+  changes or a recipe is added.
 - **Limits:** the loading bar's steps (`loadprog.def`), Restart's bar and the lost screen's 1.5 s
   wait run while the game reads no clock or by real time: a shot taken once it is idle shows the
   bar full, and a key inside the wait cannot be timed. `Game.start` writes `Sound Volume` 0 after
-  the recipe's settings (`sound_settings`): a recipe that needs another writes the game's setting
-  in memory. TCP/IP's stage 2 shows the sandbox's address, so those digests are the machine's.
+  the recipe's settings (`sound_settings`; 5 with `sound`): a recipe that needs another writes the game's setting
+  in memory. TCP/IP's stage 2 shows the machine's address, masked in its digests (`mask`).
   The recorded groups and what they cover: `docs/epics/E27-design.md` §6.
 
 ## The recipes' coordinates (800 × 600)

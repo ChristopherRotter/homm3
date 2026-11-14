@@ -4,7 +4,7 @@
 use alloc::format;
 use alloc::vec::Vec;
 
-use super::{Choice, Ended, Game, Kind, PlayEnd, Refused, Request, Screen, Shell};
+use super::{Built, Choice, Ended, Game, Kind, PlayEnd, Refused, Request, Screen, Shell};
 
 /// Every screen.
 fn screens() -> Vec<Screen> {
@@ -244,6 +244,16 @@ fn each_screen_names_the_task_that_builds_it() {
     assert_eq!(Screen::Scenario(Game::New, Kind::Single).task(), "E27 M3");
     assert_eq!(Screen::Play { restart: true }.task(), "E24 M5");
     assert_eq!(Screen::HighScores.task(), "E27 M4");
+}
+
+#[test]
+fn only_the_main_menu_is_built_at_rest() {
+    let built: Vec<(Screen, Built)> = screens()
+        .into_iter()
+        .map(|s| (s, s.built()))
+        .filter(|(_, b)| *b != Built::Not)
+        .collect();
+    assert_eq!(built, [(Screen::MainMenu, Built::AtRest)]);
 }
 
 #[test]
