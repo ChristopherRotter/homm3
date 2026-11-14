@@ -1306,3 +1306,19 @@ T105b2 took adventure replay format v12.
   plan's fault, its `cc` line committed) and the hygiene property ends at a week's start whose
   kinds differ; `benches/adventure/fork-{economy,meeting,sea}-xl-144` and `fork-rewards-36`
   re-baselined (three new state fields, +0.8 % to +1.1 % against `master`).
+
+## Inbox notes acted upon (moved 2026-11-14, E08 T116b1: the hygiene property's cut fixed, the line committed)
+
+*(Moved verbatim: the property's fault, the movement's change told last after a visit that tells nothing; the record in `E08-log.md`, T116b1.)*
+
+- 2026-11-13 (E08 T114b's scoped verify; **a failing case of the hygiene property, on `master`
+  too**): `h3-map`'s `a_viewer_learns_nothing_it_cannot_see` failed with the regression line `cc
+  f1ef9d365138e68fe1e92148a08536e583481e4b06db263fa364dc7e91824600` (a 7 × 7 two-level RoE plan;
+  red's hero walks to the two-way monolith at (6, 0, 1), whose pair (4, 0, 0) the unseen part's
+  teleporters change): one game tells the viewer the walk and `MovementChanged`, the other the walk
+  alone, and the `entering && ta != tb` branch (`view.rs`, the teleporters' cut at
+  `HeroTeleported`, `LeadsNowhere` or `MeetingOpened`) finds none of its events, so it compares
+  the whole lists. Replayed on `master` 8380e4e in a worktree: the same failure, so not T114b's;
+  the line is not committed (CI's random cases rarely meet it). Find what the second game told
+  instead (a battle at the exit, a hero gone from the map?) and fix the property or the engine;
+  then commit the line. T116b meets these properties anyway.
