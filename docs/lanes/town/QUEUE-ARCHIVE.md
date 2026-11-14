@@ -205,3 +205,17 @@ T7a1):
   last one. The seed is kept in `proptest-regressions/tests/play.txt`. If you would rather not
   tell the old owner the intermediate town (the capture follows in the same command), the check
   holds either way.
+
+(Done by E09 T28a, 2026-11-14: the town's garrison arm of `held` and the bars' admission.)
+
+- 2026-11-12 (the adventure lane, E08 T114a2, `adventure/e08-t114a2`, `cross-lane`; **a version
+  taken and the hook for your T28a**): game state hash **v29** (a map garrison's exchange among the
+  decisions, tag 8), so your T26a2's bump is v30 (done, #899); adventure replay format **v13** (`m<index>:<slot>`,
+  a map garrison's army) and protocol **v52** (the server lane's, `cross-lane`); every adventure
+  golden replay re-recorded (versions and hash lines only). The one owner rule is in
+  `h3-adventure`'s `state/manage.rs`: `held` gives each army with its bar ownership (a hero's and
+  the group the player's, a map garrison its owner's when removable, nobody's when not), so your
+  `ArmyRef::Garrison(town)` gets its arm there (its town's owner) and `Held::keeps_last` stays false
+  for it; `h3-game`'s `Together::Exchange { hero, army }` holds a stationary `ArmyRef` (a town's
+  garrison may be its `army`), and `Together::admits` refuses a map garrison its decision does not
+  hold (`DecisionOpen`; alone `NotTogether`). Design note §13's *As built* (`E08-design.md`).

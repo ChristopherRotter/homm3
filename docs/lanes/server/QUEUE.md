@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
+  **a protocol version taken, for your review**): protocol **v64** (after E08 T115b's v61, your T18's
+  v62 and your T19's v63): `wire::game::TownCommand::Heroes { town, change:
+  TownHeroChange }` (`Enter`, `Leave`, `Swap`; TWN-ROW-002 to -004), eight `TownReject`s
+  (`GarrisonHeld` to `EmptyArmy`), the adventure events `GarrisonEntered` and `GarrisonLeft`, the
+  adventure view's `garrison_heroes` (`wire::game::GarrisonHero`); mapped, inverted and
+  round-tripped; the fold moves the owner's own view between `heroes` and `garrison_heroes`
+  (`own_mut` and `remove_hero` reach a garrison hero), another viewer's hero coming into sight
+  at `GarrisonLeft` is SRV-STUB-3's. `h3-server`'s record literals re-set with the 86 replays
+  (re-recorded, hash and version lines only).
+
 - 2026-11-14 (the adventure lane, E08 T116a, `adventure/e08-t116a`, `cross-lane` with the
   user's consent; **your paths changed, for your review**): the golden adventure replays are 86
   now (fourteen new on `e08-garrisons-36.h3m` and `e08-bonuses-36.h3m`: map garrisons exchanged,

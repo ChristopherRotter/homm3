@@ -15,7 +15,10 @@ use crate::command::{AdventureSink, Sink};
 use crate::{GameRuleset, GameState};
 
 /// Captures `town` for `player`, whose hero entered it undefended or won its siege: the town's
-/// reveal (`h3_towns::reveal`, [`adventure_reveal`]), then the adventure's capture
+/// reveal (`h3_towns::reveal`, [`adventure_reveal`]), since E09 T28a its garrison hero out of the
+/// game first, its type back in the pool (`TWN-STUB-14` until T28b: a garrison hero does not
+/// defend yet, so its town falls as an undefended one, T-5's rule, `TWN-QUIRK-11`;
+/// [`AdventureState::release_town_hero`]), then the adventure's capture
 /// ([`AdventureState::capture_town`]: the owner, the empty garrison, the reveal; `TownCaptured`
 /// then `TilesRevealed`), then, only after a capture, the day's mark's rule (since E09 T18b1,
 /// decision 43: [`Towns::captured`] clears it when the old owner, read before the capture, is
@@ -31,7 +34,7 @@ use crate::{GameRuleset, GameState};
 /// Capitol's limit alone). One infallible application: the step checked it; a town the store or
 /// the map lacks changes nothing (the store holds every town of the map). A team is its player
 /// alone until E10 (`h3_adventure::allied`).
-// rule: TWN-CAP-001, TWN-CAP-002, TWN-BLD-004, TWN-VEW-002, TWN-GRO-007
+// rule: TWN-CAP-001, TWN-CAP-002, TWN-BLD-004, TWN-VEW-002, TWN-GRO-007, TWN-SET-005
 pub(crate) fn capture<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
@@ -64,7 +67,14 @@ pub(crate) fn capture<S: Sink>(
     // TownCount`), so the capture's viewers (none for a town the map lacks) are not needed.
     let (adventure, _) = state.adventure_with_heroes();
     let events = &mut AdventureSink(&mut *sink);
+    // stub: TWN-STUB-14 (a garrison hero's defence: E09 T28b) — the town falls as T-5's, its
+    // garrison hero back to the pool (TWN-SET-005).
+    let released = adventure.release_town_hero(town, events);
     let _ = adventure.capture_town(rules.core(), town, player, reveal, events);
+    if let Some(details) = released.and_then(|hero| state.hero(hero)) {
+        let hero_type = details.hero_type;
+        state.free_hero_types(&[hero_type]);
+    }
     // rule: TWN-BLD-004
     let human = |p: PlayerId| state.human(p) == Some(true);
     let mark = !old_owner.is_some_and(human) && human(player);

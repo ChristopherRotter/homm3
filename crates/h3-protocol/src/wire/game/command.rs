@@ -98,6 +98,26 @@ pub enum TownCommand {
         /// The building, as [`Self::Build`]'s.
         building: u8,
     },
+    /// Moves a hero between the two bars of a town of the actor's (TWN-ROW-002 to -004; E09
+    /// T28a, v64).
+    Heroes {
+        /// The town.
+        town: u16,
+        /// The move.
+        change: TownHeroChange,
+    },
+}
+
+/// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v64).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub enum TownHeroChange {
+    /// The visitor into the garrison (TWN-ROW-002).
+    Enter {},
+    /// The garrison hero out onto the entrance (TWN-ROW-003).
+    Leave {},
+    /// The two change places (TWN-ROW-004).
+    Swap {},
 }
 
 /// A command to the adventure map (`h3_adventure::AdventureCommand`).
@@ -500,6 +520,22 @@ pub enum TownReject {
     NotStanding {},
     /// The Portal of Summoning holds nothing (TWN-REC-002).
     NothingSummoned {},
+    /// A hero stands in the town's garrison already (TWN-ROW-002; E09 T28a, v64).
+    GarrisonHeld {},
+    /// No hero of the actor's stands on the town's entrance (TWN-ROW-002, -004).
+    NoVisitor {},
+    /// The garrison's stacks find no slot in the visitor's army (TWN-ROW-002).
+    ArmiesDoNotFit {},
+    /// A stack would hold more than a stack's most (TWN-ROW-002).
+    TooManyCreatures {},
+    /// No hero stands in the town's garrison (TWN-ROW-003, -004).
+    NoGarrisonHero {},
+    /// A hero stands on the town's entrance (TWN-ROW-003).
+    EntranceHeld {},
+    /// The actor has the most heroes on the map already (TWN-ROW-003).
+    TooManyHeroes {},
+    /// The garrison hero's army holds no stack (TWN-ROW-003).
+    EmptyArmy {},
 }
 
 /// Why the adventure map refused a command (`h3_adventure::AdventureCommandError`); a step is

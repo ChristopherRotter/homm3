@@ -16,7 +16,7 @@ use h3_game::{
     GameCommand as EngineCommand, GameCommandError, HireAnswer as EngineHire, HireError,
     Manage as EngineManage, ManageError, Position, SchoolChoice as EngineSchool,
     SkillOffer as EngineOffer, SystemCommand as EngineSystem, TownCommand as EngineTown,
-    TownCommandError, UniversityAnswer as EngineUniversity,
+    TownCommandError, TownHeroChange as EngineHeroChange, UniversityAnswer as EngineUniversity,
 };
 use h3_heroes::{CombineError, MoveError};
 use h3_kernel::handle::Handle;
@@ -27,7 +27,7 @@ use crate::wire::game::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
     GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, Pos,
-    SchoolChoice, SkillOffer, StandReject, SystemCommand, TownCommand, TownReject,
+    SchoolChoice, SkillOffer, StandReject, SystemCommand, TownCommand, TownHeroChange, TownReject,
     UniversityAnswer,
 };
 
@@ -65,6 +65,14 @@ pub fn command(command: &EngineCommand) -> GameCommand {
                 EngineTown::Recruit { town, building } => TownCommand::Recruit {
                     town: town.raw(),
                     building: building.raw(),
+                },
+                EngineTown::Heroes { town, change } => TownCommand::Heroes {
+                    town: town.raw(),
+                    change: match change {
+                        EngineHeroChange::Enter => TownHeroChange::Enter {},
+                        EngineHeroChange::Leave => TownHeroChange::Leave {},
+                        EngineHeroChange::Swap => TownHeroChange::Swap {},
+                    },
                 },
             },
         },
@@ -262,18 +270,29 @@ pub fn command_to_engine(command: GameCommand) -> Result<EngineCommand, GameReje
         GameCommand::Battle { command } => EngineCommand::Battle(battle_to_engine(command)),
         GameCommand::Manage { manage } => EngineCommand::Manage(manage_to_engine(manage)),
         GameCommand::Town { command } => {
-            let (town, building) = match command {
-                TownCommand::Build { town, building } | TownCommand::Recruit { town, building } => {
-                    (TownId::new(town), building)
-                }
-            };
-            let building =
+            let building = |building: u8| {
                 BuildingId::from_index(usize::from(building)).ok_or(GameReject::Town {
                     error: TownReject::UnknownBuilding {},
-                })?;
+                })
+            };
             EngineCommand::Town(match command {
-                TownCommand::Build { .. } => EngineTown::Build { town, building },
-                TownCommand::Recruit { .. } => EngineTown::Recruit { town, building },
+                TownCommand::Build { town, building: b } => EngineTown::Build {
+                    town: TownId::new(town),
+                    building: building(b)?,
+                },
+                TownCommand::Recruit { town, building: b } => EngineTown::Recruit {
+                    town: TownId::new(town),
+                    building: building(b)?,
+                },
+                // E09 T28a (v64).
+                TownCommand::Heroes { town, change } => EngineTown::Heroes {
+                    town: TownId::new(town),
+                    change: match change {
+                        TownHeroChange::Enter {} => EngineHeroChange::Enter,
+                        TownHeroChange::Leave {} => EngineHeroChange::Leave,
+                        TownHeroChange::Swap {} => EngineHeroChange::Swap,
+                    },
+                },
             })
         }
         // E16 M5 T14 (v56): the engine refuses it from a seat (`SystemOnly`).
@@ -465,6 +484,14 @@ pub fn reject(error: GameCommandError) -> GameReject {
                 TownCommandError::NotRecruiting => TownReject::NotRecruiting {},
                 TownCommandError::NotStanding => TownReject::NotStanding {},
                 TownCommandError::NothingSummoned => TownReject::NothingSummoned {},
+                TownCommandError::GarrisonHeld => TownReject::GarrisonHeld {},
+                TownCommandError::NoVisitor => TownReject::NoVisitor {},
+                TownCommandError::ArmiesDoNotFit => TownReject::ArmiesDoNotFit {},
+                TownCommandError::TooManyCreatures => TownReject::TooManyCreatures {},
+                TownCommandError::NoGarrisonHero => TownReject::NoGarrisonHero {},
+                TownCommandError::EntranceHeld => TownReject::EntranceHeld {},
+                TownCommandError::TooManyHeroes => TownReject::TooManyHeroes {},
+                TownCommandError::EmptyArmy => TownReject::EmptyArmy {},
             },
         },
     }

@@ -21,6 +21,7 @@ visions_min_radius = 4
 week_creature_chance = [1, 3]      # TWN-GRO-002 (E09 T25a); the original's 1 in 4
 week_creature_bonus = 4            # the original's 5
 garrison_week = { odds = [30, 70], out_of = 100, weights = [2, 3, 4], weeks = 6, upgrade = 10 }
+most_heroes = 8
 
 [[town]]
 faction = "vale"

@@ -1499,13 +1499,33 @@ fn check_told(
                 added.push(((object_type, anchor), creature, count_word));
             }
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::HeroRemoved { hero, pos },
+                kind:
+                    AdventureEventKind::HeroRemoved { hero, pos }
+                    | AdventureEventKind::GarrisonEntered { hero, pos, .. },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
                 let at = heroes.iter().position(|&(id, _)| id == hero);
-                prop_assert_eq!(at.map(|i| heroes[i].1), Some(pos), "{:?}", event);
-                heroes.remove(at.unwrap());
+                // E09 T28a: a garrison hero leaving the game at its town's capture
+                // (`TWN-STUB-14`) was not on the map.
+                let garrisoned = before
+                    .adventure
+                    .garrison_heroes
+                    .iter()
+                    .any(|g| g.id == hero);
+                if !(garrisoned && at.is_none()) {
+                    prop_assert_eq!(at.map(|i| heroes[i].1), Some(pos), "{:?}", event);
+                    heroes.remove(at.unwrap());
+                }
+            }
+            // E09 T28a: a garrison hero comes out onto its town's entrance (TWN-ROW-003, -004).
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::GarrisonLeft { hero, pos, .. },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                prop_assert!(!heroes.iter().any(|&(id, _)| id == hero), "{:?}", event);
+                heroes.push((hero, pos));
             }
             GameEvent::OfferOpened {
                 player,

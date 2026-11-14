@@ -20,6 +20,7 @@
 //! | 22 + s, s < 8 | The hero in slot `s` revisits the entered object it stands on (E08 T105b2) |
 //! | 30 | Build the building in the building head in the town whose entrance is the tile in the tile head (E09 T19c1) |
 //! | 31 | Open the hire dialog of the building in the building head in the town whose entrance is the tile in the tile head (E09 T27) |
+//! | 32 + m, m < 3 | Move a hero between the two bars of the town whose entrance is the tile in the tile head: `m` 0 the visitor into the garrison, 1 the garrison hero out, 2 the two swapped (E09 T28a) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -42,7 +43,8 @@
 //! anchor; the setup refuses two typed objects of one type on one anchor, and the original's
 //! packs have one Shipyard type). After [`BUILD`] it allows the entrances of the towns of the
 //! listed builds (E09 T19c1: the player's own towns, the entrance its hero enters by, TWN-VIS-001;
-//! one town an entrance), after [`RECRUIT`] those of the listed recruitments (E09 T27). A move's destination is a tile the hero's reachable-tiles query
+//! one town an entrance), after [`RECRUIT`] those of the listed recruitments (E09 T27), after a
+//! [`TOWN_HEROES`] entry those of the listed hero moves of its kind (E09 T28a). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -98,6 +100,11 @@
 //! epic's design note §55) appended [`RECRUIT`]: a town's recruitment (`TownCommand::Recruit`,
 //! TWN-REC-001, -002) by its town's entrance and its building's index, with the two heads of
 //! [`BUILD`]; the dialog it opens is the hire dialog's, whose purchases are its four entries.
+//! Version 11 (E09 T28a, the town lane's `cross-lane` change with the user's consent, E09 decision
+//! 93; the town epic's design note §55) appended the three [`TOWN_HEROES`] entries: a hero's move
+//! between a town's two bars (`TownCommand::Heroes`, TWN-ROW-002 to -004) by its town's entrance
+//! in the tile head, the building head 0. A garrison hero is off the map: it holds no hero slot.
+//! The army commands between the bars have no entry, as every management command (decision 99).
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -108,12 +115,12 @@ use h3_game::{
     Actor, Answer, ArenaChoice, ChestChoice, Consent, GameCommand, GameRuleset, GameState,
     HireAnswer, SchoolChoice, SkillOffer, UniversityAnswer, legal_commands, legal_moves,
 };
-use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand};
+use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand, TownHeroChange};
 
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 10;
+pub const ACTION_ENCODING_VERSION: u32 = 11;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -171,8 +178,20 @@ pub const BUILD: usize = REVISIT_BASE + HERO_SLOTS;
 /// entrance is the tile in the tile head (E09 T27; TWN-REC-001, -002).
 pub const RECRUIT: usize = BUILD + 1;
 
+/// The entry of the first hero move between the two bars of the town whose entrance is the tile
+/// in the tile head (E09 T28a; TWN-ROW-002 to -004): `TOWN_HEROES` the visitor into the garrison,
+/// `+ 1` the garrison hero out, `+ 2` the two swapped ([`TOWN_HERO_MOVES`]).
+pub const TOWN_HEROES: usize = RECRUIT + 1;
+
+/// The hero moves between a town's bars, in their entries' order from [`TOWN_HEROES`] (E09 T28a).
+pub const TOWN_HERO_MOVES: [TownHeroChange; 3] = [
+    TownHeroChange::Enter,
+    TownHeroChange::Leave,
+    TownHeroChange::Swap,
+];
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = RECRUIT + 1;
+pub const ENTRY_COUNT: usize = TOWN_HEROES + TOWN_HERO_MOVES.len();
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -322,6 +341,12 @@ impl Action {
         })
     }
 
+    /// Moves a hero between the two bars of the town whose entrance is the tile at `tile`
+    /// (E09 T28a): `change`'s entry from [`TOWN_HEROES`].
+    pub fn town_heroes(tile: u32, change: TownHeroChange) -> Self {
+        Self::map(TOWN_HEROES + town_hero_index(change), tile)
+    }
+
     /// The map phase's action of `entry` with `tile` (building 0).
     pub const fn map(entry: usize, tile: u32) -> Self {
         Self::Adventure(MapAction {
@@ -458,8 +483,8 @@ pub fn legal_mask(
 /// reachable tiles of a hero's legal move but its own, the anchors of the Shipyards of the listed
 /// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b), the entrances of the towns of the listed builds
 /// after [`BUILD`] (E09 T19c1, [`town_tile`]) and of the listed recruitments after [`RECRUIT`]
-/// (E09 T27); none after an illegal entry or in the battle
-/// phase (none for the neutral seat).
+/// (E09 T27), and of the listed hero moves of a [`TOWN_HEROES`] entry's kind after it (E09 T28a);
+/// none after an illegal entry or in the battle phase (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
     rules: &GameRuleset,
@@ -487,6 +512,18 @@ pub fn tile_mask(
     } else if entry == BUILD || entry == RECRUIT {
         for command in legal_commands(state, rules, seat.actor()) {
             if let Some((town, _)) = town_command(entry, &command)
+                && let Some(index) = town_tile(state, town)
+            {
+                mask[index as usize] = true;
+            }
+        }
+    } else if let Some(change) = town_hero_move(entry) {
+        for command in legal_commands(state, rules, seat.actor()) {
+            if let GameCommand::Town(TownCommand::Heroes {
+                town,
+                change: listed,
+            }) = command
+                && listed == change
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -794,8 +831,27 @@ fn command_entry(
         }
         GameCommand::Town(TownCommand::Build { .. }) => Some(BUILD),
         GameCommand::Town(TownCommand::Recruit { .. }) => Some(RECRUIT),
+        GameCommand::Town(TownCommand::Heroes { change, .. }) => {
+            Some(TOWN_HEROES + town_hero_index(*change))
+        }
         other => tileless_entry(other, hire),
     }
+}
+
+/// The place of `change` among [`TOWN_HERO_MOVES`] (E09 T28a).
+const fn town_hero_index(change: TownHeroChange) -> usize {
+    match change {
+        TownHeroChange::Enter => 0,
+        TownHeroChange::Leave => 1,
+        TownHeroChange::Swap => 2,
+    }
+}
+
+/// The hero move of a [`TOWN_HEROES`] entry (E09 T28a); none for another entry.
+fn town_hero_move(entry: usize) -> Option<TownHeroChange> {
+    entry
+        .checked_sub(TOWN_HEROES)
+        .and_then(|m| TOWN_HERO_MOVES.get(m).copied())
 }
 
 /// The revisit entry of `player`'s hero `hero` (E08 T105b2): [`REVISIT_BASE`] plus its slot among
@@ -840,7 +896,8 @@ fn build_boat(
 /// a tile its reachable-tiles query lists (not its own) along the query's path, a `BuildBoat`
 /// at a Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b), or a
 /// town's build of the building at the building head's index in the town whose entrance is the
-/// tile (E09 T19c1), or since E09 T27 its recruitment there (a building other than 0 with another
+/// tile (E09 T19c1), or since E09 T27 its recruitment there, or since E09 T28a a hero's move
+/// between its bars of a [`TOWN_HEROES`] entry's kind (building 0) (a building other than 0 with another
 /// entry names none); none for the neutral
 /// seat. In the battle phase: the battle command the battle's encoding decodes the
 /// action to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may
@@ -860,6 +917,11 @@ pub fn decode(
         }
     };
     let player = seat.player()?;
+    if let Some(change) = town_hero_move(action.entry) {
+        let town = town_of_tile(state, action.tile)?;
+        return (action.building == 0)
+            .then_some(GameCommand::Town(TownCommand::Heroes { town, change }));
+    }
     if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
         let building = BuildingId::from_index(usize::from(action.building))?;
@@ -906,7 +968,8 @@ pub fn decode(
 /// of one of its player's heroes by the hero's slot and the path's last tile, a `BuildBoat` by
 /// its Shipyard's anchor (E08 T85b2b), a `Revisit` by its hero's slot (tile 0, E08 T105b2), a
 /// town's build by its town's entrance and its building's index (E09 T19c1), its recruitment the
-/// same way (E09 T27; none of these for the neutral seat), a battle command by the
+/// same way (E09 T27), a hero's move between its bars by its kind's entry and the town's entrance
+/// (E09 T28a; none of these for the neutral seat), a battle command by the
 /// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
 /// when a move's path is the one the hero's query chose (a move along another path decodes to the
 /// query's path to the same tile) and a `BuildBoat`'s Shipyard is one the player may use.
@@ -935,6 +998,9 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::Recruit { town, building }) => {
             return town_tile(state, *town).map(|tile| Action::recruit(tile, building.raw()));
+        }
+        GameCommand::Town(TownCommand::Heroes { town, change }) => {
+            return town_tile(state, *town).map(|tile| Action::town_heroes(tile, *change));
         }
         GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
             let listed = legal_commands(state, rules, seat.actor());

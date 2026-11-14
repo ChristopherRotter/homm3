@@ -36,9 +36,9 @@ use std::ops::RangeInclusive;
 use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
-    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Gift, Holds,
-    ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach, Resolved,
-    RewardRecord, Turn, Viewers, Visit,
+    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureState,
+    Gift, Holds, ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach,
+    Resolved, RewardRecord, Turn, Viewers, Visit,
 };
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
@@ -50,8 +50,8 @@ use h3_game::{
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireSeen, HireTarget, HireView,
     Manage, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
-    UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management, legal_moves,
-    observe, split_range,
+    TownHeroChange, UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management,
+    legal_moves, observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -2820,11 +2820,42 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
         let garrison = ArmyRef::MapGarrison(exchange.garrison);
         return vec![vec![ArmyRef::Hero(exchange.hero), garrison]];
     }
-    let heroes = state.adventure().heroes().iter();
-    heroes
+    // E09 T28a (TWN-ROW-001): a visitor of an own town with the town's upper bar (its garrison
+    // hero's army, else its garrison), and each own garrison hero (with its town's own visitor).
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let upper = |town: TownId| {
+        adventure
+            .town_hero(town)
+            .map_or(ArmyRef::Garrison(town), |held| ArmyRef::Hero(held.id))
+    };
+    let own_town = |town: TownId| {
+        map.town_object(town)
+            .is_some_and(|index| adventure.owner(index) == Some(player))
+    };
+    let on_map = adventure
+        .heroes()
+        .iter()
         .filter(|h| h.owner == player)
-        .map(|h| vec![ArmyRef::Hero(h.id)])
-        .collect()
+        .map(|h| {
+            let town = map.town_at(h.pos).filter(|&town| own_town(town));
+            let mut armies = vec![ArmyRef::Hero(h.id)];
+            armies.extend(town.map(upper));
+            armies
+        });
+    let held = adventure
+        .town_heroes()
+        .iter()
+        .filter(|(_, h)| h.owner == player)
+        .map(|&(town, ref h)| {
+            let visitor = adventure
+                .town_visitor(town)
+                .filter(|&v| adventure.hero(v).is_some_and(|v| v.owner == player));
+            let mut armies = vec![ArmyRef::Hero(h.id)];
+            armies.extend(visitor.map(ArmyRef::Hero));
+            armies
+        });
+    on_map.chain(held).collect()
 }
 
 /// The stack at `at` (E08 T52): in its hero's army on the map, in the acting player's army
@@ -2832,7 +2863,11 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
 fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> {
     let adventure = state.adventure();
     let army = match at.army {
-        ArmyRef::Hero(hero) => adventure.hero(hero).map(|h| &h.army[..]),
+        // E09 T28a: or a garrison hero's.
+        ArmyRef::Hero(hero) => adventure
+            .hero(hero)
+            .or_else(|| adventure.garrisoned(hero).map(|(_, h)| h))
+            .map(|h| &h.army[..]),
         ArmyRef::Group => state.army_dialog(acting(state)).map(|(_, group)| group),
         ArmyRef::Garrison(town) => adventure
             .map()
@@ -5319,8 +5354,16 @@ fn town_builds<'a>(
         let ids = move || (0..=buildings).filter_map(BuildingId::from_index);
         let builds = ids().map(move |building| TownCommand::Build { town, building });
         let recruits = ids().map(move |building| TownCommand::Recruit { town, building });
+        // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
+        let rows = [
+            TownHeroChange::Enter,
+            TownHeroChange::Leave,
+            TownHeroChange::Swap,
+        ]
+        .map(move |change| TownCommand::Heroes { town, change });
         builds
             .chain(recruits)
+            .chain(rows)
             .map(move |command| (town, GameCommand::Town(command)))
     })
 }
@@ -5380,6 +5423,87 @@ fn recruited(
 /// (`GameState::town_offer`) offers it as payable; a build of any other town or building
 /// ([`town_builds`]) is rejected with the state unchanged; the offer is the owner's alone and
 /// its payable set the town's listed builds.
+/// A listed hero move `change` at `town` by `actor` from `state` to `after` (TWN-ROW-002 to -004;
+/// E09 T28a): `Enter` makes the actor's visitor the garrison hero with its army and the town's
+/// garrison's creatures, the garrison empty; `Leave` makes the actor's garrison hero the visitor
+/// with its army; `Swap` changes the two; each record kept but its army (`Enter`) and its tile.
+fn check_town_heroes(
+    state: &GameState,
+    after: &GameState,
+    actor: PlayerId,
+    (town, change): (TownId, TownHeroChange),
+) -> Result<(), TestCaseError> {
+    let (was, now) = (state.adventure(), after.adventure());
+    let visitor = |a: &AdventureState| a.town_visitor(town).and_then(|id| a.hero(id)).cloned();
+    let held = |a: &AdventureState| a.town_hero(town).cloned();
+    let (visiting, holding) = (visitor(was), held(was));
+    let index = was.map().town_object(town).unwrap();
+    prop_assert_eq!(was.owner(index), Some(actor));
+    match change {
+        TownHeroChange::Enter => {
+            let hero = visiting.ok_or_else(|| fail("Enter without a visitor".into()))?;
+            prop_assert_eq!(hero.owner, actor);
+            prop_assert!(holding.is_none());
+            let entered = held(now).ok_or_else(|| fail("Enter left no garrison hero".into()))?;
+            prop_assert_eq!(entered.id, hero.id);
+            prop_assert_eq!(
+                (
+                    entered.movement,
+                    entered.max_movement,
+                    entered.formation,
+                    entered.tactics
+                ),
+                (
+                    hero.movement,
+                    hero.max_movement,
+                    hero.formation,
+                    hero.tactics
+                )
+            );
+            // Every creature of the two armies, by kind, in the garrison hero's.
+            let mut creatures: Vec<(CreatureTypeId, u64)> = Vec::new();
+            let garrison = was.town_garrison(index).unwrap_or_default();
+            for s in hero.army.iter().chain(garrison) {
+                match creatures.iter_mut().find(|(c, _)| *c == s.creature) {
+                    Some((_, n)) => *n += u64::from(s.count),
+                    None => creatures.push((s.creature, u64::from(s.count))),
+                }
+            }
+            for (creature, n) in creatures {
+                let joined: u64 = entered
+                    .army
+                    .iter()
+                    .filter(|s| s.creature == creature)
+                    .map(|s| u64::from(s.count))
+                    .sum();
+                prop_assert_eq!(joined, n, "{:?}", creature);
+            }
+            prop_assert!(now.hero(hero.id).is_none());
+            prop_assert_eq!(now.town_garrison(index), Some(&[][..]));
+        }
+        TownHeroChange::Leave => {
+            let hero = holding.ok_or_else(|| fail("Leave without a garrison hero".into()))?;
+            prop_assert!(visiting.is_none());
+            prop_assert!(held(now).is_none());
+            let out = visitor(now).ok_or_else(|| fail("Leave left no visitor".into()))?;
+            prop_assert_eq!(
+                (out.id, &out.army, out.movement),
+                (hero.id, &hero.army, hero.movement)
+            );
+        }
+        TownHeroChange::Swap => {
+            let (hero, other) = visiting.zip(holding).ok_or_else(|| fail("Swap".into()))?;
+            prop_assert_eq!(hero.owner, actor);
+            let (entered, out) = held(now)
+                .zip(visitor(now))
+                .ok_or_else(|| fail("Swap".into()))?;
+            prop_assert_eq!((entered.id, &entered.army), (hero.id, &hero.army));
+            prop_assert_eq!((out.id, &out.army), (other.id, &other.army));
+        }
+    }
+    Ok(())
+}
+
 fn check_town_builds(
     state: &GameState,
     rules: &GameRuleset,
@@ -5422,6 +5546,12 @@ fn check_town_builds(
                 prop_assert_eq!((view.target, view.source), (target, source));
                 prop_assert_eq!(probe.towns().get(town), state.towns().get(town));
                 prop_assert_eq!(probe.treasury(actor), state.treasury(actor));
+                continue;
+            }
+            // E09 T28a: a listed hero move, by an independent reading of the two bars before and
+            // after (TWN-ROW-002 to -004).
+            GameCommand::Town(TownCommand::Heroes { change, .. }) => {
+                check_town_heroes(state, &probe, actor, (town, change))?;
                 continue;
             }
             _ => return Err(fail(format!("{command:?}"))),
@@ -7420,6 +7550,15 @@ fn check_invariants(rules: &GameRuleset, state: &GameState) -> Result<(), TestCa
         let checked = h3_heroes::validate(details, rules.core());
         prop_assert!(checked.is_ok(), "{:?}: {:?}", hero.id, checked);
     }
+    // E09 T28a (design §55): no hero both on the map and in a garrison, a garrison hero's town's
+    // own garrison empty, its army a hero's.
+    for (town, hero) in state.adventure().town_heroes() {
+        prop_assert!(state.adventure().hero(hero.id).is_none(), "{:?}", hero);
+        let index = state.adventure().map().town_object(*town).unwrap();
+        prop_assert_eq!(state.adventure().town_garrison(index), Some(&[][..]));
+        prop_assert!(!hero.army.is_empty() && valid(&hero.army), "{:?}", hero);
+        prop_assert_eq!(state.adventure().owner(index), Some(hero.owner));
+    }
     // E08 T75b: the boats' invariants (increment 8's design note §6; ADV-SEA-001).
     let adventure = state.adventure();
     prop_assert!(
@@ -7643,8 +7782,17 @@ fn check_managing(state: &GameState, rules: &GameRuleset) -> Result<(), TestCase
 
 /// Every hero's army, by id.
 fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
-    let heroes = state.adventure().heroes().iter();
-    heroes.map(|h| (h.id, h.army.clone())).collect()
+    // E09 T28a: the towns' garrison heroes' too (TWN-ROW-002 to -004), by id with the others.
+    let held = state.adventure().town_heroes().iter().map(|(_, h)| h);
+    let mut all: Vec<_> = state
+        .adventure()
+        .heroes()
+        .iter()
+        .chain(held)
+        .map(|h| (h.id, h.army.clone()))
+        .collect();
+    all.sort_unstable_by_key(|&(id, _)| id);
+    all
 }
 
 /// Conservation for a command that ended a battle (E08 T19a; GAM-BAT-002, -003, -005): only one
@@ -9099,6 +9247,10 @@ fn check_isolation(
         if fought.contains(&b.id) {
             continue;
         }
+        // E09 T28a: the actor's visitor into its town's garrison (TWN-ROW-002, -004).
+        if a.is_none() && b.owner == actor && after.adventure().garrisoned(b.id).is_some() {
+            continue;
+        }
         let a = a.ok_or_else(|| fail(format!("{:?} left the map", b.id)))?;
         prop_assert_eq!((b.id, b.owner), (a.id, a.owner));
         if b.owner == actor {
@@ -9118,7 +9270,11 @@ fn check_isolation(
         let started = events.contains(&GameEvent::TurnStarted { player: b.owner });
         prop_assert!(started || b.movement == a.movement);
     }
-    prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id)));
+    // E09 T28a: or the actor's garrison hero out onto its town's entrance (TWN-ROW-003, -004).
+    let out = |a: &h3_adventure::HeroOnMap| {
+        a.owner == actor && before.adventure().garrisoned(a.id).is_some()
+    };
+    prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id) || out(a)));
     // The other owner of the actor's battle, before or after the command.
     let partner = |state: &GameState| {
         state
