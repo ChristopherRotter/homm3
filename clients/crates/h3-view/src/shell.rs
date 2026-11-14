@@ -3,7 +3,9 @@
 //! `game_main`'s menu loop runs them (`docs/epics/E27-design.md` §2.2, from 0x4EE842). A screen
 //! ends with an [`Ended`]; [`Shell::end`] takes it to the next screen as the loop's switches do,
 //! and refuses one the screen cannot end with. [`text`] is its headless driver: the `h3-view
-//! shell` command's words (the text client first; the window follows, M2 T4).
+//! shell` command's words (the text client first); [`look`] what a built screen shows, from the
+//! shell's layout (`clients/layouts/shell.toml`), and [`replay`] a capture recipe's steps played
+//! on the shell's own clock, for the comparison with the original's shots (E27 M2 T4).
 //!
 //! **The loop** (§2.2): at its top the screen asked for (`screen_request` 0x6976D8: the request
 //! play ended with, [`PlayEnd::Request`]) is taken by the main menu's switch (0x4EEC0D): none or
@@ -26,10 +28,13 @@
 //! is E20's, the lobby's start (0x4EE903) not built (§2.10).
 //!
 //! Each screen names the task that builds it ([`Screen::task`]): the frame holds them all, the
-//! screens themselves come with T5 to T7, M3, M4, E20 and E24 M5.
+//! screens themselves come with T5 to T7, M3, M4, E20 and E24 M5; [`Screen::built`] says how much
+//! of each is drawn so far (T4: the main menu at rest).
 
 use core::fmt;
 
+pub mod look;
+pub mod replay;
 pub mod text;
 
 /// The screen play's end or a main menu command asks for (`screen_request` 0x6976D8; the main
@@ -159,6 +164,17 @@ pub enum Ended {
     Play(PlayEnd),
 }
 
+/// How much of a screen is built.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Built {
+    /// Not drawn: a stand-in until its task.
+    Not,
+    /// Drawn at rest: the pointer moves over it, its hover, presses and keys are a later task's.
+    AtRest,
+    /// Drawn and taking its inputs (none yet: the main menu with T6).
+    Whole,
+}
+
 /// An ending the screen cannot have: the shell unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Refused {
@@ -189,6 +205,16 @@ impl Screen {
             Self::Play { .. } => "E24 M5",
             Self::HighScores | Self::Credits | Self::Lost | Self::Won => "E27 M4",
             Self::End => "",
+        }
+    }
+
+    /// How much of the screen is built ([`look::look`] draws it unless [`Built::Not`]): the main
+    /// menu at rest (E27 M2 T4); the others a stand-in until their task ([`Screen::task`]).
+    #[must_use]
+    pub const fn built(self) -> Built {
+        match self {
+            Self::MainMenu => Built::AtRest,
+            _ => Built::Not,
         }
     }
 

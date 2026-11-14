@@ -22,6 +22,15 @@ steps = [
 ]
 
 [[recipe]]
+id = "menu-sound"
+what = "§2.3: the main menu with sound (E27 M2 T4, h3shell's `sound`): New Game's press (button.wav), its menu, Back's press, the main menu"
+sound = true
+steps = [
+  "until:main_menu", "shot:menu", "click:643,70", "check:new_game_menu", "shot:new",
+  "click:645,517", "check:main_menu", "shot:back",
+]
+
+[[recipe]]
 id = "menu-quit"
 what = "§2.3: Quit's question (GENRLTXT 70) by the button and by Escape, Cancel staying"
 steps = [

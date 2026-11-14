@@ -1425,12 +1425,14 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
   timed.
 - Wine: after a network mode is tried, its stage 2's Host, Join and Search and stage 1's modes
   (Hot Seat included) are disabled until the dialog reopens, likely Wine's DirectPlay (not built,
-  §2.10); TCP/IP's stage 2 shows the sandbox's address (those digests are the machine's); Online
-  ends the game.
+  §2.10); TCP/IP's stage 2 shows the sandbox's address (192.0.2.2: since M2 T4 its line is
+  masked in `mp-tcp`'s digests, `mask:180,96,620,124`); Online ends the game.
 
 ### 6.3 What the recordings add to or correct in the readings
 
-- **The start** (§2.1): the main menu shows at 0 ms with Show Intro off; 3DOLogo's first frame at
+- **The start** (§2.1): the main menu shows at 0 ms with Show Intro off, the arrow already drawn
+  at the parked pointer (400, 300; M2 T4's first exact shot: `GamSelBk.pcx` copied whole, the five
+  buttons in frame 0, `crdeflt.def`'s frame 0 with its hot spot at the corner); 3DOLogo's first frame at
   350 ms; the clips' frames as their headers say; each skip ends the sequence, the main menu next.
   The lengths: `start-bink`'s menu at 180.48 s is 350 ms and the headers' 5.40 + 13.00 + 161.73 s;
   the Smacker copies have the same frames and rate (§2.1), so `start-smacker`'s 9.1 s more (189.6 s)
@@ -1470,10 +1472,12 @@ are 10 ms earlier (the Smacker copy's open fell inside a clock step; its kept li
 
 ### 6.4 Left for M2 to M4 (M1 T3's review, 2026-11-13)
 
-- **No sound recorded** (all of §2 to §5): h3shell has no sound mode and `Game.start` writes
-  Sound Volume 0; the screens' sound sequences and the waits a real sound driver makes (the lost
-  screen's `UltimateLose` wait among them, §5.4) are recorded by the task that builds each screen,
-  after h3shell gains h3drive's `sound`.
+- **Sound** (all of §2 to §5): recorded by the task that builds each screen, its sequences and
+  the waits a real sound driver makes (the lost screen's `UltimateLose` wait among them, §5.4),
+  with a recipe's `sound = true` (h3shell's since M2 T4: the effects at volume 5, each sample's
+  start kept). M2 T4's `menu-sound`: a main menu button's press and New Game's Back each start a
+  151 ms sample at the press (`button.wav`'s length), and the menu after it shows at the silent
+  recipes' times with their pixels: a press does not wait for its sample (T6).
 - **The fades** (§5.3 to §5.5): 0x602C50 (1, 4, 0) is read as a redraw (*inferred*), but
   `opt-restart`'s `fade` clip and `end-conquest`'s `to-scores` record fades: M4 reads it.
 - **The edit field** (§2.6, §2.7: typing 0x5BAC50, the caret, the limit; *not read*): M2's hot
