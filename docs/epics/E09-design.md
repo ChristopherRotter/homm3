@@ -1748,6 +1748,13 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   (its encoding has no army entry, before or after).
 - **Told:** the commands' `StackChanged` to the owner; the upper bar's change to the town's
   viewers at their level (increment 1's `Told`); the visitor's army as any hero's.
+- *As built (T28a, decision 93):* the admission is `GameState::admits_army` (`town_bars`, out of
+  line) before `Together::admits`; the adventure's `held` answers `ArmyRef::Garrison` for an own
+  town without a garrison hero (`Held::Town`, may be emptied) and a garrison hero after the heroes
+  on the map (`Held::TownHero`, keeps its last stack), both `#[cold]`; a town's garrison named
+  with a hero not its visitor, or while a garrison hero stands there, is `Garrison`; the listings
+  `town_partner` in `legal_management` and `legal_town_management`. The town's views are as before
+  (the garrison hero's army in them is T28b's).
 
 ### 53. The garrison hero (TWN-ROW-002 to -005; ADV-MOV-002, GAM-RES-003, -005 amended)
 
@@ -1812,6 +1819,19 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
 - **Its views:** the owner's own hero views list its garrison heroes with the town in place of a
   tile (`OwnHeroView`'s place `Map(pos)` or `Garrison(town)`, *agent's call*; the protocol maps
   it); every other viewer sees it only through the town's view (§54).
+- *As built (T28a, decision 93):* the moves are `TownCommand::Heroes { town, change }`
+  (`TownHeroChange`), run by `h3-game`'s `town/rows.rs` (the store, the owner, then
+  `AdventureState::move_town_hero`, `StackChanged` of `Enter`'s slots, the town's `Told`), listed
+  after each own town's recruitments (`check_town_hero`); the record in
+  `AdventureState::town_heroes` (a block by town, none while no town holds one; adventure state
+  hash v24 after the heroes on the map, each as a hero's), its marks in the marks block by hero id;
+  `TooManyHeroes` reads the town part's `most_heroes` (8, part v6); told as `GarrisonEntered` and
+  `GarrisonLeft` (the viewers of the entrance; `Swap` the two in that order); the owner's view is
+  `AdventureObservation::garrison_heroes` (`GarrisonHeroView`) and its details in
+  `GameObservation::heroes`; `OwnHeroes` covers them; replay `town heroes <town> enter|leave|swap`
+  (v16); the env's `TOWN_HEROES` + 3 (v11); protocol v60. Its day, income and growth inputs are
+  T28b's; until T28b's rows 1 and 3 a garrison hero does not defend (`TWN-STUB-14`: its town falls
+  as T-5's, `release_town_hero` at the capture).
 
 ### 54. What a garrison hero changes (TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001 amended; GAM-BAT-001)
 

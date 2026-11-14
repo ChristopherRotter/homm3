@@ -196,6 +196,8 @@ impl GameState {
         let mut group = dialog.map(|(_, (_, group, _))| group.to_vec());
         // E08 T114b: an exchange's command tells the garrison's changed views (ADV-GAR-006).
         let told = garrison_told::<S>(self, rules, command);
+        // E09 T28a: a command on a town's garrison tells the town's changed views (TWN-ROW-001).
+        let town_told = town_told::<S>(self, rules, command);
         self.adventure
             .manage_army(rules.adventure(), player, command, group.as_mut())
             .map_err(ManageError::of_army)?;
@@ -216,6 +218,8 @@ impl GameState {
         }
         // rule: ADV-GAR-006
         told.tell(self, rules, sink);
+        // rule: TWN-ROW-001
+        town_told.tell(self, rules, sink);
         Ok(())
     }
 
@@ -365,6 +369,22 @@ impl Together {
             _ => Some(GameCommandError::DecisionOpen),
         }
     }
+}
+
+/// The views of the town whose garrison `command` names, if any, by every player that sees it
+/// before the command (TWN-ROW-001; E09 T28a, design §52: the upper bar's change told to the
+/// town's viewers at their level, [`crate::town::Told::tell`] after it). Nothing for a command
+/// naming none or a sink that keeps nothing.
+fn town_told<S: Sink>(state: &GameState, rules: &GameRuleset, command: &ArmyCommand) -> crate::town::Told {
+    let (from, to) = command.armies();
+    let named = [Some(from), to]
+        .into_iter()
+        .flatten()
+        .find_map(|army| match army {
+            ArmyRef::Garrison(town) => Some(town),
+            _ => None,
+        });
+    crate::town::Told::before::<S>(state, rules, named.as_slice(), &[])
 }
 
 /// The views of the map garrison `command` names, if any, by every player before the command
