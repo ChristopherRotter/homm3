@@ -189,17 +189,23 @@ impl GameState {
     /// every player in id order (none is defeated before E10): the adventure's income of its mines
     /// and, on a week's first day, its armies' weekly resources
     /// (`h3_adventure::AdventureState::income`), plus `h3_heroes::daily_income` of each of its
-    /// heroes on the map (artifacts, Estates, specialists), plus since E09 T8c1 the day's income
-    /// of each town it owns (TWN-INC-001, -002: [`crate::town::add_income`]), gained saturating
-    /// ([`GameState::gain`]: one [`GameEvent::ResourceGained`] per resource with a non-zero
-    /// amount, in the core's order, to the player alone). A mine flagged or a town captured today
-    /// pays from the next day's start.
-    // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005, TWN-INC-001, TWN-INC-002
+    /// heroes on the map (artifacts, Estates, specialists) and since E09 T28b1 of each of its
+    /// garrison heroes (TWN-ROW-005), plus since E09 T8c1 the day's income of each town it owns
+    /// (TWN-INC-001, -002: [`crate::town::add_income`]), gained saturating ([`GameState::gain`]:
+    /// one [`GameEvent::ResourceGained`] per resource with a non-zero amount, in the core's order,
+    /// to the player alone). A mine flagged or a town captured today pays from the next day's
+    /// start.
+    // rule: GAM-RES-003, GAM-RES-004, GAM-RES-005, TWN-INC-001, TWN-INC-002, TWN-ROW-005
     fn pay_income<S: Sink>(&mut self, rules: &GameRuleset, week_start: bool, sink: &mut S) {
         let (core, part) = (rules.core(), rules.adventure());
         for player in (0..=u8::MAX).take(self.players.len()).map(PlayerId::new) {
             let mut income = self.adventure.income(core, part, player, week_start);
-            let heroes = self.adventure.heroes().iter().filter(|h| h.owner == player);
+            // Its heroes on the map, then since E09 T28b1 its garrison heroes (TWN-ROW-005: the
+            // original's `count_worn_artifact` 0x4BABD0 and `town_gold_income` read the towns'
+            // garrison heroes too).
+            let garrisons = self.adventure.town_heroes().iter().map(|(_, hero)| hero);
+            let all = self.adventure.heroes().iter().chain(garrisons);
+            let heroes = all.filter(|h| h.owner == player);
             for details in heroes.filter_map(|h| self.heroes.get(usize::from(h.id.raw()))) {
                 let daily = h3_heroes::daily_income(details, core);
                 for (entry, amount) in income.iter_mut().zip(daily) {

@@ -41,6 +41,20 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-14 (the town lane, E09 T28b1, `town/e09-t28b1`, `cross-lane` with the user's consent, E09
+  decision 94; **your paths changed, for your review; no version moved**): `state.rs`' `start_turn`
+  ends with the town lane's `start_town_heroes` (a garrison hero's points after the heroes on the
+  map, TWN-ROW-005, ADV-MOV-002 amended); `state/bonuses.rs`' `drop_timed_marks` changes the marks'
+  block by hero id directly (one `make_mut`, the entries left empty dropped), since
+  `change_marks` admits only heroes on the map and the garrison heroes' marks did not drop;
+  `state/economy.rs`' `income` reads the owned towns' upper bars on a week's first day
+  (`AdventureState::upper_bars`, the town lane's `src/town.rs`; GAM-RES-005 amended);
+  `h3-game`'s `state/day.rs` `pay_income` pays the garrison heroes' `daily_income` (GAM-RES-004
+  amended). `h3-map`'s plans: `check_income` over them, `check_isolation` over another player's
+  garrison hero; `view.rs`' checks of `MovementChanged` and the marks' events read `own_view`
+  (the hero on the map, else its garrison view: a garrison hero's points and marks change now; CI's
+  case `cc 2c6c6565…` added to `proptest-regressions/tests/view.txt`). Nothing else of yours
+  changes; a hero leaving the map still leaves its marks.
 - 2026-11-14 (the server lane, CI on its pull request #922, E16 M5 T20; **a failing property case
   for you**): `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` failed with `cc
   f7f1ca8b35d61464506a3e97c784cd505d8b6f11a7190e3320a98b94a06ba606` (an AB map of 11 × 11, one
