@@ -8,7 +8,8 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, BoatView, ChoiceKind as EngineChoiceKind, GuardsView, HeroView,
+    AdventureObservation, BoatView, ChoiceKind as EngineChoiceKind, GarrisonHeroView, GuardsView,
+    HeroView,
     Known as EngineKnown, KnownObject, MonsterView, ObjectView, OfferKind as EngineOfferKind,
     OwnHeroView, StaticTile, TileMask, TileView,
 };
@@ -184,6 +185,15 @@ fn inverse(a: &Adventure) -> AdventureObservation {
             })
             .collect(),
         boats: a.boats.iter().map(boat_back).collect(),
+        garrison_heroes: a
+            .garrison_heroes
+            .iter()
+            .map(|g| GarrisonHeroView {
+                town: TownId::new(g.town),
+                id: HeroId::new(g.id),
+                own: own_back(&g.own),
+            })
+            .collect(),
     }
 }
 
@@ -193,36 +203,40 @@ fn hero_back(h: &MapHero) -> HeroView {
         owner: PlayerId::new(h.owner),
         pos: pos_back(h.pos),
         boat: h.boat,
-        own: h.own.as_ref().map(|o| OwnHeroView {
-            army: army_back(&o.army),
-            movement: o.movement,
-            max_movement: o.max_movement,
-            formation: match o.formation {
-                Formation::Loose => EngineFormation::Loose,
-                Formation::Tight => EngineFormation::Tight,
-            },
-            tactics: o.tactics,
-            marks: o
-                .marks
+        own: h.own.as_ref().map(own_back),
+    }
+}
+
+fn own_back(o: &OwnMapHero) -> OwnHeroView {
+    OwnHeroView {
+        army: army_back(&o.army),
+        movement: o.movement,
+        max_movement: o.max_movement,
+        formation: match o.formation {
+            Formation::Loose => EngineFormation::Loose,
+            Formation::Tight => EngineFormation::Tight,
+        },
+        tactics: o.tactics,
+        marks: o
+            .marks
+            .iter()
+            .map(|m| (Handle::from_raw(m.object_type), pos_back(m.anchor)))
+            .collect(),
+        bonuses: h3_adventure::HeroBonuses {
+            morale: o.bonuses.morale,
+            luck: o.bonuses.luck,
+            once: o
+                .bonuses
+                .once
                 .iter()
-                .map(|m| (Handle::from_raw(m.object_type), pos_back(m.anchor)))
+                .map(|b| h3_heroes::VisitBonus {
+                    mark: b.mark,
+                    morale: b.morale,
+                    luck: b.luck,
+                })
                 .collect(),
-            bonuses: h3_adventure::HeroBonuses {
-                morale: o.bonuses.morale,
-                luck: o.bonuses.luck,
-                once: o
-                    .bonuses
-                    .once
-                    .iter()
-                    .map(|b| h3_heroes::VisitBonus {
-                        mark: b.mark,
-                        morale: b.morale,
-                        luck: b.luck,
-                    })
-                    .collect(),
-            },
-            timed: o.timed.iter().copied().map(Handle::from_raw).collect(),
-        }),
+        },
+        timed: o.timed.iter().copied().map(Handle::from_raw).collect(),
     }
 }
 
@@ -468,6 +482,21 @@ fn every_part() -> AdventureObservation {
             tile: p(1, 1, 0),
             kind: 1,
             facing: 6,
+        }],
+        // E09 T28a (v60).
+        garrison_heroes: vec![GarrisonHeroView {
+            town: TownId::new(3),
+            id: HeroId::new(7),
+            own: OwnHeroView {
+                army: stacks(2),
+                movement: 40,
+                max_movement: 1500,
+                formation: EngineFormation::Tight,
+                tactics: false,
+                marks: Vec::new(),
+                bonuses: h3_adventure::HeroBonuses::NONE,
+                timed: Vec::new(),
+            },
         }],
     }
 }

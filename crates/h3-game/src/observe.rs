@@ -13,7 +13,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use h3_adventure::{
-    AdventureObservation, AdventureReveal, BitGrid, Choice, HeroView, HireSource, HireTarget,
+    AdventureObservation, AdventureReveal, BitGrid, Choice, GarrisonHeroView, HeroView, HireSource,
+    HireTarget,
     ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
@@ -65,8 +66,9 @@ pub struct GameObservation {
     /// its answers, and in a meeting or an army dialog the management commands on what it holds.
     pub decision: Option<DecisionView>,
     /// The heroes the viewer sees on the adventure map (its own and the others its explored tiles
-    /// show), by id: each hero's type (and so its class), and the details of its own only
-    /// (GAM-HER-001, E08 T18b; survey `E08-battles.md` §9).
+    /// show) and, since E09 T28a, its own garrison heroes, by id: each hero's type (and so its
+    /// class), and the details of its own only (GAM-HER-001, E08 T18b; survey `E08-battles.md`
+    /// §9).
     pub heroes: Vec<HeroInfo>,
     /// The adventure map as the viewer sees it.
     pub adventure: AdventureObservation,
@@ -342,7 +344,7 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
                     army: adventure.garrison_army(index).to_vec(),
                 })
             }),
-        heroes: hero_infos(state, &adventure.heroes),
+        heroes: hero_infos(state, &adventure.heroes, &adventure.garrison_heroes),
         adventure,
         towns,
         garrisons,
@@ -354,17 +356,23 @@ pub fn observe(state: &GameState, rules: &GameRuleset, viewer: Viewer) -> GameOb
 }
 
 /// The heroes of `views` with their types and, for the viewer's own, their details
-/// ([`GameObservation::heroes`], GAM-HER-001), in their order.
-fn hero_infos(state: &GameState, views: &[HeroView]) -> Vec<HeroInfo> {
-    views
-        .iter()
-        .flat_map(|view| {
-            // Every hero on the map has its details in the store, at its id.
-            let details = state.heroes().get(usize::from(view.id.raw()));
+/// ([`GameObservation::heroes`], GAM-HER-001), with the viewer's garrison heroes `held` (E09
+/// T28a, its own: their details too), by id.
+fn hero_infos(state: &GameState, views: &[HeroView], held: &[GarrisonHeroView]) -> Vec<HeroInfo> {
+    let seen = views.iter().map(|view| (view.id, view.own.is_some()));
+    let mut all: Vec<(HeroId, bool)> = seen.chain(held.iter().map(|g| (g.id, true))).collect();
+    if !held.is_empty() {
+        // A hero's id is unique: the order is total.
+        all.sort_unstable_by_key(|&(id, _)| id);
+    }
+    all.into_iter()
+        .flat_map(|(id, own)| {
+            // Every hero on the map or in a garrison has its details in the store, at its id.
+            let details = state.heroes().get(usize::from(id.raw()));
             details.map(|details| HeroInfo {
-                id: view.id,
+                id,
                 hero_type: details.hero_type,
-                details: view.own.as_ref().map(|_| Arc::clone(details)),
+                details: own.then(|| Arc::clone(details)),
             })
         })
         .collect()
@@ -409,7 +417,7 @@ pub fn reveal(
         .adventure()
         .reveal(rules.core(), rules.adventure(), player, since);
     GameReveal {
-        heroes: hero_infos(state, &adventure.heroes),
+        heroes: hero_infos(state, &adventure.heroes, &[]),
         towns: views_of(state, rules, player, &adventure.towns),
         garrisons: revealed(state, rules, player, since),
         adventure,

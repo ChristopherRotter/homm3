@@ -36,7 +36,7 @@ pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
     GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, SchoolChoice, SkillOffer,
-    StandReject, SystemCommand, TownCommand, TownReject, UniversityAnswer,
+    StandReject, SystemCommand, TownCommand, TownHeroChange, TownReject, UniversityAnswer,
 };
 pub use event::{AdventureEvent, GameEvent, HeroChange, ShipyardBlock};
 pub use lobby::{Computer, MapGameInfo, MapOffer, SeatedPlayer};
@@ -144,6 +144,21 @@ pub struct Adventure {
     pub known: Vec<KnownObject>,
     /// The empty boats it sees, in tile order.
     pub boats: Vec<Boat>,
+    /// Its own garrison heroes, by town (E09 T28a, v60): off the map, each with its town in place
+    /// of a tile; another viewer sees none.
+    pub garrison_heroes: Vec<GarrisonHero>,
+}
+
+/// A hero standing in its town's garrison as its owner sees it (E09 T28a, v60).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GarrisonHero {
+    /// The town.
+    pub town: u16,
+    /// The hero's id.
+    pub id: u16,
+    /// Its army, points and marks, as a hero on the map's own view.
+    pub own: OwnMapHero,
 }
 
 impl Adventure {

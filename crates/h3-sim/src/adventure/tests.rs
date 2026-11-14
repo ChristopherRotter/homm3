@@ -147,7 +147,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false, false, false
+            false, false, false, false, false, false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -181,11 +181,17 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 10);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 32));
+    assert_eq!(ACTION_ENCODING_VERSION, 11);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 35));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
     assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
+    // E09 T28a (v11): the three hero moves between a town's bars.
+    assert_eq!(TOWN_HEROES, 32);
+    assert_eq!(
+        TOWN_HERO_MOVES.map(|change| Action::town_heroes(9, change)),
+        [Action::map(32, 9), Action::map(33, 9), Action::map(34, 9)]
+    );
     assert_eq!(
         Action::recruit(7, 19),
         Action::Adventure(MapAction {

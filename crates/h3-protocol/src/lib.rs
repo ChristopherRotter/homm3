@@ -154,7 +154,12 @@ pub mod wire;
 /// and `NothingSummoned`, a hire dialog's town garrison target (`wire::game::HireTarget::Garrison`)
 /// and its source named as `wire::game::HireSeen` (a map object, a town's index or its Portal) in
 /// the dialog's view and in `HireOpened`, in place of the object's type and anchor.
-pub const PROTOCOL_VERSION: u32 = 59;
+/// v60 (E09 T28a, the town lane's, `cross-lane`): a town's garrison hero (TWN-ROW-001 to -004):
+/// the town command `Heroes` with its move (`wire::game::TownHeroChange`: `Enter`, `Leave`,
+/// `Swap`) and its eight refusals (`GarrisonHeld` to `EmptyArmy`), the adventure events
+/// `GarrisonEntered` and `GarrisonLeft`, and the owner's garrison heroes in the adventure view
+/// (`wire::game::Adventure::garrison_heroes`, `wire::game::GarrisonHero`).
+pub const PROTOCOL_VERSION: u32 = 60;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

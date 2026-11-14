@@ -168,6 +168,16 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
             hero: id(hero),
             pos: pos_back(pos),
         },
+        A::GarrisonEntered { hero, town, pos } => K::GarrisonEntered {
+            hero: id(hero),
+            town: TownId::new(town),
+            pos: pos_back(pos),
+        },
+        A::GarrisonLeft { hero, town, pos } => K::GarrisonLeft {
+            hero: id(hero),
+            town: TownId::new(town),
+            pos: pos_back(pos),
+        },
         A::CreaturesJoined {
             hero,
             creature,
@@ -1211,6 +1221,17 @@ pub(super) fn every_event() -> Vec<GameEvent> {
         },
         K::KeyGained { key: 4 },
         K::HeroRemoved { hero, pos: at },
+        // E09 T28a (v60).
+        K::GarrisonEntered {
+            hero,
+            town: TownId::new(2),
+            pos: at,
+        },
+        K::GarrisonLeft {
+            hero,
+            town: TownId::new(2),
+            pos: at,
+        },
         K::CreaturesJoined {
             hero,
             creature,
