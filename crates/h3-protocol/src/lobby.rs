@@ -184,12 +184,13 @@ impl<O: Ord> Lobby<O> {
     /// Creates a whole game of the map offer `offer` for `origin`, whose creator takes `player`'s
     /// seat (E16 M5 T9a): the game's id and the offer's index, or why not. A draining server, an
     /// offer it does not have, a player the map does not have (`NoSuchSeat`), or a full server or
-    /// origin, is refused. Every seat is open until taken.
+    /// origin, is refused. Every seat is open until taken. It is listed as taking spectators if
+    /// `spectators` (E16 M5 T22a: its creator's setting on a server that takes them).
     pub fn create_map(
         &mut self,
         origin: O,
-        offer: &str,
-        player: u8,
+        (offer, player): (&str, u8),
+        spectators: bool,
     ) -> Result<(u32, usize), Refusal> {
         if self.draining {
             return Err(Refusal::Draining);
@@ -209,6 +210,7 @@ impl<O: Ord> Lobby<O> {
             phase: Phase::Waiting,
             open: (0..=u8::MAX).take(found.players.len()).collect(),
             seated: Vec::new(),
+            spectators,
         };
         let info = Listed::Map(info);
         self.games.insert(game, Entry { origin, info });

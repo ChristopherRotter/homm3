@@ -745,7 +745,14 @@ impl Link {
                     }
                 }
             }
-            ClientMessage::CreateMapGame { seq, offer, player } => {
+            // The creator's spectator setting is hosted from E16 M5 T22b: until then every whole
+            // game takes none.
+            ClientMessage::CreateMapGame {
+                seq,
+                offer,
+                player,
+                spectators: _,
+            } => {
                 let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
                 let creator = (self.conn, to, login);
                 let asked = (offer.as_str(), player);
@@ -758,6 +765,8 @@ impl Link {
                     }
                 }
             }
+            // A whole game's spectators are hosted from E16 M5 T22b: until then none watches.
+            ClientMessage::GameWatch { .. } => Routed::Reply(refused(Refusal::NoSpectators)),
             ClientMessage::GameJoin {
                 game,
                 player,
@@ -1012,7 +1021,8 @@ fn unbound(message: &ClientMessage) -> Frame {
         ClientMessage::Hello { .. }
         | ClientMessage::Ping { .. }
         | ClientMessage::Join { .. }
-        | ClientMessage::GameJoin { .. } => 0,
+        | ClientMessage::GameJoin { .. }
+        | ClientMessage::GameWatch { .. } => 0,
     };
     Frame {
         text: codec::encode_text(&ServerMessage::Rejected {

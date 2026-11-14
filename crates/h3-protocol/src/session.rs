@@ -681,7 +681,9 @@ impl<'r> Session<'r> {
                 out.push(goodbye(conn, GoodbyeReason::Left));
             }
             // A whole game's (E16 M5 T8a): a battle is none, nor a seat of one.
-            ClientMessage::GameJoin { .. } => out.push(refused(conn, Refusal::NoSuchGame)),
+            ClientMessage::GameJoin { .. } | ClientMessage::GameWatch { .. } => {
+                out.push(refused(conn, Refusal::NoSuchGame));
+            }
             ClientMessage::GameCommand { seq, .. } | ClientMessage::GameQuery { seq, .. } => {
                 out.push(game_unseated(conn, seq));
             }

@@ -696,6 +696,7 @@ async fn two_clients_play_a_timed_game_through_a_duel_held_level_ups_and_restart
         record_bytes: config.limits.record_bytes,
         clock: loaded.clock,
         commands: config.limits.commands(),
+        spectators: h3_protocol::session::game::Spectators::NONE,
     };
     let tokens = read.start.tokens.clone();
     let reopened = h3_protocol::session::game::GameSession::reopen(

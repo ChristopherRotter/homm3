@@ -47,6 +47,7 @@ const fn options(clock: Clock) -> GameOptions {
         record_bytes: usize::MAX,
         clock,
         commands: crate::session::game::CommandBounds::NONE,
+        spectators: crate::session::game::Spectators::NONE,
     }
 }
 

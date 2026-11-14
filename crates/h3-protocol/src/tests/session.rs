@@ -475,6 +475,13 @@ fn a_whole_games_messages_are_no_battles() {
             reason: Refusal::NoSuchGame
         }]
     );
+    // Nor is it watched as one (E16 M5 T22a).
+    assert_eq!(
+        to(&send(&mut s, B, ClientMessage::GameWatch { game: 1 }), B),
+        [ServerMessage::Refused {
+            reason: Refusal::NoSuchGame
+        }]
+    );
     let command = ClientMessage::GameCommand {
         seq: 3,
         command: crate::wire::game::GameCommand::EndTurn {},

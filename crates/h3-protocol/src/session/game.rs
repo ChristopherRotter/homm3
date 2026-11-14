@@ -65,6 +65,19 @@
 //!   resends nothing), a fresh `GameSnapshot` when its
 //!   record needs one (below), then every player that may act its `GameTurn`. A rejected command changes nothing and is told to its player alone
 //!   (`GameRejected`).
+//! - **Spectators** (E16 M5 T22a; SRV-Q36, ADR-0018 point 7 as amended). A connection that
+//!   watches a game of connections (`GameWatch`), up to the game's limit
+//!   ([`Spectators::limit`]), is shown every player's view: at its watch's start each player's
+//!   `GameSnapshot`, `GameClock` and `GameTurn` as a re-taken seat would get them, then every
+//!   frame any player is sent, each as a `GameWatched` naming the player, numbered in the
+//!   spectator's own sequence, the player's message inside it as the player's seat got it. What
+//!   a player is sent does not depend on whether anyone watches; a spectator sends no command
+//!   (`NotSeated`), takes no seat, has no record of its own (its `FetchRecord` is `NotSeated`,
+//!   provisional) and is not journaled: after a disconnect, a pause or a restart it watches
+//!   again, numbered afresh. Whether the game takes spectators is its creator's
+//!   ([`Spectators::open`], closed by default); the host changes it with `SetSpectators` until
+//!   the start, when it is journaled ([`GameEntry::Watchable`]); closing it ends every watch
+//!   (`Goodbye { SpectatorsClosed }`). No whole game is ranked yet; a ranked one will take none.
 //! - **The journal** (E16 M5 T5b). The accepted commands with their actors and a state hash every
 //!   `checkpoint_every` commands: the adventure replay in progress ([`GameJournal`]; its header,
 //!   map and difficulty are the host's). What a restart must redo comes out as [`GameEntry`]s,
@@ -115,9 +128,9 @@
 //!   are), and its commands in one battle, past which the computer plays its side for the rest of
 //!   the battle as a timed-out one's (the system's journaled steps) and its own are rejected
 //!   `BattleLimit`. `GameTurn` leaves out what a bound refuses.
-//! - **Not here yet:** a battle's `ProposePause`, `AnswerPause` (no whole game is ranked),
-//!   `FetchReplay` (no whole game ends before E10) and `SetSpectators` (2c), ignored here; its
-//!   `Query` too (a whole game's is `GameQuery::Battle`).
+//! - **Not here yet:** a battle's `ProposePause`, `AnswerPause` (no whole game is ranked) and
+//!   `FetchReplay` (no whole game ends before E10), ignored here; its `Query` too (a whole
+//!   game's is `GameQuery::Battle`).
 //!
 //! Provisional (E16 M5 T5a, T5b, T8a, T8b; the epic's review list): the names, the start as the
 //! constructor, the message order, a `GameTurn` after every accepted command to every player that
@@ -137,7 +150,9 @@
 //! events only to a player that has any (T11); `GameClock` after the other messages and after a
 //! snapshot, the system's steps in the order the module says, the computer's or else Defend for
 //! a timed-out side in-process (T16); the bounds' rejections the session's own, checked before
-//! the engine's (T18).
+//! the engine's (T18); `GameWatched` wrapping each player's frame, spliced, numbered in the
+//! spectator's own sequence, a watch's start numbered as each player's last message, no record of
+//! a spectator's (T22a).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};
@@ -198,6 +213,27 @@ pub struct GameOptions {
     /// The bounds on a seat's commands (E16 M5 T18, [`bounds`]): [`CommandBounds::NONE`] for
     /// none.
     pub commands: CommandBounds,
+    /// Whether and how many spectators may watch (E16 M5 T22a): [`Spectators::NONE`] for none.
+    pub spectators: Spectators,
+}
+
+/// How a game takes spectators (E16 M5 T22a; SRV-Q36), who see every player's view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Spectators {
+    /// How many may watch at once (0: none).
+    pub limit: usize,
+    /// Whether the game takes them: its creator's choice, which the host (the creator's seat)
+    /// may change until the game starts (`SetSpectators`). A restored game that started takes
+    /// its journal's ([`GameEntry::Watchable`]).
+    pub open: bool,
+}
+
+impl Spectators {
+    /// None: the game takes no spectators.
+    pub const NONE: Self = Self {
+        limit: 0,
+        open: false,
+    };
 }
 
 /// The journal (E16 M5 T5b): the adventure replay in progress but for what the host names (the
@@ -254,6 +290,9 @@ pub enum GameEntry {
     /// The player's seat was taken the first time by a connection logged in as the account with
     /// this login name (E16 M5 T8b): it belongs to the account, which alone re-takes it.
     TakenBy(PlayerId, String),
+    /// The game takes spectators (E16 M5 T22a): its setting as it started, journaled right
+    /// before [`Self::Started`] when it is open (a game without it started closed).
+    Watchable,
     /// Every seat was held at once: the game started (E16 M5 T8b).
     Started,
     /// The host paused the game (E16 M5 T8b).
@@ -392,6 +431,38 @@ impl Viewer {
     }
 }
 
+/// A spectator of a game hosted for connections (E16 M5 T22a; SRV-Q36): a connection shown every
+/// player's view, numbered in its own sequence; nothing of it is journaled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Watcher {
+    /// Its connection.
+    conn: ConnId,
+    /// The number of the last message sent.
+    n: u32,
+}
+
+impl Watcher {
+    /// The frame `frame`, a message for `player`'s view, as the watcher's next message
+    /// (`GameWatched`).
+    fn watched(&mut self, player: PlayerId, frame: &str) -> Outbound {
+        self.n = self.n.saturating_add(1);
+        Outbound {
+            to: self.conn,
+            frame: watched(self.n, player, frame),
+            close: false,
+        }
+    }
+}
+
+/// `GameWatched { n, player, message }` as a frame, `frame` the message's: the codec's text
+/// (ADR-0018 point 4: one JSON document per frame, serde's default form) spliced, so that a
+/// player's frame is not decoded again for its spectators; the same text as encoding the message
+/// (`tests::game_watch`).
+fn watched(n: u32, player: PlayerId, frame: &str) -> String {
+    let player = player.raw();
+    alloc::format!(r#"{{"GameWatched":{{"n":{n},"player":{player},"message":{frame}}}}}"#)
+}
+
 /// A player's seat in a game hosted for connections (E16 M5 T8a): a battle's player seat's
 /// claim (`super::refusal`).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -504,6 +575,12 @@ pub struct GameSession<'r> {
     /// Whether the last [`Self::drive`] stopped at its steps' bound with a step still due (E16 M5
     /// T20): the host's next reading is due at once ([`Self::deadline`]).
     more: bool,
+    /// Whether the game takes spectators (E16 M5 T22a): [`Spectators::open`].
+    watchable: bool,
+    /// How many may watch at once: [`Spectators::limit`].
+    watchers_limit: usize,
+    /// The spectators watching, in the order they came.
+    watchers: Vec<Watcher>,
 }
 
 /// The most system steps one [`GameSession::drive`] takes (E16 M5 T20, *provisional*): the rest
@@ -643,7 +720,14 @@ impl<'r> GameSession<'r> {
                     self.issue(*player, Some(login.clone()));
                     continue;
                 }
-                GameEntry::Started | GameEntry::Paused | GameEntry::Resumed => {
+                GameEntry::Watchable
+                | GameEntry::Started
+                | GameEntry::Paused
+                | GameEntry::Resumed => {
+                    // The setting it started with (E16 M5 T22a): its entry right before the start.
+                    if *entry == GameEntry::Started {
+                        self.watchable = self.entries.last() == Some(&GameEntry::Watchable);
+                    }
                     self.started |= *entry == GameEntry::Started;
                     self.paused = *entry == GameEntry::Paused;
                     self.entries.push(entry.clone());
@@ -715,6 +799,9 @@ impl<'r> GameSession<'r> {
             clock,
             counts,
             more: false,
+            watchable: options.spectators.open,
+            watchers_limit: options.spectators.limit,
+            watchers: Vec::new(),
         })
     }
 
@@ -798,6 +885,8 @@ impl<'r> GameSession<'r> {
             ClientMessage::GameQuery { seq, query } => self.ask(conn, seq, query, out),
             ClientMessage::Pause { seq } => self.pause(conn, seq, out),
             ClientMessage::FetchRecord { seq } => self.fetch_record(conn, seq, out),
+            ClientMessage::GameWatch { game } => self.watch(conn, game, out),
+            ClientMessage::SetSpectators { seq, open } => self.set_spectators(conn, seq, open, out),
             ClientMessage::Leave {} => {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
@@ -829,8 +918,7 @@ impl<'r> GameSession<'r> {
             | ClientMessage::Query { .. }
             | ClientMessage::FetchReplay { .. }
             | ClientMessage::ProposePause { .. }
-            | ClientMessage::AnswerPause { .. }
-            | ClientMessage::SetSpectators { .. } => {}
+            | ClientMessage::AnswerPause { .. } => {}
         }
     }
 
@@ -850,6 +938,8 @@ impl<'r> GameSession<'r> {
                 seat.holder = None;
             }
         }
+        // A spectator's watch ends (E16 M5 T22a).
+        self.watchers.retain(|watcher| watcher.conn != conn);
         self.logins.remove(&conn);
     }
 
@@ -932,7 +1022,9 @@ impl<'r> GameSession<'r> {
         let Seats::Taken(seats) = &mut self.seats else {
             return out.push(refused(conn, Refusal::SeatTaken));
         };
-        if seats.iter().any(|seat| seat.holder == Some(conn)) {
+        // A spectator takes no seat (E16 M5 T22a): it leaves its watch first.
+        let watches = self.watchers.iter().any(|watcher| watcher.conn == conn);
+        if watches || seats.iter().any(|seat| seat.holder == Some(conn)) {
             return out.push(refused(conn, Refusal::AlreadyJoined));
         }
         let Some(seat) = seats.get_mut(usize::from(player)) else {
@@ -976,6 +1068,9 @@ impl<'r> GameSession<'r> {
             }
         } else if held {
             self.started = true;
+            if self.watchable {
+                self.entries.push(GameEntry::Watchable);
+            }
             self.entries.push(GameEntry::Started);
             self.opening(&mut frames);
             // The snapshots told the clocks of a game not yet started: the first turn's timer
@@ -1078,6 +1173,90 @@ impl<'r> GameSession<'r> {
         out.push(reply(conn, &ServerMessage::Record { n, seq, record }));
     }
 
+    /// `GameWatch` of `game` (E16 M5 T22a; SRV-Q36): in a game of connections that takes
+    /// spectators, within its limit, `GameWatching`, then every player's view as a re-taken seat
+    /// would get it (its `GameSnapshot`, its `GameClock` when there is one to tell, its
+    /// `GameTurn` if it may act in the running game), each numbered as the player's last message;
+    /// from then on every player's messages ([`Self::route`]). Nothing is journaled, and nothing
+    /// is sent to a player.
+    fn watch(&mut self, conn: ConnId, game: u32, out: &mut Vec<Outbound>) {
+        if game != self.game {
+            return out.push(refused(conn, Refusal::NoSuchGame));
+        }
+        if self.holds(conn) || self.watches(conn) {
+            return out.push(refused(conn, Refusal::AlreadyJoined));
+        }
+        // In-process nobody watches: the host delivers the players' frames itself.
+        let hosted = matches!(self.seats, Seats::Taken(_));
+        if !hosted || !self.watchable || self.watchers.len() >= self.watchers_limit {
+            return out.push(refused(conn, Refusal::NoSpectators));
+        }
+        let manifest = self.manifest.clone();
+        out.push(reply(conn, &ServerMessage::GameWatching { game, manifest }));
+        let mut watcher = Watcher { conn, n: 0 };
+        let (running, at) = (self.started && !self.paused, self.clock.at);
+        for (player, viewer) in players().zip(&self.viewers) {
+            let n = viewer.n;
+            let observation =
+                map::game::observe(&self.state, self.rules, EngineViewer::Player(player));
+            let mut messages = vec![ServerMessage::GameSnapshot { n, observation }];
+            let clock = self.clock.view(&self.state, player, running);
+            let now = at.unwrap_or_default();
+            if !clock::same(&GameClock::default(), now, &clock, now) {
+                messages.push(ServerMessage::GameClock { n, clock });
+            }
+            if let Some((legal, castable)) = self.legal(player).filter(|_| running) {
+                messages.push(ServerMessage::GameTurn { n, legal, castable });
+            }
+            for message in messages {
+                out.push(watcher.watched(player, &codec::encode_text(&message)));
+            }
+        }
+        self.watchers.push(watcher);
+    }
+
+    /// `SetSpectators` (E16 M5 T22a, as a battle's): the host opens the game to spectators or
+    /// closes it, until the game starts, when its setting is fixed (journaled with the start);
+    /// closing it ends every spectator's watch. The host gets `SpectatorsSet`; another seat's is
+    /// rejected `NotHost`, the host's once the game started `AlreadyStarted`.
+    fn set_spectators(&mut self, conn: ConnId, seq: u32, open: bool, out: &mut Vec<Outbound>) {
+        let Some(player) = self.seat_of(conn) else {
+            return out.push(game_unseated(conn, seq));
+        };
+        let mut frames = Vec::new();
+        if self.host != Some(player) {
+            self.reject(player, seq, GameReject::NotHost {}, &mut frames);
+        } else if self.started {
+            self.reject(player, seq, GameReject::AlreadyStarted {}, &mut frames);
+        } else {
+            self.watchable = open;
+            if !open {
+                for watcher in self.watchers.drain(..) {
+                    out.push(goodbye(watcher.conn, GoodbyeReason::SpectatorsClosed));
+                }
+            }
+            let message = |n| ServerMessage::SpectatorsSet { n, seq, open };
+            self.viewers[player.index()].post(player, message, &mut frames);
+        }
+        self.route(frames, out);
+    }
+
+    /// Whether the game takes spectators now (E16 M5 T22a): its creator's setting, the host's
+    /// until the start, then the one it started with.
+    pub const fn watchable(&self) -> bool {
+        self.watchable
+    }
+
+    /// How many spectators watch (E16 M5 T22a).
+    pub const fn spectators(&self) -> usize {
+        self.watchers.len()
+    }
+
+    /// Whether the connection `conn` watches the game (E16 M5 T22a).
+    pub fn watches(&self, conn: ConnId) -> bool {
+        self.watchers.iter().any(|watcher| watcher.conn == conn)
+    }
+
     /// `GameQuery` (E16 M5 T11): the server's answer for the seat's player ([`Self::query`]),
     /// `GameAnswer` with the number of its last message (the answer takes none and is not
     /// recorded, as `Record`), or its rejection, told as a command's.
@@ -1119,6 +1298,10 @@ impl<'r> GameSession<'r> {
         self.flush();
         self.paused = true;
         self.entries.push(GameEntry::Paused);
+        // A spectator's watch ends with the game's thread (E16 M5 T22a), as a battle's.
+        for watcher in self.watchers.drain(..) {
+            out.push(goodbye(watcher.conn, GoodbyeReason::Paused));
+        }
         for seat in self.taken_mut() {
             if let Some(holder) = seat.holder.take() {
                 out.push(goodbye(holder, GoodbyeReason::Paused));
@@ -1128,12 +1311,16 @@ impl<'r> GameSession<'r> {
 
     /// The frames for players in `frames` (a call's: [`GameSession::system`]'s in a game of
     /// connections), each to the connection that holds its player's seat; none for a seat no
-    /// connection holds, whose record has it (E16 M5 T8a). In-process, none: the host holds every
-    /// seat and delivers the frames itself.
-    pub fn route(&self, frames: Vec<GameOutbound>, out: &mut Vec<Outbound>) {
-        let seats = self.taken();
+    /// connection holds, whose record has it (E16 M5 T8a). Then each to every spectator, as its
+    /// `GameWatched` (E16 M5 T22a; SRV-Q36: every player's view). In-process, none: the host
+    /// holds every seat and delivers the frames itself, and nobody watches.
+    pub fn route(&mut self, frames: Vec<GameOutbound>, out: &mut Vec<Outbound>) {
         for GameOutbound { to, frame } in frames {
-            if let Some(conn) = seats.get(to.index()).and_then(|seat| seat.holder) {
+            let holder = self.taken().get(to.index()).and_then(|seat| seat.holder);
+            for watcher in &mut self.watchers {
+                out.push(watcher.watched(to, &frame));
+            }
+            if let Some(conn) = holder {
                 out.push(Outbound {
                     to: conn,
                     frame,
@@ -1659,11 +1846,23 @@ impl<'r> GameSession<'r> {
     /// once its turn or its side's chess clock ran out (T19): the computer plays its side then,
     /// and a battle's legal commands are all battle commands.
     fn turn(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
+        if let Some((legal, castable)) = self.legal(player) {
+            self.viewers[player.index()].post(
+                player,
+                |n| ServerMessage::GameTurn { n, legal, castable },
+                out,
+            );
+        }
+    }
+
+    /// What `player`'s `GameTurn` holds now ([`Self::turn`]), if it may act: its legal commands
+    /// and the spells its hero may cast.
+    fn legal(&self, player: PlayerId) -> Option<(Vec<GameCommand>, Vec<u16>)> {
         let (state, counts) = (&self.state, &self.counts);
         if own_battle(state, player).is_some_and(|(battle, side)| {
             self.clock.turn_out(state, player) || self.clock.side_out(battle, side)
         }) {
-            return;
+            return None;
         }
         let legal: Vec<GameCommand> =
             h3_game::legal_commands(state, self.rules, Actor::Player(player))
@@ -1672,17 +1871,13 @@ impl<'r> GameSession<'r> {
                 .map(map::game::command)
                 .collect();
         if legal.is_empty() {
-            return;
+            return None;
         }
         let castable = own_battle(&self.state, player)
             .filter(|(battle, side)| battle.state().side_to_act() == Some(*side))
             .map(|(battle, side)| map::castable(battle.state(), self.rules.battle(), side))
             .unwrap_or_default();
-        self.viewers[player.index()].post(
-            player,
-            |n| ServerMessage::GameTurn { n, legal, castable },
-            out,
-        );
+        Some((legal, castable))
     }
 }
 

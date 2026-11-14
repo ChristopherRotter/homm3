@@ -31,6 +31,23 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the server lane, E16 M5 T21a and T22a, `claude/festive-albattani-mdvj1a`,
+  `cross-lane`; **a protocol version taken; for when you show a whole game to someone who does
+  not play it**): protocol **v66**. The user (SRV-Q36): a whole game's spectator sees **every
+  player's view**, live, only in a game its creator opened before the start (closed by
+  default), never a ranked one. On the wire: `CreateMapGame`'s `spectators: Option<bool>` (left
+  out: closed), `GameWatch { game }` answered `GameWatching { game, manifest }`, then each
+  player's messages wrapped as `GameWatched { n, player, message }` (`n` the spectator's own
+  number, `message` exactly as that player's seat got it, with the player's own `n`); a watch
+  starts with each player's `GameSnapshot`, its `GameClock` and its `GameTurn` as a re-taken
+  seat gets them, numbered as the player's last message. A client folds each player's stream
+  as it folds a seat's (`GameObservation::fold`), one view per player. `SetSpectators` works
+  in a whole game (the host's, until the start: `GameReject::NotHost`, `AlreadyStarted`), the
+  lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them from
+  T22b: until then every whole game refuses `GameWatch` (`NoSpectators`) and lists
+  `spectators: false`. Nothing to build until you want a spectator's screen. **Your path
+  changed:** `h3-battle-client`'s `game_seat/tests.rs` literal took `spectators:
+  Spectators::NONE` (`GameOptions`' new field).
 - 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
   taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
   commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the

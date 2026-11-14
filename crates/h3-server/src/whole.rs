@@ -49,7 +49,7 @@ use h3_contracts::PlayerId;
 use h3_game::{GameRuleset, GameSetup, GameState};
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::map::game::{manifest, map_offer};
-use h3_protocol::session::game::{Clock, GameEntry, GameOptions, GameSession};
+use h3_protocol::session::game::{Clock, GameEntry, GameOptions, GameSession, Spectators};
 use h3_protocol::session::{Bot, ConnId, Outbound};
 use h3_protocol::wire::game::{Computer, MapGameInfo, MapIdentity, SeatedPlayer};
 use h3_protocol::wire::{GoodbyeReason, Phase, WireU64};
@@ -263,6 +263,8 @@ impl Prepared {
             record_bytes: limits.record_bytes,
             clock: offer.clock,
             commands: limits.commands(),
+            // Hosted from E16 M5 T22b.
+            spectators: Spectators::NONE,
         };
         Ok(Self {
             difficulty: offer.setup.difficulty,
@@ -319,6 +321,8 @@ impl Prepared {
             clock: read.start.clock.into(),
             // The hosting's bounds, whatever they were (E16 M5 T18).
             commands: limits.commands(),
+            // Hosted from E16 M5 T22b.
+            spectators: Spectators::NONE,
         };
         let computer_seed = os_u64().map_err(|e| e.0)?;
         #[cfg(test)]
@@ -452,6 +456,7 @@ impl Prepared {
             phase: session.phase(),
             open: session.open_seats(),
             seated: seated(&named, &self.stores.accounts),
+            spectators: session.watchable() && self.options.spectators.limit > 0,
         };
         let paused = session.paused();
         let hosted = if paused {

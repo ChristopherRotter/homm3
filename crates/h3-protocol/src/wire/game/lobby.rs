@@ -86,4 +86,8 @@ pub struct MapGameInfo {
     /// The seats that belong to accounts, with their display names; a seat an anonymous player
     /// holds is not named.
     pub seated: Vec<SeatedPlayer>,
+    /// Whether it takes spectators (E16 M5 T22a, v66; SRV-Q36), who see every player's view:
+    /// its creator's setting, on a server that takes them at all; listed before anyone joins, so
+    /// taking a seat agrees to it. A game watched by as many as the server allows refuses more.
+    pub spectators: bool,
 }

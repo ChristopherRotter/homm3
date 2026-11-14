@@ -289,9 +289,14 @@ fn a_matchs_game_counts_against_the_servers_limit_only() {
 fn whole_games_are_created_from_map_offers_and_listed() {
     let mut lobby = lobby(8, 8);
     assert!(map_games(&lobby).is_empty());
-    assert_eq!(lobby.create_map(1, "duel", 0), Ok((1, 0)));
+    assert_eq!(lobby.create_map(1, ("duel", 0), false), Ok((1, 0)));
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((2, 0)));
-    assert_eq!(lobby.create_map(2, "duel", 1), Ok((3, 0)), "one id space");
+    // Taking spectators if its creator said so (E16 M5 T22a).
+    assert_eq!(
+        lobby.create_map(2, ("duel", 1), true),
+        Ok((3, 0)),
+        "one id space"
+    );
     // Each with its offer's clock at its creation (E16 M5 T19).
     let waiting = |game| MapGameInfo {
         game,
@@ -300,6 +305,7 @@ fn whole_games_are_created_from_map_offers_and_listed() {
         phase: Phase::Waiting,
         open: vec![0, 1],
         seated: vec![],
+        spectators: game == 3,
     };
     assert_eq!(map_games(&lobby), [waiting(1), waiting(3)]);
     assert_eq!(games(&lobby).len(), 1, "the battle beside them");
@@ -348,7 +354,7 @@ fn whole_games_are_created_from_map_offers_and_listed() {
     assert_ne!(restored.clock, waiting(7).clock);
     lobby.reopen_map(2, restored.clone());
     assert_eq!(map_games(&lobby)[1..], [restored]);
-    assert_eq!(lobby.create_map(2, "duel", 0), Ok((8, 0)));
+    assert_eq!(lobby.create_map(2, ("duel", 0), false), Ok((8, 0)));
 }
 
 #[test]
@@ -359,7 +365,11 @@ fn map_creations_are_refused_with_their_reason() {
         ("pvp", 0, Refusal::NoSuchOffer),
         ("duel", 2, Refusal::NoSuchSeat),
     ] {
-        assert_eq!(lobby.create_map(1, offer, player), Err(refusal), "{offer}");
+        assert_eq!(
+            lobby.create_map(1, (offer, player), false),
+            Err(refusal),
+            "{offer}"
+        );
     }
     assert_eq!(
         lobby.create(1, "duel", Seat::Attacker, true),
@@ -368,10 +378,19 @@ fn map_creations_are_refused_with_their_reason() {
     );
     // The limits count battles and whole games alike: the origin's, then the total's.
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));
-    assert_eq!(lobby.create_map(1, "duel", 0), Ok((2, 0)));
-    assert_eq!(lobby.create_map(1, "duel", 0), Err(Refusal::TooManyGames));
-    assert_eq!(lobby.create_map(2, "duel", 1), Ok((3, 0)));
-    assert_eq!(lobby.create_map(3, "duel", 0), Err(Refusal::TooManyGames));
+    assert_eq!(lobby.create_map(1, ("duel", 0), false), Ok((2, 0)));
+    assert_eq!(
+        lobby.create_map(1, ("duel", 0), false),
+        Err(Refusal::TooManyGames)
+    );
+    assert_eq!(lobby.create_map(2, ("duel", 1), false), Ok((3, 0)));
+    assert_eq!(
+        lobby.create_map(3, ("duel", 0), false),
+        Err(Refusal::TooManyGames)
+    );
     lobby.drain();
-    assert_eq!(lobby.create_map(3, "duel", 0), Err(Refusal::Draining));
+    assert_eq!(
+        lobby.create_map(3, ("duel", 0), false),
+        Err(Refusal::Draining)
+    );
 }

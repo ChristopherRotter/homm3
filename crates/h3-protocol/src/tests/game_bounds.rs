@@ -179,6 +179,7 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
         clock: crate::session::game::Clock::UNLIMITED,
         // The server's bounds (E16 M5 T18): the random play never meets them.
         commands: crate::session::game::CommandBounds::DEFAULT,
+        spectators: crate::session::game::Spectators::NONE,
     };
     let mut l = Largest::default();
     for (name, map, seed) in MAPS {

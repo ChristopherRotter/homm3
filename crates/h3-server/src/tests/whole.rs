@@ -284,6 +284,8 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         phase: Phase::Waiting,
         open: vec![1],
         seated: vec![],
+        // No spectators before E16 M5 T22b hosts them.
+        spectators: false,
     };
     listed_until(&running, |games| games == [waiting.clone()]).await;
     // The second seat taken: the game starts, the first player acts.
@@ -346,6 +348,7 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         record_bytes: config.limits.record_bytes,
         clock: offer.clock,
         commands: config.limits.commands(),
+        spectators: h3_protocol::session::game::Spectators::NONE,
     };
     // The game's clock is in its journal's first line (E16 M5 T17).
     assert_eq!(Clock::from(read.start.clock), offer.clock);
@@ -710,6 +713,7 @@ async fn whole_games_refuse_out_of_place_and_go_when_abandoned() {
         seq: 1,
         offer: offer.to_owned(),
         player,
+        spectators: None,
     };
     let join = |game, player| ClientMessage::GameJoin {
         game,
@@ -1258,6 +1262,7 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
         record_bytes: config.limits.record_bytes,
         clock: loaded.clock,
         commands: config.limits.commands(),
+        spectators: h3_protocol::session::game::Spectators::NONE,
     };
     let tokens = read.start.tokens.clone();
     let reopened = GameSession::reopen(
