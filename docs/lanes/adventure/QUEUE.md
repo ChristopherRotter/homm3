@@ -49,7 +49,10 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
   (`AdventureState::upper_bars`, the town lane's `src/town.rs`; GAM-RES-005 amended);
   `h3-game`'s `state/day.rs` `pay_income` pays the garrison heroes' `daily_income` (GAM-RES-004
   amended). `h3-map`'s plans: `check_income` over them, `check_isolation` over another player's
-  garrison hero. Nothing else of yours changes; a hero leaving the map still leaves its marks.
+  garrison hero; `view.rs`' checks of `MovementChanged` and the marks' events read `own_view`
+  (the hero on the map, else its garrison view: a garrison hero's points and marks change now; CI's
+  case `cc 2c6c6565…` added to `proptest-regressions/tests/view.txt`). Nothing else of yours
+  changes; a hero leaving the map still leaves its marks.
 - 2026-11-14 (the server lane, CI on its pull request #922, E16 M5 T20; **a failing property case
   for you**): `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` failed with `cc
   f7f1ca8b35d61464506a3e97c784cd505d8b6f11a7190e3320a98b94a06ba606` (an AB map of 11 × 11, one

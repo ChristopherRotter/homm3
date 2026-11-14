@@ -1843,7 +1843,8 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   chains `town_heroes`, `legion` sums the visitor's and the garrison hero's by level,
   saturating. No version moved; the 86 replays hold no garrison hero. The plans: `check_income`
   over the garrison heroes and the owned towns' garrisons, `check_isolation` over another
-  player's garrison hero (its record kept, its points full at its owner's turn start).
+  player's garrison hero (its record kept, its points full at its owner's turn start); the view
+  property's checks of a hero's points and marks events read the garrison heroes' views too.
 
 ### 54. What a garrison hero changes (TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001 amended; GAM-BAT-001)
 

@@ -5,7 +5,7 @@
 
 use h3_adventure::{
     AdventureCommand, AdventureEvent, AdventureEventKind, GuardsView, ObjectKind, ObjectView,
-    OfferKind, Pos as TilePos, TileMask, TileView, Viewers, allied,
+    OfferKind, OwnHeroView, Pos as TilePos, TileMask, TileView, Viewers, allied,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_game::{
@@ -957,6 +957,18 @@ enum Open {
     Exchange(HeroId, u32, Vec<ArmyStack>),
 }
 
+/// The owner's own view of `hero` in `view`: on the map, or (E09 T28a) in one of its towns'
+/// garrisons, whose points (E09 T28b1: refilled at the owner's turn start, TWN-ROW-005) and marks
+/// (the day's and the week's drops) change too.
+fn own_view(view: &GameObservation, hero: HeroId) -> Option<&OwnHeroView> {
+    let garrisoned = || {
+        let mut all = view.adventure.garrison_heroes.iter();
+        all.find(|h| h.id == hero).map(|h| &h.own)
+    };
+    let on_map = view.adventure.hero(hero).and_then(|h| h.own.as_ref());
+    on_map.or_else(garrisoned)
+}
+
 fn check_told(
     viewer: PlayerId,
     (before, after): (&GameObservation, &GameObservation),
@@ -1127,11 +1139,7 @@ fn check_told(
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
-                let shown = after
-                    .adventure
-                    .hero(hero)
-                    .and_then(|h| h.own.as_ref())
-                    .map(|o| (o.movement, o.max_movement));
+                let shown = own_view(after, hero).map(|o| (o.movement, o.max_movement));
                 prop_assert_eq!(shown, Some((movement, max_movement)), "{:?}", event);
             }
             // E08 T115a: a hero's battle bonuses and timed marks after the command, told to its
@@ -1144,7 +1152,7 @@ fn check_told(
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
-                let own = after.adventure.hero(hero).and_then(|h| h.own.as_ref());
+                let own = own_view(after, hero);
                 prop_assert!(own.is_some(), "{:?}", event);
                 let own = own.unwrap();
                 let shown = match kind {

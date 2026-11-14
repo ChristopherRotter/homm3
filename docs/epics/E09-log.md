@@ -3799,7 +3799,11 @@ manuals, SHA-256 checked against the PC's). T28b cut in two at its start; **T28b
   heroes' Legion summed; the income and the turn's points as on the map, after spent points).
   `h3-map`'s plans: `check_income` over the garrison heroes and the owned towns' garrisons,
   `check_isolation` over another player's garrison hero (its record kept, its points full at its
-  owner's turn start).
+  owner's turn start). **CI on #924** found the view property's gap (`views_move_as_the_events_say`,
+  `cc 2c6c6565…`, kept in `proptest-regressions/tests/view.txt`): T28a's `OwnHeroes::tell` tells
+  a garrison hero's owner its points and marks, which T28b1 first changes in the garrison, and the
+  checks of `MovementChanged` and the marks' events looked for the hero on the map only; they read
+  `own_view` now (the map's hero, else `garrison_heroes`). The engine was right.
 - **Replays and versions:** none moved (no replay holds a garrison hero; the replay step passed
   unchanged); no hash, format, encoding or protocol version.
 - **Bench** (`master` 421b41b built in the same sandbox): the first build cost
