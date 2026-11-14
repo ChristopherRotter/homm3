@@ -145,7 +145,13 @@ mod tests {
         let key = build::frame(40, 40, [&[Block::Skip], &[], &[]]);
         let (decoder, marks, target) = decoded(&[key]);
         assert_eq!(marks[0], vec![0; 9]);
-        assert!(target.frame().planes().iter().all(|p| p.pixels().iter().all(|&b| b == 0)));
+        assert!(
+            target
+                .frame()
+                .planes()
+                .iter()
+                .all(|p| p.pixels().iter().all(|&b| b == 0))
+        );
         assert!(Target::new(&decoder) == target);
     }
 
@@ -153,7 +159,11 @@ mod tests {
     fn the_original_reading_gives_the_targets_frames() {
         // The luma standing still in cell 4 while the chroma changes there (the module's fault).
         let key = build::frame(40, 40, [&fills(25, 10), &fills(9, 20), &fills(9, 30)]);
-        let next = build::frame(40, 40, [&vec![Block::Skip; 25], &fills(9, 21), &fills(9, 31)]);
+        let next = build::frame(
+            40,
+            40,
+            [&vec![Block::Skip; 25], &fills(9, 21), &fills(9, 31)],
+        );
         let bytes = build::file(&Header::new(40, 40), &[key, next]);
         let fixed = check::frames(&bytes).unwrap();
         let original = check::frames_read(&bytes, Reading::Original).unwrap();

@@ -1260,43 +1260,63 @@ mod tests {
         );
     }
 
-    /// The samples' frames as the game's `BINKW32.DLL` decodes them, read as it reads
-    /// ([`Reading::Original`]): the hashes of its own planes (`bink-check.sh` at E17 M6 T6c1,
-    /// `binkprobe frames` in YUY2), seeds 1 to 8 checked there. Fixed, a residue starting at
-    /// 128 reads as the format means (CLT-Q68): each of these seeds has one.
+    /// The decoder's own frames of `bytes`, read as `reading` says, none copied.
+    fn uncopied(bytes: &[u8], reading: Reading) -> Vec<Frame> {
+        let clip = Clip::parse(bytes).unwrap();
+        let mut d = Decoder::new(&clip).unwrap().reading(reading);
+        (0..clip.frames().len())
+            .map(|n| d.decode(clip.video(n).unwrap()).unwrap().clone())
+            .collect()
+    }
+
+    /// The samples' frames as the game gets them from its `BINKW32.DLL` ([`Reading::Original`]:
+    /// read as it reads, copied as `BinkCopyToBuffer` copies, [`crate::Target`]): the hashes of
+    /// its own planes (`bink-check.sh` at E27 M2 T2b, `binkprobe frames` in YUY2), seeds 1 to 8
+    /// checked there. Each sample's still cells keep chroma the copy leaves out (the uncopied
+    /// frames differ; CLT-Q122). Fixed, each frame whole and a residue starting at 128 read as
+    /// the format means (CLT-Q68): each of these seeds has one.
     #[test]
     fn the_samples_decode_as_the_dll_decodes_them() {
         for (seed, dll, fixed) in [
-            (1, 0x364d_b0e2_1181_c746_u64, 0xc457_f78a_4a92_ae30_u64),
-            (2, 0x8b41_2ed7_9b56_8b91, 0xa74a_0acc_86f5_57e7),
-            (3, 0xa75c_a94e_54d9_84b3, 0x094c_1c65_bc81_05f9),
+            (1, 0xb8a6_1575_efa6_ddb4_u64, 0x679c_a94a_cae6_9c01_u64),
+            (2, 0xed68_facf_48e6_0bc9, 0x8221_d11a_401a_4190),
+            (3, 0x95f9_b274_4eeb_207c, 0x1d55_dea6_bdfb_a51e),
         ] {
             let bytes = build::sample(seed);
             let frames = check::frames_read(&bytes, Reading::Original).unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
             assert_eq!(check::hash(&frames), dll, "seed {seed}");
+            let read = uncopied(&bytes, Reading::Original);
+            assert_ne!(check::hash(&read), dll, "seed {seed}, uncopied");
             let frames = check::frames(&bytes).unwrap();
             assert_eq!(check::hash(&frames), fixed, "seed {seed}, fixed");
+            assert!(
+                frames == uncopied(&bytes, Reading::Fixed),
+                "seed {seed}, fixed whole"
+            );
+            assert_ne!(check::hash(&read), fixed, "seed {seed}: a residue from 128");
         }
     }
 
     /// The samples at the game's clips' size, 256 × 120 (E17 M5 T8b1, R2a-4): the chroma's
     /// block grid holds four rows below the picture, which motion vectors read and write, as the
-    /// DLL does (its planes' hashes, E17 M6 T6c1: these three clips through `bink-dll.py` by
-    /// hand, as `h3-view video` writes the 256 × 48 samples only).
+    /// DLL does (its planes' hashes, E27 M2 T2b: these three clips through `bink-dll.py` by
+    /// hand, as `h3-view video` writes the 256 × 48 samples only); the picture's last 8 rows, a
+    /// strip below the whole cells, copied whatever the mask.
     #[test]
     fn the_samples_at_the_games_size_decode_as_the_dll_decodes_them() {
         for (seed, hash) in [
-            (1, 0x8ea7_e25f_b74f_523e_u64),
-            (2, 0x8efd_ed6c_c025_bbbc),
-            (3, 0x460d_e921_6215_2047),
+            (1, 0x2e0f_b6ee_3923_34cd_u64),
+            (2, 0xc880_f831_5634_821b),
+            (3, 0x21eb_8bcb_74e8_fec7),
         ] {
-            let frames =
-                check::frames_read(&build::sample_sized(seed, 256, 120), Reading::Original)
-                    .unwrap();
+            let bytes = build::sample_sized(seed, 256, 120);
+            let frames = check::frames_read(&bytes, Reading::Original).unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
             assert_eq!(frames[0].planes()[1].pixels().len(), 128 * 64);
             assert_eq!(check::hash(&frames), hash, "seed {seed}");
+            let read = uncopied(&bytes, Reading::Original);
+            assert_ne!(check::hash(&read), hash, "seed {seed}, uncopied");
         }
     }
 
