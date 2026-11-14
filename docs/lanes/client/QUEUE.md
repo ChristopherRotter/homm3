@@ -42,7 +42,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   in a whole game (the host's, until the start: `GameReject::NotHost`, `AlreadyStarted`), the
   lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them from
   T22b: until then every whole game refuses `GameWatch` (`NoSpectators`) and lists
-  `spectators: false`. Nothing to build until you want a spectator's screen.
+  `spectators: false`. Nothing to build until you want a spectator's screen. **Your path
+  changed:** `h3-battle-client`'s `game_seat/tests.rs` literal took `spectators:
+  Spectators::NONE` (`GameOptions`' new field).
 - 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
   taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
   commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the
