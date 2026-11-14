@@ -21,6 +21,12 @@
 //! restored: never journaled, as its commands are (the system actor's), so a restore re-runs them
 //! and asks no computer, and a policy's new version voids no game.
 //!
+//! The clock (E16 M5 T17): each offer times its games (`config::MapOffer::clock`, shown in the
+//! lobby), a game's clock kept in its journal's first line for its life. The thread reads the
+//! session's clock before every event and wakes at its deadline, so that a turn, a battle side's
+//! chess clock or a level-up runs out with nobody sending anything; a stop journals the time up
+//! to it, so that the restart keeps the time left.
+//!
 //! Provisional (the 2a review list): every seat's player human, a map's name from its header as
 //! Latin-1 within 64 characters, a draining server's running whole games playing on until the
 //! stop; a restored game at the difficulty its journal names; the computer's stream drawn afresh
