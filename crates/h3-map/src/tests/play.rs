@@ -37,13 +37,15 @@ use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureState,
-    Gift, Holds, ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach,
-    Resolved, RewardRecord, Turn, Viewers, Visit,
+    Gift, Holds, MarkLifetime, NothingWhy, ObjectKind, ObjectTypeId, Offer, OfferKind, Passage,
+    Pos as TilePos, Reach, Resolved, RewardRecord, Turn, Viewers, Visit,
 };
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
 };
-use h3_content::{ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId};
+use h3_content::{
+    ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, ResourceId, SIRENS_AGAIN_AFTER_BATTLE,
+};
 use h3_contracts::{BattleResult, BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
@@ -136,8 +138,9 @@ pub(super) const BLOCKER_CLASS: u32 = 118;
 /// increment 10's kinds ([`DWELLINGS`]): six dwellings, the three random dwellings and the Refugee
 /// Camp. Then (E08 T106b1, increment 11's design note §14) increment 11's kinds ([`TELEPORTERS`]):
 /// the monoliths of two channels, the Subterranean Gate and the Whirlpool. Then (E08 T116b1,
-/// increment 12's design note §16) the map garrisons ([`GARRISONS`]).
-pub(super) const KINDS: [(u32, u32, Option<u32>); 107] = [
+/// increment 12's design note §16) the map garrisons ([`GARRISONS`]) and (E08 T116b2) the bonus
+/// visitables ([`BONUSES`]).
+pub(super) const KINDS: [(u32, u32, Option<u32>); 122] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
@@ -245,6 +248,21 @@ pub(super) const KINDS: [(u32, u32, Option<u32>); 107] = [
     (33, 1, None),
     (219, 0, None),
     (219, 1, None),
+    (14, 0, None),
+    (28, 0, None),
+    (30, 0, None),
+    (31, 0, None),
+    (38, 0, None),
+    (48, 0, None),
+    (49, 0, None),
+    (56, 0, None),
+    (64, 0, None),
+    (94, 0, None),
+    (96, 0, None),
+    (110, 0, None),
+    (11, 0, None),
+    (52, 0, None),
+    (92, 0, None),
 ];
 /// Increment 7's kinds in [`KINDS`] (E08 T64b, increment 7's design note §16): the first of them,
 /// and how many. In order: the Arena, Centaur's Axe, a Pandora's Box (experience, gold, Magic Arrow
@@ -394,6 +412,35 @@ pub(super) const GARRISON_OBJECTS: [usize; 4] = [
     BLOCKERS.len() * (GARRISONS.0 + 3),
 ];
 
+/// Increment 12's bonus visitables in [`KINDS`] (E08 T116b2, increment 12's design note §16): the
+/// first of them, and how many. In order: the twelve entered on land (ADV-BON-001), the Swan Pond
+/// (14), the Faerie Ring (28), the Fountain of Fortune (30), the Fountain of Youth (31), the Idol
+/// of Fortune (38), the Magic Spring (48), the Magic Well (49), the Oasis (56), the Rally Flag
+/// (64), the Stables (94), the Temple (96) and the Watering Hole (110); then the sea's three,
+/// visited from a neighbouring water tile: the Buoy (11), the Mermaids (52) and the Sirens (92).
+/// None has a body.
+pub(super) const BONUSES: (usize, usize) = (107, 15);
+/// The bonus visitables' objects, by kind (one shape each: [`masks`] gives the twelve on land the
+/// original's templates, `garrisons_bonuses.rs`' `LAND_BONUSES`, and the sea's three one tile,
+/// blocked and visited: the original's Mermaids and Sirens cover three columns of a row, one
+/// fits the plans' narrowest strait, as the Whirlpool's).
+pub(super) const BONUS_OBJECTS: [usize; 15] = {
+    let mut objects = [0; 15];
+    let mut i = 0;
+    while i < objects.len() {
+        objects[i] = BLOCKERS.len() * (BONUSES.0 + i);
+        i += 1;
+    }
+    objects
+};
+/// How many of [`BONUS_OBJECTS`] stand on land: the first twelve.
+pub(super) const BONUSES_ON_LAND: usize = 12;
+/// The Stables' object (the tenth of [`BONUS_OBJECTS`]): a plan gives the hero it stands near
+/// Cavaliers in one case of two ([`Bonuses::cavaliers`]), so that its visits upgrade them.
+pub(super) const STABLES_OBJECT: usize = BONUS_OBJECTS[9];
+/// The Cavaliers' code (the Stables' `from`, ADV-BON-005).
+const CAVALIER: u16 = 10;
+
 /// Whether an object of kind `kind` is ownable, its owner at load from the plan's
 /// [`Plan::owners`]: [`OWNABLE`]'s (E08 T86b1) and (E08 T96b1) a dwelling or a random dwelling of
 /// [`DWELLINGS`] (not the camp), as the import's ownable kinds (ADV-OWN-001).
@@ -478,10 +525,26 @@ pub(super) type Mask = &'static [(u8, u8)];
 /// a Whirlpool's anchor and the tile above it, both visited (the original's covers three columns
 /// of two rows: one column fits the plans' narrowest strait); (E08 T116b1) a horizontal garrison's
 /// three tiles of its row, visited on the middle one, a vertical one's three of its column,
-/// visited on the middle one (the original's templates).
+/// visited on the middle one (the original's templates); (E08 T116b2) the land bonus
+/// visitables' original templates (`garrisons_bonuses.rs`' `LAND_BONUSES`: one tile for the
+/// Fountain of Fortune, the Idol and the Magic Well; two of a row visited on the left for the Swan
+/// Pond, the Faerie Ring and the Temple, on the anchor for the Rally Flag and the Stables, on both
+/// for the Magic Spring's two entrances; two rows of two visited on the anchor for the Fountain of
+/// Youth, on its row for the Oasis; four of a row, all visited, for the Watering Hole) and the
+/// sea's three one tile ([`BONUS_OBJECTS`]).
 pub(super) fn masks(object: usize) -> (Mask, Mask) {
     match KINDS[object / BLOCKERS.len()].0 {
         54 | 26 | 8 | 29 | 82 | 86 | 59 | 43 | 44 | 45 => (&[(0, 0)], &[(0, 0)]),
+        30 | 38 | 49 | 11 | 52 | 92 => (&[(0, 0)], &[(0, 0)]),
+        14 | 28 | 96 => (&[(0, 0), (1, 0)], &[(1, 0)]),
+        64 | 94 => (&[(0, 0), (1, 0)], &[(0, 0)]),
+        48 => (&[(0, 0), (1, 0)], &[(0, 0), (1, 0)]),
+        31 => (&[(0, 0), (1, 0), (0, 1), (1, 1)], &[(0, 0)]),
+        56 => (&[(0, 0), (1, 0), (0, 1), (1, 1)], &[(0, 0), (1, 0)]),
+        110 => (
+            &[(0, 0), (1, 0), (2, 0), (3, 0)],
+            &[(0, 0), (1, 0), (2, 0), (3, 0)],
+        ),
         103 => (&[(0, 0), (1, 0), (2, 0), (1, 1)], &[(1, 0)]),
         111 => (&[(0, 0), (0, 1)], &[(0, 0), (0, 1)]),
         33 => (&[(0, 0), (1, 0), (2, 0)], &[(1, 0)]),
@@ -831,6 +894,10 @@ pub(super) struct Plan {
     /// (E08 T116b1; increment 12's design note §16) The map garrisons ([`GarrisonPlan`],
     /// [`garrisons`]), laid out after the teleporters ([`garrisons_laid_out`]).
     pub(super) garrisons: Vec<GarrisonPlan>,
+    /// (E08 T116b2; increment 12's design note §16) The bonus visitables ([`bonuses`]): each one's
+    /// anchor (modulo the map) and object ([`BONUS_OBJECTS`]), laid out after the garrisons
+    /// ([`bonuses_laid_out`]).
+    pub(super) bonuses: Vec<(Spot, usize)>,
 }
 
 /// A plan's map garrison (E08 T116b1; increment 12's design note §16; ADV-GAR-001): where it
@@ -1132,8 +1199,9 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 towns(),
                 // E08 T106b1, drawn last for the same reason.
                 teleporters(),
-                // E08 T116b1, drawn last for the same reason.
-                garrisons(),
+                // E08 T116b1, drawn last for the same reason; (E08 T116b2) the bonus
+                // visitables after them (a pair: the tuple holds twelve at most).
+                (garrisons(), bonuses()),
             ),
         ),
     )
@@ -1145,7 +1213,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 mut tiles,
                 colours,
                 humans,
-                heroes,
+                mut heroes,
                 hero_types,
                 mut blockers,
                 difficulty,
@@ -1167,7 +1235,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                         dwellings,
                         towns,
                         teleporters,
-                        garrisons,
+                        (garrisons, bonuses),
                     ),
                 ),
             )| {
@@ -1267,6 +1335,8 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                 }
                 // E08 T106b1: the Whirlpools on the strait ([`Teleporters::whirlpools`]).
                 let mut whirlpools = Vec::new();
+                // E08 T116b2: the bonus visitables, the sea's on the strait ([`Bonuses`]).
+                let mut bonused = Vec::new();
                 // E08 T75b: a strait beside a hero, its boats, pickups, winds and monster, and
                 // the hero's sources of sea points ([`Sea`]).
                 if let Some(sea) = sea {
@@ -1288,6 +1358,10 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     }
                     for &(c, r) in &teleporters.whirlpools {
                         whirlpools.push(((column(c), row(r), z), WHIRLPOOL_OBJECT));
+                    }
+                    // E08 T116b2: the sea's bonus visitables on the strait ([`Bonuses::sea`]).
+                    for &((c, r), object) in &bonuses.sea {
+                        bonused.push(((column(c), row(r), z), object));
                     }
                     // E08 T86b1: a Shipyard on the strait's coast, its entrance two columns west
                     // of the strait ([`SHIPYARD_OBJECT`]), so that it has a boat tile.
@@ -1343,6 +1417,21 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     }
                 }
                 teleported.extend(teleporters.far.iter().copied());
+                // E08 T116b2: the bonus visitables on land near the heroes, and Cavaliers for the
+                // hero of the first Stables ([`Bonuses`]).
+                for &((dx, dy), hero, object) in &bonuses.near {
+                    let levels = 1 + u8::from(two_levels);
+                    let at = |h: u8, d: u8| (h % side + side + d - 2) % side;
+                    let ((hx, hy, hz), _) = heroes[usize::from(hero) % heroes.len()];
+                    bonused.push(((at(hx, dx), at(hy, dy), hz % levels), object));
+                }
+                let stables = bonuses.near.iter().find(|&&(_, _, o)| o == STABLES_OBJECT);
+                if let (Some(&(_, hero, _)), Some((slot, count))) = (stables, bonuses.cavaliers) {
+                    let index = usize::from(hero) % heroes.len();
+                    let army = heroes[index].1.get_or_insert_with(Vec::new);
+                    army.resize(army.len().max(7), None);
+                    army[usize::from(slot) % 7] = Some((CAVALIER, count));
+                }
                 Plan {
                     version,
                     side,
@@ -1363,6 +1452,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
                     towns,
                     teleporters: teleported,
                     garrisons,
+                    bonuses: bonused,
                 }
             },
         )
@@ -1411,6 +1501,51 @@ fn garrisons() -> impl Strategy<Value = Vec<GarrisonPlan>> {
     prop_oneof![
         2 => Just(Vec::new()),
         3 => vec(garrison, 1..=3),
+    ]
+}
+
+/// Increment 12's bonus visitables of a plan (E08 T116b2, increment 12's design note §16), drawn as
+/// [`bonuses`] draws them; [`Plan::bonuses`] places them.
+#[derive(Debug, Clone, Default)]
+pub(super) struct Bonuses {
+    /// The twelve on land ([`BONUS_OBJECTS`]' first [`BONUSES_ON_LAND`]), each with its anchor at
+    /// an offset from a hero's tile (two columns and rows left of it to two right) and the hero
+    /// (modulo the plan's), on its level, so that random play enters them.
+    near: Vec<((u8, u8), u8, usize)>,
+    /// On a plan with a strait ([`Sea`]): the sea's three, each at a column of the strait (modulo
+    /// its width) and a row from two above the strait's hero's to thirteen below, as the
+    /// Whirlpools.
+    sea: Vec<((u8, u8), usize)>,
+    /// Cavaliers given to the hero the first Stables stands near, as their slot (modulo seven)
+    /// and count, so that the Stables upgrade them (ADV-BON-005).
+    cavaliers: Option<(u8, u16)>,
+}
+
+/// A plan's bonus visitables (E08 T116b2): in three plans of four, one to five on land near the
+/// heroes, a Magic Spring or a Fountain of Fortune in one of each three of them, and up to three
+/// of the sea's (on a plan with a strait), each drawn among the three; with a Stables, Cavaliers
+/// for its hero in two cases of three.
+fn bonuses() -> impl Strategy<Value = Bonuses> {
+    let land = prop_oneof![
+        2 => proptest::sample::select(BONUS_OBJECTS[..BONUSES_ON_LAND].to_vec()),
+        1 => proptest::sample::select(vec![BONUS_OBJECTS[2], BONUS_OBJECTS[5]]),
+    ];
+    let near = vec(((0u8..5, 0u8..5), any::<u8>(), land), 1..=5);
+    let sea = vec(
+        (
+            (any::<u8>(), 0u8..16),
+            proptest::sample::select(BONUS_OBJECTS[BONUSES_ON_LAND..].to_vec()),
+        ),
+        0..=3,
+    );
+    let cavaliers = proptest::option::weighted(2.0 / 3.0, (0u8..7, 1u16..=12));
+    prop_oneof![
+        1 => Just(Bonuses::default()),
+        3 => (near, sea, cavaliers).prop_map(|(near, sea, cavaliers)| Bonuses {
+            near,
+            sea,
+            cavaliers,
+        }),
     ]
 }
 
@@ -1761,6 +1896,8 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     // E08 T106b1: the teleporters' too; (E08 T116b1) the garrisons'.
     let used = used.chain(plan.teleporters.iter().map(|&(_, o)| o));
     let used = used.chain(plan.garrisons.iter().map(|g| garrison_object(g, v)));
+    // E08 T116b2: the bonus visitables'.
+    let used = used.chain(plan.bonuses.iter().map(|&(_, o)| o));
     let used = used.map(|o| o + 1).max().unwrap_or(0);
     m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
         let (blocked, visitable) = masks(o);
@@ -1931,6 +2068,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         .map(|i| colours[if Some(i) == mate { 0 } else { i } % colours.len()])
         .collect();
     garrisons_laid_out(&mut m, plan, &heroes, &owners, &mut covered);
+    bonuses_laid_out(&mut m, plan, &heroes, &mut covered);
     towns_laid_out(&mut m, plan, &heroes, &owners, &mut covered);
     boats_laid_out(&mut m, &boats, &mut covered);
     // E08 T42: the hero with Nomads (AB and SoD know the creature).
@@ -2158,6 +2296,55 @@ fn garrisons_laid_out(
         o.pos.z = z;
         m.objects.push(o);
         covered.extend(tiles);
+    }
+}
+
+/// The plan's bonus visitables laid out after its garrisons (E08 T116b2; [`Plan::bonuses`]), each
+/// where the import builds it: every tile of its template on the map, its visitable tiles on its
+/// surface (land for the twelve, rock not: never reached; water for the sea's three, which only a
+/// boat visits, ADV-BON-001), none of its tiles a hero's (a hero standing on an entered one at
+/// load is no case of the plans) or one an object laid out before blocks or is visited on
+/// (`covered`, which takes its tiles), so that each of its visitable tiles is listed for it and no
+/// two of a type share an anchor. One anywhere else is left out; plans without bonus visitables
+/// keep their maps.
+fn bonuses_laid_out(
+    m: &mut RawMap,
+    plan: &Plan,
+    heroes: &[(Spot, &Slots)],
+    covered: &mut Vec<Spot>,
+) {
+    let (side, levels) = (plan.side, 1 + u8::from(plan.two_levels));
+    for &((x, y, z), bonus) in &plan.bonuses {
+        let (ax, ay, az) = (x % side, y % side, z % levels);
+        let (blocked, visitable) = masks(bonus);
+        let tiles = |mask: Mask| -> Vec<Spot> {
+            mask.iter()
+                .filter_map(|&(column, row)| {
+                    Some((ax.checked_sub(column)?, ay.checked_sub(row)?, az))
+                })
+                .collect()
+        };
+        let (blocks, visits) = (tiles(blocked), tiles(visitable));
+        let water = BONUS_OBJECTS[BONUSES_ON_LAND..].contains(&bonus);
+        let surface = |&(tx, ty, tz): &Spot| {
+            let index = (usize::from(tz) * usize::from(side) + usize::from(ty)) * usize::from(side)
+                + usize::from(tx);
+            let terrain = m.terrain.tiles[index].terrain;
+            if water { terrain == 8 } else { terrain < 8 }
+        };
+        let taken = |t: &Spot| covered.contains(t) || heroes.iter().any(|&(at, _)| at == *t);
+        if blocks.len() < blocked.len()
+            || visits.len() < visitable.len()
+            || !visits.iter().all(surface)
+            || blocks.iter().chain(&visits).any(taken)
+        {
+            continue;
+        }
+        let template = 1 + u32::try_from(bonus).unwrap();
+        let mut o = object(ax, ay, template, Body::None);
+        o.pos.z = az;
+        m.objects.push(o);
+        covered.extend(blocks.into_iter().chain(visits));
     }
 }
 
@@ -2625,6 +2812,12 @@ pub(super) enum Step {
     /// option that ends on a garrison's entrance or one that gets nearer to one
     /// ([`exchange_with`]); as `Jump(n)` on a map without garrisons.
     Exchange(u16),
+    /// (E08 T116b2; increment 12's design note §16) In a battle as `Fight(n)`; on the map a bonus
+    /// visitable's revisit, an option that ends on a bonus visitable's visitable tile (entering
+    /// one on land, visiting one of the sea's from a boat beside it), a walker's boarding of an
+    /// empty boat on a map with the sea's, or one that gets nearer to a visitable tile
+    /// ([`seek_bonus`]); as `Exchange(n)` on a map without bonus visitables.
+    Bonus(u16),
 }
 
 #[derive(Debug, Clone)]
@@ -2886,6 +3079,12 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
     // garrisons, fight and take them, and manage their exchanges.
     let exchange =
         vec(any::<u16>(), 8..48).prop_map(|ns| ns.into_iter().map(Step::Exchange).collect());
+    // E08 T116b2: runs of bonuses, `Step::Bonus`es with ends of turn among them, which walk and
+    // sail heroes to the bonus visitables, visit and revisit them on several days.
+    let bonus = vec(
+        prop_oneof![6 => any::<u16>().prop_map(Step::Bonus), 1 => Just(Step::EndTurn)],
+        8..48,
+    );
     vec(
         prop_oneof![
             12 => step().prop_map(|step| vec![step]),
@@ -2900,6 +3099,7 @@ pub(super) fn steps() -> impl Strategy<Value = Vec<Step>> {
             1 => jump,
             1 => build,
             1 => exchange,
+            1 => bonus,
         ],
         0..40,
     )
@@ -3674,6 +3874,170 @@ fn exchange_with(
         .map_or(GameCommand::EndTurn, |&command| command.clone())
 }
 
+/// The pack keys of the bonus visitables' types, in [`BONUS_OBJECTS`]' order (E08 T116b2).
+const BONUS_KEYS: [&str; 15] = [
+    "base:swan_pond",
+    "base:faerie_ring",
+    "base:fountain_of_fortune",
+    "base:fountain_of_youth",
+    "base:idol_of_fortune",
+    "base:magic_spring",
+    "base:magic_well",
+    "base:oasis",
+    "base:rally_flag",
+    "base:stables",
+    "base:temple",
+    "base:watering_hole",
+    "base:buoy",
+    "base:mermaids",
+    "base:sirens",
+];
+
+/// The place in [`BONUS_OBJECTS`] of the bonus visitable of type `object_type` (E08 T116b2), by
+/// its key ([`BONUS_KEYS`]).
+fn bonus_kind(rules: &GameRuleset, object_type: Option<ObjectTypeId>) -> Option<usize> {
+    let part = rules.adventure();
+    let object_type = object_type?;
+    BONUS_KEYS
+        .iter()
+        .position(|key| part.object_type_by_key(key) == Some(object_type))
+}
+
+/// Whether `kind` is a bonus visitable's (E08 T116b2; ADV-BON-001): the six kinds of the fifteen.
+fn is_bonus(kind: &ObjectKind) -> bool {
+    matches!(
+        kind,
+        ObjectKind::Bonus { .. }
+            | ObjectKind::FountainOfFortune { .. }
+            | ObjectKind::MagicWell
+            | ObjectKind::MagicSpring
+            | ObjectKind::Stables { .. }
+            | ObjectKind::Sirens { .. }
+    )
+}
+
+/// The bonus visitables of `state` (E08 T116b2), by object index (the static map's: none is added
+/// in play).
+fn bonuses_of(state: &GameState, rules: &GameRuleset) -> Vec<usize> {
+    let adventure = state.adventure();
+    (0..adventure.map().objects().len())
+        .filter(|&i| {
+            let ty = adventure.object(i).and_then(|o| o.object_type);
+            let kind = ty.and_then(|ty| rules.adventure().object_type(ty));
+            kind.is_some_and(|t| is_bonus(&t.kind))
+        })
+        .collect()
+}
+
+/// The bonus visitable visited from `pos` on `state`, by object index (E08 T116b2; the last
+/// object visited from the tile, as the engine's), with its kind.
+fn bonus_at<'r>(
+    state: &GameState,
+    rules: &'r GameRuleset,
+    pos: TilePos,
+) -> Option<(usize, &'r ObjectKind)> {
+    let index = visited_at(state, pos)?;
+    let ty = state.adventure().object(index)?.object_type?;
+    let kind = &rules.adventure().object_type(ty)?.kind;
+    is_bonus(kind).then_some((index, kind))
+}
+
+/// [`Step::Bonus`] (E08 T116b2; increment 12's design note §16): in a battle as [`fight`];
+/// another decision settled ([`settle`]); on the map, in one step of four the `n`-th listed
+/// `Revisit` of a hero standing on a bonus visitable, else the `n`-th of its options that end on
+/// a bonus visitable's visitable tile (an entered one's: the hero stands on it; one of the sea's:
+/// its boat's hero visits it from beside), else with the sea's on the map in one step of two a
+/// walker's option onto an empty boat (so that heroes sail to them), else one that ends nearer to
+/// a visitable tile than its hero stands, else `EndTurn`; as [`exchange_with`] on a map without
+/// bonus visitables.
+fn seek_bonus(state: &GameState, rules: &GameRuleset, legal: &[GameCommand], n: u16) -> GameCommand {
+    let bonuses = bonuses_of(state, rules);
+    if bonuses.is_empty() {
+        return exchange_with(state, rules, legal, n);
+    }
+    if battle_of(state, actor(state)).is_some() {
+        return fight(state, rules, legal, n);
+    }
+    if let Some(answer) = settle(state, legal, n) {
+        return answer;
+    }
+    let adventure = state.adventure();
+    let map = adventure.map();
+    // Their visitable tiles, in the walk's order, and whether one of the sea's stands on the map.
+    let mut tiles: Vec<TilePos> = Vec::new();
+    for z in 0..map.levels() {
+        for y in 0..map.height() {
+            for x in 0..map.width() {
+                let pos = TilePos::new(x, y, z);
+                if bonus_at(state, rules, pos).is_some() {
+                    tiles.push(pos);
+                }
+            }
+        }
+    }
+    let sea = bonuses.iter().any(|&i| {
+        let ty = adventure.object(i).and_then(|o| o.object_type);
+        bonus_kind(rules, ty).is_some_and(|k| k >= BONUSES_ON_LAND)
+    });
+    let on_bonus = |hero: HeroId| adventure.hero(hero).is_some_and(|h| tiles.contains(&h.pos));
+    let revisits: Vec<&GameCommand> = legal
+        .iter()
+        .filter(|c| {
+            matches!(c, GameCommand::Adventure(AdventureCommand::Revisit { hero }) if on_bonus(*hero))
+        })
+        .collect();
+    if n % 4 == 3 && !revisits.is_empty() {
+        return revisits[usize::from(n / 4) % revisits.len()].clone();
+    }
+    let moves: Vec<(&GameCommand, HeroId, &[TilePos])> = legal
+        .iter()
+        .filter_map(|c| as_move(c).map(|(hero, path)| (c, hero, path)))
+        .collect();
+    let entering: Vec<&GameCommand> = (moves.iter())
+        .filter(|(_, _, path)| path.last().is_some_and(|to| tiles.contains(to)))
+        .map(|&(c, _, _)| c)
+        .collect();
+    if !entering.is_empty() {
+        return entering[usize::from(n / 4) % entering.len()].clone();
+    }
+    let boarding: Vec<&GameCommand> = (moves.iter())
+        .filter(|(_, hero, path)| {
+            let walker = adventure.hero(*hero).is_some_and(|h| h.boat.is_none());
+            walker && path.last().is_some_and(|&to| adventure.is_empty_boat(to))
+        })
+        .map(|&(c, _, _)| c)
+        .collect();
+    if sea && n % 2 == 1 && !boarding.is_empty() {
+        return boarding[usize::from(n / 2) % boarding.len()].clone();
+    }
+    let distance = |pos: TilePos| {
+        (tiles.iter())
+            .filter(|t| t.level == pos.level && **t != pos)
+            .map(|t| t.x.abs_diff(pos.x).max(t.y.abs_diff(pos.y)))
+            .min()
+    };
+    let mut best: Vec<&GameCommand> = Vec::new();
+    let mut nearest = u16::MAX;
+    for &(command, hero, path) in &moves {
+        let Some(at) = adventure.hero(hero).map(|h| h.pos) else {
+            continue;
+        };
+        let (here, there) = (distance(at), path.last().and_then(|&to| distance(to)));
+        if let (Some(here), Some(there)) = (here, there)
+            && there < here
+            && there <= nearest
+        {
+            if there < nearest {
+                best.clear();
+                nearest = there;
+            }
+            best.push(command);
+        }
+    }
+    best.get(usize::from(n) % best.len().max(1))
+        .map_or(GameCommand::EndTurn, |&command| command.clone())
+}
+
 /// An arbitrary army command of the open exchange `open` (E08 T116b1; GAM-MAN-001 amended, the one
 /// owner rule): drawn from `n`, a move, a split or a dismissal (`n % 3`), from the exchange's hero to
 /// its garrison, back, within the garrison or within the hero (`n / 3 % 4`), from and to slots up
@@ -3947,8 +4311,20 @@ fn landing(
             AdventureEventKind::HeroTeleported { .. }
         ]
     );
+    // (E08 T116b2) A bonus visitable's visit tells its kind mark (`KindKnown`), nothing gained,
+    // the Sirens' losses or the Stables' upgrades by slot (ADV-BON-002 to -009; the movement and
+    // the marks among the last, filtered above).
+    let bonused = visit.iter().all(|k| {
+        matches!(
+            k,
+            AdventureEventKind::KindKnown { .. }
+                | AdventureEventKind::NothingGained { .. }
+                | AdventureEventKind::SirensLoss { .. }
+                | AdventureEventKind::CreaturesUpgraded { .. }
+        )
+    });
     prop_assert!(
-        kinds.len() <= steps + 1 || leaves || flagged || marked || captured || whirled,
+        kinds.len() <= steps + 1 || leaves || flagged || marked || captured || whirled || bonused,
         "{:?}",
         kinds
     );
@@ -4267,6 +4643,7 @@ pub(super) fn resolve(
         Step::Town(n) => (who, visit_town(state, rules, legal, *n)),
         Step::Jump(n) => (who, teleport(state, rules, legal, *n)),
         Step::Exchange(n) => (who, exchange_with(state, rules, legal, *n)),
+        Step::Bonus(n) => (who, seek_bonus(state, rules, legal, *n)),
         Step::BuildBoat(n) => {
             let boat = |c: &GameCommand| {
                 matches!(
@@ -5137,6 +5514,13 @@ fn check_legal(
             continue;
         };
         let points = reach_of(reaches, hero).points_left(end);
+        // E08 T116b2: a bonus visitable's visit at the walk's end adds its points or drains them
+        // (ADV-BON-002, -005; [`check_bonuses`]).
+        let points = match visit_movement(rules, (state, &probe), hero) {
+            Some(None) => Some(0),
+            Some(Some(gain)) => points.map(|p| p.saturating_add(gain)),
+            None => points,
+        };
         // E08 T106b1: a jump from the walk's end, the entrance, keeps the points the query reports
         // there and the day's maximum (ADV-TEL-007, increment 11's design note §14).
         let jumped = jumped_to(&events, hero);
@@ -5272,10 +5656,17 @@ fn check_revisits(
         );
         if let Some(is) = is {
             prop_assert!(jumped || is.pos == was.pos, "{:?} moved", command);
-            prop_assert_eq!(
-                (is.movement, is.max_movement),
-                (was.movement, was.max_movement)
-            );
+            // E08 T116b2: a bonus visitable's revisit gives its points to both or drains the
+            // points left (ADV-BON-002, -005), as a first visit.
+            let expected = match visit_movement(rules, (state, &probe), hero) {
+                Some(None) => (0, was.max_movement),
+                Some(Some(gain)) => (
+                    was.movement.saturating_add(gain),
+                    was.max_movement.saturating_add(gain),
+                ),
+                None => (was.movement, was.max_movement),
+            };
+            prop_assert_eq!((is.movement, is.max_movement), expected);
         }
     }
     Ok(())
@@ -6917,6 +7308,42 @@ fn check_conservation(
             prop_assert!(stack.count >= count, "{:?}", event);
             stack.count -= count;
             army.retain(|s| s.count > 0);
+        }
+    }
+    // E08 T116b2: the Sirens' losses (ADV-BON-008), as `SirensLoss` tells them: the slot's count
+    // less the count lost, never to 0 ([`check_bonuses`] checks the part kept); the Stables'
+    // upgrades (ADV-BON-005), as `CreaturesUpgraded` tells them: the slot's creature made `to`,
+    // its count kept.
+    for event in events {
+        let GameEvent::Adventure(AdventureEvent { kind, .. }) = event else {
+            continue;
+        };
+        let (AdventureEventKind::SirensLoss { hero, slot, .. }
+        | AdventureEventKind::CreaturesUpgraded { hero, slot, .. }) = *kind
+        else {
+            continue;
+        };
+        let (_, army) = expected
+            .iter_mut()
+            .find(|(id, _)| *id == hero)
+            .ok_or_else(|| fail(format!("{event:?} of a hero off the map")))?;
+        let stack = army
+            .iter_mut()
+            .find(|s| s.slot == slot)
+            .ok_or_else(|| fail(format!("{event:?} of an empty slot")))?;
+        match *kind {
+            AdventureEventKind::SirensLoss {
+                creature, count, ..
+            } => {
+                prop_assert_eq!(stack.creature, creature);
+                prop_assert!(stack.count > count, "{:?}", event);
+                stack.count -= count;
+            }
+            AdventureEventKind::CreaturesUpgraded { from, to, .. } => {
+                prop_assert_eq!(stack.creature, from);
+                stack.creature = to;
+            }
+            _ => {}
         }
     }
     // E08 T52: a full army: the group held (the army as it was), none of its creature's stacks
@@ -8871,6 +9298,452 @@ fn check_garrisons(
     Ok(())
 }
 
+/// Whether `events` tell `hero`'s owner that its visit of the object `(object_type, anchor)` gave
+/// nothing, for `why` (E08 T116b2; ADV-BON-002 to -008's `NothingGained`).
+fn nothing_told(
+    events: &[GameEvent],
+    hero: HeroId,
+    (object_type, anchor): (ObjectTypeId, TilePos),
+    why: NothingWhy,
+) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            *e,
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::NothingGained { hero: h, object_type: t, anchor: at, why: w },
+                ..
+            }) if (h, t, at, w) == (hero, object_type, anchor, why)
+        )
+    })
+}
+
+/// What a stack of `count` may keep at the Sirens whose part is `keep` (E08 T116b2; ADV-BON-008,
+/// increment 12's design note §9), read independently of the engine's double product: the exact
+/// part `count × numerator ÷ denominator` truncated, or one less (the double quotient of 7 ÷ 10
+/// lies below 0.7, so a product on an integer truncates below it), at least one, at most the count.
+fn sirens_kept(count: u32, (numerator, denominator): (u32, u32)) -> RangeInclusive<u32> {
+    let exact = u64::from(count) * u64::from(numerator) / u64::from(denominator.max(1));
+    let exact = u32::try_from(exact).unwrap_or(count).min(count);
+    exact.saturating_sub(1).clamp(1, count.max(1))..=exact.clamp(1, count.max(1))
+}
+
+/// The bonus visitable `command` visited on `before` (E08 T116b2), with its visitor, its type and
+/// anchor, and its kind: a revisit's under its hero, or a move's at its walk's end ([`visited`])
+/// when the walk got there, an entered one with every step taken, one visited from a neighbour
+/// with all but the last, and no guard's question or battle came (a monster guarding the tile
+/// asks or fights first: decision 279's visit, held until the guard is settled).
+fn bonus_visited<'r>(
+    rules: &'r GameRuleset,
+    before: &GameState,
+    command: &GameCommand,
+    events: &[GameEvent],
+) -> Option<(HeroId, (ObjectTypeId, TilePos), &'r ObjectKind)> {
+    let index = visited(before, command, events)?;
+    let o = before.adventure().object(index)?;
+    let object_type = o.object_type?;
+    let ty = rules.adventure().object_type(object_type)?;
+    if !is_bonus(&ty.kind) {
+        return None;
+    }
+    let hero = match command {
+        GameCommand::Adventure(AdventureCommand::Revisit { hero }) => *hero,
+        GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
+            let steps = (events.iter())
+                .filter(|e| {
+                    matches!(
+                        e,
+                        GameEvent::Adventure(AdventureEvent {
+                            kind: AdventureEventKind::HeroStepped { hero: h, .. },
+                            ..
+                        }) if h == hero
+                    )
+                })
+                .count();
+            let guarded = events.iter().any(|e| {
+                matches!(
+                    e,
+                    GameEvent::OfferOpened { .. } | GameEvent::BattleStarted { .. }
+                )
+            });
+            let reached = !guarded
+                && match ty.visit {
+                    Visit::Enter => steps == path.len(),
+                    Visit::Neighbour => steps + 1 == path.len(),
+                };
+            if !reached {
+                return None;
+            }
+            *hero
+        }
+        _ => return None,
+    };
+    Some((hero, (object_type, o.anchor), &ty.kind))
+}
+
+/// What a bonus visitable's visit from `before` to `after` gave `hero`'s movement (E08 T116b2;
+/// ADV-BON-002, -005): a `bonus` kind's once-mark newly held gives its points (`Some(Some(_))`)
+/// or with `drain` sets the points left to 0 (`Some(None)`), the Stables' week mark newly held
+/// its points; `None` for neither.
+fn visit_movement(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    hero: HeroId,
+) -> Option<Option<u32>> {
+    let part = rules.adventure();
+    let (was, is) = (
+        before.adventure().visit_marks(hero),
+        after.adventure().visit_marks(hero),
+    );
+    let marked = (part.object_types().iter()).find_map(|ty| match ty.kind {
+        ObjectKind::Bonus {
+            mark,
+            points,
+            drain,
+            ..
+        } if !was.bonuses().has_mark(mark) && is.bonuses().has_mark(mark) => {
+            Some((!drain).then_some(points))
+        }
+        _ => None,
+    });
+    let stabled = (is.timed().iter())
+        .filter(|ty| !was.timed().contains(ty))
+        .find_map(|&ty| match part.object_type(ty)?.kind {
+            ObjectKind::Stables { points, .. } => Some(Some(points)),
+            _ => None,
+        });
+    marked.or(stabled)
+}
+
+/// The bonus visitables' oracle after every command (E08 T116b2; increment 12's design note §16;
+/// ADV-BON-002 to -009, GAM-BAT-014), for each hero on the map before and after it:
+/// - its once-marks (the battle bonuses' marks, part C) only grow but at the end of a battle it
+///   fought, which clears them and the bonuses no mark names, keeping the Sirens' with
+///   `ADV-QUIRK-46` off (`strict-fixed`, A-44); at most one mark joins in a command (a visit's, a
+///   held visit's after the battle's clear among them), and a bonus visitable's with its amounts:
+///   a `bonus` kind's day pair by the weekday, a Fountain of Fortune's luck among its values, the
+///   Sirens' none;
+/// - its timed marks only grow but at the day's step (the Magic Well's dropped) and the week's
+///   (the Stables' too); at most one joins in a command, a Well's or a Stables' type;
+/// - a bonus visitable's visit by a move or a revisit (`visited`): a once-mark already held gives
+///   nothing, told (`Visited`), the army and the movement as before; a mark set by a `bonus` kind
+///   or a Stables' week mark raises the day's maximum by the kind's points and the points left
+///   with it (from the walk's points left at the tile, the query's, or the hero's own on a
+///   revisit), or with `drain` sets the points left to 0, the maximum kept; any other visit keeps
+///   the maximum; a Well's day mark comes with the spell points set to the hero's maximum, a
+///   visit told as nothing with none, and a Spring's visit sets them to twice the maximum or tells
+///   nothing (emptied or full), the points kept; the Stables make every slot of `from` `to`, the
+///   count kept, told by slot, and tell nothing when neither the movement nor an upgrade comes;
+///   the Sirens' visit keeps of each stack of more than one creature what [`sirens_kept`] allows,
+///   at least one and never more, a lone creature kept, each loss told as its slot's count, the
+///   hero's experience raised when it lost any (the game's sum of the lost hit points);
+/// - each player's kind marks only grow, each new one told to it (`KindKnown`) and of a type
+///   whose visit sets it (`kind_mark`).
+fn check_bonuses(
+    rules: &GameRuleset,
+    (before, after): (&GameState, &GameState),
+    command: &GameCommand,
+    events: &[GameEvent],
+) -> Result<(), TestCaseError> {
+    let (b, a) = (before.adventure(), after.adventure());
+    let part = rules.adventure();
+    let fought: Vec<HeroId> = ended(events)
+        .iter()
+        .flat_map(|(heroes, _)| heroes.iter().flatten().copied())
+        .collect();
+    let kept: Vec<u8> = if rules.core().quirks().is_enabled(SIRENS_AGAIN_AFTER_BATTLE) {
+        Vec::new()
+    } else {
+        (part.object_types().iter())
+            .filter_map(|ty| match ty.kind {
+                ObjectKind::Sirens { mark, .. } => Some(mark),
+                _ => None,
+            })
+            .collect()
+    };
+    // A battle won against no hero (a monster's, guards') may hold the visit of the tile they
+    // guarded, given after the battle's clear (decision 279).
+    let held_after = ended(events).iter().any(|&(heroes, result)| {
+        heroes[BattleSide::Defender.index()].is_none()
+            && result == BattleResult::Victory(BattleSide::Attacker)
+    });
+    let new_day = after.day() > before.day();
+    let new_week = new_day && after.weekday(rules).get() == 1;
+    let weekday = before.weekday(rules).get();
+    let day_pair = |days: &[(i8, i8)]| days[usize::from(weekday).min(days.len()) - 1];
+    // The kind giving the once-mark `mark` among the bonus visitables', with its amounts' check.
+    let mark_kind = |mark: u8| {
+        part.object_types().iter().find(|ty| match &ty.kind {
+            ObjectKind::Bonus { mark: m, .. }
+            | ObjectKind::FountainOfFortune { mark: m, .. }
+            | ObjectKind::Sirens { mark: m, .. } => *m == mark,
+            _ => false,
+        })
+    };
+    for hero in b.heroes() {
+        if a.hero(hero.id).is_none() {
+            continue;
+        }
+        let (was, is) = (b.visit_marks(hero.id), a.visit_marks(hero.id));
+        // The once-marks.
+        let cleared = fought.contains(&hero.id);
+        let base: Vec<_> = (was.bonuses().once.iter())
+            .filter(|bonus| !cleared || kept.contains(&bonus.mark))
+            .copied()
+            .collect();
+        let once = &is.bonuses().once;
+        prop_assert!(
+            base.iter().all(|bonus| once.contains(bonus)),
+            "{:?}'s once-marks {:?} became {:?} by {:?}",
+            hero.id,
+            was.bonuses().once,
+            once,
+            command
+        );
+        let joined: Vec<_> = once.iter().filter(|bonus| !base.contains(bonus)).collect();
+        prop_assert!(joined.len() <= 1, "{:?} gained {:?}", hero.id, joined);
+        // The bonuses no mark names end with the battle too, but a visit the battle held gives
+        // them again (decision 279: an event's record after its guards' battle, won).
+        if cleared && !held_after {
+            let (morale, luck) = (is.bonuses().morale, is.bonuses().luck);
+            prop_assert_eq!((morale, luck), (0, 0), "{:?} after its battle: {:?}", hero.id, events);
+        }
+        for bonus in &joined {
+            match mark_kind(bonus.mark).map(|ty| &ty.kind) {
+                Some(ObjectKind::Bonus { days, .. }) => {
+                    prop_assert_eq!((bonus.morale, bonus.luck), day_pair(days), "day {}", weekday);
+                }
+                Some(ObjectKind::FountainOfFortune { values, .. }) => {
+                    prop_assert!(bonus.morale == 0 && values.contains(&bonus.luck), "{:?}", bonus);
+                }
+                Some(ObjectKind::Sirens { .. }) => {
+                    prop_assert_eq!((bonus.morale, bonus.luck), (0, 0));
+                }
+                // Increment 7's marks (a Warrior's Tomb's, a looted Pyramid's): `check_rewards`.
+                _ => {}
+            }
+        }
+        // The timed marks.
+        let lifetime = |ty: &ObjectTypeId| part.object_type(*ty).and_then(|t| t.kind.timed_mark());
+        let base: Vec<ObjectTypeId> = (was.timed().iter())
+            .filter(|ty| match lifetime(ty) {
+                Some(MarkLifetime::Day) => !new_day,
+                Some(MarkLifetime::Week) => !new_week,
+                None => true,
+            })
+            .copied()
+            .collect();
+        let timed = is.timed();
+        prop_assert!(
+            base.iter().all(|ty| timed.contains(ty)),
+            "{:?}'s timed marks {:?} became {:?} (day {} to {})",
+            hero.id,
+            was.timed(),
+            timed,
+            before.day(),
+            after.day()
+        );
+        let joined_timed: Vec<_> = timed.iter().filter(|ty| !base.contains(ty)).collect();
+        prop_assert!(
+            joined_timed.len() <= 1 && joined_timed.iter().all(|ty| lifetime(ty).is_some()),
+            "{:?} gained {:?}",
+            hero.id,
+            joined_timed
+        );
+        prop_assert!(!new_day || joined_timed.is_empty(), "{:?}", joined_timed);
+    }
+    // A bonus visitable's visit by a move or a revisit.
+    if let Some((hero, named, kind)) = bonus_visited(rules, before, command, events)
+        && let (Some(then), Some(now)) = (b.hero(hero), a.hero(hero))
+        && fought.is_empty()
+    {
+        let (was, is) = (b.visit_marks(hero), a.visit_marks(hero));
+        let (details_then, details_now) = (before.hero(hero).unwrap(), after.hero(hero).unwrap());
+        let gained = |mark: u8| !was.bonuses().has_mark(mark) && is.bonuses().has_mark(mark);
+        // The points left the visit started from: the walk's, at the visited tile (an entered
+        // one's, the hero on it) when the move takes the query's path there, or the hero's own on
+        // a revisit; none known for another path or a visit from a neighbouring tile.
+        let start = match command {
+            GameCommand::Adventure(AdventureCommand::Revisit { .. }) => Some(then.movement),
+            GameCommand::Adventure(AdventureCommand::MoveHero { path, .. })
+                if now.pos != then.pos =>
+            {
+                let reach = reaches(before, rules);
+                let reach = reach_of(&reach, hero);
+                (reach.path(now.pos).as_deref() == Some(path.as_slice()))
+                    .then(|| reach.points_left(now.pos))
+                    .flatten()
+            }
+            _ => None,
+        };
+        let raised = |points: u32| -> Result<(), TestCaseError> {
+            prop_assert_eq!(now.max_movement, then.max_movement.saturating_add(points));
+            if let Some(start) = start {
+                prop_assert_eq!(now.movement, start.saturating_add(points), "{:?}", command);
+            }
+            Ok(())
+        };
+        let held_visited = || nothing_told(events, hero, named, NothingWhy::Visited);
+        match kind {
+            ObjectKind::Bonus {
+                mark,
+                points,
+                drain,
+                ..
+            } => {
+                if gained(*mark) {
+                    if *drain {
+                        prop_assert_eq!(
+                            (now.movement, now.max_movement),
+                            (0, then.max_movement)
+                        );
+                    } else {
+                        raised(*points)?;
+                    }
+                } else {
+                    prop_assert!(held_visited(), "{:?} at {:?}: {:?}", hero, named, events);
+                    prop_assert_eq!(now.max_movement, then.max_movement);
+                }
+            }
+            ObjectKind::FountainOfFortune { mark, .. } => {
+                prop_assert!(gained(*mark) || held_visited(), "{:?}: {:?}", named, events);
+                prop_assert_eq!(now.max_movement, then.max_movement);
+            }
+            ObjectKind::Sirens { mark, keep } => {
+                prop_assert_eq!(now.max_movement, then.max_movement);
+                if !gained(*mark) {
+                    prop_assert!(held_visited(), "{:?}: {:?}", named, events);
+                    prop_assert_eq!(&now.army, &then.army);
+                } else {
+                    let mut lost = false;
+                    for stack in &then.army {
+                        let kept = now.army.iter().find(|s| s.slot == stack.slot);
+                        let count = kept.map_or(0, |s| s.count);
+                        prop_assert_eq!(kept.map(|s| s.creature), Some(stack.creature));
+                        let allowed = if stack.count > 1 {
+                            sirens_kept(stack.count, *keep)
+                        } else {
+                            stack.count..=stack.count
+                        };
+                        prop_assert!(
+                            allowed.contains(&count),
+                            "{} of {} kept at the Sirens",
+                            count,
+                            stack.count
+                        );
+                        let told = events.iter().any(|e| {
+                            matches!(
+                                *e,
+                                GameEvent::Adventure(AdventureEvent {
+                                    kind: AdventureEventKind::SirensLoss { hero: h, slot, creature, count: c },
+                                    ..
+                                }) if (h, slot, creature, c)
+                                    == (hero, stack.slot, stack.creature, stack.count - count)
+                            )
+                        });
+                        prop_assert_eq!(told, count < stack.count, "slot {}", stack.slot);
+                        lost |= count < stack.count;
+                    }
+                    prop_assert_eq!(now.army.len(), then.army.len());
+                    let experience = (details_then.experience, details_now.experience);
+                    prop_assert!(
+                        experience.1 >= experience.0 && (!lost || experience.1 > experience.0),
+                        "experience {:?} at the Sirens",
+                        experience
+                    );
+                }
+            }
+            ObjectKind::MagicWell => {
+                prop_assert_eq!(now.max_movement, then.max_movement);
+                let marked = !was.timed().contains(&named.0) && is.timed().contains(&named.0);
+                let most = h3_heroes::max_mana(details_now, rules.core());
+                if marked {
+                    prop_assert_eq!(details_now.mana, most);
+                } else {
+                    prop_assert!(
+                        held_visited() || nothing_told(events, hero, named, NothingWhy::Full),
+                        "{:?}: {:?}",
+                        named,
+                        events
+                    );
+                    prop_assert_eq!(details_now.mana, details_then.mana);
+                }
+            }
+            ObjectKind::MagicSpring => {
+                prop_assert_eq!(now.max_movement, then.max_movement);
+                let most = h3_heroes::max_mana(details_now, rules.core());
+                let nothing = nothing_told(events, hero, named, NothingWhy::Emptied)
+                    || nothing_told(events, hero, named, NothingWhy::Full);
+                if nothing {
+                    prop_assert_eq!(details_now.mana, details_then.mana);
+                } else {
+                    prop_assert_eq!(details_now.mana, most.saturating_mul(2));
+                }
+            }
+            ObjectKind::Stables { points, from, to } => {
+                let marked = !was.timed().contains(&named.0) && is.timed().contains(&named.0);
+                if marked {
+                    raised(*points)?;
+                } else {
+                    prop_assert_eq!(now.max_movement, then.max_movement);
+                }
+                let mut upgraded = false;
+                for stack in &then.army {
+                    let now_stack = now.army.iter().find(|s| s.slot == stack.slot);
+                    let expected = if stack.creature == *from { *to } else { stack.creature };
+                    prop_assert_eq!(
+                        now_stack.map(|s| (s.creature, s.count)),
+                        Some((expected, stack.count))
+                    );
+                    let told = events.iter().any(|e| {
+                        matches!(
+                            *e,
+                            GameEvent::Adventure(AdventureEvent {
+                                kind: AdventureEventKind::CreaturesUpgraded { hero: h, slot, from: f, to: t },
+                                ..
+                            }) if (h, slot, f, t) == (hero, stack.slot, *from, *to)
+                        )
+                    });
+                    prop_assert_eq!(told, stack.creature == *from);
+                    upgraded |= stack.creature == *from;
+                }
+                prop_assert_eq!(
+                    !marked && !upgraded,
+                    held_visited(),
+                    "the Stables: {:?}",
+                    events
+                );
+            }
+            _ => {}
+        }
+    }
+    // The kind marks.
+    for p in 0..before.players() {
+        let player = PlayerId::new(u8::try_from(p).unwrap());
+        let (had, has) = (b.kinds_known(player), a.kinds_known(player));
+        prop_assert!(
+            had.iter().all(|ty| has.contains(ty)),
+            "{:?}'s kind marks {:?} became {:?}",
+            player,
+            had,
+            has
+        );
+        for &ty in has.iter().filter(|ty| !had.contains(ty)) {
+            prop_assert!(part.object_type(ty).is_some_and(|t| t.kind_mark), "{:?}", ty);
+            let told = events.iter().any(|e| {
+                matches!(
+                    *e,
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::KindKnown { object_type },
+                        seen_by,
+                    }) if object_type == ty && seen_by.contains(player)
+                )
+            });
+            prop_assert!(told, "{:?} learnt {:?} untold", player, ty);
+        }
+    }
+    Ok(())
+}
+
 /// The end of a battle against a dwelling's guards (E08 T95a2; ADV-DWL-004, GAM-BAT-001 amended,
 /// increment 10's design note §7 step 2, §12), a neutral dwelling's or another player's (the
 /// system played its guards, unsplit, whoever its owner): its creatures' counts are kept, no
@@ -10123,6 +10996,8 @@ proptest! {
             check_whirlpool_losses(rules, (&before, &state), &command, &events)?;
             // E08 T116b1: the map garrisons' armies, owners and battles.
             check_garrisons(rules, (&before, &state), (player, &command), &events)?;
+            // E08 T116b2: the bonus visitables' marks, amounts, movement and losses.
+            check_bonuses(rules, (&before, &state), &command, &events)?;
             // E08 T52: management (GAM-MAN-001), and a move's inverse.
             if let GameCommand::Manage(manage) = &command {
                 check_management(rules, (&before, &state), player, manage, &events)?;
@@ -10858,6 +11733,7 @@ fn the_levels_at_load_follow_the_seed_in_faithful_and_the_stream_in_strict_fixed
         towns: Vec::new(),
         teleporters: Vec::new(),
         garrisons: Vec::new(),
+        bonuses: Vec::new(),
     };
     // The second hero's levels at load, at 12 000 experience (level 8), after the first hero's
     // at `first` experience.
@@ -12250,4 +13126,227 @@ fn the_plans_cross_fight_and_exchange_at_garrisons() {
     assert!(g.anti_magic[0] > 0 && g.after_battle > 0, "{g:?}");
     assert!(g.accepted.iter().all(|&n| n > 0), "{g:?}");
     assert!(g.refused.iter().all(|&n| n > 0), "{g:?}");
+}
+
+/// What the bonus plans played (E08 T116b2; increment 12's design note §16): the bonus visitables
+/// laid out by kind ([`bonus_kind`]); their visits by kind, those that gave something (a mark, the
+/// movement, the spell points, an upgrade, a loss) and those told as nothing; the nothings by why
+/// (`Visited`, `Full`, `Emptied`); the revisits of a bonus visitable; the Fountains of Fortune's
+/// lucks by value (−1, +1, +2, +3); the `bonus` kinds' gains on an odd weekday, an even one and
+/// day 7; the Sirens' losses by slot and the lone creatures they kept; the Stables' upgrades by
+/// slot; the heroes whose once-marks a battle's end cleared, the Sirens' marks such an end kept
+/// (`strict-fixed`) and cleared (`faithful`); the Magic Wells' and the Stables' marks dropped at
+/// the day's and the week's steps; the kind marks learnt.
+#[derive(Debug, Default)]
+struct Bonused {
+    laid: [usize; 15],
+    visits: [[usize; 2]; 15],
+    nothing: [usize; 3],
+    revisits: usize,
+    fortunes: [usize; 4],
+    weekdays: [usize; 3],
+    sirens: [usize; 2],
+    upgraded: usize,
+    cleared: usize,
+    sirens_after_battle: [usize; 2],
+    dropped: [usize; 2],
+    learnt: usize,
+}
+
+impl Bonused {
+    /// Counts what `command` did on its way from `before` to `after` (`events` its events, an
+    /// accepted command's).
+    fn count(
+        &mut self,
+        rules: &GameRuleset,
+        (before, after): (&GameState, &GameState),
+        command: &GameCommand,
+        events: &[GameEvent],
+    ) {
+        let (b, a, part) = (before.adventure(), after.adventure(), rules.adventure());
+        for e in events {
+            let GameEvent::Adventure(AdventureEvent { kind, .. }) = e else {
+                continue;
+            };
+            match *kind {
+                AdventureEventKind::NothingGained { why, .. } => {
+                    self.nothing[match why {
+                        NothingWhy::Visited => 0,
+                        NothingWhy::Full => 1,
+                        NothingWhy::Emptied => 2,
+                    }] += 1;
+                }
+                AdventureEventKind::SirensLoss { .. } => self.sirens[0] += 1,
+                AdventureEventKind::CreaturesUpgraded { .. } => self.upgraded += 1,
+                AdventureEventKind::KindKnown { .. } => self.learnt += 1,
+                _ => {}
+            }
+        }
+        let visit = bonus_visited(rules, before, command, events);
+        if let Some((hero, named, _)) = visit {
+            let kind = bonus_kind(rules, Some(named.0)).unwrap();
+            let nothing = events.iter().any(|e| {
+                matches!(
+                    *e,
+                    GameEvent::Adventure(AdventureEvent {
+                        kind: AdventureEventKind::NothingGained { hero: h, object_type, anchor, .. },
+                        ..
+                    }) if (h, object_type, anchor) == (hero, named.0, named.1)
+                )
+            });
+            self.visits[kind][usize::from(nothing)] += 1;
+            if matches!(command, GameCommand::Adventure(AdventureCommand::Revisit { .. })) {
+                self.revisits += 1;
+            }
+            if let (Some(then), Some(now)) = (b.hero(hero), a.hero(hero)) {
+                let ty = part.object_type(named.0).map(|t| &t.kind);
+                let joined = (a.visit_marks(hero).bonuses().once.iter())
+                    .find(|bonus| !b.visit_marks(hero).bonuses().once.contains(bonus))
+                    .copied();
+                match (ty, joined) {
+                    (Some(ObjectKind::FountainOfFortune { .. }), Some(bonus)) => {
+                        if let Some(at) = [-1, 1, 2, 3].iter().position(|&v| v == bonus.luck) {
+                            self.fortunes[at] += 1;
+                        }
+                    }
+                    (Some(ObjectKind::Bonus { .. }), Some(_)) => {
+                        let day = before.weekday(rules).get();
+                        self.weekdays[if day == 7 { 2 } else { usize::from(day % 2 == 0) }] += 1;
+                    }
+                    (Some(ObjectKind::Sirens { .. }), Some(_)) => {
+                        let lone = then.army.iter().filter(|s| s.count == 1);
+                        self.sirens[1] += lone.filter(|s| now.army.contains(s)).count();
+                    }
+                    _ => {}
+                }
+            }
+        }
+        // The battles' ends and the steps' drops.
+        let fought: Vec<HeroId> = ended(events)
+            .iter()
+            .flat_map(|(heroes, _)| heroes.iter().flatten().copied())
+            .collect();
+        let new_day = after.day() > before.day();
+        let new_week = new_day && after.weekday(rules).get() == 1;
+        let sirens: Vec<u8> = (part.object_types().iter())
+            .filter_map(|ty| match ty.kind {
+                ObjectKind::Sirens { mark, .. } => Some(mark),
+                _ => None,
+            })
+            .collect();
+        let quirk = rules.core().quirks().is_enabled(SIRENS_AGAIN_AFTER_BATTLE);
+        for hero in b.heroes() {
+            let (was, is) = (b.visit_marks(hero.id), a.visit_marks(hero.id));
+            if a.hero(hero.id).is_none() {
+                continue;
+            }
+            if fought.contains(&hero.id) && !was.bonuses().is_empty() {
+                self.cleared += 1;
+                let held = |marks: &h3_adventure::VisitMarks| {
+                    sirens.iter().any(|&m| marks.bonuses().has_mark(m))
+                };
+                if held(was) {
+                    self.sirens_after_battle[usize::from(quirk)] += usize::from(held(is) != quirk);
+                }
+            }
+            let lifetime = |ty: &ObjectTypeId| part.object_type(*ty).and_then(|t| t.kind.timed_mark());
+            for ty in was.timed().iter().filter(|ty| !is.timed().contains(ty)) {
+                match lifetime(ty) {
+                    Some(MarkLifetime::Day) if new_day => self.dropped[0] += 1,
+                    Some(MarkLifetime::Week) if new_week => self.dropped[1] += 1,
+                    _ => {}
+                }
+            }
+        }
+    }
+}
+
+/// Plans with bonus visitables (E08 T116b2), each with three or more, one of the sea's among them
+/// at least (on its strait), with the profile (strict or not), the seed and up to 199 steps,
+/// mostly [`Step::Bonus`]es with ends of turn and [`Step::Legal`]s among them (so that days and a
+/// week pass and other heroes come by); what [`the_plans_visit_the_bonus_visitables`] counts, over
+/// proptest's deterministic runner.
+fn bonus_plans() -> impl Strategy<Value = (Plan, bool, u64, Vec<Step>)> {
+    let steps = vec(
+        prop_oneof![
+            8 => any::<u16>().prop_map(Step::Bonus),
+            1 => any::<u16>().prop_map(Step::Legal),
+            2 => Just(Step::EndTurn),
+        ],
+        0..200,
+    );
+    let sea = |&(_, o): &(Spot, usize)| BONUS_OBJECTS[BONUSES_ON_LAND..].contains(&o);
+    let plan = plan().prop_filter("bonus visitables", move |p| {
+        p.bonuses.len() > 2 && p.bonuses.iter().any(sea)
+    });
+    (plan, any::<bool>(), any::<u64>(), steps)
+}
+
+/// The plans visit the bonus visitables (E08 T116b2; increment 12's design note §16, exit
+/// criteria 6 to 8): over a fixed set of cases (proptest's deterministic runner), with the
+/// oracles the bonus visitables meet after every command (below), random play with the bonus
+/// steps ([`bonus_plans`], [`Step::Bonus`]) lays out and visits each of the fifteen, entered and
+/// from a boat, and meets each outcome: a mark and its gain, nothing for a held mark, a full hero
+/// or an emptied Spring; revisits; each Fountain of Fortune's value; the Idol's and the Temple's
+/// days; the Sirens' losses and a lone creature kept; the Stables' upgrades; the battles' ends
+/// clearing the once-marks, the Sirens' kept under `strict-fixed` and cleared under `faithful`;
+/// the day's and the week's drops; the kind marks, so that the properties' checks
+/// ([`check_bonuses`], the visits in [`landing`], [`check_conservation`], [`check_revisits`] and
+/// [`check_legal`]) see each.
+// covers: ADV-BON-002, ADV-BON-003, ADV-BON-004, ADV-BON-005, ADV-BON-006, ADV-BON-007
+// covers: ADV-BON-008, ADV-BON-009
+#[test]
+fn the_plans_visit_the_bonus_visitables() {
+    use proptest::strategy::ValueTree;
+    let mut runner = proptest::test_runner::TestRunner::deterministic();
+    let strategy = bonus_plans();
+    let mut bonused = Bonused::default();
+    for _ in 0..512 {
+        let (plan, strict, seed, steps) = strategy.new_tree(&mut runner).unwrap().current();
+        let rules = if strict { &*STRICT } else { &*FAITHFUL };
+        let mut state = start(&plan, rules, seed);
+        for index in bonuses_of(&state, rules) {
+            let ty = state.adventure().object(index).and_then(|o| o.object_type);
+            bonused.laid[bonus_kind(rules, ty).unwrap()] += 1;
+        }
+        for (i, step) in steps.iter().enumerate() {
+            check_invariants(rules, &state).unwrap();
+            let legal = options(&state, rules);
+            // The listing's oracle probes every listed command: on every fourth step.
+            if i % 4 == 0 {
+                let reaches = reaches(&state, rules);
+                check_legal(&state, rules, &legal, &reaches).unwrap();
+            }
+            let (actor, command) = resolve(&state, rules, &legal, step);
+            let before = state.clone();
+            let mut events = Vec::new();
+            let result = apply(&mut state, rules, actor, command.clone(), &mut events);
+            let player = player_of(&before, actor);
+            // The oracles the bonus visitables meet, after every accepted command.
+            if result.is_ok() {
+                let after = (&before, &state);
+                if let Some((hero, path)) = as_move(&command) {
+                    let start = before.adventure().hero(hero).unwrap().pos;
+                    landing(&before, start, path, &events).unwrap();
+                }
+                check_bonuses(rules, after, &command, &events).unwrap();
+                check_decisions(rules, after, player, &events).unwrap();
+                check_isolation(&before, &state, player, &events).unwrap();
+                check_conservation(rules, after, &command, &events).unwrap();
+                bonused.count(rules, after, &command, &events);
+            } else {
+                assert_eq!(state, before);
+            }
+        }
+    }
+    let b = &bonused;
+    eprintln!("{b:?}");
+    assert!(b.laid.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.visits.iter().all(|kind| kind[0] > 0), "{b:?}");
+    assert!(b.nothing.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.revisits > 0 && b.upgraded > 0 && b.learnt > 0, "{b:?}");
+    assert!(b.fortunes.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.weekdays.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.sirens.iter().all(|&n| n > 0), "{b:?}");
+    assert!(b.cleared > 0 && b.dropped.iter().all(|&n| n > 0), "{b:?}");
 }
