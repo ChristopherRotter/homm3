@@ -96,6 +96,8 @@ struct Largest {
     reveals: usize,
     moves: usize,
     queries: usize,
+    /// The most map commands a player spent in a turn, and commands in a battle (E16 M5 T18).
+    spent: (u32, u32),
 }
 
 /// Checks the frames a call sent: a reveal against the snapshot its viewer's view now is, the
@@ -174,6 +176,8 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
         checkpoint_every: 0,
         record_bytes: RECORD,
         clock: crate::session::game::Clock::UNLIMITED,
+        // The server's bounds (E16 M5 T18): the random play never meets them.
+        commands: crate::session::game::CommandBounds::DEFAULT,
     };
     let mut l = Largest::default();
     for (name, map, seed) in MAPS {
@@ -211,6 +215,8 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
             .unwrap();
             let at = format!("{name} command {seq}");
             check(&session, &out, &at, &mut l);
+            let (turn, battle) = session.spent();
+            l.spent = (l.spent.0.max(turn), l.spent.1.max(battle));
             if seq % 100 == 0 {
                 records(&session, &at, &mut l);
             }
@@ -225,4 +231,6 @@ fn the_games_frames_and_records_keep_their_bounds_on_the_xl_fixtures() {
     assert!(l.reveals > 500, "{l:?}");
     assert!(l.record > RECORD / 2, "{l:?}");
     assert!(l.queries > 1_000, "{l:?}");
+    // The server's bounds counted, never met (E16 M5 T18: 16 and 361 when measured).
+    assert!(l.spent.0 > 10 && l.spent.1 > 100, "{l:?}");
 }

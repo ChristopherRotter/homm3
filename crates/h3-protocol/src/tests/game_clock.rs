@@ -46,6 +46,7 @@ const fn options(clock: Clock) -> GameOptions {
         checkpoint_every: 0,
         record_bytes: usize::MAX,
         clock,
+        commands: crate::session::game::CommandBounds::NONE,
     }
 }
 
@@ -91,7 +92,7 @@ fn last(frames: &[GameOutbound], player: PlayerId) -> Option<GameClock> {
 /// A computer that strikes when it can, else takes a legal command that stays in the battle, by
 /// a fixed stream (so that battles end).
 #[derive(Debug)]
-struct Striker(u64);
+pub(super) struct Striker(pub(super) u64);
 
 impl Bot for Striker {
     fn command(
@@ -106,7 +107,7 @@ impl Bot for Striker {
 }
 
 /// A strike if `legal` has one, else a command that stays in the battle, drawn from `stream`.
-fn pick(stream: &mut u64, legal: impl Iterator<Item = Command> + Clone) -> Command {
+pub(super) fn pick(stream: &mut u64, legal: impl Iterator<Item = Command> + Clone) -> Command {
     let strikes: Vec<Command> = (legal.clone())
         .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
         .collect();

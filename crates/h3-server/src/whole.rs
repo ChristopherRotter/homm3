@@ -253,6 +253,7 @@ impl Prepared {
             checkpoint_every: server.checkpoint_every,
             record_bytes: limits.record_bytes,
             clock: offer.clock,
+            commands: limits.commands(),
         };
         Ok(Self {
             difficulty: offer.setup.difficulty,
@@ -307,6 +308,8 @@ impl Prepared {
             record_bytes: limits.record_bytes,
             // Its own clock, whatever the offer's is now (E16 M5 T17).
             clock: read.start.clock.into(),
+            // The hosting's bounds, whatever they were (E16 M5 T18).
+            commands: limits.commands(),
         };
         let computer_seed = os_u64().map_err(|e| e.0)?;
         #[cfg(test)]
