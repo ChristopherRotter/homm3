@@ -1353,6 +1353,12 @@ fn check_told(
                     event
                 );
                 let seen = seen.unwrap();
+                // E09 T28b2: the told garrison by slot (its upper bar, a garrison hero's army with
+                // one) replaces what the slots told before said; the stacks that follow fill it.
+                garrisons.retain(|(t, _)| *t != town);
+                if slots {
+                    garrisons.push((town, Vec::new()));
+                }
                 views.retain(|t| t.town != town);
                 views.push(TownView {
                     town,
@@ -1391,11 +1397,15 @@ fn check_told(
                 if let (Some(army), Some(slot), Some(count)) =
                     (&mut garrison.army, slot, stack.count)
                 {
-                    army.push(ArmyStack {
+                    let stack = ArmyStack {
                         slot,
                         creature: stack.creature,
                         count,
-                    });
+                    };
+                    army.push(stack);
+                    if let Some((_, army)) = garrisons.iter_mut().find(|(t, _)| *t == town) {
+                        army.push(stack);
+                    }
                 }
             }
             GameEvent::GarrisonChanged {

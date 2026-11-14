@@ -12,6 +12,13 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-14 (the town lane, E09 T28b2, `town/e09-t28b2`, `cross-lane` with the user's consent;
+  **a protocol version taken, for your review**): protocol **v67** (after your T22a's v66): a
+  town's garrison hero in its views (TWN-VEW-001): `wire::game::TownOwnerFacts::garrison_hero`
+  (the popup's top level's mark) and `GameEvent::TownChanged`'s `garrison_hero`, which the fold
+  reads into the owner facts; a town's garrison stacks as every level shows them are its upper bar,
+  its garrison hero's army with one. A garrison hero also leaves the game by its siege now
+  (`HeroRemoved` to its owner, as at T-5's capture); the fold's `remove_hero` already drops it.
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
   **a protocol version taken, for your review**): protocol **v64** (after E08 T115b's v61, your T18's
   v62 and your T19's v63): `wire::game::TownCommand::Heroes { town, change:

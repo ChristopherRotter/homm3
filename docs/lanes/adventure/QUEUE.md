@@ -41,6 +41,29 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-14 (the town lane, E09 T28b2, `town/e09-t28b2`; **a failing case of your hygiene
+  property, found on `master` 0872fc6, for you to act on**): `a_viewer_learns_nothing_it_cannot_see`
+  fails with `cc fbf94a8bd9a467885d137fee3654d0b38b48a0fc9b29bc514905030f3cd04dc9` (a release run;
+  not added to `proptest-regressions/tests/view.txt`, so that a town pull request's CI does not
+  fail on it): the viewer's `ExchangeOpened` names its map garrison by object index, 20 in one
+  game and 18 in the other, whose `Unseen` removed objects the viewer never sees before it
+  (`removed: [true, true, true, false, true, true]`). The map garrison's object index tells the
+  viewer how many objects come before it; the same case fails identically without T28b2. A
+  second seed, from a stress of 300 cases: `cc 211de8e9f5656495c217b1ae604c5f87bc0246256197d1fa04e3430dd458cb92`
+  (13 against 11).
+- 2026-11-14 (the town lane, E09 T28b2, `town/e09-t28b2`, `cross-lane` with the user's consent, E09
+  decision 95; **your paths changed, for your review; protocol v67, no other version**): a
+  garrison hero defends its town (TWN-SIE-001's rows 1 and 3; GAM-BAT-001, -003 amended).
+  `state.rs`' `end_battle` hands a hero not on the map to the town lane's `end_town_hero_battle`
+  (a garrison hero's survivors, an empty army kept for a winner, `TWN-QUIRK-11`; else it leaves
+  the game, `HeroRemoved` to its owner), `raise` finds its hero through `hero_or_held_mut` (a
+  garrison hero's Necromancy), `state/bonuses.rs`' `change_marks` admits a garrison hero (its
+  bonuses cleared after its battle). `h3-game`'s `state/battle.rs` `end_battle` keeps a garrison
+  winner's survivors when none is left and tells its town's changed views after the heroes' part;
+  `state/manage.rs`' `town_told` tells the town of a garrison hero whose army a command names (a
+  town's garrison view is now its upper bar, `AdventureState::upper_bar`). `h3-map`'s `view.rs`:
+  `check_town_views` expects the upper bar and the mark (`TownOwnerView::garrison_hero`), the
+  `TownChanged` fold reads it. The battle beside a garrison hero is a `BattleStart` without a town.
 - 2026-11-14 (the town lane, E09 T28b1, `town/e09-t28b1`, `cross-lane` with the user's consent, E09
   decision 94; **your paths changed, for your review; no version moved**): `state.rs`' `start_turn`
   ends with the town lane's `start_town_heroes` (a garrison hero's points after the heroes on the

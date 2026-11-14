@@ -35,3 +35,4 @@ cc 12aa468f1314818d4cfe96376cb9357e6e6a44332a85f959742ed1438f262989 # shrinks to
 cc b9900443ad98acb94e02343d7679acd5f4888dc38169e4f8ff92d9563d82c007
 cc f1ef9d365138e68fe1e92148a08536e583481e4b06db263fa364dc7e91824600
 cc 2c6c6565c355d672f57158cb427c44c991bf8e706cce191fb97c7d3230453c4c # E09 T28b1: a garrison hero's points refilled at its owner's turn start (CI on #924)
+cc 38e882916975aad3e93b2e5767554135f00c56b12d1c5397dc8163f5243eebb0 # E09 T28b2: a garrison hero's army is its town's garrison by slot, told whole by TownChanged (a stress of 300 cases)
