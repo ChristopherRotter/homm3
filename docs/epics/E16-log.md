@@ -3435,3 +3435,21 @@ ended and `drive` never returned. Same session and branch as the refinement. Kep
 - **Docs:** the client lanes' inboxes told (v65). `docs/06-security.md` (a shared path) is T24's,
   as T19 was 2b's: its "Not covered yet" sentence on a battle both of whose sides the system plays
   becomes the bound and the void (and `drive`'s chunks).
+
+### M5 T21a — the all-seeing spectator's design (2026-11-14, SRV-Q36)
+
+Baseline: `master` 4dfc666 (#922, T20; CI green on it). No original data. Branch
+`claude/festive-albattani-mdvj1a`. Before asking, the agent read what a merged full view would
+cost: the engine's events are shaped as players see them (`HeroStepped`'s ends filtered by
+viewer, `MonsterChanged` a count's word told only when the word changes, a town's and a map
+garrison's view told to each of its viewers at that viewer's level, a team's marks emitted only
+when a team gains one), so a full view's fold would need a full projection in every context and
+the engine's told copies at the full level, the fold gate's kind of work in three lanes' crates.
+**The user (SRV-Q36):** each player's view (not the merged full view the agent recommended, nor
+the whole state); the creator's flag before the start, closed by default, the lobby showing it;
+a ranked game never; live, no delay. T21b dropped; T22 cut into T22a (`h3-protocol`) and T22b
+(`h3-server`); T21a's amendments and T22a in one pull request labelled `cross-lane` (the user:
+one branch). Amended: ADR-0017 point 2 (no spectator viewer; the host shows every player's
+view), ADR-0018 point 7 (the spectator's messages; replaces "a spectator once
+`h3_game::Viewer` has one"), `docs/06-security.md` "Hosted games" (the whole game's spectator,
+and T20's bound and void in "Not covered yet", which T20 had left to T24).

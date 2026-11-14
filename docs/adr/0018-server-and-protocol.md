@@ -57,6 +57,14 @@ from inputs to outputs, with sockets, clock and files outside.
    lane's); whether a player's view stays current by a diff of its observation or by events only
    is M5 T1's measurement (SRV-Q25: the diff only if really cheap). A command is acknowledged by the client's own sequence number: `Accepted` or
    `Rejected { code }` (the engine's error variants; text is the client's).
+   *Amended 2026-11-14 (E16 M5 T21a, SRV-Q35, SRV-Q36; replaces "a spectator once
+   `h3_game::Viewer` has one"):* a whole game's spectator sees every player's view: each player's
+   messages as its seat is sent them (never a token), each named by its player and numbered in
+   the spectator's own sequence; what a player is sent does not depend on whether anyone watches.
+   The game's creator opens it to spectators before the start (closed by default; the lobby shows
+   it, so taking a seat agrees to it), within the server's limit per game; a ranked game never;
+   live, no delay; nothing of a spectator is journaled. A hosted battle's spectator keeps the
+   battle's spectator viewer (SRV-Q4).
 8. **Hidden information** (into `docs/06-security.md` in M1): the game seed is 64 bits of OS
    randomness, never derived from or revealed by anything a client sees; random obstacles come
    from a separate throwaway seed and enter the setup as pieces; seeds, RNG state, state hashes and

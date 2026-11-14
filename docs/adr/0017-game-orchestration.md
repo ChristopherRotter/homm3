@@ -180,7 +180,11 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    issues them by its clock, which stays outside the state, as its battle policy does; every
    step is a journaled command. Removing a player comes with E10. `Viewer::Player(PlayerId)` and `Viewer::Spectator`, which sees
    public facts only. Increment 1 builds the player variants; the system actor and the spectator
-   come with the server's M5 as additive variants. Contexts never see these types: a context's
+   come with the server's M5 as additive variants. *Amended 2026-11-14 (E16 M5 T21a, SRV-Q35,
+   SRV-Q36):* no spectator viewer is built: a whole game's spectator is the host's, shown every
+   player's own view (each `Viewer::Player`'s observation and projected events, as its seat gets
+   them; ADR-0018 point 7), so the engine projects for players only; a viewer that is no player
+   of the game sees the public facts and no tile. Contexts never see these types: a context's
    `apply` takes the `PlayerId`, its `observe` and `project` a viewer of its own (a player, or
    public facts only), and `h3-game` maps onto them. From E09 the observation adds to each town
    a viewer sees the public facts and the garrison by the viewer's level (ADR-0016 point 6),
