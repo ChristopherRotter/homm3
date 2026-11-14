@@ -392,3 +392,36 @@ whole with the user** (decision 25).
   most 3 levels at the first differences; design §8.4): queued as T2b, before T5. The game cuts a
   Smacker clip's queued sound at its last frame (T5).
 - **The agent's calls** (*provisional*, M2's review list): items 5 to 9.
+
+## M2 T2b — the shell's Bink clips' video as the DLL's (2026-11-14)
+
+On `client/e27-m2-t2b`, the user present; `master` at `7573cd8` (#915 merged). One task, no cut.
+The original data staged at once (64 files, checked by SHA-256 against the user's computer); the
+setup's baseline (`clients/scripts/check.sh`) passed before any change.
+
+- **Found** (design §9): the decoding was right. A scratch copy of `h3-bink` traced each block
+  against the DLL's planes: the differing pixels were the decoded frame's one frame earlier, a
+  whole block at a time. The game copies each frame by `BinkCopyToBuffer` without `BINKCOPYALL`,
+  which copies only the 16 × 16 cells `ExpandPlane` marked changed (and the strips past the whole
+  cells), and `ExpandPlane` files the chroma's marks under other cells (half a row of cells per two
+  chroma block rows). A model of the copy made all fourteen game clips exact at once; the battle's
+  clips are exact with it and without (no capture changes).
+- **Built:** `Decoder`'s change mask (`changed`, `mark`: the DLL's indexing; `block_at` returns
+  whether a block was of a type but 0), `h3_bink::Target` (`new`, `copy`, `frame`; its module doc
+  the reading), `Plane::pixels_mut` and `Frame::planes_mut` (crate-internal), `check::frames_read`
+  copying under `Reading::Original`, `h3-view video --original` writing the copied frames,
+  `h3_view::clip::Video::decode` copying under `Bugs::Original`; `build::still_cells` (a quarter of
+  the cells' luma skipped after the first frame, drawn first so the other blocks stay as they
+  were) so that every sample checks the marks. `bink-check.sh` counts the shell's four clips' video
+  now; the capture README's `frames` notes the copy.
+- **Checked** (`bink-check.sh`, the VM restarted during its run, the rest run by hand on its
+  outputs): the shell's four Bink clips (195, 2 426, 126 and 1 545 frames), the battle's ten and
+  samples 1 to 8, every frame and track the DLL's; samples 1 to 3 at 256 × 120 through
+  `bink-dll.py` by hand. The samples' hashes changed (the DLL's now); each sample's copied frames
+  differ from its decoded ones.
+- **Asked and answered:** CLT-Q122 (fix: every Bink frame shown whole, decision 28).
+- **The agent's calls** (*provisional*, change freely): the names `Target`, `changed`,
+  `still_cells`; a target starts at zeros as the probe's buffer; `Reading::Original` covers the
+  copy as well as the residues (one switch for the comparisons); the samples' still cells one in
+  four, from a source of their own.
+

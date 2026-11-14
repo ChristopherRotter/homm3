@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use crate::audio::Audio;
 use crate::fft::Fft;
 use crate::x87::X;
-use crate::{Clip, Decoder, Error, Frame, Reading};
+use crate::{Clip, Decoder, Error, Frame, Reading, Target};
 
 /// Every frame of the Bink file `bytes` decoded in order ([`Reading::Fixed`]), those that fail
 /// left out (FFmpeg outputs none for them; the next decodes over what they left).
@@ -15,14 +15,19 @@ pub fn frames(bytes: &[u8]) -> Result<Vec<Frame>, Error> {
     frames_read(bytes, Reading::Fixed)
 }
 
-/// [`frames`], read as `reading` says.
+/// [`frames`], read as `reading` says: with [`Reading::Original`] each frame as the game gets it,
+/// copied into a [`Target`] (E27 M2 T2b, CLT-Q122).
 pub fn frames_read(bytes: &[u8], reading: Reading) -> Result<Vec<Frame>, Error> {
     let clip = Clip::parse(bytes)?;
     let mut decoder = Decoder::new(&clip)?.reading(reading);
+    let mut target = Target::new(&decoder);
     let mut frames = Vec::new();
     for n in 0..clip.frames().len() {
-        if let Ok(frame) = decoder.decode(clip.video(n)?) {
-            frames.push(frame.clone());
+        if decoder.decode(clip.video(n)?).is_ok() {
+            frames.push(match reading {
+                Reading::Fixed => decoder.frame().clone(),
+                Reading::Original => target.copy(&decoder).clone(),
+            });
         }
     }
     Ok(frames)

@@ -13,18 +13,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T2b — The shell's Bink clips' video as the DLL's
-
-- **Scope:** the epic's M2 table, T2b (found at T2, design §8.4): `h3-bink`'s frames of
-  `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from `BINKW32.DLL`'s in the chroma (at
-  most 3 levels at the first differences: `NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6), the
-  battle's clips and the samples exact. Find what these clips use that the others do not (a
-  block type, a coding path, the DCT's or the dequantizers' rounding on their values), fix it in
-  `h3-bink` (a sample that shows it), and make `bink-check.sh` with no arguments exact on the
-  video too (it reports only the sound now). Needs the original data staged and the harness's
-  setup (`shell-videos.vid`).
-- **Status:** ready (T2 done 2026-11-14).
-
 #### E27 M2 T3 — The shell's frame
 
 - **Scope:** the epic's M2 table, T3 (CLT-Q103, decision 20, CLT-Q2): the state machine and the
@@ -37,7 +25,8 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 #### E27 M2 T4 to T8
 
 T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3); T5 the
-start (after T2b and T4; every pixel of a Smacker clip through its palette, decision 24; the clips'
+start (after T4; every pixel of a Smacker clip through its palette, decision 24, every Bink frame
+whole, decision 28, the comparisons through `h3_bink::Target`; the clips'
 sound at the effects setting, decision 27, through `HostSound::play_clip`; how much of a Smacker
 clip's queued sound plays at its end, design §8.4); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
 Multiplayer and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7).
