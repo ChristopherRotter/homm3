@@ -14,9 +14,7 @@ use h3_kernel::hash::hash_of;
 
 use super::{TownHeroError, TownHeroMove, absorb};
 use crate::army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
-use crate::command::{
-    AdventureEvent, AdventureEventKind, HireTarget, OwnHeroes, Viewers,
-};
+use crate::command::{AdventureEvent, AdventureEventKind, HireTarget, OwnHeroes, Viewers};
 use crate::ruleset::{AdventurePack, AdventureRuleset, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::setup::{AdventureSetup, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use crate::state::AdventureState;
@@ -137,7 +135,13 @@ fn row(
         assert_eq!(legal, check.is_ok(), "{m:?}: {check:?}");
     }
     let made = state
-        .move_town_hero((&rules.0, &rules.1), player, (town, MOST), change, &mut events)
+        .move_town_hero(
+            (&rules.0, &rules.1),
+            player,
+            (town, MOST),
+            change,
+            &mut events,
+        )
         .map(|slots| (slots, events));
     // The legal query answers as the move does.
     assert_eq!(checked, made.as_ref().map(|_| ()).map_err(|&e| e));
@@ -173,7 +177,11 @@ fn the_visitor_enters_the_garrison_with_its_whole_record_and_the_garrison_s_crea
     let (slots, events) = row(&rules, &mut state, RED, (TOWN, TownHeroMove::Enter)).unwrap();
     // The garrison in slot order: the pikemen into the first free slot, the peasants onto the
     // hero's peasants.
-    let army = vec![stack(0, PEASANT, 7), stack(1, PIKEMAN, 3), stack(2, GNOLL, 1)];
+    let army = vec![
+        stack(0, PEASANT, 7),
+        stack(1, PIKEMAN, 3),
+        stack(2, GNOLL, 1),
+    ];
     let held = state.town_hero(TOWN).unwrap();
     assert_eq!(held.army, army);
     assert_eq!((held.movement, held.formation), (77, Formation::Tight));
@@ -296,7 +304,12 @@ fn the_absorb_joins_fills_merges_and_refuses_all_or_nothing() {
     let rules = (7, MAX_STACK);
     // A stack of the creature takes the garrison's; a free slot the next.
     let mut army = vec![stack(3, PEASANT, 1)];
-    absorb(rules, &mut army, &[stack(5, GNOLL, 2), stack(1, PEASANT, 4)]).unwrap();
+    absorb(
+        rules,
+        &mut army,
+        &[stack(5, GNOLL, 2), stack(1, PEASANT, 4)],
+    )
+    .unwrap();
     assert_eq!(army, [stack(0, GNOLL, 2), stack(3, PEASANT, 5)]);
     // A full army merges its own first two stacks of one creature, the later into the earlier,
     // and the slot is tried again.
@@ -395,7 +408,13 @@ fn leaving_is_refused_without_a_garrison_hero_a_free_entrance_room_or_an_army() 
         Err(TownHeroError::TooManyHeroes)
     );
     assert_eq!(
-        copy.move_town_hero((&rules.0, &rules.1), RED, (TOWN, 1), TownHeroMove::Leave, &mut Vec::new()),
+        copy.move_town_hero(
+            (&rules.0, &rules.1),
+            RED,
+            (TOWN, 1),
+            TownHeroMove::Leave,
+            &mut Vec::new()
+        ),
         Err(TownHeroError::TooManyHeroes)
     );
     assert_eq!(copy, state);
@@ -437,7 +456,10 @@ fn the_visitor_and_the_garrison_hero_swap_with_their_armies() {
     assert_eq!(state.town_hero(TOWN).unwrap().id, OTHER);
     assert_eq!(state.town_hero(TOWN).unwrap().army, [stack(3, GNOLL, 2)]);
     let hero = state.hero(VISITOR).unwrap();
-    assert_eq!((hero.pos, &hero.army[..]), (ENTRANCE, &[stack(0, PEASANT, 4)][..]));
+    assert_eq!(
+        (hero.pos, &hero.army[..]),
+        (ENTRANCE, &[stack(0, PEASANT, 4)][..])
+    );
     let seen_by = Viewers::NONE.with(RED).with(BLUE);
     assert_eq!(
         events,
@@ -467,7 +489,11 @@ fn the_visitor_and_the_garrison_hero_swap_with_their_armies() {
 fn the_town_s_bars_follow_the_one_owner_rule() {
     let rules = rules();
     let part = &rules.1;
-    let mut state = at_town(&rules, vec![stack(0, PIKEMAN, 6)], vec![stack(0, PEASANT, 1)]);
+    let mut state = at_town(
+        &rules,
+        vec![stack(0, PIKEMAN, 6)],
+        vec![stack(0, PEASANT, 1)],
+    );
     let garrison = |slot| ArmySlot {
         army: ArmyRef::Garrison(TOWN),
         slot,
@@ -508,16 +534,14 @@ fn the_town_s_bars_follow_the_one_owner_rule() {
     );
     assert_eq!(
         state.army_commands(part, RED, (ArmyRef::Garrison(TOWN), None), None),
-        [
-            1, 2, 3, 4, 5, 6
-        ]
-        .map(|slot| ArmyCommand::Move {
-            from: garrison(0),
-            to: garrison(slot),
-        })
-        .into_iter()
-        .chain([dismiss])
-        .collect::<Vec<_>>()
+        [1, 2, 3, 4, 5, 6]
+            .map(|slot| ArmyCommand::Move {
+                from: garrison(0),
+                to: garrison(slot),
+            })
+            .into_iter()
+            .chain([dismiss])
+            .collect::<Vec<_>>()
     );
     // With a garrison hero, the upper bar is its army: the town's garrison is not named, the
     // hero keeps its last stack, its formation and flag are its own.
@@ -592,7 +616,12 @@ fn a_town_s_purchase_joins_its_garrison_hero_s_army() {
 #[test]
 fn the_garrison_heroes_keep_town_order_and_their_owner_s_snapshot() {
     let rules = rules();
-    let mut setup = setup(&rules, Some(0), vec![], (ENTRANCE, vec![stack(0, PEASANT, 1)]));
+    let mut setup = setup(
+        &rules,
+        Some(0),
+        vec![],
+        (ENTRANCE, vec![stack(0, PEASANT, 1)]),
+    );
     // A second town of red's, its entrance on (12, 6), with red's hero 2 visiting.
     let mut second = setup.map.objects[0].clone();
     second.anchor = Pos::new(12, 6, 0);
@@ -604,7 +633,11 @@ fn the_garrison_heroes_keep_town_order_and_their_owner_s_snapshot() {
     let second = TownId::new(1);
     row(&rules, &mut state, RED, (second, TownHeroMove::Enter)).unwrap();
     row(&rules, &mut state, RED, (TOWN, TownHeroMove::Enter)).unwrap();
-    let order: Vec<(TownId, HeroId)> = state.town_heroes().iter().map(|(t, h)| (*t, h.id)).collect();
+    let order: Vec<(TownId, HeroId)> = state
+        .town_heroes()
+        .iter()
+        .map(|(t, h)| (*t, h.id))
+        .collect();
     assert_eq!(order, [(TOWN, VISITOR), (second, OTHER)]);
     // The snapshot holds both, by id; a garrison hero's points told as a hero's.
     let own = state.own_heroes();

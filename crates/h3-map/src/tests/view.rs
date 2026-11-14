@@ -1489,7 +1489,11 @@ fn check_told(
                 let at = heroes.iter().position(|&(id, _)| id == hero);
                 // E09 T28a: a garrison hero leaving the game at its town's capture
                 // (`TWN-STUB-14`) was not on the map.
-                let garrisoned = before.adventure.garrison_heroes.iter().any(|g| g.id == hero);
+                let garrisoned = before
+                    .adventure
+                    .garrison_heroes
+                    .iter()
+                    .any(|g| g.id == hero);
                 if !(garrisoned && at.is_none()) {
                     prop_assert_eq!(at.map(|i| heroes[i].1), Some(pos), "{:?}", event);
                     heroes.remove(at.unwrap());

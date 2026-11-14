@@ -274,7 +274,12 @@ impl AdventureState {
         let hero = &self.heroes()[at];
         let (id, owner, pos) = (hero.id, hero.owner, hero.pos);
         changed(&mut slots, ArmyRef::Hero(id), slots_of, (&hero.army, &army));
-        changed(&mut slots, ArmyRef::Garrison(town), slots_of, (&garrison, &[]));
+        changed(
+            &mut slots,
+            ArmyRef::Garrison(town),
+            slots_of,
+            (&garrison, &[]),
+        );
         let seen_by = self.viewers(core, owner, pos);
         if !garrison.is_empty() {
             self.set_army_left(index, Vec::new());
@@ -295,7 +300,11 @@ impl AdventureState {
     }
 
     /// `Leave`'s checks: the entrance.
-    fn check_leave(&self, player: PlayerId, (town, most): (TownId, u8)) -> Result<Pos, TownHeroError> {
+    fn check_leave(
+        &self,
+        player: PlayerId,
+        (town, most): (TownId, u8),
+    ) -> Result<Pos, TownHeroError> {
         let (_, entrance) = self.town_entrance(town)?;
         let hero = self
             .town_hero(town)

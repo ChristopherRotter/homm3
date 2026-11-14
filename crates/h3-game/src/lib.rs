@@ -108,8 +108,8 @@ pub use h3_towns::{
 /// T26b; `h3_towns`' types): a [`TownBuildingsView`]'s `portal` and `available`.
 pub use h3_towns::{CREATURE_INDEXES, Summoned};
 pub use legal::{
-    default_answer, hire_range, legal_commands, legal_management, legal_moves, legal_town_management,
-    split_range,
+    default_answer, hire_range, legal_commands, legal_management, legal_moves,
+    legal_town_management, split_range,
 };
 pub use manage::{Manage, ManageError};
 pub use observe::{

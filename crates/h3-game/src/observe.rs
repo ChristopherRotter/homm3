@@ -14,8 +14,7 @@ use alloc::vec::Vec;
 
 use h3_adventure::{
     AdventureObservation, AdventureReveal, BitGrid, Choice, GarrisonHeroView, HeroView, HireSource,
-    HireTarget,
-    ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
+    HireTarget, ObjectTypeId, Offer, Pos, UniversityVisit, Viewers,
 };
 use h3_content::{CreatureTypeId, HeroTypeId, ResourceId, SkillId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};

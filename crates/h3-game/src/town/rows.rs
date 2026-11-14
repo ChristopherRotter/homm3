@@ -89,7 +89,10 @@ pub(crate) fn legal_moves(
 /// no town, whose `Leave` is then always [`TownCommandError::TooManyHeroes`] (no garrison hero
 /// stands in such a game).
 fn most_heroes(rules: &GameRuleset) -> u8 {
-    rules.towns().params().map_or(0, |params| params.most_heroes)
+    rules
+        .towns()
+        .params()
+        .map_or(0, |params| params.most_heroes)
 }
 
 /// The adventure's move for the town command's.

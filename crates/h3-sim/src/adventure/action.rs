@@ -519,7 +519,10 @@ pub fn tile_mask(
         }
     } else if let Some(change) = town_hero_move(entry) {
         for command in legal_commands(state, rules, seat.actor()) {
-            if let GameCommand::Town(TownCommand::Heroes { town, change: listed }) = command
+            if let GameCommand::Town(TownCommand::Heroes {
+                town,
+                change: listed,
+            }) = command
                 && listed == change
                 && let Some(index) = town_tile(state, town)
             {

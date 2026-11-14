@@ -37,9 +37,8 @@ use std::sync::{Arc, LazyLock};
 
 use h3_adventure::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, AdventureState,
-    Gift, Holds,
-    ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach, Resolved,
-    RewardRecord, Turn, Viewers, Visit,
+    Gift, Holds, ObjectKind, ObjectTypeId, Offer, OfferKind, Passage, Pos as TilePos, Reach,
+    Resolved, RewardRecord, Turn, Viewers, Visit,
 };
 use h3_battle::{
     CastTargets, Command, Event, EventKind, cast_targets, castable_spells, second_targets,
@@ -51,9 +50,8 @@ use h3_game::{
     BuildingSet, ChestChoice, ChoiceKind, Consent, DecisionView, GameCommand, GameCommandError,
     GameEvent, GameRuleset, GameState, HeroChange, HireAnswer, HireSeen, HireTarget, HireView,
     Manage, NoopSink, OpenBattle, Position, SchoolChoice, Sink, SkillOffer, SlotState, TownCommand,
-    TownHeroChange,
-    UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management, legal_moves,
-    observe, split_range,
+    TownHeroChange, UniversityAnswer, Viewer, apply, hire_range, legal_commands, legal_management,
+    legal_moves, observe, split_range,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -5414,8 +5412,18 @@ fn check_town_heroes(
             let entered = held(now).ok_or_else(|| fail("Enter left no garrison hero".into()))?;
             prop_assert_eq!(entered.id, hero.id);
             prop_assert_eq!(
-                (entered.movement, entered.max_movement, entered.formation, entered.tactics),
-                (hero.movement, hero.max_movement, hero.formation, hero.tactics)
+                (
+                    entered.movement,
+                    entered.max_movement,
+                    entered.formation,
+                    entered.tactics
+                ),
+                (
+                    hero.movement,
+                    hero.max_movement,
+                    hero.formation,
+                    hero.tactics
+                )
             );
             // Every creature of the two armies, by kind, in the garrison hero's.
             let mut creatures: Vec<(CreatureTypeId, u64)> = Vec::new();
@@ -5443,12 +5451,17 @@ fn check_town_heroes(
             prop_assert!(visiting.is_none());
             prop_assert!(held(now).is_none());
             let out = visitor(now).ok_or_else(|| fail("Leave left no visitor".into()))?;
-            prop_assert_eq!((out.id, &out.army, out.movement), (hero.id, &hero.army, hero.movement));
+            prop_assert_eq!(
+                (out.id, &out.army, out.movement),
+                (hero.id, &hero.army, hero.movement)
+            );
         }
         TownHeroChange::Swap => {
             let (hero, other) = visiting.zip(holding).ok_or_else(|| fail("Swap".into()))?;
             prop_assert_eq!(hero.owner, actor);
-            let (entered, out) = held(now).zip(visitor(now)).ok_or_else(|| fail("Swap".into()))?;
+            let (entered, out) = held(now)
+                .zip(visitor(now))
+                .ok_or_else(|| fail("Swap".into()))?;
             prop_assert_eq!((entered.id, &entered.army), (hero.id, &hero.army));
             prop_assert_eq!((out.id, &out.army), (other.id, &other.army));
         }
@@ -7734,8 +7747,17 @@ fn check_managing(state: &GameState, rules: &GameRuleset) -> Result<(), TestCase
 
 /// Every hero's army, by id.
 fn armies(state: &GameState) -> Vec<(HeroId, Vec<h3_contracts::ArmyStack>)> {
-    let heroes = state.adventure().heroes().iter();
-    heroes.map(|h| (h.id, h.army.clone())).collect()
+    // E09 T28a: the towns' garrison heroes' too (TWN-ROW-002 to -004), by id with the others.
+    let held = state.adventure().town_heroes().iter().map(|(_, h)| h);
+    let mut all: Vec<_> = state
+        .adventure()
+        .heroes()
+        .iter()
+        .chain(held)
+        .map(|h| (h.id, h.army.clone()))
+        .collect();
+    all.sort_unstable_by_key(|&(id, _)| id);
+    all
 }
 
 /// Conservation for a command that ended a battle (E08 T19a; GAM-BAT-002, -003, -005): only one

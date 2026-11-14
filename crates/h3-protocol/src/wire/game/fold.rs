@@ -31,9 +31,8 @@ use alloc::vec::Vec;
 use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
     ArtifactPlace, Boat, Decision, GameEvent, GameObservation, GameReveal, Garrison, GarrisonHero,
-    GarrisonStack,
-    Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object, ObjectRef,
-    OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
+    GarrisonStack, Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object,
+    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
     TownOwnerFacts,
 };
 use crate::wire::WireU64;
@@ -354,14 +353,25 @@ impl GameObservation {
             // E09 T28a (v62): the owner moves its own view into its garrison heroes, every other
             // viewer sees the hero leave the map.
             AdventureEvent::GarrisonEntered { hero, town, pos: _ } => {
-                let at = self.adventure.heroes.iter().position(|seen| seen.id == hero);
+                let at = self
+                    .adventure
+                    .heroes
+                    .iter()
+                    .position(|seen| seen.id == hero);
                 let own = at.and_then(|at| self.adventure.heroes[at].own.clone().map(|o| (at, o)));
                 match own {
                     Some((at, own)) => {
                         self.adventure.heroes.remove(at);
                         let held = &mut self.adventure.garrison_heroes;
                         let place = held.partition_point(|g| g.town < town);
-                        held.insert(place, GarrisonHero { town, id: hero, own });
+                        held.insert(
+                            place,
+                            GarrisonHero {
+                                town,
+                                id: hero,
+                                own,
+                            },
+                        );
                     }
                     None => self.remove_hero(hero),
                 }
@@ -643,7 +653,9 @@ impl GameObservation {
     fn remove_hero(&mut self, hero: u16) {
         self.adventure.heroes.retain(|seen| seen.id != hero);
         // E09 T28a: a garrison hero leaves the game at its town's capture (`TWN-STUB-14`).
-        self.adventure.garrison_heroes.retain(|held| held.id != hero);
+        self.adventure
+            .garrison_heroes
+            .retain(|held| held.id != hero);
         self.heroes.retain(|info| info.id != hero);
     }
 

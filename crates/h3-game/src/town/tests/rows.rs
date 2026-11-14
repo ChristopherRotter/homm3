@@ -86,12 +86,15 @@ fn a_hero_move_is_the_town_s_owner_s_and_tells_what_it_changes() {
     let pike = rules.core().creature_by_key("t:imp").unwrap();
     let mut game = game(&rules, &two_heroes(&rules), vec![stack(0, pike, 3)]);
     let hero = visitor(&game);
-    let refused = |game: &mut GameState, player, command| {
-        run(&rules, game, player, command).unwrap_err()
-    };
+    let refused =
+        |game: &mut GameState, player, command| run(&rules, game, player, command).unwrap_err();
     let town = GameCommandError::Town;
     assert_eq!(
-        refused(&mut game, RED, heroes(TownId::new(9), TownHeroChange::Enter)),
+        refused(
+            &mut game,
+            RED,
+            heroes(TownId::new(9), TownHeroChange::Enter)
+        ),
         town(TownCommandError::UnknownTown)
     );
     assert_eq!(
@@ -143,9 +146,14 @@ fn a_hero_move_is_the_town_s_owner_s_and_tells_what_it_changes() {
     assert!(events.contains(&changed(slot(ArmyRef::Garrison(T0), 0), None)));
     // The owner's view of T0 is told (its garrison emptied).
     assert!(
-        events
-            .iter()
-            .any(|e| matches!(e, GameEvent::TownChanged { player: RED, town: T0, .. })),
+        events.iter().any(|e| matches!(
+            e,
+            GameEvent::TownChanged {
+                player: RED,
+                town: T0,
+                ..
+            }
+        )),
         "{events:?}"
     );
     // Then `Leave` alone (no visitor).
@@ -175,7 +183,10 @@ fn a_hero_move_is_the_town_s_owner_s_and_tells_what_it_changes() {
         refused(&mut game, RED, heroes(T0, TownHeroChange::Leave)),
         GameCommandError::NotYourTurn(RED)
     );
-    assert_eq!(moves(&legal_commands(&game, &rules, Actor::Player(BLUE))), []);
+    assert_eq!(
+        moves(&legal_commands(&game, &rules, Actor::Player(BLUE))),
+        []
+    );
 }
 
 // covers: TWN-ROW-001, GAM-MAN-001, GAM-MAN-002
@@ -202,25 +213,31 @@ fn the_owner_manages_its_town_s_bars_outside_a_decision() {
     };
     // Listed for the visitor (toward the upper bar) and for the town.
     let red = Actor::Player(RED);
-    assert!(legal_management(&game, &rules, red, hero).contains(&Manage::Army(
-        ArmyCommand::Move {
+    assert!(
+        legal_management(&game, &rules, red, hero).contains(&Manage::Army(ArmyCommand::Move {
             from: slot(ArmyRef::Hero(hero), 0),
             to: slot(ArmyRef::Garrison(T0), 1),
-        }
-    )));
+        }))
+    );
     let town = legal_town_management(&game, &rules, red, T0);
     assert!(town.contains(&Manage::Army(out)));
     assert!(town.contains(&Manage::Army(ArmyCommand::Dismiss {
         at: slot(ArmyRef::Garrison(T0), 0)
     })));
     assert_eq!(legal_town_management(&game, &rules, Actor::System, T0), []);
-    assert_eq!(legal_town_management(&game, &rules, Actor::Player(BLUE), T0), []);
+    assert_eq!(
+        legal_town_management(&game, &rules, Actor::Player(BLUE), T0),
+        []
+    );
     assert_eq!(
         split_range(
             &game,
             &rules,
             red,
-            (slot(ArmyRef::Garrison(T0), 0), slot(ArmyRef::Garrison(T0), 1))
+            (
+                slot(ArmyRef::Garrison(T0), 0),
+                slot(ArmyRef::Garrison(T0), 1)
+            )
         ),
         Some(1..=3)
     );
@@ -284,7 +301,9 @@ fn the_owner_manages_its_town_s_bars_outside_a_decision() {
     };
     run(&rules, &mut game, RED, GameCommand::Manage(tight)).unwrap();
     assert_eq!(
-        game.adventure().town_hero(T0).map(|h: &HeroOnMap| h.formation),
+        game.adventure()
+            .town_hero(T0)
+            .map(|h: &HeroOnMap| h.formation),
         Some(Formation::Tight)
     );
     assert!(!listed.iter().any(|m| matches!(
@@ -304,10 +323,14 @@ fn the_owner_manages_its_town_s_bars_outside_a_decision() {
     assert!(with_visitor.contains(&toward));
     run(&rules, &mut game, RED, GameCommand::Manage(toward)).unwrap();
     // The visitor's own listing names the garrison hero as its other army.
-    assert!(legal_management(&game, &rules, red, other).iter().any(|m| matches!(
-        m,
-        Manage::Army(ArmyCommand::Move { to, .. }) if to.army == ArmyRef::Hero(hero)
-    )));
+    assert!(
+        legal_management(&game, &rules, red, other)
+            .iter()
+            .any(|m| matches!(
+                m,
+                Manage::Army(ArmyCommand::Move { to, .. }) if to.army == ArmyRef::Hero(hero)
+            ))
+    );
 }
 
 // covers: TWN-REC-001, TWN-ROW-001
@@ -333,7 +356,10 @@ fn a_town_s_purchase_joins_its_garrison_hero_s_army() {
         at: slot(ArmyRef::Hero(hero), 1),
         stack: Some(stack(1, imp, 11)),
     }));
-    assert_eq!(game.adventure().town_hero(T0).unwrap().army, [stack(1, imp, 11)]);
+    assert_eq!(
+        game.adventure().town_hero(T0).unwrap().army,
+        [stack(1, imp, 11)]
+    );
 }
 
 // covers: TWN-SET-005
@@ -348,7 +374,11 @@ fn a_captured_town_s_garrison_hero_goes_back_to_the_pool() {
     // Its owner sees it, with its details; blue does not.
     let red = observe(&game, &rules, Viewer::Player(RED));
     assert_eq!(red.adventure.garrison_heroes.len(), 1);
-    assert!(red.heroes.iter().any(|h| h.id == hero && h.details.is_some()));
+    assert!(
+        red.heroes
+            .iter()
+            .any(|h| h.id == hero && h.details.is_some())
+    );
     let blue = observe(&game, &rules, Viewer::Player(BLUE));
     assert!(blue.adventure.garrison_heroes.is_empty());
     assert!(!blue.heroes.iter().any(|h| h.id == hero));

@@ -987,7 +987,9 @@ impl AdventureState {
                 .ok()
                 .map(Joining::Hero),
             HireTarget::Garrison(town) => {
-                let held = self.town_heroes().binary_search_by_key(&town, |&(id, _)| id);
+                let held = self
+                    .town_heroes()
+                    .binary_search_by_key(&town, |&(id, _)| id);
                 match held {
                     Ok(at) => Some(Joining::TownHero(at)),
                     Err(_) => self

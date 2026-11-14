@@ -27,8 +27,8 @@ use crate::wire::game::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, Formation,
     GameCommand, GameReject, HireAnswer, HireReject, Manage, ManageReject, MoveReject, Pos,
-    SchoolChoice, SkillOffer, StandReject, SystemCommand, TownCommand, TownHeroChange,
-    TownReject, UniversityAnswer,
+    SchoolChoice, SkillOffer, StandReject, SystemCommand, TownCommand, TownHeroChange, TownReject,
+    UniversityAnswer,
 };
 
 /// An engine command on the wire (a legal list's, the echo of an applied command).

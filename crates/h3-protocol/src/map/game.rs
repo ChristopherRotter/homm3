@@ -37,13 +37,12 @@ use h3_kernel::handle::Handle;
 use crate::wire::WireU64;
 use crate::wire::game::{
     Adventure, AdventureReveal, Amount, ArmyStack, Artifact, Boat, Bonuses, Choice, ChoiceKind,
-    Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack, Guards,
-    HeroDetails,
-    HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known, KnownObject as WireKnownObject,
-    LevelUp, MapGarrison, MapHero, Monster, Month, Object, ObjectRef, Offer, OfferKind,
-    OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel,
-    SlotState, Summoned, Tile, Town, TownBuildings, TownOwnerFacts, UniversityVisit, VisitBonus,
-    Week,
+    Decision, Formation, GameObservation, GameReveal, Garrison, GarrisonHero, GarrisonStack,
+    Guards, HeroDetails, HeroInfo, Hire, HireCreature, HireSeen, HireTarget, Known,
+    KnownObject as WireKnownObject, LevelUp, MapGarrison, MapHero, Monster, Month, Object,
+    ObjectRef, Offer, OfferKind, OfferLevels, OwnMapHero, Player, Pos, PrimarySkill, RevealedArea,
+    RevealedView, SkillLevel, SlotState, Summoned, Tile, Town, TownBuildings, TownOwnerFacts,
+    UniversityVisit, VisitBonus, Week,
 };
 
 mod command;

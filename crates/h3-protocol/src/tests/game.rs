@@ -9,9 +9,8 @@ use std::vec::Vec;
 
 use h3_adventure::{
     AdventureObservation, BoatView, ChoiceKind as EngineChoiceKind, GarrisonHeroView, GuardsView,
-    HeroView,
-    Known as EngineKnown, KnownObject, MonsterView, ObjectView, OfferKind as EngineOfferKind,
-    OwnHeroView, StaticTile, TileMask, TileView,
+    HeroView, Known as EngineKnown, KnownObject, MonsterView, ObjectView,
+    OfferKind as EngineOfferKind, OwnHeroView, StaticTile, TileMask, TileView,
 };
 use h3_battle::BattleSide;
 use h3_content::Formation as EngineFormation;

@@ -106,7 +106,9 @@ impl GameState {
         };
         let visits = |army: ArmyRef, town| {
             let visitor = adventure.town_visitor(town);
-            let own = visitor.and_then(|hero| adventure.hero(hero)).map(|h| h.owner);
+            let own = visitor
+                .and_then(|hero| adventure.hero(hero))
+                .map(|h| h.owner);
             matches!(army, ArmyRef::Hero(hero) if visitor == Some(hero) && own == Some(player))
         };
         match armies {
@@ -375,7 +377,11 @@ impl Together {
 /// before the command (TWN-ROW-001; E09 T28a, design §52: the upper bar's change told to the
 /// town's viewers at their level, [`crate::town::Told::tell`] after it). Nothing for a command
 /// naming none or a sink that keeps nothing.
-fn town_told<S: Sink>(state: &GameState, rules: &GameRuleset, command: &ArmyCommand) -> crate::town::Told {
+fn town_told<S: Sink>(
+    state: &GameState,
+    rules: &GameRuleset,
+    command: &ArmyCommand,
+) -> crate::town::Told {
     let (from, to) = command.armies();
     let named = [Some(from), to]
         .into_iter()
