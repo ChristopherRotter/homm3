@@ -28,6 +28,14 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
+  taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
+  commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the
+  battle still open (a battle both of whose sides the server's computer plays, which it did not
+  end; SRV-Q35). Its connections hear `Goodbye { CommandLimit }` (until now a battle's alone), its
+  journal goes to the void, it leaves the lobby; an in-process `GameSession` that is void
+  (`GameSession::void`) rejects every command `GameReject::NotStarted {}`. No new message or
+  field. Show the goodbye's reason for a whole game too if you show it; nothing else to build.
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
   **your path changed, informational**): protocol v64's `wire::game::Adventure` gains
   `garrison_heroes` (a player's own garrison heroes, `wire::game::GarrisonHero`), so

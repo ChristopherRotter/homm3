@@ -9,7 +9,9 @@
 //! queries (T11): a seat asks its hero's moves and moves along a path of the answer, another's
 //! question about it is answered none, and no answer enters the record. The end-to-end game
 //! (T13): two clients play a golden replay's opening, a battle against the server's computer and
-//! the days after it through a restart in the battle, the journal re-running to what they see.
+//! the days after it through a restart in the battle, the journal re-running to what they see. A
+//! battle the server played past its bound on its own commands (T20) voids the game, and a restart
+//! voids its journal again.
 
 use std::fs;
 
@@ -809,9 +811,30 @@ async fn whole_journals_that_do_not_restore_are_void() {
     last.shutdown().await;
 }
 
-/// The golden replay whose 17th command opens a battle against a wandering monster on the duel
-/// map (its 18th the player's, then the system actor's).
+/// The golden replay whose 16th command (index 15) opens a battle against a wandering monster on
+/// the duel map (its 17th the player's, then the system actor's).
 pub(super) const MONSTER_REPLAY: &str = "fixtures/replays/adventure/duel-s3-easy-d7.toml";
+
+/// Game `game`'s journal in `data` re-seeded as [`MONSTER_REPLAY`]'s game before its first
+/// command (nothing re-runs yet but the seats), so that the replay's commands play on it: the
+/// replay, and the journal's path.
+fn reseeded(
+    data: &std::path::Path,
+    game: u32,
+) -> (h3_sim::adventure::replay::Replay, std::path::PathBuf) {
+    let golden = fs::read_to_string(root().join(MONSTER_REPLAY)).unwrap();
+    let golden = h3_files::adventure::parse_replay(&golden).unwrap();
+    let path = journal::dir(data).join(format!("{game}.journal"));
+    let read = journal::read(&path).unwrap();
+    let mut replay = h3_files::adventure::parse_replay(&read.start.replay).unwrap();
+    (replay.seed, replay.difficulty) = (golden.seed, golden.difficulty);
+    let start_line = journal::GameStart {
+        replay: h3_files::adventure::replay_to_toml(&replay).unwrap(),
+        ..read.start.clone()
+    };
+    rewrite(data, &start_line, &read.entries);
+    (golden, path)
+}
 
 /// Game `game`'s journal rewritten in `data` with its first line `start` and `entries`.
 fn rewrite(data: &std::path::Path, start: &journal::GameStart, entries: &[GameEntry]) {
@@ -840,19 +863,7 @@ async fn the_server_plays_the_unowned_sides_and_a_restart_answers_for_them() {
         client.close().await;
     }
     running.shutdown().await;
-    // Its journal re-seeded as the golden replay's game before its first command (nothing re-runs
-    // yet but the seats), so the replay's commands play on it.
-    let golden = fs::read_to_string(root().join(MONSTER_REPLAY)).unwrap();
-    let golden = h3_files::adventure::parse_replay(&golden).unwrap();
-    let path = journal::dir(data).join(format!("{game}.journal"));
-    let read = journal::read(&path).unwrap();
-    let mut replay = h3_files::adventure::parse_replay(&read.start.replay).unwrap();
-    (replay.seed, replay.difficulty) = (golden.seed, golden.difficulty);
-    let start_line = journal::GameStart {
-        replay: h3_files::adventure::replay_to_toml(&replay).unwrap(),
-        ..read.start.clone()
-    };
-    rewrite(data, &start_line, &read.entries);
+    let (golden, path) = reseeded(data, game);
     let running = start(&config).await.unwrap();
     let rejoin = |player, token: &String| ClientMessage::GameJoin {
         game,
@@ -1303,4 +1314,87 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
         client.close().await;
     }
     running.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_battle_the_server_plays_past_its_bound_voids_the_game_and_its_restore() {
+    // The server's own commands in one battle bounded at one (E16 M5 T20, SRV-Q35): its first
+    // answer to the fighter in the golden replay's battle against a monster, the battle still
+    // open, voids the game, as a stalled battle both of whose sides it played would.
+    let config = Config {
+        limits: Limits {
+            system_commands_per_battle: 1,
+            ..fast()
+        },
+        ..with_map()
+    };
+    let data = &config.server.data;
+    let running = start(&config).await.unwrap();
+    let (a, b, game, [t0, t1]) = started(&running).await;
+    for client in [a, b] {
+        client.close().await;
+    }
+    running.shutdown().await;
+    let (golden, path) = reseeded(data, game);
+    let running = start(&config).await.unwrap();
+    let mut clients = [greeted(&running).await, greeted(&running).await];
+    for (player, token) in [(0, &t0), (1, &t1)] {
+        let join = ClientMessage::GameJoin {
+            game,
+            player,
+            token: Some(token.clone()),
+        };
+        clients[usize::from(player)].send(&join).await.unwrap();
+    }
+    // The replay's commands up to the battle's open and the fighter's first in it (index 16), each
+    // from its seat's client and accepted; then both hear the game is void.
+    let fights = 16;
+    for (seq, (actor, command)) in golden.commands[..=fights].iter().enumerate() {
+        let h3_game::Actor::Player(player) = actor else {
+            panic!("command {seq} is the system actor's");
+        };
+        let seq = u32::try_from(seq).unwrap();
+        let message = ClientMessage::GameCommand {
+            seq,
+            command: h3_protocol::map::game::command(command),
+        };
+        let client = &mut clients[player.index()];
+        client.send(&message).await.unwrap();
+        next(client, |m| {
+            matches!(m, ServerMessage::GameAccepted { seq: s, .. } if s == seq).then_some(())
+        })
+        .await;
+    }
+    for client in &mut clients {
+        assert_eq!(goodbye_after(client).await, GoodbyeReason::CommandLimit);
+    }
+    map_listed_as(&running, game, None).await;
+    assert!(!path.exists());
+    let void = voided(data);
+    let named = |void: &[String]| {
+        let prefix = format!("{game}-");
+        let mut names = void.iter().filter(|name| name.starts_with(&prefix));
+        names.next().cloned()
+    };
+    let journal = named(&void).unwrap();
+    running.shutdown().await;
+    // Its journal ends at the computer's command that voided it: back in place, a restart re-runs
+    // it and voids the game again.
+    let entries = journal::read(&data.join("void").join(&journal))
+        .unwrap()
+        .entries;
+    let last = entries
+        .iter()
+        .rev()
+        .find(|e| !matches!(e, GameEntry::Checkpoint(_)));
+    assert!(
+        matches!(last, Some(GameEntry::Command(h3_game::Actor::System, _))),
+        "{last:?}"
+    );
+    fs::rename(data.join("void").join(&journal), &path).unwrap();
+    let again = start(&config).await.unwrap();
+    map_listed_as(&again, game, None).await;
+    assert!(!path.exists());
+    assert!(named(&voided(data)).is_some());
+    again.shutdown().await;
 }

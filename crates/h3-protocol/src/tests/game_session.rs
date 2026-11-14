@@ -204,8 +204,9 @@ struct Seen {
     last_snapshots: usize,
     start_events: usize,
     clocks: usize,
-    /// The most map commands a player spent in a turn, and commands in a battle (E16 M5 T18).
-    spent: (u32, u32),
+    /// The most map commands a player spent in a turn and commands in a battle (E16 M5 T18), and
+    /// the system's commands in a battle (T20).
+    spent: (u32, u32, u32),
 }
 
 /// Checks the player's messages `messages` after a command, their numbers from `next`: a
@@ -383,8 +384,12 @@ fn the_golden_replays_run_through_the_session() {
             }
             .unwrap();
             assert_eq!(session.state().state_hash(), shadow.state_hash());
-            let (in_turn, in_battle) = session.spent();
-            seen.spent = (seen.spent.0.max(in_turn), seen.spent.1.max(in_battle));
+            let (in_turn, in_battle, system) = session.spent();
+            seen.spent = (
+                seen.spent.0.max(in_turn),
+                seen.spent.1.max(in_battle),
+                seen.spent.2.max(system),
+            );
             frames(&out, &mut sent);
             // The journal's entries: the command, then the checkpoint when one is due.
             let drained: Vec<GameEntry> = session.drain_entries().collect();
@@ -469,8 +474,10 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.start_events > 0, "{seen:?}");
     assert!(seen.clocks > 0, "{seen:?}");
     assert_eq!(seen.restores, 86, "{seen:?}");
-    // The server's bounds counted, never met (E16 M5 T18: 26 and 348 when measured).
+    // The server's bounds counted, never met (E16 M5 T18: 26 and 348 when measured; T20: the
+    // system's 505 in one battle).
     assert!(seen.spent.0 > 10 && seen.spent.1 > 100, "{seen:?}");
+    assert!(seen.spent.2 > 100, "{seen:?}");
 }
 
 /// A game on a fixture map: its rules and setup.

@@ -112,6 +112,14 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
+  taken**): protocol **v65** (after the town lane's E09 T28a's v64): a whole game is void when the server's own
+  commands in one of its battles reach `[limits] system_commands_per_battle` (10 000) with the
+  battle still open (a battle both of whose sides the server's computer plays, which it did not
+  end; SRV-Q35). Its connections hear `Goodbye { CommandLimit }` (until now a battle's alone), its
+  journal goes to the void, it leaves the lobby; an in-process `GameSession` that is void
+  (`GameSession::void`) rejects every command `GameReject::NotStarted {}`. No new message or
+  field. Show the goodbye's reason for a whole game too if you show it; nothing else to build.
 - 2026-11-14 (the client lane, E27 M2 T3a, `client/e27-m2-t3a`; **for your information, an
   addition to `h3-ui`, nothing changed**): `h3_ui::input` (`Input`, `Held`, `Did`), a dialog's
   press, hold and release of its DEF buttons and DEF pictures (boxes, bars) and its button held by

@@ -498,9 +498,20 @@ pub struct GameSession<'r> {
     computer: Option<Box<dyn Bot + Send>>,
     /// The game's timers (E16 M5 T16).
     clock: clock::Timers,
-    /// The players' commands counted against the host's bounds (E16 M5 T18).
+    /// The players' commands counted against the host's bounds (E16 M5 T18), and the system's in
+    /// a battle (T20).
     counts: bounds::Counts,
+    /// Whether the last [`Self::drive`] stopped at its steps' bound with a step still due (E16 M5
+    /// T20): the host's next reading is due at once ([`Self::deadline`]).
+    more: bool,
 }
+
+/// The most system steps one [`GameSession::drive`] takes (E16 M5 T20, *provisional*): the rest
+/// are due at the host's next clock reading, at once, so that a game of connections' thread
+/// handles its messages and writes its journal meanwhile (a battle the system plays for both
+/// sides takes the computer's choices to its end or to the bound that voids the game). About
+/// three rounds of a full battle.
+const DRIVE_STEPS: u32 = 64;
 
 impl<'r> GameSession<'r> {
     /// Starts the game of `setup` with `seed` under `rules` (`h3_game::GameState::new`), made of
@@ -703,6 +714,7 @@ impl<'r> GameSession<'r> {
             computer: None,
             clock,
             counts,
+            more: false,
         })
     }
 
@@ -1291,15 +1303,24 @@ impl<'r> GameSession<'r> {
     ///    default answer, or its turn's end when it has none.
     ///
     /// A battle choice the engine rejects is replaced by the side's first legal command it
-    /// accepts, as a battle's bot's (`super::Session`): it accepts every legal command.
+    /// accepts, as a battle's bot's (`super::Session`): it accepts every legal command. At most
+    /// [`DRIVE_STEPS`] steps (E16 M5 T20): the rest are due at the next reading
+    /// ([`Self::deadline`]); the system's commands in one battle are bounded too (the module
+    /// `bounds`: past them the game is void, and stops).
     fn drive(&mut self, out: &mut Vec<GameOutbound>) -> bool {
-        let (mut played, mut moved) = (false, true);
+        let (mut played, mut moved, mut steps) = (false, true, 0);
+        self.more = false;
         while moved && self.live() {
+            if steps == DRIVE_STEPS {
+                self.more = true;
+                break;
+            }
             let Some(candidates) = self.due() else {
                 break;
             };
             moved = (candidates.into_iter()).any(|command| self.act(command, out));
             played |= moved;
+            steps += 1;
         }
         played
     }
@@ -1364,9 +1385,19 @@ impl<'r> GameSession<'r> {
         applied.map(|()| self.tell(told, out)).is_ok()
     }
 
-    /// Whether the game runs: started and not paused (its timers count, the system acts).
+    /// Whether the game runs: started, not paused and not void (its timers count, the system
+    /// acts).
     const fn live(&self) -> bool {
-        self.started && !self.paused
+        self.started && !self.paused && !self.counts.void()
+    }
+
+    /// Whether the game is void (E16 M5 T20, SRV-Q35): the system's commands in one battle reached
+    /// the host's bound ([`CommandBounds::system_per_battle`]) with the battle still open, a
+    /// battle both of whose sides it plays that its computer did not end. It applies, drives and
+    /// times nothing more; a game of connections' host ends it, as a battle past its limit of
+    /// commands. A restore whose journal ends at that command is void again.
+    pub const fn void(&self) -> bool {
+        self.counts.void()
     }
 
     /// The host's clock reads `now`, in milliseconds (E16 M5 T16; one that goes back is ignored):
@@ -1406,9 +1437,13 @@ impl<'r> GameSession<'r> {
 
     /// When the host's clock should next read (E16 M5 T16): the next end of a running timer, or
     /// the time counted reaching [`ELAPSED_EVERY_MS`] first; none while no timer runs (the game
-    /// waits for a command, or is not running) and before the clock's first reading.
+    /// waits for a command, or is not running) and before the clock's first reading. The last
+    /// reading while the system's steps are still due (E16 M5 T20: a call took [`DRIVE_STEPS`]).
     pub fn deadline(&self) -> Option<u64> {
         let at = self.clock.at.filter(|_| self.live())?;
+        if self.more {
+            return Some(at);
+        }
         let end = self.clock.next_end(&self.state)?;
         let journaled = ELAPSED_EVERY_MS.saturating_sub(self.clock.pending).max(1);
         Some(at.saturating_add(end.min(journaled)))
@@ -1439,9 +1474,10 @@ impl<'r> GameSession<'r> {
     }
 
     /// The most commands a player spent now of the host's bounds (E16 M5 T18): in its running
-    /// turn, in its open battle; the tests' measures of the defaults.
+    /// turn, in its open battle, and the system's in the battle it commands (T20); the tests'
+    /// measures of the defaults.
     #[cfg(test)]
-    pub(crate) fn spent(&self) -> (u32, u32) {
+    pub(crate) fn spent(&self) -> (u32, u32, u32) {
         self.counts.most()
     }
 
@@ -1488,7 +1524,8 @@ impl<'r> GameSession<'r> {
         origin: Origin,
         command: GameCommand,
     ) -> Result<(GameCommand, Told<'r>), GameReject> {
-        if !self.started || self.paused {
+        // A void game (E16 M5 T20) applies nothing more.
+        if !self.live() {
             return Err(GameReject::NotStarted {});
         }
         let command = map::game::command_to_engine(command)?;
@@ -1660,6 +1697,11 @@ struct BattleKey {
 impl BattleKey {
     /// The key of an open battle, with the side the viewer owns there.
     fn of((battle, _): (&OpenBattle, BattleSide)) -> Self {
+        Self::open(battle)
+    }
+
+    /// The key of an open battle.
+    const fn open(battle: &OpenBattle) -> Self {
         Self {
             heroes: battle.heroes(),
             tile: battle.tile(),
