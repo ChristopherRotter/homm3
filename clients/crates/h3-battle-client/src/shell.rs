@@ -230,7 +230,7 @@ fn words(intro: bool, script: Option<&Path>) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// `H3Intro`'s frame (`video_play_framed`'s PCX, 0x67F718).
+/// `H3Intro`'s frame (`start_clips` 0x4EE7A6 hands it to `video_play_framed`).
 const RIM: &str = "introrim.pcx";
 
 /// The shell's layout, its assets and its cursor: what draws a frame.

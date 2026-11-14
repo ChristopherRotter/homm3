@@ -4,9 +4,8 @@ Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, 
 reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
 **M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
 27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); **M2
-T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); **M2 T5a** in progress
-(decision 31: T5 cut in two)
-(`docs/lanes/client/QUEUE.md`).
+T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); **M2 T5a done** (2026-11-14,
+decisions 31, 32); next **M2 T5a2** (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
 catalogue and capture harness). Working detail (readings, the clips, layouts):
@@ -246,6 +245,15 @@ The user, 2026-11-14 (M2 T5's start):
     sound in the shell at the effects setting with the window; the start recorded with `sound =
     true` and compared).
 
+The user, 2026-11-14 (M2 T5a; `CLT-Q123`, `CLT-Q124`):
+
+32. **The start's display fixed** (CLT-Q123, CLT-Q124; design §10): the client fades the screen as
+    shown (the original fades its back buffer, where a skipped `NWCLogo` sits unstretched at the
+    corner) and shows each clip frame's whole rectangle (the original shows the union of the
+    DLLs' changed rectangles by an arithmetic that can leave part of a frame unshown for a few
+    frames); the original's for the comparisons only (`Bugs::Original`). The SMACKW32 rectangles
+    left for a task of their own (T5a2), the cut offered at T5a's end.
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -338,8 +346,9 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T3a | The shell's frame (CLT-Q103, decision 29): the screens' state machine and the menu loop's requests (design §2.2) in `h3-view`, the `h3-view shell` command with a headless driver (a text client first, E17's pattern); the dialogs' input (a DEF button's own loop, a box's and a bar's press and release, the right press's help) moved from `h3_view::options` into `h3-ui`, the combat options on it unchanged (decision 20) | **done** 2026-11-14: `h3_ui::input` (`Input`, `Held`, `Did`), `h3_view::options` on it (its tests unchanged); `h3_view::shell` (`Shell`, `Screen`, `Ended`, `Request`, `Choice`, `Kind`, `PlayEnd`; the switches of §2.2 to §2.4, §4.3, §5.3), `shell::text` (the words), `h3-view shell [--script] [--no-intro]`; log "M2 T3a" |
 | T3b | Start-up loading by the LODs' tables (CLT-Q2, decision 29): the archive set read by the tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), across `h3-battle-client`'s readers (`render`, `battle`, `sequences`, `text`, `gate`), `h3-view gate` measuring it (`lanes/client/NOTES.md`, "Assets and archives"); the four LODs staged | **done** 2026-11-14: `h3_battle_client::lods` (`Lod`, `Reader`, `Lods`: the tables from the heads, an entry by its range, a batch archive by archive in the ranges' order), every LOD reader of the crate on it; `h3-view gate`: the start 1.3 ms for the tables alone (1 250 KiB; 145 ms for the 212 MiB read whole before), a battle still's peak memory 243 → 28 MiB; log "M2 T3b" |
 | T4 | The comparison: `h3shell.py drawn` (the shell plays a recipe's inputs at its times; its frames compared with the original's shots, as `h3drive.py drawn`); h3shell's sound (h3drive's `sound`); TCP/IP's address masked in its digests (review item 8); the main menu's first shot exact | **done** 2026-11-14 (decision 30): `h3_view::shell::replay` (a recipe's steps on the shell's own clock; `Stop`), `shell::look` and `clients/layouts/shell.toml` (the main menu at rest), `Built`; `h3-view shell --steps --frames` and `--window`; `h3shell.py drawn` (`exact` against the kept lines, `shell/drawn.txt`), `sound`, `mask`; `start-plain`'s and `menu-main`'s first shots exact; `menu-sound` recorded, `mp-tcp` again masked; log "M2 T4" |
-| T5a | The start's pictures (design §2.1, decision 31): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24), every Bink clip's frame whole (decision 28; the comparisons through `h3_bink::Target`, what the game's buffer holds before a clip read, design §9) | in progress |
-| T5b | The start's sound (decision 31): the clips' sound at the effects setting (decision 27) through `HostSound::play_clip`, with the window; a Smacker clip's end (§8.4: how much of its queued sound plays), the 3DO logo's sound path and its volume, `game_samples_load` read; the start recorded with a recipe's `sound = true` and compared | after T5a |
+| T5a | The start's pictures (design §2.1, decision 31): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24), every Bink clip's frame whole (decision 28; the comparisons through `h3_bink::Target`, what the game's buffer holds before a clip read, design §9) | **done** 2026-11-14 (decision 32; CLT-Q123, CLT-Q124): `h3_view::shell::start` (`Start`, `Picture`, `smack_wait`, `shown_union`), `h3_bink::rects` (`BinkGetRects`) and `copies`, the replay's start, `h3-view shell --video-quality`, `Videos`' shell stand-in; 11 of the `start` group's 12 lines exact (`start-bink`'s 2 519 frames among them), `start-smacker`'s clip 23 frames short of it (T5a2); log "M2 T5a", design §10 |
+| T5a2 | The Smacker clips' rectangles (decision 32; design §10): `SMACKW32.DLL`'s `SmackToBufferRect` read (its list, 0x10007410, 0x10007680, the iterator 0x10012760 and the state `SmackDoFrame` fills) and ported into `h3-smacker`, the game's union over them for the comparisons (`shown_union`); `start-smacker`'s clip exact (its 23 frames of `H3INTRO.SMK`); checked against the DLL where the probe reaches it (`smackprobe`) | after T5a |
+| T5b | The start's sound (decision 31; after T5a2): the clips' sound at the effects setting (decision 27) through `HostSound::play_clip`, with the window; a Smacker clip's end (§8.4: how much of its queued sound plays), the 3DO logo's sound path and its volume, `game_samples_load` read; the start recorded with a recipe's `sound = true` and compared | after T5a |
 | T6 | The main menu, New Game's and Load Game's menus, Quit's question (§2.3 to §2.5): hover, press, release off, popups, hotkeys, `button.wav`, `MAINMENU.MP3`, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menus` with its sound | after T4 |
 | T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6 |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |
@@ -383,7 +392,18 @@ the viewer's own record `shell/drawn.txt` (`CHANGED`, `new`, `GONE` fail), frame
 `.565`; (18) the window: SDL's hardware cursor when it makes one, the screens not built black,
 the words from standard input, no key of its own; (19) TCP/IP's mask (180, 96) to (620, 124),
 the dialog's width; (20) a sound recipe's samples kept as lines (`sound<k> t<ms> ch<c>
-<length>ms x<loops>`), their names unknown (`xdd.dll` logs none).
+<length>ms x<loops>`), their names unknown (`xdd.dll` logs none). T5a: (21) the start's shape
+(`h3_view::shell::start`): a timing (`Start`: the game's readings of its clock give `Op`s) and a
+picture (`Picture`: the back buffer and the screen, the decoders streamed, `Source` borrowing the
+caller's parsed clips), the replay keeping the ops' log for its caller (`Replay::ops`); (22) the
+start's clips read from the video archives and `introrim.pcx` from the LODs at the command's
+start, a clip missing or unreadable ending the sequence where it would play, as the original's;
+`Videos` taking `shell-videos.vid` after `battle-videos.vid` (no `VIDEO.VID`); (23) the window's
+start on `win.ticks_ns()` from the window's opening, a key or a left press skipping (no right
+press in `h3_sdl`'s events); (24) `--video-quality high|low` for the setting Bink Video, `drawn`
+passing `low` for a recipe's `Bink Video = 0`; (25) a release with nothing held passes on a screen
+at rest (`start-skip-right`'s right release on the main menu); (26) DirectDraw's stretch of
+`NWCLogo` as Wine's nearest pixel in 16.16 fixed point (the captures' only reference).
 
 ## Dependencies and boundaries
 

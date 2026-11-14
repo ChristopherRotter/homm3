@@ -1274,7 +1274,8 @@ python3 h3shell.py drawn [--group menus] [--only menu-main] [--record]   # the v
   kept digests: record it again.
 - **The viewer's side** (E27 M2 T4; from `clients/` after `cargo build --release -p
   h3-battle-client`): `drawn` gives each recipe's steps (the masks left out) to `h3-view shell
-  --steps <file> --frames <dir>` (`--no-intro` unless the recipe sets `Show Intro`), which plays
+  --steps <file> --frames <dir>` (`--no-intro` unless the recipe sets `Show Intro`; since M2 T5a
+  `--video-quality low` for its `Bink Video = 0`), which plays
   them on the shell's own clock as `run` passes the original's (an input then 100 ms, `until` and
   clips in 10 ms steps) and writes each shot's 5-6-5 frame (`.565`); each shot and clip is then
   compared with the original's kept line (`exact`: the same digest at the same time; else the
