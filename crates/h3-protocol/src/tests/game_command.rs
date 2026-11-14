@@ -393,12 +393,17 @@ fn manage_back(error: w::ManageReject) -> ManageError {
     }
 }
 
-/// The engine's error of a rejection; none for the session's own (E16 M5 T8a, T8b).
+/// The engine's error of a rejection; none for the session's own (E16 M5 T8a, T8b, T18).
 fn reject_back(reject: w::GameReject) -> Option<GameCommandError> {
     use GameCommandError as E;
     use w::GameReject as R;
     Some(match reject {
-        R::NotSeated {} | R::NotStarted {} | R::AlreadyAsked {} | R::Stale {} => return None,
+        R::NotSeated {}
+        | R::NotStarted {}
+        | R::AlreadyAsked {}
+        | R::Stale {}
+        | R::TurnLimit {}
+        | R::BattleLimit {} => return None,
         R::UnknownPlayer { player } => E::UnknownPlayer(PlayerId::new(player)),
         R::NotYourTurn { player } => E::NotYourTurn(PlayerId::new(player)),
         R::DecisionOpen {} => E::DecisionOpen,
@@ -505,12 +510,14 @@ fn every_rejection_maps_back_and_round_trips() {
         round_trips(&wire);
         assert_eq!(reject_back(wire), Some(e));
     }
-    // The session's own (E16 M5 T8a, T8b) are no engine error's.
+    // The session's own (E16 M5 T8a, T8b, T18) are no engine error's.
     let own = [
         w::GameReject::NotSeated {},
         w::GameReject::NotStarted {},
         w::GameReject::AlreadyAsked {},
         w::GameReject::Stale {},
+        w::GameReject::TurnLimit {},
+        w::GameReject::BattleLimit {},
     ];
     for code in own {
         round_trips(&code);

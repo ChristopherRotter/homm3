@@ -317,7 +317,7 @@ player and a game's end (E10's victory and defeat), computer players on the map 
 whole games (a ladder of maps, after E28's ranked battles), the attack and shot previews (the
 client lane's 2026-11-04 request, when online battles need them).
 
-**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged; T14 to T17 done):
+**2b's tasks** (about half a context each; T14 first, T15 wherever the original data are staged; T14 to T18 done):
 
 - **T14 The system commands** done 2026-11-13 (`E16-log.md`: `GameCommand::System(SystemCommand)`,
   GAM-SYS-001 to GAM-SYS-003, ADR-0017 point 2 amended; replay format v14, protocol v56).
@@ -332,9 +332,10 @@ client lane's 2026-11-04 request, when online battles need them).
   `battle_ms`, `battle_increment_ms`; the offer's clock in the lobby, protocol v60 `OfferClock`,
   and in the journal's first line; the game's thread waking at `GameSession::deadline`, a stop
   journaling its time, `GameSession::flush_time`; `tests/clock.rs`).
-- **T18 A seat's commands per turn** (SRV-Q30): `[limits]`'s bound of a seat's accepted commands
-  in one of its turns (its default from the golden replays' and the XL fixtures' largest), beyond
-  it a new rejection but for ending the turn and answering its decisions (protocol step).
+- **T18 A seat's commands bounded** done 2026-11-14 (`E16-log.md`: `[limits] commands_per_turn`,
+  a seat's map commands in a turn, beyond them `TurnLimit`; `commands_per_battle`, the user's
+  own counter per battle, beyond it the computer plays the side; `CommandBounds` in
+  `GameOptions`, `cross-lane`; protocol v61).
 - **T19 2b's closure:** an end-to-end test (two clients, a turn run out, a battle against the
   other player's hero under the chess timer, a level-up held and answered, through a restart);
   `docs/06-security.md` (the whole game's clock, its "Not covered yet": the turn timer, the
@@ -368,6 +369,14 @@ the tasks land):
   the clock too; a stop journaling the time up to it (`flush_time`; a crash still gives back up to
   15 s), its due steps taken and told to nobody; a test's clock in place of the configured one
   (`config::MapOffer::test_clock`, as the seeds).
+- T18: the defaults (1 000 map commands a turn, 4 000 commands a battle; measured at most 26 and
+  348 on the golden replays, 16 and 361 on the XL fixtures); the commands a turn counts (an
+  adventure's, a management one, a town's; ending the turn, answers and battle commands never),
+  each turn by its day; a battle's count by its identity, dropped once it is no longer the
+  player's open one; the bounds' rejections the session's own (`TurnLimit`, `BattleLimit`),
+  checked before the engine's; `GameTurn` leaving out what a bound refuses; nothing journaled
+  (a restore counts again; a restart's `[limits]` apply to its restored games); in-process
+  `CommandBounds::NONE`.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 

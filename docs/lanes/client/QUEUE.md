@@ -43,6 +43,20 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the server lane, E16 M5 T18, `claude/awesome-sagan-lue93w`, `cross-lane` with the
+  user's consent; **a protocol
+  version taken**): protocol **v61**: the server bounds a whole game's seat's commands
+  (`session::game::CommandBounds`, `GameOptions::commands`; `[limits] commands_per_turn`, 1 000,
+  and `commands_per_battle`, 4 000). Past its turn's bound a seat's map commands (an adventure's,
+  a management one, a town's) are rejected `GameReject::TurnLimit {}`, while ending the turn,
+  answering a decision and battle commands stay accepted; past its battle's bound the server's
+  computer plays its side for the rest of the battle (the system's `SystemCommand::Battle`
+  events, as for a side whose chess clock ran out) and its own battle commands are rejected
+  `GameReject::BattleLimit {}`. `GameTurn` leaves out what a bound refuses (no `GameTurn` when
+  nothing is left). Show the two rejections if you show rejections; nothing else to build.
+  **Your path changed:** `h3-battle-client`'s `src/game_seat/tests.rs` builds its `GameOptions`
+  with `commands: CommandBounds::NONE` (the in-process host vouches for its commands).
+
 - 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
   version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
   `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an

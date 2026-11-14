@@ -8,6 +8,7 @@ use std::time::Duration;
 use h3_kernel::Rng;
 use h3_protocol::codec;
 use h3_protocol::session::ConnId;
+use h3_protocol::session::game::CommandBounds;
 use h3_protocol::wire::{
     ClientMessage, Command, GameInfo, GoodbyeReason, Phase, Query, RecordHeader, Refusal,
     RejectCode, ReplayInfo, Seat, ServerMessage,
@@ -1692,6 +1693,8 @@ fn configurations_are_checked() {
         "account_changes_per_address = 0",
         "commands_per_game = 0",
         "commands_per_game = 1000001",
+        "commands_per_turn = 0",
+        "commands_per_battle = 1000001",
     ] {
         let text = format!("{offer}[limits]\n{limit}");
         let error = refused(&text).unwrap_err();
@@ -1743,6 +1746,11 @@ fn configurations_are_checked() {
     assert!(minimal.server.addresses.is_empty());
     let watched = refused(&format!("{offer}[limits]\nspectators_per_game = 0")).unwrap();
     assert_eq!(watched.limits.spectators_per_game, 0, "no spectators");
+    // A whole game's seats' bounds (E16 M5 T18), the session's by default.
+    let bounds = format!("{offer}[limits]\ncommands_per_turn = 5\ncommands_per_battle = 7");
+    let bounded = refused(&bounds).unwrap().limits.commands();
+    assert_eq!((bounded.per_turn, bounded.per_battle), (5, 7));
+    assert_eq!(minimal.limits.commands(), CommandBounds::DEFAULT);
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());
     // An offer whose scenario or profile does not load stops the start.
     let scenarios = base.join("packs/synthetic/scenarios");

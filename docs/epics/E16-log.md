@@ -3230,3 +3230,53 @@ clock's logic, the server only its configuration, its journal and its wake-ups.
   the rewards replay's level-up answered by its default at 0.8 s, the other player told the game
   waits, then no more, `Elapsed(800)` before the system's answer. `tests/whole.rs`: the config's
   clock and its refusals, the journal's clock; `h3-protocol`: `offer_clock`, `flush_time`.
+
+### M5 T18 — a seat's commands bounded (2026-11-14)
+
+The task (the epic's "M5 part 2", 2b; SRV-Q30's major finding): a whole game's seat's commands
+bounded, so that one player's free commands (a formation toggle at the message rate) no longer
+grow the journal without end while the others wait. Baseline: `master` 8f32864 (#913, T17). No
+original data. Branch `claude/awesome-sagan-lue93w`. Kept whole (about half a context).
+
+- **The user's answers at the start** (2026-11-14, the agent's questions): (1) a battle's
+  commands are not the turn's: **each battle has its own counter**, and past its bound **the
+  computer plays the side** for the rest of the battle (as a side whose chess clock ran out), so
+  that the battle always ends (rejecting them would leave a battle, and under an unlimited turn
+  the game, stuck); (2) the bounds in `GameOptions` (`cross-lane`: the client lane's seat test
+  builds one), not a setter after the construction (a restored game's first `GameTurn` would
+  have listed what the bounds refuse).
+- **The session** (`session::game::bounds`, new): `CommandBounds { per_turn, per_battle }`
+  (`NONE` for an in-process host, `DEFAULT` the server's), `GameOptions::commands`. A player's
+  map commands (`Adventure`, `Manage`, `Town`) count in its running turn, afresh at each of its
+  turns (by its day, as the turn's timer); past `per_turn` they are rejected `TurnLimit` before
+  the engine sees them; `EndTurn`, `Answer` and battle commands never count there. Its battle
+  commands count in its open battle (by its `BattleKey`), dropped once that battle is no longer
+  its open one; past `per_battle` its seat's battle commands are rejected `BattleLimit` and
+  `drive`'s third step plays the side by the computer (Defend without one, in-process), each a
+  journaled `SystemCommand::Battle`. The system's commands never count. Both counts follow from
+  the accepted commands (`execute`), so `restore` and `reopen` count again and nothing is
+  journaled; the bounds are the hosting's (a restart with other `[limits]` applies them).
+  `GameTurn` leaves out what a bound refuses (no `GameTurn` when nothing is left).
+- **The wire** (protocol v61): `GameReject::TurnLimit {}`, `GameReject::BattleLimit {}`, the
+  session's own; `GameTurn`'s list as above.
+- **The defaults, measured**: the golden replays spend at most 26 map commands in a turn
+  (`teleporters-s1711-d28`) and 348 commands of a side in one battle; the XL fixtures' 28 days of
+  random play 16 and 361. Defaults 1 000 a turn (a late turn on a large map holds hundreds:
+  eight heroes, dozens of towns' builds and hires) and 4 000 a battle (about ten times the most);
+  both suites now play under `DEFAULT` untouched (a refusal would fail their `unwrap`, a
+  computer's step their hashes) and assert the counts were taken.
+- **`h3-server`:** `[limits] commands_per_turn` (1 000), `commands_per_battle` (4 000), each in
+  1..=1 000 000; `Limits::commands()`, passed to a created and a restored game alike.
+- **Tests:** `tests/game_limits.rs` (`h3-protocol`): the duel map's formations past a bound of
+  3 rejected and told to their player alone, nothing journaled, the turn's `GameTurn` without map
+  commands, a restore counting again (and none under `NONE`), `EndTurn` accepted, the other
+  player's turn and the next day counted afresh; the towns replay's battle between players under
+  bounds of 1 and 2 over connections: the attacker's battle commands never counted against its
+  spent turn, each side's two commands, the computer playing the sides past their bound to the
+  battle's end, a seat past it refused `BattleLimit`, its `GameTurn`s without battle commands,
+  then `TurnLimit` for the attacker's map command and its `EndTurn` accepted, a reopen inside the
+  battle counting the same. `h3-server`'s config test: the fields, their range, the defaults.
+- **Docs:** the client lanes' inboxes told (v61). `docs/06-security.md` (a shared path) is
+  T19's, as the epic plans: its "Not covered yet" then names what the bounds leave (no total
+  limit, colluding seats that keep ending their turns under an unlimited turn, many battles in
+  one turn, long games' journals).
