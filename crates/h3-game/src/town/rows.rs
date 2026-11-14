@@ -106,7 +106,7 @@ const fn adventure_move(change: TownHeroChange) -> TownHeroMove {
 
 /// The town command's refusal for the adventure's (one to one; a town the map lacks is the
 /// store's too).
-const fn town_error(error: TownHeroError) -> TownCommandError {
+pub(super) const fn town_error(error: TownHeroError) -> TownCommandError {
     match error {
         TownHeroError::UnknownTown => TownCommandError::UnknownTown,
         TownHeroError::GarrisonHeld => TownCommandError::GarrisonHeld,

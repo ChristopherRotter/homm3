@@ -362,6 +362,27 @@ fn a_town_s_purchase_joins_its_garrison_hero_s_army() {
     );
 }
 
+/// The adventure's refusals as the town command's, one to one (each the same name).
+#[test]
+fn each_refusal_of_a_move_is_the_town_command_s_own() {
+    use h3_adventure::TownHeroError as E;
+    use TownCommandError as T;
+    let pairs = [
+        (E::UnknownTown, T::UnknownTown),
+        (E::GarrisonHeld, T::GarrisonHeld),
+        (E::NoVisitor, T::NoVisitor),
+        (E::ArmiesDoNotFit, T::ArmiesDoNotFit),
+        (E::TooManyCreatures, T::TooManyCreatures),
+        (E::NoGarrisonHero, T::NoGarrisonHero),
+        (E::EntranceHeld, T::EntranceHeld),
+        (E::TooManyHeroes, T::TooManyHeroes),
+        (E::EmptyArmy, T::EmptyArmy),
+    ];
+    for (error, refused) in pairs {
+        assert_eq!(crate::town::rows::town_error(error), refused);
+    }
+}
+
 // covers: TWN-SET-005
 // stub: TWN-STUB-14
 #[test]

@@ -228,9 +228,8 @@ impl AdventureState {
                     self.set_army_left(index, stacks);
                 }
                 Held::TownHero(at) => {
-                    if let Some(hero) = self.town_hero_at_mut(at) {
-                        hero.army = stacks;
-                    }
+                    let hero = self.town_hero_at_mut(at);
+                    hero.into_iter().for_each(|hero| hero.army.clone_from(&stacks));
                 }
             }
         }

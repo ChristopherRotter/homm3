@@ -1147,18 +1147,17 @@ impl AdventureState {
                     slot,
                 })
             }
-            Joining::TownHero(at) => {
-                let hero = self.town_hero_at_mut(at)?;
+            Joining::TownHero(at) => self.town_hero_at_mut(at).map(|hero| {
                 join_at(&mut hero.army, room, creature, amount);
                 let slot = match room {
                     Room::Stack(at) => hero.army[at].slot,
                     Room::Slot(slot) => slot,
                 };
-                Some(ArmySlot {
+                ArmySlot {
                     army: ArmyRef::Hero(hero.id),
                     slot,
-                })
-            }
+                }
+            }),
         }
     }
 
