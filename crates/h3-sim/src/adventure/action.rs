@@ -19,6 +19,7 @@
 //! | 18 + c, c < 4 | Buy the most of the creature in place `c` of the player's open hire dialog (E08 T95b) |
 //! | 22 + s, s < 8 | The hero in slot `s` revisits the entered object it stands on (E08 T105b2) |
 //! | 30 | Build the building in the building head in the town whose entrance is the tile in the tile head (E09 T19c1) |
+//! | 31 | Open the hire dialog of the building in the building head in the town whose entrance is the tile in the tile head (E09 T27) |
 //!
 //! A player's hero slots are its heroes on the map in the order of their ids, the first
 //! [`HERO_SLOTS`] (the original allows a player eight heroes on the map); a hero's slot changes
@@ -32,14 +33,16 @@
 //! record of buildings, [`BUILDING_COUNT`] (`h3_towns::MAX_BUILDINGS`, 64) wide: after [`BUILD`]
 //! and a town's entrance it allows the buildings of the builds [`legal_commands`] lists for that
 //! town ([`building_mask`]: the hall's offer the owner's treasury pays, one build a town a day,
-//! TWN-BLD-001 to -004), after another entry and a tile its masks allow exactly 0, and a building
-//! other than 0 decodes to no command with any other entry. After [`BUILD_BOAT`] it allows the anchors of the Shipyards
+//! TWN-BLD-001 to -004), after [`RECRUIT`] those of its recruitments (E09 T27: a standing
+//! dwelling, horde, or Portal holding a creature, TWN-REC-001, -002), after another entry and a
+//! tile its masks allow exactly 0, and a building other than 0 decodes to no command with any
+//! other entry. After [`BUILD_BOAT`] it allows the anchors of the Shipyards
 //! whose `BuildBoat` [`legal_commands`] lists (ADV-SHY-003: the player's or an ally's, its boat
 //! tile free, the price in the treasury; the Shipyard as the observation names it, by its
 //! anchor; the setup refuses two typed objects of one type on one anchor, and the original's
 //! packs have one Shipyard type). After [`BUILD`] it allows the entrances of the towns of the
 //! listed builds (E09 T19c1: the player's own towns, the entrance its hero enters by, TWN-VIS-001;
-//! one town an entrance). A move's destination is a tile the hero's reachable-tiles query
+//! one town an entrance), after [`RECRUIT`] those of the listed recruitments (E09 T27). A move's destination is a tile the hero's reachable-tiles query
 //! lists, not its own; a tile another player's hero stands on is one (the visit is a battle,
 //! GAM-BAT-004). The action carries no path: the command takes the path the query chose
 //! (`h3_game::legal_moves`). A client may send any other path the hero can pay (`apply` checks
@@ -90,7 +93,11 @@
 //! with the user's consent, E09 decisions 7, 58, 62; the town epic's design note §32; ADR-0017
 //! point 8) appended [`BUILD`] and the building head ([`MapAction::building`]): a town's build
 //! (`TownCommand::Build`, TWN-BLD-001) by its town's entrance and its building's index in the
-//! town's record, one action per listed build; no hero, no visit, as the command.
+//! town's record, one action per listed build; no hero, no visit, as the command. Version 10 (E09
+//! T27, the town lane's `cross-lane` change with the user's consent, E09 decision 92; the town
+//! epic's design note §55) appended [`RECRUIT`]: a town's recruitment (`TownCommand::Recruit`,
+//! TWN-REC-001, -002) by its town's entrance and its building's index, with the two heads of
+//! [`BUILD`]; the dialog it opens is the hire dialog's, whose purchases are its four entries.
 
 use h3_adventure::{AdventureCommand, Pos, Reach};
 use h3_battle::{BattleState, LegalCommands};
@@ -106,7 +113,7 @@ use h3_towns::{BuildingId, MAX_BUILDINGS, TownCommand};
 use crate::action as battle;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 9;
+pub const ACTION_ENCODING_VERSION: u32 = 10;
 
 /// Hero slots per player: the most heroes the original allows a player on the map.
 pub const HERO_SLOTS: usize = 8;
@@ -160,8 +167,12 @@ pub const REVISIT_BASE: usize = HIRE_BASE + HIRE_SLOTS;
 /// tile in the tile head (E09 T19c1; TWN-BLD-001).
 pub const BUILD: usize = REVISIT_BASE + HERO_SLOTS;
 
+/// The entry that opens the hire dialog of the building in the building head in the town whose
+/// entrance is the tile in the tile head (E09 T27; TWN-REC-001, -002).
+pub const RECRUIT: usize = BUILD + 1;
+
 /// Number of entries.
-pub const ENTRY_COUNT: usize = BUILD + 1;
+pub const ENTRY_COUNT: usize = RECRUIT + 1;
 
 /// The building head's size (E09 T19c1): the most buildings of a town's record
 /// (`h3_towns::MAX_BUILDINGS`), each named by its index there.
@@ -218,7 +229,7 @@ pub enum Phase {
 }
 
 /// An action of the map phase: an entry, its tile head (0 for an entry that takes no tile) and
-/// its building head (0 but for [`BUILD`], E09 T19c1).
+/// its building head (0 but for [`BUILD`], E09 T19c1, and [`RECRUIT`], E09 T27).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct MapAction {
     /// The entry.
@@ -226,7 +237,8 @@ pub struct MapAction {
     /// The destination tile of a move, `(level × height + row) × width + column`, a Shipyard's
     /// anchor or a town's entrance; 0 otherwise.
     pub tile: u32,
-    /// The building of a build: its index in the town's faction's record; 0 otherwise.
+    /// The building of a build or a recruitment: its index in the town's faction's record; 0
+    /// otherwise.
     pub building: u8,
 }
 
@@ -295,6 +307,16 @@ impl Action {
     pub const fn build(tile: u32, building: u8) -> Self {
         Self::Adventure(MapAction {
             entry: BUILD,
+            tile,
+            building,
+        })
+    }
+
+    /// Opens the hire dialog of the building at `building` of the town's record in the town whose
+    /// entrance is the tile at `tile` (E09 T27).
+    pub const fn recruit(tile: u32, building: u8) -> Self {
+        Self::Adventure(MapAction {
+            entry: RECRUIT,
             tile,
             building,
         })
@@ -405,7 +427,7 @@ pub fn moves(
 /// Fills `mask` with the legal map entries of `seat`: the commands [`legal_commands`] lists
 /// (`EndTurn` while its turn runs, and [`BUILD_BOAT`] when it lists a `BuildBoat`, E08 T85b2b; a
 /// hero's revisit entry when it lists the hero's `Revisit`, E08 T105b2; [`BUILD`] when it lists a
-/// town's build, E09 T19c1;
+/// town's build, E09 T19c1, [`RECRUIT`] a town's recruitment, E09 T27;
 /// or with an open decision its answers alone: `Decline`, and `Accept` while the offer stands,
 /// E08 T15a; a level-up's `First` and `Second`, E08 T30; a hire dialog's purchases by their
 /// creatures' places, E08 T95b), and each hero slot with a tile to move to ([`legal_moves`]: none
@@ -435,7 +457,8 @@ pub fn legal_mask(
 /// `entry`: 0 alone after a legal entry that takes no tile (`EndTurn`, an answer, a revisit), the
 /// reachable tiles of a hero's legal move but its own, the anchors of the Shipyards of the listed
 /// `BuildBoat`s after [`BUILD_BOAT`] (E08 T85b2b), the entrances of the towns of the listed builds
-/// after [`BUILD`] (E09 T19c1, [`town_tile`]); none after an illegal entry or in the battle
+/// after [`BUILD`] (E09 T19c1, [`town_tile`]) and of the listed recruitments after [`RECRUIT`]
+/// (E09 T27); none after an illegal entry or in the battle
 /// phase (none for the neutral seat).
 pub fn tile_mask(
     state: &GameState,
@@ -461,9 +484,9 @@ pub fn tile_mask(
                 mask[index as usize] = true;
             }
         }
-    } else if entry == BUILD {
+    } else if entry == BUILD || entry == RECRUIT {
         for command in legal_commands(state, rules, seat.actor()) {
-            if let GameCommand::Town(TownCommand::Build { town, .. }) = command
+            if let Some((town, _)) = town_command(entry, &command)
                 && let Some(index) = town_tile(state, town)
             {
                 mask[index as usize] = true;
@@ -483,8 +506,8 @@ pub fn tile_mask(
 
 /// Fills `mask` with the legal buildings of `seat` after choosing `entry` and `tile` (E09 T19c1):
 /// after [`BUILD`] the buildings of the builds [`legal_commands`] lists for the town whose
-/// entrance is `tile`, by their indices in its record (none for a tile with no such town); after
-/// another entry 0 alone when `tile` is in its tile mask ([`tile_mask`]); none otherwise, in the
+/// entrance is `tile`, by their indices in its record (none for a tile with no such town), after
+/// [`RECRUIT`] those of its recruitments (E09 T27); after another entry 0 alone when `tile` is in its tile mask ([`tile_mask`]); none otherwise, in the
 /// battle phase or for the neutral seat.
 pub fn building_mask(
     state: &GameState,
@@ -496,12 +519,12 @@ pub fn building_mask(
 ) {
     let seat = seat.into();
     mask.fill(false);
-    if entry == BUILD {
+    if entry == BUILD || entry == RECRUIT {
         let Some(at) = town_of_tile(state, tile) else {
             return;
         };
         for command in legal_commands(state, rules, seat.actor()) {
-            if let GameCommand::Town(TownCommand::Build { town, building }) = command
+            if let Some((town, building)) = town_command(entry, &command)
                 && town == at
             {
                 mask[building.index()] = true;
@@ -511,6 +534,20 @@ pub fn building_mask(
         let mut tiles = Vec::new();
         tile_mask(state, rules, seat, entry, &mut tiles);
         mask[0] = tiles.get(tile as usize).copied().unwrap_or(false);
+    }
+}
+
+/// The town and building of `command` when it is the town command of `entry`: [`BUILD`]'s build
+/// (E09 T19c1), [`RECRUIT`]'s recruitment (E09 T27).
+fn town_command(entry: usize, command: &GameCommand) -> Option<(TownId, BuildingId)> {
+    match *command {
+        GameCommand::Town(TownCommand::Build { town, building }) if entry == BUILD => {
+            Some((town, building))
+        }
+        GameCommand::Town(TownCommand::Recruit { town, building }) if entry == RECRUIT => {
+            Some((town, building))
+        }
+        _ => None,
     }
 }
 
@@ -621,17 +658,13 @@ pub const fn answer_entry(answer: Answer) -> Option<usize> {
 }
 
 /// The creatures of `player`'s open hire dialog in its source's order (E08 T95b): its source's
-/// stock (`GameState::hire_dialog`, `AdventureState::hire_stock`), as its owner's view
+/// stock (`GameState::hire_dialog`, `GameState::hire_stock`: since E09 T27 a town's too), as its owner's view
 /// (`DecisionView::Hire`) lists them; none when its first open decision is no hire dialog. Read
 /// only for a hire entry or a listed purchase ([`listed_hire`]).
 fn hire_creatures(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<CreatureTypeId> {
     state
         .hire_dialog(player)
-        .and_then(|dialog| {
-            state
-                .adventure()
-                .hire_stock(rules.adventure(), &dialog.source)
-        })
+        .and_then(|dialog| state.hire_stock(rules, &dialog.source))
         .unwrap_or_default()
         .into_iter()
         .map(|(creature, _)| creature)
@@ -746,8 +779,8 @@ fn tileless_entry(command: &GameCommand, hire: &[CreatureTypeId]) -> Option<usiz
 
 /// The entry of a command [`legal_commands`] lists outside a battle for `seat`:
 /// [`tileless_entry`]'s (with `hire`, the open hire dialog's creatures), [`BUILD_BOAT`] for a
-/// `BuildBoat` (E08 T85b2b), a `Revisit`'s by its hero's slot ([`revisit_entry`], E08 T105b2), or
-/// [`BUILD`] for a town's build (E09 T19c1).
+/// `BuildBoat` (E08 T85b2b), a `Revisit`'s by its hero's slot ([`revisit_entry`], E08 T105b2),
+/// [`BUILD`] for a town's build (E09 T19c1), or [`RECRUIT`] for its recruitment (E09 T27).
 fn command_entry(
     state: &GameState,
     seat: Seat,
@@ -760,6 +793,7 @@ fn command_entry(
             revisit_entry(state, seat.player()?, *hero)
         }
         GameCommand::Town(TownCommand::Build { .. }) => Some(BUILD),
+        GameCommand::Town(TownCommand::Recruit { .. }) => Some(RECRUIT),
         other => tileless_entry(other, hire),
     }
 }
@@ -806,7 +840,8 @@ fn build_boat(
 /// a tile its reachable-tiles query lists (not its own) along the query's path, a `BuildBoat`
 /// at a Shipyard its player may use, anchored on the tile ([`build_boat`], E08 T85b2b), or a
 /// town's build of the building at the building head's index in the town whose entrance is the
-/// tile (E09 T19c1; a building other than 0 with another entry names none); none for the neutral
+/// tile (E09 T19c1), or since E09 T27 its recruitment there (a building other than 0 with another
+/// entry names none); none for the neutral
 /// seat. In the battle phase: the battle command the battle's encoding decodes the
 /// action to ([`battle::decode`]), for the seat's battle ([`battle_of`]). Whether the command may
 /// be issued now (whose turn it is, an open decision, the price, the side to act) is `apply`'s.
@@ -825,10 +860,14 @@ pub fn decode(
         }
     };
     let player = seat.player()?;
-    if action.entry == BUILD {
+    if action.entry == BUILD || action.entry == RECRUIT {
         let town = town_of_tile(state, action.tile)?;
         let building = BuildingId::from_index(usize::from(action.building))?;
-        return Some(GameCommand::Town(TownCommand::Build { town, building }));
+        return Some(GameCommand::Town(if action.entry == BUILD {
+            TownCommand::Build { town, building }
+        } else {
+            TownCommand::Recruit { town, building }
+        }));
     }
     if action.building != 0 {
         return None;
@@ -866,8 +905,8 @@ pub fn decode(
 /// [`legal_commands`] lists for it, of the most: an entry buys no other amount, E08 T95b), a move
 /// of one of its player's heroes by the hero's slot and the path's last tile, a `BuildBoat` by
 /// its Shipyard's anchor (E08 T85b2b), a `Revisit` by its hero's slot (tile 0, E08 T105b2), a
-/// town's build by its town's entrance and its building's index (E09 T19c1; none of these for the
-/// neutral seat), a battle command by the
+/// town's build by its town's entrance and its building's index (E09 T19c1), its recruitment the
+/// same way (E09 T27; none of these for the neutral seat), a battle command by the
 /// battle's encoding for the seat's battle ([`battle::encode`]). [`decode`] gives the command back
 /// when a move's path is the one the hero's query chose (a move along another path decodes to the
 /// query's path to the same tile) and a `BuildBoat`'s Shipyard is one the player may use.
@@ -893,6 +932,9 @@ pub fn encode(
         }
         GameCommand::Town(TownCommand::Build { town, building }) => {
             return town_tile(state, *town).map(|tile| Action::build(tile, building.raw()));
+        }
+        GameCommand::Town(TownCommand::Recruit { town, building }) => {
+            return town_tile(state, *town).map(|tile| Action::recruit(tile, building.raw()));
         }
         GameCommand::Answer(Answer::Hire(HireAnswer::Buy { .. })) => {
             let listed = legal_commands(state, rules, seat.actor());

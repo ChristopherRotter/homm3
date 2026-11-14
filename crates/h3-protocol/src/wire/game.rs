@@ -31,7 +31,7 @@ mod lobby;
 mod manifest;
 mod query;
 
-pub use clock::{Duel, GameClock, Timer};
+pub use clock::{Duel, GameClock, OfferClock, Timer};
 pub use command::{
     AdventureCommand, AdventureReject, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmyReject,
     ArmySlot, ArtifactAt, ArtifactPlace, ChestChoice, CombineReject, Consent, GameCommand,
@@ -759,16 +759,14 @@ pub enum SlotState {
     Open,
 }
 
-/// A hire dialog as its owner sees it (GAM-DEC-008): its source named by type and anchor.
+/// A hire dialog as its owner sees it (GAM-DEC-008): its source as [`HireSeen`] names it.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Hire {
     /// The army the bought creatures join.
     pub target: HireTarget,
-    /// The source's type handle: the dwelling's or the Refugee Camp's.
-    pub object_type: u16,
-    /// The source's anchor.
-    pub anchor: Pos,
+    /// The source.
+    pub source: HireSeen,
     /// The source's creatures in its order.
     pub creatures: Vec<HireCreature>,
 }
@@ -780,6 +778,37 @@ pub enum HireTarget {
     Hero {
         /// The hero.
         hero: u16,
+    },
+    /// A town's garrison (E09 T27, TWN-REC-001).
+    Garrison {
+        /// The town.
+        town: u16,
+    },
+}
+
+/// A hire dialog's source (`h3_game::HireSeen`; E09 T27): a map object by type and anchor, or a
+/// town's creature index or Portal of Summoning by the town.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum HireSeen {
+    /// A dwelling or a Refugee Camp on the map.
+    Object {
+        /// The object's type handle.
+        object_type: u16,
+        /// The object's anchor.
+        anchor: Pos,
+    },
+    /// A town's dwelling or horde: one of its fourteen creature indexes (`level - 1`, `+ 7` the
+    /// upgrade).
+    Town {
+        /// The town.
+        town: u16,
+        /// The creature index.
+        index: u8,
+    },
+    /// A town's Portal of Summoning (TWN-REC-002).
+    Portal {
+        /// The town.
+        town: u16,
     },
 }
 

@@ -3151,3 +3151,82 @@ base, a battle and a unit timer; a timed-out side Defends in a battle between pl
   started counting nothing, the time journaled before the pause); `tests/game_session.rs`' golden
   gate checks each `GameClock` (`waits`) against the engine; `tests/wire.rs` round-trips and a
   JSON literal.
+
+### M5 T15 — the survey of the original's turn timer (2026-11-13)
+
+The task (the epic's "M5 part 2", 2b): the original's turn timer read, for T17 and the user's
+check of SRV-Q31. Baseline: `master` aec8772 (#907, T16, protocol v58). Docs only (the map, the
+structs, the survey, the questions) and one doc comment (`Clock::DEFAULT_LEVEL_UP_MS`). Staged:
+`Heroes3.exe` (SHA-256 checked), the three manuals, `HEROES3.HLP`, `GENRLTXT.TXT`, `turndur.txt`.
+Kept whole (a survey, about half a context). Branch `server/e16-m5-t15`.
+
+- **The survey** `docs/epics/E16-timer-survey.md` (the lane's path; indexed in
+  `docs/rules/surveys/README.md`): the record `turn_timer` 0x69D630 and its ten methods read
+  whole; the eleven durations (`turn_duration_minutes` 0x641AE8), humans only, never a campaign,
+  a single game too; started at each human turn and at play (a load restarts the turn whole),
+  stopped at the end and the next turn, **paused for every battle** (its time given back) and a
+  town screen's build; the warnings' schedule and texts in the screen chat; the end in the
+  adventure manager's procedure (GENRLTXT 202, a 15-s box), a move finished first, the screens
+  and dialogs closed (a dialog's +0x58, Cancel), the message boxes answered by style (a question
+  No, a two-picture box at random) or closed 15 s after a late opening with 9999; the level-up's
+  dialog on the turn's time, 15 s late or for a network game's other side, at once after the end
+  in a multiplayer game (a raw 15 000 stored as a deadline), unlimited after a battle in the hot
+  seat, the computer's choice at the end; the "your turn" windows (hot seat outside the time,
+  network inside); VCMI 1.7.5 compared; the table against SRV-Q31, SRV-Q32 and T16.
+- **The map** (`docs/exe/map.toml`): 25 entries new (the timer's methods, the record, the table,
+  `chat_system_message`, `dialog_construct`, `dialog_end_on_time_expired` (H3API agrees),
+  `level_up_dialog_proc`, `network_turn_window`, `game_is_multiplayer` (H3API agrees),
+  `town_screen_load`, `adventure_battle_unwind`, `network_game_join`, `network_player_left`,
+  `message_with_pictures`, `message_box_style`, `message_box_opened`, `screen_chat`, the site
+  `turn_time_expired_end`), `turn_timer_poll` read whole, eight summaries extended
+  (`dialog_proc_base` read whole, `message_box_proc`, `dialog_default_proc`,
+  `battle_result_deadline` the modal dialogs' deadline, `level_up_dialog`, `adventure_battle`,
+  `adventure_manager_procedure`, `turn_timer_start`); `structs.toml`'s `turn_timer` (H3API's
+  `H3TurnTimer`).
+- **SRV-Q33** (asked after the survey, answered at once): (a) battles: SRV-Q31 kept as built (the
+  agent's recommendation); (b) the level-up's default kept at 60 s (not the recommended 15 s);
+  (c) `default_answer`'s gold and Attack kept (the recommendation). Nothing built changes.
+- The map client lane's inbox: the warnings' schedule and texts, the end's box and the "your
+  turn" windows, for showing `GameClock`.
+
+### M5 T17 — the clock hosted (2026-11-14)
+
+The task (the epic's "M5 part 2", 2b): T16's clock hosted in `h3-server`. Baseline: `master`
+06a1d18 (#912, T15; its code is T16's, #907). No original data. Branch
+`claude/admiring-lovelace-jlv0hu`. Kept whole (about half a context): the session had the
+clock's logic, the server only its configuration, its journal and its wake-ups.
+
+- **The offers** (`config::MapOffer`): `turn_minutes` (one of the original's ten,
+  `config::TURN_MINUTES`; absent: unlimited, the eleventh), `level_up_ms` (0: the game waits;
+  60 s by default, under unlimited turns too: SRV-Q31's offer setting), `battle_ms` (not 0) and
+  `battle_increment_ms` (SRV-Q32's base and increment, the session's defaults); `clock()` builds
+  the session's `Clock`; a test's `test_clock` in place of it (`cfg(test)`, as the seeds), so that
+  tests wait seconds, not minutes. `whole::MapOffer::clock`.
+- **The lobby** (protocol v60, after the town lane's E09 T27 took v59 and `master` was merged in): `wire::game::MapOffer`'s `clock`, `wire::game::OfferClock`
+  (`turn_ms`, `level_up_ms`, `battle_ms`, `increment_ms`; 32 bits, saturated), built by
+  `map::game::offer_clock` inside `map_offer` (its last parameter now the computer and the clock).
+- **The journal**: `GameStart::clock` (`journal::whole::StartClock`), the offer's clock when the
+  game was created; a restore takes it, whatever the offer's is now. A journal without one reads
+  as untimed (`#[serde(default)]`), as its game was: the format left at 1.
+- **The game's thread** (`whole::Prepared::host`): the host's clock is the milliseconds since the
+  thread hosts the game (a restore's first reading counts nothing); `GameSession::elapse` before
+  every message, close and sweep tick (not before `ToGame::Open`, which changes nothing), its
+  frames routed (`GameSession::route`); after the computer is handed over, the first reading.
+  The thread waits on its inbox until `GameSession::deadline`, on a current-thread tokio runtime
+  of its own (`timeout_at` made inside `block_on`); at the deadline it reads the clock, journals
+  and delivers as after any message. A sweep tick no longer skips the journal and the lobby's
+  report when nothing paused (its reading may have stepped). A stop (drain of a game not started,
+  stop, a missed signal) reads the clock and journals the time up to it
+  (`GameSession::flush_time`, new: the pending time as an `Elapsed` entry), its due steps taken
+  and told to nobody, so that the restart keeps the time left; a crash still gives back up to
+  15 s.
+- **Tests:** `tests/clock.rs`, end to end with real time (turns of 1.5 s or 3 s, a second's
+  allowance, a 0.8 s level-up): the offer's clock in the lobby; a turn run out with nobody
+  sending, the next player's timer told, a stop journaling the time and the restart's rejoin
+  told what was left, its turn counted exactly 1.5 s across the restart; the monster replay's
+  opening, the fighter silent, the computer playing its side out at the turn's end, then the
+  system's end of turn; the towns replay's battle between players, the defender silent: its
+  clock told at 0, its side the computer's, the attacker's turn timer stopped through the battle;
+  the rewards replay's level-up answered by its default at 0.8 s, the other player told the game
+  waits, then no more, `Elapsed(800)` before the system's answer. `tests/whole.rs`: the config's
+  clock and its refusals, the journal's clock; `h3-protocol`: `offer_clock`, `flush_time`.

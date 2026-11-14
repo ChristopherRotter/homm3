@@ -147,7 +147,7 @@ fn the_duel_starts_with_red_to_move_and_both_its_heroes_free() {
         [
             true, true, true, false, false, false, false, false, false, false, false, false, false,
             false, false, false, false, false, false, false, false, false, false, false, false,
-            false, false, false, false, false, false
+            false, false, false, false, false, false, false
         ]
     );
     env.legal_mask(PlayerId::new(1), &mut mask);
@@ -181,11 +181,19 @@ fn tiles_and_actions_encode_as_documented() {
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 36, 0)), None);
     assert_eq!(tile_index(state, h3_adventure::Pos::new(0, 0, 2)), None);
     assert_eq!(tile_pos(state, 36 * 36 * 2), None);
-    assert_eq!(ACTION_ENCODING_VERSION, 9);
-    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 31));
+    assert_eq!(ACTION_ENCODING_VERSION, 10);
+    assert_eq!((ACCEPT, DECLINE, BUILD_BOAT, ENTRY_COUNT), (9, 10, 17, 32));
     assert_eq!((FIRST, SECOND, BUY_BASE, UNIVERSITY_SLOTS), (11, 12, 13, 4));
     assert_eq!((HIRE_BASE, HIRE_SLOTS, REVISIT_BASE), (18, 4, 22));
-    assert_eq!((BUILD, BUILDING_COUNT), (30, 64));
+    assert_eq!((BUILD, RECRUIT, BUILDING_COUNT), (30, 31, 64));
+    assert_eq!(
+        Action::recruit(7, 19),
+        Action::Adventure(MapAction {
+            entry: RECRUIT,
+            tile: 7,
+            building: 19
+        })
+    );
     assert_eq!(Action::revisit(3), Action::map(25, 0));
     assert_eq!(Action::end_turn(), Action::Adventure(MapAction::default()));
     assert_eq!(
@@ -289,7 +297,8 @@ fn is_move(entry: usize) -> bool {
 /// to the query's path; [`BUILD_BOAT`]'s tiles are the anchors of the listed `BuildBoat`s'
 /// Shipyards ([`check_build_boat`], E08 T85b2b); a revisit entry decodes to the `Revisit` of the
 /// hero in its slot, none with no hero there (E08 T105b2); [`BUILD`]'s tiles are the entrances of
-/// the towns of the listed builds and its buildings theirs ([`check_build`], E09 T19c1); after
+/// the towns of the listed builds and its buildings theirs ([`check_build`], E09 T19c1), and
+/// [`RECRUIT`]'s those of the listed recruitments (E09 T27); after
 /// another entry the building head allows 0 alone at its first legal tile, nothing after an
 /// illegal entry, and a building other than 0 decodes to nothing. In the battle phase (the neutral
 /// seat's only phase) every map mask is empty. The battle masks: [`check_battle_masks`].
@@ -330,8 +339,8 @@ fn check_masks(env: &AdventureEnv, seat: impl Into<Seat>) -> Result<(), TestCase
         env.tile_mask(player, entry, &mut tiles);
         prop_assert_eq!(tiles.len(), env.tile_count());
         prop_assert_eq!(legal, tiles.iter().any(|&t| t), "entry {}", entry);
-        if entry == BUILD {
-            check_build(env, player, &commands, &tiles)?;
+        if entry == BUILD || entry == RECRUIT {
+            check_build(env, (player, entry), &commands, &tiles)?;
             continue;
         }
         // The building head after another entry (E09 T19c1): 0 alone at its first legal tile;
@@ -455,10 +464,11 @@ fn check_build_boat(
 /// [`BUILD`]'s `tiles` for `player` agree with the listed `commands` (E09 T19c1): the entrances
 /// of the towns of their builds; at each the building mask is the buildings of that town's listed
 /// builds, each build decoding to its command, which encodes back to the action; at a tile with no
-/// such town the building mask is empty.
+/// such town the building mask is empty. [`RECRUIT`]'s the same with the listed recruitments (E09
+/// T27).
 fn check_build(
     env: &AdventureEnv,
-    player: PlayerId,
+    (player, entry): (PlayerId, usize),
     commands: &[GameCommand],
     tiles: &[bool],
 ) -> Result<(), TestCaseError> {
@@ -466,7 +476,10 @@ fn check_build(
     let listed: Vec<(u32, usize, &GameCommand)> = commands
         .iter()
         .filter_map(|command| match command {
-            GameCommand::Town(TownCommand::Build { town, building }) => {
+            GameCommand::Town(TownCommand::Build { town, building }) if entry == BUILD => {
+                Some((town_tile(state, *town).unwrap(), building.index(), command))
+            }
+            GameCommand::Town(TownCommand::Recruit { town, building }) if entry == RECRUIT => {
                 Some((town_tile(state, *town).unwrap(), building.index(), command))
             }
             _ => None,
@@ -483,7 +496,7 @@ fn check_build(
     prop_assert_eq!(&masked, &gates);
     let mut buildings = [true; BUILDING_COUNT];
     for &gate in &gates {
-        env.building_mask(player, BUILD, gate, &mut buildings);
+        env.building_mask(player, entry, gate, &mut buildings);
         let allowed: Vec<usize> = (0..BUILDING_COUNT).filter(|&b| buildings[b]).collect();
         let mut want: Vec<usize> = listed
             .iter()
@@ -494,13 +507,18 @@ fn check_build(
         prop_assert_eq!(allowed, want, "gate {}", gate);
     }
     for (tile, building, command) in listed {
-        let action = Action::build(tile, u8::try_from(building).unwrap());
+        let building = u8::try_from(building).unwrap();
+        let action = if entry == BUILD {
+            Action::build(tile, building)
+        } else {
+            Action::recruit(tile, building)
+        };
         let decoded = action::decode(state, rules, player, action);
         prop_assert_eq!(decoded.as_ref(), Some(command));
         prop_assert_eq!(action::encode(state, rules, player, command), Some(action));
     }
     if let Some(other) = (0u32..).find(|tile| !gates.contains(tile)) {
-        env.building_mask(player, BUILD, other, &mut buildings);
+        env.building_mask(player, entry, other, &mut buildings);
         prop_assert_eq!(buildings, [false; BUILDING_COUNT]);
     }
     Ok(())

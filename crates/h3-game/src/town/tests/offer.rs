@@ -5,7 +5,7 @@
 
 use alloc::vec::Vec;
 
-use h3_towns::{BuildingId, BuildingSet, BuildingsSetup, SlotSet};
+use h3_towns::{BuildingId, BuildingSet, BuildingsSetup, SlotSet, TownCommand};
 
 use super::CAPITOL_SLOT;
 use super::command::{
@@ -31,7 +31,11 @@ fn indices(set: BuildingSet) -> Vec<usize> {
 }
 
 fn listed(game: &GameState, rules: &GameRuleset, player: PlayerId) -> Vec<GameCommand> {
+    // E09 T27: the recruitments each town lists after its builds are `recruit.rs`' tests'.
     legal_commands(game, rules, Actor::Player(player))
+        .into_iter()
+        .filter(|c| !matches!(c, GameCommand::Town(TownCommand::Recruit { .. })))
+        .collect()
 }
 
 /// `EndTurn`, then the builds of each `(town, offer)` in turn, as `legal_commands` lists them.

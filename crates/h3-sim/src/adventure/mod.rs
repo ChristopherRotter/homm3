@@ -27,7 +27,7 @@ pub mod rollout;
 pub use action::{
     ACCEPT, ACTION_ENCODING_VERSION, Action, BUILD, BUILD_BOAT, BUILDING_COUNT, BUY_BASE,
     BuildingMask, DECLINE, END_TURN, ENTRY_COUNT, EntryMask, FIRST, HERO_SLOTS, HIRE_BASE,
-    HIRE_SLOTS, MOVE_BASE, MapAction, Phase, REVISIT_BASE, SECOND, Seat, UNIVERSITY_SLOTS,
+    HIRE_SLOTS, MOVE_BASE, MapAction, Phase, RECRUIT, REVISIT_BASE, SECOND, Seat, UNIVERSITY_SLOTS,
     answer_entry,
 };
 pub use env::{AdventureEnv, StepError, StepResult};
