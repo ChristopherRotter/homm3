@@ -3280,3 +3280,42 @@ original data. Branch `claude/awesome-sagan-lue93w`. Kept whole (about half a co
   T19's, as the epic plans: its "Not covered yet" then names what the bounds leave (no total
   limit, colluding seats that keep ending their turns under an unlimited turn, many battles in
   one turn, long games' journals).
+
+### M5 T19 — 2b's closure (2026-11-14)
+
+The task (the epic's "M5 part 2", 2b): the end-to-end test, `docs/06-security.md`, the reviewer
+agent, the user's checkpoint. Baseline: `master` daf0051 (#916, T18; CI green). No original
+data. Branch `claude/gracious-maxwell-gu6rjb`. The user's choices at the start (2026-11-14): T19
+whole in one session (not a T19a/T19b cut); `docs/06-security.md` `cross-lane` in T19's pull
+request, as at T7b and T13.
+
+- **The end-to-end test** (`h3-server` `tests/clock.rs`,
+  `two_clients_play_a_timed_game_through_a_duel_held_level_ups_and_restarts`): the towns map
+  offered with `towns-s3435-d21`'s seed and difficulty pinned and a test's clock (3 s a turn,
+  30 s a level-up, a battle's 30 s base and 1 s increment); two clients take its seats from the
+  lobby. The first day: the first player's 14 moves, then nothing: its turn runs out, the system
+  ends it and the second player's timer starts (after at least the turn's duration). The second
+  day: the first player's hero attacks the second's (command 22): the attacker's turn timer is
+  stopped with what it had left, both chess clocks at the base, the attacker's running; each side
+  sends its battle commands from its own client. The server stops at command 40, the defender to
+  act: at the restart the turn's timer and the attacker's chess clock are back exactly as told
+  before, the defender's runs from at most what it had. The battle's end (command 57): the
+  attacker's hero levels up, the hold's time at its full 30 s, the turn's timer still stopped with
+  the same time left, the other player told only `waits`. A second restart in the hold: the
+  level-up's time runs on from at most what it had, the other player still waits. The owner
+  answers both level-ups (the second holds for its full time again), its turn's timer runs on, the
+  other player no longer waits; the days end to the third. The journal: the system's only command
+  the first day's end, after `Elapsed` entries summing exactly to the turn's duration; each seat's
+  numbers are the replay's indices of its commands (but the 15th, never sent); re-run in-process
+  (`GameSession::reopen`) the game hashes as the golden replay after the same 64 commands
+  (`Replay::record_commands`), on its third day. Stable over seven runs, 8–10 s (three server
+  starts and a turn's wait).
+- **`docs/06-security.md`** (cross-lane): "Hosted games" gains "The whole game's time and
+  bounds" (the system's commands from the host alone, the offer's clock fixed in the journal,
+  time moved only by the host's monotonic clock, the steps at a timer's end, what a player is
+  told, the stopped timers, a disconnected player's turns, the bounds and where they are
+  checked, the tests); the 2a bullet's "no empty seat before E13 and 2b" now says what 2b brought;
+  "Not covered yet": the host's clock counts a player's latency and the server's load, an
+  unlimited turn still waits on a connected player and a level-up for its offer's time, the bounds
+  have no total (each turn and battle afresh, seats ending their turns at the message rate), the
+  journal's growth and the restart's cost left to 2c.
