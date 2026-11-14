@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the shell's code as the battle's, the score the engine's (21); decision 22's fixes; every pixel
   of a Smacker clip through its palette (24); every clip's sound at the effects setting (27);
   every Bink frame whole, the comparisons through `Target` (28); the start's fade from the screen
-  as shown, a frame's whole rectangle shown (32). Open pull request: **#929**
+  as shown, a frame's whole rectangle shown (32). Open pull request: **#932**
   (`client/e27-m2-t5a`) (watch it until it merges). E17 done (`E17-archive.md`, `E17-log.md`; its
   open threads: the epic's "Placed at the closure", the queue's inbox). E28 and E29 are backlog
   sketches. Workspace `clients/` (`clients/README.md`), gates `clients/scripts/check.sh`;
