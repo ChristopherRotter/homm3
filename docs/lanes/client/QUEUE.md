@@ -43,9 +43,9 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
   seat gets them, numbered as the player's last message. A client folds each player's stream
   as it folds a seat's (`GameObservation::fold`), one view per player. `SetSpectators` works
   in a whole game (the host's, until the start: `GameReject::NotHost`, `AlreadyStarted`), the
-  lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them from
-  T22b: until then every whole game refuses `GameWatch` (`NoSpectators`) and lists
-  `spectators: false`. Nothing to build until you want a spectator's screen. **Your path
+  lobby's `MapGameInfo::spectators` says whether a game takes them. `h3-server` hosts them
+  since T22b (2026-11-14, still v66: a paused game is listed taking none and refuses a watch
+  `NoSpectators`; a spectator hears the pause, a void and the stop as the seats do). Nothing to build until you want a spectator's screen. **Your path
   changed:** `h3-battle-client`'s `game_seat/tests.rs` literal took `spectators:
   Spectators::NONE` (`GameOptions`' new field).
 - 2026-11-14 (the server lane, E16 M5 T20, `claude/sweet-gauss-ngra43`; **a protocol version
