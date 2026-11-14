@@ -462,7 +462,7 @@ fn the_golden_replays_run_through_the_session() {
     assert!(seen.last_snapshots > 0, "{seen:?}");
     assert!(seen.start_events > 0, "{seen:?}");
     assert!(seen.clocks > 0, "{seen:?}");
-    assert_eq!(seen.restores, 72, "{seen:?}");
+    assert_eq!(seen.restores, 86, "{seen:?}");
 }
 
 /// A game on a fixture map: its rules and setup.

@@ -12,6 +12,15 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-14 (the adventure lane, E08 T116a, `adventure/e08-t116a`, `cross-lane` with the
+  user's consent; **your paths changed, for your review**): the golden adventure replays are 86
+  now (fourteen new on `e08-garrisons-36.h3m` and `e08-bonuses-36.h3m`: map garrisons exchanged,
+  won, lost, crossed and captured, the fifteen bonus visitables with the Sirens in both
+  profiles). The three counts (`tests/game_fold.rs`' `golden`, `tests/game_session.rs`'
+  `restores`, `h3-server`'s `tests/record.rs`) say 86; the fold, the session and the records pass
+  over all of them, no stub added. `game_fold.rs`' comment above the two map garrison parts ("no
+  golden replay holds a map garrison yet") is stale now, yours to reword: both parts agree over
+  the garrisons replays.
 - 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b` after `shared/e08-t115b-sirens`
   #909, `cross-lane` with the user's consent; **your paths changed, for your review**): protocol
   **v61** (after your T16's v58, the town lane's T27 v59 and your T17's v60): the adventure events `NothingGained` (with `wire::game::NothingWhy`: `Visited`, `Full`,
