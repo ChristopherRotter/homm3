@@ -789,6 +789,9 @@ def drawn_recipe(recipe, out):
     args = [str(H3VIEW), "shell", "--steps", str(here / "steps.txt"), "--frames", str(frames)]
     if int(recipe.get("registry", {}).get("Show Intro", 0)) == 0:
         args.append("--no-intro")
+    # E27 M2 T5a: Bink Video 0 (Video Quality Low) plays the start's Smacker copies.
+    if int(recipe.get("registry", {}).get("Bink Video", 1)) == 0:
+        args += ["--video-quality", "low"]
     if "input_step" in recipe:
         args += ["--input-step", str(recipe["input_step"])]
     done = subprocess.run(args, capture_output=True, text=True)

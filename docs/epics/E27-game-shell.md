@@ -4,7 +4,8 @@ Status: **refined** (2026-11-12, M0, with the user); **M1 closed** (2026-11-13, 
 reviews, the review list accepted, decisions 19 to 22); **M2 refined** (2026-11-13, at M1 T3);
 **M2 T1 done** (2026-11-13, decisions 23 and 24); **M2 T2 done** (2026-11-14, decisions 25 to
 27); **M2 T2b done** (2026-11-14, decision 28); **M2 T3a done** (2026-11-14, decision 29); **M2
-T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); next **M2 T5**
+T3b done** (2026-11-14); **M2 T4 done** (2026-11-14, decision 30); **M2 T5a** in progress
+(decision 31: T5 cut in two)
 (`docs/lanes/client/QUEUE.md`).
 Lane: **client** (E17 closed 2026-11-12; E24's hot seat, M5, consumes the scenario setup; the
 map-client lane is consulted). Follows E17 (the battle client: its compositor, SDL adapter, string
@@ -234,6 +235,17 @@ The user, 2026-11-14 (M2 T3's start):
     main menu at rest exact, h3shell's `sound`, TCP/IP's address masked (M1's review item 8 (b))
     and the shell's window in one task.
 
+The user, 2026-11-14 (M2 T5's start):
+
+31. **T5 cut in two** (the agent's recommendation, at the picture and sound seam): T5a the start's
+    pictures (the readings of NWCLogo's placement, the end-of-clip screen call, the screens
+    between the clips and the buffer before a clip; the Start screen built: the clips in order,
+    `H3Intro` in `introrim.pcx`, the skips, `Show Intro`, Bink Video 0's Smacker copies; `drawn`
+    exact against the `start` group); T5b the start's sound (`game_samples_load`, the 3DO logo's
+    sound path and volume, how much of a Smacker clip's queued sound plays at its end; the clips'
+    sound in the shell at the effects setting with the window; the start recorded with `sound =
+    true` and compared).
+
 E17's binding decisions hold here as in E24 (`docs/epics/E17-clients.md`, "Decisions"):
 exhaustive, automated diffs against the original's captures under Wine; the original's drawing
 bugs fixed, reproduced for the comparisons only (`h3_render::Bugs`); every text through the
@@ -326,7 +338,8 @@ recorded again in the sandbox (`h3shell.py run`), with the sound sequences its t
 | T3a | The shell's frame (CLT-Q103, decision 29): the screens' state machine and the menu loop's requests (design §2.2) in `h3-view`, the `h3-view shell` command with a headless driver (a text client first, E17's pattern); the dialogs' input (a DEF button's own loop, a box's and a bar's press and release, the right press's help) moved from `h3_view::options` into `h3-ui`, the combat options on it unchanged (decision 20) | **done** 2026-11-14: `h3_ui::input` (`Input`, `Held`, `Did`), `h3_view::options` on it (its tests unchanged); `h3_view::shell` (`Shell`, `Screen`, `Ended`, `Request`, `Choice`, `Kind`, `PlayEnd`; the switches of §2.2 to §2.4, §4.3, §5.3), `shell::text` (the words), `h3-view shell [--script] [--no-intro]`; log "M2 T3a" |
 | T3b | Start-up loading by the LODs' tables (CLT-Q2, decision 29): the archive set read by the tables at start and a batch's entries by their ranges (`h3_formats::lod::LodTable`), across `h3-battle-client`'s readers (`render`, `battle`, `sequences`, `text`, `gate`), `h3-view gate` measuring it (`lanes/client/NOTES.md`, "Assets and archives"); the four LODs staged | **done** 2026-11-14: `h3_battle_client::lods` (`Lod`, `Reader`, `Lods`: the tables from the heads, an entry by its range, a batch archive by archive in the ranges' order), every LOD reader of the crate on it; `h3-view gate`: the start 1.3 ms for the tables alone (1 250 KiB; 145 ms for the 212 MiB read whole before), a battle still's peak memory 243 → 28 MiB; log "M2 T3b" |
 | T4 | The comparison: `h3shell.py drawn` (the shell plays a recipe's inputs at its times; its frames compared with the original's shots, as `h3drive.py drawn`); h3shell's sound (h3drive's `sound`); TCP/IP's address masked in its digests (review item 8); the main menu's first shot exact | **done** 2026-11-14 (decision 30): `h3_view::shell::replay` (a recipe's steps on the shell's own clock; `Stop`), `shell::look` and `clients/layouts/shell.toml` (the main menu at rest), `Built`; `h3-view shell --steps --frames` and `--window`; `h3shell.py drawn` (`exact` against the kept lines, `shell/drawn.txt`), `sound`, `mask`; `start-plain`'s and `menu-main`'s first shots exact; `menu-sound` recorded, `mp-tcp` again masked; log "M2 T4" |
-| T5 | The start (design §2.1, §8.4): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); the clips' sound at the effects setting (decision 27) and a clip's end (§8.4); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) and `game_samples_load` read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24), every Bink clip's frame whole (decision 28; the comparisons through `h3_bink::Target`, what the game's buffer holds before a clip read, design §9) | after T4 |
+| T5a | The start's pictures (design §2.1, decision 31): the clips in order, `H3Intro` framed in `introrim.pcx`, skipping, `Show Intro`, Video Quality's Smacker copies (CLT-Q96); what T2 left unsettled (§6.3: `NWCLogo`'s placement, the end-of-clip call, the screens between the clips) read; exact against `start`; every pixel of a Smacker clip through its palette (decision 24), every Bink clip's frame whole (decision 28; the comparisons through `h3_bink::Target`, what the game's buffer holds before a clip read, design §9) | in progress |
+| T5b | The start's sound (decision 31): the clips' sound at the effects setting (decision 27) through `HostSound::play_clip`, with the window; a Smacker clip's end (§8.4: how much of its queued sound plays), the 3DO logo's sound path and its volume, `game_samples_load` read; the start recorded with a recipe's `sound = true` and compared | after T5a |
 | T6 | The main menu, New Game's and Load Game's menus, Quit's question (§2.3 to §2.5): hover, press, release off, popups, hotkeys, `button.wav`, `MAINMENU.MP3`, the buttons redrawn whole (CLT-Q118); Campaign and Tutorial stubs (decisions 7, 9), High Scores and Credits stubs until M4; exact against `menus` with its sound | after T4 |
 | T7 | Multiplayer's first stage (decision 10's stub, CLT-Q101) and the hot seat's names (§2.6, §2.7: the edit field read first, two 21-letter names recorded, Enter pressing OK, CLT-Q107), Load Game's multiplayer; the scenario screen a stub (M3); exact against `multiplayer` | after T6 |
 | T8 | M2's closure: a fresh reviewer, the review list, M3's refinement (M3 T0: the loading bar, the scenario list's maps, decision 8; §6.4's recipes for M3) | after T7 |

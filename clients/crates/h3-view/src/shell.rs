@@ -29,12 +29,13 @@
 //!
 //! Each screen names the task that builds it ([`Screen::task`]): the frame holds them all, the
 //! screens themselves come with T5 to T7, M3, M4, E20 and E24 M5; [`Screen::built`] says how much
-//! of each is drawn so far (T4: the main menu at rest).
+//! of each is drawn so far (T4: the main menu at rest; T5a: the start, [`start`]).
 
 use core::fmt;
 
 pub mod look;
 pub mod replay;
+pub mod start;
 pub mod text;
 
 /// The screen play's end or a main menu command asks for (`screen_request` 0x6976D8; the main
@@ -213,6 +214,7 @@ impl Screen {
     #[must_use]
     pub const fn built(self) -> Built {
         match self {
+            Self::Start => Built::Whole,
             Self::MainMenu => Built::AtRest,
             _ => Built::Not,
         }

@@ -85,7 +85,7 @@ mod video;
 pub mod x87;
 
 pub use clip::{Clip, FrameEntry};
-pub use target::Target;
+pub use target::{MAX_RECTS, Rect, Target, copies, rects};
 pub use video::{Decoder, FLAG_ALPHA, Frame, Plane};
 
 /// How the decoder reads what the game's `BINKW32.DLL` reads otherwise than the format means

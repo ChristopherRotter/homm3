@@ -6,7 +6,8 @@
 //! it. An installation copy without `VIDEO.VID` (a cloud sandbox's: the 629 MB stay on the user's
 //! computer) takes the repository's `original-data/battle-videos.vid` in its place, the user's
 //! copy of the clips the window plays (a `VIDEO.VID` of its own, as the capture harness's run
-//! directory has it).
+//! directory has it), then `original-data/shell-videos.vid`, the shell's clips (E27 M1 T1a1: the
+//! start's, the end screens', the menus'; E27 M2 T5a).
 
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -22,9 +23,14 @@ pub struct Videos {
     archives: Vec<(PathBuf, Vec<VidEntry>)>,
 }
 
-/// The stand-in for an installation copy's missing `VIDEO.VID`.
-fn stand_in() -> PathBuf {
-    Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../original-data/battle-videos.vid")
+/// The stand-ins for an installation copy's missing `VIDEO.VID`, in their search order: the
+/// result window's clips, then the shell's.
+fn stand_ins() -> [PathBuf; 2] {
+    let data = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../original-data");
+    [
+        data.join("battle-videos.vid"),
+        data.join("shell-videos.vid"),
+    ]
 }
 
 /// An archive's directory, reading only its head.
@@ -45,16 +51,20 @@ fn read_directory(path: &Path) -> Result<Vec<VidEntry>, String> {
 }
 
 impl Videos {
-    /// The archives of `install`'s `Data` folder the game reads (`Video.vid`, else the stand-in;
-    /// then `h3ab_ahd.vid`); one missing or unreadable is left out, so that a copy without
-    /// videos shows the window's slot bare, as the original does then.
+    /// The archives of `install`'s `Data` folder the game reads (`Video.vid`, else the
+    /// stand-ins; then `h3ab_ahd.vid`); one missing or unreadable is left out, so that a copy
+    /// without videos shows the window's slot bare, as the original does then.
     pub fn open(install: &Path) -> Self {
+        Self::open_with(install, &stand_ins())
+    }
+
+    fn open_with(install: &Path, stand_ins: &[PathBuf]) -> Self {
         let data = find_ci(install, "Data").unwrap_or_else(|_| install.join("Data"));
-        let main = find_ci(&data, "Video.vid").unwrap_or_else(|_| stand_in());
+        let main = find_ci(&data, "Video.vid").map_or_else(|_| stand_ins.to_vec(), |p| vec![p]);
         let expansion = find_ci(&data, "h3ab_ahd.vid").ok();
-        let archives = [Some(main), expansion]
+        let archives = main
             .into_iter()
-            .flatten()
+            .chain(expansion)
             .filter_map(|path| read_directory(&path).ok().map(|d| (path, d)))
             .collect();
         Self { archives }
@@ -109,6 +119,20 @@ mod tests {
         assert!(videos.read("none.bik").is_err());
         std::fs::write(data.join("H3AB_AHD.vid"), [9, 0, 0, 0]).unwrap();
         assert!(!Videos::open(&dir).has("extra.bik"));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn a_copy_without_video_vid_reads_the_stand_ins_in_order() {
+        let dir = std::env::temp_dir().join(format!("h3-view-stand-ins-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("Data")).unwrap();
+        let (battle, shell) = (dir.join("battle.vid"), dir.join("shell.vid"));
+        std::fs::write(&battle, h3_assets::build::vid(&[("Win3.bik", b"b")])).unwrap();
+        let both = [("Win3.bik", &b"s"[..]), ("3DOLOGO.SMK", b"logo")];
+        std::fs::write(&shell, h3_assets::build::vid(&both)).unwrap();
+        let videos = Videos::open_with(&dir, &[battle, shell, dir.join("none.vid")]);
+        assert_eq!(videos.read("WIN3.BIK").unwrap(), b"b");
+        assert_eq!(videos.read("3dologo.smk").unwrap(), b"logo");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }
