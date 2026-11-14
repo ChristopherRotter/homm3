@@ -275,19 +275,58 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 **Three increments** (2a and 2b closed, above), each closed by a fresh reviewer agent and the user's checkpoint (SRV-Q29):
 
-- **2c Spectators and long journals:** `Viewer::Spectator` (public facts only) through
-  `h3-game`'s, `h3-adventure`'s and `h3-towns`' projections, **built by the server lane** in
-  `cross-lane` pull requests; spectators on the whole game's wire (a battle's rules: the game's
+- **2c Spectators and long journals** (refined 2026-11-14, SRV-Q35): `Viewer::Spectator`
+  through `h3-game`'s, `h3-adventure`'s and `h3-towns`' projections, **built by the server lane**
+  in `cross-lane` pull requests; spectators on the whole game's wire (a battle's rules: the game's
   limit, the host's setting, nothing journaled); long journals measured (an XL game's restore and
   verification after many days) and the case for state saves (ADR-0004 point 9) written down,
   with the restart's cost (every whole journal re-run before the server listens) and the
   session's in-memory copy of a game's commands, which a game of connections never reads (2a's
-  reviewer, SRV-Q30).
-  Tasks refined in a session of their own (SRV-Q34), the first: **a battle both of whose sides
-  the system plays ends** (2b's reviewer's finding 3: a side timed out or past its bound
-  against a monster, or both sides of a battle between players; the engine has no round limit,
-  in-process Defend against Defend never ends, a server's thread would play on without
-  returning): `drive` bounded, the battle ended by a rule the user picks then.
+  reviewer, SRV-Q30). **The user's decisions** (SRV-Q35):
+  - **A battle both of whose sides the system plays** (2b's reviewer's finding 3: a side timed
+    out or past its bound against a monster, or both sides of a battle between players; the
+    engine has no round limit, nor VCMI): **past a bound on the system's commands in one battle
+    the whole game is void**, as a hosted battle past `commands_per_game` (`Goodbye {
+    CommandLimit }`, its journal to `<data>/void/`); `drive` takes a bounded number of steps per
+    call, the rest due at once. Not the agent's recommendation (the attacker's forced retreat at
+    a round bound, `cross-lane` in `h3-battle` and `h3-game`).
+  - **The spectator sees everything, by the host's choice:** an all-seeing spectator for the
+    games its host opens to it; every context's projection gains a full view; ADR-0017 point 2
+    (today "public facts only") and `docs/06-security.md` (ADR-0008's model) amended in a
+    `shared:` change. Not the agent's recommendation (public facts only, as ADR-0017 says). Its
+    shape refined with the user in T21a.
+
+**2c's tasks** (about half a context each; T20 first):
+
+- **T20 A battle both of whose sides the system plays made to end** (SRV-Q35; T16's in-process
+  Defend): `CommandBounds::system_per_battle` (`[limits] system_commands_per_battle`), the
+  system's commands in one battle counted (an unowned side's and the players' sides it plays),
+  again by a restore's re-run; past it the session is void (nothing more applied or driven) and
+  the host voids the game as a battle past `commands_per_game` (protocol v64: `CommandLimit`'s
+  meaning widened); `drive` at most a fixed number of steps per call, the rest due at once
+  (`GameSession::deadline`); the default measured on the golden replays and the XL fixtures.
+- **T21a The all-seeing spectator's design** (SRV-Q35): the observation's and the events' shape
+  for a viewer who sees everything (every player's kingdom, treasury and decisions, the whole
+  map, every object, town and garrison at the full level, a battle's both sides), the host's
+  setting, whether a ranked game or one with human seats may open it, a delay; ADR-0017 point
+  2's and `docs/06-security.md`'s amendments (`shared:`, `cross-lane`); the user's checkpoint on
+  the shape before the engine's work. It cuts T21b if that is more than one context's work.
+- **T21b The full view in the engine** (`cross-lane`: `h3-adventure`, `h3-towns`, `h3-game`):
+  the spectator through `observe`, `project` and `reveal`, each context's full view; the mapping
+  in `h3-protocol` (a protocol step); the fold over a spectator's stream.
+- **T22 Spectators hosted on the whole game's wire:** a spectator's join (no token, by the host's
+  setting and the game's limit, `spectators_per_game`, nothing journaled), its snapshot and
+  events, a late joiner's and a reconnect's snapshot, its record, `SetSpectators`, the lobby's
+  `GameInfo::spectators`; end to end in `h3-server`'s tests.
+- **T23 Long journals measured** (SRV-Q30's major finding's rest): a long game on an XL map
+  (seeded random legal play over many days), the restore's and the verification's time and
+  memory per day; the restart's cost (every whole journal re-run before the server listens) and
+  the session's in-memory copy of a game's commands; the case for state saves (ADR-0004 point 9)
+  written in the design note, the remedies the user's to pick then.
+- **T24 2c's closure:** an end-to-end test (a spectator watching a timed game through a restart,
+  a stalled battle voiding its game), `docs/06-security.md` (`cross-lane`), the reviewer agent,
+  the user's checkpoint; M5 closes with it (and with it E16's milestones: BACKLOG's status in a
+  `shared/` change; "Later" stays).
 
 **Not in part 2** (SRV-Q29): concurrent battles (they need simultaneous turns, which ADR-0017
 point 7 designs for and does not build; 2a keeps only T7b's open battle by identity), removing a

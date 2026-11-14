@@ -24,6 +24,10 @@ Moved to `TRAPS.md`: the wire types (`no_std`, serde forms, 64-bit integers), co
 
 ## Recent sessions
 
+### 2026-11-14 — M5 2c refined (SRV-Q35), T20 in progress
+
+Baseline: `master` 161b565 (#919, T19; CI green; the VM restarted during the setup's baseline). No original data. The user (SRV-Q35): a battle both of whose sides the system plays voids its game past a bound on the system's commands in one battle; the spectator sees everything, by the host's choice (ADR-0017 point 2 amended in T21a); refine, then T20. 2c's tasks T20 to T24 in the epic. **In progress:** T20 on `claude/sweet-gauss-ngra43` (`bounds.rs`' third bound, `drive`'s step cap, `whole.rs`' void).
+
 ### 2026-11-14 — M5 T19: 2b's closure (SRV-Q34, v63)
 
 Baseline: `master` daf0051 (#916, T18). No original data. Kept whole (the user). The end-to-end test (`E16-log.md`): `towns-s3435-d21`'s opening on a timed hosted game, its turn run out, the duel under the chess clocks, two held level-ups, two restarts, to the golden replay's hash. `docs/06-security.md` `cross-lane`. The reviewer: no major, four minor, two nits; the user (SRV-Q34): 1, 2, 4 and the nits fixed (v63), finding 3 first in 2c, the review list as built, 2c refined in a new session. The client lanes' inboxes told. Next: 2c's refinement.
