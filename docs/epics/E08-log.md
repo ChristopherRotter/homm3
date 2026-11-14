@@ -16197,3 +16197,68 @@ only). No original data staged: nothing of the import or the census moved.
 **Versions:** adventure state hash v24, protocol v61 (the server lane's, `cross-lane`); the base
 faithful ruleset hash by #909. The part, the map import, the game state hash, the replay format and
 the env's encoding unchanged. T116 next.
+
+### Increment 12, round 8: T116a, the garrisons and bonuses maps and their replays (2026-11-14, `adventure/e08-t116a`, `cross-lane`)
+
+**The cut** (decision 328; asked at T116's start, `AskUserQuestion`, with the `cross-lane` consent
+for the server lane's golden replay counts): T116 in three as increment 10's T96 and increment
+11's T106: T116a the two maps and their replays, T116b the plans' properties, T116c the XL and
+the workloads with `--with-original-data`. **Baseline:** `master` 29d6fa5 (#914, T115b, merged
+before the session; the setup's `verify-once` found the engine code verified there, light gates
+only). No original data staged: nothing of the import or the census moved.
+
+- **The garrisons map** (`fixtures/maps/e08-garrisons-36.h3m`; `h3-map`'s
+  `tests/garrisons_map.rs`,
+  `the_garrisons_map_is_committed_as_written_and_imports_its_garrisons`): SoD, 36 × 36 of grass
+  cut into four quarters by rock on row 17 and column 18, every way between two quarters a
+  garrison: red's armed (5, 17), blue's armed (13, 17), a neutral armed anti-magic (21, 17), a
+  neutral empty (29, 17) (all horizontal, 33.0 and 33.1), red's non-removable armed vertical
+  (18, 8) (219.0) and blue's non-removable armed anti-magic vertical (18, 26) (219.1) (the
+  entrances); eight heroes, one of each player beside each horizontal garrison and one beside
+  each vertical one, red's Ingham and blue's Rion level 1 with 900 experience beside the neutral
+  armed and red's armed ones. The test reads the file back, imports each garrison with its type,
+  anchor, owner, army and removable flag, and builds. `garrisons_bonuses.rs`' templates and
+  helpers shared (`pub(super)`).
+- **The bonuses map** (`fixtures/maps/e08-bonuses-36.h3m`; `tests/bonuses_map.rs`,
+  `the_bonuses_map_is_committed_as_written_and_imports_the_fifteen`): SoD, 36 × 36 of grass with
+  a strait on columns 24 to 29 and a far shore; the twelve land kinds over both halves with two
+  Springs and two Fountains of Fortune (one a half), the Stables beside red's Valeska and Edric's
+  five Cavaliers, the Buoy, the Sirens and the Mermaids on the strait, six savage pikemen on the
+  water south of the Sirens, a boat by each player's coast. The test checks the types and anchors
+  of all eighteen objects, the boats, and the build's two Fountains in object order.
+- **The golden replays** (`adventure_replays.rs` lists what each meets; 86 now): random play
+  `garrisons-s1205-d28`, `-s1468-d28`, `-s169-d28` (a scratch search over the seeds 1 to 1 500,
+  the union of three meets 27 of the 34 garrison features counted: battles at the six entrances
+  and their results, the flags, the level-ups and the exchanges after a battle, the exchanges by
+  a revisit, the passages) and `bonuses-s501-d28`, `-s61-d28`, `-s348-d28` (seeds 1 to 2 000;
+  their union visits every class but the Mermaids, which 2 games of 600 visit). Scripted
+  (`--seed 1 --checkpoint-every 5 --script`): `garrisons-exchange-s1` (the exchange's moves,
+  split, merges and dismissal at an own removable garrison; the non-removable one's split into an
+  empty slot, D-61; its revisit), `-won-s1` (the neutral anti-magic garrison won, level 2, the flag
+  and the exchange after the level-up; red's garrison won by blue, its army played by red outside
+  its turn), `-lost-s1` (a battle lost at blue's garrison, its army kept), `-passage-s1` (red's
+  and blue's own garrisons crossed in one move without a visit, the empty one flagged without a
+  battle), `bonuses-sirens-s1` and `-sirens-strict-s1` (the Sirens, a second visit's nothing, a
+  battle at sea, the Sirens again: losses under `faithful`, nothing under `strict-fixed`,
+  `ADV-QUIRK-46`), `-spring-s1` (a Spring's two entrances, emptied and full, the week's refill),
+  `-stables-s1` (the week mark, Cavaliers taken at a meeting and upgraded by a revisit, nothing,
+  the new week's points). The moves came from a scratch probe walking each hero with
+  `legal_moves`' paths, the battles' commands from E23's `h3_battle_ai::choose` for both sides.
+- *Found on the way* (nothing wrong in the rules): `legal_management` lists no command on a
+  non-removable garrison's own stacks (the one owner rule's `NotOwn`) and, as for every army,
+  no split; a hero's last stack cannot leave it, so a non-removable garrison takes a split; random
+  play closes every exchange (design §16), so its garrisons change only by battles and captures;
+  of 1 500 garrison games 1 fights a hero standing in the empty garrison after its capture
+  (`garrisons-s169-d28`), none a hero standing in an anti-magic one; the Sirens' 0.7 keeps 14 of
+  20, 7 of 10 and 3 of 5, then 9, 4 and 2.
+- *Agent's calls (change freely):* the maps' layouts, heroes, armies and seeds; every way
+  between quarters a garrison (random play crosses or fights one); the Sirens' battle against
+  pikemen on the water; the Stables' second visit by Cavaliers taken at a meeting; the Spring's
+  refill shown by a third hero on day 8; the refusals of the one owner rule left to
+  `h3-adventure`'s and `h3-game`'s garrison tests (a replay holds no refused command).
+- **Gates:** the scoped verify (below); `h3-cli`'s `adventure_replays` over the 86; on the
+  server lane's paths (`cross-lane`, the user's consent): `h3-protocol`'s `tests::game_fold`
+  (`golden`) and `tests::game_session` (`restores`) and `h3-server`'s `tests::record` count 86
+  and pass over all of them (the garrisons and the fifteen fold, no stub). The server lane's inbox
+  told.
+- **Versions:** none.

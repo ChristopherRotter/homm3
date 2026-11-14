@@ -18,7 +18,7 @@ use h3_game::GameSetupError;
 
 /// The game's `Objects.txt` lines of the garrisons: horizontal (33.0), horizontal anti-magic
 /// (33.1), vertical (219.0) and vertical anti-magic (219.1).
-const GARRISONS: [&str; 4] = [
+pub(super) const GARRISONS: [&str; 4] = [
     "AVCgar10.def 000111111111111111111111111111111111111111111111 \
      010000000000000000000000000000000000000000000000 111111111 011111111 33 0 0 0",
     "AVCgar20.def 000111111111111111111111111111111111111111111111 \
@@ -34,7 +34,7 @@ const GARRISONS: [&str; 4] = [
 /// Fountain of Fortune (30), the Fountain of Youth (31), the Idol of Fortune (38), the Magic
 /// Spring (48), the Magic Well (49), the Oasis (56), the Rally Flag (64), the Stables (94), the
 /// Temple (96) and the Watering Hole (110).
-const LAND_BONUSES: [&str; 12] = [
+pub(super) const LAND_BONUSES: [&str; 12] = [
     "AVSclvd0.def 001111111111111111111111111111111111111111111111 \
      010000000000000000000000000000000000000000000000 111111111 000000001 14 0 0 0",
     "AVSring0.def 001111111111111111111111111111111111111111111111 \
@@ -63,7 +63,7 @@ const LAND_BONUSES: [&str; 12] = [
 
 /// The game's `Objects.txt` lines of the three water bonus visitables: the Buoy (11), the
 /// Mermaids (52) and the Sirens (92).
-const WATER_BONUSES: [&str; 3] = [
+pub(super) const WATER_BONUSES: [&str; 3] = [
     "AVSbuoy0.def 011111111111111111111111111111111111111111111111 \
      100000000000000000000000000000000000000000000000 100000000 100000000 11 0 0 0",
     "AVXmerm0.def 000111111111111111111111111111111111111111111111 \
@@ -77,7 +77,7 @@ fn template(line: &str) -> w::ObjectTemplate {
 }
 
 /// A stack of `count` of the creature `creature` in slot order.
-fn army(stacks: &[(u16, u16)]) -> [Option<(u16, u16)>; w::ARMY_SLOTS] {
+pub(super) fn army(stacks: &[(u16, u16)]) -> [Option<(u16, u16)>; w::ARMY_SLOTS] {
     let mut army = [None; w::ARMY_SLOTS];
     for (slot, &stack) in army.iter_mut().zip(stacks) {
         *slot = Some(stack);
@@ -85,7 +85,7 @@ fn army(stacks: &[(u16, u16)]) -> [Option<(u16, u16)>; w::ARMY_SLOTS] {
     army
 }
 
-fn garrison(
+pub(super) fn garrison(
     tile: (u8, u8),
     line: &str,
     owner: Option<u8>,
@@ -359,7 +359,7 @@ fn creature(code: u16) -> CreatureTypeId {
 }
 
 /// The troops of `stacks` (code, count) in slots from 0.
-fn troops(stacks: &[(u16, u32)]) -> Vec<ArmyStack> {
+pub(super) fn troops(stacks: &[(u16, u32)]) -> Vec<ArmyStack> {
     stacks
         .iter()
         .zip(0u8..)
