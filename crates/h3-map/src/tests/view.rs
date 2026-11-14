@@ -2850,7 +2850,10 @@ proptest! {
             // exit or a gate without a pair leads nowhere, a monolith or a Whirlpool without a
             // candidate tells nothing), or a meeting at the pair. When the two games tell it other
             // events, they tell the same up to the visit's (the walk, and a Whirlpool's loss, its
-            // army the same in both) and the comparison ends, as at a pickup's contents.
+            // army the same in both) and the comparison ends, as at a pickup's contents. The
+            // movement's changes come last (SRV-Q26 (b)), after the visit's events, so a visit that
+            // tells nothing (no candidate in one game) ends its prefix there (E08 T116b: the
+            // inbox's two-way monolith, its pair removed in one game and kept in the other).
             if entering && ta != tb {
                 let visit = |events: &[GameEvent]| {
                     let at = events.iter().position(|e| {
@@ -2859,7 +2862,8 @@ proptest! {
                             GameEvent::MeetingOpened { .. }
                                 | GameEvent::Adventure(AdventureEvent {
                                     kind: AdventureEventKind::HeroTeleported { .. }
-                                        | AdventureEventKind::LeadsNowhere { .. },
+                                        | AdventureEventKind::LeadsNowhere { .. }
+                                        | AdventureEventKind::MovementChanged { .. },
                                     ..
                                 })
                         )
