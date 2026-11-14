@@ -1322,3 +1322,41 @@ T105b2 took adventure replay format v12.
   the line is not committed (CI's random cases rarely meet it). Find what the second game told
   instead (a battle at the exit, a hero gone from the map?) and fix the property or the engine;
   then commit the line. T116b meets these properties anyway.
+
+## T116b2 (moved 2026-11-14, done: `adventure/e08-t116b2`, decision 330)
+
+*(Moved verbatim; the record in `E08-log.md`, T116b2.)*
+
+**E08 T116b2 — the bonus visitables' properties** (design note §16; decision 329; then **T116c**)
+
+- **Scope:** `h3-map`'s plans (`play.rs`) with the fifteen bonus visitables (`BONUSES`, appended
+  after T116b1's `GARRISONS`: the twelve land kinds by template, near the heroes; the sea's three,
+  the Buoy, the Mermaids and the Sirens, on the plan's strait as the Whirlpools), Springs emptied
+  and Fountains drawn by the build; `check_bonuses` (a once-mark set once per battle; the amounts
+  the visit's; the day's and the week's marks cleared at their steps; the points and the maximum
+  raised together; the Sirens' survivors at least one, never more; the kind marks only grow); the
+  old oracles met (the visits' events in `check_decisions`, `check_conservation`, the battle
+  bonuses' clear in `check_heroes_after_battle`); the views follow (`check_told`'s bonuses and
+  kind marks, T115b's, met by the plans' kinds; the hygiene property's own visits of a Fountain or
+  a Spring whose drawn value or entrance the two games differ in); a cover test of fixed cases
+  that visits every class (as T116b1's `the_plans_cross_fight_and_exchange_at_garrisons`, the
+  oracles run inside it). `TRAPS.md`: the plans' strategy (raise the cover tests' cases rather
+  than tune the draw). Confirm the cut at its start.
+- **Inputs:** design §8 to §10, §16; T116a's and T116b1's records (`E08-log.md`; `bonuses_map.rs`
+  shows the kinds' setups), `state/visitables.rs`, `state/bonuses.rs`, `play.rs`, `view.rs`.
+- **Depends on:** T116b1 (its pull request). **Status:** ready once T116b1 merges.
+
+## Inbox notes acted upon (moved 2026-11-14, E08 T116b2: the main property's landing check fixed, the line committed)
+
+*(Moved verbatim: the property's gap, a battle lost within the move's command; reproduced on 29f658e; the record in `E08-log.md`, T116b2.)*
+
+- 2026-11-14 (the server lane, CI on its pull request #922, E16 M5 T20; **a failing property case
+  for you**): `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` failed with `cc
+  f7f1ca8b35d61464506a3e97c784cd505d8b6f11a7190e3320a98b94a06ba606` (an AB map of 11 × 11, one
+  level): after an accepted move the hero is gone (`state.adventure().hero(hero)` is `None`) where
+  the walk's landing says `Some(Pos { x: 5, y: 3, level: 0 })` (`play.rs`, the move's position
+  check after `landing` and `jumped_to`). It reproduces locally on `master` 29f658e and on 2996b51,
+  before the town lane's #920, so it is older than T28a; #922 touches none of the engine's crates.
+  To replay it: append the line to `crates/h3-map/proptest-regressions/tests/play.txt` (your path,
+  not added by the server lane), then `PROPTEST_CASES=1 cargo test -p h3-map --lib
+  tests::play::every_step_keeps_the_commands_invariants`.

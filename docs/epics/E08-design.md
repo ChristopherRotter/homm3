@@ -642,6 +642,18 @@ garrisons and the computer's garrison visits are E10's, named in their rules). N
   the exchange in `check_decisions`; the fixed cases 512, the oracles run inside them
   (`the_plans_cross_fight_and_exchange_at_garrisons`); `check_told`'s `GarrisonChanged` (T114b)
   unchanged, now met by the plans' garrisons.
+  *As built* (T116b2, decision 330): `BONUSES` (the twelve on land by the original's templates,
+  one to five near the heroes; the Buoy, the Mermaids and the Sirens one tile each on the strait,
+  as the Whirlpools: the original's three columns do not fit its narrowest), Cavaliers beside a
+  Stables, `Step::Bonus`; `check_bonuses` (the once-marks only grow but at a battle's end, which
+  keeps the Sirens' with `ADV-QUIRK-46` off, at most one joining a command, with the kind's
+  amounts; the timed marks dropped at the day's and the week's steps; a visit's movement, spell
+  points, upgrades and Sirens' part, `sirens_kept` read apart from the engine's double product;
+  the kind marks only grow, each told); `landing`, `check_legal`, `check_revisits` and
+  `check_conservation` take the visits' events and gains; the hygiene property ends at the
+  viewer's own visit of a Fountain (its value the build's draw) or a Spring emptied in one game, and
+  at an exchange of a garrison whose index `vary` moved; the fixed cases 512
+  (`the_plans_visit_the_bonus_visitables`).
 - **Benchmarks** (`homm3-bench-regression`): the passage in the reach first (T114a, right after
   its first build): `reach-xl-144` and `reach-lifted-xl-144` against `master` (no garrison: flat),
   a new **`reach-garrisons-xl-144`** (an XL map with garrisons across its passages, owned by the
