@@ -303,6 +303,11 @@ pub struct StaticMap {
     /// of kind [`ObjectKind::Town`]); a town's `TownId` is its place here, so no object stores
     /// its id. Follows from the objects, so the hash leaves it out.
     towns: Vec<usize>,
+    /// The towns' entrances by `TownId` (E09 T28a: the rows' and the visitor's lookups, computed
+    /// once from each town's template, `bench-check`'s legal-towns-36): the first tile each is
+    /// visited from ([`MapObject::entrance`]), none for a town visited from no tile of the map.
+    /// Follows from the objects.
+    town_entrances: Vec<Option<Pos>>,
     /// The weekly objects' indices, in object order (E08 T83b1): a Windmill, a Water Wheel, a
     /// Mystical Garden ([`ObjectKind::weekly`]); the state's weekly contents are by their place
     /// here. Follows from the objects too.
@@ -403,6 +408,7 @@ impl StaticMap {
             shares: TerrainShares::default(),
             ownables: Vec::new(),
             towns: Vec::new(),
+            town_entrances: Vec::new(),
             weeklies: Vec::new(),
             dwellings: Vec::new(),
             full_weeks: Vec::new(),
@@ -598,7 +604,7 @@ impl StaticMap {
     /// Lists the ownable and the weekly objects ([`Self::ownables`], [`Self::weeklies`]); since
     /// E08 T94a the dwellings and the camps ([`Self::dwellings`], [`Self::camps`]), after the
     /// random dwellings resolved; since T94b each dwelling's week as it begins and each camp's
-    /// levels; since E09 T8a1 the towns ([`Self::towns`]).
+    /// levels; since E09 T8a1 the towns ([`Self::towns`]), since E09 T28a with their entrances.
     fn list_economy(&mut self, core: &Ruleset, part: &AdventureRuleset) {
         for (index, object) in self.objects.iter().enumerate() {
             let kind = object
@@ -623,6 +629,12 @@ impl StaticMap {
                 self.camp_levels.push(levels);
             }
         }
+        // E09 T28a: each town's entrance, once.
+        self.town_entrances = self
+            .towns
+            .iter()
+            .map(|&index| self.objects[index].entrance(self))
+            .collect();
     }
 
     /// Marks the tiles within one step of a monster's visitable tile, on its level
@@ -1020,6 +1032,13 @@ impl StaticMap {
     /// The object index of the town `town`, if the map has it.
     pub fn town_object(&self, town: TownId) -> Option<usize> {
         self.towns.get(town.index()).copied()
+    }
+
+    /// The entrance of the town `town` (E09 T28a): the first tile it is visited from
+    /// ([`MapObject::entrance`], computed when the map was built); none for a `TownId` the map
+    /// does not have or a town visited from no tile.
+    pub fn town_entrance(&self, town: TownId) -> Option<Pos> {
+        self.town_entrances.get(town.index()).copied().flatten()
     }
 
     /// The spot of the town `town` (E09 T18a, TWN-SET-011): its Shipyard's boat tile, fixed when

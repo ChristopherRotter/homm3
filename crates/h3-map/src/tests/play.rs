@@ -9190,6 +9190,10 @@ fn check_isolation(
         if fought.contains(&b.id) {
             continue;
         }
+        // E09 T28a: the actor's visitor into its town's garrison (TWN-ROW-002, -004).
+        if a.is_none() && b.owner == actor && after.adventure().garrisoned(b.id).is_some() {
+            continue;
+        }
         let a = a.ok_or_else(|| fail(format!("{:?} left the map", b.id)))?;
         prop_assert_eq!((b.id, b.owner), (a.id, a.owner));
         if b.owner == actor {
@@ -9209,7 +9213,11 @@ fn check_isolation(
         let started = events.contains(&GameEvent::TurnStarted { player: b.owner });
         prop_assert!(started || b.movement == a.movement);
     }
-    prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id)));
+    // E09 T28a: or the actor's garrison hero out onto its town's entrance (TWN-ROW-003, -004).
+    let out = |a: &h3_adventure::HeroOnMap| {
+        a.owner == actor && before.adventure().garrisoned(a.id).is_some()
+    };
+    prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id) || out(a)));
     // The other owner of the actor's battle, before or after the command.
     let partner = |state: &GameState| {
         state

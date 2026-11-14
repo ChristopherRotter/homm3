@@ -4,8 +4,6 @@
 //! and its owner, then the adventure's rules ([`AdventureState::move_town_hero`]), each refusal
 //! changing nothing. The original's portraits are a human's town screen's (a computer's are E13's).
 
-use alloc::vec::Vec;
-
 use h3_adventure::{AdventureState, TownHeroError, TownHeroMove};
 use h3_contracts::{PlayerId, TownId};
 use h3_towns::{TownCommand, TownCommandError, TownHeroChange};
@@ -70,24 +68,21 @@ pub(crate) fn heroes<S: Sink>(
 }
 
 /// The hero moves `player` may make at its town `town` now, in [`MOVES`]' order, each as
-/// [`heroes`] accepts it (TWN-ROW-002 to -004; listed after the town's builds and recruitments).
+/// [`heroes`] accepts it (TWN-ROW-002 to -004; listed after the town's builds and recruitments):
+/// the adventure's [`AdventureState::town_hero_moves`], its cheap reading of the checks.
 pub(crate) fn legal_moves(
     state: &GameState,
     rules: &GameRuleset,
     player: PlayerId,
     town: TownId,
-) -> Vec<GameCommand> {
+) -> impl Iterator<Item = GameCommand> + use<> {
     let adventure: &AdventureState = state.adventure();
-    let most = most_heroes(rules);
+    let legal = adventure.town_hero_moves(rules.adventure(), player, (town, most_heroes(rules)));
     MOVES
         .into_iter()
-        .filter(|&change| {
-            adventure
-                .check_town_hero(rules.adventure(), player, (town, most), adventure_move(change))
-                .is_ok()
-        })
-        .map(|change| GameCommand::Town(TownCommand::Heroes { town, change }))
-        .collect()
+        .zip(legal)
+        .filter(|&(_, legal)| legal)
+        .map(move |(change, _)| GameCommand::Town(TownCommand::Heroes { town, change }))
 }
 
 /// The town part's most heroes on the map (TWN-ROW-003): 0 without parameters, a part that has

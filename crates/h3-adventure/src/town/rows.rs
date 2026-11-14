@@ -135,6 +135,48 @@ impl AdventureState {
         }
     }
 
+    /// Which of the three moves `player` may make at `town` now, in [`TownHeroMove`]'s order
+    /// (`Enter`, `Leave`, `Swap`), each as [`Self::check_town_hero`] answers it: the legal
+    /// listing's query, read cheaply (`bench-check`, legal-towns-36: three checks a town computed
+    /// its entrance from its template three times): the entrance the static map's
+    /// ([`crate::StaticMap::town_entrance`]), the visitor the player's hero on it. `most` is the
+    /// most heroes a player has on the map (the town part's). The town's owner is the game's check.
+    pub fn town_hero_moves(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        (town, most): (TownId, u8),
+    ) -> [bool; 3] {
+        let Ok((index, entrance)) = self.town_entrance(town) else {
+            return [false; 3];
+        };
+        let visitor = self.own_visitor(player, entrance).ok();
+        self.moves_at(part, player, (town, most), (index, visitor))
+    }
+
+    /// [`Self::town_hero_moves`]' three at `town`, its object at `index`, `visitor` the place of
+    /// the player's hero on its entrance among the heroes on the map.
+    fn moves_at(
+        &self,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        (town, most): (TownId, u8),
+        (index, visitor): (usize, Option<usize>),
+    ) -> [bool; 3] {
+        let Some(held) = self.town_hero(town) else {
+            let enter = visitor.is_some_and(|at| {
+                let params = part.params();
+                let rules = (params.army_slots(), params.max_stack_count());
+                let garrison = self.town_garrison(index).unwrap_or_default();
+                absorb(rules, &mut self.heroes()[at].army.clone(), garrison).is_ok()
+            });
+            return [enter, false, false];
+        };
+        let own = held.owner == player;
+        let leave = own && visitor.is_none() && self.check_leave(player, (town, most)).is_ok();
+        [false, leave, own && visitor.is_some()]
+    }
+
     /// Makes `player`'s hero move `change` at `town` (TWN-ROW-002 to -004; the town epic's design
     /// note §53), `most` the most heroes a player has on the map (the town part's), each checked
     /// whole first:
@@ -365,7 +407,7 @@ impl AdventureState {
     fn town_entrance(&self, town: TownId) -> Result<(usize, Pos), TownHeroError> {
         let map = self.map();
         map.town_object(town)
-            .and_then(|index| Some(index).zip(map.objects()[index].entrance(map)))
+            .zip(map.town_entrance(town))
             .ok_or(TownHeroError::UnknownTown)
     }
 

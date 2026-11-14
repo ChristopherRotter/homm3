@@ -12,6 +12,17 @@ The ecosystem talk of 2026-10-13 (E16 "Later", BACKLOG E21 and E22) waits; mDNS 
 
 ## Inbox
 
+- 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
+  **a protocol version taken, for your review**): protocol **v62** (v61 left to your T18, #916,
+  and E08 T115b's #914, both claiming it then): `wire::game::TownCommand::Heroes { town, change:
+  TownHeroChange }` (`Enter`, `Leave`, `Swap`; TWN-ROW-002 to -004), eight `TownReject`s
+  (`GarrisonHeld` to `EmptyArmy`), the adventure events `GarrisonEntered` and `GarrisonLeft`, the
+  adventure view's `garrison_heroes` (`wire::game::GarrisonHero`); mapped, inverted and
+  round-tripped; the fold moves the owner's own view between `heroes` and `garrison_heroes`
+  (`own_mut` and `remove_hero` reach a garrison hero), another viewer's hero coming into sight
+  at `GarrisonLeft` is SRV-STUB-3's. `h3-server`'s record literals and the golden replays' counts
+  re-recorded with the replays (hash lines only).
+
 - 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane`; **a protocol version taken,
   for your review**): protocol **v59** (after your T14's v56, E08 T115a's v57 and your T16's v58): `wire::game::TownCommand::Recruit
   { town, building }` (TWN-REC-001, -002), `TownReject`'s `NotRecruiting`, `NotStanding`,

@@ -97,8 +97,8 @@ pub(crate) fn legal_builds<'a>(
                 .iter()
                 .map(move |building| GameCommand::Town(TownCommand::Recruit { town, building }));
             // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
-            let rows = super::rows::legal_moves(state, rules, player, town);
-            builds.chain(recruits).chain(rows)
+            let moves = super::rows::legal_moves(state, rules, player, town);
+            builds.chain(recruits).chain(moves)
         })
 }
 

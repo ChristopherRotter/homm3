@@ -129,6 +129,13 @@ fn row(
 ) -> Result<(Vec<ArmySlot>, Vec<AdventureEvent>), TownHeroError> {
     let mut events = Vec::new();
     let checked = state.check_town_hero(&rules.1, player, (town, MOST), change);
+    // The listing's cheap reading answers each move as its check does.
+    let moves = [TownHeroMove::Enter, TownHeroMove::Leave, TownHeroMove::Swap];
+    let listed = state.town_hero_moves(&rules.1, player, (town, MOST));
+    for (m, legal) in moves.into_iter().zip(listed) {
+        let check = state.check_town_hero(&rules.1, player, (town, MOST), m);
+        assert_eq!(legal, check.is_ok(), "{m:?}: {check:?}");
+    }
     let made = state
         .move_town_hero((&rules.0, &rules.1), player, (town, MOST), change, &mut events)
         .map(|slots| (slots, events));
