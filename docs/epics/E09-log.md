@@ -3689,3 +3689,72 @@ lane's #907 (protocol v58) merged in after the pull request opened.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s,
 `h3-server`'s and `h3-sim`'s tests run on their own; CI on the pull request is the record.
+
+### T28a — the town's two bars and the garrison hero (2026-11-14)
+
+One session, the user present at the start; branch `town/e09-t28a`, `cross-lane` (the adventure
+lane's `h3-adventure` state, army commands, hire, events and observation, `h3-game`'s management,
+listing and observation, `h3-map`'s property plans, `h3-files`' replay line, the 72 adventure
+replays and five workloads; `h3-harvest`'s town gap-fill; the server lane's `h3-protocol` and
+`h3-server`'s record literals; the AI lane's `h3-sim` env, with the user's consent). Starting
+point: `master` at 50b0935 (#911 merged; the setup found CI's fingerprint, the light gates
+green). The user's computer was connected at the start only: the original data staged then (17
+files and the four manuals, SHA-256 checked against the PC's). T28 cut in two at its start; **T28a
+whole** (decision 93, the user; the agent recommended the bars first, then the garrison hero).
+`master` merged in once, after the server lane's #913 (protocol v60); the server lane's #916 and
+E08 T115b's #914 claimed protocol v61 and #914 adventure state hash v24 while this ran, so T28a
+took v62 and v25.
+
+- **The town's rules** (`h3-towns`): `TownCommand::Heroes { town, change: TownHeroChange }`
+  (`Enter`, `Leave`, `Swap`) and eight `TownCommandError`s (`GarrisonHeld` to `EmptyArmy`); the
+  part's parameter `most_heroes` (8; town part **v6**; `[towns.rows]` in `h3-harvest`'s gap-fill
+  with its source `exe-town-rows`, the packs' `towns.toml`).
+- **The adventure** (the town lane's `src/town/rows.rs`; design §53): the record in a state block
+  `AdventureState::town_heroes` (by town; none while no town holds one), adventure state hash
+  **v25** (after the heroes on the map, each as a hero's: `hash_hero` shared); `town_hero`,
+  `garrisoned`, `move_town_hero` (`TownHeroMove`; each check whole, then the move),
+  `check_town_hero`, `town_hero_moves` (the listing's cheap reading), `absorb` (the reading's
+  steps, all or nothing), `release_town_hero` (`TWN-STUB-14`); the events `GarrisonEntered` and
+  `GarrisonLeft`; the owner's `AdventureObservation::garrison_heroes` (`GarrisonHeroView`);
+  `OwnHeroes` over the garrison heroes; the static map's cached town entrances
+  (`StaticMap::town_entrance`, `town_visitor` reads it). The one owner rule's `held` (adventure
+  lane's `state/manage.rs`): `Held::Town` (an own town's garrison without a garrison hero, may be
+  emptied) and `Held::TownHero` (keeps its last stack), both out of line; `set_formation`,
+  `set_tactics` for a garrison hero; the hire's `Joining::TownHero` (design §49).
+- **The game** (`town/rows.rs`, `town/command.rs`, `town/offer.rs`, `town/capture.rs`): the
+  command after the store and the owner, `Enter`'s slots told, the town's `Told`; the legal moves
+  after each own town's recruitments; a capture releases a garrison hero first and frees its type
+  (`TWN-STUB-14`); the adventure lane's `state/manage.rs` `admits_army` (a town's two bars outside
+  a decision, `town_bars`) and `town_told` (an army command on a town's garrison tells its views:
+  the plans' told-views property found it), `stack_at` and `own_details` for a garrison hero;
+  `legal.rs`' `town_partner` and `legal_town_management`; `observe.rs`' hero infos with the
+  owner's garrison heroes and their details.
+- **The wire** (protocol **v62**): `TownCommand::Heroes`, `TownHeroChange`, eight `TownReject`s,
+  `GarrisonEntered`, `GarrisonLeft`, `Adventure::garrison_heroes` (`GarrisonHero`); the fold moves
+  the owner's own view between `heroes` and `garrison_heroes`. Replay format **v16** (`town heroes
+  <town> enter|leave|swap`). The env's encoding **v11**: `TOWN_HEROES` 32 to 34 with the tile head.
+- **Tests:** `h3-towns` (the refusals' messages, the part's hash and refusal); `h3-adventure`'s
+  `town/rows/tests.rs` (10: each move and refusal changing nothing, the listing's query against
+  each check, the absorb's steps and refusals, the bars and a garrison hero under the one owner
+  rule, a purchase into the garrison hero, the block's order, the capture's release);
+  `h3-game`'s `town/tests/rows.rs` (4: the command's refusals, events and listing, the bars'
+  management and listings, a purchase, the capture to the pool and the views); `h3-protocol`'s
+  round trips (116 rejections); `h3-sim`'s layout and its mask property's `check_town_heroes`, the
+  town map's fork test on seed 70 (a search over 1 to 199). `h3-map`'s plans: the moves probed after
+  each town's recruitments with `check_town_heroes`, `check_invariants` (no hero both on the map
+  and in a garrison, the garrison empty), `check_isolation` and `armies` over the garrison heroes,
+  `view.rs`' `check_told` folding the two events.
+- **Replays:** the 72 re-recorded from their commands (a scratch script; the format, the town
+  part's hash, the adventure state hash version and the hash lines only); `h3-server`'s record
+  literals, `h3-cli`'s and `h3-sim`'s format literals. The bot reports unchanged (no part they
+  record moved).
+- **Bench** (`master` built in the same sandbox): `manage-army-12` +0.55 %; `legal-towns-36`
+  +19.04 % (the agent's moves: 1 959 listings for 1 755; the query about 210 Ir a listing after
+  two dropped designs, +56 % and +26 %), `fork-towns-36` +6.74 % (the forked game), `reach-towns-36`
+  −6.01 % (the games), `fork-boxes-xl-144` and `fork-stones-xl-144` +0.59 % (the block's pointer;
+  master +1.55 % on their baselines) re-baselined with the reasons; every other workload within
+  its gate.
+- **Agent's calls (change freely):** decision 93's list.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s,
+`h3-server`'s and `h3-sim`'s tests run on their own; CI on the pull request is the record.

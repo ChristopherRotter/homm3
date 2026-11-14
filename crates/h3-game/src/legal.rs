@@ -386,12 +386,11 @@ fn town_partner(state: &GameState, player: PlayerId, hero: HeroId) -> Option<Arm
         let own = adventure.hero(visitor).is_some_and(|h| h.owner == player);
         return own.then_some(ArmyRef::Hero(visitor));
     }
-    let on = adventure.hero(hero)?;
-    let town = adventure.map().town_at(on.pos)?;
-    let index = adventure.map().town_object(town)?;
-    if adventure.owner(index) != Some(player) {
-        return None;
-    }
+    let map = adventure.map();
+    let town = adventure
+        .hero(hero)
+        .and_then(|on| map.town_at(on.pos))
+        .filter(|&town| map.town_object(town).and_then(|i| adventure.owner(i)) == Some(player))?;
     Some(
         adventure
             .town_hero(town)

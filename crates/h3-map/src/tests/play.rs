@@ -2820,11 +2820,42 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
         let garrison = ArmyRef::MapGarrison(exchange.garrison);
         return vec![vec![ArmyRef::Hero(exchange.hero), garrison]];
     }
-    let heroes = state.adventure().heroes().iter();
-    heroes
+    // E09 T28a (TWN-ROW-001): a visitor of an own town with the town's upper bar (its garrison
+    // hero's army, else its garrison), and each own garrison hero (with its town's own visitor).
+    let adventure = state.adventure();
+    let map = adventure.map();
+    let upper = |town: TownId| {
+        adventure
+            .town_hero(town)
+            .map_or(ArmyRef::Garrison(town), |held| ArmyRef::Hero(held.id))
+    };
+    let own_town = |town: TownId| {
+        map.town_object(town)
+            .is_some_and(|index| adventure.owner(index) == Some(player))
+    };
+    let on_map = adventure
+        .heroes()
+        .iter()
         .filter(|h| h.owner == player)
-        .map(|h| vec![ArmyRef::Hero(h.id)])
-        .collect()
+        .map(|h| {
+            let town = map.town_at(h.pos).filter(|&town| own_town(town));
+            let mut armies = vec![ArmyRef::Hero(h.id)];
+            armies.extend(town.map(upper));
+            armies
+        });
+    let held = adventure
+        .town_heroes()
+        .iter()
+        .filter(|(_, h)| h.owner == player)
+        .map(|&(town, ref h)| {
+            let visitor = adventure
+                .town_visitor(town)
+                .filter(|&v| adventure.hero(v).is_some_and(|v| v.owner == player));
+            let mut armies = vec![ArmyRef::Hero(h.id)];
+            armies.extend(visitor.map(ArmyRef::Hero));
+            armies
+        });
+    on_map.chain(held).collect()
 }
 
 /// The stack at `at` (E08 T52): in its hero's army on the map, in the acting player's army
@@ -2832,7 +2863,11 @@ fn managed(state: &GameState) -> Vec<Vec<ArmyRef>> {
 fn stack_at(state: &GameState, at: ArmySlot) -> Option<h3_contracts::ArmyStack> {
     let adventure = state.adventure();
     let army = match at.army {
-        ArmyRef::Hero(hero) => adventure.hero(hero).map(|h| &h.army[..]),
+        // E09 T28a: or a garrison hero's.
+        ArmyRef::Hero(hero) => adventure
+            .hero(hero)
+            .or_else(|| adventure.garrisoned(hero).map(|(_, h)| h))
+            .map(|h| &h.army[..]),
         ArmyRef::Group => state.army_dialog(acting(state)).map(|(_, group)| group),
         ArmyRef::Garrison(town) => adventure
             .map()
