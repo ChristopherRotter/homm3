@@ -13,6 +13,8 @@ h3-assets.workspace = true
 h3-bink.workspace = true
 h3-protocol.workspace = true
 h3-render.workspace = true
+# The clips' sound (E27 M2 T2): the Smacker decoder, pure.
+h3-smacker.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 toml.workspace = true

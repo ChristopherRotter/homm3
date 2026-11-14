@@ -11,7 +11,9 @@
 //! `SMACKW32.DLL`'s (`clients/scripts/smacker-check.sh`). Since E27 M2 T2 a clip's sound too:
 //! a Bink clip's first track (`<stem>.pcm`, `h3_bink::check::sound`), each of a Smacker clip's
 //! (`<stem>.t<k>.pcm`, `h3_smacker::check::sound`), compared whole; `--sound-tables <file>`
-//! writes Bink's sound tables (`h3_bink::check::sound_tables`, against `binkprobe sound-tables`).
+//! writes Bink's sound tables (`h3_bink::check::sound_tables`, against `binkprobe sound-tables`);
+//! `--play` plays each clip's sound on the default device as the client will (`h3_view::clip_sound`
+//! at the effects setting 9, `HostSound::play_clip`), one after another.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -53,17 +55,20 @@ pub struct Options {
     kind: Kind,
     /// `--sound-tables <file>` (E27 M2 T2): where to write Bink's sound tables.
     tables: Option<PathBuf>,
+    /// `--play` (E27 M2 T2): each clip's sound played on the default device.
+    play: bool,
 }
 
 impl Options {
     /// Parses `[<name>...] [--vid <file>] [--out <dir>] [--reference <dir>] [--sample <seed>]...
-    /// [--original] [--smacker] [--sound-tables <file>]`.
+    /// [--original] [--smacker] [--sound-tables <file>] [--play]`.
     pub fn parse(args: &[String]) -> Result<Self, String> {
         let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
         let (mut vid, mut out, mut reference, mut tables) = (None, None, None, None);
         let (mut names, mut samples) = (Vec::new(), Vec::new());
         let mut reading = Reading::Fixed;
         let mut kind = Kind::Bink;
+        let mut play = false;
         let mut rest = args.iter();
         while let Some(arg) = rest.next() {
             let mut value = || {
@@ -78,6 +83,7 @@ impl Options {
                 "--original" => reading = Reading::Original,
                 "--smacker" => kind = Kind::Smacker,
                 "--sound-tables" => tables = Some(PathBuf::from(value()?)),
+                "--play" => play = true,
                 "--sample" => {
                     let v = value()?;
                     samples.push(v.parse().map_err(|_| format!("video: bad seed `{v}`"))?);
@@ -101,6 +107,7 @@ impl Options {
             reading,
             kind,
             tables,
+            play,
         })
     }
 
@@ -261,6 +268,44 @@ fn compare(name: &str, count: usize, ours: &[u8], reference: &[u8]) -> bool {
     false
 }
 
+/// Plays the clip's sounds on the default device, waiting until each ends.
+fn play(name: &str, bytes: &[u8], kind: Kind) -> Result<(), String> {
+    use h3_view::clip_sound::{ClipSound, Format, volume};
+    let (sounds, format) = match kind {
+        Kind::Bink => (
+            ClipSound::bink(bytes)
+                .map_err(|e| format!("{e:?}"))?
+                .into_iter()
+                .collect::<Vec<_>>(),
+            Format::Bink,
+        ),
+        Kind::Smacker => (
+            ClipSound::smacker(bytes).map_err(|e| format!("{e:?}"))?,
+            Format::Smacker,
+        ),
+    };
+    if sounds.is_empty() {
+        return Ok(());
+    }
+    let mut host = crate::audio::HostSound::open(h3_render::Bugs::Fixed)?;
+    for sound in &sounds {
+        println!(
+            "{}: playing {} Hz × {}, {} ms",
+            printable(name),
+            sound.rate,
+            sound.channels,
+            sound.samples.len() as u64 * 1000
+                / (u64::from(sound.rate) * u64::from(sound.channels)).max(1)
+        );
+        let stream = host.play_clip(sound, volume(format, 9, h3_render::Bugs::Fixed))?;
+        while host.clip_playing(stream) {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+        host.stop_clip(stream);
+    }
+    Ok(())
+}
+
 fn video(options: &Options) -> Result<bool, String> {
     if let Some(path) = &options.tables {
         if let Some(parent) = path.parent() {
@@ -345,6 +390,9 @@ fn video(options: &Options) -> Result<bool, String> {
                 (outputs, frames.len())
             }
         };
+        if options.play {
+            play(name, bytes, options.kind)?;
+        }
         for (extension, ours) in outputs {
             let count = if extension.ends_with("pcm") { 1 } else { count };
             write(options.out.join(format!("{stem}.{extension}")), &ours)?;
@@ -426,6 +474,7 @@ mod tests {
             reading: Reading::Fixed,
             kind: Kind::Bink,
             tables: Some(dir.join("tables")),
+            play: false,
         };
         assert_eq!(video(&options), Ok(true));
         // The sound (E27 M2 T2) and the sound tables beside the frames.
@@ -475,6 +524,7 @@ mod tests {
             reading: Reading::Fixed,
             kind: Kind::Smacker,
             tables: None,
+            play: false,
         };
         assert_eq!(video(&options), Ok(true));
         let frames = h3_smacker::check::frames(&h3_smacker::build::sample(5)).unwrap();
@@ -536,6 +586,7 @@ mod tests {
             reading: Reading::Original,
             kind: Kind::Bink,
             tables: None,
+            play: false,
         };
         assert_eq!(video(&options), Ok(false));
         assert!(out.join("\u{1b}[2Jgood.bik").exists());

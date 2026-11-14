@@ -22,6 +22,8 @@ const PURE: [(&str, &[&str]); 5] = [
             "h3-bink",
             "h3-protocol",
             "h3-render",
+            // The clips' sound (E27 M2 T2): the Smacker decoder, pure.
+            "h3-smacker",
             "h3-ui",
             "serde",
             "serde_json",
