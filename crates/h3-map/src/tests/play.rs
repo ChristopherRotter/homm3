@@ -4542,15 +4542,20 @@ fn hire_stock(
     }
 }
 
-/// The army a hire dialog's `target` names on `state` (E09 T27): a hero's, or a town's garrison.
+/// The army a hire dialog's `target` names on `state` (E09 T27): a hero's, or a town's garrison,
+/// since E09 T28a its garrison hero's army when one holds the town (the upper bar, the town
+/// epic's design note §49; found by E08 T116b1's draws: the purchase joins the hero).
 fn hire_army(state: &GameState, target: HireTarget) -> Vec<h3_contracts::ArmyStack> {
     let adventure = state.adventure();
     match target {
         HireTarget::Hero(hero) => adventure.hero(hero).unwrap().army.clone(),
-        HireTarget::Garrison(town) => {
-            let index = adventure.map().town_object(town).unwrap();
-            adventure.town_garrison(index).unwrap().to_vec()
-        }
+        HireTarget::Garrison(town) => adventure.town_hero(town).map_or_else(
+            || {
+                let index = adventure.map().town_object(town).unwrap();
+                adventure.town_garrison(index).unwrap().to_vec()
+            },
+            |held| held.army.clone(),
+        ),
     }
 }
 
@@ -4758,10 +4763,15 @@ fn check_hire(
                 seen_by: Viewers::NONE.with(actor),
             })),
             HireTarget::Garrison(town) => {
+                // E09 T28a: its garrison hero's army when one holds the town ([`hire_army`]).
+                let held = state
+                    .adventure()
+                    .town_hero(town)
+                    .map(|h| ArmyRef::Hero(h.id));
                 expected.push(GameEvent::StackChanged {
                     player: actor,
                     at: ArmySlot {
-                        army: ArmyRef::Garrison(town),
+                        army: held.unwrap_or(ArmyRef::Garrison(town)),
                         slot: joined.slot,
                     },
                     stack: Some(joined),
@@ -7619,15 +7629,21 @@ fn check_towns(
             .any(|e| matches!(e, GameEvent::WeekStarted { .. }));
         // E09 T27: a purchase in the town's hire dialog joins its garrison (its slot's
         // `StackChanged`, no battle) and lowers one index's count or its Portal's, the Portal's
-        // creature kept (TWN-REC-001, -002; `check_hire` checks the amount).
+        // creature kept (TWN-REC-001, -002; `check_hire` checks the amount); since E09 T28a its
+        // garrison hero's army when one holds the town (the upper bar; found by E08 T116b1's
+        // draws, as `check_hire`'s).
+        let held = before
+            .adventure()
+            .town_hero(town)
+            .map(|h| ArmyRef::Hero(h.id));
         let bought = !events
             .iter()
             .any(|e| matches!(e, GameEvent::BattleStarted { .. }))
             && events.iter().any(|e| {
                 matches!(*e, GameEvent::StackChanged {
-                    at: ArmySlot { army: ArmyRef::Garrison(t), .. },
+                    at: ArmySlot { army, .. },
                     ..
-                } if t == town)
+                } if army == ArmyRef::Garrison(town) || Some(army) == held)
             });
         if old.available_all() != new.available_all() {
             let fired = events

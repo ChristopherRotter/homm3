@@ -16328,6 +16328,13 @@ light gates only). No original data staged. Built by the main session.
   exit with the new draw: raised from 512 to 768 cases (TRAPS: raise the cases, not the draw).
 - *Agent's calls (change freely):* the four kinds' shapes, the draws' weights, the armies; the
   step's preferences; the cover test's 512 cases with the oracles inside it.
+- **On the merge with `master`** (#920, the town lane's E09 T28a, and #921 to #923): the plans'
+  `hire_army` and `check_hire` still expected a town's purchase in its garrison, where T28a puts
+  it into the town's garrison hero's army (the upper bar): the merged suite's main property met
+  it with T116b1's draws (`StackChanged` on the hero), and a 300-case stress then met the same in
+  `check_towns`' purchase (the town's counts moved "without a purchase"). All three now follow
+  the garrison hero; the main property then passed 300 cases in 467 s; the town lane's inbox
+  told.
 - **The stress** (cases raised for one run each, then restored): `every_step_keeps_the_commands_invariants`
   passed 400 cases in 645 s; `a_viewer_learns_nothing_it_cannot_see` and
   `views_move_as_the_events_say` 300 each in 114 s (the views' `GarrisonChanged` and the
