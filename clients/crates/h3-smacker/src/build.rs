@@ -372,6 +372,89 @@ impl FrameSpec {
     }
 }
 
+/// A packed sound packet for `track` (E27 M2 T2; the writer's side of [`crate::sound::decode`]):
+/// its bytes after the size word, as [`FrameSpec::audio`] holds them. Its decoded size, then
+/// the flags (sound, stereo and 16-bit as the track's), then `trees` (16 bits: a channel's low
+/// bytes' and high bytes' trees, `trees[2 * channel]` and `trees[2 * channel + 1]`; 8 bits:
+/// `trees[channel]`), each after a 1 and before a 0 as RAD's encoder writes them (FFmpeg skips
+/// both bits), then each channel's first sample of `first` (the last channel's first; a 16-bit
+/// one byte-swapped, as FFmpeg reads it), then for each value of `steps` (the differences of the
+/// samples after the first, the channels interleaved) the code of its low byte and then of its
+/// high byte in that channel's trees (a code for a byte no leaf holds: the first leaf's).
+#[must_use]
+pub fn sound(track: Track, trees: &[Shape], first: [u32; 2], steps: &[u32]) -> Vec<u8> {
+    let stereo = track.flags & 0x10 != 0;
+    let sixteen = track.flags & 0x20 != 0;
+    let channels = 1 + usize::from(stereo);
+    let bytes = 1 + usize::from(sixteen);
+    let mut w = BitWriter::new();
+    w.flag(true);
+    w.flag(stereo);
+    w.flag(sixteen);
+    for tree in trees.iter().take(channels * bytes) {
+        w.flag(true);
+        tree.write_bytes(&mut w);
+        w.flag(false);
+    }
+    for &value in first[..channels].iter().rev() {
+        if sixteen {
+            w.put(u32::from((value as u16).swap_bytes()), 16);
+        } else {
+            w.put(value, 8);
+        }
+    }
+    let leaf = |k: usize| trees.get(k).cloned().unwrap_or(Shape::Leaf(0));
+    for (i, &step) in steps.iter().enumerate() {
+        let channel = (i + channels) % channels;
+        if sixteen {
+            leaf(2 * channel).code(&mut w, step & 0xFF);
+            leaf(2 * channel + 1).code(&mut w, (step >> 8) & 0xFF);
+        } else {
+            leaf(channel).code(&mut w, step & 0xFF);
+        }
+    }
+    let size = ((channels + steps.len()) * bytes) as u32;
+    let mut out = size.to_le_bytes().to_vec();
+    out.extend(w.bytes());
+    out
+}
+
+/// A random packed sound packet for `track`: random byte trees ([`byte_tree`]), first samples,
+/// and up to 40 samples a channel (whose differences are pairs of the trees' leaves), whole
+/// words of them: `SMACKW32.DLL` hands Miles whole words (0x10007DC1), so the last 1 to 3 bytes
+/// of a track whose sound does not end on one never reach it (the game's 16-bit stereo clips
+/// always do).
+fn sample_sound(rng: &mut Rng, track: Track) -> Vec<u8> {
+    let channels = 1 + usize::from(track.flags & 0x10 != 0);
+    let sixteen = track.flags & 0x20 != 0;
+    let count = channels * (1 + usize::from(sixteen));
+    let trees: Vec<Shape> = (0..count).map(|_| byte_tree(rng, false)).collect();
+    let leaves: Vec<Vec<u32>> = trees
+        .iter()
+        .map(|t| {
+            let mut out = Vec::new();
+            t.leaves(&mut out);
+            out
+        })
+        .collect();
+    let pick = |rng: &mut Rng, k: usize| leaves[k][rng.below(leaves[k].len() as u32) as usize];
+    let first =
+        [rng.below(1 << 16), rng.below(1 << 16)].map(|v| if sixteen { v } else { v & 0xFF });
+    let unit = 4 / count;
+    let per_channel = unit * (1 + rng.below(40 / unit as u32) as usize);
+    let steps: Vec<u32> = (0..channels * (per_channel - 1))
+        .map(|i| {
+            let channel = i % channels;
+            if sixteen {
+                pick(rng, 2 * channel) | pick(rng, 2 * channel + 1) << 8
+            } else {
+                pick(rng, channel)
+            }
+        })
+        .collect();
+    sound(track, &trees, first, &steps)
+}
+
 /// A Smacker file of `frames` (the last the ring frame when the header says so).
 #[must_use]
 pub fn file(header: &Header, frames: &[FrameSpec]) -> Vec<u8> {
@@ -380,7 +463,15 @@ pub fn file(header: &Header, frames: &[FrameSpec]) -> Vec<u8> {
     for frame in frames {
         for (track, bytes) in &frame.audio {
             if let Some(track) = tracks.get_mut(*track) {
-                track.largest = track.largest.max(bytes.len() as u32 + 4);
+                // The largest decoded size, as RAD's encoder writes it (a packed packet's first
+                // word; `SMACKW32.DLL` sizes its buffer by it), else the packet's.
+                let size = match bytes.get(..4) {
+                    Some(&[a, b, c, d]) if track.flags & 0x80 != 0 => {
+                        u32::from_le_bytes([a, b, c, d])
+                    }
+                    _ => bytes.len() as u32 + 4,
+                };
+                track.largest = track.largest.max(size);
             }
         }
     }
@@ -632,7 +723,10 @@ pub fn sample(seed: u64) -> Vec<u8> {
 /// A random clip of [`SAMPLE_FRAMES`] frames (and a ring frame one time in three) between 16 ×
 /// 16 and 64 × 52 pixels: its trees random in shape, size and escapes, each left out one time
 /// in eight; its blocks of every type, their runs mostly short; its palette changes of every
-/// operation; an audio track's packets one time in two (random bytes: the decoder skips them).
+/// operation; one time in two a packed sound track (E27 M2 T2), its rate and its flags random
+/// (8 or 16 bits, mono or stereo), a packet in each frame but the last and the ring frame
+/// ([`sample_sound`]; as the game's clips end: a frame without one makes `SMACKW32.DLL` hand
+/// Miles what it holds, 0x10005EBA, so the DLL's check gets every sample).
 /// It keeps to what `SMACKW32.DLL` reads as FFmpeg does (E27 M2 T1): every tree has both byte
 /// trees, and no frame is marked a key frame in its size (the DLL does not take the mark as
 /// FFmpeg does; after either it decodes other pixels or reads memory it should not; no game clip
@@ -656,8 +750,8 @@ pub fn sample_version(seed: u64, version: Version) -> Vec<u8> {
     let sound = rng.chance(2);
     if sound {
         header.tracks[0] = Track {
-            rate: 22050,
-            flags: 0xF0,
+            rate: [11025, 22050, 22050, 44100][rng.below(4) as usize],
+            flags: 0xC0 | (rng.below(4) as u8) << 4,
             largest: 0,
         };
     }
@@ -668,9 +762,8 @@ pub fn sample_version(seed: u64, version: Version) -> Vec<u8> {
         .map(|n| FrameSpec {
             key: false,
             palette: (n == 0 || rng.chance(3)).then(|| palette_change(&mut rng, n == 0)),
-            audio: if sound {
-                let len = 4 + rng.below(32) as usize;
-                vec![(0, (0..len).map(|_| rng.below(256) as u8).collect())]
+            audio: if sound && n + 1 < SAMPLE_FRAMES {
+                vec![(0, sample_sound(&mut rng, header.tracks[0]))]
             } else {
                 Vec::new()
             },

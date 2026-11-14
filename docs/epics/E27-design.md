@@ -1574,3 +1574,81 @@ screen is 5-6-5).
 - The frame time: −6666 (`3DOLOGO`, `NWCLOGO`, `H3INTRO`) is 66.66 ms, −10000 (`HSANIM`,
   `HSLOOP`, `LOSEGAME`) 100 ms, −11111 AB's `Credits.smk`, 100 (`ProgressBar`, `CREDITS.SMK`)
   100 ms.
+
+## 8. The clips' sound (M2 T2, 2026-11-14)
+
+`h3_smacker::sound` and `h3_bink::audio` decode the clips' tracks; `h3_view::clip_sound` makes
+their samples and volume for the host. This section holds how they were checked against the
+game's DLLs (`clients/scripts/smacker-check.sh`, `bink-check.sh`; the probes in
+`clients/capture/README.md`, "The clips' sound") and what the readings left for T5.
+
+### 8.1 The probes
+
+- **A stand-in Miles** (`clients/capture/mss32.c`, built by `setup.sh` into the run directory's
+  `mss/MSS32.DLL`): the probes load it by its path before the DLL asks for `MSS32.DLL`. It
+  records every buffer the DLL loads into a sample (`AIL_load_sample_buffer`, the bytes in order)
+  and runs the DLL's Miles timers only when the probe pumps them, on the probe's thread. Its
+  driver answers preference 15 (`DIG_USE_WAVEOUT`) with 1, so `SMACKW32.DLL` streams through the
+  double buffers; the game's driver answers 0 and the DLL writes the same ring into Miles'
+  DirectSound buffer (0x100095C0).
+- **`smackprobe audio`**: `SmackSoundUseMSS`, `SmackOpen` with the tracks' flags 0xFE000,
+  `SmackVolumePan` at the game's 3640 × 9, then every frame (the ring frame too), the timer
+  pumped up to 64 times a frame and 256 times at the end: what the DLL hands Miles.
+- **`binkprobe sound`** calls `BINKW32.DLL`'s decoder as `BinkDoFrame` does (0x10005A90):
+  `BinkAudioDecompressOpen(rate, channels, 1)` (0x10005195), then per frame's packet
+  `BinkAudioDecompress` until its decoded size. The DLL's playback was not used: it drops what
+  does not fit its ring (sized by the track's largest packet) when Miles takes it late, which a
+  stand-in without a clock cannot pace. `sound-tables` writes the 256 band scales (0x1000F310) and
+  the FFT's twiddles of 1024, 2048 and 4096 values (its `cdft` 0x1000C610); `cdft` runs the FFT
+  alone on given values (the fuzzing).
+
+### 8.2 Smacker's sound
+
+- FFmpeg 6.1.1's `smka_decode_frame` (packed tracks, the game's) and its PCM for plain tracks,
+  ported; each packet stands alone (its trees, its first samples); the sums wrap.
+- Checked: the shell's Smacker clips' tracks (packed, 22 050 Hz, 16-bit stereo, §7.5; `HSLOOP`'s
+  ring frame included, its 8 820 bytes; AB's `Credits.smk` has no track) and 150 samples, byte for
+  byte against the DLL and FFmpeg.
+- The DLL's timer service (0x10007D50) copies the ring to Miles in whole words (0x10007DC1: a
+  last odd half word stays behind) and flushes the tail only after a frame without a track packet
+  (`[snd+0x4C]` set at 0x10005EBA): the samples end on a frame without sound and carry whole words.
+- The volume: the game's `SmackVolumePan` with 3640 × the effects setting (0x598CBE); the DLL
+  takes it to Miles' scale (0x10008110: `(min(v, 0x8000) × 1270 / 0x8000 + 5) / 10`), 0, 14, 28,
+  42, 56, 71, 85, 99, 113 and 127 for the settings 0 to 9 (`h3_view::clip_sound::volume`).
+
+### 8.3 Bink's sound
+
+- The block decoder (0x1000F580) as `h3_bink::audio`'s header lists it: FFmpeg's revision-`b` RDFT
+  format, the DLL's arithmetic. The DLL knows that coding alone (the third argument always 1).
+- **The FFT** is Takuya Ooura's `fft8g.c` (`cdft` with the sign −1) compiled for binary32 arrays
+  on the x87 at 53 bits (CLT-Q120: ported with Ooura's credit, decision 26). A scratch symbolic run
+  of the DLL's instructions (0x1000C610 to 0x1000E5F0), aligned with Ooura's C statement by
+  statement on random integer inputs, gave where each value is stored to memory (rounded to
+  binary32) or kept on the stack (53 bits): the same in every iteration, the transforms of 1024,
+  2048 and 4096 values; `h3_bink::fft` was written from it (its generated functions keep the
+  DLL's order of operations).
+- **The twiddles**: `fcos` of the 53-bit angle, `fsin` of its binary32 rounding; every value the
+  correctly rounded binary32 (checked in arbitrary precision, `mpmath`, and against the DLL's
+  tables), computed in 124-bit fixed point (`h3_bink::trig`; the scales' `pow10` too).
+- **8-bit tracks** are decoded as 16-bit and handed to Miles as their high bytes plus 0x80
+  (0x10005430); the client widens them back with the low byte 0.
+- Checked: the shell's four Bink clips (`NWCLOGO`, `H3INTRO`, `LOSEGAME`, `H3X1intr`), the samples
+  at the three frame sizes, the tables and 120 runs of the FFT on random values, byte for byte
+  against the DLL. `NWCLOGO`'s 13 s decode in 0.6 s in release.
+- **The volume**: the game never sets a Bink clip's (no `BinkSetVolume`, Miles' master volume
+  untouched), so the DLL's sample keeps 127 (0x1000FE4D): the start's clips play at full volume
+  whatever the setting. The client plays every clip at the effects setting (CLT-Q121, decision
+  27), the original's full volume for the comparisons only (`Bugs::Original`).
+
+### 8.4 For T2b and T5
+
+- **The Bink clips' video (T2b):** the check of the sound found `h3-bink`'s video of the shell's
+  four Bink clips not the DLL's (the battle's clips and the samples are): at the first
+  differences the chroma only, at most 3 levels (`NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6;
+  `bink-check.sh` with no arguments reports them). M2 T2b finds why, before T5.
+- **The end of a clip:** the game closes a Smacker clip right after its last `SmackDoFrame`
+  (`smacker_tick` 0x598F74), so the sound still queued is cut; T5 reads how much plays and settles
+  the client's end (the samples are whole).
+- **The pace:** the client hands the host a clip's whole track (`HostSound::play_clip`, a stream
+  of its own); the DLLs' rings and their drops on a late consumer are not modelled. The 3DO logo's
+  full-screen path's volume and the game's DirectSound path are read at T5.

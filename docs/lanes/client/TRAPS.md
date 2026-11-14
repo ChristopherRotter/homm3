@@ -253,6 +253,16 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   other pixels (design §7.3; FFmpeg's handling stays the unit tests'). Its 16-bit copy keeps a
   skipped block's colours after a palette change (CLT-Q119: `check::original_16` is the
   comparisons' copy, never the shell's).
+- The clips' sound (E27 M2 T2, design §8): the probes need the stand-in Miles (`mss/MSS32.DLL`,
+  `setup.sh`), which runs the DLLs' timers only when pumped. `SMACKW32.DLL` hands Miles whole
+  words and flushes a track's tail only after a frame without its packet, so a synthetic Smacker
+  clip's last frame carries no sound and its packets whole words (`build::sample`); the ring frame
+  plays its sound too. Bink's sound is checked through the DLL's decoder (`binkprobe sound`),
+  never its playback (which drops what overflows its ring). `h3_bink::fft`'s transforms are
+  generated from the DLL's reading: keep their order of operations and every `.single()` (each a
+  store of the DLL's); a change shows only in the samples, so run `bink-check.sh` after one. A
+  sample's hash change in `h3-smacker` or `h3-bink` needs the samples checked again against the
+  DLL (and FFmpeg for Smacker) before the hashes are updated.
 - Coverage counts regions: an `if let Some(x) = s.get_mut(i) { … }` without `else` leaves one
   uncovered when the index is always inside (route such writes through one helper whose outside
   case a test takes, `h3_bink`'s `dsp::set`), and a `const fn` evaluated only at compile time is
