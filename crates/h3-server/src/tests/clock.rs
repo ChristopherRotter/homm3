@@ -4,7 +4,10 @@
 //! that a restart keeps the time left; a battle against a monster played out by the server's
 //! computer at the turn's end; a battle between players' heroes whose defender's chess clock runs
 //! out, its side the computer's, the attacker's turn timer stopped meanwhile; a level-up answered
-//! by its default at its limit, the other player told the game waits, then no more.
+//! by its default at its limit, the other player told the game waits, then no more. The end-to-end
+//! game (T19, 2b's closure): two clients play a golden replay's opening on a timed game, a turn run
+//! out, a battle between their heroes under the chess clocks and two level-ups held and answered,
+//! through a restart in the battle and another in the hold, to the golden replay's state.
 
 use std::fs;
 use std::time::Duration;
@@ -424,4 +427,295 @@ async fn a_level_up_is_answered_by_its_default_at_its_limit() {
     });
     let answered = read.iter().position(|e| *e == answer).unwrap();
     assert_eq!(read[answered - 1], GameEntry::Elapsed(level_up_ms));
+}
+
+/// The golden replay of T19's end-to-end game: a battle between the two players' heroes on its
+/// second day, won by the attacker, whose hero gains two levels.
+const DUEL_REPLAY: &str = "fixtures/replays/adventure/towns-s3435-d21.toml";
+
+/// The next clock `client` is told that `pick` accepts, the messages before it skipped.
+async fn told_where(client: &mut Client, pick: impl Fn(&GameClock) -> bool) -> GameClock {
+    loop {
+        let clock = told(client).await;
+        if pick(&clock) {
+            return clock;
+        }
+    }
+}
+
+/// Stops `running` and reads each client's messages to its goodbye: the last clock each was told.
+async fn stopped(running: crate::Running, clients: [Client; 2]) -> [Option<GameClock>; 2] {
+    let readers = clients.map(|client| {
+        tokio::spawn(read_until(client, |m| {
+            matches!(m, ServerMessage::Goodbye { .. })
+        }))
+    });
+    running.shutdown().await;
+    let mut last = [None; 2];
+    for (player, reader) in readers.into_iter().enumerate() {
+        let (_, seen) = reader.await.unwrap();
+        assert!(
+            matches!(seen.last(), Some(ServerMessage::Goodbye { .. })),
+            "{:?}",
+            seen.last()
+        );
+        last[player] = (seen.iter().rev()).find_map(|m| match m {
+            ServerMessage::GameClock { clock, .. } => Some(*clock),
+            _ => None,
+        });
+    }
+    last
+}
+
+/// Restarts the server of `config` and re-takes both seats of `game` with their tokens: each
+/// client and the clock it is told after its snapshot; each seat's last number must be `lasts`'.
+async fn restarted(
+    config: &Config,
+    game: u32,
+    tokens: &[String; 2],
+    lasts: [u32; 2],
+) -> (crate::Running, [(Client, GameClock); 2]) {
+    let running = start(config).await.unwrap();
+    let mut taken = Vec::new();
+    for player in 0..2 {
+        let mut client = super::greeted(&running).await;
+        let (last, _) = rejoined(&mut client, game, (player, &tokens[usize::from(player)])).await;
+        assert_eq!(last, Some(lasts[usize::from(player)]), "player {player}");
+        let clock = told(&mut client).await;
+        taken.push((client, clock));
+    }
+    let [a, b] = <[_; 2]>::try_from(taken).ok().unwrap();
+    (running, [a, b])
+}
+
+/// The number of `player`'s last command in `replay` up to `seq` (with it).
+fn last_of(replay: &h3_sim::adventure::replay::Replay, player: u8, seq: usize) -> u32 {
+    let theirs = Actor::Player(PlayerId::new(player));
+    let at = (replay.commands[..=seq].iter()).rposition(|(actor, _)| *actor == theirs);
+    u32::try_from(at.unwrap()).unwrap()
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_clients_play_a_timed_game_through_a_duel_held_level_ups_and_restarts() {
+    // Three seconds a turn, half a minute a level-up and each side in a battle between players, a
+    // second more a command: the replay's turns play well within them.
+    let turn_ms = 2 * TURN_MS;
+    let (level_up_ms, allowance) = (
+        30_000,
+        Allowance {
+            base_ms: 30_000,
+            increment_ms: 1_000,
+        },
+    );
+    let (offer, golden) = timed(
+        "towns-map",
+        DUEL_REPLAY,
+        clock(turn_ms, level_up_ms, allowance),
+    );
+    let config = with(vec![offer.clone()]);
+    let running = start(&config).await.unwrap();
+    let begun = Instant::now();
+    let (mut a, mut b, game, tokens) = started_on(&running, "towns-map").await;
+    // The first day: the first player moves its heroes and does not end its turn; it runs out, the
+    // system ends it, and the second player's turn timer starts.
+    let ends = 14;
+    assert!(matches!(
+        golden.commands[ends].1,
+        h3_game::GameCommand::EndTurn
+    ));
+    play([&mut a, &mut b], &golden, 0..=ends - 1).await;
+    let second = told(&mut b).await;
+    assert!(begun.elapsed() >= Duration::from_millis(turn_ms));
+    assert!(
+        matches!(second.turn, Some(Timer { running: true, .. })),
+        "{second:?}"
+    );
+    // The second player's first turn, then the first player's second day up to its hero's attack
+    // on the second player's hero: the battle runs under the chess clocks, the attacker's turn
+    // timer stopped with what it had left.
+    let attacks = 22;
+    play([&mut a, &mut b], &golden, ends + 1..=attacks).await;
+    let opened = told_where(&mut a, |c| c.battle.is_some()).await;
+    let Some(Timer {
+        left_ms: turn_left,
+        running: false,
+    }) = opened.turn
+    else {
+        panic!("{opened:?}")
+    };
+    assert!(u64::from(turn_left) <= turn_ms);
+    let base = u32::try_from(allowance.base_ms).unwrap();
+    let duel = opened.battle.unwrap();
+    assert_eq!((duel.attacker.left_ms, duel.defender.left_ms), (base, base));
+    assert!(duel.attacker.running && !duel.defender.running, "{duel:?}");
+    // Each side plays its battle commands from its own client, then the server stops with the
+    // defender to act.
+    let cut = 40;
+    play([&mut a, &mut b], &golden, attacks + 1..=cut).await;
+    assert!(matches!(golden.commands[cut + 1].0, Actor::Player(p) if p.index() == 1));
+    let [Some(before), _] = stopped(running, [a, b]).await else {
+        panic!("the attacker was told no clock")
+    };
+    let before = before.battle.unwrap();
+    // The restart restores the battle: the attacker's turn timer still stopped with what it had
+    // left, its chess clock stopped with exactly what it had, the defender's running on from at
+    // most what it had.
+    let lasts = [last_of(&golden, 0, cut), last_of(&golden, 1, cut)];
+    let (running, [(mut a, back), (mut b, theirs)]) =
+        restarted(&config, game, &tokens, lasts).await;
+    assert_eq!(
+        back.turn,
+        Some(Timer {
+            left_ms: turn_left,
+            running: false
+        })
+    );
+    let duel = back.battle.unwrap();
+    assert_eq!(
+        duel.attacker,
+        Timer {
+            running: false,
+            ..before.attacker
+        }
+    );
+    assert!(duel.defender.running && duel.defender.left_ms <= before.defender.left_ms);
+    assert!(
+        duel.defender.left_ms > 0 && theirs.battle.is_some(),
+        "{theirs:?}"
+    );
+    // The battle to its end: the attacker wins, its hero levels up and holds the game; the other
+    // player is told only that the game waits.
+    let won = 57;
+    play([&mut a, &mut b], &golden, cut + 1..=won).await;
+    let level_up = u32::try_from(level_up_ms).unwrap();
+    let held = told_where(&mut a, |c| c.level_up.is_some()).await;
+    assert_eq!(
+        (held.level_up, held.turn, held.battle),
+        (
+            Some(Timer {
+                left_ms: level_up,
+                running: true
+            }),
+            Some(Timer {
+                left_ms: turn_left,
+                running: false
+            }),
+            None
+        )
+    );
+    let waits = GameClock {
+        waits: true,
+        ..GameClock::default()
+    };
+    told_until(&mut b, waits).await;
+    // The second restart, in the hold: the level-up's time runs on from at most what it had, the
+    // turn's timer still stopped, the other player still waiting.
+    let _ = stopped(running, [a, b]).await;
+    let lasts = [last_of(&golden, 0, won), last_of(&golden, 1, won)];
+    let (running, [(mut a, back), (mut b, theirs)]) =
+        restarted(&config, game, &tokens, lasts).await;
+    let Some(Timer {
+        left_ms,
+        running: true,
+    }) = back.level_up
+    else {
+        panic!("{back:?}")
+    };
+    assert!(left_ms > 0 && left_ms <= level_up, "{left_ms}");
+    assert_eq!(
+        back.turn,
+        Some(Timer {
+            left_ms: turn_left,
+            running: false
+        })
+    );
+    assert_eq!(theirs, waits);
+    // Its owner answers both level-ups: the second holds the game for its full time again; after
+    // it the turn's timer runs on and the other player no longer waits.
+    play([&mut a, &mut b], &golden, won + 1..=won + 1).await;
+    let again = told(&mut a).await;
+    assert_eq!(
+        again.level_up,
+        Some(Timer {
+            left_ms: level_up,
+            running: true
+        })
+    );
+    play([&mut a, &mut b], &golden, won + 2..=won + 2).await;
+    let after = told(&mut a).await;
+    assert_eq!(
+        (after.level_up, after.turn.map(|t| t.running)),
+        (None, Some(true))
+    );
+    told_until(&mut b, GameClock::default()).await;
+    // The days' ends: the first player's turn, the second's; the third day begins.
+    let last = 63;
+    play([&mut a, &mut b], &golden, won + 3..=last).await;
+    for client in [a, b] {
+        client.close().await;
+    }
+    running.shutdown().await;
+    // The journal: the system's one command the first day's end, after exactly the turn's
+    // duration; each seat's commands numbered as the replay's, but the turn's end it never sent;
+    // re-run in-process, the game is the golden replay's after the same commands.
+    let read =
+        journal::read(&journal::dir(&config.server.data).join(format!("{game}.journal"))).unwrap();
+    let systems: Vec<&GameEntry> = (read.entries.iter())
+        .filter(|e| matches!(e, GameEntry::Command(Actor::System, _)))
+        .collect();
+    let end = system(SystemCommand::EndTurn {
+        player: PlayerId::new(0),
+    });
+    assert_eq!(systems, [&end]);
+    let ended = read.entries.iter().position(|e| *e == end).unwrap();
+    let counted: u64 = (read.entries[..ended].iter())
+        .filter_map(|e| match e {
+            GameEntry::Elapsed(ms) => Some(*ms),
+            _ => None,
+        })
+        .sum();
+    assert_eq!(counted, turn_ms);
+    for player in 0..2 {
+        let numbers: Vec<u32> = (read.entries.iter())
+            .filter_map(|e| match e {
+                GameEntry::Numbered(p, n, _) if p.index() == player => Some(*n),
+                _ => None,
+            })
+            .collect();
+        let theirs = Actor::Player(PlayerId::new(u8::try_from(player).unwrap()));
+        let sent: Vec<u32> = (golden.commands[..=last].iter().enumerate())
+            .filter(|(seq, (actor, _))| *actor == theirs && *seq != ends)
+            .map(|(seq, _)| u32::try_from(seq).unwrap())
+            .collect();
+        assert_eq!(numbers, sent, "player {player}");
+    }
+    let loaded = crate::whole::MapOffer::load(&offer, &config.content.packs).unwrap();
+    let options = h3_protocol::session::game::GameOptions {
+        game,
+        checkpoint_every: config.server.checkpoint_every,
+        record_bytes: config.limits.record_bytes,
+        clock: loaded.clock,
+        commands: config.limits.commands(),
+    };
+    let tokens = read.start.tokens.clone();
+    let reopened = h3_protocol::session::game::GameSession::reopen(
+        &loaded.rules,
+        &loaded.setup,
+        golden.seed,
+        h3_protocol::map::game::manifest(&loaded.rules, loaded.info.map),
+        options,
+        |player| tokens[player.index()].clone(),
+        &read.entries,
+    )
+    .unwrap();
+    let replayed = h3_sim::adventure::replay::Replay::record_commands(
+        &loaded.rules,
+        (&loaded.setup, loaded.map.clone()),
+        golden.seed,
+        golden.commands[..=last].to_vec(),
+        0,
+    )
+    .unwrap();
+    assert_eq!(reopened.state().state_hash(), replayed.final_hash);
+    assert_eq!(reopened.state().day(), 3);
 }
