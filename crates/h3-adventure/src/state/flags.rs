@@ -1,7 +1,9 @@
 //! The per-player state of object types (ADR-0016 point 1): the Cartographer types each player
-//! bought (ADV-VIS-001, E08 T14b) and the keys each player holds (ADV-VIS-003, T15a), laid out as
-//! the original's flags, a byte of player bits per entry (bit `n` for the player with id `n`).
-//! Only a player's own commands write its bits (ADR-0017 point 7). The state holds them as one
+//! bought (ADV-VIS-001, E08 T14b), the keys each player holds (ADV-VIS-003, T15a) and since E08
+//! T115b the kind marks each player's team holds (ADV-BON-009, decision 302), laid out as the
+//! original's flags, a byte of player bits per entry (bit `n` for the player with id `n`).
+//! Only a player's own commands write its bits (ADR-0017 point 7; a kind mark the visitor's team's
+//! bits, the visitor's alone until E10). The state holds them as one
 //! small block the forks share, none until the first purchase or key: a fork costs nothing more
 //! before and a reference count after (`bench-check`), and a write copies the block.
 
@@ -13,7 +15,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::command::bit;
 use crate::ruleset::{KEY_COLOURS, ObjectTypeId};
 
-/// The Cartographer types bought and the keys held.
+/// The Cartographer types bought, the keys held and the kind marks.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct Flags {
     /// The Cartographer types bought, in type order, each with its player bits (game +0x4E372, a
@@ -22,14 +24,42 @@ pub(crate) struct Flags {
     /// The keys, by colour: the player bits of the players holding it (game +0x4E364, a byte per
     /// colour; H3API's `keymasterVisited`).
     keys: [u8; KEY_COLOURS as usize],
+    /// The kind marks (E08 T115b; ADV-BON-009), in type order, each with its player bits (game
+    /// +0x4E344 + k, a byte per kind; `kinds_visited`).
+    kinds: Vec<(ObjectTypeId, u8)>,
 }
 
 impl Flags {
-    /// No type bought, no key held.
+    /// No type bought, no key held, no kind marked.
     pub(crate) const NONE: Self = Self {
         bought: Vec::new(),
         keys: [0; KEY_COLOURS as usize],
+        kinds: Vec::new(),
     };
+
+    /// Whether `player` holds the kind mark of `object_type`.
+    pub(crate) fn knows_kind(&self, player: PlayerId, object_type: ObjectTypeId) -> bool {
+        self.kinds
+            .binary_search_by_key(&object_type, |&(ty, _)| ty)
+            .is_ok_and(|at| self.kinds[at].1 & bit(player) != 0)
+    }
+
+    /// The types whose kind mark `player` holds, in type order.
+    pub(crate) fn kinds(&self, player: PlayerId) -> impl Iterator<Item = ObjectTypeId> + '_ {
+        let player = bit(player);
+        self.kinds
+            .iter()
+            .filter(move |&&(_, players)| players & player != 0)
+            .map(|&(ty, _)| ty)
+    }
+
+    /// The players of the bits `players` hold the kind mark of `object_type`.
+    pub(crate) fn mark_kind(&mut self, players: u8, object_type: ObjectTypeId) {
+        match self.kinds.binary_search_by_key(&object_type, |&(ty, _)| ty) {
+            Ok(at) => self.kinds[at].1 |= players,
+            Err(at) => self.kinds.insert(at, (object_type, players)),
+        }
+    }
 
     /// Whether `player` has bought `object_type`.
     pub(crate) fn has_bought(&self, player: PlayerId, object_type: ObjectTypeId) -> bool {
@@ -86,15 +116,22 @@ impl Flags {
 
 impl CanonicalHash for Flags {
     /// The types bought as length and entries in type order (the type, then its player bits);
-    /// then the keys, a byte of player bits per colour.
+    /// then the keys, a byte of player bits per colour; since the adventure state hash v24 (E08
+    /// T115b) the kind marks as the types bought.
     fn hash_into(&self, h: &mut StateHasher) {
-        h.write_len(self.bought.len());
-        for (object_type, players) in &self.bought {
-            object_type.hash_into(h);
-            h.write_u8(*players);
-        }
+        hash_types(&self.bought, h);
         for players in self.keys {
             h.write_u8(players);
         }
+        hash_types(&self.kinds, h);
+    }
+}
+
+/// A list of types with their player bits: its length, then each type and its byte.
+fn hash_types(types: &[(ObjectTypeId, u8)], h: &mut StateHasher) {
+    h.write_len(types.len());
+    for (object_type, players) in types {
+        object_type.hash_into(h);
+        h.write_u8(*players);
     }
 }

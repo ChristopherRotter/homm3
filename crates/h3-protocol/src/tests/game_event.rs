@@ -367,6 +367,46 @@ fn adventure_back(e: w::AdventureEvent, alone: Viewers) -> K {
             object_type: Handle::from_raw(object_type),
             held,
         },
+        A::NothingGained {
+            hero,
+            object_type,
+            anchor,
+            why,
+        } => K::NothingGained {
+            hero: id(hero),
+            object_type: ty(object_type),
+            anchor: pos_back(anchor),
+            why: match why {
+                w::NothingWhy::Visited => h3_adventure::NothingWhy::Visited,
+                w::NothingWhy::Full => h3_adventure::NothingWhy::Full,
+                w::NothingWhy::Emptied => h3_adventure::NothingWhy::Emptied,
+            },
+        },
+        A::SirensLoss {
+            hero,
+            slot,
+            creature,
+            count,
+        } => K::SirensLoss {
+            hero: id(hero),
+            slot,
+            creature: Handle::from_raw(creature),
+            count,
+        },
+        A::CreaturesUpgraded {
+            hero,
+            slot,
+            from,
+            to,
+        } => K::CreaturesUpgraded {
+            hero: id(hero),
+            slot,
+            from: Handle::from_raw(from),
+            to: Handle::from_raw(to),
+        },
+        A::KindKnown { object_type } => K::KindKnown {
+            object_type: ty(object_type),
+        },
     }
 }
 
@@ -1334,6 +1374,38 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             object_type: ty,
             held: false,
         },
+        // E08 T115b: the bonus visitables' events, each reason of `NothingGained`.
+        K::NothingGained {
+            hero,
+            object_type: ty,
+            anchor: at,
+            why: h3_adventure::NothingWhy::Visited,
+        },
+        K::NothingGained {
+            hero,
+            object_type: ty,
+            anchor: at,
+            why: h3_adventure::NothingWhy::Full,
+        },
+        K::NothingGained {
+            hero,
+            object_type: ty,
+            anchor: at,
+            why: h3_adventure::NothingWhy::Emptied,
+        },
+        K::SirensLoss {
+            hero,
+            slot: 1,
+            creature,
+            count: 28,
+        },
+        K::CreaturesUpgraded {
+            hero,
+            slot: 0,
+            from: creature,
+            to: Handle::from_raw(41),
+        },
+        K::KindKnown { object_type: ty },
     ];
     events.extend(adventure.map(|kind| GameEvent::Adventure(AdventureEvent { kind, seen_by })));
     events

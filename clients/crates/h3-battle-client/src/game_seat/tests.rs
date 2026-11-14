@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use h3_contracts::{BattleSide, PlayerId};
 use h3_game::{GameRuleset, GameSetup};
-use h3_protocol::session::game::{Clock, GameOptions, GameOutbound, GameSession};
+use h3_protocol::session::game::{Clock, CommandBounds, GameOptions, GameOutbound, GameSession};
 use h3_protocol::wire::game::{GameEvent, GameReject, MapIdentity};
 use h3_protocol::wire::{Outcome, WireU64};
 
@@ -62,6 +62,7 @@ impl Host {
             checkpoint_every: replay.checkpoint_every,
             record_bytes: usize::MAX,
             clock: Clock::UNLIMITED,
+            commands: CommandBounds::NONE,
         };
         let manifest = h3_protocol::map::game::manifest(rules, identity);
         let mut out = Vec::new();

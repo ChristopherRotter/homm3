@@ -75,7 +75,7 @@ fn kinds() -> [ObjectKindDef; 8] {
 
 // covers: ADV-GAR-001, ADV-BON-001
 #[test]
-fn the_garrisons_and_the_bonus_kinds_compile_with_the_garrisons_visit_alone() {
+fn the_garrisons_and_the_bonus_kinds_compile_with_their_visits() {
     let core = core();
     let creature = |k: &str| core.creature_by_key(k).unwrap();
     let expected = [
@@ -103,13 +103,34 @@ fn the_garrisons_and_the_bonus_kinds_compile_with_the_garrisons_visit_alone() {
             keep: (7, 10),
         },
     ];
-    for (def, kind) in kinds().into_iter().zip(expected) {
+    // The garrison's visit since T114a1, the bonus kinds' since T115b, each with its parameters.
+    let effects = [
+        Effect::Garrison,
+        Effect::Garrison,
+        Effect::Bonus {
+            mark: 2,
+            days: &[(1, 0); BONUS_DAYS],
+            points: 400,
+            drain: false,
+        },
+        Effect::Fortune(5),
+        Effect::Well,
+        Effect::Spring,
+        Effect::Stables {
+            points: 400,
+            from: creature("t:imp"),
+            to: creature("t:gog"),
+        },
+        Effect::Sirens {
+            mark: 13,
+            keep: (7, 10),
+        },
+    ];
+    for ((def, kind), effect) in kinds().into_iter().zip(expected).zip(effects) {
         let ty = compiled(def);
         assert_eq!(ty.kind, kind);
-        // The garrison's visit since T114a1; none of the bonus kinds' yet (T115b): a step onto
-        // one is refused as a blocker's.
+        assert_eq!(ty.kind.effect(), Some(effect));
         let garrison = matches!(kind, ObjectKind::Garrison { .. });
-        assert_eq!(ty.kind.effect(), garrison.then_some(Effect::Garrison));
         // Only a garrison is ownable; none is weekly.
         assert_eq!(ty.kind.ownable(), garrison);
         assert!(!ty.kind.weekly());

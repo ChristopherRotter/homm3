@@ -17,7 +17,7 @@ use h3_contracts::ArmyStack;
 use h3_kernel::Rng;
 
 use super::dwellings::draw_camp;
-use super::economy::{Drawn, block, contents, in_object_order, kind_at};
+use super::economy::{Drawn, block, contents, fortune, in_object_order, kind_at};
 use super::{Added, AdventureState, MapObject, Monster, Resolved, Weekly, aggression_between};
 use crate::command::{AdventureEvent, AdventureEventKind, Sink};
 use crate::ruleset::{AdventureRuleset, MAX_MONSTER_COUNT, MarkLifetime, ObjectTypeId, Passage};
@@ -72,11 +72,16 @@ impl AdventureState {
     ///    [`AdventureEventKind::MonsterChanged`] to the players that see the monster; a change
     ///    within the word stays hidden, as the count and the fraction do (ADV-FOG-006).
     ///
+    /// Since E08 T115b (increment 12's design note §15): the Magic Springs' entrances all full
+    /// again (ADV-BON-007: the emptied ones' block dropped, the original's 0x4C8B9C) with the
+    /// dwellings' refill, and each Fountain of Fortune's value drawn in step 2's pass (ADV-BON-003).
+    ///
     /// No hero is lifted (the original lifts one off an entrance only to read the object under
-    /// it). Draws only for the weekly objects and the camps; no event for the refill or the draws
-    /// (nothing shows a dwelling's counts and guards or a camp's creature, ADV-OWN-003).
+    /// it). Draws only for the weekly objects, the camps and the fountains; no event for the refill
+    /// or the draws (nothing shows a dwelling's counts and guards, a camp's creature, a fountain's
+    /// value or a Spring's state, ADV-OWN-003).
     // rule: ADV-DWL-003, ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001, ADV-MON-013
-    // rule: ADV-BON-001
+    // rule: ADV-BON-001, ADV-BON-003, ADV-BON-007
     pub fn start_week<S: Sink>(
         &mut self,
         core: &Ruleset,
@@ -86,24 +91,27 @@ impl AdventureState {
     ) {
         self.drop_timed_marks(part, MarkLifetime::Week);
         self.dwellings = None;
+        self.springs = None;
         self.refill_weekly(core, part, draws);
         self.grow_monsters(core, part, sink);
     }
 
     /// The week's step's draws ([`Self::start_week`]), in one pass in object order (since E08
     /// T94b): each weekly object's contents for a later week, its marks kept, and each camp's
-    /// creature and count drawn anew. One write of each block the forks share; none without
-    /// weekly objects and camps.
-    // rule: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001
+    /// creature and count drawn anew; since E08 T115b each Fountain of Fortune's value. One write
+    /// of each block the forks share; none without weekly objects, camps and fountains.
+    // rule: ADV-WEK-001, ADV-WEK-002, ADV-WEK-003, ADV-RFG-001, ADV-BON-003
     fn refill_weekly(&mut self, core: &Ruleset, part: &AdventureRuleset, draws: &mut Rng) {
-        if self.weekly.is_none() && self.camps.is_none() {
+        if self.weekly.is_none() && self.camps.is_none() && self.fortunes.is_none() {
             return;
         }
         let map = &self.map;
         let old_weekly = self.weekly.as_deref().unwrap_or_default();
         let old_camps = self.camps.as_deref().unwrap_or_default();
+        let old_fortunes = self.fortunes.as_deref().unwrap_or_default();
         let mut weekly = Vec::with_capacity(old_weekly.len());
         let mut camps = Vec::with_capacity(old_camps.len());
+        let mut fortunes = Vec::with_capacity(old_fortunes.len());
         for drawn in in_object_order(map) {
             match drawn {
                 Drawn::Weekly(place) => {
@@ -126,10 +134,19 @@ impl AdventureState {
                             .map(|&old| draw_camp(core, part, levels, draws).unwrap_or(old)),
                     );
                 }
+                Drawn::Fountain(place) => {
+                    let kind = kind_at(part, map, map.fountains()[place]);
+                    fortunes.extend(
+                        old_fortunes
+                            .get(place)
+                            .map(|&old| fortune(kind, draws).unwrap_or(old)),
+                    );
+                }
             }
         }
         self.weekly = block(weekly);
         self.camps = block(camps);
+        self.fortunes = block(fortunes);
     }
 
     /// The week's step's growth ([`Self::start_week`]; ADV-MON-013). Nothing for a part without

@@ -157,7 +157,16 @@ pub mod wire;
 /// v60 (E16 M5 T17, after the town lane's T27 took v59): a map offer shows how its games are
 /// timed (`wire::game::MapOffer`'s `clock`, `wire::game::OfferClock`: the turn's duration, the
 /// level-up's time, a battle's allowance between players).
-pub const PROTOCOL_VERSION: u32 = 60;
+/// v61 (E08 T115b, the adventure lane's, `cross-lane`): the bonus visitables' adventure events
+/// `NothingGained` (with `wire::game::NothingWhy`), `SirensLoss`, `CreaturesUpgraded` and
+/// `KindKnown`; the adventure observation's `kinds` (the kind marks the viewer's team holds) and
+/// the known object's `Known::Visited` (a Fountain of Fortune, a Magic Spring).
+/// v62 (E16 M5 T18, after the adventure lane's T115b took v61): a seat's commands are bounded by
+/// the host (`session::game::CommandBounds`): its map commands in its running turn, past which they are rejected `TurnLimit` (ending the
+/// turn, answering a decision and fighting a battle still accepted), and its commands in one
+/// battle, past which the computer plays its side for the rest of the battle and its own are
+/// rejected `BattleLimit`; `GameTurn` then leaves the refused commands out.
+pub const PROTOCOL_VERSION: u32 = 62;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before

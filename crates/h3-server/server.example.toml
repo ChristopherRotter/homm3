@@ -56,6 +56,8 @@ paused_game_ms = 259200000      # a paused game nobody resumes this long is void
 failed_logins_per_address = 10  # a minute; beyond, the address's logins close their connection
 account_changes_per_address = 20  # an hour: registrations, re-keys, renames, preferences
 commands_per_game = 10000       # a game that reaches it without an end is void
+commands_per_turn = 1000        # a whole game's seat: its map commands in one of its turns
+commands_per_battle = 4000      # a whole game's seat: its commands in one battle; beyond, the computer's
 
 # What clients may create games from (`CreateGame { offer }`).
 [[offer]]

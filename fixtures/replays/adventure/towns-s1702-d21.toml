@@ -588,29 +588,29 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x34c2967437693f6d",
-    "0x18b9ab709ba4116e",
-    "0xd4f9406a05f729aa",
-    "0x5bd3c380db0f59e5",
-    "0x94d1debba17e5ca6",
-    "0x62d7db6f6ef71553",
-    "0x45803f5b96fe0a88",
-    "0x78cc28353af275c4",
-    "0xa76e2261b38d175c",
-    "0xdaf719ed50068975",
-    "0x862ed71af9f18cc1",
-    "0xf90505d7930587d8",
-    "0x2014bda03fd96af8",
-    "0x617e93971834edf4",
-    "0xf14946474e6ffad6",
-    "0x3bcedf718129d22c",
-    "0x78a2a7f82a9746f9",
-    "0x4b2082377fcd2224",
-    "0x57a345768dde50eb",
-    "0x7429c975f50e6c1b",
-    "0x7dd8613ea1541baa",
-    "0x946f0303f84a5130",
-    "0xf62fd90ff23624e9",
+    "0xae384640cce65b1a",
+    "0x757e37a91938d5f7",
+    "0x210c3985382d8d3e",
+    "0x051bf633d8874b69",
+    "0x36294d806f744362",
+    "0xb931c94db5a10723",
+    "0xaab1f67a412c9c40",
+    "0xa55962d1cfce6014",
+    "0xa42cafb321ac6d4c",
+    "0xff5683d74f9a9659",
+    "0x7adb7f10a514184d",
+    "0x744bc5c567247df0",
+    "0x258c67a98f7ce510",
+    "0xf0d97404ef494e64",
+    "0xfaa8da78b282cd5a",
+    "0x27523e87902399b7",
+    "0xb928314cd289624c",
+    "0x801842a0f8d27eaf",
+    "0x19da3cc5354a2222",
+    "0x8682337237d6dd0d",
+    "0x79c54cec7146c771",
+    "0x6a7c2e916868550e",
+    "0xb53b5d99fdf4db93",
 ]
 
 [replay]
@@ -641,7 +641,7 @@ rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 32
-adventure_state_hash_version = 23
+adventure_state_hash_version = 24
 checkpoint_every = 25
 
 [map]
@@ -651,4 +651,4 @@ import_version = 23
 
 [result]
 day = 22
-final_hash = "0x180367a294c84a9d"
+final_hash = "0x70aa556b44c958b4"

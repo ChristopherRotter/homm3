@@ -14,6 +14,7 @@ mod game_command;
 mod game_computer;
 mod game_event;
 mod game_fold;
+mod game_limits;
 mod game_manifest;
 mod game_mutation;
 mod game_query;

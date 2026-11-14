@@ -71,7 +71,7 @@ pub(super) fn visit(
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &walk,
             &mut events,
         )
@@ -682,7 +682,7 @@ fn a_hero_in_a_boat_visits_a_dwelling_entered_from_water_as_on_land() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &walk,
             &mut Vec::new(),
         )

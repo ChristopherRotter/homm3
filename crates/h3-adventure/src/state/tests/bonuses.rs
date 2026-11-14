@@ -74,7 +74,7 @@ fn a_heros_visit_marks_hold_nothing_until_a_visit_and_nothing_again_once_empty()
     assert_eq!(marks, VisitMarks::default());
     // Nothing added writes nothing.
     marks.add(0, 0);
-    marks.clear_bonuses();
+    marks.clear_bonuses(&[]);
     marks.drop_timed(&rules.1, MarkLifetime::Day);
     assert!(marks.is_empty());
     // A mark held gates its bonus; the block's bonuses are `HeroBonuses`'.
@@ -87,7 +87,7 @@ fn a_heros_visit_marks_hold_nothing_until_a_visit_and_nothing_again_once_empty()
     assert_eq!(marks.timed(), [well]);
     // A fork shares the block; a write copies it.
     let fork = marks.clone();
-    marks.clear_bonuses();
+    marks.clear_bonuses(&[]);
     assert!(marks.bonuses().is_empty() && !marks.is_empty());
     assert_eq!(fork.bonuses().once, [once(0, -3, 0)]);
     // Empty again once both are: equal to a record that never held anything.
@@ -174,7 +174,7 @@ fn a_battles_end_clears_the_bonuses_of_its_heroes_still_on_the_map() {
     let fork = state.clone();
     let kept = state.visit_marks(other).clone();
     // Its heroes on the map lose them; a hero not on the map is nothing; the timed marks stay.
-    state.clear_battle_bonuses(&[HERO, stranger]);
+    state.clear_battle_bonuses(&rules.0, &rules.1, &[HERO, stranger]);
     let marks = state.visit_marks(HERO);
     assert_eq!(
         (marks.bonuses(), marks.timed()),
@@ -246,7 +246,7 @@ fn a_command_tells_the_owner_the_marks_dropped_the_sums_then_the_marks_gained() 
     // Drops first, then the sums, then the gains: a battle's clear and a day's drop, then a
     // Pyramid's mark and the Stables' (a mark of other amounts counts as another).
     let before = state.own_heroes();
-    state.clear_battle_bonuses(&[HERO]);
+    state.clear_battle_bonuses(&rules.0, &rules.1, &[HERO]);
     state.start_day(&rules.0, &rules.1, &[]);
     state.give_once(HERO, once(1, 0, -2));
     state.give_once(HERO, once(13, 0, 1));

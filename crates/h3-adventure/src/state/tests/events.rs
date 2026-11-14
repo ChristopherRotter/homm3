@@ -87,7 +87,7 @@ fn walk(
             &rules.0,
             &rules.1,
             heroes,
-            (RED, &mut stream()),
+            (RED, Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )
@@ -414,7 +414,7 @@ fn no_player_sees_an_event_in_its_views_its_paths_or_its_reach() {
                 core,
                 part,
                 &heroes,
-                (RED, &mut stream()),
+                (RED, Weekday::FIRST, &mut stream()),
                 &command,
                 &mut Vec::new(),
             )

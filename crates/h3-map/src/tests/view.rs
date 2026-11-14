@@ -1162,9 +1162,14 @@ fn check_told(
                 prop_assert!(shown, "{:?}", event);
             }
             // E08 T105a2: a Whirlpool's loss, told to the hero's owner alone, as its army is
-            // (ADV-TEL-006).
+            // (ADV-TEL-006). E08 T115b: the Sirens' and the Stables' (ADV-BON-005, -008) and a
+            // bonus visitable's visit that gave nothing (ADV-BON-002 to -008) likewise.
             GameEvent::Adventure(AdventureEvent {
-                kind: AdventureEventKind::WhirlpoolLoss { hero, .. },
+                kind:
+                    AdventureEventKind::WhirlpoolLoss { hero, .. }
+                    | AdventureEventKind::SirensLoss { hero, .. }
+                    | AdventureEventKind::CreaturesUpgraded { hero, .. }
+                    | AdventureEventKind::NothingGained { hero, .. },
                 seen_by,
             }) => {
                 prop_assert_eq!(seen_by, alone);
@@ -1192,6 +1197,20 @@ fn check_told(
                 kind: AdventureEventKind::NoneToRecruit { .. },
                 seen_by,
             }) => prop_assert_eq!(seen_by, alone),
+            // E08 T115b: a kind mark the viewer's team learned (ADV-BON-009), as its observation
+            // shows it after the command; the visitor alone until E10's teams.
+            GameEvent::Adventure(AdventureEvent {
+                kind: AdventureEventKind::KindKnown { object_type },
+                seen_by,
+            }) => {
+                prop_assert_eq!(seen_by, alone);
+                prop_assert!(after.adventure.kinds.contains(&object_type), "{:?}", event);
+                prop_assert!(
+                    !before.adventure.kinds.contains(&object_type),
+                    "{:?}",
+                    event
+                );
+            }
             // E08 T73: a boarding and a landing, told where the viewer sees heroes on the boat's
             // tile, as it sees the empty boat there (ADV-FOG-008); E08 T74b: a boat leaving with
             // its hero likewise (ADV-SEA-006). E08 T75b follows the boats: a boarding takes the

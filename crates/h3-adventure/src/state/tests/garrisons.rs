@@ -1,6 +1,5 @@
-//! Increment 12's kinds on the map (E08 T113a, increment 12's design note §19's round 5): each
-//! bonus kind's tile is refused as any unbuilt visit's (ADV-OBJ-003), entered or visited from a
-//! neighbour, and the reach ends before it, until T115b. Since E08 T114a1 (design note §5 to §7,
+//! Increment 12's garrisons on the map (the bonus kinds' visits since E08 T115b: `visitables.rs`).
+//! Since E08 T114a1 (design note §5 to §7,
 //! §14) the garrisons: a garrison of the mover's team crossed on the way, any other a
 //! destination; another's or a neutral one fought at once, unsplit, an empty one flagged; the
 //! battle's end keeping the survivors or flagging it after the levels; the anti-magic battle.
@@ -11,7 +10,7 @@
 use std::sync::Arc;
 
 use super::revisits::{revisit, revisitable};
-use super::teleporters::{BLUE, HERO, ONTO, RED, Rules, jump_state, p, stack, walk};
+use super::teleporters::{BLUE, HERO, RED, Rules, p, stack, walk};
 use super::*;
 use crate::army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 use crate::command::{BattleStart, Defender, Exchange};
@@ -88,33 +87,6 @@ pub(super) fn bonus_rules() -> Rules {
             ]);
         },
     )
-}
-
-// covers: ADV-BON-001
-#[test]
-fn a_step_onto_a_bonus_visitable_is_refused_until_its_visit() {
-    let rules = bonus_rules();
-    let heroes = [Arc::new(hero_details(&[]))];
-    for k in [
-        "t:buoy",
-        "t:fountain",
-        "t:well",
-        "t:spring",
-        "t:stables",
-        "t:sirens",
-    ] {
-        // The object on (1, 1), visited from it; the hero on (0, 1) beside it.
-        let mut state = jump_state(&rules, (1, None), &[], &[(k, ONTO[0])]);
-        assert_eq!(
-            walk(&mut state, &rules, &ONTO[..1], &mut stream()).err(),
-            Some(AdventureCommandError::Visit { step: 0 }),
-            "{k}"
-        );
-        // The reach ends before it: no path onto or through its tile.
-        let reach = state.reach(&rules.0, &rules.1, &heroes, HERO).unwrap();
-        assert_eq!(reach.path(ONTO[0]), None, "{k}");
-        assert!(reach.path(p(2, 1)).is_some(), "{k}");
-    }
 }
 
 /// [`movement_rules_with`] (faithful) with a garrison `t:garrison` and an anti-magic one
