@@ -609,7 +609,10 @@ fn the_builds_map_is_committed_as_written() {
     let pit = state.towns().get(TownId::new(4)).unwrap();
     let portal = pit.portal().unwrap();
     assert_eq!(
-        (core.creature_key(portal.creature).unwrap().as_str(), portal.count),
+        (
+            core.creature_key(portal.creature).unwrap().as_str(),
+            portal.count
+        ),
         ("base:pikeman", 14)
     );
     assert!(built(4).contains(&"guardian_of_earth".to_owned()));
@@ -617,7 +620,10 @@ fn the_builds_map_is_committed_as_written() {
     assert!(built(4).contains(&"mushroom_rings".to_owned()));
     let grove = state.adventure().map().town_object(TownId::new(5)).unwrap();
     assert_eq!(state.adventure().owner(grove), None);
-    assert_eq!(state.adventure().town_garrison(grove).map(<[_]>::len), Some(1));
+    assert_eq!(
+        state.adventure().town_garrison(grove).map(<[_]>::len),
+        Some(1)
+    );
     let valeska = state.adventure().hero(HeroId::new(2)).unwrap();
     assert_eq!((valeska.owner, valeska.pos), (red, at(HEROES[2])));
 }
