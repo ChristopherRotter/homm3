@@ -469,17 +469,17 @@ impl AdventureState {
         army: Option<&[ArmyStack]>,
         sink: &mut S,
     ) {
-        let Some((town, _)) = self.garrisoned(hero) else {
-            return;
-        };
         match army {
             Some(army) => {
-                if let Some(held) = self.hero_or_held_mut(hero) {
+                let at = self.town_heroes().iter().position(|(_, on)| on.id == hero);
+                if let Some(held) = at.and_then(|at| self.town_hero_at_mut(at)) {
                     held.army = army.to_vec();
                 }
             }
             None => {
-                let _ = self.release_town_hero(town, sink);
+                if let Some((town, _)) = self.garrisoned(hero) {
+                    let _ = self.release_town_hero(town, sink);
+                }
             }
         }
     }

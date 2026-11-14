@@ -897,7 +897,12 @@ fn a_garrison_hero_s_battle_ends_in_its_town() {
     assert_eq!(events, []);
     // A hero neither on the map nor in a garrison changes nothing.
     let before = state.clone();
-    state.end_battle(&rules.0, &[(HeroId::new(9), None)], &mut events);
+    let nobody = HeroId::new(9);
+    state.end_battle(
+        &rules.0,
+        &[(nobody, None), (nobody, Some(&[]))],
+        &mut events,
+    );
     assert_eq!(
         state.raise(&rules.0, &rules.1, HeroId::new(9), (PEASANT, 3)),
         None
