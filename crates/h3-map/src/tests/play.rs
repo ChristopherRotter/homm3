@@ -5808,8 +5808,9 @@ fn free_creatures(
 /// with an amount in the core's order, exactly what an independent sum of its parts gives on the
 /// state before the day: the production of the mines it owns, (E09 T9b1) the day's income of the
 /// towns it owns (TWN-INC-001, -002: `h3_towns::daily_income` of each town's record), its heroes'
-/// `daily_income`, and on a week's first day each creature type with a weekly resource in its
-/// heroes' armies once.
+/// `daily_income` (E09 T28b1: its garrison heroes' too, TWN-ROW-005), and on a week's first day
+/// each creature type with a weekly resource in its heroes' armies or the upper bars of its towns
+/// (a garrison hero's army, else the town's garrison) once.
 fn check_income(
     rules: &GameRuleset,
     before: &GameState,
@@ -5852,9 +5853,11 @@ fn check_income(
                 }
             }
         }
+        let garrisons = adventure.town_heroes().iter().map(|(_, h)| h);
         let heroes: Vec<_> = adventure
             .heroes()
             .iter()
+            .chain(garrisons)
             .filter(|h| h.owner == player)
             .collect();
         for hero in &heroes {
@@ -5863,8 +5866,17 @@ fn check_income(
                 *entry += amount;
             }
         }
+        // The towns' garrisons it owns (with a garrison hero empty: its army is among `heroes`).
+        let garrisons: Vec<_> = adventure
+            .map()
+            .towns()
+            .iter()
+            .filter(|&&i| adventure.owner(i) == Some(player))
+            .flat_map(|&i| adventure.town_garrison(i).unwrap())
+            .collect();
         let mut seen = Vec::new();
-        for stack in heroes.iter().flat_map(|h| &h.army).filter(|_| week) {
+        let armies = heroes.iter().flat_map(|h| &h.army).chain(garrisons);
+        for stack in armies.filter(|_| week) {
             if !seen.contains(&stack.creature) {
                 seen.push(stack.creature);
                 for ability in &core.creature(stack.creature).unwrap().abilities {
@@ -9275,6 +9287,23 @@ fn check_isolation(
         a.owner == actor && before.adventure().garrisoned(a.id).is_some()
     };
     prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id) || out(a)));
+    // E09 T28b1: another player's garrison hero keeps its record, but at its owner's turn start
+    // its points, then full (TWN-ROW-005); a captured town's leaves the game (`TWN-STUB-14`).
+    for (town, b) in before.adventure().town_heroes() {
+        let Some(a) = after
+            .adventure()
+            .town_hero(*town)
+            .filter(|_| b.owner != actor)
+        else {
+            continue;
+        };
+        let mut kept = a.clone();
+        if events.contains(&GameEvent::TurnStarted { player: b.owner }) {
+            prop_assert_eq!(a.movement, a.max_movement, "{:?}", a);
+            (kept.movement, kept.max_movement) = (b.movement, b.max_movement);
+        }
+        prop_assert_eq!(&kept, b);
+    }
     // The other owner of the actor's battle, before or after the command.
     let partner = |state: &GameState| {
         state

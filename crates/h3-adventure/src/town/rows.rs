@@ -10,10 +10,12 @@ use alloc::vec::Vec;
 
 use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
+use h3_heroes::HeroDetails;
 use h3_kernel::{StateHasher, order};
 
 use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{AdventureEvent, AdventureEventKind, Sink, Viewers};
+use crate::movement::{day_points, details_of};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
 use crate::state::{AdventureState, HeroOnMap};
@@ -101,6 +103,43 @@ impl AdventureState {
             .as_mut()
             .and_then(|all| Arc::make_mut(all).get_mut(at))
             .map(|(_, on)| on)
+    }
+
+    /// The start of `player`'s turn for its garrison heroes (TWN-ROW-005, ADV-MOV-002; E09 T28b1,
+    /// the town epic's design note §53, §48's reading: `next_player_turn` 0x4C7486 to 0x4C74AE
+    /// sets them after the player's heroes and its tavern heroes), after its heroes on the map
+    /// ([`Self::start_turn`]): each, in `TownId` order, gets the day's land points for its army
+    /// and its details in `heroes`, its week marks' points included ([`day_points`]; it entered
+    /// from the town's entrance, on land), which are also its day's maximum; what was left is
+    /// lost. Written only where they change (a garrison hero cannot spend its points, so after
+    /// its first turn start in the garrison they change only with its army or its details).
+    // rule: TWN-ROW-005, ADV-MOV-002
+    pub(crate) fn start_town_heroes(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        heroes: &[Arc<HeroDetails>],
+        player: PlayerId,
+    ) {
+        let points: Vec<(usize, u32)> = self
+            .town_heroes()
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, hero))| hero.owner == player)
+            .map(|(at, (_, hero))| {
+                let week = self.visit_marks(hero.id).week_land_points(part);
+                let details = details_of(heroes, hero.id);
+                (at, hero, day_points(core, part, details, &hero.army, week))
+            })
+            .filter(|&(_, hero, points)| hero.movement != points || hero.max_movement != points)
+            .map(|(at, _, points)| (at, points))
+            .collect();
+        for (at, points) in points {
+            if let Some(hero) = self.town_hero_at_mut(at) {
+                hero.max_movement = points;
+                hero.movement = points;
+            }
+        }
     }
 
     /// Hashes the towns' garrison heroes (adventure state hash v25): their number, then each its

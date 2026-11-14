@@ -298,20 +298,29 @@ impl AdventureState {
         }
     }
 
-    /// Every hero on the map drops its timed marks of `lifetime` ([`VisitMarks::drop_timed`]):
-    /// the day step's and the week step's (increment 12's design note §15). Nothing written
-    /// while no hero holds a mark.
+    /// Every hero holding marks drops its timed marks of `lifetime` ([`VisitMarks::drop_timed`]):
+    /// the day step's and the week step's (increment 12's design note §15), over the heroes on
+    /// the map and since E09 T28b1 the towns' garrison heroes, whose marks the block keeps by
+    /// hero id too (TWN-ROW-005; the original's `new_day` and week loops over every hero record,
+    /// the town epic's design note §48). Nothing written while no hero holds such a mark; an
+    /// entry left empty is dropped, and the block when no hero holds any.
     pub(crate) fn drop_timed_marks(&mut self, part: &AdventureRuleset, lifetime: MarkLifetime) {
-        let Some(block) = self.visited.as_deref() else {
+        let expires =
+            |marks: &VisitMarks| marks.timed.iter().any(|&ty| lives_for(part, ty, lifetime));
+        let Some(block) = self
+            .visited
+            .as_mut()
+            .filter(|all| all.iter().any(|(_, marks)| expires(marks)))
+        else {
             return;
         };
-        let held: Vec<HeroId> = block
-            .iter()
-            .filter(|(_, marks)| marks.timed.iter().any(|&ty| lives_for(part, ty, lifetime)))
-            .map(|&(id, _)| id)
-            .collect();
-        for id in held {
-            self.change_marks(id, |marks| marks.drop_timed(part, lifetime));
+        let all = Arc::make_mut(block);
+        for (_, marks) in all.iter_mut().filter(|(_, marks)| expires(marks)) {
+            marks.drop_timed(part, lifetime);
+        }
+        all.retain(|(_, marks)| !marks.is_empty());
+        if all.is_empty() {
+            self.visited = None;
         }
     }
 }

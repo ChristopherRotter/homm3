@@ -1641,7 +1641,9 @@ impl AdventureState {
     /// its heroes gets the day's movement points for its army and its details in `heroes`, the
     /// game's store, on its surface ([`day_maximum`], E08 T72: the land's or, in a boat, the
     /// sea's), which is also its day's maximum; what was left is lost. A gain in the day (a level-up's
-    /// Logistics, an artifact put on) shows here first (survey `E08-hero-movement.md` §1.4).
+    /// Logistics, an artifact put on) shows here first (survey `E08-hero-movement.md` §1.4). Since
+    /// E09 T28b1 its garrison heroes after them, in `TownId` order (TWN-ROW-005:
+    /// [`Self::start_town_heroes`]).
     // rule: ADV-MOV-002
     pub fn start_turn(
         &mut self,
@@ -1657,6 +1659,7 @@ impl AdventureState {
             hero.max_movement = day_maximum(core, part, details, hero, (lighthouses, week));
             hero.movement = hero.max_movement;
         }
+        self.start_town_heroes(core, part, heroes, player);
     }
 
     /// Whether a hero may stand on `pos` (ADV-MAP-001): a tile of the map whose terrain is

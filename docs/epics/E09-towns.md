@@ -190,6 +190,13 @@ Refined with the user on 2026-11-11 (T20; `TWN-Q11`, asked at T20's start with a
     `TWN-STUB-14`: until T28b a garrison hero does not defend, its town falls as T-5's, the hero
     back to the pool (`release_town_hero` before the capture); `TOWN_HEROES` entries 32 to 34
     with the tile head.
+94. **T28b in two, T28b1 now** (the user at T28b's start, asked; the agent recommended three
+    parts, the visits and the view apart; not chosen: the visits first, whole): **T28b1** the
+    garrison hero's day and income with growth's inputs (TWN-ROW-005; ADV-MOV-002, GAM-RES-003,
+    -005 amended; design §53); **T28b2** the visits of another team (rows 1 and 3, TWN-SIE-001,
+    -002, TWN-CAP-003, GAM-BAT-001), T-5 (`TWN-QUIRK-11`), `TWN-STUB-14` lifted and level 3's
+    view (TWN-VEW-001) with the protocol (design §54). The cut is the adventure lane's
+    `cross-lane` consent for T28b1's paths in its crates.
 
 ### Tasks (outline; queue entries in `docs/lanes/town/QUEUE.md`, each task's cut confirmed at its start)
 

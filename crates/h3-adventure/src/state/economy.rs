@@ -328,11 +328,13 @@ impl AdventureState {
     /// layout), the production of every mine it owns ([`Self::production`]: a mine's own, an
     /// abandoned mine's drawn resource at that resource's mine's amount), and on a week's first
     /// day (`week_start`) each creature type with a `weekly_resource` ability in the army of one
-    /// of its heroes on the map, that amount once however many stacks and heroes hold it (the
-    /// Crystal Dragons' 3 crystal, `player_daily_income` 0x4B8C32). Saturating per resource; an
-    /// ally's do not count, nor a mine's guards. The heroes' own income is
-    /// `h3_heroes::daily_income`, the game's to add, as the towns' (E09).
-    // rule: GAM-RES-003, GAM-RES-005
+    /// of its heroes on the map or, since E09 T28b1, in the upper bar of one of its towns (its
+    /// garrison hero's army, else its garrison: [`Self::upper_bars`]), that amount once however
+    /// many stacks, heroes and towns hold it (the Crystal Dragons' 3 crystal, `player_daily_income`
+    /// 0x4B8C32, 0x4B8DCF, 0x4B8E26). Saturating per resource; an ally's do not count, nor a
+    /// mine's guards. The heroes' own income is `h3_heroes::daily_income`, the game's to add, as
+    /// the towns'.
+    // rule: GAM-RES-003, GAM-RES-005, TWN-ROW-005
     pub fn income(
         &self,
         core: &Ruleset,
@@ -361,6 +363,7 @@ impl AdventureState {
                 .iter()
                 .filter(|hero| hero.owner == player)
                 .flat_map(|hero| &hero.army)
+                .chain(self.upper_bars(player).flatten())
                 .map(|stack| stack.creature)
                 .collect();
             for info in creatures.into_iter().filter_map(|c| core.creature(c)) {

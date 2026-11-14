@@ -1013,7 +1013,7 @@ id       = "TWN-GRO-001"
 title    = "A dwelling's growth a week"
 context  = "town"
 status   = "implemented"
-summary  = "What a town's dwelling at a creature index (index level - 1 the level's creature, level - 1 + 7 its upgrade) grows a week, summed in the original's order and held at 32 767 (TWN-QUIRK-8): none without the index's dwelling ever built (a building of role `dwelling` of its level and upgrade flag) and none at a base index whose level's upgraded dwelling is ever built; g the index's creature's core `growth`; + g with a standing fort level 3 (the Castle), + g / 2 with level 2 (the Citadel), the Fort nothing; for an owned town + (g + the castle's) x the owner's share in basis points / 10 000 (truncated; the Statue of Legion's 5 000, the highest `owner_town_growth` among the owner's heroes) + the level's Legion (`town_growth` of the town's heroes, each hero once); + the index's creature's `horde_growth` with a horde of the index ever built (role `horde`, the upgraded horde at the upgrade's index); + the owner's dwellings on the map whose kind's first creature is the index's (a base creature's at its upgrade's index too); then with a `grail` building ever built + the sum so far / 2 (truncated). A neutral town has no share and no Legion. E09 T25a (design section 41): `h3_towns::growth(town, part, core, index, &GrowthInputs)`; the week, the month, the garrison week and the Portal read the rule (T25b). E09 T26a1: the game computes the inputs once a week (h3-game's town/growth.rs `inputs`): the owner from the adventure, the share the highest `h3_heroes::owner_town_growth` of the owner's heroes on the map, the Legion the visitor's `h3_heroes::town_growth` (ADR-0013 point 16.4: each worn type once, a combination's parts counting), the dwellings the owner's on the map by their kind's first creature; the garrison hero's share and Legion come with E09 T28b."
+summary  = "What a town's dwelling at a creature index (index level - 1 the level's creature, level - 1 + 7 its upgrade) grows a week, summed in the original's order and held at 32 767 (TWN-QUIRK-8): none without the index's dwelling ever built (a building of role `dwelling` of its level and upgrade flag) and none at a base index whose level's upgraded dwelling is ever built; g the index's creature's core `growth`; + g with a standing fort level 3 (the Castle), + g / 2 with level 2 (the Citadel), the Fort nothing; for an owned town + (g + the castle's) x the owner's share in basis points / 10 000 (truncated; the Statue of Legion's 5 000, the highest `owner_town_growth` among the owner's heroes) + the level's Legion (`town_growth` of the town's heroes, each hero once); + the index's creature's `horde_growth` with a horde of the index ever built (role `horde`, the upgraded horde at the upgrade's index); + the owner's dwellings on the map whose kind's first creature is the index's (a base creature's at its upgrade's index too); then with a `grail` building ever built + the sum so far / 2 (truncated). A neutral town has no share and no Legion. E09 T25a (design section 41): `h3_towns::growth(town, part, core, index, &GrowthInputs)`; the week, the month, the garrison week and the Portal read the rule (T25b). E09 T26a1: the game computes the inputs once a week (h3-game's town/growth.rs `inputs`): the owner from the adventure, the share the highest `h3_heroes::owner_town_growth` of the owner's heroes on the map, the Legion the visitor's `h3_heroes::town_growth` (ADR-0013 point 16.4: each worn type once, a combination's parts counting), the dwellings the owner's on the map by their kind's first creature. E09 T28b1 (TWN-ROW-005): the share over the owner's heroes on the map and its garrison heroes (the original's `player_hero_wears_artifact` 0x4BACB0: the player's list, then its towns' +0xC heroes), the Legion the visitor's plus the garrison hero's, summed by level."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1372,4 +1372,34 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 53: the swap, the visitor the town owner's"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-ROW-005"
+title    = "A garrison hero's day and income"
+context  = "town"
+status   = "implemented"
+summary  = "A garrison hero keeps its day off the map as on it: at its owner's turn start, after the owner's heroes on the map, each of its garrison heroes in `TownId` order gets the day's land points for its army and details, its week marks' points included (the Stables' 400), which are also its day's maximum, what was left lost (ADV-MOV-002; it entered from the entrance, on land); its day marks drop at each day's start and its week marks at each week's (the marks kept by hero id, E08 T115a); its spell points as every hero's (HER-MAN-002). Its owner gains its `daily_income` each day (artifacts, Estates, specialty: GAM-RES-004), and on a week's first day the weekly resources of the upper bar of each town it owns, the garrison hero's army or else the town's garrison, count with its heroes' armies, each creature type once (the Crystal Dragons' 3 crystal; GAM-RES-005). Growth reads its Statue's share and its Legion (TWN-GRO-001). Not here: its reveal (off the map; the town's own radius covers the entrance). E09 T28b1: `AdventureState::start_town_heroes` from `start_turn`, `drop_timed_marks` over the block, `upper_bars` in `income`, `GameState::pay_income` and the growth's inputs over `town_heroes`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T22b; the town epic's design note section 48): next_player_turn sets the points of the player's heroes, then its two tavern heroes, then each of its towns' garrison heroes (+0xC; 0x4C7486 to 0x4C74AE); new_day's and the week's loops over every hero record (the day flags 0x4C80CF, the Stables 0x4C8D2A, the spell points) reach a garrison hero; player_daily_income 0x4B8AF0: the Crystal Dragons in an owned town's garrison (its garrison hero's army, else the town's; 0x4B8C32, 0x4B8DCF, 0x4B8E26), count_worn_artifact 0x4BABD0 and town_gold_income over the towns' garrison heroes (survey E08-economy.md section 8.1); player_hero_wears_artifact 0x4BACB0 (the towns' +0xC heroes after the player's list)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E09-batch-3b.md and E09-batch-3b-run2.md, batch TWN-3 row TWN-3-6 (the capture harness under Wine, 2026-11-11, E09 T23): G, moved into T's garrison after spending 100 points on day 1, had 1 630 on Red's day 2, the maximum of Z, its twin with the same army that never moved"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 NewTurnProcessor: updateHeroesMovementPoints and updateHeroesManaPoints over each player's heroes (a garrison hero stays in VCMI's list), at the new day for every player (ADV-MOV-002's known difference); the week's crystal once when a hero's army or a town's garrison holds a SPECIAL_CRYSTAL_GENERATION creature"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-11-14"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 53: its day (the turn start after the heroes on the map, TownId order; the marks' drops), its income (daily_income with its owner's; the upper bar's weekly resources counted once with the heroes') and growth's inputs (E09 T28b1)"
   confidence = "high"

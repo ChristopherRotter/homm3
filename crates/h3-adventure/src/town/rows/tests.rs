@@ -8,7 +8,9 @@ extern crate std;
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::{CreatureDef, CreatureInfoDef, CreatureTypeId, FactionId, Formation, Ruleset};
+use h3_content::{
+    CreatureAbility, CreatureDef, CreatureInfoDef, CreatureTypeId, FactionId, Formation, Ruleset,
+};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_kernel::hash::hash_of;
 
@@ -19,7 +21,8 @@ use crate::ruleset::{AdventurePack, AdventureRuleset, ObjectKindDef, ObjectTypeD
 use crate::setup::{AdventureSetup, Holds, ObjectSetup, Pos, Scenery, TileMask};
 use crate::state::AdventureState;
 use crate::testing::{
-    GNOLL, MAX_STACK, PEASANT, PIKEMAN, WOLF, hero_at, key, movement_rules_with, started, world,
+    GNOLL, MAX_STACK, PEASANT, PIKEMAN, WOLF, hero_at, key, movement_rules_with, started, stream,
+    world,
 };
 
 type Rules = (Ruleset, AdventureRuleset);
@@ -33,7 +36,9 @@ const ENTRANCE: Pos = Pos::new(8, 3, 0);
 /// The most heroes on the map the tests pass (the original's 8).
 const MOST: u8 = 8;
 
-/// [`movement_rules_with`] with a town type `t:town` and four more creatures, ids 4 to 7.
+/// [`movement_rules_with`] with a town type `t:town`, a Magic Well `t:well` and a Stables
+/// `t:stables` (their timed marks, a day's and a week's; E09 T28b1) and four more creatures, ids 4
+/// to 7, the last ([`DRAGON`]) with 3 gold a week (as the Crystal Dragons' crystal).
 fn rules() -> Rules {
     movement_rules_with(
         true,
@@ -45,6 +50,11 @@ fn rules() -> Rules {
                     speed: 5,
                     info: CreatureInfoDef::default(),
                 }));
+            let dragon = core.creatures.last_mut().unwrap();
+            dragon.info.abilities = vec![CreatureAbility::WeeklyResource {
+                resource: key("t:gold"),
+                amount: 3,
+            }];
         },
         |part: &mut AdventurePack| {
             part.object_types.push(ObjectTypeDef {
@@ -57,6 +67,25 @@ fn rules() -> Rules {
                     boat_offsets: Vec::new(),
                 },
             });
+            let entered = |k: &str, kind| ObjectTypeDef {
+                key: key(k),
+                name: "Object".into(),
+                visit: Visit::Enter,
+                from_above: false,
+                kind_mark: true,
+                kind,
+            };
+            part.object_types.extend([
+                entered("t:well", ObjectKindDef::MagicWell),
+                entered(
+                    "t:stables",
+                    ObjectKindDef::Stables {
+                        points: 400,
+                        from: key("t:pikeman"),
+                        to: key("t:gnoll"),
+                    },
+                ),
+            ]);
         },
     )
 }
@@ -65,6 +94,9 @@ fn rules() -> Rules {
 const fn c(n: u16) -> CreatureTypeId {
     CreatureTypeId::from_raw(n)
 }
+
+/// The creature with 3 gold a week (`t:rd`).
+const DRAGON: CreatureTypeId = c(7);
 
 fn stack(slot: u8, creature: CreatureTypeId, count: u32) -> ArmyStack {
     ArmyStack {
@@ -378,6 +410,93 @@ fn the_garrison_hero_leaves_onto_the_entrance_with_its_points_kept() {
     let mut told = Vec::new();
     own.tell(&state, &mut told);
     assert_eq!(told, []);
+}
+
+// covers: TWN-ROW-005, ADV-MOV-002
+#[test]
+fn a_garrison_hero_gets_its_day_s_points_at_its_owner_s_turn_and_drops_its_marks() {
+    let rules = rules();
+    let ty = |k| rules.1.object_type_by_key(k).unwrap();
+    let (well, stables) = (ty("t:well"), ty("t:stables"));
+    let army = vec![stack(0, PEASANT, 1)];
+    let full = crate::movement::day_points(&rules.0, &rules.1, None, &army, 0);
+    let mut state = at_town(&rules, vec![], army);
+    // The visitor holds a day's mark (the Well's) and a week's (the Stables'), and has spent
+    // points; then it enters the garrison, its marks kept in the block by hero id.
+    assert!(state.change_marks(VISITOR, |m| m.add_timed(well)));
+    assert!(state.change_marks(VISITOR, |m| m.add_timed(stables)));
+    state.hero_mut(VISITOR).unwrap().movement = 100;
+    row(&rules, &mut state, RED, (TOWN, TownHeroMove::Enter)).unwrap();
+    let points = |state: &AdventureState| {
+        let hero = state.town_hero(TOWN).unwrap();
+        (hero.max_movement, hero.movement)
+    };
+    let kept = points(&state);
+    // Blue's turn start leaves red's garrison hero as it is.
+    let before = state.clone();
+    state.start_turn(&rules.0, &rules.1, &[], BLUE);
+    assert_eq!(state, before);
+    // Red's: after its heroes on the map, the land's points of its army with the Stables' 400
+    // (the original's `next_player_turn` 0x4C7486; batch TWN-3's row 6: the full points on Red's
+    // next day), which are also the day's maximum.
+    state.start_turn(&rules.0, &rules.1, &[], RED);
+    assert_ne!(points(&state), kept);
+    assert_eq!(points(&state), (full + 400, full + 400));
+    assert_eq!(state.hero(OTHER).unwrap().movement, full);
+    // Again: nothing changes.
+    let again = state.clone();
+    state.start_turn(&rules.0, &rules.1, &[], RED);
+    assert_eq!(state, again);
+    // The day's step drops the Well's mark, the week's the Stables' (every hero record's), and
+    // the next turn start has no 400.
+    state.start_day(&rules.0, &rules.1, &[]);
+    assert_eq!(state.visit_marks(VISITOR).timed(), [stables]);
+    state.start_week(&rules.0, &rules.1, &mut stream(), &mut Vec::new());
+    assert!(state.visit_marks(VISITOR).is_empty());
+    state.start_turn(&rules.0, &rules.1, &[], RED);
+    assert_eq!(points(&state), (full, full));
+    // Out on the entrance it keeps them.
+    row(&rules, &mut state, RED, (TOWN, TownHeroMove::Leave)).unwrap();
+    let hero = state.hero(VISITOR).unwrap();
+    assert_eq!((hero.max_movement, hero.movement), (full, full));
+}
+
+// covers: GAM-RES-005, TWN-ROW-005
+#[test]
+fn a_town_s_upper_bar_gives_its_owner_the_week_s_resources_once_with_its_heroes() {
+    let rules = rules();
+    // The week's gold of `player` (the testing core's second resource; no mine here).
+    let week = |state: &AdventureState, player| state.income(&rules.0, &rules.1, player, true)[1];
+    let day = |state: &AdventureState| state.income(&rules.0, &rules.1, RED, false)[1];
+    // Red's town's garrison holds the creature, no hero does: 3 on a week's first day, none on
+    // another (the original's `player_daily_income` 0x4B8C32: an owned town's garrison).
+    let dragons = vec![stack(0, DRAGON, 2)];
+    let mut state = at_town(&rules, dragons.clone(), vec![stack(0, PEASANT, 1)]);
+    assert_eq!(
+        (week(&state, RED), day(&state), week(&state, BLUE)),
+        (3, 0, 0)
+    );
+    // The visitor enters: the creature is in its army, the upper bar's (0x4B8DCF): still 3.
+    row(&rules, &mut state, RED, (TOWN, TownHeroMove::Enter)).unwrap();
+    assert_eq!(state.town_hero(TOWN).unwrap().army[1].creature, DRAGON);
+    assert_eq!(week(&state, RED), 3);
+    // Once however many hold it: a hero on the map with it too.
+    state
+        .hero_mut(OTHER)
+        .unwrap()
+        .army
+        .push(stack(1, DRAGON, 1));
+    assert_eq!(week(&state, RED), 3);
+    // Blue's town's garrison counts for blue, a neutral one's for nobody.
+    let away = (Pos::new(5, 5, 0), vec![stack(0, PEASANT, 1)]);
+    let blue = started(
+        &rules,
+        &setup(&rules, Some(1), dragons.clone(), away.clone()),
+    )
+    .unwrap();
+    assert_eq!((week(&blue, RED), week(&blue, BLUE)), (0, 3));
+    let neutral = started(&rules, &setup(&rules, None, dragons, away)).unwrap();
+    assert_eq!((week(&neutral, RED), week(&neutral, BLUE)), (0, 0));
 }
 
 // covers: TWN-ROW-003

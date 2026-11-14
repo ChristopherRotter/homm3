@@ -23,8 +23,9 @@ use crate::{GameRuleset, GameState, MonthKind};
 /// heroes' Statue of Legion and its dwellings on the map by their first creature. *Agent's call*
 /// (design §41): built once per player and step, not per town.
 struct Owner {
-    /// The highest [`h3_heroes::owner_town_growth`] of the player's heroes on the map (garrison
-    /// heroes: E09 T28b).
+    /// The highest [`h3_heroes::owner_town_growth`] of the player's heroes on the map and its
+    /// garrison heroes (E09 T28b1; the original's `player_hero_wears_artifact` 0x4BACB0: the
+    /// player's list of heroes, then its towns' +0xC heroes).
     share_bp: u16,
     /// By creature handle: how many of the player's dwellings on the map have it as their kind's
     /// first creature (the original's `town_dwelling_count_add` 0x5BFE50; a Refugee Camp is none);
@@ -36,9 +37,11 @@ impl Owner {
     /// `player`'s share and dwellings in `state`.
     fn of(state: &GameState, rules: &GameRuleset, player: PlayerId) -> Self {
         let (core, adventure) = (rules.core(), state.adventure());
+        let garrisons = adventure.town_heroes().iter().map(|(_, hero)| hero);
         let share_bp = adventure
             .heroes()
             .iter()
+            .chain(garrisons)
             .filter(|hero| hero.owner == player)
             .filter_map(|hero| state.heroes().get(usize::from(hero.id.raw())))
             .map(|details| h3_heroes::owner_town_growth(details, core))
@@ -89,12 +92,14 @@ pub(crate) fn owned_dwellings<'a, 'r>(
 }
 
 /// Every town's growth inputs (TWN-GRO-001; design §41), by `TownId`: a neutral town's
-/// [`GrowthInputs::NEUTRAL`]; an owned town's its owner's share, its visitor's Legion
-/// ([`h3_heroes::town_growth`]; the garrison hero's with E09 T28b) and per index its owner's
-/// dwellings whose first creature is the index's, a base creature's at its upgrade's index too.
-/// Computed once a week, before the towns' week, and kept for the month of the same day (nothing
-/// between them changes an owner, a hero's artifacts or a visitor).
-// rule: TWN-GRO-001
+/// [`GrowthInputs::NEUTRAL`]; an owned town's its owner's share (over its heroes on the map and
+/// its garrison heroes), its visitor's Legion ([`h3_heroes::town_growth`]) plus since E09 T28b1
+/// its garrison hero's, each hero once, summed by level saturating (design §41, §53;
+/// TWN-ROW-005), and per index its owner's dwellings whose first creature is the index's, a base
+/// creature's at its upgrade's index too. Computed once a week, before the towns' week, and kept
+/// for the month of the same day (nothing between them changes an owner, a hero's artifacts, a
+/// visitor or a garrison hero).
+// rule: TWN-GRO-001, TWN-ROW-005
 pub(crate) fn inputs(state: &GameState, rules: &GameRuleset) -> Vec<GrowthInputs> {
     let (core, part, adventure) = (rules.core(), rules.towns(), state.adventure());
     let mut owners: Vec<Option<Owner>> = Vec::new();
@@ -114,12 +119,18 @@ pub(crate) fn inputs(state: &GameState, rules: &GameRuleset) -> Vec<GrowthInputs
             }
             let owner =
                 owners[player.index()].get_or_insert_with(|| Owner::of(state, rules, player));
-            let legion = adventure
-                .town_visitor(town)
-                .and_then(|hero| state.heroes().get(usize::from(hero.raw())))
-                .map_or([0; MAX_CREATURE_LEVELS], |details| {
-                    h3_heroes::town_growth(details, core)
-                });
+            let garrison = adventure.town_hero(town).map(|hero| hero.id);
+            let mut legion = [0_u16; MAX_CREATURE_LEVELS];
+            let heroes = [adventure.town_visitor(town), garrison];
+            let details = heroes
+                .into_iter()
+                .flatten()
+                .filter_map(|hero| state.heroes().get(usize::from(hero.raw())));
+            for pieces in details.map(|details| h3_heroes::town_growth(details, core)) {
+                for (sum, piece) in legion.iter_mut().zip(pieces) {
+                    *sum = sum.saturating_add(piece);
+                }
+            }
             let dwellings = if owner.firsts.is_empty() {
                 [0; CREATURE_INDEXES]
             } else {

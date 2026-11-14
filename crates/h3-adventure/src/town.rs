@@ -87,6 +87,22 @@ pub(crate) const fn holds_formation(holds: &Holds) -> Option<Formation> {
 }
 
 impl AdventureState {
+    /// The armies in the upper bars of `player`'s towns (TWN-ROW-005, GAM-RES-005; E09 T28b1, the
+    /// town epic's design note §53; survey `E08-economy.md` §8.1 point 3, `player_daily_income`
+    /// 0x4B8C32): of each town it owns, in `TownId` order, its garrison hero's army if one stands
+    /// there, else the town's garrison (empty while a garrison hero stands, TWN-ROW-002). The
+    /// week's resources read them beside its heroes' armies ([`Self::income`]).
+    pub(crate) fn upper_bars(&self, player: PlayerId) -> impl Iterator<Item = &[ArmyStack]> {
+        (0..=u16::MAX)
+            .map(TownId::new)
+            .zip(self.map().towns())
+            .filter(move |&(_, &index)| self.owner(index) == Some(player))
+            .map(move |(town, &index)| match self.town_hero(town) {
+                Some(hero) => &hero.army[..],
+                None => self.town_garrison(index).unwrap_or_default(),
+            })
+    }
+
     /// The town's visitor (TWN-VIS-002; the town epic's design note §9, survey `E09-towns.md` §7.3:
     /// the original's town +0x10, which `hero_show` and `hero_hide` keep): the hero standing on
     /// its entrance, if one does; never stored (ADR-0016's amendment point 2). None for a
