@@ -10,7 +10,8 @@
 //! (`GameSession::reopen`, the game's build included), and the verification of the adventure
 //! replay it holds (`Replay::verify`, a finished game's check once games end, E10); each timed,
 //! with the heap each holds and at most, through the caller's [`Meter`] (the binary's counting
-//! allocator), and the session's in-memory copy of the game's commands (`GameJournal::commands`).
+//! allocator), and the session's in-memory copy of the game's commands (`GameJournal::commands`,
+//! none for a game of connections since E16 M5 T23b).
 //! `h3-server-journals` prints them; the design note (`E16-design.md` §15) holds the numbers and
 //! the case for state saves.
 //!

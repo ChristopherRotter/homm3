@@ -148,7 +148,8 @@ since M2 T5b, `outbound_bytes` and `record_bytes` since M2 T5c, `replays_kept` s
 `public_url` and `anonymous` in `[server]` and `failed_logins_per_address` in `[limits]` since M3
 T2a, `commands_per_game` (a game reaching it without an end is void) since M3 T4a,
 `trusted_proxies` in `[server]` (the operator's setup behind a TLS proxy:
-`crates/h3-server/README.md`) since M3 T4b. Still to come:
+`crates/h3-server/README.md`) since M3 T4b, `whole_checkpoint_every` in `[server]` (a whole
+game's, §15) since M5 T23b. Still to come:
 
 ```
 [[ladder]]    id = "arena"  name = "Arena"  scenarios = ["…"]  grace_ms = 300000  # M4, §11
@@ -672,3 +673,17 @@ save and load.
 - (f) **A total bound** per whole game (commands or journal bytes): SRV-Q30 chose the per-turn
   bound instead; a legitimate long game must not be void.
 - (g) **State saves** as above.
+
+**After T23b** ((a) to (c) built; the same games, the journal's checkpoint every 250 commands):
+
+| Year, two seats | journal, MiB | read, s | re-run, s | verify, s | restored session, MiB | re-run's peak, MiB |
+|---|---|---|---|---|---|---|
+| economy, plain / 40 / 1 000 a turn | 0.34 / 0.79 / 12.5 | 0.003 / 0.006 / 0.058 | 0.047 / 0.057 / 0.101 | 0.039 / 0.044 / 0.097 | 1.6 / 1.6 / 1.6 | 2.5 / 2.5 / 15.4 |
+| XL, plain / 40 / 1 000 a turn | 0.40 / 1.54 / 30.9 | 0.003 / 0.009 / 0.170 | 0.034 / 0.039 / 0.164 | 0.028 / 0.031 / 0.093 | 2.0 / 2.0 / 2.1 | 3.1 / 3.2 / 57.5 |
+
+A restored session holds no more than a fresh one (the state, the records); at the bound a
+two-seat game-year restores in about a third of a second (16 games: about 5 s; eight seats:
+about 1.3 s a game, 21 s for 16) and with a hash every 25 commands its re-run would still take
+0.63 s. What is left is transient, one game at a time: the read journal (56 MiB at the bound)
+and the re-run's own entries until they are compared with it (the re-run's peak); (d) would
+remove both.

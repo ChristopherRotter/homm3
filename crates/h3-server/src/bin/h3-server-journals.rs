@@ -103,7 +103,7 @@ fn run(args: &[String]) -> Result<(), String> {
         days: 112,
         per_turn: 0,
         marks: vec![7, 14, 28, 56, 84, 112],
-        checkpoint_every: 25,
+        checkpoint_every: h3_server::config::Server::default().whole_checkpoint_every,
         data: std::env::temp_dir().join("h3-server-journals"),
     };
     let mut iter = args.iter();

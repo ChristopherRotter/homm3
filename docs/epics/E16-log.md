@@ -3583,3 +3583,29 @@ data. Kept whole.
   connections' commands, (c) a whole game's own checkpoint interval (250) now, as T23b before
   T24 (the agent's recommendation); (d) a streaming restore, (e) a lazy or parallel restart and
   (g) state saves documented for later in T24; no (f), a total bound.
+
+### M5 T23b — the long journals' remedies (2026-11-14, SRV-Q37)
+
+Baseline: T23's commit (e692a71 on `master` 0872fc6). No original data. No wire or format change
+(the protocol stays v66, `GAME_JOURNAL_FORMAT_VERSION` 1).
+
+- **(a) The re-run's entries released** (`GameSession::rerun`): after the comparison with the
+  journal it drains its own entries and `shrink_to_fit`s the vector, which kept the whole
+  journal's room for the game's life (56 B an entry, up to twice with the spare capacity).
+- **(b) No copy of a game of connections' commands:** `GameJournal::commands` is an `Option`,
+  `Some` for the in-process host (`start`, `restore`: its tests compare it with a replay's),
+  `None` from `GameSession::new` on (`reopen` too); `GameJournal::accepted` counts the accepted
+  commands, the checkpoints' cadence. The tests that held a game of connections' journal equal to
+  its in-process twin's (`game_seats.rs`, `game_computer.rs`) compare it through
+  `game_seats::same_journal`: the same but for the commands, and the twin's commands those of the
+  game of connections' journaled entries, in order.
+- **(c) A whole game's own checkpoint interval:** `[server] whole_checkpoint_every` (250,
+  *provisional*; the battles' `checkpoint_every` stays 25) for a new whole game
+  (`whole::Prepared::new`); a restored one keeps its journal's (its first line's replay), so a
+  journal written before restores as written. The tests' servers set it to their battles' 10;
+  `tests/whole.rs` checks a journal's interval is the server's whole-game one, and the
+  configuration's default.
+- **Measured again** (`h3-server-journals`, its default interval now the server's): the XL year
+  at the bound re-run in 0.16 s (0.75 before), verified in 0.09 s, its restored session 2.1 MiB
+  (114.3), the re-run's peak beyond the read journal 57.5 MiB (115.4); the plain agent's years
+  re-run in 0.03 to 0.06 s, sessions of 1.6 to 2.0 MiB (`E16-design.md` §15, "After T23b").

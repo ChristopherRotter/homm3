@@ -326,11 +326,10 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 - **T23 Long journals measured** done 2026-11-14 (`E16-design.md` §15, `E16-log.md`:
   `h3-server-journals`, a year on the XL fixtures by the random agent and at a seat's bound; no
   state saves now; SRV-Q37: remedies (a) to (c) in T23b).
-- **T23b The long journals' remedies** (SRV-Q37, §15's (a) to (c); `h3-protocol` and
-  `h3-server`, no wire or format change): the re-run's entries released; no copy of a game of
-  connections' commands (the count and the checkpoints kept; the in-process host keeps its
-  copy); a whole game's own checkpoint interval (`[server] whole_checkpoint_every`, 250), a
-  journal keeping its own; measured again.
+- **T23b The long journals' remedies** done 2026-11-14 (SRV-Q37, §15's (a) to (c); no wire or
+  format change; `E16-log.md`: `rerun` releases its entries, `GameJournal::commands` none for a
+  game of connections and `accepted` counted, `[server] whole_checkpoint_every` 250; the XL
+  year at the bound re-run in 0.16 s, not 0.75, its restored session 2.1 MiB, not 114).
 - **T24 2c's closure:** an end-to-end test (a spectator watching a timed game through a restart,
   a stalled battle voiding its game), `docs/06-security.md` (`cross-lane`; T20's and the
   spectator's lines written in T21a, the hosting's own left), the reviewer agent,
@@ -339,6 +338,11 @@ Part 1 closed 2026-11-12 (SRV-Q28: the review list as built): its scope, decisio
 
 **Review list for the M5 2c checkpoint** (built so far; the reviewer and the user at T24):
 
+- T23b: `GameJournal::commands` an `Option` (none for a game of connections, the in-process
+  host's kept for its tests) beside the count `accepted`, rather than no copy at all; a whole
+  game's interval 250 a server's setting beside the battles' 25 (a game keeps its own), a
+  divergence found up to 250 commands later; the re-run's entries released by `shrink_to_fit`;
+  (d), (e) and (g) left for later (T24 documents them).
 - T23: the measurement kept in the repo (`h3_server::measure`, the binary `h3-server-journals`
   with a counting global allocator, `unsafe` in an adapter's binary; not a `bench-check`
   workload: wall time and heap, §15's numbers); the journal built from the agent's commands as

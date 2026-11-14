@@ -6,6 +6,7 @@
 //! bind = "127.0.0.1:7878"            # loopback by default; the internet only behind a TLS proxy
 //! data = "data"                      # journals, replays (below); the server's user only
 //! checkpoint_every = 25              # a state hash in the journal every this many commands
+//! whole_checkpoint_every = 250       # the same in a whole game's journal (E16 M5 T23b)
 //! public_url = "wss://example.org"   # the server's id, which logins sign: what clients dial
 //! anonymous = true                   # whether a game may be joined or created without a login
 //! trusted_proxies = ["127.0.0.1"]    # reverse proxies whose X-Forwarded-For names the client
@@ -204,6 +205,11 @@ pub struct Server {
     pub data: PathBuf,
     /// A state hash in the journal after every this many commands (0: none).
     pub checkpoint_every: u32,
+    /// A state hash in a whole game's journal after every this many commands (0: none; E16 M5
+    /// T23b, SRV-Q37, *provisional*): fewer than a battle's, as a hash of a large map costs about
+    /// 25 µs, the most of a long journal's re-run at a seat's bound (`E16-design.md` §15). A game
+    /// keeps its own from its creation (its journal's first line).
+    pub whole_checkpoint_every: u32,
     /// Whether every game runs a shadow instance that checks its battle after every command
     /// (E16 M2 T3, `E16-design.md` §8).
     pub shadow_instance: bool,
@@ -237,6 +243,7 @@ impl Default for Server {
             bind: String::from("127.0.0.1:7878"),
             data: PathBuf::from("data"),
             checkpoint_every: 25,
+            whole_checkpoint_every: 250,
             shadow_instance: false,
             public_url: None,
             addresses: Vec::new(),
