@@ -3749,11 +3749,12 @@ re-measured after the second.
   part's hash, the adventure state hash version and the hash lines only); `h3-server`'s record
   literals, `h3-cli`'s and `h3-sim`'s format literals; the client lane's `h3-view` test literal
   of the wire's `Adventure`. The bot reports unchanged (no part they record moved).
-- **Bench** (`master` built in the same sandbox): `manage-army-12` +0.55 %; `legal-towns-36`
+- **Bench** (`master` built in the same sandbox): `manage-army-12` +0.87 % on its baseline; `legal-towns-36`
   +19.04 % (the agent's moves: 1 959 listings for 1 755; the query about 210 Ir a listing after
   two dropped designs, +56 % and +26 %), `fork-towns-36` +6.74 % (the forked game), `reach-towns-36`
-  −6.01 % (the games), `fork-boxes-xl-144` and `fork-stones-xl-144` +0.59 % (the block's pointer;
-  master +1.55 % on their baselines) re-baselined with the reasons, and `day-start-builds-36`
+  −6.01 % (the games), and, after the second merge, `fork-xl-144` +2.02 % (+0.34 % against
+  master's 381 800 024: the block's pointer, 13 Ir a fork; `fork-boxes-xl-144` and
+  `fork-stones-xl-144` +0.5 %, inside their gate) re-baselined with the reasons, and `day-start-builds-36`
   −3.83 % (the day's start reads the cached entrances through `town_visitor`); every other
   workload within its gate.
 - **Agent's calls (change freely):** decision 93's list.
