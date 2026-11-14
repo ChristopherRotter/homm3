@@ -5,16 +5,17 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 ## Current state
 
 - **E27, the game shell** (refined 2026-11-12, M0: `docs/epics/E27-game-shell.md`, decisions 4
-  to 27). **M1 closed** (2026-11-13, T3; M1's tasks in `E27-archive.md`; the catalogue
-  `E27-design.md` §1 to §6, §6.4 what M2 to M4 still read or record). **M2 T1 done** (2026-11-13:
-  `h3-smacker`'s video, design §7). **M2 T2 done** (2026-11-14: the clips' sound, every track the
-  DLLs' byte for byte; design §8; decisions 25 to 27). **M2 T2b done** (2026-11-14: the DLL's
-  masked copy, `h3_bink::Target`; every frame of the fourteen game clips the DLL's; design §9;
-  decision 28). **Next: M2 T3** (the shell's frame), then T4, T5. Decisions to carry: the dialogs'
-  input one implementation shared with the battle's (20); the shell's code as the battle's, the
-  score the engine's (21); decision 22's fixes; a Smacker clip's every pixel through its palette
-  (24); every clip's sound at the effects setting (27); every Bink frame whole, the comparisons
-  through `Target` (28). Open pull request: **#917** (`client/e27-m2-t2b`) (watch it until it merges). E17
+  to 29). **M1 closed** (2026-11-13, T3; M1's tasks in `E27-archive.md`; the catalogue
+  `E27-design.md` §1 to §6, §6.4 what M2 to M4 still read or record). **M2 T1, T2, T2b done**
+  (2026-11-13 to 14: `h3-smacker`, the clips' sound, the DLL's masked Bink copy; design §7 to §9).
+  **M2 T3a done** (2026-11-14, decision 29: T3 cut in two): `h3_ui::input` (the dialogs' shared
+  input, the combat options on it), `h3_view::shell` (the menu loop's state machine) and
+  `shell::text`, `h3-view shell`. **Next: M2 T3b** (start-up loading by the LODs' tables, CLT-Q2;
+  the four LODs staged), then T4 (needs T3a only), T5. Decisions to carry: the dialogs' input one
+  implementation (20; `h3_ui::input`); the shell's code as the battle's, the score the engine's
+  (21); decision 22's fixes; a Smacker clip's every pixel through its palette (24); every clip's
+  sound at the effects setting (27); every Bink frame whole, the comparisons through `Target`
+  (28). Open pull request: **#PR** (`client/e27-m2-t3a`) (watch it until it merges). E17
   done (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -49,6 +50,13 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-14, E27 M2 T3a (done; `client/e27-m2-t3a`).** T3 cut in two with the user (decision
+  29). The user's computer left the bridge at the start and came back; then the original data
+  staged at once (64 files, checked by SHA-256); the baseline passed. Built `h3_ui::input` (moved
+  from `h3_view::options`, whose tests pass unchanged; the map-client lane's inbox told),
+  `h3_view::shell` (the menu loop's switches, design §2.2 to §2.4, §4.3, §5.3; each screen names
+  its task) with `shell::text`, and `h3-view shell [--script] [--no-intro]`. `check.sh` with the
+  data staged. Record: `E27-log.md`, "M2 T3a".
 - **2026-11-14, E27 M2 T2b (done; `client/e27-m2-t2b`).** One task, no cut. The original data
   staged at once (64 files, checked by SHA-256); the baseline passed. Found by tracing blocks in a
   scratch copy against the DLL's planes and reading `BINKW32.DLL`: the decoding was right, the
@@ -65,11 +73,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   and the samples the DLLs' byte for byte. CLT-Q121: every clip at the effects setting. Found:
   `h3-bink`'s video of the shell's four Bink clips is not the DLL's (T2b). The VM restarted once
   (files kept). Record: `E27-log.md`, "M2 T2".
-- **2026-11-13, E27 M2 T1 (done; `client/e27-m2-t1`).** Kept whole with the user (decision 23).
-  The original data staged at once (64 files, checked by SHA-256); the baseline lost to a VM
-  restart, CI's green `master` stood for it. Built `h3-smacker` (FFmpeg 6.1.1's Smacker ported,
-  100 % covered), `video --smacker`, `smackprobe.exe`, `smacker-dll.py`, `smacker-check.sh`. Checked
-  against FFmpeg and `SMACKW32.DLL`: the shell's eight clips, AB's `Credits.smk` and 150 samples,
-  every frame, palette and 16-bit copy byte for byte. Found: the DLL's 16-bit copy keeps a skipped
-  block's colours after a palette change (CLT-Q119, fixed: decision 24); the DLL faults on a byte
-  tree left out and on a key-frame mark (samples avoid both). Record: `E27-log.md`, "M2 T1".

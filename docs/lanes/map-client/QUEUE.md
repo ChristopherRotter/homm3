@@ -112,6 +112,13 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-14 (the client lane, E27 M2 T3a, `client/e27-m2-t3a`; **for your information, an
+  addition to `h3-ui`, nothing changed**): `h3_ui::input` (`Input`, `Held`, `Did`), a dialog's
+  press, hold and release of its DEF buttons and DEF pictures (boxes, bars) and its button held by
+  a key, the right release ending a button's own loop, the item a right press's help names; the
+  original's profile (`Bugs::Original`) clicks a picture at a release anywhere, the client's over
+  it alone (E27 decision 20, CLT-Q102). The battle's combat options use it; the shell's dialogs
+  will. Use it for a dialog of the map's if it fits.
 - 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **for the bonus visitables'
   hint, nothing to do before it**; design note §10): protocol **v61**: the observation's `kinds`
   (the object types whose kind mark the viewer's team holds, in type order: the hint's bonus line,
