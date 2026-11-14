@@ -16,7 +16,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   the guild and the services 5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the
   battle lane's inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the victory
   conditions).
-- **Open pull requests:** T28b2's (branch `town/e09-t28b2`, `cross-lane`); watch it until it
+- **Open pull requests:** #930, T28b2's (branch `town/e09-t28b2`, `cross-lane`); watch it until it
   merges. A failing case of the adventure lane's hygiene property on `master` (their inbox, not
   in `proptest-regressions`): if CI meets it on a town pull request, it is not the town lane's.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
@@ -51,7 +51,7 @@ user's computer was connected at the start: the original data and the four manua
 `cross-lane`: `h3-adventure`'s `end_battle`, `raise`, `change_marks`; `h3-game`'s battle end and
 `town_told`; `h3-map`'s view property; `h3-protocol` (v67). A hygiene case found failing on
 `master` too, left in the adventure lane's inbox with its seed. Notes in the adventure's and the
-server's inboxes. T29 next. PR (see Current state).
+server's inboxes. T29 next. PR #930.
 
 ### 2026-11-14 — T28b1: a garrison hero's day, income and growth's inputs
 
