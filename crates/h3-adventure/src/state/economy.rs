@@ -8,7 +8,6 @@
 //! the weekly contents one too, each none for a map without such objects, so a fork of one costs
 //! nothing more and of another a reference count or two (`bench-check`).
 
-use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
@@ -358,14 +357,24 @@ impl AdventureState {
             }
         }
         if week_start {
-            let creatures: BTreeSet<CreatureTypeId> = self
-                .heroes
-                .iter()
-                .filter(|hero| hero.owner == player)
-                .flat_map(|hero| &hero.army)
-                .chain(self.upper_bars(player).flatten())
-                .map(|stack| stack.creature)
-                .collect();
+            // Each creature type with an ability, once (E09 T28b1: a short list, since few have
+            // one, so that the upper bars' stacks pass over unlisted; the amounts add up the same
+            // in any order, saturating).
+            let mut creatures: Vec<CreatureTypeId> = Vec::new();
+            let mut note = |stack: &ArmyStack| {
+                let gives = core
+                    .creature(stack.creature)
+                    .is_some_and(|info| !info.abilities.is_empty());
+                if gives && !creatures.contains(&stack.creature) {
+                    creatures.push(stack.creature);
+                }
+            };
+            for hero in self.heroes.iter().filter(|hero| hero.owner == player) {
+                hero.army.iter().for_each(&mut note);
+            }
+            for army in self.upper_bars(player) {
+                army.iter().for_each(&mut note);
+            }
             for info in creatures.into_iter().filter_map(|c| core.creature(c)) {
                 for ability in &info.abilities {
                     let CreatureAbility::WeeklyResource { resource, amount } = *ability;

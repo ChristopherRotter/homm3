@@ -31,6 +31,10 @@ Grouped by area. Read the group for the area your task touches; delete a trap wh
   walks the visitable mask's offsets; three checks a town a listing cost `legal-towns-36` +56 %.
   Read `StaticMap::town_entrance` (cached at the build) and find a visitor by comparing the
   player's heroes' tiles with it; `StaticMap::town_at` for every hero costs too (+26 %).
+- **A walk over the towns' armies at the day's start is dear** (E09 T28b1): the week's
+  resources over the upper bars' stacks as a `Chain` of `Flatten`s into a `BTreeSet` cost
+  `day-start-builds-36` +7.9 % and `day-start-towns-36` +5 %; noting only the creature types
+  with an ability in a short `Vec` (most stacks pass over with one lookup) left +0.2 %.
 - **The adventure benchmarks follow the heap:** a change that only adds a few small allocations
   at the build (the town part's content) moved `day-start-xl-144` by +1.6 % through glibc's
   `_int_malloc` alone (E09 T8c2). Compare per function with `master` built in the same sandbox

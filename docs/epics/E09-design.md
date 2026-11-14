@@ -1832,6 +1832,18 @@ address map. The drafts were the same files' second blocks, with ADR-0023's new 
   (v16); the env's `TOWN_HEROES` + 3 (v11); protocol v64. Its day, income and growth inputs are
   T28b's; until T28b's rows 1 and 3 a garrison hero does not defend (`TWN-STUB-14`: its town falls
   as T-5's, `release_town_hero` at the capture).
+- *As built (T28b1, decision 94):* its day is `AdventureState::start_town_heroes` (the town
+  lane's `src/town/rows.rs`), called last by `start_turn`: `day_points` on land with its week
+  marks' points, written only where they change (a garrison hero spends none); the marks' drops
+  (`drop_timed_marks`) change the block by hero id directly, so they reach the garrison heroes
+  (`change_marks` admits only heroes on the map); its spell points were the store's loop
+  already. Its income: `GameState::pay_income`'s heroes chain `town_heroes`; the week's
+  resources read `AdventureState::upper_bars` (`src/town.rs`: each owned town's garrison hero's
+  army, else its garrison; VCMI counts the towns' garrisons too). Growth's `Owner::share_bp`
+  chains `town_heroes`, `legion` sums the visitor's and the garrison hero's by level,
+  saturating. No version moved; the 86 replays hold no garrison hero. The plans: `check_income`
+  over the garrison heroes and the owned towns' garrisons, `check_isolation` over another
+  player's garrison hero (its record kept, its points full at its owner's turn start).
 
 ### 54. What a garrison hero changes (TWN-SIE-001, -002, TWN-CAP-003, TWN-VEW-001 amended; GAM-BAT-001)
 

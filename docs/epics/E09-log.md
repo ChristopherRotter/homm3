@@ -3762,3 +3762,53 @@ re-measured after the second.
 
 **Verify:** `cargo xtask verify --scope town --summary --with-original-data`; `h3-protocol`'s,
 `h3-server`'s and `h3-sim`'s tests run on their own; CI on the pull request is the record.
+
+### T28b1 — a garrison hero's day, income and growth's inputs (2026-11-14)
+
+One session, the user present at the start; branch `town/e09-t28b1`, `cross-lane` (the adventure
+lane's `h3-adventure` `state.rs`' turn start, `state/bonuses.rs`' drops, `state/economy.rs`'
+income; `h3-game`'s `state/day.rs` income; `h3-map`'s property plans). Starting point: `master` at
+29f658e (#920 merged; the setup found CI's fingerprint, the light gates green). The user's
+computer was connected at the start: the original data staged then (23 files and the four
+manuals, SHA-256 checked against the PC's). T28b cut in two at its start; **T28b1 now**
+(decision 94, the user; the agent recommended three parts, the visits and the view apart).
+
+- **Its day** (TWN-ROW-005; ADV-MOV-002 amended): `AdventureState::start_town_heroes` (the town
+  lane's `src/town/rows.rs`), called last by `start_turn`: each of the player's garrison heroes in
+  `TownId` order gets `day_points` on land with its week marks' points (the Stables' 400), its
+  maximum and points, written only where they change. **A gap found:** the day's and the week's
+  mark drops (`drop_timed_marks`, through `change_marks`) skipped every hero not on the map, so a
+  garrison hero kept a Magic Well's or a Stables' mark; the drops now change the block by hero id
+  directly (one `make_mut`, the emptied entries and the block dropped as before). Its spell points
+  were the store's loop already (HER-MAN-002).
+- **Its income** (GAM-RES-004, -005 amended): `GameState::pay_income` pays the garrison heroes'
+  `daily_income` with the heroes on the map's; `AdventureState::income`'s week reads
+  `upper_bars` (`src/town.rs`: each owned town's garrison hero's army, else its garrison;
+  GAM-RES-005's "a town's garrison is E09's" lifted). VCMI 1.7.5's `NewTurnProcessor` read for the
+  source (its garrison hero stays in the player's list; the crystal over the heroes' armies and
+  the towns' garrisons).
+- **Growth's inputs** (TWN-GRO-001 amended): the share over the owner's heroes on the map and its
+  garrison heroes, the Legion the visitor's plus the garrison hero's, summed by level saturating.
+- **Rules:** TWN-ROW-005 (the code reading of design §48, batch TWN-3's row TWN-3-6: 1 630 points
+  on Red's day 2 after 100 spent, VCMI, the design); ADV-MOV-002, GAM-RES-004, -005, TWN-GRO-001
+  amended.
+- **Tests:** `h3-adventure`'s `town/rows/tests.rs` (2: the turn start after the heroes on the map,
+  unchanged at another's, the Stables' 400, the day's and the week's drops, the points kept out on
+  the entrance; the upper bars' weekly resource once with a hero's, another owner's and a neutral
+  town's); `h3-game`'s `town/tests/rows.rs` (2: the Statue's share at every own town and the two
+  heroes' Legion summed; the income and the turn's points as on the map, after spent points).
+  `h3-map`'s plans: `check_income` over the garrison heroes and the owned towns' garrisons,
+  `check_isolation` over another player's garrison hero (its record kept, its points full at its
+  owner's turn start).
+- **Replays and versions:** none moved (no replay holds a garrison hero; the replay step passed
+  unchanged); no hash, format, encoding or protocol version.
+- **Bench** (`master` 421b41b built in the same sandbox): the first build cost
+  `day-start-builds-36` +7.86 % and `day-start-towns-36` +3.74 % on their baselines, the week's
+  resources' `Chain` of `Flatten`s over the upper bars' stacks into a `BTreeSet` (21 368 and
+  35 634 Ir of one iterator's `next`); a short list of the creature types with an ability left
+  +0.17 % (564 984 to 565 941 Ir) and +0.11 % (1 311 465 to 1 312 852) against `master`; no
+  workload re-baselined (`TRAPS.md`).
+- **Agent's calls (change freely):** decision 94's list.
+
+**Verify:** `cargo xtask verify --scope town --summary --with-original-data`; CI on the pull
+request is the record.

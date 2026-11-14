@@ -11,36 +11,30 @@ drafts T22a and T22b with Part E §37 to §58 and the cut (`TWN-Q13`, `TWN-Q14`;
 the drafts accepted), batch TWN-3 (T23, decision 84), the `shared/` task (T24, decision 85: the
 ADRs, the stream, the effects and flags); the build's T25a (decision 86), T25b1 (decision 87),
 T25b2 (decision 88), T26a1 (decision 89), T26a2 (decision 90), T26b (decision 91) and T27
-(decision 92), T28a (decision 93). The building rounds follow the cut of design note §56
+(decision 92), T28a (decision 93), T28b1 (decision 94). The building rounds follow the cut of design note §56
 (decision 83): the build, E08's increment 12 merging in
 parallel (each `cross-lane` number the next at merge). Each task's cut confirmed at its start;
 every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-**E09 T28b — what a garrison hero changes** (decision 83; design note §56 round 7, `cross-lane`;
-§53's day and income, §54; T28a done 2026-11-14, decision 93, `E09-log.md`): its day and income
-(TWN-ROW-005; ADV-MOV-002, GAM-RES-003, -005 amended: its day's maximum and points at its owner's
-turn start after the heroes on the map in `TownId` order, its spell points, its day and week marks'
-drops, which E08 T115a's block already reaches by hero id, its `daily_income` and its army's
-weekly resources with the town's garrison's Crystal Dragons), growth's inputs with it (§53: the
-Legion pieces of the visitor and the garrison hero, the Statue's share over the heroes on the map
-and the garrison heroes), rows 1 and 3 of a visit of another team (TWN-SIE-001, -002,
-TWN-CAP-003, GAM-BAT-001; the garrison hero alone defends in a siege with its own army, beside a
-visitor the visitor's battle at the gate is no siege; `town_visit`, `siege_start`, the battle's
-end for a garrison hero; **`TWN-STUB-14` lifted**), T-5 kept for a garrison hero without an army
-(`TWN-QUIRK-11`, its ledger entry and regression test; `release_town_hero` is its path), level 3's
-view of it (TWN-VEW-001: the garrison hero and its army as the town's garrison, the owner's view
-marking it; perhaps design §53's `GarrisonHeroChanged` to the viewers whose view shows it), the
-protocol where a view field moves (the server lane's fold gate), batch TWN-3's row 6 record. Each
-part's replays re-recorded (skill `homm3-rerecord-replays`) and bench (skill
-`homm3-bench-regression`). **At its start:** confirm the cut (it may cut again: the day and income
-with growth's inputs, then the visits with T-5 and the view). **Depends on:** T28a's pull request
+**E09 T28b2 — the visits of another team, T-5 and the view** (decisions 83, 94; design note §54,
+§56 round 7, `cross-lane`; T28b1 done 2026-11-14, `E09-log.md`): rows 1 and 3 of a visit of
+another team (TWN-SIE-001, -002, TWN-CAP-003, GAM-BAT-001; the garrison hero alone defends in a
+siege with its own army, beside a visitor the visitor's battle at the gate is no siege;
+`town_visit`, `siege_start`, the battle's end for a garrison hero; **`TWN-STUB-14` lifted**), T-5
+kept for a garrison hero without an army (`TWN-QUIRK-11`, its ledger entry and regression test;
+`release_town_hero` is its path), level 3's view of it (TWN-VEW-001: the garrison hero and its
+army as the town's garrison, the owner's view marking it; perhaps design §53's
+`GarrisonHeroChanged` to the viewers whose view shows it), the protocol where a view field moves
+(the server lane's fold gate). Replays re-recorded where they move (skill
+`homm3-rerecord-replays`) and bench (skill `homm3-bench-regression`). **At its start:** confirm the
+cut (the visits with T-5, then the view with the protocol). **Depends on:** T28b1's pull request
 merged. **Status:** next.
 
 **E09 T29, T30 — the rest of the build** (decision 83; design note §56 round 8, each cut
 confirmed at its start, the agent queues each in full when the one before it ends): **T29** the
 gates (§55, §47: the scripted replays on the builds map, growth through a month, a purchase at an
 upgraded dwelling and at the Portal, the rows; the census, the properties, the benchmarks); **T30**
-the audit, the closure, increment 4 refined. **Depends on:** T28b. **Status:** waiting.
+the audit, the closure, increment 4 refined. **Depends on:** T28b2. **Status:** waiting.
 
 ## Inbox
 

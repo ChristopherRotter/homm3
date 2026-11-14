@@ -135,10 +135,11 @@ impl AdventureState {
             .map(|(at, _, points)| (at, points))
             .collect();
         for (at, points) in points {
-            if let Some(hero) = self.town_hero_at_mut(at) {
+            // `at` is a place the block has: the listing above read it.
+            self.town_hero_at_mut(at).into_iter().for_each(|hero| {
                 hero.max_movement = points;
                 hero.movement = points;
-            }
+            });
         }
     }
 
