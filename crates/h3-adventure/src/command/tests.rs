@@ -46,7 +46,7 @@ fn move_hero(
         &rules.0,
         &rules.1,
         &[],
-        (player, &mut stream()),
+        (player, crate::Weekday::FIRST, &mut stream()),
         &command,
         &mut events,
     );
@@ -560,7 +560,7 @@ fn a_step_toward_a_pile_visits_it_from_the_tile_before() {
                 &rules.0,
                 &rules.1,
                 &[],
-                (RED, &mut stream()),
+                (RED, crate::Weekday::FIRST, &mut stream()),
                 &command,
                 &mut events,
             )
@@ -615,7 +615,7 @@ fn a_visit_from_the_hero_s_own_tile_moves_nothing_and_a_fire_gives_two_resources
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )
@@ -711,7 +711,7 @@ fn a_step_onto_a_chart_enters_it_and_ends_the_move() {
                 &rules.0,
                 &rules.1,
                 &[],
-                (RED, &mut stream()),
+                (RED, crate::Weekday::FIRST, &mut stream()),
                 &command,
                 &mut events,
             )
@@ -781,7 +781,7 @@ fn enter(
             &rules.0,
             &rules.1,
             &[],
-            (player, &mut stream()),
+            (player, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut Vec::new(),
         )
@@ -946,7 +946,7 @@ fn objects_visited_from_above_are_entered_and_left_across_their_top() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &AdventureCommand::MoveHero {
                 hero: HeroId::new(1),
                 path: vec![p(2, 1)],
@@ -1085,7 +1085,7 @@ fn visit_by(
             &rules.0,
             &rules.1,
             &[],
-            (player, &mut stream()),
+            (player, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )
@@ -1329,7 +1329,7 @@ fn a_border_guard_offers_its_key_s_holders_to_pass() {
             &rules.0,
             &rules.1,
             &[],
-            (BLUE, &mut stream()),
+            (BLUE, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )
@@ -1479,7 +1479,7 @@ fn a_step_toward_another_players_hero_visits_it_and_starts_a_battle() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )
@@ -1561,7 +1561,7 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut events,
         )
@@ -1616,7 +1616,7 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &step,
             &mut events,
         )
@@ -1642,7 +1642,7 @@ fn a_hero_visit_ends_the_move_and_an_own_hero_is_met() {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &side,
             &mut events,
         )

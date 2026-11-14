@@ -122,12 +122,14 @@ pub(super) fn rules_with(
             edit_core(core);
         },
         |part: &mut AdventurePack| {
+            // E08 T115b: the Shrine, the Witch Hut, the University and the Tree mark their kind
+            // (the base pack's, ADV-BON-009).
             let ty = |k: &str, kind| ObjectTypeDef {
                 key: key(k),
                 name: "Object".into(),
                 visit: Visit::Neighbour,
                 from_above: true,
-                kind_mark: false,
+                kind_mark: ["t:shrine", "t:hut", "t:university", "t:tree"].contains(&k),
                 kind,
             };
             let random = |classes: &[ArtifactClass]| ObjectKindDef::Artifact {

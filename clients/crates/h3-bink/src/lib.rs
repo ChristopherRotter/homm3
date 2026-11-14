@@ -19,7 +19,10 @@
 //! clips of every block type (`clients/scripts/bink-check.sh`: the DLL's own planes under Wine;
 //! [`build::sample`], [`build::sample_sized`]), read as the DLL reads ([`Reading::Original`]).
 //! [`Reading::Fixed`], the default, differs from it only where the DLL misreads the format: a
-//! residue whose first bit plane is 128 (CLT-Q68: no game clip has one).
+//! residue whose first bit plane is 128 (CLT-Q68: no game clip has one). The game gets a frame
+//! through `BinkCopyToBuffer`, which copies only the parts the decoding marked changed and marks
+//! the chroma's wrongly: a [`Target`] copies as it does (E27 M2 T2b, CLT-Q122; the shell's four
+//! Bink clips and the samples need it to match the DLL's frames, the battle's clips do not).
 //!
 //! **What it takes from FFmpeg** (checked against FFmpeg's decoder at E17 M5 T4b2a, when the
 //! DCT was FFmpeg's too; that check, `bink-reference.py`, is gone): every file FFmpeg's demuxer
@@ -75,23 +78,27 @@ mod clip;
 mod dsp;
 mod fft;
 mod tables;
+mod target;
 mod trig;
 mod video;
 #[doc(hidden)]
 pub mod x87;
 
 pub use clip::{Clip, FrameEntry};
+pub use target::Target;
 pub use video::{Decoder, FLAG_ALPHA, Frame, Plane};
 
 /// How the decoder reads what the game's `BINKW32.DLL` reads otherwise than the format means
 /// (E17 M6 T6c1): `h3_render::Bugs` for this crate, which depends on nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum Reading {
-    /// The format's meaning (FFmpeg's): what the client shows.
+    /// The format's meaning (FFmpeg's), each frame whole: what the client shows.
     #[default]
     Fixed,
     /// As the DLL reads it, for the comparisons with the original (CLT-Q68, answered fix: a
-    /// residue whose first bit plane is 128, read with a signed byte's masks).
+    /// residue whose first bit plane is 128, read with a signed byte's masks); the frames as
+    /// the DLL copies them out, through a [`Target`] (E27 M2 T2b, CLT-Q122; the decoder's own
+    /// frame stays whole: its callers copy).
     Original,
 }
 

@@ -350,7 +350,7 @@ impl GameObservation {
                 self.adventure.keys |= 1_u8.checked_shl(u32::from(key)).unwrap_or(0);
             }
             AdventureEvent::HeroRemoved { hero, pos: _ } => self.remove_hero(hero),
-            // E09 T28a (v62): the owner moves its own view into its garrison heroes, every other
+            // E09 T28a (v63): the owner moves its own view into its garrison heroes, every other
             // viewer sees the hero leave the map.
             AdventureEvent::GarrisonEntered { hero, town, pos: _ } => {
                 let at = self
@@ -404,7 +404,24 @@ impl GameObservation {
             | AdventureEvent::ShipyardBlocked { .. }
             | AdventureEvent::NoneToRecruit { .. }
             | AdventureEvent::JoinRefused { .. }
-            | AdventureEvent::LeadsNowhere { .. } => {}
+            | AdventureEvent::LeadsNowhere { .. }
+            | AdventureEvent::NothingGained { .. } => {}
+            // E08 T115b: a kind mark the viewer's team learned (ADV-BON-009).
+            AdventureEvent::KindKnown { object_type } => {
+                let kinds = &mut self.adventure.kinds;
+                if let Err(at) = kinds.binary_search(&object_type) {
+                    kinds.insert(at, object_type);
+                }
+            }
+            // E08 T115b: the Stables' upgrade of a stack, its count kept (ADV-BON-005).
+            AdventureEvent::CreaturesUpgraded { hero, slot, to, .. } => {
+                if let Some(own) = self.own_mut(hero) {
+                    own.army
+                        .iter_mut()
+                        .filter(|stack| stack.slot == slot)
+                        .for_each(|stack| stack.creature = to);
+                }
+            }
             AdventureEvent::MonsterChanged {
                 object_type,
                 anchor,
@@ -574,7 +591,14 @@ impl GameObservation {
                     }
                 }
             }
+            // E08 T115b: the Sirens' loss as the Whirlpool's (ADV-BON-008; a stack never empties).
             AdventureEvent::WhirlpoolLoss {
+                hero,
+                slot,
+                creature: _,
+                count,
+            }
+            | AdventureEvent::SirensLoss {
                 hero,
                 slot,
                 creature: _,

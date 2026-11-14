@@ -585,6 +585,7 @@ pub(crate) fn adventure_view(o: &AdventureObservation) -> Adventure {
         keys,
         known,
         boats,
+        kinds,
         garrison_heroes,
     } = o;
     let (palette, tiles) = packed(tiles);
@@ -605,6 +606,7 @@ pub(crate) fn adventure_view(o: &AdventureObservation) -> Adventure {
         keys: *keys,
         known: known.iter().map(known_object).collect(),
         boats: boats.iter().map(boat).collect(),
+        kinds: kinds.iter().map(|&t| t.raw()).collect(),
         garrison_heroes: garrison_heroes
             .iter()
             .map(|g| GarrisonHero {
@@ -936,6 +938,7 @@ fn known_object(k: &KnownObject) -> WireKnownObject {
                 skills: skills.iter().map(|&s| s.raw()).collect(),
             },
             EngineKnown::Emptied(emptied) => Known::Emptied { emptied: *emptied },
+            EngineKnown::Visited => Known::Visited,
         },
     }
 }

@@ -99,7 +99,7 @@ pub enum TownCommand {
         building: u8,
     },
     /// Moves a hero between the two bars of a town of the actor's (TWN-ROW-002 to -004; E09
-    /// T28a, v62).
+    /// T28a, v63).
     Heroes {
         /// The town.
         town: u16,
@@ -108,7 +108,7 @@ pub enum TownCommand {
     },
 }
 
-/// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v62).
+/// A hero's move between a town's two bars (`h3_towns::TownHeroChange`; E09 T28a, v63).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub enum TownHeroChange {
@@ -478,6 +478,15 @@ pub enum GameReject {
     /// skipped, or one older than the seat's last [`crate::session::game::KEPT_ANSWERS`]
     /// accepted): a resend, nothing applied.
     Stale {},
+    /// The session's (E16 M5 T18, v62): the seat's map commands in its running turn (an
+    /// adventure's, a management one, a town's) reached the host's bound
+    /// ([`crate::session::game::CommandBounds::per_turn`]): it may still end its turn, answer its
+    /// decisions and fight its battles.
+    TurnLimit {},
+    /// The session's (E16 M5 T18, v62): the seat's commands in its open battle reached the
+    /// host's bound ([`crate::session::game::CommandBounds::per_battle`]): the computer plays its
+    /// side for the rest of the battle.
+    BattleLimit {},
 }
 
 /// Why a town command was refused (`h3_towns::TownCommandError`).
@@ -513,7 +522,7 @@ pub enum TownReject {
     NotStanding {},
     /// The Portal of Summoning holds nothing (TWN-REC-002).
     NothingSummoned {},
-    /// A hero stands in the town's garrison already (TWN-ROW-002; E09 T28a, v62).
+    /// A hero stands in the town's garrison already (TWN-ROW-002; E09 T28a, v63).
     GarrisonHeld {},
     /// No hero of the actor's stands on the town's entrance (TWN-ROW-002, -004).
     NoVisitor {},

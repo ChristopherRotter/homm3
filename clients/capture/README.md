@@ -1350,7 +1350,10 @@ window), then ticks every millisecond: one line per frame drawn, `<ms> <clip> <f
 every colour (`h3_bink::build` raw blocks, 256 frames of 256 × 256) in an archive of its own gave
 the colour tables. The DLL's frames match `h3-bink`'s converted (`h3_view::clip::rgb565`), its
 DCT's pixels too since E17 M6 T6c1 (CLT-Q30; `clients/scripts/bink-check.sh` compares the
-planes). `tables` writes the DLL's intra and inter dequantizers (16 × 64 binary32 each, 8 KiB).
+planes). `frames` copies as the game does (`BinkCopyToBuffer` with the surface type alone, no
+`BINKCOPYALL`), into one buffer for the whole clip, so its planes are what the game gets: only the
+cells the DLL marked changed, the chroma's marks misfiled (E27 M2 T2b, CLT-Q122;
+`h3_bink::Target` copies the same). `tables` writes the DLL's intra and inter dequantizers (16 × 64 binary32 each, 8 KiB).
 The probe sets the game's x87 control word 0x27F first (mingw's startup leaves 0x37F;
 `BINKPROBE_CW=37f` to compare): the DLL's DCT keeps intermediates on the x87 stack.
 

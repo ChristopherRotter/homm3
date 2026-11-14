@@ -47,6 +47,14 @@ the audit, the closure, increment 4 refined. **Depends on:** T28b. **Status:** w
 Notes from earlier work for E09, gathered at the lane's opening (2026-10-31, T0); each points to
 where the detail is (grep the date or id in the adventure lane's `QUEUE-ARCHIVE.md` or `QUEUE.md`).
 
+- 2026-11-13 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **a signature in your
+  callers, mechanical**): `AdventureState::apply` takes the day of the week beside the visitor's
+  stream, `(player, weekday, draws): (PlayerId, Weekday, &mut Rng)`, and `visit_held` (with the
+  revisit, which runs through `apply`) a pair `(weekday, draws)`; `h3_adventure::Weekday` (from 1,
+  `Weekday::FIRST`), the game's `GameState::weekday(rules)` (`CalendarParams::weekday(day)`: the
+  calendar's (day − 1) mod `week_days` + 1). The Idol of Fortune's and the Temple's amounts are by
+  it (ADV-BON-002); nothing of yours reads it. A new call of yours passes `state.weekday(rules)`,
+  a test `Weekday::FIRST`. No version moved by it.
 - 2026-11-13 (the adventure lane, E08 T115a, `adventure/e08-t115a`, `cross-lane`; **for your T28a
   and T28b, the garrison hero's marks**, your inbox note of 2026-11-11 (2)): a hero's battle
   bonuses and timed marks are `h3_adventure::VisitMarks`, one record (`bonuses()`, `timed()`,

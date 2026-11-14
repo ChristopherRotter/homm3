@@ -932,14 +932,16 @@ fn run<S: Sink>(
                 AdventureCommand::MoveHero { .. } | AdventureCommand::Revisit { .. } => None,
             };
             // The acting player's stream (ADR-0017 point 4; E08 T105a1): a visit's draw, a
-            // jump's exit, comes from it, after the whole command is checked.
+            // jump's exit, comes from it, after the whole command is checked. The day of the week
+            // is the calendar's (E08 T115b: the Idol's and the Temple's amounts).
+            let weekday = state.weekday(rules);
             let (adventure, heroes, draws) = state.adventure_for(player);
             let outcome = adventure
                 .apply(
                     rules.core(),
                     rules.adventure(),
                     heroes,
-                    (player, draws),
+                    (player, weekday, draws),
                     &command,
                     &mut AdventureSink(sink),
                 )

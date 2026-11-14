@@ -81,6 +81,10 @@ pub struct AdventureObservation {
     /// The empty boats the viewer sees, on a tile where it sees heroes (ADV-FOG-008, E08 T72), in
     /// tile order (level, row, column).
     pub boats: Vec<BoatView>,
+    /// The object types whose kind mark the viewer's team holds, in type order (ADV-BON-009, E08
+    /// T115b; increment 12's design note §10: the map's hint's bonus line); another team's never
+    /// show.
+    pub kinds: Vec<ObjectTypeId>,
     /// The viewer's own garrison heroes, by town in `TownId` order (E09 T28a; the town epic's
     /// design note §53: off the map, so in no tile's heroes; another viewer sees one only through
     /// its town's view).
@@ -258,6 +262,10 @@ pub enum Known {
     Skills(Vec<SkillId>),
     /// Whether a find is emptied, as it stands now.
     Emptied(bool),
+    /// That the viewer's team visited it, nothing more (E08 T115b; increment 12's design note
+    /// §10: a Fountain of Fortune, whose value never shows, a Magic Spring, whose entrances' state
+    /// never shows; as a weekly object's mark says "visited once").
+    Visited,
 }
 
 /// What a viewer sees of a tile.
@@ -331,8 +339,10 @@ impl AdventureState {
     /// static map's, after those, and cover their tiles in the tile views. Since E08 T83b2b each
     /// object shows its owner, a mine its production to its owner's team and its guards, a weekly
     /// object the viewer's mark and a Shipyard its boat tile (ADV-OWN-003); since E09 T8c1 a town
-    /// its `TownId` ([`ObjectView::town`]).
+    /// its `TownId` ([`ObjectView::town`]); since E08 T115b the kind marks its team holds
+    /// ([`AdventureObservation::kinds`], ADV-BON-009).
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006, ADV-FOG-007, ADV-FOG-008, ADV-OWN-003
+    // rule: ADV-BON-009
     pub fn observe(
         &self,
         core: &Ruleset,
@@ -360,6 +370,7 @@ impl AdventureState {
             keys: self.keys(viewer),
             known: Vec::new(),
             boats: Vec::new(),
+            kinds: self.kinds_known(viewer),
             garrison_heroes: Vec::new(),
         };
         let row_tiles = usize::from(width);
@@ -616,6 +627,9 @@ impl AdventureState {
                         (ObjectKind::University { .. }, resolved) => {
                             Known::Skills(resolved.skills().to_vec())
                         }
+                        (ObjectKind::FountainOfFortune { .. } | ObjectKind::MagicSpring, _) => {
+                            Known::Visited
+                        }
                         _ => Known::Emptied(self.is_emptied(index)),
                     },
                 })
@@ -722,7 +736,11 @@ impl AdventureEvent {
                 | AdventureEventKind::NoneToRecruit { .. }
                 | AdventureEventKind::JoinRefused { .. }
                 | AdventureEventKind::LeadsNowhere { .. }
-                | AdventureEventKind::WhirlpoolLoss { .. } => self.kind,
+                | AdventureEventKind::WhirlpoolLoss { .. }
+                | AdventureEventKind::NothingGained { .. }
+                | AdventureEventKind::SirensLoss { .. }
+                | AdventureEventKind::CreaturesUpgraded { .. }
+                | AdventureEventKind::KindKnown { .. } => self.kind,
             },
             seen_by: alone,
         })

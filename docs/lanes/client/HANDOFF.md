@@ -8,12 +8,13 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   to 27). **M1 closed** (2026-11-13, T3; M1's tasks in `E27-archive.md`; the catalogue
   `E27-design.md` §1 to §6, §6.4 what M2 to M4 still read or record). **M2 T1 done** (2026-11-13:
   `h3-smacker`'s video, design §7). **M2 T2 done** (2026-11-14: the clips' sound, every track the
-  DLLs' byte for byte; design §8; decisions 25 to 27). **Next: M2 T2b** (the shell's Bink clips'
-  video as `BINKW32.DLL`'s, found at T2: design §8.4; before T5) or **T3** (the shell's frame;
-  independent). Decisions to carry: the dialogs' input one implementation shared with the
-  battle's (20); the shell's code as the battle's, the score the engine's (21); decision 22's
-  fixes; a Smacker clip's every pixel through its palette (24); every clip's sound at the effects
-  setting (27). Open pull request: **#915** (`client/e27-m2-t2`) (watch it until it merges). E17
+  DLLs' byte for byte; design §8; decisions 25 to 27). **M2 T2b done** (2026-11-14: the DLL's
+  masked copy, `h3_bink::Target`; every frame of the fourteen game clips the DLL's; design §9;
+  decision 28). **Next: M2 T3** (the shell's frame), then T4, T5. Decisions to carry: the dialogs'
+  input one implementation shared with the battle's (20); the shell's code as the battle's, the
+  score the engine's (21); decision 22's fixes; a Smacker clip's every pixel through its palette
+  (24); every clip's sound at the effects setting (27); every Bink frame whole, the comparisons
+  through `Target` (28). Open pull request: **#917** (`client/e27-m2-t2b`) (watch it until it merges). E17
   done (`E17-archive.md`, `E17-log.md`; its open threads: the epic's "Placed at the closure", the
   queue's inbox). E28 and E29 are backlog sketches. Workspace `clients/` (`clients/README.md`),
   gates `clients/scripts/check.sh`; ADR-0020 (+ drafts in `adr-drafts/`), ADR-0024; the harness
@@ -27,7 +28,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   `CLT-STUB-4` (no Auto Combat switch in a live game's battle) and `CLT-STUB-5` (a hot-seat
   battle between two of the host's humans) are commented in `docs/stubs.toml` until
   `check-stubs` scans `clients/` (a `shared/` change). An engine change the lane needs goes as a
-  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q122,
+  small cross-lane PR with the user's consent (#739 and #745 were). Next ids: CLT-Q123,
   CLT-STUB-6.
 - Stage from `original-data/install/`: the four LODs (one per call), `h3maped.exe`, both `.snd`, `MP3/COMBAT01`–`04` and the end tunes, `Heroes3.exe`, the five DLLs, `H3ab_ahd.vid`, and `original-data/battle-videos.vid` (the result window's clips: the harness's `VIDEO.VID`, the viewer's stand-in) and `original-data/shell-videos.vid` (E27's, 184 MB since T1b3a, a call of its own), `original-data/games/` (the installation's three saved games, copied at T1b1 for the load and save screens) and the 40 non-campaign MP3s; `cp -rn` the staged `original-data/.` into the clone. Frames stay in the sandbox.
 
@@ -48,6 +49,14 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
 
 ## Recent sessions
 
+- **2026-11-14, E27 M2 T2b (done; `client/e27-m2-t2b`).** One task, no cut. The original data
+  staged at once (64 files, checked by SHA-256); the baseline passed. Found by tracing blocks in a
+  scratch copy against the DLL's planes and reading `BINKW32.DLL`: the decoding was right, the
+  game's `BinkCopyToBuffer` copies only the cells `ExpandPlane` marked, the chroma's misfiled.
+  Built `h3_bink::Target`, the decoder's mask, the samples' still cells; `Reading::Original`
+  copies. Every frame of the shell's four Bink clips, the battle's ten and the samples the DLL's.
+  CLT-Q122: shown whole (decision 28). The VM restarted once (files kept). Record: `E27-log.md`,
+  "M2 T2b".
 - **2026-11-14, E27 M2 T2 (done; `client/e27-m2-t2`).** Kept whole with the user (decision 25).
   Built a stand-in Miles for the probes (`capture/mss32.c`), `smackprobe audio`, `binkprobe
   sound`; `h3_smacker::sound` (FFmpeg's), `h3_bink::audio` with Ooura's FFT as `BINKW32.DLL`
@@ -64,10 +73,3 @@ The user's dictation of 2026-10-12 and the research items it led to: `ASSET-NOTE
   every frame, palette and 16-bit copy byte for byte. Found: the DLL's 16-bit copy keeps a skipped
   block's colours after a palette change (CLT-Q119, fixed: decision 24); the DLL faults on a byte
   tree left out and on a key-frame mark (samples avoid both). Record: `E27-log.md`, "M2 T1".
-- **2026-11-13, E27 M1 T3 (done; `client/e27-m1-t3`).** Kept whole with the user (decision 19),
-  sub-agents for the long parts. The original data staged at once (64 files, checked by SHA-256).
-  Every recipe but the two full starts recorded again: all as kept. Two fresh reviewers (the
-  catalogue; §3 with 383 shots as contact sheets), a fixer for the doc fixes: 57 findings fixed in
-  place, listed in design §6.4 or asked; CLT-Q100 to CLT-Q118 answered (decisions 20 to 22); the
-  review list accepted, M1 archived, M2 refined (eight tasks). The VM restarted once (after the
-  runs). Record: `E27-log.md`, "M1 T3".

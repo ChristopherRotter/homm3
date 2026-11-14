@@ -4,6 +4,20 @@ Finished history and informational notices moved out of `QUEUE.md` on 2026-10-24
 
 ## Notices from other lanes and finished items, newest first
 
+- 2026-11-14 (E27 M2 T2b done: its task entry verbatim; the record in `E27-log.md`, "M2 T2b"):
+
+  #### E27 M2 T2b — The shell's Bink clips' video as the DLL's
+
+  - **Scope:** the epic's M2 table, T2b (found at T2, design §8.4): `h3-bink`'s frames of
+    `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from `BINKW32.DLL`'s in the chroma (at
+    most 3 levels at the first differences: `NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6), the
+    battle's clips and the samples exact. Find what these clips use that the others do not (a
+    block type, a coding path, the DCT's or the dequantizers' rounding on their values), fix it in
+    `h3-bink` (a sample that shows it), and make `bink-check.sh` with no arguments exact on the
+    video too (it reports only the sound now). Needs the original data staged and the harness's
+    setup (`shell-videos.vid`).
+  - **Status:** ready (T2 done 2026-11-14).
+
 - 2026-11-12 (E27 M1 T1a2 done: its task entry verbatim, then the town lane's inbox note it
   acted on, verbatim: `multiplayer_dialog_init` 0x50E050 read and corrected, design §2.6; the
   record in `E27-log.md`, "M1 T1a2"):

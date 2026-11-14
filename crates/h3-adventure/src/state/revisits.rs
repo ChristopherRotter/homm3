@@ -14,7 +14,7 @@ use h3_kernel::Rng;
 
 use super::{AdventureState, StepVisit};
 use crate::command::{AdventureCommandError, AdventureOutcome, Sink};
-use crate::ruleset::{AdventureRuleset, Visit};
+use crate::ruleset::{AdventureRuleset, Visit, Weekday};
 use crate::setup::Pos;
 
 type Rules<'a> = (&'a Ruleset, &'a AdventureRuleset, &'a [Arc<HeroDetails>]);
@@ -37,7 +37,7 @@ impl AdventureState {
         &mut self,
         rules: Rules<'_>,
         (player, id): (PlayerId, HeroId),
-        draws: &mut Rng,
+        turn: (Weekday, &mut Rng),
         sink: &mut S,
     ) -> Result<AdventureOutcome, AdventureCommandError> {
         let at = self
@@ -48,7 +48,7 @@ impl AdventureState {
         let visit = self
             .revisit_at(rules.1, player, at)
             .ok_or(AdventureCommandError::NothingToRevisit)?;
-        Ok(self.visit(rules, (player, id), visit, draws, sink))
+        Ok(self.visit(rules, (player, id), visit, turn, sink))
     }
 
     /// What a revisit of `player`'s hero standing on `at` visits: the object a step onto `at`

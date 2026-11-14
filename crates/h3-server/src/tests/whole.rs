@@ -341,6 +341,7 @@ async fn a_whole_game_is_created_joined_and_played_its_journal_ahead() {
         checkpoint_every: config.server.checkpoint_every,
         record_bytes: config.limits.record_bytes,
         clock: offer.clock,
+        commands: config.limits.commands(),
     };
     // The game's clock is in its journal's first line (E16 M5 T17).
     assert_eq!(Clock::from(read.start.clock), offer.clock);
@@ -1231,6 +1232,7 @@ async fn two_clients_play_a_whole_game_through_a_restart_and_a_battle_against_th
         checkpoint_every: config.server.checkpoint_every,
         record_bytes: config.limits.record_bytes,
         clock: loaded.clock,
+        commands: config.limits.commands(),
     };
     let tokens = read.start.tokens.clone();
     let reopened = GameSession::reopen(

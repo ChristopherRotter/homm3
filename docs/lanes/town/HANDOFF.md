@@ -10,14 +10,14 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
   TWN-3 (T23), the `shared/` task (T24), growth T25a to T26b (decisions 86 to 91), T27
   (decision 92: recruitment), **T28a** (decision 93, whole: the town's two bars TWN-ROW-001, the
   garrison hero's record and `TownCommand::Heroes` `Enter`, `Leave`, `Swap` TWN-ROW-002 to -004,
-  the hire into its army; town part v6, adventure state hash v25, protocol v62, replay format
+  the hire into its army; town part v6, adventure state hash v25, protocol v63, replay format
   v16, the env's v11; `TWN-STUB-14`: a garrison hero does not defend yet). **Next:** T28b (what a
   garrison hero changes, `QUEUE.md`), then T29, T30 (design §56). The Tavern is increment 4, the
   guild and the services 5, travel and the Grail 6. Waiting elsewhere: `TWN-STUB-8` (the battle
   lane's inbox), `TWN-STUB-6` and `-13` (increment 5), `TWN-STUB-2` (the victory conditions).
 - **Open pull requests:** T28a's (branch `town/e09-t28a`, `cross-lane`); watch it until it
-  merges. Merge order: the adventure lane's #914 (adventure state hash v24, protocol v61) and the
-  server lane's #916 (protocol v61) were open beside it; T28a's numbers come after theirs.
+  merges. Its numbers come after #914's (adventure state hash v24, protocol v61) and #916's
+  (protocol v62), both merged.
 - **Ownership** (`lanes.toml`, decision 3): `h3-towns`, `h3-pack-towns`, each pack's `towns.toml`,
   the town modules `src/town*` of `h3-adventure` and `h3-game`, `src/import/town*` and
   `src/writer/town*` of `h3-map`, `town.toml`, `quirks-town.md`, E09's epic, surveys and
@@ -26,7 +26,7 @@ Read after `docs/HANDOFF.md`. Budgets (`check-docs`: 10 000 bytes, three session
 - **Versions:** the lane's own: the town state hash (`TOWN_STATE_HASH_VERSION`, v3: T25a's counts
   and Portal) and the town ruleset part (`TOWN_RULESET_HASH_VERSION`, v6: T28a's `most_heroes`),
   both in `h3-towns`; the adventure lane's (game state hash v32, adventure state hash v25 by T28a,
-  map import v23, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (v62 by
+  map import v23, replay format v16 by T28a), the env's (v11 by T28a) and the protocol's (v63 by
   T28a) are bumped `cross-lane` (each task's record in `E09-log.md`). Shared, from T24: core
   ruleset hash v53, pack format v52, quirk flags 41, `StreamId::TOWNS` (7).
 - **Ids** (next): questions `TWN-Q15`; decisions 94; quirks `TWN-QUIRK-11` (planned: T-5, T28b);
@@ -49,7 +49,7 @@ Baseline 50b0935 (#911 merged; CI's fingerprint, the light gates). T28 cut in tw
 start only: the original data and the manuals staged then (SHA-256 checked), used for the scoped
 verify. `master` merged in after #913 (protocol v60). `cross-lane`: `h3-adventure`'s state,
 army commands, hire, events and observation; `h3-game`'s management, listing and observation;
-`h3-map`'s plans; `h3-files`; `h3-harvest`'s gap-fill; `h3-protocol` (v62), `h3-server`'s
+`h3-map`'s plans; `h3-files`; `h3-harvest`'s gap-fill; `h3-protocol` (v63), `h3-server`'s
 literals; `h3-sim` (v11; the fork test on seed 70); the 72 replays; five workloads re-baselined.
 Notes in the adventure's, the server's and the AI lane's inboxes. T28b queued.
 

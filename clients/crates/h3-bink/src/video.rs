@@ -92,6 +92,11 @@ impl Plane {
         &self.pixels
     }
 
+    /// Every pixel of the block grid, to write (`crate::Target`).
+    pub(crate) fn pixels_mut(&mut self) -> &mut [u8] {
+        &mut self.pixels
+    }
+
     /// The picture's row `y` (empty past its height).
     #[must_use]
     pub fn row(&self, y: usize) -> &[u8] {
@@ -117,6 +122,11 @@ impl Frame {
     #[must_use]
     pub fn planes(&self) -> &[Plane; 3] {
         &self.planes
+    }
+
+    /// The planes, to write (`crate::Target`).
+    pub(crate) fn planes_mut(&mut self) -> &mut [Plane; 3] {
+        &mut self.planes
     }
 }
 
@@ -225,6 +235,13 @@ pub struct Decoder {
     decoded: u32,
     /// The residues' reading (CLT-Q68).
     reading: Reading,
+    /// The last frame's cells as `BINKW32.DLL` marks them changed (E27 M2 T2b, CLT-Q122): a
+    /// byte per 16 × 16 pixels of the luma (the chroma's block grid, `cells_wide` a row), 1 where
+    /// a block of a type but 0 was decoded into it by `Decoder::mark`'s reading; what
+    /// [`crate::Target`] copies.
+    changed: Vec<u8>,
+    /// The cells of a row of `Decoder::changed`: the chroma's blocks across.
+    cells_wide: usize,
 }
 
 /// Where a plane's blocks are: the plane's grid, its stride and the last block's top left (the
@@ -270,6 +287,8 @@ impl Decoder {
             bundles: Bundles::new(wide * high),
             decoded: 0,
             reading: Reading::Fixed,
+            changed: vec![0; width.div_ceil(16) * height.div_ceil(16)],
+            cells_wide: width.div_ceil(16),
         })
     }
 
@@ -286,6 +305,34 @@ impl Decoder {
         &self.frame
     }
 
+    /// The picture's width and height.
+    pub(crate) fn size(&self) -> (usize, usize) {
+        (self.width, self.height)
+    }
+
+    /// The last frame's changed cells (`Decoder::changed`) and how many make a row.
+    pub(crate) fn changed(&self) -> (&[u8], usize) {
+        (&self.changed, self.cells_wide)
+    }
+
+    /// Marks block (`bx`, `by`) of plane `index` changed as `ExpandPlane` (0x10002040) marks it,
+    /// at each block of a type but 0 (an unknown type is a skip there, an error here): a
+    /// counter, 1 a luma block and 2 a chroma block, halved gives the cell across; the row moves
+    /// on after each odd block row by the plane's stride over 16. That is a row of cells after
+    /// the luma's two block rows, but half a row (rounded down) after the chroma's two, where one
+    /// chroma block row is a row of cells: the chroma's marks land in other cells, most of them
+    /// higher up (`ExpandBink` 0x10003240 passes the chroma half the luma's stride and the same
+    /// mask). The DLL's luma stride is the width rounded up to 16 (`BinkOpen` 0x10004AC9).
+    fn mark(&mut self, index: usize, bx: usize, by: usize) {
+        let wide = self.cells_wide;
+        let cell = if index == 0 {
+            (by >> 1) * wide + (bx >> 1)
+        } else {
+            (by >> 1) * (wide >> 1) + bx
+        };
+        dsp::set(&mut self.changed, cell, 1);
+    }
+
     /// Decodes the next frame from its video packet ([`Clip::video`]) over the one before and
     /// returns it (`decode_frame`). On an error the frame stays as far as it was decoded, and the
     /// next decodes over it, as in FFmpeg.
@@ -298,6 +345,8 @@ impl Decoder {
         }
         let mut bits = Bits::new(packet);
         self.decoded = self.decoded.wrapping_add(1);
+        // `ExpandBink` clears the mask before the planes.
+        self.changed.fill(0);
         let key = self.decoded == 1;
         for plane in 0..3 {
             self.plane(&mut bits, plane, key)?;
@@ -321,16 +370,17 @@ impl Decoder {
         };
         let ybias = if key { -15 } else { 0 };
         let reading = self.reading;
-        let Self { frame, bundles, .. } = self;
-        let pixels = &mut frame.planes[index % 3].pixels;
-        bundles.reset();
+        self.bundles.reset();
         for by in 0..grid.high {
             for i in 0..BUNDLES {
-                bundles.refill(bits, i)?;
+                self.bundles.refill(bits, i)?;
             }
             for bx in 0..grid.wide {
                 let at = 8 * by * stride + 8 * bx;
-                block_at(bits, bundles, pixels, grid, at, (ybias, reading))?;
+                let pixels = &mut self.frame.planes[index % 3].pixels;
+                if block_at(bits, &mut self.bundles, pixels, grid, at, (ybias, reading))? {
+                    self.mark(index, bx, by);
+                }
             }
         }
         bits.align32();
@@ -338,7 +388,8 @@ impl Decoder {
     }
 }
 
-/// One block's decoding (`binkb_decode_plane`'s switch).
+/// One block's decoding (`binkb_decode_plane`'s switch); whether it was of a type but 0 (a skip),
+/// which the DLL marks changed (`Decoder::mark`).
 fn block_at(
     bits: &mut Bits<'_>,
     bundles: &mut Bundles,
@@ -346,7 +397,7 @@ fn block_at(
     grid: Grid,
     at: usize,
     (ybias, reading): (i32, Reading),
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let stride = grid.stride;
     // The pixel at position `p` of the block (`coordmap`), its row the position's high bits.
     let put = |pixels: &mut [u8], p: u8, value: u8| {
@@ -354,7 +405,7 @@ fn block_at(
         dsp::set(pixels, at + (p & 7) + (p >> 3) * stride, value);
     };
     match bundles.take(BLOCK_TYPES) {
-        0 => {}
+        0 => return Ok(false),
         1 => {
             let scan = &PATTERNS[(bits.read(4) & 15) as usize];
             let mut done = 0;
@@ -424,7 +475,7 @@ fn block_at(
         }
         _ => return Err(Error::Invalid("block type")),
     }
-    Ok(())
+    Ok(true)
 }
 
 /// A motion block's copy: the 8 × 8 pixels at the vector's offset from the block, in the frame
@@ -1209,43 +1260,63 @@ mod tests {
         );
     }
 
-    /// The samples' frames as the game's `BINKW32.DLL` decodes them, read as it reads
-    /// ([`Reading::Original`]): the hashes of its own planes (`bink-check.sh` at E17 M6 T6c1,
-    /// `binkprobe frames` in YUY2), seeds 1 to 8 checked there. Fixed, a residue starting at
-    /// 128 reads as the format means (CLT-Q68): each of these seeds has one.
+    /// The decoder's own frames of `bytes`, read as `reading` says, none copied.
+    fn uncopied(bytes: &[u8], reading: Reading) -> Vec<Frame> {
+        let clip = Clip::parse(bytes).unwrap();
+        let mut d = Decoder::new(&clip).unwrap().reading(reading);
+        (0..clip.frames().len())
+            .map(|n| d.decode(clip.video(n).unwrap()).unwrap().clone())
+            .collect()
+    }
+
+    /// The samples' frames as the game gets them from its `BINKW32.DLL` ([`Reading::Original`]:
+    /// read as it reads, copied as `BinkCopyToBuffer` copies, [`crate::Target`]): the hashes of
+    /// its own planes (`bink-check.sh` at E27 M2 T2b, `binkprobe frames` in YUY2), seeds 1 to 8
+    /// checked there. Each sample's still cells keep chroma the copy leaves out (the uncopied
+    /// frames differ; CLT-Q122). Fixed, each frame whole and a residue starting at 128 read as
+    /// the format means (CLT-Q68): each of these seeds has one.
     #[test]
     fn the_samples_decode_as_the_dll_decodes_them() {
         for (seed, dll, fixed) in [
-            (1, 0x364d_b0e2_1181_c746_u64, 0xc457_f78a_4a92_ae30_u64),
-            (2, 0x8b41_2ed7_9b56_8b91, 0xa74a_0acc_86f5_57e7),
-            (3, 0xa75c_a94e_54d9_84b3, 0x094c_1c65_bc81_05f9),
+            (1, 0xb8a6_1575_efa6_ddb4_u64, 0x679c_a94a_cae6_9c01_u64),
+            (2, 0xed68_facf_48e6_0bc9, 0x8221_d11a_401a_4190),
+            (3, 0x95f9_b274_4eeb_207c, 0x1d55_dea6_bdfb_a51e),
         ] {
             let bytes = build::sample(seed);
             let frames = check::frames_read(&bytes, Reading::Original).unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
             assert_eq!(check::hash(&frames), dll, "seed {seed}");
+            let read = uncopied(&bytes, Reading::Original);
+            assert_ne!(check::hash(&read), dll, "seed {seed}, uncopied");
             let frames = check::frames(&bytes).unwrap();
             assert_eq!(check::hash(&frames), fixed, "seed {seed}, fixed");
+            assert!(
+                frames == uncopied(&bytes, Reading::Fixed),
+                "seed {seed}, fixed whole"
+            );
+            assert_ne!(check::hash(&read), fixed, "seed {seed}: a residue from 128");
         }
     }
 
     /// The samples at the game's clips' size, 256 × 120 (E17 M5 T8b1, R2a-4): the chroma's
     /// block grid holds four rows below the picture, which motion vectors read and write, as the
-    /// DLL does (its planes' hashes, E17 M6 T6c1: these three clips through `bink-dll.py` by
-    /// hand, as `h3-view video` writes the 256 × 48 samples only).
+    /// DLL does (its planes' hashes, E27 M2 T2b: these three clips through `bink-dll.py` by
+    /// hand, as `h3-view video` writes the 256 × 48 samples only); the picture's last 8 rows, a
+    /// strip below the whole cells, copied whatever the mask.
     #[test]
     fn the_samples_at_the_games_size_decode_as_the_dll_decodes_them() {
         for (seed, hash) in [
-            (1, 0x8ea7_e25f_b74f_523e_u64),
-            (2, 0x8efd_ed6c_c025_bbbc),
-            (3, 0x460d_e921_6215_2047),
+            (1, 0x2e0f_b6ee_3923_34cd_u64),
+            (2, 0xc880_f831_5634_821b),
+            (3, 0x21eb_8bcb_74e8_fec7),
         ] {
-            let frames =
-                check::frames_read(&build::sample_sized(seed, 256, 120), Reading::Original)
-                    .unwrap();
+            let bytes = build::sample_sized(seed, 256, 120);
+            let frames = check::frames_read(&bytes, Reading::Original).unwrap();
             assert_eq!(frames.len(), build::SAMPLE_FRAMES);
             assert_eq!(frames[0].planes()[1].pixels().len(), 128 * 64);
             assert_eq!(check::hash(&frames), hash, "seed {seed}");
+            let read = uncopied(&bytes, Reading::Original);
+            assert_ne!(check::hash(&read), hash, "seed {seed}, uncopied");
         }
     }
 

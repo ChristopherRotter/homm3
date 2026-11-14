@@ -49,6 +49,8 @@
 //! failed_logins_per_address = 10     # a minute; beyond, the address's logins close
 //! account_changes_per_address = 20   # an hour: registrations, re-keys, renames, preferences
 //! commands_per_game = 10000          # a game that reaches it without an end is void
+//! commands_per_turn = 1000           # a whole game's seat: its map commands in one of its turns
+//! commands_per_battle = 4000         # a whole game's seat: its commands in one of its battles
 //!
 //! [[offer]]                          # what a client may create a game from; at least one
 //! id = "duel"                        # as `CreateGame` names it
@@ -110,7 +112,7 @@ use std::path::{Path, PathBuf};
 
 use h3_protocol::card;
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
-use h3_protocol::session::game::{Allowance, Clock};
+use h3_protocol::session::game::{Allowance, Clock, CommandBounds};
 use serde::Deserialize;
 
 use crate::Error;
@@ -595,6 +597,13 @@ pub struct Limits {
     /// Commands one game may hold (E16 M3 T4a): a game that reaches them without an end is void.
     /// It bounds a game's journal, its memory and its replay, which must fit `outbound_bytes`.
     pub commands_per_game: u32,
+    /// A whole game's seat's map commands in one of its turns (E16 M5 T18): beyond them they are
+    /// rejected, but the seat may still end its turn, answer its decisions and fight its battles.
+    /// With the turn timer it bounds what one player's free commands add to the game's journal.
+    pub commands_per_turn: u32,
+    /// A whole game's seat's commands in one of its battles (E16 M5 T18): beyond them the
+    /// server's computer plays its side for the rest of the battle.
+    pub commands_per_battle: u32,
 }
 
 impl Default for Limits {
@@ -622,6 +631,8 @@ impl Default for Limits {
             failed_logins_per_address: 10,
             account_changes_per_address: 20,
             commands_per_game: 10_000,
+            commands_per_turn: CommandBounds::DEFAULT.per_turn,
+            commands_per_battle: CommandBounds::DEFAULT.per_battle,
         }
     }
 }
@@ -697,6 +708,18 @@ impl Limits {
                 1,
                 1_000_000,
             ),
+            (
+                "commands_per_turn",
+                u64::from(self.commands_per_turn),
+                1,
+                1_000_000,
+            ),
+            (
+                "commands_per_battle",
+                u64::from(self.commands_per_battle),
+                1,
+                1_000_000,
+            ),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {
@@ -731,6 +754,16 @@ impl Limits {
             )));
         }
         Ok(())
+    }
+}
+
+impl Limits {
+    /// The bounds on a whole game's seats' commands (E16 M5 T18).
+    pub const fn commands(&self) -> CommandBounds {
+        CommandBounds {
+            per_turn: self.commands_per_turn,
+            per_battle: self.commands_per_battle,
+        }
     }
 }
 

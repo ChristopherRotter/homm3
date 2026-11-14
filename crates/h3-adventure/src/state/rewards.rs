@@ -235,14 +235,17 @@ impl AdventureState {
     /// price (the Arena, the Schools: [`Self::choose`] gives it); another gift with a price opens
     /// its offer to pay ([`OfferKind::Gift`]: the game opens it when the treasury can pay, else
     /// tells the refusal); a free one is given at once ([`Self::give_gift`]), which marks the
-    /// hero.
-    // rule: ADV-TCH-001, ADV-TCH-002, ADV-TCH-003, ADV-VIS-006
-    pub(super) fn visit_gift(
+    /// hero. Since E08 T115b the team's kind mark of a type the part marks (ADV-BON-009; survey
+    /// §5's team marks: the Schools set it before the gold test, the Tree before its price, the
+    /// free gifts with their gain) once the hero is admitted and unmarked.
+    // rule: ADV-TCH-001, ADV-TCH-002, ADV-TCH-003, ADV-VIS-006, ADV-BON-009
+    pub(super) fn visit_gift<S: Sink>(
         &mut self,
-        (core, _, heroes): Rules<'_>,
+        (core, part, heroes): Rules<'_>,
         (player, hero): (PlayerId, HeroId),
         (index, object_type): (usize, ObjectTypeId),
         gift: &Gift,
+        sink: &mut S,
     ) -> AdventureOutcome {
         let details = details_of(heroes, hero);
         let admitted = gift
@@ -251,6 +254,7 @@ impl AdventureState {
         if self.is_marked(hero, index) || !admitted {
             return AdventureOutcome::default();
         }
+        self.mark_kind(part, player, object_type, sink);
         if gift.prices.len() > 1 {
             self.learn(player, index);
         }
@@ -393,15 +397,17 @@ impl AdventureState {
     /// owner learns the spell first (ADV-VIS-006), then a hero who cannot learn it (no Spell
     /// Book, a level above its Wisdom's, a known spell: `h3_heroes::can_learn_spell`) is refused,
     /// as by a Shrine without a spell to give (A-18 fixed); else it learns it. No mark: every
-    /// visit.
-    // rule: ADV-TCH-004, ADV-VIS-006
-    pub(super) fn visit_shrine(
+    /// visit. Since E08 T115b the team's kind mark first, with the knowledge (ADV-BON-009).
+    // rule: ADV-TCH-004, ADV-VIS-006, ADV-BON-009
+    pub(super) fn visit_shrine<S: Sink>(
         &mut self,
-        (core, _, heroes): Rules<'_>,
+        (core, part, heroes): Rules<'_>,
         (player, hero): (PlayerId, HeroId),
-        index: usize,
+        (index, object_type): (usize, ObjectTypeId),
+        sink: &mut S,
     ) -> AdventureOutcome {
         self.learn(player, index);
+        self.mark_kind(part, player, object_type, sink);
         let details = details_of(heroes, hero);
         match self.object_at(index).resolved {
             Resolved::Spell(spell)
@@ -417,15 +423,17 @@ impl AdventureState {
     /// §6.6): its owner learns the skill first (ADV-VIS-006), then a hero it does not teach (a
     /// known skill, eight skills: `h3_heroes::hut_teaches`; no class test) is refused, as by a hut
     /// without a skill (every skill of its mask banned); else the skill at Basic. No mark: every
-    /// visit.
-    // rule: ADV-TCH-005, ADV-VIS-006
-    pub(super) fn visit_witch_hut(
+    /// visit. Since E08 T115b the team's kind mark first, with the knowledge (ADV-BON-009).
+    // rule: ADV-TCH-005, ADV-VIS-006, ADV-BON-009
+    pub(super) fn visit_witch_hut<S: Sink>(
         &mut self,
-        (core, _, heroes): Rules<'_>,
+        (core, part, heroes): Rules<'_>,
         (player, hero): (PlayerId, HeroId),
-        index: usize,
+        (index, object_type): (usize, ObjectTypeId),
+        sink: &mut S,
     ) -> AdventureOutcome {
         self.learn(player, index);
+        self.mark_kind(part, player, object_type, sink);
         let details = details_of(heroes, hero);
         match self.object_at(index).resolved {
             Resolved::Skill(skill) if details.is_some_and(|d| hut_teaches(d, core, skill)) => {
@@ -462,15 +470,18 @@ impl AdventureState {
 
     /// A University's visit (ADV-TCH-007, survey §6.8): its owner learns its skills
     /// (ADV-VIS-006: the dialog shows them), and it opens over them at the type's price
-    /// ([`AdventureOutcome::university`]); every visit.
-    // rule: ADV-TCH-007, ADV-VIS-006
-    pub(super) fn visit_university(
+    /// ([`AdventureOutcome::university`]); every visit. Since E08 T115b the team's kind mark
+    /// (ADV-BON-009; the original's after its dialog, *agent's call:* at the visit that opens it).
+    // rule: ADV-TCH-007, ADV-VIS-006, ADV-BON-009
+    pub(super) fn visit_university<S: Sink>(
         &mut self,
+        part: &AdventureRuleset,
         (player, hero): (PlayerId, HeroId),
         (index, object_type): (usize, ObjectTypeId),
-        price: &Resources,
+        (price, sink): (&Resources, &mut S),
     ) -> AdventureOutcome {
         self.learn(player, index);
+        self.mark_kind(part, player, object_type, sink);
         let object = self.object_at(index);
         AdventureOutcome {
             university: Some(UniversityVisit {

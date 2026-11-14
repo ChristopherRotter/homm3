@@ -129,7 +129,7 @@ fn step(rules: &(Ruleset, AdventureRuleset), state: &mut AdventureState) {
             &rules.0,
             &rules.1,
             &[],
-            (RED, &mut stream()),
+            (RED, crate::Weekday::FIRST, &mut stream()),
             &command,
             &mut Vec::new(),
         )

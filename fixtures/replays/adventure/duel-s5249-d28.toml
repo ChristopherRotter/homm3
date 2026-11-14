@@ -694,37 +694,37 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0x460959107326c57f",
-    "0x1b28a43f6a23cf3c",
-    "0x604d2026fc22304f",
-    "0x36e52be3747fcaf8",
-    "0x25128d579be2b2cc",
-    "0xc7ce5ed8573708cc",
-    "0xe357d7c966397fed",
-    "0xba472a58dc963c85",
-    "0xb6912512c73f89bb",
-    "0xe015e258cd9d13c4",
-    "0x9c291aff32fcb7ea",
-    "0x7bce519ffed211bc",
-    "0xc585f98b17a975c2",
-    "0x0970d5ceec3b9372",
-    "0x5949ad8ca5b5a718",
-    "0x795279de65ebb078",
-    "0xd879d9c283b27606",
-    "0xc69a315c0ef70abc",
-    "0x6a12c2c8db4f5344",
-    "0x9607166d62d31c28",
-    "0x8aa8ac2af2d994fb",
-    "0x0228f950c58de349",
-    "0x1286681a608af27f",
-    "0x57b3f2f0d620ed4d",
-    "0x15db832e922dfd38",
-    "0xde11c935e8f3163d",
-    "0x74ce9ff267465ee9",
+    "0x11b1315d890d4e5f",
+    "0x0e39f31d70780f1c",
+    "0xa6bd098e7e294a0f",
+    "0x9cb63dc14a5edf60",
+    "0xd3cf42ab04290bcc",
+    "0x768b142bbf7d61cc",
+    "0xbf1ca752b2e476ad",
+    "0x5c7176a270ac61c5",
+    "0x7a7c57aba94de2a3",
+    "0x35cff43fc136d4a4",
+    "0x67e1e3f197c9a69a",
+    "0x7449caf66c956f9c",
+    "0xb2aa0ef6805992f9",
+    "0xb66ba78459ae0ae2",
+    "0xf7bcc93d88385388",
+    "0x9f279e9afa029628",
+    "0x3e58d8a18c386486",
+    "0xe1d56e72768425a3",
+    "0xfbbf45b122ea48c3",
+    "0xc88eb9016ce1c184",
+    "0xdfd5e3a41ceed823",
+    "0x0c92869adacd0bf1",
+    "0x61d4c7ec76a6c687",
+    "0x05c25b783a1cf095",
+    "0x98fc5025e4d14614",
+    "0x5f885536c9e078c5",
+    "0xbe441a91ccf52190",
 ]
 
 [replay]
-format = 16
+format = 15
 engine = "0.1.0"
 seed = "5249"
 difficulty = 1
@@ -745,13 +745,13 @@ packs = [
 profile = "base:faithful"
 ruleset_hash = "0xb5c01c8736eb73f9"
 adventure_ruleset_hash = "0x505f48af68ec73ca"
-town_ruleset_hash = "0x0d7be940b64312a6"
+town_ruleset_hash = "0x4ded73a0d357e245"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 32
-adventure_state_hash_version = 25
+adventure_state_hash_version = 24
 checkpoint_every = 25
 
 [map]
@@ -761,4 +761,4 @@ import_version = 23
 
 [result]
 day = 29
-final_hash = "0x1ad6824d87434311"
+final_hash = "0x4a8baa6641f942a5"

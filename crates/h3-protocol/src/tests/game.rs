@@ -180,10 +180,12 @@ fn inverse(a: &Adventure) -> AdventureObservation {
                         EngineKnown::Skills(skills.iter().copied().map(Handle::from_raw).collect())
                     }
                     Known::Emptied { emptied } => EngineKnown::Emptied(*emptied),
+                    Known::Visited => EngineKnown::Visited,
                 },
             })
             .collect(),
         boats: a.boats.iter().map(boat_back).collect(),
+        kinds: a.kinds.iter().copied().map(Handle::from_raw).collect(),
         garrison_heroes: a
             .garrison_heroes
             .iter()
@@ -468,6 +470,8 @@ fn every_part() -> AdventureObservation {
             EngineKnown::Price(vec![(Handle::from_raw(6), 2000), (Handle::from_raw(2), 5)]),
             EngineKnown::Skills(vec![Handle::from_raw(1), Handle::from_raw(11)]),
             EngineKnown::Emptied(true),
+            // E08 T115b: a Fountain's or a Spring's.
+            EngineKnown::Visited,
         ]
         .into_iter()
         .enumerate()
@@ -482,7 +486,9 @@ fn every_part() -> AdventureObservation {
             kind: 1,
             facing: 6,
         }],
-        // E09 T28a (v62).
+        // E08 T115b: the kind marks the viewer's team holds.
+        kinds: vec![Handle::from_raw(4), Handle::from_raw(30)],
+        // E09 T28a (v63).
         garrison_heroes: vec![GarrisonHeroView {
             town: TownId::new(3),
             id: HeroId::new(7),

@@ -32,6 +32,7 @@ mod rewards;
 mod shipyards;
 mod state;
 mod system;
+mod visitables;
 
 extern crate std;
 
@@ -695,6 +696,24 @@ pub(crate) fn adventure_pack(chances: Vec<u8>, slots: u8) -> AdventurePack {
             entered(
                 "t:anti_garrison",
                 ObjectKindDef::Garrison { anti_magic: true },
+            ),
+            // E08 T115b: an Idol of Fortune (odd days luck, even days morale, day 7 both) and the
+            // Sirens (`visitables.rs`).
+            entered(
+                "t:idol",
+                ObjectKindDef::Bonus {
+                    mark: 4,
+                    days: [(0, 1), (1, 0), (0, 1), (1, 0), (0, 1), (1, 0), (1, 1)],
+                    points: 0,
+                    drain: false,
+                },
+            ),
+            reward(
+                "t:sirens",
+                ObjectKindDef::Sirens {
+                    mark: 13,
+                    keep: (7, 10),
+                },
             ),
         ],
         params: Some(AdventureParamsDef {

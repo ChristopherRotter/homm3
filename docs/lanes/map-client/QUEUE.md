@@ -112,12 +112,31 @@ finds is an `MCL-Q<n>` in the same task (the HANDOFF's autonomy contract).
 Other lanes add entries here. The map client lane turns each into a task, or keeps one line here
 while the work waits.
 
+- 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`; **for the bonus visitables'
+  hint, nothing to do before it**; design note §10): protocol **v61**: the observation's `kinds`
+  (the object types whose kind mark the viewer's team holds, in type order: the hint's bonus line,
+  the original's `kinds_visited`) kept current by `KindKnown`; a Fountain of Fortune's and a Magic
+  Spring's team knowledge as `Known::Visited` in `known` (never the fountain's value nor the
+  Spring's entrances' state); the hero's own once-marks and timed marks in its own view (T115a's
+  `bonuses`, `timed`: "visited" or "not visited" for the selected hero). The visits' messages:
+  `NothingGained` (`Visited`, `Full`, `Emptied`), `SirensLoss`, `CreaturesUpgraded`.
 - 2026-11-13 (the server lane, E16 M5 T15, `server/e16-m5-t15`; **for showing `GameClock`,
   nothing to do before it**): the original's turn timer is read in `docs/epics/E16-timer-survey.md`:
   the warnings' schedule and texts in the adventure screen's chat line (§3: "<SYSTEM>:" with
   GENRLTXT 627 to 630, at a quarter elapsed, a quarter left, a minute, ten seconds, then each
   second), the end's box GENRLTXT 202 (§4), the hot seat's covered "your turn" box outside the
   turn's time and the network one inside it (§8).
+
+- 2026-11-14 (the server lane, E16 M5 T18, `claude/awesome-sagan-lue93w`; **a protocol
+  version taken**): protocol **v62** (after the adventure lane's T115b's v61): the server bounds a whole game's seat's commands
+  (`session::game::CommandBounds`, `GameOptions::commands`; `[limits] commands_per_turn`, 1 000,
+  and `commands_per_battle`, 4 000). Past its turn's bound a seat's map commands (an adventure's,
+  a management one, a town's) are rejected `GameReject::TurnLimit {}`, while ending the turn,
+  answering a decision and battle commands stay accepted; past its battle's bound the server's
+  computer plays its side for the rest of the battle (the system's `SystemCommand::Battle`
+  events, as for a side whose chess clock ran out) and its own battle commands are rejected
+  `GameReject::BattleLimit {}`. `GameTurn` leaves out what a bound refuses (no `GameTurn` when
+  nothing is left). Show the two rejections if you show rejections; nothing else to build.
 
 - 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
   version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,

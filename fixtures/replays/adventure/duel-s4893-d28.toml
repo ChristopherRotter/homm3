@@ -626,35 +626,35 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xf120a4b51ea2c8b5",
-    "0x74b99d74a36856ec",
-    "0x23d3e7c980993cc5",
-    "0x7514c475d3efa27c",
-    "0x42849d6c303c370a",
-    "0x54ba2e560e8bf572",
-    "0xcd948d5c23bc221b",
-    "0xebfe11c4793e64e8",
-    "0x2586d8fb7611e055",
-    "0x9e2c518b95f42752",
-    "0xb7b7eedbf76fa12a",
-    "0xeec3ef1f1b2c4d1b",
-    "0x999505d5a6ace1fb",
-    "0x746ffe124cdc704b",
-    "0x0a63efb3c3192f34",
-    "0xfd79968a8d963859",
-    "0x2d429cb7c3d59e56",
-    "0x545b8399821b1da8",
-    "0x89d27e78add1a6e7",
-    "0x252a75957076fedb",
-    "0x2a9c6e13527084c4",
-    "0x49db960d020c50d6",
-    "0x66ca36d43eea9b3a",
-    "0x2e951e150487b826",
-    "0x6acbf65bc7e4db02",
+    "0xfd2bdc88731fa601",
+    "0x41389b0198daaadc",
+    "0xe0280bd7a7f3bfb1",
+    "0xf2ceba7ff6c3eb8c",
+    "0x1521b8010c740452",
+    "0x019b4a3fce66d09a",
+    "0x6cb55ccea2e1c74f",
+    "0xcb20dd0b00ed6508",
+    "0x107aba0c427588a1",
+    "0xd616a22cc166df7a",
+    "0xbf0bb54112701cac",
+    "0x9c0daa09984a334c",
+    "0x3b4fd220260f8c6c",
+    "0xbcc2a7f97f3ab85c",
+    "0x87781297512a4893",
+    "0xc035cf1059da319e",
+    "0xa1cf0e6c2d91b6a1",
+    "0x520dab9e6b48fda7",
+    "0xfdc432aed7c5ab1c",
+    "0x1d4ea7e38663cc42",
+    "0x014bce2c92ac6a37",
+    "0x1fc54fbfb8473283",
+    "0x2fc9c9778cb7b2de",
+    "0xc938030be52d5eb2",
+    "0xe64ca0dac6a62705",
 ]
 
 [replay]
-format = 16
+format = 15
 engine = "0.1.0"
 seed = "4893"
 difficulty = 1
@@ -675,13 +675,13 @@ packs = [
 profile = "base:faithful"
 ruleset_hash = "0xb5c01c8736eb73f9"
 adventure_ruleset_hash = "0x505f48af68ec73ca"
-town_ruleset_hash = "0x0d7be940b64312a6"
+town_ruleset_hash = "0x4ded73a0d357e245"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
 game_state_hash_version = 32
-adventure_state_hash_version = 25
+adventure_state_hash_version = 24
 checkpoint_every = 25
 
 [map]
@@ -691,4 +691,4 @@ import_version = 23
 
 [result]
 day = 29
-final_hash = "0x6acbf65bc7e4db02"
+final_hash = "0xe64ca0dac6a62705"

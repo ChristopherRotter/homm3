@@ -260,13 +260,13 @@ pub enum AdventureEvent {
         hero: u16,
         pos: Pos,
     },
-    /// E09 T28a (v62).
+    /// E09 T28a (v63).
     GarrisonEntered {
         hero: u16,
         town: u16,
         pos: Pos,
     },
-    /// E09 T28a (v62).
+    /// E09 T28a (v63).
     GarrisonLeft {
         hero: u16,
         town: u16,
@@ -393,6 +393,38 @@ pub enum AdventureEvent {
         object_type: u16,
         held: bool,
     },
+    NothingGained {
+        hero: u16,
+        object_type: u16,
+        anchor: Pos,
+        why: NothingWhy,
+    },
+    SirensLoss {
+        hero: u16,
+        slot: u8,
+        creature: u16,
+        count: u32,
+    },
+    CreaturesUpgraded {
+        hero: u16,
+        slot: u8,
+        from: u16,
+        to: u16,
+    },
+    KindKnown {
+        object_type: u16,
+    },
+}
+
+/// Why a bonus visitable's visit gave nothing (`h3_adventure::NothingWhy`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum NothingWhy {
+    /// The hero holds the kind's mark.
+    Visited,
+    /// The hero's spell points are at or above what the object gives.
+    Full,
+    /// The Magic Spring's entrance is emptied this week.
+    Emptied,
 }
 
 /// Why a Shipyard builds no boat (`h3_adventure::ShipyardBlock`).

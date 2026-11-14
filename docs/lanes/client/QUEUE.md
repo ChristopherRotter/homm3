@@ -13,18 +13,6 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate
 `cargo run -p h3-battle-client -- gate` from `clients/`.
 
-#### E27 M2 T2b — The shell's Bink clips' video as the DLL's
-
-- **Scope:** the epic's M2 table, T2b (found at T2, design §8.4): `h3-bink`'s frames of
-  `NWCLOGO`, `H3INTRO`, `LOSEGAME` and `H3X1intr` differ from `BINKW32.DLL`'s in the chroma (at
-  most 3 levels at the first differences: `NWCLOGO` frame 7's U plane, `LOSEGAME` frame 6), the
-  battle's clips and the samples exact. Find what these clips use that the others do not (a
-  block type, a coding path, the DCT's or the dequantizers' rounding on their values), fix it in
-  `h3-bink` (a sample that shows it), and make `bink-check.sh` with no arguments exact on the
-  video too (it reports only the sound now). Needs the original data staged and the harness's
-  setup (`shell-videos.vid`).
-- **Status:** ready (T2 done 2026-11-14).
-
 #### E27 M2 T3 — The shell's frame
 
 - **Scope:** the epic's M2 table, T3 (CLT-Q103, decision 20, CLT-Q2): the state machine and the
@@ -37,7 +25,8 @@ and `H3ab_ahd.vid` too; the harness's runbook: `clients/capture/README.md`. The 
 #### E27 M2 T4 to T8
 
 T4 the comparison (`h3shell.py drawn`, h3shell's sound, TCP/IP's address masked; after T3); T5 the
-start (after T2b and T4; every pixel of a Smacker clip through its palette, decision 24; the clips'
+start (after T4; every pixel of a Smacker clip through its palette, decision 24, every Bink frame
+whole, decision 28, the comparisons through `h3_bink::Target`; the clips'
 sound at the effects setting, decision 27, through `HostSound::play_clip`; how much of a Smacker
 clip's queued sound plays at its end, design §8.4); T6 the main menu, New Game's and Load Game's menus, Quit (after T4); T7
 Multiplayer and the hot seat's names (after T6); T8 M2's closure and M3's refinement (after T7).
@@ -49,12 +38,31 @@ Other lanes add entries here. The client lane turns each into a task, or moves i
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent;
-  **your path changed, informational**): protocol v62's `wire::game::Adventure` gains
+  **your path changed, informational**): protocol v63's `wire::game::Adventure` gains
   `garrison_heroes` (a player's own garrison heroes, `wire::game::GarrisonHero`), so
   `h3-view`'s `game_record/tests.rs` literal took `garrison_heroes: Vec::new()`. New wire
   variants a client may meet: `TownCommand::Heroes`, eight `TownReject`s, the adventure events
   `GarrisonEntered` and `GarrisonLeft`.
 
+- 2026-11-14 (the server lane, E16 M5 T18, `claude/awesome-sagan-lue93w`, `cross-lane` with the
+  user's consent; **a protocol
+  version taken**): protocol **v62** (after the adventure lane's T115b's v61): the server bounds a whole game's seat's commands
+  (`session::game::CommandBounds`, `GameOptions::commands`; `[limits] commands_per_turn`, 1 000,
+  and `commands_per_battle`, 4 000). Past its turn's bound a seat's map commands (an adventure's,
+  a management one, a town's) are rejected `GameReject::TurnLimit {}`, while ending the turn,
+  answering a decision and battle commands stay accepted; past its battle's bound the server's
+  computer plays its side for the rest of the battle (the system's `SystemCommand::Battle`
+  events, as for a side whose chess clock ran out) and its own battle commands are rejected
+  `GameReject::BattleLimit {}`. `GameTurn` leaves out what a bound refuses (no `GameTurn` when
+  nothing is left). Show the two rejections if you show rejections; nothing else to build.
+  **Your path changed:** `h3-battle-client`'s `src/game_seat/tests.rs` builds its `GameOptions`
+  with `commands: CommandBounds::NONE` (the in-process host vouches for its commands).
+
+- 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`, #914, `cross-lane`; **your path
+  changed, for your review**): protocol v61 adds the adventure observation's `kinds` (the kind
+  marks of the viewer's team), so `h3-view`'s `game_record/tests.rs` snapshot literal gained
+  `kinds: Vec::new()`; also new: `Known::Visited` and the adventure events `NothingGained`,
+  `SirensLoss`, `CreaturesUpgraded`, `KindKnown` (your readers' wildcards skip them).
 - 2026-11-14 (the server lane, E16 M5 T17, `claude/admiring-lovelace-jlv0hu`; **a protocol
   version taken**): protocol **v60** (after the town lane's T27's v59): a map offer shows how its games are timed,
   `wire::game::MapOffer`'s `clock` (`wire::game::OfferClock`: `turn_ms`, none for unlimited, an

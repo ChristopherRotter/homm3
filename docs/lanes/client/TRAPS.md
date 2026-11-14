@@ -245,7 +245,12 @@ Moved out of the lane's HANDOFF on 2026-10-24 so that session start stays short;
   test forbids relaxing `float_arithmetic` under `src`). A synthetic clip for the DLL ends with
   8 spare bytes (it never reads a file's last 8: `build::TAIL`) and keeps its vectors inside the
   plane (the DLL reads memory outside it); a residue from 128 is CLT-Q68's (`Reading`). FFmpeg's
-  old check (E17 M5 T4b2a) needed each frame released before the next and 256-pixel rows.
+  old check (E17 M5 T4b2a) needed each frame released before the next and 256-pixel rows. The
+  DLL's planes are what `BinkCopyToBuffer` copied (E27 M2 T2b, design §9): only the cells its
+  decoding marked changed, the chroma's marks misfiled (CLT-Q122), into the probe's one buffer, so
+  the comparisons' frames go through `h3_bink::Target` (`Reading::Original`); a decoder change
+  that looks right against the DLL only on the battle's clips may still be wrong on cells whose
+  luma stands still (the samples' still cells, `build::still_cells`, check them).
 - The Smacker decoder (`h3-smacker`) is checked against the game's `SMACKW32.DLL` since E27 M2 T1
   (`clients/scripts/smacker-check.sh`, `smacker-dll.py`: `smackprobe frames` with the buffer
   types 0 and C0000000; design §7). The DLL reads `SMK2` only, and a synthetic clip for it keeps
