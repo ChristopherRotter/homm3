@@ -489,7 +489,10 @@ impl GameState {
     /// forgotten), every other hero — lost, retreated, surrendered, in a draw, or left with stacks
     /// created in the battle only (BAT-END-001) — leaves the map, a hero in a boat with its boat
     /// (ADV-SEA-006, E08 T74b), its type going back free in the hero pool (TWN-SET-005, E09
-    /// T7b1: the original's 0x4D9EC0); then the heroes' part
+    /// T7b1: the original's 0x4D9EC0); since E09 T28b2 a town's garrison hero that defended its
+    /// siege so in its town, but that as the winner it keeps its survivors even when none is left
+    /// (`TWN-QUIRK-11`; survey `E09-towns.md` §9.3), the town's views it changes told after the
+    /// heroes' part and the bonuses (TWN-VEW-002); then the heroes' part
     /// ([`Self::heroes_after_battle`], E08 T19a2a, T19a2b); then every hero of the battle, winner
     /// and loser still on the map, loses its battle bonuses and their once-marks (GAM-BAT-014,
     /// E08 T63b; since E08 T115a the adventure's change of its heroes on the map,
@@ -535,9 +538,18 @@ impl GameState {
             result,
             seen_by: owners_seeing(owners),
         });
+        // E09 T28b2: a garrison hero that won its town's siege stays in its garrison, its stacks
+        // left even if none (`TWN-QUIRK-11`: survey `E09-towns.md` §9.3).
+        let held =
+            heroes.map(|hero| hero.is_some_and(|hero| self.adventure.garrisoned(hero).is_some()));
+        // rule: TWN-VEW-002
+        // And its battle changes its town's upper bar, which the town's viewers see.
+        let bar = town.filter(|_| held[BattleSide::Defender.index()]);
+        let bar_told = town::Told::before::<S>(self, rules, bar.as_slice(), &[]);
         let army = |side: BattleSide| -> Option<&[ArmyStack]> {
             let survivors = &outcome.survivors[side.index()].stacks;
-            (result.winner() == Some(side) && !survivors.is_empty()).then_some(&survivors[..])
+            let kept = !survivors.is_empty() || held[side.index()];
+            (result.winner() == Some(side) && kept).then_some(&survivors[..])
         };
         let changes: Vec<(HeroId, Option<&[ArmyStack]>)> = BattleSide::BOTH
             .into_iter()
@@ -559,6 +571,7 @@ impl GameState {
         let fought: Vec<HeroId> = heroes.iter().flatten().copied().collect();
         self.adventure
             .clear_battle_bonuses(rules.core(), rules.adventure(), &fought);
+        bar_told.tell(self, rules, sink);
         let resource = rules.battle().battle().surrender.map(|s| s.resource);
         let surrendered = match result {
             BattleResult::Surrender(side) => Some(side),

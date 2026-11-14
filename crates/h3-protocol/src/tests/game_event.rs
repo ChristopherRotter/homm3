@@ -689,6 +689,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             level,
             slots,
             hall,
+            garrison_hero,
             buildings,
         } => GameEvent::TownChanged {
             player: p(player),
@@ -705,6 +706,7 @@ fn event_back(e: &w::GameEvent, viewer: PlayerId, battle: Option<h3_battle::Even
             level,
             slots,
             hall,
+            garrison_hero,
             buildings: buildings.map(|b| TownBuildingsView {
                 built: set_back(b.built.0),
                 forbidden: set_back(b.forbidden.0),
@@ -1049,6 +1051,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             level: 3,
             slots: true,
             hall: Some(4),
+            garrison_hero: true,
             buildings: Some(TownBuildingsView {
                 built: BuildingSet::EMPTY
                     .with(BuildingId::from_index(0).unwrap())
@@ -1087,6 +1090,7 @@ pub(super) fn every_event() -> Vec<GameEvent> {
             level: 1,
             slots: false,
             hall: None,
+            garrison_hero: false,
             buildings: None,
         },
         GameEvent::TownStackSeen {

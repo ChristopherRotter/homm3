@@ -428,13 +428,15 @@ impl AdventureState {
         }
     }
 
-    /// Takes `town`'s garrison hero out of the game at its town's capture (`TWN-STUB-14`, E09
-    /// T28a: until T28b's rows 1 and 3 a garrison hero does not defend; its town falls to the
-    /// first visitor of another team as an undefended one, the garrison hero back to the pool
-    /// with its artifacts, as T-5's hero without an army, `TWN-QUIRK-11`): its record and marks
-    /// gone, told to its owner alone ([`AdventureEventKind::HeroRemoved`] at the entrance: no
-    /// other viewer sees it). Returns the hero, whose type the game frees; none without one.
-    // stub: TWN-STUB-14 (a garrison hero's defence: E09 T28b)
+    /// Takes `town`'s garrison hero out of the game (E09 T28a, T28b2; survey `E09-towns.md` §8.1
+    /// step 1, §9.3, the original's 0x4D9EC0 with −1: it stands on no tile): at its town's capture
+    /// a garrison hero without a stack, which did not defend (`TWN-QUIRK-11`, T-5, faithful: the
+    /// hero back to the pool with its artifacts, no battle, no experience, nothing taken;
+    /// [`Self::town_visit`]), and a garrison hero its battle took off ([`Self::end_town_hero_battle`]):
+    /// its record and marks gone, told to its owner alone ([`AdventureEventKind::HeroRemoved`] at
+    /// the entrance: no other viewer sees it). Returns the hero, whose type the game frees; none
+    /// without one.
+    // rule: TWN-SIE-001, TWN-CAP-003
     pub fn release_town_hero<S: Sink>(&mut self, town: TownId, sink: &mut S) -> Option<HeroId> {
         let entrance = self.town_entrance(town).ok()?.1;
         let owner = self.town_hero(town)?.owner;
@@ -449,6 +451,52 @@ impl AdventureState {
             seen_by: Viewers::NONE.with(owner),
         });
         Some(hero.id)
+    }
+
+    /// The end of a battle for the garrison hero `hero`, off the map, which defended its town's
+    /// siege (TWN-SIE-001's third row, TWN-CAP-003; E09 T28b2, the town epic's design note §54;
+    /// survey `E09-towns.md` §9.3: the survivors stay in the army the battle was given): with
+    /// `army`, its side's survivors after its side won, they are its army by slot, in its town's
+    /// record (none left when only creatures the battle made survived, BAT-END-001: the hero
+    /// stays with an empty army, the original's, so that its town falls to the next visitor
+    /// without a battle, `TWN-QUIRK-11`); without, it leaves the game
+    /// ([`Self::release_town_hero`]). [`Self::end_battle`] calls it for a hero not on the map;
+    /// nothing for a hero that is no garrison hero.
+    // rule: TWN-SIE-001, TWN-CAP-003
+    pub(crate) fn end_town_hero_battle<S: Sink>(
+        &mut self,
+        hero: HeroId,
+        army: Option<&[ArmyStack]>,
+        sink: &mut S,
+    ) {
+        let Some((town, _)) = self.garrisoned(hero) else {
+            return;
+        };
+        match army {
+            Some(army) => {
+                if let Some(held) = self.hero_or_held_mut(hero) {
+                    held.army = army.to_vec();
+                }
+            }
+            None => {
+                let _ = self.release_town_hero(town, sink);
+            }
+        }
+    }
+
+    /// The hero `hero` on the map, else (E09 T28b2) the garrison hero `hero`, to change (the
+    /// towns' block copied when a fork shares it, only when it holds the hero): a battle's end
+    /// and its Necromancy reach a garrison hero's army so ([`Self::raise`]).
+    pub(crate) fn hero_or_held_mut(&mut self, hero: HeroId) -> Option<&mut HeroOnMap> {
+        let (heroes, block) = self.rows_mut();
+        if let Ok(at) = heroes.binary_search_by_key(&hero, |on| on.id) {
+            return heroes.get_mut(at);
+        }
+        let at = block.as_deref()?.iter().position(|(_, on)| on.id == hero)?;
+        block
+            .as_mut()
+            .and_then(|all| Arc::make_mut(all).get_mut(at))
+            .map(|(_, on)| on)
     }
 
     /// `town`'s object index and entrance, if the map has the town and it is visited from a tile

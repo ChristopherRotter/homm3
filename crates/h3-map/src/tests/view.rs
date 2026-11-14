@@ -1338,6 +1338,7 @@ fn check_told(
                 level,
                 slots,
                 hall,
+                garrison_hero,
                 buildings,
             } => {
                 prop_assert_eq!(player, viewer);
@@ -1370,6 +1371,7 @@ fn check_told(
                     owner_facts: hall.map(|hall| TownOwnerView {
                         hall,
                         income: Vec::new(),
+                        garrison_hero,
                     }),
                     buildings,
                 });
@@ -2478,7 +2480,12 @@ fn check_town_views(
         let ours = owner.is_some_and(|o| allied(o, viewer));
         let top = ours || object.entrance(map).is_some_and(sighted);
         let level = if top { OWNER_LEVEL } else { taverns };
-        let army = adventure.town_garrison(index).unwrap_or_default();
+        // E09 T28b2: the upper bar, the garrison hero's army with one (TWN-VEW-002).
+        let held = adventure.town_hero(town);
+        let army = match held {
+            Some(hero) => &hero.army[..],
+            None => adventure.town_garrison(index).unwrap_or_default(),
+        };
         let stacks = army
             .iter()
             .filter(|_| level > 0)
@@ -2505,6 +2512,7 @@ fn check_town_views(
             owner_facts: top.then(|| TownOwnerView {
                 hall: h3_towns::hall_level(record, part),
                 income: h3_towns::daily_income(record, part),
+                garrison_hero: held.is_some(),
             }),
             // E09 T26b: the owner's counts and Portal (TWN-VEW-004).
             buildings: (owner == Some(viewer)).then(|| TownBuildingsView {

@@ -16,9 +16,9 @@ use crate::{GameRuleset, GameState};
 
 /// Captures `town` for `player`, whose hero entered it undefended or won its siege: the town's
 /// reveal (`h3_towns::reveal`, [`adventure_reveal`]), since E09 T28a its garrison hero out of the
-/// game first, its type back in the pool (`TWN-STUB-14` until T28b: a garrison hero does not
-/// defend yet, so its town falls as an undefended one, T-5's rule, `TWN-QUIRK-11`;
-/// [`AdventureState::release_town_hero`]), then the adventure's capture
+/// game first, its type back in the pool (since E09 T28b2 only a garrison hero without a stack,
+/// which did not defend: `TWN-QUIRK-11`, T-5, faithful; one that defended and lost left with its
+/// battle; [`AdventureState::release_town_hero`]), then the adventure's capture
 /// ([`AdventureState::capture_town`]: the owner, the empty garrison, the reveal; `TownCaptured`
 /// then `TilesRevealed`), then, only after a capture, the day's mark's rule (since E09 T18b1,
 /// decision 43: [`Towns::captured`] clears it when the old owner, read before the capture, is
@@ -67,8 +67,7 @@ pub(crate) fn capture<S: Sink>(
     // TownCount`), so the capture's viewers (none for a town the map lacks) are not needed.
     let (adventure, _) = state.adventure_with_heroes();
     let events = &mut AdventureSink(&mut *sink);
-    // stub: TWN-STUB-14 (a garrison hero's defence: E09 T28b) — the town falls as T-5's, its
-    // garrison hero back to the pool (TWN-SET-005).
+    // `TWN-QUIRK-11` (T-5): a garrison hero without a stack goes back to the pool (TWN-SET-005).
     let released = adventure.release_town_hero(town, events);
     let _ = adventure.capture_town(rules.core(), town, player, reveal, events);
     if let Some(details) = released.and_then(|hero| state.hero(hero)) {

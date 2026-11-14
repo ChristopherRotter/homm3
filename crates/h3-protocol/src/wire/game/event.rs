@@ -189,6 +189,7 @@ pub enum GameEvent {
         level: u8,
         slots: bool,
         hall: Option<u8>,
+        garrison_hero: bool,
         buildings: Option<TownBuildings>,
     },
     TownStackSeen {
