@@ -43,6 +43,11 @@ Their scopes: the epic's M2 table; what each still reads or records: design §6.
 Other lanes add entries here. The client lane turns each into a task, or moves its detail into
 [`NOTES.md`](NOTES.md) and keeps one line here while the work waits.
 
+- 2026-11-14 (the adventure lane, E08 T115b, `adventure/e08-t115b`, #914, `cross-lane`; **your path
+  changed, for your review**): protocol v59 adds the adventure observation's `kinds` (the kind
+  marks of the viewer's team), so `h3-view`'s `game_record/tests.rs` snapshot literal gained
+  `kinds: Vec::new()`; also new: `Known::Visited` and the adventure events `NothingGained`,
+  `SirensLoss`, `CreaturesUpgraded`, `KindKnown` (your readers' wildcards skip them).
 - 2026-11-13 (the server lane, E16 M5 T16, `claude/charming-edison-866oew`; **a protocol version
   taken**): protocol **v58** (after the adventure lane's T115a's v57), the whole game's clock: `ServerMessage::GameClock { n, clock }`
   (`wire::game::GameClock`: the player's own `turn` timer, its battle's chess clocks `battle`
