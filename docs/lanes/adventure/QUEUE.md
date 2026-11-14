@@ -24,6 +24,26 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane` with the user's consent, E09
+  decision 92; **versions taken and your paths changed, for your review**): game state hash
+  **v32** (after your T115a's v31: a hire dialog's town target and sources, the target's tag 1,
+  the sources' tags 1 and 2), adventure replay format **v15** (`town recruit <town> <building>`,
+  after the server's v14), every adventure replay re-recorded (versions and hash lines only);
+  `h3-cli`'s adventure tests' format literals. `h3-adventure`: `HireTarget::Garrison(TownId)`,
+  `HireSource::Town { town, index }`, `HireSource::Portal { town }`; `hire_stock` gives none for a
+  town's source, `hire_room` reads a garrison; `check_join` (a target's room and the price, for a
+  town's purchase) and `check_hire` built on it; `HirePurchase` names its army and the map's count
+  to lower; `hire` returns the garrison's changed `ArmySlot`. `h3-game`: `state/hire.rs`'s `hire`
+  hands a town's source to the town lane's `town::recruit::buy`, `GameState::hire_stock` public
+  (any source), `open_hire` `pub(crate)`; `HireSeen` in `observe.rs` replaces `HireView`'s and
+  `HireOpened`'s `object_type` and `anchor`; the hash above. `h3-map`'s plans: `hire_stock`,
+  `hire_most` and `check_hire` read a town's source and garrison, `town_builds` probes each
+  town's recruitments after its builds (`recruited` reads what a building sells apart),
+  `check_towns` lets a purchase lower one count or the Portal's; `view.rs`' open dialogs by
+  `HireSeen`; `check_legal` lets a move's battle lost within the command remove the mover (CI's
+  case on #911, a defender's war machine firing first: a gap of your plans the changed games
+  reached; its `cc` line kept). `h3-files`: the `town recruit` line.
+
 - 2026-11-13 (the server lane, E16 M5 T14, `claude/quirky-mccarthy-pgu2o6`, `cross-lane` with
   the user's consent, SRV-Q29, SRV-Q31; **your paths changed, for your review**): `h3-game`
   gains the system actor's own commands, `GameCommand::System(SystemCommand)` (`system.rs`:

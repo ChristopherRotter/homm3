@@ -178,8 +178,10 @@ fn a_dwelling_s_hire_question_opens_and_accepted_gives_its_free_creatures() {
             GameEvent::HireOpened {
                 player: RED,
                 target: HireTarget::Hero(RED_HERO),
-                object_type: ty,
-                anchor: ANCHOR,
+                source: HireSeen::Object {
+                    object_type: ty,
+                    anchor: ANCHOR,
+                },
             },
         ]
     );

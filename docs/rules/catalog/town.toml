@@ -1216,3 +1216,60 @@ numeric  = "integer"
   kind       = "design"
   ref        = "docs/epics/E09-design.md section 45 (E09 decisions 71 and 82; TD-16 by the reading, T-11): the draw at the build, the flag and the capture instead of the screen, the streams, no draw in a neutral town"
   confidence = "high"
+
+[[rule]]
+id       = "TWN-REC-001"
+title    = "Recruitment at a town's dwelling or horde"
+context  = "town"
+status   = "implemented"
+summary  = "A town's owner, in its turn without an open decision, recruits at a building of its town (`TownCommand::Recruit { town, building }`; no hero, no visit: the town screen opens from the town list): a standing building (ever built, no ever-built building superseding it) of role `dwelling` or `horde` sells its level's creature index (`level - 1`, `+ 7` upgraded), refused typed (the town not the store's `UnknownTown`, another player's `NotOwner`, a building the record lacks `UnknownBuilding`, of no selling role `NotRecruiting`, not standing or a base index whose level's upgraded dwelling was ever built `NotStanding`), each refusal changing nothing. It opens the hire dialog (GAM-DEC-008) of that index, its target the town's garrison (the upper bar; never the visitor's army; T28a the garrison hero's), at a count of 0 too. The dialog sells the index's creature with its count; an upgraded index its upgrade, then its base creature, both from the index's one count. A purchase is checked in this order: the creature one of the source's (`NotOffered`), the amount from 1 to the count (`Amount`), the garrison's room (`NoRoom`: a stack of the creature within a stack's most, else a free slot, ADV-ARM-007), the treasury (`CannotPay`: the core's cost times the amount); then the price is paid, the count lowered by the amount, the creatures joined into the garrison (`StackChanged` of its slot to the owner; every viewer's changed view of the town told), and a one-creature dialog closes. The legal commands list, per own town in `TownId` order after its builds, a recruitment at each building that opens a dialog, in the record's order (`h3_towns::recruiting`). E09 T27: `h3_towns::recruit_source`, `recruiting`, `recruit_stock`, `check_recruit`, `recruit`; h3-game's `town::recruit`; the adventure's `HireSource::Town`, `HireTarget::Garrison`, `check_join`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 8): town_screen_proc 0x5D3240 at its building clicks (a dwelling 30 to 43 the hire of index id - 30, a horde 18, 19, 24, 25 its level's index by horde1_hire_levels 0x68A364 and horde2_hire_levels 0x68A378, the Fort's list fort_dialog_hire 0x5DCE50); recruit_dialog_init_town 0x551560 (read whole): the creature of town_creatures[faction x 14 + i] with a pointer to the town's count +0x16 + 2i, for i >= 7 the base creature too with the same count, the upgrade selected first; the army town_garrison_army 0x5C1460 (the garrison hero's, else the town's), the garrison's no-room message; the purchase the hire dialog's (recruit_dialog_proc 0x550940)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 as read by survey E09-growth.md sections 8 and 11: the client recruits into the upper army (getUpperArmy), the server's recruitCreatures also into the garrison hero's or the visitor's army (a deviation of no rule, survey section 13's table); the count shared by a level's creatures"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "The game's manual, the towns' chapter, as read by survey E09-growth.md sections 8 and 13: a town's recruited creatures go to the town's garrison"
+  url        = "https://issuu.com/ngutri.com/docs/heroes3_manual/s/13274881"
+  retrieved  = "2026-11-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md sections 49 and 50 (E09 decisions 80 to 83; T27 whole, decision 92): the command by building, the refusals typed, the dialog at a count of 0, the town's refusals in the hire dialog's vocabulary, the garrison target until T28a, the check's order, the legal recruitments after each town's builds"
+  confidence = "high"
+
+[[rule]]
+id       = "TWN-REC-002"
+title    = "The Portal of Summoning's hire"
+context  = "town"
+status   = "implemented"
+summary  = "A recruitment at a town's standing building of role `portal` (TWN-GRO-007; the Dungeon's) opens the hire dialog of the Portal's creature and count, its target the town's garrison, a one-creature dialog; refused (`NothingSummoned`, nothing changed, no draw: E09 decision 71's draws are the week's, the build's, the flag's and the capture's) while the Portal holds nothing. A purchase is TWN-REC-001's; it lowers the Portal's count, its creature kept (at 0 too) until a draw sets it again. Listed among the town's recruitments while the Portal holds a creature. E09 T27: `h3_towns::recruit_source`'s `RecruitSource::Portal`, the adventure's `HireSource::Portal`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E09 T21; survey E09-growth.md section 5): town_portal_hire 0x5D2950 (read whole): with +0x3C -1 portal_of_summoning_week first, still -1 a message; else recruit_dialog_init 0x551350 over town_garrison_army 0x5C1460 with the Portal's flag, the creature +0x3C and its count +0x40, lowered in place by a purchase"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Heroes 3 wiki, Dungeon (its unique buildings): the Portal of Summoning allows recruiting the creatures of one random external flagged creature dwelling"
+  url        = "https://heroes.thelazy.net/index.php/Dungeon"
+  retrieved  = "2026-11-12"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "docs/epics/E09-design.md section 51 (E09 decisions 71 and 82): the Portal's hire into the upper bar, refused while it holds nothing, no draw at the command; T-11's screen-time draw left to the week, the build, the flag and the capture"
+  confidence = "high"

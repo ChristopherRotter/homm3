@@ -14,12 +14,12 @@ use h3_kernel::handle::Handle;
 use super::command::{artifact_place, slot};
 use super::town_buildings;
 use super::{
-    army_stack, artifact, fort_level, garrison_stack, month_kind, pos, primary_skill, visit_bonus,
-    week_kind,
+    army_stack, artifact, fort_level, garrison_stack, hire_seen, hire_target, month_kind, pos,
+    primary_skill, visit_bonus, week_kind,
 };
 use crate::map::{from_engine, outcome};
 use crate::wire::game::{
-    AdventureEvent, Formation, GameEvent, HeroChange, HireTarget, OfferLevels, ShipyardBlock,
+    AdventureEvent, Formation, GameEvent, HeroChange, OfferLevels, ShipyardBlock,
 };
 
 /// The events `viewer` may see, in order, on the wire (`h3_game::project`); the others are
@@ -272,15 +272,11 @@ fn event(e: &EngineEvent) -> GameEvent {
         EngineEvent::HireOpened {
             player,
             target,
-            object_type,
-            anchor,
+            source,
         } => GameEvent::HireOpened {
             player: player.raw(),
-            target: match target {
-                h3_game::HireTarget::Hero(hero) => HireTarget::Hero { hero: hero.raw() },
-            },
-            object_type: object_type.raw(),
-            anchor: pos(anchor),
+            target: hire_target(target),
+            source: hire_seen(source),
         },
         EngineEvent::DecisionClosed { player } => GameEvent::DecisionClosed {
             player: player.raw(),

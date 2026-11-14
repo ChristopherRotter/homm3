@@ -14,11 +14,12 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, FactionId, ResourceId, Ruleset};
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use super::monsters::{Room, add_stack, join_at, room, room_bound};
 use super::{AdventureState, StaticMap, allied, pick};
+use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{
     AdventureEvent, AdventureEventKind, AdventureOutcome, Defender, HireDialog, HireError,
     HireSource, HireTarget, Offer, OfferKind, Sink, Viewers,
@@ -860,13 +861,15 @@ pub fn hire_price(core: &Ruleset, creature: CreatureTypeId, amount: u32) -> Vec<
 }
 
 /// A purchase in a hire dialog [`AdventureState::check_hire`] accepted (ADV-HIR-002; E08 T95b,
-/// increment 10's design note §13): its price, which the game checks against the treasury and
-/// pays (GAM-DEC-008, ADR-0004), and where it goes, which [`AdventureState::hire`] then makes
-/// without a check of its own (the design's infallible purchase: no refusal the game could not
-/// reach). It holds for the state that checked it as that state stands: nothing of the adventure
-/// changes between the check and the purchase. Not `Clone`, so one check buys once; a count is
-/// lowered saturating, so a purchase kept past a change of the state cannot wrap it (*agent's
-/// call*, T95b's review: the game checks and buys in one command).
+/// increment 10's design note §13), or since E09 T27 a town's purchase whose room
+/// [`AdventureState::check_join`] accepted (the town's counts are the town context's): its price,
+/// which the game checks against the treasury and pays (GAM-DEC-008, ADR-0004), and where it goes,
+/// which [`AdventureState::hire`] then makes without a check of its own (the design's infallible
+/// purchase: no refusal the game could not reach). It holds for the state that checked it as that
+/// state stands: nothing of the adventure changes between the check and the purchase. Not
+/// `Clone`, so one check buys once; a count is lowered saturating, so a purchase kept past a
+/// change of the state cannot wrap it (*agent's call*, T95b's review: the game checks and buys in
+/// one command).
 #[derive(Debug, PartialEq, Eq)]
 pub struct HirePurchase {
     /// The price, by resource in the core's order ([`hire_price`]).
@@ -875,14 +878,22 @@ pub struct HirePurchase {
     creature: CreatureTypeId,
     /// How many.
     amount: u32,
-    /// The source's object index.
-    index: usize,
-    /// The hero's place among the state's heroes.
-    at: usize,
-    /// The creature's place in the source's stock (its count's place).
-    place: usize,
-    /// Where the creatures join the hero's army.
+    /// The map's source whose count goes down: its object index and the creature's place in its
+    /// stock (its count's place); none for a town's source, whose counts the game writes.
+    source: Option<(usize, usize)>,
+    /// The army the creatures join.
+    into: Joining,
+    /// Where the creatures join the army.
     room: Room,
+}
+
+/// The army a purchase's creatures join ([`HirePurchase`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Joining {
+    /// A hero's, by its place among the state's heroes.
+    Hero(usize),
+    /// A town's garrison, by the town's object index (E09 T27).
+    Garrison(usize, TownId),
 }
 
 impl HirePurchase {
@@ -903,8 +914,9 @@ impl AdventureState {
     /// E08 T95b, increment 10's design note §8, §13): a dwelling's kind's creatures with their
     /// week's counts ([`Self::dwelling_counts`]; distinct, ADV-DWL-001), a Refugee Camp's week's
     /// creature and count ([`Self::camp`]). None when the object at its index is not of its type
-    /// and anchor, or is neither. The game's view and legal set read it at each step, as the
-    /// original's dialog points at the dwelling's own counts (survey §5.1).
+    /// and anchor, or is neither, and for a town's source (E09 T27: its counts are the town
+    /// context's, `h3_towns::recruit_stock`). The game's view and legal set read it at each step,
+    /// as the original's dialog points at the dwelling's own counts (survey §5.1).
     // rule: ADV-HIR-002
     pub fn hire_stock(
         &self,
@@ -915,7 +927,10 @@ impl AdventureState {
             index,
             object_type,
             anchor,
-        } = *source;
+        } = *source
+        else {
+            return None;
+        };
         let effect = self
             .object(index)
             .filter(|object| object.object_type == Some(object_type) && object.anchor == anchor)
@@ -943,7 +958,8 @@ impl AdventureState {
     /// map. Every amount from 1 to it finds room (a stack of the creature that takes it within the
     /// most, else a free slot: the original's `army_can_take` 0x44AC50); the game's legal set
     /// bounds the most a player may buy by it (an agent's call of design note §13: the
-    /// original's slider leaves it out and refuses at Recruit, the same rule).
+    /// original's slider leaves it out and refuses at Recruit, the same rule). Since E09 T27 a
+    /// town's garrison as a hero's army (0 for a town the map does not have).
     // rule: ADV-ARM-007, ADV-HIR-002
     pub fn hire_room(
         &self,
@@ -951,10 +967,76 @@ impl AdventureState {
         target: &HireTarget,
         creature: CreatureTypeId,
     ) -> u32 {
-        let HireTarget::Hero(hero) = *target;
         let rules = (part.params().army_slots(), part.params().max_stack_count());
-        self.hero(hero)
-            .map_or(0, |hero| room_bound(&hero.army, rules, creature))
+        self.joining(target).map_or(0, |into| {
+            room_bound(self.joining_army(into), rules, creature)
+        })
+    }
+
+    /// Where `target`'s army is, if it is on the map: a hero's place among the heroes, a town's
+    /// object index (E09 T27).
+    fn joining(&self, target: &HireTarget) -> Option<Joining> {
+        match *target {
+            HireTarget::Hero(hero) => self
+                .heroes
+                .binary_search_by_key(&hero, |h| h.id)
+                .ok()
+                .map(Joining::Hero),
+            HireTarget::Garrison(town) => self
+                .map
+                .town_object(town)
+                .map(|index| Joining::Garrison(index, town)),
+        }
+    }
+
+    /// The army at `into` as it stands.
+    fn joining_army(&self, into: Joining) -> &[ArmyStack] {
+        match into {
+            Joining::Hero(at) => &self.heroes[at].army,
+            Joining::Garrison(index, _) => self.town_garrison(index).unwrap_or_default(),
+        }
+    }
+
+    /// Checks that `target`'s army takes `amount` `creature`s (ADV-ARM-007, ADV-HIR-002; E09 T27,
+    /// the town epic's design note §50: a town's purchase, whose creature and amount the town
+    /// context checked against its counts, `h3_towns::check_recruit`) and gives the purchase with
+    /// its price ([`hire_price`]), which lowers no count of the map's. Refused: the target not on
+    /// the map ([`HireError::NoSource`]), then no room ([`HireError::NoRoom`]).
+    ///
+    /// # Errors
+    ///
+    /// The two refusals above; nothing changed.
+    // rule: ADV-HIR-002, ADV-ARM-007
+    pub fn check_join(
+        &self,
+        (core, part): (&Ruleset, &AdventureRuleset),
+        target: &HireTarget,
+        (creature, amount): (CreatureTypeId, u32),
+    ) -> Result<HirePurchase, HireError> {
+        let into = self.joining(target).ok_or(HireError::NoSource)?;
+        self.purchase(core, part, into, (creature, amount))
+    }
+
+    /// The purchase of `amount` `creature`s into `into`, lowering no count of the map's, if the
+    /// army has room ([`HireError::NoRoom`] else).
+    fn purchase(
+        &self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        into: Joining,
+        (creature, amount): (CreatureTypeId, u32),
+    ) -> Result<HirePurchase, HireError> {
+        let rules = (part.params().army_slots(), part.params().max_stack_count());
+        let army = self.joining_army(into);
+        let room = room(army, rules, creature, amount).ok_or(HireError::NoRoom)?;
+        Ok(HirePurchase {
+            price: hire_price(core, creature, amount),
+            creature,
+            amount,
+            source: None,
+            into,
+            room,
+        })
     }
 
     /// Checks a purchase of `amount` `creature`s in `dialog` (ADV-HIR-002, ADV-ARM-007; E08 T95b,
@@ -964,7 +1046,8 @@ impl AdventureState {
     /// order), which the game checks against the treasury before and pays after (ADR-0004), then
     /// makes with [`Self::hire`]. Refused, in this order: the dialog's hero not on the map or its
     /// source not the object it names ([`HireError::NoSource`]; defensive: the game holds the
-    /// dialog its outcome gave, and its hero cannot move while it is open); the creature not the
+    /// dialog its outcome gave, and its hero cannot move while it is open; a town's source too,
+    /// whose purchase is [`Self::check_join`]'s, E09 T27); the creature not the
     /// source's ([`HireError::NotOffered`]); the amount 0 or above its count
     /// ([`HireError::Amount`]); no room in the army ([`HireError::NoRoom`]: the original's
     /// GENRLTXT 426, nothing bought; every amount up to [`Self::hire_room`] finds room, in the
@@ -977,12 +1060,11 @@ impl AdventureState {
         dialog: &HireDialog,
         (creature, amount): (CreatureTypeId, u32),
     ) -> Result<HirePurchase, HireError> {
-        let HireTarget::Hero(hero) = dialog.target;
-        let HireSource::Object { index, .. } = dialog.source;
-        let (at, stock) = self
-            .heroes
-            .binary_search_by_key(&hero, |h| h.id)
-            .ok()
+        let HireSource::Object { index, .. } = dialog.source else {
+            return Err(HireError::NoSource);
+        };
+        let (into, stock) = self
+            .joining(&dialog.target)
             .zip(self.hire_stock(part, &dialog.source))
             .ok_or(HireError::NoSource)?;
         let place = stock
@@ -992,16 +1074,10 @@ impl AdventureState {
         if !(1..=stock[place].1).contains(&amount) {
             return Err(HireError::Amount(amount));
         }
-        let rules = (part.params().army_slots(), part.params().max_stack_count());
-        let room = room(&self.heroes[at].army, rules, creature, amount).ok_or(HireError::NoRoom)?;
+        let purchase = self.purchase(core, part, into, (creature, amount))?;
         Ok(HirePurchase {
-            price: hire_price(core, creature, amount),
-            creature,
-            amount,
-            index,
-            at,
-            place,
-            room,
+            source: Some((index, place)),
+            ..purchase
         })
     }
 
@@ -1012,30 +1088,52 @@ impl AdventureState {
     /// ADV-ARM-007's room is (the original's `army_add_stack`: a stack of the creature that takes
     /// them within a stack's most, else the first free slot), the source's count goes down by the
     /// amount (a dwelling's through `write_dwelling`, a camp's block copied at the write), and the
-    /// hero's owner alone is told ([`AdventureEventKind::CreaturesJoined`]).
+    /// hero's owner alone is told ([`AdventureEventKind::CreaturesJoined`]). Since E09 T27 a town's
+    /// purchase ([`Self::check_join`]) joins the town's garrison, lowers no count of the map's and
+    /// tells nothing: it returns the garrison's slot that changed, which the game tells (its
+    /// `StackChanged`); none for a hero's army.
     // rule: ADV-HIR-002, ADV-ARM-007
-    pub fn hire<S: Sink>(&mut self, purchase: HirePurchase, sink: &mut S) {
+    pub fn hire<S: Sink>(&mut self, purchase: HirePurchase, sink: &mut S) -> Option<ArmySlot> {
         let HirePurchase {
             creature,
             amount,
-            index,
-            at,
-            place,
+            source,
+            into,
             room,
             ..
         } = purchase;
-        let on_map = &mut self.heroes[at];
-        join_at(&mut on_map.army, room, creature, amount);
-        let (hero, owner) = (on_map.id, on_map.owner);
-        self.lower_count(index, place, amount);
-        sink.emit(AdventureEvent {
-            kind: AdventureEventKind::CreaturesJoined {
-                hero,
-                creature,
-                count: amount,
-            },
-            seen_by: Viewers::NONE.with(owner),
-        });
+        if let Some((index, place)) = source {
+            self.lower_count(index, place, amount);
+        }
+        match into {
+            Joining::Hero(at) => {
+                let on_map = &mut self.heroes[at];
+                join_at(&mut on_map.army, room, creature, amount);
+                let (hero, owner) = (on_map.id, on_map.owner);
+                sink.emit(AdventureEvent {
+                    kind: AdventureEventKind::CreaturesJoined {
+                        hero,
+                        creature,
+                        count: amount,
+                    },
+                    seen_by: Viewers::NONE.with(owner),
+                });
+                None
+            }
+            Joining::Garrison(index, town) => {
+                let mut army = self.joining_army(into).to_vec();
+                join_at(&mut army, room, creature, amount);
+                let slot = match room {
+                    Room::Stack(at) => army[at].slot,
+                    Room::Slot(slot) => slot,
+                };
+                self.set_army_left(index, army);
+                Some(ArmySlot {
+                    army: ArmyRef::Garrison(town),
+                    slot,
+                })
+            }
+        }
     }
 
     /// Lowers by `amount` the count of the creature at `place` of the source at object index
