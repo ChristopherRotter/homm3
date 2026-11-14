@@ -73,7 +73,7 @@
 //! level_up_ms = 60000                # optional: a level-up's time while it holds the game (0:
 //!                                    # the game waits for it); 60 s by default
 //! battle_ms = 180000                 # optional: each side's time in a battle between two
-//!                                    # players' heroes, under a limited turn (not 0)
+//!                                    # players' sides, under a limited turn (not 0)
 //! battle_increment_ms = 10000        # optional: what a side gains after each battle command
 //!
 //! [[ladder]]                         # a ranked game configuration (E16 M4); none by default
@@ -367,7 +367,7 @@ pub struct MapOffer {
     /// for it.
     #[serde(default = "level_up_ms")]
     pub level_up_ms: u32,
-    /// Each side's time at the start of a battle between two players' heroes under a limited
+    /// Each side's time at the start of a battle between two players' sides under a limited
     /// turn duration, in milliseconds (E16 M5 T17; SRV-Q32, Fischer's base): not 0.
     #[serde(default = "battle_ms")]
     pub battle_ms: u32,

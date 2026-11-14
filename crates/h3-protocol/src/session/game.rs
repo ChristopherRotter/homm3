@@ -101,7 +101,7 @@
 //!   clock ([`GameSession::elapse`], before every other call) and wakes the session at its next
 //!   deadline ([`GameSession::deadline`]); the options say how it runs ([`GameOptions::clock`]):
 //!   a turn's timer per player, the level-up's time while one holds the game, the chess clocks of
-//!   a battle between two players' heroes. When a timer runs out the system acts for its player,
+//!   a battle between two players' sides. When a timer runs out the system acts for its player,
 //!   each step a journaled command of the system actor (`h3_game::SystemCommand`) told as every
 //!   command's: a turn's end answers each open decision by its default, plays the player's battle
 //!   side by the host's computer, then ends the turn; a level-up's answers it by its default; a
@@ -966,6 +966,9 @@ impl<'r> GameSession<'r> {
             self.started = true;
             self.entries.push(GameEntry::Started);
             self.opening(&mut frames);
+            // The snapshots told the clocks of a game not yet started: the first turn's timer
+            // runs now (E16 M5 T19, the 2b reviewer's).
+            self.tell_clocks(&mut frames);
             self.turns(&mut frames);
         }
         self.route(frames, out);
@@ -1615,13 +1618,20 @@ impl<'r> GameSession<'r> {
     }
 
     /// If `player` may act, its legal commands but those the host's bounds refuse (E16 M5 T18)
-    /// and, while its battle side is to act, the spells its hero may cast.
+    /// and its battle commands once its turn or its side's chess clock ran out (the computer's
+    /// then, T19), and, while its battle side is to act, the spells its hero may cast.
     fn turn(&mut self, player: PlayerId, out: &mut Vec<GameOutbound>) {
         let (state, counts) = (&self.state, &self.counts);
+        let timed_out = own_battle(state, player).is_some_and(|(battle, side)| {
+            self.clock.turn_out(state, player) || self.clock.side_out(battle, side)
+        });
         let legal: Vec<GameCommand> =
             h3_game::legal_commands(state, self.rules, Actor::Player(player))
                 .iter()
                 .filter(|command| counts.refuses(state, player, command).is_none())
+                .filter(|command| {
+                    !(timed_out && matches!(command, h3_game::GameCommand::Battle(_)))
+                })
                 .map(map::game::command)
                 .collect();
         if legal.is_empty() {

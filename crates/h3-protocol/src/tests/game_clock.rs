@@ -459,7 +459,7 @@ fn a_battle_between_players_runs_their_chess_clocks() {
     // The attacker plays; the defender's clock runs out and the computer (Defend in-process)
     // plays its side for the rest of the battle.
     let (mut at, mut seq, mut stream, mut increments) = (0, 100, 1, 0);
-    let mut out = Vec::new();
+    let (mut out, mut run_out) = (Vec::new(), false);
     while let Some(battle) = s.state().battle(P0) {
         let side = battle.state().side_to_act().unwrap();
         out.clear();
@@ -474,6 +474,9 @@ fn a_battle_between_players_runs_their_chess_clocks() {
             let wire = command(&h3_game::GameCommand::Battle(choice));
             s.play(P0, seq, wire, &mut out).unwrap();
             seq += 1;
+            // A side whose clock ran out is told no battle commands: the computer plays it at
+            // once (E16 M5 T19, the 2b reviewer's).
+            assert!(!run_out || battle_turns(&out, P1) == 0);
             if s.state().battle(P0).is_some() {
                 assert_eq!(
                     left(&s, BattleSide::Attacker),
@@ -494,9 +497,11 @@ fn a_battle_between_players_runs_their_chess_clocks() {
             if let Some(clock) = last(&out, P0).and_then(|c| c.battle) {
                 assert_eq!(clock.defender, stopped(0));
             }
+            assert_eq!(battle_turns(&out, P1), 0);
+            run_out = true;
         }
     }
-    assert!(increments > 0);
+    assert!(increments > 0 && run_out);
     let entries: Vec<GameEntry> = s.drain_entries().collect();
     let defends = entries.iter().filter(|e| {
         matches!(e, GameEntry::Command(Actor::System, h3_game::GameCommand::System(SystemCommand::Battle { player, .. })) if *player == P1)
@@ -507,6 +512,16 @@ fn a_battle_between_players_runs_their_chess_clocks() {
     );
     // The attacker's turn resumes with what it had left: nothing counted in the battle.
     assert_eq!(turn_left(s.state(), &s), 60_000);
+}
+
+/// How many of `player`'s turns in `frames` list battle commands.
+fn battle_turns(frames: &[GameOutbound], player: PlayerId) -> usize {
+    let told = frames.iter().filter(|o| o.to == player);
+    told.filter(|o| {
+        matches!(codec::decode_server(o.frame.as_bytes(), usize::MAX).unwrap(),
+            ServerMessage::GameTurn { legal, .. } if legal.iter().any(|c| matches!(c, crate::wire::game::GameCommand::Battle { .. })))
+    })
+    .count()
 }
 
 /// What the attacker's view shows left on its side's chess clock.
@@ -546,8 +561,23 @@ fn a_paused_game_and_one_not_started_count_nothing() {
     send(&mut s, conn(0), join(0, None));
     s.elapse(100_000, &mut out);
     assert_eq!(s.deadline(), None, "not started");
-    send(&mut s, conn(1), join(1, None));
+    let begun = send(&mut s, conn(1), join(1, None));
     assert!(s.started());
+    // The start tells each player its clock as it runs now (E16 M5 T19, the 2b reviewer's): the
+    // first player's turn timer running, though its join's snapshot told it stopped; the second
+    // has nothing to be told.
+    let told = |to: ConnId| {
+        let told = begun.iter().filter(|o| o.to == to);
+        told.filter_map(
+            |o| match codec::decode_server(o.frame.as_bytes(), usize::MAX).unwrap() {
+                ServerMessage::GameClock { clock, .. } => Some(clock),
+                _ => None,
+            },
+        )
+        .collect::<Vec<_>>()
+    };
+    assert_eq!(told(conn(0)), [turn(running(60_000))]);
+    assert_eq!(told(conn(1)), []);
     s.drain_entries().for_each(drop);
     s.elapse(110_000, &mut out);
     // The host pauses: the time counted is journaled first.
