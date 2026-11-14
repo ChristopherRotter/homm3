@@ -962,8 +962,8 @@ pub enum AdventureEventKind {
     },
     /// A hero left the map by a battle's outcome (GAM-BAT-003, E08 T19a). Seen by its owner and the
     /// players that saw it there (ADV-FOG-004, ADV-FOG-005, as a step's). Since E09 T28a also a
-    /// town's garrison hero leaving the game at its town's capture (`TWN-STUB-14`), seen by its
-    /// owner alone at the town's entrance.
+    /// town's garrison hero leaving the game, seen by its owner alone at the town's entrance: at
+    /// its town's capture without a stack (`TWN-QUIRK-11`), since E09 T28b2 by its siege.
     HeroRemoved {
         /// The hero.
         hero: HeroId,

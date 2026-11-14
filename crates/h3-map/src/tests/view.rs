@@ -1516,8 +1516,8 @@ fn check_told(
             }) => {
                 prop_assert_eq!(seen_by, alone);
                 let at = heroes.iter().position(|&(id, _)| id == hero);
-                // E09 T28a: a garrison hero leaving the game at its town's capture
-                // (`TWN-STUB-14`) was not on the map.
+                // E09 T28a, T28b2: a garrison hero leaving the game (at its town's capture,
+                // `TWN-QUIRK-11`, or by its siege) was not on the map.
                 let garrisoned = before
                     .adventure
                     .garrison_heroes

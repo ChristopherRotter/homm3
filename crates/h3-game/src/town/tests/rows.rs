@@ -3,8 +3,9 @@
 //! owner's in its turn, each refusal changing nothing, its events and the town's changed views
 //! told; the legal commands list each own town's moves after its recruitments; outside a
 //! decision the owner manages an own town's upper bar alone or with its visitor, and a garrison
-//! hero as its own; a town's purchase joins its garrison hero's army; a captured town's garrison
-//! hero goes back to the pool (`TWN-STUB-14`). On the growth tests' game: red's T0 on (1, 1) with
+//! hero as its own; a town's purchase joins its garrison hero's army; since E09 T28b2 a captured
+//! town's garrison hero without a stack goes back to the pool (T-5, `TWN-QUIRK-11`; one with an
+//! army defends: `super::siege`'s tests). On the growth tests' game: red's T0 on (1, 1) with
 //! red's hero on its entrance, blue's T1, red's T2 on (0, 3).
 
 use alloc::vec;
@@ -512,15 +513,19 @@ fn each_refusal_of_a_move_is_the_town_command_s_own() {
     }
 }
 
-// covers: TWN-SET-005
-// stub: TWN-STUB-14
+// covers: TWN-SET-005, TWN-VIS-001, TWN-CAP-001
 #[test]
-fn a_captured_town_s_garrison_hero_goes_back_to_the_pool() {
+fn twn_quirk_11_a_garrison_hero_without_a_stack_does_not_defend() {
     let rules = rules();
     let mut game = game(&rules, &setup(&rules), vec![]);
     let hero = visitor(&game);
     let hero_type = game.hero(hero).unwrap().hero_type;
     run(&rules, &mut game, RED, heroes(T0, TownHeroChange::Enter)).unwrap();
+    // T-5's state (`TWN-QUIRK-11`, faithful): a defence won with creatures the battle made alone
+    // leaves the garrison hero no stack of its own (survey §9.3; the bars keep a hero's last).
+    let (adventure, _) = game.adventure_with_heroes();
+    adventure.end_battle(rules.core(), &[(hero, Some(&[]))], &mut Vec::new());
+    assert!(game.adventure().town_hero(T0).unwrap().army.is_empty());
     // Its owner sees it, with its details; blue does not.
     let red = observe(&game, &rules, Viewer::Player(RED));
     assert_eq!(red.adventure.garrison_heroes.len(), 1);
@@ -546,6 +551,15 @@ fn a_captured_town_s_garrison_hero_goes_back_to_the_pool() {
         path: vec![Pos::new(1, 1, 0)],
     });
     let events = run(&rules, &mut game, BLUE, step).unwrap();
+    // No battle, no experience, nothing taken: the step enters and captures.
+    assert!(!events.iter().any(|e| matches!(
+        e,
+        GameEvent::BattleStarted { .. } | GameEvent::HeroChanged { .. }
+    )));
+    assert_eq!(
+        game.adventure().hero(blue_hero).unwrap().pos,
+        Pos::new(1, 1, 0)
+    );
     assert!(events.contains(&GameEvent::Adventure(AdventureEvent {
         kind: AdventureEventKind::HeroRemoved {
             hero,
@@ -560,4 +574,57 @@ fn a_captured_town_s_garrison_hero_goes_back_to_the_pool() {
         game.hero_pool().status(hero_type),
         Some(crate::town::pool::HeroStatus::Free)
     );
+}
+
+// covers: TWN-VEW-001, TWN-VEW-002, TWN-VEW-003
+#[test]
+fn a_town_s_views_show_its_garrison_hero_s_army_and_its_mark() {
+    let rules = rules();
+    let imp = rules.core().creature_by_key("t:imp").unwrap();
+    let mut game = game(&rules, &setup(&rules), vec![stack(0, imp, 3)]);
+    let hero = visitor(&game);
+    let view = |game: &GameState| {
+        let mut towns = observe(game, &rules, Viewer::Player(RED)).towns.into_iter();
+        towns.find(|t| t.town == T0).unwrap()
+    };
+    assert!(!view(&game).owner_facts.unwrap().garrison_hero);
+    // The visitor's imps take in the garrison's (TWN-ROW-002): the town's upper bar is its
+    // garrison hero's army, at every level, with the top level's mark (survey §12.3).
+    let events = run(&rules, &mut game, RED, heroes(T0, TownHeroChange::Enter)).unwrap();
+    let seen = view(&game);
+    assert_eq!(
+        seen.garrison.army.as_deref(),
+        Some(&[stack(1, imp, 12)][..])
+    );
+    let shown: Vec<_> = seen
+        .garrison
+        .stacks
+        .iter()
+        .map(|s| (s.creature, s.count))
+        .collect();
+    assert_eq!(shown, [(imp, Some(12))]);
+    assert!(seen.owner_facts.as_ref().unwrap().garrison_hero);
+    // Told whole to red, its viewer.
+    let told = super::telling(RED, &seen);
+    let first = events.iter().position(|e| *e == told[0]).unwrap();
+    assert_eq!(&events[first..first + told.len()], &told[..]);
+    // A command on the garrison hero's army changes the town's view and tells it.
+    let within = Manage::Army(ArmyCommand::Move {
+        from: slot(ArmyRef::Hero(hero), 1),
+        to: slot(ArmyRef::Hero(hero), 0),
+    });
+    let events = run(&rules, &mut game, RED, GameCommand::Manage(within)).unwrap();
+    let seen = view(&game);
+    assert_eq!(
+        seen.garrison.army.as_deref(),
+        Some(&[stack(0, imp, 12)][..])
+    );
+    let told = super::telling(RED, &seen);
+    let first = events.iter().position(|e| *e == told[0]).unwrap();
+    assert_eq!(&events[first..first + told.len()], &told[..]);
+    // Out again: the town's own garrison, empty, and no mark.
+    run(&rules, &mut game, RED, heroes(T0, TownHeroChange::Leave)).unwrap();
+    let seen = view(&game);
+    assert_eq!(seen.garrison.army.as_deref(), Some(&[][..]));
+    assert!(!seen.owner_facts.unwrap().garrison_hero);
 }

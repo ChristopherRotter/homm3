@@ -1,7 +1,8 @@
 //! Tests of a town's two rows (TWN-ROW-001 to -004; E09 T28a, the town epic's design note §52,
 //! §53): the garrison hero's record and its three moves, the absorb, the capture's release
-//! (`TWN-STUB-14`), the town's bars and a garrison hero in the army commands, the hire's town
-//! target with a garrison hero, the owner's view and the hash.
+//! (`TWN-QUIRK-11`), the town's bars and a garrison hero in the army commands, the hire's town
+//! target with a garrison hero, the owner's view and the hash. Since E09 T28b2 (design §54) what
+//! a garrison hero changes at a visit of another team: rows 1 and 3, T-5, its battle's end.
 
 extern crate std;
 
@@ -16,10 +17,12 @@ use h3_kernel::hash::hash_of;
 
 use super::{TownHeroError, TownHeroMove, absorb};
 use crate::army::{ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
-use crate::command::{AdventureEvent, AdventureEventKind, HireTarget, OwnHeroes, Viewers};
+use crate::command::{
+    AdventureEvent, AdventureEventKind, BattleStart, Defender, HireTarget, OwnHeroes, Viewers,
+};
 use crate::ruleset::{AdventurePack, AdventureRuleset, ObjectKindDef, ObjectTypeDef, Visit};
 use crate::setup::{AdventureSetup, Holds, ObjectSetup, Pos, Scenery, TileMask};
-use crate::state::AdventureState;
+use crate::state::{AdventureState, VisitMarks};
 use crate::testing::{
     GNOLL, MAX_STACK, PEASANT, PIKEMAN, WOLF, hero_at, key, movement_rules_with, started, stream,
     world,
@@ -782,10 +785,9 @@ fn the_garrison_heroes_keep_town_order_and_their_owner_s_snapshot() {
     let _: OwnHeroes = state.own_heroes();
 }
 
-// covers: TWN-SET-005
-// stub: TWN-STUB-14
+// covers: TWN-SET-005, TWN-CAP-003
 #[test]
-fn a_captured_town_s_garrison_hero_leaves_the_game() {
+fn a_released_garrison_hero_leaves_the_game() {
     let rules = rules();
     let mut state = at_town(&rules, vec![], vec![stack(0, PEASANT, 1)]);
     let mut events = Vec::new();
@@ -806,4 +808,115 @@ fn a_captured_town_s_garrison_hero_leaves_the_game() {
             seen_by: Viewers::NONE.with(RED),
         }]
     );
+}
+
+/// [`at_town`] with red's visitor holding one peasant moved into the garrison (TWN-ROW-002).
+fn held(rules: &Rules) -> AdventureState {
+    let mut state = at_town(rules, vec![], vec![stack(0, PEASANT, 1)]);
+    row(rules, &mut state, RED, (TOWN, TownHeroMove::Enter)).unwrap();
+    state
+}
+
+/// Blue's hero 3.
+const BLUE_HERO: HeroId = HeroId::new(3);
+
+/// The defending hero's id, owner and army of `battle`.
+fn defending(battle: &BattleStart) -> (HeroId, PlayerId, Vec<ArmyStack>) {
+    match &battle.defender {
+        Defender::Hero(c) => (c.hero, c.owner, c.army.clone()),
+        other => panic!("{other:?}"),
+    }
+}
+
+// covers: TWN-VIS-001, TWN-SIE-001
+#[test]
+fn a_garrison_hero_alone_defends_its_town_s_siege_with_its_own_army() {
+    let rules = rules();
+    let mut state = held(&rules);
+    assert_eq!(state.upper_bar(TOWN), [stack(0, PEASANT, 1)]);
+    assert_eq!(state.upper_bar(TownId::new(3)), []);
+    // Its own team enters; another visits from the tile before, the siege of the town against
+    // the garrison hero with its army (survey §9.1's third row).
+    assert_eq!(state.town_visit(0, RED), Visit::Enter);
+    assert_eq!(state.town_visit(0, BLUE), Visit::Neighbour);
+    let outcome = state.visit_town(&rules.1, (BLUE, BLUE_HERO), (0, Visit::Neighbour));
+    let battle = outcome.battle.unwrap();
+    assert_eq!((battle.town, battle.tile), (Some(TOWN), ENTRANCE));
+    assert_eq!(battle.attacker.hero, BLUE_HERO);
+    assert_eq!(
+        defending(&battle),
+        (VISITOR, RED, vec![stack(0, PEASANT, 1)])
+    );
+    assert_eq!(outcome.capture, None);
+    // T-5 (`TWN-QUIRK-11`, faithful): a garrison hero whose army is empty (a defence won with
+    // creatures the battle made alone) does not defend: the step enters, for the capture.
+    state.end_battle(&rules.0, &[(VISITOR, Some(&[]))], &mut Vec::new());
+    assert_eq!(state.town_hero(TOWN).unwrap().army, []);
+    assert_eq!(state.town_visit(0, BLUE), Visit::Enter);
+    let outcome = state.visit_town(&rules.1, (BLUE, BLUE_HERO), (0, Visit::Enter));
+    assert_eq!((outcome.capture, outcome.battle), (Some(TOWN), None));
+}
+
+// covers: TWN-SIE-001, TWN-VIS-002
+#[test]
+fn beside_a_garrison_hero_the_visitor_s_battle_at_the_gate_is_no_siege() {
+    let rules = rules();
+    let mut state = held(&rules);
+    let (heroes, _) = state.rows_mut();
+    heroes.iter_mut().find(|h| h.id == OTHER).unwrap().pos = ENTRANCE;
+    assert_eq!(state.town_visit(0, BLUE), Visit::Neighbour);
+    let outcome = state.visit_town(&rules.1, (BLUE, BLUE_HERO), (0, Visit::Neighbour));
+    let battle = outcome.battle.unwrap();
+    // The first row: against the visitor with its own army, at the gate, no town's battle.
+    assert_eq!((battle.town, battle.tile), (None, ENTRANCE));
+    assert_eq!(defending(&battle), (OTHER, RED, vec![stack(0, PEASANT, 1)]));
+}
+
+// covers: TWN-SIE-001, TWN-CAP-003, GAM-BAT-006, GAM-BAT-014
+#[test]
+fn a_garrison_hero_s_battle_ends_in_its_town() {
+    let rules = rules();
+    let mut state = held(&rules);
+    let mut events = Vec::new();
+    // Its battle bonuses are kept by id and cleared after a battle as a hero's on the map.
+    state.give_bonus(VISITOR, 1, 2);
+    assert_ne!(state.visit_marks(VISITOR), &VisitMarks::NONE);
+    // A win: its survivors by slot, then the creatures its Necromancy raises join them.
+    state.end_battle(
+        &rules.0,
+        &[(VISITOR, Some(&[stack(2, PEASANT, 1)]))],
+        &mut events,
+    );
+    assert_eq!(
+        state.raise(&rules.0, &rules.1, VISITOR, (PEASANT, 3)),
+        Some((PEASANT, 3))
+    );
+    assert_eq!(state.town_hero(TOWN).unwrap().army, [stack(2, PEASANT, 4)]);
+    state.clear_battle_bonuses(&rules.0, &rules.1, &[VISITOR]);
+    assert_eq!(state.visit_marks(VISITOR), &VisitMarks::NONE);
+    assert_eq!(events, []);
+    // A hero neither on the map nor in a garrison changes nothing.
+    let before = state.clone();
+    state.end_battle(&rules.0, &[(HeroId::new(9), None)], &mut events);
+    assert_eq!(
+        state.raise(&rules.0, &rules.1, HeroId::new(9), (PEASANT, 3)),
+        None
+    );
+    assert_eq!((&state, &events[..]), (&before, &[][..]));
+    // A loss, a retreat or a draw: it leaves the game, told to its owner alone.
+    state.give_bonus(VISITOR, 1, 0);
+    state.end_battle(&rules.0, &[(VISITOR, None)], &mut events);
+    assert!(state.town_hero(TOWN).is_none() && state.town_heroes().is_empty());
+    assert_eq!(state.visit_marks(VISITOR), &VisitMarks::NONE);
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::HeroRemoved {
+                hero: VISITOR,
+                pos: ENTRANCE,
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    assert_eq!(state.upper_bar(TOWN), []);
 }

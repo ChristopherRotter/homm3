@@ -9951,7 +9951,8 @@ fn check_isolation(
     };
     prop_assert!(a.iter().all(|a| b.iter().any(|b| b.id == a.id) || out(a)));
     // E09 T28b1: another player's garrison hero keeps its record, but at its owner's turn start
-    // its points, then full (TWN-ROW-005); a captured town's leaves the game (`TWN-STUB-14`).
+    // its points, then full (TWN-ROW-005); a captured town's leaves the game (`TWN-QUIRK-11`),
+    // and since E09 T28b2 one its siege beat.
     for (town, b) in before.adventure().town_heroes() {
         let Some(a) = after
             .adventure()
