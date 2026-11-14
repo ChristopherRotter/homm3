@@ -531,14 +531,14 @@ mod tests {
     #[test]
     fn samples_decode_as_smacker_and_ffmpeg_decode_them() {
         // The frames' hashes of the samples, each checked against SMACKW32.DLL's and FFmpeg
-        // 6.1.1's decoding at E27 M2 T1.
+        // 6.1.1's decoding at E27 M2 T1 (again at T2, whose sound tracks changed them).
         let hashes: Vec<u64> = (1..=8)
             .map(|seed| check::hash(&check::frames(&build::sample(seed)).unwrap()))
             .collect();
         assert_eq!(hashes, SAMPLE_HASHES);
         // Version 4's (FFmpeg 6.1.1's; the DLL reads version 2 only), of seeds whose clips have
         // full blocks (in the others version 4 decodes as version 2).
-        let hashes: Vec<u64> = [2, 5, 6, 7]
+        let hashes: Vec<u64> = [2, 5, 6, 7, 8]
             .into_iter()
             .map(|seed| {
                 check::hash(&check::frames(&build::sample_version(seed, Version::Smk4)).unwrap())
@@ -548,20 +548,21 @@ mod tests {
     }
 
     const SAMPLE_HASHES: [u64; 8] = [
-        0x950F4B9EE1B1A3C2,
-        0x83621BE2E5B230A8,
-        0x559A5D305925BD36,
-        0x0B8DD8B23A08C10C,
-        0xFF0B362DF1FEDC77,
-        0x789252D101EC3D96,
-        0xDC8A090FBF6C5C34,
-        0x31A2671B6F3DFA78,
+        0xF970_898F_838F_6480,
+        0x8362_1BE2_E5B2_30A8,
+        0x559A_5D30_5925_BD36,
+        0x302F_B6D8_F9A6_FC2F,
+        0x9E73_81EE_FC0C_D3CE,
+        0x530A_9039_2B7B_1B80,
+        0xDCC6_8034_4610_757F,
+        0x10CB_7291_68D0_71B9,
     ];
-    const SAMPLE4_HASHES: [u64; 4] = [
-        0xE28DDE104696A6BF,
-        0x753F6450C11DF9D9,
-        0xFF64D3558022FC40,
-        0x83E7DBFEA2073BDA,
+    const SAMPLE4_HASHES: [u64; 5] = [
+        0xE28D_DE10_4696_A6BF,
+        0x451B_D8E9_938B_8C1C,
+        0x7640_BAE8_6EFB_9A60,
+        0xF090_EFA9_CE7C_4599,
+        0x323E_EE6C_427C_D93E,
     ];
 
     proptest! {

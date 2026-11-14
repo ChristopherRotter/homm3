@@ -23,9 +23,10 @@ adventure).
 
 | File | What it does |
 |---|---|
-| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll` and `binkprobe.exe`; writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
+| `setup.sh [copy]` | Installs 32-bit Wine, Xvfb, xdotool, xset, ImageMagick and mingw-w64; makes the run directory `original-data/wine/game` from the copy (default `original-data/install`), its `VIDEO.VID` the user's `original-data/battle-videos.vid` (the result window's clips, E17 M5 T4b2b) and `original-data/shell-videos.vid` (the shell's 13 clips, E27 M1 T2) joined into one archive (either alone when only it is staged; an empty archive without both, and it says which); builds `xdd.dll`, `binkprobe.exe`, `smackprobe.exe` and the stand-in Miles (`mss/MSS32.DLL`, E27 M2 T2); writes the game's settings (no intro, no grid, no sound, full screen, a hero's path shown before it walks, auto combat playing the creatures, the spell book's page turns without their videos) into the Wine prefix (`$WINEPREFIX`, default `~/.wine-h3`, in a directory the shell's user owns). |
 | `xdd.c`, `xdd.def` | Our `xdd.dll`: forwards the GOG executable's `DirectDrawCreate` to Wine's ddraw, the **virtual clock** (BINKW32.DLL's too) and the **forced rolls** (below). |
 | `smackprobe.c` | Our `smackprobe.exe` (E27 M2 T1): the game's `SMACKW32.DLL` run on a video archive's Smacker clips as a black box: every frame as the DLL leaves it in the buffer (8 bits, 5-5-5 or 5-6-5) and its palette (below, "The clips"). |
+| `mss32.c`, `mss32.def`, `mss32.rc` | Our stand-in for Miles' `MSS32.DLL` (E27 M2 T2), built into the run directory's `mss/` (the game's own stays beside `Heroes3.exe`): the probes load it before a DLL asks for Miles, and it writes the sound the DLL hands Miles to files (below, "The clips' sound"). |
 | `binkprobe.c` | Our `binkprobe.exe` (E17 M5 T4b2b): the game's `BINKW32.DLL` run on a video archive's clips as a black box, its clock ours: every frame as the DLL copies it (5-6-5, YUY2, …), the result window's playback by the millisecond, the DLL's dequantizers (below, "The clips"); at the game's x87 control word 0x27F (E17 M6 T6c1). |
 | `h3drive.py` | The driver: starts the game, the recipes (fixed coordinates, screens by probes), the clock, dumps; the commands `battle`, `set`, `learn`, `shot`, `sequence`, `sequences`, `frames`. |
 | `test_h3drive.py` | Checks of the driver's parts that need no game, Wine or display, its commands recorded (E17 M7 T4: a key or button an action holds let go at the game's stop and start): `python3 -m unittest test_h3drive` from here. |
@@ -1367,6 +1368,36 @@ Each frame (the ring frame too) as the buffer holds it after `SmackDoFrame`, the
 the DLL's palette; `<out>.info` the frame's number and the new-palette flag. Wine maps names
 ignoring case: an output named as an existing file of another case overwrites it.
 `clients/scripts/smacker-check.sh` compares `h3-smacker` with it (`smacker-dll.py`).
+
+### The clips' sound
+
+E27 M2 T2 (`docs/epics/E27-design.md` §8.1): the probes write the clips' decoded sound, which the
+captures never play.
+
+```
+cd original-data/wine/game
+wine smackprobe.exe audio 'Data\VIDEO.VID' HSLOOP hsloop     # hsloop.<handle>.pcm, hsloop.log
+wine binkprobe.exe sound 'Data\VIDEO.VID' NWCLOGO nwclogo.pcm # the first track's samples
+wine binkprobe.exe sound-tables bink.tables                  # 256 scales, the twiddles
+wine binkprobe.exe cdft 1024 in.f32 out.f32                   # the FFT alone (n values)
+```
+
+- `smackprobe audio` loads the stand-in Miles (`mss/MSS32.DLL`) by its path before
+  `SMACKW32.DLL` asks for `MSS32.DLL`, opens the clip with its tracks (0xFE000) at the game's
+  volume for the effects setting 9, plays every frame (the ring frame too) and pumps the DLL's
+  Miles timer after each (up to 64 times, 256 at the end): `<out>.<handle>.pcm` holds each Miles
+  sample's loads in order (one handle per track), `<out>.log` every Miles call. The stand-in's
+  driver says preference 15 is 1 (the double buffers; the game's says 0, DirectSound) and every
+  buffer free; its timers run only when pumped.
+- `binkprobe sound` runs `BINKW32.DLL`'s decoder as `BinkDoFrame` does
+  (`BinkAudioDecompressOpen`, then each frame's packet until its decoded size): 16-bit samples,
+  the channels interleaved, 8-bit tracks as 16-bit (the DLL's playback converts them). The DLL's
+  playback is not used: it drops what overflows its ring when Miles lags.
+- `sound-tables` writes the 256 band scales and the FFT's twiddles for 1024, 2048 and 4096 values
+  (binary32 bits, little-endian); `cdft` runs the DLL's FFT (0x1000C610, the sign −1) on each run
+  of `n` binary32 values of its input in turn, one table for all.
+- `smacker-dll.py` and `bink-dll.py` run them for `smacker-check.sh` and `bink-check.sh`, which
+  compare `h3-view video`'s `<stem>.t<k>.pcm` and `<stem>.pcm`.
 
 ## Sound
 

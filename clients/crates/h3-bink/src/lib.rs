@@ -67,12 +67,15 @@
 
 extern crate alloc;
 
+pub mod audio;
 mod bits;
 pub mod build;
 pub mod check;
 mod clip;
 mod dsp;
+mod fft;
 mod tables;
+mod trig;
 mod video;
 #[doc(hidden)]
 pub mod x87;

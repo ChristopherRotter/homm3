@@ -1,5 +1,5 @@
 //! The Smacker file (FFmpeg 6.1.1's demuxer `libavformat/smacker.c`: `read_header` and
-//! `read_packet`, its audio streams discarded): a 104-byte header, the frames' sizes and flags,
+//! `read_packet`, its audio streams read: E27 M2 T2): a 104-byte header, the frames' sizes and flags,
 //! the Huffman trees, then the frames, each its palette's change, its audio tracks' packets and
 //! its video.
 //!
@@ -15,7 +15,11 @@
 //! is applied to the palette the frames before left (its entries copied from that palette,
 //! skipped or new), and a frame whose data break a check gives an error, the next frame read
 //! from where its size puts it. Past the file's end every byte reads as 0 (`avio_r8`), and a
-//! frame's video running past it gives [`Error::Truncated`] (`ffio_read_size`).
+//! frame's video or a track's packet running past it gives [`Error::Truncated`]
+//! (`ffio_read_size`, `av_get_packet`). A packet of a track the header does not describe is
+//! skipped (FFmpeg has no stream for it). FFmpeg's library gives a frame's packets one by one,
+//! so a frame failing in a later track's packet has given the earlier tracks' first; here the
+//! frame fails whole (no game clip has more than one track).
 
 use alloc::vec::Vec;
 
@@ -213,11 +217,14 @@ pub struct Packet<'a> {
     pub flags: u8,
     /// The palette, 256 colours of red, green and blue.
     pub palette: [u8; 768],
+    /// Each track's packet in the frame: its bytes after the size word ([`crate::sound::decode`]
+    /// takes them), `None` for a track with none.
+    pub audio: [Option<&'a [u8]>; 7],
     /// The video's bytes.
     pub video: &'a [u8],
 }
 
-/// The frames in order (`smacker_read_packet`, the audio streams discarded): the palette is
+/// The frames in order (`smacker_read_packet`, the audio streams read): the palette is
 /// the reader's, each frame's change applied to it.
 #[derive(Debug, Clone)]
 pub struct Reader<'c, 'a> {
@@ -301,6 +308,7 @@ impl<'a> Reader<'_, 'a> {
         if flags & 1 != 0 {
             left = self.palette(left)?;
         }
+        let mut audio = [None; 7];
         for (k, track) in self.clip.tracks.iter().enumerate() {
             if flags & (2 << k) == 0 {
                 continue;
@@ -311,11 +319,15 @@ impl<'a> Reader<'_, 'a> {
                 return Err(Error::Invalid("audio packet's size"));
             }
             left -= bytes;
-            // A discarded stream's packet: its decoded size read, the rest skipped.
-            if duration != 0 {
-                self.word();
+            if track.rate == 0 {
+                // No stream for it (and no decoded size: `duration_bytes`): skipped.
+                self.at += u64::from(bytes - 4);
+                continue;
             }
-            self.at += u64::from(bytes - 4 - duration);
+            let start = usize::try_from(self.at).unwrap_or(usize::MAX);
+            let end = start.saturating_add((bytes - 4) as usize);
+            audio[k] = Some(self.clip.bytes.get(start..end).ok_or(Error::Truncated)?);
+            self.at = end as u64;
         }
         if left >= i32::MAX as u32 / 2 {
             return Err(Error::Invalid("video's size"));
@@ -329,6 +341,7 @@ impl<'a> Reader<'_, 'a> {
             frame,
             flags: u8::from(self.changed) | u8::from(key) << 1,
             palette: self.palette,
+            audio,
             video,
         };
         self.changed = false;
@@ -385,7 +398,7 @@ mod tests {
             FrameSpec::video(vec![1]),
             FrameSpec {
                 key: true,
-                audio: vec![(2, vec![0; 6])],
+                audio: vec![(2, vec![7, 0, 0, 0, 1, 2])],
                 ..FrameSpec::video(vec![2, 3])
             },
         ];
@@ -401,7 +414,7 @@ mod tests {
             Track {
                 rate: 22050,
                 flags: 0xF0,
-                largest: 10
+                largest: 7
             }
         );
         assert_eq!(clip.tracks[0], Track::default());
@@ -605,7 +618,7 @@ mod tests {
     }
 
     #[test]
-    fn audio_packets_are_skipped_or_fail_their_frame() {
+    fn audio_packets_are_given_skipped_or_fail_their_frame() {
         let mut h = header();
         h.tracks[0] = Track {
             rate: 22050,
@@ -633,8 +646,15 @@ mod tests {
         let clip = Clip::parse(&bytes).unwrap();
         let packets: Vec<_> = clip.reader().collect();
         assert_eq!(packets[0].as_ref().unwrap().video, [9, 0, 0, 0]);
+        // Track 0's packet given; track 1's skipped.
+        assert_eq!(
+            packets[0].as_ref().unwrap().audio[0],
+            Some([0; 4].as_slice())
+        );
+        assert_eq!(packets[0].as_ref().unwrap().audio[1], None);
         assert_eq!(packets[1], Err(Error::Invalid("audio packet's size")));
         assert_eq!(packets[2].as_ref().unwrap().flags, 1);
+        assert_eq!(packets[2].as_ref().unwrap().audio, [None; 7]);
         // A packet larger than its frame.
         let mut big = bytes.clone();
         let at = clip.data;
@@ -651,6 +671,12 @@ mod tests {
             clip.reader().next(),
             Some(Err(Error::Invalid("audio packet's size")))
         );
+        // A packet running past the file's end.
+        let cut = file(&h, &[frame(vec![(0, vec![7; 12])])]);
+        let mut short = cut.clone();
+        short.truncate(cut.len() - 8);
+        let clip = Clip::parse(&short).unwrap();
+        assert_eq!(clip.reader().next(), Some(Err(Error::Truncated)));
     }
 
     #[test]

@@ -601,6 +601,7 @@ dependencies = [
  "h3-bink",
  "h3-protocol",
  "h3-render",
+ "h3-smacker",
  "h3-ui",
  "proptest",
  "serde",

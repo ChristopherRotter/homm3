@@ -160,6 +160,50 @@ impl X {
         round(self.m as i128 * other.m as i128, self.e + other.e, P53)
     }
 
+    /// The significand and the exponent of its last place (for `trig`'s fixed point).
+    pub(crate) const fn parts(self) -> (i64, i32) {
+        (self.m, self.e)
+    }
+
+    /// `fchs`: exact.
+    #[must_use]
+    pub const fn neg(self) -> Self {
+        Self {
+            m: -self.m,
+            e: self.e,
+        }
+    }
+
+    /// The sound decoder's sample (E27 M2 T2, `BINKW32.DLL` 0x1000F89B): from zero up
+    /// `floor(self + 0.5)`, below it `−floor(−self + 0.5)` (each sum rounded to 53 bits on the
+    /// stack, `floor` the CRT's 0x10011335), 32 767 from there up and −32 768 from there down
+    /// (the compares with binary64 constants), else the integer (`_ftol`, exact).
+    #[must_use]
+    pub const fn sample(self) -> i16 {
+        let (negative, v) = if self.m < 0 {
+            (true, self.neg())
+        } else {
+            (false, self)
+        };
+        let half = Self { m: 1 << 52, e: -53 };
+        // At least 0.5 (its last place at 2^-53 or above): floor its integer part.
+        let v = v.add(half);
+        let whole = if v.e >= 0 {
+            // At least 2^52: beyond every clamp.
+            i64::MAX
+        } else {
+            v.m >> -v.e
+        };
+        let whole = if negative { -whole } else { whole };
+        if whole >= 32_767 {
+            32_767
+        } else if whole <= -32_768 {
+            -32_768
+        } else {
+            whole as i16
+        }
+    }
+
     /// `fst dword`: rounded to binary32's 24 bits.
     pub const fn single(self) -> Self {
         round(self.m as i128, self.e, P24)
@@ -229,6 +273,25 @@ mod tests {
     //! Edges of the rounding, in integers (the hardware's binary64 as the reference:
     //! `tests/x87.rs`).
     use super::*;
+
+    #[test]
+    fn samples_round_half_away_from_zero_and_hold_to_16_bits() {
+        let v = |n: i64, d: i64| X::ratio(n, d);
+        assert_eq!(v(3, 2).sample(), 2);
+        assert_eq!(v(3, 2).neg().sample(), -2);
+        assert_eq!(v(5, 4).sample(), 1);
+        assert_eq!(v(5, 4).neg().sample(), -1);
+        assert_eq!(X::ZERO.sample(), 0);
+        assert_eq!(v(1, 1 << 40).sample(), 0);
+        assert_eq!(X::int(32_766).sample(), 32_766);
+        assert_eq!(X::int(32_767).sample(), 32_767);
+        assert_eq!(X::int(-32_767).sample(), -32_767);
+        assert_eq!(X::int(-32_768).sample(), -32_768);
+        assert_eq!(X::int(1 << 30).mul(X::int(1 << 30)).sample(), 32_767);
+        assert_eq!(X::int(1 << 30).mul(X::int(1 << 30)).neg().sample(), -32_768);
+        assert_eq!(X::int(5).neg().neg(), X::int(5));
+        assert_eq!(X::int(5).parts(), (5 << 50, -50));
+    }
 
     /// 2^53.
     fn big() -> X {

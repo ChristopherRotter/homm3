@@ -8,7 +8,11 @@
 //! The writer does not validate: a test gets what it asks for (a run past the block, a type the
 //! decoder rejects), so that the decoder's checks can be tested.
 
+use alloc::vec;
 use alloc::vec::Vec;
+
+use crate::audio::Track;
+use crate::x87::X;
 
 use crate::tables::RUN_BITS;
 use crate::video::{
@@ -101,6 +105,8 @@ pub struct Header {
     pub flags: u32,
     /// How many audio tracks the header describes (each frame's packets are the caller's).
     pub audio_tracks: u32,
+    /// The tracks' descriptions (E27 M2 T2), in order; a track past them described by zeros.
+    pub tracks: Vec<Track>,
 }
 
 impl Header {
@@ -115,6 +121,7 @@ impl Header {
             rate_den: 1,
             flags: 0,
             audio_tracks: 0,
+            tracks: Vec::new(),
         }
     }
 }
@@ -124,8 +131,9 @@ fn word(value: usize) -> [u8; 4] {
 }
 
 /// A Bink file of `frames` (each a frame's whole bytes, padded with a 0 to an even size as the
-/// files' are): the header, the audio tracks' descriptions (zeros), the index of `frames.len()`
-/// + 1 offsets (the first marked a key frame, the last the file's end), the frames.
+/// files' are): the header, the audio tracks' descriptions (each track's largest decoded size,
+/// its rate and flags, its id: its index), the index of `frames.len()` + 1 offsets (the first
+/// marked a key frame, the last the file's end), the frames.
 #[must_use]
 pub fn file(header: &Header, frames: &[Vec<u8>]) -> Vec<u8> {
     let tracks = usize::try_from(header.audio_tracks).unwrap_or(0);
@@ -150,7 +158,18 @@ pub fn file(header: &Header, frames: &[Vec<u8>]) -> Vec<u8> {
     ] {
         out.extend_from_slice(&value.to_le_bytes());
     }
-    out.resize(out.len() + extra + 12 * tracks, 0);
+    out.resize(out.len() + extra, 0);
+    let track = |k: usize| header.tracks.get(k).copied().unwrap_or_default();
+    for k in 0..tracks {
+        out.extend_from_slice(&track(k).largest.to_le_bytes());
+    }
+    for k in 0..tracks {
+        let t = track(k);
+        out.extend_from_slice(&(u32::from(t.rate) | u32::from(t.flags) << 16).to_le_bytes());
+    }
+    for k in 0..tracks {
+        out.extend_from_slice(&word(k));
+    }
     let mut offset = first;
     for (i, &frame) in sizes.iter().enumerate() {
         out.extend_from_slice(&word(offset | usize::from(i == 0)));
@@ -725,6 +744,136 @@ fn inside(x: usize, y: usize, columns: usize, rows: usize, key: bool) -> [(i32, 
     ]
 }
 
+/// A sound block (E27 M2 T2; the writer's side of [`crate::audio::Audio`]): the spectrum's two
+/// ends as binary32 bits, a quantizer byte per band, then the coefficients from the third in
+/// runs of 16 (the last cut at the frame's end), each run a width and its values, a value not 0
+/// followed by its sign (`coefficients[k]` the (k + 2)-th; missing ones 0, the run's width the
+/// smallest that holds its values unless `widths` gives it), then zeros to a whole word.
+#[must_use]
+pub fn sound_block(
+    ends: [u32; 2],
+    quantizers: &[u8],
+    frame: usize,
+    coefficients: &[i32],
+    widths: &[u32],
+) -> Vec<u8> {
+    let mut w = BitWriter::new();
+    for &q in quantizers {
+        w.put(u32::from(q), 8);
+    }
+    let value = |k: usize| coefficients.get(k).copied().unwrap_or(0);
+    for (run, start) in (0..frame.saturating_sub(2)).step_by(16).enumerate() {
+        let end = (start + 16).min(frame - 2);
+        let needed = (start..end)
+            .map(|k| 32 - value(k).unsigned_abs().leading_zeros())
+            .max()
+            .unwrap_or(0);
+        let width = widths.get(run).copied().unwrap_or(needed);
+        w.put(width, 4);
+        if width > 0 {
+            for k in start..end {
+                let v = value(k);
+                w.put(v.unsigned_abs(), width);
+                if v != 0 {
+                    w.flag(v < 0);
+                }
+            }
+        }
+    }
+    w.align32();
+    let mut out: Vec<u8> = ends.iter().flat_map(|e| e.to_le_bytes()).collect();
+    out.extend(w.into_bytes());
+    out
+}
+
+/// A track's packet (E27 M2 T2): its decoded size, then its blocks; its size word is the
+/// frame's ([`frame_with_sound`]).
+#[must_use]
+pub fn sound_packet(decoded: u32, blocks: &[Vec<u8>]) -> Vec<u8> {
+    let mut out = decoded.to_le_bytes().to_vec();
+    for block in blocks {
+        out.extend(block);
+    }
+    out
+}
+
+/// A frame's bytes of one audio track's `packet` (its size word first) and the `video`.
+#[must_use]
+pub fn frame_with_sound(packet: &[u8], video: &[u8]) -> Vec<u8> {
+    let mut out = word(packet.len()).to_vec();
+    out.extend(packet);
+    out.extend(video);
+    out
+}
+
+/// The sample's random sound track (E27 M2 T2): its rate (11 025, 22 050 or 44 100: the
+/// transform's three sizes), its channels, and a packet a frame of 1 to 3 blocks (the first
+/// frame's 3), the last packet's decoded size ending inside its last block; each block's ends,
+/// quantizers (mostly up to 60, one in eight up to 255: past FFmpeg's cap of 95, the DLL's
+/// none) and coefficients of random widths (a run left empty one time in four), drawn from a
+/// source of its own so that the sample's video stays as it was.
+fn sample_sound(seed: u64) -> (Track, Vec<Vec<u8>>) {
+    let mut rng = Random::new(seed ^ 0x50_0D_50_0D);
+    let rate = [11_025u16, 22_050, 44_100][rng.below(3) as usize];
+    let stereo = rng.below(2) == 1;
+    let track = Track {
+        largest: 0,
+        rate,
+        flags: 0xC000 | if stereo { 0x2000 } else { 0 },
+    };
+    let frame = if rate >= 44_100 {
+        2048
+    } else if rate >= 22_050 {
+        1024
+    } else {
+        512
+    };
+    let half = (u32::from(rate) * track.channels() + 1) >> 1;
+    let bands = crate::audio::band_count(half);
+    let block_bytes = 2 * (frame - frame / 16);
+    let mut packets = Vec::new();
+    let mut largest = 0;
+    for f in 0..SAMPLE_FRAMES {
+        let count = if f == 0 { 3 } else { 1 + rng.below(3) as usize };
+        let blocks: Vec<Vec<u8>> = (0..count)
+            .map(|_| {
+                let end = |rng: &mut Random| {
+                    let v = rng.range(-4000, 4000);
+                    X::int(v).to_bits32().unwrap_or(0)
+                };
+                let ends = [end(&mut rng), end(&mut rng)];
+                let quantizers: Vec<u8> = (0..bands)
+                    .map(|_| {
+                        if rng.below(8) == 0 {
+                            rng.below(256) as u8
+                        } else {
+                            rng.below(61) as u8
+                        }
+                    })
+                    .collect();
+                let mut coefficients = vec![0; frame - 2];
+                for run in coefficients.chunks_mut(16) {
+                    if rng.below(4) == 0 {
+                        continue;
+                    }
+                    let width = 1 + rng.below(12);
+                    for c in run {
+                        *c = rng.range(-(1 << width) + 1, (1 << width) - 1);
+                    }
+                }
+                sound_block(ends, &quantizers, frame, &coefficients, &[])
+            })
+            .collect();
+        let mut decoded = (count * block_bytes) as u32;
+        if f + 1 == SAMPLE_FRAMES {
+            decoded -= 2 * (1 + rng.below(100));
+        }
+        largest = largest.max(decoded);
+        packets.push(sound_packet(decoded, &blocks));
+    }
+    (Track { largest, ..track }, packets)
+}
+
 /// The sample's frame size and length.
 pub const SAMPLE_WIDTH: u32 = 256;
 /// See [`SAMPLE_WIDTH`].
@@ -734,7 +883,8 @@ pub const SAMPLE_FRAMES: usize = 8;
 
 /// A 256 × 48 clip of 8 frames (as wide as the game's clips), every block of a random type of
 /// the nine with random values (the first frame's skipped blocks raw instead; DCT coefficients
-/// of every magnitude up to 15 bits, E17 M6 T6c1), each seed its own clip: what `h3-view video
+/// of every magnitude up to 15 bits, E17 M6 T6c1), and a sound track (E27 M2 T2,
+/// [`sample_sound`]), each seed its own clip: what `h3-view video
 /// --sample` writes for the DLL to decode (`bink-check.sh`; FFmpeg until E17 M6 T6c1), and what
 /// the decoder's unit test hashes.
 #[must_use]
@@ -749,7 +899,12 @@ pub fn sample(seed: u64) -> Vec<u8> {
 #[must_use]
 pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
     let mut rng = Random::new(seed);
-    let header = Header::new(width, height);
+    let (track, sound) = sample_sound(seed);
+    let header = Header {
+        audio_tracks: 1,
+        tracks: vec![track],
+        ..Header::new(width, height)
+    };
     let (width, height) = (width as usize, height as usize);
     let frames: Vec<Vec<u8>> = (0..SAMPLE_FRAMES)
         .map(|f| {
@@ -769,8 +924,36 @@ pub fn sample_sized(seed: u64, width: u32, height: u32) -> Vec<u8> {
             if f + 1 == SAMPLE_FRAMES {
                 packet.resize(packet.len() + TAIL, 0);
             }
-            packet
+            frame_with_sound(&sound[f], &packet)
         })
         .collect();
     file(&header, &frames)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sound_blocks_are_written_as_the_decoder_reads_them() {
+        // Ends, a quantizer, a run of width 2 (given) holding 1, −2 and zeros, the rest
+        // empty, aligned to a word.
+        let b = sound_block([1, 2], &[7], 20, &[1, -2], &[2]);
+        assert_eq!(&b[..8], &[1, 0, 0, 0, 2, 0, 0, 0]);
+        let mut w = BitWriter::new();
+        w.put(7, 8);
+        w.put(2, 4);
+        w.put(1, 2);
+        w.flag(false);
+        w.put(2, 2);
+        w.flag(true);
+        for _ in 2..16 {
+            w.put(0, 2);
+        }
+        w.put(0, 4);
+        w.align32();
+        assert_eq!(&b[8..], w.into_bytes());
+        assert_eq!(sound_packet(9, &[vec![1], vec![2]]), [9, 0, 0, 0, 1, 2]);
+        assert_eq!(frame_with_sound(&[5], &[6]), [1, 0, 0, 0, 5, 6]);
+    }
 }

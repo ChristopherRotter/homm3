@@ -62,17 +62,37 @@ fn walk(values: &[u32], bits: &mut Bits<'_>, checked: bool) -> Result<usize, Err
 
 /// A byte tree: its one value (a tree of one leaf, or none: 0), or its entries.
 #[derive(Debug, Clone, PartialEq, Eq)]
-enum ByteTree {
+pub(crate) enum ByteTree {
     Value(u32),
     Tree(Vec<u32>),
 }
 
 impl ByteTree {
-    fn read(&self, bits: &mut Bits<'_>) -> u32 {
+    /// The next value: the one value without reading a bit, else a walk to a leaf, 0s read
+    /// past the end (`get_vlc2` over FFmpeg's padding).
+    pub(crate) fn read(&self, bits: &mut Bits<'_>) -> u32 {
         match self {
             Self::Value(value) => *value,
             Self::Tree(values) => walk(values, bits, false).map_or(0, |at| get(values, at)),
         }
+    }
+
+    /// Reads one (`smacker_decode_tree` from the root): a tree of one leaf gives its value
+    /// alone, as FFmpeg keeps `values[i]` and builds no table for it (the sound's trees,
+    /// `smka_decode_frame`).
+    pub(crate) fn parse(bits: &mut Bits<'_>) -> Result<Self, Error> {
+        let (mut values, mut leaves) = (Vec::new(), 0);
+        byte_tree(bits, &mut values, &mut leaves, 0)?;
+        Ok(if leaves > 1 {
+            Self::Tree(values)
+        } else {
+            Self::Value(get(&values, 0))
+        })
+    }
+
+    /// Whether it reads bits (FFmpeg's `vlc[i].table` set).
+    pub(crate) fn coded(&self) -> bool {
+        matches!(self, Self::Tree(_))
     }
 }
 
@@ -173,14 +193,8 @@ impl Tree {
             if bits.bit() == 0 {
                 continue;
             }
-            let (mut values, mut leaves) = (Vec::new(), 0);
-            byte_tree(bits, &mut values, &mut leaves, 0)?;
+            *tree = ByteTree::parse(bits)?;
             bits.bit();
-            *tree = if leaves > 1 {
-                ByteTree::Tree(values)
-            } else {
-                ByteTree::Value(get(&values, 0))
-            };
         }
         let escapes = [bits.bits(16), bits.bits(16), bits.bits(16)];
         let mut big = Big {
