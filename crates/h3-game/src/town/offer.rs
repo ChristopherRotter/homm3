@@ -61,9 +61,11 @@ impl GameState {
 /// order), each building of the hall's offer whose price its treasury holds, in the record's order
 /// (E09 T18b2b, design §29; TWN-BLD-001), then since E09 T27 a recruitment at each building whose
 /// dialog opens ([`h3_towns::recruiting`]: a standing dwelling, horde, or Portal holding a
-/// creature), in the record's order (TWN-REC-001, -002; design §49). A town built in today offers
-/// no build (TWN-BLD-004) and costs no Capitol test; a map without towns walks nothing.
-// rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002
+/// creature), in the record's order (TWN-REC-001, -002; design §49), then since E09 T28a the
+/// hero moves between its bars `Enter`, `Leave`, `Swap` the adventure accepts (TWN-ROW-002 to
+/// -004; `rows::legal_moves`). A town built in today offers no build (TWN-BLD-004) and costs no
+/// Capitol test; a map without towns walks nothing.
+// rule: TWN-BLD-001, TWN-BLD-004, TWN-REC-001, TWN-REC-002, TWN-ROW-002, TWN-ROW-003, TWN-ROW-004
 pub(crate) fn legal_builds<'a>(
     state: &'a GameState,
     rules: &'a GameRuleset,
@@ -94,7 +96,9 @@ pub(crate) fn legal_builds<'a>(
             let recruits = recruiting
                 .iter()
                 .map(move |building| GameCommand::Town(TownCommand::Recruit { town, building }));
-            builds.chain(recruits)
+            // E09 T28a: the hero moves between the town's bars (TWN-ROW-002 to -004).
+            let moves = super::rows::legal_moves(state, rules, player, town);
+            builds.chain(recruits).chain(moves)
         })
 }
 

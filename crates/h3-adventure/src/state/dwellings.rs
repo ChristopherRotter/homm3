@@ -894,6 +894,9 @@ enum Joining {
     Hero(usize),
     /// A town's garrison, by the town's object index (E09 T27).
     Garrison(usize, TownId),
+    /// A town's garrison hero's, by its place among the towns' garrison heroes (E09 T28a,
+    /// design §49: the upper bar, which a town's purchase joins).
+    TownHero(usize),
 }
 
 impl HirePurchase {
@@ -974,7 +977,8 @@ impl AdventureState {
     }
 
     /// Where `target`'s army is, if it is on the map: a hero's place among the heroes, a town's
-    /// object index (E09 T27).
+    /// object index (E09 T27), since E09 T28a its garrison hero's place among the towns' when one
+    /// stands there (the upper bar, TWN-ROW-001).
     fn joining(&self, target: &HireTarget) -> Option<Joining> {
         match *target {
             HireTarget::Hero(hero) => self
@@ -982,10 +986,18 @@ impl AdventureState {
                 .binary_search_by_key(&hero, |h| h.id)
                 .ok()
                 .map(Joining::Hero),
-            HireTarget::Garrison(town) => self
-                .map
-                .town_object(town)
-                .map(|index| Joining::Garrison(index, town)),
+            HireTarget::Garrison(town) => {
+                let held = self
+                    .town_heroes()
+                    .binary_search_by_key(&town, |&(id, _)| id);
+                match held {
+                    Ok(at) => Some(Joining::TownHero(at)),
+                    Err(_) => self
+                        .map
+                        .town_object(town)
+                        .map(|index| Joining::Garrison(index, town)),
+                }
+            }
         }
     }
 
@@ -994,6 +1006,7 @@ impl AdventureState {
         match into {
             Joining::Hero(at) => &self.heroes[at].army,
             Joining::Garrison(index, _) => self.town_garrison(index).unwrap_or_default(),
+            Joining::TownHero(at) => &self.town_heroes()[at].1.army,
         }
     }
 
@@ -1091,7 +1104,8 @@ impl AdventureState {
     /// hero's owner alone is told ([`AdventureEventKind::CreaturesJoined`]). Since E09 T27 a town's
     /// purchase ([`Self::check_join`]) joins the town's garrison, lowers no count of the map's and
     /// tells nothing: it returns the garrison's slot that changed, which the game tells (its
-    /// `StackChanged`); none for a hero's army.
+    /// `StackChanged`); none for a hero's army. Since E09 T28a a town's purchase with a garrison
+    /// hero joins its army (the upper bar, design §49) and returns its slot that changed.
     // rule: ADV-HIR-002, ADV-ARM-007
     pub fn hire<S: Sink>(&mut self, purchase: HirePurchase, sink: &mut S) -> Option<ArmySlot> {
         let HirePurchase {
@@ -1133,6 +1147,17 @@ impl AdventureState {
                     slot,
                 })
             }
+            Joining::TownHero(at) => self.town_hero_at_mut(at).map(|hero| {
+                join_at(&mut hero.army, room, creature, amount);
+                let slot = match room {
+                    Room::Stack(at) => hero.army[at].slot,
+                    Room::Slot(slot) => slot,
+                };
+                ArmySlot {
+                    army: ArmyRef::Hero(hero.id),
+                    slot,
+                }
+            }),
         }
     }
 

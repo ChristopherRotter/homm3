@@ -42,6 +42,10 @@ week_creature_chance = [1, 4]
 week_creature_bonus = 5
 garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
 
+[towns.rows]
+sources = ["s"]
+most_heroes = 8
+
 [towns.params]
 sources = ["s"]
 gold = "Gold"
@@ -341,7 +345,7 @@ fn harvests_the_town_files_that_compile() {
         "capitol_demoted_to = \"city_hall\"\nvisions_factor = 3\nvisions_min_radius = 2\n\
          week_creature_chance = [1, 4]\nweek_creature_bonus = 5\n\
          garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, \
-         upgrade = 5 }\n"
+         upgrade = 5 }\nmost_heroes = 8\n"
     ));
     assert!(!ab.contains("[town_params]") && !sod.contains("[town_params]"));
     // Visions' creatures, each in its own pack's file (E09 T8c2).

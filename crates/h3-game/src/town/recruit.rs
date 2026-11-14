@@ -149,15 +149,11 @@ pub(crate) fn buy<S: Sink>(
     state.pay_price(player, purchase.price(), sink);
     let _changed = state.towns_mut().write(town, bought);
     let (adventure, _) = state.adventure_with_heroes();
-    // A garrison's purchase names its slot (a hero's army none: the garrison hero's, E09 T28a).
+    // A town's purchase names its slot: the garrison's, or since E09 T28a its garrison hero's
+    // army's (the upper bar, design §49).
     let joined = adventure.hire(purchase, &mut AdventureSink(sink));
-    let adventure = state.adventure();
-    let garrison = adventure
-        .map()
-        .town_object(town)
-        .and_then(|index| adventure.town_garrison(index));
     joined.into_iter().for_each(|at| {
-        let stack = garrison.and_then(|army| army.iter().find(|s| s.slot == at.slot).copied());
+        let stack = state.stack_at(player, at);
         sink.emit(GameEvent::StackChanged { player, at, stack });
     });
     told.tell(state, rules, sink);

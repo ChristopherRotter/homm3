@@ -172,7 +172,13 @@ pub mod wire;
 /// creation, which a restart keeps); a seat whose turn or battle side's chess clock ran out is
 /// sent no battle commands in its `GameTurn` (the computer plays the side), and the game's start
 /// tells every player its clock.
-pub const PROTOCOL_VERSION: u32 = 63;
+/// v64 (E09 T28a, the town lane's, `cross-lane`, after the adventure lane's T115b and the server
+/// lane's T18 and T19 took v61 to v63): a town's garrison hero
+/// (TWN-ROW-001 to -004): the town command `Heroes` with its move (`wire::game::TownHeroChange`:
+/// `Enter`, `Leave`, `Swap`) and its eight refusals (`GarrisonHeld` to `EmptyArmy`), the
+/// adventure events `GarrisonEntered` and `GarrisonLeft`, and the owner's garrison heroes in the
+/// adventure view (`wire::game::Adventure::garrison_heroes`, `wire::game::GarrisonHero`).
+pub const PROTOCOL_VERSION: u32 = 64;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes. v3 (CLT-Q20, CLT-STUB-3): a seat's record holds the start's `Events` before
