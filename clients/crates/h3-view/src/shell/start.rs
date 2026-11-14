@@ -24,8 +24,9 @@
 //! changed (`video_show` 0x5979D0): a Smacker clip's rectangles from `SmackToBufferRect`, a Bink
 //! clip's from `BinkGetRects` (`h3_bink::rects`), the union of each list as the game's own
 //! arithmetic takes it ([`shown_union`]: a lower rectangle further left cuts off the right of
-//! those above it, the screen there keeping an older frame until a later union covers it,
-//! CLT-Q124). `NWCLogo`'s Bink copy (400 × 300, clip 29: `video_show`'s own case) is drawn at the
+//! those above it, the screen there keeping an older frame until a later union covers it;
+//! CLT-Q124, decision 32: the client shows the clip's whole rectangle, the union the
+//! comparisons'). `NWCLogo`'s Bink copy (400 × 300, clip 29: `video_show`'s own case) is drawn at the
 //! back buffer's corner and stretched onto the whole screen by DirectDraw. *Not built:* the
 //! Smacker clips' rectangles (`SMACKW32.DLL`'s, T5a2): their whole rectangle is shown, so
 //! `H3INTRO.SMK` differs from the original in 23 of its frames' small boxes.
@@ -35,7 +36,8 @@
 //! buffer shown at full, half and a quarter of each channel's level, each step 50 ms on the clock
 //! after the last (`wait_until`: the first reading at or past it), then the back buffer filled
 //! black and shown, 50 ms after the third. So `NWCLogo`'s Bink copy fades from the back buffer,
-//! at the corner unstretched (CLT-Q123; its last frame is black, so only a skip shows it).
+//! at the corner unstretched (CLT-Q123; its last frame is black, so only a skip shows it;
+//! decision 32: the client fades the screen as shown, the corner the comparisons').
 //!
 //! **Skipping** (as the first run's reading is not the client's, CLT-Q85: never the first run): a
 //! key down but F4, a left or a right press stops the clip playing. The full-screen clips then
@@ -448,6 +450,9 @@ pub struct Picture<'c, 'a> {
     /// Each Bink clip's rectangles of its last frame (`h3_bink::rects`), the first kept from a
     /// frame before when the last marked nothing (the DLL leaves it in the handle).
     rects: [Vec<h3_bink::Rect>; 3],
+    /// What a fade fades: the back buffer as the game's fade copies it (`Bugs::Original`), the
+    /// screen as shown (`Bugs::Fixed`, CLT-Q123); taken at its first step.
+    fading: Option<Pixels>,
 }
 
 /// The union of a clip's rectangles as `video_show` (0x5979D0) takes it: from the first, each
@@ -491,10 +496,10 @@ impl<'c, 'a> Picture<'c, 'a> {
     /// (none for one that does not open), the rim (`introrim.pcx`, 800 × 600), the setting Bink
     /// Video and `bugs`: [`Bugs::Original`] each frame as the DLLs copy it (a Smacker frame's
     /// written blocks through its palette, a Bink frame's changed cells: `h3_bink::copies`;
-    /// CLT-Q119, CLT-Q122), [`Bugs::Fixed`] every pixel (decisions 24, 28). Either way a Bink
-    /// clip's rectangles are shown as the game takes their union ([`shown_union`]) and
-    /// `NWCLogo`'s fade is the back buffer's (CLT-Q124, CLT-Q123: as the original's until
-    /// answered).
+    /// CLT-Q119, CLT-Q122), its rectangles shown as the game takes their union ([`shown_union`],
+    /// CLT-Q124) and a fade from the back buffer (`NWCLogo`'s at the corner, CLT-Q123);
+    /// [`Bugs::Fixed`] every pixel, the clip's whole rectangle and a fade from the screen as
+    /// shown (decisions 24, 28, 32).
     #[must_use]
     pub fn new(
         black: Pixels,
@@ -521,6 +526,7 @@ impl<'c, 'a> Picture<'c, 'a> {
             bugs,
             decoded: [0; 3],
             rects: [Vec::new(), Vec::new(), Vec::new()],
+            fading: None,
         }
     }
 
@@ -545,6 +551,7 @@ impl<'c, 'a> Picture<'c, 'a> {
             Op::Black => {
                 self.back.fill(0);
                 self.screen.fill(0);
+                self.fading = None;
             }
             Op::Rim => {
                 if let Some(rim) = self.rim {
@@ -586,9 +593,9 @@ impl<'c, 'a> Picture<'c, 'a> {
             }
             return;
         }
-        if matches!(self.sources[part as usize], Some(Source::Bink { .. })) {
-            // The DLL's rectangles' union as the game takes it (CLT-Q124: as the original's
-            // until answered, the fix recommended).
+        let bink = matches!(self.sources[part as usize], Some(Source::Bink { .. }));
+        if bink && self.bugs == Bugs::Original {
+            // The DLL's rectangles' union as the game takes it (CLT-Q124: the comparisons').
             if let Some([rx, ry, rw, rh]) = shown_union(&self.rects[part as usize]) {
                 let (rx, ry) = (x + i64::from(rx), y + i64::from(ry));
                 self.screen
@@ -600,16 +607,23 @@ impl<'c, 'a> Picture<'c, 'a> {
     }
 
     fn fade(&mut self, shift: u8) {
-        let format = self.back.format();
-        let masks = format.channel_masks();
+        let from = match (shift, self.fading.take()) {
+            (1.., Some(from)) => from,
+            _ => match self.bugs {
+                Bugs::Original => self.back.clone(),
+                Bugs::Fixed => self.screen.clone(),
+            },
+        };
+        let masks = from.format().channel_masks();
         let shift = u32::from(shift);
-        for (out, &pixel) in self.screen.pixels_mut().iter_mut().zip(self.back.pixels()) {
+        for (out, &pixel) in self.screen.pixels_mut().iter_mut().zip(from.pixels()) {
             let p = u32::from(pixel);
             let faded = masks
                 .iter()
                 .fold(0, |acc, &mask| acc | (((p & mask) >> shift) & mask));
             *out = u16::try_from(faded).unwrap_or(0);
         }
+        self.fading = Some(from);
     }
 
     fn frame(&mut self, part: Part, n: u32) -> Result<(), PictureError> {

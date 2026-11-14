@@ -313,6 +313,19 @@ fn the_picture_carries_out_the_ops() {
     assert_eq!(screen.pixel(3, 1), Some(first[0]));
     assert_eq!(screen.pixel(4, 0), Some(first[1]));
     assert_eq!(screen.pixel(799, 0), Some(first[255]));
+    // The fix's fade (CLT-Q123): from the screen as shown, the stretched picture; its second
+    // step from the same picture though the screen changed.
+    let shown = screen.clone();
+    picture.apply(Op::Fade(0)).unwrap();
+    assert_eq!(picture.screen(), &shown);
+    picture.apply(Op::Fade(1)).unwrap();
+    let halve =
+        |p: u16| ((p & 0xF800) >> 1 & 0xF800) | ((p & 0x07E0) >> 1 & 0x07E0) | ((p & 0x1F) >> 1);
+    assert_eq!(
+        picture.screen().pixel(799, 599),
+        shown.pixel(799, 599).map(halve)
+    );
+    picture.apply(Op::Black).unwrap();
     // Out of order, or a clip without its source: refused.
     assert_eq!(
         picture.apply(Op::Frame(Part::Nwc, 2)),
@@ -475,6 +488,48 @@ fn a_bink_frame_shows_its_rectangles_union_as_the_game_takes_it() {
         picture.apply(Op::Frame(Part::Intro, 3)),
         Err(PictureError::Bink(_))
     ));
+    // The original's fade takes the back buffer, what the screen did not show included.
+    picture.apply(Op::Fade(0)).unwrap();
+    assert_eq!(picture.screen(), picture.back());
+}
+
+#[test]
+fn the_fix_shows_a_bink_clip_s_whole_rectangle() {
+    use h3_bink::build::{self, Block, Header as BinkHeader};
+    let fills = |n, c| vec![Block::Fill(c); n];
+    let key = build::frame(64, 32, [&fills(32, 40), &fills(8, 90), &fills(8, 160)]);
+    let mut luma = vec![Block::Skip; 32];
+    luma[6] = Block::Fill(200);
+    luma[16] = Block::Fill(200);
+    let moved = build::frame(
+        64,
+        32,
+        [&luma, &vec![Block::Skip; 8], &vec![Block::Skip; 8]],
+    );
+    let bytes = build::file(&BinkHeader::new(64, 32), &[key, moved]);
+    let clip = h3_bink::Clip::parse(&bytes).unwrap();
+    let source = Source::Bink {
+        clip: &clip,
+        decoder: alloc::boxed::Box::new(h3_bink::Decoder::new(&clip).unwrap()),
+        next: 0,
+    };
+    let header = Header {
+        size: [64, 32],
+        frames: 2,
+        pace: BINK,
+    };
+    let mut picture = Picture::new(
+        black(),
+        [None, None, Some((source, header))],
+        None,
+        true,
+        Bugs::Fixed,
+    );
+    for n in 0..2 {
+        picture.apply(Op::Frame(Part::Intro, n)).unwrap();
+        picture.apply(Op::Show(Part::Intro)).unwrap();
+    }
+    assert_eq!(picture.screen(), picture.back());
 }
 
 #[test]
