@@ -2,8 +2,8 @@
 //! `E08-log.md`): a player's commands on its heroes on the map in its turn, outside a decision one
 //! hero at a time; a command between two armies needs them together, a meeting's two heroes
 //! (GAM-DEC-003), a hero and its army dialog's group (GAM-DEC-004) or, since E08 T114a2, a hero
-//! and the map garrison of its exchange (GAM-DEC-009), and while one is open the commands name
-//! only what it holds. The game checks the actor, the turn and the decision, which
+//! and the map garrison of its exchange (GAM-DEC-009), since E09 T28a a town's two bars outside a
+//! decision (TWN-ROW-001), and while one is open the commands name only what it holds. The game checks the actor, the turn and the decision, which
 //! armies are together, then the context's rules (the adventure's for armies, ADR-0016 point 3;
 //! `h3-heroes`' for artifacts, ADR-0013 point 14) before anything changes, then tells the owner
 //! alone.
@@ -48,7 +48,7 @@ impl GameState {
     ) -> Result<(), GameCommandError> {
         let together = self.check_managing(player)?;
         match command {
-            Manage::Army(army) => together.admits(army.armies())?,
+            Manage::Army(army) => self.admits_army(player, together, army.armies())?,
             Manage::Artifact { from, to } => together.admits_heroes([from.0, to.0].into_iter())?,
             Manage::Formation { hero, .. }
             | Manage::Tactics { hero, .. }
@@ -70,6 +70,53 @@ impl GameState {
             .ok_or(GameCommandError::DecisionOpen)?;
         self.check_held(Actor::Player(player))?;
         Ok(together)
+    }
+
+    /// Checks that an army command's armies may meet ([`Together::admits`]), since E09 T28a a
+    /// town's two bars too (TWN-ROW-001, design §52): outside a decision, an own town's upper bar
+    /// alone (its garrison, the adventure checking the town's owner and that no garrison hero
+    /// stands there; a garrison hero's army is a hero's) or with that town's visitor, either way
+    /// ([`Self::town_bars`]).
+    // rule: GAM-MAN-001, TWN-ROW-001
+    pub(crate) fn admits_army(
+        &self,
+        player: PlayerId,
+        together: Together,
+        armies: (ArmyRef, Option<ArmyRef>),
+    ) -> Result<(), GameCommandError> {
+        if together == Together::Alone && self.town_bars(player, armies) {
+            return Ok(());
+        }
+        together.admits(armies)
+    }
+
+    /// Whether `armies` are a town's two bars, or its upper bar alone (TWN-ROW-001): a town's
+    /// garrison alone, or the upper bar of a town (its garrison, or its garrison hero's army) with
+    /// the army of `player`'s hero on its entrance, either way. Out of line: only a town's bars
+    /// meet it.
+    #[cold]
+    #[inline(never)]
+    fn town_bars(&self, player: PlayerId, armies: (ArmyRef, Option<ArmyRef>)) -> bool {
+        let adventure = &self.adventure;
+        // The town whose upper bar `army` is, if it is one.
+        let upper = |army: ArmyRef| match army {
+            ArmyRef::Garrison(town) => Some(town),
+            ArmyRef::Hero(hero) => adventure.garrisoned(hero).map(|(town, _)| town),
+            ArmyRef::Group | ArmyRef::MapGarrison(_) => None,
+        };
+        let visits = |army: ArmyRef, town| {
+            let visitor = adventure.town_visitor(town);
+            let own = visitor.and_then(|hero| adventure.hero(hero)).map(|h| h.owner);
+            matches!(army, ArmyRef::Hero(hero) if visitor == Some(hero) && own == Some(player))
+        };
+        match armies {
+            (ArmyRef::Garrison(_), None) => true,
+            (from, Some(to)) => {
+                upper(from).is_some_and(|town| visits(to, town))
+                    || upper(to).is_some_and(|town| visits(from, town))
+            }
+            (_, None) => false,
+        }
     }
 
     /// [`Self::manage`] after the turn's, the decision's and the armies' checks.
@@ -172,12 +219,17 @@ impl GameState {
         Ok(())
     }
 
-    /// The stack at `at`: in its hero's army on the map, in `player`'s open army dialog's group,
+    /// The stack at `at`: in its hero's army on the map (since E09 T28a, or in a town's garrison),
+    /// in `player`'s open army dialog's group,
     /// since E09 T8b2b in a town's garrison (the slots of the garrison's merge, TWN-SIE-002), or
     /// since E08 T114a2 in a map garrison's army (its exchange's commands).
     pub(crate) fn stack_at(&self, player: PlayerId, at: ArmySlot) -> Option<ArmyStack> {
         let army = match at.army {
-            ArmyRef::Hero(hero) => self.adventure.hero(hero).map(|h| &h.army[..]),
+            ArmyRef::Hero(hero) => self
+                .adventure
+                .hero(hero)
+                .or_else(|| self.adventure.garrisoned(hero).map(|(_, h)| h))
+                .map(|h| &h.army[..]),
             ArmyRef::Group => self.army_dialog(player).map(|(_, group)| group),
             ArmyRef::Garrison(town) => self
                 .adventure
@@ -192,15 +244,17 @@ impl GameState {
             .copied()
     }
 
-    /// The details of `player`'s hero `hero` on the map.
+    /// The details of `player`'s hero `hero` on the map, since E09 T28a or in a town's garrison
+    /// (its own management, TWN-ROW-001).
     pub(crate) fn own_details(
         &self,
         player: PlayerId,
         hero: HeroId,
     ) -> Result<&HeroDetails, ManageError> {
-        // Every hero on the map has its details in the store (GAM-HER-001).
+        // Every hero on the map or in a garrison has its details in the store (GAM-HER-001).
         self.adventure
             .hero(hero)
+            .or_else(|| self.adventure.garrisoned(hero).map(|(_, h)| h))
             .filter(|h| h.owner == player)
             .and(self.hero(hero))
             .ok_or(ManageError::NotYourHero(hero))

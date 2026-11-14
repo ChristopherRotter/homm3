@@ -81,6 +81,21 @@ pub struct AdventureObservation {
     /// The empty boats the viewer sees, on a tile where it sees heroes (ADV-FOG-008, E08 T72), in
     /// tile order (level, row, column).
     pub boats: Vec<BoatView>,
+    /// The viewer's own garrison heroes, by town in `TownId` order (E09 T28a; the town epic's
+    /// design note §53: off the map, so in no tile's heroes; another viewer sees one only through
+    /// its town's view).
+    pub garrison_heroes: Vec<GarrisonHeroView>,
+}
+
+/// A garrison hero as its owner sees it (E09 T28a): its town in place of a tile.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GarrisonHeroView {
+    /// The town whose garrison it stands in.
+    pub town: TownId,
+    /// The hero.
+    pub id: HeroId,
+    /// Its army, movement points and marks, as a hero on the map's own view.
+    pub own: OwnHeroView,
 }
 
 impl AdventureObservation {
@@ -345,6 +360,7 @@ impl AdventureState {
             keys: self.keys(viewer),
             known: Vec::new(),
             boats: Vec::new(),
+            garrison_heroes: Vec::new(),
         };
         let row_tiles = usize::from(width);
         let added = self.added_tiles();
@@ -390,6 +406,16 @@ impl AdventureState {
             .collect();
         observation.heroes = heroes;
         observation.boats = boats;
+        observation.garrison_heroes = self
+            .town_heroes()
+            .iter()
+            .filter(|(_, hero)| hero.owner == viewer)
+            .map(|(town, hero)| GarrisonHeroView {
+                town: *town,
+                id: hero.id,
+                own: self.own_view(hero),
+            })
+            .collect();
         // A monster shows on the fringe in either profile (E08 decision 40): it guards the
         // explored tiles beside it, which its guard's effect on the viewer's moves would reveal.
         let sees = |pos, monster: bool| {
@@ -452,16 +478,22 @@ impl AdventureState {
                 .boat
                 .and_then(|index| self.boat(usize::try_from(index).unwrap_or(usize::MAX)))
                 .map(|boat| boat.kind),
-            own: (hero.owner == viewer).then(|| OwnHeroView {
-                army: hero.army.clone(),
-                movement: hero.movement,
-                max_movement: hero.max_movement,
-                formation: hero.formation,
-                tactics: hero.tactics,
-                marks: self.marks_of(hero.id),
-                bonuses: self.visit_marks(hero.id).bonuses().clone(),
-                timed: self.visit_marks(hero.id).timed().to_vec(),
-            }),
+            own: (hero.owner == viewer).then(|| self.own_view(hero)),
+        }
+    }
+
+    /// Its owner's view of `hero` beyond what every viewer sees (ADV-FOG-006): its army, points,
+    /// formation, flag and marks; since E09 T28a a garrison hero's too.
+    fn own_view(&self, hero: &HeroOnMap) -> OwnHeroView {
+        OwnHeroView {
+            army: hero.army.clone(),
+            movement: hero.movement,
+            max_movement: hero.max_movement,
+            formation: hero.formation,
+            tactics: hero.tactics,
+            marks: self.marks_of(hero.id),
+            bonuses: self.visit_marks(hero.id).bonuses().clone(),
+            timed: self.visit_marks(hero.id).timed().to_vec(),
         }
     }
 
@@ -670,6 +702,8 @@ impl AdventureEvent {
                 | AdventureEventKind::OnceMarkChanged { .. }
                 | AdventureEventKind::TimedMarkChanged { .. }
                 | AdventureEventKind::HeroRemoved { .. }
+                | AdventureEventKind::GarrisonEntered { .. }
+                | AdventureEventKind::GarrisonLeft { .. }
                 | AdventureEventKind::CreaturesJoined { .. }
                 | AdventureEventKind::EventFired { .. }
                 | AdventureEventKind::MonsterChanged { .. }

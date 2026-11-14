@@ -946,11 +946,37 @@ pub enum AdventureEventKind {
         key: u8,
     },
     /// A hero left the map by a battle's outcome (GAM-BAT-003, E08 T19a). Seen by its owner and the
-    /// players that saw it there (ADV-FOG-004, ADV-FOG-005, as a step's).
+    /// players that saw it there (ADV-FOG-004, ADV-FOG-005, as a step's). Since E09 T28a also a
+    /// town's garrison hero leaving the game at its town's capture (`TWN-STUB-14`), seen by its
+    /// owner alone at the town's entrance.
     HeroRemoved {
         /// The hero.
         hero: HeroId,
         /// The tile it stood on.
+        pos: Pos,
+    },
+    /// A town's visitor left the map into its town's garrison (TWN-ROW-002, -004; E09 T28a), its
+    /// record kept there. Seen by its owner and the players that saw it on `pos`, the town's
+    /// entrance (ADV-FOG-004, ADV-FOG-005, as [`Self::HeroRemoved`]): every other viewer sees a
+    /// hero leave the map; its owner moves its own view into its garrison heroes.
+    GarrisonEntered {
+        /// The hero.
+        hero: HeroId,
+        /// The town.
+        town: TownId,
+        /// The town's entrance, where it stood.
+        pos: Pos,
+    },
+    /// A town's garrison hero came out onto its entrance as the town's visitor (TWN-ROW-003,
+    /// -004; E09 T28a), with its record as it was kept. Seen by its owner and the players that see
+    /// `pos` (ADV-FOG-004, ADV-FOG-005): a hero coming into sight (SRV-Q26 (c)) for every other
+    /// viewer.
+    GarrisonLeft {
+        /// The hero.
+        hero: HeroId,
+        /// The town.
+        town: TownId,
+        /// The town's entrance, where it now stands.
         pos: Pos,
     },
     /// A wandering monster's group joined a hero's army (ADV-MON-008, E08 T20b1): its stack of
@@ -1285,21 +1311,29 @@ pub struct OwnHeroes {
 
 impl AdventureState {
     /// The heroes' movement points left, day's maximums, battle bonuses and timed marks now, by
-    /// id ([`OwnHeroes`]).
+    /// id ([`OwnHeroes`]): the heroes on the map's and, since E09 T28a, the towns' garrison
+    /// heroes'.
     pub fn own_heroes(&self) -> OwnHeroes {
+        let mut movements: Vec<(HeroId, u32, u32)> = self
+            .heroes()
+            .iter()
+            .chain(self.town_heroes().iter().map(|(_, hero)| hero))
+            .map(|hero| (hero.id, hero.movement, hero.max_movement))
+            .collect();
+        if !self.town_heroes().is_empty() {
+            // A hero's id is unique: the order is total.
+            movements.sort_unstable_by_key(|&(id, ..)| id);
+        }
         OwnHeroes {
-            movements: self
-                .heroes()
-                .iter()
-                .map(|hero| (hero.id, hero.movement, hero.max_movement))
-                .collect(),
+            movements,
             marks: self.held_marks(),
         }
     }
 }
 
 impl OwnHeroes {
-    /// Tells each hero's owner, in hero order, of each of its heroes on the map in `state`: its
+    /// Tells each hero's owner, in hero order, of each of its heroes on the map in `state`, then
+    /// (E09 T28a) of each garrison hero in town order: its
     /// movement points and day's maximum when either differs from these
     /// ([`AdventureEventKind::MovementChanged`]); then the once-marks and the timed marks it
     /// dropped, in mark and type order, its morale and luck no once-mark names when either
@@ -1311,7 +1345,8 @@ impl OwnHeroes {
     /// SRV-Q26 (b)).
     // rule: ADV-FOG-006
     pub fn tell<S: Sink>(&self, state: &AdventureState, sink: &mut S) {
-        for hero in state.heroes() {
+        let garrisoned = state.town_heroes().iter().map(|(_, hero)| hero);
+        for hero in state.heroes().iter().chain(garrisoned) {
             let before = self
                 .movements
                 .binary_search_by_key(&hero.id, |&(id, ..)| id)

@@ -1323,6 +1323,7 @@ fn a_town_needs_its_siege() {
                 weeks: 8,
                 upgrade: 5,
             },
+            most_heroes: 8,
         }),
         towns: vec![TownDef {
             faction: key("t:town"),

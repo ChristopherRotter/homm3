@@ -294,6 +294,7 @@ pub(super) fn town_pack(elf: bool) -> TownPack {
                 weeks: 8,
                 upgrade: 5,
             },
+            most_heroes: 8,
         }),
         towns,
         ..TownPack::new(manifest())

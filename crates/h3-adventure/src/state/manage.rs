@@ -2,17 +2,19 @@
 //! note §7 in `E08-log.md`): the army commands ([`crate::ArmyCommand`], planned by `crate::army`),
 //! the split's range, the formation and the tactics flag. The game routes them and checks the turn
 //! and the decision that allows two armies together (a meeting's, an army dialog's, since E08
-//! T114a2 a map garrison's exchange; ADR-0017 points 1 and 6, T51b); here each hero named must be
-//! the player's on the map, the group must be given, a map garrison must be one, and each army's
-//! bar owner decides what may leave and enter it (the one owner rule, ADV-GAR-003, D-61).
+//! T114a2 a map garrison's exchange; ADR-0017 points 1 and 6, T51b; since E09 T28a a town's two
+//! bars, TWN-ROW-001); here each hero named must be the player's on the map or, since E09 T28a, in
+//! a town's garrison, the group must be given, a map garrison must be one, a town's garrison an own
+//! town's without a garrison hero, and each army's bar owner decides what may leave and enter it
+//! (the one owner rule, ADV-GAR-003, D-61).
 
 use alloc::vec::Vec;
 use core::ops::RangeInclusive;
 
 use h3_content::Formation;
-use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 
-use super::AdventureState;
+use super::{AdventureState, HeroOnMap};
 use crate::army::{self, ArmyCommand, ArmyCommandError, ArmyRef, ArmySlot};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Holds;
@@ -21,26 +23,33 @@ use crate::setup::Holds;
 /// T114a2 a map garrison's by its object index, with whether its **bar owner** is the acting
 /// player (the one owner rule, ADV-GAR-003; increment 12's design note §13: a stack leaves only
 /// an own bar, and enters another's, nobody's included, only into an empty slot). The flag rides
-/// in the garrison's variant, so the enum keeps its size (`bench-check`, manage-army-12).
+/// in the garrison's variant, so the enum keeps its size (`bench-check`, manage-army-12). Since
+/// E09 T28a a town's garrison hero by its place among the towns' ([`Self::TownHero`]) and an own
+/// town's garrison by its object index ([`Self::Town`], TWN-ROW-001: its town's owner's bar).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Held {
     Hero(usize),
     Group,
     MapGarrison { index: usize, own: bool },
+    TownHero(usize),
+    Town(usize),
 }
 
 impl Held {
-    /// Whether the army's last stack never leaves it (ADV-ARM-002): a hero's; the group and a
-    /// stationary army may be emptied (increment 12's design note §13).
+    /// Whether the army's last stack never leaves it (ADV-ARM-002): a hero's, a garrison hero's
+    /// too (TWN-ROW-001: the original's 0x5C7436); the group and a stationary army, a town's
+    /// garrison among them, may be emptied (increment 12's design note §13).
     const fn keeps_last(self) -> bool {
-        matches!(self, Self::Hero(_))
+        matches!(self, Self::Hero(_) | Self::TownHero(_))
     }
 
     /// Whether the army's bar owner is the acting player: a hero's (its owner, the player's) and
-    /// the group (its dialog's owner, the player) always; a map garrison's as found.
+    /// the group (its dialog's owner, the player) always; a map garrison's as found; a garrison
+    /// hero's (its owner, the player) and an own town's garrison (its town's owner, the player:
+    /// another's is not named, [`ArmyCommandError::Garrison`]) always.
     const fn own(self) -> bool {
         match self {
-            Self::Hero(_) | Self::Group => true,
+            Self::Hero(_) | Self::Group | Self::TownHero(_) | Self::Town(_) => true,
             Self::MapGarrison { own, .. } => own,
         }
     }
@@ -60,18 +69,50 @@ impl AdventureState {
     /// [`Held::own`]): its hero's (its owner's, the player's), or the group when one is open (its
     /// dialog's owner's, the player's); a map garrison at its object index (E08 T114a2), its
     /// owner's when removable and nobody's when not (the original passes −1, survey
-    /// `E08-garrisons-bonuses.md` §6); never a town's garrison (E09 T8b2b: not managed before the
-    /// town screen; its bar owner, its town's owner, is the town lane's hook, E09 T28a).
-    // rule: ADV-GAR-003
+    /// `E08-garrisons-bonuses.md` §6); since E09 T28a a hero not on the map found among the
+    /// towns' garrison heroes ([`Self::town_hero_held`]) and a town's garrison, its town's owner's
+    /// bar, when the player owns the town and no garrison hero stands there (TWN-ROW-001: with one
+    /// the upper bar is the hero's army; another's town's is not managed).
+    // rule: ADV-GAR-003, TWN-ROW-001
     #[inline]
     fn held(&self, player: PlayerId, army: ArmyRef, open: bool) -> Result<Held, ArmyCommandError> {
         match army {
-            ArmyRef::Hero(id) => self.own_hero(player, id).map(Held::Hero),
+            ArmyRef::Hero(id) => match self.own_hero(player, id) {
+                Ok(index) => Ok(Held::Hero(index)),
+                Err(error) => self.town_hero_held(player, id, error),
+            },
             ArmyRef::Group if open => Ok(Held::Group),
             ArmyRef::Group => Err(ArmyCommandError::NoGroup),
-            ArmyRef::Garrison(town) => Err(ArmyCommandError::Garrison(town)),
+            ArmyRef::Garrison(town) => self.town_held(player, town),
             ArmyRef::MapGarrison(index) => self.map_garrison(player, index),
         }
+    }
+
+    /// [`Self::held`]'s garrison hero `id` of `player`, `error` when it is none (E09 T28a): out of
+    /// line, so a hero's lookup on the map stays as small as before.
+    #[cold]
+    #[inline(never)]
+    fn town_hero_held(
+        &self,
+        player: PlayerId,
+        id: HeroId,
+        error: ArmyCommandError,
+    ) -> Result<Held, ArmyCommandError> {
+        self.own_town_hero(player, id)
+            .map(Held::TownHero)
+            .ok_or(error)
+    }
+
+    /// [`Self::held`]'s garrison of `town` (TWN-ROW-001; E09 T28a): its object index when
+    /// `player` owns the town and no garrison hero stands there; out of line.
+    #[cold]
+    #[inline(never)]
+    fn town_held(&self, player: PlayerId, town: TownId) -> Result<Held, ArmyCommandError> {
+        self.map()
+            .town_object(town)
+            .filter(|&index| self.owner(index) == Some(player) && self.town_hero(town).is_none())
+            .map(Held::Town)
+            .ok_or(ArmyCommandError::Garrison(town))
     }
 
     /// [`Self::held`]'s map garrison at object index `index` (E08 T114a2): out of line, so a
@@ -98,7 +139,25 @@ impl AdventureState {
             Held::Hero(index) => &self.heroes[index].army,
             Held::Group => group.unwrap_or_default(),
             Held::MapGarrison { index, .. } => self.garrison_stacks(index),
+            Held::TownHero(at) => self.town_hero_stacks(at),
+            Held::Town(index) => self.town_stacks(index),
         }
+    }
+
+    /// The army of the garrison hero at `at` among the towns', for [`Self::stacks`]; out of line.
+    #[cold]
+    #[inline(never)]
+    fn town_hero_stacks(&self, at: usize) -> &[ArmyStack] {
+        self.town_heroes()
+            .get(at)
+            .map_or(&[], |(_, hero)| &hero.army[..])
+    }
+
+    /// The garrison of the town at object index `index`, for [`Self::stacks`]; out of line.
+    #[cold]
+    #[inline(never)]
+    fn town_stacks(&self, index: usize) -> &[ArmyStack] {
+        self.town_garrison(index).unwrap_or_default()
     }
 
     /// [`Self::garrison_army`] out of line, for [`Self::stacks`].
@@ -165,7 +224,14 @@ impl AdventureState {
             match held {
                 Held::Hero(index) => self.heroes[index].army = stacks,
                 Held::Group => *group = stacks,
-                Held::MapGarrison { index, .. } => self.set_army_left(index, stacks),
+                Held::MapGarrison { index, .. } | Held::Town(index) => {
+                    self.set_army_left(index, stacks);
+                }
+                Held::TownHero(at) => {
+                    if let Some(hero) = self.town_hero_at_mut(at) {
+                        hero.army = stacks;
+                    }
+                }
             }
         }
         Ok(())
@@ -277,8 +343,24 @@ impl AdventureState {
         (!same && !other && fits && !range.is_empty()).then_some(range)
     }
 
+    /// `player`'s hero `hero`, on the map or since E09 T28a in a town's garrison (TWN-ROW-001: a
+    /// garrison hero's own management), to change.
+    fn own_record_mut(
+        &mut self,
+        player: PlayerId,
+        hero: HeroId,
+    ) -> Result<&mut HeroOnMap, ArmyCommandError> {
+        match self.own_hero(player, hero) {
+            Ok(index) => Ok(&mut self.heroes[index]),
+            Err(error) => {
+                let at = self.own_town_hero(player, hero).ok_or(error)?;
+                self.town_hero_at_mut(at).ok_or(error)
+            }
+        }
+    }
+
     /// Sets `player`'s hero `hero`'s formation (ADV-ARM-006; E08 T50): at no cost, any number of
-    /// times.
+    /// times; since E09 T28a a garrison hero's too.
     ///
     /// # Errors
     ///
@@ -290,14 +372,13 @@ impl AdventureState {
         hero: HeroId,
         formation: Formation,
     ) -> Result<(), ArmyCommandError> {
-        let index = self.own_hero(player, hero)?;
-        self.heroes[index].formation = formation;
+        self.own_record_mut(player, hero)?.formation = formation;
         Ok(())
     }
 
     /// Sets `player`'s hero `hero`'s tactics flag (ADV-ARM-006; E08 T50): on, the hero takes the
     /// tactics phase its Tactics gives it; off, it denies the phase in the battles where it would
-    /// get it (GAM-BAT-009, the game's, T51a). At no cost.
+    /// get it (GAM-BAT-009, the game's, T51a). At no cost; since E09 T28a a garrison hero's too.
     ///
     /// # Errors
     ///
@@ -309,8 +390,7 @@ impl AdventureState {
         hero: HeroId,
         on: bool,
     ) -> Result<(), ArmyCommandError> {
-        let index = self.own_hero(player, hero)?;
-        self.heroes[index].tactics = on;
+        self.own_record_mut(player, hero)?.tactics = on;
         Ok(())
     }
 }

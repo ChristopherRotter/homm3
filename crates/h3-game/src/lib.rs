@@ -97,7 +97,7 @@ pub use h3_towns::WeekKind;
 /// The town context's command and its refusals (E09 T18b1; `h3_towns`' types): what
 /// [`GameCommand::Town`], [`GameCommandError::Town`] and [`GameEvent::TownBuilt`] carry, and a
 /// [`TownBuildingsView`]'s sets (E09 T18b2a).
-pub use h3_towns::{BuildingId, BuildingSet, TownCommand, TownCommandError};
+pub use h3_towns::{BuildingId, BuildingSet, TownCommand, TownCommandError, TownHeroChange};
 /// A town's setup as the map gives it (E09 T7a1; `h3_towns`' types): what a [`GameSetup`]'s towns
 /// hold, re-exported so that a map's import builds them through this crate.
 pub use h3_towns::{
@@ -108,7 +108,8 @@ pub use h3_towns::{
 /// T26b; `h3_towns`' types): a [`TownBuildingsView`]'s `portal` and `available`.
 pub use h3_towns::{CREATURE_INDEXES, Summoned};
 pub use legal::{
-    default_answer, hire_range, legal_commands, legal_management, legal_moves, split_range,
+    default_answer, hire_range, legal_commands, legal_management, legal_moves, legal_town_management,
+    split_range,
 };
 pub use manage::{Manage, ManageError};
 pub use observe::{

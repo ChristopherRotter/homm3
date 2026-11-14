@@ -10,6 +10,11 @@
 
 use alloc::vec::Vec;
 
+mod rows;
+
+pub(crate) use rows::TownHeroes;
+pub use rows::{TownHeroError, TownHeroMove};
+
 use h3_content::{Formation, Ruleset};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 

@@ -38,7 +38,7 @@ use crate::setup::{
     AdventureSetup, ArmyError, Bans, EventSetup, Guards, HeroSetup, Holds, MapSetup, MonsterSetup,
     ObjectSetup, Pos, Scenery, Seat, SetupError, StandError, TileMask,
 };
-use crate::town::TownReveal;
+use crate::town::{TownHeroes, TownReveal};
 
 /// How far around a battle's tile the battlefield picture's variant counts the scenery, in tiles
 /// along each axis (GAM-BAT-011, E08 T54; the original's 0x41ADB0: x − 3 to x + 3, y − 3 to y + 3).
@@ -1364,6 +1364,12 @@ pub struct AdventureState {
     /// the week's growth leaves below a whole creature ([`Self::start_week`], T85a). A persistent
     /// table, as [`Self::army_left`]: empty, a fork copies nothing.
     fractions: Table<u8>,
+    /// The towns' garrison heroes (TWN-ROW-002 to -004, E09 T28a; the town epic's design note
+    /// §53): each hero standing in its town's garrison, its whole record as it was on the map
+    /// (its tile the entrance's, unread), by town in `TownId` order. Not on the map: no tile,
+    /// reach, meeting or visit (its marks stay in [`Self::visited`], by hero id). None while no
+    /// town holds one, so a fork costs a pointer (`bench-check`), else one block the forks share.
+    town_heroes: Option<Arc<TownHeroes>>,
 }
 
 impl AdventureState {
@@ -1437,6 +1443,7 @@ impl AdventureState {
             dwellings: None,
             camps,
             fractions: Table::new(),
+            town_heroes: None,
             visited: None,
         };
         for hero in &setup.heroes {
@@ -2743,7 +2750,7 @@ impl AdventureState {
     /// `ADV-QUIRK-1`, every player with it on its fringe (heroes show there, the user,
     /// 2026-10-11).
     // rule: ADV-FOG-004, ADV-FOG-005
-    fn viewers(&self, core: &Ruleset, owner: PlayerId, pos: Pos) -> Viewers {
+    pub(crate) fn viewers(&self, core: &Ruleset, owner: PlayerId, pos: Pos) -> Viewers {
         let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS);
         self.explored
             .iter()
@@ -3024,10 +3031,51 @@ impl AdventureState {
             .map(|index| &mut self.heroes[index])
     }
 
+    /// The towns' garrison heroes by town, in `TownId` order (E09 T28a; [`TownHeroes`]).
+    pub fn town_heroes(&self) -> &[(TownId, HeroOnMap)] {
+        self.town_heroes.as_deref().map_or(&[], |all| &all[..])
+    }
+
+    /// The heroes on the map and the towns' garrison heroes, to change (E09 T28a: a hero's move
+    /// between a town's two bars, `crate::town`).
+    pub(crate) fn rows_mut(&mut self) -> (&mut Vec<HeroOnMap>, &mut Option<Arc<TownHeroes>>) {
+        (&mut self.heroes, &mut self.town_heroes)
+    }
+
     /// The canonical state hash (ADR-0003 point 12, ADR-0016 point 2): content only, whatever
     /// the sharing.
     pub fn state_hash(&self) -> u64 {
         hash_of(self)
+    }
+}
+
+impl AdventureState {
+    /// Hashes `hero`, a hero on the map or a town's garrison hero (E09 T28a): id, owner, tile, the
+    /// army's stacks by slot (slot, creature, count), the formation (0 loose, 1 tight), the tactics
+    /// flag, the movement points left, the day's maximum, the boat (0 for none, else 1 and its
+    /// index), then (v23, E08 T115a) its battle bonuses and timed marks.
+    pub(crate) fn hash_hero(&self, h: &mut StateHasher, hero: &HeroOnMap) {
+        h.write_u16(hero.id.raw());
+        h.write_u8(hero.owner.raw());
+        hero.pos.hash_into(h);
+        h.write_len(hero.army.len());
+        for stack in &hero.army {
+            h.write_u8(stack.slot);
+            stack.creature.hash_into(h);
+            h.write_u32(stack.count);
+        }
+        h.write_bool(hero.formation == Formation::Tight);
+        h.write_bool(hero.tactics);
+        h.write_u32(hero.movement);
+        h.write_u32(hero.max_movement);
+        match hero.boat {
+            None => h.write_u8(0),
+            Some(boat) => {
+                h.write_u8(1);
+                h.write_u32(boat);
+            }
+        }
+        self.visit_marks(hero.id).hash_into(h);
     }
 }
 
@@ -3054,36 +3102,18 @@ impl CanonicalHash for AdventureState {
     /// v18 the owners and the weekly contents (`economy.rs`' `hash_economy`); since v19 the
     /// monsters' fractions as their number and, by object index, the index and the fraction;
     /// since v20 the dwellings' counts and guards as they stand, then the camps' creatures and
-    /// counts (`dwellings.rs`' `hash_dwellings`).
+    /// counts (`dwellings.rs`' `hash_dwellings`); since v24 the towns' garrison heroes after the
+    /// heroes (`town.rs`' `hash_town_heroes`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
         h.write_u8(self.players);
         h.write_len(self.heroes.len());
         for hero in &self.heroes {
-            h.write_u16(hero.id.raw());
-            h.write_u8(hero.owner.raw());
-            hero.pos.hash_into(h);
-            h.write_len(hero.army.len());
-            for stack in &hero.army {
-                h.write_u8(stack.slot);
-                stack.creature.hash_into(h);
-                h.write_u32(stack.count);
-            }
-            h.write_bool(hero.formation == Formation::Tight);
-            h.write_bool(hero.tactics);
-            h.write_u32(hero.movement);
-            h.write_u32(hero.max_movement);
-            match hero.boat {
-                None => h.write_u8(0),
-                Some(boat) => {
-                    h.write_u8(1);
-                    h.write_u32(boat);
-                }
-            }
-            // v23 (E08 T115a): the battle bonuses, then the timed marks.
-            self.visit_marks(hero.id).hash_into(h);
+            self.hash_hero(h, hero);
         }
+        // v24 (E09 T28a): the towns' garrison heroes.
+        self.hash_town_heroes(h);
         h.write_len(self.explored.len());
         for grid in &self.explored {
             grid.hash_into(h);
