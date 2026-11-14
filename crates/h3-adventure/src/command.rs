@@ -1321,8 +1321,8 @@ impl AdventureState {
             .map(|hero| (hero.id, hero.movement, hero.max_movement))
             .collect();
         if !self.town_heroes().is_empty() {
-            // A hero's id is unique: the order is total.
-            movements.sort_unstable_by_key(|&(id, ..)| id);
+            // A hero's id is unique (ADR-0003 §9).
+            let _ = h3_kernel::order::sort_by_unique_key(&mut movements, |&(id, ..)| id);
         }
         OwnHeroes {
             movements,

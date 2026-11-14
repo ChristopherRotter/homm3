@@ -1725,7 +1725,10 @@ fn the_fold_moves_a_garrison_hero_between_the_map_and_its_town() {
         .collect();
     assert_eq!(
         seen,
-        [(5, 1, at(0, 1), Some(2), true), (7, 1, at(2, 2), None, true)]
+        [
+            (5, 1, at(0, 1), Some(2), true),
+            (7, 1, at(2, 2), None, true)
+        ]
     );
 }
 

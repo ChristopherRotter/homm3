@@ -10,7 +10,7 @@ use alloc::vec::Vec;
 
 use h3_content::Ruleset;
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
-use h3_kernel::StateHasher;
+use h3_kernel::{StateHasher, order};
 
 use crate::army::{ArmyRef, ArmySlot};
 use crate::command::{AdventureEvent, AdventureEventKind, Sink, Viewers};
@@ -495,11 +495,15 @@ pub(crate) fn absorb(
     army: &mut Vec<ArmyStack>,
     garrison: &[ArmyStack],
 ) -> Result<(), TownHeroError> {
+    // An army's slots are unique (ADR-0003 §9).
+    let by_slot = |stacks: &mut [ArmyStack]| {
+        let _ = order::sort_by_unique_key(stacks, |s| s.slot);
+    };
     let mut joined = army.clone();
-    let mut order: Vec<&ArmyStack> = garrison.iter().collect();
-    order.sort_by_key(|stack| stack.slot);
-    for stack in order {
-        joined.sort_by_key(|s| s.slot);
+    let mut garrison = garrison.to_vec();
+    by_slot(&mut garrison);
+    for stack in &garrison {
+        by_slot(&mut joined);
         if let Some(own) = joined.iter_mut().find(|s| s.creature == stack.creature) {
             own.count = sum(own.count, stack.count, most)?;
             continue;
@@ -522,7 +526,7 @@ pub(crate) fn absorb(
             joined.remove(later);
         }
     }
-    joined.sort_by_key(|s| s.slot);
+    by_slot(&mut joined);
     *army = joined;
     Ok(())
 }

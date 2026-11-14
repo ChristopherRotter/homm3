@@ -361,8 +361,8 @@ fn hero_infos(state: &GameState, views: &[HeroView], held: &[GarrisonHeroView]) 
     let seen = views.iter().map(|view| (view.id, view.own.is_some()));
     let mut all: Vec<(HeroId, bool)> = seen.chain(held.iter().map(|g| (g.id, true))).collect();
     if !held.is_empty() {
-        // A hero's id is unique: the order is total.
-        all.sort_unstable_by_key(|&(id, _)| id);
+        // A hero's id is unique (ADR-0003 §9).
+        let _ = h3_kernel::order::sort_by_unique_key(&mut all, |&(id, _)| id);
     }
     all.into_iter()
         .flat_map(|(id, own)| {
