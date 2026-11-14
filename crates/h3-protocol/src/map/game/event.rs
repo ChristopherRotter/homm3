@@ -423,6 +423,16 @@ fn adventure(kind: AdventureEventKind) -> AdventureEvent {
             hero: hero.raw(),
             pos: pos(p),
         },
+        K::GarrisonEntered { hero, town, pos: p } => AdventureEvent::GarrisonEntered {
+            hero: hero.raw(),
+            town: town.raw(),
+            pos: pos(p),
+        },
+        K::GarrisonLeft { hero, town, pos: p } => AdventureEvent::GarrisonLeft {
+            hero: hero.raw(),
+            town: town.raw(),
+            pos: pos(p),
+        },
         K::CreaturesJoined {
             hero,
             creature,

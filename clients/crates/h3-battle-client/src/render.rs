@@ -1,14 +1,13 @@
 //! `h3-view render` (E17 M1 T7): a battle still. A record's first snapshot (or a scenario file's,
 //! through [`crate::scenario`]) and the asset tables give the draw list (`h3_view::scene`); its
-//! assets are loaded as one checkpoint batch (ADR-0020 point 7: the four archives read whole until
-//! CLT-Q2's table-only reader lands, then the batch's entries by name); the compositor draws the
-//! frame; the frame is written as a PNG.
+//! assets are loaded as one checkpoint batch (ADR-0020 point 7: the four archives' tables read at
+//! the start, CLT-Q2, then the batch's entries by their ranges, [`crate::lods`]); the compositor
+//! draws the frame; the frame is written as a PNG.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
-use h3_formats::lod::LodArchive;
 use h3_protocol::wire::Seat;
 use h3_render::Bugs;
 use h3_view::anim::{self, Speed};
@@ -18,13 +17,9 @@ use h3_view::scene::Panels;
 use h3_view::siege::Walls;
 use h3_view::{layout, record, scene};
 
-use crate::gate::{find_ci, timed};
+use crate::gate::timed;
+use crate::lods::Lods;
 use crate::{assets, motion};
-
-/// The archives, the base ones first: a DEF is searched in the sprite archives, anything else in
-/// the bitmap ones (`docs/epics/E17-design.md` §3.1).
-const SPRITES: [&str; 2] = ["H3sprite.lod", "H3ab_spr.lod"];
-const BITMAPS: [&str; 2] = ["H3bitmap.lod", "H3ab_bmp.lod"];
 
 /// The command's options.
 #[derive(Debug, PartialEq, Eq)]
@@ -178,39 +173,6 @@ pub fn write(path: &Path, bytes: &[u8]) -> Result<(), String> {
     fs::write(path, bytes).map_err(|e| format!("{}: {e}", path.display()))
 }
 
-/// The archives of `install`, read whole (CLT-Q2), each with its name.
-pub fn read_archives(install: &Path) -> Result<Vec<(&'static str, Vec<u8>)>, String> {
-    let data = find_ci(install, "Data").map_err(|e| format!("{}: {e}", install.display()))?;
-    SPRITES
-        .iter()
-        .chain(&BITMAPS)
-        .map(|&name| {
-            let path =
-                find_ci(&data, name).map_err(|e| format!("{}/{name}: {e}", data.display()))?;
-            let bytes = fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            Ok((name, bytes))
-        })
-        .collect()
-}
-
-/// The entry `name` from the first archive of its search list that holds it.
-pub fn lookup(archives: &[(&str, LodArchive<'_>)], name: &str) -> Result<Vec<u8>, String> {
-    let list: &[&str] = if name.to_ascii_uppercase().ends_with(".DEF") {
-        &SPRITES
-    } else {
-        &BITMAPS
-    };
-    for (archive_name, archive) in archives.iter().filter(|(n, _)| list.contains(n)) {
-        if let Some(bytes) = archive
-            .read_by_name(name)
-            .map_err(|e| format!("{archive_name}:{name}: {e:?}"))?
-        {
-            return Ok(bytes);
-        }
-    }
-    Err(format!("{name}: in none of {}", list.join(", ")))
-}
-
 /// A siege's wall states as `--walls` gives them (E17 M4 T1b): the 18 parts' picture states,
 /// then the gate's, comma-separated.
 fn parse_walls(text: &str) -> Result<Walls, String> {
@@ -254,20 +216,12 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
         &fs::read_to_string(&layout_path).map_err(|e| format!("{}: {e}", layout_path.display()))?,
     )
     .map_err(|e| format!("{}: {e}", layout_path.display()))?;
-    // The checkpoint: the archives (whole, CLT-Q2), then the batch.
-    let (bytes, read) = timed(|| read_archives(&options.install));
-    let bytes = bytes?;
+    // The start: the archives' tables (CLT-Q2); then the checkpoint's batch by its ranges.
+    let (archives, read) = timed(|| Lods::open(&options.install));
+    let archives = archives?;
     // The executable's own strings: read only when a line needs them (none in an installation
     // without it, as the synthetic one of the tests).
     let exe = crate::text::executable(&options.install).unwrap_or_default();
-    let archives = bytes
-        .iter()
-        .map(|(name, b)| {
-            LodArchive::parse(b)
-                .map(|a| (*name, a))
-                .map_err(|e| format!("{name}: {e:?}"))
-        })
-        .collect::<Result<Vec<_>, _>>()?;
     if let Some(dir) = &options.frames {
         // The capture set's frames by time (E17 M3 T1b-2, `h3drive.py set`): the record's
         // commands at the original's timing without fidgets of the viewer's own, each frame with
@@ -384,7 +338,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                     .map(|(_, text)| text.clone())
             };
             let def = layout.message.spell_pictures.clone();
-            let size = lookup(&archives, &def)
+            let size = archives
+                .lookup(&def)
                 .ok()
                 .and_then(|b| h3_assets::def::parse_def(&b).ok())
                 .map_or([0, 0], |d| {
@@ -437,7 +392,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
             // Morale's and luck's descriptions' pictures' sizes (E17 M6 T2a2b2).
             let described =
                 [&layout.stats.morale_described, &layout.stats.luck_described].map(|d| {
-                    lookup(&archives, d)
+                    archives
+                        .lookup(d)
                         .ok()
                         .and_then(|b| h3_assets::def::parse_def(&b).ok())
                         .map_or([0, 0], |d| {
@@ -464,7 +420,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
                 let stack = observation.stacks.iter().find(|s| s.id == id)?;
                 let key = manifest.keys.creatures.get(usize::from(stack.creature))?;
                 let def = &tables.creatures.get(key)?.def;
-                let frames = lookup(&archives, def)
+                let frames = archives
+                    .lookup(def)
                     .ok()
                     .and_then(|b| h3_assets::def::parse_def(&b).ok())
                     .map(|d| {
@@ -736,10 +693,9 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     let names = batch::names(&list, &layout);
     let (batch, loaded) = timed(|| {
         let mut batch = Batch::default();
-        for name in &names {
-            batch
-                .add(name, &lookup(&archives, name)?)
-                .map_err(|e| e.to_string())?;
+        let names: Vec<String> = names.iter().cloned().collect();
+        for (name, bytes) in names.iter().zip(archives.batch(&names)?) {
+            batch.add(name, &bytes).map_err(|e| e.to_string())?;
         }
         Ok::<_, String>(batch)
     });
@@ -749,7 +705,8 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
     write(&png, &h3_render::png::encode(&screen))?;
     lines.insert(0, png.display().to_string());
     lines.push(format!(
-        "{} draws; batch of {} assets; archives read in {} ms, batch decoded in {} ms",
+        "{} draws; batch of {} assets; the archives' tables read in {} ms, the batch read and decoded \
+         in {} ms",
         list.len(),
         names.len(),
         read.as_millis(),
@@ -768,7 +725,7 @@ fn render(options: &Options) -> Result<Vec<String>, String> {
 fn frame_casts(
     record: &record::Record,
     tables: &h3_view::tables::Tables,
-    archives: &[(&str, LodArchive<'_>)],
+    archives: &Lods,
     packs: &Path,
 ) -> Result<anim::Casts, String> {
     motion::casts(record, tables, archives, packs, (false, Bugs::Original))
@@ -834,10 +791,7 @@ mod tests {
         });
         let top = record.header.manifest.packs.last().unwrap().id.clone();
         let tables = assets::load(&assets::default_dir(), &top).unwrap();
-        let bytes = read_archives(&source.install).unwrap();
-        let archives: Vec<(&str, LodArchive<'_>)> = (bytes.iter())
-            .map(|(name, b)| (*name, LodArchive::parse(b).unwrap()))
-            .collect();
+        let archives = Lods::open(&source.install).unwrap();
         let casts = |bugs| {
             motion::casts(&record, &tables, &archives, &source.packs, (false, bugs)).unwrap()
         };

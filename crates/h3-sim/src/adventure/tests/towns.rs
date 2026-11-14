@@ -216,20 +216,19 @@ fn the_env_plays_the_town_map_to_its_end_of_days() {
     assert!(all.recruited > 0 && all.bought > 0, "{all:?}");
 }
 
-/// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 46: a
-/// siege on day 1; seed 244's before E09 T27, 330's before E09 T19c1, 3435's before E08 T105b2)
-/// carries it: played on by one
-/// agent, the fork and its parent evolve identically, and another agent's play on a fork leaves
-/// the parent as it was.
+/// The town map's rollouts are deterministic, and a fork taken while a siege is open (seed 70: a
+/// siege on day 1; seed 46's before E09 T28a, 244's before E09 T27, 330's before E09 T19c1,
+/// 3435's before E08 T105b2) carries it: played on by one agent, the fork and its parent evolve
+/// identically, and another agent's play on a fork leaves the parent as it was.
 #[test]
 fn town_map_rollouts_and_forks_are_deterministic() {
-    let new = || AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 46, 3).unwrap();
+    let new = || AdventureEnv::new(FAITHFUL.clone(), town_setup(&FAITHFUL, 1), 70, 3).unwrap();
     let (mut a, mut b) = (new(), new());
-    let ra = random_rollout(&mut a, 46, 0);
-    assert_eq!(ra, random_rollout(&mut b, 46, 0));
+    let ra = random_rollout(&mut a, 70, 0);
+    assert_eq!(ra, random_rollout(&mut b, 70, 0));
     assert_eq!(a.state_hash(), b.state_hash());
     let mut parent = new();
-    let mut rng = Rng::for_stream(46, StreamId::AGENT);
+    let mut rng = Rng::for_stream(70, StreamId::AGENT);
     let besieged = |env: &AdventureEnv| {
         let map = env.state().adventure().map();
         (0..env.state().players()).any(|p| {

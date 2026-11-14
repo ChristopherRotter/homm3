@@ -94,6 +94,11 @@ pub struct TownParamsDef {
     pub week: WeekParams,
     /// A neutral town's garrison week (TWN-GRO-006; E09 design §38, §44).
     pub garrison_week: GarrisonWeekParams,
+    /// The most heroes a player has on the map (TWN-ROW-003; E09 design §53: the original's
+    /// player record's count +1, GENRLTXT 19): a garrison hero comes out only while its owner has
+    /// fewer. At least 1. A town part parameter while only the town's rows read it (the Tavern's
+    /// hire, increment 4, reads it too).
+    pub most_heroes: u8,
 }
 
 /// The week's parameters (E09 design §38, §42): the chance of a creature's week and the bonus
@@ -421,6 +426,8 @@ pub struct TownParams {
     pub week: WeekParams,
     /// A neutral town's garrison week.
     pub garrison_week: GarrisonWeekParams,
+    /// The most heroes a player has on the map (TWN-ROW-003).
+    pub most_heroes: u8,
 }
 
 /// A faction's compiled town record.
@@ -709,6 +716,7 @@ impl CanonicalHash for TownRuleset {
             g.weights.iter().for_each(|&w| h.write_u8(w));
             h.write_u8(g.weeks);
             h.write_u8(g.upgrade);
+            h.write_u8(p.most_heroes);
         });
         h.write_len(self.towns.len());
         for t in &self.towns {

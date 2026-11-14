@@ -9,12 +9,13 @@ use h3_contracts::{PlayerId, TownId};
 use h3_towns::{BuildingId, TownCommand, TownCommandError};
 
 use super::view::Told;
-use super::{Draws, holds_capitol, portal, recruit};
+use super::{Draws, holds_capitol, portal, recruit, rows};
 use crate::command::{GameCommandError, GameEvent, Sink};
 use crate::{GameRuleset, GameState};
 
 /// Runs `player`'s town command, whose turn [`GameState::check_ready`] checked: a recruitment
-/// opens a hire dialog (TWN-REC-001, -002; E09 T27, [`recruit::open`]); a build (TWN-BLD-001),
+/// opens a hire dialog (TWN-REC-001, -002; E09 T27, [`recruit::open`]); a hero's move between the
+/// town's bars moves it (TWN-ROW-002 to -004; E09 T28a, [`rows::heroes`]); a build (TWN-BLD-001),
 /// checked in this order, each refusal changing nothing:
 ///
 /// 1. the town in the store of towns, else [`TownCommandError::UnknownTown`];
@@ -48,6 +49,9 @@ pub(crate) fn command<S: Sink>(
         TownCommand::Build { town, building } => (town, building),
         TownCommand::Recruit { town, building } => {
             return recruit::open(state, rules, player, (town, building), sink);
+        }
+        TownCommand::Heroes { town, change } => {
+            return rows::heroes(state, rules, player, (town, change), sink);
         }
     };
     let part = rules.towns();

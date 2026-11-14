@@ -10,6 +10,11 @@
 
 use alloc::vec::Vec;
 
+mod rows;
+
+pub(crate) use rows::TownHeroes;
+pub use rows::{TownHeroError, TownHeroMove};
+
 use h3_content::{Formation, Ruleset};
 use h3_contracts::{ArmyStack, HeroId, PlayerId, TownId};
 
@@ -88,9 +93,8 @@ impl AdventureState {
     /// `TownId` the map does not have.
     // rule: TWN-VIS-002
     pub fn town_visitor(&self, town: TownId) -> Option<HeroId> {
-        let map = self.map();
-        map.town_object(town)
-            .and_then(|index| map.objects()[index].entrance(map))
+        self.map()
+            .town_entrance(town)
             .and_then(|entrance| self.heroes().iter().find(|hero| hero.pos == entrance))
             .map(|hero| hero.id)
     }

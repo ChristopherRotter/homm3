@@ -137,6 +137,7 @@ fn params() -> TownParamsDef {
             weeks: 8,
             upgrade: 5,
         },
+        most_heroes: 8,
     }
 }
 
@@ -582,11 +583,11 @@ fn the_hash_is_pinned_and_follows_the_content() {
     let (_, again) = compiled();
     assert_eq!(part.content_hash(), again.content_hash());
     assert_eq!(part.content_hash(), hash_of(&part));
-    // The fifth encoding (v5): pinned, so a change of what it covers bumps the version.
-    assert_eq!(part.content_hash(), 0x84b4_0449_24d2_2388);
+    // The sixth encoding (v6): pinned, so a change of what it covers bumps the version.
+    assert_eq!(part.content_hash(), 0xe9d6_8ef9_f9d6_aaf3);
     assert_eq!(
         TownRuleset::empty(&core).content_hash(),
-        0x04f0_d766_3d89_5b60
+        0xbf2f_d77e_fb5a_3d99
     );
     let mut changed = packs();
     changed[0].towns[0].buildings[2].name = "Hall".into();
@@ -651,6 +652,11 @@ fn the_hash_is_pinned_and_follows_the_content() {
         let other = TownRuleset::compile(&core, &changed).unwrap();
         assert_ne!(other.content_hash(), part.content_hash());
     }
+    // The sixth (v6): the most heroes on the map.
+    let mut changed = packs();
+    changed[0].params.as_mut().unwrap().most_heroes = 7;
+    let other = TownRuleset::compile(&core, &changed).unwrap();
+    assert_ne!(other.content_hash(), part.content_hash());
 }
 
 // covers: TWN-VEW-003
@@ -849,6 +855,10 @@ fn the_parameters_are_checked() {
     assert_eq!(
         param(|d| d.garrison_week.upgrade = 101),
         E::InvalidParams("the garrison week's upgrade chance is above 100")
+    );
+    assert_eq!(
+        param(|d| d.most_heroes = 0),
+        E::InvalidParams("the most heroes on the map needs at least 1")
     );
     // At the bounds: a chance of 1 in 1, both odds the denominator, one weight, a sure upgrade.
     let mut at_bounds = packs();

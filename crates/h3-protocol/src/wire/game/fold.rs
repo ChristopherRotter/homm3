@@ -30,9 +30,9 @@ use alloc::vec::Vec;
 
 use super::{
     Adventure, AdventureEvent, AdventureReveal, Amount, ArmyRef, ArmySlot, ArmyStack, Artifact,
-    ArtifactPlace, Boat, Decision, GameEvent, GameObservation, GameReveal, Garrison, GarrisonStack,
-    Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object, ObjectRef,
-    OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
+    ArtifactPlace, Boat, Decision, GameEvent, GameObservation, GameReveal, Garrison, GarrisonHero,
+    GarrisonStack, Guards, HeroChange, HeroDetails, LevelUp, MapGarrison, MapHero, Monster, Object,
+    ObjectRef, OwnMapHero, Pos, PrimarySkill, RevealedArea, RevealedView, SkillLevel, Tile, Town,
     TownOwnerFacts,
 };
 use crate::wire::WireU64;
@@ -350,6 +350,50 @@ impl GameObservation {
                 self.adventure.keys |= 1_u8.checked_shl(u32::from(key)).unwrap_or(0);
             }
             AdventureEvent::HeroRemoved { hero, pos: _ } => self.remove_hero(hero),
+            // E09 T28a (v64): the owner moves its own view into its garrison heroes, every other
+            // viewer sees the hero leave the map.
+            AdventureEvent::GarrisonEntered { hero, town, pos: _ } => {
+                let at = self
+                    .adventure
+                    .heroes
+                    .iter()
+                    .position(|seen| seen.id == hero);
+                let own = at.and_then(|at| self.adventure.heroes[at].own.clone().map(|o| (at, o)));
+                match own {
+                    Some((at, own)) => {
+                        self.adventure.heroes.remove(at);
+                        let held = &mut self.adventure.garrison_heroes;
+                        let place = held.partition_point(|g| g.town < town);
+                        held.insert(
+                            place,
+                            GarrisonHero {
+                                town,
+                                id: hero,
+                                own,
+                            },
+                        );
+                    }
+                    None => self.remove_hero(hero),
+                }
+            }
+            // The owner moves its own view back onto the map; a hero coming into sight is not
+            // carried for another viewer (SRV-Q26 (c); stub: SRV-STUB-3).
+            AdventureEvent::GarrisonLeft { hero, town: _, pos } => {
+                let held = &mut self.adventure.garrison_heroes;
+                if let Some(at) = held.iter().position(|g| g.id == hero) {
+                    let GarrisonHero { own, .. } = held.remove(at);
+                    let seen = MapHero {
+                        id: hero,
+                        owner: self.adventure.viewer,
+                        pos,
+                        boat: None,
+                        own: Some(own),
+                    };
+                    let heroes = &mut self.adventure.heroes;
+                    let place = heroes.partition_point(|h| h.id < hero);
+                    heroes.insert(place, seen);
+                }
+            }
             // Where they join is the rules' (SRV-Q27 (2); stub: SRV-STUB-9).
             AdventureEvent::CreaturesJoined { .. } => {}
             // Messages: nothing the view holds changes. What a visit tells the viewer (the objects
@@ -632,6 +676,10 @@ impl GameObservation {
     /// A hero left the viewer's sight or the map.
     fn remove_hero(&mut self, hero: u16) {
         self.adventure.heroes.retain(|seen| seen.id != hero);
+        // E09 T28a: a garrison hero leaves the game at its town's capture (`TWN-STUB-14`).
+        self.adventure
+            .garrison_heroes
+            .retain(|held| held.id != hero);
         self.heroes.retain(|info| info.id != hero);
     }
 
@@ -643,8 +691,18 @@ impl GameObservation {
             .and_then(|info| info.details.as_mut())
     }
 
-    /// What the viewer sees of its hero `hero` on the map beyond the others' view.
+    /// What the viewer sees of its hero `hero` on the map beyond the others' view, since E09 T28a
+    /// or in a town's garrison.
     fn own_mut(&mut self, hero: u16) -> Option<&mut OwnMapHero> {
+        let held = self.adventure.garrison_heroes.iter().any(|g| g.id == hero);
+        if held {
+            return self
+                .adventure
+                .garrison_heroes
+                .iter_mut()
+                .find(|g| g.id == hero)
+                .map(|g| &mut g.own);
+        }
         self.adventure
             .hero_mut(hero)
             .and_then(|seen| seen.own.as_mut())

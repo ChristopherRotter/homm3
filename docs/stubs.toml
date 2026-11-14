@@ -180,6 +180,12 @@ where  = "crates/h3-game/src/town/view.rs::Told"
 reason = "A change of Visions' reach is not told (E09 T18b2a; SRV-Q26: a server keeps a viewer's town views by events alone): a viewer one of whose heroes has a Visions creature sees another team's town within its radius at the popup's top level (TWN-VEW-003), so the hero's step, a change of its army or Power, or its loss in another player's battle moves that viewer's view of a town (its garrison's counts, the hall, the income) with no TownChanged, which the game tells after a build, a capture, a siege's merge, a garrison's battle and the day's start only. Since E08 T114b (the adventure lane's, `cross-lane`) the same for a map garrison's view (ADV-GAR-006: its army's counts, `crates/h3-game/src/garrisons.rs::Told`) with no GarrisonChanged, told after its battle's end, an exchange's command, its capture and a Tavern's build or a town's capture only. Telling it means comparing each Visions holder's reach before and after every command. Lifted when Visions' reach is told (increment 5 casts Visions on the map; the server lane's fold test exempts it until then)"
 epic   = "E09"
 
+[[stub]]
+id     = "TWN-STUB-14"
+where  = "crates/h3-adventure/src/town/rows.rs::AdventureState::release_town_hero"
+reason = "A garrison hero does not defend its town yet (E09 T28a; the town epic's design note section 54, rows 1 and 3 of a visit of another team): its town, whose own garrison a garrison hero keeps empty, falls to the first visitor of another team as an undefended one (TWN-VIS-001, a step's capture; behind a visitor of its team, the siege against that visitor as before, its win's capture too), and the garrison hero goes back to the pool with its artifacts, no battle, no experience, as T-5's garrison hero without an army (`TWN-QUIRK-11`, planned). Lifted by E09 T28b: a garrison hero alone defends its town in a siege with its own army (row 3), beside a visitor the visitor's battle at the gate is no siege (row 1), T-5 kept for an empty army"
+epic   = "E09"
+
 # --- ai (AI-STUB-<n>) ---
 
 [[stub]]

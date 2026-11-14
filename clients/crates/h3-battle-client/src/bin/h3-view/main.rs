@@ -10,7 +10,9 @@ mod situation;
 
 use std::process::ExitCode;
 
-use h3_battle_client::{account, connect, gate, render, sequences, sprite, text, video, window};
+use h3_battle_client::{
+    account, connect, gate, render, sequences, shell, sprite, text, video, window,
+};
 
 const USAGE: &str = "\
 usage: h3-view <command> [options]
@@ -213,6 +215,12 @@ commands:
           first unless its key is kept here, then the new one): the key so far stays due at
           every server in the pins file (default pins.txt), where `connect` and `window
           --server` re-key the account at their next login.
+  shell [--script <file>] [--no-intro]
+          the game shell's frame (E27 M2 T3a), headless: prints the screen on (the start's
+          clips, or with --no-intro the main menu), the task that builds it and the words it
+          takes; each word read (a line of standard input, or of <file>, echoed) ends the screen
+          and prints the next, until the end (Quit). A word the screen does not take is refused;
+          in a script it ends the run with exit code 1.
   help    show this message
 ";
 
@@ -248,6 +256,10 @@ fn main() -> ExitCode {
             },
             "sequences" => match sequences::Options::parse(rest) {
                 Ok(options) => sequences::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "shell" => match shell::Options::parse(rest) {
+                Ok(options) => shell::run(&options),
                 Err(message) => usage_error(&message),
             },
             "situation" => match situation::Options::parse(rest) {

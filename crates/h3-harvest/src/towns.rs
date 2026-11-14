@@ -375,7 +375,8 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
          visions_min_radius = {}\n\
          week_creature_chance = [{}, {}]\n\
          week_creature_bonus = {}\n\
-         garrison_week = {{ odds = [{}, {}], out_of = {}, weights = [{}], weeks = {}, upgrade = {} }}\n",
+         garrison_week = {{ odds = [{}, {}], out_of = {}, weights = [{}], weeks = {}, upgrade = {} }}\n\
+         most_heroes = {}\n",
         quote(gold),
         p.grail_gold,
         p.reveal_radius,
@@ -393,6 +394,7 @@ fn params(ctx: &Ctx<'_>) -> Result<String, String> {
         weights.join(", "),
         w.weeks,
         w.upgrade,
+        ctx.spec.rows.most_heroes,
     ))
 }
 

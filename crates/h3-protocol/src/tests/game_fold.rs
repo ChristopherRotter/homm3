@@ -1716,6 +1716,87 @@ fn the_fold_replaces_a_map_garrisons_view_by_its_told_one() {
     );
 }
 
+/// E09 T28a (v64): a hero's move between a town's bars. The owner moves its own view between the
+/// heroes on the map and its garrison heroes, a garrison hero's army changes as a hero's, and its
+/// leaving the game at its town's capture removes it; another viewer sees a hero leave the map,
+/// and one coming into sight is not carried (SRV-STUB-3).
+#[test]
+fn the_fold_moves_a_garrison_hero_between_the_map_and_its_town() {
+    let mut v = view();
+    assert_eq!(v.adventure.viewer, 1);
+    let held = |v: &GameObservation| -> Vec<(u16, u16)> {
+        v.adventure
+            .garrison_heroes
+            .iter()
+            .map(|g| (g.town, g.id))
+            .collect()
+    };
+    assert_eq!(held(&v), [(3, 7)]);
+    let army = v.adventure.heroes[0].own.clone().unwrap().army;
+    fold(
+        &mut v,
+        &[
+            adventure(AdventureEvent::GarrisonEntered {
+                hero: 4,
+                town: 1,
+                pos: at(0, 0),
+            }),
+            adventure(AdventureEvent::GarrisonEntered {
+                hero: 9,
+                town: 2,
+                pos: at(1, 0),
+            }),
+            GameEvent::StackChanged {
+                player: 1,
+                at: ArmySlot {
+                    army: ArmyRef::Hero { hero: 4 },
+                    slot: 6,
+                },
+                stack: Some(stack(6, 3)),
+            },
+        ],
+    );
+    assert!(!v.adventure.heroes.iter().any(|h| h.id == 4 || h.id == 9));
+    assert!(!v.heroes.iter().any(|info| info.id == 9));
+    assert_eq!(held(&v), [(1, 4), (3, 7)]);
+    let mut grown = army;
+    grown.push(stack(6, 3));
+    assert_eq!(v.adventure.garrison_heroes[0].own.army, grown);
+    fold(
+        &mut v,
+        &[
+            adventure(AdventureEvent::GarrisonLeft {
+                hero: 7,
+                town: 3,
+                pos: at(2, 2),
+            }),
+            adventure(AdventureEvent::GarrisonLeft {
+                hero: 12,
+                town: 0,
+                pos: at(1, 1),
+            }),
+            adventure(AdventureEvent::HeroRemoved {
+                hero: 4,
+                pos: at(0, 0),
+            }),
+        ],
+    );
+    assert_eq!(held(&v), []);
+    let seen: Vec<(u16, u8, Pos, Option<u8>, bool)> = v
+        .adventure
+        .heroes
+        .iter()
+        .map(|h| (h.id, h.owner, h.pos, h.boat, h.own.is_some()))
+        .collect();
+    assert_eq!(
+        seen,
+        [
+            (5, 1, at(0, 1), Some(2), true),
+            (7, 1, at(2, 2), None, true)
+        ]
+    );
+}
+
 #[test]
 fn the_fold_moves_the_heroes_and_the_boats() {
     let mut v = view();

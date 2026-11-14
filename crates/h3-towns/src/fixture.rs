@@ -480,6 +480,7 @@ fn params() -> TownParams {
             weeks: 8,
             upgrade: 5,
         },
+        most_heroes: 8,
     }
 }
 

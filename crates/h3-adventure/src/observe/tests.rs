@@ -368,6 +368,8 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
                     | AdventureEventKind::TilesRevealed { .. }
                     | AdventureEventKind::KeyGained { .. }
                     | AdventureEventKind::HeroRemoved { .. }
+                    | AdventureEventKind::GarrisonEntered { .. }
+                    | AdventureEventKind::GarrisonLeft { .. }
                     | AdventureEventKind::CreaturesJoined { .. }
                     | AdventureEventKind::EventFired { .. }
                     | AdventureEventKind::MonsterChanged { .. }

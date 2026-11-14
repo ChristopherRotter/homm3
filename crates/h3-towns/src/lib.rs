@@ -71,7 +71,7 @@ mod week;
 pub use build::{buildable, built_with, check_build, event_buildings, possible};
 pub use building::{BuildingId, BuildingSet, MAX_BUILDINGS};
 pub use capture::{capitol_limit, reveal};
-pub use command::{TownCommand, TownCommandError};
+pub use command::{TownCommand, TownCommandError, TownHeroChange};
 pub use garrison::{GarrisonWeek, garrison_week};
 pub use growth::{GrowthInputs, event_creatures, growth, index_creature};
 /// The moat's kind a town record gives (the battle's contract type, ADR-0023 point 2).
@@ -117,5 +117,6 @@ pub const TOWN_STATE_HASH_VERSION: u32 = 3;
 /// radius and creatures in the parameters (TWN-VEW-003). v4 (E09 T16a): each building's
 /// requirements (the closure) and cost, and the role `shipyard` (E09 design §24). v5 (E09 T25a): the
 /// roles `horde`, `portal` and `week_of`, each record's `roe`, the week's and the garrison week's
-/// parameters (E09 design §38).
-pub const TOWN_RULESET_HASH_VERSION: u32 = 5;
+/// parameters (E09 design §38). v6 (E09 T28a): the most heroes on the map in the parameters
+/// (TWN-ROW-003, design §53).
+pub const TOWN_RULESET_HASH_VERSION: u32 = 6;

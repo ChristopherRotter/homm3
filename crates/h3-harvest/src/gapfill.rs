@@ -69,6 +69,18 @@ pub struct Towns {
     pub visions: TownVisions,
     /// The growth's parameters (E09 T25a, design §38).
     pub growth: TownGrowth,
+    /// The town's two rows' parameter (E09 T28a, design §53).
+    pub rows: TownRows,
+}
+
+/// The two rows' `[town_params]` (E09 T28a, design §53; survey `E09-growth.md` §9).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TownRows {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// The most heroes a player has on the map; a garrison hero comes out only below it.
+    pub most_heroes: u8,
 }
 
 /// The growth's `[town_params]` (E09 T25a, design §38; survey `E09-growth.md` §2, §4): the week's
@@ -1061,6 +1073,7 @@ impl GapFill {
                         .chain(&t.moat.sources)
                         .chain(&t.visions.sources)
                         .chain(&t.growth.sources)
+                        .chain(&t.rows.sources)
                         .chain(t.role.iter().flat_map(|r| &r.sources))
                 }));
         for r in refs {

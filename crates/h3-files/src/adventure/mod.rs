@@ -25,7 +25,10 @@
 //! too; v14 the system actor's own commands for a player, E16 M5 T14: `system for <player>
 //! end-turn`, `system for <player> answer default` (its first open decision's default answer),
 //! `system for <player> battle <command>` (its side's); v15 `town recruit <town> <building>`, a
-//! town's hire dialog opened at a building, E09 T27, its purchases the hire dialog's answers):
+//! town's hire dialog opened at a building, E09 T27, its purchases the hire dialog's answers;
+//! v16 `town heroes <town> enter|leave|swap`, a hero's move between a town's two bars, E09 T28a,
+//! and the management lines naming a town's upper bar, `t<town>:<slot>` its garrison or a garrison
+//! hero's army by the hero):
 //!
 //! ```toml
 //! commands = [                        # the game commands in order, each after its actor:
@@ -47,12 +50,13 @@
 //!     "0 build-boat 41 9,16,1",       #   `<player> build-boat <type> <x>,<y>,<level>`
 //!     "0 town build 2 7",             #   `<player> town build <town> <building>` (format 11)
 //!     "0 town recruit 2 30",          #   `<player> town recruit <town> <building>` (format 15)
+//!     "0 town heroes 2 enter",        #   `<player> town heroes <town> enter|leave|swap` (16)
 //!     "0 revisit 1",                  #   `<player> revisit <hero>` (format 12)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
 //! [replay]
-//! format = 15
+//! format = 16
 //! engine = "0.1.0"
 //! seed = "1"                          # u64 as a decimal string
 //! difficulty = 1                      # the game's (GameSetup::difficulty), 1 the import's
@@ -91,7 +95,7 @@ use h3_contracts::{BattleSide, HeroId, PlayerId, TownId};
 use h3_game::{
     Actor, Answer, ArenaChoice, ArmyCommand, ArmyRef, ArmySlot, ArtifactPlace, BuildingId,
     ChestChoice, Consent, GameCommand, GameRuleset, GameSetup, HireAnswer, Manage, Position,
-    SchoolChoice, SkillOffer, SystemCommand, TownCommand, UniversityAnswer,
+    SchoolChoice, SkillOffer, SystemCommand, TownCommand, TownHeroChange, UniversityAnswer,
 };
 use h3_sim::adventure::replay::{
     MapRef, RecordError, Replay, ReplayError, ReplayHeader, map_content_hash,
@@ -288,7 +292,8 @@ fn parse_hex64(s: &str) -> Result<u64> {
 /// a `BuildBoat` (E08 T84b2) by its Shipyard's type index and anchor; a town's build (format v11,
 /// E09 T18b1) by its town and building; a `Revisit` (format v12, E08 T105b2) by its hero; a
 /// system command (format v14, E16 M5 T14) by `for`, its player and its words; a town's
-/// recruitment (format v15, E09 T27) by its town and building.
+/// recruitment (format v15, E09 T27) by its town and building; a hero's move between a town's
+/// bars (format v16, E09 T28a) by its town and move.
 pub fn format_command(actor: Actor, command: &GameCommand) -> String {
     let player = match actor {
         Actor::Player(player) => player.raw().to_string(),
@@ -339,6 +344,14 @@ pub fn format_command(actor: Actor, command: &GameCommand) -> String {
             format!("{player} town build {} {}", town.raw(), building.index())
         }
         // Format v15 (E09 T27).
+        GameCommand::Town(TownCommand::Heroes { town, change }) => {
+            let change = match change {
+                TownHeroChange::Enter => "enter",
+                TownHeroChange::Leave => "leave",
+                TownHeroChange::Swap => "swap",
+            };
+            format!("{player} town heroes {} {change}", town.raw())
+        }
         GameCommand::Town(TownCommand::Recruit { town, building }) => {
             format!("{player} town recruit {} {}", town.raw(), building.index())
         }
@@ -635,6 +648,20 @@ pub fn parse_command(text: &str) -> Result<(Actor, GameCommand)> {
                 .map(HeroId::new)
                 .ok_or_else(bad)?;
             GameCommand::Adventure(AdventureCommand::Revisit { hero })
+        }
+        // Format v16 (E09 T28a): a hero's move between a town's two bars.
+        Some("town") if words.clone().next() == Some("heroes") => {
+            let (_, Some(town), Some(change)) = (words.next(), words.next(), words.next()) else {
+                return Err(bad());
+            };
+            let town = town.parse().map(TownId::new).map_err(|_| bad())?;
+            let change = match change {
+                "enter" => TownHeroChange::Enter,
+                "leave" => TownHeroChange::Leave,
+                "swap" => TownHeroChange::Swap,
+                _ => return Err(bad()),
+            };
+            GameCommand::Town(TownCommand::Heroes { town, change })
         }
         // Format v11 (E09 T18b1): a town's build, without a hero; v15 (E09 T27) its recruitment.
         Some("town") => {

@@ -41,9 +41,11 @@ use super::rollout::choose;
 /// version 14 (E16 M5 T14): the system actor's own commands for a player
 /// (`GameCommand::System`: its turn ended, its decision's default answer, its battle side's
 /// command; GAM-SYS-001 to GAM-SYS-003); version 15 (E09 T27): a town's recruitment
-/// (`h3_towns::TownCommand::Recruit` by its town and building, TWN-REC-001). A replay of another
-/// version is refused ([`ReplayHeader::check`]).
-pub const REPLAY_FORMAT_VERSION: u32 = 15;
+/// (`h3_towns::TownCommand::Recruit` by its town and building, TWN-REC-001); version 16 (E09
+/// T28a): a hero's move between a town's two bars (`h3_towns::TownCommand::Heroes` by its town
+/// and move, TWN-ROW-002 to -004) and the management commands naming a town's upper bar
+/// (TWN-ROW-001). A replay of another version is refused ([`ReplayHeader::check`]).
+pub const REPLAY_FORMAT_VERSION: u32 = 16;
 
 /// Identity of the rules and algorithms a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

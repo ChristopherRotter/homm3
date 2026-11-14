@@ -25,6 +25,7 @@ visions_min_radius = 3
 week_creature_chance = [1, 4]
 week_creature_bonus = 5
 garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
+most_heroes = 8
 
 [[town]]
 faction = "castle"

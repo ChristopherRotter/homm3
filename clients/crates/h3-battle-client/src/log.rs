@@ -5,7 +5,6 @@
 //! the opening's snapshot names them.
 
 use h3_assets::fnt::Font;
-use h3_formats::lod::LodArchive;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -19,19 +18,15 @@ use h3_view::record::Record;
 use h3_view::scene::Panels;
 use h3_view::tables::Tables;
 
-use crate::render::lookup;
+use crate::lods::Lods;
 use crate::text;
 
 /// The catalogue of the original's text: the committed key catalogue over `tables`' creatures, its
 /// pack read from the text tables of `archives` (the base archive's copies first, §3.1). A key the
 /// tables do not give is an error: the gate lists such problems.
-pub fn catalogue(
-    tables: &Tables,
-    archives: &[(&str, LodArchive<'_>)],
-    exe: &[u8],
-) -> Result<Catalogue, String> {
+pub fn catalogue(tables: &Tables, archives: &Lods, exe: &[u8]) -> Result<Catalogue, String> {
     let keys = text::read_keys(&text::default_keys(), tables)?;
-    let texts = text::tables(&keys, |name| lookup(archives, name), exe)?;
+    let texts = text::tables(&keys, |name| archives.lookup(name), exe)?;
     let (original, problems) = Pack::original(&keys, &texts);
     match problems.first() {
         Some(problem) => Err(format!("the original's text: {problem}")),
@@ -134,7 +129,7 @@ pub fn panels(
     (logged, controllers): (&[(u32, battle_log::Logged)], &[Side]),
     tables: &Tables,
     layout: &BattleLayout,
-    (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
+    (archives, exe): (&Lods, &[u8]),
     bugs: Bugs,
 ) -> Result<Panels, String> {
     let writes = logged.iter().any(|(_, l)| {
@@ -176,7 +171,7 @@ impl Writer {
     pub fn new(
         tables: &Tables,
         layout: &BattleLayout,
-        (archives, exe): (&[(&str, LodArchive<'_>)], &[u8]),
+        (archives, exe): (&Lods, &[u8]),
         bugs: Bugs,
     ) -> Result<Self, String> {
         Self::with(catalogue(tables, archives, exe)?, layout, archives, bugs)
@@ -185,12 +180,12 @@ impl Writer {
     fn with(
         catalogue: Catalogue,
         layout: &BattleLayout,
-        archives: &[(&str, LodArchive<'_>)],
+        archives: &Lods,
         bugs: Bugs,
     ) -> Result<Self, String> {
         let item = layout.log().ok_or("the layout's panel has no log item")?;
         let font = |name: &str| {
-            h3_assets::fnt::decode_fnt(&lookup(archives, name)?)
+            h3_assets::fnt::decode_fnt(&archives.lookup(name)?)
                 .map_err(|e| format!("{name}: {e:?}"))
         };
         Ok(Self {

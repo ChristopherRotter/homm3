@@ -91,6 +91,17 @@ lane's turret preview (its open point below), the baselines, AI-Q7 and E26 T5's 
 
 **From the town lane** (E09 T8c1, T8c2, T19c1; T19c1's encoding v9 for the adventure agents):
 
+- 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent, E09
+  decision 93; **the env's action encoding v11, for the adventure agents**): `action.rs` appends
+  the three entries `TOWN_HEROES` (32 to 34; `ENTRY_COUNT` 35; `TOWN_HERO_MOVES`): a town's
+  entrance in the tile head moves a hero between its two bars (`TownCommand::Heroes`: 0 the
+  visitor into the garrison, 1 the garrison hero out, 2 the two swapped; TWN-ROW-002 to -004),
+  the building head 0, masked by `legal_commands`' moves (each own town's after its
+  recruitments); `Action::town_heroes`. A garrison hero is off the map: it holds no hero slot
+  (the slots are the heroes on the map's). The random agent now draws these moves where they are
+  listed, so the town map's play and fork tests took new seeds (`tests/towns.rs`); the army
+  commands between the bars have no entry (decision 99's).
+
 - 2026-11-13 (the town lane, E09 T27, `town/e09-t27`, `cross-lane` with the user's consent, E09
   decision 92; **the env's action encoding v10, for the adventure agents**): `action.rs` appends
   the entry `RECRUIT` (31; `ENTRY_COUNT` 32) with `BUILD`'s tile and building heads: a town's

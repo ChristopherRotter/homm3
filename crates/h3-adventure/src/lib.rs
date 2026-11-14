@@ -68,8 +68,8 @@ pub use command::{
 };
 pub use movement::{day_points, diagonal_cost, land_table_points, native_terrain, sea_day_points};
 pub use observe::{
-    AdventureObservation, AdventureReveal, BoatView, GuardsView, HeroView, Known, KnownObject,
-    MonsterView, ObjectView, OwnHeroView, RevealedTile, TileView,
+    AdventureObservation, AdventureReveal, BoatView, GarrisonHeroView, GuardsView, HeroView, Known,
+    KnownObject, MonsterView, ObjectView, OwnHeroView, RevealedTile, TileView,
 };
 pub use persistent::BitGrid;
 pub use reach::Reach;
@@ -102,7 +102,7 @@ pub use state::{
     HirePurchase, MapObject, Monster, Resolved, StaticMap, StaticTile, VisitMarks, Visits, Weekly,
     WhirlpoolTile, allied, hire_price,
 };
-pub use town::TownReveal;
+pub use town::{TownHeroError, TownHeroMove, TownReveal};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.
@@ -129,7 +129,9 @@ pub use town::TownReveal;
 /// static map's objects ([`Holds`]' tag 11). v23 (E08 T115a): each hero on the map's battle
 /// bonuses and timed marks ([`HeroBonuses`]). v24 (E08 T115b): the Fountains of Fortune's values,
 /// the Magic Springs' emptied entrances and the kind marks.
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 24;
+/// v25 (E09 T28a, the town lane's, `cross-lane`): the towns' garrison heroes after the heroes on
+/// the map ([`AdventureState::town_heroes`]).
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 25;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
 /// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting

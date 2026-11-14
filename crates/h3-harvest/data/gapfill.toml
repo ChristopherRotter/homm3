@@ -3907,6 +3907,13 @@ url = "docs/rules/surveys/E09-towns.md"
 retrieved = "2026-11-06"
 
 [[source]]
+id = "exe-town-rows"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/rules/surveys/E09-growth.md 9): the town screen's garrison hero out (town_garrison_click 0x5D4C10's case 8, town_hero_out_click 0x5D5220) is refused while the owner has 8 heroes on the map (the player record's count +1; GENRLTXT 19); VCMI 1.7.5 refuses at the map's heroes cap"
+url = "docs/rules/surveys/E09-growth.md"
+retrieved = "2026-11-14"
+
+[[source]]
 id = "exe-town-siege"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/rules/surveys/E09-towns.md 9.4; installation.md 7.27 to 7.33; E04c-sieges.md S-29): from a Citadel the moat damages under SoD rules and does not under RoE or AB rules, a Tower has its land mines instead, a Stronghold none under RoE or AB rules and then the terrain's natural obstacles; the defender's morale +1 with the Tavern (5), +2 for a Castle with the Brotherhood of the Sword (22, which supersedes the Tavern); luck +2 for a Rampart with the Fountain of Fortune (21); a Stronghold's escape tunnel (17); the defending hero's bonuses: a Tower's Grail +150 spell points, an Inferno's 21 +2 power, a Dungeon's Grail +12 power, a Stronghold's Grail +20 attack, a Fortress' 21 +2 attack and 22 +2 defense (TD-8 by the code, E09 decision 30), its Grail +10 attack and defense"
@@ -3966,6 +3973,12 @@ sources = ["exe-town-growth"]
 week_creature_chance = [1, 4]
 week_creature_bonus = 5
 garrison_week = { odds = [40, 80], out_of = 101, weights = [2, 3, 4, 5, 4, 3], weeks = 8, upgrade = 5 }
+
+# The town's two rows (TWN-ROW-003, E09 T28a, design §53): the most heroes a player has on the map,
+# below which a garrison hero comes out, into the [town_params].
+[towns.rows]
+sources = ["exe-town-rows"]
+most_heroes = 8
 
 # Visions for the towns (TWN-VEW-003, E09 T8c2): its expert factor and least radius go into the
 # [town_params], the creatures that give it into their own pack's [town_visions] (the Rogue, AB's).

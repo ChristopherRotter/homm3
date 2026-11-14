@@ -33,6 +33,8 @@
 //!                                  # (no standing fort level) or odds[1] in out_of (>= 1, each
 //!                                  # odds at most it); one to six level weights; the weeks
 //!                                  # counted; the upgrade's chance in 100
+//! most_heroes = 8                  # TWN-ROW-003 (E09 T28a): a garrison hero comes out only
+//!                                  # while its owner has fewer heroes on the map (>= 1)
 //!
 //! [town_visions]                   # optional, in any pack (E09 T8c2): creatures that give
 //! creatures = ["rogue"]            # their hero Visions at its expert level for the towns
@@ -207,6 +209,7 @@ struct ParamsDto {
     week_creature_chance: [u16; 2],
     week_creature_bonus: u16,
     garrison_week: GarrisonWeekDto,
+    most_heroes: u8,
 }
 
 #[derive(Deserialize)]
@@ -473,6 +476,7 @@ pub fn parse_towns(manifest: &PackManifest, text: &str) -> Result<TownPack, Town
                     weeks: p.garrison_week.weeks,
                     upgrade: p.garrison_week.upgrade,
                 },
+                most_heroes: p.most_heroes,
             })
         })
         .transpose()?;

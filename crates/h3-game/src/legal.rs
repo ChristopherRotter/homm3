@@ -17,7 +17,7 @@ use core::ops::RangeInclusive;
 use h3_adventure::{AdventureCommand, ArmyRef, ArmySlot, ChoiceKind, Reach};
 use h3_battle::LegalCommands;
 use h3_content::{CreatureTypeId, Formation};
-use h3_contracts::{HeroId, PlayerId};
+use h3_contracts::{HeroId, PlayerId, TownId};
 use h3_heroes::{
     ArmyWorth, ArtifactMove, ArtifactPlace, HeroDetails, Position, SlotState, check_assemble,
     check_disassemble, check_move, original_choice,
@@ -314,7 +314,13 @@ pub fn legal_management(
         Together::Exchange { army, .. } => Some(army),
         Together::Alone | Together::Meeting(_) => None,
     };
-    let toward = other.map(ArmyRef::Hero).or(stationary);
+    // E09 T28a (TWN-ROW-001): outside a decision, a visitor of an own town and its upper bar, a
+    // garrison hero and its town's visitor.
+    let bars = match together {
+        Together::Alone => town_partner(state, player, hero),
+        Together::Meeting(_) | Together::Dialog(_) | Together::Exchange { .. } => None,
+    };
+    let toward = other.map(ArmyRef::Hero).or(stationary).or(bars);
     let own_army = ArmyRef::Hero(hero);
     let adventure = state.adventure();
     let army = adventure.army_commands(part, player, (own_army, toward), group);
@@ -369,6 +375,67 @@ pub fn legal_management(
         .collect()
 }
 
+/// The army of a town's other bar that `player`'s hero `hero` meets outside a decision
+/// (TWN-ROW-001; E09 T28a, design §52): a visitor of an own town, the town's upper bar (its
+/// garrison hero's army, else its garrison); a garrison hero, its town's visitor's army when the
+/// visitor is the player's. None for any other hero.
+fn town_partner(state: &GameState, player: PlayerId, hero: HeroId) -> Option<ArmyRef> {
+    let adventure = state.adventure();
+    if let Some((town, _)) = adventure.garrisoned(hero) {
+        let visitor = adventure.town_visitor(town)?;
+        let own = adventure.hero(visitor).is_some_and(|h| h.owner == player);
+        return own.then_some(ArmyRef::Hero(visitor));
+    }
+    let map = adventure.map();
+    let town = adventure
+        .hero(hero)
+        .and_then(|on| map.town_at(on.pos))
+        .filter(|&town| map.town_object(town).and_then(|i| adventure.owner(i)) == Some(player))?;
+    Some(
+        adventure
+            .town_hero(town)
+            .map_or(ArmyRef::Garrison(town), |held| ArmyRef::Hero(held.id)),
+    )
+}
+
+/// The management commands `actor` may give on the upper bar of its town `town` now but the
+/// splits (GAM-MAN-002 amended, TWN-ROW-001; E09 T28a, design §52), each as `apply` accepts it:
+/// with a garrison hero its whole management ([`legal_management`] with that hero: its army's
+/// moves within it and onto its town's visitor's, its dismissals, formation, flag and
+/// artifacts); without one the town's garrison's moves onto its other slots and onto the
+/// visitor's army, if the player's hero visits, then its dismissals
+/// ([`h3_adventure::AdventureState::army_commands`], the one owner rule included). Empty when the
+/// actor's turn is not running, it has an open decision, the game waits for another player's
+/// level-up, or the town is not its.
+// rule: GAM-MAN-002, TWN-ROW-001
+pub fn legal_town_management(
+    state: &GameState,
+    rules: &GameRuleset,
+    actor: Actor,
+    town: TownId,
+) -> Vec<Manage> {
+    let Actor::Player(player) = actor else {
+        return Vec::new();
+    };
+    let adventure = state.adventure();
+    if let Some(held) = adventure.town_hero(town) {
+        return legal_management(state, rules, actor, held.id);
+    }
+    let alone = state.check_managing(player).ok() == Some(Together::Alone);
+    if !alone {
+        return Vec::new();
+    }
+    let visitor = adventure
+        .town_visitor(town)
+        .filter(|&hero| adventure.hero(hero).is_some_and(|h| h.owner == player));
+    let armies = (ArmyRef::Garrison(town), visitor.map(ArmyRef::Hero));
+    adventure
+        .army_commands(rules.adventure(), player, armies, None)
+        .into_iter()
+        .map(Manage::Army)
+        .collect()
+}
+
 /// The counts a split of `actor`'s stack at `from` with `to` may leave in `to` (GAM-MAN-002,
 /// ADV-ARM-003, ADV-ARM-007; E08 T51a, T51b): the adventure's
 /// [`h3_adventure::AdventureState::split_range`], with the open army dialog's group. `None` when
@@ -387,7 +454,8 @@ pub fn split_range(
         return None;
     };
     let armies = (from.army, (to.army != from.army).then_some(to.army));
-    state.check_managing(player).ok()?.admits(armies).ok()?;
+    let together = state.check_managing(player).ok()?;
+    state.admits_army(player, together, armies).ok()?;
     let group = state.army_dialog(player).map(|(_, group)| group);
     state
         .adventure()
