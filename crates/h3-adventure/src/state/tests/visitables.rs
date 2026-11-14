@@ -390,6 +390,7 @@ fn a_magic_springs_entrances_each_fill_twice_the_maximum_once_a_week() {
     let (outcome, _) = go(&mut s, &rules, &ONTO[1..], (1, 0));
     assert_eq!(outcome.hero, Some(set));
     assert_eq!(s.springs.as_deref(), Some(&vec![ONTO[0], ONTO[1]]));
+    assert_eq!(s.emptied_springs(), [ONTO[0], ONTO[1]]);
     // The team knows the Spring: visited, never its entrances' state.
     let known = s.observe(&rules.0, &rules.1, RED).known;
     assert_eq!(
@@ -404,6 +405,7 @@ fn a_magic_springs_entrances_each_fill_twice_the_maximum_once_a_week() {
     assert!(again(&mut s, &rules, (1, 0)).0.hero.is_some());
     // Built: none emptied.
     assert!(built.springs.is_none());
+    assert!(built.emptied_springs().is_empty());
 }
 
 // covers: ADV-BON-005, ADV-BON-001
