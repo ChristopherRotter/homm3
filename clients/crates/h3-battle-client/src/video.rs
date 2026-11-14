@@ -1,7 +1,8 @@
 //! `h3-view video` (E17 M5 T4b2a): the Bink clips of a video archive decoded by `h3-bink`, each
 //! written out as the file it is and as its frames in raw YUV 4:2:0 (the bytes of FFmpeg's
 //! `rawvideo` output in `yuv420p`), and compared with a reference decoding of the same files
-//! (the game's `BINKW32.DLL`'s since E17 M6 T6c1, read as it reads with `--original`:
+//! (the game's `BINKW32.DLL`'s since E17 M6 T6c1, read as it reads with `--original`, each frame
+//! as its `BinkCopyToBuffer` copies it since E27 M2 T2b, `h3_bink::Target`:
 //! `clients/scripts/bink-check.sh`; FFmpeg's before). The synthetic samples
 //! (`h3_bink::build::sample`) go the same way, so that the reference checks the block types the
 //! game's clips may not use. With `--smacker` (E27 M2 T1) the Smacker clips the same way through
@@ -20,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 
 use h3_assets::vid::VidArchive;
-use h3_bink::{Clip, Decoder, Frame, Reading};
+use h3_bink::{Clip, Decoder, Frame, Reading, Target};
 use h3_smacker::check::{Format, original_16};
 
 use crate::connect::printable;
@@ -170,14 +171,14 @@ fn decode(name: &str, bytes: &[u8], reading: Reading) -> Result<(Vec<Frame>, boo
     let mut decoder = Decoder::new(&clip)
         .map_err(|e| format!("{name}: {e:?}"))?
         .reading(reading);
+    // Read as the DLL, each frame as the game gets it (E27 M2 T2b, CLT-Q122).
+    let mut target = Target::new(&decoder);
     let mut frames = Vec::new();
     let mut clean = true;
     for n in 0..clip.frames().len() {
-        match clip
-            .video(n)
-            .and_then(|packet| decoder.decode(packet).cloned())
-        {
-            Ok(frame) => frames.push(frame),
+        match clip.video(n).and_then(|packet| decoder.decode(packet)) {
+            Ok(_) if reading == Reading::Original => frames.push(target.copy(&decoder).clone()),
+            Ok(frame) => frames.push(frame.clone()),
             Err(e) => {
                 eprintln!("{name}: frame {n}: {e:?}");
                 clean = false;

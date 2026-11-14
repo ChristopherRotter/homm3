@@ -7,9 +7,9 @@
 # YUY2), and compares them frame by frame (exit 1 on a difference). Since E27 M2 T2 also the
 # shell's four Bink clips (original-data/shell-videos.vid: NWCLOGO, H3INTRO, LOSEGAME, H3X1intr)
 # when no names are given, every clip's sound (its first track, `binkprobe sound`: the DLL's
-# decoder on each frame's packet) and the sound decoder's tables (`binkprobe sound-tables`). The
-# shell's clips' video is reported but not yet counted: it differs from the DLL's in their chroma
-# (found at E27 M2 T2; the queue's M2 T2b), their sound counts.
+# decoder on each frame's packet) and the sound decoder's tables (`binkprobe sound-tables`). Since
+# E27 M2 T2b every frame as the DLL's BinkCopyToBuffer copies it for the game (`h3_bink::Target`:
+# the cells its decoding marked changed, CLT-Q122), which the shell's clips need to match.
 # About 10 minutes after the release build, most of it H3INTRO's 2 426 frames (about 2.5 GB
 # written into clients/out/video: delete it after a run in a small sandbox).
 #
@@ -49,11 +49,7 @@ for file in "$out"/*.bik "$out"/*.BIK; do
 done
 "$view" video --original --out "$out" --reference "$out/dll" "$@" || status=1
 if [ $# -eq 0 ] && [ -f ../original-data/shell-videos.vid ]; then
-    report=$("$view" video --original --out "$out" --reference "$out/dll" "${shell[@]}" || true)
-    echo "$report"
-    if [ "$(grep -c '(pcm): as the reference' <<< "$report")" -ne 4 ]; then
-        status=1
-    fi
+    "$view" video --original --out "$out" --reference "$out/dll" "${shell[@]}" || status=1
 fi
 "$view" video --original --out "$out" --reference "$out/dll" "${samples[@]}" || status=1
 exit $status

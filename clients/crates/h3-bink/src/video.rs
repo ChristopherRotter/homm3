@@ -92,6 +92,11 @@ impl Plane {
         &self.pixels
     }
 
+    /// Every pixel of the block grid, to write (`crate::Target`).
+    pub(crate) fn pixels_mut(&mut self) -> &mut [u8] {
+        &mut self.pixels
+    }
+
     /// The picture's row `y` (empty past its height).
     #[must_use]
     pub fn row(&self, y: usize) -> &[u8] {
@@ -117,6 +122,11 @@ impl Frame {
     #[must_use]
     pub fn planes(&self) -> &[Plane; 3] {
         &self.planes
+    }
+
+    /// The planes, to write (`crate::Target`).
+    pub(crate) fn planes_mut(&mut self) -> &mut [Plane; 3] {
+        &mut self.planes
     }
 }
 
@@ -225,6 +235,13 @@ pub struct Decoder {
     decoded: u32,
     /// The residues' reading (CLT-Q68).
     reading: Reading,
+    /// The last frame's cells as `BINKW32.DLL` marks them changed (E27 M2 T2b, CLT-Q122): a
+    /// byte per 16 × 16 pixels of the luma (the chroma's block grid, `cells_wide` a row), 1 where
+    /// a block of a type but 0 was decoded into it by `Decoder::mark`'s reading; what
+    /// [`crate::Target`] copies.
+    changed: Vec<u8>,
+    /// The cells of a row of `Decoder::changed`: the chroma's blocks across.
+    cells_wide: usize,
 }
 
 /// Where a plane's blocks are: the plane's grid, its stride and the last block's top left (the
@@ -270,6 +287,8 @@ impl Decoder {
             bundles: Bundles::new(wide * high),
             decoded: 0,
             reading: Reading::Fixed,
+            changed: vec![0; width.div_ceil(16) * height.div_ceil(16)],
+            cells_wide: width.div_ceil(16),
         })
     }
 
@@ -286,6 +305,34 @@ impl Decoder {
         &self.frame
     }
 
+    /// The picture's width and height.
+    pub(crate) fn size(&self) -> (usize, usize) {
+        (self.width, self.height)
+    }
+
+    /// The last frame's changed cells (`Decoder::changed`) and how many make a row.
+    pub(crate) fn changed(&self) -> (&[u8], usize) {
+        (&self.changed, self.cells_wide)
+    }
+
+    /// Marks block (`bx`, `by`) of plane `index` changed as `ExpandPlane` (0x10002040) marks it,
+    /// at each block of a type but 0 (an unknown type is a skip there, an error here): a
+    /// counter, 1 a luma block and 2 a chroma block, halved gives the cell across; the row moves
+    /// on after each odd block row by the plane's stride over 16. That is a row of cells after
+    /// the luma's two block rows, but half a row (rounded down) after the chroma's two, where one
+    /// chroma block row is a row of cells: the chroma's marks land in other cells, most of them
+    /// higher up (`ExpandBink` 0x10003240 passes the chroma half the luma's stride and the same
+    /// mask). The DLL's luma stride is the width rounded up to 16 (`BinkOpen` 0x10004AC9).
+    fn mark(&mut self, index: usize, bx: usize, by: usize) {
+        let wide = self.cells_wide;
+        let cell = if index == 0 {
+            (by >> 1) * wide + (bx >> 1)
+        } else {
+            (by >> 1) * (wide >> 1) + bx
+        };
+        dsp::set(&mut self.changed, cell, 1);
+    }
+
     /// Decodes the next frame from its video packet ([`Clip::video`]) over the one before and
     /// returns it (`decode_frame`). On an error the frame stays as far as it was decoded, and the
     /// next decodes over it, as in FFmpeg.
@@ -298,6 +345,8 @@ impl Decoder {
         }
         let mut bits = Bits::new(packet);
         self.decoded = self.decoded.wrapping_add(1);
+        // `ExpandBink` clears the mask before the planes.
+        self.changed.fill(0);
         let key = self.decoded == 1;
         for plane in 0..3 {
             self.plane(&mut bits, plane, key)?;
@@ -321,16 +370,17 @@ impl Decoder {
         };
         let ybias = if key { -15 } else { 0 };
         let reading = self.reading;
-        let Self { frame, bundles, .. } = self;
-        let pixels = &mut frame.planes[index % 3].pixels;
-        bundles.reset();
+        self.bundles.reset();
         for by in 0..grid.high {
             for i in 0..BUNDLES {
-                bundles.refill(bits, i)?;
+                self.bundles.refill(bits, i)?;
             }
             for bx in 0..grid.wide {
                 let at = 8 * by * stride + 8 * bx;
-                block_at(bits, bundles, pixels, grid, at, (ybias, reading))?;
+                let pixels = &mut self.frame.planes[index % 3].pixels;
+                if block_at(bits, &mut self.bundles, pixels, grid, at, (ybias, reading))? {
+                    self.mark(index, bx, by);
+                }
             }
         }
         bits.align32();
@@ -338,7 +388,8 @@ impl Decoder {
     }
 }
 
-/// One block's decoding (`binkb_decode_plane`'s switch).
+/// One block's decoding (`binkb_decode_plane`'s switch); whether it was of a type but 0 (a skip),
+/// which the DLL marks changed (`Decoder::mark`).
 fn block_at(
     bits: &mut Bits<'_>,
     bundles: &mut Bundles,
@@ -346,7 +397,7 @@ fn block_at(
     grid: Grid,
     at: usize,
     (ybias, reading): (i32, Reading),
-) -> Result<(), Error> {
+) -> Result<bool, Error> {
     let stride = grid.stride;
     // The pixel at position `p` of the block (`coordmap`), its row the position's high bits.
     let put = |pixels: &mut [u8], p: u8, value: u8| {
@@ -354,7 +405,7 @@ fn block_at(
         dsp::set(pixels, at + (p & 7) + (p >> 3) * stride, value);
     };
     match bundles.take(BLOCK_TYPES) {
-        0 => {}
+        0 => return Ok(false),
         1 => {
             let scan = &PATTERNS[(bits.read(4) & 15) as usize];
             let mut done = 0;
@@ -424,7 +475,7 @@ fn block_at(
         }
         _ => return Err(Error::Invalid("block type")),
     }
-    Ok(())
+    Ok(true)
 }
 
 /// A motion block's copy: the 8 × 8 pixels at the vector's offset from the block, in the frame

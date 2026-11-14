@@ -41,7 +41,7 @@
 
 use alloc::vec::Vec;
 
-use h3_bink::{Clip as BinkClip, Decoder, Error, Frame, Reading};
+use h3_bink::{Clip as BinkClip, Decoder, Error, Frame, Reading, Target};
 use h3_render::Bugs;
 
 use crate::sound::Tune;
@@ -268,7 +268,9 @@ pub struct Video {
 impl Video {
     /// Decodes every frame of the Bink file `bytes` and converts it as the DLL does; `bugs`
     /// the residues' reading (`h3_bink::Reading`: [`Bugs::Original`] as the DLL reads, for the
-    /// comparisons; CLT-Q68).
+    /// comparisons; CLT-Q68) and the copy: [`Bugs::Original`] each frame as the DLL's
+    /// `BinkCopyToBuffer` copies it (`h3_bink::Target`, the chroma's changes it misses left out;
+    /// E27 M2 T2b, CLT-Q122), [`Bugs::Fixed`] each frame whole.
     ///
     /// # Errors
     /// What `h3-bink` rejects: the file, or a frame; frames past the [`BUDGET`], found before
@@ -283,8 +285,15 @@ impl Video {
         if !fits(clip.frames().len(), clip.width, clip.height) {
             return Err(VideoError::Budget);
         }
+        let mut target = Target::new(&decoder);
         let frames = (0..clip.frames().len())
-            .map(|n| Ok(rgb565(decoder.decode(clip.video(n)?)?)))
+            .map(|n| {
+                let frame = decoder.decode(clip.video(n)?)?;
+                Ok(match bugs {
+                    Bugs::Fixed => rgb565(frame),
+                    Bugs::Original => rgb565(target.copy(&decoder)),
+                })
+            })
             .collect::<Result<Vec<_>, Error>>()?;
         Ok(Self {
             width: usize::try_from(clip.width).unwrap_or(0),
