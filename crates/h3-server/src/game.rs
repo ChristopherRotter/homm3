@@ -638,7 +638,13 @@ impl Prepared {
         let past = |s: &Session<'_>| !s.over() && s.journal().commands.len() >= commands;
         if past(&session) {
             let host = (data.as_path(), registry);
-            return too_long(game, (&BTreeMap::new(), &[]), journal, host, &mut inbox);
+            return too_long(
+                game,
+                (&BTreeMap::new(), &[]),
+                journal,
+                host,
+                (&mut inbox, LONG),
+            );
         }
         let mut conns = BTreeMap::new();
         // How many messages each connection passed the game (E16 M2 T5b).
@@ -750,7 +756,7 @@ impl Prepared {
             }
             if past(&session) {
                 let host = (data.as_path(), registry);
-                return too_long(game, (&conns, &closed), journal, host, &mut inbox);
+                return too_long(game, (&conns, &closed), journal, host, (&mut inbox, LONG));
             }
             // A match's game waits for its players however their joins went (E16 M4 T2): its
             // grace ends it if they do not come (E16 M4 T3a).
@@ -1014,23 +1020,27 @@ pub(crate) fn close_all(
     }
 }
 
-/// Game `game` reached the server's limit of commands without an end (E16 M3 T4a): it is void.
-/// Every connection in `conns` but those in `closed` hears it, its journal moves to
-/// `<data>/void/` (no replay is written), the game leaves the lobby, and the connections on their
-/// way hear it too. The journal moves first, as on the other ways to the void: a game the lobby no
-/// longer lists has no journal left in `<data>/games/`.
-fn too_long(
+/// Why a battle past `[limits] commands_per_game` is void, as its log line says.
+const LONG: &str = "it reached the server's limit of commands without an end";
+
+/// Game `game` reached a limit of the server's on its commands without an end (E16 M3 T4a: a
+/// battle's `commands_per_game`; E16 M5 T20: a whole game's battle the server played past
+/// `system_commands_per_battle`, `why` says which): it is void. Every connection in `conns` but
+/// those in `closed` hears it, its journal moves to `<data>/void/` (no replay is written), the
+/// game leaves the lobby, and the connections on their way hear it too. The journal moves first,
+/// as on the other ways to the void: a game the lobby no longer lists has no journal left where
+/// a start restores games.
+pub(crate) fn too_long(
     game: u32,
     (conns, closed): (&BTreeMap<ConnId, Outbox>, &[ConnId]),
     journal: Option<Writer>,
     (data, registry): (&Path, &Shared),
-    inbox: &mut mpsc::Receiver<ToGame>,
+    (inbox, why): (&mut mpsc::Receiver<ToGame>, &str),
 ) {
     close_all(conns, closed, GoodbyeReason::CommandLimit);
     if let Some(journal) = journal {
         let path = journal.path().to_path_buf();
         drop(journal);
-        let why = "it reached the server's limit of commands without an end";
         journal::void(data, &path, &game.to_string(), why);
     }
     lock(registry).leave(game);

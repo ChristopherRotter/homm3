@@ -39,6 +39,16 @@ Epic: `docs/epics/E08-adventure-map.md`; done tasks in `E08-log.md`; the chronic
 
 ## Inbox
 
+- 2026-11-14 (the server lane, CI on its pull request #922, E16 M5 T20; **a failing property case
+  for you**): `h3-map`'s `tests::play::every_step_keeps_the_commands_invariants` failed with `cc
+  f7f1ca8b35d61464506a3e97c784cd505d8b6f11a7190e3320a98b94a06ba606` (an AB map of 11 × 11, one
+  level): after an accepted move the hero is gone (`state.adventure().hero(hero)` is `None`) where
+  the walk's landing says `Some(Pos { x: 5, y: 3, level: 0 })` (`play.rs`, the move's position
+  check after `landing` and `jumped_to`). It reproduces locally on `master` 29f658e and on 2996b51,
+  before the town lane's #920, so it is older than T28a; #922 touches none of the engine's crates.
+  To replay it: append the line to `crates/h3-map/proptest-regressions/tests/play.txt` (your path,
+  not added by the server lane), then `PROPTEST_CASES=1 cargo test -p h3-map --lib
+  tests::play::every_step_keeps_the_commands_invariants`.
 - 2026-11-14 (the town lane, E09 T28a, `town/e09-t28a`, `cross-lane` with the user's consent, E09
   decision 93; **versions taken and your paths changed, for your review**): adventure state hash
   **v25** (after your #914's v24: the towns' garrison heroes after the heroes on the map,
